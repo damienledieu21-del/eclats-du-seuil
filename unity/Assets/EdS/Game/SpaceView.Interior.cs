@@ -108,6 +108,8 @@ namespace EdS.Game
             // Meubles faits par le code d'après les obstacles.
             foreach (SpaceObstacle o in space.Obstacles)
             {
+                // Sous-lot V1.9.8 : la porte de lumière du souvenir est une arche de lumière (StoryStage), pas un autel.
+                if (StoryStage.IsLightGate(o.Id)) continue;
                 float x0 = Raw(o.Points.Min(p => p.X.Raw)), x1 = Raw(o.Points.Max(p => p.X.Raw)), z0 = Raw(o.Points.Min(p => p.Z.Raw)), z1 = Raw(o.Points.Max(p => p.Z.Raw));
                 switch (InteriorRules.FurnitureFor(o.Id))
                 {
@@ -126,6 +128,7 @@ namespace EdS.Game
             for (int i = 0; i < layout.Pieces.Count; i++)
             {
                 InteriorPiece piece = layout.Pieces[i];
+                if (StoryStage.IsLightGate(piece.Id)) continue;   // sous-lot V1.9.8 : ni chandeliers ni trône sur la porte de lumière
                 float y = (float)piece.Y;
                 if (piece.Parent >= 0)
                 {
@@ -143,7 +146,9 @@ namespace EdS.Game
             }
 
             Lights(layout);
-            Villagers(layout.Villagers);
+            // Sous-lot V1.9.8 : le souvenir de la Rupture n'a pas de villageois (ni fidèle devant la porte de lumière, ni paysan à la place de
+            // la reine Ysolde : StoryStage la dessine).
+            if (!space.Obstacles.Any(o => StoryStage.IsLightGate(o.Id))) Villagers(layout.Villagers);
         }
 
         // --- Murs, fenêtres, porte ------------------------------------------------------------------------------------------

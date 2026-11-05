@@ -82,6 +82,12 @@ namespace EdS.Game
         public static void Refresh()
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
+            // Sous-lot V1.9.8 : le souvenir de la Rupture a sa propre ambiance, avant celle des pièces.
+            if (Memory)
+            {
+                MemoryLight(catalog);
+                return;
+            }
             if (Indoors)
             {
                 IndoorLight(catalog);
@@ -157,6 +163,76 @@ namespace EdS.Game
                 }
             }
             Refresh();
+        }
+
+        /// <summary>
+        /// Sous-lot V1.9.8 (demande de Damien du 5 novembre 2026 : une ouverture marquante) : le personnage revit un souvenir (la Rupture,
+        /// il y a trois cents ans). Changement d'ambiance net : nuit bleue, brume, lumière froide, couleurs lavées, halo fort ; c'est la porte
+        /// de lumière qui éclaire (<see cref="StoryStage"/>). Rendu, tout reprend : la pièce, ou dehors.
+        /// </summary>
+        public static bool Memory { get; private set; }
+
+        /// <summary>Entre dans un souvenir ou en sort (voir <see cref="Memory"/>).</summary>
+        public static void SetMemory(bool memory)
+        {
+            if (Memory == memory) return;
+            Memory = memory;
+            if (!memory)
+            {
+                if (_colors != null && _colors.colorFilter != null) _colors.colorFilter.value = Color.white;
+                RenderSettings.fogMode = FogMode.Linear;
+                // Sans catalogue, Refresh ne remet rien dehors : on rend l'ambiance d'avant la première pièce.
+                if (!Active && !Indoors)
+                {
+                    (RenderSettings.ambientMode, RenderSettings.ambientSkyColor, RenderSettings.ambientEquatorColor, RenderSettings.ambientGroundColor,
+                        RenderSettings.fog) = _outdoorAmbient;
+                    if (_sun != null && _outdoorSun > 0f) _sun.intensity = _outdoorSun;
+                    Camera outdoor = _camera != null ? _camera : Camera.main;
+                    if (outdoor != null)
+                    {
+                        outdoor.clearFlags = _outdoorClear;
+                        outdoor.backgroundColor = _outdoorBackground;
+                    }
+                }
+            }
+            Refresh();
+        }
+
+        /// <summary>Couleurs du souvenir : brume de nuit, ciel au loin, lumière ambiante froide.</summary>
+        public static readonly Color MemoryFog = new Color(0.3f, 0.36f, 0.58f), MemorySky = new Color(0.04f, 0.05f, 0.11f);
+
+        private static void MemoryLight(StyleCatalog catalog)
+        {
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.4f, 0.46f, 0.72f);
+            RenderSettings.ambientEquatorColor = new Color(0.26f, 0.3f, 0.48f);
+            RenderSettings.ambientGroundColor = new Color(0.1f, 0.1f, 0.18f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Exponential;
+            RenderSettings.fogColor = MemoryFog;
+            RenderSettings.fogDensity = 0.035f;
+            if (_sun != null)
+            {
+                if (_outdoorSun <= 0f && _sun.intensity > 0f) _outdoorSun = _sun.intensity;
+                _sun.intensity = 0f;
+            }
+            Camera camera = _camera != null ? _camera : Camera.main;
+            if (camera != null)
+            {
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = MemorySky;
+            }
+            if (_colors != null)
+            {
+                float exposure = catalog != null ? catalog.Exposure + catalog.IndoorExposure : 0f;
+                _colors.postExposure.value = exposure + 0.35f;
+                _colors.contrast.value = (catalog != null ? catalog.Contrast : 0f) + 12f;
+                _colors.saturation.value = -45f;
+                if (_colors.colorFilter != null) _colors.colorFilter.value = new Color(0.86f, 0.93f, 1.08f);
+                _vignette.intensity.value = 0.45f;
+                _bloom.active = !Application.isMobilePlatform;
+                _bloom.intensity.value = Mathf.Max(1.2f, (catalog != null ? catalog.Bloom : 0f) * 2f);
+            }
         }
 
         private static CameraClearFlags _outdoorClear = CameraClearFlags.Skybox;

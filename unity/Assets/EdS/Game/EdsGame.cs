@@ -134,6 +134,16 @@ namespace EdS.Game
         private int _shownQuests, _shownLoot;
         private string _startupError;
 
+        /// <summary>
+        /// Sous-lot V1.9.8 : mise en scène du chapitre 1 (réveil, tutoriel, souvenir de la Rupture, Croc-Gris, silhouette, collier, « Quête
+        /// passée »).
+        /// </summary>
+        private StoryStage _stage;
+
+        /// <summary>Sous-lot V1.9.8 : Galeran ne porte pas l'équipement du joueur (sa lance et son armure neuve sont dessinées à part).</summary>
+        private static readonly VisibleGear NoGear = new VisibleGear(WeaponLook.None, EdS.Data.Items.ItemRarity.Common, ShieldLook.None,
+            EdS.Data.Items.ItemRarity.Common, false, EdS.Data.Items.ItemRarity.Common);
+
         private IEnumerator Start()
         {
             // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
@@ -151,6 +161,7 @@ namespace EdS.Game
                 _book = AdventureBook.Create();
                 _effects = Effects.Create();   // essai réaliste 7 : rien sans le shader des particules
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
+                _stage = new StoryStage(_camera.Camera.transform);   // sous-lot V1.9.8
             }
             catch (Exception e)
             {
@@ -248,6 +259,7 @@ namespace EdS.Game
                 EnsureListener();
                 _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             }
+            _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -268,8 +280,12 @@ namespace EdS.Game
             if (_adventure.Travels != _shownTravels) _fade = 1f;
             _shownTravels = _adventure.Travels;
             _combat = _adventure.Combat;
-            _arena.Paint = id => _adventure != null && _adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null;
+            // Sous-lot V1.9.8 : l'Écho de la Rupture est une silhouette de lumière (avant la couleur des chefs).
+            _arena.Paint = id => _adventure == null ? (Color?)null
+                : _stage?.Paint(id) ?? (_adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null);
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
+            // Sous-lot V1.9.8 : entrer dans le souvenir ou en sortir passe par un fondu blanc (la mise en scène), pas par le noir des portes.
+            if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
             _shownSession = _adventure.Opened;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;
@@ -317,6 +333,8 @@ namespace EdS.Game
             _talentView?.Close();
             PaintedMap.Forget();
             _screens.Close();
+            _stage?.Reset();   // sous-lot V1.9.8 : décor, sons et ambiance du souvenir rendus
+            _touch.Highlight = null;
             _arena.Paint = null;
             _combat = null;
             _camera.Indoors = false;   // essai réaliste 9 (relecture) : l'entraînement et le réseau retrouvent la distance de dehors
@@ -385,6 +403,8 @@ namespace EdS.Game
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
             }
             else if (Input.GetKeyDown(KeyCode.Escape) || _touch.PausePressed) _paused = !_paused;
+            // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
+            _stage?.ReadInput(a, !talking && !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None);
             if (!TalentsOpen)
             {
                 if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
@@ -421,6 +441,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
+            frozen = frozen || _stage != null && _stage.Blocking;   // sous-lot V1.9.8 : le réveil
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -447,7 +468,11 @@ namespace EdS.Game
                 a.Advance(Time.deltaTime);
                 foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
             }
-            foreach (string message in a.DrainMessages()) Say(message);
+            foreach (string message in a.DrainMessages())
+            {
+                Say(message);
+                _stage?.Notice(a, message);   // sous-lot V1.9.8 : « Quête passée » en grand
+            }
             // Essai réaliste 7 : petite fanfare quand une quête est accomplie.
             if (a.QuestsAnnounced > _shownQuests) UiSounds.Play(UiCue.QuestDone);
             _shownQuests = a.QuestsAnnounced;
@@ -455,11 +480,15 @@ namespace EdS.Game
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
             player = _combat.Player();
+            _stage?.BeforeSync();
             _arena.Sync(_combat, player, null);
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
-            _arena.ShowGear(_visibleGear);
+            _arena.ShowGear(a.InScene ? NoGear : _visibleGear);
+            // Sous-lot V1.9.8 : réveil, souvenir, Croc-Gris, silhouette, collier ; la fin du souvenir (retour au pré).
+            _stage?.AfterSync(a, _combat, _arena, _effects, _camera, Time.deltaTime);
+            _touch.Highlight = _stage?.TouchHighlight(a);
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
@@ -476,6 +505,7 @@ namespace EdS.Game
                     _mood = a.Mood();
                     _moodAge = 0f;
                 }
+                _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
                 _music.Update(_mood, _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
             }
         }
@@ -648,6 +678,7 @@ namespace EdS.Game
             // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
             // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
             bool covered = _talents != null || _menuOpen || _paused || AdventureCovered || LobbyShown;
+            covered = covered || _stage != null && _stage.WantsCursor(_adventure);   // sous-lot V1.9.8 : boutons du souvenir proposé
             if (Input.GetKeyDown(KeyCode.Escape)) _cursorReleased = true;
             else if (_cursorReleased && !covered && Input.GetMouseButtonDown(0)) _cursorReleased = false;
             // Essai réaliste 9 (relecture) : réglage « clic maintenu » (World of Warcraft) : le curseur reste visible, il n'est caché que
@@ -1289,9 +1320,11 @@ namespace EdS.Game
                 _hud.Floating(camera.WorldToScreenPoint(f.World + Vector3.up * age * 0.9f), f.Text, f.Color, age / FloatingSeconds);
             }
             if (_adventure != null && _arena.Player != null) _markers?.Labels(camera, _arena.Player.position, _hud);
-            // Sous-lot V1.7 : le titre de guilde affiché, au-dessus du personnage.
-            if (_adventure != null && _arena.Player != null && _adventure.ShownTitle is string shownTitle)
-                _hud.Label(camera.WorldToScreenPoint(_arena.Player.position + Vector3.up * 2.4f), shownTitle, UiKit.Dawn);
+            // Sous-lot V1.7 : le titre de guilde affiché, au-dessus du personnage. Sous-lot V1.9.8 : dans le souvenir, le nom de celui qu'on
+            // est (« Galeran »).
+            string overhead = _stage?.Actor(_adventure) ?? _adventure?.ShownTitle;
+            if (_adventure != null && _arena.Player != null && overhead != null)
+                _hud.Label(camera.WorldToScreenPoint(_arena.Player.position + Vector3.up * 2.4f), overhead, UiKit.Dawn);
             _hud.Player(player, _touch.Active, deltaTime);   // plus serré quand les commandes tactiles occupent les coins
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
             _hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)), deltaTime);
@@ -1409,6 +1442,8 @@ namespace EdS.Game
                 DrawAdventure();
                 // Intérieurs : fondu au noir après une porte.
                 if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
+                // Sous-lot V1.9.8 : réveil, souvenir (proposition, fondu blanc, titre), bulle du tutoriel, « Quête passée », légendes.
+                _stage?.Draw(_adventure, _adventure.Dialogue == null && _screens.Open == AdventureScreens.Panel.None && !TalentsOpen && !_paused);
                 return;
             }
             _touch.Draw(Network);   // sous-lot 11.8

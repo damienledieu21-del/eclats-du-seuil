@@ -249,8 +249,22 @@ namespace EdS.Game
         private void Look(string id, GameObject body, bool player)
         {
             StyleSlot slot = StyleRules.ForCombatant(id, player);
-            StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : 0.95f);
+            // Sous-lot V1.9.8 : Croc-Gris est un loup bien plus grand que les autres (StyleRules.BeastHeight).
+            StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
+        }
+
+        /// <summary>
+        /// Sous-lot V1.9.8 : fait briller la forme simple d'un combattant (l'Écho de la Rupture, silhouette de lumière) ; sans effet sur un
+        /// combattant habillé d'un modèle ou absent.
+        /// </summary>
+        public void Glow(string id, Color emission)
+        {
+            if (!_renderers.TryGetValue(id, out Renderer renderer) || renderer == null) return;
+            Material material = renderer.material;
+            if (!material.HasProperty("_EmissionColor")) return;
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", emission);
         }
 
         /// <summary>Essai de style : le joueur lance une compétence (son modèle joue l'attaque).</summary>
