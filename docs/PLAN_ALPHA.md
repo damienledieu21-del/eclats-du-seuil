@@ -134,6 +134,11 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - **Relecture de Damien** : chapitre 5. La répartition des vingt quêtes entre les chapitres est une proposition ; la liste est celle du [plan des Vallons](PLAN_VALLONS_SOLO.md#4-la-quête-principale-et-les-quêtes-secondaires).
 - **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-5--le-seuil--et-ses-quêtes-sous-lot-v195), [ECRITURE.md](ECRITURE.md)), sans changement de format (sauvegarde v12 : l'avancement de l'ancienne mission est converti à la lecture) ; la fin de l'ancienne mission (manifestation, rôdeur, Gardien, retour chez Odile) est passée du chapitre 1 au chapitre 5 ; « Le loup blanc » (le loup blanc de « La bête blanche » qui revient) et « Les pierres gravées » ; un lieu « cœur du Seuil » met le Gardien au niveau 23 au moins ; aucune créature ajoutée. **Avec lui, le V1.9 est fini** : les cinq chapitres et les vingt quêtes secondaires du plan des Vallons (en plus de celles d'avant : les peaux pour l'auberge, la bête blanche, les registres de l'archiviste et les épreuves de la guilde), textes et questions à relire.
 
+### 11 bis. V1.9.6 — Chapitre 1 enrichi : l'ouverture, le souvenir jouable, Croc-Gris, les indices (M)
+
+- Demande de Damien du 5 novembre 2026, avant son essai complet sous Unity : un chapitre 1 « Les traces sous le moulin » beaucoup plus riche, six idées choisies. **PR A1** (cœur et données) : les trois premières et les indices du mystère ; **PR A2** : quatre ou cinq quêtes de plus et le village vivant ; **PR B** : la présentation sous Unity.
+- **État** (5 novembre 2026, PR A1 en brouillon) : fait ([MONDE.md](MONDE.md#chapitre-1-enrichi--louverture-le-souvenir-jouable-croc-gris-sous-lot-v196), [ECRITURE.md](ECRITURE.md)) : l'ouverture « Le réveil » (tutoriel : marcher, frapper, se garder, parer, boire), le souvenir de la Rupture en scène jouée (une petite zone où l'on est Galeran, texte de repli gardé), Croc-Gris (chef de la meute du pré, deux formes), trois indices ; **histoire en schéma 6** (objectif `practice`, scènes), sauvegarde v12 inchangée.
+
 ### 12. V1.10 — Places des maisons et essai de la vague 1 (S)
 
 - Places des maisons du bourg agrandies (6 à 8 m), contrôles des Vallons agrandis.
@@ -620,6 +625,7 @@ Les autres éléments relevés sont rattachés à un chantier : guide d'écritur
 | 9 | V1.9.3 Chapitre 3 | M | 6, 8 | Relecture | 46 |
 | 10 | V1.9.4 Chapitre 4 | M | 9 | Relecture | 46, 87 |
 | 11 | V1.9.5 Chapitre 5 | M | 10 | Relecture | 46, 87 |
+| 11 bis | V1.9.6 Chapitre 1 enrichi (A1, puis A2 et B) | M | 11 | Relecture, puis essai | 46 |
 | 12 | V1.10 Places des maisons et essai | S | 1 à 11 | **Partie complète** | 46 |
 | 13 | V2.1 Jour et nuit | M | 12 | Oui, court | 46 |
 | 14 | V2.2 Météo | S | 13 | — | 15, 16 |

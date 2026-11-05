@@ -78,6 +78,12 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Pierres gravées | Cinq pierres des Seuillards (celle de Gaspard, et quatre aux ruines, au lac, dans la forêt des Loups et dans la plaine de l'est) ; quatre lignes : « Nous avons ouvert pour la reine. » « Nous n'avons pas su refermer. » « Quelqu'un attend de l'autre côté. » « Toi qui viens après, ne réponds pas. » (proposition, chapitre 5). |
 | Écho (d'une bête) | Une bête qu'on tue et qui revient, comme le loup blanc : depuis la Rupture, « même les loups ne passent plus » (Gaspard, d'après son grand-père ; chapitre 5). |
 
+| Galeran | Le jeune garde de la reine, il y a trois cents ans, dont l'Éclat fait revivre les souvenirs ; le joueur est dans sa peau pendant le souvenir de la Rupture (scène jouée, sous-lot V1.9.6). |
+| Reine Ysolde | La reine qui fit ouvrir le Seuil pour ramener son fils (lexique : la Rupture) ; dans le souvenir, elle serre un petit linceul blanc et dit « Tiens bon, Galeran ». |
+| Porte de lumière | Le Seuil ouvert, tel que Galeran le voit dans le souvenir : une porte de lumière blanche, sept Seuillards qui chantent autour. |
+| Croc-Gris | Le vieux chef de la meute du pré des loups ; il garde les éclats du pré (chapitre 1, sous-lot V1.9.6). |
+| Manteaux sombres | Ce que disent les colporteurs, d'après Gaspard : des gens vus sur les routes de l'est depuis l'automne, « qui achètent tout ce qui brille et ne marchandent jamais » (indice du chapitre 1 ; ce sont les Rassembleurs, rien n'est dit). |
+
 **Jurons** : « Par la Fêlure ! » (tous), « Lune fendue ! » (Valloniens), « Pierre et ancêtres ! » (Roche-nés), « Que l'Aube me garde ! » (Ordre de l'Aube, et les gens pieux), « Cendres et serments ! » (Cendrés), « Par mes reflets ! » (Lacustres).
 
 **Expressions et proverbes**
@@ -98,6 +104,8 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 - « Je suis le chien, pas le loup. » (le chef des bandits : il obéit aux Rassembleurs.)
 - « Ne réponds pas. » (les pierres gravées, Odile et Ysarn : à une voix de l'autre côté qui connaît ton nom.)
 - « Une, deux, trois… Ça fait taire. » (Ysarn compte les pierres pour ne plus entendre l'Envers.)
+- « Laisse-la tranquille, et elle te laissera tranquille. » (Odile, de la vieille porte du moulin.)
+- « Je ne vais pas te recoudre, moi : je suis meunière. » (Odile, au tutoriel.)
 
 ## 3. Fiches des PNJ importants (Vallons, chapitre 1)
 
@@ -159,6 +167,14 @@ PNJ déjà là, repris au chapitre 4 : **Rosalie** (sa lettre à Thibaut, puis l
 
 PNJ déjà là, repris au chapitre 5 : **Odile** (son secret devient la fin du chapitre : la voix de la vieille porte, « avec la bouche de ma mère » ; « Si tu entends ma mère, ne lui réponds pas ») ; **Gaspard** (le rôdeur, le loup blanc qui revient, la pierre gravée de son grand-père : sa fiche dit qu'il croit à la Rupture plus qu'il ne l'avoue) ; **Frère Anselme** (la bête qu'il avait bénie ne trouve pas le repos : doux et inquiet) ; **Sœur Albe** (Celui-qui-Attend n'est dans aucun livre ; elle écrit à « ceux qui l'ont envoyée » : son secret reste gardé).
 
+## 3 sexies. Fiches du chapitre 1 enrichi (sous-lot V1.9.6)
+
+**La reine Ysolde** (dans le souvenir de la Rupture, il y a trois cents ans). Tutoie Galeran (une reine tutoie son garde) ; le joueur, dans la peau de Galeran, la vouvoie (« Majesté »). Phrases courtes, sans un regard, une douleur tenue droite. *Veut* : son fils, de l'autre côté. *Cache* : elle a payé les Seuillards (« Ils ont dit oui, quand j'ai payé »). *Tics* : « Tiens bon, Galeran » ; « Ouvrez. » Elle ne parle que dans la scène.
+
+**Croc-Gris** (le vieux loup alpha du pré). Ne parle pas : il grogne avant de bondir (le bond annoncé), et quand il saigne il devient fou (seconde forme, le hurlement). Gaspard le connaît depuis longtemps.
+
+PNJ déjà là, repris : **Odile** (elle trouve le joueur à l'aube, le ramène sur sa charrette, lui glisse deux potions ; elle élude quand il demande qui parle derrière la vieille porte : son secret, fiche du chapitre 1) ; **Gaspard** (conseil pour Croc-Gris, rumeur des manteaux sombres).
+
 ## 4. Clés des textes
 
-Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`). Le chapitre 5 a des clés `text.ch5.…` (par exemple `ch5.odile.aveu`) ; les quatre étapes reprises de l'ancienne mission ont des textes neufs (`text.ch5.quest.seuil.…`), et les quatre anciens textes du journal (`text.quest.traces.manifestation`, `.rodeur`, `.chef`, `.retour`) sont retirés.
+Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`). Le chapitre 5 a des clés `text.ch5.…` (par exemple `ch5.odile.aveu`) ; les quatre étapes reprises de l'ancienne mission ont des textes neufs (`text.ch5.quest.seuil.…`), et les quatre anciens textes du journal (`text.quest.traces.manifestation`, `.rodeur`, `.chef`, `.retour`) sont retirés. Le chapitre 1 enrichi (sous-lot V1.9.6) garde les clés `text.ch1.…` : l'ouverture (`text.ch1.quest.reveil.…`, `text.ch1.odile.reveil…`), la scène du souvenir (`text.ch1.ysolde.…`, `text.ch1.souvenir.galeran`, `text.ch1.souvenir.retour` ; son repli reste `text.ch1.discovery.souvenir`), Croc-Gris (`text.ch1.quest.traces.croc_gris`, `text.ch1.gaspard.croc`) et les indices (`text.ch1.discovery.…`, `text.ch1.gaspard.silhouette`).
