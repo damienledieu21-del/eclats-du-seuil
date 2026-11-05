@@ -118,6 +118,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - Attaque du hameau par les bandits, piste jusqu'au lac (niveaux 10 à 15) ; quêtes proposées : « Les sangliers des champs », « La lettre au fond du lac », « Les vergers pillés », « Les potions du hameau », « Le pont des Vallons ».
 - Dépend de V1.8 (niveaux) et V1.9.2.
 - **Relecture de Damien** : chapitre 3.
+- **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-3--les-champs-et-le-hameau--et-ses-quêtes-sous-lot-v193), [ECRITURE.md](ECRITURE.md)), sans changement de format (contenus seulement, dont trois bandits de plus dans la zone des Vallons), avec l'étal de Renart ; le tutoriel de Colombe à qualité attend une question à Damien ; textes à relire.
 
 ### 10. V1.9.4 — Chapitre 4 « La tour et le camp » et ses quêtes (M)
 

@@ -41,8 +41,8 @@ public class V11MarchandsTests : IDisposable
         MerchantBook book = loaded.Book!;
         Assert.Equal(MerchantValidator.CurrentSchemaVersion, book.SchemaVersion);
         // Sous-lot V1.7 : et la réserve de la guilde, tenue par l'intendant dans la Maison de la Guilde.
-        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde" }, book.Merchants.Select(m => m.Id));
-        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde" }, book.Merchants.Select(m => m.Npc));
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
+        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart" }, book.Merchants.Select(m => m.Npc));
         // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
@@ -59,7 +59,7 @@ public class V11MarchandsTests : IDisposable
                 foreach (Merchant buyer in book.Merchants) Assert.True(market.UnitPrice(buyer.Id, o.Item) <= o.Price, $"{buyer.Id} {o.Item}");
             }
         // Tous les objets ont une valeur, sauf la ferrure (objet de quête) et l'Éclat du Seuil du personnage (sous-lot V1.2) : ils ne se vendent pas.
-        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.ferrure", "item.miche_du_matin", "item.bourse_d_eclats", "item.bourse_de_renart", "item.corde_de_cloche", "item.huile_de_lampe", "item.pierre_benie" }, ItemsCatalog.Items.Select(i => i.Id).Where(i => !book.Values.ContainsKey(i)));
+        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.ferrure", "item.miche_du_matin", "item.bourse_d_eclats", "item.bourse_de_renart", "item.corde_de_cloche", "item.huile_de_lampe", "item.pierre_benie", "item.sac_d_eclats", "item.lettre_mouillee", "item.sac_de_pommes" }, ItemsCatalog.Items.Select(i => i.Id).Where(i => !book.Values.ContainsKey(i)));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les textes des marchands existent (noms, accueils, motifs de refus).

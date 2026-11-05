@@ -63,6 +63,9 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Sceau d'ambre | Cachet de cire couleur de miel, frappé d'une couronne : la marque de quelqu'un de Havre d'Ambre qui achète les éclats volés (chapitre 2). |
 | Pierre des Seuillards | Pierre taillée par l'ancien ordre, d'avant la Paix d'Ambre ; un écho peut s'y « prendre » (le puits de la place est creusé sur l'une d'elles). |
 | Pierre bénie | Pierre que l'Ordre de l'Aube bénit pour faire taire un écho. |
+| Ordre scellé | Billet fermé de la cire d'ambre, trouvé sur le bandit du lac : « le passeur d'Ambre paiera comme convenu » (chapitre 3). |
+| Passeur d'Ambre | Celui qui prend les éclats volés au lac pour l'acheteur de Havre d'Ambre ; ni lui ni l'acheteur n'ont encore de nom. |
+| Lune noire | La nuit sans lune : le moment où le passeur vient au lac (chapitre 3). |
 
 **Jurons** : « Par la Fêlure ! » (tous), « Lune fendue ! » (Valloniens), « Pierre et ancêtres ! » (Roche-nés), « Que l'Aube me garde ! » (Ordre de l'Aube, et les gens pieux), « Cendres et serments ! » (Cendrés), « Par mes reflets ! » (Lacustres).
 
@@ -77,10 +80,12 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 - « Ici, même les murs ont des poches. » (Sœur Albe : méfiez-vous des voleurs.)
 - « S'il te serre la main, compte tes doigts après. » (Mathurin, de Renart.)
 - « Il manque toujours deux sous, avec lui. » (Mathurin : Renart ne paie jamais tout à fait.)
+- « La pierre se souvient. » (maître Josse : ni le bien ni le mal ne s'oublient au hameau.)
+- « C'est comme la soupe, en plus amer. » (Aubine, de tout ce qui soigne.)
 
 ## 3. Fiches des PNJ importants (Vallons, chapitre 1)
 
-Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; le chef des bandits viendra avec le chapitre 4).
+Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; chapitre 3 : section 3 ter ; le chef des bandits viendra avec le chapitre 4).
 
 **Odile, la meunière** (Vallonienne, la cinquantaine). Parle simplement, avec chaleur et un brin d'inquiétude ; tutoie le joueur. *Veut* : que son moulin tourne et que les nuits redeviennent calmes. *Cache* : la porte du moulin a été condamnée l'hiver dernier parce qu'elle y entendait des voix. *Tics* : parle de sa roue comme d'une personne ; « Que l'aube te garde. »
 
@@ -106,6 +111,20 @@ Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langa
 
 PNJ déjà là, repris au chapitre 2 : **Mathurin**, l'aubergiste (tutoie, plaintes drôles, compte chaque sou) ; **Frère Anselme**, le prêtre (tutoie, doux et inquiet) ; **Rosalie**, l'habitante de la maison du bourg (tutoie, mère d'un garde, **Thibaut**, à la tour de guet, qui ne répond plus à ses lettres : annonce de « La tour silencieuse ») ; **Dame Brunehilde**, la maîtresse de guilde (tutoie, directe) ; **Bertille** et **Sauge** (marchandes, données à relire avec le chapitre).
 
+## 3 ter. Fiches des PNJ du hameau et des champs (chapitre 3, sous-lot V1.9.3)
+
+**Maître Josse, doyen du hameau de la carrière** (Vallonien, la soixantaine, ancien carrier au dos voûté). Tutoie, phrases de pierre, têtu et fier ; le joueur le vouvoie. *Veut* : que le hameau tienne, et qu'on lui rende ses éclats. *Cache* : c'est lui qui a vendu les premiers éclats sortis de la carrière, avant que les bandits ne viennent les prendre de force (piste pour plus tard). *Tics* : « Lune fendue ! » ; « La pierre se souvient » ; frappe le sol de sa canne.
+
+**Aubine, l'herboriste du hameau** (Vallonienne, la trentaine). Tutoie, bavarde, maternelle et moqueuse, parle des remèdes comme de la cuisine. *Veut* : remettre ses carriers debout. *Cache* : elle soigne aussi, en secret, un bandit blessé qui veut quitter la bande (piste pour « Le déserteur », chapitre 4). *Tics* : « Tu saignes ? » ; « C'est comme la soupe, en plus amer. »
+
+**Achille, le fermier des champs** (Vallonien, la cinquantaine, à la ferme des champs). Tutoie, grogne, peu causant, parle du temps et de la moisson ; le joueur le vouvoie. *Veut* : rentrer ses blés. *Cache* : l'hiver dernier, il a nourri les bandits contre la paix de ses champs. *Tics* : « Après la pluie, le blé » ; « ces bêtes-là » ; « je ne suis pas causant ».
+
+**Garance, la fermière des vergers** (Vallonienne, la vingtaine). Tutoie, vive, en colère et drôle ; le joueur la tutoie. *Veut* : ses pommes, et que ses pommiers refleurissent. *Cache* : elle a reconnu, parmi les pillards, un garçon du bourg. *Tics* : appelle ses pommiers par leur nom (la Grosse Marthe, la Petite Jeanne) ; « jusqu'à la troisième génération ».
+
+**Mahaut, une veuve du bourg** (Vallonienne, la cinquantaine, au sud de la place du bourg). Tutoie, voix douce, phrases lentes, jamais larmoyante ; le joueur la vouvoie. *Veut* : la dernière lettre de son mari, **Guérin**, carrier noyé au lac l'été dernier. *Cache* : elle savait que Guérin rapportait plus d'argent qu'un carrier n'en gagne. *Tics* : regarde la route du lac ; « Mon Guérin… ». Se souvient du choix du joueur (la lettre rendue ou gardée).
+
+PNJ déjà là, repris au chapitre 3 : **Renart** (son étal : il vend un peu plus cher que les autres et rachète moins bien, « un prix d'ami ») ; **Sœur Albe** (lit l'ordre scellé ; son secret reste gardé) ; **Odile** et **Gaspard** (le pont de la grand-rue).
+
 ## 4. Clés des textes
 
-Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`).
+Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`).

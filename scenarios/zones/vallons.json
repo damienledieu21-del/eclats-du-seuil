@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 15,
   "kind": "scenario",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -2904,6 +2904,160 @@
         "behavior": {
           "maxRange": 1,
           "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "bandit_epee3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          90,
+          -22
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_epee4",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          14,
+          -67
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "bandit_arc3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          44,
+          -42
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
           "pack": false
         }
       }

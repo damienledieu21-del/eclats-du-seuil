@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 4,
   "kind": "story",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -173,6 +173,51 @@
           -6
         ],
         "dialogue": "dialogue.apprentie"
+      },
+      {
+        "id": "npc.doyen",
+        "name": "text.ch3.npc.doyen.name",
+        "position": [
+          84,
+          -36
+        ],
+        "dialogue": "dialogue.doyen"
+      },
+      {
+        "id": "npc.herboriste_hameau",
+        "name": "text.ch3.npc.herboriste_hameau.name",
+        "position": [
+          72,
+          -36
+        ],
+        "dialogue": "dialogue.herboriste_hameau"
+      },
+      {
+        "id": "npc.fermier",
+        "name": "text.ch3.npc.fermier.name",
+        "position": [
+          -66,
+          -36
+        ],
+        "dialogue": "dialogue.fermier"
+      },
+      {
+        "id": "npc.fermiere",
+        "name": "text.ch3.npc.fermiere.name",
+        "position": [
+          58,
+          -28
+        ],
+        "dialogue": "dialogue.fermiere"
+      },
+      {
+        "id": "npc.veuve",
+        "name": "text.ch3.npc.veuve.name",
+        "position": [
+          -64,
+          -18
+        ],
+        "dialogue": "dialogue.veuve"
       }
     ],
     "dialogues": [
@@ -192,6 +237,24 @@
               }
             ],
             "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.pont_des_vallons"
+              }
+            ],
+            "node": "ch3_pont_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.pont_des_vallons"
+              }
+            ],
+            "node": "ch3_pont_attente"
           },
           {
             "conditions": [
@@ -224,6 +287,19 @@
               }
             ],
             "node": "ch1_ferrure"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.pont_des_vallons"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 12
+              }
+            ],
+            "node": "ch3_pont"
           },
           {
             "conditions": [
@@ -401,17 +477,81 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch3.odile.vers_pont",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pont_des_vallons"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 12
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_pont"
               }
             ]
           },
           {
             "id": "ch1_ferrure_attente",
             "text": "text.ch1.odile.ferrure_attente",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch3.odile.vers_pont",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pont_des_vallons"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 12
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_pont"
+              }
+            ]
           },
           {
             "id": "ch1_pain",
             "text": "text.ch1.odile.pain",
+            "choices": []
+          },
+          {
+            "id": "ch3_pont",
+            "text": "text.ch3.odile.pont",
+            "choices": [
+              {
+                "text": "text.ch3.odile.pont.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.pont_des_vallons"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.odile.pont.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_pont_attente",
+            "text": "text.ch3.odile.pont_attente",
+            "choices": []
+          },
+          {
+            "id": "ch3_pont_recompense",
+            "text": "text.ch3.odile.pont_recompense",
             "choices": []
           }
         ]
@@ -621,6 +761,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.pont_des_vallons",
+                "step": "gaspard"
+              }
+            ],
+            "node": "ch3_pont"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.traces_sous_le_moulin",
                 "step": "gaspard"
               }
@@ -738,6 +888,18 @@
             "id": "ch1_pain",
             "text": "text.ch1.gaspard.pain",
             "choices": []
+          },
+          {
+            "id": "ch3_pont",
+            "text": "text.ch3.gaspard.pont",
+            "choices": [
+              {
+                "text": "text.ch3.gaspard.pont.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -2139,6 +2301,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "albe"
+              }
+            ],
+            "node": "ch3_ordre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.bourg_d_aube",
                 "step": "chapelle"
               }
@@ -2482,6 +2654,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch3.albe.vers_tour",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_apres"
               }
             ]
           },
@@ -2558,6 +2741,48 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch3_ordre",
+            "text": "text.ch3.albe.ordre",
+            "choices": [
+              {
+                "text": "text.ch3.albe.ordre.qui",
+                "conditions": [],
+                "effects": [],
+                "next": "ch3_tour"
+              },
+              {
+                "text": "text.ch3.albe.ordre.quoi",
+                "conditions": [],
+                "effects": [],
+                "next": "ch3_tour"
+              }
+            ]
+          },
+          {
+            "id": "ch3_tour",
+            "text": "text.ch3.albe.tour",
+            "choices": [
+              {
+                "text": "text.ch3.albe.tour.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_apres",
+            "text": "text.ch3.albe.apres",
+            "choices": [
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -2597,6 +2822,19 @@
               }
             ],
             "node": "ch2_dette"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.champs_et_hameau"
+              }
+            ],
+            "node": "ch3_ancienne"
           },
           {
             "conditions": [
@@ -2777,6 +3015,23 @@
                   {
                     "do": "setFact",
                     "id": "fact.ch2.dette.bourse"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_ancienne",
+            "text": "text.ch3.renart.ancienne",
+            "choices": [
+              {
+                "text": "text.ch3.renart.ancienne.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.champs_et_hameau"
                   }
                 ],
                 "next": null
@@ -3035,6 +3290,703 @@
           {
             "id": "ch2_apres",
             "text": "text.ch2.apprentie.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.doyen",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "hameau"
+              }
+            ],
+            "node": "ch3_raid"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "defendre"
+              }
+            ],
+            "node": "ch3_defendre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "piste"
+              }
+            ],
+            "node": "ch3_piste"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "lac"
+              }
+            ],
+            "node": "ch3_piste"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.champs_et_hameau",
+                "step": "retour"
+              }
+            ],
+            "node": "ch3_sac"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.champs_et_hameau"
+              }
+            ],
+            "node": "ch3_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.champs_et_hameau"
+              }
+            ],
+            "node": "ch3_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch3_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch3_accueil",
+            "text": "text.ch3.doyen.accueil",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_raid",
+            "text": "text.ch3.doyen.raid",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.raid.qui",
+                "conditions": [],
+                "effects": [],
+                "next": "ch3_raid_qui"
+              },
+              {
+                "text": "text.ch3.doyen.raid.retrouver",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_raid_qui",
+            "text": "text.ch3.doyen.raid_qui",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.raid_qui.attendre",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_defendre",
+            "text": "text.ch3.doyen.defendre",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.defendre.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_piste",
+            "text": "text.ch3.doyen.piste",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.piste.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_sac",
+            "text": "text.ch3.doyen.sac",
+            "choices": []
+          },
+          {
+            "id": "ch3_apres",
+            "text": "text.ch3.doyen.apres",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.herboriste_hameau",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.potions_du_hameau"
+              }
+            ],
+            "node": "ch3_potions_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.potions_du_hameau"
+              }
+            ],
+            "node": "ch3_potions_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.potions_du_hameau"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 10
+              }
+            ],
+            "node": "ch3_potions"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.potions_du_hameau"
+              }
+            ],
+            "node": "ch3_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch3_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch3_accueil",
+            "text": "text.ch3.herboriste_hameau.accueil",
+            "choices": []
+          },
+          {
+            "id": "ch3_potions",
+            "text": "text.ch3.herboriste_hameau.potions",
+            "choices": [
+              {
+                "text": "text.ch3.herboriste_hameau.potions.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.potions_du_hameau"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.herboriste_hameau.potions.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_potions_attente",
+            "text": "text.ch3.herboriste_hameau.potions_attente",
+            "choices": []
+          },
+          {
+            "id": "ch3_potions_recompense",
+            "text": "text.ch3.herboriste_hameau.potions_recompense",
+            "choices": []
+          },
+          {
+            "id": "ch3_apres",
+            "text": "text.ch3.herboriste_hameau.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.fermier",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.sangliers_des_champs",
+                "step": "retour"
+              }
+            ],
+            "node": "ch3_sangliers_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.sangliers_des_champs"
+              }
+            ],
+            "node": "ch3_sangliers_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.sangliers_des_champs"
+              }
+            ],
+            "node": "ch3_sangliers_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.sangliers_des_champs"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 10
+              }
+            ],
+            "node": "ch3_sangliers"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.sangliers_des_champs"
+              }
+            ],
+            "node": "ch3_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch3_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch3_accueil",
+            "text": "text.ch3.fermier.accueil",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_sangliers",
+            "text": "text.ch3.fermier.sangliers",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.sangliers.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.sangliers_des_champs"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.fermier.sangliers.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_sangliers_attente",
+            "text": "text.ch3.fermier.sangliers_attente",
+            "choices": []
+          },
+          {
+            "id": "ch3_sangliers_retour",
+            "text": "text.ch3.fermier.sangliers_retour",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.sangliers_retour.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_sangliers_recompense",
+            "text": "text.ch3.fermier.sangliers_recompense",
+            "choices": []
+          },
+          {
+            "id": "ch3_apres",
+            "text": "text.ch3.fermier.apres",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.fermiere",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.vergers_pilles",
+                "step": "livrer"
+              }
+            ],
+            "node": "ch3_vergers_sac"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.vergers_pilles"
+              }
+            ],
+            "node": "ch3_vergers_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.vergers_pilles"
+              }
+            ],
+            "node": "ch3_vergers_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.vergers_pilles"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 11
+              }
+            ],
+            "node": "ch3_vergers"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.vergers_pilles"
+              }
+            ],
+            "node": "ch3_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch3_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch3_accueil",
+            "text": "text.ch3.fermiere.accueil",
+            "choices": [
+              {
+                "text": "text.ch3.fermiere.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_vergers",
+            "text": "text.ch3.fermiere.vergers",
+            "choices": [
+              {
+                "text": "text.ch3.fermiere.vergers.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.vergers_pilles"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.fermiere.vergers.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_vergers_attente",
+            "text": "text.ch3.fermiere.vergers_attente",
+            "choices": []
+          },
+          {
+            "id": "ch3_vergers_sac",
+            "text": "text.ch3.fermiere.vergers_sac",
+            "choices": []
+          },
+          {
+            "id": "ch3_vergers_recompense",
+            "text": "text.ch3.fermiere.vergers_recompense",
+            "choices": []
+          },
+          {
+            "id": "ch3_apres",
+            "text": "text.ch3.fermiere.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.veuve",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.lettre_au_fond_du_lac",
+                "step": "choix"
+              }
+            ],
+            "node": "ch3_lettre_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.lettre_au_fond_du_lac"
+              }
+            ],
+            "node": "ch3_lettre_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.lettre_au_fond_du_lac"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 11
+              }
+            ],
+            "node": "ch3_lettre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.lettre_au_fond_du_lac"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch3.lettre.rendue"
+              }
+            ],
+            "node": "ch3_apres_rendue"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.lettre_au_fond_du_lac"
+              }
+            ],
+            "node": "ch3_apres_gardee"
+          },
+          {
+            "conditions": [],
+            "node": "ch3_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch3_accueil",
+            "text": "text.ch3.veuve.accueil",
+            "choices": [
+              {
+                "text": "text.ch3.veuve.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_lettre",
+            "text": "text.ch3.veuve.lettre",
+            "choices": [
+              {
+                "text": "text.ch3.veuve.lettre.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.lettre_au_fond_du_lac"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.veuve.lettre.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_lettre_attente",
+            "text": "text.ch3.veuve.lettre_attente",
+            "choices": []
+          },
+          {
+            "id": "ch3_lettre_retour",
+            "text": "text.ch3.veuve.lettre_retour",
+            "choices": [
+              {
+                "text": "text.ch3.veuve.lettre_retour.rendre",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch3.lettre.rendue"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch3.lettre.decidee"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.veuve",
+                    "value": 1
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  }
+                ],
+                "next": "ch3_lettre_rendue"
+              },
+              {
+                "text": "text.ch3.veuve.lettre_retour.garder",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch3.lettre.gardee"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch3.lettre.decidee"
+                  }
+                ],
+                "next": "ch3_lettre_gardee"
+              }
+            ]
+          },
+          {
+            "id": "ch3_lettre_rendue",
+            "text": "text.ch3.veuve.lettre_rendue",
+            "choices": [
+              {
+                "text": "text.ch3.veuve.lettre_rendue.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_lettre_gardee",
+            "text": "text.ch3.veuve.lettre_gardee",
+            "choices": [
+              {
+                "text": "text.ch3.veuve.lettre_gardee.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_apres_rendue",
+            "text": "text.ch3.veuve.apres_rendue",
+            "choices": []
+          },
+          {
+            "id": "ch3_apres_gardee",
+            "text": "text.ch3.veuve.apres_gardee",
             "choices": []
           }
         ]
@@ -3746,6 +4698,10 @@
                 "id": "fact.ch2.vers_les_champs"
               },
               {
+                "do": "startQuest",
+                "id": "quest.champs_et_hameau"
+              },
+              {
                 "do": "giveXp",
                 "value": 150
               }
@@ -4114,6 +5070,459 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.champs_et_hameau",
+        "name": "text.ch3.quest.hameau.name",
+        "category": "main",
+        "steps": [
+          {
+            "id": "hameau",
+            "text": "text.ch3.quest.hameau.hameau",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.doyen"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch3.hameau.raid"
+              },
+              {
+                "do": "giveXp",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "id": "defendre",
+            "text": "text.ch3.quest.hameau.defendre",
+            "objective": {
+              "kind": "defeat",
+              "id": "bandit_epee3",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch3.hameau.defendu"
+              },
+              {
+                "do": "giveXp",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "id": "piste",
+            "text": "text.ch3.quest.hameau.piste",
+            "objective": {
+              "kind": "reach",
+              "id": "lac"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "id": "lac",
+            "text": "text.ch3.quest.hameau.lac",
+            "objective": {
+              "kind": "defeat",
+              "id": "bandit_epee4",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.sac_d_eclats",
+                "value": 1
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ordre_d_ambre"
+              },
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.ch3.quest.hameau.retour",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.sac_d_eclats",
+              "value": 1,
+              "npc": "npc.doyen"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.doyen",
+                "value": 1
+              },
+              {
+                "do": "giveXp",
+                "value": 150
+              },
+              {
+                "do": "giveMoney",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "id": "albe",
+            "text": "text.ch3.quest.hameau.albe",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch3.vers_la_tour"
+              },
+              {
+                "do": "giveXp",
+                "value": 120
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 420
+          },
+          {
+            "do": "giveMoney",
+            "value": 800
+          }
+        ]
+      },
+      {
+        "id": "quest.sangliers_des_champs",
+        "name": "text.ch3.quest.sangliers.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 10
+          }
+        ],
+        "steps": [
+          {
+            "id": "grand",
+            "text": "text.ch3.quest.sangliers.grand",
+            "objective": {
+              "kind": "defeat",
+              "id": "sanglier4",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "laie",
+            "text": "text.ch3.quest.sangliers.laie",
+            "objective": {
+              "kind": "defeat",
+              "id": "sanglier5",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch3.quest.sangliers.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.fermier"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.fermier",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 280
+          },
+          {
+            "do": "giveMoney",
+            "value": 180
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.spalieres_de_fer",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.elixir_de_garde",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "id": "quest.lettre_au_fond_du_lac",
+        "name": "text.ch3.quest.lettre.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 11
+          }
+        ],
+        "steps": [
+          {
+            "id": "lac",
+            "text": "text.ch3.quest.lettre.lac",
+            "objective": {
+              "kind": "reach",
+              "id": "lac"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.lettre_mouillee",
+                "value": 1
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch3.lettre.trouvee"
+              }
+            ]
+          },
+          {
+            "id": "choix",
+            "text": "text.ch3.quest.lettre.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch3.lettre.decidee"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 320
+          }
+        ]
+      },
+      {
+        "id": "quest.vergers_pilles",
+        "name": "text.ch3.quest.vergers.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 11
+          }
+        ],
+        "steps": [
+          {
+            "id": "pillard",
+            "text": "text.ch3.quest.vergers.pillard",
+            "objective": {
+              "kind": "defeat",
+              "id": "bandit_arc3",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.sac_de_pommes",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch3.quest.vergers.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.sac_de_pommes",
+              "value": 1,
+              "npc": "npc.fermiere"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.fermiere",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 340
+          },
+          {
+            "do": "giveMoney",
+            "value": 200
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.brigandine",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.fleau_du_hameau",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.potions_du_hameau",
+        "name": "text.ch3.quest.potions.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 10
+          }
+        ],
+        "steps": [
+          {
+            "id": "potions",
+            "text": "text.ch3.quest.potions.potions",
+            "objective": {
+              "kind": "collect",
+              "id": "item.elixir_de_vigueur",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch3.quest.potions.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.elixir_de_vigueur",
+              "value": 2,
+              "npc": "npc.herboriste_hameau"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.herboriste_hameau",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 260
+          },
+          {
+            "do": "giveMoney",
+            "value": 150
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 2
+          },
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 5
+          }
+        ]
+      },
+      {
+        "id": "quest.pont_des_vallons",
+        "name": "text.ch3.quest.pont.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 12
+          }
+        ],
+        "steps": [
+          {
+            "id": "gaspard",
+            "text": "text.ch3.quest.pont.gaspard",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          },
+          {
+            "id": "ferrures",
+            "text": "text.ch3.quest.pont.ferrures",
+            "objective": {
+              "kind": "collect",
+              "id": "item.ferrure",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch3.quest.pont.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.ferrure",
+              "value": 2,
+              "npc": "npc.odile"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.odile",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 360
+          },
+          {
+            "do": "giveMoney",
+            "value": 220
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.solerets_de_fer",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.rondache_du_lac",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -4148,6 +5557,10 @@
       {
         "id": "discovery.voix_du_puits",
         "text": "text.ch2.discovery.puits"
+      },
+      {
+        "id": "discovery.ordre_d_ambre",
+        "text": "text.ch3.discovery.ordre"
       }
     ]
   }

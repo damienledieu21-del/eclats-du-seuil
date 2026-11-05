@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1446,6 +1446,30 @@
       {
         "id": "item.pierre_benie",
         "name": "Pierre bénie",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.sac_d_eclats",
+        "name": "Sac d'éclats volés",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.lettre_mouillee",
+        "name": "Lettre mouillée",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.sac_de_pommes",
+        "name": "Sac de pommes",
         "icon": "quete",
         "type": "material",
         "rarity": "common",

@@ -63,8 +63,9 @@ public class Lot121WorldTests
         // tour de guet, hautes pierres et camp des rôdeurs peuplés à leur tour.
         Assert.Equal(new[] { "loup1", "loup2", "loup3", "sanglier", "archer", "loup4", "loup5", "sanglier2", "sanglier3", "rodeur",
             "loup6", "loup7", "loup8", "loup9", "loup10", "sanglier4", "sanglier5", "sanglier6", "sanglier7", "sanglier8", "archer2", "archer3",
-            "loup11", "loup12", "rodeur2", "rodeur3", "archer4", "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "loup_blanc", "le_borgne" },
-            setup.Combatants.Select(c => c.Id));   // sous-lot V1.6 : bandits et loup blanc
+            "loup11", "loup12", "rodeur2", "rodeur3", "archer4", "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "loup_blanc", "le_borgne",
+            "bandit_epee3", "bandit_epee4", "bandit_arc3" },
+            setup.Combatants.Select(c => c.Id));   // sous-lot V1.6 : bandits et loup blanc ; V1.9.3 : bandits du hameau, du lac et des vergers
         Assert.Single(setup.Combatants.Select(c => c.Team).Distinct());   // une seule équipe : les joueurs entrent ensuite
         Assert.True(setup.Space!.Obstacles.Single(o => o.Id == "riviere_sud").Low);
     }

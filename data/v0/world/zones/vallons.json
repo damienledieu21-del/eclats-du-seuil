@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -503,6 +503,27 @@
         "respawnMs": 300000,
         "leashRange": 20,
         "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_epee3",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_epee4",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc3",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
         "family": "bandit"
       }
     ],
