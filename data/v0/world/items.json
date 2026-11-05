@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1418,6 +1418,61 @@
         "type": "material",
         "rarity": "rare",
         "stack": 5
+      },
+      {
+        "id": "item.collier_de_croc_gris",
+        "name": "Collier de Croc-Gris",
+        "icon": "amulette_de_l_aube",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "neck",
+        "requiredLevel": 4,
+        "bonus": {
+          "maxHealth": 30,
+          "physicalPower": 4
+        },
+        "named": true,
+        "effects": {
+          "text": "Une parade parfaite rend 2 points de Résonance (au plus une fois par seconde).",
+          "triggers": [
+            {
+              "on": "onPerfectParry",
+              "role": "target",
+              "cooldownMs": 1000,
+              "effects": [
+                {
+                  "type": "gainResource",
+                  "resource": "resonance",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "item.chapeau_de_lune",
+        "name": "Chapeau-de-lune",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.chat_de_rosalie",
+        "name": "Pain-d'Épice, le chat de Rosalie",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.seau_d_eau_du_moulin",
+        "name": "Seau d'eau du moulin",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
       },
       {
         "id": "item.bourse_d_eclats",

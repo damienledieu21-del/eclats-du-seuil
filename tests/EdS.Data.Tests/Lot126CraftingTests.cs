@@ -256,7 +256,7 @@ public class Lot126CraftingTests
         Assert.Equal((1, 2, 10), (book.LevelFor(39), book.LevelFor(40), book.LevelFor(5000)));
         Assert.Equal(("forge", "forge", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
             book.Recipe("recipe.ferrure").Inputs[0].Count, book.Recipe("recipe.ferrure").Output.Item));
-        Assert.Equal(11, book.Nodes.Count);   // Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour
+        Assert.Equal(13, book.Nodes.Count);   // Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour ; V1.9.7 : deux ronds de chapeaux-de-lune au pré
         ItemDefinition potion = Items.Item("item.potion_de_soin");
         Assert.Equal((ItemType.Consumable, 300L, 20_000L, 5), (potion.Type, potion.Heal, potion.CooldownMs, potion.Stack));
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));

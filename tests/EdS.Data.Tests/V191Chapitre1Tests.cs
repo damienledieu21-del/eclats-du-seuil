@@ -268,8 +268,9 @@ public class V191Chapitre1Tests
     [Fact]
     public void Les_fleches_perdues_de_bout_en_bout()
     {
-        // Avant le niveau 4, Aldric ne demande rien et la quête reste fermée.
-        WorldSession low = Open(Archer, Hero(null).WithXp(XpForLevel(3)));
+        // Avant le niveau 4, Aldric ne demande rien et la quête reste fermée (sous-lot V1.9.7 : au niveau 3, il demande déjà la garde de
+        // nuit ; on regarde au niveau 2).
+        WorldSession low = Open(Archer, Hero(null).WithXp(XpForLevel(2)));
         Assert.Empty(Say(low, "npc.archer_garde", "accueil").Options);
         Assert.False(low.Narrative!.IsOpen(Fleches));
         // Au niveau 4 : la demande ; la réponse moqueuse commence aussi la quête, mais Aldric s'en souvient.
@@ -296,6 +297,7 @@ public class V191Chapitre1Tests
         // Récompense au choix : deux pierres à aiguiser.
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Fleches, 1, out IReadOnlyList<StoryEvent> chosen));
         Assert.Equal(new[] { "ItemGiven item.pierre_a_aiguiser 2", $"QuestCompleted {Fleches}" }, chosen.Select(e => e.ToString()));
-        Say(w, "npc.archer_garde", "apres");
+        // Sous-lot V1.9.7 : la garde de nuit (niveau 3) pas encore commencée, son offre passe avant le mot d'après (aucune offre masquée).
+        Say(w, "npc.archer_garde", "ch1_garde");
     }
 }

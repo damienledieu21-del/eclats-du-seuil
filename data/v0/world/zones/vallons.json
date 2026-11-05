@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -942,7 +942,7 @@
         "fact": "fact.croc_gris.vaincu",
         "rewards": [
           {
-            "item": "item.croc_de_croc_gris",
+            "item": "item.collier_de_croc_gris",
             "count": 1
           }
         ],

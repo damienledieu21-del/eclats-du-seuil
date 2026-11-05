@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 15,
   "kind": "scenario",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -1456,7 +1456,7 @@
         ],
         "position": [
           -2,
-          16
+          23
         ],
         "facing": [
           0,
@@ -1494,8 +1494,8 @@
           }
         ],
         "position": [
-          -6,
-          16
+          -23,
+          37
         ],
         "facing": [
           0,

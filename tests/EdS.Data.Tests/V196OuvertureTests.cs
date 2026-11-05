@@ -157,7 +157,8 @@ public class V196OuvertureTests
     public void Histoire_en_schema_6_livree()
     {
         StoryBook book = Book(Zone());
-        Assert.Equal((6, 6), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));
+        // Sous-lot V1.9.7 : l'histoire passe au schéma 7 (effet skipQuest) ; ce qui est livré ici ne change pas.
+        Assert.Equal((7, 7), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));
         Scene scene = Assert.Single(book.Scenes);
         Assert.Equal((Scene, "zone.souvenir_rupture", "fact.ch1.souvenir.a_revivre", "fact.ch1.souvenir.vecu", "text.ch1.discovery.souvenir"),
             (scene.Id, scene.Zone, scene.Start, scene.End, scene.Text));
@@ -168,7 +169,8 @@ public class V196OuvertureTests
         Assert.Equal(new[] { "odile", "frapper", "garder", "parer", "boire", "retour" }, opening.Steps.Select(s => s.Id));
         Assert.Equal(new[] { ("strike", 3L), ("guard", 2L), ("parry", 1L), ("drink", 1L) },
             opening.Steps.Where(s => s.Objective.Kind == ObjectiveKind.Practice).Select(s => (s.Objective.Id, s.Objective.Value)));
-        Assert.Equal(book.Quests.Count - 1, book.Quests.ToList().FindIndex(q => q.Id == Opening));   // ajoutée à la fin : les chemins d'avant restent
+        // Ajoutée à la fin : les chemins d'avant restent (sous-lot V1.9.7 : cinq quêtes du village la suivent).
+        Assert.Equal(book.Quests.Count - 6, book.Quests.ToList().FindIndex(q => q.Id == Opening));
         // Le texte de chaque étape nomme les touches du PC et les gestes au doigt.
         foreach ((string step, string pc, string touch) in new[] { ("odile", "Z Q S D", "pouce"), ("frapper", "touches 1 à 4", "boutons 1 à 4"),
                      ("garder", "clic droit ou Maj", "Garde"), ("parer", "Espace", "Parade"), ("boire", "(P", "Potion") })
@@ -192,12 +194,19 @@ public class V196OuvertureTests
         // Sans l'ouverture ni la scène, un fichier en version 5 reste lu.
         root["data"]!.AsObject().Remove("scenes");
         JsonArray quests = root["data"]!["quests"]!.AsArray();
-        quests.RemoveAt(quests.Count - 1);
+        quests.Remove(quests.Single(q => q!["id"]!.GetValue<string>() == Opening));
         foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
         {
             JsonArray entries = dialogue!["entries"]!.AsArray();
             for (int i = entries.Count - 1; i >= 0; i--)
                 if (entries[i]!.ToJsonString().Contains("quest.reveil")) entries.RemoveAt(i);
+            // Sous-lot V1.9.7 : « Je sais me battre » (skipQuest, schéma 7) passe l'ouverture ; sans elle, la réponse part aussi.
+            foreach (JsonNode? node in dialogue["nodes"]!.AsArray())
+            {
+                JsonArray choices = node!["choices"]!.AsArray();
+                for (int i = choices.Count - 1; i >= 0; i--)
+                    if (choices[i]!.ToJsonString().Contains("skipQuest")) choices.RemoveAt(i);
+            }
         }
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
@@ -240,11 +249,12 @@ public class V196OuvertureTests
     {
         JsonObject root = StoryJson();
         JsonArray quests = root["data"]!["quests"]!.AsArray();
-        JsonObject objective = quests[quests.Count - 1]!["steps"]![1]!["objective"]!.AsObject();
+        int opening = quests.ToList().FindIndex(q => q!["id"]!.GetValue<string>() == Opening);
+        JsonObject objective = quests[opening]!["steps"]![1]!["objective"]!.AsObject();
         objective["id"] = action;
         objective["value"] = value;
         StoryLoadResult r = Read(root);
-        Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{quests.Count - 1}].steps[1].objective" + suffix && e.Code == code);
+        Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.quests[{opening}].steps[1].objective" + suffix && e.Code == code);
     }
 
     [Fact]
@@ -644,7 +654,8 @@ public class V196OuvertureTests
         Boss croc = zone.Chiefs.Single(c => c.Id == "croc_gris");
         Assert.Equal("fact.croc_gris.vaincu", croc.Fact);
         Assert.Equal(new[] { "croc_gris", "croc_gris_enrage" }, croc.Forms.Select(f => f.Id));
-        Assert.Equal(("item.croc_de_croc_gris", 1), Assert.Single(croc.Rewards));
+        // Sous-lot V1.9.7 (demande de Damien) : un vrai objet, le collier de Croc-Gris (bijou de niveau 4), au lieu du croc.
+        Assert.Equal(("item.collier_de_croc_gris", 1), Assert.Single(croc.Rewards));
         // Une attaque annoncée qu'on pare ou qu'on évite (le bond), une phase de plus (le hurlement).
         Assert.Contains(croc.Forms[0].Attacks, x => x.Id == "bond" && x.TelegraphMs > 0);
         Assert.Contains(croc.Forms[1].Attacks, x => x.Id == "hurlement" && x.TelegraphMs > 0);

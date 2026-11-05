@@ -304,7 +304,7 @@ public class V194Chapitre4Tests
         Assert.Contains("ItemTaken item.lettre_de_thibaut 1", reponse);
         Assert.Contains($"StepCompleted {Main}/reponse", reponse);
         Assert.Equal(2, w.Narrative!.Trust("npc.habitant"));
-        Say(w, "npc.habitant", "ch2_lanterne_apres");
+        Say(w, "npc.habitant", "ch1_chat");   // V1.9.7 : l'offre du chat (niveau 1) passe avant le mot d'après
         // Sœur Albe et le Sans-Repos, par une réponse de l'offre des herbes (son dialogue a déjà seize entrées). Fin du chapitre 4.
         w = Go(w, Albe, "zone.chapelle");
         DialogueView herbes = Say(w, "npc.albe", "ch2_herbes");
@@ -324,7 +324,7 @@ public class V194Chapitre4Tests
         var after = Done(AfterChapter3.Append("fact.ch4.vers_le_seuil"), Bourg, Hameau, Main, Herbes);
         LeadsTo(OpenIn("zone.chapelle", Albe, Hero(17, after)), "npc.albe", "ch2_apres", "text.ch4.albe.vers_apres", "ch4_apres");
         LeadsTo(OpenIn("zone.chapelle", Albe, Hero(17, after)), "npc.albe", "ch2_apres", "text.ch3.albe.vers_tour", null);
-        Say(OpenIn("zone.maison", Rosalie, Hero(17, Done(AfterChapter3, Bourg, Hameau, Main, Lanterne))), "npc.habitant", "ch4_apres");
+        Say(OpenIn("zone.maison", Rosalie, Hero(17, Done(AfterChapter3, Bourg, Hameau, Main, Lanterne))), "npc.habitant", "ch1_chat");   // V1.9.7 : l'offre du chat (niveau 1) passe avant le mot d'après
     }
 
     [Fact]
@@ -388,7 +388,7 @@ public class V194Chapitre4Tests
         Say(w, "npc.capitaine", "ch4_tour_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Tour, 1, out IReadOnlyList<StoryEvent> chosen));
         Assert.Equal(new[] { "ItemGiven item.lame_de_la_tour 1", $"QuestCompleted {Tour}" }, chosen.Select(e => e.ToString()));
-        Say(w, "npc.capitaine", "ch4_tour_apres");
+        Say(w, "npc.capitaine", "ch1_contrat");   // V1.9.7 : l'offre du premier contrat passe avant le mot d'après
     }
 
     [Theory]
@@ -510,7 +510,7 @@ public class V194Chapitre4Tests
             "text.ch4.albe.vers_sans_repos", "ch4_sans_repos");
         Say(Open(Renart, Hero(16, Done(facts.Take(5), Bourg))), "npc.renart", "ch3_ancienne");
         // Sous le niveau demandé (ou sans carte de la guilde), rien de nouveau n'est offert.
-        Say(Open(Capitaine, Hero(15, null)), "npc.capitaine", "ch4_accueil");
+        Say(Open(Capitaine, Hero(15, null)), "npc.capitaine", "ch1_contrat");   // V1.9.7 : le premier contrat, dès le niveau 5
         LeadsTo(Open(Aubine, Hero(14, null)), "npc.herboriste_hameau", "ch3_potions", "text.ch4.herboriste_hameau.vers_deserteur", null);
         Say(OpenIn("zone.guilde", Maitresse, Hero(14, Member(facts, Bourg))), "npc.maitresse_guilde", "membre");
         Say(OpenIn("zone.guilde", Maitresse, Hero(15, Done(facts, Bourg))), "npc.maitresse_guilde", "accueil");

@@ -59,7 +59,7 @@ public class V11MarchandsTests : IDisposable
                 foreach (Merchant buyer in book.Merchants) Assert.True(market.UnitPrice(buyer.Id, o.Item) <= o.Price, $"{buyer.Id} {o.Item}");
             }
         // Tous les objets ont une valeur, sauf la ferrure (objet de quête) et l'Éclat du Seuil du personnage (sous-lot V1.2) : ils ne se vendent pas.
-        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.ferrure", "item.miche_du_matin", "item.croc_de_croc_gris", "item.bourse_d_eclats", "item.bourse_de_renart", "item.corde_de_cloche", "item.huile_de_lampe", "item.pierre_benie", "item.sac_d_eclats", "item.lettre_mouillee", "item.sac_de_pommes",
+        Assert.Equal(new[] { "item.eclat_du_seuil_endormi", "item.ferrure", "item.miche_du_matin", "item.croc_de_croc_gris", "item.chat_de_rosalie", "item.seau_d_eau_du_moulin", "item.bourse_d_eclats", "item.bourse_de_renart", "item.corde_de_cloche", "item.huile_de_lampe", "item.pierre_benie", "item.sac_d_eclats", "item.lettre_mouillee", "item.sac_de_pommes",
             "item.lettre_de_rosalie", "item.lettre_de_thibaut", "item.registre_de_garde", "item.cor_de_la_tour", "item.oeil_de_verre", "item.carnet_de_renart" }, ItemsCatalog.Items.Select(i => i.Id).Where(i => !book.Values.ContainsKey(i)));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
