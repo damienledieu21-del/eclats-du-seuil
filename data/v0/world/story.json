@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 4,
   "kind": "story",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -118,21 +118,30 @@
         ],
         "dialogue": "dialogue.archiviste",
         "zone": "zone.archives"
+      },
+      {
+        "id": "npc.boulanger",
+        "name": "text.ch1.npc.boulanger.name",
+        "position": [
+          -42,
+          3.5
+        ],
+        "dialogue": "dialogue.boulanger"
+      },
+      {
+        "id": "npc.archer_garde",
+        "name": "text.ch1.npc.archer_garde.name",
+        "position": [
+          1,
+          -3
+        ],
+        "dialogue": "dialogue.archer_garde"
       }
     ],
     "dialogues": [
       {
         "id": "dialogue.odile",
         "entries": [
-          {
-            "conditions": [
-              {
-                "if": "questDone",
-                "id": "quest.traces_sous_le_moulin"
-              }
-            ],
-            "node": "apres"
-          },
           {
             "conditions": [
               {
@@ -146,6 +155,47 @@
               }
             ],
             "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.ferrure_de_rechange"
+              }
+            ],
+            "node": "ch1_ferrure_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.pain_du_matin",
+                "step": "odile"
+              }
+            ],
+            "node": "ch1_pain"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.moulin.porte_ouverte"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.ferrure_de_rechange"
+              }
+            ],
+            "node": "ch1_ferrure"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "apres"
           },
           {
             "conditions": [
@@ -293,6 +343,39 @@
             "id": "apres",
             "text": "text.odile.apres",
             "choices": []
+          },
+          {
+            "id": "ch1_ferrure",
+            "text": "text.ch1.odile.ferrure",
+            "choices": [
+              {
+                "text": "text.ch1.odile.ferrure.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.ferrure_de_rechange"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.ferrure.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_ferrure_attente",
+            "text": "text.ch1.odile.ferrure_attente",
+            "choices": []
+          },
+          {
+            "id": "ch1_pain",
+            "text": "text.ch1.odile.pain",
+            "choices": []
           }
         ]
       },
@@ -350,6 +433,16 @@
               }
             ],
             "node": "minerai"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.ferrure_de_rechange",
+                "step": "forger"
+              }
+            ],
+            "node": "ch1_rechange"
           },
           {
             "conditions": [],
@@ -412,12 +505,37 @@
             "id": "faite",
             "text": "text.maelle.faite",
             "choices": []
+          },
+          {
+            "id": "ch1_rechange",
+            "text": "text.ch1.maelle.rechange",
+            "choices": []
           }
         ]
       },
       {
         "id": "dialogue.gaspard",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "gaspard"
+              }
+            ],
+            "node": "ch1_souvenir"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.pain_du_matin",
+                "step": "gaspard"
+              }
+            ],
+            "node": "ch1_pain"
+          },
           {
             "conditions": [
               {
@@ -469,6 +587,56 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch1_souvenir",
+            "text": "text.ch1.gaspard.souvenir",
+            "choices": [
+              {
+                "text": "text.ch1.gaspard.souvenir.ordre",
+                "conditions": [],
+                "effects": [],
+                "next": "ch1_ordre"
+              },
+              {
+                "text": "text.ch1.gaspard.souvenir.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_ordre",
+            "text": "text.ch1.gaspard.ordre",
+            "choices": [
+              {
+                "text": "text.ch1.gaspard.ordre.merci",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.conseil"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "trust",
+                    "id": "npc.gaspard",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.conseil"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch1_pain",
+            "text": "text.ch1.gaspard.pain",
+            "choices": []
           }
         ]
       },
@@ -1160,6 +1328,240 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.boulanger",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.pain_du_matin"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.pain_du_matin",
+                "step": "retour"
+              }
+            ],
+            "node": "retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.pain_du_matin"
+              }
+            ],
+            "node": "en_cours"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.ch1.boulanger.accueil",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.accueil.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.pain_du_matin"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.pain_du_matin"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.miche_du_matin",
+                    "value": 2
+                  }
+                ],
+                "next": "accepte"
+              },
+              {
+                "text": "text.ch1.boulanger.accueil.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "accepte",
+            "text": "text.ch1.boulanger.accepte",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.accepte.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "en_cours",
+            "text": "text.ch1.boulanger.en_cours",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.en_cours.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.ch1.boulanger.retour",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.retour.merci",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.merci"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.merci"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "apres",
+            "text": "text.ch1.boulanger.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.archer_garde",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.fleches_perdues"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.fleches_perdues"
+              }
+            ],
+            "node": "recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.fleches_perdues"
+              }
+            ],
+            "node": "en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "levelAtLeast",
+                "value": 4
+              }
+            ],
+            "node": "demande"
+          },
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.ch1.archer_garde.accueil",
+            "choices": []
+          },
+          {
+            "id": "demande",
+            "text": "text.ch1.archer_garde.demande",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.demande.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.fleches_perdues"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.demande.moquer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.fleches_perdues"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.archer_garde",
+                    "value": -1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.demande.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "en_cours",
+            "text": "text.ch1.archer_garde.en_cours",
+            "choices": []
+          },
+          {
+            "id": "recompense",
+            "text": "text.ch1.archer_garde.recompense",
+            "choices": []
+          },
+          {
+            "id": "apres",
+            "text": "text.ch1.archer_garde.apres",
+            "choices": []
+          }
+        ]
       }
     ],
     "quests": [
@@ -1220,6 +1622,47 @@
               {
                 "do": "discover",
                 "id": "discovery.eclats_dans_le_pre"
+              }
+            ]
+          },
+          {
+            "id": "meute",
+            "text": "text.ch1.quest.traces.meute",
+            "objective": {
+              "kind": "defeatFamily",
+              "id": "loup",
+              "value": 3
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.souvenir_de_la_rupture"
+              },
+              {
+                "do": "giveXp",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "id": "gaspard",
+            "text": "text.ch1.quest.traces.gaspard",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 100
+              },
+              {
+                "do": "giveMoney",
+                "value": 100
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch1.vers_le_bourg"
               }
             ]
           },
@@ -1547,6 +1990,154 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.ferrure_de_rechange",
+        "name": "text.ch1.quest.ferrure.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "forger",
+            "text": "text.ch1.quest.ferrure.forger",
+            "objective": {
+              "kind": "collect",
+              "id": "item.ferrure",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch1.quest.ferrure.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.ferrure",
+              "value": 1,
+              "npc": "npc.odile"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.odile",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 70
+          },
+          {
+            "do": "giveMoney",
+            "value": 80
+          }
+        ]
+      },
+      {
+        "id": "quest.pain_du_matin",
+        "name": "text.ch1.quest.pain.name",
+        "category": "side",
+        "steps": [
+          {
+            "id": "odile",
+            "text": "text.ch1.quest.pain.odile",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.miche_du_matin",
+              "value": 1,
+              "npc": "npc.odile"
+            },
+            "effects": []
+          },
+          {
+            "id": "gaspard",
+            "text": "text.ch1.quest.pain.gaspard",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.miche_du_matin",
+              "value": 1,
+              "npc": "npc.gaspard"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch1.quest.pain.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.boulanger"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 50
+          },
+          {
+            "do": "giveMoney",
+            "value": 60
+          }
+        ]
+      },
+      {
+        "id": "quest.fleches_perdues",
+        "name": "text.ch1.quest.fleches.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 4
+          }
+        ],
+        "steps": [
+          {
+            "id": "fleches",
+            "text": "text.ch1.quest.fleches.fleches",
+            "objective": {
+              "kind": "collect",
+              "id": "item.fleche_brisee",
+              "value": 6
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch1.quest.fleches.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.fleche_brisee",
+              "value": 6,
+              "npc": "npc.archer_garde"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 90
+          },
+          {
+            "do": "giveMoney",
+            "value": 100
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.pierre_a_aiguiser",
+            "value": 2
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -1569,6 +2160,10 @@
       {
         "id": "discovery.archives_de_la_guilde",
         "text": "text.discovery.archives_de_la_guilde"
+      },
+      {
+        "id": "discovery.souvenir_de_la_rupture",
+        "text": "text.ch1.discovery.souvenir"
       }
     ]
   }

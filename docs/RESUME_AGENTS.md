@@ -56,6 +56,7 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6
 | Formats et données | `docs/DONNEES.md`, `src/EdS.Data*`, `data/` | `grep -n "schéma" docs/DONNEES.md` |
 | Builds, classes | `docs/BUILDS.md` | `grep -n "talent" docs/BUILDS.md` |
 | Formules | `docs/FORMULES.md` | `grep -rn "Fixed" src/EdS.Domain` |
+| Textes, ton, PNJ | `docs/ECRITURE.md` | `grep -n "Gaspard" docs/ECRITURE.md` |
 | Monde, zones | `docs/MONDE.md`, `docs/ARCHITECTURE_MONDE.md`, `src/EdS.World` | `grep -rn "ZoneValidator" src` |
 | Combat dans l'espace | `docs/COMBAT_ESPACE.md` | `grep -n "portée" docs/COMBAT_ESPACE.md` |
 | Réseau, serveur | `docs/RESEAU.md`, `src/EdS.Net`, `src/EdS.Server` | `grep -n "Version" src/EdS.Net/Protocol.cs` |

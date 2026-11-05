@@ -104,6 +104,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - Dépend de V1.6 et V1.8 (comme le V1.9 du [plan des Vallons](PLAN_VALLONS_SOLO.md#8-ordre-de-travail) : « V1.6 à V1.8 »). Textes proposés par Claude ; chaque quête jouée de bout en bout par un pilote.
 - Formats : histoire et textes (pas de nouvelle version attendue).
 - **Relecture de Damien** : chapitre 1.
+- **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-1--les-traces-sous-le-moulin--et-ses-quêtes-sous-lot-v191), [ECRITURE.md](ECRITURE.md)), sans changement de format ; textes à relire.
 
 ### 8. V1.9.2 — Chapitre 2 « Le bourg d'Aube » et ses quêtes (M)
 
