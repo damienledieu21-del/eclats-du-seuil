@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 2,
   "kind": "merchants",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "values": [
       {
@@ -590,6 +590,48 @@
             "price": 3570,
             "always": false,
             "rank": "e"
+          }
+        ]
+      },
+      {
+        "id": "merchant.renart",
+        "npc": "npc.renart",
+        "greeting": "text.merchant.renart.greeting",
+        "sellPercent": 20,
+        "closed": [
+          "night"
+        ],
+        "daily": 1,
+        "offers": [
+          {
+            "item": "item.potion_de_soin",
+            "price": 80,
+            "always": true
+          },
+          {
+            "item": "item.huile_d_eclat",
+            "price": 520,
+            "always": true
+          },
+          {
+            "item": "item.anneau_de_fer",
+            "price": 980,
+            "always": true
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "price": 560,
+            "always": false
+          },
+          {
+            "item": "item.cape_de_voyageur",
+            "price": 3500,
+            "always": false
+          },
+          {
+            "item": "item.chevaliere_du_bourg",
+            "price": 5600,
+            "always": false
           }
         ]
       }
