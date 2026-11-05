@@ -39,6 +39,21 @@ public class V110EssaiTests
         Assert.Equal(new[] { -0.7, 0.0, 1.0 }, OccluderRules.BodyPoints);
     }
 
+    [Fact]
+    public void La_coupe_recoit_le_milieu_du_corps()
+    {
+        // Revue Codex de la PR #97 (3e tour) : ArenaView passait les pieds à SpaceView.Cut, qui sondait alors −0,7 / 0 / 1 m au lieu de
+        // 0,3 / 1 / 2 m au-dessus des pieds. Le corps affiché est au milieu du corps : c'est lui qu'on passe.
+        string arena = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "ArenaView.cs"));
+        Assert.Contains("_space.Cut(camera, _player.transform.position, deltaTime);", arena, StringComparison.Ordinal);
+        Assert.DoesNotContain("_space.Cut(camera, _player.transform.position - Vector3.up", arena, StringComparison.Ordinal);
+        // Un rebord de 40 cm juste devant le joueur, côté caméra (haute, 8 m) : la ligne vers le bas des jambes (0,3 m) passe au-dessus ;
+        // avec les pieds pris pour le milieu du corps, la ligne vers les pieds le touchait (faux positif : rebord transparent à tort).
+        (double, double, double) camera = (0.0, 4.6, -8.0), body = (0.0, 1.0, 0.0);
+        Assert.False(OccluderRules.MasksBody(camera, body, (-3.0, 0.0, -0.5), (3.0, 0.4, -0.3)));
+        Assert.True(OccluderRules.MasksBody(camera, (0.0, 0.0, 0.0), (-3.0, 0.0, -0.5), (3.0, 0.4, -0.3)));   // avec les pieds : faux positif
+    }
+
     [Theory]
     [InlineData(4.6, 2.55, true)]    // caméra d'une maison au réglage par défaut (8 m, 22°) : au-dessus des poutres
     [InlineData(2.3, 2.55, true)]    // à moins de 35 cm sous la poutre : elle s'efface déjà (la caméra n'y entre jamais)

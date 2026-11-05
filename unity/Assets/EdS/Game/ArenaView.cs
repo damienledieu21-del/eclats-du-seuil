@@ -500,7 +500,9 @@ namespace EdS.Game
             foreach (OtherState other in combat.Others())
                 if (other.View.NextAttack is { } next && next.Unblockable) unblockable.Add(other.Id + "/" + next.Id);
             _space.Zones(combat.Announced(), combat.Tick + combat.TickProgress, Ground, (actor, attack) => unblockable.Contains(actor + "/" + attack));
-            _space.Cut(camera, _player.transform.position - Vector3.up, deltaTime);
+            // V1.10 (revue Codex, 3e tour) : Cut attend le milieu du corps (la position du corps affiché, les pieds plus 1 m), pas les pieds :
+            // les points sondés sont alors bien le bas des jambes, le milieu et la tête (0,3 / 1 / 2 m au-dessus des pieds).
+            _space.Cut(camera, _player.transform.position, deltaTime);
         }
 
         /// <summary>

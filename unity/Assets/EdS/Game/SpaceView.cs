@@ -1076,6 +1076,8 @@ namespace EdS.Game
         /// <summary>
         /// Coupe ce qui se trouve entre la caméra et le joueur (et le toit quand il est dessous) ; le reste reprend sa taille. Seul
         /// l'affichage change : un ennemi derrière une paroi reste caché (<see cref="EdS.Runtime.OtherState.InSight"/>).
+        /// <paramref name="player"/> est le **milieu du corps** affiché (les pieds plus 1 m, comme <c>ArenaView.Feet</c> l'enlève), le
+        /// repère de <see cref="OccluderRules.BodyPoints"/> (V1.10).
         /// </summary>
         public void Cut(Vector3 camera, Vector3 player, float deltaTime)
         {
