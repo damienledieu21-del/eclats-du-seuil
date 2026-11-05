@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "merchants",
-  "contentVersion": "0.4.0-provisoire",
+  "contentVersion": "0.5.0-provisoire",
   "data": {
     "values": [
       {
@@ -602,6 +602,7 @@
           "night"
         ],
         "daily": 1,
+        "fact": "fact.ch2.renart.aveu",
         "offers": [
           {
             "item": "item.potion_de_soin",

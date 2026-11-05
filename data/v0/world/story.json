@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "story",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -624,6 +624,16 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.apprentie_de_maelle",
+                "step": "epee"
+              }
+            ],
+            "node": "ch2_apprentie_epee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.apprentie_de_maelle"
               }
@@ -750,6 +760,11 @@
           {
             "id": "ch2_apprentie_apres",
             "text": "text.ch2.maelle.apprentie_apres",
+            "choices": []
+          },
+          {
+            "id": "ch2_apprentie_epee",
+            "text": "text.ch2.maelle.apprentie_epee",
             "choices": []
           }
         ]
@@ -2488,6 +2503,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch3.albe.lettre.montrer",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch3.lettre.gardee"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch3.lettre.montree"
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_lettre"
               }
             ]
           },
@@ -2576,6 +2611,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch3.albe.lettre.montrer",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch3.lettre.gardee"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch3.lettre.montree"
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_lettre"
               }
             ]
           },
@@ -2665,6 +2720,26 @@
                 ],
                 "effects": [],
                 "next": "ch3_apres"
+              },
+              {
+                "text": "text.ch3.albe.lettre.montrer",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch3.lettre.gardee"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch3.lettre.montree"
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_lettre"
               }
             ]
           },
@@ -2700,6 +2775,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch3.albe.lettre.montrer",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch3.lettre.gardee"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.lettre_mouillee",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch3.lettre.montree"
+                  }
+                ],
+                "effects": [],
+                "next": "ch3_lettre"
               }
             ]
           },
@@ -2780,6 +2875,28 @@
                 "text": "text.ch3.albe.apres.partir",
                 "conditions": [],
                 "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch3_lettre",
+            "text": "text.ch3.albe.lettre",
+            "choices": [
+              {
+                "text": "text.ch3.albe.lettre.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch3.lettre.montree"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.remede_de_l_aube",
+                    "value": 1
+                  }
+                ],
                 "next": null
               }
             ]
@@ -3234,6 +3351,16 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.apprentie_de_maelle",
+                "step": "epee"
+              }
+            ],
+            "node": "ch2_epee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.apprentie_de_maelle"
               }
@@ -3290,6 +3417,11 @@
           {
             "id": "ch2_apres",
             "text": "text.ch2.apprentie.apres",
+            "choices": []
+          },
+          {
+            "id": "ch2_epee",
+            "text": "text.ch2.apprentie.epee",
             "choices": []
           }
         ]
@@ -4984,6 +5116,17 @@
                 "value": 1
               }
             ]
+          },
+          {
+            "id": "epee",
+            "text": "text.ch2.quest.apprentie.epee",
+            "objective": {
+              "kind": "craftQuality",
+              "id": "item.epee_de_garde",
+              "quality": "superior",
+              "value": 1
+            },
+            "effects": []
           }
         ],
         "effects": [
