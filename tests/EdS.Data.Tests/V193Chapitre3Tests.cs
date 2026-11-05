@@ -122,7 +122,7 @@ public class V193Chapitre3Tests
 
     /// <summary>Le chapitre 2 fini (la mission continue après Gaspard).</summary>
     private static readonly string[] AfterChapter2 = { "fact.traces.recit", "fact.moulin.porte_ouverte", "fact.ch1.vers_le_bourg", "fact.ch2.albe.rencontree",
-        "fact.ch2.vers_les_champs" };
+        "fact.ch2.renart.aveu", "fact.ch2.vers_les_champs" };   // V1.9.3b : l'aveu de Renart ouvre son étal
 
     private static readonly string[] AfterChapter3 = AfterChapter2.Concat(new[] { "fact.ch3.hameau.raid", "fact.ch3.hameau.defendu", "fact.ch3.vers_la_tour" }).ToArray();
 

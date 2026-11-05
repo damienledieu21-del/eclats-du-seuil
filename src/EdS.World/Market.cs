@@ -55,6 +55,9 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.7 : rang de la Guilde des aventuriers trop bas pour cette boutique ou cette offre (la boutique de la guilde).</summary>
         RankTooLow = 14,
+
+        /// <summary>Sous-lot V1.9.3b : boutique pas encore ouverte, faute du fait de l'histoire qu'elle demande (l'étal de Renart avant son aveu).</summary>
+        NotYetOpen = 15,
     }
 
     /// <summary>Un lot vendu, rachetable au même prix pendant la session de jeu : objet, quantité, pièces reçues (cuivre).</summary>

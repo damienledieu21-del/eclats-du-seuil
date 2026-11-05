@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -547,6 +547,7 @@
       "text.ui.guild.ranktoolow": "Ton rang de guilde est trop bas.",
       "text.ui.guild.locked": "L'épreuve ne peut pas commencer.",
       "text.ui.trade.ranktoolow": "Ton rang de guilde est trop bas pour cette réserve.",
+      "text.ui.trade.notyetopen": "Cet étal n'est pas encore ouvert pour toi.",
       "text.ui.shop.rank": "{0} requis",
       "text.ui.journal.card": "Carte d'aventurier",
       "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…).",
@@ -859,7 +860,13 @@
       "text.ch3.gaspard.pont": "Par la Fêlure, oui, je les ai vus. Deux gaillards avec des pieds-de-biche, à la nuit tombée. Ils ont arraché les ferrures pour que les chariots de la garde ne passent plus la rivière. Des bandits qui réfléchissent : je n'aime pas ça du tout.",
       "text.ch3.gaspard.pont.partir": "Merci, Gaspard.",
       "text.ch3.discovery.ordre": "L'ordre scellé. Dans la ceinture du bandit du lac, un billet plié, fermé de la même cire couleur de miel : « Tout ce qui sort de la carrière, au lac, à la lune noire. Le passeur d'Ambre paiera comme convenu. » Pas de nom. Seulement la couronne dans la cire.",
-      "text.merchant.renart.greeting": "Bienvenue à mon étal. Tout ce que vous voyez vient de loin, et coûte en conséquence. Pour vous, un prix d'ami : mes amis paient un peu plus, ils savent ce qu'ils achètent."
+      "text.merchant.renart.greeting": "Bienvenue à mon étal. Tout ce que vous voyez vient de loin, et coûte en conséquence. Pour vous, un prix d'ami : mes amis paient un peu plus, ils savent ce qu'ils achètent.",
+      "text.ch2.quest.apprentie.epee": "Une ferrure ne fait pas une forgeronne. Forge à l'enclume de Maëlle une épée de garde de qualité supérieure, ou mieux, et que Colombe compte chaque frappe.",
+      "text.ch2.maelle.apprentie_epee": "Des ferrures, un enfant en ferait. Montre-lui une lame. Une épée de garde, et pas une à moitié : trois frappes au bon moment, qu'elle sorte supérieure. Les ratées, tu les gardes pour toi.",
+      "text.ch2.apprentie.epee": "Une épée, maintenant ? On frappe quand le fer devient orange, pas rouge. Trois fois. Je compte avec toi : un… deux… Je regarde. De loin. Mais je compte.",
+      "text.ch3.albe.lettre.montrer": "J'ai trouvé cette lettre au fond du lac. Lisez-la, ma sœur.",
+      "text.ch3.albe.lettre": "Donnez. L'eau a mangé la moitié des mots, pas la cire. Un cachet d'ambre, le même que sur la bourse du guetteur, mais pressé de travers : la main d'un passeur, pas celle d'un seigneur. Celui qui paie ne touche jamais l'argent. Gardez cette lettre contre vous, et prenez ce remède : qui lit ce que d'autres ont tu finit toujours par en avoir besoin.",
+      "text.ch3.albe.lettre.partir": "Je la garderai contre moi."
     }
   }
 }

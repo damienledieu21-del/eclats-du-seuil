@@ -41,6 +41,8 @@
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v7 | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
+| Histoire (schéma) | v5 (v4 encore lue) | `Story/StoryValidator.cs` |
+| Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6.0-regles-0.15.0`.
 À ne pas confondre : version du contenu des règles (0.15.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 14).

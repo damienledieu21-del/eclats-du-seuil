@@ -1048,6 +1048,7 @@ namespace EdS.World
             ObjectiveKind.Talk or ObjectiveKind.Deliver => progress >= 1,
             ObjectiveKind.DefeatFamily => progress >= o.Value,
             ObjectiveKind.GuildRank => _card != null && _card.Rank >= GuildRanks.IndexOf(o.Id),   // sous-lot V1.7
+            ObjectiveKind.CraftQuality => _world.Inventory.CountAtLeast(o.Id, o.Quality) >= o.Value,   // sous-lot V1.9.3b
             _ => _world.IsEquipped(o.Id),
         };
 
