@@ -567,6 +567,32 @@ Ce que tu regardes : le personnage bien visible au-dessus du sceau ; la caméra 
 
 Limites : rien n'a encore été essayé en jeu ; la caméra ne butte pas contre les murs (les murs qui cachent le personnage s'effacent, comme avant).
 
+### Chapitre 1 : l'ouverture et le souvenir jouable (sous-lot V1.9.8, 5 novembre 2026)
+
+PR B du chapitre 1 enrichi ([MONDE.md](MONDE.md#chapitre-1-enrichi--louverture-le-souvenir-jouable-croc-gris-sous-lot-v196)) : la mise en scène est dans `StoryStage.cs` ; le cœur décide de tout (quêtes, scène, combats), Unity ne fait que montrer. Aucun fichier payant : formes, lumières et sons faits par le code.
+
+- **Le réveil** (nouvelle partie) : écran noir, « Éclats du Seuil », « Chapitre 1 · Les traces sous le moulin », la première phrase du journal ; les yeux s'ouvrent (un clignement) ; le personnage est couché sur la place sous une couverture rouge, il se relève (la couverture reste dans l'herbe). Une touche passe l'écran noir.
+- **Le tutoriel** : une bulle à gauche pour chaque étape de « Le réveil » (étape n/6, le texte du journal, la touche du PC qui clignote) ; au doigt, le bouton de l'étape (1, Garde, Parade, Potion, Agir) a un halo d'or. « Je sais me battre » chez Odile : **« Quête passée »** s'affiche en grand.
+- **Le souvenir proposé** (après la meute) : « Un souvenir remonte » ; **V** ou le bouton : revivre ; **X** ou le bouton : passer (le texte du souvenir reste à l'écran le temps d'être lu). L'Éclat lance une lueur bleue tant que le souvenir attend.
+- **Dans le souvenir** : fondu blanc, « Souvenir de la Rupture — Galeran — » ; nuit bleue, brume au sol, couleurs lavées ; la musique se tait, un chœur fait par le code chante. Au fond, la **porte de lumière** (arche blanche et voile), **sept Seuillards** en robe sombre qui se balancent, la **reine Ysolde** (robe sombre, cercle d'or, petit linceul blanc), la **lune** derrière la porte. Le personnage s'appelle « Galeran » au-dessus de sa tête : lance trop haute pour lui, épaulières et plastron neufs (son épée et son écu sont cachés). Après la dernière réponse d'Ysolde : éclair blanc, la porte s'ouvre, des milliers de voix, **la lune se fend**, la musique de combat revient. **L'Écho de la Rupture** est une silhouette de lumière avec un halo et des voix qui tournent. **X** passe le souvenir à tout moment.
+- **Le retour** : l'Écho vaincu, une colonne de lumière, le blanc monte, puis le pré revient en fondu blanc avec le texte du retour (« La lumière t'entre dans la paume… »).
+- **Les Vallons** : Croc-Gris est un loup bien plus grand que les autres (sa seconde forme encore plus) ; quand il devient « enragé », il hurle (son fait par le code), la caméra tremble. Après lui, une **silhouette en manteau sombre** apparaît quelques secondes à la lisière nord du pré, un éclat qui brille à la main, puis disparaît dans un nuage. Au milieu du rond de champignons (près de l'endroit du souvenir), une **pierre plate gravée** de signes bleus qui pulsent. Le **collier de Croc-Gris** porté : un croc d'ivoire sur la poitrine.
+- Les **répliques de nuit** des villageois et le reste des dialogues passaient déjà par l'écran du dialogue : rien à changer.
+
+**À vérifier à l'écran, dans cet ordre** (Play dans l'éditeur ; pour une nouvelle partie, renommer d'abord la sauvegarde `sauvegardes/vallons.json` du dossier des données persistantes d'Unity, sous Windows `AppData\LocalLow\…`, pour la retrouver ensuite) :
+
+1. Nouvelle partie : l'écran noir, le titre, la phrase, les yeux qui s'ouvrent, le personnage couché qui se relève (pas enfoncé dans le sol, pas en l'air) ; une touche passe l'écran noir.
+2. La bulle du tutoriel à chaque étape (parler à Odile, frapper, garder, parer, boire, revenir) ; avec F8 (commandes au doigt), le halo sur le bon bouton.
+3. Une seconde nouvelle partie : « Je sais me battre » chez Odile → « Quête passée » en grand, la bulle disparaît.
+4. Jusqu'à la meute : la proposition du souvenir ; **X** (passer) une fois sur une copie de sauvegarde, puis **V** (revivre) sur l'autre.
+5. Le souvenir : le fondu blanc, le changement d'ambiance (brume, couleurs, silence puis chœur), la porte en arche (pas d'autel ni de chandeliers), les sept Seuillards, Ysolde (pas de paysan à sa place), « Galeran » et sa lance, la lune visible au-dessus du mur du fond.
+6. Parler à Ysolde jusqu'au bout : l'éclair, la porte qui s'ouvre, la lune fendue, les voix ; puis le combat de l'Écho (silhouette lumineuse, halo).
+7. La victoire : le retour au pré en blanc, le texte du retour lisible ; l'ambiance des Vallons revenue (ciel, brume, musique).
+8. Croc-Gris : sa taille, son hurlement à la seconde forme ; la silhouette à la lisière après la victoire ; le collier sur la poitrine une fois porté ; la pierre gravée dans le rond de champignons.
+9. Sur téléphone si possible : la bulle, le halo, les boutons du souvenir au doigt, la fluidité dans le souvenir.
+
+Limites : rien n'a encore été vu à l'écran (seule la compilation est vérifiée, contre les bouchons de l'API Unity) ; les formes de la reine, des Seuillards, de la silhouette et de Galeran sont faites de primitives (pas de modèle) ; l'arme et l'armure de Galeran sont posées sur le modèle du joueur à des hauteurs moyennes (elles peuvent flotter ou s'enfoncer selon le modèle) ; le voile, la brume et le halo demandent le shader des particules d'URP (sans lui, ils ne sont pas dessinés) ; la lune n'est visible que si la caméra regarde vers le fond de la salle ; le chant et le hurlement sont des sons de synthèse simples ; le texte de repli d'un souvenir passé et celui du retour restent à l'écran de 7 à 18 s (aucune touche pour les fermer) ; un réveil se rejoue à chaque lancement tant qu'on n'a pas parlé à Odile.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
