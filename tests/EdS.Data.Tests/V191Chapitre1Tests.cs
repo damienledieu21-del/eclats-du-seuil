@@ -87,10 +87,10 @@ public class V191Chapitre1Tests
         StoryBook book = Book(Zone());
         Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard", "manifestation", "rodeur", "chef", "retour" },
             book.Quest(Mission).Steps.Select(s => s.Id));
-        Assert.Equal(new[] { Ferrure, Pain, Fleches }, book.Quests.Skip(6).Select(q => q.Id));   // ajoutées à la fin : les chemins d'avant restent
+        Assert.Equal(new[] { Ferrure, Pain, Fleches }, book.Quests.Skip(6).Take(3).Select(q => q.Id));   // ajoutées à la fin : les chemins d'avant restent (V1.9.2 : le chapitre 2 suit)
         Assert.All(new[] { Ferrure, Pain, Fleches }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
         Assert.Equal(QuestCategory.Main, book.Quest(Mission).Category);
-        Assert.Equal(new[] { "npc.boulanger", "npc.archer_garde" }, book.Npcs.Skip(12).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.boulanger", "npc.archer_garde" }, book.Npcs.Skip(12).Take(2).Select(n => n.Id));
         Assert.Equal("Miche du matin", ItemsCatalog.Item("item.miche_du_matin").Name);
         // Les flèches se récoltent sur les archers des ruines (niveau 6, à côté du gué), pas dans la plaine de l'est (niveau 11) : proposition.
         Assert.Contains(ItemsCatalog.Loot.Single(l => l.Id == "loot.archer").Drops, d => d.Item == "item.fleche_brisee");

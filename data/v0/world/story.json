@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 4,
   "kind": "story",
-  "contentVersion": "0.5.0-provisoire",
+  "contentVersion": "0.6.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -136,6 +136,43 @@
           -3
         ],
         "dialogue": "dialogue.archer_garde"
+      },
+      {
+        "id": "npc.albe",
+        "name": "text.ch2.npc.albe.name",
+        "position": [
+          3.2,
+          4.4
+        ],
+        "dialogue": "dialogue.albe",
+        "zone": "zone.chapelle"
+      },
+      {
+        "id": "npc.renart",
+        "name": "text.ch2.npc.renart.name",
+        "position": [
+          -47.5,
+          -2
+        ],
+        "dialogue": "dialogue.renart"
+      },
+      {
+        "id": "npc.lison",
+        "name": "text.ch2.npc.lison.name",
+        "position": [
+          -60.8,
+          -1
+        ],
+        "dialogue": "dialogue.lison"
+      },
+      {
+        "id": "npc.apprentie",
+        "name": "text.ch2.npc.apprentie.name",
+        "position": [
+          -22,
+          -6
+        ],
+        "dialogue": "dialogue.apprentie"
       }
     ],
     "dialogues": [
@@ -445,6 +482,37 @@
             "node": "ch1_rechange"
           },
           {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.apprentie_de_maelle"
+              }
+            ],
+            "node": "ch2_apprentie_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.apprentie_de_maelle"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 6
+              }
+            ],
+            "node": "ch2_apprentie"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.apprentie_de_maelle"
+              }
+            ],
+            "node": "ch2_apprentie_apres"
+          },
+          {
             "conditions": [],
             "node": "bonjour"
           }
@@ -509,6 +577,39 @@
           {
             "id": "ch1_rechange",
             "text": "text.ch1.maelle.rechange",
+            "choices": []
+          },
+          {
+            "id": "ch2_apprentie",
+            "text": "text.ch2.maelle.apprentie",
+            "choices": [
+              {
+                "text": "text.ch2.maelle.apprentie.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.apprentie_de_maelle"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.maelle.apprentie.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_apprentie_attente",
+            "text": "text.ch2.maelle.apprentie_attente",
+            "choices": []
+          },
+          {
+            "id": "ch2_apprentie_apres",
+            "text": "text.ch2.maelle.apprentie_apres",
             "choices": []
           }
         ]
@@ -660,6 +761,20 @@
         "id": "dialogue.herboriste",
         "entries": [
           {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.derniere_lanterne",
+                "step": "huile"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch2.lanterne.huile"
+              }
+            ],
+            "node": "ch2_huile"
+          },
+          {
             "conditions": [],
             "node": "accueil"
           }
@@ -669,12 +784,53 @@
             "id": "accueil",
             "text": "text.herboriste.accueil",
             "choices": []
+          },
+          {
+            "id": "ch2_huile",
+            "text": "text.ch2.herboriste.huile",
+            "choices": [
+              {
+                "text": "text.ch2.herboriste.huile.prendre",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch2.lanterne.huile"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "giveItem",
+                    "id": "item.huile_de_lampe",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.lanterne.huile"
+                  }
+                ],
+                "next": null
+              }
+            ]
           }
         ]
       },
       {
         "id": "dialogue.epiciere",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.cloches_de_la_chapelle",
+                "step": "corde"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch2.cloches.corde"
+              }
+            ],
+            "node": "ch2_corde"
+          },
           {
             "conditions": [],
             "node": "accueil"
@@ -685,6 +841,33 @@
             "id": "accueil",
             "text": "text.epiciere.accueil",
             "choices": []
+          },
+          {
+            "id": "ch2_corde",
+            "text": "text.ch2.epiciere.corde",
+            "choices": [
+              {
+                "text": "text.ch2.epiciere.corde.prendre",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch2.cloches.corde"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "giveItem",
+                    "id": "item.corde_de_cloche",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.cloches.corde"
+                  }
+                ],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -694,11 +877,12 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.peaux_pour_l_auberge"
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "mathurin"
               }
             ],
-            "node": "apres"
+            "node": "ch2_vol"
           },
           {
             "conditions": [
@@ -727,6 +911,55 @@
               }
             ],
             "node": "en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.dette_a_l_auberge"
+              }
+            ],
+            "node": "ch2_dette_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "accueil"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.dette_a_l_auberge"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 5
+              }
+            ],
+            "node": "ch2_dette"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.dette_a_l_auberge"
+              }
+            ],
+            "node": "ch2_dette_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.peaux_pour_l_auberge"
+              }
+            ],
+            "node": "apres"
           },
           {
             "conditions": [],
@@ -759,6 +992,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch2.aubergiste.accueil.ardoise",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.dette_a_l_auberge"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_dette"
               }
             ]
           },
@@ -783,6 +1031,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch2.aubergiste.accueil.ardoise",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.dette_a_l_auberge"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_dette"
               }
             ]
           },
@@ -795,6 +1058,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch2.aubergiste.accueil.ardoise",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.dette_a_l_auberge"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_dette"
               }
             ]
           },
@@ -821,21 +1099,89 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch2_vol",
+            "text": "text.ch2.aubergiste.vol",
+            "choices": [
+              {
+                "text": "text.ch2.aubergiste.vol.renart",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch2.aubergiste.vol.vin",
+                "conditions": [],
+                "effects": [],
+                "next": "ch2_vol_vin"
+              }
+            ]
+          },
+          {
+            "id": "ch2_vol_vin",
+            "text": "text.ch2.aubergiste.vol_vin",
+            "choices": [
+              {
+                "text": "text.ch2.aubergiste.vol_vin.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_dette",
+            "text": "text.ch2.aubergiste.dette",
+            "choices": [
+              {
+                "text": "text.ch2.aubergiste.dette.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.dette_a_l_auberge"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.aubergiste.dette.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_dette_attente",
+            "text": "text.ch2.aubergiste.dette_attente",
+            "choices": [
+              {
+                "text": "text.ch2.aubergiste.dette_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_dette_apres",
+            "text": "text.ch2.aubergiste.dette_apres",
+            "choices": [
+              {
+                "text": "text.ch2.aubergiste.dette_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
       {
         "id": "dialogue.pretre",
         "entries": [
-          {
-            "conditions": [
-              {
-                "if": "questDone",
-                "id": "quest.bete_blanche"
-              }
-            ],
-            "node": "apres"
-          },
           {
             "conditions": [
               {
@@ -867,6 +1213,15 @@
           {
             "conditions": [
               {
+                "if": "questActive",
+                "id": "quest.cloches_de_la_chapelle"
+              }
+            ],
+            "node": "ch2_cloches_attente"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.bete_blanche"
               },
@@ -876,6 +1231,37 @@
               }
             ],
             "node": "demande"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.cloches_de_la_chapelle"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 5
+              }
+            ],
+            "node": "ch2_cloches"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.cloches_de_la_chapelle"
+              }
+            ],
+            "node": "ch2_cloches_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "apres"
           },
           {
             "conditions": [],
@@ -952,6 +1338,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch2.pretre.demande.cloches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.cloches_de_la_chapelle"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_cloches"
               }
             ]
           },
@@ -976,6 +1377,21 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch2.pretre.demande.cloches",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.cloches_de_la_chapelle"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 5
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_cloches"
               }
             ]
           },
@@ -1014,6 +1430,53 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch2_cloches",
+            "text": "text.ch2.pretre.cloches",
+            "choices": [
+              {
+                "text": "text.ch2.pretre.cloches.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.cloches_de_la_chapelle"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.pretre.cloches.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_cloches_attente",
+            "text": "text.ch2.pretre.cloches_attente",
+            "choices": [
+              {
+                "text": "text.ch2.pretre.cloches_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_cloches_apres",
+            "text": "text.ch2.pretre.cloches_apres",
+            "choices": [
+              {
+                "text": "text.ch2.pretre.cloches_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -1029,6 +1492,37 @@
               }
             ],
             "node": "temoin"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.derniere_lanterne"
+              }
+            ],
+            "node": "ch2_lanterne_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.derniere_lanterne"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 5
+              }
+            ],
+            "node": "ch2_lanterne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.derniere_lanterne"
+              }
+            ],
+            "node": "ch2_lanterne_apres"
           },
           {
             "conditions": [],
@@ -1059,6 +1553,53 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch2_lanterne",
+            "text": "text.ch2.habitant.lanterne",
+            "choices": [
+              {
+                "text": "text.ch2.habitant.lanterne.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.derniere_lanterne"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.habitant.lanterne.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_lanterne_attente",
+            "text": "text.ch2.habitant.lanterne_attente",
+            "choices": [
+              {
+                "text": "text.ch2.habitant.lanterne_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_lanterne_apres",
+            "text": "text.ch2.habitant.lanterne_apres",
+            "choices": [
+              {
+                "text": "text.ch2.habitant.lanterne_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -1082,6 +1623,16 @@
               }
             ],
             "node": "membre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "guilde"
+              }
+            ],
+            "node": "ch2_albe"
           },
           {
             "conditions": [],
@@ -1143,6 +1694,24 @@
             "choices": [
               {
                 "text": "text.maitresse.veteran.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_albe",
+            "text": "text.ch2.maitresse.albe",
+            "choices": [
+              {
+                "text": "text.maitresse.accueil.guilde",
+                "conditions": [],
+                "effects": [],
+                "next": "guilde"
+              },
+              {
+                "text": "text.ch2.maitresse.albe.signer",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -1562,6 +2131,913 @@
             "choices": []
           }
         ]
+      },
+      {
+        "id": "dialogue.albe",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "chapelle"
+              }
+            ],
+            "node": "ch2_eclat"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.puits_qui_murmure",
+                "step": "pierre"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch2.puits.pierre"
+              }
+            ],
+            "node": "ch2_puits"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "retour"
+              }
+            ],
+            "node": "ch2_bourse"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "guilde"
+              }
+            ],
+            "node": "ch2_guilde"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.herbes_pour_la_chapelle"
+              }
+            ],
+            "node": "ch2_herbes_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.herbes_pour_la_chapelle"
+              }
+            ],
+            "node": "ch2_herbes_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch2.albe.rencontree"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.herbes_pour_la_chapelle"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 6
+              }
+            ],
+            "node": "ch2_herbes"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bourg_d_aube"
+              }
+            ],
+            "node": "ch2_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.bourg_d_aube"
+              }
+            ],
+            "node": "ch2_en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "manifestation"
+              }
+            ],
+            "node": "ch2_ancienne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "rodeur"
+              }
+            ],
+            "node": "ch2_ancienne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "chef"
+              }
+            ],
+            "node": "ch2_ancienne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "retour"
+              }
+            ],
+            "node": "ch2_ancienne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "ch2_ancienne"
+          },
+          {
+            "conditions": [],
+            "node": "ch2_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch2_accueil",
+            "text": "text.ch2.albe.accueil",
+            "choices": [
+              {
+                "text": "text.ch2.albe.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_ancienne",
+            "text": "text.ch2.albe.ancienne",
+            "choices": [
+              {
+                "text": "text.ch2.albe.ancienne.ecouter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.bourg_d_aube"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_eclat",
+            "text": "text.ch2.albe.eclat",
+            "choices": [
+              {
+                "text": "text.ch2.albe.eclat.rupture",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "trust",
+                    "id": "npc.albe",
+                    "value": 1
+                  }
+                ],
+                "next": "ch2_vols"
+              },
+              {
+                "text": "text.ch2.albe.eclat.rien",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.albe.rudoyee"
+                  }
+                ],
+                "next": "ch2_vols"
+              }
+            ]
+          },
+          {
+            "id": "ch2_vols",
+            "text": "text.ch2.albe.vols",
+            "choices": [
+              {
+                "text": "text.ch2.albe.vols.trouver",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch2.albe.vols.qui",
+                "conditions": [],
+                "effects": [],
+                "next": "ch2_rassembleurs"
+              }
+            ]
+          },
+          {
+            "id": "ch2_rassembleurs",
+            "text": "text.ch2.albe.rassembleurs",
+            "choices": [
+              {
+                "text": "text.ch2.albe.rassembleurs.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_en_cours",
+            "text": "text.ch2.albe.en_cours",
+            "choices": [
+              {
+                "text": "text.ch2.albe.en_cours.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_bourse",
+            "text": "text.ch2.albe.bourse",
+            "choices": [
+              {
+                "text": "text.ch2.albe.autre_chose",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.herbes_pour_la_chapelle"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 6
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_herbes"
+              }
+            ]
+          },
+          {
+            "id": "ch2_guilde",
+            "text": "text.ch2.albe.guilde",
+            "choices": [
+              {
+                "text": "text.ch2.albe.guilde.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch2.albe.guilde.renart",
+                "conditions": [],
+                "effects": [],
+                "next": "ch2_attendre_renart"
+              },
+              {
+                "text": "text.ch2.albe.autre_chose",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.herbes_pour_la_chapelle"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 6
+                  }
+                ],
+                "effects": [],
+                "next": "ch2_herbes"
+              }
+            ]
+          },
+          {
+            "id": "ch2_attendre_renart",
+            "text": "text.ch2.albe.attendre_renart",
+            "choices": [
+              {
+                "text": "text.ch2.albe.attendre_renart.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_apres",
+            "text": "text.ch2.albe.apres",
+            "choices": [
+              {
+                "text": "text.ch2.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_herbes",
+            "text": "text.ch2.albe.herbes",
+            "choices": [
+              {
+                "text": "text.ch2.albe.herbes.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.herbes_pour_la_chapelle"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.albe.herbes.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_herbes_attente",
+            "text": "text.ch2.albe.herbes_attente",
+            "choices": [
+              {
+                "text": "text.ch2.albe.herbes_attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_herbes_recompense",
+            "text": "text.ch2.albe.herbes_recompense",
+            "choices": [
+              {
+                "text": "text.ch2.albe.herbes_recompense.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_puits",
+            "text": "text.ch2.albe.puits",
+            "choices": [
+              {
+                "text": "text.ch2.albe.puits.prendre",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch2.puits.pierre"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "giveItem",
+                    "id": "item.pierre_benie",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.puits.pierre"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.renart",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "renart"
+              }
+            ],
+            "node": "ch2_piste"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.bourg_d_aube",
+                "step": "aveu"
+              }
+            ],
+            "node": "ch2_aveu"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.dette_a_l_auberge",
+                "step": "renart"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch2.dette.bourse"
+              }
+            ],
+            "node": "ch2_dette"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bourg_d_aube"
+              }
+            ],
+            "node": "ch2_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch2_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch2_accueil",
+            "text": "text.ch2.renart.accueil",
+            "choices": [
+              {
+                "text": "text.ch2.renart.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_piste",
+            "text": "text.ch2.renart.piste",
+            "choices": [
+              {
+                "text": "text.ch2.renart.piste.payer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 100
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.piste"
+                  }
+                ],
+                "next": "ch2_ruines"
+              },
+              {
+                "text": "text.ch2.renart.piste.menacer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.piste"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.menace"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": -1
+                  }
+                ],
+                "next": "ch2_ruines"
+              },
+              {
+                "text": "text.ch2.renart.piste.flatter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.piste"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": 1
+                  }
+                ],
+                "next": "ch2_ruines"
+              }
+            ]
+          },
+          {
+            "id": "ch2_ruines",
+            "text": "text.ch2.renart.ruines",
+            "choices": [
+              {
+                "text": "text.ch2.renart.ruines.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_aveu",
+            "text": "text.ch2.renart.aveu",
+            "choices": [
+              {
+                "text": "text.ch2.renart.aveu.aides",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.aveu"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": -1
+                  }
+                ],
+                "next": "ch2_aveu_fin"
+              },
+              {
+                "text": "text.ch2.renart.aveu.merci",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.renart.aveu"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": 1
+                  }
+                ],
+                "next": "ch2_aveu_fin"
+              }
+            ]
+          },
+          {
+            "id": "ch2_aveu_fin",
+            "text": "text.ch2.renart.aveu_fin",
+            "choices": [
+              {
+                "text": "text.ch2.renart.aveu_fin.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_apres",
+            "text": "text.ch2.renart.apres",
+            "choices": [
+              {
+                "text": "text.ch2.renart.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_dette",
+            "text": "text.ch2.renart.dette",
+            "choices": [
+              {
+                "text": "text.ch2.renart.dette.prendre",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch2.dette.bourse"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "giveItem",
+                    "id": "item.bourse_de_renart",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.dette.bourse"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.lison",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.puits_qui_murmure",
+                "step": "ecouter"
+              },
+              {
+                "if": "phase",
+                "id": "night"
+              }
+            ],
+            "node": "ch2_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.puits_qui_murmure",
+                "step": "ecouter"
+              }
+            ],
+            "node": "ch2_jour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.puits_qui_murmure"
+              }
+            ],
+            "node": "ch2_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.puits_qui_murmure"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 5
+              }
+            ],
+            "node": "ch2_demande"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.puits_qui_murmure"
+              }
+            ],
+            "node": "ch2_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch2_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch2_accueil",
+            "text": "text.ch2.lison.accueil",
+            "choices": []
+          },
+          {
+            "id": "ch2_demande",
+            "text": "text.ch2.lison.demande",
+            "choices": [
+              {
+                "text": "text.ch2.lison.demande.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.puits_qui_murmure"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.lison.demande.moquer",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.puits_qui_murmure"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.lison",
+                    "value": -1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch2.lison.demande.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_jour",
+            "text": "text.ch2.lison.jour",
+            "choices": []
+          },
+          {
+            "id": "ch2_nuit",
+            "text": "text.ch2.lison.nuit",
+            "choices": [
+              {
+                "text": "text.ch2.lison.nuit.ecouter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch2.puits.ecoute"
+                  },
+                  {
+                    "do": "discover",
+                    "id": "discovery.voix_du_puits"
+                  }
+                ],
+                "next": "ch2_nom"
+              }
+            ]
+          },
+          {
+            "id": "ch2_nom",
+            "text": "text.ch2.lison.nom",
+            "choices": [
+              {
+                "text": "text.ch2.lison.nom.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_attente",
+            "text": "text.ch2.lison.attente",
+            "choices": []
+          },
+          {
+            "id": "ch2_apres",
+            "text": "text.ch2.lison.apres",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.apprentie",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.apprentie_de_maelle",
+                "step": "colombe"
+              }
+            ],
+            "node": "ch2_debut"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.apprentie_de_maelle",
+                "step": "minerai"
+              }
+            ],
+            "node": "ch2_minerai"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.apprentie_de_maelle",
+                "step": "forger"
+              }
+            ],
+            "node": "ch2_forger"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.apprentie_de_maelle"
+              }
+            ],
+            "node": "ch2_montrer"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.apprentie_de_maelle"
+              }
+            ],
+            "node": "ch2_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch2_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch2_accueil",
+            "text": "text.ch2.apprentie.accueil",
+            "choices": []
+          },
+          {
+            "id": "ch2_debut",
+            "text": "text.ch2.apprentie.debut",
+            "choices": [
+              {
+                "text": "text.ch2.apprentie.debut.carriere",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch2_minerai",
+            "text": "text.ch2.apprentie.minerai",
+            "choices": []
+          },
+          {
+            "id": "ch2_forger",
+            "text": "text.ch2.apprentie.forger",
+            "choices": []
+          },
+          {
+            "id": "ch2_montrer",
+            "text": "text.ch2.apprentie.montrer",
+            "choices": []
+          },
+          {
+            "id": "ch2_apres",
+            "text": "text.ch2.apprentie.apres",
+            "choices": []
+          }
+        ]
       }
     ],
     "quests": [
@@ -1663,6 +3139,10 @@
               {
                 "do": "setFact",
                 "id": "fact.ch1.vers_le_bourg"
+              },
+              {
+                "do": "startQuest",
+                "id": "quest.bourg_d_aube"
               }
             ]
           },
@@ -2138,6 +3618,502 @@
             "value": 2
           }
         ]
+      },
+      {
+        "id": "quest.bourg_d_aube",
+        "name": "text.ch2.quest.bourg.name",
+        "category": "main",
+        "steps": [
+          {
+            "id": "chapelle",
+            "text": "text.ch2.quest.bourg.chapelle",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch2.albe.rencontree"
+              },
+              {
+                "do": "giveXp",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "id": "mathurin",
+            "text": "text.ch2.quest.bourg.mathurin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.aubergiste"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "id": "renart",
+            "text": "text.ch2.quest.bourg.renart",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch2.renart.piste"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "id": "ruines",
+            "text": "text.ch2.quest.bourg.ruines",
+            "objective": {
+              "kind": "defeat",
+              "id": "archer",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.bourse_d_eclats",
+                "value": 1
+              },
+              {
+                "do": "discover",
+                "id": "discovery.sceau_d_ambre"
+              },
+              {
+                "do": "giveXp",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.ch2.quest.bourg.retour",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.bourse_d_eclats",
+              "value": 1,
+              "npc": "npc.albe"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.albe",
+                "value": 1
+              },
+              {
+                "do": "giveXp",
+                "value": 150
+              },
+              {
+                "do": "giveMoney",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "guilde",
+            "text": "text.ch2.quest.bourg.guilde",
+            "objective": {
+              "kind": "guildRank",
+              "id": "g"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "aveu",
+            "text": "text.ch2.quest.bourg.aveu",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch2.renart.aveu"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch2.vers_les_champs"
+              },
+              {
+                "do": "giveXp",
+                "value": 150
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 400
+          },
+          {
+            "do": "giveMoney",
+            "value": 600
+          }
+        ]
+      },
+      {
+        "id": "quest.dette_a_l_auberge",
+        "name": "text.ch2.quest.dette.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 5
+          }
+        ],
+        "steps": [
+          {
+            "id": "renart",
+            "text": "text.ch2.quest.dette.renart",
+            "objective": {
+              "kind": "collect",
+              "id": "item.bourse_de_renart",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch2.quest.dette.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.bourse_de_renart",
+              "value": 1,
+              "npc": "npc.aubergiste"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.aubergiste",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 120
+          },
+          {
+            "do": "giveMoney",
+            "value": 150
+          }
+        ]
+      },
+      {
+        "id": "quest.cloches_de_la_chapelle",
+        "name": "text.ch2.quest.cloches.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 5
+          }
+        ],
+        "steps": [
+          {
+            "id": "corde",
+            "text": "text.ch2.quest.cloches.corde",
+            "objective": {
+              "kind": "collect",
+              "id": "item.corde_de_cloche",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch2.quest.cloches.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.corde_de_cloche",
+              "value": 1,
+              "npc": "npc.pretre"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.pretre",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 110
+          },
+          {
+            "do": "giveMoney",
+            "value": 100
+          }
+        ]
+      },
+      {
+        "id": "quest.derniere_lanterne",
+        "name": "text.ch2.quest.lanterne.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 5
+          }
+        ],
+        "steps": [
+          {
+            "id": "huile",
+            "text": "text.ch2.quest.lanterne.huile",
+            "objective": {
+              "kind": "collect",
+              "id": "item.huile_de_lampe",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch2.quest.lanterne.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.huile_de_lampe",
+              "value": 1,
+              "npc": "npc.habitant"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.habitant",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 120
+          },
+          {
+            "do": "giveMoney",
+            "value": 80
+          }
+        ]
+      },
+      {
+        "id": "quest.puits_qui_murmure",
+        "name": "text.ch2.quest.puits.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 5
+          }
+        ],
+        "steps": [
+          {
+            "id": "ecouter",
+            "text": "text.ch2.quest.puits.ecouter",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch2.puits.ecoute"
+            },
+            "effects": []
+          },
+          {
+            "id": "pierre",
+            "text": "text.ch2.quest.puits.pierre",
+            "objective": {
+              "kind": "collect",
+              "id": "item.pierre_benie",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch2.quest.puits.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.pierre_benie",
+              "value": 1,
+              "npc": "npc.lison"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.lison",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 150
+          },
+          {
+            "do": "giveMoney",
+            "value": 80
+          }
+        ]
+      },
+      {
+        "id": "quest.apprentie_de_maelle",
+        "name": "text.ch2.quest.apprentie.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 6
+          }
+        ],
+        "steps": [
+          {
+            "id": "colombe",
+            "text": "text.ch2.quest.apprentie.colombe",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.apprentie"
+            },
+            "effects": []
+          },
+          {
+            "id": "minerai",
+            "text": "text.ch2.quest.apprentie.minerai",
+            "objective": {
+              "kind": "collect",
+              "id": "item.minerai_de_fer",
+              "value": 6
+            },
+            "effects": []
+          },
+          {
+            "id": "forger",
+            "text": "text.ch2.quest.apprentie.forger",
+            "objective": {
+              "kind": "collect",
+              "id": "item.ferrure",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "montrer",
+            "text": "text.ch2.quest.apprentie.montrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.ferrure",
+              "value": 2,
+              "npc": "npc.maelle"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.maelle",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 220
+          },
+          {
+            "do": "giveMoney",
+            "value": 150
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.casque_de_fer",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.gantelets_de_fer",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.herbes_pour_la_chapelle",
+        "name": "text.ch2.quest.herbes.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 6
+          }
+        ],
+        "steps": [
+          {
+            "id": "herbes",
+            "text": "text.ch2.quest.herbes.herbes",
+            "objective": {
+              "kind": "collect",
+              "id": "item.herbe_de_l_aube",
+              "value": 4
+            },
+            "effects": []
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch2.quest.herbes.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.herbe_de_l_aube",
+              "value": 4,
+              "npc": "npc.albe"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.albe",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 130
+          },
+          {
+            "do": "giveMoney",
+            "value": 100
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.potion_de_soin",
+            "value": 3
+          },
+          {
+            "do": "giveItem",
+            "id": "item.remede_de_l_aube",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -2164,6 +4140,14 @@
       {
         "id": "discovery.souvenir_de_la_rupture",
         "text": "text.ch1.discovery.souvenir"
+      },
+      {
+        "id": "discovery.sceau_d_ambre",
+        "text": "text.ch2.discovery.sceau"
+      },
+      {
+        "id": "discovery.voix_du_puits",
+        "text": "text.ch2.discovery.puits"
       }
     ]
   }
