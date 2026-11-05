@@ -111,6 +111,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - Sœur Albe, Renart, les vols d'éclats, l'inscription à la guilde (niveaux 5 à 10) ; quêtes proposées : « Une dette à l'auberge », « Les cloches de la chapelle », « La dernière lanterne », « Le puits qui murmure », « L'apprentie de Maëlle », « Herbes pour la chapelle ».
 - Dépend de V1.7 (guilde), V1.4 (forge pour l'apprentie), V1.8 (niveaux) et V1.9.1.
 - **Relecture de Damien** : chapitre 2 (avec les noms et répliques des marchands, comme décidé le 30 octobre 2026).
+- **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-2--le-bourg-daube--et-ses-quêtes-sous-lot-v192), [ECRITURE.md](ECRITURE.md)), sans changement de format ; textes à relire.
 
 ### 9. V1.9.3 — Chapitre 3 « Les champs et le hameau » et ses quêtes (M)
 

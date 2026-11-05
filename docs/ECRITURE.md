@@ -59,6 +59,10 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Couronne d'Ambre | Le pouvoir de Havre d'Ambre ; ses marchands, ses espions. |
 | Vallons d'Aube | La première région : village, moulin, bourg, carrière, pré des loups. |
 | Âge des Sept Couronnes, Ère des Cendres, Paix d'Ambre | Avant la Rupture ; deux siècles de guerre pour les Éclats ; la paix d'aujourd'hui. |
+| Reliquaire | Coffret de la chapelle du bourg où l'Ordre de l'Aube garde de petits éclats sans souvenir (chapitre 2). |
+| Sceau d'ambre | Cachet de cire couleur de miel, frappé d'une couronne : la marque de quelqu'un de Havre d'Ambre qui achète les éclats volés (chapitre 2). |
+| Pierre des Seuillards | Pierre taillée par l'ancien ordre, d'avant la Paix d'Ambre ; un écho peut s'y « prendre » (le puits de la place est creusé sur l'une d'elles). |
+| Pierre bénie | Pierre que l'Ordre de l'Aube bénit pour faire taire un écho. |
 
 **Jurons** : « Par la Fêlure ! » (tous), « Lune fendue ! » (Valloniens), « Pierre et ancêtres ! » (Roche-nés), « Que l'Aube me garde ! » (Ordre de l'Aube, et les gens pieux), « Cendres et serments ! » (Cendrés), « Par mes reflets ! » (Lacustres).
 
@@ -70,10 +74,13 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 - « Un Éclat dans la poche, un mort dans le dos. » (les vieux : les Éclats attirent les ennuis.)
 - « Il a vu passer la lune. » (il a perdu la tête.)
 - « Tendre comme du pain rassis. » (Gaspard, de lui-même.)
+- « Ici, même les murs ont des poches. » (Sœur Albe : méfiez-vous des voleurs.)
+- « S'il te serre la main, compte tes doigts après. » (Mathurin, de Renart.)
+- « Il manque toujours deux sous, avec lui. » (Mathurin : Renart ne paie jamais tout à fait.)
 
 ## 3. Fiches des PNJ importants (Vallons, chapitre 1)
 
-Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants (Sœur Albe, Renart, le chef des bandits…) recevront leur fiche avec leur chapitre.
+Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; le chef des bandits viendra avec le chapitre 4).
 
 **Odile, la meunière** (Vallonienne, la cinquantaine). Parle simplement, avec chaleur et un brin d'inquiétude ; tutoie le joueur. *Veut* : que son moulin tourne et que les nuits redeviennent calmes. *Cache* : la porte du moulin a été condamnée l'hiver dernier parce qu'elle y entendait des voix. *Tics* : parle de sa roue comme d'une personne ; « Que l'aube te garde. »
 
@@ -87,6 +94,18 @@ Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langa
 
 **Bertille, l'épicière** (Vallonienne, déjà là, V1.1). Marchande pratique et drôle ; « tout se revend, mon petit. Enfin, presque tout. »
 
+## 3 bis. Fiches des PNJ du bourg (chapitre 2, sous-lot V1.9.2)
+
+**Sœur Albe, de l'Ordre de l'Aube** (la quarantaine, venue d'ailleurs, à la chapelle du bourg). Vouvoie tout le monde ; phrases nettes, pieuses sans être douces, un humour sec. *Veut* : retrouver les éclats volés et savoir qui les rassemble. *Cache* : l'Ordre l'a envoyée au bourg parce qu'il attendait un Éveillé dans les Vallons (piste pour plus tard). *Tics* : « Que l'Aube me garde » ; « Ici, même les murs ont des poches » ; demande la main du joueur pour voir l'Éclat.
+
+**Renart, marchand d'Ambre** (Ambrien, trentaine, sur la place du bourg). Vouvoie, poli et rusé, compliments empoisonnés ; chaque vérité a son prix. *Veut* : rester du côté de ceux qui paient. *Cache* : il a logé et renseigné le voleur, pour de l'argent ; il sait que l'acheteur est à Havre d'Ambre (il l'avoue à la fin du chapitre). *Tics* : « naturellement » ; « c'est un compliment » ; « Je compte toujours mieux que je ne paie. » Se souvient de la façon dont on l'a fait parler (confiance + ou −).
+
+**Lison, une enfant du bourg** (Vallonienne, huit ans environ, près du puits de la place). Tutoie, phrases courtes, questions franches, peur et curiosité mêlées. *Veut* : qu'un grand la croie. *Cache* : elle sort la nuit par la fenêtre pour écouter le puits. *Tics* : « Si, je te jure ! » ; « Maman dit… ». Se souvient d'une réponse moqueuse.
+
+**Colombe, l'apprentie de Maëlle** (Vallonienne, quinze ans, à la forge). Tutoie, timide, parle trop vite quand elle a peur, drôle sans le vouloir. *Veut* : oser frapper seule. *Cache* : elle a peur du feu depuis l'incendie d'une grange (piste pour plus tard). *Tics* : « Je regarde. De loin. » ; parle au seau.
+
+PNJ déjà là, repris au chapitre 2 : **Mathurin**, l'aubergiste (tutoie, plaintes drôles, compte chaque sou) ; **Frère Anselme**, le prêtre (tutoie, doux et inquiet) ; **Rosalie**, l'habitante de la maison du bourg (tutoie, mère d'un garde, **Thibaut**, à la tour de guet, qui ne répond plus à ses lettres : annonce de « La tour silencieuse ») ; **Dame Brunehilde**, la maîtresse de guilde (tutoie, directe) ; **Bertille** et **Sauge** (marchandes, données à relire avec le chapitre).
+
 ## 4. Clés des textes
 
-Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`).
+Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`).
