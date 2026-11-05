@@ -76,7 +76,9 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Celui-qui-Attend | Le nom que murmure la voix de l'Envers derrière la vieille porte du moulin (chapitre 5) : « Celui-qui-Attend… attend. » Dans aucun livre de l'Ordre ; **ce n'est pas le Sans-Repos** (réponse de Damien du 5 novembre 2026). Rien de plus n'est dit. |
 | Cœur du Seuil | Le centre des pierres dressées, où veille le Gardien du Seuil (chapitre 5). |
 | Pierres gravées | Cinq pierres des Seuillards (celle de Gaspard, et quatre aux ruines, au lac, dans la forêt des Loups et dans la plaine de l'est) ; quatre lignes : « Nous avons ouvert pour la reine. » « Nous n'avons pas su refermer. » « Quelqu'un attend de l'autre côté. » « Toi qui viens après, ne réponds pas. » (proposition, chapitre 5). |
-| Écho (d'une bête) | Une bête qu'on tue et qui revient, comme le loup blanc : depuis la Rupture, « même les loups ne passent plus » (Gaspard, d'après son grand-père ; chapitre 5). |
+| Écho (d'une bête) | Une bête qu'on tue et qui revient, comme le loup blanc : depuis la Rupture, « même les loups ne passent plus » (Gaspard, d'après son grand-père ; chapitre 5). **Règle pour tout le jeu** (réponse de Damien du 5 novembre 2026) : toute bête qui revient après sa mort est un écho. |
+| Chapeau-de-lune | Champignon pâle du pré des loups, qui pousse en rond « là où la terre a chanté » ; Sauge en fait un remède contre la fièvre (sous-lot V1.9.7). |
+| Rond de sorcière | Cercle de champignons sur une terre tiède ; selon la grand-mère de Sauge, « quelque chose dort dessous » (indice, sous-lot V1.9.7). |
 | Galeran | Le jeune garde de la reine, il y a trois cents ans, dont l'Éclat fait revivre les souvenirs ; le joueur est dans sa peau pendant le souvenir de la Rupture (scène jouée, sous-lot V1.9.6). |
 | Reine Ysolde | La reine qui fit ouvrir le Seuil pour ramener son fils (lexique : la Rupture) ; dans le souvenir, elle serre un petit linceul blanc et dit « Tiens bon, Galeran ». |
 | Porte de lumière | Le Seuil ouvert, tel que Galeran le voit dans le souvenir : une porte de lumière blanche, sept Seuillards qui chantent autour. |
@@ -173,6 +175,14 @@ PNJ déjà là, repris au chapitre 5 : **Odile** (son secret devient la fin du c
 **Croc-Gris** (le vieux loup alpha du pré). Ne parle pas : il grogne avant de bondir (le bond annoncé), et quand il saigne il devient fou (seconde forme, le hurlement). Gaspard le connaît depuis longtemps.
 
 PNJ déjà là, repris : **Odile** (elle trouve le joueur à l'aube, le ramène sur sa charrette, lui glisse deux potions ; elle élude quand il demande qui parle derrière la vieille porte : son secret, fiche du chapitre 1) ; **Gaspard** (conseil pour Croc-Gris, rumeur des manteaux sombres).
+
+## 3 septies. Fiches du village (chapitre 1 enrichi, suite, sous-lot V1.9.7)
+
+**Sauge, l'herboriste du bourg** (Vallonienne, la cinquantaine, déjà là comme marchande). Tutoie, parle en recettes, garde les vieilles croyances sans y croire tout à fait. *Veut* : des chapeaux-de-lune pour son remède contre la fièvre. *Cache* : sa grand-mère lui a appris qu'il ne faut pas réveiller ce qui dort sous un rond de champignons (piste pour plus tard). *Tics* : « Cueille-la avant les loups » ; donne le nom de chaque herbe.
+
+**Pain-d'Épice, le chat de Rosalie** (un chat roux, « gras comme un moine », une oreille déchirée). Ne parle pas. Il a fui vers le moulin et fixe la vieille porte condamnée ; rentré, il miaule vers le moulin chaque nuit. Les bêtes sentent l'Envers avant les gens (indice, rien n'est nommé).
+
+PNJ déjà là, repris : **Rosalie** (son chat ; une lanterne à la fenêtre la nuit, pour son fils) ; **Firmin** (le puits du moulin : « Le pain n'attend pas » ; à l'aube, son heure, la croûte qui chante) ; **Aldric** (la garde de nuit : il a reculé de trois pas devant les loups ; si le joueur se tait, il ment au capitaine et en est fier ; sinon, les latrines) ; **le capitaine Bérenger** (le premier contrat de chasse ; il envoie à la guilde : « Dis à Dame Brunehilde que Bérenger t'envoie ») ; **Odile** (vexée, elle accepte des excuses ; en confiance, elle parle de sa roue qui grince la nuit « comme si quelqu'un la poussait, de l'autre côté ») ; **Gaspard** (il défend Odile : l'hiver de la grande neige ; de nuit, il « écoute la nuit »). Répliques de nuit : Gaspard, Maëlle, Firmin, Aldric, Rosalie, Sauge, Bertille, le capitaine.
 
 ## 4. Clés des textes
 
