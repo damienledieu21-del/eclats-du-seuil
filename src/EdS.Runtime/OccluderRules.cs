@@ -28,7 +28,10 @@ namespace EdS.Runtime
         /// Points du corps regardés, en mètres au-dessus du milieu du corps affiché (les pieds plus 1 m) : bas des jambes, milieu, tête.
         /// Avant V1.10, seule la tête comptait : un mur qui cachait les jambes et le buste restait opaque.
         /// </summary>
-        public static readonly IReadOnlyList<double> BodyPoints = new[] { -0.7, 0.0, 1.0 };
+        public static IReadOnlyList<double> BodyPoints => Body;
+
+        // Revue Codex de la PR #97 : un tableau parcouru par indice (un foreach sur IReadOnlyList allouerait son énumérateur à chaque appel).
+        private static readonly double[] Body = { -0.7, 0.0, 1.0 };
 
         /// <summary>Hystérésis (m) du décor au-dessus : la caméra doit redescendre de plus que cela pour le faire revenir (pas d'oscillation).</summary>
         public const double OverheadHysteresis = 0.1;
@@ -47,22 +50,21 @@ namespace EdS.Runtime
         public static bool SegmentHitsBox((double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) min,
             (double X, double Y, double Z) max)
         {
+            // Revue Codex de la PR #97 : sans aucune allocation (appelé jusqu'à trois fois par décor et par image) : un axe à la fois.
             double t0 = 0, t1 = 1;
-            double[] start = { a.X, a.Y, a.Z }, delta = { b.X - a.X, b.Y - a.Y, b.Z - a.Z }, lo = { min.X, min.Y, min.Z }, hi = { max.X, max.Y, max.Z };
-            for (int axis = 0; axis < 3; axis++)
-            {
-                if (Math.Abs(delta[axis]) < 1e-9)
-                {
-                    if (start[axis] < lo[axis] || start[axis] > hi[axis]) return false;
-                    continue;
-                }
-                double u = (lo[axis] - start[axis]) / delta[axis], v = (hi[axis] - start[axis]) / delta[axis];
-                if (u > v) (u, v) = (v, u);
-                t0 = Math.Max(t0, u);
-                t1 = Math.Min(t1, v);
-                if (t0 > t1) return false;
-            }
-            return true;
+            return Slab(a.X, b.X - a.X, min.X, max.X, ref t0, ref t1) && Slab(a.Y, b.Y - a.Y, min.Y, max.Y, ref t0, ref t1)
+                && Slab(a.Z, b.Z - a.Z, min.Z, max.Z, ref t0, ref t1);
+        }
+
+        /// <summary>Une dalle de la méthode des dalles : resserre [t0, t1] sur l'axe ; false si le segment la manque.</summary>
+        private static bool Slab(double start, double delta, double lo, double hi, ref double t0, ref double t1)
+        {
+            if (Math.Abs(delta) < 1e-9) return start >= lo && start <= hi;
+            double u = (lo - start) / delta, v = (hi - start) / delta;
+            if (u > v) (u, v) = (v, u);
+            t0 = Math.Max(t0, u);
+            t1 = Math.Min(t1, v);
+            return t0 <= t1;
         }
 
         /// <summary>
@@ -72,8 +74,8 @@ namespace EdS.Runtime
         public static bool MasksBody((double X, double Y, double Z) camera, (double X, double Y, double Z) player, (double X, double Y, double Z) min,
             (double X, double Y, double Z) max)
         {
-            foreach (double up in BodyPoints)
-                if (SegmentHitsBox(camera, (player.X, player.Y + up, player.Z), min, max)) return true;
+            for (int i = 0; i < Body.Length; i++)
+                if (SegmentHitsBox(camera, (player.X, player.Y + Body[i], player.Z), min, max)) return true;
             return false;
         }
 

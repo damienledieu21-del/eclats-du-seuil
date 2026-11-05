@@ -74,6 +74,55 @@ public class V110EssaiTests
         Assert.True(OccluderRules.SegmentHitsBox((0.0, 1.0, 0.0), (5.0, 1.0, 0.0), (-1.0, 0.0, -1.0), (1.0, 2.0, 1.0)));
     }
 
+    [Fact]
+    public void Le_test_du_segment_garde_ses_resultats_sans_allouer()
+    {
+        // Revue Codex de la PR #97 : la version sans allocation rend les mêmes réponses que l'ancienne (tableaux par axe), sur des segments
+        // tirés au hasard (graine fixe), segments parallèles à un axe compris ; et elle n'alloue rien.
+        var random = new Random(20261105);
+        double R() => Math.Round(random.NextDouble() * 8 - 4, random.Next(3) == 0 ? 0 : 2);
+        int hits = 0;
+        for (int i = 0; i < 20000; i++)
+        {
+            var a = (R(), R(), R());
+            var b = random.Next(4) == 0 ? (a.Item1, R(), a.Item3) : (R(), R(), R());
+            double x0 = R(), y0 = R(), z0 = R();
+            var min = (x0, y0, z0);
+            var max = (x0 + Math.Abs(R()), y0 + Math.Abs(R()), z0 + Math.Abs(R()));
+            bool expected = Reference(a, b, min, max);
+            Assert.Equal(expected, OccluderRules.SegmentHitsBox(a, b, min, max));
+            if (expected) hits++;
+        }
+        Assert.InRange(hits, 100, 19900);   // des deux sortes (touchés et manqués)
+        (double, double, double) c = (0.0, 4.6, -8.0), p = (0.0, 1.0, 0.0), lo = (-3.0, 0.0, -1.0), hi = (3.0, 1.2, -0.7);
+        OccluderRules.MasksBody(c, p, lo, hi);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1000; i++) OccluderRules.MasksBody(c, p, lo, hi);
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
+
+    /// <summary>L'ancienne version (V1.10, 4/4), gardée comme référence.</summary>
+    private static bool Reference((double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) min,
+        (double X, double Y, double Z) max)
+    {
+        double t0 = 0, t1 = 1;
+        double[] start = { a.X, a.Y, a.Z }, delta = { b.X - a.X, b.Y - a.Y, b.Z - a.Z }, lo = { min.X, min.Y, min.Z }, hi = { max.X, max.Y, max.Z };
+        for (int axis = 0; axis < 3; axis++)
+        {
+            if (Math.Abs(delta[axis]) < 1e-9)
+            {
+                if (start[axis] < lo[axis] || start[axis] > hi[axis]) return false;
+                continue;
+            }
+            double u = (lo[axis] - start[axis]) / delta[axis], v = (hi[axis] - start[axis]) / delta[axis];
+            if (u > v) (u, v) = (v, u);
+            t0 = Math.Max(t0, u);
+            t1 = Math.Min(t1, v);
+            if (t0 > t1) return false;
+        }
+        return true;
+    }
+
     [Theory]
     [InlineData("Glow", "FlameMaterial", true)]
     [InlineData("Flames", "HeatDistortion", true)]
