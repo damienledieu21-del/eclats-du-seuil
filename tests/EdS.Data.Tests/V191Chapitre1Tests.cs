@@ -86,7 +86,8 @@ public class V191Chapitre1Tests
     {
         StoryBook book = Book(Zone());
         // Sous-lot V1.9.5 (choix de Damien du 5 novembre 2026) : le chapitre 1 finit chez Gaspard ; ses quatre dernières étapes sont au chapitre 5.
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard" }, book.Quest(Mission).Steps.Select(s => s.Id));
+        // Sous-lot V1.9.6 : Croc-Gris, le chef de la meute, entre la meute et Gaspard.
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "croc_gris", "gaspard" }, book.Quest(Mission).Steps.Select(s => s.Id));
         Assert.Empty(book.Quest(Mission).Effects);
         Assert.Equal(new[] { Ferrure, Pain, Fleches }, book.Quests.Skip(6).Take(3).Select(q => q.Id));   // ajoutées à la fin : les chemins d'avant restent (V1.9.2 : le chapitre 2 suit)
         Assert.All(new[] { Ferrure, Pain, Fleches }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
@@ -147,12 +148,23 @@ public class V191Chapitre1Tests
         Assert.DoesNotContain($"StepCompleted {Mission}/meute", Ticks(w, 1));
         long xp = w.Character.Xp;
         w.Narrative.Defeated("loup3", "loup");
-        Assert.Equal(new[] { $"StepCompleted {Mission}/meute", "Discovered discovery.souvenir_de_la_rupture", "XpGiven xp 80" }, Ticks(w, 1));
+        // Sous-lot V1.9.6 : le souvenir devient une scène à jouer (fait de début) ; son texte reste le repli.
+        Assert.Equal(new[] { $"StepCompleted {Mission}/meute", "Discovered discovery.souvenir_de_la_rupture", "XpGiven xp 80", "FactLearned fact.ch1.souvenir.a_revivre" },
+            Ticks(w, 1));
         Assert.Equal(xp + 80, w.Character.Xp);
         Assert.Contains("discovery.souvenir_de_la_rupture", w.Narrative.Discoveries);
+        Assert.Equal("scene.souvenir_de_la_rupture", w.PendingScene!.Id);
+        // Croc-Gris : sa victoire est annoncée au pilote par son fait, comme la partie le fait à la fin du combat de chef (V196OuvertureTests
+        // joue le combat et la scène) ; la silhouette au bord du bois.
+        Assert.Equal("croc_gris", w.Narrative.CurrentStep(Mission)!.Id);
+        Assert.True(Progression.LevelFor(w.Character.Xp) < 4);   // avant Croc-Gris (niveau 4 conseillé) : les loups et les quêtes secondaires y mènent
+        Assert.True(w.Narrative.Learn("fact.croc_gris.vaincu", new List<StoryEvent>()));
+        List<string> croc = Ticks(w, 1);
+        Assert.Contains($"StepCompleted {Mission}/croc_gris", croc);
+        Assert.Contains("Discovered discovery.ch1.silhouette", croc);
         // Gaspard écoute, parle de l'Ordre de l'Aube, et envoie au bourg : fin du chapitre 1.
         w = Go(w, Gaspard);
-        Say(w, "npc.gaspard", "ch1_souvenir");
+        Assert.Equal(3, Say(w, "npc.gaspard", "ch1_souvenir").Options.Count);   // V1.9.6 : la silhouette vue, une réponse de plus
         Choose(w, 0, "ch1_ordre");
         Assert.Equal(new[] { "FactLearned fact.ch1.gaspard.conseil", "TrustChanged npc.gaspard 1" }, Choose(w, 0).OrderBy(e => e, StringComparer.Ordinal));
         long money = w.Money;
@@ -164,8 +176,9 @@ public class V191Chapitre1Tests
         Assert.True(w.Narrative!.Knows("fact.ch1.vers_le_bourg"));
         Assert.Contains($"QuestCompleted {Mission}", end);   // sous-lot V1.9.5 : fin du chapitre 1 (la suite de l'ancienne mission est au chapitre 5)
         Assert.True(w.Narrative.IsDone(Mission));
-        // Rythme « rapide jusqu'au niveau 5 » : la mission seule, sans les loups ni les quêtes secondaires, mène au niveau 3.
-        Assert.Equal(3, Progression.LevelFor(w.Character.Xp));
+        // Rythme « rapide jusqu'au niveau 5 » : la mission seule, sans les loups ni les quêtes secondaires, mène au niveau 3 ; depuis V1.9.6, au
+        // niveau 4 avec la récompense de Croc-Gris (120 points).
+        Assert.Equal(4, Progression.LevelFor(w.Character.Xp));
         Say(w, "npc.gaspard", "garde");   // ensuite, Gaspard reprend ses conseils
     }
 

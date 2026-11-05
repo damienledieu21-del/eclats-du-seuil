@@ -48,6 +48,7 @@ public class Lot127BossTests
             boss?.Invoke(forms);
             File.WriteAllText(Path.Combine(directory, "zones", "vallons_chef.json"), forms.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6
+            CopyMissingZoneScenarios(directory);   // sous-lot V1.9.6 : formes de Croc-Gris
             return ZoneJsonReader.Read(root.ToJsonString(), directory, data ?? ShippedData, Items);
         }
         finally

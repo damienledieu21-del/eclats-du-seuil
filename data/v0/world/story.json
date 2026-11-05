@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "kind": "story",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -254,6 +254,16 @@
           50
         ],
         "dialogue": "dialogue.ysarn"
+      },
+      {
+        "id": "npc.ysolde",
+        "name": "text.ch1.npc.ysolde.name",
+        "position": [
+          -2,
+          -3.5
+        ],
+        "dialogue": "dialogue.ysolde",
+        "zone": "zone.souvenir_rupture"
       }
     ],
     "dialogues": [
@@ -323,6 +333,35 @@
               }
             ],
             "node": "ch1_ferrure"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.reveil",
+                "step": "odile"
+              }
+            ],
+            "node": "reveil"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.reveil",
+                "step": "retour"
+              }
+            ],
+            "node": "reveil_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.reveil"
+              }
+            ],
+            "node": "reveil_en_cours"
           },
           {
             "conditions": [
@@ -674,6 +713,70 @@
             "id": "ch5_ch1_apres",
             "text": "text.ch5.odile.ch1_apres",
             "choices": []
+          },
+          {
+            "id": "reveil",
+            "text": "text.ch1.odile.reveil",
+            "choices": [
+              {
+                "text": "text.ch1.odile.reveil.oubli",
+                "conditions": [],
+                "effects": [],
+                "next": "reveil_eclat"
+              }
+            ]
+          },
+          {
+            "id": "reveil_eclat",
+            "text": "text.ch1.odile.reveil_eclat",
+            "choices": [
+              {
+                "text": "text.ch1.odile.reveil_eclat.loups",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.reveil_eclat.porte",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.reveil.porte"
+                  }
+                ],
+                "next": "reveil_porte"
+              }
+            ]
+          },
+          {
+            "id": "reveil_porte",
+            "text": "text.ch1.odile.reveil_porte",
+            "choices": [
+              {
+                "text": "text.ch1.odile.reveil_porte.loups",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reveil_en_cours",
+            "text": "text.ch1.odile.reveil_en_cours",
+            "choices": []
+          },
+          {
+            "id": "reveil_retour",
+            "text": "text.ch1.odile.reveil_retour",
+            "choices": [
+              {
+                "text": "text.odile.accueil.raconter",
+                "conditions": [],
+                "effects": [],
+                "next": "recit"
+              }
+            ]
           }
         ]
       },
@@ -1041,6 +1144,16 @@
             "node": "ch5_loup_anselme"
           },
           {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.traces_sous_le_moulin",
+                "step": "croc_gris"
+              }
+            ],
+            "node": "ch1_croc"
+          },
+          {
             "conditions": [],
             "node": "garde"
           }
@@ -1127,6 +1240,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.souvenir.silhouette",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.silhouette"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_silhouette"
               }
             ]
           },
@@ -1358,6 +1482,23 @@
                 ],
                 "effects": [],
                 "next": "ch5_loup"
+              }
+            ]
+          },
+          {
+            "id": "ch1_croc",
+            "text": "text.ch1.gaspard.croc",
+            "choices": []
+          },
+          {
+            "id": "ch1_silhouette",
+            "text": "text.ch1.gaspard.silhouette",
+            "choices": [
+              {
+                "text": "text.ch1.gaspard.silhouette.ordre",
+                "conditions": [],
+                "effects": [],
+                "next": "ch1_ordre"
               }
             ]
           }
@@ -6410,6 +6551,92 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.ysolde",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "notFact",
+                "id": "fact.ch1.souvenir.porte"
+              }
+            ],
+            "node": "ordre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "notFact",
+                "id": "fact.ch1.souvenir.vecu"
+              }
+            ],
+            "node": "porte"
+          },
+          {
+            "conditions": [],
+            "node": "apres"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ordre",
+            "text": "text.ch1.ysolde.ordre",
+            "choices": [
+              {
+                "text": "text.ch1.ysolde.ordre.doute",
+                "conditions": [],
+                "effects": [],
+                "next": "reine"
+              },
+              {
+                "text": "text.ch1.ysolde.ordre.tenir",
+                "conditions": [],
+                "effects": [],
+                "next": "chant"
+              }
+            ]
+          },
+          {
+            "id": "reine",
+            "text": "text.ch1.ysolde.reine",
+            "choices": [
+              {
+                "text": "text.ch1.ysolde.reine.lance",
+                "conditions": [],
+                "effects": [],
+                "next": "chant"
+              }
+            ]
+          },
+          {
+            "id": "chant",
+            "text": "text.ch1.ysolde.chant",
+            "choices": [
+              {
+                "text": "text.ch1.ysolde.chant.lever",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.souvenir.porte"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "porte",
+            "text": "text.ch1.ysolde.porte",
+            "choices": []
+          },
+          {
+            "id": "apres",
+            "text": "text.ch1.ysolde.apres",
+            "choices": []
+          }
+        ]
       }
     ],
     "quests": [
@@ -6438,6 +6665,10 @@
               {
                 "do": "discover",
                 "id": "discovery.traces_griffues"
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ch1.voix_derriere_la_porte"
               }
             ]
           },
@@ -6470,6 +6701,10 @@
               {
                 "do": "discover",
                 "id": "discovery.eclats_dans_le_pre"
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ch1.pierre_du_pre"
               }
             ]
           },
@@ -6489,6 +6724,36 @@
               {
                 "do": "giveXp",
                 "value": 80
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch1.souvenir.a_revivre"
+              }
+            ]
+          },
+          {
+            "id": "croc_gris",
+            "text": "text.ch1.quest.traces.croc_gris",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.croc_gris.vaincu"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 120
+              },
+              {
+                "do": "giveMoney",
+                "value": 80
+              },
+              {
+                "do": "discover",
+                "id": "discovery.ch1.silhouette"
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch1.silhouette"
               }
             ]
           },
@@ -8726,6 +8991,77 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.reveil",
+        "name": "text.ch1.quest.reveil.name",
+        "category": "main",
+        "steps": [
+          {
+            "id": "odile",
+            "text": "text.ch1.quest.reveil.odile",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.odile"
+            },
+            "effects": []
+          },
+          {
+            "id": "frapper",
+            "text": "text.ch1.quest.reveil.frapper",
+            "objective": {
+              "kind": "practice",
+              "id": "strike",
+              "value": 3
+            },
+            "effects": []
+          },
+          {
+            "id": "garder",
+            "text": "text.ch1.quest.reveil.garder",
+            "objective": {
+              "kind": "practice",
+              "id": "guard",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "parer",
+            "text": "text.ch1.quest.reveil.parer",
+            "objective": {
+              "kind": "practice",
+              "id": "parry",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "boire",
+            "text": "text.ch1.quest.reveil.boire",
+            "objective": {
+              "kind": "practice",
+              "id": "drink",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch1.quest.reveil.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.odile"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 30
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -8808,6 +9144,29 @@
       {
         "id": "discovery.lecture_des_pierres",
         "text": "text.ch5.discovery.lecture"
+      },
+      {
+        "id": "discovery.ch1.voix_derriere_la_porte",
+        "text": "text.ch1.discovery.voix_derriere_la_porte"
+      },
+      {
+        "id": "discovery.ch1.pierre_du_pre",
+        "text": "text.ch1.discovery.pierre_du_pre"
+      },
+      {
+        "id": "discovery.ch1.silhouette",
+        "text": "text.ch1.discovery.silhouette"
+      }
+    ],
+    "scenes": [
+      {
+        "id": "scene.souvenir_de_la_rupture",
+        "zone": "zone.souvenir_rupture",
+        "actor": "text.ch1.souvenir.galeran",
+        "start": "fact.ch1.souvenir.a_revivre",
+        "end": "fact.ch1.souvenir.vecu",
+        "text": "text.ch1.discovery.souvenir",
+        "back": "text.ch1.souvenir.retour"
       }
     ]
   }

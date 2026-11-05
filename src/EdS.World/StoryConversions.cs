@@ -30,6 +30,24 @@ namespace EdS.World
         /// </summary>
         public const string NextFact = "fact.ch5.vers_la_suite";
 
+        /// <summary>
+        /// Sous-lot V1.9.6 : quête de l'ouverture (le réveil, tutoriel). Seul un <b>nouveau personnage</b> la commence (<see cref="NewGame"/>) :
+        /// une partie déjà commencée, même sans aucune quête, n'est jamais renvoyée au tutoriel (aucune conversion ne l'ajoute).
+        /// </summary>
+        public const string Opening = "quest.reveil";
+
+        /// <summary>
+        /// Sous-lot V1.9.6 : état narratif d'un nouveau personnage : l'ouverture commencée à sa première étape, suivie ; vide si l'histoire
+        /// n'a pas d'ouverture. Aucun effet n'est appliqué (rien à appliquer : une quête commencée n'en a pas).
+        /// </summary>
+        public static SavedStory NewGame(StoryBook book)
+        {
+            if (book is null) throw new ArgumentNullException(nameof(book));
+            if (!book.HasQuest(Opening)) return SavedStory.Empty;
+            var quests = new Dictionary<string, QuestProgress>(StringComparer.Ordinal) { [Opening] = new QuestProgress(book.Quest(Opening).Steps[0].Id) };
+            return new SavedStory(null, quests, null, null, Opening);
+        }
+
         /// <summary>Étapes passées du chapitre 1 au chapitre 5, dans leur ordre.</summary>
         public static readonly IReadOnlyList<string> MovedSteps = Array.AsReadOnly(new[] { "manifestation", "rodeur", "chef", "retour" });
 

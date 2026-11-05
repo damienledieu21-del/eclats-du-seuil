@@ -108,11 +108,25 @@ namespace EdS.Data.Story
         /// l'objet, qui prend une qualité, <c>quality</c> « superior » ou « masterwork », <c>value</c> nombre d'instances) ; le champ
         /// <c>quality</c> n'appartient qu'à cet objectif. Un fichier en version 4 (<see cref="PreviousSchemaVersion"/>) reste lu tel quel (il
         /// ne connaît pas <c>craftQuality</c>) ; une version plus ancienne est refusée (pré-alpha : aucune migration des fichiers de données).
+        /// Version 6 (sous-lot V1.9.6, ouverture du chapitre 1) : objectif <c>practice</c> (un geste de combat du joueur : <c>id</c> parmi
+        /// <see cref="PracticeActions"/>, <c>value</c> nombre de fois, de 1 à <see cref="MaxPractice"/>) et liste facultative <c>scenes</c>
+        /// (scènes jouées dans un intérieur : <c>id</c> « scene.… », <c>zone</c>, <c>actor</c>, <c>start</c>, <c>end</c>, <c>text</c>,
+        /// <c>back</c> ; voir <see cref="Scene"/>). Les versions 4 et 5 restent lues telles quelles (elles ne connaissent ni l'un ni l'autre).
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
 
-        /// <summary>Sous-lot V1.9.3b : version précédente, encore lue (sous-ensemble de la version 5, sans l'objectif <c>craftQuality</c>).</summary>
+        /// <summary>Sous-lot V1.9.3b : plus ancienne version encore lue (sous-ensemble de la version 5, sans l'objectif <c>craftQuality</c>).</summary>
         public const int PreviousSchemaVersion = 4;
+
+        /// <summary>Sous-lot V1.9.6 : version 5, encore lue (sans <c>practice</c> ni <c>scenes</c>).</summary>
+        public const int Schema5 = 5;
+
+        /// <summary>Sous-lot V1.9.6 : gestes d'un objectif <c>practice</c>.</summary>
+        public static readonly IReadOnlyList<string> PracticeActions = new ReadOnlyCollection<string>(new[] { "strike", "guard", "parry", "drink" });
+
+        /// <summary>Sous-lot V1.9.6 : nombre de gestes demandés au plus, et scènes au plus.</summary>
+        public const long MaxPractice = 100;
+        public const int MaxScenes = 16;
 
         /// <summary>Sous-lot V1.9.3b : qualités minimales d'un objectif <c>craftQuality</c> (la qualité normale ne se demande pas).</summary>
         public static IReadOnlyDictionary<string, ItemQuality> Qualities { get; } = new ReadOnlyDictionary<string, ItemQuality>(new Dictionary<string, ItemQuality>(StringComparer.Ordinal)
@@ -158,6 +172,7 @@ namespace EdS.Data.Story
             ["defeatFamily"] = ObjectiveKind.DefeatFamily, ["equipped"] = ObjectiveKind.Equipped,
             ["guildRank"] = ObjectiveKind.GuildRank,   // sous-lot V1.7
             ["craftQuality"] = ObjectiveKind.CraftQuality,   // sous-lot V1.9.3b (schéma 5)
+            ["practice"] = ObjectiveKind.Practice,   // sous-lot V1.9.6 (schéma 6)
         });
 
         /// <summary>Sous-lot V1.6 : catégories de quête (onglets du journal).</summary>
@@ -170,7 +185,7 @@ namespace EdS.Data.Story
 
         private static Regex Id(string prefix) => new Regex($@"^{prefix}(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
-        private static readonly Regex NpcId = Id("npc"), DialogueId = Id("dialogue"), QuestId = Id("quest"), FactId = Id("fact"), DiscoveryId = Id("discovery");
+        private static readonly Regex NpcId = Id("npc"), DialogueId = Id("dialogue"), QuestId = Id("quest"), FactId = Id("fact"), DiscoveryId = Id("discovery"), SceneId = Id("scene");
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
         public static bool IsFactId(string? id) => id != null && id.Length <= 200 && FactId.IsMatch(id);
@@ -187,7 +202,8 @@ namespace EdS.Data.Story
             if (items is null) throw new ArgumentNullException(nameof(items));
             report ??= new ValidationReport();
             // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
-            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6).
+            int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
             // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
@@ -291,12 +307,61 @@ namespace EdS.Data.Story
                 CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
+                // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
+                List<Scene> scenes = CheckScenes();
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
                 if (!_r.IsValid || contentVersion is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes);
+            }
+
+            /// <summary>
+            /// Sous-lot V1.9.6 (schéma 6) : chaque scène a un identifiant unique « scene.… », une zone qui est un intérieur relié (indoor, une porte
+            /// vers la zone de l'histoire et une de celle-ci vers lui, et rien d'autre ne mène à elle), au plus une scène par zone ; un fait de
+            /// début qui doit pouvoir être appris, un fait de fin qui est celui d'un chef de la zone de la scène ; des textes connus.
+            /// </summary>
+            private List<Scene> CheckScenes()
+            {
+                var scenes = new List<Scene>();
+                if (_d.Scenes is null) return scenes;
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add("$.data.scenes", ValidationCode.InvalidValue, $"scènes inconnues en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return scenes;
+                }
+                var ids = new HashSet<string>(StringComparer.Ordinal);
+                var zones = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < _d.Scenes.Count; i++)
+                {
+                    string path = $"$.data.scenes[{i}]";
+                    if (!(_d.Scenes[i] is SceneData x)) { TextsValidator.Missing(_r, path, "scène"); continue; }
+                    bool ok = true;
+                    if (x.Id is null) { TextsValidator.Missing(_r, path + ".id", "« scene.… »"); ok = false; }
+                    else if (!SceneId.IsMatch(x.Id)) { _r.Add(path + ".id", ValidationCode.InvalidValue, $"scène « {x.Id} » mal formée : « scene.… »."); ok = false; }
+                    else if (!ids.Add(x.Id)) { _r.Add(path + ".id", ValidationCode.DuplicateId, $"scène « {x.Id} » en double."); ok = false; }
+                    ZoneDefinition? zone = null;
+                    if (x.Zone is null) { TextsValidator.Missing(_r, path + ".zone", "intérieur de la scène"); ok = false; }
+                    else if (!(_interiors.FirstOrDefault(z => z.Id == x.Zone) is ZoneDefinition found))
+                    { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {x.Zone} » (un intérieur relié par des portes attendu)."); ok = false; }
+                    else if (!found.Indoor) { _r.Add(path + ".zone", ValidationCode.InvalidValue, $"« {x.Zone} » n'est pas un intérieur."); ok = false; }
+                    else if (!zones.Add(found.Id)) { _r.Add(path + ".zone", ValidationCode.DuplicateId, $"deux scènes dans « {x.Zone} »."); ok = false; }
+                    else if (!found.Doors.Any(d => d.To == _zone.Id) || !_zone.Doors.Any(d => d.To == found.Id)
+                        || _interiors.Any(z => z.Id != found.Id && z.Doors.Any(d => d.To == found.Id)))
+                    { _r.Add(path + ".zone", ValidationCode.InvalidValue, $"« {x.Zone} » : une porte vers la zone de l'histoire, une porte de celle-ci vers elle, et aucune autre."); ok = false; }
+                    else zone = found;
+                    ok &= Text(x.Actor, path + ".actor") & Text(x.Text, path + ".text") & Text(x.Back, path + ".back");
+                    if (!IsFactId(x.Start)) { _r.Add(path + ".start", ValidationCode.InvalidValue, $"fait « {x.Start} » mal formé : « fact.… »."); ok = false; }
+                    else _factsNeeded.Add((x.Start!, path + ".start"));
+                    if (!IsFactId(x.End)) { _r.Add(path + ".end", ValidationCode.InvalidValue, $"fait « {x.End} » mal formé : « fact.… »."); ok = false; }
+                    else if (x.End == x.Start) { _r.Add(path + ".end", ValidationCode.InvalidValue, "fait de fin égal au fait de début."); ok = false; }
+                    else if (zone != null && zone.Bosses.All(b => b.Fact != x.End))
+                    { _r.Add(path + ".end", ValidationCode.UnknownReference, $"fait « {x.End} » : celui d'un chef de « {zone.Id} » attendu."); ok = false; }
+                    if (x.End != null) _factsSet.Add(x.End);   // appris par la victoire, ou en passant la scène
+                    if (ok) scenes.Add(new Scene(x.Id!, x.Zone!, x.Actor!, x.Start!, x.End!, x.Text!, x.Back!));
+                }
+                return scenes;
             }
 
             private void Declare<T>(List<T?>? list, string path, int max, Func<T?, string?> id, Regex pattern, HashSet<string> ids) where T : class
@@ -551,9 +616,15 @@ namespace EdS.Data.Story
                 if (!NoStep(t, path)) return null;
                 if (kind != ObjectiveKind.Deliver && !NoNpc(t, path)) return null;
                 // Sous-lot V1.9.3b : craftQuality est nouveau en version 5 ; seul cet objectif a une qualité.
-                if (kind == ObjectiveKind.CraftQuality && _schema < CurrentSchemaVersion)
+                if (kind == ObjectiveKind.CraftQuality && _schema < Schema5)
                 {
-                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « craftQuality » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « craftQuality » inconnu en version {_schema} du format : version {Schema5} demandée.");
+                    return null;
+                }
+                // Sous-lot V1.9.6 : practice est nouveau en version 6.
+                if (kind == ObjectiveKind.Practice && _schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « practice » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
                     return null;
                 }
                 if (kind != ObjectiveKind.CraftQuality && !NoQuality(t, path)) return null;
@@ -569,6 +640,7 @@ namespace EdS.Data.Story
                     ObjectiveKind.Reach => Ref(t, path, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, path),
                     ObjectiveKind.Defeat => Ref(t, path, _zone.Populations.Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Collect => ItemRef(t, path) && Value(t, path, 1, MaxCount),
+                    ObjectiveKind.Practice => Ref(t, path, PracticeActions, "geste") && Value(t, path, 1, MaxPractice),   // sous-lot V1.9.6
                     _ => Ref(t, path, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, path),
                 };
                 return ok ? new Objective(kind, t.Id!, t.Value ?? 1, t.Npc, kind == ObjectiveKind.CraftQuality ? Qualities[t.Quality!] : ItemQuality.Normal) : null;

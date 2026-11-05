@@ -101,7 +101,8 @@ public class V16QuetesTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Assert.Single(Read(root).Report.Errors).Path, Read(root).Report.Errors[0].Code));
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
-        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone" },
+        Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone",
+                "$.data.npcs[27].zone", "$.data.scenes[0].zone" },   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
             alone.Report.Errors.Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         Assert.All(alone.Report.Errors, e => Assert.Equal(ValidationCode.UnknownReference, e.Code));
     }
@@ -526,16 +527,17 @@ public class V16QuetesTests
     {
         ZoneDefinition z = Zone();
         Assert.Equal(7, z.SchemaVersion);   // 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
-        Boss chef = Assert.Single(z.Chiefs);
+        Boss chef = z.Chiefs[0];   // sous-lot V1.9.6 : Croc-Gris est le second (V196OuvertureTests)
+        Assert.Equal(new[] { "chef_des_bandits", "croc_gris" }, z.Chiefs.Select(c => c.Id));
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));
         Assert.Equal(new[] { "chef_des_bandits", "chef_des_bandits_furieux" }, chef.Forms.Select(f => f.Id));
         Assert.All(chef.Forms, f => Assert.Contains(f.Attacks, a => a.TelegraphMs > 0));   // chaque forme a une attaque annoncée
-        Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits" }, z.Bosses.Select(b => b.Id));
+        Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits", "croc_gris" }, z.Bosses.Select(b => b.Id));
         Assert.Equal("zone.vallons/boss/chef_des_bandits", z.VictoryKeyOf(chef));
         Assert.Equal(z.VictoryKey, z.VictoryKeyOf(z.Boss!));
         // Les deux chefs arrivent avec la session.
         WorldSession w = Play(z, Hero());
-        Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits" }, w.BossForms);
+        Assert.Equal(new[] { "gardien_du_seuil", "chef_des_bandits", "croc_gris" }, w.BossForms);
         Assert.True(w.IsBossForm("chef_des_bandits_furieux") && w.IsBossForm("gardien_eveille") && !w.IsBossForm("bandit_epee1"));
         Assert.True(w.Zone.Engine.View("chef_des_bandits").IsPresent);
         // La victoire sur le chef des bandits apprend son fait (l'histoire peut l'attendre).

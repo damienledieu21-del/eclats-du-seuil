@@ -349,6 +349,7 @@ public class V16RelectureTests
             Calm("zones/vallons", null, false);
             Calm("zones/vallons_chef", null, true);
             Calm("zones/vallons_bandits", bandits, true);
+            Calm("zones/vallons_croc_gris", null, true);   // sous-lot V1.9.6 : Croc-Gris, calmé comme les autres chefs
             return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);
         }
         finally

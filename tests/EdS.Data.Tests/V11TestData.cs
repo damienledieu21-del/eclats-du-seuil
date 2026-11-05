@@ -39,6 +39,7 @@ internal static class V11TestData
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));
             File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
+            CopyMissingZoneScenarios(directory);   // sous-lot V1.9.6 : formes de Croc-Gris
         }
         try
         {

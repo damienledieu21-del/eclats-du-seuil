@@ -45,6 +45,7 @@ public class Lot125StoryTests
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
             File.Copy(ScenarioPath("zones/vallons_chef"), Path.Combine(directory, "zones", "vallons_chef.json"));   // sous-lot 12.7 : formes du chef
             File.Copy(ScenarioPath("zones/vallons_bandits"), Path.Combine(directory, "zones", "vallons_bandits.json"), true);   // sous-lot V1.6 : formes du chef des bandits
+            CopyMissingZoneScenarios(directory);   // sous-lot V1.9.6 : formes de Croc-Gris
         }
         try
         {
@@ -232,13 +233,13 @@ public class Lot125StoryTests
         // V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste.
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant",
                 "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste", "npc.boulanger", "npc.archer_garde", "npc.albe", "npc.renart", "npc.lison", "npc.apprentie",
-                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" },   // V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4 ; V1.9.5 : chapitre 5
+                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.ysolde" },   // V1.9.6 : la reine Ysolde (scène du souvenir) ; V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4 ; V1.9.5 : chapitre 5
             book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
         // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1) ; V1.9.5 : manifestation, rôdeur, chef et retour au chapitre 5.
-        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard" }, mission.Steps.Select(s => s.Id));
+        Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "croc_gris", "gaspard" }, mission.Steps.Select(s => s.Id));   // V1.9.6 : Croc-Gris
         Assert.Equal(new[] { "manifestation", "rodeur", "chef", "retour", "voix", "albe" }, book.Quest("quest.le_seuil").Steps.Select(s => s.Id));
-        Assert.Equal(20, book.Discoveries.Count);   // V1.9.5 : la voix de l'Envers, les traces du loup blanc, quatre pierres gravées et leur lecture ;   // V1.9.4 : la tour vide, les mots du chef, le registre de la garde, le carnet de Renart ; V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
+        Assert.Equal(23, book.Discoveries.Count);   // V1.9.6 : trois indices du mystère (voix, pierre du pré, silhouette) ; V1.9.5 : la voix de l'Envers, les traces du loup blanc, quatre pierres gravées et leur lecture ;   // V1.9.4 : la tour vide, les mots du chef, le registre de la garde, le carnet de Renart ; V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
         // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
         Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));
@@ -422,7 +423,8 @@ public class Lot125StoryTests
         WorldSession moulin = new(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(At("traces"))), Zone(-8, 5), ShippedData, Progression, Items,
             Book(Zone(-8, 5)));
         List<StoryEvent> events = moulin.Step().Story.ToList();
-        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/traces", "Discovered discovery.traces_griffues" }, events.Select(e => e.ToString()));
+        Assert.Equal(new[] { "StepCompleted quest.traces_sous_le_moulin/traces", "Discovered discovery.traces_griffues",
+            "Discovered discovery.ch1.voix_derriere_la_porte" }, events.Select(e => e.ToString()));   // V1.9.6 : indice, les voix derrière la porte
 
         // Étape « rodeur » : le rôdeur affaibli près de l'entrée ; sa mort compte pour la population « rodeur ».
         ZoneDefinition zone = Zone(-18, -12, s =>

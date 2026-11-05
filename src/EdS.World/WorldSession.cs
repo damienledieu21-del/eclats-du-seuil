@@ -453,6 +453,7 @@ namespace EdS.World
                 if (drunk <= 0) continue;
                 Inventory.UseReserved(id, drunk);   // réservés à l'entrée : toujours là
                 _carried[id] = now;
+                Narrative?.Practiced("drink", drunk);   // sous-lot V1.9.6 : objectif « practice » du tutoriel
             }
         }
         private readonly ItemCatalog _items;
@@ -796,6 +797,8 @@ namespace EdS.World
             WearReport? wear = TrackWear(defeated);
             // Sous-lot V1.1 : points sûrs approchés, découverts pour de bon (voyage rapide).
             DiscoverSafePoints(story);
+            // Sous-lot V1.9.6 : gestes du joueur depuis le tick précédent (coups portés, coups bloqués, parades parfaites), pour le tutoriel.
+            Practice(me);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
@@ -899,6 +902,50 @@ namespace EdS.World
             if (Narrative != null) Narrative.Learn(b.Fact, story);
             else _pendingFacts.Add(b.Fact);
             fight.RewardPending = false;
+        }
+
+        /// <summary>Sous-lot V1.9.6 : compteurs du moteur déjà comptés pour les objectifs « practice » (coups, blocages, parades parfaites).</summary>
+        private long _hitsSeen, _blocksSeen, _parriesSeen;
+
+        private void Practice(CombatantView me)
+        {
+            CombatantCounters c = me.Counters;
+            if (Narrative != null)
+            {
+                Narrative.Practiced("strike", c.Hits - _hitsSeen);
+                Narrative.Practiced("guard", c.Blocks - _blocksSeen);
+                Narrative.Practiced("parry", c.PerfectParries - _parriesSeen);
+                // Relecture indépendante de la PR #94 : une étape « boire » ne se bloque jamais. Sans plus aucun objet de soin (bus avant
+                // l'étape, vendus), le geste ne peut plus être demandé : l'étape est remplie.
+                if (Narrative.WantsPractice("drink") && !HasHealing()) Narrative.Practiced("drink", StoryValidator.MaxPractice);
+            }
+            _hitsSeen = c.Hits;
+            _blocksSeen = c.Blocks;
+            _parriesSeen = c.PerfectParries;
+        }
+
+        /// <summary>Relecture de la PR #94 : il reste un objet de soin à boire (emporté et pas bu, ou dans le sac pour la session suivante).</summary>
+        private bool HasHealing() =>
+            _carried.Values.Any(n => n > 0) || Inventory.Stacks.Any(s => _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
+
+        /// <summary>Sous-lot V1.9.6 : scène à jouer (voir <see cref="Scene"/>), ou null.</summary>
+        public Scene? PendingScene => Narrative?.PendingScene;
+
+        /// <summary>
+        /// Sous-lot V1.9.6 : passe la scène à jouer <paramref name="scene"/> (son fait de fin est appris, annoncé au tick suivant) ; faux, sans
+        /// rien changer, si elle n'est pas à jouer.
+        /// </summary>
+        public bool SkipScene(string scene) => Narrative?.SkipScene(scene) ?? false;
+
+        /// <summary>
+        /// Sous-lot V1.9.6 : la porte <paramref name="door"/> de cette zone mène à la zone d'une scène qui n'est pas à jouer : elle reste fermée.
+        /// Une porte qui ne mène pas à une scène n'est jamais fermée ainsi.
+        /// </summary>
+        public bool SceneDoorClosed(Door door)
+        {
+            if (door is null) throw new ArgumentNullException(nameof(door));
+            if (Narrative is null || !(Narrative.Book.SceneIn(door.To) is Scene scene)) return false;
+            return !ReferenceEquals(Narrative.PendingScene, scene);
         }
 
         /// <summary>Faits du chef appris sans histoire chargée : gardés pour la sauvegarde.</summary>

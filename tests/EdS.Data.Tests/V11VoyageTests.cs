@@ -95,7 +95,8 @@ public class V11VoyageTests : IDisposable
     public void Point_d_entree_decouvert_sans_bruit()
     {
         AdventureSession a = Adventure(SavePath);
-        Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube." }, a.DrainMessages());
+        // Sous-lot V1.9.6 : la première étape de l'ouverture est dite ; aucun message sur le point sûr.
+        Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube.", "Journal : " + Texts.Get("text.ch1.quest.reveil.odile") }, a.DrainMessages());
         TravelDestination here = Assert.Single(a.TravelDestinations());
         Assert.Equal(("zone.vallons", "place_du_village", "Place du village", true), (here.Zone, here.SafePoint, here.Name, here.Here));
         Assert.True(a.World.IsDiscovered(a.World.Definition!, "place_du_village"));

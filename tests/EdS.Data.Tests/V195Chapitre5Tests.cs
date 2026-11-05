@@ -141,7 +141,7 @@ public class V195Chapitre5Tests
     public void Chapitre_5_et_ses_quetes_livres()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Main, Loup, Pierres }, book.Quests.Skip(27).Select(q => q.Id));   // ajoutées à la fin
+        Assert.Equal(new[] { Main, Loup, Pierres }, book.Quests.Skip(27).Take(3).Select(q => q.Id));   // ajoutées à la fin (V1.9.6 : l'ouverture vient après)
         Assert.Equal(QuestCategory.Main, book.Quest(Main).Category);
         Assert.Empty(book.Quest(Main).Requires);   // commencée par la fin du chapitre 4 : jamais fermée
         // Choix de Damien du 5 novembre 2026 : les quatre dernières étapes de l'ancienne mission sont au chapitre 5, sous les mêmes
@@ -181,7 +181,7 @@ public class V195Chapitre5Tests
         Assert.Equal(("relic", 10), (ItemsCatalog.Item("item.pierre_gravee").Slot!, ItemsCatalog.Item("item.pierre_gravee").RequiredLevel));
         Assert.Contains(book.Quest(Pierres).Effects, e => e.Kind == EffectKind.GiveItem && e.Id == "item.pierre_gravee");
         Assert.Equal(new[] { "ruines", "lac", "foret_des_loups", "plaine_est" }, book.Quest(Pierres).Steps.Take(4).Select(s => s.Objective.Id));
-        Assert.Equal(new[] { "npc.ysarn" }, book.Npcs.Skip(26).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.ysarn" }, book.Npcs.Skip(26).Take(1).Select(n => n.Id));   // V1.9.6 : la reine Ysolde vient après
         foreach (string d in new[] { "discovery.celui_qui_attend", "discovery.traces_du_loup_blanc", "discovery.pierre_gravee_ruines", "discovery.pierre_gravee_lac",
             "discovery.pierre_gravee_foret", "discovery.pierre_gravee_plaine", "discovery.lecture_des_pierres" })
             Assert.Contains(book.Discoveries, x => x.Id == d);
@@ -311,6 +311,11 @@ public class V195Chapitre5Tests
         w = Go(w, Pre);
         foreach (string loup in new[] { "loup1", "loup2", "loup3" }) w.Narrative!.Defeated(loup, "loup");
         Assert.Contains($"StepCompleted {Ch1}/meute", Ticks(w, 1));
+        // Sous-lot V1.9.6 : le souvenir passé (son texte, le repli) ; Croc-Gris, sa victoire annoncée par son fait (V196OuvertureTests joue
+        // la scène et le combat).
+        Assert.True(w.SkipScene("scene.souvenir_de_la_rupture"));
+        Assert.True(w.Narrative!.Learn("fact.croc_gris.vaincu", new List<StoryEvent>()));
+        Assert.Contains($"StepCompleted {Ch1}/croc_gris", Ticks(w, 1));
         w = Go(w, Gaspard);
         Say(w, "npc.gaspard", "ch1_souvenir");
         Choose(w, 1);

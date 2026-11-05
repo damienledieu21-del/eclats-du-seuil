@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using EdS.Data.Characters;
 using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
@@ -41,6 +42,22 @@ public class Lot128AdventureTests : IDisposable
         return a;
     }
 
+    /// <summary>
+    /// Sous-lot V1.9.6 : partie déjà commencée (sauvegarde d'un personnage neuf, sans quête ni potion) : elle n'est pas renvoyée à l'ouverture
+    /// (le tutoriel) ; Odile lui raconte ses traces comme avant.
+    /// </summary>
+    private AdventureSession Started()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(SavePath)!);
+        CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        ItemCatalog items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
+            Inventory.Outfit(PlayerCharacters.Create(AdventureSession.PlayerId, AdventureSession.PlayerClass, progression), items)));
+        AdventureSession a = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        a.Advance(0.05);
+        return a;
+    }
+
     private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(AdventureSession.PlayerId).Position!.Value;
 
     private static double Distance(GroundVector p, double x, double z) => Math.Sqrt(Math.Pow(p.X.Raw / 1e4 - x, 2) + Math.Pow(p.Z.Raw / 1e4 - z, 2));
@@ -74,7 +91,8 @@ public class Lot128AdventureTests : IDisposable
     {
         AdventureSession a = New();
         Assert.Null(a.SaveProblem);
-        Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube." }, a.DrainMessages());
+        // Sous-lot V1.9.6 : la première étape de l'ouverture (le réveil) est dite d'emblée.
+        Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube.", "Journal : " + V11TestData.Texts.Get("text.ch1.quest.reveil.odile") }, a.DrainMessages());
         Assert.Equal(1, a.Opened);
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
@@ -82,7 +100,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(11, a.Nodes().Count);   // Vallons agrandis
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
-        Assert.Empty(a.Journal());
+        Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);
         Assert.Equal(3, a.Professions().Count);
@@ -142,7 +160,7 @@ public class Lot128AdventureTests : IDisposable
     [Fact]
     public void Parler_a_Odile_commence_la_mission_et_sauvegarde()
     {
-        AdventureSession a = New();
+        AdventureSession a = Started();   // sous-lot V1.9.6 : une partie commencée avant l'ouverture (V196OuvertureTests joue l'ouverture)
         a.DrainMessages();
         Assert.False(a.Interact());
         Assert.Equal(new[] { "Personne à qui parler, rien à récolter ici." }, a.DrainMessages());
@@ -169,7 +187,8 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(1, saved.Character.Story.Trust["npc.odile"]);
 
         // Reprise : la partie continue là où elle en était (nouvelle session, même mission).
-        AdventureSession again = New();
+        AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        again.Advance(0.05);
         Assert.Equal(new[] { "Partie reprise." }, again.DrainMessages());
         Assert.Equal(Assert.Single(a.Journal()).Step, Assert.Single(again.Journal()).Step);
     }
@@ -229,7 +248,7 @@ public class Lot128AdventureTests : IDisposable
     [Fact]
     public void Boire_sans_objet_de_soin()
     {
-        AdventureSession a = New();
+        AdventureSession a = Started();   // sous-lot V1.9.6 : une nouvelle partie a deux potions (l'ouverture)
         a.DrainMessages();
         Assert.False(a.Drink());
         Assert.Equal(new[] { "Aucun objet de soin emporté." }, a.DrainMessages());
@@ -238,7 +257,7 @@ public class Lot128AdventureTests : IDisposable
     [Fact]
     public void Equipement_refuse_avec_un_message_traduit()
     {
-        AdventureSession a = New();
+        AdventureSession a = Started();   // sous-lot V1.9.6 : une nouvelle partie a deux potions à la première place du sac
         a.DrainMessages();
         Assert.Equal(InventoryRefusal.NothingThere, a.Equip(0));
         Assert.Equal(InventoryRefusal.NothingThere, a.Unequip("ring_1"));

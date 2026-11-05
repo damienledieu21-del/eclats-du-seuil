@@ -165,6 +165,10 @@ namespace EdS.Runtime
         /// <summary>Zone de départ, celle de l'histoire et des métiers (ses PNJ, ses lieux, ses nœuds et ses ateliers).</summary>
         public const string ZoneId = "zone.vallons";
 
+        /// <summary>Sous-lot V1.9.6 : potions de soin d'un nouveau personnage (l'étape « boire » de l'ouverture).</summary>
+        public const string OpeningPotion = "item.potion_de_soin";
+        public const int OpeningPotions = 2;
+
         /// <summary>Intérieurs : distance d'une porte pour la passer (provisoire).</summary>
         public static readonly Fixed DoorRange = Fixed.FromInt(2);
 
@@ -228,9 +232,20 @@ namespace EdS.Runtime
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
             // Sous-lot V1.2 : un nouveau personnage porte son équipement de départ (l'Éclat du Seuil ; pour le Bastion, l'épée et l'écu).
-            SavedCharacter Fresh() => Inventory.Outfit(PlayerCharacters.Create(PlayerId, PlayerClass, progression), items);
-            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh());
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh());
+            // Sous-lot V1.9.6 : il commence l'ouverture (le réveil, tutoriel), avec deux potions de soin pour son étape « boire » (emportées dès
+            // la première session) ; une partie déjà commencée n'y est jamais renvoyée. Relecture indépendante de la PR #94 : seulement pour
+            // une vraie nouvelle partie (aucune sauvegarde) ; une sauvegarde valide sans personnage (monde déjà joué) reçoit un personnage
+            // neuf sans l'ouverture ni les potions.
+            SavedCharacter Fresh(bool opening)
+            {
+                SavedCharacter c = PlayerCharacters.Create(PlayerId, PlayerClass, progression);
+                if (opening && story.HasQuest(StoryConversions.Opening))
+                    c = c.WithStory(StoryConversions.NewGame(story))
+                        .WithItems(new[] { new ItemStack(OpeningPotion, OpeningPotions) }, new Dictionary<string, string>(StringComparer.Ordinal));
+                return Inventory.Outfit(c, items);
+            }
+            WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh(true));
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false));
             // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
             // plus reprend à l'entrée de la zone de départ.
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
@@ -238,6 +253,8 @@ namespace EdS.Runtime
             _lastSafePoint = _zone.Entry.Id;
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
+            // Sous-lot V1.9.6 : une nouvelle partie dit d'emblée la première étape de l'ouverture (le réveil).
+            if (read.Save is null && World.Narrative?.CurrentStep(StoryConversions.Opening) is QuestStep first) Say("text.ui.quest_step", Text(first.Text));
             AnnounceLearned();
         }
 
@@ -449,8 +466,14 @@ namespace EdS.Runtime
                     Say("text.ui.quest_done", Text(_story.Quest(e.Id).Name));
                     break;
                 case StoryEventKind.Discovered:
-                    Say("text.ui.discovered", Text(_story.Discoveries.First(d => d.Id == e.Id).Text));
+                {
+                    // Revue Codex de la PR #94 : une découverte dont le texte est le repli d'une scène à jouer (le souvenir de la Rupture) ne
+                    // s'affiche pas à l'annonce : la scène est proposée, et ce texte ne vient qu'en la passant. Elle reste au journal.
+                    string text = _story.Discoveries.First(d => d.Id == e.Id).Text;
+                    if (World.PendingScene is Scene pending && pending.Text == text) break;
+                    Say("text.ui.discovered", Text(text));
                     break;
+                }
                 case StoryEventKind.TrustChanged:
                     Say(e.Value > 0 ? "text.ui.trust_up" : "text.ui.trust_down", Text(_story.Npc(e.Id).Name));
                     break;
@@ -606,7 +629,7 @@ namespace EdS.Runtime
         /// vivant (la plus proche), ou null.
         /// </summary>
         public Door? DoorInReach => Me is GroundVector p && !World.IsDefeated
-            ? _zone.Doors.Where(d => Within(p, d.Position, DoorRange)).OrderBy(d => Distance2(p, d.Position)).ThenBy(d => d.Id, StringComparer.Ordinal).FirstOrDefault()
+            ? VisibleDoors.Where(d => Within(p, d.Position, DoorRange)).OrderBy(d => Distance2(p, d.Position)).ThenBy(d => d.Id, StringComparer.Ordinal).FirstOrDefault()
             : null;
 
         /// <summary>
@@ -636,6 +659,21 @@ namespace EdS.Runtime
                 Say("text.ui.guild.door_rank", RankName(rank));
                 return false;
             }
+            // Sous-lot V1.9.6 : la sortie d'une scène la quitte (texte du retour si elle est finie).
+            if (InScene) return LeaveScene();
+            return Pass(door);
+        }
+
+        /// <summary>Portes qui se montrent et se passent à pied : toutes, sauf celles qui mènent à une scène (sous-lot V1.9.6).</summary>
+        private IEnumerable<Door> VisibleDoors => _zone.Doors.Where(d => _story.SceneIn(d.To) is null);
+
+        /// <summary>
+        /// Passe <paramref name="door"/> (sans contrôle de portée) : la partie est sauvegardée dans la zone où elle mène, puis une session de
+        /// cette zone s'ouvre à la porte qui ramène ici. Faux, sans rien changer, si la sauvegarde échoue.
+        /// </summary>
+        private bool Pass(Door door)
+        {
+            string from = _zone.Id;
             ZoneDefinition target = _zones.First(z => z.Id == door.To);
             WorldSave here = World.Save();
             var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
@@ -656,8 +694,78 @@ namespace EdS.Runtime
             // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
             _lastSafePoint = target.SafePoints.OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
             Commit(next);
-            Say("text.ui.door_entered", target.Name);
+            // Sous-lot V1.9.6 : entrer dans une scène ou en sortir ne s'annonce pas comme une porte.
+            if (_story.SceneIn(target.Id) is null && _story.SceneIn(from) is null) Say("text.ui.door_entered", target.Name);
             AnnounceLearned();
+            return true;
+        }
+
+        // --- Scènes jouées (sous-lot V1.9.6) ------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Scène à jouer (le souvenir de la Rupture, après la meute), quand on est dehors ; null sinon. L'interface la propose : la jouer
+        /// (<see cref="EnterScene"/>) ou la passer (<see cref="SkipScene"/> : le texte de repli s'affiche).
+        /// </summary>
+        public Scene? PendingScene => World.InStoryZone ? World.PendingScene : null;
+
+        /// <summary>Scène qu'on joue en ce moment (la zone en cours est la sienne), ou null.</summary>
+        public Scene? CurrentScene => _story.SceneIn(_zone.Id);
+
+        public bool InScene => CurrentScene != null;
+
+        /// <summary>Nom à l'écran du personnage pendant la scène (« Galeran »), ou null hors d'une scène.</summary>
+        public string? SceneActor => CurrentScene is Scene s ? Text(s.Actor) : null;
+
+        /// <summary>La scène en cours est finie (son fait de fin appris : le chef de la scène vaincu) : l'interface peut la quitter (<see cref="LeaveScene"/>).</summary>
+        public bool SceneFinished => CurrentScene is Scene s && World.Narrative?.Knows(s.End) == true;
+
+        /// <summary>
+        /// Entre dans la scène à jouer : comme une porte (sauvegarde dans la zone de la scène, PV pleins), sans être à côté. Refusé, sans rien
+        /// changer, s'il n'y a pas de scène à jouer, pendant un dialogue, après une défaite ou avec un ennemi vivant à moins de
+        /// <see cref="RestSafety"/> (message « porte bloquée »).
+        /// </summary>
+        public bool EnterScene()
+        {
+            if (!(PendingScene is Scene scene)) return false;
+            if (World.IsDefeated || Dialogue != null || MustContinue || CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any())
+            {
+                Say("text.ui.door_blocked");
+                return false;
+            }
+            Door door = _zone.Doors.First(d => d.To == scene.Zone);
+            return Pass(door);
+        }
+
+        /// <summary>
+        /// Passe la scène à jouer, dehors ou pendant qu'on la joue : son fait de fin est appris (comme jouée), son texte de repli s'affiche ;
+        /// pendant la scène, on la quitte aussitôt. Faux s'il n'y a rien à passer.
+        /// </summary>
+        public bool SkipScene()
+        {
+            Scene? scene = CurrentScene ?? PendingScene;
+            if (scene is null || World.Narrative is null || World.Narrative.Knows(scene.End)) return false;
+            // Revue Codex de la PR #94 : pendant la scène, on en sort d'abord ; si la sortie échoue (sauvegarde impossible), rien n'a changé
+            // et l'on peut réessayer. Le fait de fin est appris ensuite, dehors (sauvegardé par la sauvegarde automatique suivante).
+            if (InScene && !LeaveScene(quiet: true)) return false;
+            if (!World.SkipScene(scene.Id)) return false;
+            _dirty = true;
+            Say("text.ui.discovered", Text(scene.Text));
+            return true;
+        }
+
+        /// <summary>
+        /// Quitte la scène en cours par sa sortie (même pendant un combat : le souvenir s'arrête), vers l'endroit d'où l'on y est entré ; le
+        /// texte du retour s'affiche si elle est finie (sinon elle reste à jouer). Faux hors d'une scène ou si la sauvegarde échoue.
+        /// </summary>
+        public bool LeaveScene() => LeaveScene(quiet: false);
+
+        private bool LeaveScene(bool quiet)
+        {
+            if (!(CurrentScene is Scene scene)) return false;
+            bool done = World.Narrative?.Knows(scene.End) == true;
+            Door exit = _zone.Doors.First(d => d.To == ZoneId);
+            if (!Pass(exit)) return false;
+            if (done && !quiet) Say("text.ui.discovered", Text(scene.Back));
             return true;
         }
 
@@ -668,7 +776,7 @@ namespace EdS.Runtime
         public string CurrentZone => _zone.Id;
 
         /// <summary>Intérieurs : portes de la zone en cours (nom de ce qu'il y a derrière), pour les montrer.</summary>
-        public IReadOnlyList<WorldMarker> Doors() => _zone.Doors.Select(d => new WorldMarker(d.Id, d.Name, d.Position)).ToList();
+        public IReadOnlyList<WorldMarker> Doors() => VisibleDoors.Select(d => new WorldMarker(d.Id, d.Name, d.Position)).ToList();
 
         /// <summary>Dialogue ouvert (clés de texte), ou null.</summary>
         public DialogueView? Dialogue => World.Narrative?.Open;
@@ -1172,7 +1280,7 @@ namespace EdS.Runtime
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
                         Npcs().Select(n => (n.X, n.Z)).Concat(SafePoints().Select(s => (s.X, s.Z))).Concat(Workshops().Select(w => (w.X, w.Z)))
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
-                        _zone.Doors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
+                        VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         _zone.Indoor ? Npcs().Select(n => (n.Id, n.X, n.Z)) : null);
                     _mapSession = Opened;

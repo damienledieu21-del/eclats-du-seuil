@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1409,6 +1409,14 @@
         "icon": "quete",
         "type": "material",
         "rarity": "common",
+        "stack": 5
+      },
+      {
+        "id": "item.croc_de_croc_gris",
+        "name": "Croc de Croc-Gris",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "rare",
         "stack": 5
       },
       {

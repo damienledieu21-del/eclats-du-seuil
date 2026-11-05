@@ -696,6 +696,42 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Sous-lot V1.9.6 (tutoriel de l'ouverture) : le joueur a fait <paramref name="count"/> fois le geste <paramref name="action"/>
+        /// (<c>strike</c>, <c>guard</c>, <c>parry</c>, <c>drink</c>) : compte pour les objectifs « practice » en cours de ce geste, jusqu'au
+        /// nombre demandé.
+        /// </summary>
+        internal void Practiced(string action, long count)
+        {
+            if (count <= 0) return;
+            foreach (string id in _quests.Keys.ToArray())
+                if (CurrentStep(id) is { Objective: { Kind: ObjectiveKind.Practice } o } && o.Id == action && _quests[id].Progress < o.Value)
+                {
+                    _quests[id] = (_quests[id].Step, Math.Min(o.Value, checked(_quests[id].Progress + count)));
+                    Revision++;
+                }
+        }
+
+        /// <summary>Relecture de la PR #94 : une quête en cours demande encore le geste <paramref name="action"/> à son étape actuelle.</summary>
+        internal bool WantsPractice(string action) =>
+            _quests.Any(q => CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Practice } o } && o.Id == action && q.Value.Progress < o.Value);
+
+        /// <summary>
+        /// Sous-lot V1.9.6 : la scène à jouer (son fait de début appris, pas encore celui de fin), la première dans l'ordre du fichier ; null
+        /// s'il n'y en a pas.
+        /// </summary>
+        public Scene? PendingScene => _book.Scenes.FirstOrDefault(sc => _facts.Contains(sc.Start) && !_facts.Contains(sc.End));
+
+        /// <summary>
+        /// Sous-lot V1.9.6 : passe la scène <paramref name="scene"/> à jouer : son fait de fin est appris (annoncé au tick suivant), comme si
+        /// elle avait été jouée. Faux, sans rien changer, si elle n'est pas à jouer.
+        /// </summary>
+        internal bool SkipScene(string scene)
+        {
+            if (!(PendingScene is Scene s) || s.Id != scene) return false;
+            return Learn(s.End, _queued);
+        }
+
+        /// <summary>
         /// Réponses de Damien du 31 octobre 2026 : une quête en cours (étape actuelle) ou un contrat en cours demande encore de vaincre cette
         /// créature (<c>defeat</c>) ou une créature de sa famille (<c>defeatFamily</c>). Une créature rare de la nuit vient alors à coup sûr.
         /// </summary>
@@ -1052,6 +1088,7 @@ namespace EdS.World
             ObjectiveKind.DefeatFamily => progress >= o.Value,
             ObjectiveKind.GuildRank => _card != null && _card.Rank >= GuildRanks.IndexOf(o.Id),   // sous-lot V1.7
             ObjectiveKind.CraftQuality => _world.Inventory.CountAtLeast(o.Id, o.Quality) >= o.Value,   // sous-lot V1.9.3b
+            ObjectiveKind.Practice => progress >= o.Value,   // sous-lot V1.9.6
             _ => _world.IsEquipped(o.Id),
         };
 

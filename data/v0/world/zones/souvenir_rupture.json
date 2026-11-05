@@ -1,0 +1,62 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "id": "zone.souvenir_rupture",
+    "name": "Souvenir de la Rupture",
+    "scenario": "zones/souvenir_rupture",
+    "indoor": true,
+    "entry": "galerie",
+    "safePoints": [
+      {
+        "id": "galerie",
+        "name": "Galerie du Seuil",
+        "position": [
+          0,
+          -6
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_du_seuil",
+        "name": "Salle du Seuil",
+        "min": [
+          -4.5,
+          -8
+        ],
+        "max": [
+          4.5,
+          8
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "chiefs": [
+      {
+        "id": "echo_de_la_rupture",
+        "scenario": "zones/souvenir_rupture_echo",
+        "forms": [
+          "echo_de_la_rupture"
+        ],
+        "fact": "fact.ch1.souvenir.vecu",
+        "rewards": []
+      }
+    ],
+    "doors": [
+      {
+        "id": "reveil",
+        "name": "Le pré des loups",
+        "position": [
+          0,
+          -7.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "souvenir"
+      }
+    ]
+  }
+}

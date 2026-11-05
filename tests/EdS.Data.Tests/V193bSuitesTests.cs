@@ -66,7 +66,7 @@ public class V193bSuitesTests
     public void Histoire_en_schema_5_l_apprentie_finit_par_une_epee_de_qualite_superieure()
     {
         StoryBook book = Story.Value;
-        Assert.Equal((5, 5), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));
+        Assert.Equal((6, 6), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V1.9.6 : schéma 6 (practice, scènes), craftQuality inchangé
         Assert.Equal(new[] { "colombe", "minerai", "forger", "montrer", "epee" }, book.Quest(Apprentie).Steps.Select(s => s.Id));
         Objective o = book.Quest(Apprentie).Steps[^1].Objective;
         Assert.Equal((ObjectiveKind.CraftQuality, "item.epee_de_garde", ItemQuality.Superior, 1L), (o.Kind, o.Id, o.Quality, o.Value));
@@ -94,14 +94,23 @@ public class V193bSuitesTests
         StoryLoadResult refused = ReadStory(root);
         Assert.False(refused.IsValid);
         Assert.Contains(refused.Report.Errors, e => e.Path == path + ".kind" && e.Code == ValidationCode.InvalidValue);
-        // Sans lui (formes du schéma 4), il est lu.
+        // Sans lui (formes du schéma 4), il est lu ; sous-lot V1.9.6 : sans l'ouverture ni la scène non plus (formes du schéma 6).
         o["kind"] = "collect";
         o.Remove("quality");
+        root["data"]!.AsObject().Remove("scenes");
+        JsonArray quests = root["data"]!["quests"]!.AsArray();
+        quests.RemoveAt(quests.Count - 1);
+        foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
+        {
+            JsonArray entries = dialogue!["entries"]!.AsArray();
+            for (int i = entries.Count - 1; i >= 0; i--)
+                if (entries[i]!.ToJsonString().Contains("quest.reveil")) entries.RemoveAt(i);
+        }
         StoryLoadResult read = ReadStory(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(4, read.Story!.SchemaVersion);
         // Plus ancien ou plus récent : refusé.
-        foreach (int version in new[] { 3, 6 })
+        foreach (int version in new[] { 3, 7 })
         {
             root["schemaVersion"] = version;
             Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);

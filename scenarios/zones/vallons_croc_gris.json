@@ -1,0 +1,147 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 15,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 119,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -24,
+          20
+        ],
+        "max": [
+          4,
+          40
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "croc_gris",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 300,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1300,
+        "intervalMs": 1700,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 15,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 26,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 1.5
+          }
+        ],
+        "position": [
+          1,
+          37
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.8,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 8,
+          "pack": false
+        }
+      },
+      {
+        "id": "croc_gris_enrage",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 200,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1300,
+        "intervalMs": 1400,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.2
+          },
+          {
+            "id": "bond",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 9,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "hurlement",
+            "rawDamage": 21,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          2,
+          35
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.8,
+        "speed": 4.5,
+        "behavior": {
+          "maxRange": 0.8,
+          "aggroRange": 8,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}
