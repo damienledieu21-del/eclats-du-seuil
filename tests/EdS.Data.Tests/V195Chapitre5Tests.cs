@@ -504,6 +504,9 @@ public class V195Chapitre5Tests
             new[] { "discovery.manifestation", "discovery.gardien" });
         SavedStory converted = StoryConversions.Upgrade(Story.Value, old);
         Assert.Equal((QuestProgress.Done, QuestProgress.Done), (converted.Quests[Ch1].Step, converted.Quests[Main].Step));
+        // Relecture de la PR #93 : le fait vers la suite est appris, comme à la fin du chapitre 5 ; relire la partie convertie ne change rien.
+        Assert.Contains(StoryConversions.NextFact, converted.Facts);
+        Assert.Same(converted, StoryConversions.Upgrade(Story.Value, converted));
         SavedCharacter hero = Hero(20, old, 300);
         WorldSession w = Open(Odile, hero);
         Assert.Empty(Ticks(w, 5));

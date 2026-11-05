@@ -24,6 +24,12 @@ namespace EdS.World
     {
         public const string Chapter1 = "quest.traces_sous_le_moulin", Chapter5 = "quest.le_seuil", FinishedFact = "fact.odile.retour";
 
+        /// <summary>
+        /// Relecture de la PR #93 : fait posé par la dernière étape du chapitre 5, vers la suite de l'histoire. Une partie convertie au
+        /// chapitre 5 fini l'apprend aussi, pour qu'un chapitre suivant qui l'exige ne la bloque pas (aucune récompense n'y est liée).
+        /// </summary>
+        public const string NextFact = "fact.ch5.vers_la_suite";
+
         /// <summary>Étapes passées du chapitre 1 au chapitre 5, dans leur ordre.</summary>
         public static readonly IReadOnlyList<string> MovedSteps = Array.AsReadOnly(new[] { "manifestation", "rodeur", "chef", "retour" });
 
@@ -49,7 +55,10 @@ namespace EdS.World
             quests[Chapter5] = moved;
             // Une quête suivie au chapitre 1 était en cours, donc à l'une des étapes passées : le suivi passe au chapitre 5.
             string? tracked = saved.Tracked == Chapter1 ? (moved.IsDone ? null : Chapter5) : saved.Tracked;
-            return new SavedStory(saved.Facts, quests, saved.Trust, saved.Discoveries, tracked, saved.Guild, saved.Hunted);
+            IEnumerable<string> facts = moved.IsDone && !saved.Facts.Contains(NextFact)
+                ? saved.Facts.Append(NextFact).OrderBy(f => f, StringComparer.Ordinal).ToArray()
+                : saved.Facts;
+            return new SavedStory(facts, quests, saved.Trust, saved.Discoveries, tracked, saved.Guild, saved.Hunted);
         }
     }
 }
