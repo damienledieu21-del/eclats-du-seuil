@@ -104,7 +104,7 @@ public class V18cBonusTests : IDisposable
     public void Catalogue_en_version_7_objets_de_bonus_livres()
     {
         ItemCatalog items = ItemsCatalog;
-        Assert.Equal((7, 7, "0.9.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
+        Assert.Equal((7, 7, "0.10.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal(new[] { 30, 45, 60 }, items.BoonMinutes);
         // La qualité décide de la durée : 30, 45, 60 minutes de jeu, en ticks logiques de 50 ms.
         Assert.Equal((36_000, 54_000, 72_000), (items.BoonTicks(items.Item(Vigueur)), items.BoonTicks(items.Item(Garde)), items.BoonTicks(items.Item(Seuil))));

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 5,
   "kind": "story",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -218,6 +218,33 @@
           -18
         ],
         "dialogue": "dialogue.veuve"
+      },
+      {
+        "id": "npc.thibaut",
+        "name": "text.ch4.npc.thibaut.name",
+        "position": [
+          118,
+          56
+        ],
+        "dialogue": "dialogue.thibaut"
+      },
+      {
+        "id": "npc.capitaine",
+        "name": "text.ch4.npc.capitaine.name",
+        "position": [
+          -2,
+          -8
+        ],
+        "dialogue": "dialogue.capitaine"
+      },
+      {
+        "id": "npc.deserteur",
+        "name": "text.ch4.npc.deserteur.name",
+        "position": [
+          68,
+          -30
+        ],
+        "dialogue": "dialogue.deserteur"
       }
     ],
     "dialogues": [
@@ -998,6 +1025,26 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.prime_du_borgne",
+                "step": "bertille"
+              }
+            ],
+            "node": "ch4_borgne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.prime_du_borgne",
+                "step": "oeil"
+              }
+            ],
+            "node": "ch4_oeil"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.cloches_de_la_chapelle",
                 "step": "corde"
               },
@@ -1045,6 +1092,23 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch4_borgne",
+            "text": "text.ch4.epiciere.borgne",
+            "choices": [
+              {
+                "text": "text.ch4.epiciere.borgne.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_oeil",
+            "text": "text.ch4.epiciere.oeil",
+            "choices": []
           }
         ]
       },
@@ -1673,6 +1737,26 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.tour_et_camp",
+                "step": "rosalie"
+              }
+            ],
+            "node": "ch4_rosalie"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_et_camp",
+                "step": "reponse"
+              }
+            ],
+            "node": "ch4_reponse"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.derniere_lanterne"
               }
@@ -1691,6 +1775,15 @@
               }
             ],
             "node": "ch2_lanterne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.tour_et_camp"
+              }
+            ],
+            "node": "ch4_apres"
           },
           {
             "conditions": [
@@ -1777,12 +1870,107 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch4_rosalie",
+            "text": "text.ch4.habitant.rosalie",
+            "choices": [
+              {
+                "text": "text.ch4.habitant.rosalie.promettre",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.rosalie.promesse"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.rosalie.promesse"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.habitant",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch4.habitant.rosalie.prudent",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_reponse",
+            "text": "text.ch4.habitant.reponse",
+            "choices": []
+          },
+          {
+            "id": "ch4_apres",
+            "text": "text.ch4.habitant.apres",
+            "choices": [
+              {
+                "text": "text.ch2.habitant.lanterne_apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
       {
         "id": "dialogue.maitresse_guilde",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.prime_du_borgne"
+              }
+            ],
+            "node": "ch4_prime_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.prime_du_borgne",
+                "step": "prime"
+              }
+            ],
+            "node": "ch4_prime_fin"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.prime_du_borgne"
+              }
+            ],
+            "node": "ch4_prime_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.prime_du_borgne"
+              },
+              {
+                "if": "guildRankAtLeast",
+                "id": "g"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 15
+              }
+            ],
+            "node": "ch4_prime"
+          },
           {
             "conditions": [
               {
@@ -1889,6 +2077,70 @@
               },
               {
                 "text": "text.ch2.maitresse.albe.signer",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_prime",
+            "text": "text.ch4.maitresse.prime",
+            "choices": [
+              {
+                "text": "text.ch4.maitresse.prime.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.prime_du_borgne"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch4.maitresse.prime.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.maitresse.membre.rangs",
+                "conditions": [],
+                "effects": [],
+                "next": "guilde"
+              }
+            ]
+          },
+          {
+            "id": "ch4_prime_attente",
+            "text": "text.ch4.maitresse.prime_attente",
+            "choices": [
+              {
+                "text": "text.maitresse.membre.rangs",
+                "conditions": [],
+                "effects": [],
+                "next": "guilde"
+              },
+              {
+                "text": "text.maitresse.membre.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_prime_fin",
+            "text": "text.ch4.maitresse.prime_fin",
+            "choices": []
+          },
+          {
+            "id": "ch4_prime_recompense",
+            "text": "text.ch4.maitresse.prime_recompense",
+            "choices": [
+              {
+                "text": "text.maitresse.membre.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -2716,10 +2968,57 @@
                   {
                     "if": "questDone",
                     "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
                   }
                 ],
                 "effects": [],
                 "next": "ch3_apres"
+              },
+              {
+                "text": "text.ch4.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "next": "ch4_ancienne"
+              },
+              {
+                "text": "text.ch4.albe.vers_sans_repos",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.tour_et_camp",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_sans_repos"
+              },
+              {
+                "text": "text.ch4.albe.vers_apres",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_apres"
               },
               {
                 "text": "text.ch3.albe.lettre.montrer",
@@ -2763,6 +3062,38 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "next": "ch4_ancienne"
+              },
+              {
+                "text": "text.ch4.albe.vers_sans_repos",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.tour_et_camp",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_sans_repos"
               }
             ]
           },
@@ -2775,6 +3106,38 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "next": "ch4_ancienne"
+              },
+              {
+                "text": "text.ch4.albe.vers_sans_repos",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.tour_et_camp",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_sans_repos"
               },
               {
                 "text": "text.ch3.albe.lettre.montrer",
@@ -2807,6 +3170,38 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "next": "ch4_ancienne"
+              },
+              {
+                "text": "text.ch4.albe.vers_sans_repos",
+                "conditions": [
+                  {
+                    "if": "questAt",
+                    "id": "quest.tour_et_camp",
+                    "step": "albe"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_sans_repos"
               }
             ]
           },
@@ -2870,6 +3265,112 @@
           {
             "id": "ch3_apres",
             "text": "text.ch3.albe.apres",
+            "choices": [
+              {
+                "text": "text.ch4.albe.ancienne",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.champs_et_hameau"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_et_camp"
+                  }
+                ],
+                "next": "ch4_ancienne"
+              },
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_ancienne",
+            "text": "text.ch4.albe.ancienne_texte",
+            "choices": [
+              {
+                "text": "text.ch4.albe.ancienne.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_sans_repos",
+            "text": "text.ch4.albe.sans_repos",
+            "choices": [
+              {
+                "text": "text.ch4.albe.sans_repos.epargne",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.albe.sans_repos"
+                  }
+                ],
+                "next": "ch4_livre"
+              },
+              {
+                "text": "text.ch4.albe.sans_repos.abattu",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.abattu"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.albe.sans_repos"
+                  }
+                ],
+                "next": "ch4_abattu"
+              }
+            ]
+          },
+          {
+            "id": "ch4_livre",
+            "text": "text.ch4.albe.epargne",
+            "choices": [
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_abattu",
+            "text": "text.ch4.albe.abattu",
+            "choices": [
+              {
+                "text": "text.ch3.albe.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_apres",
+            "text": "text.ch4.albe.apres",
             "choices": [
               {
                 "text": "text.ch3.albe.apres.partir",
@@ -2952,6 +3453,86 @@
               }
             ],
             "node": "ch3_ancienne"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.marchand_qui_en_savait_trop",
+                "step": "retour"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.carnet.cache"
+              }
+            ],
+            "node": "ch4_carnet_cache"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.marchand_qui_en_savait_trop",
+                "step": "retour"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.carnet.lu"
+              }
+            ],
+            "node": "ch4_carnet_lu"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.marchand_qui_en_savait_trop"
+              }
+            ],
+            "node": "ch4_carnet_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bourg_d_aube"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.marchand_qui_en_savait_trop"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 16
+              }
+            ],
+            "node": "ch4_carnet"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.marchand_qui_en_savait_trop"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.carnet.cache"
+              }
+            ],
+            "node": "ch4_apres_cache"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.marchand_qui_en_savait_trop"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.carnet.lu"
+              }
+            ],
+            "node": "ch4_apres_lu"
           },
           {
             "conditions": [
@@ -3151,6 +3732,128 @@
                     "id": "quest.champs_et_hameau"
                   }
                 ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_carnet",
+            "text": "text.ch4.renart.carnet",
+            "choices": [
+              {
+                "text": "text.ch4.renart.carnet.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.marchand_qui_en_savait_trop"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.carnet_de_renart",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch4.renart.carnet.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_carnet_attente",
+            "text": "text.ch4.renart.carnet_attente",
+            "choices": [
+              {
+                "text": "text.ch2.renart.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_carnet_cache",
+            "text": "text.ch4.renart.carnet_cache",
+            "choices": [
+              {
+                "text": "text.ch4.renart.carnet_cache.merci",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.carnet.fini"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.fini"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 400
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_carnet_lu",
+            "text": "text.ch4.renart.carnet_lu",
+            "choices": [
+              {
+                "text": "text.ch2.renart.aveu_fin.partir",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.carnet.fini"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.fini"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.renart",
+                    "value": -1
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_apres_cache",
+            "text": "text.ch4.renart.apres_cache",
+            "choices": [
+              {
+                "text": "text.ch2.renart.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_apres_lu",
+            "text": "text.ch4.renart.apres_lu",
+            "choices": [
+              {
+                "text": "text.ch2.renart.apres.partir",
+                "conditions": [],
+                "effects": [],
                 "next": null
               }
             ]
@@ -3482,6 +4185,21 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.marchand_qui_en_savait_trop",
+                "step": "josse"
+              },
+              {
+                "if": "hasItem",
+                "id": "item.carnet_de_renart",
+                "value": 1
+              }
+            ],
+            "node": "ch4_carnet"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.champs_et_hameau"
               }
@@ -3585,12 +4303,105 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "ch4_carnet",
+            "text": "text.ch4.doyen.carnet",
+            "choices": [
+              {
+                "text": "text.ch4.doyen.carnet.cacher",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.carnet.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.carnet_de_renart",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.cache"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.decide"
+                  }
+                ],
+                "next": "ch4_carnet_cache"
+              },
+              {
+                "text": "text.ch4.doyen.carnet.lire",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.carnet.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.lu"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.carnet.decide"
+                  },
+                  {
+                    "do": "discover",
+                    "id": "discovery.carnet_de_renart"
+                  }
+                ],
+                "next": "ch4_carnet_lu"
+              }
+            ]
+          },
+          {
+            "id": "ch4_carnet_cache",
+            "text": "text.ch4.doyen.carnet_cache",
+            "choices": []
+          },
+          {
+            "id": "ch4_carnet_lu",
+            "text": "text.ch4.doyen.carnet_lu",
+            "choices": []
           }
         ]
       },
       {
         "id": "dialogue.herboriste_hameau",
         "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.deserteur",
+                "step": "retour"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.aide"
+              }
+            ],
+            "node": "ch4_deserteur_aide"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.deserteur",
+                "step": "retour"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.livre"
+              }
+            ],
+            "node": "ch4_deserteur_livre"
+          },
           {
             "conditions": [
               {
@@ -3621,6 +4432,54 @@
               }
             ],
             "node": "ch3_potions"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.deserteur"
+              }
+            ],
+            "node": "ch4_deserteur_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.deserteur"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 15
+              }
+            ],
+            "node": "ch4_deserteur"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.deserteur"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.aide"
+              }
+            ],
+            "node": "ch4_deserteur_apres_aide"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.deserteur"
+              },
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.livre"
+              }
+            ],
+            "node": "ch4_deserteur_apres_livre"
           },
           {
             "conditions": [
@@ -3662,22 +4521,117 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.ch4.herboriste_hameau.vers_deserteur",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.deserteur"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 15
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_deserteur"
               }
             ]
           },
           {
             "id": "ch3_potions_attente",
             "text": "text.ch3.herboriste_hameau.potions_attente",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch4.herboriste_hameau.vers_deserteur",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.deserteur"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 15
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_deserteur"
+              }
+            ]
           },
           {
             "id": "ch3_potions_recompense",
             "text": "text.ch3.herboriste_hameau.potions_recompense",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.ch4.herboriste_hameau.vers_deserteur",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.deserteur"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 15
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_deserteur"
+              }
+            ]
           },
           {
             "id": "ch3_apres",
             "text": "text.ch3.herboriste_hameau.apres",
+            "choices": []
+          },
+          {
+            "id": "ch4_deserteur",
+            "text": "text.ch4.herboriste_hameau.deserteur",
+            "choices": [
+              {
+                "text": "text.ch4.herboriste_hameau.deserteur.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.deserteur"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch3.herboriste_hameau.potions.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_deserteur_attente",
+            "text": "text.ch4.herboriste_hameau.deserteur_attente",
+            "choices": []
+          },
+          {
+            "id": "ch4_deserteur_aide",
+            "text": "text.ch4.herboriste_hameau.deserteur_aide",
+            "choices": []
+          },
+          {
+            "id": "ch4_deserteur_livre",
+            "text": "text.ch4.herboriste_hameau.deserteur_livre",
+            "choices": []
+          },
+          {
+            "id": "ch4_deserteur_apres_aide",
+            "text": "text.ch4.herboriste_hameau.deserteur_apres_aide",
+            "choices": []
+          },
+          {
+            "id": "ch4_deserteur_apres_livre",
+            "text": "text.ch4.herboriste_hameau.deserteur_apres_livre",
             "choices": []
           }
         ]
@@ -4119,6 +5073,607 @@
           {
             "id": "ch3_apres_gardee",
             "text": "text.ch3.veuve.apres_gardee",
+            "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.thibaut",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_et_camp",
+                "step": "choix"
+              }
+            ],
+            "node": "ch4_chef"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_et_camp",
+                "step": "lettre"
+              }
+            ],
+            "node": "ch4_lettre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch4.chef.livre"
+              }
+            ],
+            "node": "ch4_apres_livre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch4.chef.abattu"
+              }
+            ],
+            "node": "ch4_apres_abattu"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.tour_et_camp"
+              }
+            ],
+            "node": "ch4_camp"
+          },
+          {
+            "conditions": [],
+            "node": "ch4_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch4_accueil",
+            "text": "text.ch4.thibaut.accueil",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_camp",
+            "text": "text.ch4.thibaut.camp",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.camp.chef",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.thibaut.camp.mere",
+                "conditions": [],
+                "effects": [],
+                "next": "ch4_mere"
+              }
+            ]
+          },
+          {
+            "id": "ch4_mere",
+            "text": "text.ch4.thibaut.mere",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.mere.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_chef",
+            "text": "text.ch4.thibaut.chef",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.chef.epargner",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.chef.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.chef.livre"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.chef.decide"
+                  }
+                ],
+                "next": "ch4_livre"
+              },
+              {
+                "text": "text.ch4.thibaut.chef.tirer",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.chef.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.chef.abattu"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.chef.decide"
+                  }
+                ],
+                "next": "ch4_abattu"
+              }
+            ]
+          },
+          {
+            "id": "ch4_livre",
+            "text": "text.ch4.thibaut.epargne",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.epargne.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_abattu",
+            "text": "text.ch4.thibaut.abattu",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.abattu.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_lettre",
+            "text": "text.ch4.thibaut.lettre",
+            "choices": []
+          },
+          {
+            "id": "ch4_apres_livre",
+            "text": "text.ch4.thibaut.apres_epargne",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_apres_abattu",
+            "text": "text.ch4.thibaut.apres_abattu",
+            "choices": [
+              {
+                "text": "text.ch4.thibaut.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.capitaine",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questReward",
+                "id": "quest.tour_silencieuse"
+              }
+            ],
+            "node": "ch4_tour_recompense"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_silencieuse",
+                "step": "rapport"
+              }
+            ],
+            "node": "ch4_tour_rapport"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_silencieuse",
+                "step": "cor"
+              }
+            ],
+            "node": "ch4_tour_cor"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.tour_silencieuse",
+                "step": "livrer"
+              }
+            ],
+            "node": "ch4_tour_livrer"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.tour_silencieuse"
+              }
+            ],
+            "node": "ch4_tour_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.tour_silencieuse"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 16
+              }
+            ],
+            "node": "ch4_tour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch4.chef.livre"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.ch4.capitaine.chef"
+              }
+            ],
+            "node": "ch4_chef_livre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.tour_silencieuse"
+              }
+            ],
+            "node": "ch4_tour_apres"
+          },
+          {
+            "conditions": [],
+            "node": "ch4_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch4_accueil",
+            "text": "text.ch4.capitaine.accueil",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_tour",
+            "text": "text.ch4.capitaine.tour",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.tour.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.tour_silencieuse"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.tour.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_tour_attente",
+            "text": "text.ch4.capitaine.tour_attente",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_tour_rapport",
+            "text": "text.ch4.capitaine.tour_rapport",
+            "choices": []
+          },
+          {
+            "id": "ch4_tour_cor",
+            "text": "text.ch4.capitaine.tour_cor",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.tour_cor.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_tour_livrer",
+            "text": "text.ch4.capitaine.tour_livrer",
+            "choices": []
+          },
+          {
+            "id": "ch4_tour_recompense",
+            "text": "text.ch4.capitaine.tour_recompense",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_tour_apres",
+            "text": "text.ch4.capitaine.tour_apres",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_chef_livre",
+            "text": "text.ch4.capitaine.chef_livre",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.chef_livre.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.capitaine.chef"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.deserteur",
+        "entries": [
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.deserteur",
+                "step": "colin"
+              }
+            ],
+            "node": "ch4_colin"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.deserteur",
+                "step": "choix"
+              }
+            ],
+            "node": "ch4_colin_choix"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.aide"
+              }
+            ],
+            "node": "ch4_colin_apres_aide"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.ch4.deserteur.livre"
+              }
+            ],
+            "node": "ch4_colin_apres_livre"
+          },
+          {
+            "conditions": [],
+            "node": "ch4_accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "ch4_accueil",
+            "text": "text.ch4.deserteur.accueil",
+            "choices": [
+              {
+                "text": "text.ch4.deserteur.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "ch4_colin",
+            "text": "text.ch4.deserteur.colin",
+            "choices": [
+              {
+                "text": "text.ch4.deserteur.colin.quoi",
+                "conditions": [],
+                "effects": [],
+                "next": "ch4_colin_choix"
+              }
+            ]
+          },
+          {
+            "id": "ch4_colin_choix",
+            "text": "text.ch4.deserteur.choix",
+            "choices": [
+              {
+                "text": "text.ch4.deserteur.choix.aider",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.deserteur.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.deserteur.aide"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.deserteur.decide"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.herboriste_hameau",
+                    "value": 1
+                  }
+                ],
+                "next": "ch4_colin_aide"
+              },
+              {
+                "text": "text.ch4.deserteur.choix.livrer",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch4.deserteur.decide"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.deserteur.livre"
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch4.deserteur.decide"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.herboriste_hameau",
+                    "value": -1
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.capitaine",
+                    "value": 1
+                  }
+                ],
+                "next": "ch4_colin_livre"
+              }
+            ]
+          },
+          {
+            "id": "ch4_colin_aide",
+            "text": "text.ch4.deserteur.aide",
+            "choices": []
+          },
+          {
+            "id": "ch4_colin_livre",
+            "text": "text.ch4.deserteur.livre",
+            "choices": []
+          },
+          {
+            "id": "ch4_colin_apres_aide",
+            "text": "text.ch4.deserteur.apres_aide",
+            "choices": []
+          },
+          {
+            "id": "ch4_colin_apres_livre",
+            "text": "text.ch4.deserteur.apres_livre",
             "choices": []
           }
         ]
@@ -5334,6 +6889,10 @@
               {
                 "do": "giveXp",
                 "value": 120
+              },
+              {
+                "do": "startQuest",
+                "id": "quest.tour_et_camp"
               }
             ]
           }
@@ -5666,6 +7225,475 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.tour_et_camp",
+        "name": "text.ch4.quest.tour.name",
+        "category": "main",
+        "steps": [
+          {
+            "id": "rosalie",
+            "text": "text.ch4.quest.tour.rosalie",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.habitant"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.lettre_de_rosalie",
+                "value": 1
+              },
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "tour",
+            "text": "text.ch4.quest.tour.tour",
+            "objective": {
+              "kind": "reach",
+              "id": "tour_de_guet"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.tour_vide"
+              },
+              {
+                "do": "setFact",
+                "id": "fact.ch4.tour.vue"
+              },
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "id": "camp",
+            "text": "text.ch4.quest.tour.camp",
+            "objective": {
+              "kind": "reach",
+              "id": "camp_des_rodeurs"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "id": "chef",
+            "text": "text.ch4.quest.tour.chef",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.chef_des_bandits.vaincu"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.mots_du_chef"
+              },
+              {
+                "do": "giveXp",
+                "value": 400
+              },
+              {
+                "do": "giveMoney",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "id": "choix",
+            "text": "text.ch4.quest.tour.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch4.chef.decide"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "id": "lettre",
+            "text": "text.ch4.quest.tour.lettre",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.lettre_de_rosalie",
+              "value": 1,
+              "npc": "npc.thibaut"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.lettre_de_thibaut",
+                "value": 1
+              },
+              {
+                "do": "giveXp",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.ch4.quest.tour.reponse",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.lettre_de_thibaut",
+              "value": 1,
+              "npc": "npc.habitant"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.habitant",
+                "value": 1
+              },
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "id": "albe",
+            "text": "text.ch4.quest.tour.albe",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch4.albe.sans_repos"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.ch4.vers_le_seuil"
+              },
+              {
+                "do": "giveXp",
+                "value": 200
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 600
+          },
+          {
+            "do": "giveMoney",
+            "value": 1000
+          }
+        ]
+      },
+      {
+        "id": "quest.tour_silencieuse",
+        "name": "text.ch4.quest.silence.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 16
+          }
+        ],
+        "steps": [
+          {
+            "id": "escalier",
+            "text": "text.ch4.quest.silence.escalier",
+            "objective": {
+              "kind": "defeat",
+              "id": "archer2",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "guetteur",
+            "text": "text.ch4.quest.silence.guetteur",
+            "objective": {
+              "kind": "defeat",
+              "id": "archer3",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "id": "registre",
+            "text": "text.ch4.quest.silence.registre",
+            "objective": {
+              "kind": "reach",
+              "id": "tour_de_guet"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.registre_de_garde",
+                "value": 1
+              },
+              {
+                "do": "discover",
+                "id": "discovery.registre_de_garde"
+              }
+            ]
+          },
+          {
+            "id": "rapport",
+            "text": "text.ch4.quest.silence.rapport",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.registre_de_garde",
+              "value": 1,
+              "npc": "npc.capitaine"
+            },
+            "effects": [
+              {
+                "do": "giveXp",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "id": "cor",
+            "text": "text.ch4.quest.silence.cor",
+            "objective": {
+              "kind": "defeat",
+              "id": "bandit_epee2",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.cor_de_la_tour",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "livrer",
+            "text": "text.ch4.quest.silence.livrer",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.cor_de_la_tour",
+              "value": 1,
+              "npc": "npc.capitaine"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.capitaine",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 450
+          },
+          {
+            "do": "giveMoney",
+            "value": 400
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.plastron_de_la_tour",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.lame_de_la_tour",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.deserteur",
+        "name": "text.ch4.quest.deserteur.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 15
+          }
+        ],
+        "steps": [
+          {
+            "id": "colin",
+            "text": "text.ch4.quest.deserteur.colin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.deserteur"
+            },
+            "effects": []
+          },
+          {
+            "id": "choix",
+            "text": "text.ch4.quest.deserteur.choix",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch4.deserteur.decide"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch4.quest.deserteur.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.herboriste_hameau"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 450
+          },
+          {
+            "do": "giveMoney",
+            "value": 150
+          }
+        ]
+      },
+      {
+        "id": "quest.prime_du_borgne",
+        "name": "text.ch4.quest.prime.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 15
+          }
+        ],
+        "steps": [
+          {
+            "id": "bertille",
+            "text": "text.ch4.quest.prime.bertille",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.epiciere"
+            },
+            "effects": []
+          },
+          {
+            "id": "borgne",
+            "text": "text.ch4.quest.prime.borgne",
+            "objective": {
+              "kind": "defeat",
+              "id": "grand_borgne",
+              "value": 1
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.oeil_de_verre",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "oeil",
+            "text": "text.ch4.quest.prime.oeil",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.oeil_de_verre",
+              "value": 1,
+              "npc": "npc.epiciere"
+            },
+            "effects": [
+              {
+                "do": "trust",
+                "id": "npc.epiciere",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "prime",
+            "text": "text.ch4.quest.prime.prime",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.maitresse_guilde"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 500
+          },
+          {
+            "do": "giveMoney",
+            "value": 300
+          }
+        ],
+        "rewardChoice": [
+          {
+            "do": "giveItem",
+            "id": "item.gantelets_de_la_tour",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.brassards_de_garde",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.marchand_qui_en_savait_trop",
+        "name": "text.ch4.quest.carnet.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 16
+          }
+        ],
+        "steps": [
+          {
+            "id": "josse",
+            "text": "text.ch4.quest.carnet.josse",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch4.carnet.decide"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.ch4.quest.carnet.retour",
+            "objective": {
+              "kind": "fact",
+              "id": "fact.ch4.carnet.fini"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 450
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -5704,6 +7732,22 @@
       {
         "id": "discovery.ordre_d_ambre",
         "text": "text.ch3.discovery.ordre"
+      },
+      {
+        "id": "discovery.tour_vide",
+        "text": "text.ch4.discovery.tour"
+      },
+      {
+        "id": "discovery.mots_du_chef",
+        "text": "text.ch4.discovery.chef"
+      },
+      {
+        "id": "discovery.registre_de_garde",
+        "text": "text.ch4.discovery.registre"
+      },
+      {
+        "id": "discovery.carnet_de_renart",
+        "text": "text.ch4.discovery.carnet"
       }
     ]
   }

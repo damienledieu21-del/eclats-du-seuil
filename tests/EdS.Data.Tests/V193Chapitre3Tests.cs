@@ -132,7 +132,7 @@ public class V193Chapitre3Tests
     public void Chapitre_3_et_ses_quetes_livres()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Hameau, Sangliers, Lettre, Vergers, Potions, Pont }, book.Quests.Skip(16).Select(q => q.Id));   // ajoutées à la fin
+        Assert.Equal(new[] { Hameau, Sangliers, Lettre, Vergers, Potions, Pont }, book.Quests.Skip(16).Take(6).Select(q => q.Id));   // ajoutées à la fin (puis celles du chapitre 4)
         Assert.Equal(QuestCategory.Main, book.Quest(Hameau).Category);
         Assert.Equal(new[] { "hameau", "defendre", "piste", "lac", "retour", "albe" }, book.Quest(Hameau).Steps.Select(s => s.Id));
         Assert.Empty(book.Quest(Hameau).Requires);   // commencée par la fin du chapitre 2 : jamais fermée
@@ -157,7 +157,7 @@ public class V193Chapitre3Tests
         Assert.Equal(new[] { "hameau", "lac", "vergers" }, new[] { "bandit_epee3", "bandit_epee4", "bandit_arc3" }
             .Select(c => zone.Places.Last(pl => Inside(pl, zone.PopulationOf(c)!.Template.Placement!.Position)).Id));
         Assert.All(new[] { "bandit_epee3", "bandit_epee4", "bandit_arc3" }, c => Assert.Equal("bandit", zone.PopulationOf(c)!.Family));
-        Assert.Equal(new[] { "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve" }, book.Npcs.Skip(18).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve" }, book.Npcs.Skip(18).Take(5).Select(n => n.Id));
         // Les trois objets de quête ne se vendent pas.
         foreach (string item in new[] { "item.sac_d_eclats", "item.lettre_mouillee", "item.sac_de_pommes" })
         {

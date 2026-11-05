@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.9.0-provisoire",
+  "contentVersion": "0.10.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1470,6 +1470,54 @@
       {
         "id": "item.sac_de_pommes",
         "name": "Sac de pommes",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.lettre_de_rosalie",
+        "name": "Lettre de Rosalie",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.lettre_de_thibaut",
+        "name": "Lettre de Thibaut",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.registre_de_garde",
+        "name": "Registre de la garde",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.cor_de_la_tour",
+        "name": "Cor de la tour",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.oeil_de_verre",
+        "name": "Œil de verre",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "common",
+        "stack": 1
+      },
+      {
+        "id": "item.carnet_de_renart",
+        "name": "Carnet de Renart",
         "icon": "quete",
         "type": "material",
         "rarity": "common",

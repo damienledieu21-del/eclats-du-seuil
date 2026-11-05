@@ -66,6 +66,13 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 | Ordre scellé | Billet fermé de la cire d'ambre, trouvé sur le bandit du lac : « le passeur d'Ambre paiera comme convenu » (chapitre 3). |
 | Passeur d'Ambre | Celui qui prend les éclats volés au lac pour l'acheteur de Havre d'Ambre ; ni lui ni l'acheteur n'ont encore de nom. |
 | Lune noire | La nuit sans lune : le moment où le passeur vient au lac (chapitre 3). |
+| Sans-Repos | Celui pour qui les Rassembleurs prennent les éclats : « celui que la Rupture n'a pas laissé mourir, et qui ne dort plus depuis trois cents ans » (Sœur Albe, d'après les vieux livres de l'Ordre). Nommé par le chef des bandits (chapitre 4) ; rien de plus n'est dit. **Ce n'est pas « Celui-qui-Attend »**, la voix de l'Envers du chapitre 5 (réponse de Damien du 5 novembre 2026). |
+| Mâchefer | Surnom d'Ancel, le chef des bandits du camp des rôdeurs : le mâchefer, c'est la crasse qui reste au fond de la forge. |
+| Les Borgne | Deux frères bandits, borgnes tous les deux : le cadet (la prime du tableau de la guilde) et l'aîné, le Grand Borgne, revenu au camp avec sa bande (la quête de Bertille). |
+| Tour de guet | La tour de la garde des Vallons, au nord du gué ; son feu du signal et son cor appellent la garde. |
+| Cor de la tour | Le cor qui appelle toute la garde des Vallons ; volé par les bandits (chapitre 4). |
+| Registre de la garde | Le cahier où les gardes de la tour notent chaque nuit ; la dernière ligne est de Thibaut (chapitre 4). |
+| Carnet de Renart | Ses ventes, à qui, pour combien ; un seul acheteur sans nom, « le Rassembleur » (chapitre 4). |
 
 **Jurons** : « Par la Fêlure ! » (tous), « Lune fendue ! » (Valloniens), « Pierre et ancêtres ! » (Roche-nés), « Que l'Aube me garde ! » (Ordre de l'Aube, et les gens pieux), « Cendres et serments ! » (Cendrés), « Par mes reflets ! » (Lacustres).
 
@@ -82,10 +89,13 @@ Sujet 51 de la [feuille de route](FEUILLE_DE_ROUTE.md) (« Écriture et dialogue
 - « Il manque toujours deux sous, avec lui. » (Mathurin : Renart ne paie jamais tout à fait.)
 - « La pierre se souvient. » (maître Josse : ni le bien ni le mal ne s'oublient au hameau.)
 - « C'est comme la soupe, en plus amer. » (Aubine, de tout ce qui soigne.)
+- « Un garde note tout, même sa mort, s'il en a le temps. » (le capitaine Bérenger.)
+- « Tout se revend, mon petit. Même un œil. » (Bertille, après le Borgne.)
+- « Je suis le chien, pas le loup. » (le chef des bandits : il obéit aux Rassembleurs.)
 
 ## 3. Fiches des PNJ importants (Vallons, chapitre 1)
 
-Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; chapitre 3 : section 3 ter ; le chef des bandits viendra avec le chapitre 4).
+Pour chaque PNJ : façon de parler, ce qu'il veut, ce qu'il cache, tics de langage. Les PNJ des chapitres suivants reçoivent leur fiche avec leur chapitre (chapitre 2 : section 3 bis ; chapitre 3 : section 3 ter ; chapitre 4 : section 3 quater).
 
 **Odile, la meunière** (Vallonienne, la cinquantaine). Parle simplement, avec chaleur et un brin d'inquiétude ; tutoie le joueur. *Veut* : que son moulin tourne et que les nuits redeviennent calmes. *Cache* : la porte du moulin a été condamnée l'hiver dernier parce qu'elle y entendait des voix. *Tics* : parle de sa roue comme d'une personne ; « Que l'aube te garde. »
 
@@ -119,12 +129,24 @@ PNJ déjà là, repris au chapitre 2 : **Mathurin**, l'aubergiste (tutoie, plain
 
 **Achille, le fermier des champs** (Vallonien, la cinquantaine, à la ferme des champs). Tutoie, grogne, peu causant, parle du temps et de la moisson ; le joueur le vouvoie. *Veut* : rentrer ses blés. *Cache* : l'hiver dernier, il a nourri les bandits contre la paix de ses champs. *Tics* : « Après la pluie, le blé » ; « ces bêtes-là » ; « je ne suis pas causant ».
 
-**Garance, la fermière des vergers** (Vallonienne, la vingtaine). Tutoie, vive, en colère et drôle ; le joueur la tutoie. *Veut* : ses pommes, et que ses pommiers refleurissent. *Cache* : elle a reconnu, parmi les pillards, un garçon du bourg. *Tics* : appelle ses pommiers par leur nom (la Grosse Marthe, la Petite Jeanne) ; « jusqu'à la troisième génération ».
+**Garance, la fermière des vergers** (Vallonienne, la vingtaine). Tutoie, vive, en colère et drôle ; le joueur la tutoie. *Veut* : ses pommes, et que ses pommiers refleurissent. *Cache* : elle a reconnu, parmi les pillards, un garçon du bourg, Colin (chapitre 4, « Le déserteur »). *Tics* : appelle ses pommiers par leur nom (la Grosse Marthe, la Petite Jeanne) ; « jusqu'à la troisième génération ».
 
 **Mahaut, une veuve du bourg** (Vallonienne, la cinquantaine, au sud de la place du bourg). Tutoie, voix douce, phrases lentes, jamais larmoyante ; le joueur la vouvoie. *Veut* : la dernière lettre de son mari, **Guérin**, carrier noyé au lac l'été dernier. *Cache* : elle savait que Guérin rapportait plus d'argent qu'un carrier n'en gagne. *Tics* : regarde la route du lac ; « Mon Guérin… ». Se souvient du choix du joueur (la lettre rendue ou gardée).
 
 PNJ déjà là, repris au chapitre 3 : **Renart** (son étal : il vend un peu plus cher que les autres et rachète moins bien, « un prix d'ami ») ; **Sœur Albe** (lit l'ordre scellé ; son secret reste gardé) ; **Odile** et **Gaspard** (le pont de la grand-rue).
 
+## 3 quater. Fiches des PNJ de la tour et du camp (chapitre 4, sous-lot V1.9.4)
+
+**Thibaut, garde de la tour** (Vallonien, la vingtaine, fils de Rosalie). Tutoie, phrases courtes et sèches, la colère tenue en laisse ; le joueur le tutoie. *Veut* : venger Hubert et Basile, ses compagnons tués à la tour, puis rallumer le feu du signal. *Cache* : il n'a pas écrit à sa mère parce qu'il voyait passer, la nuit, des charrettes vers l'est, et qu'on lui avait ordonné de se taire. *Tics* : « Baisse-toi ! » ; écrit penché, comme son père ; parle de la tour comme d'un poste, jamais d'une maison. Se souvient du choix fait pour Mâchefer (deux mots d'après) ; il tient l'arc, mais ne juge pas : c'est le joueur qui livre ou qui frappe.
+
+**Le capitaine Bérenger, de la garde** (Vallonien, la cinquantaine, près du gué ; le capitaine d'Aldric). Tutoie, bourru, humour noir de vieux soldat ; le joueur le vouvoie. *Veut* : sa tour, son cor et ses hommes. *Cache* : c'est lui qui a donné l'ordre de « noter, ne pas sortir » quand les charrettes passaient (piste pour plus tard). *Tics* : « Un garde note tout » ; compte ses hommes sur ses doigts ; parle d'Aldric comme d'« un garçon qui perd ses flèches ».
+
+**Colin, un bandit blessé** (Vallonien, dix-sept ans environ, garçon du bourg, caché dans la remise d'Aubine). Tutoie, gouaille de gamin qui a peur, s'excuse en plaisantant ; le joueur le tutoie. *Veut* : partir loin, vers le sud, là où personne ne connaît sa tête. *Cache* : il a suivi la bande « pour deux sous et un manteau » et a vu ce qu'elle a fait aux gardes de la tour. C'est **le garçon du bourg que Garance a reconnu** parmi les pillards des vergers (choix de Damien du 5 novembre 2026) : elle n'a rien dit, et il ne sait pas pourquoi. *Tics* : « C'est presque vrai » ; parle de sa jambe comme d'une personne qui n'est pas d'accord.
+
+**Ancel, dit Mâchefer, le chef des bandits** (la quarantaine, ancien charbonnier ; au fond du camp des rôdeurs, combat de chef existant ; nom proposé par Claude, choix de Damien du 5 novembre 2026 : le chef a un nom). Ne parle qu'à sa défaite (découverte « Les mots du chef ») et dans le dialogue de Thibaut. Brutal, ricaneur, plus effrayé par ses maîtres que par la mort. *Veut* : survivre. *Sait* : les Rassembleurs paient, il ramasse (les éclats, et ceux qui ont vu passer leurs charrettes) ; le Sans-Repos « a faim ». *Tics* : « Je ne suis que le chien » ; rit en crachant. Le choix du joueur (livré au capitaine ou tué de sa main) reste dans les faits pour la vague 3.
+
+PNJ déjà là, repris au chapitre 4 : **Rosalie** (sa lettre à Thibaut, puis la réponse ; « Garde la lanterne allumée ») ; **Sœur Albe** (le Sans-Repos, d'après les vieux livres de l'Ordre ; son secret reste gardé) ; **Aubine** (son secret devient « Le déserteur ») ; **Dame Brunehilde** et **Bertille** (la prime du Grand Borgne ; l'œil de verre) ; **Renart** (son carnet, cohérent avec sa fiche : il a peur d'avoir trop parlé, et il paie « presque toujours ») ; **maître Josse** (« La pierre se souvient, mais elle ne parle pas »).
+
 ## 4. Clés des textes
 
-Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`).
+Les nouveaux textes du chapitre 1 ont des clés `text.ch1.…` dans `data/v0/world/texts/fr.json` (par exemple `text.ch1.gaspard.souvenir`) ; les textes repris de la mission gardent leurs clés (`text.odile.accueil`, `text.quest.traces.pre`…). Dans le document de relecture, l'identifiant entre crochets est la clé sans `text.` (`[ch1.gaspard.souvenir]`). Les textes du chapitre 2 ont des clés `text.ch2.…` (par exemple `text.ch2.albe.eclat`) ; dans le document de relecture du chapitre 2, la clé sans `text.` est entre accents graves (`ch2.albe.eclat`). De même pour le chapitre 3 (`text.ch3.…`, par exemple `ch3.doyen.raid`) ; l'accueil de l'étal de Renart suit les autres marchands (`text.merchant.renart.greeting`). Le chapitre 4 a des clés `text.ch4.…` (par exemple `ch4.thibaut.chef`).

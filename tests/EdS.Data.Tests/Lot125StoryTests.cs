@@ -232,11 +232,11 @@ public class Lot125StoryTests
         // V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste.
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant",
                 "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste", "npc.boulanger", "npc.archer_garde", "npc.albe", "npc.renart", "npc.lison", "npc.apprentie",
-                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve" },   // V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3
+                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur" },   // V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4
             book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
         Assert.Equal(new[] { "enquete", "traces", "passage", "pre", "meute", "gaspard", "manifestation", "rodeur", "chef", "retour" }, mission.Steps.Select(s => s.Id));   // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1)
-        Assert.Equal(9, book.Discoveries.Count);   // V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
+        Assert.Equal(13, book.Discoveries.Count);   // V1.9.4 : la tour vide, les mots du chef, le registre de la garde, le carnet de Renart ; V1.9.3 : l'ordre scellé ; V1.7 : les archives de la guilde ; V1.9.1 : le souvenir de la Rupture ; V1.9.2 : le sceau d'ambre, la voix du puits
         // Chaque texte livré sert, et chaque clé employée existe (le validateur le garantit dans ce sens).
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
         Assert.True(Schema("story.schema.json").IsValid(JsonDocument.Parse(File.ReadAllText(StoryPath)).RootElement));

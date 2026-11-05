@@ -398,7 +398,9 @@ public class V193bSuitesTests
         Assert.Equal(new[] { "ch2_accueil", "ch2_en_cours", "ch2_apres", "ch2_herbes_attente" },
             albe.Nodes.Where(n => n.Choices.Any(c => c.Next == "ch3_lettre")).Select(n => n.Id));
         // Le mot d'après le chapitre 2 garde ses réponses d'avant, dans l'ordre ; la lettre vient après.
-        Assert.Equal(new[] { "text.ch2.albe.apres.partir", "text.ch3.albe.vers_tour", "text.ch3.albe.lettre.montrer" }, albe.Node("ch2_apres").Choices.Select(c => c.Text));
+        // V1.9.4 : les réponses du chapitre 4 viennent avant la lettre (fusion de main dans la PR #92).
+        Assert.Equal(new[] { "text.ch2.albe.apres.partir", "text.ch3.albe.vers_tour", "text.ch4.albe.ancienne", "text.ch4.albe.vers_sans_repos", "text.ch4.albe.vers_apres",
+            "text.ch3.albe.lettre.montrer" }, albe.Node("ch2_apres").Choices.Select(c => c.Text));
         foreach (string key in new[] { "text.ch2.quest.apprentie.epee", "text.ch2.maelle.apprentie_epee", "text.ch2.apprentie.epee", "text.ch3.albe.lettre",
             "text.ch3.albe.lettre.montrer", "text.ch3.albe.lettre.partir" })
             Assert.True(Texts.Has(key), key);

@@ -125,6 +125,7 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 - La tour qui ne répond plus, le chef des bandits et les Rassembleurs, le premier choix (l'épargner ou non, écrit dans les faits) (niveaux 15 à 20) ; quêtes proposées : « La tour silencieuse », « Le déserteur », « La prime du Borgne », « Le marchand qui en savait trop ».
 - Dépend de V1.9.3.
 - **Relecture de Damien** : chapitre 4.
+- **État** (5 novembre 2026, en PR) : fait ([MONDE.md](MONDE.md#chapitre-4--la-tour-et-le-camp--et-ses-quêtes-sous-lot-v194), [ECRITURE.md](ECRITURE.md)), sans changement de format (histoire, textes et objets seulement ; aucune créature ajoutée) ; le premier choix (épargner le chef des bandits ou non) est écrit dans les faits ; textes et questions à relire.
 
 ### 11. V1.9.5 — Chapitre 5 « Le Seuil » et ses quêtes (M)
 
