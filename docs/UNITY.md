@@ -565,7 +565,7 @@ Ce qui change :
 
 Ce que tu regardes : le personnage bien visible au-dessus du sceau ; la caméra qui répond tout de suite à la souris, sans à-coups ni rotation toute seule ; le zoom ; les réglages de la pause.
 
-Limites : rien n'a encore été essayé en jeu ; la caméra ne butte pas contre les murs (les murs qui cachent le personnage s'effacent, comme avant).
+Limites : rien n'a encore été essayé en jeu ; la caméra ne butte pas contre les murs (les murs qui cachent le personnage s'effacent, comme avant) ; V1.10 : en fondu transparent).
 
 ### Chapitre 1 : l'ouverture et le souvenir jouable (sous-lot V1.9.8, 5 novembre 2026)
 
@@ -592,6 +592,19 @@ PR B du chapitre 1 enrichi ([MONDE.md](MONDE.md#chapitre-1-enrichi--louverture-l
 9. Sur téléphone si possible : la bulle, le halo, les boutons du souvenir au doigt, la fluidité dans le souvenir.
 
 Limites : rien n'a encore été vu à l'écran (seule la compilation est vérifiée, contre les bouchons de l'API Unity) ; les formes de la reine, des Seuillards, de la silhouette et de Galeran sont faites de primitives (pas de modèle) ; l'arme et l'armure de Galeran sont posées sur le modèle du joueur à des hauteurs moyennes (elles peuvent flotter ou s'enfoncer selon le modèle) ; le voile, la brume et le halo demandent le shader des particules d'URP (sans lui, ils ne sont pas dessinés) ; la lune n'est visible que si la caméra regarde vers le fond de la salle ; le chant et le hurlement sont des sons de synthèse simples ; le texte de repli d'un souvenir passé et celui du retour restent à l'écran de 7 à 18 s (aucune touche pour les fermer) ; les trois textes ajoutés (« Un souvenir remonte », « L'Éclat brûle dans ta paume. », « Déjà aguerri ? … ») sont des propositions, dans `texts/fr.json` (clés `text.ui.souvenir.prompt`, `text.ui.souvenir.call`, `text.ui.reveil.aguerri`, textes 0.11.1) ; les autres libellés de l'interface (« Revivre le souvenir (V) », « Passer (X) », « X : passer le souvenir ») restent écrits dans le code, comme les autres libellés d'Unity.
+
+### Essai V1.10 : maisons du bourg agrandies et les 5 défauts de l'essai 10 (5 novembre 2026)
+
+**Liste de vérification à remplir** : [ESSAI_V1.10.md](ESSAI_V1.10.md) (quoi tester, dans quel ordre, une case et une remarque par point). Avant de jouer : menu **Éclats du Seuil → Préparer l'essai de style** (il règle le rendu et la lumière des intérieurs).
+
+- **Maisons du bourg** : les huit emprises passent de 6 à 8 m à 9 à 11 m (au moins 7 × 9 m) : les grandes maisons de Sketchfab (11 à 16 m) y tiennent mieux (écrasées d'un quart au plus) ; deux mètres au moins entre deux bâtiments ; PNJ, portes, haltes et chemins inchangés ([MONDE.md](MONDE.md#les-vallons-en-données-sous-lot-124)).
+- **Intérieur trop sombre** — cause : URP n'éclaire chaque objet que par ses **4** lumières d'appoint les plus fortes ; une pièce en a jusqu'à 7 et son sol et chaque mur sont un seul objet : trois lumières sur sept ne les éclairaient pas ; la lumière d'ambiance des pièces était aussi très basse. Correction : 8 lumières par objet sur ordinateur (réglage du rendu, fait par la préparation), ambiance, exposition et force des lumières des pièces relevées une fois (catalogue, réglages `IndoorAmbient`, `IndoorExposure`, `IndoorLights`, toujours modifiables).
+- **Caméra qui passe dans les poutres** — cause : dans une pièce, la caméra est au-dessus du plafond (8 m du personnage, 22° : 4 à 5 m de haut, poutres à 2,7 m) ; seules les poutres sur la ligne de la tête s'effaçaient, les autres traversaient l'image. Correction : une poutre s'efface en fondu dès que la caméra arrive à sa hauteur, et revient quand la caméra repasse dessous.
+- **Murs qui ne passent pas en fondu** — cause : un décor ne comptait que s'il était entre la caméra et la **tête** ; il s'abaissait (murs) ou disparaissait d'un coup (modèles, toits). Correction : le bas des jambes, le milieu et la tête comptent ; le décor devient **transparent** en un quart de seconde (copie transparente de ses matériaux d'URP), puis redevient plein ; un décor dont le shader ne sait pas être transparent garde l'ancienne coupe.
+- **Tache blanche du feu** — cause : les braises de la cheminée brillaient à 3,5 fois le blanc (et la lueur de la forge à 3,2) : le tonemapping et le halo (bloom) les étalaient en une tache blanche ; s'y ajoutait le halo additif du Particle Pack. Correction : braises à 1,4, et les parties « halo » ou « air qui ondule » du feu du pack ne sont plus dessinées (flammes, braises et étincelles restent).
+- **Fumée noire de la forge** — cause probable : la fumée du Particle Pack est une fumée **éclairée** (passée sur « Particles/Lit » d'URP) ; au-dessus du foyer, sans lumière qui la touche, elle sortait noire. Correction : une fumée faite par le jeu, non éclairée, gris clair, qui monte et s'efface (aussi sur téléphone).
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les causes de la tache blanche et de la fumée sont déduites du code (le Particle Pack n'est pas dans le dépôt) ; la transparence suppose les matériaux d'URP (« Lit ») : les feuillages et les shaders des packs gardent l'ancienne coupe ; les maisons hors du bourg (champs, hameau) ne changent pas.
 
 ## 8. En cas de problème
 
