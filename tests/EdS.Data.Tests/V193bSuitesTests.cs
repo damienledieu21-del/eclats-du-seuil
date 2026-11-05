@@ -335,7 +335,7 @@ public class V193bSuitesTests
         Assert.Equal(TradeRefusal.NotYetOpen, w.CanTrade("merchant.renart"));
         Assert.Equal(TradeRefusal.NotYetOpen, w.Buy("merchant.renart", "item.potion_de_soin"));
         Assert.Equal((1000, 0), (w.Money, w.Inventory.Count("item.potion_de_soin")));
-        Assert.False(Texts.Has("text.ui.trade.notyetopen"));   // relecture : aucun message d'étal fermé, Renart parle comme un autre PNJ
+        Assert.True(Texts.Has("text.ui.trade.notyetopen"));   // chaque motif de refus a son texte ; l'interface ne l'affiche pas : Renart parle comme un autre PNJ
         Say(w, "npc.renart", "ch2_aveu");
         Assert.Contains($"FactLearned {Aveu}", Choose(w, 0, "ch2_aveu_fin"));
         Choose(w, 0);

@@ -547,6 +547,7 @@
       "text.ui.guild.ranktoolow": "Ton rang de guilde est trop bas.",
       "text.ui.guild.locked": "L'épreuve ne peut pas commencer.",
       "text.ui.trade.ranktoolow": "Ton rang de guilde est trop bas pour cette réserve.",
+      "text.ui.trade.notyetopen": "Cet étal n'est pas encore ouvert pour toi.",
       "text.ui.shop.rank": "{0} requis",
       "text.ui.journal.card": "Carte d'aventurier",
       "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…).",
