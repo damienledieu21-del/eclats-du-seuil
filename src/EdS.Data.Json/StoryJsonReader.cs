@@ -221,6 +221,7 @@ namespace EdS.Data.Json
                 ["value"] = (v, p) => { t.Present.Add("value"); t.Value = input.Int64(v, p); },
                 ["step"] = (v, p) => { t.Present.Add("step"); t.Step = input.Text(v, p); },
                 ["npc"] = (v, p) => { t.Present.Add("npc"); t.Npc = input.Text(v, p); },   // sous-lot V1.6 : objectif deliver
+                ["quality"] = (v, p) => { t.Present.Add("quality"); t.Quality = input.Text(v, p); },   // sous-lot V1.9.3b : objectif craftQuality
             }) ? t : null;
         }
     }

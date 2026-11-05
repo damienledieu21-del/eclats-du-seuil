@@ -258,7 +258,7 @@ public class V17GuildeTests : IDisposable
     public void Histoire_en_schema_4_avec_rang_et_points_de_guilde()
     {
         StoryBook book = ShippedStory.Value;
-        Assert.Equal(4, book.SchemaVersion);
+        Assert.Equal(StoryValidator.CurrentSchemaVersion, book.SchemaVersion);   // V1.9.3b : schéma 5, formes du schéma 4 inchangées
         Assert.Equal((ObjectiveKind.GuildRank, "e"), (book.Quest("quest.registres_de_l_archiviste").Steps[0].Objective.Kind, book.Quest("quest.registres_de_l_archiviste").Steps[0].Objective.Id));
         Dialogue archiviste = book.Dialogue("dialogue.archiviste");
         Assert.Contains(archiviste.Nodes.SelectMany(n => n.Choices).SelectMany(c => c.Effects), e => e.Kind == EffectKind.GiveGuildPoints && e.Value == 20);
@@ -296,7 +296,7 @@ public class V17GuildeTests : IDisposable
     public void Marchands_en_schema_2_avec_la_reserve_de_la_guilde()
     {
         MerchantBook book = ShippedMerchants;
-        Assert.Equal(2, book.SchemaVersion);
+        Assert.Equal(MerchantValidator.CurrentSchemaVersion, book.SchemaVersion);   // V1.9.3b : schéma 3, formes du schéma 2 inchangées
         Merchant shop = book.Merchant("merchant.guilde");
         Assert.Equal(("npc.intendant_guilde", "g"), (shop.Npc, shop.Rank));
         Assert.Equal(new string?[] { null, null, "f", "f", "f", "f", "e", "e" }, shop.Offers.Select(o => o.Rank));

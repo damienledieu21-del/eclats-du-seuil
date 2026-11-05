@@ -450,6 +450,25 @@ public class V192Chapitre2Tests
         List<string> end = Ticks(w);
         Assert.Contains("ItemTaken item.ferrure 2", end);
         Assert.Contains("TrustChanged npc.maelle 1", end);
+        // Sous-lot V1.9.3b : la quête finit par une épée de garde de qualité supérieure (objectif craftQuality, petit jeu de la forge).
+        Assert.Contains($"StepCompleted {Apprentie}/montrer", end);
+        Assert.DoesNotContain($"RewardToChoose {Apprentie}", end);
+        Say(w, "npc.maelle", "ch2_apprentie_epee");
+        w = Go(w, Colombe);
+        Say(w, "npc.apprentie", "ch2_epee");
+        w = Go(w, Forge);
+        // Contournement : le minerai de quelques essais est mis dans le sac (la récolte est jouée plus haut).
+        Assert.Equal(InventoryRefusal.None, w.Inventory.Add("item.minerai_de_fer", 21));
+        end = new List<string>();
+        for (int attempt = 0; attempt < 3 && !end.Contains($"RewardToChoose {Apprentie}"); attempt++)
+        {
+            Assert.Equal(CraftRefusal.None, w.Craft("recipe.ferrure", out _));
+            Assert.Equal(CraftRefusal.None, w.Craft("recipe.epee_de_garde", new ForgeStrikes(100, 100, 100), out CraftEvent? sword));
+            List<string> after = Ticks(w);
+            // Une épée de qualité normale ne remplit pas l'étape ; supérieure ou chef-d'œuvre, si.
+            Assert.Equal(sword!.Quality >= ItemQuality.Superior, after.Contains($"StepCompleted {Apprentie}/epee"));
+            end.AddRange(after);
+        }
         Assert.Contains($"RewardToChoose {Apprentie}", end);
         Assert.Equal((xp + 220, money + 150), (w.Character.Xp, w.Money));
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Apprentie, 0, out IReadOnlyList<StoryEvent> chosen));

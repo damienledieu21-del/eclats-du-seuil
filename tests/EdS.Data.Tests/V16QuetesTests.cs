@@ -75,7 +75,7 @@ public class V16QuetesTests
     public void Histoire_livree_en_schema_3()
     {
         StoryBook book = Shipped;
-        Assert.Equal(4, book.SchemaVersion);   // sous-lot V1.7 : schéma 4 (rang et points de guilde), formes du schéma 3 inchangées
+        Assert.Equal(StoryValidator.CurrentSchemaVersion, book.SchemaVersion);   // V1.7 : schéma 4 (guilde) ; V1.9.3b : schéma 5 (craftQuality) ; formes du schéma 3 inchangées
         Assert.Equal(QuestCategory.Main, book.Quest("quest.traces_sous_le_moulin").Category);
         Assert.Equal(QuestCategory.Side, book.Quest(Peaux).Category);
         Assert.Equal(new[] { ("item.potion_de_soin", 3), ("item.remede_de_l_aube", 1) }, book.Quest(Peaux).RewardChoices.Select(c => (c.Item, c.Count)));

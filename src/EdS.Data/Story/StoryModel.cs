@@ -128,6 +128,13 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.7 (histoire en schéma 4) : atteindre un rang de la Guilde des aventuriers (identifiant du rang).</summary>
         GuildRank = 9,
+
+        /// <summary>
+        /// Sous-lot V1.9.3b (histoire en schéma 5) : avoir fabriqué un équipement d'une qualité minimale (<see cref="Objective.Quality"/> :
+        /// supérieure ou chef-d'œuvre) : au moins <see cref="Objective.Value"/> instances de l'objet à cette qualité ou mieux, dans le sac ou
+        /// portées. Seule la forge donne une qualité (butin, marchands et récompenses sont de qualité normale) ; l'objet n'est pas pris.
+        /// </summary>
+        CraftQuality = 10,
     }
 
     public sealed class StoryCondition
@@ -184,12 +191,17 @@ namespace EdS.Data.Story
         /// </summary>
         public IReadOnlyList<StoryEffect> Delivery { get; }
 
-        internal Objective(ObjectiveKind kind, string id, long value, string? npc = null)
+        /// <summary>Sous-lot V1.9.3b : qualité minimale (<see cref="ObjectiveKind.CraftQuality"/>) ; normale pour les autres objectifs.</summary>
+        public EdS.Data.Saves.ItemQuality Quality { get; }
+
+        internal Objective(ObjectiveKind kind, string id, long value, string? npc = null,
+            EdS.Data.Saves.ItemQuality quality = EdS.Data.Saves.ItemQuality.Normal)
         {
             Kind = kind;
             Id = id;
             Value = value;
             Npc = npc;
+            Quality = quality;
             Delivery = Frozen.List(kind == ObjectiveKind.Deliver ? new[] { new StoryEffect(EffectKind.TakeItem, id, value) } : Array.Empty<StoryEffect>(), "delivery");
         }
     }

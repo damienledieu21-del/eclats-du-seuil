@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using EdS.Data.Guild;
 using EdS.Data.Items;
+using EdS.Data.Saves;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
@@ -103,9 +104,21 @@ namespace EdS.Data.Story
         /// <c>equipped</c> ; effet <c>takeMoney</c> ; condition <c>levelAtLeast</c> ; zone facultative d'un PNJ (<c>zone</c> : un intérieur) ;
         /// étape « reward » réservée. Version 4 (sous-lot V1.7) : objectif <c>guildRank</c> (atteindre un rang de la Guilde des aventuriers),
         /// effet <c>giveGuildPoints</c> (points de guilde, de 1 à <see cref="GuildRanks.MaxAward"/>) et condition <c>guildRankAtLeast</c>.
-        /// Une version antérieure est refusée (pré-alpha : aucune migration des fichiers de données).
+        /// Version 5 (sous-lot V1.9.3b) : objectif <c>craftQuality</c> (avoir fabriqué un équipement d'une qualité minimale : <c>id</c> de
+        /// l'objet, qui prend une qualité, <c>quality</c> « superior » ou « masterwork », <c>value</c> nombre d'instances) ; le champ
+        /// <c>quality</c> n'appartient qu'à cet objectif. Un fichier en version 4 (<see cref="PreviousSchemaVersion"/>) reste lu tel quel (il
+        /// ne connaît pas <c>craftQuality</c>) ; une version plus ancienne est refusée (pré-alpha : aucune migration des fichiers de données).
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
+
+        /// <summary>Sous-lot V1.9.3b : version précédente, encore lue (sous-ensemble de la version 5, sans l'objectif <c>craftQuality</c>).</summary>
+        public const int PreviousSchemaVersion = 4;
+
+        /// <summary>Sous-lot V1.9.3b : qualités minimales d'un objectif <c>craftQuality</c> (la qualité normale ne se demande pas).</summary>
+        public static IReadOnlyDictionary<string, ItemQuality> Qualities { get; } = new ReadOnlyDictionary<string, ItemQuality>(new Dictionary<string, ItemQuality>(StringComparer.Ordinal)
+        {
+            ["superior"] = ItemQuality.Superior, ["masterwork"] = ItemQuality.Masterwork,
+        });
 
         /// <summary>Sous-lot V1.6 : niveau le plus haut d'une condition <c>levelAtLeast</c> (les règles en permettent 30 ; marge).</summary>
         public const long MaxLevel = 100;
@@ -144,6 +157,7 @@ namespace EdS.Data.Story
             ["passage"] = ObjectiveKind.Passage, ["talk"] = ObjectiveKind.Talk, ["deliver"] = ObjectiveKind.Deliver,
             ["defeatFamily"] = ObjectiveKind.DefeatFamily, ["equipped"] = ObjectiveKind.Equipped,
             ["guildRank"] = ObjectiveKind.GuildRank,   // sous-lot V1.7
+            ["craftQuality"] = ObjectiveKind.CraftQuality,   // sous-lot V1.9.3b (schéma 5)
         });
 
         /// <summary>Sous-lot V1.6 : catégories de quête (onglets du journal).</summary>
@@ -172,12 +186,16 @@ namespace EdS.Data.Story
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             if (items is null) throw new ArgumentNullException(nameof(items));
             report ??= new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
+            // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
+            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
+            // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
+            if (!(document.SchemaVersion is int schema)) return new StoryLoadResult(report, null);
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
             var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>()) { LevelCap = levelCap };
-            StoryBook? book = c.Run(document.SchemaVersion!.Value, document.ContentVersion);
+            StoryBook? book = c.Run(schema, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
 
@@ -209,8 +227,12 @@ namespace EdS.Data.Story
                 _d = data;
             }
 
+            /// <summary>Sous-lot V1.9.3b : version du fichier lu (l'objectif <c>craftQuality</c> demande la version 5).</summary>
+            private int _schema;
+
             public StoryBook? Run(int schemaVersion, string? contentVersion)
             {
+                _schema = schemaVersion;
                 // Premier passage : identifiants déclarés (les références peuvent viser plus loin dans le fichier).
                 Declare(_d.Npcs, "$.data.npcs", MaxNpcs, n => n?.Id, NpcId, _npcs);
                 Declare(_d.Dialogues, "$.data.dialogues", MaxDialogues, x => x?.Id, DialogueId, _dialogues);
@@ -465,7 +487,7 @@ namespace EdS.Data.Story
                         _r.Add(p + ".if", ValidationCode.UnknownReference, $"condition inconnue « {t.Kind} » ; possibles : {string.Join(", ", Conditions.Keys)}.");
                         continue;
                     }
-                    if (!NoNpc(t, p)) continue;
+                    if (!NoNpc(t, p) || !NoQuality(t, p)) continue;
                     bool ok = kind switch
                     {
                         ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p) && CapWarning(t, p),
@@ -499,7 +521,7 @@ namespace EdS.Data.Story
                         _r.Add(p + ".do", ValidationCode.UnknownReference, $"effet inconnu « {t.Kind} » ; possibles : {string.Join(", ", Effects.Keys)}.");
                         continue;
                     }
-                    if (!NoStep(t, p) || !NoNpc(t, p)) continue;
+                    if (!NoStep(t, p) || !NoNpc(t, p) || !NoQuality(t, p)) continue;
                     bool ok = kind switch
                     {
                         EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p),
@@ -528,6 +550,13 @@ namespace EdS.Data.Story
                 }
                 if (!NoStep(t, path)) return null;
                 if (kind != ObjectiveKind.Deliver && !NoNpc(t, path)) return null;
+                // Sous-lot V1.9.3b : craftQuality est nouveau en version 5 ; seul cet objectif a une qualité.
+                if (kind == ObjectiveKind.CraftQuality && _schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « craftQuality » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return null;
+                }
+                if (kind != ObjectiveKind.CraftQuality && !NoQuality(t, path)) return null;
                 bool ok = kind switch
                 {
                     ObjectiveKind.Talk => Ref(t, path, _npcs, "PNJ") && NoValue(t, path),
@@ -535,13 +564,14 @@ namespace EdS.Data.Story
                     ObjectiveKind.DefeatFamily => Ref(t, path, _zone.Populations.Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Equipped => EquipmentRef(t, path) && NoValue(t, path),
                     ObjectiveKind.GuildRank => RankRef(t, path) && NoValue(t, path),   // sous-lot V1.7
+                    ObjectiveKind.CraftQuality => QualityItemRef(t, path) & QualityRef(t, path) & Value(t, path, 1, MaxCount),   // sous-lot V1.9.3b
                     ObjectiveKind.Fact => Fact(t, path, needed: true) && NoValue(t, path),
                     ObjectiveKind.Reach => Ref(t, path, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, path),
                     ObjectiveKind.Defeat => Ref(t, path, _zone.Populations.Select(x => x.Creature), "population") && Value(t, path, 1, MaxDefeat),
                     ObjectiveKind.Collect => ItemRef(t, path) && Value(t, path, 1, MaxCount),
                     _ => Ref(t, path, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, path),
                 };
-                return ok ? new Objective(kind, t.Id!, t.Value ?? 1, t.Npc) : null;
+                return ok ? new Objective(kind, t.Id!, t.Value ?? 1, t.Npc, kind == ObjectiveKind.CraftQuality ? Qualities[t.Quality!] : ItemQuality.Normal) : null;
             }
 
             private bool Fact(TermData t, string p, bool needed)
@@ -618,6 +648,33 @@ namespace EdS.Data.Story
             {
                 if (!t.Present.Contains("npc") && t.Npc is null) return true;
                 _r.Add(p + ".npc", ValidationCode.InvalidValue, "seul l'objectif deliver nomme un PNJ.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V1.9.3b : seul l'objectif craftQuality a une qualité (<c>quality</c>).</summary>
+            private bool NoQuality(TermData t, string p)
+            {
+                if (!t.Present.Contains("quality") && t.Quality is null) return true;
+                _r.Add(p + ".quality", ValidationCode.InvalidValue, "seul l'objectif craftQuality a une qualité.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V1.9.3b : qualité minimale connue (« superior » ou « masterwork »).</summary>
+            private bool QualityRef(TermData t, string p)
+            {
+                if (t.Quality is null) { TextsValidator.Missing(_r, p + ".quality", $"qualité minimale ({string.Join(", ", Qualities.Keys)})"); return false; }
+                if (Qualities.ContainsKey(t.Quality)) return true;
+                _r.Add(p + ".quality", ValidationCode.UnknownReference, $"qualité inconnue « {t.Quality} » ; possibles : {string.Join(", ", Qualities.Keys)}.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V1.9.3b : un objet qui prend une qualité de fabrication (équipement des places du combat, non nommé).</summary>
+            private bool QualityItemRef(TermData t, string p)
+            {
+                if (!ItemRef(t, p)) return false;
+                _items.TryGetItem(t.Id!, out ItemDefinition item);
+                if (_items.TakesQuality(item)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » ne prend pas de qualité de fabrication (un équipement des places du combat, non nommé).");
                 return false;
             }
 
