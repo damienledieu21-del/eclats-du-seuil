@@ -245,7 +245,7 @@ public class V191Chapitre1Tests
         Assert.Contains($"QuestStarted {Fleches}/fleches", start);
         Assert.Contains("TrustChanged npc.archer_garde -1", start);
         Assert.Empty(Ticks(w));   // quatre flèches : pas assez
-        // Deux de plus, récoltées sur les archers des ruines (le butin est couvert par ses propres tests).
+        // Sac complété à six flèches sans combat : le butin des archers des ruines est couvert par ses propres tests.
         WorldSave save = w.Save();
         SavedCharacter hero = save.Character!;
         hero = hero.WithItems(hero.Inventory.Select(s => s.Item == "item.fleche_brisee" ? new ItemStack(s.Item, 6) : s), hero.EquipmentInstances);

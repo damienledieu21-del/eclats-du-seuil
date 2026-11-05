@@ -424,6 +424,8 @@ Premier sous-lot de contenu de la quête principale « Les Éclats de l'Aube » 
 - **Les flèches perdues** (Aldric, archer de la garde, nouveau PNJ près du gué ; dès le **niveau 4**) : six flèches brisées (`collect`, butin des archers des **ruines**, niveau 6, au lieu de la plaine de l'est du plan, niveau 11 : proposition), livrées à Aldric ; 90 points d'expérience, 1 argent, puis au choix trois potions de soin ou deux pierres à aiguiser. Une réponse moqueuse commence la quête mais coûte la confiance d'Aldric.
 - **Tests** : `V191Chapitre1Tests` (catégorie World) joue le chapitre et chaque quête de bout en bout par un pilote (dialogues, réponses, forge, livraisons, victoires annoncées à l'histoire ; la partie est sauvegardée, relue et rouverte à chaque déplacement).
 
+**Choix de Damien du 5 novembre 2026** (questions de la PR #88) : la fin de l'ancienne mission (rôdeur, Gardien, retour chez Odile) passera au chapitre 5 **au moment du chapitre 5**, avec la conversion des sauvegardes ; « Les flèches perdues » se jouent aux **ruines** (archers de niveau 6) ; « Le pain du matin » est livré à **Odile et Gaspard** ; chaque chapitre est une quête principale à son nom, et « Les Éclats de l'Aube » est le nom de toute l'histoire. Les récompenses restent provisoires (équilibrage).
+
 Limites : le souvenir s'affiche comme une découverte (pas encore de scène jouée) ; le minerai et les flèches du pilote sont dans le sac de départ (récolte et butin ont leurs tests) ; Firmin et Aldric ont la forme simple de villageois ; la miche a l'icône provisoire des quêtes ; le bourg n'a pas encore Sœur Albe (chapitre 2).
 
 ## Sauvegarde
