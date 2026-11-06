@@ -85,10 +85,24 @@ namespace EdS.Data.Zones
         /// </summary>
         public PopulationHours? Hours { get; }
 
+        /// <summary>
+        /// Sous-lot V2.4 (schéma 9, populations selon le temps) : temps où la créature est dans le monde, ou null (par tous les temps). Elle est
+        /// là au début d'une session si c'est son temps (et ses heures), arrive quand il vient, et s'en va au calme quand le temps change, comme
+        /// une créature hors de ses heures.
+        /// </summary>
+        public PopulationWeather? Weather { get; }
+
+        /// <summary>Sous-lot V2.4 : la créature dépend du moment ou du temps (<see cref="Hours"/> ou <see cref="Weather"/>).</summary>
+        public bool Timed => Hours != null || Weather != null;
+
+        /// <summary>Sous-lot V2.4 : signe de son arrivée à ses heures ou par son temps (celui des heures d'abord), ou null.</summary>
+        public string? TimedSign => Hours?.Sign ?? Weather?.Sign;
+
         internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null,
-            int? level = null, PopulationHours? hours = null)
+            int? level = null, PopulationHours? hours = null, PopulationWeather? weather = null)
         {
             Hours = hours;
+            Weather = weather;
             Level = level;
             Night = night;
             Family = family ?? DefaultFamily(creature);
@@ -122,6 +136,29 @@ namespace EdS.Data.Zones
         {
             if (mask <= 0 || mask >= (1 << PhaseNames.Count) - 1) throw new ArgumentOutOfRangeException(nameof(mask));
             Mask = mask;
+            Sign = sign;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.4 (schéma 9) : temps d'une population. Les identifiants sont ceux des conditions <c>weather</c> de l'histoire (temps du monde,
+    /// <c>EdS.World.WorldWeather</c>) ; « rain » vaut toute pluie (pluie fine, averse, orage).
+    /// </summary>
+    public sealed class PopulationWeather
+    {
+        /// <summary>Temps connus, dans l'ordre de <c>EdS.World.WeatherKind</c>, puis « rain ».</summary>
+        public static readonly IReadOnlyList<string> KindNames = Array.AsReadOnly(new[] { "clear", "cloudy", "mist", "drizzle", "shower", "storm", "rain" });
+
+        /// <summary>Temps où la créature est là (de 1 à 5 identifiants, sans doublon).</summary>
+        public IReadOnlyList<string> Kinds { get; }
+
+        /// <summary>Clé du texte annoncé à son arrivée, ou null.</summary>
+        public string? Sign { get; }
+
+        internal PopulationWeather(IReadOnlyList<string> kinds, string? sign)
+        {
+            if (kinds is null || kinds.Count == 0) throw new ArgumentOutOfRangeException(nameof(kinds));
+            Kinds = kinds;
             Sign = sign;
         }
     }
@@ -388,9 +425,9 @@ namespace EdS.Data.Zones
             foreach (CombatantSetup c in Setup.Combatants)
                 if (c is AssailantSetup a) scaled[a.Id] = One(a, bossForms.Contains(a.Id));
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
-                Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone);
+                Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
             var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
-                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours)).ToList();
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
                 ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots);
@@ -433,12 +470,18 @@ namespace EdS.Data.Zones
         /// <c>scaling</c> facultatif (<c>baseLevel</c>, <c>bossBaseLevel</c>, <c>healthPerLevelPercent</c>, <c>damagePerLevelPercent</c>,
         /// <c>easeLevels</c>). Version 8 (sous-lot V2.1, jour et nuit) : <c>hours</c> facultatif sur une population (<c>phases</c> : de 1 à 3
         /// moments parmi « night », « dawn », « day », « dusk » ; <c>sign</c> facultatif ; exclusif de <c>night</c>) et <c>nightSpots</c>
-        /// facultatif (<c>npc</c>, <c>position</c> : où le PNJ se tient la nuit). La version 7 est encore lue (sans ces champs).
+        /// facultatif (<c>npc</c>, <c>position</c> : où le PNJ se tient la nuit). Version 9 (sous-lot V2.4, populations selon le temps) :
+        /// <c>weather</c> facultatif sur une population (<c>kinds</c> : de 1 à 5 temps parmi « clear », « cloudy », « mist », « drizzle »,
+        /// « shower », « storm », « rain » ; <c>sign</c> facultatif ; se combine avec <c>hours</c>, exclusif de <c>night</c>). Les versions 8 et 7
+        /// sont encore lues (sans ces champs).
         /// </summary>
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 9;
 
-        /// <summary>Sous-lot V2.1 : version encore lue (sous-ensemble de la version 8, sans <c>hours</c> ni <c>nightSpots</c>).</summary>
-        public const int PreviousSchemaVersion = 7;
+        /// <summary>Sous-lot V2.4 : version encore lue (sous-ensemble de la version 9, sans <c>weather</c>).</summary>
+        public const int PreviousSchemaVersion = 8;
+
+        /// <summary>Sous-lot V2.1 : plus ancienne version encore lue (sous-ensemble de la version 8, sans <c>hours</c> ni <c>nightSpots</c>).</summary>
+        public const int OldestSchemaVersion = 7;
 
         /// <summary>Sous-lot V2.1 : PNJ qui rentrent chez eux la nuit, au plus, par zone.</summary>
         public const int MaxNightSpots = 64;
@@ -491,11 +534,14 @@ namespace EdS.Data.Zones
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (items is null) throw new ArgumentNullException(nameof(items));
             report ??= new ValidationReport();
-            // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit).
-            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit) ; sous-lot V2.4 : la version 8 aussi
+            // (sans temps de population).
+            int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion ? document.SchemaVersion!.Value
+                : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
-            bool schema8 = document.SchemaVersion >= CurrentSchemaVersion;
+            bool schema8 = document.SchemaVersion >= PreviousSchemaVersion;
+            bool schema9 = document.SchemaVersion >= CurrentSchemaVersion;
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -627,15 +673,23 @@ namespace EdS.Data.Zones
                     PopulationHours? hours = null;
                     if (p.Hours is HoursData h)
                     {
-                        if (!schema8) { report.Add(path + ".hours", ValidationCode.InvalidValue, $"heures d'une population : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        if (!schema8) { report.Add(path + ".hours", ValidationCode.InvalidValue, $"heures d'une population : schéma {PreviousSchemaVersion} attendu."); ok = false; }
                         else if (p.Night != null) { report.Add(path + ".hours", ValidationCode.InvalidValue, "« hours » et « night » ne vont pas ensemble : une créature rare de la nuit a déjà ses heures."); ok = false; }
                         else if ((hours = CheckHours(h, path + ".hours", report)) is null) ok = false;
+                    }
+                    // Sous-lot V2.4 (schéma 9) : temps de la population (loups et échos de la brume, cerfs qui s'abritent de l'averse).
+                    PopulationWeather? weather = null;
+                    if (p.Weather is WeatherData wd)
+                    {
+                        if (!schema9) { report.Add(path + ".weather", ValidationCode.InvalidValue, $"temps d'une population : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        else if (p.Night != null) { report.Add(path + ".weather", ValidationCode.InvalidValue, "« weather » et « night » ne vont pas ensemble : une créature rare de la nuit vient par tous les temps."); ok = false; }
+                        else if ((weather = CheckWeather(wd, path + ".weather", report)) is null) ok = false;
                     }
                     // Relecture de la PR #83 (schéma 7) : niveau propre, de 1 au niveau maximal des règles.
                     int maxPopulationLevel = scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit;
                     if (p.Level is int pl && (pl < 1 || pl > maxPopulationLevel))
                     { report.Add(path + ".level", ValidationCode.OutOfRange, $"niveau propre hors de [1, {maxPopulationLevel}]."); ok = false; }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level, hours));
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level, hours, weather));
                 }
             }
 
@@ -755,7 +809,7 @@ namespace EdS.Data.Zones
             var nightSpots = new List<NightSpot>();
             if (d.NightSpots != null)
             {
-                if (!schema8) report.Add("$.data.nightSpots", ValidationCode.InvalidValue, $"places de nuit des PNJ : schéma {CurrentSchemaVersion} attendu.");
+                if (!schema8) report.Add("$.data.nightSpots", ValidationCode.InvalidValue, $"places de nuit des PNJ : schéma {PreviousSchemaVersion} attendu.");
                 else if (d.NightSpots.Count > MaxNightSpots) report.Add("$.data.nightSpots", ValidationCode.LimitExceeded, $"{d.NightSpots.Count} places de nuit, au plus {MaxNightSpots}.");
                 else
                     for (int i = 0; i < d.NightSpots.Count; i++)
@@ -809,6 +863,43 @@ namespace EdS.Data.Zones
             { report.Add(path + ".sign", ValidationCode.InvalidValue, $"clé de texte « {h.Sign} » mal formée : « text.… »."); ok = false; }
             return ok && mask > 0 && mask < all ? new PopulationHours(mask, h.Sign) : null;
         }
+
+        /// <summary>
+        /// Sous-lot V2.4 (schéma 9) : temps d'une population : de 1 à 5 temps connus, sans doublon (« rain » ne va pas avec une pluie qu'il
+        /// contient déjà : pluie fine, averse, orage) ; signe facultatif. Six temps ou plus reviendraient à « toujours là » : retirer « weather ».
+        /// </summary>
+        private static PopulationWeather? CheckWeather(WeatherData w, string path, ValidationReport report)
+        {
+            bool ok = true;
+            var kinds = new List<string>();
+            if (w.Kinds is null) { Missing(report, path + ".kinds", "temps (« clear », « cloudy », « mist », « drizzle », « shower », « storm », « rain »)"); ok = false; }
+            else if (w.Kinds.Count < 1 || w.Kinds.Count > 5)
+            {
+                report.Add(path + ".kinds", ValidationCode.OutOfRange, $"{w.Kinds.Count} temps, de 1 à 5 attendus (par tous les temps : retirer « weather »).");
+                ok = false;
+            }
+            else
+                for (int i = 0; i < w.Kinds.Count; i++)
+                {
+                    string? kind = w.Kinds[i];
+                    if (kind is null || IndexOf(PopulationWeather.KindNames, kind) < 0)
+                    {
+                        report.Add($"{path}.kinds[{i}]", ValidationCode.InvalidValue,
+                            $"temps « {kind} » inconnu : {string.Join(", ", PopulationWeather.KindNames.Select(k => "« " + k + " »"))}.");
+                        ok = false;
+                    }
+                    else if (kinds.Contains(kind) || (kind == "rain" ? kinds.Any(IsRain) : IsRain(kind) && kinds.Contains("rain")))
+                    { report.Add($"{path}.kinds[{i}]", ValidationCode.DuplicateId, $"temps « {kind} » déjà donné."); ok = false; }
+                    else kinds.Add(kind);
+                }
+            if (ok && kinds.Count == 6 - (kinds.Contains("rain") ? 2 : 0))
+            { report.Add(path + ".kinds", ValidationCode.OutOfRange, "tous les temps : retirer « weather »."); ok = false; }
+            if (w.Sign != null && (w.Sign.Length > 200 || !TextKey.IsMatch(w.Sign)))
+            { report.Add(path + ".sign", ValidationCode.InvalidValue, $"clé de texte « {w.Sign} » mal formée : « text.… »."); ok = false; }
+            return ok ? new PopulationWeather(kinds.AsReadOnly(), w.Sign) : null;
+        }
+
+        private static bool IsRain(string kind) => kind == "drizzle" || kind == "shower" || kind == "storm";
 
         private static int IndexOf(IReadOnlyList<string> list, string value)
         {

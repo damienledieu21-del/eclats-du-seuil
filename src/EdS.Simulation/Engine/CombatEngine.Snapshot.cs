@@ -29,9 +29,10 @@ namespace EdS.Simulation.Engine
         /// <summary>
         /// Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis), 3 depuis
         /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus), 4 depuis le sous-lot V1.8d (bonus d'équipement en vigueur
-        /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>).
+        /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>), 5 depuis le sous-lot V2.4
+        /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires).
         /// </summary>
-        public const int FormatVersion = 4;
+        public const int FormatVersion = 5;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -225,7 +226,8 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
+                .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed);   // sous-lot V2.4 (format 5)
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -1022,6 +1024,8 @@ namespace EdS.Simulation.Engine
                     $"Résonance, charges ou garde de {who} impossibles.");
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
+                // Sous-lot V2.4 : frappé par un personnage, il a été frappé (le contraire ne vaut pas : une bête mordue par une autre).
+                Require(!f.HurtByCharacter || f.Struck, $"{who} frappé par un personnage sans avoir été frappé.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
                 // 16e tour de la PR #33 : un engagé a son tick d'engagement (0 d'emblée sans distance d'engagement, sinon un tick déjà joué).
@@ -1033,6 +1037,7 @@ namespace EdS.Simulation.Engine
                 // (distance actuelle moins les pas que l'un et l'autre ont pu faire depuis).
                 Require(f.EngagedTick is not long engagedTick || f.Behavior?.AggroRange is null || EngagementPossible(f, engagedTick),
                     $"Engagement de {who} au tick {f.EngagedTick} sans cause possible.");
+                Require(!f.Noticed || f.Engaged, $"{who} a remarqué un joueur sans être engagé.");   // relecture de la PR #104
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
@@ -2008,6 +2013,8 @@ namespace EdS.Simulation.Engine
             f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;
+            f.HurtByCharacter = n["hurtByCharacter"].Bool;   // sous-lot V2.4 (format 5)
+            f.Noticed = n["noticed"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

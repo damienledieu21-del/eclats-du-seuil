@@ -59,9 +59,10 @@ namespace EdS.Data.Scenarios
         /// règles). Version 14 (sous-lot V1.3) : <c>equipment</c> facultatif sur un personnage (effets de l'équipement porté : <c>id</c> de la
         /// source « item.… » ou « set.… », <c>modifiers</c> et <c>triggers</c>, bornés par <c>combat.equipment</c> des règles). Version 15 (sous-lot
         /// V1.8d) : action <c>gear</c> (« bonus modifié » d'un personnage) avec son <c>gear</c> (nouveau bonus d'équipement total, mêmes champs et
-        /// bornes que celui d'un personnage). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// bornes que celui d'un personnage). Version 16 (sous-lot V2.4, animaux paisibles) : <c>flee</c> facultatif sur un comportement (bête qui
+        /// fuit, à <c>minRange</c> de sa cible). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 15;
+        public const int CurrentSchemaVersion = 16;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -175,7 +176,7 @@ namespace EdS.Data.Scenarios
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
-                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true) : null));
+                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true, b.Flee ?? false) : null));
                 }
                 else
                 {
@@ -201,7 +202,8 @@ namespace EdS.Data.Scenarios
             var identity = new CombatDataIdentity(data.RulesIdentity, usedClasses.Values.Select(GameData.IdentityOf));
             var rules = data.Rules;
             return new CombatSetup(scenario.Seed!.Value, scenario.DurationMs!.Value, rules.Stats, rules.Damage, rules.Progression, rules.Combat,
-                combatants, commands, identity, space, scenario.Zone ?? false);
+                combatants, commands, identity, space, scenario.Zone ?? false,
+                scenario.Truces?.Select(t => new TeamTruce(t![0]!, t[1]!)));   // sous-lot V2.4 (schéma 16)
         }
 
         private static GroundVector Point(PointData p) => new GroundVector(p.X!.Value, p.Z!.Value);
@@ -249,6 +251,15 @@ namespace EdS.Data.Scenarios
                     CheckSpace(scenario.Space!, root + ".space");
                 Items(scenario.Combatants, root + ".combatants", "liste des combattants", CheckCombatant);
                 Items(scenario.Commands, root + ".commands", "liste des commandes, éventuellement vide", CheckCommand);
+                // Sous-lot V2.4 (schéma 16) : chaque trêve est une paire de deux équipes.
+                if (scenario.Truces != null)
+                    for (int i = 0; i < scenario.Truces.Count; i++)
+                    {
+                        string p = $"{root}.truces[{i}]";
+                        if (!Present(scenario.Truces[i], p, "trêve : paire [équipe, équipe]")) continue;
+                        if (scenario.Truces[i]!.Count != 2) _report.Add(p, ValidationCode.InvalidValue, $"{scenario.Truces[i]!.Count} équipe(s), une trêve en lie deux.");
+                        else for (int k = 0; k < 2; k++) Present(scenario.Truces[i]![k], $"{p}[{k}]", "équipe");
+                    }
             }
 
             private void CheckSpace(SpaceData space, string path)

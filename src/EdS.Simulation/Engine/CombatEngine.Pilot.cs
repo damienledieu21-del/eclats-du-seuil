@@ -88,6 +88,18 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public bool Engaged { get; internal set; }
 
+        /// <summary>
+        /// Sous-lot V2.4 (bêtes qui se battent) : un personnage l'a frappé (impact ou tick de DOT) dans cette vie. Le monde ne compte une
+        /// créature vaincue (expérience, butin, objectifs) que si un personnage l'a frappée.
+        /// </summary>
+        public bool HurtByCharacter { get; internal set; }
+
+        /// <summary>Relecture de la PR #104 : ennemi à comportement qui a remarqué un joueur (il le vise au-delà de sa distance d'engagement).</summary>
+        public bool Noticed { get; internal set; }
+
+        /// <summary>Sous-lot V2.4 : bête qui fuit (cerf, lièvre : comportement <c>flee</c>).</summary>
+        public bool Flees { get; internal set; }
+
         /// <summary>Ses attaques sont bloquées à ce tick (contrôle actif).</summary>
         public bool AttacksBlocked { get; internal set; }
 
@@ -181,6 +193,8 @@ namespace EdS.Simulation.Engine
                 Team = f.Team,
                 Kind = f.Character != null ? CombatantKind.Character : f.Assailant != null ? CombatantKind.Assailant : CombatantKind.Dummy,
                 IsDead = f.IsDead,
+                HurtByCharacter = f.HurtByCharacter,   // sous-lot V2.4
+                Noticed = f.Noticed,
                 IsPresent = !f.Absent,
                 ArrivalTick = f.Setup.ArrivalMs is long arrivalMs ? arrivalMs / _tickMs : (long?)null,
                 HasLeft = f.Presence == Presence.Left,
@@ -244,6 +258,7 @@ namespace EdS.Simulation.Engine
                 view.NextAttack = assailant.Attacks[f.NextAttack];
                 view.CurrentTarget = ViewTarget(f, tick);
                 view.Engaged = f.Behavior is null || f.Engaged;
+                view.Flees = f.Behavior?.Flee == true;
                 view.AttacksBlocked = Blocked(StatusBlocks.AssailantAttacks);
             }
             return view;

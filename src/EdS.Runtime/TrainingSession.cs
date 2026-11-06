@@ -93,7 +93,7 @@ namespace EdS.Runtime
                 ? new CharacterSetup(player.Id, player.Team, player.Class, playerBuild, player.Initiative, player.Placement, player.ArrivalMs, player.Gear, player.Consumables, player.Shield, player.Equipment)
                 : c);
             var setup = new CombatSetup(scenario.Seed, duration, scenario.Stats, scenario.Damage, scenario.Progression, scenario.Combat, combatants,
-                Array.Empty<CombatCommand>(), scenario.Data, scenario.Space, scenario.Zone);
+                Array.Empty<CombatCommand>(), scenario.Data, scenario.Space, scenario.Zone, scenario.Truces);
             IReadOnlyList<RuleViolation> violations = setup.Validate();
             if (violations.Count > 0) throw new CombatSetupException(violations);
             return new TrainingSession(data, setup, player.Id, reference, customName);

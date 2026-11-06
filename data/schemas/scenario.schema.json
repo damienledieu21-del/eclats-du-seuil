@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 15
+      "const": 16
     },
     "kind": {
       "const": "scenario"
@@ -50,6 +50,20 @@
         "zone": {
           "type": "boolean",
           "description": "Sous-lot 12.1 (schéma 10) : simulation d'une zone du monde (combat positionné, bloc space obligatoire) : elle ne s'arrête pas quand une équipe tombe, seulement au bout de sa durée (jusqu'à 86 400 000 ms, 24 h). Absent ou faux : combat fermé."
+        },
+        "truces": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          },
+          "description": "Sous-lot V2.4 (schéma 16) : trêves entre équipes de créatures, paires [équipe, équipe] (deux équipes différentes, sans doublon, sans personnage) : elles ne se battent pas entre elles. Absent : toute autre équipe est ennemie."
         },
         "combatants": {
           "type": "array",
@@ -337,6 +351,10 @@
             "pack": {
               "type": "boolean",
               "description": "Sous-lot 11.9 (schéma 9) : entraîné par l'engagement d'un allié à comportement à sa distance d'engagement (meute). Vrai par défaut ; faux : il ne s'engage que pour lui-même."
+            },
+            "flee": {
+              "type": "boolean",
+              "description": "Sous-lot V2.4 (schéma 16) : bête qui fuit (cerf, lièvre) : engagée, elle ne s'approche jamais et s'éloigne de sa cible tant qu'elle est en deçà de minRange (obligatoirement > 0, sans encircle). Faux par défaut."
             }
           },
           "description": "Sous-lot 11.5 : comportement d'un assaillant d'un combat positionné (il se déplace seul : pas de move ni de stop pour lui ; cible : provocation, sinon sa target présente et vivante, sinon l'ennemi le plus proche)."

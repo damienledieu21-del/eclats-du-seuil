@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 14
+      "const": 15
     },
     "kind": {
       "const": "rules"
@@ -859,6 +859,22 @@
                 "allowedStatuses"
               ],
               "description": "Bornes des effets d'équipement (objets nommés, paliers d'ensemble ; sous-lot V1.3, schéma 14), vérifiées par EquipmentEffect.Check."
+            },
+            "infighting": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "damageReduction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Réduction des dégâts directs d'une créature sur une créature d'une autre équipe (0,5 livrée), combinée aux autres réductions de l'impact."
+                }
+              },
+              "required": [
+                "damageReduction"
+              ],
+              "description": "Bêtes qui se battent entre elles (sous-lot V2.4, schéma 15)."
             }
           },
           "required": [
@@ -876,7 +892,8 @@
             "contact",
             "telegraph",
             "shield",
-            "equipment"
+            "equipment",
+            "infighting"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

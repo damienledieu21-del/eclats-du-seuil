@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 14,
+  "schemaVersion": 15,
   "kind": "rules",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -138,6 +138,9 @@
         "maxGain": 2,
         "minTriggerCooldownMs": 1000,
         "allowedStatuses": []
+      },
+      "infighting": {
+        "damageReduction": 0.5
       }
     },
     "statuses": [

@@ -93,11 +93,12 @@ namespace EdS.World
         private readonly Dictionary<string, Population> _byCreature = new Dictionary<string, Population>(StringComparer.Ordinal);
 
         /// <param name="phase">Sous-lot V2.1 : moment de la journée au début de la session (null : toutes les créatures à heures sont là).</param>
-        public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null)
+        /// <param name="weather">Sous-lot V2.4 : temps au début de la session (null : toutes les créatures à temps sont là).</param>
+        public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null, WeatherKind? weather = null)
         {
             // Réponses du 31 octobre 2026 : une créature rare de la nuit n'est pas là au début de la session (ZoneSetups la retire).
             // Sous-lot V2.1 : une créature à heures non plus, hors de ses heures.
-            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase) }).ToList();
+            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase, weather) }).ToList();
             foreach (Population p in zone.Populations) _byCreature[p.Creature] = p;
         }
 
@@ -105,8 +106,20 @@ namespace EdS.World
         /// La créature de <paramref name="population"/> est là au début d'une session qui commence au moment <paramref name="phase"/> : jamais
         /// une créature rare de la nuit ; une créature à heures seulement à ses heures (toujours si le moment n'est pas donné) ; les autres toujours.
         /// </summary>
-        internal static bool PresentAtStart(Population population, DayPhase? phase) =>
-            population.Night is null && (population.Hours is not PopulationHours hours || phase is not DayPhase p || hours.IsActive((int)p));
+        /// <remarks>Sous-lot V2.4 : une créature qui dépend du temps (<see cref="Population.Weather"/>) n'est là d'emblée que par son temps
+        /// (<paramref name="weather"/>, le temps au début de la session ; null : toujours, comme un moment non donné).</remarks>
+        internal static bool PresentAtStart(Population population, DayPhase? phase, WeatherKind? weather = null) =>
+            population.Night is null
+            && (population.Hours is not PopulationHours hours || phase is not DayPhase p || hours.IsActive((int)p))
+            && (population.Weather is not PopulationWeather w || weather is not WeatherKind k || Fits(w, k));
+
+        /// <summary>Sous-lot V2.4 : le temps <paramref name="kind"/> est-il l'un de ceux de <paramref name="weather"/> (« rain » : toute pluie) ?</summary>
+        internal static bool Fits(PopulationWeather weather, WeatherKind kind)
+        {
+            foreach (string id in weather.Kinds)
+                if (WorldWeather.Matches(kind, id)) return true;
+            return false;
+        }
 
         /// <summary>Population d'une vie (combattant), ou null.</summary>
         public Population? Of(string combatant) => _byCreature.TryGetValue(combatant, out Population p) ? p : null;
@@ -135,10 +148,11 @@ namespace EdS.World
                     if (n != null) (events ??= new List<PopulationEvent>()).Add(n);
                     continue;
                 }
-                if (life.Population.Hours is PopulationHours hours)
+                if (life.Population.Timed)
                 {
                     // Sous-lot V2.1 : même vie qu'une créature rare de la nuit, voulue à ses heures ; elle arrive aussitôt (sans délai de signe).
-                    PopulationEvent? n = StepNight(zone, life, 0, hours.Sign, true, now, tickMs, reserved, wanted);
+                    // Sous-lot V2.4 : de même pour une créature voulue par son temps (la brume).
+                    PopulationEvent? n = StepNight(zone, life, 0, life.Population.TimedSign, true, now, tickMs, reserved, wanted);
                     if (n != null) (events ??= new List<PopulationEvent>()).Add(n);
                     continue;
                 }
@@ -148,7 +162,8 @@ namespace EdS.World
                     bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < now;
                     if (v.IsDead) life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
-                    else if (!life.Leashing && v.IsPresent && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+                    else if (!life.Leashing && !Flees(life.Population) && v.IsPresent && v.Engaged && v.CurrentTarget is string target
+                        && Beyond(v, engine.View(target), life.Population.LeashRange))
                     {
                         // Revue Codex de la PR #45 : un départ refusé par le pilote (plafond de commandes, refus atomique) ne fait pas échouer le
                         // tick ; la laisse est retentée au tick suivant.
@@ -246,7 +261,8 @@ namespace EdS.World
                 return Respawn(zone, life, now, tickMs, reserved);
             }
             if (life.Withdrawing || life.Leashing || !v.IsPresent) return null;
-            if (v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+            // Relecture de la PR #104 : une bête qui fuit n'a pas de laisse (elle reste où sa fuite l'a menée : aucune vie usée).
+            if (!Flees(life.Population) && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
             {
                 if (TryLeave(zone, life.Current))
                 {
@@ -255,7 +271,9 @@ namespace EdS.World
                 }
                 return null;
             }
-            if (!want && !v.Engaged && TryLeave(zone, life.Current))
+            // Relecture de la PR #104 : hors de ses heures ou de son temps, elle s'en va aussi d'un combat de bêtes (ou d'une fuite) ; un combat
+            // contre un joueur la retient, comme avant.
+            if (!want && !HeldByFight(engine, v, life.Population) && TryLeave(zone, life.Current))
             {
                 life.Withdrawing = true;
                 return new PopulationEvent(PopulationEventKind.Withdrew, life.Population.Creature, life.Current, now);
@@ -263,10 +281,40 @@ namespace EdS.World
             return null;
         }
 
+        /// <summary>
+        /// Relecture de la PR #104 : places de combattants qu'une bête d'ambiance (<see cref="IsAmbient"/>) ne prend jamais : elles restent aux
+        /// autres créatures (celles des quêtes, des contrats et des chasses). Une bête d'ambiance qui n'a plus de place attend la session
+        /// suivante, sans annonce.
+        /// </summary>
+        public const int QuestReserve = 64;
+
+        /// <summary>
+        /// Relecture de la PR #104 : bête d'ambiance : une bête qui fuit (cerf, lièvre) ou une créature qui ne vient que par son temps (la brume).
+        /// Aucune quête ne les demande ; leurs arrivées n'entament jamais <see cref="QuestReserve"/>.
+        /// </summary>
+        internal static bool IsAmbient(Population population) => Flees(population) || population.Weather != null;
+
+        private static bool Flees(Population population) => population.Template.Behavior?.Flee == true;
+
+        /// <summary>
+        /// Retenue par un combat : engagée, sauf une bête qui fuit (elle ne se bat pas) et une bête qui ne vise qu'une autre bête (combat de
+        /// bêtes). Engagée contre un joueur, ou sans cible, elle reste, comme avant.
+        /// </summary>
+        private static bool HeldByFight(CombatEngine engine, CombatantView v, Population population)
+        {
+            if (!v.Engaged || Flees(population)) return false;
+            return !(v.CurrentTarget is string target && engine.View(target).Kind == CombatantKind.Assailant);
+        }
+
         private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs, int reserved)
         {
             CombatEngine engine = zone.Engine;
             AssailantSetup t = life.Population.Template;
+            if (IsAmbient(life.Population) && checked(engine.CombatantIds.Count + reserved + QuestReserve) >= zone.Setup.Combat.MaxCombatants)
+            {
+                life.Exhausted = true;   // relecture de la PR #104 : sans annonce ; la réserve reste aux autres créatures
+                return null;
+            }
             if (checked(engine.CombatantIds.Count + reserved) >= zone.Setup.Combat.MaxCombatants)
             {
                 life.Exhausted = true;

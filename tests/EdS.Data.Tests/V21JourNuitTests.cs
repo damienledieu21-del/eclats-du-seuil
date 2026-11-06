@@ -87,8 +87,9 @@ public sealed class V21JourNuitTests : IDisposable
     [Fact]
     public void Vallons_livres_au_schema_8()
     {
-        Assert.Equal((8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion));
-        Assert.Equal(8, Vallons.SchemaVersion);
+        // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
+        Assert.Equal((9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal(9, Vallons.SchemaVersion);
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -129,7 +130,7 @@ public sealed class V21JourNuitTests : IDisposable
         ZoneLoadResult v7 = ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
-            foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("hours");
+            foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
             root["data"]!.AsObject().Remove("nightSpots");
         });
         Assert.True(v7.IsValid, v7.Report.ToString());
@@ -139,22 +140,23 @@ public sealed class V21JourNuitTests : IDisposable
         // Une zone de schéma 7 : toutes ses créatures sont là d'emblée, de jour comme de nuit (sauf la créature rare de la nuit).
         Assert.Equal(v7.Zone.Setup.Combatants.Count - 1, ZoneSetups.For(v7.Zone, Array.Empty<string>(), DayPhase.Night).Combatants.Count);
         // Les intérieurs livrés restent au schéma 7.
-        Assert.All(V16TestData.Interiors, z => Assert.Equal(ZoneValidator.PreviousSchemaVersion, z.SchemaVersion));
+        Assert.All(V16TestData.Interiors, z => Assert.Equal(ZoneValidator.OldestSchemaVersion, z.SchemaVersion));
 
         ValidationError hours = Error(ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
             root["data"]!.AsObject().Remove("nightSpots");
+            foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");   // V2.4
         }));
         Assert.Equal(($"$.data.populations[{PopulationIndex(JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject(), "sanglier4")}].hours",
             ValidationCode.InvalidValue), (hours.Path, hours.Code));
         ValidationError spots = Error(ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
-            foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("hours");
+            foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 9 })
+        foreach (int version in new[] { 6, 10 })
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));
@@ -244,9 +246,10 @@ public sealed class V21JourNuitTests : IDisposable
         }
         foreach (string id in Sleepers) Assert.Equal(!night, Present(w, id));
         Assert.True(Present(w, "loup1") && Present(w, "sanglier"));   // les autres, toujours
-        Assert.Equal(night ? 11 : 0, ZoneSetups.For(Vallons, Array.Empty<string>(), phase).Combatants
+        // Sous-lot V2.4 : par temps clair (les échos de la brume, loup_echo5 et 6, ne viennent que par brume).
+        Assert.Equal(night ? 11 : 0, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants
             .Count(c => c.Id.StartsWith("loup_nuit", StringComparison.Ordinal) || c.Id.StartsWith("loup_echo", StringComparison.Ordinal)));
-        Assert.Equal(night ? 0 : 5, ZoneSetups.For(Vallons, Array.Empty<string>(), phase).Combatants.Count(c => Sleepers.Contains(c.Id)));
+        Assert.Equal(night ? 0 : 5, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants.Count(c => Sleepers.Contains(c.Id)));
     }
 
     // --- Transitions : crépuscule, aube ---------------------------------------------------------------------------------------

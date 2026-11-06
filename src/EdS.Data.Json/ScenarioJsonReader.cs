@@ -52,6 +52,10 @@ namespace EdS.Data.Json
                 ["seed"] = (v, p) => data.Seed = input.Int64(v, p),
                 ["durationMs"] = (v, p) => data.DurationMs = input.Int64(v, p),
                 ["zone"] = (v, p) => data.Zone = input.Boolean(v, p),   // sous-lot 12.1 (schéma 10)
+                // Sous-lot V2.4 (schéma 16) : trêves entre équipes de créatures, paires [équipe, équipe].
+                ["truces"] = (v, p) => data.Truces = input.ReadLimitedList(v, p, CombatSetup.MaxTruces,
+                    n => $"{n} trêves, au plus {CombatSetup.MaxTruces}.", (e, ip) => input.ReadLimitedList(e, ip, 2,
+                        n => $"{n} équipes, une trêve en lie deux.", (t, tp) => input.Text(t, tp))),
                 ["space"] = (v, p) =>   // sous-lot 11.4 (schéma 5)
                 {
                     data.Present.Add("space");
@@ -118,6 +122,7 @@ namespace EdS.Data.Json
                 ["aggroRange"] = (v, p) => b.AggroRange = input.Decimal(v, p),
                 ["encircle"] = (v, p) => b.Encircle = input.Boolean(v, p),
                 ["pack"] = (v, p) => b.Pack = input.Boolean(v, p),   // sous-lot 11.9 (schéma 9)
+                ["flee"] = (v, p) => b.Flee = input.Boolean(v, p),   // sous-lot V2.4 (schéma 16)
             });
             return ok ? b : null;
         }

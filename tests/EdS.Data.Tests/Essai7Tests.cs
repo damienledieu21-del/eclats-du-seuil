@@ -150,13 +150,13 @@ public class Essai7StyleTests
             .SelectMany(c => c!["attacks"]?.AsArray() ?? new JsonArray()).Select(a => (string)a!["id"]!).Distinct().OrderBy(a => a, StringComparer.Ordinal).ToList();
         // Sous-lot V1.6 : bandits (taille, moulinet, tir, volée), chef des bandits (charge du chef, tourbillon), loup blanc (bond, hurlement).
         Assert.Equal(new[] { "bond", "charge", "charge_du_chef", "eclat", "fleche", "griffe", "hurlement", "morsure", "moulinet", "onde", "onde_du_seuil", "pluie",
-            "ruee", "taille", "tir", "tourbillon", "volee" }, attacks);
+            "ruee", "sabot", "taille", "tir", "tourbillon", "volee" }, attacks);   // sous-lot V2.4 : le coup de sabot du cerf
         var expected = new Dictionary<string, (StyleMotion, string?)>
         {
             ["charge"] = (StyleMotion.Attack, StyleRules.NotJump), ["eclat"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["fleche"] = (StyleMotion.Attack, StyleRules.NotJump), ["griffe"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["morsure"] = (StyleMotion.Attack, StyleRules.NotJump), ["onde"] = (StyleMotion.Cast, null), ["onde_du_seuil"] = (StyleMotion.Cast, null),
-            ["pluie"] = (StyleMotion.Cast, null), ["ruee"] = (StyleMotion.Attack, "jump"),
+            ["pluie"] = (StyleMotion.Cast, null), ["ruee"] = (StyleMotion.Attack, "jump"), ["sabot"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["bond"] = (StyleMotion.Attack, "jump"), ["charge_du_chef"] = (StyleMotion.Attack, StyleRules.NotJump), ["hurlement"] = (StyleMotion.Cast, null),
             ["moulinet"] = (StyleMotion.Attack, StyleRules.NotJump), ["taille"] = (StyleMotion.Attack, StyleRules.NotJump),
             ["tir"] = (StyleMotion.Attack, StyleRules.NotJump), ["tourbillon"] = (StyleMotion.Attack, StyleRules.NotJump), ["volee"] = (StyleMotion.Cast, null),

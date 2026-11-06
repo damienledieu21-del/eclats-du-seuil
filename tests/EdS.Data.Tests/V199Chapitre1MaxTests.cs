@@ -112,8 +112,8 @@ public class V199Chapitre1MaxTests
         Assert.Equal("0.7.0-provisoire", ShippedMerchants.ContentVersion);
         Assert.Equal("0.7.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.2.0-provisoire", Guilde.Value.ContentVersion);
-        Assert.Equal((8, "0.11.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));
-        Assert.Equal("0.14.0-provisoire", Texts.ContentVersion);   // V2.2 : répliques du temps ; V2.3 : répliques du moment, activités
+        Assert.Equal((9, "0.12.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.4 : animaux, brume
+        Assert.Equal("0.15.0-provisoire", Texts.ContentVersion);   // V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(old.Save())).Save!;
@@ -176,7 +176,8 @@ public class V199Chapitre1MaxTests
         Assert.Equal(new[] { (Poussiere, 1, 80), (Poussiere, 1, 25) }, echo.Drops.Select(d => (d.Item, d.Count, d.ChancePercent)));
         // Les quatre échos (et eux seuls) ont ce butin ; les loups de la nuit gardent celui du loup.
         Population[] echoes = Vallons.Value.Populations.Where(p => p.Family == "echo").ToArray();
-        Assert.Equal(new[] { "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4" }, echoes.Select(p => p.Creature));
+        // Sous-lot V2.4 : et les deux échos de la brume.
+        Assert.Equal(new[] { "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4", "loup_echo5", "loup_echo6" }, echoes.Select(p => p.Creature));
         Assert.All(echoes, p => Assert.Equal("loot.echo", p.Loot));
         Assert.All(Vallons.Value.Populations.Where(p => p.Creature.StartsWith("loup_nuit", StringComparison.Ordinal)), p => Assert.Equal("loot.loup", p.Loot));
         Assert.DoesNotContain(ItemsCatalog.Loot.Where(l => l.Id != "loot.echo").SelectMany(l => l.Drops), d => d.Item == Poussiere);

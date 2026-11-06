@@ -254,6 +254,14 @@ namespace EdS.Domain.Combat
         public IReadOnlyList<string> EquipmentStatuses { get; init; } = Array.Empty<string>();
 
         /// <summary>
+        /// Sous-lot V2.4 (schéma 15, bêtes qui se battent) : réduction des dégâts directs qu'une créature (assaillant) inflige à une créature d'une
+        /// autre équipe (<c>combat.infighting.damageReduction</c>, 0,5 livrée : un loup mord un sanglier deux fois moins fort qu'il ne mord le
+        /// joueur). Les bêtes se battent assez longtemps pour qu'on les voie, et le joueur peut s'en mêler. Combinée aux autres réductions de
+        /// l'impact (formule B2) ; dans [0, 1].
+        /// </summary>
+        public Fixed InfightingDamageReduction { get; init; } = Fixed.FromRatio(1, 2);
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -326,6 +334,7 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation($"ne peut pas dépasser le plafond de la réduction de garde ({MaxGuardDamageReduction}).",
                     nameof(GuardDamageReduction), nameof(MaxGuardDamageReduction)));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
+            Fraction(InfightingDamageReduction, nameof(InfightingDamageReduction));   // sous-lot V2.4
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
             else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))

@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "acec2f0838864b12f97eccf61f62b5ccbe3785a8137ae64fb586f2d46f031c37")]
-    [InlineData("entrainement_rupture", "c7296868780463a16c30f3493a56320c52c81c9f8fce0d7a0bae9f8cd1c7a4c6")]
-    [InlineData("entrainement_alterations", "21bebfbfc4d8bab8621c445a3750e0074f968c215692c21a9331d25405a8c293")]
-    [InlineData("entrainement_declencheurs", "db7d727eabf0767949d81433bfab73c68b1b682073a1a4de3ab37c20cefcf998")]
+    [InlineData("entrainement_garde_parade", "df5101e2584173a168777f0bb1d64b97aebd8358c03522d92b3cc1be2d3938d7")]
+    [InlineData("entrainement_rupture", "8b7400aea08b91280250e700b8792e117d29a12fca0c2efb0b2a1ec882505e38")]
+    [InlineData("entrainement_alterations", "ba8613bc5ffcd2c5651db18c1237acfec49c8a0be6d051b2765b4978355eadb5")]
+    [InlineData("entrainement_declencheurs", "5a244adc8ffd68d39c948ad8c46e33b73fa9b34ebaaaf57acb1b030427595217")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -150,6 +150,8 @@ public class TrainingScenarioTests
         // dans l'en-tête ; référence dans Fixtures/reference-0.26.0-contenu-0.6.0-regles-0.15.0.
         // Sous-lot V1.8d : moteur 0.27.0, format 21 (bonus modifié), scénarios en schéma 15 ; aucun de ces scénarios n'a de bonus modifié :
         // seul l'en-tête change ; référence dans Fixtures/reference-0.27.0-contenu-0.6.0-regles-0.15.0 (avec le nouveau entrainement_bonus).
+        // Sous-lot V2.4 : moteur 0.28.0, format 22, règles 0.16.0 (schéma 15), scénarios en schéma 16 ; aucun de ces scénarios n'a deux
+        // équipes de créatures : seul l'en-tête change ; référence dans Fixtures/reference-0.28.0-contenu-0.6.0-regles-0.16.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -18,7 +18,8 @@
     "schemaVersion": {
       "enum": [
         7,
-        8
+        8,
+        9
       ],
       "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux)."
     },
@@ -252,6 +253,39 @@
                     "pattern": "^text(\\.[a-z0-9_]+)+$",
                     "maxLength": 200,
                     "description": "Clé du texte annoncé quand elle arrive au début de ses heures (pas après sa mort)."
+                  }
+                }
+              },
+              "weather": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kinds"
+                ],
+                "description": "Schéma 9 (sous-lot V2.4) : temps où la créature est là (temps du monde, comme les conditions weather de l'histoire ; rain : toute pluie). Elle est là au début d'une session si c'est son temps (et ses heures, si elle en a), arrive quand il vient, et s'en va dès qu'elle est au calme quand le temps change. Se combine avec hours, exclusif de night.",
+                "properties": {
+                  "kinds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": [
+                        "clear",
+                        "cloudy",
+                        "mist",
+                        "drizzle",
+                        "shower",
+                        "storm",
+                        "rain"
+                      ]
+                    }
+                  },
+                  "sign": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200,
+                    "description": "Clé du texte annoncé quand elle arrive (La brume monte…)."
                   }
                 }
               }

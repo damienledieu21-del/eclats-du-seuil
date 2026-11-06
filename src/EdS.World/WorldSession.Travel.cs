@@ -80,6 +80,10 @@ namespace EdS.World
         /// <summary>
         /// Le personnage est en plein combat : absent ou tombé, un ennemi vivant et présent à moins de <see cref="CombatRange"/> (écart entre
         /// les centres), ou un ennemi engagé qui le vise, où qu'il soit (un archer qui tire de loin).
+        /// <para>Revue Codex de la PR #104 (tour 3) : une bête paisible qui fuit (cerf, lièvre) ne compte jamais ; un ennemi engagé qui le vise
+        /// ne compte qu'à sa laisse (écart entre les bords, comme la laisse du monde) : au-delà, il n'est plus en combat avec lui (un loup de la
+        /// brume engagé qui part à la levée, une bête restée loin). Une créature sans population (une forme de chef) compte où qu'elle soit,
+        /// comme avant.</para>
         /// </summary>
         public bool InCombat
         {
@@ -93,7 +97,8 @@ namespace EdS.World
                     if (id == _character.Id) continue;
                     CombatantView v = Zone.Engine.View(id);
                     if (v.Team == me.Team || !v.IsPresent || v.IsDead) continue;
-                    if (v.Engaged && v.CurrentTarget == _character.Id) return true;
+                    if (v.Flees) continue;   // revue Codex de la PR #104 (tour 3) : un cerf ou un lièvre n'est pas un combat
+                    if (v.Engaged && v.CurrentTarget == _character.Id && WithinLeash(v, me)) return true;
                     if (v.Position is GroundVector q)
                     {
                         long dx = checked(q.X.Raw - p.X.Raw), dz = checked(q.Z.Raw - p.Z.Raw);
@@ -102,6 +107,17 @@ namespace EdS.World
                 }
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #104 (tour 3) : <paramref name="creature"/> est à sa laisse du personnage (écart entre les bords) ; toujours
+        /// vrai pour une créature sans population (forme de chef) ou sans place.
+        /// </summary>
+        private bool WithinLeash(CombatantView creature, CombatantView me)
+        {
+            if (!(_populations?.Of(creature.Id) is Population population)) return true;
+            if (!(creature.Position is GroundVector a && creature.Radius is Fixed ra && me.Position is GroundVector b && me.Radius is Fixed rb)) return true;
+            return !ZonePopulations.Beyond(a, ra, b, rb, population.LeashRange);
         }
 
         /// <summary>

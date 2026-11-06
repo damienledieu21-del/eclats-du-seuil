@@ -66,9 +66,17 @@ public class Lot121WorldTests
             "loup11", "loup12", "rodeur2", "rodeur3", "archer4", "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "loup_blanc", "le_borgne",
             "bandit_epee3", "bandit_epee4", "bandit_arc3", "grand_borgne",
             // Sous-lot V2.1 : les bêtes de la nuit (loups de la nuit, échos), là de 22 h à 5 h seulement.
-            "loup_nuit1", "loup_nuit2", "loup_nuit3", "loup_nuit4", "loup_nuit5", "loup_nuit6", "loup_nuit7", "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4" },
+            "loup_nuit1", "loup_nuit2", "loup_nuit3", "loup_nuit4", "loup_nuit5", "loup_nuit6", "loup_nuit7", "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4",
+            // Sous-lot V2.4 : loups gris et échos de la brume, cerfs (aube et jour), lièvres (crépuscule et nuit).
+            "loup_brume1", "loup_brume2", "loup_brume3", "loup_echo5", "loup_echo6", "cerf1", "cerf2", "cerf3", "cerf4", "cerf5", "cerf6",
+            "lievre1", "lievre2", "lievre3", "lievre4" },
             setup.Combatants.Select(c => c.Id));   // sous-lot V1.6 : bandits et loup blanc ; V1.9.3 : bandits du hameau, du lac et des vergers ; V1.9.4 : le Grand Borgne
-        Assert.Single(setup.Combatants.Select(c => c.Team).Distinct());   // une seule équipe : les joueurs entrent ensuite
+        // Sous-lot V2.4 : quatre équipes de créatures (la meute, les échos, le gibier, les bandits), en trêve sauf la meute et le gibier ;
+        // aucune équipe de joueurs : ils entrent ensuite.
+        Assert.Equal(new[] { "bandits", "echos", "gibier", "meute" }, setup.Combatants.Select(c => c.Team).Distinct().OrderBy(t => t, StringComparer.Ordinal));
+        Assert.True(setup.Hostile("meute", "gibier"));
+        Assert.All(new[] { ("meute", "bandits"), ("gibier", "bandits"), ("echos", "meute"), ("echos", "bandits"), ("echos", "gibier") },
+            t => Assert.True(setup.AtTruce(t.Item1, t.Item2) && setup.AtTruce(t.Item2, t.Item1)));
         Assert.True(setup.Space!.Obstacles.Single(o => o.Id == "riviere_sud").Low);
     }
 
@@ -84,16 +92,19 @@ public class Lot121WorldTests
         Assert.Contains(Copy(3_600_000, true, null).Validate(), v => v.Fields.Contains("zone"));
         IReadOnlyList<RuleViolation> closed = Copy(3_600_000, false, setup.Space).Validate();
         Assert.Contains(closed, v => v.Fields.Contains("durationMs"));
-        Assert.Contains(closed, v => v.Fields.Contains("combatants") && v.Message.Contains("deux équipes"));
+        // Sous-lot V2.4 : la zone a quatre équipes de créatures ; un combat fermé de la seule meute n'en a qu'une.
+        IReadOnlyList<RuleViolation> lonely = new CombatSetup(setup.Seed, 3_600_000, setup.Stats, setup.Damage, setup.Progression, setup.Combat,
+            setup.Combatants.Where(c => c.Team == "meute").ToList(), setup.Commands, setup.Data, setup.Space, false).Validate();
+        Assert.Contains(lonely, v => v.Fields.Contains("combatants") && v.Message.Contains("deux équipes"));
         // Lecture : « zone » est un booléen ; le schéma 9 est refusé.
         ValidationError typed = Assert.Single(ReadMutated(root => root["data"]!["zone"] = "oui", scenario: "zones/vallons").Report.Errors);
         Assert.Equal("$.data.zone", typed.Path);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion),
             (Assert.Single(ReadMutated(root => root["schemaVersion"] = 9, scenario: "zones/vallons").Report.Errors).Path,
              Assert.Single(ReadMutated(root => root["schemaVersion"] = 9, scenario: "zones/vallons").Report.Errors).Code));
-        Assert.Equal(15, ScenarioValidator.CurrentSchemaVersion);   // V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;
+        Assert.Equal(16, ScenarioValidator.CurrentSchemaVersion);   // V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(15, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(16, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("boolean", schema["properties"]!["data"]!["properties"]!["zone"]!["type"]!.GetValue<string>());
     }
 

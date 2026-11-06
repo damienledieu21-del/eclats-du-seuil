@@ -257,8 +257,21 @@ namespace EdS.Data.Json
                 ["night"] = (v, p) => population.Night = ReadNight(input, v, p),   // réponses du 31 octobre 2026 (schéma 6)
                 ["level"] = (v, p) => population.Level = input.Int32(v, p),   // relecture de la PR #83 (schéma 7) : niveau propre
                 ["hours"] = (v, p) => population.Hours = ReadHours(input, v, p),   // sous-lot V2.1 (schéma 8) : jour et nuit
+                ["weather"] = (v, p) => population.Weather = ReadWeather(input, v, p),   // sous-lot V2.4 (schéma 9) : populations selon le temps
             });
             return ok ? population : null;
+        }
+
+        private static WeatherData? ReadWeather(JsonInput input, JsonElement element, string path)
+        {
+            var weather = new WeatherData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["kinds"] = (v, p) => weather.Kinds = input.ReadLimitedList(v, p, PopulationWeather.KindNames.Count,
+                    n => $"{n} temps, au plus {PopulationWeather.KindNames.Count}.", (e, ip) => input.Text(e, ip)),
+                ["sign"] = (v, p) => weather.Sign = input.Text(v, p),
+            });
+            return ok ? weather : null;
         }
 
         private static HoursData? ReadHours(JsonInput input, JsonElement element, string path)

@@ -163,7 +163,7 @@ namespace EdS.Simulation.Engine
         {
             if (impact.Zone is not { } zone) return new[] { impact.Target! };
             Fighter assailant = impact.Assailant;
-            return _fightersById.Where(f => f.Team != assailant.Team && !f.Out && zone.Touches(f.Body!.X, f.Body.Z, f.Body.Radius)).ToArray();
+            return _fightersById.Where(f => Enemies(f, assailant) && !f.Out && zone.Touches(f.Body!.X, f.Body.Z, f.Body.Radius)).ToArray();
         }
 
         private PendingAction ImpactAction(AttackImpact impact) => new PendingAction
