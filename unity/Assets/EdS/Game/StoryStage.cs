@@ -35,6 +35,7 @@ namespace EdS.Game
         private const string WakeStep = "odile";
         private const string GateFact = "fact.ch1.souvenir.porte";
         private const string EchoId = "echo_de_la_rupture";
+        private const string VoicesId = "voix_de_la_rupture";   // sous-lot V1.9.9 : la seconde forme de l'écho
         private const string YsoldeId = "npc.ysolde";
         private const string RagingCroc = "croc_gris_enrage";
         private const string SilhouetteDiscovery = "discovery.ch1.silhouette";
@@ -204,7 +205,7 @@ namespace EdS.Game
         }
 
         /// <summary>Couleur de la forme simple d'un combattant : l'Écho est une silhouette de lumière ; null : la couleur habituelle.</summary>
-        public Color? Paint(string id) => id == EchoId ? new Color(0.85f, 0.9f, 1f) : (Color?)null;
+        public Color? Paint(string id) => id == EchoId || id == VoicesId ? new Color(0.85f, 0.9f, 1f) : (Color?)null;
 
         /// <summary>Le réveil occupe l'écran : le monde attend (pas de marche ni de combat).</summary>
         public bool Blocking => _wake >= 0f && _wake < StandAt + 0.8f;
@@ -613,8 +614,10 @@ namespace EdS.Game
             }
 
             // L'Écho : la forme simple brille, le halo et les voix le suivent ; à sa chute, une colonne de lumière, puis le retour.
+            // Sous-lot V1.9.9 : la seconde forme (les Voix de la Rupture) brille de même, et le halo la suit dès qu'elle est là.
             arena.Glow(EchoId, new Color(1.6f, 1.8f, 2.4f));
-            Vector3? feet = arena.Feet(EchoId);
+            arena.Glow(VoicesId, new Color(1.6f, 1.8f, 2.4f));
+            Vector3? feet = arena.Feet(VoicesId) ?? arena.Feet(EchoId);
             bool shown = feet.HasValue && !a.SceneFinished;
             if (_echoHalo != null) _echoHalo.gameObject.SetActive(shown);
             if (_echoLight != null) _echoLight.gameObject.SetActive(shown);
