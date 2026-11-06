@@ -515,6 +515,10 @@ public sealed class V22MeteoTests : IDisposable
         Assert.Equal(2, game.Split("UpdateWeatherFx(true);").Length - 1);
         Assert.Contains("UpdateWeatherFx(_paused);", game, StringComparison.Ordinal);
         Assert.Contains("_mood = a.Mood().WithRain(_weatherLook.Rain);", game, StringComparison.Ordinal);
+        // Revue Codex de la PR #101 : le tonnerre suit le volume d'ambiance du catalogue, sans plancher (0 : muet), comme la pluie.
+        string weather = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "StyleWeather.cs"));
+        Assert.Contains("float volume = (catalog != null ? catalog.AmbienceVolume : 0.8f) * _thunderVolume", weather, StringComparison.Ordinal);
+        Assert.DoesNotContain("Mathf.Max(0.4f, catalog.AmbienceVolume)", weather, StringComparison.Ordinal);
     }
 
     [Fact]

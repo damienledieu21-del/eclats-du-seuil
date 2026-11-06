@@ -221,7 +221,8 @@ namespace EdS.Game
             {
                 _thunderAt = -1f;
                 StyleCatalog catalog = StyleCatalog.Loaded;
-                float volume = (catalog != null ? Mathf.Max(0.4f, catalog.AmbienceVolume) : 0.8f) * _thunderVolume * (paused ? 0.5f : 1f);
+                // Revue Codex de la PR #101 : le volume d'ambiance du catalogue, sans plancher (0 : muet), comme la pluie.
+                float volume = (catalog != null ? catalog.AmbienceVolume : 0.8f) * _thunderVolume * (paused ? 0.5f : 1f);
                 _thunderSource.pitch = 0.9f + Mathf.Repeat(now * 3.1f, 0.25f);
                 if (_thunderClip != null) _thunderSource.PlayOneShot(_thunderClip, volume);
             }
