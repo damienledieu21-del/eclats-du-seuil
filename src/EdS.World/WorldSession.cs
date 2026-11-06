@@ -91,13 +91,17 @@ namespace EdS.World
         /// <summary>Sous-lot V1.8c : bonus finis à ce tick (dans l'ordre des places), qui ont quitté leur place.</summary>
         public IReadOnlyList<BoonExpired> BoonsExpired { get; }
 
+        /// <summary>Sous-lot V2.5 : annonces des événements du monde à ce tick (annonce, départ, vague, issue, récompense).</summary>
+        public IReadOnlyList<WorldEventNotice> Events { get; }
+
         public bool IsEmpty => Experience.Count == 0 && Loot.Count == 0 && Population.Count == 0 && Story.Count == 0 && Boss.Count == 0 && Rewards.Count == 0 && !Defeated
-            && Wear is null && BoonsExpired.Count == 0;
+            && Wear is null && BoonsExpired.Count == 0 && Events.Count == 0;
 
         internal SessionStep(IReadOnlyList<ExperienceGained> experience, IReadOnlyList<LootGained> loot, IReadOnlyList<PopulationEvent> population,
             IReadOnlyList<StoryEvent> story, IReadOnlyList<BossEvent>? boss = null, IReadOnlyList<(string, int)>? rewards = null, bool defeated = false,
-            WearReport? wear = null, IReadOnlyList<BoonExpired>? boonsExpired = null)
+            WearReport? wear = null, IReadOnlyList<BoonExpired>? boonsExpired = null, IReadOnlyList<WorldEventNotice>? events = null)
         {
+            Events = events ?? Array.Empty<WorldEventNotice>();
             BoonsExpired = boonsExpired ?? Array.Empty<BoonExpired>();
             Wear = wear;
             Experience = experience;
@@ -520,6 +524,8 @@ namespace EdS.World
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
             // Compétences données à l'entrée (réponse de Damien du 30 octobre 2026), après le chef comme la découverte.
             GiveAtEntry();
+            // Sous-lot V2.5 : événements du monde de la zone (registre du personnage, sauvegarde v13).
+            OpenEvents();
         }
 
         /// <summary>
@@ -658,6 +664,8 @@ namespace EdS.World
         public GroundVector NpcPosition(Npc npc)
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
+            // Sous-lot V2.5 : pendant une attaque, les villageois du lieu sont au refuge (la cloche a sonné).
+            if (RefugeOf(npc.Id) is GroundVector refuge && (npc.Zone ?? _storyZone) == Definition?.Id) return refuge;
             if (NpcSlot(npc) is { } slot) return slot.Position;
             if (Definition is null || Zone.Time.Phase != DayPhase.Night || (npc.Zone ?? _storyZone) != Definition.Id) return npc.Position;
             return Definition.NightSpotOf(npc.Id) ?? npc.Position;
@@ -674,9 +682,14 @@ namespace EdS.World
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
             if (!(npc.SlotAt(Zone.Time.Minute) is ScheduleSlot slot)) return null;
+            // Sous-lot V2.5 : pendant une attaque, au refuge (activité « refuge »), quel que soit le créneau.
+            if (RefugeOf(npc.Id) is GroundVector refuge && (npc.Zone ?? _storyZone) == Definition?.Id) return (RefugeActivity, refuge);
             if (slot.Rain is SchedulePlace shelter && Shelters(Weather.Kind)) return (shelter.Activity, shelter.Position);
             return (slot.Activity, slot.Position);
         }
+
+        /// <summary>Sous-lot V2.5 : activité d'un villageois réfugié pendant une attaque (texte « text.activity.refuge »).</summary>
+        public const string RefugeActivity = "refuge";
 
         /// <summary>Sous-lot V2.3 : activité du PNJ à cette heure (null : pas d'emploi du temps).</summary>
         public string? NpcActivity(Npc npc) => NpcSlot(npc)?.Activity;
@@ -749,7 +762,8 @@ namespace EdS.World
             foreach (BossFight f in _fights)
                 if (f.Boss.Loot is string bossLoot && f.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
                     return bossTable;
-            return _populations?.Of(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
+            // Sous-lot V2.5 : une créature d'événement donne le butin de la population dont elle prend le modèle.
+            return PopulationOfCombatant(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
         }
 
         /// <summary>
@@ -831,6 +845,8 @@ namespace EdS.World
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
             IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome), Wanted) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
+            // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
+            IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);
             CombatantView me = Zone.Engine.View(_character.Id);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
             var boss = new List<BossEvent>();
@@ -865,8 +881,8 @@ namespace EdS.World
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
-                && expired.Count == 0
-                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated, wear, expired);
+                && expired.Count == 0 && worldEvents.Count == 0
+                ? SessionStep.Empty : new SessionStep(gains, loot, population, story, boss, rewards, defeated, wear, expired, worldEvents);
         }
 
         /// <summary>
@@ -973,8 +989,11 @@ namespace EdS.World
                     }
                 }
                 // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
+                // Sous-lot V2.5 : une créature d'événement compte pour sa famille (contrats), jamais comme la créature de son modèle (le
+                // meneur des bandits d'une quête reste à vaincre lui-même).
                 Population? population = _populations?.Of(e.Combatant);
-                Narrative?.Defeated(population?.Creature ?? e.Combatant, population?.Family);
+                Population? eventModel = population is null ? _events?.Of(e.Combatant) : null;
+                Narrative?.Defeated(population?.Creature ?? e.Combatant, population?.Family ?? eventModel?.Family);
             }
             experience = gains;
             rolls = loot;

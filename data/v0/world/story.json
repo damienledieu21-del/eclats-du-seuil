@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 9,
   "kind": "story",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.17.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -12307,6 +12307,32 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.event.attaque_hameau.defendu"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v25.doyen.merci"
+              }
+            ],
+            "node": "v25_merci"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.attaque_hameau.pille"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v25.doyen.pille"
+              }
+            ],
+            "node": "v25_pille"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questActive",
                 "id": "quest.champs_et_hameau"
               }
@@ -12529,6 +12555,40 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "v25_merci",
+            "text": "text.v25.doyen.merci",
+            "choices": [
+              {
+                "text": "text.v25.doyen.merci.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v25.doyen.merci"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v25_pille",
+            "text": "text.v25.doyen.pille",
+            "choices": [
+              {
+                "text": "text.v25.doyen.pille.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v25.doyen.pille"
+                  }
+                ],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -12641,6 +12701,32 @@
               }
             ],
             "node": "ch4_deserteur_apres_livre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.attaque_hameau.defendu"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v25.herboriste.merci"
+              }
+            ],
+            "node": "v25_merci"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.attaque_hameau.pille"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v25.herboriste.pille"
+              }
+            ],
+            "node": "v25_pille"
           },
           {
             "conditions": [
@@ -12806,6 +12892,40 @@
             "id": "ch4_deserteur_apres_livre",
             "text": "text.ch4.herboriste_hameau.deserteur_apres_livre",
             "choices": []
+          },
+          {
+            "id": "v25_merci",
+            "text": "text.v25.herboriste.merci",
+            "choices": [
+              {
+                "text": "text.v25.herboriste.merci.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v25.herboriste.merci"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v25_pille",
+            "text": "text.v25.herboriste.pille",
+            "choices": [
+              {
+                "text": "text.v25.herboriste.pille.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v25.herboriste.pille"
+                  }
+                ],
+                "next": null
+              }
+            ]
           }
         ]
       },
