@@ -554,7 +554,9 @@ public class V197VillageTests
                  })
         {
             Say(Open(at, Hero(1, story)), npc, day);
-            Say(Open(at, Hero(1, story), Nuit), npc, "ch1_nuit");
+            // Sous-lot V2.1 : la nuit, Maëlle et Bertille sont rentrées : on leur parle devant leur porte.
+            (double, double) night = npc == "npc.maelle" ? (-22.6, -8) : npc == "npc.epiciere" ? (-46, 3.4) : at;
+            Say(Open(night, Hero(1, story), Nuit), npc, "ch1_nuit");
         }
         // Firmin, à l'aube ; Rosalie, la nuit (après le chat, son mot d'après de jour).
         Say(Open(Boulanger, Hero(1, firmin), Aube), "npc.boulanger", "ch1_aube");

@@ -242,7 +242,7 @@ public class V1Reponses2Tests
         NightSpawn night = wolf.Night!;
         Assert.Equal((35, 15000L, "text.zone.loup_blanc.signe"), (night.ChancePercent, night.SignMs, night.Sign));
         Assert.Equal("Un hurlement glacé monte du pré…", Texts.Get(night.Sign));
-        Assert.Equal(7, z.SchemaVersion);   // V1.8 : zones en mélange
+        Assert.Equal(8, z.SchemaVersion);   // V2.1 : jour et nuit ; V1.8 : zones en mélange
         // Il est dans le scénario de zone (son modèle), mais pas au début d'une session : il vient plus tard, après son signe.
         Assert.Contains(z.Setup.Combatants, c => c.Id == WhiteWolf);
         Assert.DoesNotContain(ZoneSetups.For(z, Array.Empty<string>()).Combatants, c => c.Id == WhiteWolf);
@@ -391,7 +391,8 @@ public class V1Reponses2Tests
             bool engaged = wolf != null && w.Zone.Engine.View(wolf).IsPresent && w.Zone.Engine.View(wolf).Engaged;
             if (w.Zone.Time.Phase != DayPhase.Night && engaged) engagedAtDawn = true;
             // Jamais de départ tant qu'il est engagé (le départ part d'un loup au calme).
-            if (step.Population.Any(e => e.Kind == PopulationEventKind.Withdrew)) Assert.False(engaged);
+            // (Sous-lot V2.1 : les bêtes de la nuit s'en vont aussi à l'aube ; seul le départ du loup blanc compte ici.)
+            if (step.Population.Any(e => e.Kind == PopulationEventKind.Withdrew && e.Population == "loup_blanc")) Assert.False(engaged);
         }
         Assert.True(engagedAtDawn);   // il était encore là, engagé, après 5 h
     }

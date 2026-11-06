@@ -250,6 +250,9 @@ namespace EdS.World
         /// </summary>
         GroundVector? PlayerPositionIn(string? zone);
 
+        /// <summary>Sous-lot V2.1 : place du PNJ à l'heure du monde (devant sa porte la nuit, s'il rentre chez lui).</summary>
+        GroundVector NpcPosition(Npc npc);
+
         /// <summary>Réponses du 31 octobre 2026 : jour du monde (fin des contrats pressés).</summary>
         long Day { get; }
 
@@ -599,7 +602,7 @@ namespace EdS.World
         }
 
         private bool InRange(Npc n) =>
-            _world.PlayerPositionIn(n.Zone) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, n.Position, EdS.Domain.Numerics.Fixed.Zero, TalkRange);
+            _world.PlayerPositionIn(n.Zone) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, _world.NpcPosition(n), EdS.Domain.Numerics.Fixed.Zero, TalkRange);
 
         /// <summary>
         /// Sous-lot V1.6 : le personnage parle à <paramref name="npc"/> : chaque étape en cours « parler à » ce PNJ est remplie (ordre ordinal

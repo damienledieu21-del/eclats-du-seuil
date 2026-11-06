@@ -548,6 +548,8 @@
       "text.ui.journal.card": "Carte d'aventurier",
       "text.ui.guild.trial_locked": "L'épreuve du {0} n'est pas encore ouverte : sa quête demande autre chose (niveau, quête…).",
       "text.zone.loup_blanc.signe": "Un hurlement glacé monte du pré…",
+      "text.zone.loups_nuit.signe": "La nuit tombe. Des loups hurlent dans le pré…",
+      "text.zone.echos.signe": "Des lueurs pâles flottent sur les ruines : des bêtes mortes qui reviennent. Des échos.",
       "text.dialogue.livrer": "Voici : {1} ×{0}.",
       "text.dialogue.livraison": "Tu as quelque chose pour moi ?",
       "text.contract.presse_loups_du_soir.name": "Pressé : loups avant la nuit",

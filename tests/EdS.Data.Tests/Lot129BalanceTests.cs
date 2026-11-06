@@ -101,7 +101,7 @@ public class Lot129BalanceTests
         double player = (double)JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "rules.json")))!["data"]!["combat"]!["movement"]!["speed"]!;
         // Sous-lot V1.6 : le loup blanc, bête élite, est à part (plus rapide que les loups, moins que le Bastion : on peut encore le semer).
         var wolves = zone["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal) && (string)c!["id"]! != "loup_blanc").ToList();
-        Assert.Equal(12, wolves.Count);   // Vallons agrandis : sept loups de plus (forêt des Loups, hautes pierres)
+        Assert.Equal(23, wolves.Count);   // V2.1 : sept loups de la nuit et quatre échos (aussi lents) ; Vallons agrandis : sept loups de plus (forêt des Loups, hautes pierres)
         Assert.All(wolves, w => Assert.Equal(4.0, (double)w!["speed"]!));
         Assert.Equal(5.0, player);
         double white = (double)zone["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_blanc")!["speed"]!;

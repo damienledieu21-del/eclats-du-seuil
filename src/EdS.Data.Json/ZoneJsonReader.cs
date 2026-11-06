@@ -139,6 +139,8 @@ namespace EdS.Data.Json
                 },
                 ["doors"] = (v, p) => d.Doors = input.ReadLimitedList(v, p, ZoneValidator.MaxDoors, n => $"{n} portes, au plus {ZoneValidator.MaxDoors}.",
                     (e, ip) => ReadDoor(input, e, ip)),
+                ["nightSpots"] = (v, p) => d.NightSpots = input.ReadLimitedList(v, p, ZoneValidator.MaxNightSpots,
+                    n => $"{n} places de nuit, au plus {ZoneValidator.MaxNightSpots}.", (e, ip) => ReadNightSpot(input, e, ip)),   // sous-lot V2.1 (schéma 8)
             });
             return ok ? d : null;
         }
@@ -254,8 +256,32 @@ namespace EdS.Data.Json
                 ["family"] = (v, p) => population.Family = input.Text(v, p),   // sous-lot V1.6 (schéma 5)
                 ["night"] = (v, p) => population.Night = ReadNight(input, v, p),   // réponses du 31 octobre 2026 (schéma 6)
                 ["level"] = (v, p) => population.Level = input.Int32(v, p),   // relecture de la PR #83 (schéma 7) : niveau propre
+                ["hours"] = (v, p) => population.Hours = ReadHours(input, v, p),   // sous-lot V2.1 (schéma 8) : jour et nuit
             });
             return ok ? population : null;
+        }
+
+        private static HoursData? ReadHours(JsonInput input, JsonElement element, string path)
+        {
+            var hours = new HoursData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["phases"] = (v, p) => hours.Phases = input.ReadLimitedList(v, p, PopulationHours.PhaseNames.Count,
+                    n => $"{n} moments, au plus {PopulationHours.PhaseNames.Count}.", (e, ip) => input.Text(e, ip)),
+                ["sign"] = (v, p) => hours.Sign = input.Text(v, p),
+            });
+            return ok ? hours : null;
+        }
+
+        private static NightSpotData? ReadNightSpot(JsonInput input, JsonElement element, string path)
+        {
+            var spot = new NightSpotData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["npc"] = (v, p) => spot.Npc = input.Text(v, p),
+                ["position"] = (v, p) => spot.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+            });
+            return ok ? spot : null;
         }
 
         private static NightData? ReadNight(JsonInput input, JsonElement element, string path)

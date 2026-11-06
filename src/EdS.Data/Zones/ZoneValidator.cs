@@ -79,9 +79,16 @@ namespace EdS.Data.Zones
         /// </summary>
         public int? Level { get; }
 
+        /// <summary>
+        /// Sous-lot V2.1 (schéma 8, jour et nuit) : moments de la journée où la créature est dans le monde, ou null (toujours là). Hors de ses
+        /// heures, elle s'en va dès qu'elle est au calme (elle rentre, elle dort) et revient à sa place quand ses heures reviennent.
+        /// </summary>
+        public PopulationHours? Hours { get; }
+
         internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null,
-            int? level = null)
+            int? level = null, PopulationHours? hours = null)
         {
+            Hours = hours;
             Level = level;
             Night = night;
             Family = family ?? DefaultFamily(creature);
@@ -90,6 +97,45 @@ namespace EdS.Data.Zones
             RespawnMs = respawnMs;
             LeashRange = leashRange;
             Loot = loot;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.1 (schéma 8, jour et nuit qui changent le monde) : heures d'une population. Les moments sont ceux du temps du monde, dans
+    /// l'ordre de <c>EdS.World.DayPhase</c> : nuit (22 h à 5 h), aube (5 h à 7 h), jour (7 h à 19 h), crépuscule (19 h à 22 h).
+    /// </summary>
+    public sealed class PopulationHours
+    {
+        /// <summary>Noms des moments, dans l'ordre de <c>DayPhase</c> (indice = valeur du moment).</summary>
+        public static readonly IReadOnlyList<string> PhaseNames = Array.AsReadOnly(new[] { "night", "dawn", "day", "dusk" });
+
+        /// <summary>Moments où la créature est là : un bit par moment (bit 0 la nuit… bit 3 le crépuscule).</summary>
+        public int Mask { get; }
+
+        /// <summary>Clé du texte annoncé quand elle arrive, ou null.</summary>
+        public string? Sign { get; }
+
+        /// <summary>La créature est là au moment <paramref name="phase"/> (valeur de <c>DayPhase</c>, de 0 à 3).</summary>
+        public bool IsActive(int phase) => phase >= 0 && phase < PhaseNames.Count && (Mask & (1 << phase)) != 0;
+
+        internal PopulationHours(int mask, string? sign)
+        {
+            if (mask <= 0 || mask >= (1 << PhaseNames.Count) - 1) throw new ArgumentOutOfRangeException(nameof(mask));
+            Mask = mask;
+            Sign = sign;
+        }
+    }
+
+    /// <summary>Sous-lot V2.1 (schéma 8) : place d'un PNJ la nuit, devant sa porte (on peut toujours lui parler).</summary>
+    public sealed class NightSpot
+    {
+        public string Npc { get; }
+        public GroundVector Position { get; }
+
+        internal NightSpot(string npc, GroundVector position)
+        {
+            Npc = npc;
+            Position = position;
         }
     }
 
@@ -259,8 +305,9 @@ namespace EdS.Data.Zones
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
-            ZoneScaling? scaling = null)
+            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null)
         {
+            NightSpots = Frozen.List(nightSpots ?? Array.Empty<NightSpot>(), nameof(nightSpots));
             Scaling = scaling;
             Boss = boss;
             Chiefs = Frozen.List(chiefs ?? Array.Empty<Boss>(), nameof(chiefs));
@@ -280,6 +327,12 @@ namespace EdS.Data.Zones
             Populations = Frozen.List(populations, nameof(populations));
             Passages = Frozen.List(passages, nameof(passages));
         }
+
+        /// <summary>Sous-lot V2.1 (schéma 8) : PNJ qui rentrent chez eux la nuit, dans l'ordre du fichier (vide sans eux).</summary>
+        public IReadOnlyList<NightSpot> NightSpots { get; }
+
+        /// <summary>Sous-lot V2.1 : place la nuit du PNJ <paramref name="npc"/> dans cette zone, ou null (il reste où il est).</summary>
+        public GroundVector? NightSpotOf(string npc) => NightSpots.FirstOrDefault(n => n.Npc == npc)?.Position;
 
         /// <summary>Clé du registre du monde qui marque un passage ouvert (<c>zone.vallons/passage/moulin</c>).</summary>
         public string PassageKey(string passage) => $"{Id}/passage/{passage}";
@@ -337,10 +390,10 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone);
             var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
-                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level)).ToList();
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots);
         }
     }
 
@@ -378,9 +431,17 @@ namespace EdS.Data.Zones
         /// (réponses de Damien du 31 octobre 2026) : <c>night</c> facultatif sur une population (créature rare de la nuit : <c>chancePercent</c>,
         /// <c>signMs</c>, <c>sign</c>). Version 7 (sous-lot V1.8, zones en mélange) : <c>minLevel</c> facultatif sur un lieu (1 par défaut) et
         /// <c>scaling</c> facultatif (<c>baseLevel</c>, <c>bossBaseLevel</c>, <c>healthPerLevelPercent</c>, <c>damagePerLevelPercent</c>,
-        /// <c>easeLevels</c>).
+        /// <c>easeLevels</c>). Version 8 (sous-lot V2.1, jour et nuit) : <c>hours</c> facultatif sur une population (<c>phases</c> : de 1 à 3
+        /// moments parmi « night », « dawn », « day », « dusk » ; <c>sign</c> facultatif ; exclusif de <c>night</c>) et <c>nightSpots</c>
+        /// facultatif (<c>npc</c>, <c>position</c> : où le PNJ se tient la nuit). La version 7 est encore lue (sans ces champs).
         /// </summary>
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
+
+        /// <summary>Sous-lot V2.1 : version encore lue (sous-ensemble de la version 8, sans <c>hours</c> ni <c>nightSpots</c>).</summary>
+        public const int PreviousSchemaVersion = 7;
+
+        /// <summary>Sous-lot V2.1 : PNJ qui rentrent chez eux la nuit, au plus, par zone.</summary>
+        public const int MaxNightSpots = 64;
 
         /// <summary>Schéma 6 : délai au plus entre le signe d'une créature de la nuit et son arrivée (10 min de jeu).</summary>
         public const long MaxSignMs = 600_000;
@@ -411,6 +472,9 @@ namespace EdS.Data.Zones
         /// <summary>Schéma 6 : clé de texte du signe d'une créature de la nuit (« text.… »).</summary>
         private static readonly Regex TextKey = new Regex(@"^text(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
+        /// <summary>Sous-lot V2.1 : identifiant d'un PNJ de l'histoire (« npc.odile »).</summary>
+        private static readonly Regex NpcId = new Regex(@"^npc\.[a-z0-9_]+\z", RegexOptions.CultureInvariant);
+
         /// <summary>Suffixe réservé aux vies suivantes d'une créature (<c>_v2</c>…).</summary>
         private static readonly Regex LifeSuffix = new Regex(@"_v[0-9]+\z", RegexOptions.CultureInvariant);
 
@@ -427,8 +491,11 @@ namespace EdS.Data.Zones
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (items is null) throw new ArgumentNullException(nameof(items));
             report ??= new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
+            // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit).
+            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
+            bool schema8 = document.SchemaVersion >= CurrentSchemaVersion;
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -556,11 +623,19 @@ namespace EdS.Data.Zones
                         if (nok) night = new NightSpawn((int)n.ChancePercent!.Value, n.SignMs!.Value, n.Sign!);
                         else ok = false;
                     }
+                    // Sous-lot V2.1 (schéma 8) : heures de la population (loups de la nuit, échos, bêtes qui dorment la nuit).
+                    PopulationHours? hours = null;
+                    if (p.Hours is HoursData h)
+                    {
+                        if (!schema8) { report.Add(path + ".hours", ValidationCode.InvalidValue, $"heures d'une population : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        else if (p.Night != null) { report.Add(path + ".hours", ValidationCode.InvalidValue, "« hours » et « night » ne vont pas ensemble : une créature rare de la nuit a déjà ses heures."); ok = false; }
+                        else if ((hours = CheckHours(h, path + ".hours", report)) is null) ok = false;
+                    }
                     // Relecture de la PR #83 (schéma 7) : niveau propre, de 1 au niveau maximal des règles.
                     int maxPopulationLevel = scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit;
                     if (p.Level is int pl && (pl < 1 || pl > maxPopulationLevel))
                     { report.Add(path + ".level", ValidationCode.OutOfRange, $"niveau propre hors de [1, {maxPopulationLevel}]."); ok = false; }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level));
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level, hours));
                 }
             }
 
@@ -675,12 +750,70 @@ namespace EdS.Data.Zones
                     }
                 }
             }
+            // Sous-lot V2.1 (schéma 8) : les PNJ qui rentrent chez eux la nuit se tiennent devant leur porte (on peut toujours leur parler) ;
+            // leur place est dans l'aire praticable, hors des obstacles. L'histoire vérifie que chaque PNJ existe et vit dans cette zone.
+            var nightSpots = new List<NightSpot>();
+            if (d.NightSpots != null)
+            {
+                if (!schema8) report.Add("$.data.nightSpots", ValidationCode.InvalidValue, $"places de nuit des PNJ : schéma {CurrentSchemaVersion} attendu.");
+                else if (d.NightSpots.Count > MaxNightSpots) report.Add("$.data.nightSpots", ValidationCode.LimitExceeded, $"{d.NightSpots.Count} places de nuit, au plus {MaxNightSpots}.");
+                else
+                    for (int i = 0; i < d.NightSpots.Count; i++)
+                    {
+                        string path = $"$.data.nightSpots[{i}]";
+                        if (d.NightSpots[i] is not NightSpotData n) { Missing(report, path, "place de nuit d'un PNJ"); continue; }
+                        bool ok = true;
+                        if (n.Npc is null) { Missing(report, path + ".npc", "PNJ « npc.… »"); ok = false; }
+                        else if (n.Npc.Length > 64 || !NpcId.IsMatch(n.Npc)) { report.Add(path + ".npc", ValidationCode.InvalidValue, $"PNJ « {n.Npc} » mal formé : « npc.<nom> » attendu."); ok = false; }
+                        else if (nightSpots.Any(x => x.Npc == n.Npc)) { report.Add(path + ".npc", ValidationCode.DuplicateId, $"PNJ « {n.Npc} » a déjà sa place de nuit."); ok = false; }
+                        if (!CheckPoint(n.Position, path + ".position", "place de nuit [x, z]", report)) ok = false;
+                        else if (!Inside(Point(n.Position!))) { report.Add(path + ".position", ValidationCode.OutOfRange, "place de nuit hors de l'aire praticable de la zone."); ok = false; }
+                        else if (space != null && Clear(Point(n.Position!), CharacterRadius, space, "d'un PNJ") is string why) { report.Add(path + ".position", ValidationCode.InvalidValue, why); ok = false; }
+                        if (ok) nightSpots.Add(new NightSpot(n.Npc!, Point(n.Position!)));
+                    }
+            }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots));
+        }
+
+        /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>
+        private static PopulationHours? CheckHours(HoursData h, string path, ValidationReport report)
+        {
+            bool ok = true;
+            int mask = 0;
+            int all = (1 << PopulationHours.PhaseNames.Count) - 1;
+            if (h.Phases is null) { Missing(report, path + ".phases", "moments de la journée (« night », « dawn », « day », « dusk »)"); ok = false; }
+            else if (h.Phases.Count < 1 || h.Phases.Count >= PopulationHours.PhaseNames.Count)
+            {
+                report.Add(path + ".phases", ValidationCode.OutOfRange,
+                    $"{h.Phases.Count} moments, de 1 à {PopulationHours.PhaseNames.Count - 1} attendus (toujours là : retirer « hours »).");
+                ok = false;
+            }
+            else
+                for (int i = 0; i < h.Phases.Count; i++)
+                {
+                    int phase = h.Phases[i] is string name ? IndexOf(PopulationHours.PhaseNames, name) : -1;
+                    if (phase < 0)
+                    {
+                        report.Add($"{path}.phases[{i}]", ValidationCode.InvalidValue, $"moment « {h.Phases[i]} » inconnu : « night », « dawn », « day » ou « dusk ».");
+                        ok = false;
+                    }
+                    else if ((mask & (1 << phase)) != 0) { report.Add($"{path}.phases[{i}]", ValidationCode.DuplicateId, $"moment « {h.Phases[i]} » déjà donné."); ok = false; }
+                    else mask |= 1 << phase;
+                }
+            if (h.Sign != null && (h.Sign.Length > 200 || !TextKey.IsMatch(h.Sign)))
+            { report.Add(path + ".sign", ValidationCode.InvalidValue, $"clé de texte « {h.Sign} » mal formée : « text.… »."); ok = false; }
+            return ok && mask > 0 && mask < all ? new PopulationHours(mask, h.Sign) : null;
+        }
+
+        private static int IndexOf(IReadOnlyList<string> list, string value)
+        {
+            for (int i = 0; i < list.Count; i++) if (string.Equals(list[i], value, StringComparison.Ordinal)) return i;
+            return -1;
         }
 
         /// <summary>Écart (m) entre un point et la boîte d'un obstacle (0 dedans ou sur le bord).</summary>
