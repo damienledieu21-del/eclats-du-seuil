@@ -103,7 +103,7 @@ Quand **Pain-d'Épice, le chat de Rosalie** est dans le sac (quête du chapitre 
 | 7.3 | Arrête-toi | Il freine, s'assoit tourné vers toi, la queue autour des pattes ; puis toilette, regard qui fait le tour, étirement, miaulement ; un ronronnement (une fois) s'il est près de toi | [ ] | |
 | 7.4 | Reste 30 s sans bouger | Il se couche en boule ; il se relève dès que tu repars | [ ] | |
 | 7.5 | Passe une porte, fais un voyage, la nuit (**Essai de la nuit**) | Il reparaît derrière toi ; la nuit, ses yeux luisent un peu | [ ] | |
-| 7.6 | Combat (un loup) | Il ne s'approche pas à moins de 6 m de toi (il s'arrête où il est) ; rien ne le touche, il ne gêne ni tes coups ni la caméra | [ ] | |
+| 7.6 | Combat (un loup) | Il s'écarte en trottinant jusqu'à environ 6 m, puis s'assoit ; rien ne le touche, il ne gêne ni tes coups ni la caméra | [ ] | |
 | 7.7 | Menu « ne plus forcer » (ou rends le chat à Rosalie) | Il rapetisse sur place et disparaît | [ ] | |
 | 7.8 | Ton avis : taille, couleur, vitesse, distance, sons | — | [ ] | |
 

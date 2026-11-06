@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
+using EdS.Data.Saves;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -104,7 +105,7 @@ namespace EdS.Runtime
         /// <summary>Distance (le long du chemin du joueur) où la bête s'arrête derrière lui (m).</summary>
         public double FollowDistance { get; }
 
-        /// <summary>Distance gardée pendant un combat : elle se tient à l'écart (m).</summary>
+        /// <summary>Distance gardée pendant un combat : elle s'écarte en douceur jusque-là (m).</summary>
         public double CombatDistance { get; }
 
         /// <summary>Vitesse de course la plus grande (m/s), un peu plus que celle du joueur pour le rattraper.</summary>
@@ -138,8 +139,9 @@ namespace EdS.Runtime
         /// </summary>
         public static IReadOnlyList<CompanionDefinition> Shown(Func<string, int> countOf, string? forced = null)
         {
-            if (countOf is null) throw new ArgumentNullException(nameof(countOf));
-            return All.Where(c => c.Id == forced || countOf(c.ItemId) > 0).Take(MaxShown).ToList();
+            var into = new List<CompanionDefinition>();
+            Shown(All, countOf, forced, into);
+            return into;
         }
 
         /// <summary>Compagnons à montrer d'après le sac (objets portés exclus : un objet de quête n'est jamais porté).</summary>
@@ -147,6 +149,45 @@ namespace EdS.Runtime
         {
             if (inventory is null) throw new ArgumentNullException(nameof(inventory));
             return Shown(inventory.Count, forced);
+        }
+
+        /// <summary>
+        /// Relecture de la PR #102 : même choix, sans allocation (appelé à chaque image sous Unity) : <paramref name="into"/> est vidée puis
+        /// remplie.
+        /// </summary>
+        public static void Shown(Inventory inventory, string? forced, List<CompanionDefinition> into)
+        {
+            if (inventory is null) throw new ArgumentNullException(nameof(inventory));
+            if (into is null) throw new ArgumentNullException(nameof(into));
+            into.Clear();
+            for (int i = 0; i < All.Count && into.Count < MaxShown; i++)
+            {
+                CompanionDefinition c = All[i];
+                if (c.Id == forced || InBag(inventory, c.ItemId)) into.Add(c);
+            }
+        }
+
+        /// <summary>L'objet est-il au sac ? (boucle simple sur les piles : <see cref="Inventory.Count"/> passe par LINQ.)</summary>
+        private static bool InBag(Inventory inventory, string item)
+        {
+            IReadOnlyList<ItemStack> stacks = inventory.Stacks;
+            for (int i = 0; i < stacks.Count; i++)
+                if (stacks[i].Item == item && stacks[i].Count > 0) return true;
+            return false;
+        }
+
+        /// <summary>Choix dans un catalogue donné (tests de la borne <see cref="MaxShown"/>) ; <paramref name="into"/> est vidée puis remplie.</summary>
+        public static void Shown(IReadOnlyList<CompanionDefinition> catalog, Func<string, int> countOf, string? forced, List<CompanionDefinition> into)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (countOf is null) throw new ArgumentNullException(nameof(countOf));
+            if (into is null) throw new ArgumentNullException(nameof(into));
+            into.Clear();
+            for (int i = 0; i < catalog.Count && into.Count < MaxShown; i++)
+            {
+                CompanionDefinition c = catalog[i];
+                if (c.Id == forced || countOf(c.ItemId) > 0) into.Add(c);
+            }
         }
 
         /// <summary>Erreurs du catalogue (identifiants en double, objet absent du catalogue d'objets) ; vide s'il est juste.</summary>
@@ -168,7 +209,7 @@ namespace EdS.Runtime
     /// <summary>
     /// Sous-lot V2.2.1 : le mouvement d'un compagnon d'affichage, sans Unity (testé en C#). La bête <b>suit le chemin du joueur</b> (une
     /// traîne de points, bornée) : elle contourne donc les maisons comme lui, sans collision ni physique. Elle s'arrête à
-    /// <see cref="CompanionDefinition.FollowDistance"/> derrière lui (plus loin en combat), accélère et freine en douceur, se tourne sans
+    /// <see cref="CompanionDefinition.FollowDistance"/> derrière lui (en combat, elle s'écarte jusqu'à la distance de combat), accélère et freine en douceur, se tourne sans
     /// à-coup, s'assoit quand le joueur s'arrête, fait sa toilette, regarde autour d'elle, s'étire, miaule, ronronne, puis se couche en boule
     /// si l'arrêt dure. Trop loin (porte, voyage, chargement) : elle reparaît derrière le joueur. Tout est tiré de l'identifiant et du
     /// nombre de pauses (aucune horloge, aucun hasard) : la même suite d'appels donne toujours le même mouvement. Affichage seulement.
@@ -204,6 +245,12 @@ namespace EdS.Runtime
         /// <summary>Temps assis avant le ronronnement (s), si le joueur est tout près.</summary>
         public const double PurrDelay = 9.0;
 
+        /// <summary>En combat, elle s'écarte quand elle est plus près que la distance de combat moins cette marge (m).</summary>
+        public const double BackMargin = 0.3;
+
+        /// <summary>Vitesse la plus grande quand elle s'écarte d'un combat (m/s) : un trot, pas une fuite.</summary>
+        public const double BackSpeed = 3.0;
+
         /// <summary>Durée de l'apparition et de la disparition (s).</summary>
         public const double FadeSeconds = 0.6;
 
@@ -219,6 +266,7 @@ namespace EdS.Runtime
         private double _actLeft;
         private int _acts;
         private bool _purred;
+        private bool _appearPending;
 
         public CompanionFollower(CompanionDefinition definition)
         {
@@ -266,6 +314,9 @@ namespace EdS.Runtime
 
         public bool Leaving => _leaving;
 
+        /// <summary>La bête a une place (sinon : à ne pas montrer).</summary>
+        public bool Placed => _placed;
+
         /// <summary>L'objet a quitté le sac : la bête s'en va (elle rapetisse sur place).</summary>
         public void Leave() => _leaving = true;
 
@@ -283,15 +334,22 @@ namespace EdS.Runtime
         {
             Cue = CompanionCue.None;
             if (!IsFinite(playerX) || !IsFinite(playerZ) || !IsFinite(playerYaw) || !IsFinite(deltaTime)) return;
-            if (deltaTime <= 0) return;
-            double dt = Math.Min(deltaTime, MaxStep);
+            // Relecture de la PR #102 : la place se prend même en pause (deltaTime 0), pour ne jamais montrer la bête à une place périmée.
             if (!_placed || Distance(X, Z, playerX, playerZ) > TeleportDistance)
             {
                 bool first = !_placed && Presence <= 0;
                 Place(playerX, playerZ, playerYaw, combat);
-                if (first && !_leaving) Cue = CompanionCue.Appear;
+                if (first && !_leaving && deltaTime > 0) Cue = CompanionCue.Appear;
+                _appearPending = first && !_leaving && deltaTime <= 0;
                 return;
             }
+            if (deltaTime <= 0) return;
+            if (_appearPending)
+            {
+                _appearPending = false;
+                if (!_leaving) Cue = CompanionCue.Appear;   // le miaulement d'arrivée attend la fin de la pause
+            }
+            double dt = Math.Min(deltaTime, MaxStep);
             Presence = _leaving ? Math.Max(0, Presence - dt / FadeSeconds) : Math.Min(1, Presence + dt / FadeSeconds);
             if (_leaving)
             {
@@ -320,6 +378,24 @@ namespace EdS.Runtime
                 }
 
             double keep = combat ? _definition.CombatDistance : _definition.FollowDistance;
+            double direct = Distance(X, Z, playerX, playerZ);
+            if (combat && direct < keep - BackMargin)
+            {
+                // Relecture de la PR #102 : un combat commence tout près : elle s'écarte en douceur, droit loin du joueur, jusqu'à la
+                // distance de combat (la traîne est oubliée : le chemin d'avant ne compte plus).
+                _trail.Clear();
+                double wanted = Math.Min(BackSpeed, (keep - direct) * 1.5);
+                Speed = Speed < wanted ? Math.Min(wanted, Speed + Acceleration * dt) : Math.Max(wanted, Speed - Braking * dt);
+                double ax = direct > 1e-6 ? (X - playerX) / direct : -Math.Sin(playerYaw * Math.PI / 180);
+                double az = direct > 1e-6 ? (Z - playerZ) / direct : -Math.Cos(playerYaw * Math.PI / 180);
+                double back = Math.Min(Speed * dt, keep - direct);
+                X += ax * back;
+                Z += az * back;
+                Stride += back;
+                if (back > 1e-4) TurnTo(Math.Atan2(ax, az) * 180 / Math.PI, dt);
+                Postures(dt, back / dt, Distance(X, Z, playerX, playerZ), combat);
+                return;
+            }
             double remaining = PathLength(playerX, playerZ);
             double desired = remaining > keep ? Math.Min(_definition.MaxSpeed, (remaining - keep) * 2.4) : 0;
             if (desired < 0.15) desired = 0;   // pas de pas de fourmi : elle reste assise pour quelques centimètres

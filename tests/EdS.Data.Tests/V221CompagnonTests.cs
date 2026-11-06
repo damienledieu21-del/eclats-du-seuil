@@ -205,7 +205,7 @@ public sealed class V221CompagnonTests
         var g = new CompanionFollower(Companions.PainDEpice);
         for (int i = 0; i < 30; i++) g.Step(i * 0.2, 0, 90, Dt, false);
         (double x, double z, double s) = (g.X, g.Z, g.Stride);
-        g.Step(50, 0, 90, 0, false);                       // pause
+        g.Step(8, 0, 90, 0, false);                        // pause (au-delà de 14 m, elle se replacerait : voir la relecture)
         g.Step(double.NaN, 0, 90, Dt, false);
         g.Step(1, double.PositiveInfinity, 90, Dt, false);
         g.Step(1, 0, 90, double.NaN, false);
@@ -224,6 +224,149 @@ public sealed class V221CompagnonTests
         Assert.Null(StyleRules.PickSound(new[] { "Assets/Style/Sounds/Combat/swish_1.ogg" }, StyleSound.Meow));
         foreach (StyleSound sound in Enum.GetValues(typeof(StyleSound))) StyleRules.PickSounds(files, sound, 6);   // chaque son a ses mots
         Assert.Equal(12, EdS.Data.Saves.SaveValidator.CurrentSchemaVersion);
+    }
+
+    [Fact]
+    public void Relecture_un_combat_qui_commence_tout_pres_la_fait_s_ecarter_en_douceur()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        for (int i = 0; i < 40; i++) f.Step(0, 0, 0, Dt, false);   // assise à 1,7 m
+        Assert.InRange(Distance(f, 0, 0), 1.6, 1.9);
+        double before = Distance(f, 0, 0), maxStep = 0;
+        for (int i = 0; i < 100; i++)
+        {
+            double x = f.X, z = f.Z;
+            f.Step(0, 0, 0, Dt, true);
+            maxStep = Math.Max(maxStep, Math.Sqrt((f.X - x) * (f.X - x) + (f.Z - z) * (f.Z - z)));
+            Assert.True(Distance(f, 0, 0) >= before - 1e-9, "elle ne revient jamais vers le joueur");
+            before = Distance(f, 0, 0);
+            if (i == 2) Assert.Equal(CompanionPose.Walk, f.Pose);
+        }
+        Assert.True(maxStep <= CompanionFollower.BackSpeed * Dt + 1e-9, $"en douceur : {maxStep}");
+        Assert.InRange(Distance(f, 0, 0), Companions.PainDEpice.CombatDistance - CompanionFollower.BackMargin - 0.01, Companions.PainDEpice.CombatDistance + 0.01);
+        for (int i = 0; i < 40; i++) f.Step(0, 0, 0, Dt, true);
+        Assert.NotEqual(CompanionPose.Walk, f.Pose);   // arrivée, elle s'arrête (puis s'assoit)
+        // Sur le joueur même : elle s'écarte vers l'arrière de son regard.
+        var g = new CompanionFollower(Companions.PainDEpice);
+        g.Step(0, 0, 0, Dt, false);
+        g.Step(g.X, g.Z, 0, Dt, true);
+        g.Step(g.X, g.Z, 0, Dt, true);
+        Assert.False(double.IsNaN(g.X) || double.IsNaN(g.Z));
+    }
+
+    [Fact]
+    public void Relecture_en_pause_elle_prend_sa_place_et_miaule_seulement_a_la_reprise()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        Assert.False(f.Placed);
+        f.Step(30, 40, 0, 0, false);   // première image en pause
+        Assert.True(f.Placed);
+        Assert.InRange(Distance(f, 30, 40), 1.6, 1.9);
+        Assert.Equal(CompanionCue.None, f.Cue);
+        f.Step(30, 40, 0, Dt, false);
+        Assert.Equal(CompanionCue.Appear, f.Cue);
+        for (int i = 0; i < 20; i++) f.Step(30, 40, 0, Dt, false);
+        f.Replace();
+        f.Step(-80, 5, 90, 0, false);   // une porte passée pendant la pause
+        Assert.True(f.Placed);
+        Assert.InRange(Distance(f, -80, 5), 1.6, 1.9);
+        Assert.Equal(CompanionCue.None, f.Cue);
+        f.Step(-80, 5, 90, Dt, false);
+        Assert.Equal(CompanionCue.None, f.Cue);   // pas de second miaulement d'arrivée
+    }
+
+    [Fact]
+    public void Relecture_partir_puis_etre_replacee_ou_teleportee_reste_sain()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        for (int i = 0; i < 30; i++) f.Step(0, 0, 0, Dt, false);
+        f.Leave();
+        f.Step(0, 0, 0, Dt, false);
+        double p = f.Presence;
+        f.Replace();
+        f.Step(500, 500, 0, Dt, false);   // replacée près du joueur, toujours en partance
+        Assert.InRange(Distance(f, 500, 500), 1.6, 1.9);
+        Assert.Equal(CompanionCue.None, f.Cue);
+        Assert.True(f.Leaving);
+        Assert.Equal(p, f.Presence);
+        f.Step(-500, 0, 0, Dt, false);    // téléportée (trop loin), même chose
+        Assert.InRange(Distance(f, -500, 0), 1.6, 1.9);
+        for (int i = 0; i < 20; i++) f.Step(-500, 0, 0, Dt, false);
+        Assert.True(f.Gone);
+        Assert.Equal(0, f.Speed);
+        // Partie avant même d'avoir paru : aucune arrivée, aucun miaulement.
+        var g = new CompanionFollower(Companions.PainDEpice);
+        g.Leave();
+        g.Step(0, 0, 0, Dt, false);
+        Assert.Equal(CompanionCue.None, g.Cue);
+        g.Step(0, 0, 0, Dt, false);
+        Assert.True(g.Gone);
+    }
+
+    [Fact]
+    public void Relecture_trois_compagnons_au_plus_dans_l_ordre_du_catalogue_sans_doublon()
+    {
+        CompanionDefinition Beast(int n) => new CompanionDefinition("companion.b" + n, "item.b" + n, "Bête " + n, CompanionShape.Cat,
+            StyleTint.White, StyleTint.White, StyleTint.White, 0.5, 1.5, 5, 8);
+        var catalog = Enumerable.Range(0, 5).Select(Beast).ToList();
+        var into = new List<CompanionDefinition> { Beast(9) };   // vidée avant d'être remplie
+        Companions.Shown(catalog, _ => 1, "companion.b4", into);
+        Assert.Equal(new[] { "companion.b0", "companion.b1", "companion.b2" }, into.Select(c => c.Id));
+        Assert.Equal(Companions.MaxShown, into.Count);
+        Companions.Shown(catalog, item => item == "item.b3" ? 1 : 0, "companion.b1", into);
+        Assert.Equal(new[] { "companion.b1", "companion.b3" }, into.Select(c => c.Id));
+        Companions.Shown(catalog, _ => 0, null, into);
+        Assert.Empty(into);
+        // Avec le sac : même liste réutilisée.
+        var bag = new Inventory(ItemsCatalog);
+        Companions.Shown(bag, null, into);
+        Assert.Empty(into);
+        bag.Add("item.chat_de_rosalie", 1);
+        Companions.Shown(bag, "companion.pain_d_epice", into);
+        Assert.Equal("companion.pain_d_epice", Assert.Single(into).Id);
+        Assert.Throws<ArgumentNullException>(() => Companions.Shown(bag, null, null!));
+    }
+
+    [Fact]
+    public void Relecture_stay_en_pleine_disparition_la_fait_regrandir()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        for (int i = 0; i < 30; i++) f.Step(0, 0, 0, Dt, false);
+        f.Leave();
+        for (int i = 0; i < 6; i++) f.Step(0, 0, 0, Dt, false);   // à moitié partie
+        double half = f.Presence;
+        Assert.InRange(half, 0.4, 0.6);
+        f.Stay();
+        f.Step(0, 0, 0, Dt, false);
+        Assert.True(f.Presence > half);
+        Assert.False(f.Leaving);
+        for (int i = 0; i < 20; i++) f.Step(0, 0, 0, Dt, false);
+        Assert.Equal(1, f.Presence);
+        Assert.False(f.Gone);
+    }
+
+    [Fact]
+    public void Relecture_couchee_en_boule_elle_se_leve_des_que_le_joueur_repart()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        for (int i = 0; i < (int)(35 / Dt); i++) f.Step(0, 0, 0, Dt, false);
+        Assert.Equal(CompanionPose.Curl, f.Pose);
+        double px = 0;
+        int frames = 0;
+        while (f.Pose == CompanionPose.Curl && frames < 40)
+        {
+            f.Step(0, px += 5 * Dt, 0, Dt, false);
+            frames++;
+        }
+        Assert.InRange(frames, 1, 10);
+        Assert.Equal(CompanionPose.Walk, f.Pose);
+        Assert.Equal(0, f.PoseSeconds);
+        // Un combat qui commence pendant le sommeil la fait aussi se lever (elle s'écarte).
+        var g = new CompanionFollower(Companions.PainDEpice);
+        for (int i = 0; i < (int)(35 / Dt); i++) g.Step(0, 0, 0, Dt, false);
+        Assert.Equal(CompanionPose.Curl, g.Pose);
+        for (int i = 0; i < 3; i++) g.Step(0, 0, 0, Dt, true);
+        Assert.Equal(CompanionPose.Walk, g.Pose);
     }
 
     private static double Distance(CompanionFollower f, double x, double z) => Math.Sqrt((f.X - x) * (f.X - x) + (f.Z - z) * (f.Z - z));

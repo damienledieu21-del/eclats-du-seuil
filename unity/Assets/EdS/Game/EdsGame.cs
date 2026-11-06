@@ -309,6 +309,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.2.1 : les compagnons d'affichage (la bête liée à un objet du sac).</summary>
         private CompanionsView _companions;
 
+        /// <summary>Relecture de la PR #102 : liste des compagnons à montrer, réutilisée à chaque image.</summary>
+        private readonly List<CompanionDefinition> _companionList = new List<CompanionDefinition>();
+
         /// <summary>Sous-lot V1.1 : voyages rapides déjà montrés (un fondu au noir à chaque nouveau).</summary>
         private int _shownTravels;
 
@@ -528,7 +531,8 @@ namespace EdS.Game
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).
             if (_companions == null) _companions = new CompanionsView();
-            _companions.Sync(Companions.Shown(a.World.Inventory, CompanionTrial.Forced), _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
+            Companions.Shown(a.World.Inventory, CompanionTrial.Forced, _companionList);   // relecture de la PR #102 : sans allocation
+            _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
                 _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)

@@ -68,7 +68,8 @@ namespace EdS.Game
                 // Hauteur : celle du joueur, plus la différence du sol (le pont cintré) entre lui et la bête.
                 float x = (float)follower.X, z = (float)follower.Z;
                 float y = at.y + StyleWorld.StandHeight(x, z) - StyleWorld.StandHeight(at.x, at.z);
-                body.Show(true);
+                body.Show(follower.Placed);   // relecture de la PR #102 : jamais à une place périmée
+                if (!follower.Placed) continue;
                 body.Apply(follower, new Vector3(x, y, z), _night, deltaTime);
                 Play(body, follower.Cue);
             }
@@ -198,6 +199,7 @@ namespace EdS.Game
         private readonly Material _eyes;
         private readonly Color _eyeColor;
         private readonly AudioSource _voice;
+        private readonly AudioSource _purr;   // relecture de la PR #102 : à part, le pitch des miaulements ne le change pas
         private readonly float _length;
         private float _clock;
 
@@ -270,6 +272,14 @@ namespace EdS.Game
                 _voice.playOnAwake = false;
                 _voice.spatialBlend = 0.75f;   // on l'entend de son côté, sans qu'il disparaisse quand la caméra recule
                 _voice.loop = false;
+            }
+            _purr = _root.AddComponent<AudioSource>();
+            if (_purr != null)
+            {
+                _purr.playOnAwake = false;
+                _purr.spatialBlend = 0.85f;
+                _purr.loop = false;
+                _purr.pitch = 1f;
             }
             _scale.localScale = Vector3.zero;
         }
@@ -422,9 +432,8 @@ namespace EdS.Game
 
         public void Purr(AudioClip clip)
         {
-            if (_voice == null || clip == null) return;
-            _voice.pitch = 1f;
-            _voice.PlayOneShot(clip, 0.35f);
+            if (_purr == null || clip == null) return;
+            _purr.PlayOneShot(clip, 0.35f);
         }
 
         public void Destroy()
