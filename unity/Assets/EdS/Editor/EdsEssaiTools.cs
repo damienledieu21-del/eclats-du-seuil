@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.IO.Compression;
+using EdS.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -47,85 +47,21 @@ namespace EdS.Game.Editor
             if (!ok) Debug.LogWarning("Éclats du Seuil : sauvegarde des ressources en échec. " + message);
         }
 
-        /// <summary>Zip horodaté de <c>Assets/Style</c> hors du projet. Renvoie vrai si le zip est complet ; le message dit où ou pourquoi pas.</summary>
+        /// <summary>Zip horodaté de <c>Assets/Style</c> hors du projet (logique testée : <see cref="EssaiTools.Backup"/>).</summary>
         internal static bool Backup(out string message)
         {
-            string tmp = null;
             try
             {
-                string source = Path.Combine(Application.dataPath, "Style");
-                if (!Directory.Exists(source))
-                {
-                    message = "Échec : le dossier des ressources est introuvable (" + source + "). Rien n'a été copié ni supprimé.";
-                    return false;
-                }
                 string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 if (string.IsNullOrEmpty(documents))
                 {
                     message = "Échec : impossible de trouver ton dossier Documents. Rien n'a été copié ni supprimé.";
                     return false;
                 }
-                string folder = Path.Combine(documents, BackupFolderName);
-                Directory.CreateDirectory(folder);
-                string target = Path.Combine(folder, "Style-" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".zip");
-                if (File.Exists(target))
-                {
-                    message = "Échec : « " + target + " » existe déjà ; attends une seconde et relance. Rien n'a été écrasé.";
-                    return false;
-                }
-                tmp = target + ".incomplet";
-                if (File.Exists(tmp))
-                {
-                    message = "Échec : « " + tmp + " » existe déjà (sauvegarde interrompue plus tôt) ; supprime-le toi-même puis relance. Rien n'a été écrasé.";
-                    tmp = null;
-                    return false;
-                }
-                Zip(source, tmp);
-                // Relecture : le zip s'ouvre et contient autant d'entrées que de fichiers copiés.
-                int expected = Directory.GetFiles(source, "*", SearchOption.AllDirectories).Length, found;
-                using (ZipArchive check = ZipFile.OpenRead(tmp)) found = check.Entries.Count;
-                if (found != expected)
-                {
-                    message = "Échec : le zip contient " + found + " fichiers au lieu de " + expected + ". Il est laissé en place, incomplet : " + tmp + "\nRien du projet n'a été supprimé.";
-                    tmp = null;
-                    return false;
-                }
-                try
-                {
-                    File.Move(tmp, target);
-                }
-                catch (Exception moveError)
-                {
-                    message = "Zip complet (" + found + " fichiers) mais non renommé : " + moveError.Message + "\nIl est ici, utilisable après avoir enlevé « .incomplet » du nom : " + tmp;
-                    tmp = null;
-                    return false;
-                }
-                tmp = null;
-                string cloud = target.IndexOf("OneDrive", StringComparison.OrdinalIgnoreCase) >= 0
-                    ? "\nAttention : ce dossier est dans OneDrive, le zip sera envoyé dans le nuage (prend de la place en ligne)." : "";
-                message = "Réussi : " + found + " fichiers sauvegardés (dossier Assets/Style) dans\n" + target + "\n(hors du projet ; rien n'a été supprimé)." + cloud;
-                return true;
-            }
-            catch (Exception e)
-            {
-                message = "Échec : " + e.Message + (tmp != null ? "\nFichier incomplet laissé en place (tu peux le supprimer toi-même) : " + tmp : "")
-                    + "\nVérifie la place libre sur le disque et les droits du dossier Documents. Rien du projet n'a été supprimé.";
-                return false;
-            }
-        }
-
-        private static void Zip(string source, string zipPath)
-        {
-            try
-            {
-                string[] files = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
-                using (ZipArchive zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
-                    for (int i = 0; i < files.Length; i++)
-                    {
-                        if (i % 20 == 0) EditorUtility.DisplayProgressBar("Sauvegarde des ressources", i + " / " + files.Length + " fichiers", (float)i / files.Length);
-                        string entry = "Style/" + files[i].Substring(source.Length).TrimStart('/', '\\').Replace('\\', '/');
-                        zip.CreateEntryFromFile(files[i], entry, System.IO.Compression.CompressionLevel.Fastest);
-                    }
+                BackupResult result = EssaiTools.Backup(Path.Combine(Application.dataPath, "Style"), Path.Combine(documents, BackupFolderName), DateTime.Now,
+                    (done, total) => EditorUtility.DisplayProgressBar("Sauvegarde des ressources", done + " / " + total + " fichiers", total == 0 ? 1f : (float)done / total));
+                message = result.Message;
+                return result.Succeeded;
             }
             finally
             {
@@ -152,7 +88,7 @@ namespace EdS.Game.Editor
             if (!EdsStyle.Prepare(false)) return;
             AssetDatabase.SaveAssets();
             // 3. Ouvre la bonne scène ; une scène modifiée déclenche la question de Unity (annuler arrête tout, rien n'est perdu).
-            if (SceneManager.GetActiveScene().path != EdsStartupScene.ScenePath)
+            if (EssaiTools.ShouldOpenStartupSceneAlone(SceneManager.GetActiveScene().path, SceneManager.sceneCount, EdsStartupScene.ScenePath))
             {
                 if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 {
