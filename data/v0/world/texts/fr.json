@@ -303,6 +303,7 @@
       "text.ui.trade.reserved": "Objet de soin emporté au combat : il ne se vend pas tant qu'il n'est pas bu.",
       "text.ui.trade.unknownitem": "Objet inconnu.",
       "text.ui.trade.closed": "Boutique fermée à cette heure.",
+      "text.ui.trade.closed_home": "Boutique fermée à cette heure : {0} est rentré pour la nuit, on le trouve devant sa porte.",
       "text.ui.trade.toofar": "Trop loin du marchand.",
       "text.ui.trade.notforsale": "Pas en vente aujourd'hui.",
       "text.ui.trade.notenough": "Tu n'en as pas assez.",

@@ -625,9 +625,26 @@ namespace EdS.Runtime
                 return refusal == CraftRefusal.None;
             }
             if (DoorInReach != null) return UseDoor();
+            // Revue Codex de la PR #99 : la nuit, à l'étal d'un marchand fermé qui est rentré devant sa porte (hors de portée), la boutique dit
+            // qu'elle est fermée et où il est, au lieu de « rien ici ».
+            if (ClosedStallInReach is Npc keeper)
+            {
+                Say("text.ui.trade.closed_home", Text(keeper.Name));
+                return false;
+            }
             Say("text.ui.nothing_here");
             return false;
         }
+
+        /// <summary>
+        /// Sous-lot V2.1 (revue Codex de la PR #99) : marchand dont l'étal (sa place de l'histoire) est à portée alors que lui n'y est pas (la
+        /// nuit, devant sa porte) et que sa boutique est fermée à cette heure ; null sinon.
+        /// </summary>
+        public Npc? ClosedStallInReach => Me is GroundVector p
+            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !Within(p, World.NpcPosition(n), Narrative.TalkRange)
+                    && World.MerchantOf(n.Id) is Merchant m && World.CanTrade(m.Id) == TradeRefusal.Closed)
+                .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
+            : null;
 
         // --- Portes (intérieurs) ----------------------------------------------------------------------------------------
 

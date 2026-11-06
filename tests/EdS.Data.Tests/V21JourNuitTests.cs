@@ -399,6 +399,38 @@ public sealed class V21JourNuitTests : IDisposable
     }
 
     [Fact]
+    public void La_nuit_a_l_etal_ferme_la_boutique_dit_ou_est_le_marchand()
+    {
+        // Revue Codex de la PR #99 : la nuit, à l'étal de Garin (hors de portée de sa porte), « boutique fermée » et où il est, pas « rien ici ».
+        (double x, double z) = Near("merchant.armurier");
+        (string data, string scenarios) = DataCopy((x, z));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(0, 23 * 60), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save, data, scenarios);
+        a.DrainMessages();
+        Assert.Equal(DayPhase.Night, a.World.Zone.Time.Phase);
+        Assert.Null(a.NpcInReach);
+        Assert.Equal("npc.armurier", a.ClosedStallInReach!.Id);
+        Assert.False(a.Interact());
+        Assert.Null(a.Shop);
+        Assert.Null(a.Dialogue);
+        string said = a.DrainMessages().First();
+        Assert.StartsWith("Boutique fermée à cette heure : ", said, StringComparison.Ordinal);
+        Assert.Contains("devant sa porte", said, StringComparison.Ordinal);
+        // À sa porte, le PNJ à portée l'emporte : il parle (boutique fermée, puis son dialogue).
+        (string data2, string scenarios2) = DataCopy(NearAtNight("merchant.armurier"));
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(0, 23 * 60), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession b = Adventure(save, data2, scenarios2);
+        b.DrainMessages();
+        Assert.Null(b.ClosedStallInReach);
+        Assert.Equal("npc.armurier", b.NpcInReach!.Id);
+        Assert.True(b.Interact());
+        Assert.NotNull(b.Dialogue);
+        Assert.Equal("Boutique fermée à cette heure.", b.DrainMessages().First());
+    }
+
+    [Fact]
     public void La_nuit_on_parle_a_Odile_devant_sa_porte()
     {
         GroundVector spot = Vallons.NightSpotOf("npc.odile")!.Value;
