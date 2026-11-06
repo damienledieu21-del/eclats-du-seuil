@@ -164,7 +164,8 @@ public class V191Chapitre1Tests
         Assert.Contains("Discovered discovery.ch1.silhouette", croc);
         // Gaspard écoute, parle de l'Ordre de l'Aube, et envoie au bourg : fin du chapitre 1.
         w = Go(w, Gaspard);
-        Assert.Equal(3, Say(w, "npc.gaspard", "ch1_souvenir").Options.Count);   // V1.9.6 : la silhouette vue, une réponse de plus
+        // V1.9.6 : la silhouette vue, une réponse de plus ; V1.9.9 : Croc-Gris mort, une autre (le village se souvient).
+        Assert.Equal(4, Say(w, "npc.gaspard", "ch1_souvenir").Options.Count);
         Choose(w, 0, "ch1_ordre");
         Assert.Equal(new[] { "FactLearned fact.ch1.gaspard.conseil", "TrustChanged npc.gaspard 1" }, Choose(w, 0).OrderBy(e => e, StringComparer.Ordinal));
         long money = w.Money;

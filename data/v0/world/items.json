@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1475,6 +1475,14 @@
         "stack": 1
       },
       {
+        "id": "item.poussiere_d_echo",
+        "name": "Poussière d'écho",
+        "icon": "eclat_de_seuil",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
         "id": "item.bourse_d_eclats",
         "name": "Bourse d'éclats volés",
         "icon": "quete",
@@ -1685,6 +1693,21 @@
             "item": "item.gambison",
             "count": 1,
             "chancePercent": 4
+          }
+        ]
+      },
+      {
+        "id": "loot.echo",
+        "drops": [
+          {
+            "item": "item.poussiere_d_echo",
+            "count": 1,
+            "chancePercent": 80
+          },
+          {
+            "item": "item.poussiere_d_echo",
+            "count": 1,
+            "chancePercent": 25
           }
         ]
       },

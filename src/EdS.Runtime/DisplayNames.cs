@@ -34,6 +34,7 @@ namespace EdS.Runtime
             ["croc_gris"] = "Croc-Gris",
             ["croc_gris_enrage"] = "Croc-Gris enragé",
             ["echo_de_la_rupture"] = "Écho de la Rupture",
+            ["voix_de_la_rupture"] = "Voix de la Rupture",   // sous-lot V1.9.9 : la seconde forme de l'écho du souvenir
         };
 
         private static readonly Dictionary<string, string> Attacks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -41,6 +42,7 @@ namespace EdS.Runtime
             ["brulure"] = "Brûlure",
             ["coup_bis"] = "Coup",
             ["coup_felant"] = "Coup fêlant",
+            ["choeur"] = "Chœur",
             ["eclat"] = "Éclat",
             ["ecrasement"] = "Écrasement",
             ["fleche"] = "Flèche",

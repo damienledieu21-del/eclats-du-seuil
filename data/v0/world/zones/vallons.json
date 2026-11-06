@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 8,
   "kind": "zone",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -671,7 +671,7 @@
         "creature": "loup_echo1",
         "respawnMs": 120000,
         "leashRange": 20,
-        "loot": "loot.loup",
+        "loot": "loot.echo",
         "family": "echo",
         "hours": {
           "phases": [
@@ -684,7 +684,7 @@
         "creature": "loup_echo2",
         "respawnMs": 120000,
         "leashRange": 20,
-        "loot": "loot.loup",
+        "loot": "loot.echo",
         "family": "echo",
         "hours": {
           "phases": [
@@ -696,7 +696,7 @@
         "creature": "loup_echo3",
         "respawnMs": 120000,
         "leashRange": 20,
-        "loot": "loot.loup",
+        "loot": "loot.echo",
         "family": "echo",
         "hours": {
           "phases": [
@@ -708,7 +708,7 @@
         "creature": "loup_echo4",
         "respawnMs": 120000,
         "leashRange": 20,
-        "loot": "loot.loup",
+        "loot": "loot.echo",
         "family": "echo",
         "hours": {
           "phases": [

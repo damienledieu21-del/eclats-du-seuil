@@ -2,7 +2,7 @@
   "$schema": "../../schemas/guild.schema.json",
   "schemaVersion": 2,
   "kind": "guild",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "npc": "npc.maitresse_guilde",
     "maxActive": 3,
@@ -439,6 +439,10 @@
         {
           "fact": "fact.chef_des_bandits.vaincu",
           "points": 40
+        },
+        {
+          "fact": "fact.ch1.contrat.berenger",
+          "points": 15
         }
       ]
     }

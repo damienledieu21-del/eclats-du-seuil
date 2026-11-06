@@ -472,14 +472,21 @@ public class V196OuvertureTests
             Choose(w, 0, "chant");
             Assert.Contains("FactLearned fact.ch1.souvenir.porte", Choose(w, 0));
             Say(w, "npc.ysolde", "porte");
-            // L'écho de la Rupture : un combat court (le personnage de niveau 3, pilote expert, sans potion).
-            string? echo() => w.BossForms.FirstOrDefault(f => f.StartsWith("echo_de_la_rupture", StringComparison.Ordinal));
-            bool won = false;
-            long left = Battle(w, echo, s => won |= s.Boss.Any(b => b.Kind == BossEventKind.Defeated && b.Boss == "echo_de_la_rupture"), PilotProfile.Expert, 120);
+            // L'écho de la Rupture : un combat court (le personnage de niveau 3, pilote expert, sans potion) ; sous-lot V1.9.9 : en deux formes,
+            // l'écho puis les Voix de la Rupture (la forme en cours du seul combat de chef de la scène).
+            string? echo() => w.BossForms.FirstOrDefault();
+            bool won = false, voices = false;
+            long left = Battle(w, echo, s =>
+            {
+                voices |= s.Boss.Any(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1 && b.Form == "voix_de_la_rupture");
+                return won |= s.Boss.Any(b => b.Kind == BossEventKind.Defeated && b.Boss == "echo_de_la_rupture");
+            }, PilotProfile.Expert, 120);
             _out.WriteLine($"écho de la Rupture : {(won ? "vaincu" : "debout")}, {left} PV");
+            Assert.True(voices);   // sous-lot V1.9.9 : les Voix de la Rupture sortent de l'écho
             Assert.True(won);
             Ticks(w, 2);
             Assert.True(a.SceneFinished);
+            Walk(w, -1, -4.6);   // sous-lot V1.9.9 : la seconde forme se bat près de la porte ; on revient vers la reine
             Say(w, "npc.ysolde", "apres");
             w.Narrative!.Close();
             // Retour au pré, à la porte cachée, avec le texte du retour ; la scène n'est plus à jouer.

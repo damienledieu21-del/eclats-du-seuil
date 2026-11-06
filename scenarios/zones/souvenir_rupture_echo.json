@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 15,
   "kind": "scenario",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "seed": 302,
     "durationMs": 3600000,
@@ -165,6 +165,57 @@
         "position": [
           0,
           3.6
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 3,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 5,
+          "pack": false
+        }
+      },
+      {
+        "id": "voix_de_la_rupture",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 110,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1200,
+        "intervalMs": 1700,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 7,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.8
+          },
+          {
+            "id": "choeur",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1500,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          2,
+          3.8
         ],
         "facing": [
           0,

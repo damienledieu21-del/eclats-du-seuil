@@ -410,6 +410,16 @@ namespace EdS.Runtime
         /// <summary>Texte d'une clé, sinon la clé elle-même (texte manquant visible).</summary>
         public string Text(string key) => Texts.Get(key);
 
+        /// <summary>
+        /// Sous-lot V1.9.9 : clé du message d'une nouvelle forme du chef <paramref name="boss"/> : la sienne (« text.ui.boss_phase.{chef} »,
+        /// par exemple les Voix de la Rupture qui sortent de l'écho), sinon le message commun (« text.ui.boss_phase », « {0} se relève, plus redoutable encore ! », {0} : le nom du chef).
+        /// </summary>
+        public string BossPhaseText(string boss)
+        {
+            string own = "text.ui.boss_phase." + boss;
+            return Texts.Has(own) ? own : "text.ui.boss_phase";
+        }
+
         private string ItemName(string item) => _items.Items.FirstOrDefault(i => i.Id == item)?.Name ?? item;
 
         /// <summary>Traduit ce qu'un tick de la session rapporte.</summary>
@@ -437,7 +447,7 @@ namespace EdS.Runtime
             foreach (LootGained l in step.Loot) Say(l.Kept ? "text.ui.loot" : "text.ui.loot_lost", ItemName(l.Item), l.Count);
             foreach (BossEvent b in step.Boss)
             {
-                if (b.Kind == BossEventKind.FormArrived && b.Phase > 0) Say("text.ui.boss_phase");
+                if (b.Kind == BossEventKind.FormArrived && b.Phase > 0) Say(BossPhaseText(b.Boss), DisplayNames.Of(b.Boss));   // le message commun nomme le chef
                 else if (b.Kind == BossEventKind.Defeated) Say("text.ui.boss_defeated");
             }
             foreach ((string item, int count) in step.Rewards) Say("text.ui.reward", ItemName(item), count);

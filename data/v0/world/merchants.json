@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 3,
   "kind": "merchants",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "values": [
       {
@@ -372,6 +372,10 @@
       {
         "item": "item.chapeau_de_lune",
         "value": 25
+      },
+      {
+        "item": "item.poussiere_d_echo",
+        "value": 30
       }
     ],
     "merchants": [
