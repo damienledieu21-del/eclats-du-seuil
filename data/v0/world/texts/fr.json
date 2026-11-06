@@ -1431,7 +1431,8 @@
       "text.v1910.archer_garde.retrouvailles": "Halte ! … Ah, c'est toi. Passe, passe. Je m'exerçais à faire peur ; ça ne marche que sur les sangliers.",
       "text.v1910.albe.retrouvailles": "Que l'Aube vous garde de nouveau, voyageur. Vous revenez : c'est rare, ici, et ce n'est pas désagréable.",
       "text.v1910.renart.retrouvailles": "Vous revoilà. Je savais que vous reviendriez : on revient toujours chez celui qui dit les choses au juste prix. Le mien.",
-      "text.v1910.capitaine.retrouvailles": "Encore toi. Tant mieux : une recrue qui revient vaut mieux qu'un archer qui perd ses flèches."
+      "text.v1910.capitaine.retrouvailles": "Encore toi. Tant mieux : une recrue qui revient vaut mieux qu'un archer qui perd ses flèches.",
+      "text.ui.event.rift.waves": "La faille n'a pas fini : d'autres échos vont encore en sortir."
     }
   }
 }

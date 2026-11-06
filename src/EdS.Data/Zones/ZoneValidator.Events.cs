@@ -43,6 +43,8 @@ namespace EdS.Data.Zones
         /// pour une chasse : <c>xp</c>, <c>money</c>, <c>items</c> facultatif, <c>fact</c> facultatif) et <c>lostFact</c> facultatif (pas pour
         /// une chasse). Une chasse ne prend que des bêtes (populations des équipes de bêtes, jamais des bandits).
         /// </summary>
+        /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
+        /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
         private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
             long tick, ValidationReport report, List<WorldEventDefinition> events)
         {

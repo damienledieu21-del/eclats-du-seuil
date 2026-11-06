@@ -71,6 +71,7 @@ namespace EdS.Runtime
             RiftRefusal refusal = World.CloseRift(rift.Event.Id);
             if (refusal == RiftRefusal.TooFar) Say("text.ui.event.rift.too_far");
             else if (refusal == RiftRefusal.EchoesRemain) Say("text.ui.event.rift.echoes");
+            else if (refusal == RiftRefusal.WavesRemain) Say("text.ui.event.rift.waves");
             if (refusal == RiftRefusal.None) _dirty = true;
             return refusal == RiftRefusal.None;
         }

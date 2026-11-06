@@ -250,8 +250,11 @@ namespace EdS.World
         /// <summary>Le personnage n'est pas assez près (<see cref="WorldEvents.CloseRange"/>), ou n'est pas là.</summary>
         TooFar = 2,
 
-        /// <summary>Des échos de la faille sont encore debout.</summary>
+        /// <summary>Des échos de la faille sont encore debout, attendent d'arriver, ou ont fui sans être vaincus.</summary>
         EchoesRemain = 3,
+
+        /// <summary>Relecture de la PR #107 : toutes les vagues ne sont pas encore sorties (la faille n'a pas fini de cracher ses échos).</summary>
+        WavesRemain = 4,
     }
 
     /// <summary>
@@ -291,6 +294,9 @@ namespace EdS.World
             public bool Ending;
             public bool Closed;
             public int WavesSpawned;
+
+            /// <summary>Relecture de la PR #107 : pas de place à son départ : l'occurrence n'a pas eu lieu (ni départ, ni fin annoncés).</summary>
+            public bool Refused;
             public long NextWaveTick;
             public readonly List<Slot> Slots = new List<Slot>();
         }
@@ -302,6 +308,9 @@ namespace EdS.World
         private readonly HashSet<string> _waitingAnnounced = new HashSet<string>(StringComparer.Ordinal);
         private int _counter;
         private bool _opened;
+
+        /// <summary>Relecture de la PR #107 : jour de la dernière occurrence tentée par événement (une occurrence n'est tentée qu'une fois par session).</summary>
+        private readonly Dictionary<string, long> _tried = new Dictionary<string, long>(StringComparer.Ordinal);
         private long _minuteSeen = -1;
 
         public WorldEvents(ZoneDefinition zone, string weatherZone)
@@ -323,7 +332,13 @@ namespace EdS.World
             return null;
         }
 
-        private static bool Settled(Run r) => r.Closed || (r.Ending && r.Slots.All(s => s.Current is null || s.Dead || s.Gone));
+        private static bool Settled(Run r) => r.Closed || (r.Ending && r.Slots.All(s => s.Dead || s.Gone));
+
+        /// <summary>
+        /// Relecture de la PR #107 : places réservées et pas encore prises : créatures d'événement sans combattant (pas encore arrivées, place
+        /// occupée, arrivée refusée, laisse). Chacune garde sa place jusqu'à son arrivée ou son abandon.
+        /// </summary>
+        internal int PendingPlaces => _runs.Values.Where(r => r != null).Sum(r => r!.Slots.Count(s => s.Current is null && !s.Dead && !s.Gone));
 
         public IReadOnlyList<WorldEventView> Views(Zone zone)
         {
@@ -367,13 +382,16 @@ namespace EdS.World
                     if (!minuteChanged) continue;
                     if (!(WorldEventSchedule.Around(_zone.Id, _weatherZone, e, now) is EventOccurrence o)) continue;
                     if (e.Settles && world.EventEntry(e).Last >= o.Day) continue;   // déjà réglée pour ce personnage
+                    // Relecture de la PR #107 : une occurrence n'est tentée qu'une fois par session (pas de place, registre plein : rien ne la relance).
+                    if (_tried.TryGetValue(e.Id, out long tried) && tried == o.Day) continue;
+                    _tried[e.Id] = o.Day;
                     _runs[e.Id] = run = new Run { Occurrence = o };
                 }
                 StepRun(world, zone, run, now, nowTick, reserved, notices);
                 if (Settled(run) || (run.Ending && run.Slots.Count == 0))
                 {
                     if (!run.Closed && e.Settles) Settle(world, run, notices);
-                    else if (!e.Settles) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Ended, e.Id, run.Occurrence.Group.Id, run.Occurrence.Day));
+                    else if (!e.Settles && !run.Refused) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Ended, e.Id, run.Occurrence.Group.Id, run.Occurrence.Day));
                     _runs[e.Id] = null;
                 }
             }
@@ -426,6 +444,7 @@ namespace EdS.World
                 {
                     // Plus de place hors de la réserve des quêtes : l'occurrence n'a pas lieu, réglée sans issue (ni victoire ni pillage).
                     run.Ending = true;
+                    run.Refused = true;
                     if (e.Settles) world.SettleEvent(e, o, EventOutcome.None, null, notices);
                     run.Closed = true;
                     return;
@@ -436,8 +455,11 @@ namespace EdS.World
                 run.NextWaveTick = checked(nowTick + e.WaveMs / tickMs);
             }
             if (!run.Started) return;
-            // Faille : vague suivante, si la faille est encore ouverte et qu'il reste de la place hors de la réserve.
-            if (e.Kind == WorldEventKind.Rift && !run.Closed && !run.Ending && run.WavesSpawned < e.Waves && nowTick >= run.NextWaveTick)
+            if (!run.Ending && now >= o.EndAt) run.Ending = true;
+            // Faille : vague suivante, à son heure ou dès que toute la vague précédente est vaincue, si la faille est encore ouverte et qu'il
+            // reste de la place hors de la réserve (sinon la vague ne sort pas : elle compte comme sortie).
+            if (e.Kind == WorldEventKind.Rift && !run.Closed && !run.Ending && run.WavesSpawned < e.Waves
+                && (nowTick >= run.NextWaveTick || run.Slots.All(s => s.Dead)))
             {
                 run.WavesSpawned++;
                 run.NextWaveTick = checked(nowTick + e.WaveMs / tickMs);
@@ -447,7 +469,7 @@ namespace EdS.World
                     notices.Add(new WorldEventNotice(WorldEventNoticeKind.Wave, e.Id, o.Group.Id, o.Day, run.WavesSpawned));
                 }
             }
-            foreach (Slot s in run.Slots) StepSlot(zone, s, nowTick, tickMs, reserved);
+            foreach (Slot s in run.Slots) StepSlot(zone, s, nowTick, tickMs, reserved, run.Ending);
             // Attaque : plus aucun assaillant debout (vaincus, ou enfuis faute de place pour revenir), même après la fin si le combat a continué.
             if (e.Kind == WorldEventKind.Raid && run.Slots.All(s => s.Dead || (s.Gone && !s.Withdrawn)) && (!run.Ending || run.Slots.Any(s => s.Dead && s.Hurt)))
             {
@@ -456,7 +478,6 @@ namespace EdS.World
                 else world.SettleEvent(e, o, EventOutcome.None, null, notices);
                 return;
             }
-            if (!run.Ending && now >= o.EndAt) run.Ending = true;
             if (run.Ending)
                 foreach (Slot s in run.Slots)
                     if (s.Current != null && !s.Dead && !s.Gone && !s.Leashing)
@@ -476,13 +497,26 @@ namespace EdS.World
                 run.Slots.Add(new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1 });
         }
 
-        /// <summary>Place pour <paramref name="count"/> créatures de plus, hors de la réserve des quêtes et des places gardées.</summary>
-        private static bool Reserve(Zone zone, int reserved, int count) =>
-            checked(zone.Engine.CombatantIds.Count + reserved + ZonePopulations.QuestReserve + count) <= zone.Setup.Combat.MaxCombatants;
+        /// <summary>
+        /// Place pour <paramref name="count"/> créatures de plus, hors de la réserve des quêtes, des places gardées (formes de chef) et des
+        /// places déjà réservées par les créatures d'événement qui n'ont pas encore de combattant (<see cref="PendingPlaces"/>).
+        /// </summary>
+        private bool Reserve(Zone zone, int reserved, int count) =>
+            Fits(zone.Engine.CombatantIds.Count, PendingPlaces, reserved, count, zone.Setup.Combat.MaxCombatants);
 
-        private void StepSlot(Zone zone, Slot s, long now, long tickMs, int reserved)
+        /// <summary>Relecture de la PR #107 : la règle de place, en nombres (testée seule).</summary>
+        internal static bool Fits(int combatants, int pending, int reserved, int count, int max) =>
+            checked(combatants + pending + reserved + ZonePopulations.QuestReserve + count) <= max;
+
+        private void StepSlot(Zone zone, Slot s, long now, long tickMs, int reserved, bool ending)
         {
             if (s.Dead || s.Gone) return;
+            // Relecture de la PR #107 : après la fin, aucune arrivée : une créature qui n'est pas là ne viendra plus.
+            if (ending && s.Current is null)
+            {
+                s.Gone = s.Withdrawn = true;
+                return;
+            }
             CombatEngine engine = zone.Engine;
             if (s.Current is string id)
             {
@@ -496,9 +530,16 @@ namespace EdS.World
                 }
                 if (v.HasLeft || refused)
                 {
-                    // Laisse (ou arrivée refusée) : une vie calme revient à sa place une seconde plus tard, s'il y a de la place.
-                    s.Current = null;
+                    // Laisse (ou arrivée refusée) : une vie calme revient à sa place une seconde plus tard, si une nouvelle place se réserve
+                    // maintenant (relecture de la PR #107 : avant tout retour) ; sinon elle a pris la fuite. Après la fin, elle est partie.
                     s.Leashing = false;
+                    if (ending || !Reserve(zone, reserved, 1))
+                    {
+                        s.Gone = true;
+                        s.Withdrawn = ending;
+                        return;
+                    }
+                    s.Current = null;
                     s.RetryAt = checked(now + Math.Max(1, 1000 / tickMs));
                     return;
                 }
@@ -508,13 +549,8 @@ namespace EdS.World
                     s.Leashing = true;
                 return;
             }
-            long due = s.RetryAt ?? -1;
-            if (due > now) return;
-            if (due >= 0 && !Reserve(zone, reserved, 1))
-            {
-                s.Gone = true;   // plus de place pour revenir : elle a pris la fuite
-                return;
-            }
+            // Sa place est déjà réservée (vague, ou retour réservé ci-dessus) : l'arrivée n'en prend pas d'autre.
+            if ((s.RetryAt ?? -1) > now) return;
             Join(zone, s, now, tickMs);
         }
 
@@ -586,7 +622,9 @@ namespace EdS.World
             CombatantView me = zone.Engine.View(character);
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p) || !(me.Radius is Fixed radius)
                 || ZonePopulations.Beyond(p, radius, rift, Fixed.Zero, CloseRange)) return RiftRefusal.TooFar;
-            if (r.Slots.Any(s => !s.Dead && !s.Gone)) return RiftRefusal.EchoesRemain;
+            // Relecture de la PR #107 : toutes les vagues sorties, et chaque écho vaincu (un écho enfui ne l'est pas).
+            if (r.Slots.Any(s => !s.Dead)) return RiftRefusal.EchoesRemain;
+            if (r.WavesSpawned < r.Occurrence.Event.Waves) return RiftRefusal.WavesRemain;
             r.Closed = true;
             world.SettleEvent(r.Occurrence.Event, r.Occurrence, EventOutcome.Won, null, notices);
             _runs[eventId] = null;

@@ -12,6 +12,9 @@ namespace EdS.World
         /// <summary>Sous-lot V2.5 : événements du monde de la zone (null sans événement).</summary>
         private WorldEvents? _events;
 
+        /// <summary>Relecture de la PR #107 : les événements de la session (tests : places réservées).</summary>
+        internal WorldEvents? EventsRuntime => _events;
+
         /// <summary>Sous-lot V2.5 : annonces et faits des événements nés hors d'un tick (faille refermée), rendus au tick suivant.</summary>
         private readonly List<WorldEventNotice> _queuedNotices = new List<WorldEventNotice>();
         private readonly List<string> _eventFacts = new List<string>();
@@ -72,10 +75,15 @@ namespace EdS.World
             return _character.Events.FirstOrDefault(x => x.Id == key) ?? new SavedEvent(key, 0, 0, -1, EventOutcome.None);
         }
 
-        internal void SetEventEntry(WorldEventDefinition e, SavedEvent entry)
+        /// <summary>Relecture de la PR #107 : le registre a une ligne pour l'événement, ou la place d'en ajouter une.</summary>
+        internal bool HasEventRoom(WorldEventDefinition e) => HasEventEntry(e) || _character.Events.Count < SavedEvent.MaxEntries;
+
+        /// <summary>Écrit la ligne du registre ; faux, sans rien changer, si le registre est plein (borne technique).</summary>
+        internal bool SetEventEntry(WorldEventDefinition e, SavedEvent entry)
         {
-            if (_character.Events.Count >= SavedEvent.MaxEntries && !HasEventEntry(e)) return;   // registre plein : rien n'est gardé (borne technique)
+            if (!HasEventRoom(e)) return false;
             _character = _character.WithEvents(_character.Events.Where(x => x.Id != entry.Id).Concat(new[] { entry }));
+            return true;
         }
 
         /// <summary>
@@ -85,11 +93,13 @@ namespace EdS.World
         internal void SettleEvent(WorldEventDefinition e, EventOccurrence o, EventOutcome outcome, WorldEventNoticeKind? lostKind, List<WorldEventNotice> notices)
         {
             SavedEvent entry = EventEntry(e);
-            if (o.Day <= entry.Last) return;
+            // Relecture de la PR #107 : réglée une seule fois, et seulement si le registre peut la garder : sinon rien (ni annonce, ni fait,
+            // ni récompense), refus atomique.
+            if (o.Day <= entry.Last || !HasEventRoom(e)) return;
             bool first = outcome == EventOutcome.Won && entry.Won == 0;
             long won = outcome == EventOutcome.Won ? Math.Min(SavedEvent.MaxCount, checked(entry.Won + 1)) : entry.Won;
             long lost = outcome == EventOutcome.Lost ? Math.Min(SavedEvent.MaxCount, checked(entry.Lost + 1)) : entry.Lost;
-            SetEventEntry(e, new SavedEvent(entry.Id, won, lost, Math.Min(SavedEvent.MaxDay, o.Day), outcome, entry.Owed || first));
+            if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, Math.Min(SavedEvent.MaxDay, o.Day), outcome, entry.Owed || first))) return;
             if (outcome == EventOutcome.Won)
             {
                 notices.Add(new WorldEventNotice(WorldEventNoticeKind.Won, e.Id, o.Group.Id, o.Day));

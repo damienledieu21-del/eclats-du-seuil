@@ -958,6 +958,28 @@ namespace EdS.Data.Zones
                 if (!byId.ContainsKey(z.Id)) byId.Add(z.Id, z);
                 else report.Add("$", ValidationCode.DuplicateId, $"zone « {z.Id} » donnée deux fois.");
             foreach (ZoneDefinition z in zones) CheckDoorsOf(z, byId, report);
+            CheckEventRegistry(zones, report);
+            return report;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #107 : les événements à issue de toutes les zones reliées tiennent dans le registre d'un personnage
+        /// (<see cref="SavedEvent.MaxEntries"/> lignes, une par événement) ; sinon une erreur <c>$.data.events</c> nomme la première zone
+        /// qui dépasse la borne (une réussite ne pourrait pas être gardée : sa récompense serait perdue).
+        /// </summary>
+        public static ValidationReport CheckEventRegistry(IReadOnlyList<ZoneDefinition> zones, ValidationReport? report = null)
+        {
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            report ??= new ValidationReport();
+            int total = 0;
+            foreach (ZoneDefinition z in zones)
+            {
+                total = checked(total + z.Events.Count(e => e.Settles));
+                if (total <= SavedEvent.MaxEntries) continue;
+                report.Add("$.data.events", ValidationCode.LimitExceeded,
+                    $"zone « {z.Id} » : {total} événements à issue dans les zones reliées, au plus {SavedEvent.MaxEntries} (registre d'un personnage).");
+                break;
+            }
             return report;
         }
 

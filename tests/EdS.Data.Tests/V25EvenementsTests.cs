@@ -55,10 +55,11 @@ public class V25EvenementsTests
     }
 
     /// <summary>Vallons où l'attaque (ou la faille) n'a qu'une bête faible du pré, à <paramref name="x"/>, <paramref name="z"/> ; la faille s'ouvre à côté.</summary>
-    private static ZoneDefinition Weak(double x, double z, double riftX = 0, double riftZ = 0)
+    private static ZoneDefinition Weak(double x, double z, double riftX = 0, double riftZ = 0, int? riftWaves = null)
     {
         ZoneLoadResult r = Mutated(root =>
         {
+            if (riftWaves is int waves) Event(root, 1)["waves"] = waves;
             foreach (int i in new[] { 0, 1 })
                 foreach (JsonNode? g in Event(root, i)["groups"]!.AsArray())
                 {
@@ -81,6 +82,26 @@ public class V25EvenementsTests
     {
         var notices = new List<WorldEventNotice>();
         for (int i = 0; i < ticks; i++) notices.AddRange(w.Step().Events);
+        return notices;
+    }
+
+    /// <summary>Marche vers (<paramref name="x"/>, <paramref name="z"/>) pendant au plus <paramref name="ticks"/> ticks (arrêt à 1 m).</summary>
+    private static List<WorldEventNotice> WalkTo(WorldSession w, double x, double z, int ticks)
+    {
+        var notices = new List<WorldEventNotice>();
+        CombatEngine e = w.Zone.Engine;
+        for (int i = 0; i < ticks; i++)
+        {
+            GroundVector p = e.View("bastion").Position!.Value;
+            double dx = x - p.X.Raw / 1e4, dz = z - p.Z.Raw / 1e4, d = Math.Sqrt(dx * dx + dz * dz);
+            try
+            {
+                e.Submit(d < 1 ? new CombatCommand(e.CurrentTick * 50, "bastion", CombatAction.Stop)
+                    : new CombatCommand(e.CurrentTick * 50, "bastion", new GroundVector(Fixed.FromRaw((long)(dx / d * 1e4)), Fixed.FromRaw((long)(dz / d * 1e4)))));
+            }
+            catch (ArgumentException) { }
+            notices.AddRange(w.Step().Events);
+        }
         return notices;
     }
 
@@ -423,9 +444,9 @@ public class V25EvenementsTests
     public void Faille_refermee_apres_ses_echos()
     {
         // La faille s'ouvre à 2 m du camp de la carrière (point sûr), un loup faible en sort.
-        ZoneDefinition zone = Weak(29, -12, 26, -13);
+        ZoneDefinition zone = Weak(29, -12, 26, -13, riftWaves: 2);
         EventOccurrence o = First(zone, Rift);
-        WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2, safePoint: "camp_de_la_carriere");
+        WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2, Inventory.Outfit(Hero(), ItemsCatalog).WithXp(300), safePoint: "camp_de_la_carriere");
         List<WorldEventNotice> notices = Run(w, 4);
         Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.Started);
         WorldEventView v = w.WorldEvents.Single(x => x.Event.Id == Rift);
@@ -435,7 +456,18 @@ public class V25EvenementsTests
         Assert.Equal(RiftRefusal.NoRift, w.CloseRift(Raid));
         Assert.Equal(before, Snapshot(w) + string.Join(",", w.EventRegistry.Select(x => $"{x.Id}{x.Won}{x.Last}")) + w.WorldEvents.Count);   // refus atomiques
         notices.AddRange(Fight(w));
-        // Revenir près de la faille, puis la refermer : la vague suivante ne vient pas.
+        // Relecture de la PR #107 : la première vague vaincue ne suffit pas : la suivante sort aussitôt, et la faille ne se referme qu'après
+        // toutes ses vagues, chaque écho vaincu.
+        Assert.Equal(RiftRefusal.WavesRemain, w.CloseRift(Rift));
+        notices.AddRange(Run(w, 1));
+        Assert.Equal(RiftRefusal.EchoesRemain, w.CloseRift(Rift));   // la vague 2 sort aussitôt
+        for (int k = 0; k < 2; k++)
+        {
+            notices.AddRange(WalkTo(w, 26, -13, 40));   // libérer la place de sortie des échos
+            notices.AddRange(Fight(w));
+        }
+        Assert.Equal(new[] { 2 }, notices.Where(n => n.Kind == WorldEventNoticeKind.Wave).Select(n => n.Wave));
+        // Revenir près de la faille, puis la refermer.
         CombatEngine e = w.Zone.Engine;
         for (int i = 0; i < 200 && w.CloseRift(Rift) == RiftRefusal.TooFar; i++)
         {
@@ -631,6 +663,149 @@ public class V25EvenementsTests
         {
             Directory.Delete(dir, true);
         }
+    }
+
+    // --- Relecture indépendante de la PR #107 ------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Regle_de_place_comptee_avec_les_places_reservees()
+    {
+        // 128 places, 64 aux quêtes : 60 combattants, 1 forme de chef à venir, 2 créatures d'événement en attente : il en reste une.
+        Assert.True(WorldEvents.Fits(60, 2, 1, 1, 128));
+        Assert.False(WorldEvents.Fits(60, 2, 1, 2, 128));
+        Assert.False(WorldEvents.Fits(61, 2, 1, 1, 128));
+        Assert.False(WorldEvents.Fits(60, 3, 1, 1, 128));
+    }
+
+    [Fact]
+    public void Creature_dont_la_place_est_prise_garde_sa_reservation_puis_ne_vient_plus_apres_la_fin()
+    {
+        // L'assaillant (un seul) doit arriver là où le personnage se tient (point sûr du hameau) : il attend, sa place réservée.
+        ZoneDefinition zone = Weak(80, -38);
+        EventOccurrence o = First(zone, Raid);
+        WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2);
+        Run(w, 40);
+        Assert.Equal(1, w.EventsRuntime!.PendingPlaces);
+        Assert.Empty(w.WorldEvents.Single().Creatures);
+        List<WorldEventNotice> notices = Run(w, checked((int)(WorldEventSchedule.TickAt(Clock, o.EndAt) - WorldEventSchedule.TickAt(Clock, o.StartAt))));
+        // Après la fin, aucune arrivée : la créature ne vient plus ; l'attaque est manquée, une fois.
+        Assert.Equal(0, w.EventsRuntime.PendingPlaces);
+        Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id.Contains("_ev", StringComparison.Ordinal));
+        Assert.Single(notices, n => n.Kind == WorldEventNoticeKind.Lost);
+        Assert.DoesNotContain(Run(w, 200), n => n.Event == Raid);
+    }
+
+    /// <summary>Remplit la session de bandits immobiles au loin jusqu'à ne laisser que <paramref name="left"/> places hors de la réserve.</summary>
+    private static void Fill(WorldSession w, int left)
+    {
+        CombatEngine e = w.Zone.Engine;
+        AssailantSetup model = (AssailantSetup)w.Zone.Setup.Combatants.Single(c => c.Id == "bandit_epee3");
+        int max = w.Zone.Setup.Combat.MaxCombatants, n = 0;
+        for (int x = 66; x <= 138 && e.CombatantIds.Count + ZonePopulations.QuestReserve + left < max; x += 3)
+            for (int z = -68; z <= -46 && e.CombatantIds.Count + ZonePopulations.QuestReserve + left < max; z += 3)
+            {
+                var place = new CombatantPlacement(new GroundVector(Fixed.FromInt(x), Fixed.FromInt(z)), model.Placement!.Radius);
+                try
+                {
+                    e.Join(new AssailantSetup("remplissage" + n++, model.Team, model.Armor, model.MagicResistance, model.Target, model.FirstAttackMs, model.IntervalMs,
+                        model.Attacks, model.Initiative, model.StatusResistance, model.Triggers, model.Health, place, e.CurrentTick * 50, model.Behavior));
+                }
+                catch (ArgumentException) { }
+                w.Step();
+            }
+        Assert.Equal(max - ZonePopulations.QuestReserve - left, e.CombatantIds.Count);
+    }
+
+    [Fact]
+    public void Chasse_sans_place_tentee_une_seule_fois()
+    {
+        EventOccurrence o = First(Vallons, Hunt);
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 400, safePoint: "place_du_village");
+        Fill(w, 1);   // une place : la chasse (deux loups) ne tient pas
+        int count = w.Zone.Engine.CombatantIds.Count;
+        List<WorldEventNotice> notices = Run(w, checked((int)(WorldEventSchedule.TickAt(Clock, o.EndAt) - WorldEventSchedule.TickAt(Clock, o.StartAt))) + 600);
+        Assert.DoesNotContain(notices, n => n.Event == Hunt);
+        Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id.Contains("_ev", StringComparison.Ordinal));
+        Assert.True(w.Zone.Engine.CombatantIds.Count <= count + 1);   // rien de la chasse (au plus une vie de population)
+    }
+
+    [Fact]
+    public void Registre_plein_rien_n_est_regle_ni_donne()
+    {
+        ZoneDefinition zone = Weak(86, -38);
+        EventOccurrence o = First(zone, Raid);
+        SavedEvent[] others = Enumerable.Range(0, SavedEvent.MaxEntries).Select(i => new SavedEvent($"zone.autre/e{i:00}", 0, 0, -1, EventOutcome.None)).ToArray();
+        WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 5, Hero().WithEvents(others));
+        long money = w.Money;
+        List<WorldEventNotice> notices = Run(w, 10);
+        notices.AddRange(Fight(w));
+        notices.AddRange(Run(w, 30));
+        Assert.DoesNotContain(notices, n => n.Kind is WorldEventNoticeKind.Won or WorldEventNoticeKind.Rewarded or WorldEventNoticeKind.Thanks);
+        Assert.Equal(money, w.Money);
+        Assert.Equal(others.Select(x => x.Id), w.EventRegistry.Select(x => x.Id));
+        Assert.DoesNotContain("fact.event.attaque_hameau.defendu", w.Narrative!.ToSaved().Facts);
+        // Au chargement : des zones reliées dont les événements à issue dépassent le registre sont refusées.
+        Assert.True(ZoneValidator.CheckEventRegistry(new[] { Vallons }).IsValid);
+        ValidationReport over = ZoneValidator.CheckEventRegistry(Enumerable.Repeat(Vallons, SavedEvent.MaxEntries / 2 + 1).ToList());
+        Assert.Contains(over.Errors, e => e.Path == "$.data.events" && e.Code == ValidationCode.LimitExceeded);
+    }
+
+    [Fact]
+    public void Rechargee_pendant_l_attaque_une_seule_recompense()
+    {
+        ZoneDefinition zone = Weak(86, -38);
+        EventOccurrence o = First(zone, Raid);
+        WorldSession first = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 5);
+        Run(first, 30);
+        Assert.Single(first.WorldEvents.Single().Creatures);
+        WorldSave mid = SaveJsonReader.Read(SaveJsonReader.Write(first.Save())).Save!;
+        Assert.Equal(EventOutcome.None, mid.Character!.Events.Single(e => e.Id == "zone.vallons/attaque_hameau").Outcome);
+        // Reprise : l'attaque continue (assaillants revenus), défendue, récompensée une fois.
+        WorldSession second = Session(zone, mid.WorldTick, mid.Character);
+        List<WorldEventNotice> notices = Run(second, 5);
+        Assert.Equal(WorldEventPhase.Running, second.WorldEvents.Single().Phase);
+        notices.AddRange(Fight(second));
+        notices.AddRange(Run(second, 3));
+        Assert.Single(notices, n => n.Kind == WorldEventNoticeKind.Rewarded);
+        WorldSave after = SaveJsonReader.Read(SaveJsonReader.Write(second.Save())).Save!;
+        // Rechargée encore, même tick ou plus tard pendant la même occurrence : plus rien.
+        foreach (long tick in new[] { after.WorldTick, WorldEventSchedule.TickAt(Clock, o.EndAt) - 10 })
+        {
+            WorldSession again = Session(zone, tick, after.Character);
+            Assert.DoesNotContain(Run(again, 20), n => n.Event == Raid);
+            Assert.Equal(after.Character!.Money, again.Money);
+            Assert.Equal((1L, 0L), (again.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Won, again.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Lost));
+        }
+    }
+
+    [Fact]
+    public void Deux_personnages_chacun_son_registre()
+    {
+        // Deux sauvegardes (deux personnages) devant la même occurrence : chacun a sa première récompense, une seule fois.
+        ZoneDefinition zone = Weak(86, -38);
+        EventOccurrence o = First(zone, Raid);
+        long start = WorldEventSchedule.TickAt(Clock, o.StartAt) - 5;
+        WorldSession a = Session(zone, start), b = Session(zone, start, Hero(50));
+        List<WorldEventNotice> na = Run(a, 10), nb = Run(b, 10);
+        na.AddRange(Fight(a));
+        na.AddRange(Run(a, 3));
+        Assert.Single(na, n => n.Kind == WorldEventNoticeKind.Rewarded);
+        // Le second ne vient pas : son hameau est pillé, celui du premier défendu.
+        nb.AddRange(Run(b, checked((int)(WorldEventSchedule.TickAt(Clock, o.EndAt) - start))));
+        Assert.Single(nb, n => n.Kind == WorldEventNoticeKind.Lost);
+        Assert.Equal(EventOutcome.Won, a.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Outcome);
+        Assert.Equal(EventOutcome.Lost, b.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Outcome);
+        Assert.True(b.Aftermath(Raid));
+        Assert.False(a.Aftermath(Raid));
+        // Le second défend l'occurrence suivante : sa première récompense, à lui.
+        EventOccurrence next = First(zone, Raid, o.EndAt);
+        WorldSession b2 = Session(zone, WorldEventSchedule.TickAt(Clock, next.StartAt) - 5, b.Save().Character);
+        long money = b2.Money;
+        List<WorldEventNotice> n2 = Run(b2, 10);
+        n2.AddRange(Fight(b2));
+        n2.AddRange(Run(b2, 3));
+        Assert.Single(n2, n => n.Kind == WorldEventNoticeKind.Rewarded);
+        Assert.Equal(money + 300, b2.Money);
     }
 }
 
