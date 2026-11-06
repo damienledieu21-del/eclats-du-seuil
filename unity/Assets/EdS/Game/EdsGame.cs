@@ -388,6 +388,19 @@ namespace EdS.Game
         /// <summary>Relecture de la PR #75 : dernier équipement visible calculé (rendu tel quel tant qu'il ne change pas).</summary>
         private VisibleGear _visibleGear;
 
+        /// <summary>
+        /// Sous-lot V2.2 : pluie, éclairs et tonnerre de l'aventure. Revue Codex de la PR #101 : appelée aussi quand l'écran des talents ou le
+        /// menu couvre l'aventure (<paramref name="covered"/>, sons plus bas), sans faire avancer le monde : un éclair s'éteint, la pluie suit
+        /// son temps.
+        /// </summary>
+        private void UpdateWeatherFx(bool covered)
+        {
+            AdventureSession a = _adventure;
+            if (a == null || _weatherFx == null || _camera == null) return;
+            _weatherFx.Update(_weatherLook, _weatherState, _weatherKey, _camera.Camera.transform.position, a.Indoors,
+                StyleWorld.Memory || _stage != null && _stage.Hush(a), covered, Time.deltaTime);
+        }
+
         private void UpdateAdventure()
         {
             AdventureSession a = _adventure;
@@ -511,8 +524,7 @@ namespace EdS.Game
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
-            _weatherFx?.Update(_weatherLook, _weatherState, _weatherKey, _camera.Camera.transform.position, a.Indoors,
-                StyleWorld.Memory || _stage != null && _stage.Hush(a), _paused, Time.deltaTime);   // sous-lot V2.2 : pluie, éclairs, tonnerre
+            UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
             SyncGestures();
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
@@ -740,6 +752,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) CloseTalents();
                 if (Network) UpdateNetwork(false);
+                UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même écran ouvert
                 return;
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
@@ -750,6 +763,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
                 if (Network) UpdateNetwork(false);
+                UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même menu ouvert
                 return;
             }
             if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;

@@ -427,7 +427,7 @@ public class InterfaceStyleTests
         Assert.Contains("_music = StyleAudio.Create(_camera.Camera.transform);", game, StringComparison.Ordinal);
         // Revue Codex de la PR #63 : l'écouteur existe avant que la musique parte.
         Assert.Contains("EnsureListener();\n                _music = StyleAudio.Create(_camera.Camera.transform);", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
-        Assert.Contains("_mood = a.Mood();", game, StringComparison.Ordinal);   // relecture : quatre fois par seconde
+        Assert.Contains("_mood = a.Mood().WithRain(_weatherLook.Rain);", game, StringComparison.Ordinal);   // relecture : quatre fois par seconde ; V2.2 : avec la pluie montrée
         Assert.Contains("_music.Update(_mood,", game, StringComparison.Ordinal);
         // Relecture de l'essai 7 : la musique est détruite en quittant l'aventure (la suivante la recrée, ambiances comprises).
         Assert.Contains("_music?.Destroy();\n            _music = null;", game.Replace("\r\n", "\n"), StringComparison.Ordinal);
@@ -438,8 +438,9 @@ public class InterfaceStyleTests
         string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
         Assert.Contains("GameFeel.Imminent(view, target, now, lead)", arena, StringComparison.Ordinal);
         Assert.Contains("main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;", effects, StringComparison.Ordinal);
-        // Sous-lot V2.1 : dans l'aventure, le décor de la nuit entre les deux (_arena.Night).
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+(_arena\.Night\([^\n]*\n\s+)?SyncGestures\(\);").Count);
+        // Sous-lot V2.1 : dans l'aventure, le décor de la nuit entre les deux (_arena.Night) ; sous-lot V2.2 : le décor du temps avant lui
+        // (_arena.Weather) et la pluie, les éclairs et le tonnerre après lui (UpdateWeatherFx).
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+(_arena\.Weather\([^\n]*\n\s+)?(_arena\.Night\([^\n]*\n\s+)?(UpdateWeatherFx\([^\n]*\n\s+)?SyncGestures\(\);").Count);
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\);"));   // seulement pour une compétence introuvable
         Assert.Contains("(double right, double up, double roll) = GameFeel.Offset(_shock, Time.time);", Read("unity", "Assets", "EdS", "Game", "CameraRig.cs"), StringComparison.Ordinal);
         Assert.Contains("UiSounds.Play(book ? UiCue.Open : UiCue.Close);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);

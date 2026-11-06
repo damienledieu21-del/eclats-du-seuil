@@ -499,6 +499,17 @@ public sealed class V22MeteoTests : IDisposable
     }
 
     [Fact]
+    public void Eclairs_et_pluie_suivis_meme_ecran_ouvert()
+    {
+        // Revue Codex de la PR #101 : l'écran des talents et le menu continuent de mettre à jour la météo (un éclair s'éteint), sans faire
+        // avancer le monde ; la nappe de pluie suit la pluie montrée (essai forcé compris).
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Equal(2, game.Split("UpdateWeatherFx(true);").Length - 1);
+        Assert.Contains("UpdateWeatherFx(_paused);", game, StringComparison.Ordinal);
+        Assert.Contains("_mood = a.Mood().WithRain(_weatherLook.Rain);", game, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Essai_de_la_meteo_avance_seulement_le_temps_du_monde()
     {
         var clock = new WorldClock(50);
