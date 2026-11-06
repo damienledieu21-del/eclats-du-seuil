@@ -216,6 +216,33 @@ namespace EdS.Runtime
             return puddles;
         }
 
+        /// <summary>Gouttes de pluie : vitesse de chute (m/s, de la plus lente à la plus rapide) et inclinaison (degrés, le vent).</summary>
+        public const double DropMinSpeed = 15, DropMaxSpeed = 19, DropTilt = 6;
+
+        /// <summary>Gouttes au plus en même temps (ordinateur, téléphone) et gouttes émises par seconde sous une pluie pleine, pour une colonne de référence.</summary>
+        public const int MaxDrops = 3000, PhoneMaxDrops = 1000;
+
+        public const double DropRate = 2300, PhoneDropRate = 750;
+
+        /// <summary>Colonne de pluie la plus basse (m) et marge au-dessus de la caméra (m) ; colonne de référence du débit (m).</summary>
+        public const double MinColumn = 10, ColumnAboveCamera = 4, ReferenceColumn = 18;
+
+        /// <summary>
+        /// Revue Codex de la PR #101 : colonne de pluie pour une caméra à <paramref name="cameraHeight"/> m au-dessus du sol : les gouttes
+        /// naissent au-dessus de la caméra (<see cref="ColumnAboveCamera"/>, au moins <see cref="MinColumn"/> m du sol) et vivent assez
+        /// longtemps pour que la plus lente touche le sol ; le débit baisse d'autant quand la colonne grandit (au-delà de
+        /// <see cref="ReferenceColumn"/> m), pour que le nombre de gouttes vivantes ne dépasse jamais le plafond.
+        /// </summary>
+        public static (double Height, double Lifetime, double RateFactor) RainColumn(double cameraHeight)
+        {
+            double h = double.IsNaN(cameraHeight) || double.IsInfinity(cameraHeight) ? 0 : Math.Max(0, cameraHeight);
+            double height = Math.Max(MinColumn, h + ColumnAboveCamera);
+            double fall = DropMinSpeed * Math.Cos(DropTilt * Math.PI / 180);
+            double life = height / fall * 1.05;
+            double reference = ReferenceColumn / fall * 1.05;
+            return (height, life, Math.Min(1, reference / life));
+        }
+
         /// <summary>Hauteur d'une flaque au-dessus du sol (m) : son centre ; le disque fait 8 mm d'épaisseur, son dessus est donc à 16 mm.</summary>
         public const double PuddleLift = 0.012;
 

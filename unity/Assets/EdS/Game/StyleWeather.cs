@@ -24,8 +24,7 @@ namespace EdS.Game
         /// <summary>Menu d'essai : force le temps d'identifiant <paramref name="id"/> (« rain »… voir <see cref="WeatherTrial.KindOf"/>) ; null ou inconnu : le temps du monde.</summary>
         public static void Force(string id) => Forced = id == null ? (WeatherKind?)null : WeatherTrial.KindOf(id);
 
-        private const int MaxDrops = 3000;
-        private const float DropArea = 34f, DropHeight = 14f;
+        private const float DropArea = 34f;
 
         private readonly GameObject _root;
         private readonly ParticleSystem _drops;
@@ -40,7 +39,7 @@ namespace EdS.Game
         private readonly bool _phone;
         private float _flashAt = -99f, _thunderAt = -1f, _thunderVolume = 1f, _nextForcedFlash;
         private long _flashMinute = long.MinValue;
-        private float _shownRain = -1f;
+        private float _shownRain = -1f, _column = -1f, _rateFactor = 1f;
 
         private StyleWeather()
         {
@@ -57,10 +56,10 @@ namespace EdS.Game
             Texture2D ring = UiKit.Texture("EdsInterface/Particules/anneau");
             if (template != null && drop != null)
             {
-                _drops = Particles("Gouttes de pluie", template, drop, ParticleSystemRenderMode.Stretch, _phone ? MaxDrops / 3 : MaxDrops);
+                _drops = Particles("Gouttes de pluie", template, drop, ParticleSystemRenderMode.Stretch, _phone ? WeatherCycle.PhoneMaxDrops : WeatherCycle.MaxDrops);
                 ParticleSystem.MainModule main = _drops.main;
-                main.startLifetime = new ParticleSystem.MinMaxCurve(0.75f, 0.95f);
-                main.startSpeed = new ParticleSystem.MinMaxCurve(15f, 19f);
+                main.startLifetime = 1f;   // revue Codex de la PR #101 : réglée d'après la hauteur de la caméra (Column)
+                main.startSpeed = new ParticleSystem.MinMaxCurve((float)WeatherCycle.DropMinSpeed, (float)WeatherCycle.DropMaxSpeed);
                 main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.04f);
                 main.startColor = new Color(0.72f, 0.78f, 0.86f, 0.38f);
                 ParticleSystem.ShapeModule shape = _drops.shape;
@@ -68,7 +67,7 @@ namespace EdS.Game
                 shape.shapeType = ParticleSystemShapeType.Box;
                 shape.scale = new Vector3(DropArea, DropArea, 0.1f);
                 // La boîte émet vers son +Z : tournée vers le bas, les gouttes tombent (un peu penchées par le vent).
-                _drops.transform.rotation = Quaternion.Euler(84f, 20f, 0f);
+                _drops.transform.rotation = Quaternion.Euler(90f - (float)WeatherCycle.DropTilt, 20f, 0f);
                 var renderer = _drops.GetComponent<ParticleSystemRenderer>();
                 renderer.velocityScale = 0.045f;
                 renderer.lengthScale = 1f;
@@ -178,13 +177,24 @@ namespace EdS.Game
             float rain = hushed ? 0f : (float)look.Rain;
             bool outside = !indoors && !hushed;
             float shown = outside ? rain : 0f;
-            if (Mathf.Abs(shown - _shownRain) > 0.01f)
+            // Revue Codex de la PR #101 : la colonne de pluie suit la hauteur de la caméra (de près comme de 25 m de haut, les gouttes
+            // touchent le sol) ; relue seulement quand elle change d'un demi-mètre.
+            (double height, double life, double factor) = WeatherCycle.RainColumn(camera.y);
+            bool columnChanged = Mathf.Abs((float)height - _column) > 0.5f;
+            if (columnChanged && _drops != null)
+            {
+                _column = (float)height;
+                _rateFactor = (float)factor;
+                ParticleSystem.MainModule main = _drops.main;
+                main.startLifetime = (float)life;
+            }
+            if (Mathf.Abs(shown - _shownRain) > 0.01f || columnChanged)
             {
                 _shownRain = shown;
                 if (_drops != null)
                 {
                     ParticleSystem.EmissionModule e = _drops.emission;
-                    e.rateOverTime = shown * (_phone ? 900f : 2800f);
+                    e.rateOverTime = shown * _rateFactor * (float)(_phone ? WeatherCycle.PhoneDropRate : WeatherCycle.DropRate);
                 }
                 if (_splashes != null)
                 {
@@ -192,7 +202,7 @@ namespace EdS.Game
                     e.rateOverTime = shown * (_phone ? 60f : 220f);
                 }
             }
-            if (_drops != null) _drops.transform.position = camera + new Vector3(-2f, DropHeight, -2f);
+            if (_drops != null) _drops.transform.position = new Vector3(camera.x - 2f, _column, camera.z - 2f);   // au-dessus du sol (0)
             if (_splashes != null) _splashes.transform.position = new Vector3(camera.x, 0.05f, camera.z);
 
             // Éclairs : un par minute du monde marquée par le cœur ; en essai forcé, toutes les 12 à 30 secondes.

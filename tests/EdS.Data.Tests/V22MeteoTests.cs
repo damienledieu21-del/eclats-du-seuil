@@ -521,6 +521,34 @@ public sealed class V22MeteoTests : IDisposable
         Assert.DoesNotContain("Mathf.Max(0.4f, catalog.AmbienceVolume)", weather, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(-3)]
+    [InlineData(CameraRules.GroundClearance)]
+    [InlineData(1.6)]
+    [InlineData(6)]
+    [InlineData(14)]
+    [InlineData(99)]
+    public void Les_gouttes_touchent_toujours_le_sol(double height)
+    {
+        // Revue Codex de la PR #101 : de la caméra la plus basse à la plus haute (24 m à 80°), la pluie naît au-dessus de la caméra et la
+        // goutte la plus lente atteint le sol, sans dépasser le plafond de gouttes vivantes.
+        double highest = CameraRules.TargetHeight(CameraRules.MaxDistance) + CameraRules.MaxDistance * Math.Sin(CameraRules.MaxPitch * Math.PI / 180);
+        Assert.InRange(highest, 24, 26);
+        foreach (double camera in new[] { height, highest })
+        {
+            (double column, double life, double factor) = WeatherCycle.RainColumn(camera);
+            double h = double.IsNaN(camera) ? 0 : Math.Max(0, camera);
+            Assert.True(column >= h + WeatherCycle.ColumnAboveCamera - 1e-9 && column >= WeatherCycle.MinColumn);
+            Assert.True(life * WeatherCycle.DropMinSpeed * Math.Cos(WeatherCycle.DropTilt * Math.PI / 180) >= column);
+            Assert.InRange(factor, 0.1, 1);
+            Assert.True(WeatherCycle.DropRate * factor * life <= WeatherCycle.MaxDrops);
+            Assert.True(WeatherCycle.PhoneDropRate * factor * life <= WeatherCycle.PhoneMaxDrops);
+        }
+        // Près du sol, ni plus de gouttes ni une colonne plus haute que nécessaire.
+        Assert.Equal((WeatherCycle.MinColumn, 1.0), (WeatherCycle.RainColumn(1).Height, WeatherCycle.RainColumn(1).RateFactor));
+    }
+
     [Fact]
     public void Essai_de_la_meteo_avance_seulement_le_temps_du_monde()
     {
