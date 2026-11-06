@@ -832,6 +832,18 @@ namespace EdS.World
         /// session quand une quête ou un contrat en cours la demande (elle vient alors à coup sûr, comme avant, après son signe), ou la nuit,
         /// si le tirage de cette nuit la fait venir et qu'elle n'y a pas encore été vaincue.
         /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #99 : la créature de <paramref name="population"/> est-elle attendue dans la zone maintenant (même règle que son
+        /// apparition : à ses heures, sa nuit rare tirée, ou demandée par une quête) ? Toujours vrai pour une créature sans heures ni nuit.
+        /// Sert au guidage (l'étoile d'un objectif de famille vise une créature qu'on peut trouver).
+        /// </summary>
+        public bool IsAvailable(Population population)
+        {
+            if (population is null) throw new ArgumentNullException(nameof(population));
+            if (population.Hours is null && population.Night is null) return true;
+            return Wanted(population, Zone.Engine.CurrentTick);
+        }
+
         private bool Wanted(Population population, long tick)
         {
             if (population.Hours is PopulationHours hours)

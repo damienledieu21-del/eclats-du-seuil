@@ -430,6 +430,30 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal("Boutique fermée à cette heure.", b.DrainMessages().First());
     }
 
+    [Theory]
+    [InlineData(12 * 60, false)]
+    [InlineData(23 * 60, true)]
+    public void L_etoile_d_une_chasse_de_famille_vise_un_loup_qu_on_peut_trouver(int minute, bool night)
+    {
+        // Revue Codex de la PR #99 : « Des peaux pour l'auberge » (vaincre trois loups), près de la place du loup de la nuit n° 1 : le jour,
+        // l'étoile vise un loup toujours là ; la nuit, le loup de la nuit, plus proche, peut être visé.
+        (string data, string scenarios) = DataCopy((-14, 24.5));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        var story = new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.peaux_pour_l_auberge"] = new QuestProgress("chasse") }, null,
+            tracked: "quest.peaux_pour_l_auberge");
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(0, minute), 0, Array.Empty<string>(), Hero(100).WithStory(story)));
+        AdventureSession a = Adventure(save, data, scenarios);
+        Assert.Equal(night, a.IsNight);
+        MapMarker star = a.Objective!;
+        Population target = Vallons.Populations.Single(p => p.Template.Placement!.Position.X.Raw / 10000.0 == star.X
+            && p.Template.Placement.Position.Z.Raw / 10000.0 == star.Z);
+        Assert.Equal("loup", target.Family);
+        if (night) Assert.Equal("loup_nuit1", target.Creature);
+        else Assert.Null(target.Hours);   // pas un loup de la nuit, absent avant 22 h
+        Assert.True(a.World.IsAvailable(target));
+    }
+
     [Fact]
     public void La_nuit_on_parle_a_Odile_devant_sa_porte()
     {

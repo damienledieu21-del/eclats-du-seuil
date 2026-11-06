@@ -1388,8 +1388,12 @@ namespace EdS.Runtime
                         return At(at.Position);
                     case ObjectiveKind.DefeatFamily:
                         GroundVector from = Me ?? _zone.Entry.Position;
-                        CombatantPlacement? nearest = _zone.Populations.Where(p => p.Family == o.Id).Select(p => p.Template.Placement)
+                        // Revue Codex de la PR #99 : la plus proche parmi celles qu'on peut trouver à cette heure (pas un loup de la nuit en plein
+                        // jour) ; aucune : la plus proche de toutes.
+                        CombatantPlacement? Nearest(IEnumerable<Population> among) => among.Select(p => p.Template.Placement)
                             .Where(x => x != null).OrderBy(x => Distance2(from, x!.Position)).FirstOrDefault();
+                        var family = _zone.Populations.Where(p => p.Family == o.Id).ToList();
+                        CombatantPlacement? nearest = Nearest(family.Where(p => World.IsAvailable(p))) ?? Nearest(family);
                         return nearest is null ? null : At(nearest.Position);
                     case ObjectiveKind.Fact when _zone.Bosses.FirstOrDefault(b => b.Fact == o.Id) is { } boss && boss.Forms[0].Placement is CombatantPlacement chef:
                         return At(chef.Position);
