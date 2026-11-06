@@ -137,3 +137,21 @@ Menu **Éclats du Seuil → Essai des animaux : …**, **hors du mode Jeu** (il 
 | 9.7 | Attendre que la brume se lève (vers 9 h du monde) | Les loups gris et les échos s'en vont dès qu'ils ne se battent plus | [ ] | |
 | 9.8 | Une **averse** de jour (essai de la météo) | Les cerfs ne sont plus là (ils s'abritent) ; ils reviennent après la pluie | [ ] | |
 | 9.9 | Ton avis : nombre de bêtes, vitesse de fuite, distance (9 m), loups gris le matin dès le niveau 1 | — | [ ] | |
+
+## 10. Les événements du monde (V2.5)
+
+Menu **Éclats du Seuil → Essai des événements : …**, **hors du mode Jeu** (il avance la partie jusqu'à 5 minutes du monde avant le prochain événement ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#événements-du-monde-sous-lot-v25).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 10.1 | « l'attaque du hameau maintenant », puis Play ; voyage rapide au **hameau de la carrière** | En haut, « En cours : L'attaque du hameau » (ou « Bientôt : … ») ; l'annonce (« Des feux s'allument sur la crête… » ou un hurlement) | [ ] | |
+| 10.2 | Attendre quelques secondes | **La cloche** sonne trois coups ; message « La cloche du hameau sonne à toute volée ! » ; trois bandits (ou trois loups) entrent par l'est ; **Josse et Aubine** courent au pied de la carrière (étiquette « à l'abri au pied de la carrière ») | [ ] | |
+| 10.3 | Vaincre les assaillants | « Le hameau de la carrière est sauf… », puis la bourse de Josse : **400 points, 3 argent, deux remèdes de l'aube** ; Josse et Aubine reviennent | [ ] | |
+| 10.4 | Parler à Josse, puis à Aubine | Leur **remerciement** (une seule fois chacun) | [ ] | |
+| 10.5 | Relancer l'essai, puis **ne pas** aller au hameau ; attendre la fin (4 h du monde, environ 30 min de jeu) ou faire halte longtemps ailleurs | « Les bandits repartent… une grange fume » (ou « Pendant que tu étais ailleurs… ») ; au hameau, **fumée et caisses brisées** pendant une journée du monde ; Josse te le reproche | [ ] | |
+| 10.6 | Défendre une seconde fois | Des remerciements, **pas** de seconde récompense | [ ] | |
+| 10.7 | « ouvrir une faille du Seuil », puis Play ; aller où le dit le message (ruines, lac ou pré) | Une **faille** violette et pâle (éclats qui tournent, lueurs qui montent, lumière), un son de cloche grave ; trois **échos** en sortent, puis d'autres toutes les 30 s (trois vagues) | [ ] | |
+| 10.8 | Approcher de la faille avec des échos debout, appuyer sur F | « Des échos sont encore debout… » | [ ] | |
+| 10.9 | Vaincre les échos, puis F près de la faille (« F : refermer la faille ») | La faille se referme ; récompense : 450 points, 2 argent 50, **un éclat de Seuil** ; plus de vague | [ ] | |
+| 10.10 | « la chasse de l'aube », puis Play ; aller aux **champs du sud** | Deux loups sortent du bois et attaquent un sanglier ; personne ne meurt (une bête n'en tue pas une autre) ; ils repartent après une heure du monde | [ ] | |
+| 10.11 | Ton avis : fréquence (un soir sur deux, une faille tous les trois jours), annonces, difficulté (les assaillants ont le niveau du hameau), récompenses, cloche | — | [ ] | |
