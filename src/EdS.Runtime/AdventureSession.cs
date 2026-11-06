@@ -1251,6 +1251,12 @@ namespace EdS.Runtime
         /// <remarks>Sous-lot V2.1 : à leur place de l'heure (la nuit, devant leur porte pour ceux qui rentrent chez eux).</remarks>
         public IReadOnlyList<WorldMarker> Npcs() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), World.NpcPosition(n))).ToList();
 
+        /// <summary>
+        /// Relecture de la PR #99 : les PNJ de la zone à leur place de jour (celle de l'histoire), quelle que soit l'heure : l'affichage y
+        /// prend leur place et leur pose de jour, même pour une partie chargée la nuit.
+        /// </summary>
+        public IReadOnlyList<WorldMarker> NpcsByDay() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
+
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
             ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList()

@@ -144,7 +144,7 @@ namespace EdS.Game
             foreach (Material material in _glowing.Values)
                 if (material != null) Object.Destroy(material);
             _glowing.Clear();
-            foreach (Material material in _echoMaterials)
+            foreach (Material material in _echoMaterials.Values)
                 if (material != null) Object.Destroy(material);
             _echoMaterials.Clear();
             _baseColors.Clear();
@@ -264,8 +264,11 @@ namespace EdS.Game
             if (!player && NightLamps.IsEcho(id)) Echo(body);   // sous-lot V2.1 : les échos de la nuit
         }
 
-        /// <summary>Sous-lot V2.1 : matériaux pâlis des échos (détruits au prochain Populate).</summary>
-        private readonly List<Material> _echoMaterials = new List<Material>();
+        /// <summary>
+        /// Sous-lot V2.1 : matériaux pâlis des échos, un par matériau d'origine, partagés par tous les échos (relecture de la PR #99 : pas une
+        /// copie par écho qui revient) ; détruits au prochain Populate.
+        /// </summary>
+        private readonly Dictionary<Material, Material> _echoMaterials = new Dictionary<Material, Material>();
 
         /// <summary>
         /// Sous-lot V2.1 (MONDE.md : « une bête qu'on tue et qui revient, mon grand-père appelait ça un écho ») : un écho est un loup pâle,
@@ -276,10 +279,19 @@ namespace EdS.Game
             var pale = new Color(0.72f, 0.86f, 1f);
             foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>(true))
             {
-                Material[] materials = renderer.materials;   // copies propres à ce corps
-                foreach (Material m in materials)
+                Material[] materials = renderer.sharedMaterials;   // les matériaux d'origine, jamais copiés ici
+                for (int i = 0; i < materials.Length; i++)
                 {
-                    _echoMaterials.Add(m);
+                    Material source = materials[i];
+                    if (source == null) continue;
+                    if (_echoMaterials.TryGetValue(source, out Material shared) && shared != null)
+                    {
+                        materials[i] = shared;
+                        continue;
+                    }
+                    var m = new Material(source);
+                    _echoMaterials[source] = m;
+                    materials[i] = m;
                     string color = m.HasProperty("_BaseColor") ? "_BaseColor" : m.HasProperty("_Color") ? "_Color" : null;
                     if (color != null)
                     {
@@ -294,7 +306,7 @@ namespace EdS.Game
                         m.SetColor("_EmissionColor", new Color(0.18f, 0.32f, 0.55f));
                     }
                 }
-                renderer.materials = materials;
+                renderer.sharedMaterials = materials;
             }
         }
 

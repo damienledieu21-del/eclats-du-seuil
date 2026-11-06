@@ -411,6 +411,10 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal("npc.odile", a.NpcInReach!.Id);
         WorldMarker marker = a.Npcs().Single(n => n.Id == "npc.odile");
         Assert.Equal((spot.X.Raw / 10000.0, spot.Z.Raw / 10000.0), (marker.X, marker.Z));
+        // Relecture de la PR #99 : la place de jour reste celle de l'histoire, même la nuit (l'affichage y prend sa pose de jour).
+        WorldMarker day = a.NpcsByDay().Single(n => n.Id == "npc.odile");
+        GroundVector story = Book(Vallons).Npc("npc.odile").Position;
+        Assert.Equal((story.X.Raw / 10000.0, story.Z.Raw / 10000.0), (day.X, day.Z));
         Assert.True(a.Interact());
         Assert.NotNull(a.Dialogue);
     }
@@ -431,6 +435,13 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.True(midnight.SunLevel > 0.3, "la lune éclaire");
         Assert.Equal((1.0, 1.0), (midnight.Lamps, midnight.Night));
         Assert.Equal(DayCycle.MoonHeight, midnight.Height(55));
+        // Relecture de la PR #99 : au relais, la lumière directionnelle est éteinte exactement, de part et d'autre de la bascule.
+        foreach (double turn in new[] { DayCycle.MoonSets, DayCycle.MoonRises })
+        {
+            Assert.Equal(0.0, DayCycle.At(turn).SunLevel);
+            Assert.NotEqual(DayCycle.At(turn - 0.01).Moon, DayCycle.At(turn).Moon);
+            Assert.True(DayCycle.At(turn - 0.01).SunLevel < 1e-4 && DayCycle.At(turn + 0.01).SunLevel < 1e-4);
+        }
         // L'aube est rose, le crépuscule orangé (plus de rouge que de bleu dans la lumière).
         Assert.True(DayCycle.At(6 * 60).SunTint.R > DayCycle.At(6 * 60).SunTint.B);
         Assert.True(DayCycle.At(20 * 60 + 30).SunTint.R > DayCycle.At(20 * 60 + 30).SunTint.B);
@@ -453,8 +464,8 @@ public sealed class V21JourNuitTests : IDisposable
                 (previous.Lamps, l.Lamps), (previous.Night, l.Night), (previous.AmbientTint.R, l.AmbientTint.R), (previous.SunTint.G, l.SunTint.G),
                 (previous.Height(55), l.Height(55)) })
                 Assert.True(Math.Abs(a - b) < (a == previous.Height(55) ? 1.2 : 0.02), $"saut à la minute {m} : {a} → {b}");
-            // La lune et le soleil se passent le relais quand la lumière est au plus bas.
-            if (l.Moon != previous.Moon) Assert.True(l.SunLevel < 0.15 && previous.SunLevel < 0.15, $"relais visible à la minute {m}");
+            // Relecture de la PR #99 : la lune et le soleil se passent le relais lumière éteinte (aucune ombre ne saute).
+            if (l.Moon != previous.Moon) Assert.True(l.SunLevel < 0.001 && previous.SunLevel < 0.001, $"relais visible à la minute {m}");
             Assert.InRange(l.AmbientLevel, DayCycle.NightAmbient, 1);
             previous = l;
         }

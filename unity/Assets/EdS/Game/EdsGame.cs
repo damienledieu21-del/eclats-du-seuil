@@ -672,12 +672,22 @@ namespace EdS.Game
             Cursor.visible = true;
         }
 
+        /// <summary>Relecture de la PR #99 : minute du monde de la dernière lumière posée (jour × 1440 + minute ; -1 hors de l'aventure).</summary>
+        private long _lightKey = long.MinValue;
+
         private void Update()
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
             // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
-            StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
+            // Relecture de la PR #99 : la lumière n'est recalculée que quand la minute du monde change (7,5 s de jeu), ou à chaque image dans
+            // l'éditeur (curseurs du catalogue) ; -1 hors de l'aventure (plein jour).
+            long lightKey = _adventure != null ? _adventure.World.Zone.Time.Day * 1440 + _adventure.World.Zone.Time.Minute : -1;
+            if (Application.isEditor || lightKey != _lightKey)
+            {
+                _lightKey = lightKey;
+                StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
+            }
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             _touch.Update(Network, _adventure != null, AdventureCovered);
             // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la

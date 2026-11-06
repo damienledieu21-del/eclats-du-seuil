@@ -138,6 +138,12 @@ namespace EdS.Runtime
         /// <summary>Hauteur de la lune la nuit (degrés).</summary>
         public const double MoonHeight = 42;
 
+        /// <summary>
+        /// Relecture de la PR #99 : minutes où la lune et le soleil se passent le relais (5 h 35 et 21 h 30) ; la lumière directionnelle y est
+        /// éteinte (force 0), puis se rallume en douceur dans sa nouvelle direction.
+        /// </summary>
+        public const double MoonSets = 335, MoonRises = 1290;
+
         /// <summary>Hauteur du soleil levant ou couchant (degrés).</summary>
         public const double LowSun = 7;
 
@@ -166,12 +172,12 @@ namespace EdS.Runtime
         {
             new Key(0, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
             new Key(255, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
-            new Key(330, 0.08, MoonTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.35, -0.3, -12),
+            new Key(MoonSets, 0, MoonTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.35, -0.3, -12),
             new Key(360, 0.55, DawnTint, LowSun, 0, 0.75, DawnAmbient, DawnFog, 0.62, -0.15, -4),
             new Key(450, 1, StyleTint.White, LowSun, 1, 1, StyleTint.White, StyleTint.White, 1, 0, 0),
             new Key(1110, 1, StyleTint.White, LowSun, 1, 1, StyleTint.White, StyleTint.White, 1, 0, 0),
             new Key(1230, 0.6, DuskTint, LowSun, 0, 0.78, DuskAmbient, DuskFog, 0.6, -0.12, 4),
-            new Key(1290, 0.08, DuskTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.32, -0.28, -10),
+            new Key(MoonRises, 0, DuskTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.32, -0.28, -10),
             new Key(1350, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
             new Key(1440, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
         };
@@ -186,8 +192,9 @@ namespace EdS.Runtime
             while (i < Keys.Length - 2 && Keys[i + 1].Minute <= minute) i++;
             Key a = Keys[i], b = Keys[i + 1];
             double t = Smooth((minute - a.Minute) / (b.Minute - a.Minute));
-            // La lune passe le relais au soleil (et l'inverse) quand la lumière est au plus bas (5 h 35, 21 h 30) : le changement de direction ne se voit pas.
-            bool moon = minute < 335 || minute >= 1290;
+            // La lune passe le relais au soleil (et l'inverse) quand la lumière directionnelle est éteinte (5 h 35, 21 h 30 : force 0
+            // exactement, relecture de la PR #99) : le changement de direction ne se voit pas, aucune ombre ne saute.
+            bool moon = minute < MoonSets || minute >= MoonRises;
             return new DayLight(minute, Lerp(a.Sun, b.Sun, t), StyleTint.Lerp(a.SunTint, b.SunTint, t), Lerp(a.Height, b.Height, t), Lerp(a.Share, b.Share, t), moon,
                 Lerp(a.Ambient, b.Ambient, t),
                 StyleTint.Lerp(a.AmbientTint, b.AmbientTint, t), StyleTint.Lerp(a.Fog, b.Fog, t), Lerp(a.Sky, b.Sky, t), Lerp(a.Exposure, b.Exposure, t),

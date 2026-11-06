@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -71,8 +72,11 @@ namespace EdS.Game
             // son nom (pas de capsule par-dessus), sauf sans personnages de villageois dans le catalogue.
             StyleCatalog catalog = StyleCatalog.Loaded;
             bool dressedIndoors = adventure.Indoors && catalog != null && catalog.Villagers > 0 && catalog.Character("paysan") != null;
+            // Relecture de la PR #99 : la place et la pose de jour viennent de l'histoire (NpcsByDay), même pour une partie chargée la nuit.
+            var byDay = adventure.NpcsByDay().ToDictionary(n => n.Id);
             foreach (WorldMarker npc in adventure.Npcs())
             {
+                WorldMarker day = byDay.TryGetValue(npc.Id, out WorldMarker d0) ? d0 : npc;
                 Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
                 _npcs[npc.Id] = m;
                 if (dressedIndoors)
@@ -91,17 +95,20 @@ namespace EdS.Game
                 double best = double.MaxValue;
                 foreach (WorldMarker s in safePoints)
                 {
-                    double d = (s.X - npc.X) * (s.X - npc.X) + (s.Z - npc.Z) * (s.Z - npc.Z);
+                    double d = (s.X - day.X) * (s.X - day.X) + (s.Z - day.Z) * (s.Z - day.Z);
                     if (d < best && d > 0.01)
                     {
                         best = d;
                         home = s;
                     }
                 }
-                if (home != null) m.RestYaw = (float)StyleRules.FaceYaw(npc.X, npc.Z, home.X, home.Z);
-                m.Body.transform.rotation = Quaternion.Euler(0f, m.RestYaw, 0f);
-                m.DayPlace = new Vector3((float)npc.X, 0f, (float)npc.Z);
+                if (home != null) m.RestYaw = (float)StyleRules.FaceYaw(day.X, day.Z, home.X, home.Z);
+                m.DayPlace = new Vector3((float)day.X, 0f, (float)day.Z);
                 m.DayYaw = m.RestYaw;
+                // Chargé la nuit devant sa porte : il regarde la rue, vers sa place de jour (dos à sa porte), comme s'il venait d'arriver.
+                bool away = System.Math.Abs(npc.X - day.X) > 0.01 || System.Math.Abs(npc.Z - day.Z) > 0.01;
+                if (away) m.RestYaw = (float)StyleRules.FaceYaw(npc.X, npc.Z, day.X, day.Z);
+                m.Body.transform.rotation = Quaternion.Euler(0f, m.RestYaw, 0f);
             }
             foreach (WorldMarker node in adventure.Nodes())
             {
