@@ -144,6 +144,9 @@ namespace EdS.Game
             foreach (Material material in _glowing.Values)
                 if (material != null) Object.Destroy(material);
             _glowing.Clear();
+            foreach (Material material in _echoMaterials.Values)
+                if (material != null) Object.Destroy(material);
+            _echoMaterials.Clear();
             _baseColors.Clear();
             if (_player != null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
@@ -258,6 +261,53 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : Croc-Gris est un loup bien plus grand que les autres (StyleRules.BeastHeight).
             StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
+            if (!player && NightLamps.IsEcho(id)) Echo(body);   // sous-lot V2.1 : les échos de la nuit
+        }
+
+        /// <summary>
+        /// Sous-lot V2.1 : matériaux pâlis des échos, un par matériau d'origine, partagés par tous les échos (relecture de la PR #99 : pas une
+        /// copie par écho qui revient) ; détruits au prochain Populate.
+        /// </summary>
+        private readonly Dictionary<Material, Material> _echoMaterials = new Dictionary<Material, Material>();
+
+        /// <summary>
+        /// Sous-lot V2.1 (MONDE.md : « une bête qu'on tue et qui revient, mon grand-père appelait ça un écho ») : un écho est un loup pâle,
+        /// bleuté et faiblement lumineux, qu'on reconnaît de loin la nuit. Sans asset : les couleurs de son modèle (ou de sa forme simple).
+        /// </summary>
+        private void Echo(GameObject body)
+        {
+            var pale = new Color(0.72f, 0.86f, 1f);
+            foreach (Renderer renderer in body.GetComponentsInChildren<Renderer>(true))
+            {
+                Material[] materials = renderer.sharedMaterials;   // les matériaux d'origine, jamais copiés ici
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    Material source = materials[i];
+                    if (source == null) continue;
+                    if (_echoMaterials.TryGetValue(source, out Material shared) && shared != null)
+                    {
+                        materials[i] = shared;
+                        continue;
+                    }
+                    var m = new Material(source);
+                    _echoMaterials[source] = m;
+                    materials[i] = m;
+                    string color = m.HasProperty("_BaseColor") ? "_BaseColor" : m.HasProperty("_Color") ? "_Color" : null;
+                    if (color != null)
+                    {
+                        Color c = m.GetColor(color);
+                        Color tinted = Color.Lerp(c, pale, 0.65f);
+                        tinted.a = c.a;
+                        m.SetColor(color, tinted);
+                    }
+                    if (m.HasProperty("_EmissionColor"))
+                    {
+                        m.EnableKeyword("_EMISSION");
+                        m.SetColor("_EmissionColor", new Color(0.18f, 0.32f, 0.55f));
+                    }
+                }
+                renderer.sharedMaterials = materials;
+            }
         }
 
         /// <summary>
@@ -492,6 +542,9 @@ namespace EdS.Game
         private static long Raw(float metres) => (long)System.Math.Round(metres * 10000.0);
 
         /// <summary>Sous-lot 11.6 : attaques annoncées au sol et coupe du décor qui cache le joueur (combat positionné seulement).</summary>
+        /// <summary>Sous-lot V2.1 : le décor de la nuit (lanternes, fenêtres, feux follets, hiboux, villageois rentrés).</summary>
+        public void Night(Vector3 camera, bool worldNight, float deltaTime) => _space?.Night(camera, worldNight, deltaTime);
+
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;

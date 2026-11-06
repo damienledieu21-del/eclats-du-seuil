@@ -57,6 +57,22 @@ namespace EdS.Data.Zones
 
         /// <summary>Intérieurs (schéma 4) : portes vers d'autres zones ; facultatif.</summary>
         public List<DoorData?>? Doors { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.1 (schéma 8, jour et nuit qui changent le monde) : PNJ de la zone qui rentrent chez eux la nuit (de 22 h à 5 h) ; chacun
+        /// se tient devant sa porte, où l'on peut toujours lui parler ; facultatif.
+        /// </summary>
+        public List<NightSpotData?>? NightSpots { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.1 (schéma 8) : place d'un PNJ la nuit, devant sa porte.</summary>
+    public sealed class NightSpotData
+    {
+        /// <summary>PNJ de l'histoire qui vit dans cette zone (« npc.odile »).</summary>
+        public string? Npc { get; set; }
+
+        /// <summary>Sa place la nuit, dans l'aire praticable, hors des obstacles.</summary>
+        public PointData? Position { get; set; }
     }
 
     /// <summary>
@@ -186,6 +202,22 @@ namespace EdS.Data.Zones
         /// Le loup blanc reste une bête du chapitre 1 et le Borgne un chef du chapitre 2, même dans un lieu d'un chapitre plus haut.
         /// </summary>
         public int? Level { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.1 (schéma 8) : moments de la journée où la créature est dans le monde (les loups de la nuit, les échos, les sangliers
+        /// qui dorment la nuit) ; facultatif (toujours là). Exclusif de <see cref="Night"/>.
+        /// </summary>
+        public HoursData? Hours { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population.</summary>
+    public sealed class HoursData
+    {
+        /// <summary>Moments où elle est là : « night », « dawn », « day », « dusk » (de 1 à 3, sans doublon).</summary>
+        public List<string?>? Phases { get; set; }
+
+        /// <summary>Clé du texte annoncé quand elle arrive (« Des lueurs pâles s'allument… ») ; facultative.</summary>
+        public string? Sign { get; set; }
     }
 
     /// <summary>Schéma 6 : apparition d'une créature rare de la nuit (chance par nuit, délai entre le signe et l'arrivée, texte du signe).</summary>

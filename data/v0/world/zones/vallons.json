@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "kind": "zone",
-  "contentVersion": "0.9.0-provisoire",
+  "contentVersion": "0.10.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -401,31 +401,66 @@
         "creature": "sanglier4",
         "respawnMs": 120000,
         "leashRange": 18,
-        "loot": "loot.sanglier"
+        "loot": "loot.sanglier",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
       },
       {
         "creature": "sanglier5",
         "respawnMs": 120000,
         "leashRange": 18,
-        "loot": "loot.sanglier"
+        "loot": "loot.sanglier",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
       },
       {
         "creature": "sanglier6",
         "respawnMs": 120000,
         "leashRange": 18,
-        "loot": "loot.sanglier"
+        "loot": "loot.sanglier",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
       },
       {
         "creature": "sanglier7",
         "respawnMs": 120000,
         "leashRange": 18,
-        "loot": "loot.sanglier"
+        "loot": "loot.sanglier",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
       },
       {
         "creature": "sanglier8",
         "respawnMs": 120000,
         "leashRange": 18,
-        "loot": "loot.sanglier"
+        "loot": "loot.sanglier",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
       },
       {
         "creature": "archer2",
@@ -546,6 +581,140 @@
         "leashRange": 20,
         "loot": "loot.bandit",
         "family": "bandit"
+      },
+      {
+        "creature": "loup_nuit1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ],
+          "sign": "text.zone.loups_nuit.signe"
+        }
+      },
+      {
+        "creature": "loup_nuit2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit4",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit5",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit6",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit7",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_echo1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ],
+          "sign": "text.zone.echos.signe"
+        }
+      },
+      {
+        "creature": "loup_echo2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_echo3",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_echo4",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
       }
     ],
     "passages": [
@@ -947,6 +1116,64 @@
           }
         ],
         "loot": "loot.loup"
+      }
+    ],
+    "nightSpots": [
+      {
+        "npc": "npc.odile",
+        "position": [
+          -4,
+          4.8
+        ]
+      },
+      {
+        "npc": "npc.maelle",
+        "position": [
+          -24.2,
+          -8
+        ]
+      },
+      {
+        "npc": "npc.apprentie",
+        "position": [
+          -24.2,
+          -10.5
+        ]
+      },
+      {
+        "npc": "npc.armurier",
+        "position": [
+          -54.5,
+          -16.6
+        ]
+      },
+      {
+        "npc": "npc.epiciere",
+        "position": [
+          -46,
+          5
+        ]
+      },
+      {
+        "npc": "npc.doyen",
+        "position": [
+          79.5,
+          -33
+        ]
+      },
+      {
+        "npc": "npc.herboriste_hameau",
+        "position": [
+          75,
+          -29
+        ]
+      },
+      {
+        "npc": "npc.fermier",
+        "position": [
+          -69,
+          -45
+        ]
       }
     ]
   }

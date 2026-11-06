@@ -279,6 +279,11 @@ namespace EdS.Data.Story
                 for (int i = 0; i < _zone.Populations.Count; i++)
                     if (_zone.Populations[i].Night is NightSpawn night)
                         Text(night.Sign, $"{_zone.Id}:$.data.populations[{i}].night.sign");
+                // Sous-lot V2.1 (zones en schéma 8) : le signe d'une créature à heures aussi, dans la zone de l'histoire et ses intérieurs.
+                foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                    for (int i = 0; i < z.Populations.Count; i++)
+                        if (z.Populations[i].Hours is { Sign: string sign })
+                            Text(sign, $"{z.Id}:$.data.populations[{i}].hours.sign");
 
                 var discoveries = new List<Discovery>();
                 if (_d.Discoveries != null)
@@ -306,6 +311,17 @@ namespace EdS.Data.Story
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
                         if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone));
+                    }
+
+                // Sous-lot V2.1 (zones en schéma 8) : un PNJ qui rentre chez lui la nuit existe et vit dans la zone de sa place de nuit.
+                foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                    for (int i = 0; i < z.NightSpots.Count; i++)
+                    {
+                        NightSpot spot = z.NightSpots[i];
+                        Npc? who = npcs.FirstOrDefault(x => x.Id == spot.Npc);
+                        string where = $"{z.Id}:$.data.nightSpots[{i}].npc";
+                        if (who is null) _r.Add(where, ValidationCode.UnknownReference, $"PNJ inconnu « {spot.Npc} ».");
+                        else if ((who.Zone ?? _zone.Id) != z.Id) _r.Add(where, ValidationCode.InvalidValue, $"« {spot.Npc} » ne vit pas dans la zone « {z.Id} ».");
                     }
 
                 var dialogues = new List<Dialogue>();

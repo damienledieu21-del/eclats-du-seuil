@@ -162,6 +162,7 @@ namespace EdS.Game
             Pavements();
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg
+            NightDecor(space, map);   // sous-lot V2.1 : lanternes, réverbères, feux follets, hiboux
             Plants(space);
             if (terrain) Forest(space);
             Bridge(space);
@@ -399,6 +400,7 @@ namespace EdS.Game
             // Intérieurs : un bâtiment qui a une porte tourne sa façade vers elle (on la voit où l'on entre) ; sinon vers la route.
             bool hasDoor = _doors.Any(d => d.Building == id);
             (int, int) facing = TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors);
+            DoorLantern(kind, id, x0, z0, x1, z1, facing);   // sous-lot V2.1 : sa lanterne de porte, allumée la nuit
             // Essai réaliste 8 : le vrai bâtiment de Sketchfab s'il y en a un de ce genre dans le catalogue.
             if (ModelBuilding(kind, id, x0, z0, x1, z1, facing, hasDoor)) return;
             Material plaster = Built(StyleSurface.Plaster, new Color(0.86f, 0.82f, 0.74f), out float plasterTile);
@@ -415,6 +417,7 @@ namespace EdS.Game
                 (shapes.Walls, walls, "murs"), (shapes.Stone, stone, "pierre"), (shapes.Wood, wood, "bois"), (shapes.Roof, roof, "toit"),
                 (shapes.Cloth, Plain(ClothColor(shapes.ClothColor)), "toile"), (shapes.ClothStripes, Plain(new Color(0.9f, 0.85f, 0.72f)), "bandes"),
                 (shapes.Dark, Plain(new Color(0.045f, 0.045f, 0.05f)), "ouvertures"),
+                (shapes.Windows, WindowGlass(), "fenêtres"),   // sous-lot V2.1 : allumées la nuit
             };
             foreach ((StyleMesh mesh, Material material, string name) in parts)
                 if (mesh.Triangles.Count > 0) Shape(id + " (" + name + ")", mesh, material, go.transform);
@@ -1288,6 +1291,7 @@ namespace EdS.Game
             foreach (Occluder o in _occluders) ReleaseFade(o);   // V1.10 : copies transparentes des décors passés en fondu
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
+            ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
             Object.Destroy(_root);
         }
 

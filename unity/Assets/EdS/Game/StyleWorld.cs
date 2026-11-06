@@ -44,7 +44,14 @@ namespace EdS.Game
                 // (essai de Damien du 27 octobre 2026 au soir).
                 QualitySettings.shadows = UnityEngine.ShadowQuality.HardOnly;
             }
-            RenderSettings.skybox = catalog.Sky;
+            // Sous-lot V2.1 : une copie du ciel, dont la clarté et la teinte suivent l'heure (le ciel du catalogue n'est jamais modifié).
+            if (_sky == null)
+            {
+                _sky = new Material(catalog.Sky);
+                _skyExposure = _sky.HasProperty("_Exposure") ? _sky.GetFloat("_Exposure") : 1f;
+                _skyTint = _sky.HasProperty("_Tint") ? _sky.GetColor("_Tint") : Color.white;
+            }
+            RenderSettings.skybox = _sky;
             camera.clearFlags = CameraClearFlags.Skybox;
             foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (light.type == LightType.Directional)
@@ -95,27 +102,42 @@ namespace EdS.Game
             }
             if (!Active || catalog == null) return;
             if (_camera != null && catalog.Sky != null) _camera.clearFlags = CameraClearFlags.Skybox;
+            // Sous-lot V2.1 : la lumière de l'heure (facteurs sur les réglages du catalogue, qui restent ceux du plein jour).
+            DayLight light = _hasLight ? _light : DayCycle.At(12 * 60);
+            if (Application.isEditor && catalog.PreviewHour >= 0f) light = DayCycle.At(catalog.PreviewHour * 60f);
+            float ambient = (float)light.AmbientLevel;
+            // La clarté de la nuit se règle dans le catalogue (1 : la nuit prévue) ; elle ne touche pas le jour.
+            ambient = Mathf.Min(1f, ambient * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night));
+            Color ambientTint = Tint(light.AmbientTint) * ambient;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = catalog.AmbientSky;
-            RenderSettings.ambientEquatorColor = catalog.AmbientHorizon;
-            RenderSettings.ambientGroundColor = catalog.AmbientGround;
+            RenderSettings.ambientSkyColor = catalog.AmbientSky * ambientTint;
+            RenderSettings.ambientEquatorColor = catalog.AmbientHorizon * ambientTint;
+            RenderSettings.ambientGroundColor = catalog.AmbientGround * ambientTint;
             RenderSettings.fog = catalog.FogEnd > catalog.FogStart;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = catalog.FogColor;
+            RenderSettings.fogColor = catalog.FogColor * Tint(light.FogTint);
+            if (_sky != null)
+            {
+                if (_sky.HasProperty("_Exposure")) _sky.SetFloat("_Exposure", _skyExposure * (float)light.SkyLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night));
+                if (_sky.HasProperty("_Tint")) _sky.SetColor("_Tint", _skyTint * Tint(light.FogTint));
+            }
+            Lamps = (float)light.Lamps;
+            NightShare = (float)light.Night;
             RenderSettings.fogStartDistance = catalog.FogStart;
             RenderSettings.fogEndDistance = catalog.FogEnd;
             if (_camera != null) _camera.farClipPlane = Mathf.Max(250f, catalog.FogEnd + 20f);
             if (_sun != null)
             {
-                _sun.color = catalog.SunColor;
-                _sun.intensity = catalog.SunIntensity;
-                _sun.transform.rotation = Quaternion.Euler(catalog.SunHeight, catalog.SunTurn, 0f);
+                // Le jour, le soleil du catalogue ; la nuit, la lune (froide, haute, à l'opposé) ; entre les deux, l'aube rose et le soir orangé.
+                _sun.color = catalog.SunColor * Tint(light.SunTint);
+                _sun.intensity = catalog.SunIntensity * (float)light.SunLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night);
+                _sun.transform.rotation = Quaternion.Euler((float)light.Height(catalog.SunHeight), catalog.SunTurn + (light.Moon ? 180f : 0f), 0f);
             }
             if (_colors != null)
             {
-                _colors.postExposure.value = catalog.Exposure;
+                _colors.postExposure.value = catalog.Exposure + (float)light.Exposure;
                 _colors.contrast.value = catalog.Contrast;
-                _colors.saturation.value = catalog.Saturation;
+                _colors.saturation.value = catalog.Saturation + (float)light.Saturation;
                 _vignette.intensity.value = catalog.Vignette;
                 // Le halo coûte cher sur téléphone (Note8) : seulement sur ordinateur.
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
@@ -239,6 +261,37 @@ namespace EdS.Game
         private static (AmbientMode Mode, Color Sky, Color Horizon, Color Ground, bool Fog) _outdoorAmbient =
             (AmbientMode.Skybox, new Color(0.5f, 0.6f, 0.76f), new Color(0.52f, 0.53f, 0.5f), new Color(0.26f, 0.24f, 0.2f), false);
         private static Color _outdoorBackground;
+
+        /// <summary>Sous-lot V2.1 : copie du ciel du catalogue (clarté et teinte de l'heure), sa clarté et sa teinte d'origine.</summary>
+        private static Material _sky;
+        private static float _skyExposure = 1f;
+        private static Color _skyTint = Color.white;
+
+        /// <summary>Sous-lot V2.1 : lumière de l'heure donnée par le jeu (sinon, le plein jour).</summary>
+        private static DayLight _light;
+        private static bool _hasLight;
+
+        /// <summary>Sous-lot V2.1 : lanternes et fenêtres allumées (0 à 1), selon l'heure montrée (aperçu de l'éditeur compris).</summary>
+        public static float Lamps { get; private set; }
+
+        /// <summary>Sous-lot V2.1 : part de nuit (0 à 1), selon l'heure montrée.</summary>
+        public static float NightShare { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.1 (jour et nuit qui changent le monde) : la lumière de l'heure du monde (<see cref="DayCycle"/>), appliquée aux réglages
+        /// du catalogue à chaque image dehors ; null : le plein jour (entraînement, réseau). Les pièces et le souvenir gardent leur ambiance.
+        /// </summary>
+        public static void SetDayLight(DayLight? light)
+        {
+            _hasLight = light.HasValue;
+            if (light.HasValue) _light = light.Value;
+            // Sans catalogue (pas d'ambiance réaliste), les lanternes suivent quand même l'heure.
+            Lamps = light.HasValue ? (float)light.Value.Lamps : 0f;
+            NightShare = light.HasValue ? (float)light.Value.Night : 0f;
+            Refresh();
+        }
+
+        private static Color Tint(StyleTint t) => new Color((float)t.R, (float)t.G, (float)t.B);
 
         /// <summary>Force du soleil avant la première entrée dans une pièce (sans catalogue, pour la lui rendre en sortant).</summary>
         private static float _outdoorSun;

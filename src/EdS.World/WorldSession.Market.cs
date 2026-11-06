@@ -61,9 +61,14 @@ namespace EdS.World
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             Npc npc = (Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Book.Npc(m.Npc);
-            if (!(((INarrativeWorld)this).PlayerPositionIn(npc.Zone) is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange))
-                return TradeRefusal.TooFar;
+            // Sous-lot V2.1 : la boutique est à l'étal (la place du PNJ dans l'histoire) ; la nuit, un marchand qui rentre chez lui se tient
+            // devant sa porte. À l'étal comme à sa porte, une boutique fermée à cette heure le dit ; ouverte, on achète auprès du marchand.
+            GroundVector? at = ((INarrativeWorld)this).PlayerPositionIn(npc.Zone);
+            bool nearNpc = at is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
+            bool nearStall = at is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
+            if (!nearNpc && !nearStall) return TradeRefusal.TooFar;
             if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
+            if (!nearNpc) return TradeRefusal.TooFar;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             if (m.Fact != null && !Narrative.Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
             return TradeRefusal.None;

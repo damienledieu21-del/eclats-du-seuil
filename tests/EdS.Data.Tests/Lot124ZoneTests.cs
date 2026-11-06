@@ -94,7 +94,7 @@ public class Lot124ZoneTests
             "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
             z.Places.Select(p => p.Id));   // Vallons agrandis : dix lieux de plus ; V1.9.5 : le cœur du Seuil (Gardien au niveau 23 au moins)
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
-        Assert.Equal(37, z.Populations.Count);   // V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
+        Assert.Equal(48, z.Populations.Count);   // V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
             z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
@@ -255,11 +255,12 @@ public class Lot124ZoneTests
         // gardée à la seconde forme de chacun (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
         int creatures = z.Setup.Combatants.Count;
-        Assert.Equal(37, creatures);   // V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
+        Assert.Equal(48, creatures);   // V2.1 : sept loups de la nuit et quatre échos (absents le jour) ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
         Assert.Equal(max - 3, session.Zone.Engine.CombatantIds.Count);   // V1.9.6 : trois secondes formes gardées (Croc-Gris)
         // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début : une vie suivante de plus avant le plafond.
         // Sous-lot V1.9.6 : Croc-Gris, un troisième chef à deux formes (sa première arrivée, une place gardée à la seconde) : 7 au lieu de 5.
-        Assert.Equal(max - (creatures - 1) - 7, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        // Sous-lot V2.1 : les onze créatures de la nuit (loups de la nuit, échos) ne sont pas là le jour : onze vies suivantes de plus.
+        Assert.Equal(max - (creatures - 1 - 11) - 7, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }

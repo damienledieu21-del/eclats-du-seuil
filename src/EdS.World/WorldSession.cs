@@ -497,12 +497,12 @@ namespace EdS.World
         /// <summary>Forme de la session pour une zone déjà réglée au niveau du personnage (<paramref name="zone"/>, <see cref="ForPlayer"/>).</summary>
         private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled)
-            : this(save, ZoneSetups.For(zone, save.Consumed), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
+            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
                 null, log, CheckZone(save, zone, story, crafting, market, guild))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
-            _populations = new ZonePopulations(zone);
+            _populations = new ZonePopulations(zone, StartPhase(zone, save));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
@@ -531,10 +531,17 @@ namespace EdS.World
         private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression)
         {
             if (save.Character is not SavedCharacter c || progression is null) return zone;
-            int combatants = ZoneSetups.For(zone, save.Consumed).Combatants.Count;
+            int combatants = ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save)).Combatants.Count;
             long xp = RetainedXp(save, c, progression, combatants, out _);
             return zone.ForLevel(progression.LevelFor(xp));
         }
+
+        /// <summary>
+        /// Sous-lot V2.1 : moment de la journée au début de la session (heure de la sauvegarde, horloge du monde de la zone) : les créatures
+        /// qui ont leurs heures (<see cref="Population.Hours"/>) ne sont là d'emblée qu'à leurs heures.
+        /// </summary>
+        private static DayPhase StartPhase(ZoneDefinition zone, WorldSave save) =>
+            new WorldClock((zone ?? throw new ArgumentNullException(nameof(zone))).Setup.Combat.TickMilliseconds).At((save ?? throw new ArgumentNullException(nameof(save))).WorldTick).Phase;
 
         private readonly BossFight? _boss;
         private readonly List<BossFight> _fights = new List<BossFight>();
@@ -622,6 +629,20 @@ namespace EdS.World
             CombatantView me = Zone.Engine.View(_character.Id);
             return me.IsPresent && !me.IsDead ? me.Position : null;
         }
+
+        /// <summary>
+        /// Sous-lot V2.1 (jour et nuit qui changent le monde) : place du PNJ <paramref name="npc"/> à l'heure du monde. La nuit (de 22 h à 5 h),
+        /// un PNJ qui a une place de nuit dans sa zone (<see cref="ZoneDefinition.NightSpots"/>) se tient devant sa porte : on lui parle là, ses
+        /// quêtes, livraisons et boutique restent joignables ; sinon (le jour, ou sans place de nuit), sa place de l'histoire.
+        /// </summary>
+        public GroundVector NpcPosition(Npc npc)
+        {
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (Definition is null || Zone.Time.Phase != DayPhase.Night || (npc.Zone ?? _storyZone) != Definition.Id) return npc.Position;
+            return Definition.NightSpotOf(npc.Id) ?? npc.Position;
+        }
+
+        GroundVector INarrativeWorld.NpcPosition(Npc npc) => NpcPosition(npc);
 
         int INarrativeWorld.Level => Level;
 
@@ -766,7 +787,7 @@ namespace EdS.World
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome), NightWanted) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome), Wanted) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
             CombatantView me = Zone.Engine.View(_character.Id);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
@@ -811,6 +832,31 @@ namespace EdS.World
         /// session quand une quête ou un contrat en cours la demande (elle vient alors à coup sûr, comme avant, après son signe), ou la nuit,
         /// si le tirage de cette nuit la fait venir et qu'elle n'y a pas encore été vaincue.
         /// </summary>
+        /// <summary>
+        /// Revue Codex de la PR #99 : la créature de <paramref name="population"/> est-elle attendue dans la zone maintenant (même règle que son
+        /// apparition : à ses heures, sa nuit rare tirée, ou demandée par une quête) ? Toujours vrai pour une créature sans heures ni nuit.
+        /// Sert au guidage (l'étoile d'un objectif de famille vise une créature qu'on peut trouver).
+        /// </summary>
+        public bool IsAvailable(Population population)
+        {
+            if (population is null) throw new ArgumentNullException(nameof(population));
+            if (population.Hours is null && population.Night is null) return true;
+            return Wanted(population, Zone.Engine.CurrentTick);
+        }
+
+        private bool Wanted(Population population, long tick)
+        {
+            if (population.Hours is PopulationHours hours)
+            {
+                // Sous-lot V2.1 : une créature qui a ses heures est là à ses heures ; une quête ou un contrat en cours qui la demande, elle
+                // précisément (objectif « vaincre » sur son identifiant), la fait venir à toute heure, comme le loup blanc. Un objectif de
+                // famille ne la force pas : les autres bêtes de sa famille sont là.
+                if (Narrative?.Hunts(population.Creature, string.Empty) == true) return true;
+                return hours.IsActive((int)Zone.Clock.At(checked(Zone.StartWorldTick + tick)).Phase);
+            }
+            return NightWanted(population, tick);
+        }
+
         private bool NightWanted(Population population, long tick)
         {
             if (Narrative?.Hunts(population.Creature, population.Family) == true) return true;

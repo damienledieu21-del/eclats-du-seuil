@@ -16,7 +16,11 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 7
+      "enum": [
+        7,
+        8
+      ],
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux)."
     },
     "kind": {
       "const": "zone"
@@ -218,6 +222,36 @@
                     "pattern": "^text(\\.[a-z0-9_]+)+$",
                     "maxLength": 200,
                     "description": "Clé du texte du signe."
+                  }
+                }
+              },
+              "hours": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "phases"
+                ],
+                "description": "Schéma 8 (sous-lot V2.1) : moments de la journée où la créature est là (nuit 22 h-5 h, aube 5 h-7 h, jour 7 h-19 h, crépuscule 19 h-22 h) ; hors de ses heures, elle s'en va dès qu'elle est au calme et revient à sa place à leur retour. Exclusif de night.",
+                "properties": {
+                  "phases": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": [
+                        "night",
+                        "dawn",
+                        "day",
+                        "dusk"
+                      ]
+                    }
+                  },
+                  "sign": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200,
+                    "description": "Clé du texte annoncé quand elle arrive au début de ses heures (pas après sa mort)."
                   }
                 }
               }
@@ -500,6 +534,34 @@
                   "items": {
                     "type": "number"
                   }
+                }
+              }
+            }
+          }
+        },
+        "nightSpots": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Schéma 8 (sous-lot V2.1) : PNJ de la zone qui rentrent chez eux la nuit (22 h-5 h) ; chacun se tient devant sa porte, où l'on peut toujours lui parler.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "npc",
+              "position"
+            ],
+            "properties": {
+              "npc": {
+                "type": "string",
+                "pattern": "^npc\\.[a-z0-9_]+$",
+                "maxLength": 64
+              },
+              "position": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
                 }
               }
             }

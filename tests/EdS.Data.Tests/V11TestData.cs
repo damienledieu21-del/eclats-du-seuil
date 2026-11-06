@@ -100,6 +100,17 @@ internal static class V11TestData
         _ => throw new ArgumentException(merchant),
     };
 
+    /// <summary>
+    /// Sous-lot V2.1 : place où se tenir pour parler à chaque marchand livré la nuit (de 22 h à 5 h) : Garin et Bertille rentrent chez eux et
+    /// se tiennent devant leur porte (à 1,6 m d'eux) ; Sauge reste à son étal, ouverte.
+    /// </summary>
+    public static (double X, double Z) NearAtNight(string merchant) => merchant switch
+    {
+        "merchant.armurier" => (-54.5, -15),
+        "merchant.epicier" => (-46, 3.4),
+        _ => Near(merchant),
+    };
+
     public static WorldSession At(string merchant, SavedCharacter hero, Market? market = null)
     {
         (double x, double z) = Near(merchant);

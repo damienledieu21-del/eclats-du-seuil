@@ -240,6 +240,9 @@ namespace EdS.Runtime
         Birds = 0,
         Wind = 1,
         River = 2,
+
+        /// <summary>Sous-lot V2.1 : la nuit (grillons, hibou), qui remplace les oiseaux de 22 h à 5 h.</summary>
+        Night = 3,
     }
 
     /// <summary>
@@ -404,6 +407,7 @@ namespace EdS.Runtime
         /// </summary>
         private static readonly (StyleAmbience Kind, string[] Words)[] AmbienceWords =
         {
+            (StyleAmbience.Night, new[] { "nuit", "night", "grillon", "cricket", "hibou", "owl" }),   // sous-lot V2.1, avant tout le reste
             (StyleAmbience.River, new[] { "riviere", "river", "stream", "water" }),
             (StyleAmbience.Wind, new[] { "vent", "wind", "outdoor", "dehors" }),
             (StyleAmbience.Birds, new[] { "oiseaux", "birds", "morning", "forest" }),
@@ -897,12 +901,17 @@ namespace EdS.Runtime
         /// 30 m), le vent un peu plus fort loin du village, les oiseaux partout, plus discrets en combat. Intérieurs (relecture
         /// indépendante) : ni oiseaux ni rivière, le vent du dehors à peine.
         /// </summary>
-        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting, bool indoors = false)
+        /// <param name="night">Sous-lot V2.1 : part de nuit (0 à 1) : les oiseaux se taisent la nuit, la nappe de nuit (grillons, hibou) prend
+        /// leur place, en douceur à l'aube et au crépuscule.</param>
+        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting, bool indoors = false, double night = 0)
         {
             double calm = fighting ? 0.5 : 1;
             if (indoors) return ambience == StyleAmbience.Wind ? 0.12 * calm : 0;
+            night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
             switch (ambience)
             {
+                case StyleAmbience.Night: return (inVillage ? 0.6 : 0.9) * calm * night;
+                case StyleAmbience.Birds: return (inVillage ? 0.7 : 1.0) * calm * (1 - 0.9 * night);
                 case StyleAmbience.River:
                     if (double.IsNaN(riverDistance) || riverDistance < 0) return 0;
                     return Math.Max(0, Math.Min(1, (30 - riverDistance) / 26.0));

@@ -99,7 +99,8 @@ public class InterieursTests : IDisposable
         // Sous-lot V1.9.6 : la scène du souvenir de la Rupture, reliée au pré par une porte qui ne se montre pas (voir V196OuvertureTests).
         Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.souvenir_rupture", "zone.archives" },
             linked.Zones.Select(z => z.Id));
-        Assert.All(linked.Zones, z => Assert.Equal(ZoneValidator.CurrentSchemaVersion, z.SchemaVersion));
+        // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
+        Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.CurrentSchemaVersion : ZoneValidator.PreviousSchemaVersion, z.SchemaVersion));
         ZoneDefinition vallons = linked.Zones[0];
         Assert.False(vallons.Indoor);
         Assert.Equal(new[] { ("porte_auberge", "auberge", "zone.auberge"), ("porte_chapelle", "chapelle", "zone.chapelle"), ("porte_maison", "maison5", "zone.maison"),

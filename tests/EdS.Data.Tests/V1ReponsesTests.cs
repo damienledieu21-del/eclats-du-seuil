@@ -653,7 +653,8 @@ public class V1ReponsesTests : IDisposable
     [InlineData("merchant.herboriste", "npc.herboriste")]
     public void La_nuit_le_marchand_ferme_parle_quand_meme(string merchant, string npc)
     {
-        (string data, string scenarios) = DataCopy(Near(merchant));
+        // Sous-lot V2.1 : la nuit, Garin et Bertille se tiennent devant leur porte : on leur parle là.
+        (string data, string scenarios) = DataCopy(NearAtNight(merchant));
         SaveStore.Write(SavePath, new WorldSave("zone.vallons", NightTick, 0, Array.Empty<string>(), Hero(500)));
         AdventureSession a = Adventure(SavePath, data, scenarios);
         a.DrainMessages();

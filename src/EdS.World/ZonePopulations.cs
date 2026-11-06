@@ -84,17 +84,29 @@ namespace EdS.World
 
             /// <summary>Créature de la nuit qui s'en va d'elle-même (pas une laisse) : elle ne revient pas aussitôt.</summary>
             public bool Withdrawing;
+
+            /// <summary>Sous-lot V2.1 : créature à heures morte à ses heures : elle revient après son délai, sans annoncer son retour.</summary>
+            public bool Slain;
         }
 
         private readonly List<Life> _lives;
         private readonly Dictionary<string, Population> _byCreature = new Dictionary<string, Population>(StringComparer.Ordinal);
 
-        public ZonePopulations(ZoneDefinition zone)
+        /// <param name="phase">Sous-lot V2.1 : moment de la journée au début de la session (null : toutes les créatures à heures sont là).</param>
+        public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null)
         {
             // Réponses du 31 octobre 2026 : une créature rare de la nuit n'est pas là au début de la session (ZoneSetups la retire).
-            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = p.Night != null }).ToList();
+            // Sous-lot V2.1 : une créature à heures non plus, hors de ses heures.
+            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase) }).ToList();
             foreach (Population p in zone.Populations) _byCreature[p.Creature] = p;
         }
+
+        /// <summary>
+        /// La créature de <paramref name="population"/> est là au début d'une session qui commence au moment <paramref name="phase"/> : jamais
+        /// une créature rare de la nuit ; une créature à heures seulement à ses heures (toujours si le moment n'est pas donné) ; les autres toujours.
+        /// </summary>
+        internal static bool PresentAtStart(Population population, DayPhase? phase) =>
+            population.Night is null && (population.Hours is not PopulationHours hours || phase is not DayPhase p || hours.IsActive((int)p));
 
         /// <summary>Population d'une vie (combattant), ou null.</summary>
         public Population? Of(string combatant) => _byCreature.TryGetValue(combatant, out Population p) ? p : null;
@@ -119,7 +131,14 @@ namespace EdS.World
                 if (life.Exhausted) continue;
                 if (life.Population.Night is NightSpawn night)
                 {
-                    PopulationEvent? n = StepNight(zone, life, night, now, tickMs, reserved, wanted);
+                    PopulationEvent? n = StepNight(zone, life, night.SignMs, night.Sign, false, now, tickMs, reserved, wanted);
+                    if (n != null) (events ??= new List<PopulationEvent>()).Add(n);
+                    continue;
+                }
+                if (life.Population.Hours is PopulationHours hours)
+                {
+                    // Sous-lot V2.1 : même vie qu'une créature rare de la nuit, voulue à ses heures ; elle arrive aussitôt (sans délai de signe).
+                    PopulationEvent? n = StepNight(zone, life, 0, hours.Sign, true, now, tickMs, reserved, wanted);
                     if (n != null) (events ??= new List<PopulationEvent>()).Add(n);
                     continue;
                 }
@@ -155,13 +174,24 @@ namespace EdS.World
         /// morte, pas avant son délai de réapparition, et seulement si elle est voulue de nouveau ; présente et plus voulue, elle s'en va dès
         /// qu'elle est au calme (pas engagée). La laisse reste celle des autres populations.
         /// </summary>
-        private PopulationEvent? StepNight(Zone zone, Life life, NightSpawn night, long now, long tickMs, int reserved, Func<Population, long, bool>? wanted)
+        /// <remarks>
+        /// Sous-lot V2.1 : aussi la vie d'une créature à heures (<paramref name="hours"/>) : voulue à ses heures, elle arrive sans délai ; son
+        /// signe, s'il y en a un, s'annonce à son retour au début de ses heures, pas quand elle revient après sa mort. Hors de ses heures, elle
+        /// s'en va dès qu'elle est au calme (elle rentre, elle dort) : un combat en cours n'est jamais coupé.
+        /// </remarks>
+        private PopulationEvent? StepNight(Zone zone, Life life, long signMs, string? sign, bool hours, long now, long tickMs, int reserved,
+            Func<Population, long, bool>? wanted)
         {
             CombatEngine engine = zone.Engine;
             bool want = wanted != null && wanted(life.Population, now);
             if (life.Dormant)
             {
                 if (life.RespawnAt is long due && due > now) return null;   // morte : son délai d'abord
+                if (hours && life.ArriveAt is null && want && (sign is null || life.Slain))
+                {
+                    life.RespawnAt = null;
+                    life.ArriveAt = now;   // à ses heures : arrivée aussitôt, sans signe
+                }
                 if (life.ArriveAt is long at)
                 {
                     if (at > now) return null;
@@ -175,14 +205,19 @@ namespace EdS.World
                     {
                         life.Dormant = false;
                         life.ArriveAt = null;
+                        life.Slain = false;
                     }
                     else if (arrived is null) life.ArriveAt = life.RespawnAt;   // place occupée : nouvel essai une seconde plus tard
                     return arrived;
                 }
-                if (!want) return null;
+                if (!want)
+                {
+                    life.Slain = false;   // ses heures sont finies : à leur retour, elle s'annonce de nouveau
+                    return null;
+                }
                 life.RespawnAt = null;
-                life.ArriveAt = checked(now + night.SignMs / tickMs);
-                return new PopulationEvent(PopulationEventKind.Sign, life.Population.Creature, night.Sign, now);
+                life.ArriveAt = checked(now + signMs / tickMs);
+                return new PopulationEvent(PopulationEventKind.Sign, life.Population.Creature, sign!, now);
             }
             CombatantView v = engine.View(life.Current);
             bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long arrival && arrival < now;
@@ -190,6 +225,7 @@ namespace EdS.World
             {
                 life.Dormant = true;
                 life.Withdrawing = false;
+                life.Slain = hours;
                 life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
                 return null;
             }

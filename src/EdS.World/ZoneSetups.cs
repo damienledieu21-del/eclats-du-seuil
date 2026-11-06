@@ -15,12 +15,14 @@ namespace EdS.World
     /// </summary>
     public static class ZoneSetups
     {
-        public static CombatSetup For(ZoneDefinition zone, IEnumerable<string> consumed)
+        /// <param name="phase">Sous-lot V2.1 : moment de la journée au début de la session ; une créature qui a ses heures
+        /// (<see cref="Population.Hours"/>) n'est là d'emblée qu'à ses heures (elle arrivera à leur retour). Null : toutes là (comme avant V2.1).</param>
+        public static CombatSetup For(ZoneDefinition zone, IEnumerable<string> consumed, DayPhase? phase = null)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             var keys = new HashSet<string>(consumed ?? throw new ArgumentNullException(nameof(consumed)), StringComparer.Ordinal);
             var opened = new HashSet<string>(zone.Passages.Where(p => keys.Contains(zone.PassageKey(p.Id))).Select(p => p.Obstacle), StringComparer.Ordinal);
-            var night = new HashSet<string>(zone.Populations.Where(p => p.Night != null).Select(p => p.Creature), StringComparer.Ordinal);
+            var night = new HashSet<string>(zone.Populations.Where(p => !ZonePopulations.PresentAtStart(p, phase)).Select(p => p.Creature), StringComparer.Ordinal);
             CombatSetup s = zone.Setup;
             if (opened.Count == 0 && night.Count == 0) return s;
             CombatSpace? space = opened.Count == 0 ? s.Space : new CombatSpace(s.Space!.Min, s.Space.Max, s.Space.Obstacles.Where(o => !opened.Contains(o.Id)));

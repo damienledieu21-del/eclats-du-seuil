@@ -167,8 +167,9 @@ public class Lot127BossTests
     public void Formes_qui_ne_tiennent_pas_dans_la_session_refusees() =>
         // Revue Codex de la PR #48 (3e tour) : les créatures (32 depuis le sous-lot V1.6), le personnage et les formes de tous les chefs (2 du
         // Gardien, 2 du chef des bandits) ne tiennent pas sous un plafond de 38 combattants (la zone seule y tient : 37 créatures depuis V1.9.4,
-        // le Grand Borgne ; le plafond de l'essai passe de 36 à 38 pour garder la zone dedans).
-        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 38"), directory =>
+        // le Grand Borgne ; le plafond de l'essai passe de 36 à 38 pour garder la zone dedans ; sous-lot V2.1 : 48 créatures avec les bêtes de
+        // la nuit, le plafond de l'essai passe à 49).
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 49"), directory =>
         {
             ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
             Assert.Equal("$.data.boss.forms", First(r));

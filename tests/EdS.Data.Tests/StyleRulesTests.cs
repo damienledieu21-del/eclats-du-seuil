@@ -454,7 +454,9 @@ public class StyleRulesTests
         Assert.Contains("StyleWorld.Release(_terrain);", view, StringComparison.Ordinal);
         // Ambiance posée au démarrage, réglable pendant le jeu dans l'éditeur ; le halo seulement sur ordinateur.
         Assert.Contains("StyleWorld.Ambience(_camera.Camera);", game, StringComparison.Ordinal);
-        Assert.Contains("if (Application.isEditor) StyleWorld.Refresh();", game, StringComparison.Ordinal);
+        // Sous-lot V2.1 : à chaque image (éditeur ou non), la lumière de l'heure, qui relit aussi les curseurs du catalogue.
+        Assert.Contains("StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);", game, StringComparison.Ordinal);
+        Assert.Contains("NightShare = light.HasValue ? (float)light.Value.Night : 0f;\n            Refresh();", world.Replace("\r\n", "\n"), StringComparison.Ordinal);
         Assert.Contains("_bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;", world, StringComparison.Ordinal);
         // Les couches du terrain suivent l'ordre de StyleGround.
         // Essai réaliste 8 : chemin et champ en quatrième et cinquième couches, sur ordinateur.

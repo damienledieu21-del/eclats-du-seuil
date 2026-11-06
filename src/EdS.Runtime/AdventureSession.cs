@@ -26,8 +26,9 @@ namespace EdS.Runtime
     /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
     public readonly struct AdventureMood
     {
-        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false)
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0)
         {
+            Night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
             InVillage = inVillage;
             Fighting = fighting;
             BossEngaged = bossEngaged;
@@ -44,6 +45,9 @@ namespace EdS.Runtime
 
         /// <summary>Distance au lit de la rivière (mètres) ; NaN sans rivière.</summary>
         public double RiverDistance { get; }
+
+        /// <summary>Sous-lot V2.1 : part de nuit (0 le jour, 1 la nuit ; <see cref="DayCycle.NightShare"/>) : les oiseaux se taisent, la nuit chante.</summary>
+        public double Night { get; }
     }
 
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>
@@ -576,7 +580,7 @@ namespace EdS.Runtime
         /// l'aubergiste, le prêtre, l'habitant).
         /// </summary>
         public Npc? NpcInReach => Me is GroundVector p
-            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange)).OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
+            ? HereNpcs.Where(n => Within(p, World.NpcPosition(n), Narrative.TalkRange)).OrderBy(n => Distance2(p, World.NpcPosition(n))).FirstOrDefault() : null;
 
         /// <summary>Sous-lot V1.6 : PNJ de la zone en cours (ceux de l'histoire dehors, ceux de la pièce dans un intérieur).</summary>
         private IEnumerable<Npc> HereNpcs => _story.NpcsIn(World.InStoryZone ? null : _zone.Id);
@@ -621,9 +625,26 @@ namespace EdS.Runtime
                 return refusal == CraftRefusal.None;
             }
             if (DoorInReach != null) return UseDoor();
+            // Revue Codex de la PR #99 : la nuit, à l'étal d'un marchand fermé qui est rentré devant sa porte (hors de portée), la boutique dit
+            // qu'elle est fermée et où il est, au lieu de « rien ici ».
+            if (ClosedStallInReach is Npc keeper)
+            {
+                Say("text.ui.trade.closed_home", Text(keeper.Name));
+                return false;
+            }
             Say("text.ui.nothing_here");
             return false;
         }
+
+        /// <summary>
+        /// Sous-lot V2.1 (revue Codex de la PR #99) : marchand dont l'étal (sa place de l'histoire) est à portée alors que lui n'y est pas (la
+        /// nuit, devant sa porte) et que sa boutique est fermée à cette heure ; null sinon.
+        /// </summary>
+        public Npc? ClosedStallInReach => Me is GroundVector p
+            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !Within(p, World.NpcPosition(n), Narrative.TalkRange)
+                    && World.MerchantOf(n.Id) is Merchant m && World.CanTrade(m.Id) == TradeRefusal.Closed)
+                .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
+            : null;
 
         // --- Portes (intérieurs) ----------------------------------------------------------------------------------------
 
@@ -1244,7 +1265,14 @@ namespace EdS.Runtime
         }
 
         /// <summary>PNJ de la zone en cours (sous-lot V1.6 : dans un intérieur, ceux de la pièce).</summary>
-        public IReadOnlyList<WorldMarker> Npcs() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
+        /// <remarks>Sous-lot V2.1 : à leur place de l'heure (la nuit, devant leur porte pour ceux qui rentrent chez eux).</remarks>
+        public IReadOnlyList<WorldMarker> Npcs() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), World.NpcPosition(n))).ToList();
+
+        /// <summary>
+        /// Relecture de la PR #99 : les PNJ de la zone à leur place de jour (celle de l'histoire), quelle que soit l'heure : l'affichage y
+        /// prend leur place et leur pose de jour, même pour une partie chargée la nuit.
+        /// </summary>
+        public IReadOnlyList<WorldMarker> NpcsByDay() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
@@ -1340,7 +1368,7 @@ namespace EdS.Runtime
                     ObjectiveKind.Passage => NpcWith(EffectKind.OpenPassage, o.Id),
                     _ => null,
                 };
-                if (npc != null && npc.Zone == (World.InStoryZone ? null : _zone.Id)) return At(npc.Position);
+                if (npc != null && npc.Zone == (World.InStoryZone ? null : _zone.Id)) return At(World.NpcPosition(npc));
                 // Intérieurs : le PNJ vit dans une pièce dont une porte est ici ; sinon, dans une pièce, la porte de sortie.
                 if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => d.To == npc.Zone) is Door toNpc) return At(toNpc.Position);
                 // Sous-lot V1.7 : une pièce derrière une autre (les archives, derrière la guilde) : la porte de la pièce qui y mène.
@@ -1360,8 +1388,12 @@ namespace EdS.Runtime
                         return At(at.Position);
                     case ObjectiveKind.DefeatFamily:
                         GroundVector from = Me ?? _zone.Entry.Position;
-                        CombatantPlacement? nearest = _zone.Populations.Where(p => p.Family == o.Id).Select(p => p.Template.Placement)
+                        // Revue Codex de la PR #99 : la plus proche parmi celles qu'on peut trouver à cette heure (pas un loup de la nuit en plein
+                        // jour) ; aucune : la plus proche de toutes.
+                        CombatantPlacement? Nearest(IEnumerable<Population> among) => among.Select(p => p.Template.Placement)
                             .Where(x => x != null).OrderBy(x => Distance2(from, x!.Position)).FirstOrDefault();
+                        var family = _zone.Populations.Where(p => p.Family == o.Id).ToList();
+                        CombatantPlacement? nearest = Nearest(family.Where(p => World.IsAvailable(p))) ?? Nearest(family);
                         return nearest is null ? null : At(nearest.Position);
                     case ObjectiveKind.Fact when _zone.Bosses.FirstOrDefault(b => b.Fact == o.Id) is { } boss && boss.Forms[0].Placement is CombatantPlacement chef:
                         return At(chef.Position);
@@ -1440,8 +1472,20 @@ namespace EdS.Runtime
                 double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
-            return new AdventureMood(village, fighting, boss, river, _zone.Indoor);
+            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(WorldMinute()));
         }
+
+        /// <summary>
+        /// Sous-lot V2.1 : minute du jour du monde, avec sa fraction ; <paramref name="partialTick"/> (0 à 1) avance d'une part de tick (le
+        /// temps écoulé à l'écran depuis le dernier tick) pour que le soleil glisse sans à-coups.
+        /// </summary>
+        public double WorldMinute(double partialTick = 0) => DayCycle.ExactMinute(World.Zone.Clock, World.Zone.WorldTick, partialTick);
+
+        /// <summary>Sous-lot V2.1 : lumière du monde à l'heure de la partie (nuit bleue et lisible, lanternes, transitions douces).</summary>
+        public DayLight Light(double partialTick = 0) => DayCycle.At(WorldMinute(partialTick));
+
+        /// <summary>Sous-lot V2.1 : c'est la nuit du monde (22 h à 5 h) : villageois rentrés, bêtes de la nuit dehors.</summary>
+        public bool IsNight => World.Zone.Time.Phase == DayPhase.Night;
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>
         /// <remarks>Sous-lot V1.6 : tous les chefs de la zone (le chef des bandits aussi), y compris une forme revenue sous une nouvelle identité

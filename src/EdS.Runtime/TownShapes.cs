@@ -17,7 +17,7 @@ namespace EdS.Runtime
     /// Vallons agrandis : pièces d'un bâtiment fait par le code, une par matière : murs (crépi, pierre ou planches selon
     /// <see cref="WallSurface"/>), pierre (soubassement, cheminée, margelle), bois (colombages, portes, volets, poteaux, comptoir), toit
     /// (<see cref="RoofLook"/>), toile (auvent, tente ; <see cref="ClothStripes"/> pour les bandes claires d'un auvent rayé) et ouvertures
-    /// sombres (vitres, embrasures, eau du puits).
+    /// sombres (embrasures, eau du puits) ; depuis V2.1, les vitres à part (<see cref="Windows"/>, allumées la nuit).
     /// </summary>
     public sealed class StyleBuildingShapes
     {
@@ -28,6 +28,11 @@ namespace EdS.Runtime
         public StyleMesh Cloth { get; } = new StyleMesh();
         public StyleMesh ClothStripes { get; } = new StyleMesh();
         public StyleMesh Dark { get; } = new StyleMesh();
+
+        /// <summary>
+        /// Sous-lot V2.1 : fond des fenêtres (sombre le jour comme <see cref="Dark"/>, chaud et lumineux la nuit : les fenêtres allumées).
+        /// </summary>
+        public StyleMesh Windows { get; } = new StyleMesh();
 
         /// <summary>Matière des murs.</summary>
         public StyleSurface WallSurface { get; internal set; } = StyleSurface.Plaster;
@@ -42,7 +47,7 @@ namespace EdS.Runtime
         public double Top { get; internal set; }
 
         /// <summary>Toutes les pièces, pour les parcourir ensemble.</summary>
-        public IEnumerable<StyleMesh> All => new[] { Walls, Stone, Wood, Roof, Cloth, ClothStripes, Dark };
+        public IEnumerable<StyleMesh> All => new[] { Walls, Stone, Wood, Roof, Cloth, ClothStripes, Dark, Windows };
     }
 
     /// <summary>
@@ -386,8 +391,8 @@ namespace EdS.Runtime
                     continue;
                 }
                 StyleVector back = at - outward * 0.12;
-                // Embrasure : fond sombre en retrait et ses joues.
-                WallQuad(shapes.Dark, back, along, outward, a0, a1, o.Bottom, o.Top, 1);
+                // Embrasure : fond sombre en retrait et ses joues. Sous-lot V2.1 : le fond d'une fenêtre à part, pour l'allumer la nuit.
+                WallQuad(o.Door ? shapes.Dark : shapes.Windows, back, along, outward, a0, a1, o.Bottom, o.Top, 1);
                 if (o.Door && o.Bottom > 0.1)
                 {
                     // Relecture des Vallons agrandis : deux marches de pierre devant la porte (le seuil est sur le soubassement).
