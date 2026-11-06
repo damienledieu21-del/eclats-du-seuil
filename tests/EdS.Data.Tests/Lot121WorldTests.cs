@@ -104,7 +104,7 @@ public class Lot121WorldTests
              Assert.Single(ReadMutated(root => root["schemaVersion"] = 9, scenario: "zones/vallons").Report.Errors).Code));
         Assert.Equal(16, ScenarioValidator.CurrentSchemaVersion);   // V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(15, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(16, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("boolean", schema["properties"]!["data"]!["properties"]!["zone"]!["type"]!.GetValue<string>());
     }
 
