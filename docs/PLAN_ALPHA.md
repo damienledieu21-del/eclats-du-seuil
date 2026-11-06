@@ -169,6 +169,12 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Formats : temps du monde (sauvegarde du monde si besoin).
 - **État** (6 novembre 2026, PR en brouillon) : temps recalculé du jour du monde et de la zone (aucun changement de sauvegarde, version 12) : clair, nuageux, brume du matin, pluie fine, averse, orage rare (éclairs et tonnerre pour l'ambiance), tranches de 3 h du monde fondues en douceur ; histoire en schéma 8 (condition `weather`, schéma 7 encore lu), seize répliques chez onze villageois ; pluie, éclaboussures, flaques, brume, ciel couvert, éclairs et tonnerre (synthèse sans fichier) sous Unity ; menu « Essai de la météo » ; populations inchangées (plus d'échos par brume : avec V2.4, réponse de Damien du 6 novembre 2026) ([MONDE.md](MONDE.md#météo-sous-lot-v22), [UNITY.md](UNITY.md#essai-v22--météo)). Reste l'essai de Damien sous Unity.
 
+### 14 bis. V2.2.1 — Compagnon d'affichage : Pain-d'Épice (S)
+
+- Décision de Damien du 6 novembre 2026 (PR #100) : le chat de Rosalie suit le joueur tant que l'objet est au sac ; ni combat ni sauvegarde.
+- Formats : aucun.
+- **État** (6 novembre 2026, PR en brouillon) : mécanisme générique « compagnon lié à un objet » (`Companions`, `CompanionFollower`, testés) ; chat en formes simples qui suit le chemin du joueur, s'assoit, fait sa toilette, ronronne, se couche, part en rapetissant ; menu « Essai du compagnon » ([MONDE.md](MONDE.md#compagnon-daffichage--pain-dépice-sous-lot-v221), [ESSAI_V1.10.md](ESSAI_V1.10.md#7-v221--pain-dépice-suit-le-joueur-compagnon-daffichage)). Reste l'essai de Damien sous Unity.
+
 ### 15. V2.3 — Villageois qui suivent leur journée (M)
 
 - Emploi du temps des PNJ importants (travail, taverne, maison), qui se retrouvent au bon endroit ; dialogues qui en tiennent compte.
