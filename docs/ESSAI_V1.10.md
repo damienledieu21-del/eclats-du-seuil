@@ -91,3 +91,20 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 | 6.8 | Quêtes du chapitre 5 : le loup blanc, les pierres gravées | Chacune se termine | [ ] | |
 | 6.9 | Tout au long : sauvegarde (**F6**, puis relancer Play) | On repart où on était | [ ] | |
 | 6.10 | Ton avis général : durée, difficulté, ce qui manque, ce que tu changerais | — | [ ] | |
+
+## 7. V2.2.1 : Pain-d'Épice suit le joueur (compagnon d'affichage)
+
+Quand **Pain-d'Épice, le chat de Rosalie** est dans le sac (quête du chapitre 1), un chat roux suit le personnage à l'écran. Affichage seulement : il ne combat pas, n'est pas sauvegardé (c'est l'objet qui l'est), aucun format ne change. Pour le voir sans faire la quête : lancer le jeu (Play) et l'aventure, puis menu **Éclats du Seuil → Essai du compagnon : montrer Pain-d'Épice** (« ne plus forcer » pour le voir partir ; le sac ne change pas).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 7.1 | Menu « montrer Pain-d'Épice » | Le chat apparaît derrière toi, un peu sur le côté, en grandissant avec un petit rebond et un miaulement | [ ] | |
+| 7.2 | Marche, cours, tourne autour d'une maison | Il suit **ton chemin** à environ 1,7 m (il contourne la maison comme toi), sans à-coup ; pattes qui marchent, queue dressée au bout recourbé | [ ] | |
+| 7.3 | Arrête-toi | Il freine, s'assoit tourné vers toi, la queue autour des pattes ; puis toilette, regard qui fait le tour, étirement, miaulement ; un ronronnement (une fois) s'il est près de toi | [ ] | |
+| 7.4 | Reste 30 s sans bouger | Il se couche en boule ; il se relève dès que tu repars | [ ] | |
+| 7.5 | Passe une porte, fais un voyage, la nuit (**Essai de la nuit**) | Il reparaît derrière toi ; la nuit, ses yeux luisent un peu | [ ] | |
+| 7.6 | Combat (un loup) | Il s'écarte en trottinant jusqu'à environ 6 m, puis s'assoit ; rien ne le touche, il ne gêne ni tes coups ni la caméra | [ ] | |
+| 7.7 | Menu « ne plus forcer » (ou rends le chat à Rosalie) | Il rapetisse sur place et disparaît | [ ] | |
+| 7.8 | Ton avis : taille, couleur, vitesse, distance, sons | — | [ ] | |
+
+**Sons (facultatifs, CC0 déposés par toi)** : dans `unity/Assets/Style/Sounds/` un fichier dont le nom contient `miaou` ou `meow` (miaulement) et un autre avec `ronron` ou `purr` (ronronnement), puis **Préparer l'essai de style**. Sans eux, un miaulement et un ronronnement faits par le code. Limites : formes simples (pas de modèle 3D) ; rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; en reparaissant derrière toi après une porte, il peut se trouver un instant contre un mur (il n'a pas de collision).
