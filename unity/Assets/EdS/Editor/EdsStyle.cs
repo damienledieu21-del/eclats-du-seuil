@@ -32,12 +32,15 @@ namespace EdS.Game.Editor
         private const string PostProcessDataPath = "Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset";
 
         [MenuItem("Éclats du Seuil/Préparer l'essai de style")]
-        private static void Prepare()
+        private static void PrepareFromMenu() => Prepare(true);
+
+        /// <summary>V1.10.1 : préparation relançable sans risque ; <paramref name="showReport"/> faux = rapport dans la Console seulement (menu « Préparer et lancer l'essai »). Faux renvoyé si le dossier des ressources manque.</summary>
+        internal static bool Prepare(bool showReport)
         {
             if (!AssetDatabase.IsValidFolder(Root))
             {
                 EditorUtility.DisplayDialog("Essai de style", "Dossier « " + Root + " » introuvable : dézippe d'abord les packs dans unity/Assets/Style.", "OK");
-                return;
+                return false;
             }
             if (!AssetDatabase.IsValidFolder(Generated)) AssetDatabase.CreateFolder(Root, "Generated");
             var notes = new List<string>();
@@ -284,7 +287,8 @@ namespace EdS.Game.Editor
                 + "\n\n" + models.Count + " modèles, " + textures.Count + " textures et " + sounds.Count + " sons trouvés dans Assets/Style. Appuie sur Play."
                 + "\nLumière, brume et couleurs se règlent pendant le jeu dans Assets/Style/Resources/StyleCatalog.";
             Debug.Log("Essai de style\n" + report);
-            EditorUtility.DisplayDialog("Essai de style", report, "OK");
+            if (showReport) EditorUtility.DisplayDialog("Essai de style", report, "OK");
+            return true;
         }
 
         /// <summary>

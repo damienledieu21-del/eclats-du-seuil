@@ -35,7 +35,7 @@ namespace EdS.Game.Editor
         [MenuItem("Éclats du Seuil/Créer la scène de démarrage")]
         private static void EnsureFromMenu() => Ensure(true);
 
-        private static void Ensure(bool fromMenu)
+        internal static void Ensure(bool fromMenu)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode || BuildPipeline.isBuildingPlayer) return;
             try

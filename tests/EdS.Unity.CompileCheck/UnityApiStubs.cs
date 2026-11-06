@@ -237,7 +237,7 @@ namespace UnityEditor
 {
     [AttributeUsage(AttributeTargets.Class)] public sealed class InitializeOnLoadAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
-    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; }
+    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; public static bool isPlaying { get; set; } }
     public sealed class SceneAsset : UnityEngine.Object { }
     public static class BuildPipeline { public static bool isBuildingPlayer => false; }
     public sealed class EditorBuildSettingsScene { public EditorBuildSettingsScene(string path, bool enabled) { } public string path => ""; public bool enabled => false; }
