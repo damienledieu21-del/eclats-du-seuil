@@ -601,6 +601,19 @@ Nouveaux objets : le collier ; le **chapeau-de-lune** (matière, valeur 25 cuivr
 
 Limites : les victoires sont annoncées au pilote sans livrer le combat (combats et récolte ont leurs tests) ; le chat et le seau sont des objets du sac (pas de chat qui suit le joueur) ; Odile n'a pas de réplique de nuit (seize entrées) ; « La garde de nuit » attend le crépuscule ou la nuit (de 19 h à 5 h du monde, soit un peu moins de la moitié d'une journée de trois heures) ; une ouverture passée compte, comme une ouverture finie, pour la réputation de guilde à l'inscription (quête principale finie) ; le collier a l'icône de l'amulette, les objets de quête l'icône provisoire ; le puits n'est pas dessiné (le lieu `moulin` suffit).
 
+**Questions réglées (réponses de Damien du 6 novembre 2026 aux 12 questions de la PR A2 : toutes les recommandations sont retenues)** :
+- la garde du village se tient au crépuscule ou la nuit ;
+- le collier de Croc-Gris reste tel quel, et le croc reste au catalogue ;
+- le tutoriel passé compte pour la guilde ;
+- Odile est limitée à 16 entrées ;
+- les loups sont placés en (−2, 23) et (−23, 37) ;
+- le premier contrat se fait avec le sanglier de niveau 6 ;
+- les champignons se trouvent après la porte du moulin ;
+- le chat et le seau sont des objets du sac pour l'instant ;
+- les indices de la vieille porte restent sans réponse pour l'instant (à résoudre plus tard) ;
+- le choix d'Aldric a trois réponses ;
+- **suite à faire** : plus tard, une réplique de Brunehilde à l'inscription, quand Bérenger envoie le joueur à la guilde (notée aussi dans [PLAN_ALPHA.md](PLAN_ALPHA.md), V1.10).
+
 ## Jour et nuit qui changent le monde (sous-lot V2.1)
 
 Chantier V2.1 du [plan de l'alpha](PLAN_ALPHA.md#13-v21--jour-et-nuit-qui-changent-le-monde-m) (sujets 32 et 49) : la journée de 3 h et la nuit de 22 h à 5 h (PR #74) changent le monde des Vallons. Zones en **schéma 8** (le schéma 7 est encore lu : les intérieurs y restent) ; histoire, marchands, règles, moteur, journal et **sauvegarde inchangés** (version 12) ; contenu de la zone 0.10.0 ([DONNEES.md](DONNEES.md#versions-de-format)). Valeurs **provisoires**.
@@ -620,19 +633,6 @@ Chantier V2.1 du [plan de l'alpha](PLAN_ALPHA.md#13-v21--jour-et-nuit-qui-change
 Relecture indépendante de la PR #99 (tour 1) : place et pose de jour des PNJ prises dans l'histoire (partie chargée la nuit) ; lumière recalculée seulement quand la minute du monde change (à chaque image dans l'éditeur) ; relais lune/soleil à lumière directionnelle éteinte exactement (`DayCycle.MoonSets`, `MoonRises`) ; un matériau pâli partagé par matériau d'origine pour tous les échos.
 
 Limites : les PNJ marchent en ligne droite jusqu'à leur porte (quelques mètres) ; les villageois du décor disparaissent (pas d'entrée dans les maisons) ; les fenêtres ne s'allument que sur les bâtiments faits par le code (les modèles de Sketchfab ont leur lanterne de porte seulement) ; huit lumières de lanternes au plus éclairent le sol (URP en éclaire quatre par objet) ; la nappe de nuit demande un son « nuit », « grillons » ou « hibou » dans `Assets/Style/Ambience` (aucun n'est livré) ; les échos gardent le butin du loup ; les emplois du temps des villageois (V2.3) et la météo (V2.2) restent à venir.
-
-**Questions réglées (réponses de Damien du 6 novembre 2026 aux 12 questions de la PR A2 : toutes les recommandations sont retenues)** :
-- la garde du village se tient au crépuscule ou la nuit ;
-- le collier de Croc-Gris reste tel quel, et le croc reste au catalogue ;
-- le tutoriel passé compte pour la guilde ;
-- Odile est limitée à 16 entrées ;
-- les loups sont placés en (−2, 23) et (−23, 37) ;
-- le premier contrat se fait avec le sanglier de niveau 6 ;
-- les champignons se trouvent après la porte du moulin ;
-- le chat et le seau sont des objets du sac pour l'instant ;
-- les indices de la vieille porte restent sans réponse pour l'instant (à résoudre plus tard) ;
-- le choix d'Aldric a trois réponses ;
-- **suite à faire** : plus tard, une réplique de Brunehilde à l'inscription, quand Bérenger envoie le joueur à la guilde (notée aussi dans [PLAN_ALPHA.md](PLAN_ALPHA.md), V1.10).
 
 ## Sauvegarde
 
