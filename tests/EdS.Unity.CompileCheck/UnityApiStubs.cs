@@ -236,8 +236,10 @@ namespace UnityEngine.Rendering.Universal
 namespace UnityEditor
 {
     [AttributeUsage(AttributeTargets.Class)] public sealed class InitializeOnLoadAttribute : Attribute { }
+    [AttributeUsage(AttributeTargets.Method)] public sealed class InitializeOnLoadMethodAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
-    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; }
+    public static class SessionState { public static bool GetBool(string key, bool defaultValue) => defaultValue; public static void SetBool(string key, bool value) { } }
+    public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; public static bool isPlaying { get; set; } }
     public sealed class SceneAsset : UnityEngine.Object { }
     public static class BuildPipeline { public static bool isBuildingPlayer => false; }
     public sealed class EditorBuildSettingsScene { public EditorBuildSettingsScene(string path, bool enabled) { } public string path => ""; public bool enabled => false; }
@@ -259,7 +261,7 @@ namespace UnityEditor
     public struct AudioImporterSampleSettings { public UnityEngine.AudioClipLoadType loadType; public AudioCompressionFormat compressionFormat; public float quality; }
     public sealed class AudioImporter : AssetImporter { public AudioImporterSampleSettings defaultSampleSettings { get; set; } public bool forceToMono { get; set; } public bool ContainsSampleSettingsOverride(string platform) => false; public bool ClearSampleSettingOverride(string platform) => false; }
     public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject instance, string path) => null; public static T GetCorrespondingObjectFromSource<T>(T componentOrGameObject) where T : UnityEngine.Object => null; }
-    public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } }
+    public static class EditorUtility { public static bool DisplayDialog(string title, string message, string ok) => false; public static void SetDirty(UnityEngine.Object o) { } public static void DisplayProgressBar(string title, string info, float progress) { } public static void ClearProgressBar() { } }
     public static class AssetDatabase { public static string GetAssetPath(UnityEngine.Object o) => ""; public static void AddObjectToAsset(UnityEngine.Object o, UnityEngine.Object asset) { } public static bool TryGetGUIDAndLocalFileIdentifier(UnityEngine.Object o, out string guid, out long localId) { guid = ""; localId = 0; return false; } public static string[] FindAssets(string filter, string[] folders) => null; public static string GUIDToAssetPath(string guid) => ""; public static bool IsValidFolder(string p) => false; public static string CreateFolder(string a, string b) => ""; public static void CreateAsset(UnityEngine.Object o, string p) { } public static void SaveAssets() { } public static void Refresh() { } public static bool DeleteAsset(string p) => false; public static T LoadAssetAtPath<T>(string p) where T : UnityEngine.Object => default; public static UnityEngine.Object[] LoadAllAssetsAtPath(string p) => null; public static void ImportAsset(string p) { } public static void ImportAsset(string p, ImportAssetOptions options) { } public static void ImportPackage(string packagePath, bool interactive) { } public static void StartAssetEditing() { } public static void StopAssetEditing() { } }
 }
 namespace UnityEditor.PackageManager

@@ -255,7 +255,9 @@ public class Lot93UnityPackageTests
         Assert.DoesNotContain("enregistre d'abord la scène ouverte", scene, StringComparison.Ordinal);
         // 3e tour (accord de Damien du 23 octobre 2026) : une scène sans nom modifiée n'est fermée qu'après la question de Unity ; un
         // enregistrement qui échoue arrête la préparation avant d'inscrire la scène dans la liste de construction.
-        Assert.Contains("(!active.isDirty || EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())", scene, StringComparison.Ordinal);
+        // V1.10.1 (5/5) : même garde, mais une annulation est transmise (Cancelled) avant toute ouverture de scène.
+        int ask = scene.IndexOf("if (active.isDirty && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return StartupSceneState.Cancelled;", StringComparison.Ordinal);
+        Assert.True(ask > 0 && ask < scene.IndexOf("EditorSceneManager.OpenScene(ScenePath)", ask, StringComparison.Ordinal), "la question précède l'ouverture, l'annulation l'évite");
         Assert.DoesNotContain("GetRootGameObjects", scene, StringComparison.Ordinal);
         int failed = scene.IndexOf("if (!saved)", StringComparison.Ordinal);
         Assert.True(failed > 0 && failed < scene.IndexOf("EditorBuildSettings.scenes = ", StringComparison.Ordinal), "échec d'enregistrement vérifié avant la liste de construction");
