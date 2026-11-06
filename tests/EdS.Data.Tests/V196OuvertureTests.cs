@@ -158,7 +158,7 @@ public class V196OuvertureTests
     {
         StoryBook book = Book(Zone());
         // Sous-lot V1.9.7 : l'histoire passe au schéma 7 (effet skipQuest) ; ce qui est livré ici ne change pas.
-        Assert.Equal((7, 7), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));
+        Assert.Equal((8, 8), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.2 : schéma 8 (weather)
         Scene scene = Assert.Single(book.Scenes);
         Assert.Equal((Scene, "zone.souvenir_rupture", "fact.ch1.souvenir.a_revivre", "fact.ch1.souvenir.vecu", "text.ch1.discovery.souvenir"),
             (scene.Id, scene.Zone, scene.Start, scene.End, scene.Text));
@@ -199,7 +199,7 @@ public class V196OuvertureTests
         {
             JsonArray entries = dialogue!["entries"]!.AsArray();
             for (int i = entries.Count - 1; i >= 0; i--)
-                if (entries[i]!.ToJsonString().Contains("quest.reveil")) entries.RemoveAt(i);
+                if (entries[i]!.ToJsonString().Contains("quest.reveil") || entries[i]!.ToJsonString().Contains("\"weather\"")) entries.RemoveAt(i);   // V2.2 : sans les répliques du temps (schéma 8)
             // Sous-lot V1.9.7 : « Je sais me battre » (skipQuest, schéma 7) passe l'ouverture ; sans elle, la réponse part aussi.
             foreach (JsonNode? node in dialogue["nodes"]!.AsArray())
             {

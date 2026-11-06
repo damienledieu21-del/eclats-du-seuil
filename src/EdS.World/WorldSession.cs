@@ -605,6 +605,14 @@ namespace EdS.World
 
         DayPhase INarrativeWorld.Phase => Zone.Time.Phase;
 
+        WeatherKind INarrativeWorld.Weather => Weather.Kind;
+
+        /// <summary>
+        /// Sous-lot V2.2 (météo) : le temps qu'il fait dehors, dans la zone de l'histoire (dans un intérieur aussi : on entend la pluie sur le
+        /// toit), recalculé de l'heure du monde (<see cref="WorldWeather"/>) : rien n'est sauvegardé, une partie rechargée a le même temps.
+        /// </summary>
+        public WeatherState Weather => WorldWeather.At(_storyZone ?? Zone.Id, Zone.Time);
+
         int INarrativeWorld.PassageRoom => Zone.RegistryRoom;
 
         GroundVector? INarrativeWorld.PlayerPosition

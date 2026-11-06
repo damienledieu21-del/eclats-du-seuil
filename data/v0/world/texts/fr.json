@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1245,7 +1245,23 @@
       "text.ui.boss_phase.echo_de_la_rupture": "L'écho se déchire comme un drap. Des milliers de voix en sortent et prennent forme : les Voix de la Rupture !",
       "text.ui.boss_phase.croc_gris": "Croc-Gris se relève, la gueule en sang, et hurle : il est enragé !",
       "text.ui.boss_phase.chef_des_bandits": "Le chef des bandits crache son sang et se relève, furieux !",
-      "text.recipe.remede_d_echo": "Remède de l'aube, à la poussière d'écho"
+      "text.recipe.remede_d_echo": "Remède de l'aube, à la poussière d'écho",
+      "text.v22.maelle.pluie": "Tu entends la pluie siffler sur le toit ? Le fer n'aime pas l'eau. Sèche ton arme ce soir, sinon c'est la rouille qui te la prendra, et moi qui te ferai payer la réparation.",
+      "text.v22.herboriste.brume": "La brume du matin, c'est la meilleure heure pour cueillir : la rosée tient les feuilles fraîches. Mais reste sur le chemin. Dans la brume, on se perd vite… et pas toujours seul.",
+      "text.v22.epiciere.pluie": "Entre, entre, ne reste pas sous la gouttière ! Avec ce temps, personne ne passe. Tu es mon premier client de la journée, mon petit. Et sans doute le dernier.",
+      "text.v22.pretre.orage": "Le tonnerre amène plus de monde ici que mes sermons. Reste à l'abri autant qu'il te plaira : la chapelle n'a jamais été frappée. Enfin, une fois. Mais on l'a reconstruite.",
+      "text.v22.boulanger.orage": "Entends-moi ce tonnerre ! Ma grand-mère disait que l'orage fait lever la pâte plus vite. C'est faux, mais je le crois quand même. Entre une minute, le four est chaud.",
+      "text.v22.boulanger.pluie": "La pluie, c'est bon pour le blé et mauvais pour les clients. Mets-toi sous l'auvent, va. Et ne secoue pas ta cape sur ma farine.",
+      "text.v22.archer_garde.brume": "Cette brume… Je ne vois même plus l'autre rive du gué. Si tu entends quelque chose bouger là-dedans, préviens-moi. Et parle fort.",
+      "text.v22.archer_garde.pluie": "Je garde le gué, même sous la pluie. Surtout sous la pluie : c'est quand on n'y voit rien que les bêtes passent. Brr. Tu n'aurais pas une cape en trop ?",
+      "text.v22.renart.pluie": "Ce ciel ! Voilà ce que j'appelle un climat… rustique. À Havre d'Ambre, nous avons des auvents. Et des clients. Vous êtes un client, j'espère ?",
+      "text.v22.doyen.brume": "La brume monte de la carrière tous les matins comme ça. Les anciens disaient que c'est la pierre qui respire. Moi, je dis que c'est l'humidité. Mais je n'y descends pas avant qu'elle se lève.",
+      "text.v22.doyen.pluie": "Quand il pleut, la carrière glisse. Pas de pierre aujourd'hui. Alors on attend, et on écoute la pluie sur les ardoises.",
+      "text.v22.fermier.pluie": "Il pleut ! Enfin. Trois semaines que l'orge attendait ça. Ne marche pas dans les sillons, c'est de la soupe.",
+      "text.v22.fermier.brume": "Avec la brume du matin, je ne vois pas le bout de mon champ. Les bêtes non plus, remarque. C'est à cette heure-là qu'elles viennent manger mon orge.",
+      "text.v22.fermiere.pluie": "La pluie fait tomber les pommes avant l'heure. Ramasse-les si tu veux, mais pas celles qui sont à moi. C'est-à-dire toutes.",
+      "text.v22.capitaine.orage": "Un orage. Les loups se terrent, les bandits aussi. Les seuls dehors, c'est toi et moi. Ça ne dit rien de bon sur notre jugeote.",
+      "text.v22.capitaine.pluie": "Mes archers râlent : la pluie détend les cordes, l'eau entre dans les bottes. Moi je leur dis qu'un loup mouillé reste un loup. Ils râlent quand même."
     }
   }
 }

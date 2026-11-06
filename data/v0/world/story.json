@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "kind": "story",
-  "contentVersion": "0.13.0-provisoire",
+  "contentVersion": "0.14.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -2000,6 +2000,15 @@
             "node": "ch1_nuit"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
+          },
+          {
             "conditions": [],
             "node": "bonjour"
           }
@@ -2321,6 +2330,32 @@
             "id": "ch1_croc_mort",
             "text": "text.ch1.maelle.croc_mort",
             "choices": []
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.maelle.pluie",
+            "choices": [
+              {
+                "text": "text.ch1.maelle.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.maelle.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.maelle.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              }
+            ]
           }
         ]
       },
@@ -4318,6 +4353,15 @@
             "node": "ch1_nuit"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "mist"
+              }
+            ],
+            "node": "v22_brume"
+          },
+          {
             "conditions": [],
             "node": "accueil"
           }
@@ -4806,6 +4850,73 @@
             "id": "ch1_puits",
             "text": "text.ch1.herboriste.puits",
             "choices": []
+          },
+          {
+            "id": "v22_brume",
+            "text": "text.v22.herboriste.brume",
+            "choices": [
+              {
+                "text": "text.ch1.herboriste.poussiere.montrer",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.sauge.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.sauge.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.herboriste.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.herboriste.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.herboriste.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.herboriste.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.herboriste.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.herboriste.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
           }
         ]
       },
@@ -4854,6 +4965,15 @@
               }
             ],
             "node": "ch1_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
           },
           {
             "conditions": [],
@@ -4913,6 +5033,11 @@
           {
             "id": "ch1_nuit",
             "text": "text.ch1.epiciere.nuit",
+            "choices": []
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.epiciere.pluie",
             "choices": []
           }
         ]
@@ -5320,6 +5445,15 @@
             "node": "apres"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "storm"
+              }
+            ],
+            "node": "v22_orage"
+          },
+          {
             "conditions": [],
             "node": "accueil"
           }
@@ -5540,6 +5674,43 @@
             "choices": [
               {
                 "text": "text.ch5.pretre.loup.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v22_orage",
+            "text": "text.v22.pretre.orage",
+            "choices": [
+              {
+                "text": "text.pretre.accueil.offrande",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.pretre.offrande"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 10
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.pretre.offrande"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.pretre",
+                    "value": 1
+                  }
+                ],
+                "next": "merci"
+              },
+              {
+                "text": "text.pretre.accueil.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -6530,6 +6701,24 @@
               }
             ],
             "node": "ch1_puits_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "storm"
+              }
+            ],
+            "node": "v22_orage"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
           },
           {
             "conditions": [],
@@ -7603,6 +7792,188 @@
             "id": "ch1_aldric_moque",
             "text": "text.ch1.boulanger.aldric_moque",
             "choices": []
+          },
+          {
+            "id": "v22_orage",
+            "text": "text.v22.boulanger.orage",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.boulanger.chat_rentre.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.boulanger.pluie",
+            "choices": [
+              {
+                "text": "text.ch1.boulanger.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.boulanger.chat_rentre.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
           }
         ]
       },
@@ -7745,6 +8116,24 @@
               }
             ],
             "node": "ch1_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "mist"
+              }
+            ],
+            "node": "v22_brume"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
           },
           {
             "conditions": [],
@@ -8353,6 +8742,58 @@
             "id": "ch1_croc_mort",
             "text": "text.ch1.archer_garde.croc_mort",
             "choices": []
+          },
+          {
+            "id": "v22_brume",
+            "text": "text.v22.archer_garde.brume",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              }
+            ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.archer_garde.pluie",
+            "choices": [
+              {
+                "text": "text.ch1.archer_garde.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              }
+            ]
           }
         ]
       },
@@ -9504,6 +9945,15 @@
             "node": "ch2_apres"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
+          },
+          {
             "conditions": [],
             "node": "ch2_accueil"
           }
@@ -9812,6 +10262,18 @@
             "choices": [
               {
                 "text": "text.ch2.renart.apres.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.renart.pluie",
+            "choices": [
+              {
+                "text": "text.ch2.renart.accueil.partir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -10176,6 +10638,24 @@
             "node": "ch3_apres"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "mist"
+              }
+            ],
+            "node": "v22_brume"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
+          },
+          {
             "conditions": [],
             "node": "ch3_accueil"
           }
@@ -10328,6 +10808,30 @@
             "id": "ch4_carnet_lu",
             "text": "text.ch4.doyen.carnet_lu",
             "choices": []
+          },
+          {
+            "id": "v22_brume",
+            "text": "text.v22.doyen.brume",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.doyen.pluie",
+            "choices": [
+              {
+                "text": "text.ch3.doyen.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -10650,6 +11154,24 @@
             "node": "ch3_apres"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "mist"
+              }
+            ],
+            "node": "v22_brume"
+          },
+          {
             "conditions": [],
             "node": "ch3_accueil"
           }
@@ -10723,6 +11245,30 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.fermier.pluie",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v22_brume",
+            "text": "text.v22.fermier.brume",
+            "choices": [
+              {
+                "text": "text.ch3.fermier.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -10778,6 +11324,15 @@
               }
             ],
             "node": "ch3_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
           },
           {
             "conditions": [],
@@ -10839,6 +11394,18 @@
             "id": "ch3_apres",
             "text": "text.ch3.fermiere.apres",
             "choices": []
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.fermiere.pluie",
+            "choices": [
+              {
+                "text": "text.ch3.fermiere.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -11373,6 +11940,24 @@
             "node": "ch1_nuit"
           },
           {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "storm"
+              }
+            ],
+            "node": "v22_orage"
+          },
+          {
+            "conditions": [
+              {
+                "if": "weather",
+                "id": "rain"
+              }
+            ],
+            "node": "v22_pluie"
+          },
+          {
             "conditions": [],
             "node": "ch4_accueil"
           }
@@ -11761,6 +12346,96 @@
             "id": "ch1_nuit",
             "text": "text.ch1.capitaine.nuit",
             "choices": [
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_secret"
+              }
+            ]
+          },
+          {
+            "id": "v22_orage",
+            "text": "text.v22.capitaine.orage",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch4.capitaine.vers_chef",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.chef.livre"
+                  }
+                ],
+                "effects": [],
+                "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.ch1.capitaine.vers_aldric",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  }
+                ],
+                "effects": [],
+                "next": "ch1_aldric_secret"
+              }
+            ]
+          },
+          {
+            "id": "v22_pluie",
+            "text": "text.v22.capitaine.pluie",
+            "choices": [
+              {
+                "text": "text.ch4.capitaine.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
               {
                 "text": "text.ch4.capitaine.vers_chef",
                 "conditions": [
