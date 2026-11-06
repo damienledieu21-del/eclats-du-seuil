@@ -65,9 +65,10 @@ namespace EdS.Game
                     _gone.Add(entry.Key);
                     continue;
                 }
-                // Hauteur : celle du joueur, plus la différence du sol (le pont cintré) entre lui et la bête.
+                // Hauteur : celle des pieds du joueur (son corps est placé 1 m plus haut, comme ArenaView.Feet : revue Codex de la PR #102),
+                // plus la différence du sol (le pont cintré) entre lui et la bête.
                 float x = (float)follower.X, z = (float)follower.Z;
-                float y = at.y + StyleWorld.StandHeight(x, z) - StyleWorld.StandHeight(at.x, at.z);
+                float y = at.y - ArenaView.FeetOffset + StyleWorld.StandHeight(x, z) - StyleWorld.StandHeight(at.x, at.z);
                 body.Show(follower.Placed);   // relecture de la PR #102 : jamais à une place périmée
                 if (!follower.Placed) continue;
                 body.Apply(follower, new Vector3(x, y, z), _night, deltaTime);
