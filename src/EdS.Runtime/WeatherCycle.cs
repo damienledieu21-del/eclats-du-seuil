@@ -81,8 +81,9 @@ namespace EdS.Runtime
     /// <summary>Sous-lot V2.2 : une flaque d'eau posée par l'affichage au bord d'un chemin (toujours à la même place).</summary>
     public readonly struct Puddle
     {
-        public Puddle(string id, double x, double z, double radius, double stretch, double yaw)
+        public Puddle(string id, double x, double z, double radius, double stretch, double yaw, double y = WeatherCycle.PuddleLift)
         {
+            Y = y;
             Id = id;
             X = x;
             Z = z;
@@ -94,6 +95,12 @@ namespace EdS.Runtime
         public string Id { get; }
         public double X { get; }
         public double Z { get; }
+
+        /// <summary>
+        /// Revue Codex de la PR #101 : hauteur du centre de la flaque (m) : celle du sol à sa place (les pavés d'une rue pavée sont plus hauts
+        /// que le terrain, <see cref="TownShapes.PavementHeight"/>), plus <see cref="WeatherCycle.PuddleLift"/>.
+        /// </summary>
+        public double Y { get; }
 
         /// <summary>Rayon (m) quand le sol est trempé.</summary>
         public double Radius { get; }
@@ -202,11 +209,39 @@ namespace EdS.Runtime
                         if (!free(x, z)) continue;
                         double radius = 0.45 + StyleRules.Variant(id + "/taille", 100) / 99.0 * 0.6;
                         double stretch = 1 + StyleRules.Variant(id + "/long", 100) / 99.0 * 0.8;
-                        puddles.Add(new Puddle(id, x, z, radius, stretch, StyleRules.Variant(id + "/angle", 360)));
+                        puddles.Add(new Puddle(id, x, z, radius, stretch, StyleRules.Variant(id + "/angle", 360), GroundHeight(roads, x, z) + PuddleLift));
                     }
                 }
             }
             return puddles;
+        }
+
+        /// <summary>Hauteur d'une flaque au-dessus du sol (m) : son centre ; le disque fait 8 mm d'épaisseur, son dessus est donc à 16 mm.</summary>
+        public const double PuddleLift = 0.012;
+
+        /// <summary>
+        /// Revue Codex de la PR #101 : hauteur du sol montré en (<paramref name="x"/>, <paramref name="z"/>) : <see cref="TownShapes.PavementHeight"/>
+        /// sur une rue pavée (à moins d'une demi-largeur de son tracé, comme les pavés de <see cref="TownShapes.Pavement"/>), 0 ailleurs.
+        /// </summary>
+        public static double GroundHeight(IReadOnlyList<StyleRoad> roads, double x, double z)
+        {
+            if (roads is null) throw new ArgumentNullException(nameof(roads));
+            foreach (StyleRoad road in roads)
+            {
+                if (!road.Paved) continue;
+                double half = road.Width / 2, limit = half * half;
+                IReadOnlyList<(double X, double Z)> p = road.Points;
+                for (int i = 0; i < p.Count; i++)
+                {
+                    (double ax, double az) = p[i];
+                    (double bx, double bz) = i + 1 < p.Count ? p[i + 1] : p[i];
+                    double dx = bx - ax, dz = bz - az, length = dx * dx + dz * dz;
+                    double t = length < 1e-12 ? 0 : Math.Max(0, Math.Min(1, ((x - ax) * dx + (z - az) * dz) / length));
+                    double ex = ax + dx * t - x, ez = az + dz * t - z;
+                    if (ex * ex + ez * ez <= limit) return TownShapes.PavementHeight;
+                }
+            }
+            return 0;
         }
 
         /// <summary>Taille d'une flaque (part de son rayon) selon le sol mouillé : rien sous 0,15, pleine à 0,85.</summary>

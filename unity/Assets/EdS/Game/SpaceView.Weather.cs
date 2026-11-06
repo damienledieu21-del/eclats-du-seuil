@@ -37,7 +37,7 @@ namespace EdS.Game
                 disc.name = p.Id;
                 Object.Destroy(disc.GetComponent<Collider>());
                 disc.transform.SetParent(_weatherRoot.transform, false);
-                disc.transform.position = new Vector3((float)p.X, 0.012f, (float)p.Z);
+                disc.transform.position = new Vector3((float)p.X, (float)p.Y, (float)p.Z);   // revue Codex de la PR #101 : au-dessus des pavés
                 disc.transform.rotation = Quaternion.Euler(0f, (float)p.Yaw, 0f);
                 Renderer renderer = disc.GetComponent<Renderer>();
                 renderer.sharedMaterial = _puddleMaterial;

@@ -490,6 +490,14 @@ public sealed class V22MeteoTests : IDisposable
         Assert.All(puddles, p => Assert.InRange(p.Radius, 0.45, 1.05));
         Assert.Empty(WeatherCycle.Puddles(roads, (x, z) => false, 40));
         Assert.Equal(3, WeatherCycle.Puddles(roads, (x, z) => true, 3).Count);
+        // Revue Codex de la PR #101 : sur une rue pavée, la flaque est au-dessus des pavés ; sur un chemin de terre, au-dessus du terrain.
+        Assert.Equal(TownShapes.PavementHeight, WeatherCycle.GroundHeight(roads, -20, 20));
+        Assert.Equal(TownShapes.PavementHeight, WeatherCycle.GroundHeight(roads, -18.1, 45.5));   // bout arrondi
+        Assert.Equal(0.0, WeatherCycle.GroundHeight(roads, -17.9, 20));
+        Assert.Equal(0.0, WeatherCycle.GroundHeight(roads, 30, 0));   // route de terre
+        Assert.All(puddles, p => Assert.Equal(WeatherCycle.GroundHeight(roads, p.X, p.Z) + WeatherCycle.PuddleLift, p.Y, 9));
+        Assert.Contains(puddles, p => p.Id.StartsWith("rue/", StringComparison.Ordinal) && p.Y - 0.004 > TownShapes.PavementHeight);
+        Assert.Contains(puddles, p => p.Id.StartsWith("route/", StringComparison.Ordinal) && p.Y == WeatherCycle.PuddleLift);
         Assert.Equal(0.0, WeatherCycle.PuddleSize(0.1));
         Assert.Equal(1.0, WeatherCycle.PuddleSize(0.9));
         // Sous l'averse, la plupart des villageois du décor rentrent ; un sur trois reste dehors ; les marcheurs rentrent tous.
