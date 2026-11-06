@@ -606,6 +606,22 @@ Limites : rien n'a encore été vu à l'écran (seule la compilation est vérifi
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les causes de la tache blanche et de la fumée sont déduites du code (le Particle Pack n'est pas dans le dépôt) ; la transparence suppose les matériaux d'URP (« Lit ») : les feuillages et les shaders des packs gardent l'ancienne coupe ; les maisons hors du bourg (champs, hameau) ne changent pas.
 
+### Essai V2.1 : jour et nuit qui changent le monde
+
+**Pour voir la nuit sans l'attendre** (la journée dure 3 h, la nuit commence à 22 h du monde) : hors du mode Jeu, menu **Éclats du Seuil → Essai de la nuit : avancer la partie à 21 h 55** (aussi : « à 4 h 55 » pour l'aube, « à minuit »). Seul le temps du monde avance ; la partie, le personnage et le reste de la sauvegarde ne changent pas. Puis lancer l'aventure. Pour régler la lumière sans changer l'heure du monde : dans le catalogue de style, **Preview Hour** (heure montrée par la lumière, éditeur seulement ; -1 = l'heure du monde).
+
+À vérifier, dans l'ordre :
+
+1. **Crépuscule (21 h 55 → 22 h)** : le ciel et la lumière passent à l'orangé puis au bleu **sans saut** ; les lanternes (à côté des portes, réverbères le long des rues pavées) et les fenêtres des maisons faites par le code s'allument peu à peu (de 20 h à 21 h 30 si l'on part plus tôt).
+2. **À 22 h** : deux messages, « La nuit tombe. Des loups hurlent dans le pré… » et « Des lueurs pâles flottent sur les ruines… ». Des loups arrivent dans le pré et la forêt ; des **échos** (loups pâles et bleutés) dans les ruines, au lac et sous la tour. Les sangliers des champs, des vergers et de la plaine s'en vont (sauf s'ils se battent : ils finissent le combat).
+3. **La nuit est bleue et lisible, pas noire** : on voit le chemin, les maisons, les loups à 20 m. Trop sombre ou trop clair : curseur **Night Brightness** (clarté de la nuit) du catalogue (1 = prévu). Lanternes trop fortes ou trop faibles : **Lantern Intensity** (force des lanternes).
+4. **Villageois** : Odile devant le moulin, Maëlle et l'apprentie, Garin, Bertille, le doyen, l'herboriste du hameau et le fermier **marchent jusqu'à leur porte** ; on leur parle là (F), quêtes et livraisons comprises ; Garin et Bertille disent « Boutique fermée à cette heure ». Aldric, le capitaine, Lison, Sauge (ouverte), le boulanger, Gaspard et Renart (ouvert) restent à leur place. Les passants du bourg rentrent ; un veilleur sur quatre reste dehors.
+5. **Ambiance** : feux follets qui flottent sur le lac, la rivière et les ruines ; yeux de hiboux qui clignent dans quelques arbres ; les oiseaux se taisent. Pour les grillons et le hibou : déposer un son libre dont le nom contient « nuit », « grillons », « night » ou « owl » dans `Assets/Style/Ambience` (par exemple un enregistrement CC0 de freesound.org), puis **Préparer l'essai de style**. Aucun asset payant.
+6. **La garde de nuit d'Aldric** se joue toujours (crépuscule ou nuit, deux loups : les loups de la nuit comptent) ; **Croc-Gris** et le **puits qui murmure** aussi.
+7. **Aube (4 h 55 → 5 h)** : les bêtes de la nuit s'en vont dès qu'elles sont au calme, les sangliers reviennent à leur place, les villageois retournent à leur place, l'aube est rose, les lanternes s'éteignent vers 6 h.
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; huit lumières de lanternes au plus éclairent vraiment (les plus proches de la caméra ; URP en applique quatre par objet, donc le terrain n'en reçoit que quatre) ; les bâtiments de Sketchfab n'ont que leur lanterne de porte (pas de fenêtres allumées) ; les ciels qui n'ont ni `_Exposure` ni `_Tint` gardent leur clarté.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

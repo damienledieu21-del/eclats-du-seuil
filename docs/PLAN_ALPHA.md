@@ -159,6 +159,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Dépend de V1.10.
 - Formats : zone (populations selon l'heure).
 - Essai : oui, court (la nuit).
+- **État** (6 novembre 2026, PR en brouillon) : zones en schéma 8 (schéma 7 encore lu) ; sept loups de la nuit et quatre échos de 22 h à 5 h, sangliers qui dorment la nuit, huit villageois devant leur porte la nuit (toujours joignables) ; nuit bleue et lisible, lanternes, réverbères, fenêtres allumées, feux follets, hiboux sous Unity ; menu « Essai de la nuit » ([MONDE.md](MONDE.md#jour-et-nuit-qui-changent-le-monde-sous-lot-v21), [UNITY.md](UNITY.md#essai-v21--jour-et-nuit-qui-changent-le-monde)). Reste l'essai de Damien sous Unity.
 
 ### 14. V2.2 — Météo (S)
 

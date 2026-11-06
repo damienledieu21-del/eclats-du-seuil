@@ -39,7 +39,7 @@
 | Scénarios (schéma) | 15 | `ScenarioValidator.cs` |
 | Instantané (format) | 4 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
-| Zones (schéma) | v7 | `Zones/ZoneValidator.cs` |
+| Zones (schéma) | v8 (v7 encore lue) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v7 (v4, v5 et v6 encore lues) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |

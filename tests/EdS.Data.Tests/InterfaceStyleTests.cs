@@ -438,7 +438,8 @@ public class InterfaceStyleTests
         string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
         Assert.Contains("GameFeel.Imminent(view, target, now, lead)", arena, StringComparison.Ordinal);
         Assert.Contains("main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;", effects, StringComparison.Ordinal);
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+SyncGestures\(\);").Count);
+        // Sous-lot V2.1 : dans l'aventure, le décor de la nuit entre les deux (_arena.Night).
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(game, @"SyncSpace\(_combat, _camera\.Camera\.transform\.position, Time\.deltaTime\);\s+(_arena\.Night\([^\n]*\n\s+)?SyncGestures\(\);").Count);
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(game, @"_arena\.Strike\(\);"));   // seulement pour une compétence introuvable
         Assert.Contains("(double right, double up, double roll) = GameFeel.Offset(_shock, Time.time);", Read("unity", "Assets", "EdS", "Game", "CameraRig.cs"), StringComparison.Ordinal);
         Assert.Contains("UiSounds.Play(book ? UiCue.Open : UiCue.Close);", Read("unity", "Assets", "EdS", "Game", "AdventureBook.cs"), StringComparison.Ordinal);
