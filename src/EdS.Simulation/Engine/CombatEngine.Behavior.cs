@@ -23,6 +23,8 @@ namespace EdS.Simulation.Engine
     /// <item><b>Charge</b> (<see cref="AssailantAttack.Charge"/>) : à l'impact de la bande, après ses coups, l'ennemi fonce depuis sa place
     /// vers le bout de la bande verrouillée, ou jusqu'au premier obstacle ou à la première emprise solide (<c>charged</c>), sans laisser un
     /// joueur sans issue (règle A).</item>
+    /// <item><b>Fuite</b> (sous-lot V2.4, <c>flee</c>) : une bête paisible engagée ne s'approche jamais ; elle s'éloigne de sa cible tant
+    /// qu'elle est en deçà de <c>minRange</c>, puis s'arrête et la surveille.</item>
     /// </list>
     /// </summary>
     public sealed partial class CombatEngine
@@ -36,15 +38,21 @@ namespace EdS.Simulation.Engine
         private static long EdgeDistance(Body a, Body b) =>
             checked(Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(checked(b.X - a.X), checked(b.Z - a.Z))) - a.Radius - b.Radius);
 
-        /// <summary>Ennemi présent et vivant le plus proche (bords), puis par identifiant ; null s'il n'y en a pas.</summary>
+        /// <summary>
+        /// Ennemi présent et vivant le plus proche (bords), puis par identifiant ; null s'il n'y en a pas. Sous-lot V2.4 (bêtes qui se battent) :
+        /// une créature ennemie ne compte que si elle est à distance d'engagement (une bête ne court pas après une bête qu'elle ne voit pas, à
+        /// l'autre bout de la carte) ; un personnage, à toute distance, comme avant (la laisse du monde décide).
+        /// </summary>
         private Fighter? Nearest(Fighter assailant)
         {
             Fighter? best = null;
             long bestDistance = 0;
+            long? sight = assailant.Behavior?.AggroRange?.Raw;
             foreach (Fighter f in _fightersById)
             {
-                if (f.Out || f.Team == assailant.Team || f.Body is null) continue;
+                if (f.Out || !Enemies(f, assailant) || f.Body is null) continue;
                 long d = EdgeDistance(assailant.Body!, f.Body);
+                if (f.Character is null && f.Assailant != null && sight is long range && d > range) continue;   // sous-lot V2.4
                 if (best is null || d < bestDistance)
                 {
                     best = f;
@@ -96,7 +104,7 @@ namespace EdS.Simulation.Engine
             if (f.Taunted) return "taunt";
             long aggro = behavior.AggroRange!.Value.Raw;
             foreach (Fighter other in _fightersById)
-                if (!other.Out && other.Team != f.Team && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
+                if (!other.Out && Enemies(other, f) && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
             // La meute : un allié à comportement déjà engagé, à distance d'engagement, l'entraîne (ordre des identifiants, de proche en proche).
             // Sous-lot 11.9 : seulement un ennemi de meute (pack, vrai par défaut) ; un solitaire ne s'engage que pour lui-même.
             if (!behavior.Pack) return null;
@@ -190,6 +198,13 @@ namespace EdS.Simulation.Engine
                     // plus osciller l'ennemi d'un côté à l'autre.
                     long d = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(vx, vz));
                     long far = checked(rr + behavior.MaxRange.Raw), near = checked(rr + behavior.MinRange.Raw);
+                    // Sous-lot V2.4 (animaux paisibles) : une bête qui fuit ne s'approche jamais ; elle s'éloigne en deçà de minRange (même recul
+                    // que celui d'un tireur), puis s'arrête et surveille sa cible.
+                    if (behavior.Flee && d > checked(near - BandTolerance))
+                    {
+                        intentions[i] = new Intention(false, 0, 0, j);
+                        continue;
+                    }
                     if (d > checked(far + BandTolerance))
                     {
                         (gx, gz) = (vx, vz);

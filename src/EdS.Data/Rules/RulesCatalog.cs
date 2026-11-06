@@ -178,6 +178,8 @@ namespace EdS.Data.Rules
             new RuleField("combat.equipment.minTriggerCooldownMs", RuleValueKind.Int64, C, nameof(CombatRules.EquipmentMinTriggerCooldownMs)),
             // Relecture de la PR #78 (schéma 14) : altérations que l'équipement peut poser.
             new RuleField("combat.equipment.allowedStatuses", RuleValueKind.TokenList, C, nameof(CombatRules.EquipmentStatuses)),
+            // Sous-lot V2.4 (schéma 15) : bêtes qui se battent entre elles.
+            new RuleField("combat.infighting.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.InfightingDamageReduction)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

@@ -35,6 +35,12 @@ namespace EdS.Simulation.Engine
                 .Field("seed", setup.Seed)
                 .Field("durationMs", setup.DurationMs);
             if (setup.Zone) w.Field("zone", true);   // sous-lot 12.1 (format 16) : seulement pour une zone
+            if (setup.Truces.Count > 0)   // sous-lot V2.4 (format 22) : seulement avec des trêves
+            {
+                w.Name("truces").BeginArray();
+                foreach (TeamTruce t in setup.Truces) w.BeginArray().Value(t.A).Value(t.B).EndArray();
+                w.EndArray();
+            }
             if (setup.Space is { } space) WriteSpace(w, space);   // sous-lot 11.4 (format 10) : combat positionné seulement
             w.Name("combatants").BeginArray();
             foreach (CombatantSetup c in setup.Combatants) WriteCombatant(w, c);
@@ -311,6 +317,7 @@ namespace EdS.Simulation.Engine
                         if (behavior.AggroRange is { } aggro) w.Field("aggroRange", aggro);
                         if (behavior.Encircle) w.Field("encircle", true);
                         if (!behavior.Pack) w.Field("pack", false);   // sous-lot 11.9 (format 15)
+                        if (behavior.Flee) w.Field("flee", true);   // sous-lot V2.4 (format 22)
                         w.EndObject();
                     }
                     break;

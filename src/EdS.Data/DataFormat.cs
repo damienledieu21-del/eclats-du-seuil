@@ -36,12 +36,13 @@ namespace EdS.Data
     /// d'équipement : <c>maxDamageDealt</c>, <c>maxDamageTaken</c>, <c>maxHealthPercent</c>, <c>maxEnduranceRegen</c>, <c>maxStatusDurationMs</c>,
     /// <c>maxStrikeCoefficient</c>, <c>maxGain</c>, <c>minTriggerCooldownMs</c>, <c>allowedStatuses</c> : relecture de la PR #78) et condition
     /// <c>targetStunned</c> des modificateurs, réservée à l'équipement. Classes inchangées (9) : la condition <c>targetStunned</c> y est
-    /// refusée (un talent ne la porte pas).</para>
+    /// refusée (un talent ne la porte pas) ; 15 (règles) = sous-lot V2.4 : bloc <c>combat.infighting</c> (<c>damageReduction</c> : réduction des
+    /// dégâts directs d'une créature sur une créature d'une autre équipe, les bêtes qui se battent entre elles). Classes inchangées (9).</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 14;
+        public const int RulesSchemaVersion = 15;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 9;
@@ -57,8 +58,9 @@ namespace EdS.Data
         /// 0.13.0 : bornes de la garde des boucliers (sous-lot V1.2, schéma 13) ; 0.14.0 : bornes des effets d'équipement (sous-lot V1.3,
         /// schéma 14) ; 0.15.0 : barre de combat « 4 + ultime dès le début » (sous-lot V1.8, décision de Damien) : places actives aux niveaux
         /// 1, 1, 1, 1, 10 et 20, place de l'ultime au niveau 1 (schéma inchangé : huit places actives au plus, borne du domaine
-        /// <c>ProgressionRules.MaxActiveSlots</c>, comme le plafond des combattants de la version 0.12.0).
+        /// <c>ProgressionRules.MaxActiveSlots</c>, comme le plafond des combattants de la version 0.12.0) ; 0.16.0 : bêtes qui se battent
+        /// entre elles (sous-lot V2.4, schéma 15) : une créature inflige 50 % de ses dégâts directs à une créature d'une autre équipe.
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.15.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.16.0-provisoire";
     }
 }

@@ -159,5 +159,6 @@ public class CombatReplayTests
     // Relecture de la PR #78 : combat.equipment.allowedStatuses ; seule l'empreinte des règles change dans l'en-tête (ancienne empreinte b0db8eb4…).
     // Sous-lot V1.8 : règles 0.15.0 ; seule l'identité des règles change dans l'en-tête (ancienne empreinte b0db8eb4…, puis f4072715…).
     // Sous-lot V1.8d : moteur 0.27.0, format 21, scénario en schéma 15 ; sans bonus modifié : seul l'en-tête change.
-    internal const string MannequinLogHash = "a10122977907dec395e8792fdeb6aadac54c3b053b4df489e48ae1edc2fc1883";
+    // Sous-lot V2.4 : moteur 0.28.0, format 22, règles 0.16.0, scénario en schéma 16 ; seul l'en-tête change (ancienne empreinte a1012297…).
+    internal const string MannequinLogHash = "d42dd12efc5f1041dbf0c9b859de5f7aae9a0d4b40667449603011ad66bacb32";
 }

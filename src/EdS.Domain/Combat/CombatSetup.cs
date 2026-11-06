@@ -378,13 +378,21 @@ namespace EdS.Domain.Combat
         /// </summary>
         public bool Pack { get; }
 
-        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false, bool pack = true)
+        /// <summary>
+        /// Sous-lot V2.4 (animaux paisibles, scénario en schéma 16) : une bête qui fuit (cerf, lièvre). Engagée, elle ne s'approche jamais de
+        /// sa cible : elle s'en éloigne tant qu'elle est en deçà de <see cref="MinRange"/> (sa distance de fuite), puis s'arrête et la
+        /// surveille. Ses attaques ne partent qu'à portée (un coup de sabot quand on l'a acculée). Faux par défaut.
+        /// </summary>
+        public bool Flee { get; }
+
+        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false, bool pack = true, bool flee = false)
         {
             MaxRange = maxRange;
             MinRange = minRange ?? Fixed.Zero;
             AggroRange = aggroRange;
             Encircle = encircle;
             Pack = pack;
+            Flee = flee;
         }
     }
 
@@ -695,6 +703,22 @@ namespace EdS.Domain.Combat
     }
 
     /// <summary>
+    /// Sous-lot V2.4 (bêtes qui se battent entre elles) : trêve entre deux équipes de créatures (les bandits ne chassent pas les sangliers, les
+    /// échos ne se mêlent pas aux bêtes vivantes). Sans trêve, deux équipes différentes sont ennemies.
+    /// </summary>
+    public sealed class TeamTruce
+    {
+        public string A { get; }
+        public string B { get; }
+
+        public TeamTruce(string a, string b)
+        {
+            A = a ?? throw new ArgumentNullException(nameof(a));
+            B = b ?? throw new ArgumentNullException(nameof(b));
+        }
+    }
+
+    /// <summary>
     /// Tout ce qui définit un combat : règles, participants, commandes, graine et identité des données.
     /// Immuable ; le moteur n'en modifie rien, si bien qu'un même objet peut servir à plusieurs combats.
     /// </summary>
@@ -729,12 +753,34 @@ namespace EdS.Domain.Combat
         /// </summary>
         public bool Zone { get; }
 
+        /// <summary>
+        /// Sous-lot V2.4 (bêtes qui se battent entre elles) : paires d'équipes de créatures qui ne se battent pas entre elles (trêves). Deux
+        /// combattants sont ennemis s'ils sont d'équipes différentes <b>et</b> que ces équipes ne sont pas en trêve. Une trêve ne lie que des
+        /// équipes sans personnage : pour un joueur, rien ne change. Vide : comme avant (toute autre équipe est ennemie).
+        /// </summary>
+        public IReadOnlyList<TeamTruce> Truces { get; }
+
+        /// <summary>Sous-lot V2.4 : trêves au plus.</summary>
+        public const int MaxTruces = 32;
+
+        private readonly HashSet<string> _truceKeys;
+
+        private static string TruceKey(string a, string b) => string.CompareOrdinal(a, b) <= 0 ? a + "\u0000" + b : b + "\u0000" + a;
+
+        /// <summary>Sous-lot V2.4 : les équipes <paramref name="a"/> et <paramref name="b"/> sont-elles en trêve ?</summary>
+        public bool AtTruce(string a, string b) => _truceKeys.Count > 0 && _truceKeys.Contains(TruceKey(a, b));
+
+        /// <summary>Sous-lot V2.4 : des combattants des équipes <paramref name="a"/> et <paramref name="b"/> sont-ils ennemis ?</summary>
+        public bool Hostile(string a, string b) => !string.Equals(a, b, StringComparison.Ordinal) && !AtTruce(a, b);
+
         public CombatSetup(long seed, long durationMs, StatRules stats, DamageRules damage, ProgressionRules progression,
             CombatRules combat, IEnumerable<CombatantSetup> combatants, IEnumerable<CombatCommand> commands, CombatDataIdentity data,
-            CombatSpace? space = null, bool zone = false)
+            CombatSpace? space = null, bool zone = false, IEnumerable<TeamTruce>? truces = null)
         {
             Space = space;
             Zone = zone;
+            Truces = truces is null ? Array.Empty<TeamTruce>() : Frozen.List(truces, nameof(truces));
+            _truceKeys = new HashSet<string>(Truces.Select(t => TruceKey(t.A, t.B)), StringComparer.Ordinal);
             Seed = seed;
             DurationMs = durationMs;
             Stats = stats ?? throw new ArgumentNullException(nameof(stats));
@@ -884,10 +930,11 @@ namespace EdS.Domain.Combat
                     CombatantSetup? target = Combatants.FirstOrDefault(c => c.Id == targetId);
                     if (target is null)
                         errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"combattant inconnu « {targetId} ».", $"combatants[{i}].target"));
-                    else if (target.Team == assailant.Team)
+                    else if (!Hostile(target.Team, assailant.Team))   // sous-lot V2.4 : ni la même équipe, ni une équipe en trêve
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
             ValidateSpace(errors);
+            ValidateTruces(errors);   // sous-lot V2.4
             if (errors.Count == 0) ValidateTriggerCount(errors);
             if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
             // Sous-lot 12.1 : une zone peut n'avoir qu'une équipe (ses créatures), ou aucun combattant : les joueurs y entrent ensuite.
@@ -1333,7 +1380,30 @@ namespace EdS.Domain.Combat
         /// </summary>
         public CombatSetup Completed(IEnumerable<CombatantSetup> joined, IEnumerable<CombatCommand> submitted) =>
             new CombatSetup(Seed, DurationMs, Stats, Damage, Progression, Combat, Combatants.Concat(joined ?? throw new ArgumentNullException(nameof(joined))),
-                Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space, Zone);
+                Commands.Concat(submitted ?? throw new ArgumentNullException(nameof(submitted))), Data, Space, Zone, Truces);
+
+        /// <summary>
+        /// Sous-lot V2.4 : trêves (au plus <see cref="MaxTruces"/>) entre deux équipes valides et différentes, sans doublon (dans un sens ou
+        /// dans l'autre), dont aucune n'a de personnage (un joueur se bat contre toutes les créatures). Une équipe sans combattant est admise
+        /// (une zone se peuple en cours de route).
+        /// </summary>
+        private void ValidateTruces(List<RuleViolation> errors)
+        {
+            if (Truces.Count > MaxTruces) errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"{Truces.Count} trêves, au plus {MaxTruces}.", "truces"));
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var characterTeams = new HashSet<string>(Combatants.OfType<CharacterSetup>().Select(c => c.Team), StringComparer.Ordinal);
+            for (int i = 0; i < Truces.Count; i++)
+            {
+                TeamTruce t = Truces[i];
+                string path = $"truces[{i}]";
+                if (!IsValidName(t.A) || !IsValidName(t.B))
+                    errors.Add(new RuleViolation("équipe invalide : minuscules, chiffres et « _ », commençant par une lettre.", path));
+                else if (t.A == t.B) errors.Add(new RuleViolation("une trêve lie deux équipes différentes.", path));
+                else if (!seen.Add(TruceKey(t.A, t.B))) errors.Add(new RuleViolation(RuleViolationKind.DuplicateId, $"trêve {t.A} / {t.B} déjà donnée.", path));
+                else if (characterTeams.Contains(t.A) || characterTeams.Contains(t.B))
+                    errors.Add(new RuleViolation("une trêve ne lie que des équipes de créatures (un personnage se bat contre toutes).", path));
+            }
+        }
 
         /// <summary>
         /// Sous-lot 11.5 : comportement d'un ennemi, dans un combat positionné seulement : distances dans [0, 100] m (engagement dans
@@ -1356,6 +1426,9 @@ namespace EdS.Domain.Combat
             if (b.AggroRange is { } aggro) Distance(aggro, "aggroRange", positive: true);
             if (b.MinRange > b.MaxRange && b.MaxRange >= Fixed.Zero && b.MaxRange <= AssailantBehavior.MaxDistance)
                 errors.Add(new RuleViolation("distance minimale plus grande que la maximale.", at + ".minRange"));
+            // Sous-lot V2.4 : une bête qui fuit garde sa distance de fuite (minRange > 0) et ne cerne personne.
+            if (b.Flee && b.MinRange == Fixed.Zero) errors.Add(new RuleViolation("une bête qui fuit a une distance de fuite (minRange > 0).", at + ".minRange"));
+            if (b.Flee && b.Encircle) errors.Add(new RuleViolation("une bête qui fuit ne cerne pas sa cible (encircle).", at + ".encircle"));
         }
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)

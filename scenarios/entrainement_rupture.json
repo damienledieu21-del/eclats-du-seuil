@@ -1,6 +1,6 @@
 {
   "$schema": "../data/schemas/scenario.schema.json",
-  "schemaVersion": 15,
+  "schemaVersion": 16,
   "kind": "scenario",
   "contentVersion": "0.1.0-provisoire",
   "data": {

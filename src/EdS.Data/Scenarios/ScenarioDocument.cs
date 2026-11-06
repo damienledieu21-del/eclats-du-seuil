@@ -25,6 +25,12 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 12.1 (schéma 10) : simulation d'une zone du monde (sans fin quand une équipe tombe) ; absent : combat fermé.</summary>
         public bool? Zone { get; set; }
 
+        /// <summary>
+        /// Sous-lot V2.4 (schéma 16) : trêves entre équipes de créatures, chacune une paire <c>[équipe, équipe]</c> ; absent : aucune (toute
+        /// autre équipe est ennemie).
+        /// </summary>
+        public List<List<string?>?>? Truces { get; set; }
+
         public List<CombatantData?>? Combatants { get; set; }
         public List<CommandData?>? Commands { get; set; }
 
@@ -200,6 +206,9 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Sous-lot 11.9 (schéma 9) : entraîné par l'engagement de sa meute ; facultatif, vrai par défaut.</summary>
         public bool? Pack { get; set; }
+
+        /// <summary>Sous-lot V2.4 (schéma 16) : bête qui fuit (cerf, lièvre) ; facultatif, faux par défaut.</summary>
+        public bool? Flee { get; set; }
     }
 
     public sealed class CommandData

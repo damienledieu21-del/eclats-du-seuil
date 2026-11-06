@@ -402,11 +402,11 @@ namespace EdS.Simulation.Engine
             {
                 TriggerTarget.EventSource => One(e.Source) is { } source ? new[] { source } : Array.Empty<Fighter>(),
                 TriggerTarget.EventTarget => One(e.Target) is { } target ? new[] { target } : Array.Empty<Fighter>(),
-                TriggerTarget.AllEnemies => _fightersById.Where(f => f.Team != bearer.Team && !f.Out).ToArray(),
+                TriggerTarget.AllEnemies => _fightersById.Where(f => Enemies(f, bearer) && !f.Out).ToArray(),
                 _ => bearer.Out ? Array.Empty<Fighter>() : new[] { bearer },
             };
-            if (effect.Kind == TriggerEffectKind.Strike && targets.Any(t => t.Team == bearer.Team))
-                targets = targets.Where(t => t.Team != bearer.Team).ToArray();
+            if (effect.Kind == TriggerEffectKind.Strike && targets.Any(t => !Enemies(t, bearer)))
+                targets = targets.Where(t => Enemies(t, bearer)).ToArray();
             return targets;
         }
 

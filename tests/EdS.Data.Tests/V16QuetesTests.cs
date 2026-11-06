@@ -239,7 +239,7 @@ public class V16QuetesTests
         Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_arc3", "bandit_epee1", "bandit_epee2", "bandit_epee3", "bandit_epee4", "grand_borgne", "le_borgne" },   // sous-lot V1.7 : le Borgne ; V1.9.3 : trois bandits ; V1.9.4 : le Grand Borgne
             z.Populations.Where(p => p.Family == "bandit").Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         Assert.Equal("loup_blanc", z.PopulationOf("loup_blanc")!.Family);
-        Assert.Equal(19, z.Populations.Count(p => p.Family == "loup"));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée)
+        Assert.Equal(22, z.Populations.Count(p => p.Family == "loup"));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée) ; V2.4 : plus les trois loups gris de la brume
     }
 
     [Fact]
@@ -526,7 +526,7 @@ public class V16QuetesTests
     public void Chef_des_bandits_livre_a_deux_formes()
     {
         ZoneDefinition z = Zone();
-        Assert.Equal(8, z.SchemaVersion);   // V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
+        Assert.Equal(9, z.SchemaVersion);   // V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
         Boss chef = z.Chiefs[0];   // sous-lot V1.9.6 : Croc-Gris est le second (V196OuvertureTests)
         Assert.Equal(new[] { "chef_des_bandits", "croc_gris" }, z.Chiefs.Select(c => c.Id));
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));
@@ -566,7 +566,7 @@ public class V16QuetesTests
         // bouclier ; leur garde est celle des règles (Shield nul), et le Bastion entre avec la garde de son écu.
         // Fusion de main dans V1.3 : règles 0.14.0 (effets d'équipement) ; ces créatures n'ont pas d'équipement.
         // Sous-lot V1.8 : règles 0.15.0 (barre), rien de changé pour ces créatures.
-        Assert.Equal("0.15.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal("0.16.0-provisoire", ShippedData.Rules.ContentVersion);
         WorldSession w = Play(Zone(), Hero());
         Assert.NotNull(w.EnteredShield);
         string[] creatures = { "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "chef_des_bandits", "loup_blanc" };

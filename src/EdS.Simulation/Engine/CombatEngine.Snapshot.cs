@@ -29,9 +29,10 @@ namespace EdS.Simulation.Engine
         /// <summary>
         /// Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis), 3 depuis
         /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus), 4 depuis le sous-lot V1.8d (bonus d'équipement en vigueur
-        /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>).
+        /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>), 5 depuis le sous-lot V2.4
+        /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires).
         /// </summary>
-        public const int FormatVersion = 4;
+        public const int FormatVersion = 5;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -225,7 +226,8 @@ namespace EdS.Simulation.Engine
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
-                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted);
+                .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
+                .Field("hurtByCharacter", f.HurtByCharacter);   // sous-lot V2.4 (format 5)
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -1022,6 +1024,8 @@ namespace EdS.Simulation.Engine
                     $"Résonance, charges ou garde de {who} impossibles.");
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
+                // Sous-lot V2.4 : frappé par un personnage, il a été frappé (le contraire ne vaut pas : une bête mordue par une autre).
+                Require(!f.HurtByCharacter || f.Struck, $"{who} frappé par un personnage sans avoir été frappé.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
                 // 16e tour de la PR #33 : un engagé a son tick d'engagement (0 d'emblée sans distance d'engagement, sinon un tick déjà joué).
@@ -2008,6 +2012,7 @@ namespace EdS.Simulation.Engine
             f.AnnouncedToEnd = n["announcedToEnd"].Bool;
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;
+            f.HurtByCharacter = n["hurtByCharacter"].Bool;   // sous-lot V2.4 (format 5)
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

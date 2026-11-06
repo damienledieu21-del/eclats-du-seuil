@@ -363,7 +363,7 @@ namespace EdS.Net
                 .Where(c => (c.Id == seat.Id || _seats.Any(s => s.Id == c.Id && !s.Taken && !s.InCombat)) && !current.Combatants.Any(k => k.Id == c.Id))
                 .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Id == seat.Id ? build : c.Build, c.Initiative, c.Placement, lastMs, c.Gear, c.Consumables, c.Shield, c.Equipment));
             long bound = StateBound(new CombatSetup(current.Seed, current.DurationMs, current.Stats, current.Damage, current.Progression, current.Combat,
-                current.Combatants.Concat(worst), current.Commands, current.Data, current.Space, current.Zone), TickMs);
+                current.Combatants.Concat(worst), current.Commands, current.Data, current.Space, current.Zone, current.Truces), TickMs);
             // 4e tour : avec l'instantané courant, comme au début ; un état trop grand pour un instantané (37e tour de la PR #32) refuse l'arrivée.
             if (SnapshotText(engine) is not { } snapshotNow)
                 return "entrée dans le combat refusée : état du combat trop grand pour un instantané.";
@@ -591,7 +591,7 @@ namespace EdS.Net
                     ? new CharacterSetup(ch.Id, ch.Team, ch.Class, seat.Build!, ch.Initiative, ch.Placement, ch.ArrivalMs, ch.Gear, ch.Consumables, ch.Shield, ch.Equipment)
                     : c);
             var setup = new CombatSetup(_scenario.Seed, _options.DurationMs ?? _scenario.DurationMs, _scenario.Stats, _scenario.Damage,
-                _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space, _scenario.Zone);
+                _scenario.Progression, _scenario.Combat, combatants, Array.Empty<CombatCommand>(), _scenario.Data, _scenario.Space, _scenario.Zone, _scenario.Truces);
             void Refuse(string reason)
             {
                 foreach (Seat seat in _seats)
@@ -622,7 +622,7 @@ namespace EdS.Net
                 IEnumerable<CombatantSetup> joiners = _scenario.Combatants.OfType<CharacterSetup>().Where(c => _seats.Any(s => s.Id == c.Id && !s.Taken))
                     .Select(c => new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, last, c.Gear, c.Consumables, c.Shield, c.Equipment));
                 bounded = new CombatSetup(setup.Seed, setup.DurationMs, setup.Stats, setup.Damage, setup.Progression, setup.Combat,
-                    setup.Combatants.Concat(joiners), setup.Commands, setup.Data, setup.Space, setup.Zone);
+                    setup.Combatants.Concat(joiners), setup.Commands, setup.Data, setup.Space, setup.Zone, setup.Truces);
             }
             long bound = StateBound(bounded, TickMs);
             // Revue Codex de la PR #35 (4e tour) : le majorant porte sur l'en-tête ; l'instantané de départ y est ajouté tel qu'il serait
@@ -822,7 +822,7 @@ namespace EdS.Net
             // gardées telles quelles ; seules les places restantes sous le plafond sont comptées au pire (une commande pilotée vient
             // toujours d'un personnage, d'où le choix de l'acteur et de la compétence parmi eux).
             long Size(params CombatCommand[] added) => MessageCodec.Encode(new StateMessage(CombatLogHeader.Write(new CombatSetup(setup.Seed, setup.DurationMs,
-                setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants, setup.Commands.Concat(added).ToList(), setup.Data, setup.Space, setup.Zone)),
+                setup.Stats, setup.Damage, setup.Progression, setup.Combat, setup.Combatants, setup.Commands.Concat(added).ToList(), setup.Data, setup.Space, setup.Zone, setup.Truces)),
                 "-", hash)).Length;
             long remaining = Math.Max(0, (long)setup.Combat.MaxCommands - setup.Commands.Count);
             if (remaining == 0) return Size();

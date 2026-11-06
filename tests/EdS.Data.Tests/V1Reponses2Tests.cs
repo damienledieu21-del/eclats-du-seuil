@@ -242,7 +242,7 @@ public class V1Reponses2Tests
         NightSpawn night = wolf.Night!;
         Assert.Equal((35, 15000L, "text.zone.loup_blanc.signe"), (night.ChancePercent, night.SignMs, night.Sign));
         Assert.Equal("Un hurlement glacé monte du pré…", Texts.Get(night.Sign));
-        Assert.Equal(8, z.SchemaVersion);   // V2.1 : jour et nuit ; V1.8 : zones en mélange
+        Assert.Equal(9, z.SchemaVersion);   // V2.4 : temps ; V2.1 : jour et nuit ; V1.8 : zones en mélange
         // Il est dans le scénario de zone (son modèle), mais pas au début d'une session : il vient plus tard, après son signe.
         Assert.Contains(z.Setup.Combatants, c => c.Id == WhiteWolf);
         Assert.DoesNotContain(ZoneSetups.For(z, Array.Empty<string>()).Combatants, c => c.Id == WhiteWolf);

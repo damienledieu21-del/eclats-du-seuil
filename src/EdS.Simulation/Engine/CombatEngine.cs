@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.27.0";
+        public const string Version = "0.28.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -102,10 +102,15 @@ namespace EdS.Simulation.Engine
         /// lignes qu'au format 19. 21 (sous-lot V1.8d, effet immédiat des bonus) : commande <c>gear</c> (« bonus modifié ») d'un personnage, avec son
         /// <c>gear</c> (nouveau bonus d'équipement total, champs non nuls seulement), traitée au début de son tick (nouvelle phase <c>gear</c>, après les arrivées) ; nouvelle
         /// ligne <c>gearChanged</c> (<c>gear</c>, <c>maxHealth</c>, <c>health</c>, <c>maxEndurance</c>, <c>endurance</c>) ; raison de refus
-        /// <c>maxHealthTooLow</c>. Sans bonus modifié, un combat écrit exactement les mêmes lignes qu'au format 20. Un journal d'un autre format
-        /// est refusé au rejeu.
+        /// <c>maxHealthTooLow</c>. Sans bonus modifié, un combat écrit exactement les mêmes lignes qu'au format 20. 22 (sous-lot V2.4, animaux
+        /// paisibles et bêtes qui se battent) : le comportement d'un assaillant de l'en-tête peut porter <c>flee</c> (bête qui fuit) ; les dégâts
+        /// directs d'une créature sur une créature d'une autre équipe sont réduits par <c>combat.infighting.damageReduction</c> des règles (même
+        /// ligne <c>damage</c>) ; une créature ne vise une créature ennemie qu'à sa distance d'engagement ; le scénario de l'en-tête peut porter
+        /// <c>truces</c> (trêves entre équipes de créatures). Sans bête qui fuit ni créatures de deux équipes, un combat écrit exactement les
+        /// mêmes lignes qu'au format 21. Un
+        /// journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 21;
+        public const int LogFormatVersion = 22;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -245,6 +250,13 @@ namespace EdS.Simulation.Engine
             /// (provocation d'un tick, source partie) ; un ennemi en attente s'engage alors (raison <c>taunt</c>).
             /// </summary>
             public bool Taunted;
+
+            /// <summary>
+            /// Sous-lot V2.4 (bêtes qui se battent) : a reçu un impact ou un tick de DOT d'un personnage, même entièrement absorbé ou paré. Le
+            /// monde ne donne expérience, butin et objectifs que pour une créature qu'un personnage a frappée : un sanglier tué par des loups
+            /// ne compte pas. Hors journal ; dans l'instantané (format 5).
+            /// </summary>
+            public bool HurtByCharacter;
 
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
@@ -1170,6 +1182,12 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>
+        /// Sous-lot V2.4 (bêtes qui se battent) : <paramref name="a"/> et <paramref name="b"/> sont ennemis : équipes différentes, pas en trêve
+        /// (<see cref="CombatSetup.Truces"/>). Sans trêve, exactement « équipes différentes », comme avant.
+        /// </summary>
+        private bool Enemies(Fighter a, Fighter b) => _setup.Hostile(a.Team, b.Team);
+
+        /// <summary>
         /// Sous-lot 8.3 (X5) : cibles d'une action, dans l'ordre de leurs identifiants pour un ciblage de groupe : la cible désignée
         /// (ennemi ou allié), le lanceur lui-même, ou tous les ennemis ou tous les alliés vivants (le lanceur compris). Sous-lot 11.4b :
         /// dans un combat positionné, un ciblage de groupe ne garde que les combattants dans le rayon de la compétence au moment de
@@ -1180,7 +1198,7 @@ namespace EdS.Simulation.Engine
             SkillTargeting.Enemy or SkillTargeting.Ally => new[] { action.Target! },
             SkillTargeting.Self => new[] { action.Actor },
             SkillTargeting.AllAllies => WithinArea(action.Actor, _fightersById.Where(f => f.Team == action.Actor.Team && !f.Out).ToArray(), action.Range),
-            _ => WithinArea(action.Actor, _fightersById.Where(f => f.Team != action.Actor.Team && !f.Out).ToArray(), action.Range),
+            _ => WithinArea(action.Actor, _fightersById.Where(f => Enemies(f, action.Actor) && !f.Out).ToArray(), action.Range),
         };
 
         /// <summary>
@@ -1191,7 +1209,7 @@ namespace EdS.Simulation.Engine
         {
             ApplicationTarget.Self => new[] { actor },
             ApplicationTarget.AllAllies => WithinArea(actor, _fightersById.Where(f => f.Team == actor.Team && !f.Out).ToArray(), application.Range),
-            _ => WithinArea(actor, _fightersById.Where(f => f.Team != actor.Team && !f.Out).ToArray(), application.Range),
+            _ => WithinArea(actor, _fightersById.Where(f => Enemies(f, actor) && !f.Out).ToArray(), application.Range),
         };
 
         /// <summary>Postures (garde, parade) d'une cible laissées par les étapes déjà comptées d'une même action : coût exact des suivantes.</summary>
@@ -1356,6 +1374,7 @@ namespace EdS.Simulation.Engine
             Charge(1);
             target.Struck = true;
             Fighter actor = action.Actor;
+            if (actor.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4
             Provenance origin = action.Origin;
             long? parryEid = null, blockEid = null;
             bool critical = action.Combat != null && CriticalRoll.Roll(actor.Random, actor.Stats);   // l'assaillant ne critique jamais (aucun tirage)
@@ -1422,6 +1441,11 @@ namespace EdS.Simulation.Engine
             if (defense != "parry")
                 mitigation = target.Rules.TotalReduction(mitigation,
                     target.Rules.DamageTakenAt(target.Guarding, target.RampartCharges, target.Resonance, BuffSum(target, ModifierField.DamageTaken)));
+            // Sous-lot V2.4 (bêtes qui se battent, règles en schéma 15) : une créature qui frappe une créature d'une autre équipe frappe moins
+            // fort (combat.infighting.damageReduction), réduction combinée aux autres comme un modificateur de dégâts subis (B2, même plafond).
+            // Jamais sur un impact paré (une créature ne pare pas) ; sans créature des deux côtés, rien ne change.
+            if (defense != "parry" && actor.Assailant != null && target.Assailant != null && _rules.InfightingDamageReduction != Fixed.Zero)
+                mitigation = target.Rules.TotalReduction(mitigation, Fixed.Zero - _rules.InfightingDamageReduction);
             // Sous-lot V1.3 : condition targetStunned, lue sur l'état de la cible de cet impact (sans ligne, sans coût).
             Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance, Stunned(target));
             if (dealt != Fixed.Zero) bonuses = bonuses.Add(BonusCategory.Talent, dealt);
@@ -2279,6 +2303,7 @@ namespace EdS.Simulation.Engine
             Charge(1);
             Fighter target = dot.Fighter;
             target.Struck = true;
+            if (status.Source != null && _byId.TryGetValue(status.Source, out Fighter? dealer) && dealer.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.
