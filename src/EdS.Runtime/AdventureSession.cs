@@ -26,9 +26,10 @@ namespace EdS.Runtime
     /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
     public readonly struct AdventureMood
     {
-        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0)
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0, double rain = 0)
         {
             Night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
+            Rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
             InVillage = inVillage;
             Fighting = fighting;
             BossEngaged = bossEngaged;
@@ -48,6 +49,9 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.1 : part de nuit (0 le jour, 1 la nuit ; <see cref="DayCycle.NightShare"/>) : les oiseaux se taisent, la nuit chante.</summary>
         public double Night { get; }
+
+        /// <summary>Sous-lot V2.2 : pluie (0 à 1 ; <see cref="WeatherState.Rain"/>) : la nappe de pluie la suit, les oiseaux se taisent.</summary>
+        public double Rain { get; }
     }
 
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>
@@ -1482,7 +1486,7 @@ namespace EdS.Runtime
                 double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
-            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(WorldMinute()));
+            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(WorldMinute()), Weather().Rain / (double)WorldWeather.Scale);
         }
 
         /// <summary>
@@ -1496,6 +1500,28 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.1 : c'est la nuit du monde (22 h à 5 h) : villageois rentrés, bêtes de la nuit dehors.</summary>
         public bool IsNight => World.Zone.Time.Phase == DayPhase.Night;
+
+        private long _weatherMinute = -1;
+        private WeatherState _weather;
+
+        /// <summary>
+        /// Sous-lot V2.2 (météo) : le temps qu'il fait dans la zone de l'histoire (<see cref="WorldSession.Weather"/>), relu seulement quand la
+        /// minute du monde change (7,5 s de jeu) : aucun calcul ni allocation à chaque image.
+        /// </summary>
+        public WeatherState Weather()
+        {
+            WorldTime time = World.Zone.Time;
+            long key = time.Day * WorldClock.MinutesPerDay + time.Minute;
+            if (key != _weatherMinute)
+            {
+                _weather = World.Weather;
+                _weatherMinute = key;
+            }
+            return _weather;
+        }
+
+        /// <summary>Sous-lot V2.2 : ce que le temps change à l'affichage, à l'heure de la partie (<see cref="WeatherCycle.Look"/>).</summary>
+        public WeatherLook WeatherLook(double partialTick = 0) => WeatherCycle.Look(Weather(), Light(partialTick));
 
         /// <summary>Formes du chef de la zone (pour l'affichage).</summary>
         /// <remarks>Sous-lot V1.6 : tous les chefs de la zone (le chef des bandits aussi), y compris une forme revenue sous une nouvelle identité

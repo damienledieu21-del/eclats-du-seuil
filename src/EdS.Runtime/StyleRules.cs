@@ -243,6 +243,14 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.1 : la nuit (grillons, hibou), qui remplace les oiseaux de 22 h à 5 h.</summary>
         Night = 3,
+
+        /// <summary>Sous-lot V2.2 : la pluie (nappe en boucle, son volume suit la pluie) ; sans fichier, une pluie de synthèse.</summary>
+        Rain = 4,
+
+        /// <summary>
+        /// Sous-lot V2.2 : un coup de tonnerre, joué une fois après chaque éclair (jamais en boucle) ; sans fichier, un tonnerre de synthèse.
+        /// </summary>
+        Thunder = 5,
     }
 
     /// <summary>
@@ -407,6 +415,9 @@ namespace EdS.Runtime
         /// </summary>
         private static readonly (StyleAmbience Kind, string[] Words)[] AmbienceWords =
         {
+            // Sous-lot V2.2 : la pluie d'abord (« thunderstorm_rain » est une nappe de pluie, qui tourne en boucle), puis le tonnerre seul.
+            (StyleAmbience.Rain, new[] { "pluie", "rain", "averse" }),
+            (StyleAmbience.Thunder, new[] { "orage", "thunder", "tonnerre" }),
             (StyleAmbience.Night, new[] { "nuit", "night", "grillon", "cricket", "hibou", "owl" }),   // sous-lot V2.1, avant tout le reste
             (StyleAmbience.River, new[] { "riviere", "river", "stream", "water" }),
             (StyleAmbience.Wind, new[] { "vent", "wind", "outdoor", "dehors" }),
@@ -903,19 +914,25 @@ namespace EdS.Runtime
         /// </summary>
         /// <param name="night">Sous-lot V2.1 : part de nuit (0 à 1) : les oiseaux se taisent la nuit, la nappe de nuit (grillons, hibou) prend
         /// leur place, en douceur à l'aube et au crépuscule.</param>
-        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting, bool indoors = false, double night = 0)
+        /// <param name="rain">Sous-lot V2.2 : pluie (0 à 1) : la nappe de pluie la suit (assourdie dans une pièce : on l'entend sur le toit), les
+        /// oiseaux se taisent sous l'averse, le vent forcit un peu. Le tonnerre n'est pas une nappe (0 : il est joué après chaque éclair).</param>
+        public static double AmbienceVolume(StyleAmbience ambience, double riverDistance, bool inVillage, bool fighting, bool indoors = false, double night = 0,
+            double rain = 0)
         {
             double calm = fighting ? 0.5 : 1;
+            rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
+            if (ambience == StyleAmbience.Thunder) return 0;
+            if (ambience == StyleAmbience.Rain) return (indoors ? 0.3 : 0.4 + 0.6 * rain) * Math.Min(1, rain * 4) * (fighting ? 0.8 : 1);
             if (indoors) return ambience == StyleAmbience.Wind ? 0.12 * calm : 0;
             night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
             switch (ambience)
             {
-                case StyleAmbience.Night: return (inVillage ? 0.6 : 0.9) * calm * night;
-                case StyleAmbience.Birds: return (inVillage ? 0.7 : 1.0) * calm * (1 - 0.9 * night);
+                case StyleAmbience.Night: return (inVillage ? 0.6 : 0.9) * calm * night * (1 - 0.7 * rain);
+                case StyleAmbience.Birds: return (inVillage ? 0.7 : 1.0) * calm * (1 - 0.9 * night) * (1 - 0.85 * rain);
                 case StyleAmbience.River:
                     if (double.IsNaN(riverDistance) || riverDistance < 0) return 0;
                     return Math.Max(0, Math.Min(1, (30 - riverDistance) / 26.0));
-                case StyleAmbience.Wind: return (inVillage ? 0.35 : 0.6) * calm;
+                case StyleAmbience.Wind: return Math.Min(1, (inVillage ? 0.35 : 0.6) * calm * (1 + 0.5 * rain));
                 default: return (inVillage ? 0.7 : 1.0) * calm;
             }
         }

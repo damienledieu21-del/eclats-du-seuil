@@ -545,6 +545,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.1 : le décor de la nuit (lanternes, fenêtres, feux follets, hiboux, villageois rentrés).</summary>
         public void Night(Vector3 camera, bool worldNight, float deltaTime) => _space?.Night(camera, worldNight, deltaTime);
 
+        /// <summary>Sous-lot V2.2 : le décor du temps (flaques, villageois qui s'abritent).</summary>
+        public void Weather(WeatherLook look) => _space?.Weather(look);
+
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;

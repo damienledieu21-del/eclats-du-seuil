@@ -78,7 +78,7 @@ namespace UnityEngine
     public static class Time { public static float time => 0; public static float deltaTime => 0; public static float unscaledDeltaTime => 0; public static float unscaledTime => 0; }
     // Essai réaliste 7 : effets en particules (Effects).
     public struct Keyframe { public Keyframe(float time, float value) { } }
-    public sealed class AnimationCurve { public AnimationCurve(params Keyframe[] keys) { } }
+    public sealed class AnimationCurve { public AnimationCurve(params Keyframe[] keys) { } public static AnimationCurve Linear(float timeStart, float valueStart, float timeEnd, float valueEnd) => null; }
     public struct GradientColorKey { public GradientColorKey(Color col, float time) { } }
     public struct GradientAlphaKey { public GradientAlphaKey(float alpha, float time) { } }
     public sealed class Gradient { public void SetKeys(GradientColorKey[] colorKeys, GradientAlphaKey[] alphaKeys) { } }
@@ -95,7 +95,7 @@ namespace UnityEngine
         public struct MinMaxGradient { public MinMaxGradient(Gradient gradient) { } public MinMaxGradient(Color color) { } public MinMaxGradient(Color min, Color max) { } public static implicit operator MinMaxGradient(Color color) => default; }
         public struct MainModule { public bool loop { get; set; } public bool playOnAwake { get; set; } public float duration { get; set; } public ParticleSystemSimulationSpace simulationSpace { get; set; } public int maxParticles { get; set; } public MinMaxCurve gravityModifier { get; set; } public MinMaxCurve startSpeed { get; set; } public ParticleSystemCullingMode cullingMode { get; set; } public ParticleSystemScalingMode scalingMode { get; set; } public MinMaxCurve startLifetime { get; set; } public MinMaxCurve startSize { get; set; } public MinMaxCurve startRotation { get; set; } public MinMaxGradient startColor { get; set; } }
         public struct EmissionModule { public bool enabled { get; set; } public MinMaxCurve rateOverTime { get; set; } }
-        public struct ShapeModule { public bool enabled { get; set; } public ParticleSystemShapeType shapeType { get; set; } public float angle { get; set; } public float radius { get; set; } }
+        public struct ShapeModule { public bool enabled { get; set; } public ParticleSystemShapeType shapeType { get; set; } public float angle { get; set; } public float radius { get; set; } public Vector3 scale { get; set; } }
         public struct ColorOverLifetimeModule { public bool enabled { get; set; } public MinMaxGradient color { get; set; } }
         public struct SizeOverLifetimeModule { public bool enabled { get; set; } public MinMaxCurve size { get; set; } }
         public struct EmitParams { public Vector3 position { get; set; } public Vector3 velocity { get; set; } public float startSize { get; set; } public float startLifetime { get; set; } public Color32 startColor { get; set; } public float rotation { get; set; } public bool applyShapeToPosition { get; set; } }

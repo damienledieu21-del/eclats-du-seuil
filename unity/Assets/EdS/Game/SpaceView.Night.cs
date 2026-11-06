@@ -40,7 +40,8 @@ namespace EdS.Game
         private Material _windowGlass, _lanternGlow, _wispGlow, _owlGlow;
         private GameObject _nightRoot;
         private float _lampSort = 1f, _shownLamps = -1f, _shownNight = -1f;
-        private bool _villagersHome;
+        /// <summary>Villageois du décor rentrés : 1 la nuit du monde, 2 sous la pluie (sous-lot V2.2), 3 les deux.</summary>
+        private int _villagersHome;
 
         /// <summary>Fond des fenêtres des bâtiments faits par le code : sombre le jour, chaud la nuit (un seul matériau pour toutes).</summary>
         private Material WindowGlass()
@@ -224,12 +225,15 @@ namespace EdS.Game
             }
             foreach (Light light in _lampLights)
                 light.intensity = lamps * strength * (0.92f + 0.08f * Mathf.PerlinNoise(Time.time * 2.3f, light.transform.position.x));
-            // Villageois du décor : la nuit du monde, ils rentrent chez eux ; les veilleurs restent.
-            if (worldNight != _villagersHome)
+            // Villageois du décor : la nuit du monde, ils rentrent chez eux ; les veilleurs restent. Sous-lot V2.2 : sous une vraie pluie aussi
+            // (un sur trois reste dehors).
+            int home = (worldNight ? 1 : 0) | (_sheltering ? 2 : 0);
+            if (home != _villagersHome)
             {
-                _villagersHome = worldNight;
+                _villagersHome = home;
                 foreach (Villager v in _villagers)
-                    if (v.Body != null) v.Body.gameObject.SetActive(!worldNight || NightLamps.AwakeAtNight(v.Data));
+                    if (v.Body != null)
+                        v.Body.gameObject.SetActive((!worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)));
             }
         }
 

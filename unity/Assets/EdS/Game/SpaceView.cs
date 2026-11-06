@@ -163,6 +163,7 @@ namespace EdS.Game
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg
             NightDecor(space, map);   // sous-lot V2.1 : lanternes, réverbères, feux follets, hiboux
+            WeatherDecor();   // sous-lot V2.2 : flaques le long des chemins
             Plants(space);
             if (terrain) Forest(space);
             Bridge(space);
@@ -1292,6 +1293,7 @@ namespace EdS.Game
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
             ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
+            ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
             Object.Destroy(_root);
         }
 
