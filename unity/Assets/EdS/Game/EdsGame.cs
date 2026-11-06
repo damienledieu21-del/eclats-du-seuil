@@ -309,6 +309,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.2.1 : les compagnons d'affichage (la bête liée à un objet du sac).</summary>
         private CompanionsView _companions;
 
+        /// <summary>Sous-lot V2.5 : failles du Seuil, hameau pillé, cloche (affichage des événements du monde).</summary>
+        private WorldEventsView _worldEvents;
+
         /// <summary>Relecture de la PR #102 : liste des compagnons à montrer, réutilisée à chaque image.</summary>
         private readonly List<CompanionDefinition> _companionList = new List<CompanionDefinition>();
 
@@ -348,6 +351,8 @@ namespace EdS.Game
             _weatherFx?.Destroy();   // sous-lot V2.2
             _companions?.Destroy();   // sous-lot V2.2.1
             _companions = null;
+            _worldEvents?.Destroy();   // sous-lot V2.5
+            _worldEvents = null;
             _weatherFx = null;
             StyleWorld.SetWeather(null);
             _talentView?.Close();
@@ -535,6 +540,9 @@ namespace EdS.Game
             Companions.Shown(a.World.Inventory, CompanionTrial.Forced, _companionList);   // relecture de la PR #102 : sans allocation
             _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
                 _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
+            // Sous-lot V2.5 : événements du monde (faille, pillage, cloche).
+            if (_worldEvents == null) _worldEvents = new WorldEventsView();
+            _worldEvents.Sync(a, _paused ? 0f : Time.deltaTime);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
@@ -561,6 +569,7 @@ namespace EdS.Game
             AdventureSession a = _adventure;
             if (a.MustContinue) return string.Format(a.Text("text.ui.continue_hint"), a.LastSafePoint);
             if (a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None) return null;
+            if (a.RiftInReach != null) return a.Text("text.ui.event.rift.close");   // sous-lot V2.5 : refermer la faille
             if (a.NpcInReach is EdS.Data.Story.Npc npc)
                 return string.Format(a.Text(a.IsGuildmistress(npc.Id) ? "text.ui.guild_hint" : a.IsMerchant(npc.Id) ? "text.ui.trade_hint" : "text.ui.talk_hint"), a.Text(npc.Name));
             if (a.NodeInReach is EdS.Data.Crafting.GatheringNode node) return string.Format(a.Text("text.ui.gather_hint"), a.Item(node.Item).Name);
@@ -1422,7 +1431,7 @@ namespace EdS.Game
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
                 _hud.Settings(_paused && open && notice == null, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
-                _hud.Clock(null);
+                _hud.Clock(a.EventBanner);   // sous-lot V2.5 : « En cours : L'attaque du hameau », « Bientôt : … »
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);
             }
