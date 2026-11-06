@@ -91,3 +91,19 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 | 6.8 | Quêtes du chapitre 5 : le loup blanc, les pierres gravées | Chacune se termine | [ ] | |
 | 6.9 | Tout au long : sauvegarde (**F6**, puis relancer Play) | On repart où on était | [ ] | |
 | 6.10 | Ton avis général : durée, difficulté, ce qui manque, ce que tu changerais | — | [ ] | |
+
+## 7. Les animaux (V2.4)
+
+Menu **Éclats du Seuil → Essai des animaux : …**, **hors du mode Jeu** (il avance la partie jusqu'au bon moment ; une copie de la sauvegarde est gardée, comme pour l'essai de la nuit). Détail : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 7.1 | « l'aube des cerfs », puis Play ; aller au sud du **lac des Aubes** (voyage rapide) | Trois **cerfs** fauves avec leurs bois (formes simples) ; message « Des cerfs sortent du bois… » si tu arrives avant eux | [ ] | |
+| 7.2 | T'approcher à moins de 9 m d'un cerf | **Toute la harde détale** au galop (pattes qui battent), s'arrête à 14 m et te regarde ; tu ne peux pas les rattraper (ils courent plus vite que toi) | [ ] | |
+| 7.3 | Passer la porte du moulin, aller à la **lisière ouest de la forêt des Loups** (trois autres cerfs) ; les pousser vers les loups | Un cerf qui passe près d'un loup le fait **chasser** : le loup le poursuit (il ne le rattrape pas), puis lâche | [ ] | |
+| 7.4 | « le crépuscule des lièvres », puis Play ; aller aux **champs du sud** | Des **lièvres** gris (longues oreilles) qui bondissent quand on approche (6 m) | [ ] | |
+| 7.5 | « la brume (loups gris et échos) », puis Play | Message « La brume monte de la rivière… » ; **trois loups gris** au nord des champs du sud ; deux **échos** pâles (lac et ruines) | [ ] | |
+| 7.6 | Attirer un loup gris jusqu'aux **sangliers** des champs (à 15 m d'eux), puis reculer | **Loup et sanglier se battent** : morsures, charges ; tu peux t'en mêler. Une bête tuée par une autre ne te donne ni expérience ni butin | [ ] | |
+| 7.7 | Attendre que la brume se lève (vers 9 h du monde) | Les loups gris et les échos s'en vont dès qu'ils ne se battent plus | [ ] | |
+| 7.8 | Une **averse** de jour (essai de la météo) | Les cerfs ne sont plus là (ils s'abritent) ; ils reviennent après la pluie | [ ] | |
+| 7.9 | Ton avis : nombre de bêtes, vitesse de fuite, distance (9 m), loups gris le matin dès le niveau 1 | — | [ ] | |

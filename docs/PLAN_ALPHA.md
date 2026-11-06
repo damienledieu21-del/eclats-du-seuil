@@ -181,6 +181,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Dépend de V1.10.
 - Formats : **règles et moteur** (créatures hostiles entre elles), zone, nouveaux journaux figés.
 - **Suite de V2.2** (réponse de Damien du 6 novembre 2026) : plus d'échos et de loups par brume, avec une zone en schéma 9 (populations selon le temps), sans gêner les quêtes ni l'étoile des chasses.
+- **État** (6 novembre 2026, PR en brouillon) : quatre équipes de créatures avec des **trêves** (la meute et le gibier se battent ; bandits et échos à part), coups réduits de moitié entre bêtes, une bête ne court qu'après une bête qu'elle voit ; **six cerfs** (aube et jour, abrités sous l'averse) et **quatre lièvres** (crépuscule et nuit) qui **fuient** en harde ; **trois loups gris et deux échos de la brume** (zones en schéma 9, `weather`) ; une bête tuée par une autre ne donne rien ; formes simples sous Unity et menu « Essai des animaux ». Moteur 0.28.0, journal 22, scénarios 16, règles 15 (0.16.0), instantané 5, nouvelle référence figée ; sauvegarde inchangée (12) ([MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24)). Reste l'essai de Damien sous Unity.
 
 ### 17. V2.5 — Événements du monde : attaque du hameau, faille du Seuil (L)
 

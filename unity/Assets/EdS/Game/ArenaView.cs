@@ -34,6 +34,9 @@ namespace EdS.Game
 
         /// <summary>Essai de style : corps habillés d'un modèle (aucun sans catalogue).</summary>
         private readonly Dictionary<string, StyleBody> _looks = new Dictionary<string, StyleBody>();
+
+        /// <summary>Sous-lot V2.4 : bêtes paisibles dessinées en formes simples (cerfs, lièvres), par combattant.</summary>
+        private readonly Dictionary<string, WildlifeLook> _wild = new Dictionary<string, WildlifeLook>();
         private GameObject _shield;
         private Renderer _shieldRenderer;
         private GameObject _targetRing;
@@ -140,6 +143,7 @@ namespace EdS.Game
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
             _looks.Clear();
+            _wild.Clear();
             _renderers.Clear();
             foreach (Material material in _glowing.Values)
                 if (material != null) Object.Destroy(material);
@@ -262,6 +266,8 @@ namespace EdS.Game
             StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
             if (!player && NightLamps.IsEcho(id)) Echo(body);   // sous-lot V2.1 : les échos de la nuit
+            // Sous-lot V2.4 : un cerf ou un lièvre sans modèle prend sa forme simple (corps, pattes, bois ou oreilles).
+            if (!player && look == null && Wildlife.KindOf(id) is WildlifeKind kind && kind != WildlifeKind.None) _wild[id] = new WildlifeLook(body, kind);
         }
 
         /// <summary>
@@ -606,8 +612,13 @@ namespace EdS.Game
             // Essai de style : les modèles suivent l'allure affichée de leur corps.
             if (_looks.TryGetValue(combat.PlayerId, out StyleBody mine)) mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);
             foreach (OtherState other in combat.Others())
+            {
                 if (_looks.TryGetValue(other.Id, out StyleBody look) && _bodies.TryGetValue(other.Id, out GameObject shown) && shown.activeSelf)
                     look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime);
+                // Sous-lot V2.4 : les bêtes paisibles galopent ou bondissent quand elles fuient.
+                if (_wild.TryGetValue(other.Id, out WildlifeLook wild) && _bodies.TryGetValue(other.Id, out GameObject animal) && animal.activeSelf)
+                    wild.Update(animal.transform.position, other.View.IsDead, Time.deltaTime);
+            }
 
             if (player.TargetId != null && _bodies.TryGetValue(player.TargetId, out GameObject target) && target.activeSelf)
             {
