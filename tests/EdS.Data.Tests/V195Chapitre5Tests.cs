@@ -444,6 +444,8 @@ public class V195Chapitre5Tests
     {
         // V1.10.1 : une partie arrêtée au chapitre 1 avant les quatre étapes passées reste telle quelle (même objet, quête suivie comprise) ;
         // le chapitre 5 n'est pas commencé et aucun fait n'est ajouté.
+        Assert.True(StoryConversions.Applies(Story.Value));
+        Assert.True(Story.Value.Quest(Ch1).StepIndex(step) >= 0);   // l'étape existe vraiment au chapitre 1
         var old = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress> { [Ch1] = new QuestProgress(step) },
             new Dictionary<string, int> { ["npc.odile"] = 1 }, new string[0], tracked: Ch1);
         SavedStory converted = StoryConversions.Upgrade(Story.Value, old);

@@ -601,6 +601,19 @@ Nouveaux objets : le collier ; le **chapeau-de-lune** (matière, valeur 25 cuivr
 
 Limites : les victoires sont annoncées au pilote sans livrer le combat (combats et récolte ont leurs tests) ; le chat et le seau sont des objets du sac (pas de chat qui suit le joueur) ; Odile n'a pas de réplique de nuit (seize entrées) ; « La garde de nuit » attend le crépuscule ou la nuit (de 19 h à 5 h du monde, soit un peu moins de la moitié d'une journée de trois heures) ; une ouverture passée compte, comme une ouverture finie, pour la réputation de guilde à l'inscription (quête principale finie) ; le collier a l'icône de l'amulette, les objets de quête l'icône provisoire ; le puits n'est pas dessiné (le lieu `moulin` suffit).
 
+**Questions réglées (réponses de Damien du 6 novembre 2026 aux 12 questions de la PR A2 : toutes les recommandations sont retenues)** :
+- la garde du village se tient au crépuscule ou la nuit ;
+- le collier de Croc-Gris reste tel quel, et le croc reste au catalogue ;
+- le tutoriel passé compte pour la guilde ;
+- Odile est limitée à 16 entrées ;
+- les loups sont placés en (−2, 23) et (−23, 37) ;
+- le premier contrat se fait avec le sanglier de niveau 6 ;
+- les champignons se trouvent après la porte du moulin ;
+- le chat et le seau sont des objets du sac pour l'instant ;
+- les indices de la vieille porte restent sans réponse pour l'instant (à résoudre plus tard) ;
+- le choix d'Aldric a trois réponses ;
+- **suite à faire** : plus tard, une réplique de Brunehilde à l'inscription, quand Bérenger envoie le joueur à la guilde (notée aussi dans [PLAN_ALPHA.md](PLAN_ALPHA.md), V1.10).
+
 ## Sauvegarde
 
 Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 10 depuis le sous-lot V1.7 (carte d'aventurier `story.guild`, facultative : absente tant que le personnage n'est pas inscrit ; créatures rares déjà vaincues `story.hunted`, facultatif : absent s'il n'y en a aucune) ; version 9 au sous-lot V1.3 (instances d'objets) ; version 8 au sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Les versions 9 et plus anciennes se relisent sans carte (`guild` y est refusé, champ inconnu). Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :

@@ -20,7 +20,22 @@ namespace EdS.Game.Editor
     /// </summary>
     public static class EdsEssaiTools
     {
+        private const string PlayFlag = "EdS.EssaiLancerLeJeu";
         private const string BackupFolderName = "EdS-Sauvegardes";
+
+        [InitializeOnLoadMethod]
+        private static void AfterReload() => StartPlayIfAsked();
+
+        private static void StartPlayIfAsked()
+        {
+            if (!SessionState.GetBool(PlayFlag, false)) return;
+            EditorApplication.delayCall += () =>
+            {
+                if (!SessionState.GetBool(PlayFlag, false)) return;
+                SessionState.SetBool(PlayFlag, false);   // une seule fois
+                if (!EditorApplication.isPlayingOrWillChangePlaymode) EditorApplication.isPlaying = true;
+            };
+        }
 
         [MenuItem("Éclats du Seuil/Sauvegarder le dossier des ressources")]
         private static void BackupFromMenu()
@@ -65,10 +80,30 @@ namespace EdS.Game.Editor
                     tmp = null;
                     return false;
                 }
-                ZipFile.CreateFromDirectory(source, tmp, System.IO.Compression.CompressionLevel.Fastest, true);
-                File.Move(tmp, target);
+                Zip(source, tmp);
+                // Relecture : le zip s'ouvre et contient autant d'entrées que de fichiers copiés.
+                int expected = Directory.GetFiles(source, "*", SearchOption.AllDirectories).Length, found;
+                using (ZipArchive check = ZipFile.OpenRead(tmp)) found = check.Entries.Count;
+                if (found != expected)
+                {
+                    message = "Échec : le zip contient " + found + " fichiers au lieu de " + expected + ". Il est laissé en place, incomplet : " + tmp + "\nRien du projet n'a été supprimé.";
+                    tmp = null;
+                    return false;
+                }
+                try
+                {
+                    File.Move(tmp, target);
+                }
+                catch (Exception moveError)
+                {
+                    message = "Zip complet (" + found + " fichiers) mais non renommé : " + moveError.Message + "\nIl est ici, utilisable après avoir enlevé « .incomplet » du nom : " + tmp;
+                    tmp = null;
+                    return false;
+                }
                 tmp = null;
-                message = "Réussi : sauvegarde du dossier Assets/Style enregistrée dans\n" + target + "\n(hors du projet ; rien n'a été supprimé).";
+                string cloud = target.IndexOf("OneDrive", StringComparison.OrdinalIgnoreCase) >= 0
+                    ? "\nAttention : ce dossier est dans OneDrive, le zip sera envoyé dans le nuage (prend de la place en ligne)." : "";
+                message = "Réussi : " + found + " fichiers sauvegardés (dossier Assets/Style) dans\n" + target + "\n(hors du projet ; rien n'a été supprimé)." + cloud;
                 return true;
             }
             catch (Exception e)
@@ -76,6 +111,25 @@ namespace EdS.Game.Editor
                 message = "Échec : " + e.Message + (tmp != null ? "\nFichier incomplet laissé en place (tu peux le supprimer toi-même) : " + tmp : "")
                     + "\nVérifie la place libre sur le disque et les droits du dossier Documents. Rien du projet n'a été supprimé.";
                 return false;
+            }
+        }
+
+        private static void Zip(string source, string zipPath)
+        {
+            try
+            {
+                string[] files = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
+                using (ZipArchive zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+                    for (int i = 0; i < files.Length; i++)
+                    {
+                        if (i % 20 == 0) EditorUtility.DisplayProgressBar("Sauvegarde des ressources", i + " / " + files.Length + " fichiers", (float)i / files.Length);
+                        string entry = "Style/" + files[i].Substring(source.Length).TrimStart('/', '\\').Replace('\\', '/');
+                        zip.CreateEntryFromFile(files[i], entry, System.IO.Compression.CompressionLevel.Fastest);
+                    }
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
@@ -107,11 +161,9 @@ namespace EdS.Game.Editor
                 }
                 EditorSceneManager.OpenScene(EdsStartupScene.ScenePath);
             }
-            // 4. Mode Jeu, une fois Unity redevenu disponible.
-            EditorApplication.delayCall += () =>
-            {
-                if (!EditorApplication.isPlayingOrWillChangePlaymode) EditorApplication.isPlaying = true;
-            };
+            // 4. Mode Jeu. Le drapeau survit à un rechargement de domaine (la préparation peut recompiler) : au chargement, il relance le mode Jeu une fois.
+            SessionState.SetBool(PlayFlag, true);
+            StartPlayIfAsked();
         }
     }
 }
