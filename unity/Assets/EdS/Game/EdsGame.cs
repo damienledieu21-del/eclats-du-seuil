@@ -526,11 +526,11 @@ namespace EdS.Game
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
-            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).
             if (_companions == null) _companions = new CompanionsView();
             _companions.Sync(Companions.Shown(a.World.Inventory, CompanionTrial.Forced), _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
                 _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
+            _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
             UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
