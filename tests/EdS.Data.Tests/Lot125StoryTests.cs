@@ -302,7 +302,7 @@ public class Lot125StoryTests
         Assert.Equal("en_cours", again!.Node);
         // Tout est gardé dans la sauvegarde (version 4), et relu tel quel.
         SavedStory saved = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!.Character!.Story;
-        Assert.Equal(new[] { "fact.odile.vexee", "fact.traces.recit" }, saved.Facts);
+        Assert.Equal(new[] { "fact.met.odile", "fact.odile.vexee", "fact.traces.recit" }, saved.Facts);   // V1.9.10 : « déjà rencontré » d'Odile
         Assert.Equal(new QuestProgress("traces"), saved.Quests[Mission]);
         Assert.Equal(-1, saved.Trust["npc.odile"]);
     }

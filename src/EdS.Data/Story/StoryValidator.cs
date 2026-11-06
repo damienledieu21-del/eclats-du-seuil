@@ -222,6 +222,15 @@ namespace EdS.Data.Story
         private static readonly Regex NpcId = Id("npc"), DialogueId = Id("dialogue"), QuestId = Id("quest"), FactId = Id("fact"), DiscoveryId = Id("discovery"), SceneId = Id("scene");
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
+        /// <summary>
+        /// Sous-lot V1.9.10 : préfixe des faits « déjà rencontré » (« fact.met.renart » pour « npc.renart »). Posés par le cœur au premier
+        /// dialogue avec le PNJ, jamais par un effet <c>setFact</c> ; une condition <c>fact</c> ou <c>notFact</c> peut les lire (schéma 9 inchangé).
+        /// </summary>
+        public const string MetFactPrefix = "fact.met.";
+
+        /// <summary>Fait « déjà rencontré » du PNJ <paramref name="npcId"/> (« npc.renart » donne « fact.met.renart »).</summary>
+        public static string MetFact(string npcId) => MetFactPrefix + (npcId.StartsWith("npc.", StringComparison.Ordinal) ? npcId.Substring(4) : npcId);
+
         public static bool IsFactId(string? id) => id != null && id.Length <= 200 && FactId.IsMatch(id);
 
         /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs), où un PNJ peut vivre (<c>zone</c>) ; null : aucune.</param>
@@ -380,6 +389,8 @@ namespace EdS.Data.Story
                 CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
+                // Sous-lot V1.9.10 : le premier dialogue avec chaque PNJ apprend son fait « déjà rencontré ».
+                foreach (string npcId in _npcs) _factsSet.Add(MetFact(npcId));
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
@@ -797,7 +808,7 @@ namespace EdS.Data.Story
                     }
                     bool ok = kind switch
                     {
-                        EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p),
+                        EffectKind.SetFact => Fact(t, p, needed: false) && NoValue(t, p) && NotMetFact(t, p),
                         EffectKind.Trust => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NonZero(t, p),
                         EffectKind.StartQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p),
                         EffectKind.SkipQuest => Ref(t, p, _quests.Keys, "quête") && NoValue(t, p) && Skippable(t, p),   // sous-lot V1.9.7
@@ -853,6 +864,13 @@ namespace EdS.Data.Story
                     _ => Ref(t, path, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, path),
                 };
                 return ok ? new Objective(kind, t.Id!, t.Value ?? 1, t.Npc, kind == ObjectiveKind.CraftQuality ? Qualities[t.Quality!] : ItemQuality.Normal) : null;
+            }
+
+            private bool NotMetFact(TermData t, string p)
+            {
+                if (t.Id is null || !t.Id.StartsWith(MetFactPrefix, StringComparison.Ordinal)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"fait « {t.Id} » réservé : « {MetFactPrefix}… » est appris par le cœur au premier dialogue avec le PNJ.");
+                return false;
             }
 
             private bool Fact(TermData t, string p, bool needed)

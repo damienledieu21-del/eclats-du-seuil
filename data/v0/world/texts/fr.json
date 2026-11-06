@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1377,7 +1377,19 @@
       "text.activity.veillee": "à la veillée",
       "text.activity.herbes": "au jardin des simples",
       "text.activity.verger": "au verger",
-      "text.ui.trade.away": "{0} n'est pas à son étal à cette heure : on le trouve {1}, et sa boutique avec lui."
+      "text.ui.trade.away": "{0} n'est pas à son étal à cette heure : on le trouve {1}, et sa boutique avec lui.",
+      "text.v1910.odile.retrouvailles": "Te revoilà. Entre dans la cour, pas dans la boue. Les griffes, elles, sont revenues avant toi.",
+      "text.v1910.armurier.retrouvailles": "Encore toi. Bien : un client qui revient, c'est un client qui a survécu. Regarde, touche, ne fais pas tomber.",
+      "text.v1910.herboriste.retrouvailles": "Te revoilà, avec tes deux bras. Bon signe. L'herbe de l'aube, elle, n'a pas bougé de place.",
+      "text.v1910.epiciere.retrouvailles": "Mon petit, te revoilà ! Les bons clients, on les reconnaît à leur retour. Les autres, à leurs dettes.",
+      "text.v1910.aubergiste.retrouvailles": "Te revoilà ! Le banc t'a manqué, avoue. Je ne le dirai à personne, ça ruinerait ma réputation.",
+      "text.v1910.pretre.retrouvailles": "Que l'Aube te garde, voyageur. Tu reviens : la chapelle n'oublie pas ceux qui reviennent.",
+      "text.v1910.habitant.retrouvailles": "Encore toi ! Entre, entre, et essuie-toi les pieds : j'ai tout lavé, et le chat a tout salopé.",
+      "text.v1910.maitresse_guilde.retrouvailles": "Te revoilà à la Maison de la Guilde. Le tableau est là, le feu aussi. Sers-toi de l'un ou de l'autre.",
+      "text.v1910.archer_garde.retrouvailles": "Halte ! … Ah, c'est toi. Passe, passe. Je m'exerçais à faire peur ; ça ne marche que sur les sangliers.",
+      "text.v1910.albe.retrouvailles": "Que l'Aube vous garde de nouveau, voyageur. Vous revenez : c'est rare, ici, et ce n'est pas désagréable.",
+      "text.v1910.renart.retrouvailles": "Vous revoilà. Je savais que vous reviendriez : on revient toujours chez celui qui dit les choses au juste prix. Le mien.",
+      "text.v1910.capitaine.retrouvailles": "Encore toi. Tant mieux : une recrue qui revient vaut mieux qu'un archer qui perd ses flèches."
     }
   }
 }

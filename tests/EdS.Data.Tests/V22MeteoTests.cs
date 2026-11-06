@@ -279,7 +279,7 @@ public sealed class V22MeteoTests : IDisposable
     {
         StoryBook book = Book(Shipped.Value);
         // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
-        Assert.Equal((9, StoryValidator.CurrentSchemaVersion, "0.15.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((9, StoryValidator.CurrentSchemaVersion, "0.16.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();
@@ -360,6 +360,9 @@ public sealed class V22MeteoTests : IDisposable
             ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         w.Step();
         Assert.Equal(kind, w.Weather.Kind);
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.fermiere", out DialogueView? first));
+        Assert.Equal("ch3_accueil", first!.Node);   // V1.9.10 : jamais rencontrée, Garance se présente d'abord
+        w.Narrative!.Close();
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.fermiere", out DialogueView? view));
         Assert.Equal(node, view!.Node);
         // La réplique garde les réponses de l'accueil (rien n'est perdu : « partir »).
@@ -382,8 +385,9 @@ public sealed class V22MeteoTests : IDisposable
             for (int i = first; i < entries.Count - 1; i++)
             {
                 JsonArray conditions = entries[i]!["conditions"]!.AsArray();
-                Assert.Single(conditions);
+                Assert.Equal(2, conditions.Count);   // V1.9.10 : le temps, et « déjà rencontré » (jamais avant la présentation)
                 Assert.Equal("weather", conditions[0]!["if"]!.GetValue<string>());
+                Assert.Equal("fact", conditions[1]!["if"]!.GetValue<string>());
             }
             JsonObject last = entries[entries.Count - 1]!.AsObject();
             Assert.Empty(last["conditions"]!.AsArray());
@@ -420,17 +424,22 @@ public sealed class V22MeteoTests : IDisposable
     [InlineData("npc.capitaine", "La garde des Vallons, c'est moi")]
     public void Premier_contact_sous_la_pluie_la_presentation_est_dite(string npc, string presentation)
     {
-        // Relecture de la PR #101 : aucun fait « déjà rencontré » (et un nœud ne pose pas de fait) : la réplique de pluie de Renart et du
-        // capitaine reprend leur présentation, pour qu'un premier contact sous la pluie la donne quand même.
+        // Relecture de la PR #101 : la réplique de pluie de Renart et du capitaine reprend leur présentation ; depuis V1.9.10, le
+        // premier contact la donne par l'accueil lui-même.
         GroundVector at = Book(Shipped.Value).Npc(npc).Position;
         (long day, int minute) = Find(WeatherKind.Shower);
         ZoneDefinition zone = Zone(at.X.Raw / 10000.0, at.Z.Raw / 10000.0 - 1.5);
         var w = new WorldSession(new WorldSave(Vallons, TickAt(day, minute), 0, new[] { PlayerCharacters.PlacesKey }, Hero(100)), zone, ShippedData, Progression,
             ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         w.Step();
+        // V1.9.10 : le fait « déjà rencontré » existe : le premier accueil sous la pluie est la présentation elle-même ; la réplique de pluie
+        // ne vient qu'aux dialogues suivants.
+        Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? first));
+        Assert.Contains(presentation, Texts.Get(first!.Text), StringComparison.Ordinal);
+        Assert.NotEqual("v22_pluie", first.Node);
+        w.Narrative!.Close();
         Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? view));
         Assert.Equal("v22_pluie", view!.Node);
-        Assert.Contains(presentation, Texts.Get(view.Text), StringComparison.Ordinal);
         Assert.Contains(presentation, Texts.Get("text.v22.capitaine.orage") + Texts.Get("text.v22.renart.pluie"), StringComparison.Ordinal);
     }
 

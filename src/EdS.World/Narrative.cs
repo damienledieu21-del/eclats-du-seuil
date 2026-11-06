@@ -287,6 +287,9 @@ namespace EdS.World
         /// <summary>Dialogue ouvert ; réponses du 31 octobre 2026 : nœud null quand le PNJ n'a rien à dire mais qu'on peut lui livrer.</summary>
         private (string Npc, Dialogue Dialogue, DialogueNode? Node)? _open;
 
+        /// <summary>Sous-lot V1.9.10 : fait « déjà rencontré » appris à l'ouverture du dialogue en cours (premier dialogue avec ce PNJ), ou null.</summary>
+        private string? _firstMet;
+
         /// <summary>Réponses du 31 octobre 2026 : texte de la réponse de livraison (« Voici : {1} ×{0}. »).</summary>
         public const string DeliverText = "text.dialogue.livrer";
 
@@ -469,6 +472,11 @@ namespace EdS.World
                 _open = (npc, d, null);
             }
             else _open = (npc, d, d.Node(entry.Node));
+            // Sous-lot V1.9.10 : premier dialogue avec ce PNJ ? Son fait « déjà rencontré » est appris maintenant (rien d'autre ne change : la
+            // sauvegarde garde un fait de plus), mais reste « inconnu » pour les conditions tant que ce dialogue est ouvert (Known).
+            string met = StoryValidator.MetFact(npc);
+            _firstMet = _facts.Add(met) ? met : null;
+            if (_firstMet != null) Revision++;
             view = View(npc, _open.Value.Node);
             return DialogueRefusal.None;
         }
@@ -1111,12 +1119,15 @@ namespace EdS.World
 
         // --- Conditions et effets ----------------------------------------------------------------
 
+        /// <summary>Fait appris, sauf le « déjà rencontré » du premier dialogue encore ouvert (V1.9.10) : le premier accueil dure tout ce dialogue.</summary>
+        private bool Known(string fact) => _facts.Contains(fact) && !(_open != null && fact == _firstMet);
+
         private bool All(IReadOnlyList<StoryCondition> conditions) => conditions.All(Holds);
 
         private bool Holds(StoryCondition c) => c.Kind switch
         {
-            ConditionKind.Fact => _facts.Contains(c.Id),
-            ConditionKind.NotFact => !_facts.Contains(c.Id),
+            ConditionKind.Fact => Known(c.Id),
+            ConditionKind.NotFact => !Known(c.Id),
             ConditionKind.QuestNotStarted => !_quests.ContainsKey(c.Id),
             // Relecture de la PR #76 : une quête qui attend le choix de sa récompense n'est plus « en cours » pour les dialogues (questReward).
             ConditionKind.QuestActive => IsActive(c.Id) && !IsChoosingReward(c.Id),
