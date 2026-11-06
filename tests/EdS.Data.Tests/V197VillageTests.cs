@@ -138,7 +138,7 @@ public class V197VillageTests
     [Fact]
     public void Histoire_en_schema_7_avec_skipQuest()
     {
-        Assert.Equal((7, 7), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));
+        Assert.Equal((8, 8), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.2 : schéma 8 (weather)
         Assert.Equal(EffectKind.SkipQuest, StoryValidator.Effects["skipQuest"]);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -162,17 +162,23 @@ public class V197VillageTests
         int opening = quests.ToList().FindIndex(x => x!["id"]!.GetValue<string>() == Opening);
         Assert.Contains(refused.Report.Errors, e => e.Path == $"$.data.quests[{opening}].skippable" && e.Code == ValidationCode.InvalidValue);
         foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
+        {
             foreach (JsonNode? node in dialogue!["nodes"]!.AsArray())
             {
                 JsonArray choices = node!["choices"]!.AsArray();
                 for (int i = choices.Count - 1; i >= 0; i--)
                     if (choices[i]!.ToJsonString().Contains("skipQuest")) choices.RemoveAt(i);
             }
+            // Sous-lot V2.2 : sans les répliques du temps (condition weather, schéma 8).
+            JsonArray entries = dialogue["entries"]!.AsArray();
+            for (int i = entries.Count - 1; i >= 0; i--)
+                if (entries[i]!.ToJsonString().Contains("\"weather\"")) entries.RemoveAt(i);
+        }
         quests[opening]!.AsObject().Remove("skippable");
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
-        root["schemaVersion"] = 8;
+        root["schemaVersion"] = 9;   // V2.2 : la version 8 est la version courante
         Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
     }
 

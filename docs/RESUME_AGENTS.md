@@ -41,7 +41,7 @@
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v8 (v7 encore lue) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v7 (v4, v5 et v6 encore lues) | `Story/StoryValidator.cs` |
+| Histoire (schéma) | v8 (v4 à v7 encore lues) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.27.0-contenu-0.6.0-regles-0.15.0`.

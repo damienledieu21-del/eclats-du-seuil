@@ -48,6 +48,12 @@ namespace EdS.Data.Story
         /// rang : « g », « f », « e »…). Rang G : inscrit.
         /// </summary>
         GuildRankAtLeast = 14,
+
+        /// <summary>
+        /// Sous-lot V2.2 (histoire en schéma 8) : circonstance temporaire : le temps qu'il fait dehors (<c>clear</c>, <c>cloudy</c>,
+        /// <c>mist</c>, <c>drizzle</c>, <c>shower</c>, <c>storm</c>, ou <c>rain</c> : n'importe quelle pluie).
+        /// </summary>
+        Weather = 15,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>

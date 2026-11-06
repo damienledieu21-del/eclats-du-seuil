@@ -108,12 +108,12 @@ public class V199Chapitre1MaxTests
     {
         ItemCatalog items = ItemJsonReader.ReadFile(Path.Combine(DataDirectory, "world", "items.json"), ShippedData).Catalog!;
         Assert.Equal((7, 7, "0.13.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
-        Assert.Equal((7, "0.13.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
+        Assert.Equal((8, "0.14.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.2 : schéma 8 (weather), contenu 0.14.0
         Assert.Equal("0.7.0-provisoire", ShippedMerchants.ContentVersion);
         Assert.Equal("0.7.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.2.0-provisoire", Guilde.Value.ContentVersion);
         Assert.Equal((8, "0.11.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));
-        Assert.Equal("0.12.0-provisoire", Texts.ContentVersion);
+        Assert.Equal("0.13.0-provisoire", Texts.ContentVersion);   // V2.2 : répliques du temps
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(old.Save())).Save!;

@@ -630,6 +630,28 @@ Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'AP
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; huit lumières de lanternes au plus éclairent vraiment (les plus proches de la caméra ; URP en applique quatre par objet, donc le terrain n'en reçoit que quatre) ; les bâtiments de Sketchfab n'ont que leur lanterne de porte (pas de fenêtres allumées) ; les ciels qui n'ont ni `_Exposure` ni `_Tint` gardent leur clarté.
 
+### Essai V2.2 : météo
+
+Le temps est tiré du **jour du monde** (le même jour a toujours le même temps, avant comme après un chargement) : huit tranches de 3 h du monde (22 min 30 s de jeu chacune), qui changent en douceur (environ 5 min 30 s de jeu). Le jour 0 (début d'une nouvelle partie) est toujours beau. Détail : [MONDE.md](MONDE.md#météo-sous-lot-v22).
+
+**Pour le voir sans l'attendre**, menu **Éclats du Seuil → Essai de la météo : …** (pluie fine, averse, orage, brume du matin, ciel couvert, temps clair) :
+
+- **hors du mode Jeu**, il avance la sauvegarde jusqu'au prochain moment où il fait ce temps (seul le temps du monde avance, comme l'essai de la nuit) : tout est vrai, répliques des villageois comprises. Avant d'écrire, une copie est gardée à côté (`vallons.json.essai-<date-heure>.bak`, jamais écrasée ; l'essai de la nuit fait de même) ;
+- **en mode Jeu**, il force seulement l'affichage et le son de pluie (rien ne change dans la partie, les villageois parlent du vrai temps) ; « temps du monde (ne plus forcer) » rend le temps tiré du jour.
+
+À vérifier, dans l'ordre :
+
+1. **Pluie fine puis averse** : des gouttes fines et un peu penchées tombent autour du personnage, des petites éclaboussures au sol ; le ciel se couvre, la lumière baisse et grisonne **sans saut**, la brume se rapproche un peu ; les **flaques** apparaissent peu à peu sur les chemins et **sèchent** en environ un quart d'heure de jeu après la pluie. Les passants du bourg rentrent sous l'averse (un sur trois reste dehors) ; pas sous la pluie fine.
+2. **Orage** (rare : l'après-midi ou le soir) : **éclairs** (la scène s'éclaire deux fois très vite, en blanc bleuté), puis le **tonnerre** une demi-seconde à cinq secondes plus tard (plus fort et plus tôt quand l'orage est là) ; les lanternes s'allument en plein jour. Dans une maison : ni gouttes ni éclairs, la pluie sur le toit et le tonnerre assourdi.
+3. **Brume du matin** (de 4 h à 9 h 30 du monde, un jour sur trois environ) : une brume blanche et proche (rose à l'aube), qui se lève doucement vers 9 h.
+4. **La nuit sous la pluie reste bleue et lisible** (V2.1) : on voit toujours le chemin et les loups.
+5. **Répliques** : sous la pluie, Firmin, Renart, Maëlle, Achille, Josse, le capitaine, Aldric, Bertille et Garance parlent du temps ; sous l'orage, Firmin, le capitaine et frère Anselme ; dans la brume, Achille, Josse, Aldric et Sauge (quand ils n'ont pas une quête à dire).
+6. **Réglages** : aucun curseur nouveau ; la clarté se règle toujours avec ceux du catalogue (Night Brightness, Exposure…).
+
+**Sons (facultatifs, choix de Damien : il dépose lui-même des fichiers CC0)** : dans **`unity/Assets/Style/Ambience/`**, noms conseillés **`pluie.ogg`** (une boucle de pluie, 1 à 3 minutes) et **`orage_tonnerre.ogg`** (un seul coup de tonnerre, 3 à 8 secondes). Le code reconnaît tout fichier de ce dossier dont le nom contient `pluie`, `rain` ou `averse` (la nappe de pluie, en boucle ; un fichier « thunderstorm_rain » compte comme pluie) et `orage`, `thunder` ou `tonnerre` (le coup de tonnerre, joué une fois après chaque éclair, jamais en boucle). Formats : `.ogg` (conseillé), `.wav`, `.mp3`, `.aiff`. Puis menu **Éclats du Seuil → Préparer l'essai de style**. **Sans ces fichiers, le jeu marche** : une pluie et un tonnerre de synthèse (faits une fois au démarrage) les remplacent. **Déposés chez Damien le 6 novembre 2026** : `pluie.ogg` (BigSoundBank n° 1290) et `orage_tonnerre.ogg` (BigSoundBank n° 3114), tous deux CC0 ([crédits](CREDITS.md)). Les deux suivent le curseur **Ambience Volume** du catalogue (0 : muets), le tonnerre comme la pluie. Déposés aussi le même jour dans **`Assets/Style/Sounds/RPG`** : `anvil_1.ogg` et `anvil_2.ogg` (BigSoundBank n° 3590, « Anvil #2 », CC0, découpés ; reconnus par le mot `anvil` : son de la forge) et `potion_drink.ogg` (n° 3247, « Drink from the gourd #1 », CC0, découpé ; mots `potion`, `drink` : potion bue). Revue Codex de la PR #101 : la colonne de pluie suit la hauteur de la caméra (`WeatherCycle.RainColumn`) : de près comme de 25 m de haut, les gouttes touchent le sol.
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les flaques sont des disques sombres et lisses (aucun reflet calculé : elles prennent le ciel par la réflexion d'URP) ; le sol lui-même ne devient pas brillant ; sans brume au catalogue, celle de la météo part de 30 à 180 m avec la couleur de brume du catalogue ; la pluie ne passe pas sous les toits (les gouttes traversent les auvents).
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

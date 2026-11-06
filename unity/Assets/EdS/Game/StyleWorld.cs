@@ -105,39 +105,47 @@ namespace EdS.Game
             // Sous-lot V2.1 : la lumière de l'heure (facteurs sur les réglages du catalogue, qui restent ceux du plein jour).
             DayLight light = _hasLight ? _light : DayCycle.At(12 * 60);
             if (Application.isEditor && catalog.PreviewHour >= 0f) light = DayCycle.At(catalog.PreviewHour * 60f);
+            // Sous-lot V2.2 : le temps (facteurs par-dessus l'heure ; temps clair : aucun changement).
+            WeatherLook weather = _weather;
             float ambient = (float)light.AmbientLevel;
             // La clarté de la nuit se règle dans le catalogue (1 : la nuit prévue) ; elle ne touche pas le jour.
-            ambient = Mathf.Min(1f, ambient * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night));
-            Color ambientTint = Tint(light.AmbientTint) * ambient;
+            ambient = Mathf.Min(1f, ambient * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night)) * (float)weather.Ambient;
+            Color ambientTint = Tint(light.AmbientTint) * Tint(weather.AmbientTint) * ambient;
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = catalog.AmbientSky * ambientTint;
             RenderSettings.ambientEquatorColor = catalog.AmbientHorizon * ambientTint;
             RenderSettings.ambientGroundColor = catalog.AmbientGround * ambientTint;
-            RenderSettings.fog = catalog.FogEnd > catalog.FogStart;
+            // Sous-lot V2.2 : sans brume au catalogue, la brume du matin et la pluie en posent une quand même (de 30 à 180 m par temps clair).
+            bool catalogFog = catalog.FogEnd > catalog.FogStart;
+            bool weatherFog = weather.FogEnd < 0.95;
+            float fogStart = catalogFog ? catalog.FogStart : 30f, fogEnd = catalogFog ? catalog.FogEnd : 180f;
+            RenderSettings.fog = catalogFog || weatherFog;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = catalog.FogColor * Tint(light.FogTint);
+            RenderSettings.fogColor = catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint);
             if (_sky != null)
             {
-                if (_sky.HasProperty("_Exposure")) _sky.SetFloat("_Exposure", _skyExposure * (float)light.SkyLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night));
-                if (_sky.HasProperty("_Tint")) _sky.SetColor("_Tint", _skyTint * Tint(light.FogTint));
+                if (_sky.HasProperty("_Exposure"))
+                    _sky.SetFloat("_Exposure", _skyExposure * (float)light.SkyLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night) * (float)weather.Sky);
+                if (_sky.HasProperty("_Tint")) _sky.SetColor("_Tint", _skyTint * Tint(light.FogTint) * Tint(weather.FogTint));
             }
-            Lamps = (float)light.Lamps;
+            Lamps = Mathf.Max((float)light.Lamps, (float)weather.Lamps);
             NightShare = (float)light.Night;
-            RenderSettings.fogStartDistance = catalog.FogStart;
-            RenderSettings.fogEndDistance = catalog.FogEnd;
+            // La brume du matin et la pluie rapprochent la brume du catalogue (jamais à moins de 9 m : on voit toujours autour de soi).
+            RenderSettings.fogStartDistance = fogStart * (float)weather.FogStart;
+            RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd);
             if (_camera != null) _camera.farClipPlane = Mathf.Max(250f, catalog.FogEnd + 20f);
             if (_sun != null)
             {
                 // Le jour, le soleil du catalogue ; la nuit, la lune (froide, haute, à l'opposé) ; entre les deux, l'aube rose et le soir orangé.
                 _sun.color = catalog.SunColor * Tint(light.SunTint);
-                _sun.intensity = catalog.SunIntensity * (float)light.SunLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night);
+                _sun.intensity = catalog.SunIntensity * (float)light.SunLevel * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night) * (float)weather.Sun;
                 _sun.transform.rotation = Quaternion.Euler((float)light.Height(catalog.SunHeight), catalog.SunTurn + (light.Moon ? 180f : 0f), 0f);
             }
             if (_colors != null)
             {
-                _colors.postExposure.value = catalog.Exposure + (float)light.Exposure;
+                _colors.postExposure.value = catalog.Exposure + (float)light.Exposure + (float)weather.Exposure;
                 _colors.contrast.value = catalog.Contrast;
-                _colors.saturation.value = catalog.Saturation + (float)light.Saturation;
+                _colors.saturation.value = catalog.Saturation + (float)light.Saturation + (float)weather.Saturation;
                 _vignette.intensity.value = catalog.Vignette;
                 // Le halo coûte cher sur téléphone (Note8) : seulement sur ordinateur.
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
@@ -286,10 +294,22 @@ namespace EdS.Game
             _hasLight = light.HasValue;
             if (light.HasValue) _light = light.Value;
             // Sans catalogue (pas d'ambiance réaliste), les lanternes suivent quand même l'heure.
-            Lamps = light.HasValue ? (float)light.Value.Lamps : 0f;
+            Lamps = light.HasValue ? Mathf.Max((float)light.Value.Lamps, (float)_weather.Lamps) : 0f;
             NightShare = light.HasValue ? (float)light.Value.Night : 0f;
             Refresh();
         }
+
+        /// <summary>Sous-lot V2.2 : le temps montré (temps clair hors de l'aventure).</summary>
+        private static WeatherLook _weather = WeatherLook.Clear;
+
+        /// <summary>Sous-lot V2.2 : le temps montré (pluie, brume, sol mouillé), pour la météo et le décor.</summary>
+        public static WeatherLook Weather => _weather;
+
+        /// <summary>
+        /// Sous-lot V2.2 (météo) : le temps du monde (<see cref="WeatherCycle.Look"/>), appliqué par-dessus la lumière de l'heure ; null : temps
+        /// clair (entraînement, réseau). Appelée avant <see cref="SetDayLight"/>, qui l'applique.
+        /// </summary>
+        public static void SetWeather(WeatherLook? look) => _weather = look ?? WeatherLook.Clear;
 
         private static Color Tint(StyleTint t) => new Color((float)t.R, (float)t.G, (float)t.B);
 

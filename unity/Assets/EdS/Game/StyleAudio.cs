@@ -48,6 +48,8 @@ namespace EdS.Game
             }
             foreach (StyleAmbience kind in System.Enum.GetValues(typeof(StyleAmbience)))
             {
+                // Sous-lot V2.2 : le tonnerre n'est pas une nappe : il est joué une fois après chaque éclair (StyleWeather).
+                if (kind == StyleAmbience.Thunder) continue;
                 AudioClip clip = catalog.AmbienceClip(kind);
                 if (clip == null) continue;
                 AudioSource source = Source(_root, "Ambiance " + kind);
@@ -125,7 +127,8 @@ namespace EdS.Game
             {
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.
                 if (!layer.Value.isPlaying) layer.Value.Play();
-                float target = ambience * (float)StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors, mood.Night);
+                float target = ambience * (float)StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors, mood.Night,
+                    mood.Rain);   // sous-lot V2.2 : la nappe de pluie suit la pluie
                 layer.Value.volume = Mathf.MoveTowards(layer.Value.volume, target, deltaTime * 0.5f);
             }
         }

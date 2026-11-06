@@ -115,8 +115,13 @@ namespace EdS.Data.Story
         /// Version 7 (sous-lot V1.9.7, chapitre 1 enrichi, suite) : effet <c>skipQuest</c> (<c>id</c> d'une quête, sans valeur : la quête en
         /// cours est finie sans ses effets restants ni sa récompense ; voir <see cref="EffectKind.SkipQuest"/>). Les versions 4, 5 et 6 restent
         /// lues telles quelles (elles ne le connaissent pas).
+        /// Version 8 (sous-lot V2.2, météo) : condition <c>weather</c> (<c>id</c> parmi <see cref="Weathers"/>, sans valeur ni étape : le temps
+        /// qu'il fait dehors). Les versions 4 à 7 restent lues telles quelles (elles ne la connaissent pas).
         /// </summary>
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
+
+        /// <summary>Sous-lot V2.2 : version 7, encore lue (sans la condition <c>weather</c>).</summary>
+        public const int Schema7 = 7;
 
         /// <summary>Sous-lot V1.9.3b : plus ancienne version encore lue (sous-ensemble de la version 5, sans l'objectif <c>craftQuality</c>).</summary>
         public const int PreviousSchemaVersion = 4;
@@ -161,6 +166,7 @@ namespace EdS.Data.Story
             ["phase"] = ConditionKind.Phase, ["inPlace"] = ConditionKind.InPlace, ["passageOpen"] = ConditionKind.PassageOpen,
             ["levelAtLeast"] = ConditionKind.LevelAtLeast, ["questReward"] = ConditionKind.QuestReward,
             ["guildRankAtLeast"] = ConditionKind.GuildRankAtLeast,   // sous-lot V1.7
+            ["weather"] = ConditionKind.Weather,   // sous-lot V2.2
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -190,6 +196,12 @@ namespace EdS.Data.Story
 
         public static readonly IReadOnlyList<string> Phases = new ReadOnlyCollection<string>(new[] { "dawn", "day", "dusk", "night" });
 
+        /// <summary>
+        /// Sous-lot V2.2 : temps qu'une condition <c>weather</c> peut demander (ceux de <c>EdS.World.WorldWeather</c>) ; « rain » : n'importe
+        /// quelle pluie (pluie fine, averse, orage).
+        /// </summary>
+        public static readonly IReadOnlyList<string> Weathers = new ReadOnlyCollection<string>(new[] { "clear", "cloudy", "mist", "drizzle", "shower", "storm", "rain" });
+
         private static Regex Id(string prefix) => new Regex($@"^{prefix}(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
         private static readonly Regex NpcId = Id("npc"), DialogueId = Id("dialogue"), QuestId = Id("quest"), FactId = Id("fact"), DiscoveryId = Id("discovery"), SceneId = Id("scene");
@@ -211,6 +223,7 @@ namespace EdS.Data.Story
             // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
             // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6) ; sous-lot V1.9.7 : la version 6 aussi (sans skipQuest).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
+                || document.SchemaVersion == Schema7
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -566,9 +579,9 @@ namespace EdS.Data.Story
                         }
                 }
                 // Sous-lot V1.9.7 : « skippable » est nouveau en version 7.
-                if (q.Skippable != null && _schema < CurrentSchemaVersion)
+                if (q.Skippable != null && _schema < Schema7)
                 {
-                    _r.Add(path + ".skippable", ValidationCode.InvalidValue, $"champ « skippable » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path + ".skippable", ValidationCode.InvalidValue, $"champ « skippable » inconnu en version {_schema} du format : version {Schema7} demandée.");
                     ok = false;
                 }
                 return ok && rewards != null && requires != null && q.Id != null
@@ -601,6 +614,7 @@ namespace EdS.Data.Story
                         ConditionKind.TrustAtLeast or ConditionKind.TrustBelow => Ref(t, p, _npcs, "PNJ") && Value(t, p, -MaxTrust, MaxTrust) && NoStep(t, p),
                         ConditionKind.HasItem => ItemRef(t, p) && Value(t, p, 1, MaxCount) && NoStep(t, p),
                         ConditionKind.Phase => Ref(t, p, Phases, "moment de la journée") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.Weather => WeatherKnown(p) && Ref(t, p, Weathers, "temps") && NoValue(t, p) && NoStep(t, p),   // sous-lot V2.2
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -635,9 +649,9 @@ namespace EdS.Data.Story
                     }
                     if (!NoStep(t, p) || !NoNpc(t, p) || !NoQuality(t, p)) continue;
                     // Sous-lot V1.9.7 : skipQuest est nouveau en version 7.
-                    if (kind == EffectKind.SkipQuest && _schema < CurrentSchemaVersion)
+                    if (kind == EffectKind.SkipQuest && _schema < Schema7)
                     {
-                        _r.Add(p + ".do", ValidationCode.InvalidValue, $"effet « skipQuest » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                        _r.Add(p + ".do", ValidationCode.InvalidValue, $"effet « skipQuest » inconnu en version {_schema} du format : version {Schema7} demandée.");
                         continue;
                     }
                     if (kind == EffectKind.SkipQuest && !skip)
@@ -832,6 +846,14 @@ namespace EdS.Data.Story
                 _items.TryGetItem(t.Id!, out ItemDefinition item);
                 if (item.Slot != null) return true;
                 _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » ne se porte pas (aucun emplacement).");
+                return false;
+            }
+
+            /// <summary>Sous-lot V2.2 : la condition <c>weather</c> n'existe qu'à partir de la version 8 du format.</summary>
+            private bool WeatherKnown(string p)
+            {
+                if (_schema >= 8) return true;
+                _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « weather » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
                 return false;
             }
 

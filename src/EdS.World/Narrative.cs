@@ -218,6 +218,9 @@ namespace EdS.World
         int PassageRoom { get; }
         DayPhase Phase { get; }
 
+        /// <summary>Sous-lot V2.2 : le temps qu'il fait dehors (conditions <c>weather</c>).</summary>
+        WeatherKind Weather { get; }
+
         /// <summary>Position du personnage s'il est présent et vivant ; null sinon.</summary>
         GroundVector? PlayerPosition { get; }
 
@@ -1119,6 +1122,7 @@ namespace EdS.World
             ConditionKind.TrustBelow => Trust(c.Id) < c.Value,
             ConditionKind.HasItem => _world.Inventory.Count(c.Id) >= c.Value,
             ConditionKind.Phase => PhaseId(_world.Phase) == c.Id,
+            ConditionKind.Weather => WorldWeather.Matches(_world.Weather, c.Id),   // sous-lot V2.2
             ConditionKind.InPlace => _world.InPlace(c.Id),
             ConditionKind.LevelAtLeast => (_bonusXp > 0 ? _world.LevelWith(_bonusXp) : _world.Level) >= c.Value,   // sous-lot V1.6
             ConditionKind.GuildRankAtLeast => _card != null && _card.Rank >= GuildRanks.IndexOf(c.Id),   // sous-lot V1.7

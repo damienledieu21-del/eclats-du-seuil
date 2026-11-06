@@ -475,15 +475,35 @@ namespace EdS.Runtime
         /// Avance la sauvegarde <paramref name="path"/> jusqu'à <paramref name="minute"/> (horloge du monde de <paramref name="tickMilliseconds"/>
         /// ms par tick) ; rend le message à montrer. Rien n'est écrit si la sauvegarde manque ou ne se lit pas.
         /// </summary>
-        public static string MoveSave(string path, int minute, long tickMilliseconds = 50)
+        /// <param name="stamp">Relecture de la PR #101 : marque de la copie gardée avant l'essai (l'heure, donnée par l'éditeur ; le cœur ne lit
+        /// aucune horloge) ; null : « copie ».</param>
+        public static string MoveSave(string path, int minute, long tickMilliseconds = 50, string? stamp = null)
         {
             if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
             SaveReadResult read = SaveStore.Read(path);
             if (!(read.Save is WorldSave save)) return "Sauvegarde illisible : " + (read.Problem ?? "?");
             var clock = new WorldClock(tickMilliseconds);
             long tick = NextTickAt(clock, save.WorldTick, minute);
-            SaveStore.Write(path, new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character));
-            return $"Partie avancée au {clock.At(tick)} (tick {tick}).";
+            string copy = KeepCopy(path, stamp);
+            SaveStore.Write(path, Advanced(save, tick));
+            return $"Partie avancée au {clock.At(tick)} (tick {tick}). Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
+        }
+
+        /// <summary>Relecture de la PR #101 : la même sauvegarde, au tick <paramref name="tick"/> (drapeau de migration compris).</summary>
+        public static WorldSave Advanced(WorldSave save, long tick) =>
+            new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character, save.Migrated);
+
+        /// <summary>
+        /// Relecture de la PR #101 : avant un essai qui réécrit la sauvegarde, une copie à part (<c>vallons.json.essai-&lt;marque&gt;.bak</c>),
+        /// qui n'écrase jamais une copie existante (un numéro est ajouté) ; rend son chemin.
+        /// </summary>
+        public static string KeepCopy(string path, string? stamp = null)
+        {
+            string root = path + ".essai-" + (string.IsNullOrEmpty(stamp) ? "copie" : stamp);
+            string copy = root + ".bak";
+            for (int n = 2; System.IO.File.Exists(copy); n++) copy = root + "-" + n.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".bak";
+            System.IO.File.Copy(path, copy);
+            return copy;
         }
     }
 }

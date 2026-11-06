@@ -12,6 +12,7 @@ using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 using EdS.Net;
 using EdS.Runtime;
+using EdS.World;
 using UnityEngine;
 
 namespace EdS.Game
@@ -126,6 +127,13 @@ namespace EdS.Game
         // l'image précédente (l'éclat d'or, la fanfare).
         private Effects _effects;
         private StyleAudio _music;
+
+        /// <summary>Sous-lot V2.2 : pluie, éclairs et tonnerre de l'aventure.</summary>
+        private StyleWeather _weatherFx;
+        private WeatherState _weatherState;
+        private WeatherLook _weatherLook = WeatherLook.Clear;
+        private long _weatherKey = long.MinValue;
+        private WeatherKind? _weatherForced;
         private int _shownCharges = -1;
 
         /// <summary>Relecture de l'essai 7 : lieu et combat pour la musique, relus quatre fois par seconde.</summary>
@@ -259,6 +267,7 @@ namespace EdS.Game
                 EnsureListener();
                 _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             }
+            if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
             _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
@@ -330,6 +339,9 @@ namespace EdS.Game
             // Relecture de l'essai 7 : la musique est détruite ; la prochaine aventure la recrée (ses ambiances comprises).
             _music?.Destroy();
             _music = null;
+            _weatherFx?.Destroy();   // sous-lot V2.2
+            _weatherFx = null;
+            StyleWorld.SetWeather(null);
             _talentView?.Close();
             PaintedMap.Forget();
             _screens.Close();
@@ -375,6 +387,19 @@ namespace EdS.Game
         /// </summary>
         /// <summary>Relecture de la PR #75 : dernier équipement visible calculé (rendu tel quel tant qu'il ne change pas).</summary>
         private VisibleGear _visibleGear;
+
+        /// <summary>
+        /// Sous-lot V2.2 : pluie, éclairs et tonnerre de l'aventure. Revue Codex de la PR #101 : appelée aussi quand l'écran des talents ou le
+        /// menu couvre l'aventure (<paramref name="covered"/>, sons plus bas), sans faire avancer le monde : un éclair s'éteint, la pluie suit
+        /// son temps.
+        /// </summary>
+        private void UpdateWeatherFx(bool covered)
+        {
+            AdventureSession a = _adventure;
+            if (a == null || _weatherFx == null || _camera == null) return;
+            _weatherFx.Update(_weatherLook, _weatherState, _weatherKey, _camera.Camera.transform.position, a.Indoors,
+                StyleWorld.Memory || _stage != null && _stage.Hush(a), covered, Time.deltaTime);
+        }
 
         private void UpdateAdventure()
         {
@@ -497,7 +522,9 @@ namespace EdS.Game
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
+            UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
             SyncGestures();
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
@@ -506,7 +533,7 @@ namespace EdS.Game
                 _moodAge += Time.deltaTime;
                 if (_moodAge >= 0.25f)
                 {
-                    _mood = a.Mood();
+                    _mood = a.Mood().WithRain(_weatherLook.Rain);   // relecture de la PR #101 : la pluie montrée (essai forcé compris)
                     _moodAge = 0f;
                 }
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
@@ -683,6 +710,20 @@ namespace EdS.Game
             // Relecture de la PR #99 : la lumière n'est recalculée que quand la minute du monde change (7,5 s de jeu), ou à chaque image dans
             // l'éditeur (curseurs du catalogue) ; -1 hors de l'aventure (plein jour).
             long lightKey = _adventure != null ? _adventure.World.Zone.Time.Day * 1440 + _adventure.World.Zone.Time.Minute : -1;
+            // Sous-lot V2.2 : le temps, relu seulement quand la minute du monde change (ou le temps forcé par le menu d'essai).
+            if (lightKey != _weatherKey || StyleWeather.Forced != _weatherForced)
+            {
+                _weatherKey = lightKey;
+                _weatherForced = StyleWeather.Forced;
+                if (_adventure == null) _weatherLook = WeatherLook.Clear;
+                else
+                {
+                    _weatherState = StyleWeather.Forced is WeatherKind forced ? WeatherCycle.Typical(forced) : _adventure.Weather();
+                    _weatherLook = WeatherCycle.Look(_weatherState, _adventure.Light());
+                }
+                StyleWorld.SetWeather(_adventure != null ? _weatherLook : (WeatherLook?)null);
+                _lightKey = long.MinValue;   // la lumière est réappliquée avec le nouveau temps
+            }
             if (Application.isEditor || lightKey != _lightKey)
             {
                 _lightKey = lightKey;
@@ -711,6 +752,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) CloseTalents();
                 if (Network) UpdateNetwork(false);
+                UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même écran ouvert
                 return;
             }
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
@@ -721,6 +763,7 @@ namespace EdS.Game
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
                 if (Network) UpdateNetwork(false);
+                UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même menu ouvert
                 return;
             }
             if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;
