@@ -430,7 +430,7 @@ public class V195Chapitre5Tests
         Assert.All(Chapters1To4.Append(Main), q => Assert.True(w.Narrative!.IsDone(q), q));
         Assert.DoesNotContain(Story.Value.Quests.Where(q => q.Category == QuestCategory.Main), q => w.Narrative!.IsActive(q.Id));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
-        Assert.Equal(12, SaveValidator.CurrentSchemaVersion);   // la structure de la sauvegarde ne change pas
+        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
         Assert.Equal(new QuestProgress(QuestProgress.Done), saved.Character!.Story.Quests[Main]);
     }
 

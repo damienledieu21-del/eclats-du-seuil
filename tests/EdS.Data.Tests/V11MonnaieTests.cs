@@ -91,7 +91,7 @@ public class V11MonnaieTests
     {
         string text = SaveWith(34512);
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Contains("      \"professions\": {},\n      \"money\": 34512,\n      \"crafts\": 0,\n      \"boons\": []\n    },", text, StringComparison.Ordinal);
+        Assert.Contains("      \"professions\": {},\n      \"money\": 34512,\n      \"crafts\": 0,\n      \"boons\": [],\n      \"events\": []\n    },", text, StringComparison.Ordinal);
         Assert.Contains("\"consumed\": [\n      \"zone.vallons/safe/place_du_bourg\"\n    ]", text, StringComparison.Ordinal);   // point sûr découvert
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());

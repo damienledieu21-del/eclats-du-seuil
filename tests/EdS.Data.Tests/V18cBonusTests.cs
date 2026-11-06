@@ -567,22 +567,22 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((12, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));
+        Assert.Equal((13, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
-        Assert.Contains("\"schemaVersion\": 12,", text, StringComparison.Ordinal);
-        Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}]\n",
+        Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
+        Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",
             text, StringComparison.Ordinal);
         SaveLoadResult r = SaveJsonReader.Read(text);
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.False(r.Save!.Migrated);
         Assert.Equal(new[] { BoonKind.Meal, BoonKind.Weapon }, r.Save.Character!.Boons.Select(b => b.Kind));
         Assert.Equal(text, SaveJsonReader.Write(r.Save));
-        Assert.Contains("      \"boons\": []\n", Written(), StringComparison.Ordinal);
+        Assert.Contains("      \"boons\": [],\n      \"events\": []\n", Written(), StringComparison.Ordinal);
     }
 
     /// <summary>Texte d'une sauvegarde de version 12, une ligne remplacée.</summary>
     private static string WithBoonsLine(string line) =>
-        Written().Replace("      \"boons\": []\n", "      \"boons\": " + line + "\n", StringComparison.Ordinal);
+        Written().Replace("      \"boons\": [],\n", "      \"boons\": " + line + ",\n", StringComparison.Ordinal);
 
     [Theory]
     [InlineData("[{\"kind\": \"elixir\", \"item\": \"item.elixir_de_vigueur\", \"ticks\": 0}]", "$.data.character.boons[0].ticks", ValidationCode.OutOfRange)]
@@ -612,7 +612,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Bonus_obligatoires_en_version_12_aux_bornes()
     {
-        string text = Written().Replace(",\n      \"boons\": []\n", "\n", StringComparison.Ordinal);
+        string text = Written().Replace("      \"boons\": [],\n", "", StringComparison.Ordinal);
         SaveLoadResult r = SaveJsonReader.Read(text);
         Assert.False(r.IsValid);
         Assert.Equal(("$.data.character.boons", ValidationCode.MissingField), (r.Report.Errors[0].Path, r.Report.Errors[0].Code));
@@ -629,22 +629,22 @@ public class V18cBonusTests : IDisposable
     public void Migration_v11_vers_v12_sans_bonus()
     {
         // Une sauvegarde de version 11 (celle de V1.4 à V1.8b) : pas de « boons ».
-        string v11 = Written().Replace("\"schemaVersion\": 12,", "\"schemaVersion\": 11,", StringComparison.Ordinal)
-            .Replace(",\n      \"boons\": []\n", "\n", StringComparison.Ordinal);
+        string v11 = Written().Replace(SaveVersion.Current + ",", "\"schemaVersion\": 11,", StringComparison.Ordinal)
+            .Replace(",\n      \"boons\": [],\n      \"events\": []\n", "\n", StringComparison.Ordinal);
         SaveLoadResult r = SaveJsonReader.Read(v11);
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.True(r.Save!.Migrated);
         Assert.Empty(r.Save.Character!.Boons);
-        Assert.Contains("\"schemaVersion\": 12,", SaveJsonReader.Write(r.Save), StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current + ",", SaveJsonReader.Write(r.Save), StringComparison.Ordinal);
         WorldSession w = Reopen(r.Save);
         Assert.Empty(w.ActiveBoons);
         // Une version 11 n'a pas de bonus : refusés, champ inconnu.
-        string withBoons = Written(new SavedBoon(BoonKind.Elixir, Vigueur, 5)).Replace("\"schemaVersion\": 12,", "\"schemaVersion\": 11,", StringComparison.Ordinal);
+        string withBoons = SaveV11.V12(Written(new SavedBoon(BoonKind.Elixir, Vigueur, 5))).Replace(SaveVersion.Current + ",", "\"schemaVersion\": 11,", StringComparison.Ordinal);
         SaveLoadResult refused = SaveJsonReader.Read(withBoons);
         Assert.False(refused.IsValid);
         Assert.Equal(("$.data.character.boons", ValidationCode.UnknownField), (refused.Report.Errors[0].Path, refused.Report.Errors[0].Code));
-        // Une sauvegarde de version 13 est refusée.
-        Assert.False(SaveJsonReader.Read(Written().Replace("\"schemaVersion\": 12,", "\"schemaVersion\": 13,", StringComparison.Ordinal)).IsValid);
+        // Une sauvegarde d'une version future est refusée.
+        Assert.False(SaveJsonReader.Read(Written().Replace(SaveVersion.Current + ",", SaveVersion.Future + ",", StringComparison.Ordinal)).IsValid);
     }
 
     // --- Propriété ------------------------------------------------------------------------------------------------------------------

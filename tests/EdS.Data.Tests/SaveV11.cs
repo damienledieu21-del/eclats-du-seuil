@@ -12,5 +12,8 @@ internal static class SaveV11
     public static string Older(string text) => Regex.Replace(V11(text), ",\n      \"crafts\": [0-9]+\n", "\n");
 
     /// <summary>Sous-lot V1.8c : la sauvegarde sous la forme de la version 11, sans les bonus actifs (le numéro de version n'est pas changé).</summary>
-    public static string V11(string text) => Regex.Replace(text, ",\n      \"boons\": \\[[^\n]*\\]\n", "\n");
+    public static string V11(string text) => Regex.Replace(V12(text), ",\n      \"boons\": \\[[^\n]*\\]\n", "\n");
+
+    /// <summary>Sous-lot V2.5 : la sauvegarde sous la forme de la version 12, sans le registre des événements (dernier champ du personnage).</summary>
+    public static string V12(string text) => Regex.Replace(text, ",\n      \"events\": (\\[\\]|\\[\n(        [^\n]*\n)*      \\])\n", "\n");
 }

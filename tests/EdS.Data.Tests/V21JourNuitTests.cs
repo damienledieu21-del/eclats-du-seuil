@@ -88,8 +88,8 @@ public sealed class V21JourNuitTests : IDisposable
     public void Vallons_livres_au_schema_8()
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
-        Assert.Equal((9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal(9, Vallons.SchemaVersion);
+        Assert.Equal((10, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal(10, Vallons.SchemaVersion);   // V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -132,6 +132,7 @@ public sealed class V21JourNuitTests : IDisposable
             root["schemaVersion"] = 7;
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
             root["data"]!.AsObject().Remove("nightSpots");
+            root["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
         });
         Assert.True(v7.IsValid, v7.Report.ToString());
         Assert.Equal(7, v7.Zone!.SchemaVersion);
@@ -156,7 +157,7 @@ public sealed class V21JourNuitTests : IDisposable
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 10 })
+        foreach (int version in new[] { 6, 11 })
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));
@@ -350,7 +351,7 @@ public sealed class V21JourNuitTests : IDisposable
         Until(w, DayPhase.Night, 20);
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", text, StringComparison.Ordinal);
-        Assert.Equal(12, SaveValidator.CurrentSchemaVersion);   // format de la sauvegarde inchangé
+        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         // Session suivante, toujours la nuit : les bêtes de la nuit sont là d'emblée, les sangliers dorment.
         var next = new WorldSession(back, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
