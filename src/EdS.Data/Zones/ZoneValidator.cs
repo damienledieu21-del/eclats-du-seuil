@@ -1041,6 +1041,8 @@ namespace EdS.Data.Zones
                     else templates.Add(form);
                 }
             if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
+            else if (b.Fact.StartsWith(EdS.Data.Story.StoryValidator.MetFactPrefix, StringComparison.Ordinal))
+            { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » réservé : « {EdS.Data.Story.StoryValidator.MetFactPrefix}… » est appris par le cœur au premier dialogue avec un PNJ."); ok = false; }
             var rewards = new List<(string, int)>();
             if (b.Rewards is null) { Missing(report, path + ".rewards", "récompenses de la première victoire, éventuellement vide"); ok = false; }
             else if (b.Rewards.Count > MaxRewards) { report.Add(path + ".rewards", ValidationCode.LimitExceeded, $"au plus {MaxRewards} récompenses."); ok = false; }

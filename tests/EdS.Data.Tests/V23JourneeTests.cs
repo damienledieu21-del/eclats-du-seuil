@@ -112,7 +112,9 @@ public sealed class V23JourneeTests : IDisposable
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
         Assert.InRange(lines.Count, 60, 100);
-        Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Activity));
+        // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
+        Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
+        Assert.All(lines, l => Assert.True(l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -400,6 +402,8 @@ public sealed class V23JourneeTests : IDisposable
         int noon = 12 * 60 + 15;
         long day = DryDay(noon);
         WorldSession tavern = At(TickAt(day, noon), Zone(-64.5, 1.4));
+        Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? _));   // V1.9.10 : la première fois, il se présente
+        tavern.Narrative!.Close();
         Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? there));
         Assert.Equal("text.v23.garin.taverne", there!.Text);
         // On lui achète là-bas : la boutique est auprès de lui.
@@ -419,6 +423,8 @@ public sealed class V23JourneeTests : IDisposable
         long day = DryDay(evening);
         WorldSession w = At(TickAt(day, evening), Zone(25.5, -12.2));
         Assert.Equal("feu", w.NpcActivity(w.Narrative!.Book.Npc("npc.gaspard")));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.gaspard", out DialogueView? _));   // V1.9.10 : d'abord son accueil
+        w.Narrative!.Close();
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.gaspard", out DialogueView? view));
         Assert.Equal("text.v23.gaspard.feu", view!.Text);
     }
