@@ -480,6 +480,7 @@ namespace EdS.Game
             if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
+            _markers.Walk(a, Time.deltaTime);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit
             player = _combat.Player();
             _stage?.BeforeSync();
             _arena.Sync(_combat, player, null);
@@ -496,6 +497,7 @@ namespace EdS.Game
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
             SyncGestures();
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
@@ -673,7 +675,9 @@ namespace EdS.Game
         private void Update()
         {
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
-            if (Application.isEditor) StyleWorld.Refresh();   // essai réaliste : les curseurs du catalogue réglés pendant le jeu
+            // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
+            // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
+            StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             _touch.Update(Network, _adventure != null, AdventureCovered);
             // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la

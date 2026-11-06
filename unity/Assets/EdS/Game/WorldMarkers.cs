@@ -35,12 +35,31 @@ namespace EdS.Game
 
             /// <summary>Angle de repos (degrés), repris quand le joueur s'éloigne.</summary>
             public float RestYaw;
+
+            /// <summary>Sous-lot V2.1 : personnage habillé du PNJ (il marche quand il rentre chez lui ou revient à sa place).</summary>
+            public StyleBody Look;
+
+            /// <summary>Sous-lot V2.1 : il marche (il ne se tourne pas vers le joueur en chemin).</summary>
+            public bool Walking;
+
+            /// <summary>Sous-lot V2.1 : sa place de jour et son angle de repos là-bas.</summary>
+            public Vector3 DayPlace;
+            public float DayYaw;
         }
 
         private readonly GameObject _root;
         private readonly List<Marker> _markers = new List<Marker>();
         private readonly List<Material> _owned = new List<Material>();
         private readonly Dictionary<string, Marker> _nodes = new Dictionary<string, Marker>();
+
+        /// <summary>Sous-lot V2.1 : repères des PNJ, pour les mener à leur place de l'heure (devant leur porte la nuit).</summary>
+        private readonly Dictionary<string, Marker> _npcs = new Dictionary<string, Marker>();
+
+        /// <summary>Sous-lot V2.1 : temps (s) depuis la dernière relecture des places des PNJ.</summary>
+        private float _npcAge;
+
+        /// <summary>Sous-lot V2.1 : vitesse (m/s) d'un PNJ qui rentre chez lui.</summary>
+        private const float NpcWalk = 1.4f;
         private Light _fire;
         private float _fireBase;
 
@@ -55,6 +74,7 @@ namespace EdS.Game
             foreach (WorldMarker npc in adventure.Npcs())
             {
                 Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+                _npcs[npc.Id] = m;
                 if (dressedIndoors)
                 {
                     m.Body.GetComponent<Renderer>().enabled = false;
@@ -65,6 +85,7 @@ namespace EdS.Game
                 StyleBody look = StyleLook.Dress(m.Body, StyleSlot.Character, npc.Id, 1.75f);
                 if (look != null) look.Update(m.Body.transform.position, false, 0f);
                 m.Faces = look != null;
+                m.Look = look;
                 // Au repos, il regarde le point sûr le plus proche (la place du village, le camp), d'où l'on arrive.
                 WorldMarker home = null;
                 double best = double.MaxValue;
@@ -79,6 +100,8 @@ namespace EdS.Game
                 }
                 if (home != null) m.RestYaw = (float)StyleRules.FaceYaw(npc.X, npc.Z, home.X, home.Z);
                 m.Body.transform.rotation = Quaternion.Euler(0f, m.RestYaw, 0f);
+                m.DayPlace = new Vector3((float)npc.X, 0f, (float)npc.Z);
+                m.DayYaw = m.RestYaw;
             }
             foreach (WorldMarker node in adventure.Nodes())
             {
@@ -283,7 +306,7 @@ namespace EdS.Game
         {
             foreach (Marker m in _markers)
             {
-                if (!m.Faces) continue;
+                if (!m.Faces || m.Walking) continue;
                 Vector3 at = m.Body.transform.position;
                 float dx = player.x - at.x, dz = player.z - at.z;
                 bool near = dx * dx + dz * dz < StyleRules.FaceRange * StyleRules.FaceRange;
@@ -292,6 +315,45 @@ namespace EdS.Game
                 m.Body.transform.rotation = Quaternion.Euler(0f, (float)yaw, 0f);
             }
             if (_fire != null) _fire.intensity = _fireBase * (0.85f + 0.15f * Mathf.PerlinNoise(Time.time * 3f, 0.5f));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.1 (jour et nuit) : chaque PNJ marche vers sa place de l'heure (<see cref="AdventureSession.Npcs"/> : devant sa porte la
+        /// nuit pour ceux qui rentrent chez eux, sa place le jour), au pas. Les places sont relues deux fois par seconde ; on lui parle à la
+        /// place du monde (le repère n'est que l'affichage).
+        /// </summary>
+        public void Walk(AdventureSession adventure, float deltaTime)
+        {
+            _npcAge += deltaTime;
+            if (_npcAge >= 0.5f)
+            {
+                _npcAge = 0f;
+                foreach (WorldMarker npc in adventure.Npcs())
+                    if (_npcs.TryGetValue(npc.Id, out Marker m)) m.Data = npc;
+            }
+            foreach (Marker m in _npcs.Values)
+            {
+                Vector3 at = m.Body.transform.position;
+                var target = new Vector3((float)m.Data.X, at.y, (float)m.Data.Z);
+                Vector3 step = Vector3.MoveTowards(at, target, NpcWalk * deltaTime);
+                bool moving = (step - at).sqrMagnitude > 1e-8f;
+                m.Walking = moving;
+                if (moving)
+                {
+                    m.Body.transform.position = step;
+                    Vector3 way = target - at;
+                    way.y = 0f;
+                    if (m.Faces && way.sqrMagnitude > 0.0001f) m.Body.transform.rotation = Quaternion.LookRotation(way);
+                    // Arrivé : à sa place de jour, sa pose de jour ; devant sa porte, il regarde la rue (dos à la porte).
+                    if ((target - step).sqrMagnitude < 1e-6f)
+                    {
+                        bool day = Mathf.Abs(target.x - m.DayPlace.x) < 0.01f && Mathf.Abs(target.z - m.DayPlace.z) < 0.01f;
+                        if (day) m.RestYaw = m.DayYaw;
+                        else if (way.sqrMagnitude > 0.0001f) m.RestYaw = Quaternion.LookRotation(way).eulerAngles.y + 180f;
+                    }
+                }
+                if (m.Look != null) m.Look.Update(m.Body.transform.position, false, deltaTime);
+            }
         }
 
         /// <summary>Nœuds récoltés cachés jusqu'à leur repousse.</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Data.Saves;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -374,5 +375,46 @@ namespace EdS.Runtime
 
         /// <summary>Un écho (créature qui revient, « loup_echo… ») : pâle et lumineux à l'affichage.</summary>
         public static bool IsEcho(string combatant) => (combatant ?? string.Empty).StartsWith("loup_echo", StringComparison.Ordinal);
+    }
+}
+
+namespace EdS.Runtime
+{
+    /// <summary>
+    /// Sous-lot V2.1 : outil d'essai (menu de l'éditeur « Éclats du Seuil/Essai de la nuit… ») : avance la sauvegarde jusqu'à une heure du
+    /// monde, pour que Damien voie la nuit sans l'attendre une heure. Seul le temps du monde avance (comme une longue attente) : le personnage,
+    /// le registre du monde et le reste de la sauvegarde ne changent pas ; jamais en arrière.
+    /// </summary>
+    public static class DayTrial
+    {
+        /// <summary>Premier tick, à partir de <paramref name="fromTick"/> (compris), où il est <paramref name="minute"/> au monde.</summary>
+        public static long NextTickAt(WorldClock clock, long fromTick, int minute)
+        {
+            if (clock is null) throw new System.ArgumentNullException(nameof(clock));
+            if (fromTick < 0) throw new System.ArgumentOutOfRangeException(nameof(fromTick));
+            if (minute < 0 || minute >= WorldClock.MinutesPerDay) throw new System.ArgumentOutOfRangeException(nameof(minute));
+            int now = clock.At(fromTick).Minute;
+            long ahead = (minute - now + WorldClock.MinutesPerDay) % WorldClock.MinutesPerDay;
+            long tick = checked(fromTick + ahead * clock.TicksPerDay / WorldClock.MinutesPerDay);
+            // Arrondis : on recule tant que la minute d'avant est encore la bonne, puis on avance jusqu'à elle.
+            while (tick > fromTick && clock.At(tick - 1).Minute == minute) tick--;
+            while (clock.At(tick).Minute != minute) tick = checked(tick + 1);
+            return tick;
+        }
+
+        /// <summary>
+        /// Avance la sauvegarde <paramref name="path"/> jusqu'à <paramref name="minute"/> (horloge du monde de <paramref name="tickMilliseconds"/>
+        /// ms par tick) ; rend le message à montrer. Rien n'est écrit si la sauvegarde manque ou ne se lit pas.
+        /// </summary>
+        public static string MoveSave(string path, int minute, long tickMilliseconds = 50)
+        {
+            if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
+            SaveReadResult read = SaveStore.Read(path);
+            if (!(read.Save is WorldSave save)) return "Sauvegarde illisible : " + (read.Problem ?? "?");
+            var clock = new WorldClock(tickMilliseconds);
+            long tick = NextTickAt(clock, save.WorldTick, minute);
+            SaveStore.Write(path, new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character));
+            return $"Partie avancée au {clock.At(tick)} (tick {tick}).";
+        }
     }
 }

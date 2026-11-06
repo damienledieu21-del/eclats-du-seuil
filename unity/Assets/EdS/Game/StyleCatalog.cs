@@ -262,6 +262,14 @@ namespace EdS.Game
         [Tooltip("Bords de l'image assombris.")]
         [Range(0f, 0.5f)] public float Vignette = DefaultVignette;
 
+        [Header("Sous-lot V2.1 : jour et nuit (réglables pendant le jeu, dans l'éditeur)")]
+        [Tooltip("Clarté de la nuit : 1 = nuit bleue et lisible prévue ; plus haut, plus clair ; plus bas, plus sombre.")]
+        [Range(0.5f, 2f)] public float NightBrightness = 1f;
+        [Tooltip("Force des lanternes, réverbères et fenêtres allumées la nuit.")]
+        [Range(0f, 4f)] public float LanternIntensity = 1.6f;
+        [Tooltip("Éditeur seulement : heure montrée par la lumière (0 à 24) pour régler la nuit sans l'attendre ; -1 = l'heure du monde. Seule la lumière change (lanternes, ciel, couleurs) : les créatures et les villageois suivent l'heure du monde.")]
+        [Range(-1f, 24f)] public float PreviewHour = -1f;
+
         /// <summary>
         /// Version des réglages par défaut de la lumière et des couleurs. Quand Claude change ces réglages (essai de Damien du 26 octobre
         /// 2026 : image trop claire et jaune), le menu « Préparer l'essai de style » remet une fois les nouveaux ; les retouches faites

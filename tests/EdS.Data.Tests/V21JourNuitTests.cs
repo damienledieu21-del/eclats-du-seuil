@@ -515,6 +515,29 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Contains(house.Windows, house.All);
     }
 
+    [Fact]
+    public void Essai_de_la_nuit_avance_seulement_le_temps_du_monde()
+    {
+        var clock = new WorldClock(50);
+        foreach (int minute in new[] { 21 * 60 + 55, 4 * 60 + 55, 0, 8 * 60 })
+        {
+            long tick = DayTrial.NextTickAt(clock, 1234, minute);
+            Assert.True(tick >= 1234 && tick - 1234 < clock.TicksPerDay);
+            Assert.Equal(minute, clock.At(tick).Minute);
+            Assert.True(tick == 1234 || clock.At(tick - 1).Minute != minute);   // le premier tick de cette minute
+        }
+        string path = Path.Combine(_folder, "essai", "vallons.json");
+        Assert.StartsWith("Aucune sauvegarde", DayTrial.MoveSave(path, 0), StringComparison.Ordinal);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var save = new WorldSave("zone.vallons", 500, 3, new[] { "zone.vallons/safe/place_du_village" }, Hero(42));
+        SaveStore.Write(path, save);
+        Assert.StartsWith("Partie avancée au jour 0, 21 h 55", DayTrial.MoveSave(path, 21 * 60 + 55), StringComparison.Ordinal);
+        WorldSave moved = SaveStore.Read(path).Save!;
+        Assert.Equal(new WorldTime(0, 21 * 60 + 55), clock.At(moved.WorldTick));
+        Assert.Equal((save.Zone, save.Sessions, save.Character!.Money), (moved.Zone, moved.Sessions, moved.Character!.Money));
+        Assert.Equal(save.Consumed, moved.Consumed);
+    }
+
     private (string Data, string Scenarios) DataCopy((double X, double Z) entry)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
