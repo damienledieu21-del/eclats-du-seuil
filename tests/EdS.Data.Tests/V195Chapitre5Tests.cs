@@ -437,6 +437,37 @@ public class V195Chapitre5Tests
     // --- Conversion des sauvegardes (la fin de l'ancienne mission passe au chapitre 5) ---------------------------------
 
     [Theory]
+    [InlineData("enquete")]
+    [InlineData("traces")]
+    [InlineData("passage")]
+    public void Ancienne_partie_avant_les_etapes_passees_n_est_pas_convertie(string step)
+    {
+        // V1.10.1 : une partie arrêtée au chapitre 1 avant les quatre étapes passées reste telle quelle (même objet, quête suivie comprise) ;
+        // le chapitre 5 n'est pas commencé et aucun fait n'est ajouté.
+        var old = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress> { [Ch1] = new QuestProgress(step) },
+            new Dictionary<string, int> { ["npc.odile"] = 1 }, new string[0], tracked: Ch1);
+        SavedStory converted = StoryConversions.Upgrade(Story.Value, old);
+        Assert.Same(old, converted);
+        Assert.Equal(step, converted.Quests[Ch1].Step);
+        Assert.DoesNotContain(Main, converted.Quests.Keys);
+        Assert.Equal(Ch1, converted.Tracked);
+        Assert.DoesNotContain(StoryConversions.NextFact, converted.Facts);
+    }
+
+    [Fact]
+    public void Suivi_de_quete_d_une_autre_quete_n_est_pas_deplace_par_la_conversion()
+    {
+        // Une partie à l'étape « retour » qui suivait une autre quête garde ce suivi ; seul le suivi du chapitre 1 passe au chapitre 5.
+        string other = Story.Value.Quests.First(q => q.Id != Ch1 && q.Id != Main).Id;
+        var old = new SavedStory(new[] { "fact.traces.recit", "fact.moulin.porte_ouverte" },
+            new Dictionary<string, QuestProgress> { [Ch1] = new QuestProgress("retour") }, new Dictionary<string, int>(), new string[0], tracked: other);
+        SavedStory converted = StoryConversions.Upgrade(Story.Value, old);
+        Assert.Equal(other, converted.Tracked);
+        Assert.Equal("retour", converted.Quests[Main].Step);
+        Assert.Same(converted, StoryConversions.Upgrade(Story.Value, converted));
+    }
+
+    [Theory]
     [InlineData("manifestation")]
     [InlineData("rodeur")]
     [InlineData("chef")]

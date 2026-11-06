@@ -11,9 +11,10 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
 | 0.1 | Dans GitHub Desktop, prendre la branche `v1.10-bourg-essai` (ou `main` une fois fusionnée) | Unity recharge les scripts, aucune erreur rouge dans la Console | [ ] | |
-| 0.2 | Menu **Éclats du Seuil → Préparer l'essai de style** | Le message de fin dit « Lumière des intérieurs remise aux réglages de l'essai (version 1…) » | [ ] | |
-| 0.3 | Pour une **nouvelle partie** : renommer `sauvegardes/vallons.json` (dossier `AppData\LocalLow\…` du jeu) en `vallons_avant.json` | Le fichier n'est plus là sous son nom | [ ] | |
-| 0.4 | **Play** (▶ en haut au centre) | Le jeu démarre sur l'écran noir du réveil | [ ] | |
+| 0.2 | (Conseil, avant tout) menu **Éclats du Seuil → Sauvegarder le dossier des ressources** | Un message dit « Réussi » et donne l'emplacement du zip (dans Documents, dossier `EdS-Sauvegardes`) ; rien n'est supprimé | [ ] | |
+| 0.3 | Menu **Éclats du Seuil → Préparer et lancer l'essai** (une seule action : il prépare, ouvre la scène et lance le jeu) | Unity travaille un moment, puis le jeu démarre tout seul ; la Console (onglet en bas) contient « Lumière des intérieurs remise aux réglages de l'essai (version 1…) » | [ ] | |
+| 0.4 | Pour une **nouvelle partie** : renommer `sauvegardes/vallons.json` (dossier `AppData\LocalLow\…` du jeu) en `vallons_avant.json` | Le fichier n'est plus là sous son nom | [ ] | |
+| 0.5 | Si le jeu n'a pas démarré seul : **Play** (▶ en haut au centre) | Le jeu démarre sur l'écran noir du réveil | [ ] | |
 
 ## 1. Chapitre 1 enrichi : le réveil et le tutoriel
 
@@ -24,7 +25,7 @@ Touches (clavier AZERTY) : **Z Q S D** marcher · **souris** tourner la caméra 
 | 1.3 | Suivre la bulle à gauche : parler à Odile (**F**) | Bulle « étape 1/6 », la touche qui clignote | [ ] | |
 | 1.4 | Frapper (**1**), se garder (**clic droit**), parer (**Espace** juste avant le coup), boire (**P**), revenir à Odile | Une bulle par étape, le bon texte, la bonne touche | [ ] | |
 | 1.5 | Quitter (Échap puis stop), relancer Play | **Pas** de nouveau réveil | [ ] | |
-| 1.6 | Sur une autre nouvelle partie (refaire 0.3) : chez Odile, choisir « **Je sais me battre** » | « **Quête passée** » en grand, la bulle disparaît, la mission continue | [ ] | |
+| 1.6 | Sur une autre nouvelle partie (refaire 0.4) : chez Odile, choisir « **Je sais me battre** » | « **Quête passée** » en grand, la bulle disparaît, la mission continue | [ ] | |
 
 ## 2. Le souvenir, Croc-Gris et son collier
 
