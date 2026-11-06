@@ -109,18 +109,31 @@ Quand **Pain-d'Épice, le chat de Rosalie** est dans le sac (quête du chapitre 
 
 **Sons (facultatifs, CC0 déposés par toi)** : dans `unity/Assets/Style/Sounds/` un fichier dont le nom contient `miaou` ou `meow` (miaulement) et un autre avec `ronron` ou `purr` (ronronnement), puis **Préparer l'essai de style**. Sans eux, un miaulement et un ronronnement faits par le code. Limites : formes simples (pas de modèle 3D) ; rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; en reparaissant derrière toi après une porte, il peut se trouver un instant contre un mur (il n'a pas de collision).
 
-## 8. Les animaux (V2.4)
+## 8. La journée du village (V2.3)
+
+Menus **Éclats du Seuil → Essai de la journée du village : …**, hors du mode Jeu (détail : [UNITY.md](UNITY.md#essai-v23--la-journée-du-village)).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 8.1 | Menu « 12 h 15, midi », puis jouer | Firmin vend son pain sur la place, Garin et le capitaine mangent devant l'auberge ; sous leur nom, ce qu'ils font | [ ] | |
+| 8.2 | À l'étal de Garin, touche **F** | Un message dit qu'il est à la taverne ; devant l'auberge, on lui achète | [ ] | |
+| 8.3 | Menu « 19 h 45, la taverne » ; parler à Firmin, Maëlle, Aldric (s'il y est encore), Renart, puis à Mathurin dans l'auberge | Chacun a une réplique du soir ; Mathurin parle de ceux qui sont sur la terrasse | [ ] | |
+| 8.4 | Menu « 5 h 30, l'aube » ; « 14 h 30 » | Firmin au fournil (sa réplique de l'aube) ; l'après-midi, Firmin fait la sieste devant chez lui | [ ] | |
+| 8.5 | Menu « la prochaine averse » | Ceux qui sont dehors vont s'abriter et le disent | [ ] | |
+| 8.6 | Regarder les passants du bourg un moment | Certains vont et viennent (puits, maison, auberge), puis reprennent leur place | [ ] | |
+
+## 9. Les animaux (V2.4)
 
 Menu **Éclats du Seuil → Essai des animaux : …**, **hors du mode Jeu** (il avance la partie jusqu'au bon moment ; une copie de la sauvegarde est gardée, comme pour l'essai de la nuit). Détail : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 8.1 | « l'aube des cerfs », puis Play ; aller au sud du **lac des Aubes** (voyage rapide) | Trois **cerfs** fauves avec leurs bois (formes simples) ; message « Des cerfs sortent du bois… » si tu arrives avant eux | [ ] | |
-| 8.2 | T'approcher à moins de 9 m d'un cerf | **Toute la harde détale** au galop (pattes qui battent), s'arrête à 14 m et te regarde ; tu ne peux pas les rattraper (ils courent plus vite que toi) | [ ] | |
-| 8.3 | Passer la porte du moulin, aller à la **lisière ouest de la forêt des Loups** (trois autres cerfs) ; les pousser vers les loups | Un cerf qui passe près d'un loup le fait **chasser** : le loup le poursuit (il ne le rattrape pas), puis lâche | [ ] | |
-| 8.4 | « le crépuscule des lièvres », puis Play ; aller aux **champs du sud** | Des **lièvres** gris (longues oreilles) qui bondissent quand on approche (6 m) | [ ] | |
-| 8.5 | « la brume (loups gris et échos) », puis Play | Message « La brume monte de la rivière… » ; **trois loups gris** au nord des champs du sud ; deux **échos** pâles (lac et ruines) | [ ] | |
-| 8.6 | Attirer un loup gris jusqu'aux **sangliers** des champs (à 15 m d'eux), puis reculer | **Loup et sanglier se battent** : morsures, charges ; tu peux t'en mêler. Une bête tuée par une autre ne te donne ni expérience ni butin | [ ] | |
-| 8.7 | Attendre que la brume se lève (vers 9 h du monde) | Les loups gris et les échos s'en vont dès qu'ils ne se battent plus | [ ] | |
-| 8.8 | Une **averse** de jour (essai de la météo) | Les cerfs ne sont plus là (ils s'abritent) ; ils reviennent après la pluie | [ ] | |
-| 8.9 | Ton avis : nombre de bêtes, vitesse de fuite, distance (9 m), loups gris le matin dès le niveau 1 | — | [ ] | |
+| 9.1 | « l'aube des cerfs », puis Play ; aller au sud du **lac des Aubes** (voyage rapide) | Trois **cerfs** fauves avec leurs bois (formes simples) ; message « Des cerfs sortent du bois… » si tu arrives avant eux | [ ] | |
+| 9.2 | T'approcher à moins de 9 m d'un cerf | **Toute la harde détale** au galop (pattes qui battent), s'arrête à 14 m et te regarde ; tu ne peux pas les rattraper (ils courent plus vite que toi) | [ ] | |
+| 9.3 | Passer la porte du moulin, aller à la **lisière ouest de la forêt des Loups** (trois autres cerfs) ; les pousser vers les loups | Un cerf qui passe près d'un loup le fait **chasser** : le loup le poursuit (il ne le rattrape pas), puis lâche | [ ] | |
+| 9.4 | « le crépuscule des lièvres », puis Play ; aller aux **champs du sud** | Des **lièvres** gris (longues oreilles) qui bondissent quand on approche (6 m) | [ ] | |
+| 9.5 | « la brume (loups gris et échos) », puis Play | Message « La brume monte de la rivière… » ; **trois loups gris** au nord des champs du sud ; deux **échos** pâles (lac et ruines) | [ ] | |
+| 9.6 | Attirer un loup gris jusqu'aux **sangliers** des champs (à 15 m d'eux), puis reculer | **Loup et sanglier se battent** : morsures, charges ; tu peux t'en mêler. Une bête tuée par une autre ne te donne ni expérience ni butin | [ ] | |
+| 9.7 | Attendre que la brume se lève (vers 9 h du monde) | Les loups gris et les échos s'en vont dès qu'ils ne se battent plus | [ ] | |
+| 9.8 | Une **averse** de jour (essai de la météo) | Les cerfs ne sont plus là (ils s'abritent) ; ils reviennent après la pluie | [ ] | |
+| 9.9 | Ton avis : nombre de bêtes, vitesse de fuite, distance (9 m), loups gris le matin dès le niveau 1 | — | [ ] | |

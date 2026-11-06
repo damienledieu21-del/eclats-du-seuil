@@ -652,9 +652,28 @@ Le temps est tiré du **jour du monde** (le même jour a toujours le même temps
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les flaques sont des disques sombres et lisses (aucun reflet calculé : elles prennent le ciel par la réflexion d'URP) ; le sol lui-même ne devient pas brillant ; sans brume au catalogue, celle de la météo part de 30 à 180 m avec la couleur de brume du catalogue ; la pluie ne passe pas sous les toits (les gouttes traversent les auvents).
 
+### Essai V2.3 : la journée du village
+
+Les PNJ importants suivent leur journée (emploi du temps de l'histoire) et les passants du bourg font leurs courses. Détail et emplois du temps : [MONDE.md](MONDE.md#villageois-qui-suivent-leur-journée-sous-lot-v23).
+
+**Pour le voir sans l'attendre**, hors du mode Jeu, menu **Éclats du Seuil → Essai de la journée du village : …** (5 h 30 l'aube, 9 h 15 le marché, 12 h 15 midi, 14 h 30 l'après-midi, 19 h 45 la taverne, 22 h 15 chacun rentre, ou la prochaine averse) : il avance la sauvegarde jusqu'à ce moment (seul le temps du monde avance, une copie `vallons.json.essai-<date-heure>.bak` est gardée) et dit ce qu'il faut voir. Puis lancer l'aventure.
+
+À vérifier, dans l'ordre :
+
+1. **Ils marchent jusqu'à leur lieu** (au pas, en ligne droite) et s'y arrêtent ; sous leur nom, ce qu'ils font (« Firmin, le boulanger · au marché »).
+2. **Midi** : Firmin vend son pain sur la place, Garin et le capitaine mangent devant l'auberge, Bertille et Renart aux nouvelles près du puits, Odile rince ses sacs à la rivière. À l'étal de Garin, la touche d'action dit où il est ; on lui achète devant l'auberge.
+3. **Le soir** : la terrasse de l'auberge se remplit (Firmin, Maëlle, Bertille, Renart, le fermier) ; Gaspard au coin du feu ; veillée au hameau ; Mathurin (dans l'auberge) parle de ceux qui sont dehors.
+4. **Leurs répliques changent avec le lieu** (F) : Firmin à la sieste, Aldric « en ronde assise » à la taverne, Lison qui joue au loup… Les quêtes passent toujours avant.
+5. **Sous une averse** (pas une pluie fine), ceux qui sont dehors vont à l'abri (sous l'auvent de l'auberge, du moulin, de l'étal) et le disent.
+6. **Passants du bourg** : un sur trois va au puits le matin, un sur trois rentre manger à midi (il disparaît dans une maison), un sur trois vient devant l'auberge le soir, puis chacun revient à sa place (la nuit et sous l'averse, ils rentrent comme avant).
+
+7. **Dans les maisons** : Mathurin descend à la cave l'après-midi et sert entre les tables le soir, Frère Anselme balaie les bancs et ouvre la porte aux vêpres, Sœur Albe prie à midi, Rosalie à sa fenêtre (et sa lanterne le soir) ou à son rouet, Dame Brunehilde au tableau puis au coin du feu, Aubin à table à midi, Ysaline dans les rayonnages ; dehors, Ysarn l'oreille contre une pierre, le déserteur à la maraude, Thibaut sur les tombes.
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les PNJ et les passants marchent en ligne droite (ils peuvent frôler un mur) ; la « taverne » est la terrasse devant l'auberge : les PNJ du dehors n'entrent pas dans l'intérieur.
+
 ### Essai V2.4 : animaux paisibles et bêtes qui se battent
 
-Menu **Éclats du Seuil → Essai des animaux : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **l'aube des cerfs** (prochaine aube à 5 h 10 sans averse ni orage), **le crépuscule des lièvres** (19 h 10), **la brume (loups gris et échos)** (prochain matin de brume). Le message dit où aller. Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#8-les-animaux-v24) ; règles : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
+Menu **Éclats du Seuil → Essai des animaux : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **l'aube des cerfs** (prochaine aube à 5 h 10 sans averse ni orage), **le crépuscule des lièvres** (19 h 10), **la brume (loups gris et échos)** (prochain matin de brume). Le message dit où aller. Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#9-les-animaux-v24) ; règles : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
 
 - **Cerfs et lièvres** : aucun modèle livré ; ils sont **dessinés en formes simples** (`WildlifeLook`, pièces de `EdS.Runtime.Wildlife`) : corps, cou, tête, bois et queue blanche pour le cerf ; corps rond, longues oreilles et queue blanche pour le lièvre ; les pattes balancent et le corps rebondit à la course (le lièvre bondit), immobiles à l'arrêt ; couchés sur le flanc à leur mort. Un matériau par couleur, partagé. Ils se tournent dans le sens de leur course (le moteur les oriente).
 - **Loups gris de la brume** : le modèle du loup ; **échos de la brume** : pâles comme ceux de la nuit (`loup_echo5`, `loup_echo6`).

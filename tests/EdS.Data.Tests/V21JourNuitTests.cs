@@ -375,7 +375,8 @@ public sealed class V21JourNuitTests : IDisposable
         foreach (NightSpot spot in Vallons.NightSpots)
         {
             Npc npc = book.Npc(spot.Npc);
-            Assert.Equal(home ? spot.Position : npc.Position, w.NpcPosition(npc));
+            // Sous-lot V2.3 : un PNJ qui a un emploi du temps est, le jour, à la place de son créneau ; la nuit, toujours devant sa porte.
+            Assert.Equal(home ? spot.Position : w.NpcSlot(npc)?.Position ?? npc.Position, w.NpcPosition(npc));
         }
         foreach (string id in new[] { "npc.archer_garde", "npc.lison", "npc.herboriste", "npc.boulanger", "npc.aubergiste" })
             Assert.Equal(book.Npc(id).Position, w.NpcPosition(book.Npc(id)));

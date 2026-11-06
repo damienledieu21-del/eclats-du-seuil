@@ -46,6 +46,10 @@ namespace EdS.Game
             /// <summary>Sous-lot V2.1 : sa place de jour et son angle de repos là-bas.</summary>
             public Vector3 DayPlace;
             public float DayYaw;
+
+            /// <summary>Sous-lot V2.3 : ce qu'il fait à cette heure (« au fournil »), sous son nom ; null : rien à montrer.</summary>
+            public string Activity;
+            public string Label;
         }
 
         private readonly GameObject _root;
@@ -329,14 +333,26 @@ namespace EdS.Game
         /// nuit pour ceux qui rentrent chez eux, sa place le jour), au pas. Les places sont relues deux fois par seconde ; on lui parle à la
         /// place du monde (le repère n'est que l'affichage).
         /// </summary>
-        public void Walk(AdventureSession adventure, float deltaTime)
+        /// <param name="arena">Revue Codex de la PR #103 : dans une pièce, le corps visible d'un PNJ est un villageois du décor (le repère est
+        /// caché) : il suit le repère, à chaque image (null : pas de corps à suivre).</param>
+        public void Walk(AdventureSession adventure, float deltaTime, ArenaView arena = null)
         {
             _npcAge += deltaTime;
             if (_npcAge >= 0.5f)
             {
                 _npcAge = 0f;
                 foreach (WorldMarker npc in adventure.Npcs())
-                    if (_npcs.TryGetValue(npc.Id, out Marker m)) m.Data = npc;
+                    if (_npcs.TryGetValue(npc.Id, out Marker m))
+                    {
+                        m.Data = npc;
+                        // Sous-lot V2.3 : son activité de l'emploi du temps, sous son nom (relue avec sa place).
+                        string activity = adventure.ActivityOf(npc.Id);
+                        if (activity != m.Activity || m.Label == null)
+                        {
+                            m.Activity = activity;
+                            m.Label = activity == null ? null : npc.Name + " · " + activity;
+                        }
+                    }
             }
             foreach (Marker m in _npcs.Values)
             {
@@ -360,6 +376,11 @@ namespace EdS.Game
                     }
                 }
                 if (m.Look != null) m.Look.Update(m.Body.transform.position, false, deltaTime);
+                else if (arena != null && m.Data != null)
+                {
+                    Vector3 here = m.Body.transform.position;
+                    arena.MoveSpeaker(m.Data.Id, here.x, here.z, deltaTime);
+                }
             }
         }
 
@@ -384,7 +405,7 @@ namespace EdS.Game
                 float dx = at.x - player.x, dz = at.z - player.z;
                 if (dx * dx + dz * dz > m.Range * m.Range) continue;
                 Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
-                hud.Label(screen, m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // essai réaliste 6 : interface uGUI
+                hud.Label(screen, m.Label ?? m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // sous-lot V2.3 : et son activité   // essai réaliste 6 : interface uGUI
             }
         }
 

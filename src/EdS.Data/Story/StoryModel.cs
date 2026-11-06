@@ -54,6 +54,12 @@ namespace EdS.Data.Story
         /// <c>mist</c>, <c>drizzle</c>, <c>shower</c>, <c>storm</c>, ou <c>rain</c> : n'importe quelle pluie).
         /// </summary>
         Weather = 15,
+
+        /// <summary>
+        /// Sous-lot V2.3 (histoire en schéma 9) : circonstance temporaire : le PNJ <c>id</c> est à l'activité <c>step</c> de son emploi du
+        /// temps (<see cref="Npc.Schedule"/>), d'après l'heure du monde et le temps qu'il fait (« fournil », « taverne », « abri »…).
+        /// </summary>
+        Activity = 16,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -242,13 +248,69 @@ namespace EdS.Data.Story
         /// </summary>
         public string? Zone { get; }
 
-        internal Npc(string id, string name, GroundVector position, string dialogue, string? zone = null)
+        /// <summary>
+        /// Sous-lot V2.3 (histoire en schéma 9) : emploi du temps du PNJ (vide : il reste à sa place, ou devant sa porte la nuit comme en
+        /// V2.1). Les créneaux sont rangés par heure de début croissante ; le créneau en cours est le dernier commencé, celui de la veille
+        /// avant le premier (la journée boucle à minuit).
+        /// </summary>
+        public IReadOnlyList<ScheduleSlot> Schedule { get; }
+
+        internal Npc(string id, string name, GroundVector position, string dialogue, string? zone = null, IEnumerable<ScheduleSlot>? schedule = null)
         {
             Id = id;
             Name = name;
             Position = position;
             Dialogue = dialogue;
             Zone = zone;
+            Schedule = Frozen.List(schedule ?? Array.Empty<ScheduleSlot>(), nameof(schedule));
+        }
+
+        /// <summary>Sous-lot V2.3 : le créneau en cours à la minute <paramref name="minute"/> du jour (null : pas d'emploi du temps).</summary>
+        public ScheduleSlot? SlotAt(int minute)
+        {
+            if (Schedule.Count == 0) return null;
+            ScheduleSlot current = Schedule[Schedule.Count - 1];
+            foreach (ScheduleSlot slot in Schedule)
+                if (slot.Minute <= minute) current = slot;
+                else break;
+            return current;
+        }
+
+        /// <summary>Sous-lot V2.3 : activités que l'emploi du temps peut donner (créneaux et abris), sans doublon, dans l'ordre du fichier.</summary>
+        public IEnumerable<string> Activities => Schedule.SelectMany(s => s.Rain is null ? new[] { s.Activity } : new[] { s.Activity, s.Rain.Activity }).Distinct(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Sous-lot V2.3 (histoire en schéma 9) : un créneau de l'emploi du temps d'un PNJ : à partir de <see cref="Minute"/> (minute du jour du
+    /// monde, 0 à 1439), il est à <see cref="Position"/> pour l'activité <see cref="Activity"/> ; sous une vraie pluie (averse ou orage),
+    /// à l'abri (<see cref="Rain"/>) s'il en a un.
+    /// </summary>
+    public sealed class ScheduleSlot
+    {
+        public int Minute { get; }
+        public string Activity { get; }
+        public GroundVector Position { get; }
+        public SchedulePlace? Rain { get; }
+
+        internal ScheduleSlot(int minute, string activity, GroundVector position, SchedulePlace? rain)
+        {
+            Minute = minute;
+            Activity = activity;
+            Position = position;
+            Rain = rain;
+        }
+    }
+
+    /// <summary>Sous-lot V2.3 : une place et son activité (l'abri d'un créneau sous la pluie).</summary>
+    public sealed class SchedulePlace
+    {
+        public string Activity { get; }
+        public GroundVector Position { get; }
+
+        internal SchedulePlace(string activity, GroundVector position)
+        {
+            Activity = activity;
+            Position = position;
         }
     }
 
@@ -274,11 +336,31 @@ namespace EdS.Data.Story
         public string Text { get; }
         public IReadOnlyList<DialogueChoice> Choices { get; }
 
-        internal DialogueNode(string id, string text, IEnumerable<DialogueChoice> choices)
+        /// <summary>
+        /// Sous-lot V2.3 (histoire en schéma 9) : répliques selon le moment : la première dont les conditions sont réunies remplace le texte
+        /// du nœud (ses réponses restent les mêmes) ; aucune : le texte du nœud.
+        /// </summary>
+        public IReadOnlyList<DialogueLine> Lines { get; }
+
+        internal DialogueNode(string id, string text, IEnumerable<DialogueChoice> choices, IEnumerable<DialogueLine>? lines = null)
         {
             Id = id;
             Text = text;
             Choices = Frozen.List(choices, nameof(choices));
+            Lines = Frozen.List(lines ?? Array.Empty<DialogueLine>(), nameof(lines));
+        }
+    }
+
+    /// <summary>Sous-lot V2.3 (histoire en schéma 9) : une réplique d'un nœud, dite quand ses conditions (au moins une) sont réunies.</summary>
+    public sealed class DialogueLine
+    {
+        public IReadOnlyList<StoryCondition> Conditions { get; }
+        public string Text { get; }
+
+        internal DialogueLine(IEnumerable<StoryCondition> conditions, string text)
+        {
+            Conditions = Frozen.List(conditions, nameof(conditions));
+            Text = text;
         }
     }
 

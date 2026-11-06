@@ -227,15 +227,25 @@ namespace EdS.Game
                 light.intensity = lamps * strength * (0.92f + 0.08f * Mathf.PerlinNoise(Time.time * 2.3f, light.transform.position.x));
             // Villageois du décor : la nuit du monde, ils rentrent chez eux ; les veilleurs restent. Sous-lot V2.2 : sous une vraie pluie aussi
             // (un sur trois reste dehors).
+            _worldNight = worldNight;
             int home = (worldNight ? 1 : 0) | (_sheltering ? 2 : 0);
             if (home != _villagersHome)
             {
                 _villagersHome = home;
                 foreach (Villager v in _villagers)
-                    if (v.Body != null)
-                        v.Body.gameObject.SetActive((!worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)));
+                    if (v.Body != null) v.Body.gameObject.SetActive(Shown(v));
             }
         }
+
+        /// <summary>Nuit du monde montrée (les villageois du décor rentrent).</summary>
+        private bool _worldNight;
+
+        /// <summary>
+        /// Un villageois du décor est dehors : pas la nuit (sauf les veilleurs), pas sous une vraie pluie (sauf un sur trois), et, sous-lot
+        /// V2.3, pas rentré manger chez lui.
+        /// </summary>
+        private bool Shown(Villager v) =>
+            (!_worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)) && !v.Away;
 
         private static void SetGlow(Material material, Color color, Color emission)
         {

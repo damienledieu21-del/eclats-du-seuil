@@ -118,7 +118,42 @@ namespace EdS.Data.Json
                 ["position"] = (v, p) => n.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["dialogue"] = (v, p) => n.Dialogue = input.Text(v, p),
                 ["zone"] = (v, p) => n.Zone = input.Text(v, p),   // sous-lot V1.6 (schéma 3)
+                ["schedule"] = (v, p) => n.Schedule = List(input, v, p, StoryValidator.MaxScheduleSlots, ReadSlot),   // sous-lot V2.3 (schéma 9)
             }) ? n : null;
+        }
+
+        /// <summary>Sous-lot V2.3 (schéma 9) : un créneau de l'emploi du temps d'un PNJ.</summary>
+        private static ScheduleSlotData? ReadSlot(JsonInput input, JsonElement element, string path)
+        {
+            var s = new ScheduleSlotData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["at"] = (v, p) => s.At = input.Text(v, p),
+                ["activity"] = (v, p) => s.Activity = input.Text(v, p),
+                ["position"] = (v, p) => s.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["rain"] = (v, p) => s.Rain = ReadPlace(input, v, p),
+            }) ? s : null;
+        }
+
+        private static SchedulePlaceData? ReadPlace(JsonInput input, JsonElement element, string path)
+        {
+            var s = new SchedulePlaceData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["activity"] = (v, p) => s.Activity = input.Text(v, p),
+                ["position"] = (v, p) => s.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+            }) ? s : null;
+        }
+
+        /// <summary>Sous-lot V2.3 (schéma 9) : une réplique d'un nœud selon le moment.</summary>
+        private static DialogueLineData? ReadLine(JsonInput input, JsonElement element, string path)
+        {
+            var l = new DialogueLineData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["conditions"] = (v, p) => l.Conditions = Terms(input, v, p, "if"),
+                ["text"] = (v, p) => l.Text = input.Text(v, p),
+            }) ? l : null;
         }
 
         private static DialogueData? ReadDialogue(JsonInput input, JsonElement element, string path)
@@ -150,6 +185,7 @@ namespace EdS.Data.Json
                 ["id"] = (v, p) => n.Id = input.Text(v, p),
                 ["text"] = (v, p) => n.Text = input.Text(v, p),
                 ["choices"] = (v, p) => n.Choices = List(input, v, p, StoryValidator.MaxChoices, ReadChoice),
+                ["lines"] = (v, p) => n.Lines = List(input, v, p, StoryValidator.MaxLines, ReadLine),   // sous-lot V2.3 (schéma 9)
             }) ? n : null;
         }
 

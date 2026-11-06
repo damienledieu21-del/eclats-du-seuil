@@ -513,7 +513,7 @@ namespace EdS.Game
             if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
-            _markers.Walk(a, Time.deltaTime);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit
+            _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
             _arena.Sync(_combat, player, null);
@@ -528,6 +528,7 @@ namespace EdS.Game
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
+            _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).
             if (_companions == null) _companions = new CompanionsView();

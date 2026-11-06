@@ -1106,7 +1106,7 @@ namespace EdS.Data.Zones
         }
 
         /// <summary>Emprise (centre, rayon) entière dans l'aire praticable et hors de tout obstacle (passages fermés compris) ; null si elle tient.</summary>
-        private static string? Clear(GroundVector p, Fixed r, CombatSpace space, string who)
+        internal static string? Clear(GroundVector p, Fixed r, CombatSpace space, string who)
         {
             if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
                 return $"l'emprise {who} ({r} m) déborde de l'aire praticable de la zone.";
