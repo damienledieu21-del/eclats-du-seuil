@@ -548,6 +548,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.2 : le décor du temps (flaques, villageois qui s'abritent).</summary>
         public void Weather(WeatherLook look) => _space?.Weather(look);
 
+        /// <summary>Sous-lot V2.3 : la minute du monde, pour les allers-retours des villageois du décor.</summary>
+        public void Village(int minute) => _space?.Village(minute);
+
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;

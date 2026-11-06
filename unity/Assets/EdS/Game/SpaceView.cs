@@ -473,7 +473,23 @@ namespace EdS.Game
             public float Yaw;
             /// <summary>Hauteur du centre du corps (m) : 1 m, fois la taille du villageois.</summary>
             public float Height = 1f;
+            /// <summary>Sous-lot V2.3 : rentré chez lui pour sa course (caché).</summary>
+            public bool Away;
+            /// <summary>Sous-lot V2.3 : l'activité jouée en ce moment (changée seulement quand elle change).</summary>
+            public VillagerActivity Playing;
         }
+
+        /// <summary>Sous-lot V2.3 : places des courses des villageois du décor (auberge, puits, maisons) ; null dans un intérieur.</summary>
+        private VillageSpots _errands;
+
+        /// <summary>Sous-lot V2.3 : minute du monde montrée (−1 : pas encore donnée, chacun reste à son poste).</summary>
+        private int _villageMinute = -1;
+
+        /// <summary>
+        /// Sous-lot V2.3 (villageois qui suivent leur journée) : la minute du monde, pour les allers-retours des villageois du décor
+        /// (<see cref="VillageDay"/>) : le matin au puits, à midi chez eux, le soir devant l'auberge.
+        /// </summary>
+        public void Village(int minute) => _villageMinute = minute;
 
         private readonly List<Villager> _villagers = new List<Villager>();
 
@@ -490,6 +506,7 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (map == null || catalog == null || catalog.Villagers <= 0) return;
             int max = Application.isMobilePlatform ? catalog.Villagers / 3 : catalog.Villagers;
+            _errands = VillageDay.Spots(map);   // sous-lot V2.3 : les courses de la journée
             Villagers(TownModels.Villagers(map, _fields, max));
         }
 
@@ -520,15 +537,19 @@ namespace EdS.Game
                 body.transform.localScale = body.transform.localScale * size;
                 body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
-                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size });
+                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity });
             }
         }
 
-        /// <summary>Essai réaliste 8 : les passants vont et viennent le long de leur allée, et se retournent au bout.</summary>
+        /// <summary>
+        /// Essai réaliste 8 : les passants vont et viennent le long de leur allée, et se retournent au bout. Sous-lot V2.3 : les autres font
+        /// leur course de la journée (<see cref="VillageDay.Goal"/>) : ils y marchent au pas, y bavardent, ou rentrent chez eux, puis reviennent.
+        /// </summary>
         private void Walk(float deltaTime)
         {
             foreach (Villager v in _villagers)
             {
+                if (!v.Data.Walks && deltaTime > 0f && v.Body != null) Errand(v, deltaTime);
                 if (!v.Data.Walks || deltaTime <= 0f) continue;
                 float dx = (float)(v.Data.ToX - v.Data.X), dz = (float)(v.Data.ToZ - v.Data.Z);
                 float length = Mathf.Sqrt(dx * dx + dz * dz);
@@ -543,6 +564,38 @@ namespace EdS.Game
                 v.Yaw = (float)StyleRules.Turn(v.Yaw, target, 200f * deltaTime);
                 v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, v.Height, (float)v.Data.Z + dz * v.Along);
                 v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
+            }
+        }
+
+        /// <summary>Sous-lot V2.3 : un villageois du décor va vers la place de sa course (ou revient à son poste), au pas.</summary>
+        private void Errand(Villager v, float deltaTime)
+        {
+            if (_errands == null || _villageMinute < 0) return;
+            VillagerGoal goal = VillageDay.Goal(v.Data, _villageMinute, _errands);
+            Vector3 at = v.Body.position;
+            var target = new Vector3((float)goal.X, v.Height, (float)goal.Z);
+            Vector3 step = Vector3.MoveTowards(at, target, WalkSpeed * deltaTime);
+            bool moving = (step - at).sqrMagnitude > 1e-8f;
+            if (moving)
+            {
+                v.Body.position = step;
+                Vector3 way = target - at;
+                float aim = (float)StyleRules.FaceYaw(0, 0, way.x, way.z);
+                v.Yaw = (float)StyleRules.Turn(v.Yaw, aim, 200f * deltaTime);
+            }
+            else v.Yaw = (float)StyleRules.Turn(v.Yaw, goal.Yaw, 120f * deltaTime);
+            v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
+            VillagerActivity play = moving ? VillagerActivity.Walk : goal.Activity;
+            if (play != v.Playing && v.Look != null)
+            {
+                v.Playing = play;
+                v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
+            }
+            bool away = goal.Indoors && !moving;
+            if (away != v.Away)
+            {
+                v.Away = away;
+                v.Body.gameObject.SetActive(Shown(v));
             }
         }
 

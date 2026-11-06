@@ -46,6 +46,10 @@ namespace EdS.Game
             /// <summary>Sous-lot V2.1 : sa place de jour et son angle de repos là-bas.</summary>
             public Vector3 DayPlace;
             public float DayYaw;
+
+            /// <summary>Sous-lot V2.3 : ce qu'il fait à cette heure (« au fournil »), sous son nom ; null : rien à montrer.</summary>
+            public string Activity;
+            public string Label;
         }
 
         private readonly GameObject _root;
@@ -336,7 +340,17 @@ namespace EdS.Game
             {
                 _npcAge = 0f;
                 foreach (WorldMarker npc in adventure.Npcs())
-                    if (_npcs.TryGetValue(npc.Id, out Marker m)) m.Data = npc;
+                    if (_npcs.TryGetValue(npc.Id, out Marker m))
+                    {
+                        m.Data = npc;
+                        // Sous-lot V2.3 : son activité de l'emploi du temps, sous son nom (relue avec sa place).
+                        string activity = adventure.ActivityOf(npc.Id);
+                        if (activity != m.Activity || m.Label == null)
+                        {
+                            m.Activity = activity;
+                            m.Label = activity == null ? null : npc.Name + " · " + activity;
+                        }
+                    }
             }
             foreach (Marker m in _npcs.Values)
             {
@@ -384,7 +398,7 @@ namespace EdS.Game
                 float dx = at.x - player.x, dz = at.z - player.z;
                 if (dx * dx + dz * dz > m.Range * m.Range) continue;
                 Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
-                hud.Label(screen, m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // essai réaliste 6 : interface uGUI
+                hud.Label(screen, m.Label ?? m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // sous-lot V2.3 : et son activité   // essai réaliste 6 : interface uGUI
             }
         }
 
