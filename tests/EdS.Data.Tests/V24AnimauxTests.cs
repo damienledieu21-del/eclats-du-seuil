@@ -448,6 +448,37 @@ public class V24AnimauxMondeTests
     }
 
     [Fact]
+    public void Un_cerf_qui_fuit_n_empeche_pas_de_voyager()
+    {
+        // Revue Codex de la PR #104 (tour 3) : le joueur arrive à 6 m d'un cerf (sud du lac, midi par temps clair) : la harde le remarque et
+        // fuit, reste engagée et le vise de loin (pas de laisse pour une bête qui fuit), mais ce n'est pas un combat : il peut voyager.
+        long clear = DayWith(WeatherKind.Clear, 12 * 60);
+        WorldSession w = At(TickAt(clear, 12 * 60), Zone(-8, -66));
+        for (int i = 0; i < 200; i++) w.Step();
+        CombatantView deer = w.Zone.Engine.View(w.CurrentCreature("cerf3"));
+        Assert.True(deer.Engaged && deer.Noticed && deer.Flees);
+        Assert.Equal("bastion", deer.CurrentTarget);
+        Assert.False(w.InCombat);
+        Assert.NotEqual(TravelRefusal.InCombat, w.CanTravel(Vallons, "place_du_village"));
+    }
+
+    [Fact]
+    public void Un_loup_gris_engage_a_portee_reste_un_combat()
+    {
+        // Revue Codex de la PR #104 (tour 3) : un ennemi engagé qui vise le joueur compte à sa laisse (au-delà, la laisse du monde le renvoie).
+        long misty = DayWith(WeatherKind.Mist, 6 * 60);
+        WorldSession w = At(TickAt(misty, 6 * 60), Zone(-36, -24));   // à quelques mètres des loups gris
+        bool engaged = false;
+        for (int i = 0; i < 300 && !engaged; i++)
+        {
+            w.Step();
+            engaged = w.Zone.Engine.View(w.CurrentCreature("loup_brume1")).Engaged;
+        }
+        Assert.True(engaged);
+        Assert.True(w.InCombat);   // à portée : c'est un combat
+    }
+
+    [Fact]
     public void Longue_session_sans_le_joueur_les_populations_des_quetes_repeuplent_toujours()
     {
         // Relecture de la PR #104 : une session entière (de 4 h à 11 h d'un matin de brume, presque une heure de jeu) où le joueur ne fait rien, avec
