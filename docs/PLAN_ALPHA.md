@@ -167,6 +167,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Pluie, brume du matin, tirées de façon déterministe par le jour du monde ; d'abord pour l'ambiance, sans changer les règles du combat.
 - Dépend de V2.1.
 - Formats : temps du monde (sauvegarde du monde si besoin).
+- **État** (6 novembre 2026, PR en brouillon) : temps recalculé du jour du monde et de la zone (aucun changement de sauvegarde, version 12) : clair, nuageux, brume du matin, pluie fine, averse, orage rare (éclairs et tonnerre pour l'ambiance), tranches de 3 h du monde fondues en douceur ; histoire en schéma 8 (condition `weather`, schéma 7 encore lu), seize répliques chez onze villageois ; pluie, éclaboussures, flaques, brume, ciel couvert, éclairs et tonnerre (synthèse sans fichier) sous Unity ; menu « Essai de la météo » ; populations inchangées ([MONDE.md](MONDE.md#météo-sous-lot-v22), [UNITY.md](UNITY.md#essai-v22--météo)). Reste l'essai de Damien sous Unity.
 
 ### 15. V2.3 — Villageois qui suivent leur journée (M)
 
