@@ -262,6 +262,40 @@ namespace EdS.Runtime
         OwlEyes = 3,
     }
 
+    /// <summary>Revue Codex de la PR #99 : une pièce d'une lanterne, en coordonnées locales à son support (centre et demi-tailles… voir <see cref="NightLamps.LanternPieces"/>).</summary>
+    public readonly struct LanternPiece
+    {
+        public LanternPiece(string name, bool iron, bool glass, double x, double y, double z, double scaleX, double scaleY, double scaleZ)
+        {
+            Name = name;
+            Iron = iron;
+            Glass = glass;
+            X = x;
+            Y = y;
+            Z = z;
+            ScaleX = scaleX;
+            ScaleY = scaleY;
+            ScaleZ = scaleZ;
+        }
+
+        public string Name { get; }
+
+        /// <summary>En fer sombre (poteau, potence, chapeau).</summary>
+        public bool Iron { get; }
+
+        /// <summary>Le verre, qui brille la nuit.</summary>
+        public bool Glass { get; }
+
+        public double X { get; }
+        public double Y { get; }
+        public double Z { get; }
+
+        /// <summary>Échelle d'Unity (taille pour un cube, rayon et demi-hauteur pour un cylindre).</summary>
+        public double ScaleX { get; }
+        public double ScaleY { get; }
+        public double ScaleZ { get; }
+    }
+
     public readonly struct NightLamp
     {
         public NightLamp(string id, NightLampKind kind, double x, double y, double z, double yaw = 0)
@@ -379,6 +413,34 @@ namespace EdS.Runtime
         /// </summary>
         public static bool AwakeAtNight(StyleVillager villager) =>
             villager.Activity != VillagerActivity.Walk && StyleRules.Variant((villager.Id ?? string.Empty) + "/veilleur", 4) == 0;
+
+        /// <summary>
+        /// Revue Codex de la PR #99 : pièces d'une lanterne (poteau ou potence, chapeau, verre), en coordonnées <b>locales</b> à son support
+        /// (posé au sol sous la lanterne et tourné de <see cref="NightLamp.Yaw"/> ; z local négatif : vers le mur).
+        /// </summary>
+        public static IReadOnlyList<LanternPiece> LanternPieces(NightLamp lamp)
+        {
+            double top = LanternTop(lamp);
+            var pieces = new List<LanternPiece>();
+            if (lamp.Kind == NightLampKind.StreetLantern) pieces.Add(new LanternPiece("poteau", true, false, 0, top / 2, 0, 0.09, top / 2, 0.09));
+            else pieces.Add(new LanternPiece("potence", true, false, 0, top + 0.2, -0.12, 0.05, 0.05, 0.3));
+            pieces.Add(new LanternPiece("chapeau", true, false, 0, top + 0.18, 0, 0.26, 0.06, 0.26));
+            pieces.Add(new LanternPiece("verre", false, true, 0, top, 0, 0.2, 0.28, 0.2));
+            return pieces;
+        }
+
+        /// <summary>Hauteur du verre d'une lanterne (m) : 2,7 m pour un réverbère, sinon sa hauteur propre.</summary>
+        public static double LanternTop(NightLamp lamp) => lamp.Kind == NightLampKind.StreetLantern ? 2.7 : lamp.Y;
+
+        /// <summary>
+        /// Place dans le monde d'un point local au support de <paramref name="lamp"/> (au sol en X, Z, tourné de son angle comme
+        /// <c>Quaternion.Euler(0, yaw, 0)</c> d'Unity : le z local suit la direction de <see cref="StyleRules.FaceYaw"/>).
+        /// </summary>
+        public static (double X, double Y, double Z) ToWorld(NightLamp lamp, double x, double y, double z)
+        {
+            double a = lamp.Yaw * Math.PI / 180, cos = Math.Cos(a), sin = Math.Sin(a);
+            return (lamp.X + x * cos + z * sin, y, lamp.Z - x * sin + z * cos);
+        }
 
         /// <summary>Un écho (créature qui revient, « loup_echo… ») : pâle et lumineux à l'affichage.</summary>
         public static bool IsEcho(string combatant) => (combatant ?? string.Empty).StartsWith("loup_echo", StringComparison.Ordinal);

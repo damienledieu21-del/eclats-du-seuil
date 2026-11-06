@@ -581,6 +581,37 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal(save.Consumed, moved.Consumed);
     }
 
+    [Fact]
+    public void Chaque_lanterne_a_ses_pieces_a_sa_place()
+    {
+        // Revue Codex de la PR #99 : les pièces sont locales au support ; dans le monde, chacune est sur sa lanterne (pas toutes autour de 0).
+        NightLamp door = NightLamps.DoorLantern("maison1", 10, 20, 16, 30, (1, 0));
+        NightLamp street = NightLamps.Street("rue", new[] { (-40.0, -40.0), (-10.0, -40.0) }, 6, (x, z) => true)[0];
+        foreach (NightLamp lamp in new[] { door, street })
+        {
+            IReadOnlyList<LanternPiece> pieces = NightLamps.LanternPieces(lamp);
+            Assert.Equal(lamp.Kind == NightLampKind.StreetLantern ? new[] { "poteau", "chapeau", "verre" } : new[] { "potence", "chapeau", "verre" },
+                pieces.Select(p => p.Name));
+            Assert.Single(pieces, p => p.Glass);
+            foreach (LanternPiece p in pieces)
+            {
+                (double x, double y, double z) = NightLamps.ToWorld(lamp, p.X, p.Y, p.Z);
+                Assert.True(Math.Abs(x - lamp.X) < 0.5 && Math.Abs(z - lamp.Z) < 0.5, $"{p.Name} loin de sa lanterne");
+                Assert.Equal(p.Y, y);
+            }
+            LanternPiece glass = pieces.Single(p => p.Glass);
+            Assert.Equal((lamp.X, NightLamps.LanternTop(lamp), lamp.Z), NightLamps.ToWorld(lamp, glass.X, glass.Y, glass.Z));
+        }
+        // La potence part vers le mur : la façade regarde l'est (+x), le mur est à l'ouest de la lanterne.
+        LanternPiece arm = NightLamps.LanternPieces(door).Single(p => p.Name == "potence");
+        Assert.True(NightLamps.ToWorld(door, arm.X, arm.Y, arm.Z).X < door.X);
+        Assert.True(door.X > 16);   // devant la façade est
+        // Rotation comme Unity (Quaternion.Euler(0, yaw, 0)) : le z local suit FaceYaw.
+        var north = new NightLamp("n", NightLampKind.DoorLantern, 0, 2, 0, StyleRules.FaceYaw(0, 0, 1, 0));
+        (double nx, _, double nz) = NightLamps.ToWorld(north, 0, 0, 1);
+        Assert.Equal((1.0, 0.0), (Math.Round(nx, 9), Math.Round(nz, 9)));
+    }
+
     private (string Data, string Scenarios) DataCopy((double X, double Z) entry)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");

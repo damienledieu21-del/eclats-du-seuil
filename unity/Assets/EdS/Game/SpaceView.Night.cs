@@ -95,13 +95,11 @@ namespace EdS.Game
                 holder.transform.SetParent(_nightRoot.transform, false);
                 holder.transform.position = new Vector3((float)spot.X, 0f, (float)spot.Z);
                 holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
-                float top = spot.Kind == NightLampKind.StreetLantern ? 2.7f : (float)spot.Y;
-                if (spot.Kind == NightLampKind.StreetLantern)
-                    Piece(holder.transform, "poteau", PrimitiveType.Cylinder, new Vector3(0f, top / 2f, 0f), new Vector3(0.09f, top / 2f, 0.09f), iron);
-                else
-                    Piece(holder.transform, "potence", PrimitiveType.Cube, new Vector3(0f, top + 0.2f, -0.12f), new Vector3(0.05f, 0.05f, 0.3f), iron);
-                Piece(holder.transform, "chapeau", PrimitiveType.Cube, new Vector3(0f, top + 0.18f, 0f), new Vector3(0.26f, 0.06f, 0.26f), iron);
-                Piece(holder.transform, "verre", PrimitiveType.Cube, new Vector3(0f, top, 0f), new Vector3(0.2f, 0.28f, 0.2f), _lanternGlow);
+                float top = (float)NightLamps.LanternTop(spot);
+                // Revue Codex de la PR #99 : pièces placées en coordonnées locales au support (chaque lanterne à sa place, tournée avec lui).
+                foreach (LanternPiece p in NightLamps.LanternPieces(spot))
+                    Piece(holder.transform, p.Name, p.Name == "poteau" ? PrimitiveType.Cylinder : PrimitiveType.Cube, new Vector3((float)p.X, (float)p.Y, (float)p.Z),
+                        new Vector3((float)p.ScaleX, (float)p.ScaleY, (float)p.ScaleZ), p.Glass ? _lanternGlow : iron, true);
                 _lanterns.Add(new Lamp { Data = spot, Body = holder.transform, Glow = holder.transform.position + new Vector3(0f, top, 0f) });
             }
             // Feux follets : sur l'eau et dans les ruines, là où les échos reviennent.
@@ -143,13 +141,20 @@ namespace EdS.Game
             SetNightVisible(0f);
         }
 
-        private static GameObject Piece(Transform parent, string name, PrimitiveType shape, Vector3 position, Vector3 scale, Material material)
+        /// <param name="local">Revue Codex de la PR #99 : <paramref name="position"/> est locale au support (lanternes) ; sinon dans le
+        /// monde (feux follets, yeux de hiboux).</param>
+        private static GameObject Piece(Transform parent, string name, PrimitiveType shape, Vector3 position, Vector3 scale, Material material, bool local = false)
         {
             GameObject piece = GameObject.CreatePrimitive(shape);
             piece.name = name;
             Object.Destroy(piece.GetComponent<Collider>());
             piece.transform.SetParent(parent, false);
-            piece.transform.position = position;
+            if (local)
+            {
+                piece.transform.localPosition = position;
+                piece.transform.localRotation = Quaternion.identity;
+            }
+            else piece.transform.position = position;
             piece.transform.localScale = scale;
             Renderer renderer = piece.GetComponent<Renderer>();
             renderer.sharedMaterial = material;
