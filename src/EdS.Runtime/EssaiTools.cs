@@ -19,6 +19,12 @@ namespace EdS.Runtime
         CompleteNotRenamed,
     }
 
+    /// <summary>Résultat de la préparation de la scène de démarrage.</summary>
+    public enum StartupSceneState { Ready, Cancelled, Failed }
+
+    /// <summary>Suite de « Préparer et lancer l'essai » après la scène de démarrage.</summary>
+    public enum LaunchStep { Continue, StopSilently, StopWithMessage }
+
     /// <summary>Résultat d'une sauvegarde : issue, fichier final ou brouillon laissé, nombre d'entrées, message pour l'utilisateur.</summary>
     public sealed class BackupResult
     {
@@ -98,6 +104,16 @@ namespace EdS.Runtime
                     + (draft != null && File.Exists(draft) ? "\nFichier incomplet laissé en place (tu peux le supprimer toi-même) : " + draft : "")
                     + "\nVérifie la place libre sur le disque et les droits du dossier. Rien du projet n'a été supprimé.");
             }
+        }
+
+        /// <summary>
+        /// Décision après la scène de démarrage : annulée par l'utilisateur = arrêt immédiat et sans rien d'autre (pas de seconde question,
+        /// pas de préparation) ; échec ou scène absente = arrêt avec message ; sinon on continue.
+        /// </summary>
+        public static LaunchStep AfterStartupScene(StartupSceneState state, bool sceneAssetExists)
+        {
+            if (state == StartupSceneState.Cancelled) return LaunchStep.StopSilently;
+            return state == StartupSceneState.Ready && sceneAssetExists ? LaunchStep.Continue : LaunchStep.StopWithMessage;
         }
 
         /// <summary>

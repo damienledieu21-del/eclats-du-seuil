@@ -78,10 +78,16 @@ namespace EdS.Game.Editor
                 return;
             }
             // 1. La scène de démarrage existe et est dans la liste de construction (sans effet si c'est déjà fait).
-            EdsStartupScene.Ensure(false);
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) == null)
+            StartupSceneState state = EdsStartupScene.Ensure(false);
+            LaunchStep step = EssaiTools.AfterStartupScene(state, AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) != null);
+            if (step == LaunchStep.StopSilently)
             {
-                EditorUtility.DisplayDialog("Essai", "La scène de démarrage (" + EdsStartupScene.ScenePath + ") n'a pas pu être créée : regarde la Console, puis relance.", "OK");
+                Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée). Rien d'autre n'a été fait.");
+                return;
+            }
+            if (step == LaunchStep.StopWithMessage)
+            {
+                EditorUtility.DisplayDialog("Essai", "La scène de démarrage (" + EdsStartupScene.ScenePath + ") n'a pas pu être préparée : regarde la Console, puis relance.", "OK");
                 return;
             }
             // 2. Préparation de l'essai de style (relançable, rapport dans la Console).

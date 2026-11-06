@@ -137,4 +137,13 @@ public sealed class V1101OutilsEssaiTests : IDisposable
     [InlineData("", 3, true)]
     public void Ouverture_de_la_scene_seule(string active, int count, bool expected)
         => Assert.Equal(expected, EssaiTools.ShouldOpenStartupSceneAlone(active, count, "Assets/EdS/Scenes/Jeu.unity"));
+
+    [Theory]
+    [InlineData(StartupSceneState.Cancelled, true, LaunchStep.StopSilently)]    // une seule annulation arrête tout, sans message
+    [InlineData(StartupSceneState.Cancelled, false, LaunchStep.StopSilently)]
+    [InlineData(StartupSceneState.Failed, true, LaunchStep.StopWithMessage)]
+    [InlineData(StartupSceneState.Ready, false, LaunchStep.StopWithMessage)]
+    [InlineData(StartupSceneState.Ready, true, LaunchStep.Continue)]
+    public void Suite_apres_la_scene_de_demarrage(StartupSceneState state, bool exists, LaunchStep expected)
+        => Assert.Equal(expected, EssaiTools.AfterStartupScene(state, exists));
 }
