@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "kind": "zone",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -712,6 +712,238 @@
         "family": "echo",
         "hours": {
           "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_brume1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "weather": {
+          "kinds": [
+            "mist"
+          ],
+          "sign": "text.zone.loups_brume.signe"
+        }
+      },
+      {
+        "creature": "loup_brume2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "weather": {
+          "kinds": [
+            "mist"
+          ]
+        }
+      },
+      {
+        "creature": "loup_brume3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "weather": {
+          "kinds": [
+            "mist"
+          ]
+        }
+      },
+      {
+        "creature": "loup_echo5",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "weather": {
+          "kinds": [
+            "mist"
+          ],
+          "sign": "text.zone.echos_brume.signe"
+        }
+      },
+      {
+        "creature": "loup_echo6",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "weather": {
+          "kinds": [
+            "mist"
+          ]
+        }
+      },
+      {
+        "creature": "cerf1",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ],
+          "sign": "text.zone.cerfs.signe"
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "cerf2",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ]
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "cerf3",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ]
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "cerf4",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ]
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "cerf5",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ]
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "cerf6",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dawn",
+            "day"
+          ]
+        },
+        "weather": {
+          "kinds": [
+            "clear",
+            "cloudy",
+            "mist",
+            "drizzle"
+          ]
+        }
+      },
+      {
+        "creature": "lievre1",
+        "respawnMs": 60000,
+        "leashRange": 25,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dusk",
+            "night"
+          ],
+          "sign": "text.zone.lievres.signe"
+        }
+      },
+      {
+        "creature": "lievre2",
+        "respawnMs": 60000,
+        "leashRange": 25,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dusk",
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "lievre3",
+        "respawnMs": 60000,
+        "leashRange": 25,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dusk",
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "lievre4",
+        "respawnMs": 60000,
+        "leashRange": 25,
+        "loot": null,
+        "hours": {
+          "phases": [
+            "dusk",
             "night"
           ]
         }

@@ -208,6 +208,22 @@ namespace EdS.Data.Zones
         /// qui dorment la nuit) ; facultatif (toujours là). Exclusif de <see cref="Night"/>.
         /// </summary>
         public HoursData? Hours { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.4 (schéma 9) : temps où la créature est dans le monde (les loups et les échos de la brume, les cerfs qui s'abritent sous
+        /// l'averse) ; facultatif (par tous les temps). Se combine avec <see cref="Hours"/> ; exclusif de <see cref="Night"/>.
+        /// </summary>
+        public WeatherData? Weather { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.4 (schéma 9) : temps d'une population.</summary>
+    public sealed class WeatherData
+    {
+        /// <summary>Temps où elle est là : « clear », « cloudy », « mist », « drizzle », « shower », « storm » ou « rain » (toute pluie).</summary>
+        public List<string?>? Kinds { get; set; }
+
+        /// <summary>Clé du texte annoncé quand elle arrive (« La brume monte… ») ; facultative.</summary>
+        public string? Sign { get; set; }
     }
 
     /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population.</summary>

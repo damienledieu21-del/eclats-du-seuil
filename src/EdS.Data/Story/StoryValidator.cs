@@ -297,6 +297,11 @@ namespace EdS.Data.Story
                     for (int i = 0; i < z.Populations.Count; i++)
                         if (z.Populations[i].Hours is { Sign: string sign })
                             Text(sign, $"{z.Id}:$.data.populations[{i}].hours.sign");
+                // Sous-lot V2.4 (zones en schéma 9) : le signe d'une créature venue par son temps (la brume).
+                foreach (ZoneDefinition z in new[] { _zone }.Concat(_interiors))
+                    for (int i = 0; i < z.Populations.Count; i++)
+                        if (z.Populations[i].Weather is { Sign: string weatherSign })
+                            Text(weatherSign, $"{z.Id}:$.data.populations[{i}].weather.sign");
 
                 var discoveries = new List<Discovery>();
                 if (_d.Discoveries != null)

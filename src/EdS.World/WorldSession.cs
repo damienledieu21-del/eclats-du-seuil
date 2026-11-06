@@ -489,7 +489,7 @@ namespace EdS.World
             : this(save ?? throw new ArgumentNullException(nameof(save)),
                 // Sous-lot V1.8 (zones en mélange) : la zone telle que le personnage la trouve à son niveau d'entrée (créatures, chefs),
                 // calculée une seule fois (relecture de la PR #83).
-                ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression), data, progression, items, story, crafting, log, safePoint,
+                ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression, storyZone), data, progression, items, story, crafting, log, safePoint,
                 door, storyZone, market, guild, scaled: true)
         {
         }
@@ -497,12 +497,12 @@ namespace EdS.World
         /// <summary>Forme de la session pour une zone déjà réglée au niveau du personnage (<paramref name="zone"/>, <see cref="ForPlayer"/>).</summary>
         private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled)
-            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
+            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
                 null, log, CheckZone(save, zone, story, crafting, market, guild))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
-            _populations = new ZonePopulations(zone, StartPhase(zone, save));
+            _populations = new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
@@ -528,10 +528,10 @@ namespace EdS.World
         /// celui que le personnage garde à l'entrée, après la conversion d'une sauvegarde d'avant V1.8 (<see cref="RetainedXp"/>, même règle
         /// et même condition de place au registre que l'entrée ; la mise à l'échelle ne change pas le nombre de combattants).
         /// </summary>
-        private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression)
+        private static ZoneDefinition ForPlayer(ZoneDefinition zone, WorldSave save, CharacterProgression progression, string? storyZone)
         {
             if (save.Character is not SavedCharacter c || progression is null) return zone;
-            int combatants = ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save)).Combatants.Count;
+            int combatants = ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)).Combatants.Count;
             long xp = RetainedXp(save, c, progression, combatants, out _);
             return zone.ForLevel(progression.LevelFor(xp));
         }
@@ -540,6 +540,13 @@ namespace EdS.World
         /// Sous-lot V2.1 : moment de la journée au début de la session (heure de la sauvegarde, horloge du monde de la zone) : les créatures
         /// qui ont leurs heures (<see cref="Population.Hours"/>) ne sont là d'emblée qu'à leurs heures.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.4 : temps au début de la session (celui de la zone de l'histoire, comme les répliques et l'affichage) : les créatures qui
+        /// ont leur temps (<see cref="Population.Weather"/>, la brume) ne sont là d'emblée que par ce temps.
+        /// </summary>
+        private static WeatherKind StartWeather(ZoneDefinition zone, WorldSave save, string? storyZone) =>
+            WorldWeather.At(storyZone ?? zone.Id, new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick)).Kind;
+
         private static DayPhase StartPhase(ZoneDefinition zone, WorldSave save) =>
             new WorldClock((zone ?? throw new ArgumentNullException(nameof(zone))).Setup.Combat.TickMilliseconds).At((save ?? throw new ArgumentNullException(nameof(save))).WorldTick).Phase;
 
@@ -848,21 +855,38 @@ namespace EdS.World
         public bool IsAvailable(Population population)
         {
             if (population is null) throw new ArgumentNullException(nameof(population));
-            if (population.Hours is null && population.Night is null) return true;
+            if (!population.Timed && population.Night is null) return true;
             return Wanted(population, Zone.Engine.CurrentTick);
         }
 
         private bool Wanted(Population population, long tick)
         {
-            if (population.Hours is PopulationHours hours)
+            if (population.Timed)
             {
                 // Sous-lot V2.1 : une créature qui a ses heures est là à ses heures ; une quête ou un contrat en cours qui la demande, elle
                 // précisément (objectif « vaincre » sur son identifiant), la fait venir à toute heure, comme le loup blanc. Un objectif de
                 // famille ne la force pas : les autres bêtes de sa famille sont là.
+                // Sous-lot V2.4 : une créature qui a son temps (la brume) n'est là que par ce temps (et à ses heures, si elle en a).
                 if (Narrative?.Hunts(population.Creature, string.Empty) == true) return true;
-                return hours.IsActive((int)Zone.Clock.At(checked(Zone.StartWorldTick + tick)).Phase);
+                WorldTime time = Zone.Clock.At(checked(Zone.StartWorldTick + tick));
+                if (population.Hours is PopulationHours hours && !hours.IsActive((int)time.Phase)) return false;
+                return population.Weather is not PopulationWeather weather || WeatherFits(weather, time);
             }
             return NightWanted(population, tick);
+        }
+
+        /// <summary>Sous-lot V2.4 : dernier temps calculé (jour, minute du monde) : il ne change qu'une fois par minute du monde.</summary>
+        private (long Day, int Minute, WeatherKind Kind)? _weatherSeen;
+
+        /// <summary>
+        /// Sous-lot V2.4 (zones en schéma 9) : le temps du monde à <paramref name="time"/> (celui de la zone de l'histoire, comme les répliques
+        /// des villageois et l'affichage) est-il l'un de ceux de <paramref name="weather"/> ?
+        /// </summary>
+        private bool WeatherFits(PopulationWeather weather, WorldTime time)
+        {
+            if (!(_weatherSeen is { } seen && seen.Day == time.Day && seen.Minute == time.Minute))
+                _weatherSeen = seen = (time.Day, time.Minute, WorldWeather.At(_storyZone ?? Zone.Id, time).Kind);
+            return ZonePopulations.Fits(weather, seen.Kind);
         }
 
         private bool NightWanted(Population population, long tick)
@@ -897,7 +921,9 @@ namespace EdS.World
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
                 if (_populations?.Of(e.Combatant) is Population rare) NightDefeated(rare, e.Tick);   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
-                if (!here) continue;
+                // Sous-lot V2.4 (bêtes qui se battent) : et il doit l'avoir frappée ; une bête tuée par d'autres bêtes ne compte pas (ni
+                // expérience, ni butin, ni objectif « vaincre »).
+                if (!here || !creature.HurtByCharacter) continue;
                 int before = Level;
                 // Revue Codex de la PR #43 : seule l'expérience réellement ajoutée (sous le plafond) est annoncée ; rien au plafond.
                 long total = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + _progression.KillXp(maxHealth)));

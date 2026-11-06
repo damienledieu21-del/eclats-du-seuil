@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.13.0-provisoire",
+  "contentVersion": "0.14.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -552,6 +552,10 @@
       "text.zone.loup_blanc.signe": "Un hurlement glacé monte du pré…",
       "text.zone.loups_nuit.signe": "La nuit tombe. Des loups hurlent dans le pré…",
       "text.zone.echos.signe": "Des lueurs pâles flottent sur les ruines : des bêtes mortes qui reviennent. Des échos.",
+      "text.zone.loups_brume.signe": "La brume monte de la rivière. Des loups gris descendent des bois vers les champs…",
+      "text.zone.echos_brume.signe": "Dans la brume, des lueurs pâles reviennent au lac et aux ruines : des échos, en plein matin.",
+      "text.zone.cerfs.signe": "Des cerfs sortent du bois et descendent boire au lac.",
+      "text.zone.lievres.signe": "Le soir tombe : des lièvres sortent dans les champs.",
       "text.dialogue.livrer": "Voici : {1} ×{0}.",
       "text.dialogue.livraison": "Tu as quelque chose pour moi ?",
       "text.contract.presse_loups_du_soir.name": "Pressé : loups avant la nuit",
