@@ -1177,7 +1177,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         /// <param name="engaging">Relecture de la PR #104 : cible au moment de son engagement (comme un engagé : un joueur au loin seulement
         /// s'il l'a remarqué).</param>
-        private Fighter? SingleTarget(Fighter assailant, bool engaging = false)
+        private Fighter? SingleTarget(Fighter assailant, bool engaging = false, bool? noticed = null)
         {
             StatusInstance? taunt = null;
             foreach (StatusInstance status in assailant.Statuses.Values)
@@ -1187,7 +1187,7 @@ namespace EdS.Simulation.Engine
             Fighter? scripted = setup.Target is null ? null : _byId[setup.Target];
             // Sous-lot 11.5 : un ennemi qui a un comportement vise sa cible de scénario si elle est là et vivante, sinon l'ennemi le plus proche.
             if (setup.Behavior is null) return scripted;
-            return scripted is { Out: false } ? scripted : Nearest(assailant, engaging);
+            return scripted is { Out: false } ? scripted : Nearest(assailant, engaging, noticed);
         }
 
         /// <summary>
@@ -1394,7 +1394,6 @@ namespace EdS.Simulation.Engine
             Charge(1);
             target.Struck = true;
             Fighter actor = action.Actor;
-            if (actor.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4
             Provenance origin = action.Origin;
             long? parryEid = null, blockEid = null;
             bool critical = action.Combat != null && CriticalRoll.Roll(actor.Random, actor.Stats);   // l'assaillant ne critique jamais (aucun tirage)
@@ -1495,6 +1494,8 @@ namespace EdS.Simulation.Engine
             DamageUpdate update = PrepareDamage(target, actor, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
+            // Sous-lot V2.4 (revue Codex de la PR #104, tour 2) : avec les autres affectations de l'impact, après les calculs vérifiés.
+            if (actor.Character != null) target.HurtByCharacter = true;
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;
@@ -2327,7 +2328,6 @@ namespace EdS.Simulation.Engine
             Charge(1);
             Fighter target = dot.Fighter;
             target.Struck = true;
-            if (status.Source != null && _byId.TryGetValue(status.Source, out Fighter? dealer) && dealer.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4
             StatusDefinition definition = status.Definition;
             // Sous-lot 8.1 : modificateurs de dégâts subis de la cible, lus sur son état au tick (réduction ≤ 85 %, sans garde ni
             // parade, A12). Sans modificateur, aucune réduction.
@@ -2350,6 +2350,7 @@ namespace EdS.Simulation.Engine
             DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
+            if (source?.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4 (revue Codex de la PR #104, tour 2 : avec les affectations)
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;

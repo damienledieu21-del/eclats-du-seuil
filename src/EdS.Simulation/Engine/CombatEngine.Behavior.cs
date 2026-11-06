@@ -43,20 +43,21 @@ namespace EdS.Simulation.Engine
         /// une créature ennemie ne compte que si elle est à distance d'engagement (une bête ne court pas après une bête qu'elle ne voit pas, à
         /// l'autre bout de la carte) ; un personnage, à toute distance, comme avant (la laisse du monde décide).
         /// </summary>
-        private Fighter? Nearest(Fighter assailant, bool engaging = false)
+        /// <param name="noticed">Revue Codex de la PR #104 (tour 2) : à l'engagement, ce qu'il a remarqué, calculé sans être encore affecté.</param>
+        private Fighter? Nearest(Fighter assailant, bool engaging = false, bool? noticed = null)
         {
             Fighter? best = null;
             long bestDistance = 0;
             long? sight = assailant.Behavior?.AggroRange?.Raw;
             // Pas encore engagé : comme avant (sa cible n'est qu'indicative, pour l'affichage et le pilote).
-            bool noticed = assailant.Noticed || assailant.Behavior is null || (!assailant.Engaged && !engaging);
+            bool hasNoticed = (noticed ?? assailant.Noticed) || assailant.Behavior is null || (!assailant.Engaged && !engaging);
             foreach (Fighter f in _fightersById)
             {
                 if (f.Out || !Enemies(f, assailant) || f.Body is null) continue;
                 long d = EdgeDistance(assailant.Body!, f.Body);
                 if (f.Character is null && f.Assailant != null && sight is long range && d > range) continue;   // sous-lot V2.4
                 // Relecture de la PR #104 : un joueur au loin, seulement s'il l'a remarqué.
-                if (f.Character != null && !noticed && sight is long seen && d > seen) continue;
+                if (f.Character != null && !hasNoticed && sight is long seen && d > seen) continue;
                 // Relecture de la PR #104 : une bête à bout (1 PV) n'est plus visée par les bêtes (elles ne peuvent pas l'achever) : le combat cesse.
                 if (f.Character is null && f.Assailant != null && assailant.Assailant != null && f.Health is long h && h <= 1) continue;
                 if (best is null || d < bestDistance)
@@ -100,11 +101,14 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 string? reason = EngageReason(f, behavior);
-                if (reason != null) f.Noticed = Notices(f, behavior);   // avant la cible : elle en dépend
-                Fighter? target = reason is null ? null : SingleTarget(f, engaging: true);
+                // Revue Codex de la PR #104 (tour 2) : calculé sans rien modifier (la cible en dépend), affecté seulement après la réservation :
+                // un budget épuisé n'engage rien et ne laisse aucune bête « qui a remarqué » sans être engagée (refus atomique).
+                bool noticedNow = reason != null && Notices(f, behavior);
+                Fighter? target = reason is null ? null : SingleTarget(f, engaging: true, noticed: noticedNow);
                 Reserve(Cost.Op + Cost.Line.If(reason != null));
                 Charge(1);
                 if (reason is null) continue;
+                f.Noticed = noticedNow;
                 f.Engaged = true;
                 f.EngagedTick = tick;
                 EmitDiagnostic(tick, CombatPhase.Commands, "engaged", w => w.Field("actor", f.Id).Field("target", target?.Id).Field("reason", reason));

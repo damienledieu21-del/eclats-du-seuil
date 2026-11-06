@@ -202,6 +202,43 @@ public class V24AnimauxMoteurTests
     }
 
     [Fact]
+    public void Budget_epuise_a_l_engagement_rien_n_est_engage_ni_remarque()
+    {
+        // Revue Codex de la PR #104 (tour 2), test adversarial : le Bastion à 3 m du loup (il le remarque en s'engageant), budget de travail
+        // du tick ramené pas à pas de 1 à 400 : quel que soit l'endroit où le tick s'arrête (budgetExceeded), aucune bête n'a « remarqué » un
+        // joueur sans être engagée (refus atomique : rien n'est affecté avant la réservation), et l'arrêt tombe au moins une fois dans la
+        // phase des engagements.
+        CombatSetup baseSetup = ReadMutated(r => r["data"]!["combatants"]![0]!["position"] = new JsonArray(1, 0), scenario: Betes).Setup!;
+        bool inEngagements = false;
+        for (int work = 1; work <= 400; work++)
+        {
+            var rules = (CombatRules)typeof(CombatRules).GetMethod("MemberwiseClone", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                .Invoke(baseSetup.Combat, null)!;
+            typeof(CombatRules).GetProperty(nameof(CombatRules.MaxWorkPerTick))!.SetValue(rules, work);
+            typeof(CombatRules).GetProperty(nameof(CombatRules.MaxEventsPerTick))!.SetValue(rules, Math.Min(work, baseSetup.Combat.MaxEventsPerTick));
+            var setup = new CombatSetup(baseSetup.Seed, baseSetup.DurationMs, baseSetup.Stats, baseSetup.Damage, baseSetup.Progression, rules,
+                baseSetup.Combatants, baseSetup.Commands, baseSetup.Data, baseSetup.Space, baseSetup.Zone, baseSetup.Truces);
+            var log = new MemoryCombatLog();
+            var engine = new CombatEngine(setup, log);
+            for (int i = 0; i < 40 && !engine.IsFinished; i++)
+            {
+                engine.Step();
+                foreach (string id in engine.CombatantIds)
+                {
+                    CombatantView v = engine.View(id);
+                    Assert.True(!v.Noticed || v.Engaged, $"budget {work} : {id} a remarqué un joueur sans être engagé");
+                }
+            }
+            // Arrêt au milieu des engagements du tick 0 (cerf, loup, sanglier, dans l'ordre des identifiants) : certains engagés, pas tous.
+            List<JsonElement> events = Events(log);
+            int engaged = events.Count(e => e.GetProperty("event").GetString() == "engaged" && e.GetProperty("tick").GetInt64() == 0);
+            if (engaged is > 0 and < 3 && events.Any(e => e.GetProperty("event").GetString() == "simulationAborted" && e.GetProperty("tick").GetInt64() == 0))
+                inEngagements = true;
+        }
+        Assert.True(inEngagements, "aucun arrêt dans la phase des engagements");
+    }
+
+    [Fact]
     public void Formes_refusees_avec_leur_chemin()
     {
         AssertError(ReadMutated(r => r["data"]!["combatants"]![3]!["behavior"]!["minRange"] = 0, scenario: Betes), "$.data.combatants[3].behavior.minRange");

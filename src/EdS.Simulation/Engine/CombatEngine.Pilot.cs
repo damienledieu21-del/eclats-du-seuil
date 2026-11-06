@@ -94,6 +94,9 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public bool HurtByCharacter { get; internal set; }
 
+        /// <summary>Relecture de la PR #104 : ennemi à comportement qui a remarqué un joueur (il le vise au-delà de sa distance d'engagement).</summary>
+        public bool Noticed { get; internal set; }
+
         /// <summary>Sous-lot V2.4 : bête qui fuit (cerf, lièvre : comportement <c>flee</c>).</summary>
         public bool Flees { get; internal set; }
 
@@ -191,6 +194,7 @@ namespace EdS.Simulation.Engine
                 Kind = f.Character != null ? CombatantKind.Character : f.Assailant != null ? CombatantKind.Assailant : CombatantKind.Dummy,
                 IsDead = f.IsDead,
                 HurtByCharacter = f.HurtByCharacter,   // sous-lot V2.4
+                Noticed = f.Noticed,
                 IsPresent = !f.Absent,
                 ArrivalTick = f.Setup.ArrivalMs is long arrivalMs ? arrivalMs / _tickMs : (long?)null,
                 HasLeft = f.Presence == Presence.Left,

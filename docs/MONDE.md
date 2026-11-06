@@ -720,6 +720,19 @@ Chantier V2.4 du [plan de l'alpha](PLAN_ALPHA.md#16-v24--animaux-paisibles-et-b�
 
 Limites : les bêtes ne se promènent pas (elles attendent à leur place, comme les autres créatures ; aucune recherche de chemin) ; une bête qui a fui reste où elle s'est arrêtée jusqu'à son départ (fin de ses heures ou de son temps) ; deux bêtes blessées à 1 PV restent face à face sans se battre ; les arrivées des bêtes d'ambiance (aube, brume) prennent encore des places de la session, au-delà de la réserve de 64 ; pas de butin ni de son propre aux cerfs et aux lièvres ; un combat de bêtes à l'écart du joueur ne se voit que si l'on est là (rien ne se passe ailleurs que dans la zone simulée, déjà toute la carte des Vallons).
 
+**Réponses de Damien du 6 novembre 2026 (20 h 27, « Tout ok »)** aux 9 questions de la PR #104 : toutes les recommandations sont retenues :
+1. butin des cerfs et des lièvres (venaison, peau, patte) : oui, **plus tard, avec le métier de cuisine** ; rien pour l'instant ;
+2. expérience des bêtes paisibles (cerf 15, lièvre 5) : gardée ;
+3. coups réduits de moitié entre bêtes (0,5) : gardés pour l'essai ;
+4. bandits et échos en trêve avec les bêtes : gardé (plus tard, des braconniers qui chassent le gibier) ;
+5. loups gris de la brume dès le niveau 1, aux champs du sud : gardés ;
+6. règle de victoire : **« frappée au moins une fois »** gardée (en coopération, partage entre ceux qui ont frappé) ;
+7. combats de bêtes sans le joueur : plus tard, **avec V2.5** (événements du monde) ;
+8. bêtes qui se promènent : plus tard, un petit lot du moteur (errance déterministe) ;
+9. réserve de 64 places pour les créatures des quêtes : gardée (relever le plafond de 128 si l'essai montre des cerfs absents en fin de session).
+
+Et la règle **« une bête ne peut pas en tuer une autre » (arrêt à 1 PV)** est gardée.
+
 ## Chapitre 1 au max, le contenu (sous-lot V1.9.9)
 
 Demande de Damien du 6 novembre 2026 : pousser le chapitre 1 au maximum, dans le contenu (données, histoire, cœur), sans travail visuel lourd sous Unity (son essai à l'écran n'a pas encore eu lieu). Textes et valeurs **proposés**, à relire par Damien (document de relecture : questions numérotées, puis tous les textes avec leur clé). Fiches : [ECRITURE.md](ECRITURE.md), section 3 octies.
