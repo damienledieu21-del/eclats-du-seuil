@@ -67,10 +67,22 @@ namespace EdS.World
             bool nearNpc = at is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
             bool nearStall = at is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
             if (!nearNpc && !nearStall) return TradeRefusal.TooFar;
-            if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
+            TradeRefusal status = TradeStatus(merchant);
+            if (status == TradeRefusal.Closed) return TradeRefusal.Closed;
             if (!nearNpc) return TradeRefusal.TooFar;
+            return status;
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #103 : ce que dirait la boutique <paramref name="merchant"/> auprès du marchand, sans regarder la
+        /// distance : fermée à cette heure, rang de guilde trop bas, pas encore ouverte, ou ouverte (<see cref="TradeRefusal.None"/>).
+        /// </summary>
+        public TradeRefusal TradeStatus(string merchant)
+        {
+            Merchant m = NeedMarket().Book.Merchant(merchant);
+            if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
-            if (m.Fact != null && !Narrative.Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
+            if (m.Fact != null && !(Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
             return TradeRefusal.None;
         }
 

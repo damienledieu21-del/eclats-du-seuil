@@ -200,6 +200,89 @@ public sealed class V23JourneeTests : IDisposable
         Assert.True(Read(ok).IsValid, Read(ok).Report.ToString());
     }
 
+    /// <summary>Relecture indépendante de la PR #103 : une histoire minimale, lisible dans toutes les versions de 4 à 9.</summary>
+    private static JsonObject Minimal(int version) => new JsonObject
+    {
+        ["schemaVersion"] = version, ["kind"] = "story", ["contentVersion"] = "0.1.0",
+        ["data"] = new JsonObject
+        {
+            // Odile d'abord ; puis ceux qui ont une place de nuit dans la zone (la zone les attend dans l'histoire).
+            ["npcs"] = new JsonArray(new[] { "npc.odile" }.Concat(Vallons.NightSpots.Select(n => n.Npc).Where(n => n != "npc.odile")).Select(id => (JsonNode)new JsonObject
+            {
+                ["id"] = id, ["name"] = "text.npc.odile.name", ["dialogue"] = "dialogue.odile",
+                ["position"] = new JsonArray(Shipped.Value.Npc(id).Position.X.Raw / 10000.0, Shipped.Value.Npc(id).Position.Z.Raw / 10000.0),
+            }).ToArray()),
+            ["dialogues"] = new JsonArray(new JsonObject
+            {
+                ["id"] = "dialogue.odile",
+                ["entries"] = new JsonArray(new JsonObject { ["conditions"] = new JsonArray(), ["node"] = "accueil" }),
+                ["nodes"] = new JsonArray(new JsonObject { ["id"] = "accueil", ["text"] = "text.odile.accueil", ["choices"] = new JsonArray() }),
+            }),
+            ["quests"] = new JsonArray(), ["discoveries"] = new JsonArray(),
+        },
+    };
+
+    private static JsonArray Schedule(params string[] hours) =>
+        new JsonArray(hours.Select((h, i) => (JsonNode)new JsonObject { ["at"] = h, ["activity"] = i % 2 == 0 ? "moulin" : "riviere", ["position"] = new JsonArray(-8, 3 - i) }).ToArray());
+
+    private static JsonObject ActivityTerm() => new JsonObject { ["if"] = "activity", ["id"] = "npc.odile", ["step"] = "moulin" };
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(9)]
+    public void Chaque_version_lit_une_histoire_intacte_et_seule_la_9_connait_la_journee(int version)
+    {
+        StoryLoadResult plain = Read(Minimal(version));
+        Assert.True(plain.IsValid, plain.Report.ToString());
+        Assert.Equal(version, plain.Story!.SchemaVersion);
+        bool known = version >= 9;
+        void Check(Action<JsonObject> mutate, string path)
+        {
+            JsonObject root = Minimal(version);
+            root["data"]!["npcs"]![0]!["schedule"] = Schedule("05:00", "12:00");   // la condition activity en a besoin
+            if (!known && path != "$.data.npcs[0].schedule") root["data"]!["npcs"]![0]!.AsObject().Remove("schedule");
+            mutate(root);
+            StoryLoadResult r = Read(root);
+            if (known) Assert.True(r.IsValid, r.Report.ToString());
+            else Assert.Contains(r.Report.Errors, e => e.Path == path && e.Code == ValidationCode.InvalidValue);
+        }
+        Check(_ => { }, "$.data.npcs[0].schedule");
+        Check(r => r["data"]!["dialogues"]![0]!["nodes"]![0]!["lines"] = new JsonArray(new JsonObject
+            { ["conditions"] = new JsonArray(new JsonObject { ["if"] = "phase", ["id"] = "dusk" }), ["text"] = "text.odile.accueil" }),
+            "$.data.dialogues[0].nodes[0].lines");
+        Check(r => r["data"]!["dialogues"]![0]!["entries"]!.AsArray().Insert(0, new JsonObject { ["conditions"] = new JsonArray(ActivityTerm()), ["node"] = "accueil" }),
+            "$.data.dialogues[0].entries[0].conditions[0].if");
+    }
+
+    [Fact]
+    public void Creneaux_limites_un_seul_minuit_et_23_h_59()
+    {
+        Npc Odile(params string[] hours)
+        {
+            JsonObject root = Minimal(9);
+            root["data"]!["npcs"]![0]!["schedule"] = Schedule(hours);
+            StoryLoadResult r = Read(root);
+            Assert.True(r.IsValid, r.Report.ToString());
+            return r.Story!.Npc("npc.odile");
+        }
+        // Un seul créneau, à 23 h 59 : il vaut toute la journée (celui de la veille avant lui).
+        Npc one = Odile("23:59");
+        Assert.All(new[] { 0, 1, 720, 1438, 1439 }, m => Assert.Equal(1439, one.SlotAt(m)!.Minute));
+        // 00:00 et 23:59 : la dernière minute seulement au second.
+        Npc both = Odile("00:00", "23:59");
+        Assert.Equal((0, 0, 1439), (both.SlotAt(0)!.Minute, both.SlotAt(1438)!.Minute, both.SlotAt(1439)!.Minute));
+        // Premier créneau tardif : à minuit, c'est encore celui de la veille (le dernier).
+        Npc late = Odile("20:00", "22:00");
+        Assert.Equal(("riviere", "riviere", "moulin", "riviere"), (late.SlotAt(0)!.Activity, late.SlotAt(19 * 60 + 59)!.Activity, late.SlotAt(20 * 60)!.Activity, late.SlotAt(22 * 60)!.Activity));
+        JsonObject bad = Minimal(9);
+        bad["data"]!["npcs"]![0]!["schedule"] = Schedule("24:00");
+        Assert.Contains(Read(bad).Report.Errors, e => e.Path == "$.data.npcs[0].schedule[0].at" && e.Code == ValidationCode.InvalidValue);
+    }
+
     // --- Où est chacun, selon l'heure ---------------------------------------------------------------------------------------
 
     [Fact]
@@ -385,6 +468,26 @@ public sealed class V23JourneeTests : IDisposable
         Assert.Equal("Garin, l'armurier n'est pas à son étal à cette heure : on le trouve à la taverne, et sa boutique avec lui.", a.DrainMessages().First());
     }
 
+    [Fact]
+    public void A_l_etal_de_Renart_parti_pas_encore_ouvert_la_vraie_raison()
+    {
+        // Relecture indépendante de la PR #103 : l'étal de Renart (ouvert après son aveu) n'annonce pas « on le trouve au puits » quand on ne
+        // peut pas lui acheter : il dit qu'il n'est pas encore ouvert.
+        int noon = 12 * 60 + 15;
+        (string data, string scenarios) = DataCopy((-47.5, -0.6));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(DryDay(noon), noon), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save, data, scenarios);
+        a.DrainMessages();
+        Assert.Equal("commerages", a.World.NpcActivity(a.World.Narrative!.Book.Npc("npc.renart")));
+        Assert.Equal("npc.renart", a.AwayStallInReach!.Id);
+        Assert.Equal(TradeRefusal.NotYetOpen, a.World.TradeStatus("merchant.renart"));
+        Assert.Equal(TradeRefusal.TooFar, a.World.CanTrade("merchant.renart"));
+        Assert.False(a.Interact());
+        Assert.Equal("Cet étal n'est pas encore ouvert pour toi.", a.DrainMessages().First());
+    }
+
     // --- Les villageois du décor --------------------------------------------------------------------------------------------
 
     private static readonly VillageSpots Spots = new VillageSpots((-69, 4), (0, -1), (-58, -1), 1.2,
@@ -429,6 +532,32 @@ public sealed class V23JourneeTests : IDisposable
         }
         // Sans place dans la zone (un intérieur), chacun reste à son poste.
         Assert.True(VillageDay.Goal(villagers[0], 12 * 60 + 30, null).AtPost);
+    }
+
+    [Fact]
+    public void Sans_place_dans_la_zone_chacun_reste_a_son_poste_et_les_fenetres_tiennent_dans_la_journee()
+    {
+        var villagers = Enumerable.Range(0, 400).Select(i => new StyleVillager("w" + i, "paysan", VillagerActivity.Talk, 3, 4, 10)).ToList();
+        var empty = new VillageSpots(null, null, null, 0, Array.Empty<(double, double, double, double)>());
+        foreach (StyleVillager v in villagers)
+        {
+            VillagerPlan plan = VillageDay.Plan(v, empty);
+            Assert.Equal(VillagerErrand.None, plan.Errand);
+            foreach (int minute in new[] { 0, 9 * 60 + 30, 12 * 60 + 30, 20 * 60, 1439 })
+            {
+                Assert.True(VillageDay.Goal(v, minute, empty).AtPost);
+                Assert.True(VillageDay.Goal(v, minute, null).AtPost);
+            }
+            // Avec les places, le plan calculé une fois donne la même chose que le calcul complet, à chaque minute.
+            VillagerPlan full = VillageDay.Plan(v, Spots);
+            for (int minute = 0; minute < 1440; minute += 7) Assert.Equal(VillageDay.Goal(v, minute, Spots), VillageDay.Goal(full, minute));
+            foreach (VillagerErrand e in new[] { VillagerErrand.Market, VillagerErrand.Lunch, VillagerErrand.Tavern })
+            {
+                (int from, int to) = VillageDay.Window(e, v);
+                Assert.True(0 <= from && from < to && to <= 1440, $"{v.Id} {e} {from}-{to}");
+            }
+        }
+        Assert.InRange(villagers.Select(VillageDay.Offset).Distinct().Count(), 30, 2 * VillageDay.Spread + 1);
     }
 
     [Fact]

@@ -477,6 +477,10 @@ namespace EdS.Game
             public bool Away;
             /// <summary>Sous-lot V2.3 : l'activité jouée en ce moment (changée seulement quand elle change).</summary>
             public VillagerActivity Playing;
+            /// <summary>Relecture de la PR #103 : sa course, calculée au placement ; la place visée, relue quand la minute change.</summary>
+            public VillagerPlan Plan;
+            public VillagerGoal Goal;
+            public int GoalMinute = -1;
         }
 
         /// <summary>Sous-lot V2.3 : places des courses des villageois du décor (auberge, puits, maisons) ; null dans un intérieur.</summary>
@@ -537,7 +541,9 @@ namespace EdS.Game
                 body.transform.localScale = body.transform.localScale * size;
                 body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
-                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity });
+                VillagerPlan plan = VillageDay.Plan(v, _errands);   // relecture de la PR #103 : une fois, au placement
+                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity,
+                    Plan = plan, Goal = plan.Post });
             }
         }
 
@@ -570,8 +576,13 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.3 : un villageois du décor va vers la place de sa course (ou revient à son poste), au pas.</summary>
         private void Errand(Villager v, float deltaTime)
         {
-            if (_errands == null || _villageMinute < 0) return;
-            VillagerGoal goal = VillageDay.Goal(v.Data, _villageMinute, _errands);
+            if (_villageMinute < 0 || v.Plan.Errand == VillagerErrand.None) return;
+            if (v.GoalMinute != _villageMinute)
+            {
+                v.GoalMinute = _villageMinute;
+                v.Goal = VillageDay.Goal(v.Plan, _villageMinute);
+            }
+            VillagerGoal goal = v.Goal;
             Vector3 at = v.Body.position;
             var target = new Vector3((float)goal.X, v.Height, (float)goal.Z);
             Vector3 step = Vector3.MoveTowards(at, target, WalkSpeed * deltaTime);

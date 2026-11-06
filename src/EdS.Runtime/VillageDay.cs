@@ -44,6 +44,28 @@ namespace EdS.Runtime
         public VillagerActivity Activity { get; }
     }
 
+    /// <summary>
+    /// Relecture indépendante de la PR #103 : la course d'un villageois, calculée une fois à son placement (course, fenêtre, place visée) ;
+    /// ensuite, chaque image ne compare que la minute (<see cref="VillageDay.Goal(VillagerPlan, int)"/>, sans allocation).
+    /// </summary>
+    public readonly struct VillagerPlan
+    {
+        public VillagerPlan(VillagerErrand errand, int from, int to, VillagerGoal post, VillagerGoal away)
+        {
+            Errand = errand;
+            From = from;
+            To = to;
+            Post = post;
+            Away = away;
+        }
+
+        public VillagerErrand Errand { get; }
+        public int From { get; }
+        public int To { get; }
+        public VillagerGoal Post { get; }
+        public VillagerGoal Away { get; }
+    }
+
     /// <summary>Sous-lot V2.3 : les places du bourg où vont les villageois du décor (null : pas de telle place dans la zone).</summary>
     public sealed class VillageSpots
     {
@@ -109,13 +131,28 @@ namespace EdS.Runtime
         /// Où va le villageois à la minute <paramref name="minute"/> du jour (0 à 1439) : à son poste, ou à la place de sa course (autour du
         /// puits, devant l'auberge, ou chez lui). Sans la place voulue dans la zone, il reste à son poste.
         /// </summary>
-        public static VillagerGoal Goal(StyleVillager villager, int minute, VillageSpots? spots)
+        public static VillagerGoal Goal(StyleVillager villager, int minute, VillageSpots? spots) => Goal(Plan(villager, spots), minute);
+
+        /// <summary>Où va le villageois de ce plan à la minute <paramref name="minute"/> : sa place de course pendant la fenêtre, sinon son poste.</summary>
+        public static VillagerGoal Goal(in VillagerPlan plan, int minute) =>
+            plan.Errand != VillagerErrand.None && minute >= plan.From && minute < plan.To ? plan.Away : plan.Post;
+
+        /// <summary>
+        /// Course du villageois, calculée une fois : sa fenêtre et la place visée (sans la place voulue dans la zone, ou sans place du tout :
+        /// pas de course, il reste à son poste).
+        /// </summary>
+        public static VillagerPlan Plan(StyleVillager villager, VillageSpots? spots)
         {
             var post = new VillagerGoal(villager.X, villager.Z, villager.Yaw, true, false, villager.Activity);
             VillagerErrand errand = ErrandOf(villager);
-            if (spots is null || errand == VillagerErrand.None) return post;
+            VillagerGoal? away = spots is null || errand == VillagerErrand.None ? null : Away(villager, errand, spots);
+            if (!(away is VillagerGoal target)) return new VillagerPlan(VillagerErrand.None, 0, 0, post, post);
             (int from, int to) = Window(errand, villager);
-            if (minute < from || minute >= to) return post;
+            return new VillagerPlan(errand, from, to, post, target);
+        }
+
+        private static VillagerGoal? Away(StyleVillager villager, VillagerErrand errand, VillageSpots spots)
+        {
             string id = villager.Id ?? string.Empty;
             switch (errand)
             {
@@ -138,13 +175,24 @@ namespace EdS.Runtime
                 case VillagerErrand.Lunch when spots.Houses.Count > 0:
                 {
                     // À la maison la plus proche : contre son mur, du côté du villageois ; il y entre.
-                    var house = spots.Houses.OrderBy(h => Distance2(villager.X, villager.Z, h)).ThenBy(h => h.MinX).ThenBy(h => h.MinZ).First();
+                    // La plus proche ; à égalité, la première de la liste (rangée par identifiant).
+                    var house = spots.Houses[0];
+                    double best = Distance2(villager.X, villager.Z, house);
+                    for (int i = 1; i < spots.Houses.Count; i++)
+                    {
+                        double d = Distance2(villager.X, villager.Z, spots.Houses[i]);
+                        if (d < best)
+                        {
+                            best = d;
+                            house = spots.Houses[i];
+                        }
+                    }
                     double x = Math.Max(house.MinX - 0.6, Math.Min(house.MaxX + 0.6, villager.X));
                     double z = Math.Max(house.MinZ - 0.6, Math.Min(house.MaxZ + 0.6, villager.Z));
                     return new VillagerGoal(x, z, StyleRules.FaceYaw(villager.X, villager.Z, x, z), false, true, VillagerActivity.Idle);
                 }
                 default:
-                    return post;
+                    return null;
             }
         }
 
