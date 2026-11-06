@@ -457,6 +457,7 @@ namespace EdS.World
         public DialogueRefusal Talk(string npc, out DialogueView? view)
         {
             view = null;
+            _firstMet = null;   // V1.9.10 : un nouveau Talk (même PNJ, sans Close) repart d'un dialogue neuf
             if (npc is null || !_book.HasNpc(npc)) return DialogueRefusal.NothingToSay;
             Npc n = _book.Npc(npc);
             if (!InRange(n)) return DialogueRefusal.TooFar;
@@ -493,6 +494,7 @@ namespace EdS.World
             if (!InRange(_book.Npc(o.Npc)))
             {
                 _open = null;
+                _firstMet = null;
                 return DialogueRefusal.TooFar;
             }
             int own = o.Node?.Choices.Count ?? 0;
@@ -501,7 +503,7 @@ namespace EdS.World
             DialogueChoice choice = o.Node.Choices[index];
             DialogueRefusal applied = Apply(choice.Effects, events);
             if (applied != DialogueRefusal.None) return applied;
-            if (choice.Next is null) _open = null;
+            if (choice.Next is null) { _open = null; _firstMet = null; }
             else
             {
                 _open = (o.Npc, o.Dialogue, o.Dialogue.Node(choice.Next));
@@ -510,7 +512,11 @@ namespace EdS.World
             return DialogueRefusal.None;
         }
 
-        public void Close() => _open = null;
+        public void Close()
+        {
+            _open = null;
+            _firstMet = null;
+        }
 
         /// <summary>
         /// Réponses de Damien du 31 octobre 2026 : choisit la réponse de livraison de rang <paramref name="k"/>. Les objets, toujours dans le
@@ -535,7 +541,7 @@ namespace EdS.World
             }
             Revision++;
             (string Npc, Dialogue Dialogue, DialogueNode? Node) o = _open!.Value;
-            if (o.Node is null && Deliveries(npc).Count == 0) _open = null;
+            if (o.Node is null && Deliveries(npc).Count == 0) { _open = null; _firstMet = null; }
             else next = View(npc, o.Node);
             return DialogueRefusal.None;
         }

@@ -388,7 +388,7 @@ namespace EdS.Data.Story
 
                 CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
-                foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
+                foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);   // « fact.met.… » refusé pour un chef par ZoneValidator
                 // Sous-lot V1.9.10 : le premier dialogue avec chaque PNJ apprend son fait « déjà rencontré ».
                 foreach (string npcId in _npcs) _factsSet.Add(MetFact(npcId));
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
@@ -516,6 +516,8 @@ namespace EdS.Data.Story
                     else if (x.End == x.Start) { _r.Add(path + ".end", ValidationCode.InvalidValue, "fait de fin égal au fait de début."); ok = false; }
                     else if (zone != null && zone.Bosses.All(b => b.Fact != x.End))
                     { _r.Add(path + ".end", ValidationCode.UnknownReference, $"fait « {x.End} » : celui d'un chef de « {zone.Id} » attendu."); ok = false; }
+                    if (x.End != null && x.End.StartsWith(MetFactPrefix, StringComparison.Ordinal))
+                    { _r.Add(path + ".end", ValidationCode.InvalidValue, $"fait « {x.End} » réservé : « {MetFactPrefix}… » est appris par le cœur au premier dialogue avec le PNJ."); ok = false; }
                     if (x.End != null) _factsSet.Add(x.End);   // appris par la victoire, ou en passant la scène
                     if (ok) scenes.Add(new Scene(x.Id!, x.Zone!, x.Actor!, x.Start!, x.End!, x.Text!, x.Back!));
                 }

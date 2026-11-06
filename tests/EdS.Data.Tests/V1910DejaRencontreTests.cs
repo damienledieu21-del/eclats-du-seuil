@@ -162,6 +162,77 @@ public sealed class V1910DejaRencontreTests
 
         JsonObject unknown = StoryJson();
         unknown["data"]!["dialogues"]![0]!["entries"]![0]!["conditions"]!.AsArray().Add(new JsonObject { ["if"] = "fact", ["id"] = "fact.met.personne" });
-        Assert.Contains(Read(unknown).Report.Errors, x => x.Code == ValidationCode.UnknownReference);
+        int last = unknown["data"]!["dialogues"]![0]!["entries"]![0]!["conditions"]!.AsArray().Count - 1;
+        Assert.Contains(Read(unknown).Report.Errors, x => x.Code == ValidationCode.UnknownReference && x.Path == $"$.data.dialogues[0].entries[0].conditions[{last}].id");
+    }
+
+    [Fact]
+    public void Aucun_autre_poseur_ne_peut_nommer_le_fait_reserve()
+    {
+        // Chef de la zone (et chefs des intérieurs) : chemin précis, comme setFact.
+        JsonObject zone = JsonNode.Parse(System.IO.File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        zone["data"]!["boss"]!["fact"] = "fact.met.renart";
+        ZoneLoadResult loaded = ZoneJsonReader.Read(zone.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+        Assert.Contains(loaded.Report.Errors, x => x.Code == ValidationCode.InvalidValue && x.Path.EndsWith(".fact", StringComparison.Ordinal)
+            && x.Message.Contains("réservé", StringComparison.Ordinal));
+
+        // Fait de fin d'une scène (celui d'un chef) : refusé aussi.
+        JsonObject story = StoryJson();
+        JsonArray scenes = story["data"]!["scenes"]!.AsArray();
+        Assert.NotEmpty(scenes);
+        scenes[0]!["end"] = "fact.met.renart";
+        Assert.Contains(Read(story).Report.Errors, x => x.Path == "$.data.scenes[0].end" && x.Code == ValidationCode.InvalidValue
+            && x.Message.Contains("réservé", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Histoire_en_schema_8_toujours_lue()
+    {
+        JsonObject eight = StoryJson();
+        V23TestData.WithoutSchedules(eight);
+        eight["schemaVersion"] = 8;
+        foreach (JsonNode? d in eight["data"]!["dialogues"]!.AsArray())
+            foreach (JsonNode? n in d!["nodes"]!.AsArray()) n!.AsObject().Remove("lines");
+        StoryLoadResult read = Read(eight);
+        Assert.True(read.IsValid, read.Report.ToString());
+    }
+
+    // --- Le fait n'est posé que par un vrai dialogue --------------------------------------------------------------------------
+
+    [Fact]
+    public void Deux_talk_de_suite_sur_le_meme_pnj_repartent_d_un_dialogue_neuf()
+    {
+        WorldSession w = Near("renart");
+        w.Step();
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.renart", out DialogueView? first));
+        // Sans Close : le dialogue déjà ouvert est remplacé ; le PNJ est maintenant rencontré, tout le nouveau dialogue le voit.
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.renart", out DialogueView? second));
+        Assert.Equal("text.v1910.renart.retrouvailles", second!.Text);
+        Assert.Equal("text.v1910.renart.retrouvailles", w.Narrative!.Open!.Text);
+        Assert.Equal(first!.Options.Count, second.Options.Count);
+        // Et le premier accueil ne revient pas après un Close.
+        w.Narrative.Close();
+        Assert.Null(w.Narrative.Open);
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.renart", out DialogueView? third));
+        Assert.Equal("text.v1910.renart.retrouvailles", third!.Text);
+    }
+
+    [Fact]
+    public void Un_dialogue_refuse_ou_vide_ne_pose_pas_le_fait()
+    {
+        WorldSession w = Near("renart");
+        w.Step();
+        Assert.Equal(DialogueRefusal.TooFar, w.Talk("npc.armurier", out DialogueView? _));
+        Assert.Equal(DialogueRefusal.NothingToSay, w.Talk("npc.personne", out DialogueView? _));
+        Assert.DoesNotContain(w.Narrative!.Facts, f => f.StartsWith(StoryValidator.MetFactPrefix, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Le_tableau_de_la_guilde_ne_pose_pas_le_fait()
+    {
+        WorldSession w = Near("maitresse_guilde");
+        w.Step();
+        w.VisitGuild();
+        Assert.DoesNotContain(w.Narrative!.Facts, f => f.StartsWith(StoryValidator.MetFactPrefix, StringComparison.Ordinal));
     }
 }
