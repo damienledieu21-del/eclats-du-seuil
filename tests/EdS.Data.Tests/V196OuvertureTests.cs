@@ -158,7 +158,7 @@ public class V196OuvertureTests
     {
         StoryBook book = Book(Zone());
         // Sous-lot V1.9.7 : l'histoire passe au schéma 7 (effet skipQuest) ; ce qui est livré ici ne change pas.
-        Assert.Equal((8, 8), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.2 : schéma 8 (weather)
+        Assert.Equal((9, 9), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9 (emplois du temps)
         Scene scene = Assert.Single(book.Scenes);
         Assert.Equal((Scene, "zone.souvenir_rupture", "fact.ch1.souvenir.a_revivre", "fact.ch1.souvenir.vecu", "text.ch1.discovery.souvenir"),
             (scene.Id, scene.Zone, scene.Start, scene.End, scene.Text));
@@ -187,6 +187,7 @@ public class V196OuvertureTests
     public void Histoire_en_schema_5_encore_lue_sans_practice_ni_scenes()
     {
         JsonObject root = StoryJson();
+        V23TestData.WithoutSchedules(root);   // V2.3 : sans emplois du temps ni répliques du moment (schéma 9)
         root["schemaVersion"] = 5;
         StoryLoadResult refused = Read(root);
         Assert.Contains(refused.Report.Errors, e => e.Path == "$.data.scenes" && e.Code == ValidationCode.InvalidValue);

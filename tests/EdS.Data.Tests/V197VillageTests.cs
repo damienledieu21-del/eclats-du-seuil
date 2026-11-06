@@ -138,7 +138,7 @@ public class V197VillageTests
     [Fact]
     public void Histoire_en_schema_7_avec_skipQuest()
     {
-        Assert.Equal((8, 8), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.2 : schéma 8 (weather)
+        Assert.Equal((9, 9), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
         Assert.Equal(EffectKind.SkipQuest, StoryValidator.Effects["skipQuest"]);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -153,6 +153,7 @@ public class V197VillageTests
     public void Histoire_en_schema_6_encore_lue_sans_skipQuest()
     {
         JsonObject root = StoryJson();
+        V23TestData.WithoutSchedules(root);   // V2.3 : sans emplois du temps ni répliques du moment (schéma 9)
         root["schemaVersion"] = 6;
         StoryLoadResult refused = Read(root);
         Assert.False(refused.IsValid);
@@ -178,7 +179,7 @@ public class V197VillageTests
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
-        root["schemaVersion"] = 9;   // V2.2 : la version 8 est la version courante
+        root["schemaVersion"] = 10;   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9
         Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
     }
 

@@ -1,0 +1,501 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json.Nodes;
+using EdS.Data.Json;
+using EdS.Data.Saves;
+using EdS.Data.Story;
+using EdS.Data.Validation;
+using EdS.Data.Zones;
+using EdS.Domain.Space;
+using EdS.Runtime;
+using EdS.World;
+using Xunit;
+using static EdS.Data.Tests.ScenarioTestData;
+using static EdS.Data.Tests.V11TestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lot V2.3 (villageois qui suivent leur journée) : histoire en schéma 9 (emplois du temps des PNJ, condition <c>activity</c>, répliques
+/// <c>lines</c> d'un nœud selon le moment), schéma 8 encore lu ; refus au chemin précis ; places de chacun selon l'heure et la pluie, bornes,
+/// matin comme au début du jeu, nuit devant sa porte (V2.1), déterminisme et sauvegarde inchangée ; répliques selon le lieu ; boutique d'un
+/// marchand parti ; allers-retours des villageois du décor ; menu d'essai.
+/// </summary>
+[Trait("Category", "World")]
+public sealed class V23JourneeTests : IDisposable
+{
+    private readonly string _folder = Path.Combine(Path.GetTempPath(), "eds_v23_" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_folder)) Directory.Delete(_folder, true);
+    }
+
+    private static readonly ZoneDefinition Vallons = Zone();
+    private static readonly Lazy<StoryBook> Shipped = new(() => Book(Vallons));
+
+    private static long TickAt(long day, int minute)
+    {
+        var clock = new WorldClock(50);
+        long tick = (day * WorldClock.MinutesPerDay + minute - WorldClock.DefaultStartMinute) * clock.TicksPerDay / WorldClock.MinutesPerDay;
+        while (tick > 0 && clock.At(tick - 1).Equals(new WorldTime(day, minute))) tick--;
+        while (!clock.At(tick).Equals(new WorldTime(day, minute))) tick++;
+        return tick;
+    }
+
+    private static WorldSession At(long tick, ZoneDefinition? zone = null)
+    {
+        ZoneDefinition z = zone ?? Vallons;
+        var w = new WorldSession(new WorldSave("zone.vallons", tick, 0, new[] { PlayerCharacters.PlacesKey }, Hero(1000)), z, ShippedData, Progression,
+            ItemsCatalog, Book(z), market: new Market(ShippedMerchants));
+        w.Step();
+        return w;
+    }
+
+    /// <summary>Premier jour (à partir du jour 1) où il ne pleut pas fort à cette minute (les PNJ ne s'abritent pas).</summary>
+    private static long DryDay(int minute)
+    {
+        for (long day = 1; ; day++)
+            if (!WorldSession.Shelters(WorldWeather.At("zone.vallons", day, minute).Kind)) return day;
+    }
+
+    private static GroundVector P(double x, double z) => new GroundVector(EdS.Domain.Numerics.Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        EdS.Domain.Numerics.Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+    // --- Format : schéma 9 ------------------------------------------------------------------------------------------------
+
+    private static JsonObject StoryJson() => JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+
+    private static StoryLoadResult Read(JsonObject root) => StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Vallons, ItemsCatalog, V16TestData.Interiors);
+
+    private static int NpcIndex(JsonObject root, string npc) =>
+        root["data"]!["npcs"]!.AsArray().Select((n, i) => ((string)n!["id"]!, i)).Single(x => x.Item1 == npc).i;
+
+    private static (int Dialogue, int Node) NodeIndex(JsonObject root, string dialogue, string node)
+    {
+        JsonArray dialogues = root["data"]!["dialogues"]!.AsArray();
+        int d = dialogues.Select((x, i) => ((string)x!["id"]!, i)).Single(x => x.Item1 == dialogue).i;
+        int n = dialogues[d]!["nodes"]!.AsArray().Select((x, i) => ((string)x!["id"]!, i)).Single(x => x.Item1 == node).i;
+        return (d, n);
+    }
+
+    private static void Refused(string path, ValidationCode code, Action<JsonObject> mutate)
+    {
+        JsonObject root = StoryJson();
+        mutate(root);
+        StoryLoadResult r = Read(root);
+        Assert.False(r.IsValid);
+        // Le lecteur JSON ajoute la ligne au chemin d'une liste trop longue (« … (ligne 1) »).
+        Assert.Contains(r.Report.Errors, x => (x.Path == path || x.Path.StartsWith(path + " (", StringComparison.Ordinal)) && x.Code == code);
+    }
+
+    [Fact]
+    public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
+    {
+        StoryBook book = Shipped.Value;
+        Assert.Equal((9, 9, "0.15.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        string[] scheduled =
+        {
+            "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
+            "npc.epiciere", "npc.herboriste", "npc.renart", "npc.lison", "npc.veuve", "npc.fermier", "npc.doyen", "npc.herboriste_hameau", "npc.fermiere",
+        };
+        Assert.Equal(scheduled.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Schedule.Count > 0).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
+        // Chaque activité a son texte (sous le nom du PNJ, et pour la boutique).
+        foreach (Npc npc in book.Npcs)
+            foreach (string activity in npc.Activities)
+                Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
+        // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
+        var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
+        Assert.InRange(lines.Count, 40, 80);
+        Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Activity));
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
+            .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
+    }
+
+    [Fact]
+    public void Schema_8_encore_lu_sans_emploi_du_temps_et_refuse_au_chemin_precis_avec()
+    {
+        JsonObject eight = StoryJson();
+        eight["schemaVersion"] = 8;
+        StoryLoadResult refused = Read(eight);
+        int firmin = NpcIndex(eight, "npc.boulanger");
+        (int d, int n) = NodeIndex(eight, "dialogue.boulanger", "apres");
+        Assert.Contains(refused.Report.Errors, x => x.Path == $"$.data.npcs[{firmin}].schedule" && x.Code == ValidationCode.InvalidValue);
+        Assert.Contains(refused.Report.Errors, x => x.Path == $"$.data.dialogues[{d}].nodes[{n}].lines" && x.Code == ValidationCode.InvalidValue);
+        // La condition activity, hors d'une réplique : refusée aussi en schéma 8.
+        JsonObject entry = StoryJson();
+        V23TestData.WithoutSchedules(entry);
+        entry["schemaVersion"] = 8;
+        entry["data"]!["dialogues"]![d]!["entries"]![0]!["conditions"]!.AsArray().Add(new JsonObject { ["if"] = "activity", ["id"] = "npc.boulanger", ["step"] = "fournil" });
+        Assert.Contains(Read(entry).Report.Errors, x => x.Path == $"$.data.dialogues[{d}].entries[0].conditions[1].if" && x.Code == ValidationCode.InvalidValue);
+        V23TestData.WithoutSchedules(eight);
+        StoryLoadResult read = Read(eight);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.Equal(8, read.Story!.SchemaVersion);
+        Assert.All(read.Story.Npcs, x => Assert.Empty(x.Schedule));
+        // Une partie sur l'histoire en schéma 8 : les PNJ restent à leur place (devant leur porte la nuit), comme en V2.1.
+        Npc firminBook = read.Story.Npc("npc.boulanger");
+        Assert.Null(firminBook.SlotAt(12 * 60));
+    }
+
+    [Fact]
+    public void Emploi_du_temps_refuse_au_chemin_precis()
+    {
+        JsonObject probe = StoryJson();
+        int f = NpcIndex(probe, "npc.boulanger");
+        string firmin = $"$.data.npcs[{f}].schedule";
+        JsonObject S(JsonObject root, int k) => root["data"]!["npcs"]![f]!["schedule"]![k]!.AsObject();
+        Refused(firmin + "[1].at", ValidationCode.InvalidValue, r => S(r, 1)["at"] = "25:00");
+        Refused(firmin + "[1].at", ValidationCode.InvalidValue, r => S(r, 1)["at"] = "11h30");
+        Refused(firmin + "[1].at", ValidationCode.InvalidValue, r => S(r, 1)["at"] = "11:60");
+        Refused(firmin + "[1].at", ValidationCode.InvalidValue, r => S(r, 1)["at"] = "02:00");   // pas après le créneau précédent
+        Refused(firmin + "[2].at", ValidationCode.InvalidValue, r => S(r, 2)["at"] = "11:00");
+        Refused(firmin + "[0].at", ValidationCode.MissingField, r => S(r, 0).Remove("at"));
+        Refused(firmin + "[1].activity", ValidationCode.InvalidValue, r => S(r, 1)["activity"] = "Marché");
+        Refused(firmin + "[1].activity", ValidationCode.UnknownReference, r => S(r, 1)["activity"] = "danse");   // pas de texte « text.activity.danse »
+        Refused(firmin + "[1].position", ValidationCode.OutOfRange, r => S(r, 1)["position"] = new JsonArray(-500, 0));
+        Refused(firmin + "[1].position", ValidationCode.InvalidValue, r => S(r, 1)["position"] = new JsonArray(-42, 10));   // dans la maison du fournil
+        Refused(firmin + "[1].rain.position", ValidationCode.InvalidValue, r => S(r, 1)["rain"]!["position"] = new JsonArray(-69, 9));   // dans l'auberge
+        Refused(firmin + "[1].rain.activity", ValidationCode.MissingField, r => S(r, 1)["rain"]!.AsObject().Remove("activity"));
+        Refused(firmin, ValidationCode.OutOfRange, r => r["data"]!["npcs"]![f]!["schedule"] = new JsonArray());
+        Refused(firmin, ValidationCode.LimitExceeded, r =>
+        {
+            var many = new JsonArray();
+            for (int i = 0; i < StoryValidator.MaxScheduleSlots + 1; i++)
+                many.Add(new JsonObject { ["at"] = $"{i:00}:00", ["activity"] = "fournil", ["position"] = new JsonArray(-42, 3.5) });
+            r["data"]!["npcs"]![f]!["schedule"] = many;
+        });
+        // Un PNJ d'un intérieur : sa place est dans sa pièce.
+        int mathurin = NpcIndex(probe, "npc.aubergiste");
+        Refused($"$.data.npcs[{mathurin}].schedule[0].position", ValidationCode.OutOfRange, r => r["data"]!["npcs"]![mathurin]!["schedule"] =
+            new JsonArray(new JsonObject { ["at"] = "08:00", ["activity"] = "taverne", ["position"] = new JsonArray(-65, 2.8) }));
+    }
+
+    [Fact]
+    public void Repliques_et_condition_activity_refusees_au_chemin_precis()
+    {
+        JsonObject probe = StoryJson();
+        (int d, int n) = NodeIndex(probe, "dialogue.boulanger", "apres");
+        string lines = $"$.data.dialogues[{d}].nodes[{n}].lines";
+        JsonObject L(JsonObject root, int k) => root["data"]!["dialogues"]![d]!["nodes"]![n]!["lines"]![k]!.AsObject();
+        JsonObject C(JsonObject root) => L(root, 0)["conditions"]![0]!.AsObject();
+        Refused(lines + "[0].conditions", ValidationCode.InvalidValue, r => L(r, 0)["conditions"] = new JsonArray());
+        Refused(lines + "[0].text", ValidationCode.UnknownReference, r => L(r, 0)["text"] = "text.v23.inconnu");
+        Refused(lines + "[0].conditions[0].id", ValidationCode.UnknownReference, r => C(r)["id"] = "npc.personne");
+        Refused(lines + "[0].conditions[0].id", ValidationCode.InvalidValue, r => C(r)["id"] = "npc.thibaut");   // pas d'emploi du temps
+        Refused(lines + "[0].conditions[0].step", ValidationCode.UnknownReference, r => C(r)["step"] = "tir");   // une activité d'Aldric
+        Refused(lines + "[0].conditions[0].step", ValidationCode.MissingField, r => C(r).Remove("step"));
+        Refused(lines + "[0].conditions[0].value", ValidationCode.InvalidValue, r => C(r)["value"] = 1);
+        Refused(lines, ValidationCode.LimitExceeded, r =>
+        {
+            var many = new JsonArray();
+            for (int i = 0; i < StoryValidator.MaxLines + 1; i++) many.Add(L(r, 0).DeepClone());
+            r["data"]!["dialogues"]![d]!["nodes"]![n]!["lines"] = many;
+        });
+        // Une condition activity vaut aussi dans une entrée de dialogue (une autre étape que questAt).
+        JsonObject ok = StoryJson();
+        ok["data"]!["dialogues"]![d]!["entries"]![0]!["conditions"]!.AsArray().Add(new JsonObject { ["if"] = "activity", ["id"] = "npc.boulanger", ["step"] = "abri" });
+        Assert.True(Read(ok).IsValid, Read(ok).Report.ToString());
+    }
+
+    // --- Où est chacun, selon l'heure ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Le_creneau_en_cours_est_le_dernier_commence_et_la_journee_boucle()
+    {
+        Npc firmin = Shipped.Value.Npc("npc.boulanger");
+        Assert.Equal("fournil", firmin.SlotAt(0)!.Activity);   // celui de la veille (21 h 30)
+        Assert.Equal("fournil", firmin.SlotAt(2 * 60)!.Activity);
+        Assert.Equal("fournil", firmin.SlotAt(11 * 60 + 29)!.Activity);
+        Assert.Equal("marche", firmin.SlotAt(11 * 60 + 30)!.Activity);
+        Assert.Equal("sieste", firmin.SlotAt(14 * 60)!.Activity);
+        Assert.Equal("taverne", firmin.SlotAt(18 * 60 + 30)!.Activity);
+        Assert.Equal("taverne", firmin.SlotAt(21 * 60 + 29)!.Activity);
+        Assert.Equal("fournil", firmin.SlotAt(21 * 60 + 30)!.Activity);
+        Assert.Equal("fournil", firmin.SlotAt(1439)!.Activity);
+        Assert.Null(Shipped.Value.Npc("npc.thibaut").SlotAt(600));
+        Assert.Equal(new[] { "fournil", "marche", "abri", "sieste", "taverne" }, firmin.Activities);
+    }
+
+    [Theory]
+    [InlineData(11 * 60 + 29, "fournil", -42, 3.5)]
+    [InlineData(11 * 60 + 30, "marche", -55.5, -4.5)]
+    [InlineData(15 * 60, "sieste", -38.5, 4.8)]
+    [InlineData(19 * 60, "taverne", -65.5, 2.8)]
+    [InlineData(23 * 60, "fournil", -42, 3.5)]
+    public void Firmin_suit_sa_journee(int minute, string activity, double x, double z)
+    {
+        long day = DryDay(minute);
+        WorldSession w = At(TickAt(day, minute));
+        Npc firmin = w.Narrative!.Book.Npc("npc.boulanger");
+        Assert.Equal(activity, w.NpcActivity(firmin));
+        Assert.Equal(P(x, z), w.NpcPosition(firmin));
+    }
+
+    [Fact]
+    public void Les_boutiques_de_Garin_et_Bertille_sont_a_l_etal_de_5_h_a_22_h_hors_pauses()
+    {
+        // Décision de Damien du 30 octobre 2026 : Garin et Bertille ouvrent de 5 h à 22 h. Leur emploi du temps les garde à l'étal, sauf le
+        // repas (et, pour Bertille, un verre à la taverne avant 21 h 15) : la boutique les suit, et l'étal dit où ils sont.
+        foreach (string id in new[] { "npc.armurier", "npc.epiciere" })
+        {
+            Npc npc = Shipped.Value.Npc(id);
+            foreach (int minute in new[] { 5 * 60, 7 * 60, 11 * 60 + 59, 14 * 60, 18 * 60, 21 * 60 + 15, 21 * 60 + 58, 21 * 60 + 59 })
+                Assert.True(npc.SlotAt(minute)!.Position == npc.Position, $"{id} à {minute / 60} h {minute % 60}");
+        }
+    }
+
+    [Fact]
+    public void Le_matin_chacun_est_a_sa_place_comme_au_debut_du_jeu()
+    {
+        // De 7 h 45 à 11 h 29, chaque PNJ est à sa place de l'histoire (le jeu commence à 8 h : l'ouverture et les premières quêtes ne bougent pas).
+        foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Schedule.Count > 0))
+            for (int minute = 7 * 60 + 45; minute < 11 * 60 + 30; minute++)
+                Assert.True(npc.SlotAt(minute)!.Position == npc.Position, $"{npc.Id} à {minute / 60} h {minute % 60}");
+    }
+
+    [Fact]
+    public void La_nuit_chacun_reste_devant_sa_porte_ou_a_sa_place()
+    {
+        // Décision de Damien du 6 novembre 2026 (PR #99) : la nuit, devant sa porte, toujours joignable : l'emploi du temps la garde.
+        foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Schedule.Count > 0))
+            foreach (int minute in new[] { 22 * 60 + 30, 0, 3 * 60, 4 * 60 + 59 })
+            {
+                GroundVector expected = Vallons.NightSpotOf(npc.Id) ?? npc.Position;
+                // Gaspard reste au coin du feu (à 1,6 m de son poste) jusqu'à 23 h.
+                if (npc.Id == "npc.gaspard" && minute == 22 * 60 + 30) expected = npc.SlotAt(minute)!.Position;
+                Assert.True(npc.SlotAt(minute)!.Position == expected, $"{npc.Id} à {minute / 60} h {minute % 60}");
+            }
+    }
+
+    [Fact]
+    public void Sous_l_averse_on_s_abrite_pas_sous_la_pluie_fine()
+    {
+        Npc firmin = Shipped.Value.Npc("npc.boulanger");
+        (long day, int minute)? shower = null, drizzle = null;
+        for (long day = 1; day < 600 && (shower is null || drizzle is null); day++)
+            for (int minute = 11 * 60 + 30; minute < 14 * 60; minute += 5)
+            {
+                WeatherKind kind = WorldWeather.At("zone.vallons", day, minute).Kind;
+                if (shower is null && kind == WeatherKind.Shower) shower = (day, minute);
+                if (drizzle is null && kind == WeatherKind.Drizzle) drizzle = (day, minute);
+            }
+        WorldSession wet = At(TickAt(shower!.Value.day, shower.Value.minute));
+        Assert.Equal("abri", wet.NpcActivity(firmin));
+        Assert.Equal(P(-53.5, 4.2), wet.NpcPosition(firmin));
+        WorldSession light = At(TickAt(drizzle!.Value.day, drizzle.Value.minute));
+        Assert.Equal("marche", light.NpcActivity(firmin));
+        Assert.Equal(P(-55.5, -4.5), light.NpcPosition(firmin));
+        Assert.True(WorldSession.Shelters(WeatherKind.Storm));
+        Assert.False(WorldSession.Shelters(WeatherKind.Mist));
+    }
+
+    [Fact]
+    public void Meme_heure_meme_place_et_sauvegarde_inchangee()
+    {
+        long tick = TickAt(DryDay(12 * 60 + 15), 12 * 60 + 15);
+        WorldSession a = At(tick), b = At(tick);
+        foreach (Npc npc in a.Narrative!.Book.Npcs) Assert.Equal(a.NpcPosition(npc), b.NpcPosition(b.Narrative!.Book.Npc(npc.Id)));
+        string text = SaveJsonReader.Write(a.Save());
+        Assert.Equal(12, SaveValidator.CurrentSchemaVersion);   // rien de l'emploi du temps n'est sauvegardé
+        Assert.DoesNotContain("schedule", text, StringComparison.Ordinal);
+        var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
+        back.Step();
+        foreach (Npc npc in a.Narrative.Book.Npcs) Assert.Equal(a.NpcActivity(npc), back.NpcActivity(back.Narrative!.Book.Npc(npc.Id)));
+    }
+
+    // --- Ce qu'ils disent, selon le lieu --------------------------------------------------------------------------------
+
+    [Fact]
+    public void Garin_a_la_taverne_le_dit_et_garde_ses_reponses()
+    {
+        int noon = 12 * 60 + 15;
+        long day = DryDay(noon);
+        WorldSession tavern = At(TickAt(day, noon), Zone(-64.5, 1.4));
+        Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? there));
+        Assert.Equal("text.v23.garin.taverne", there!.Text);
+        // On lui achète là-bas : la boutique est auprès de lui.
+        Assert.Equal(TradeRefusal.None, tavern.CanTrade("merchant.armurier"));
+        // Le matin, à son étal : son accueil, avec les mêmes réponses.
+        WorldSession stall = At(TickAt(day, 9 * 60), Zone(Near("merchant.armurier").X, Near("merchant.armurier").Z));
+        Assert.Equal(DialogueRefusal.None, stall.Talk("npc.armurier", out DialogueView? home));
+        Assert.Equal("text.armurier.accueil", home!.Text);
+        Assert.Equal(home.Options.Select(o => o.Text), there.Options.Select(o => o.Text));
+        Assert.Equal(TradeRefusal.TooFar, At(TickAt(day, noon), Zone(Near("merchant.armurier").X, Near("merchant.armurier").Z)).CanTrade("merchant.armurier"));
+    }
+
+    [Fact]
+    public void Gaspard_au_coin_du_feu_le_soir()
+    {
+        int evening = 20 * 60;
+        long day = DryDay(evening);
+        WorldSession w = At(TickAt(day, evening), Zone(25.5, -12.2));
+        Assert.Equal("feu", w.NpcActivity(w.Narrative!.Book.Npc("npc.gaspard")));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.gaspard", out DialogueView? view));
+        Assert.Equal("text.v23.gaspard.feu", view!.Text);
+    }
+
+    [Fact]
+    public void Chaque_replique_est_sur_un_noeud_d_accueil_et_chaque_activite_est_vecue()
+    {
+        StoryBook book = Shipped.Value;
+        foreach (Dialogue d in book.Dialogues)
+            foreach (DialogueNode node in d.Nodes.Where(n => n.Lines.Count > 0))
+            {
+                // Le nœud est celui d'une entrée de dialogue (accueil, mot d'après, réplique du temps) : la réplique se dit en arrivant.
+                Assert.Contains(d.Entries, e => e.Node == node.Id);
+                foreach (DialogueLine line in node.Lines)
+                    foreach (StoryCondition c in line.Conditions.Where(c => c.Kind == ConditionKind.Activity))
+                    {
+                        Npc npc = book.Npc(c.Id);
+                        // L'activité arrive bien dans la journée (un créneau, ou l'abri d'un créneau).
+                        Assert.Contains(npc.Schedule, s => s.Activity == c.Step || s.Rain?.Activity == c.Step);
+                    }
+            }
+        // Aucun abri sans réplique chez un PNJ qui en a d'autres : sous l'averse, il dit qu'il s'abrite (ou parle de la pluie).
+        foreach (Npc npc in book.Npcs.Where(n => n.Schedule.Any(s => s.Rain != null)))
+        {
+            Dialogue d = book.Dialogue(npc.Dialogue);
+            bool rainEntry = d.Entries.Any(e => e.Conditions.Any(c => c.Kind == ConditionKind.Weather));
+            bool shelterLine = d.Nodes.Any(n => n.Lines.Any(l => l.Conditions.Any(c => c.Kind == ConditionKind.Activity && c.Id == npc.Id && c.Step == "abri")));
+            Assert.True(rainEntry || shelterLine, npc.Id);
+        }
+    }
+
+    // --- La boutique d'un marchand parti -----------------------------------------------------------------------------------
+
+    [Fact]
+    public void A_l_etal_d_un_marchand_parti_la_boutique_dit_ou_il_est()
+    {
+        int noon = 12 * 60 + 15;
+        long day = DryDay(noon);
+        (string data, string scenarios) = DataCopy(Near("merchant.armurier"));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(day, noon), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save, data, scenarios);
+        a.DrainMessages();
+        Assert.Null(a.NpcInReach);
+        Assert.Equal("npc.armurier", a.AwayStallInReach!.Id);
+        Assert.Equal("à la taverne", a.ActivityOf("npc.armurier"));
+        Assert.Null(a.ActivityOf("npc.thibaut"));
+        Assert.False(a.Interact());
+        Assert.Equal("Garin, l'armurier n'est pas à son étal à cette heure : on le trouve à la taverne, et sa boutique avec lui.", a.DrainMessages().First());
+    }
+
+    // --- Les villageois du décor --------------------------------------------------------------------------------------------
+
+    private static readonly VillageSpots Spots = new VillageSpots((-69, 4), (0, -1), (-58, -1), 1.2,
+        new[] { (-35.0, -15.0, -25.0, -6.0), (-58.0, -24.0, -51.5, -17.5) });
+
+    [Fact]
+    public void Les_villageois_du_decor_font_leur_course_puis_reviennent()
+    {
+        var villagers = Enumerable.Range(0, 400).Select(i => new StyleVillager("v" + i, "paysan", VillagerActivity.Idle, -40, -10, 90)).ToList();
+        var counts = villagers.GroupBy(VillageDay.ErrandOf).ToDictionary(g => g.Key, g => g.Count());
+        foreach (VillagerErrand e in Enum.GetValues(typeof(VillagerErrand))) Assert.InRange(counts[e], 60, 140);
+        // Les marcheurs gardent leur allée.
+        Assert.Equal(VillagerErrand.None, VillageDay.ErrandOf(new StyleVillager("m", "paysan", VillagerActivity.Walk, 0, 0, 0, 5, 5)));
+        foreach (StyleVillager v in villagers)
+        {
+            VillagerErrand errand = VillageDay.ErrandOf(v);
+            (int from, int to) = VillageDay.Window(errand, v);
+            // Hors de sa course : à son poste, avec sa pose. Toujours la même réponse (déterminisme).
+            VillagerGoal early = VillageDay.Goal(v, 6 * 60, Spots);
+            Assert.True(early.AtPost && early.X == v.X && early.Z == v.Z && early.Activity == v.Activity);
+            Assert.Equal(early, VillageDay.Goal(v, 6 * 60, Spots));
+            if (errand == VillagerErrand.None) continue;
+            Assert.InRange(to - from, 60, 180);
+            Assert.True(VillageDay.Goal(v, from - 1, Spots).AtPost);
+            Assert.True(VillageDay.Goal(v, to, Spots).AtPost);
+            VillagerGoal away = VillageDay.Goal(v, from, Spots);
+            Assert.False(away.AtPost);
+            switch (errand)
+            {
+                case VillagerErrand.Market:
+                    double r = Math.Sqrt((away.X + 58) * (away.X + 58) + (away.Z + 1) * (away.Z + 1));
+                    Assert.InRange(r, 2.4 - 1e-9, 3.2);   // demi-côté du puits, plus 1,2 à 2 m
+                    break;
+                case VillagerErrand.Tavern:
+                    Assert.True(away.Z < 4 - 1.5 && Math.Abs(away.X + 69) >= 1.8 - 1e-9, $"{away.X}, {away.Z}");   // côté rue, jamais devant la porte
+                    break;
+                case VillagerErrand.Lunch:
+                    Assert.True(away.Indoors);
+                    Assert.Equal((-35.0 - 0.6, -10.0), (away.X, away.Z));   // contre le mur de la maison la plus proche, de son côté
+                    break;
+            }
+        }
+        // Sans place dans la zone (un intérieur), chacun reste à son poste.
+        Assert.True(VillageDay.Goal(villagers[0], 12 * 60 + 30, null).AtPost);
+    }
+
+    [Fact]
+    public void Places_du_bourg_trouvees_sur_la_carte()
+    {
+        (string data, string scenarios) = DataCopy((-58, -6));
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(0, 9 * 60), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save, data, scenarios);
+        VillageSpots spots = VillageDay.Spots(a.Map)!;
+        Assert.Equal((-69.0, 4.0), spots.Tavern);
+        Assert.Equal((0.0, -1.0), spots.TavernOut);   // la porte de l'auberge donne au sud
+        Assert.Equal((-58.0, -1.0), spots.Well);
+        Assert.InRange(spots.Houses.Count, 5, 20);
+        Assert.Contains("Firmin", VillageTrial.Guide(5 * 60 + 25), StringComparison.Ordinal);
+        Assert.Contains("taverne", VillageTrial.Guide(19 * 60 + 40), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Menu_d_essai_de_la_journee_du_village()
+    {
+        string menu = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsVillageTrial.cs"));
+        Assert.Equal(7, menu.Split("[MenuItem(\"Éclats du Seuil/Essai de la journée du village").Length - 1);
+        Assert.Contains("DayTrial.MoveSave(SavePath, minute", menu, StringComparison.Ordinal);
+        Assert.Contains("WeatherTrial.MoveSave(SavePath, \"shower\"", menu, StringComparison.Ordinal);
+        Assert.Contains("isPlayingOrWillChangePlaymode", menu, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("_arena.Village(a.World.Zone.Time.Minute);", game, StringComparison.Ordinal);
+        string markers = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "WorldMarkers.cs"));
+        Assert.Contains("adventure.ActivityOf(npc.Id)", markers, StringComparison.Ordinal);
+    }
+
+    private (string Data, string Scenarios) DataCopy((double X, double Z) entry)
+    {
+        string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
+        CopyTree(DataDirectory, data);
+        CopyTree(ScenariosDirectory, scenarios);
+        string zone = ZoneJsonReader.PathIn(data, "zone.vallons");
+        JsonObject root = JsonNode.Parse(File.ReadAllText(zone))!.AsObject();
+        root["data"]!["safePoints"]![0]!["position"] = new JsonArray(entry.X, entry.Z);
+        File.WriteAllText(zone, root.ToJsonString());
+        return (data, scenarios);
+    }
+
+    private static void CopyTree(string from, string to)
+    {
+        foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+        {
+            string target = Path.Combine(to, Path.GetRelativePath(from, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, true);
+        }
+    }
+}
+
+/// <summary>Sous-lot V2.3 : aides des tests des histoires d'avant le schéma 9.</summary>
+public static class V23TestData
+{
+    /// <summary>
+    /// Enlève d'une histoire ce que le schéma 9 apporte (emplois du temps, répliques du moment), pour la relire dans une version plus ancienne
+    /// (tests des schémas 4 à 8).
+    /// </summary>
+    public static void WithoutSchedules(JsonObject root)
+    {
+        foreach (JsonNode? npc in root["data"]!["npcs"]!.AsArray()) npc!.AsObject().Remove("schedule");
+        foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
+            foreach (JsonNode? node in dialogue!["nodes"]!.AsArray()) node!.AsObject().Remove("lines");
+    }
+}

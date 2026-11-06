@@ -174,6 +174,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Emploi du temps des PNJ importants (travail, taverne, maison), qui se retrouvent au bon endroit ; dialogues qui en tiennent compte.
 - Dépend de V2.1 et V1.6.
 - Formats : histoire (PNJ en nouvelle version).
+- **État** (6 novembre 2026, PR en brouillon) : histoire en schéma 9 (emplois du temps `schedule` des PNJ, abri sous l'averse, condition `activity`, répliques `lines` d'un nœud selon le moment ; schémas 4 à 8 encore lus), sauvegarde inchangée (version 12) ; dix-sept PNJ ont leur journée (Firmin au fournil la nuit, au marché à midi, à la sieste l'après-midi, à la taverne le soir…), quarante-sept répliques du moment, la boutique d'un marchand parti dit où il est ; passants du bourg qui vont au puits, rentrent manger ou viennent devant l'auberge ; sous Unity, activité sous le nom des PNJ et menu « Essai de la journée du village » ([MONDE.md](MONDE.md#villageois-qui-suivent-leur-journée-sous-lot-v23), [UNITY.md](UNITY.md#essai-v23--la-journée-du-village)). Reste l'essai de Damien sous Unity.
 
 ### 16. V2.4 — Animaux paisibles et bêtes qui se battent (M)
 

@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "kind": "story",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -12,7 +12,48 @@
           -8,
           3
         ],
-        "dialogue": "dialogue.odile"
+        "dialogue": "dialogue.odile",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "moulin",
+            "position": [
+              -8,
+              3
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "riviere",
+            "position": [
+              2.6,
+              1.0
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -3,
+                5.2
+              ]
+            }
+          },
+          {
+            "at": "13:30",
+            "activity": "moulin",
+            "position": [
+              -8,
+              3
+            ]
+          },
+          {
+            "at": "21:00",
+            "activity": "maison",
+            "position": [
+              -4,
+              4.8
+            ]
+          }
+        ]
       },
       {
         "id": "npc.maelle",
@@ -21,7 +62,56 @@
           -20,
           -4
         ],
-        "dialogue": "dialogue.maelle"
+        "dialogue": "dialogue.maelle",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "forge",
+            "position": [
+              -20,
+              -4
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "repas",
+            "position": [
+              -24.2,
+              -8
+            ]
+          },
+          {
+            "at": "13:00",
+            "activity": "forge",
+            "position": [
+              -20,
+              -4
+            ]
+          },
+          {
+            "at": "19:30",
+            "activity": "taverne",
+            "position": [
+              -67,
+              1.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -67.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              -24.2,
+              -8
+            ]
+          }
+        ]
       },
       {
         "id": "npc.gaspard",
@@ -30,7 +120,40 @@
           27,
           -13
         ],
-        "dialogue": "dialogue.gaspard"
+        "dialogue": "dialogue.gaspard",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "poste",
+            "position": [
+              27,
+              -13
+            ]
+          },
+          {
+            "at": "19:30",
+            "activity": "feu",
+            "position": [
+              25.5,
+              -13.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                27.5,
+                -11.8
+              ]
+            }
+          },
+          {
+            "at": "23:00",
+            "activity": "poste",
+            "position": [
+              27,
+              -13
+            ]
+          }
+        ]
       },
       {
         "id": "npc.armurier",
@@ -39,7 +162,48 @@
           -54.5,
           -12.6
         ],
-        "dialogue": "dialogue.armurier"
+        "dialogue": "dialogue.armurier",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "boutique",
+            "position": [
+              -54.5,
+              -12.6
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "taverne",
+            "position": [
+              -64.5,
+              2.6
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -64.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "13:00",
+            "activity": "boutique",
+            "position": [
+              -54.5,
+              -12.6
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              -54.5,
+              -16.6
+            ]
+          }
+        ]
       },
       {
         "id": "npc.herboriste",
@@ -48,7 +212,33 @@
           -65.2,
           -8
         ],
-        "dialogue": "dialogue.herboriste"
+        "dialogue": "dialogue.herboriste",
+        "schedule": [
+          {
+            "at": "07:45",
+            "activity": "boutique",
+            "position": [
+              -65.2,
+              -8
+            ]
+          },
+          {
+            "at": "15:00",
+            "activity": "cueillette",
+            "position": [
+              -62,
+              -27
+            ]
+          },
+          {
+            "at": "16:30",
+            "activity": "boutique",
+            "position": [
+              -65.2,
+              -8
+            ]
+          }
+        ]
       },
       {
         "id": "npc.epiciere",
@@ -57,7 +247,71 @@
           -50.8,
           6
         ],
-        "dialogue": "dialogue.epiciere"
+        "dialogue": "dialogue.epiciere",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "boutique",
+            "position": [
+              -50.8,
+              6
+            ]
+          },
+          {
+            "at": "12:30",
+            "activity": "commerages",
+            "position": [
+              -56,
+              1.2
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -51.5,
+                4.4
+              ]
+            }
+          },
+          {
+            "at": "13:30",
+            "activity": "boutique",
+            "position": [
+              -50.8,
+              6
+            ]
+          },
+          {
+            "at": "19:30",
+            "activity": "taverne",
+            "position": [
+              -73.5,
+              2.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -73.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "21:15",
+            "activity": "boutique",
+            "position": [
+              -50.8,
+              6
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              -46,
+              5
+            ]
+          }
+        ]
       },
       {
         "id": "npc.aubergiste",
@@ -126,7 +380,63 @@
           -42,
           3.5
         ],
-        "dialogue": "dialogue.boulanger"
+        "dialogue": "dialogue.boulanger",
+        "schedule": [
+          {
+            "at": "02:00",
+            "activity": "fournil",
+            "position": [
+              -42,
+              3.5
+            ]
+          },
+          {
+            "at": "11:30",
+            "activity": "marche",
+            "position": [
+              -55.5,
+              -4.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -53.5,
+                4.2
+              ]
+            }
+          },
+          {
+            "at": "14:00",
+            "activity": "sieste",
+            "position": [
+              -38.5,
+              4.8
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "taverne",
+            "position": [
+              -65.5,
+              2.8
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -66,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "21:30",
+            "activity": "fournil",
+            "position": [
+              -42,
+              3.5
+            ]
+          }
+        ]
       },
       {
         "id": "npc.archer_garde",
@@ -135,7 +445,56 @@
           1,
           -3
         ],
-        "dialogue": "dialogue.archer_garde"
+        "dialogue": "dialogue.archer_garde",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "gue",
+            "position": [
+              1,
+              -3
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "tir",
+            "position": [
+              -4,
+              -14
+            ]
+          },
+          {
+            "at": "13:30",
+            "activity": "gue",
+            "position": [
+              1,
+              -3
+            ]
+          },
+          {
+            "at": "16:30",
+            "activity": "taverne",
+            "position": [
+              -71,
+              1.2
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -70.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "19:00",
+            "activity": "gue",
+            "position": [
+              1,
+              -3
+            ]
+          }
+        ]
       },
       {
         "id": "npc.albe",
@@ -154,7 +513,63 @@
           -47.5,
           -2
         ],
-        "dialogue": "dialogue.renart"
+        "dialogue": "dialogue.renart",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "boutique",
+            "position": [
+              -47.5,
+              -2
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "commerages",
+            "position": [
+              -58.5,
+              1.6
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -49.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "13:00",
+            "activity": "boutique",
+            "position": [
+              -47.5,
+              -2
+            ]
+          },
+          {
+            "at": "19:00",
+            "activity": "taverne",
+            "position": [
+              -63.8,
+              3.2
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -65.2,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "22:00",
+            "activity": "boutique",
+            "position": [
+              -47.5,
+              -2
+            ]
+          }
+        ]
       },
       {
         "id": "npc.lison",
@@ -163,7 +578,55 @@
           -60.8,
           -1
         ],
-        "dialogue": "dialogue.lison"
+        "dialogue": "dialogue.lison",
+        "schedule": [
+          {
+            "at": "00:00",
+            "activity": "puits",
+            "position": [
+              -60.8,
+              -1
+            ]
+          },
+          {
+            "at": "13:00",
+            "activity": "jeux",
+            "position": [
+              -67,
+              -3.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -58,
+                -3.2
+              ]
+            }
+          },
+          {
+            "at": "15:00",
+            "activity": "jeux",
+            "position": [
+              -60.5,
+              -12.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -58,
+                -3.2
+              ]
+            }
+          },
+          {
+            "at": "17:30",
+            "activity": "puits",
+            "position": [
+              -60.8,
+              -1
+            ]
+          }
+        ]
       },
       {
         "id": "npc.apprentie",
@@ -172,7 +635,56 @@
           -22,
           -6
         ],
-        "dialogue": "dialogue.apprentie"
+        "dialogue": "dialogue.apprentie",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "forge",
+            "position": [
+              -22,
+              -6
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "corvee_eau",
+            "position": [
+              -16,
+              -11
+            ]
+          },
+          {
+            "at": "12:45",
+            "activity": "forge",
+            "position": [
+              -22,
+              -6
+            ]
+          },
+          {
+            "at": "18:00",
+            "activity": "entrainement",
+            "position": [
+              -14,
+              14.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1.5,
+                5.3
+              ]
+            }
+          },
+          {
+            "at": "20:30",
+            "activity": "maison",
+            "position": [
+              -24.2,
+              -10.5
+            ]
+          }
+        ]
       },
       {
         "id": "npc.doyen",
@@ -181,7 +693,40 @@
           84,
           -36
         ],
-        "dialogue": "dialogue.doyen"
+        "dialogue": "dialogue.doyen",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "place",
+            "position": [
+              84,
+              -36
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "veillee",
+            "position": [
+              81.5,
+              -38.5
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                79.5,
+                -33
+              ]
+            }
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              79.5,
+              -33
+            ]
+          }
+        ]
       },
       {
         "id": "npc.herboriste_hameau",
@@ -190,7 +735,33 @@
           72,
           -36
         ],
-        "dialogue": "dialogue.herboriste_hameau"
+        "dialogue": "dialogue.herboriste_hameau",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "herbes",
+            "position": [
+              72,
+              -36
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "veillee",
+            "position": [
+              79,
+              -40
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              75,
+              -29
+            ]
+          }
+        ]
       },
       {
         "id": "npc.fermier",
@@ -199,7 +770,56 @@
           -66,
           -36
         ],
-        "dialogue": "dialogue.fermier"
+        "dialogue": "dialogue.fermier",
+        "schedule": [
+          {
+            "at": "05:30",
+            "activity": "champs",
+            "position": [
+              -66,
+              -36
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "repas",
+            "position": [
+              -69,
+              -45
+            ]
+          },
+          {
+            "at": "13:00",
+            "activity": "champs",
+            "position": [
+              -66,
+              -36
+            ]
+          },
+          {
+            "at": "19:00",
+            "activity": "taverne",
+            "position": [
+              -70.5,
+              0.8
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -74.5,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "21:30",
+            "activity": "maison",
+            "position": [
+              -69,
+              -45
+            ]
+          }
+        ]
       },
       {
         "id": "npc.fermiere",
@@ -208,7 +828,33 @@
           58,
           -28
         ],
-        "dialogue": "dialogue.fermiere"
+        "dialogue": "dialogue.fermiere",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "verger",
+            "position": [
+              58,
+              -28
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "veillee",
+            "position": [
+              82,
+              -40.5
+            ]
+          },
+          {
+            "at": "21:45",
+            "activity": "verger",
+            "position": [
+              58,
+              -28
+            ]
+          }
+        ]
       },
       {
         "id": "npc.veuve",
@@ -217,7 +863,41 @@
           -64,
           -18
         ],
-        "dialogue": "dialogue.veuve"
+        "dialogue": "dialogue.veuve",
+        "schedule": [
+          {
+            "at": "06:00",
+            "activity": "chapelle",
+            "position": [
+              -71.5,
+              -5.5
+            ]
+          },
+          {
+            "at": "07:30",
+            "activity": "attente",
+            "position": [
+              -64,
+              -18
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "chapelle",
+            "position": [
+              -71.5,
+              -5.5
+            ]
+          },
+          {
+            "at": "19:30",
+            "activity": "attente",
+            "position": [
+              -64,
+              -18
+            ]
+          }
+        ]
       },
       {
         "id": "npc.thibaut",
@@ -235,7 +915,40 @@
           -2,
           -8
         ],
-        "dialogue": "dialogue.capitaine"
+        "dialogue": "dialogue.capitaine",
+        "schedule": [
+          {
+            "at": "05:30",
+            "activity": "poste",
+            "position": [
+              -2,
+              -8
+            ]
+          },
+          {
+            "at": "12:30",
+            "activity": "taverne",
+            "position": [
+              -72.5,
+              2.8
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -72,
+                4.3
+              ]
+            }
+          },
+          {
+            "at": "14:00",
+            "activity": "poste",
+            "position": [
+              -2,
+              -8
+            ]
+          }
+        ]
       },
       {
         "id": "npc.deserteur",
@@ -657,6 +1370,18 @@
                 ],
                 "next": "ch1_puits"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "riviere"
+                  }
+                ],
+                "text": "text.v23.odile.riviere_traces"
+              }
             ]
           },
           {
@@ -835,6 +1560,42 @@
                   }
                 ],
                 "next": "ch1_puits"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "riviere"
+                  }
+                ],
+                "text": "text.v23.odile.riviere"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "maison"
+                  },
+                  {
+                    "if": "phase",
+                    "id": "dusk"
+                  }
+                ],
+                "text": "text.v23.odile.soir"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.odile.abri"
               }
             ]
           },
@@ -1536,6 +2297,42 @@
                 ],
                 "next": "ch1_puits"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "riviere"
+                  }
+                ],
+                "text": "text.v23.odile.riviere"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "maison"
+                  },
+                  {
+                    "if": "phase",
+                    "id": "dusk"
+                  }
+                ],
+                "text": "text.v23.odile.soir"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.odile",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.odile.abri"
+              }
             ]
           },
           {
@@ -2038,6 +2835,28 @@
                 ],
                 "next": "ch1_croc_mort"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.maelle",
+                    "step": "repas"
+                  }
+                ],
+                "text": "text.v23.maelle.repas"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.maelle",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.maelle.taverne"
+              }
             ]
           },
           {
@@ -2355,6 +3174,18 @@
                 ],
                 "next": "ch1_croc_mort"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.maelle",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.maelle.abri"
+              }
             ]
           }
         ]
@@ -2645,6 +3476,28 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.gaspard",
+                    "step": "feu"
+                  }
+                ],
+                "text": "text.v23.gaspard.feu"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.gaspard",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.gaspard.abri"
               }
             ]
           },
@@ -4283,7 +5136,29 @@
           {
             "id": "accueil",
             "text": "text.armurier.accueil",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.armurier",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.garin.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.armurier",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.garin.abri"
+              }
+            ]
           }
         ]
       },
@@ -4431,6 +5306,18 @@
                   }
                 ],
                 "next": "ch1_puits"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.herboriste",
+                    "step": "cueillette"
+                  }
+                ],
+                "text": "text.v23.sauge.cueillette"
               }
             ]
           },
@@ -4984,7 +5871,29 @@
           {
             "id": "accueil",
             "text": "text.epiciere.accueil",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.epiciere",
+                    "step": "commerages"
+                  }
+                ],
+                "text": "text.v23.bertille.commerages"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.epiciere",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.bertille.taverne"
+              }
+            ]
           },
           {
             "id": "ch2_corde",
@@ -5038,7 +5947,19 @@
           {
             "id": "v22_pluie",
             "text": "text.v22.epiciere.pluie",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.epiciere",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.bertille.abri"
+              }
+            ]
           }
         ]
       },
@@ -5257,6 +6178,48 @@
                 "effects": [],
                 "next": null
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.firmin"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.maelle",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.maelle"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.capitaine",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.capitaine"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.renart",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.renart"
+              }
             ]
           },
           {
@@ -5345,6 +6308,48 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.renart",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.renart_dette"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.firmin"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.maelle",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.maelle"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.capitaine",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.mathurin.capitaine"
               }
             ]
           }
@@ -5493,6 +6498,18 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.veuve",
+                    "step": "chapelle"
+                  }
+                ],
+                "text": "text.v23.anselme.veuve"
               }
             ]
           },
@@ -7169,6 +8186,52 @@
                 ],
                 "next": "ch1_aldric_moque"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "marche"
+                  }
+                ],
+                "text": "text.v23.boulanger.marche"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "sieste"
+                  }
+                ],
+                "text": "text.v23.boulanger.sieste"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.boulanger.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "fournil"
+                  },
+                  {
+                    "if": "phase",
+                    "id": "dusk"
+                  }
+                ],
+                "text": "text.v23.boulanger.four"
+              }
             ]
           },
           {
@@ -7973,6 +9036,18 @@
                 ],
                 "next": "ch1_aldric_moque"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.boulanger",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.boulanger.abri"
+              }
             ]
           }
         ]
@@ -8164,6 +9239,28 @@
                   }
                 ],
                 "next": "ch1_croc_mort"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.archer_garde",
+                    "step": "tir"
+                  }
+                ],
+                "text": "text.v23.aldric.tir"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.archer_garde",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.aldric.taverne"
               }
             ]
           },
@@ -8792,6 +9889,18 @@
                   }
                 ],
                 "next": "ch1_croc_mort"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.archer_garde",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.aldric.abri"
               }
             ]
           }
@@ -9969,6 +11078,28 @@
                 "effects": [],
                 "next": null
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.renart",
+                    "step": "commerages"
+                  }
+                ],
+                "text": "text.v23.renart.commerages"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.renart",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.renart.taverne"
+              }
             ]
           },
           {
@@ -10278,6 +11409,18 @@
                 "effects": [],
                 "next": null
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.renart",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.renart.abri"
+              }
             ]
           }
         ]
@@ -10349,7 +11492,29 @@
           {
             "id": "ch2_accueil",
             "text": "text.ch2.lison.accueil",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.lison",
+                    "step": "jeux"
+                  }
+                ],
+                "text": "text.v23.lison.jeux"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.lison",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.lison.abri"
+              }
+            ]
           },
           {
             "id": "ch2_demande",
@@ -10510,7 +11675,53 @@
           {
             "id": "ch2_accueil",
             "text": "text.ch2.apprentie.accueil",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.apprentie",
+                    "step": "corvee_eau"
+                  }
+                ],
+                "text": "text.v23.apprentie.eau"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.apprentie",
+                    "step": "entrainement"
+                  }
+                ],
+                "text": "text.v23.apprentie.entrainement"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.apprentie",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.apprentie.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.apprentie",
+                    "step": "maison"
+                  },
+                  {
+                    "if": "phase",
+                    "id": "dusk"
+                  }
+                ],
+                "text": "text.v23.apprentie.soir"
+              }
+            ]
           },
           {
             "id": "ch2_debut",
@@ -10670,6 +11881,18 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.doyen",
+                    "step": "veillee"
+                  }
+                ],
+                "text": "text.v23.doyen.veillee"
               }
             ]
           },
@@ -10963,7 +12186,19 @@
           {
             "id": "ch3_accueil",
             "text": "text.ch3.herboriste_hameau.accueil",
-            "choices": []
+            "choices": [],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.herboriste_hameau",
+                    "step": "veillee"
+                  }
+                ],
+                "text": "text.v23.herboriste_hameau.veillee"
+              }
+            ]
           },
           {
             "id": "ch3_potions",
@@ -11187,6 +12422,28 @@
                 "effects": [],
                 "next": null
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.fermier",
+                    "step": "repas"
+                  }
+                ],
+                "text": "text.v23.fermier.repas"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.fermier",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.fermier.taverne"
+              }
             ]
           },
           {
@@ -11255,6 +12512,18 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.fermier",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.fermier.abri"
               }
             ]
           },
@@ -11349,6 +12618,18 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.fermiere",
+                    "step": "veillee"
+                  }
+                ],
+                "text": "text.v23.fermiere.veillee"
               }
             ]
           },
@@ -11481,6 +12762,18 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.veuve",
+                    "step": "chapelle"
+                  }
+                ],
+                "text": "text.v23.veuve.chapelle"
               }
             ]
           },
@@ -12006,6 +13299,18 @@
                 "effects": [],
                 "next": "ch1_aldric_secret"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.capitaine",
+                    "step": "taverne"
+                  }
+                ],
+                "text": "text.v23.capitaine.taverne"
+              }
             ]
           },
           {
@@ -12468,6 +13773,18 @@
                 ],
                 "effects": [],
                 "next": "ch1_aldric_secret"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.capitaine",
+                    "step": "abri"
+                  }
+                ],
+                "text": "text.v23.capitaine.abri"
               }
             ]
           }
