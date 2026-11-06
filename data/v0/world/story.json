@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 9,
   "kind": "story",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -1535,6 +1535,17 @@
                 ],
                 "next": "ch1_puits"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v1910.odile.retrouvailles"
+              }
             ]
           },
           {
@@ -1702,6 +1713,10 @@
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "riviere"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.riviere_traces"
@@ -1893,6 +1908,10 @@
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "riviere"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.riviere"
@@ -1907,6 +1926,10 @@
                   {
                     "if": "phase",
                     "id": "dusk"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.soir"
@@ -1917,6 +1940,10 @@
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.abri"
@@ -2629,6 +2656,10 @@
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "riviere"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.riviere"
@@ -2643,6 +2674,10 @@
                   {
                     "if": "phase",
                     "id": "dusk"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.soir"
@@ -2653,6 +2688,10 @@
                     "if": "activity",
                     "id": "npc.odile",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
                   }
                 ],
                 "text": "text.v23.odile.abri"
@@ -3125,6 +3164,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.maelle"
               }
             ],
             "node": "v22_pluie"
@@ -3167,6 +3210,10 @@
                     "if": "activity",
                     "id": "npc.maelle",
                     "step": "repas"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
                   }
                 ],
                 "text": "text.v23.maelle.repas"
@@ -3177,6 +3224,10 @@
                     "if": "activity",
                     "id": "npc.maelle",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
                   }
                 ],
                 "text": "text.v23.maelle.taverne"
@@ -3506,6 +3557,10 @@
                     "if": "activity",
                     "id": "npc.maelle",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maelle"
                   }
                 ],
                 "text": "text.v23.maelle.abri"
@@ -3809,6 +3864,10 @@
                     "if": "activity",
                     "id": "npc.gaspard",
                     "step": "feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.gaspard"
                   }
                 ],
                 "text": "text.v23.gaspard.feu"
@@ -3819,6 +3878,10 @@
                     "if": "activity",
                     "id": "npc.gaspard",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.gaspard"
                   }
                 ],
                 "text": "text.v23.gaspard.abri"
@@ -5468,6 +5531,10 @@
                     "if": "activity",
                     "id": "npc.armurier",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.armurier"
                   }
                 ],
                 "text": "text.v23.garin.taverne"
@@ -5478,9 +5545,22 @@
                     "if": "activity",
                     "id": "npc.armurier",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.armurier"
                   }
                 ],
                 "text": "text.v23.garin.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.armurier"
+                  }
+                ],
+                "text": "text.v1910.armurier.retrouvailles"
               }
             ]
           }
@@ -5556,6 +5636,10 @@
               {
                 "if": "weather",
                 "id": "mist"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.herboriste"
               }
             ],
             "node": "v22_brume"
@@ -5639,9 +5723,22 @@
                     "if": "activity",
                     "id": "npc.herboriste",
                     "step": "cueillette"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.herboriste"
                   }
                 ],
                 "text": "text.v23.sauge.cueillette"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.herboriste"
+                  }
+                ],
+                "text": "text.v1910.herboriste.retrouvailles"
               }
             ]
           },
@@ -6182,6 +6279,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.epiciere"
               }
             ],
             "node": "v22_pluie"
@@ -6203,6 +6304,10 @@
                     "if": "activity",
                     "id": "npc.epiciere",
                     "step": "commerages"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.epiciere"
                   }
                 ],
                 "text": "text.v23.bertille.commerages"
@@ -6213,9 +6318,22 @@
                     "if": "activity",
                     "id": "npc.epiciere",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.epiciere"
                   }
                 ],
                 "text": "text.v23.bertille.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.epiciere"
+                  }
+                ],
+                "text": "text.v1910.epiciere.retrouvailles"
               }
             ]
           },
@@ -6279,6 +6397,10 @@
                     "if": "activity",
                     "id": "npc.epiciere",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.epiciere"
                   }
                 ],
                 "text": "text.v23.bertille.abri"
@@ -6424,6 +6546,17 @@
                 "effects": [],
                 "next": "ch2_dette"
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
+                  }
+                ],
+                "text": "text.v1910.aubergiste.retrouvailles"
+              }
             ]
           },
           {
@@ -6510,6 +6643,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.firmin"
@@ -6520,6 +6657,10 @@
                     "if": "activity",
                     "id": "npc.maelle",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.maelle"
@@ -6530,6 +6671,10 @@
                     "if": "activity",
                     "id": "npc.capitaine",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.capitaine"
@@ -6540,6 +6685,10 @@
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.renart"
@@ -6550,6 +6699,10 @@
                     "if": "activity",
                     "id": "npc.aubergiste",
                     "step": "cave"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.cave"
@@ -6560,6 +6713,10 @@
                     "if": "activity",
                     "id": "npc.aubergiste",
                     "step": "salle"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.salle"
@@ -6661,6 +6818,10 @@
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.renart_dette"
@@ -6671,6 +6832,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.firmin"
@@ -6681,6 +6846,10 @@
                     "if": "activity",
                     "id": "npc.maelle",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.maelle"
@@ -6691,6 +6860,10 @@
                     "if": "activity",
                     "id": "npc.capitaine",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.capitaine"
@@ -6701,6 +6874,10 @@
                     "if": "activity",
                     "id": "npc.aubergiste",
                     "step": "cave"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.cave"
@@ -6711,6 +6888,10 @@
                     "if": "activity",
                     "id": "npc.aubergiste",
                     "step": "salle"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.aubergiste"
                   }
                 ],
                 "text": "text.v23.mathurin.salle"
@@ -6818,6 +6999,10 @@
               {
                 "if": "weather",
                 "id": "storm"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.pretre"
               }
             ],
             "node": "v22_orage"
@@ -6871,6 +7056,10 @@
                     "if": "activity",
                     "id": "npc.veuve",
                     "step": "chapelle"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.pretre"
                   }
                 ],
                 "text": "text.v23.anselme.veuve"
@@ -6881,6 +7070,10 @@
                     "if": "activity",
                     "id": "npc.pretre",
                     "step": "bancs"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.pretre"
                   }
                 ],
                 "text": "text.v23.anselme.bancs"
@@ -6891,9 +7084,22 @@
                     "if": "activity",
                     "id": "npc.pretre",
                     "step": "porte"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.pretre"
                   }
                 ],
                 "text": "text.v23.anselme.porte"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.pretre"
+                  }
+                ],
+                "text": "text.v1910.pretre.retrouvailles"
               }
             ]
           },
@@ -7263,6 +7469,10 @@
                     "if": "activity",
                     "id": "npc.habitant",
                     "step": "fenetre"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.habitant"
                   }
                 ],
                 "text": "text.v23.rosalie.fenetre"
@@ -7273,6 +7483,10 @@
                     "if": "activity",
                     "id": "npc.habitant",
                     "step": "rouet"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.habitant"
                   }
                 ],
                 "text": "text.v23.rosalie.rouet"
@@ -7283,9 +7497,22 @@
                     "if": "activity",
                     "id": "npc.habitant",
                     "step": "lanterne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.habitant"
                   }
                 ],
                 "text": "text.v23.rosalie.lanterne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.habitant"
+                  }
+                ],
+                "text": "text.v1910.habitant.retrouvailles"
               }
             ]
           },
@@ -7681,6 +7908,10 @@
                     "if": "activity",
                     "id": "npc.maitresse_guilde",
                     "step": "tableau"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maitresse_guilde"
                   }
                 ],
                 "text": "text.v23.brunehilde.tableau"
@@ -7691,9 +7922,22 @@
                     "if": "activity",
                     "id": "npc.maitresse_guilde",
                     "step": "feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maitresse_guilde"
                   }
                 ],
                 "text": "text.v23.brunehilde.feu"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.maitresse_guilde"
+                  }
+                ],
+                "text": "text.v1910.maitresse_guilde.retrouvailles"
               }
             ]
           },
@@ -7921,6 +8165,10 @@
                     "if": "activity",
                     "id": "npc.intendant_guilde",
                     "step": "repas"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.intendant_guilde"
                   }
                 ],
                 "text": "text.v23.aubin.repas"
@@ -8067,6 +8315,10 @@
                     "if": "activity",
                     "id": "npc.archiviste",
                     "step": "rayonnages"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
                   }
                 ],
                 "text": "text.v23.ysaline.rayonnages"
@@ -8186,6 +8438,10 @@
               {
                 "if": "weather",
                 "id": "storm"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.boulanger"
               }
             ],
             "node": "v22_orage"
@@ -8195,6 +8451,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.boulanger"
               }
             ],
             "node": "v22_pluie"
@@ -8656,6 +8916,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "marche"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.boulanger"
                   }
                 ],
                 "text": "text.v23.boulanger.marche"
@@ -8666,6 +8930,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "sieste"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.boulanger"
                   }
                 ],
                 "text": "text.v23.boulanger.sieste"
@@ -8676,6 +8944,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.boulanger"
                   }
                 ],
                 "text": "text.v23.boulanger.taverne"
@@ -8690,6 +8962,10 @@
                   {
                     "if": "phase",
                     "id": "dusk"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.boulanger"
                   }
                 ],
                 "text": "text.v23.boulanger.four"
@@ -9506,6 +9782,10 @@
                     "if": "activity",
                     "id": "npc.boulanger",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.boulanger"
                   }
                 ],
                 "text": "text.v23.boulanger.abri"
@@ -9659,6 +9939,10 @@
               {
                 "if": "weather",
                 "id": "mist"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.archer_garde"
               }
             ],
             "node": "v22_brume"
@@ -9668,6 +9952,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.archer_garde"
               }
             ],
             "node": "v22_pluie"
@@ -9710,6 +9998,10 @@
                     "if": "activity",
                     "id": "npc.archer_garde",
                     "step": "tir"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
                   }
                 ],
                 "text": "text.v23.aldric.tir"
@@ -9720,9 +10012,22 @@
                     "if": "activity",
                     "id": "npc.archer_garde",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
                   }
                 ],
                 "text": "text.v23.aldric.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
+                  }
+                ],
+                "text": "text.v1910.archer_garde.retrouvailles"
               }
             ]
           },
@@ -10360,6 +10665,10 @@
                     "if": "activity",
                     "id": "npc.archer_garde",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
                   }
                 ],
                 "text": "text.v23.aldric.abri"
@@ -10535,9 +10844,22 @@
                     "if": "activity",
                     "id": "npc.albe",
                     "step": "priere"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
                   }
                 ],
                 "text": "text.v23.albe.priere"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v1910.albe.retrouvailles"
               }
             ]
           },
@@ -11532,6 +11854,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.renart"
               }
             ],
             "node": "v22_pluie"
@@ -11560,6 +11886,10 @@
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "commerages"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.renart"
                   }
                 ],
                 "text": "text.v23.renart.commerages"
@@ -11570,9 +11900,22 @@
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.renart"
                   }
                 ],
                 "text": "text.v23.renart.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.renart"
+                  }
+                ],
+                "text": "text.v1910.renart.retrouvailles"
               }
             ]
           },
@@ -11891,6 +12234,10 @@
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.renart"
                   }
                 ],
                 "text": "text.v23.renart.abri"
@@ -11974,6 +12321,10 @@
                     "if": "activity",
                     "id": "npc.lison",
                     "step": "jeux"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
                   }
                 ],
                 "text": "text.v23.lison.jeux"
@@ -11984,6 +12335,10 @@
                     "if": "activity",
                     "id": "npc.lison",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
                   }
                 ],
                 "text": "text.v23.lison.abri"
@@ -12157,6 +12512,10 @@
                     "if": "activity",
                     "id": "npc.apprentie",
                     "step": "corvee_eau"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apprentie"
                   }
                 ],
                 "text": "text.v23.apprentie.eau"
@@ -12167,6 +12526,10 @@
                     "if": "activity",
                     "id": "npc.apprentie",
                     "step": "entrainement"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apprentie"
                   }
                 ],
                 "text": "text.v23.apprentie.entrainement"
@@ -12177,6 +12540,10 @@
                     "if": "activity",
                     "id": "npc.apprentie",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apprentie"
                   }
                 ],
                 "text": "text.v23.apprentie.abri"
@@ -12191,6 +12558,10 @@
                   {
                     "if": "phase",
                     "id": "dusk"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apprentie"
                   }
                 ],
                 "text": "text.v23.apprentie.soir"
@@ -12327,6 +12698,10 @@
               {
                 "if": "weather",
                 "id": "mist"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.doyen"
               }
             ],
             "node": "v22_brume"
@@ -12336,6 +12711,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.doyen"
               }
             ],
             "node": "v22_pluie"
@@ -12364,6 +12743,10 @@
                     "if": "activity",
                     "id": "npc.doyen",
                     "step": "veillee"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
                   }
                 ],
                 "text": "text.v23.doyen.veillee"
@@ -12668,6 +13051,10 @@
                     "if": "activity",
                     "id": "npc.herboriste_hameau",
                     "step": "veillee"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.herboriste_hameau"
                   }
                 ],
                 "text": "text.v23.herboriste_hameau.veillee"
@@ -12867,6 +13254,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.fermier"
               }
             ],
             "node": "v22_pluie"
@@ -12876,6 +13267,10 @@
               {
                 "if": "weather",
                 "id": "mist"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.fermier"
               }
             ],
             "node": "v22_brume"
@@ -12904,6 +13299,10 @@
                     "if": "activity",
                     "id": "npc.fermier",
                     "step": "repas"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermier"
                   }
                 ],
                 "text": "text.v23.fermier.repas"
@@ -12914,6 +13313,10 @@
                     "if": "activity",
                     "id": "npc.fermier",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermier"
                   }
                 ],
                 "text": "text.v23.fermier.taverne"
@@ -12995,6 +13398,10 @@
                     "if": "activity",
                     "id": "npc.fermier",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermier"
                   }
                 ],
                 "text": "text.v23.fermier.abri"
@@ -13073,6 +13480,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.fermiere"
               }
             ],
             "node": "v22_pluie"
@@ -13101,6 +13512,10 @@
                     "if": "activity",
                     "id": "npc.fermiere",
                     "step": "veillee"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
                   }
                 ],
                 "text": "text.v23.fermiere.veillee"
@@ -13245,6 +13660,10 @@
                     "if": "activity",
                     "id": "npc.veuve",
                     "step": "chapelle"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
                   }
                 ],
                 "text": "text.v23.veuve.chapelle"
@@ -13445,6 +13864,10 @@
                     "if": "activity",
                     "id": "npc.thibaut",
                     "step": "tombes"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.thibaut"
                   }
                 ],
                 "text": "text.v23.thibaut.tombes"
@@ -13723,6 +14146,10 @@
               {
                 "if": "weather",
                 "id": "storm"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.capitaine"
               }
             ],
             "node": "v22_orage"
@@ -13732,6 +14159,10 @@
               {
                 "if": "weather",
                 "id": "rain"
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.capitaine"
               }
             ],
             "node": "v22_pluie"
@@ -13793,9 +14224,22 @@
                     "if": "activity",
                     "id": "npc.capitaine",
                     "step": "taverne"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.capitaine"
                   }
                 ],
                 "text": "text.v23.capitaine.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.capitaine"
+                  }
+                ],
+                "text": "text.v1910.capitaine.retrouvailles"
               }
             ]
           },
@@ -14268,6 +14712,10 @@
                     "if": "activity",
                     "id": "npc.capitaine",
                     "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.capitaine"
                   }
                 ],
                 "text": "text.v23.capitaine.abri"
@@ -14341,6 +14789,10 @@
                     "if": "activity",
                     "id": "npc.deserteur",
                     "step": "maraude"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.deserteur"
                   }
                 ],
                 "text": "text.v23.deserteur.maraude"
@@ -14503,6 +14955,10 @@
                     "if": "activity",
                     "id": "npc.ysarn",
                     "step": "ecoute"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
                   }
                 ],
                 "text": "text.v23.ysarn.ecoute"
