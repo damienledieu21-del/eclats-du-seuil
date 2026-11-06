@@ -380,6 +380,12 @@ namespace EdS.Data.Story
                 CheckRequirementCycles(quests);
                 // Sous-lot 12.7 : la victoire sur le chef de la zone apprend son fait ; sous-lot V1.6 : celle sur chaque chef aussi.
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);
+                // Sous-lot V2.5 : la première réussite d'un événement du monde apprend son fait, le premier échec le sien.
+                foreach (WorldEventDefinition e in _zone.Events)
+                {
+                    if (e.Reward?.Fact is string won) _factsSet.Add(won);
+                    if (e.LostFact is string lost) _factsSet.Add(lost);
+                }
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.

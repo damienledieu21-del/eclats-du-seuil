@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eclats-du-seuil/schemas/save.schema.json",
   "title": "Éclats du Seuil — sauvegarde du monde",
-  "description": "Sous-lots 12.1 à 12.6, V1.1, V1.2, V1.6, V1.3, V1.4 et V1.8c (version 12 ; la version 11 est celle du sous-lot V1.4, la version 10 celle du sous-lot V1.7). Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 11 est mise à jour à la lecture.",
+  "description": "Sous-lots 12.1 à 12.6, V1.1, V1.2, V1.6, V1.3, V1.4, V1.8c et V2.5 (version 13 ; la version 12 est celle du sous-lot V1.8c, la version 11 est celle du sous-lot V1.4, la version 10 celle du sous-lot V1.7). Documentation. La validation qui fait foi est celle du programme (SaveValidator) ; une sauvegarde de version 1 à 11 est mise à jour à la lecture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 12
+      "const": 13
     },
     "kind": {
       "const": "save"
@@ -84,7 +84,8 @@
                 "professions",
                 "money",
                 "crafts",
-                "boons"
+                "boons",
+                "events"
               ],
               "properties": {
                 "id": {
@@ -558,6 +559,54 @@
                     }
                   },
                   "description": "Sous-lot V1.8c (version 12) : bonus actifs (plat, élixir, huile ou pierre d'arme), au plus un par place, dans l'ordre des places (meal, elixir, weapon) ; ticks : temps qui reste en ticks logiques de 50 ms (une heure de jeu au plus), arrêté hors ligne. Liste vide pour une sauvegarde antérieure."
+                },
+                "events": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "won",
+                      "lost",
+                      "last",
+                      "outcome"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9_.]+(/[a-z0-9_.]+)+$",
+                        "maxLength": 128
+                      },
+                      "won": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "lost": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "last": {
+                        "type": "integer",
+                        "minimum": -1,
+                        "maximum": 100000000
+                      },
+                      "outcome": {
+                        "enum": [
+                          "none",
+                          "won",
+                          "lost"
+                        ]
+                      },
+                      "owed": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "description": "Sous-lot V2.5 (version 13) : registre des événements du monde du personnage (zone.vallons/attaque_hameau…), rangé par identifiant : occurrences réussies et manquées, jour du monde de la dernière réglée (-1 : aucune) et son issue ; owed (seulement vrai) : la récompense de la première réussite attend une place dans le sac. Liste vide pour une sauvegarde antérieure."
                 }
               }
             }
