@@ -333,7 +333,9 @@ namespace EdS.Game
         /// nuit pour ceux qui rentrent chez eux, sa place le jour), au pas. Les places sont relues deux fois par seconde ; on lui parle à la
         /// place du monde (le repère n'est que l'affichage).
         /// </summary>
-        public void Walk(AdventureSession adventure, float deltaTime)
+        /// <param name="arena">Revue Codex de la PR #103 : dans une pièce, le corps visible d'un PNJ est un villageois du décor (le repère est
+        /// caché) : il suit le repère, à chaque image (null : pas de corps à suivre).</param>
+        public void Walk(AdventureSession adventure, float deltaTime, ArenaView arena = null)
         {
             _npcAge += deltaTime;
             if (_npcAge >= 0.5f)
@@ -374,6 +376,11 @@ namespace EdS.Game
                     }
                 }
                 if (m.Look != null) m.Look.Update(m.Body.transform.position, false, deltaTime);
+                else if (arena != null && m.Data != null)
+                {
+                    Vector3 here = m.Body.transform.position;
+                    arena.MoveSpeaker(m.Data.Id, here.x, here.z, deltaTime);
+                }
             }
         }
 

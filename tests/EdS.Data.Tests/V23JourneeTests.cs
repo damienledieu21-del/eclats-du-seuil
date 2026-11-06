@@ -491,6 +491,37 @@ public sealed class V23JourneeTests : IDisposable
         Assert.Equal("Cet étal n'est pas encore ouvert pour toi.", a.DrainMessages().First());
     }
 
+    [Fact]
+    public void Dans_l_auberge_Mathurin_descend_a_la_cave_et_son_corps_suit_son_repere()
+    {
+        // Revue Codex de la PR #103 : on reste dans l'auberge au passage de 14 h. Le cœur déplace Mathurin (parler, livrer : à la cave) ;
+        // la carte de la pièce garde la place d'entrée de son corps (posé une fois), et l'affichage le fait marcher jusqu'à son repère
+        // (WorldMarkers.Walk → ArenaView.MoveSpeaker → SpaceView.MoveSpeaker).
+        string save = Path.Combine(_folder, "partie", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        SaveStore.Write(save, new WorldSave("zone.auberge", TickAt(1, 13 * 60 + 59), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save);
+        Assert.True(a.Indoors);
+        (double X, double Z) Mathurin() => a.Npcs().Where(n => n.Id == "npc.aubergiste").Select(n => (n.X, n.Z)).Single();
+        Assert.Equal((3.75, 3.55), Mathurin());
+        Assert.Contains(("npc.aubergiste", 3.75, 3.55), a.Map.Speakers);
+        Assert.Equal("derrière son comptoir", a.ActivityOf("npc.aubergiste"));
+        for (int i = 0; i < 400 && a.World.Zone.Time.Minute != 14 * 60 + 1; i++) a.Advance(0.05);
+        Assert.Equal((5.8, -1.5), Mathurin());
+        Assert.Equal("à la cave", a.ActivityOf("npc.aubergiste"));
+        Assert.Contains(("npc.aubergiste", 3.75, 3.55), a.Map.Speakers);   // même session : le corps est posé une fois, puis suit son repère
+        string markers = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "WorldMarkers.cs"));
+        Assert.Contains("arena.MoveSpeaker(m.Data.Id, here.x, here.z, deltaTime);", markers, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("_markers.Walk(a, Time.deltaTime, _arena);", game, StringComparison.Ordinal);
+        string space = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("_speakers[v.Id] = placed;", space, StringComparison.Ordinal);
+        // Rechargée à 14 h 01 (ou une porte repassée) : le corps est posé d'emblée à la cave.
+        SaveStore.Write(save, a.World.Save());
+        AdventureSession back = Adventure(save);
+        Assert.Contains(("npc.aubergiste", 5.8, -1.5), back.Map.Speakers);
+    }
+
     // --- Les villageois du décor --------------------------------------------------------------------------------------------
 
     private static readonly VillageSpots Spots = new VillageSpots((-69, 4), (0, -1), (-58, -1), 1.2,

@@ -513,7 +513,7 @@ namespace EdS.Game
             if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
-            _markers.Walk(a, Time.deltaTime);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit
+            _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
             _arena.Sync(_combat, player, null);

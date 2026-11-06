@@ -554,6 +554,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.3 : la minute du monde, pour les allers-retours des villageois du décor.</summary>
         public void Village(int minute) => _space?.Village(minute);
 
+        /// <summary>Revue Codex de la PR #103 : le corps visible d'un PNJ d'une pièce suit son repère (emploi du temps).</summary>
+        public bool MoveSpeaker(string id, float x, float z, float deltaTime) => _space != null && _space.MoveSpeaker(id, x, z, deltaTime);
+
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;

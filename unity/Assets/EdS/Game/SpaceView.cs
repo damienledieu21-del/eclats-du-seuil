@@ -483,6 +483,40 @@ namespace EdS.Game
             public int GoalMinute = -1;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #103 : dans une pièce, le corps visible d'un PNJ qui parle (Mathurin, Frère Anselme…) est un villageois du
+        /// décor posé à sa place à l'entrée (<see cref="AdventureMap.Speakers"/>) ; il suit ensuite le repère du PNJ (<see cref="MoveSpeaker"/>).
+        /// </summary>
+        private readonly Dictionary<string, Villager> _speakers = new Dictionary<string, Villager>();
+
+        /// <summary>
+        /// Revue Codex de la PR #103 : le corps visible du PNJ <paramref name="id"/> d'une pièce va à (<paramref name="x"/>, <paramref name="z"/>),
+        /// la place de son repère, qui marche déjà au pas vers la place de l'heure (emploi du temps) : il marche avec lui (animation de marche,
+        /// tourné vers où il va), puis reprend sa pose. Faux si la pièce n'a pas de corps pour lui.
+        /// </summary>
+        public bool MoveSpeaker(string id, float x, float z, float deltaTime)
+        {
+            if (id == null || !_speakers.TryGetValue(id, out Villager v) || v.Body == null) return false;
+            Vector3 at = v.Body.position;
+            var target = new Vector3(x, v.Height, z);
+            Vector3 way = target - at;
+            way.y = 0f;
+            bool moving = way.sqrMagnitude > 1e-8f;
+            if (moving)
+            {
+                v.Body.position = target;
+                v.Yaw = (float)StyleRules.Turn(v.Yaw, (float)StyleRules.FaceYaw(0, 0, way.x, way.z), 400f * Mathf.Max(deltaTime, 0.0001f));
+                v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
+            }
+            VillagerActivity play = moving ? VillagerActivity.Walk : v.Data.Activity;
+            if (play != v.Playing && v.Look != null)
+            {
+                v.Playing = play;
+                v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
+            }
+            return true;
+        }
+
         /// <summary>Sous-lot V2.3 : places des courses des villageois du décor (auberge, puits, maisons) ; null dans un intérieur.</summary>
         private VillageSpots _errands;
 
@@ -542,8 +576,11 @@ namespace EdS.Game
                 body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
                 VillagerPlan plan = VillageDay.Plan(v, _errands);   // relecture de la PR #103 : une fois, au placement
-                _villagers.Add(new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity,
-                    Plan = plan, Goal = plan.Post });
+                var placed = new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity,
+                    Plan = plan, Goal = plan.Post };
+                _villagers.Add(placed);
+                // Revue Codex de la PR #103 : le corps d'un PNJ qui parle (identifiant « npc.… ») suit son repère.
+                if (v.Id != null && v.Id.StartsWith("npc.", System.StringComparison.Ordinal)) _speakers[v.Id] = placed;
             }
         }
 
