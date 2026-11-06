@@ -1,4 +1,5 @@
 using System.Linq;
+using EdS.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -35,9 +36,11 @@ namespace EdS.Game.Editor
         [MenuItem("Éclats du Seuil/Créer la scène de démarrage")]
         private static void EnsureFromMenu() => Ensure(true);
 
-        private static void Ensure(bool fromMenu)
+
+        /// <summary>Prépare la scène ; <see cref="StartupSceneState.Cancelled"/> si l'utilisateur a annulé la question d'enregistrement.</summary>
+        internal static StartupSceneState Ensure(bool fromMenu)
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode || BuildPipeline.isBuildingPlayer) return;
+            if (EditorApplication.isPlayingOrWillChangePlaymode || BuildPipeline.isBuildingPlayer) return StartupSceneState.Failed;
             try
             {
                 Scene active = SceneManager.GetActiveScene();
@@ -64,7 +67,7 @@ namespace EdS.Game.Editor
                     {
                         Debug.LogWarning("Éclats du Seuil : impossible d'enregistrer la scène de démarrage (" + ScenePath
                             + ") ; vérifie la place sur le disque et les droits du dossier, puis relance le menu « Éclats du Seuil → Créer la scène de démarrage ».");
-                        return;
+                        return StartupSceneState.Failed;
                     }
                     AssetDatabase.Refresh();
                 }
@@ -73,13 +76,18 @@ namespace EdS.Game.Editor
                     EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) }
                         .Concat(scenes.Where(s => s.path != ScenePath)).ToArray();
                 // Une scène sans nom modifiée n'est fermée qu'après la question de Unity (annulée : elle reste ouverte).
-                if (replaceUntitled && (!active.isDirty || EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()))
+                if (replaceUntitled)
+                {
+                    if (active.isDirty && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return StartupSceneState.Cancelled;
                     EditorSceneManager.OpenScene(ScenePath);
+                }
                 if (fromMenu) Debug.Log("Éclats du Seuil : scène de démarrage prête (" + ScenePath + ").");
+                return StartupSceneState.Ready;
             }
             catch (System.Exception e)
             {
                 Debug.LogWarning("Éclats du Seuil : scène de démarrage impossible à préparer. " + e.Message);
+                return StartupSceneState.Failed;
             }
         }
     }
