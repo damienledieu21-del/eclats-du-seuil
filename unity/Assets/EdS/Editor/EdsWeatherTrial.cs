@@ -54,7 +54,7 @@ namespace EdS.Game.Editor
                 EditorUtility.DisplayDialog("Essai de la météo", "Attends la fin du passage en mode Jeu.", "OK");
                 return;
             }
-            EditorUtility.DisplayDialog("Essai de la météo", WeatherTrial.MoveSave(SavePath, id), "OK");
+            EditorUtility.DisplayDialog("Essai de la météo", WeatherTrial.MoveSave(SavePath, id, System.DateTime.Now.ToString("yyyyMMdd-HHmmss")), "OK");
         }
     }
 }

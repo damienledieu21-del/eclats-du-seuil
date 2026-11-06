@@ -364,6 +364,74 @@ public sealed class V22MeteoTests : IDisposable
         Assert.NotEmpty(view.Options);
     }
 
+    [Fact]
+    public void Repliques_du_temps_apres_toute_quete_et_avec_les_reponses_de_l_accueil()
+    {
+        // Relecture de la PR #101 : une réplique du temps ne passe qu'après toutes les entrées conditionnées (quêtes, livraisons, offres,
+        // nuit) : seules d'autres répliques du temps et l'accueil sans condition la suivent ; son nœud garde exactement les réponses de l'accueil.
+        JsonObject root = StoryJson();
+        int checkedNodes = 0;
+        foreach (JsonNode? dialogue in root["data"]!["dialogues"]!.AsArray())
+        {
+            JsonArray entries = dialogue!["entries"]!.AsArray();
+            JsonArray nodes = dialogue["nodes"]!.AsArray();
+            int first = entries.ToList().FindIndex(x => x!.ToJsonString().Contains("\"weather\""));
+            if (first < 0) continue;
+            for (int i = first; i < entries.Count - 1; i++)
+            {
+                JsonArray conditions = entries[i]!["conditions"]!.AsArray();
+                Assert.Single(conditions);
+                Assert.Equal("weather", conditions[0]!["if"]!.GetValue<string>());
+            }
+            JsonObject last = entries[entries.Count - 1]!.AsObject();
+            Assert.Empty(last["conditions"]!.AsArray());
+            string fallback = nodes.Single(n => n!["id"]!.GetValue<string>() == last["node"]!.GetValue<string>())!["choices"]!.ToJsonString();
+            for (int i = first; i < entries.Count - 1; i++)
+            {
+                string node = entries[i]!["node"]!.GetValue<string>();
+                Assert.StartsWith("v22_", node, StringComparison.Ordinal);
+                Assert.Equal(fallback, nodes.Single(n => n!["id"]!.GetValue<string>() == node)!["choices"]!.ToJsonString());
+                checkedNodes++;
+            }
+        }
+        Assert.Equal(16, checkedNodes);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    public void Condition_weather_refusee_avant_le_schema_8(int version)
+    {
+        JsonObject root = StoryJson();
+        root["schemaVersion"] = version;
+        JsonArray dialogues = root["data"]!["dialogues"]!.AsArray();
+        int d = dialogues.ToList().FindIndex(x => x!["id"]!.GetValue<string>() == "dialogue.fermier");
+        int e = dialogues[d]!["entries"]!.AsArray().ToList().FindIndex(x => x!.ToJsonString().Contains("\"weather\""));
+        Assert.Contains(Read(root).Report.Errors, x => x.Path == $"$.data.dialogues[{d}].entries[{e}].conditions[0].if" && x.Code == ValidationCode.InvalidValue
+            && x.Message.Contains("weather", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("npc.renart", "Renart, pour vous servir")]
+    [InlineData("npc.capitaine", "La garde des Vallons, c'est moi")]
+    public void Premier_contact_sous_la_pluie_la_presentation_est_dite(string npc, string presentation)
+    {
+        // Relecture de la PR #101 : aucun fait « déjà rencontré » (et un nœud ne pose pas de fait) : la réplique de pluie de Renart et du
+        // capitaine reprend leur présentation, pour qu'un premier contact sous la pluie la donne quand même.
+        GroundVector at = Book(Shipped.Value).Npc(npc).Position;
+        (long day, int minute) = Find(WeatherKind.Shower);
+        ZoneDefinition zone = Zone(at.X.Raw / 10000.0, at.Z.Raw / 10000.0 - 1.5);
+        var w = new WorldSession(new WorldSave(Vallons, TickAt(day, minute), 0, new[] { PlayerCharacters.PlacesKey }, Hero(100)), zone, ShippedData, Progression,
+            ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+        w.Step();
+        Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? view));
+        Assert.Equal("v22_pluie", view!.Node);
+        Assert.Contains(presentation, Texts.Get(view.Text), StringComparison.Ordinal);
+        Assert.Contains(presentation, Texts.Get("text.v22.capitaine.orage") + Texts.Get("text.v22.renart.pluie"), StringComparison.Ordinal);
+    }
+
     // --- Affichage : ambiances, sons, flaques, villageois, essai ---------------------------------------------------------
 
     [Theory]
@@ -445,7 +513,19 @@ public sealed class V22MeteoTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var save = new WorldSave(Vallons, 500, 3, new[] { "zone.vallons/safe/place_du_village" }, Hero(42));
         SaveStore.Write(path, save);
-        Assert.StartsWith("Partie avancée au jour", WeatherTrial.MoveSave(path, WeatherKind.Storm), StringComparison.Ordinal);
+        Assert.StartsWith("Partie avancée au jour", WeatherTrial.MoveSave(path, WeatherKind.Storm, stamp: "20261106-120000"), StringComparison.Ordinal);
+        // Relecture de la PR #101 : une copie d'avant l'essai, jamais écrasée (la deuxième prend un numéro), et le drapeau de migration gardé.
+        string copy = path + ".essai-20261106-120000.bak";
+        Assert.Equal(save.WorldTick, SaveStore.Read(copy).Save!.WorldTick);
+        WeatherTrial.MoveSave(path, WeatherKind.Clear, stamp: "20261106-120000");
+        Assert.True(File.Exists(path + ".essai-20261106-120000-2.bak"));
+        Assert.Equal(save.WorldTick, SaveStore.Read(copy).Save!.WorldTick);
+        Assert.Contains("Copie d'avant l'essai", DayTrial.MoveSave(path, 0), StringComparison.Ordinal);
+        Assert.True(File.Exists(path + ".essai-copie.bak"));
+        Assert.True(DayTrial.Advanced(new WorldSave(Vallons, 5, 1, Array.Empty<string>(), Hero(1), migrated: true), 9).Migrated);
+        Assert.Equal(9, DayTrial.Advanced(save, 9).WorldTick);
+        SaveStore.Write(path, save);
+        WeatherTrial.MoveSave(path, WeatherKind.Storm);
         WorldSave moved = SaveStore.Read(path).Save!;
         Assert.Equal(WeatherKind.Storm, WorldWeather.At(Vallons, clock.At(moved.WorldTick)).Kind);
         Assert.True(moved.WorldTick > save.WorldTick);

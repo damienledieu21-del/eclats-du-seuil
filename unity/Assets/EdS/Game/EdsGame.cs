@@ -521,7 +521,7 @@ namespace EdS.Game
                 _moodAge += Time.deltaTime;
                 if (_moodAge >= 0.25f)
                 {
-                    _mood = a.Mood();
+                    _mood = a.Mood().WithRain(_weatherLook.Rain);   // relecture de la PR #101 : la pluie montrée (essai forcé compris)
                     _moodAge = 0f;
                 }
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir

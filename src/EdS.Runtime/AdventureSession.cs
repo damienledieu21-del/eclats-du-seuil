@@ -52,6 +52,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.2 : pluie (0 à 1 ; <see cref="WeatherState.Rain"/>) : la nappe de pluie la suit, les oiseaux se taisent.</summary>
         public double Rain { get; }
+
+        /// <summary>
+        /// Relecture de la PR #101 : la même ambiance avec la pluie <paramref name="rain"/> (celle qui est montrée : le temps forcé par le menu
+        /// d'essai compris), pour que la nappe de pluie suive ce qu'on voit.
+        /// </summary>
+        public AdventureMood WithRain(double rain) => new AdventureMood(InVillage, Fighting, BossEngaged, RiverDistance, Indoors, Night, rain);
     }
 
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>

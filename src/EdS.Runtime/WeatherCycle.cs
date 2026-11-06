@@ -377,15 +377,16 @@ namespace EdS.Runtime
         }
 
         /// <summary>Comme <see cref="MoveSave(string, WeatherKind, string, long)"/>, le temps donné par son identifiant (menu de l'éditeur).</summary>
-        public static string MoveSave(string path, string weather) =>
-            KindOf(weather) is WeatherKind kind ? MoveSave(path, kind) : $"Temps inconnu « {weather} ».";
+        public static string MoveSave(string path, string weather, string? stamp = null) =>
+            KindOf(weather) is WeatherKind kind ? MoveSave(path, kind, stamp: stamp) : $"Temps inconnu « {weather} ».";
 
         /// <summary>
         /// Avance la sauvegarde <paramref name="path"/> jusqu'au prochain moment où il fait <paramref name="kind"/> ; rend le message à
         /// montrer. Rien n'est écrit si la sauvegarde manque, ne se lit pas, ou si ce temps ne vient pas.
         /// </summary>
         /// <param name="zone">Zone dont on suit le temps (celle de l'histoire : les Vallons, même si la partie est dans un intérieur).</param>
-        public static string MoveSave(string path, WeatherKind kind, string zone = "zone.vallons", long tickMilliseconds = 50)
+        /// <param name="stamp">Marque de la copie gardée avant l'essai (<see cref="DayTrial.KeepCopy"/>).</param>
+        public static string MoveSave(string path, WeatherKind kind, string zone = "zone.vallons", long tickMilliseconds = 50, string? stamp = null)
         {
             if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
             var read = SaveStore.Read(path);
@@ -393,8 +394,9 @@ namespace EdS.Runtime
             var clock = new WorldClock(tickMilliseconds);
             if (!(NextTickWith(clock, zone, save.WorldTick, kind) is long tick))
                 return $"Pas de « {WorldWeather.Id(kind)} » dans les {MaxDays} jours qui viennent : rien n'a changé.";
-            SaveStore.Write(path, new EdS.Data.Saves.WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character));
-            return $"Partie avancée au {clock.At(tick)} (tick {tick}) : {WorldWeather.Id(kind)}.";
+            string copy = DayTrial.KeepCopy(path, stamp);
+            SaveStore.Write(path, DayTrial.Advanced(save, tick));
+            return $"Partie avancée au {clock.At(tick)} (tick {tick}) : {WorldWeather.Id(kind)}. Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }
     }
 }

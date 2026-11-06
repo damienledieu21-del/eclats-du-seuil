@@ -636,8 +636,8 @@ Le temps est tiré du **jour du monde** (le même jour a toujours le même temps
 
 **Pour le voir sans l'attendre**, menu **Éclats du Seuil → Essai de la météo : …** (pluie fine, averse, orage, brume du matin, ciel couvert, temps clair) :
 
-- **hors du mode Jeu**, il avance la sauvegarde jusqu'au prochain moment où il fait ce temps (seul le temps du monde avance, comme l'essai de la nuit) : tout est vrai, répliques des villageois comprises ;
-- **en mode Jeu**, il force seulement l'affichage (rien ne change dans la partie, les villageois parlent du vrai temps) ; « temps du monde (ne plus forcer) » rend le temps tiré du jour.
+- **hors du mode Jeu**, il avance la sauvegarde jusqu'au prochain moment où il fait ce temps (seul le temps du monde avance, comme l'essai de la nuit) : tout est vrai, répliques des villageois comprises. Avant d'écrire, une copie est gardée à côté (`vallons.json.essai-<date-heure>.bak`, jamais écrasée ; l'essai de la nuit fait de même) ;
+- **en mode Jeu**, il force seulement l'affichage et le son de pluie (rien ne change dans la partie, les villageois parlent du vrai temps) ; « temps du monde (ne plus forcer) » rend le temps tiré du jour.
 
 À vérifier, dans l'ordre :
 

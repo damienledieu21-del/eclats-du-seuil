@@ -33,6 +33,9 @@ namespace EdS.Game
         private readonly Light _flash;
         private readonly AudioSource _thunderSource;
         private readonly AudioClip _thunderClip;
+
+        /// <summary>Relecture de la PR #101 : sons de synthèse faits par cette météo, détruits avec elle (une nouvelle aventure les refait).</summary>
+        private readonly System.Collections.Generic.List<AudioClip> _ownedClips = new System.Collections.Generic.List<AudioClip>();
         private readonly AudioSource _rainSource;
         private readonly bool _phone;
         private float _flashAt = -99f, _thunderAt = -1f, _thunderVolume = 1f, _nextForcedFlash;
@@ -156,10 +159,11 @@ namespace EdS.Game
             return source;
         }
 
-        private static AudioClip Clip(string name, float[] samples, int rate)
+        private AudioClip Clip(string name, float[] samples, int rate)
         {
             AudioClip clip = AudioClip.Create(name, samples.Length, 1, rate, false);
             clip.SetData(samples, 0);
+            _ownedClips.Add(clip);
             return clip;
         }
 
@@ -246,6 +250,10 @@ namespace EdS.Game
         public void Destroy()
         {
             if (_rainSource != null) _rainSource.Stop();
+            _thunderSource.Stop();
+            foreach (AudioClip clip in _ownedClips)
+                if (clip != null) Object.Destroy(clip);
+            _ownedClips.Clear();
             foreach (ParticleSystemRenderer r in _root.GetComponentsInChildren<ParticleSystemRenderer>())
                 if (r.sharedMaterial != null) Object.Destroy(r.sharedMaterial);
             Object.Destroy(_root);

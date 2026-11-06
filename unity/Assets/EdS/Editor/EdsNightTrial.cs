@@ -29,7 +29,7 @@ namespace EdS.Game.Editor
                 EditorUtility.DisplayDialog("Essai de la nuit", "Arrête d'abord le mode Jeu : la partie en cours réécrirait sa sauvegarde.", "OK");
                 return;
             }
-            EditorUtility.DisplayDialog("Essai de la nuit", DayTrial.MoveSave(SavePath, minute), "OK");
+            EditorUtility.DisplayDialog("Essai de la nuit", DayTrial.MoveSave(SavePath, minute, stamp: System.DateTime.Now.ToString("yyyyMMdd-HHmmss")), "OK");
         }
     }
 }
