@@ -263,6 +263,7 @@ namespace EdS.Runtime
         private double _lastPlayerZ;
         private double _rest;
         private double _nextAct;
+        private double _sinceAct;   // revue Codex de la PR #102 : temps depuis le dernier acte (ou le retour assis), pas PoseSeconds
         private double _actLeft;
         private int _acts;
         private bool _purred;
@@ -453,21 +454,27 @@ namespace EdS.Runtime
                 {
                     Pose = CompanionPose.Sit;
                     _nextAct = 2.5 + Unit(_acts * 2 + 1) * 4.0;   // première petite occupation dans 2,5 à 6,5 s
+                    _sinceAct = 0;
                 }
                 else if (Pose == CompanionPose.Groom || Pose == CompanionPose.Look || Pose == CompanionPose.Stretch)
                 {
                     _actLeft -= dt;
-                    if (_actLeft <= 0) Pose = CompanionPose.Sit;
+                    if (_actLeft <= 0)
+                    {
+                        Pose = CompanionPose.Sit;
+                        _sinceAct = 0;
+                    }
                 }
                 else if (Pose == CompanionPose.Sit)
                 {
+                    _sinceAct += dt;
                     if (!combat && PlayerStill >= CurlDelay && _rest >= CurlDelay) Pose = CompanionPose.Curl;
                     else if (!_purred && !combat && _rest >= PurrDelay && near <= _definition.FollowDistance + 0.6)
                     {
                         _purred = true;
                         Cue = CompanionCue.Purr;
                     }
-                    else if (PoseSeconds >= _nextAct) Act(combat);
+                    else if (_sinceAct >= _nextAct) Act(combat);
                 }
             }
             PoseSeconds = Pose == before ? PoseSeconds + dt : 0;
@@ -478,7 +485,8 @@ namespace EdS.Runtime
         {
             int roll = (int)(Unit(_acts * 2) * 100);
             _acts++;
-            _nextAct = 4.0 + Unit(_acts * 2 + 1) * 5.0;   // la suivante dans 4 à 9 s (compté depuis le retour assis)
+            _nextAct = 4.0 + Unit(_acts * 2 + 1) * 5.0;   // la suivante dans 4 à 9 s (comptés depuis le retour assis, ou depuis le miaulement)
+            _sinceAct = 0;
             if (combat || roll < 30)
             {
                 Pose = CompanionPose.Look;

@@ -369,5 +369,40 @@ public sealed class V221CompagnonTests
         Assert.Equal(CompanionPose.Walk, g.Pose);
     }
 
+    [Fact]
+    public void Codex_entre_deux_actes_il_y_a_toujours_4_a_9_secondes_meme_apres_un_miaulement_et_plusieurs_arrets()
+    {
+        var f = new CompanionFollower(Companions.PainDEpice);
+        double px = 0, t = 0, last = double.NaN;
+        int acts = 0, meows = 0, stops = 0;
+        f.Step(px, 0, 90, Dt, false);
+        for (int round = 0; round < 12; round++)
+        {
+            for (int i = 0; i < 40; i++) f.Step(px += 5 * Dt, 0, 90, Dt, false);   // il marche
+            last = double.NaN;
+            stops++;
+            for (int i = 0; i < (int)(28 / Dt); i++)                                // arrêt de 28 s (avant la boule)
+            {
+                CompanionPose before = f.Pose;
+                f.Step(px, 0, 90, Dt, false);
+                t += Dt;
+                bool started = f.Cue == CompanionCue.Meow
+                    || (before == CompanionPose.Sit && f.Pose is CompanionPose.Groom or CompanionPose.Look or CompanionPose.Stretch);
+                bool backToSit = before is CompanionPose.Groom or CompanionPose.Look or CompanionPose.Stretch && f.Pose == CompanionPose.Sit;
+                if (started)
+                {
+                    acts++;
+                    if (f.Cue == CompanionCue.Meow) meows++;
+                    if (!double.IsNaN(last)) Assert.InRange(t - last, 4.0 - 1e-9, 9.0 + Dt + 1e-9);
+                    last = t;
+                }
+                if (backToSit) last = t;   // compté depuis le retour assis
+            }
+        }
+        Assert.Equal(12, stops);
+        Assert.True(acts >= 24, $"actes : {acts}");
+        Assert.True(meows >= 2, $"miaulements : {meows}");
+    }
+
     private static double Distance(CompanionFollower f, double x, double z) => Math.Sqrt((f.X - x) * (f.X - x) + (f.Z - z) * (f.Z - z));
 }
