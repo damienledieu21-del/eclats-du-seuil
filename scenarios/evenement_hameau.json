@@ -1,0 +1,285 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 16,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 2511,
+    "durationMs": 15000,
+    "truces": [
+      [
+        "meute",
+        "bandits"
+      ],
+      [
+        "gibier",
+        "bandits"
+      ]
+    ],
+    "space": {
+      "bounds": {
+        "min": [
+          -12,
+          -10
+        ],
+        "max": [
+          20,
+          10
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        },
+        "position": [
+          0,
+          0
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "bandit_epee3_ev1",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          7,
+          2
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        },
+        "arrivalMs": 1000
+      },
+      {
+        "id": "bandit_epee3_ev2",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          8,
+          -3
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        },
+        "arrivalMs": 1500
+      },
+      {
+        "id": "bandit_arc3_ev3",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 130,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2000,
+        "attacks": [
+          {
+            "id": "tir",
+            "rawDamage": 13,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 11
+          },
+          {
+            "id": "volee",
+            "rawDamage": 17,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1300,
+            "radius": 2.2,
+            "holdPosition": false
+          }
+        ],
+        "position": [
+          12,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 6,
+          "aggroRange": 13,
+          "pack": false
+        },
+        "arrivalMs": 2000
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 1050,
+        "actor": "bastion",
+        "action": "select",
+        "target": "bandit_epee3_ev1"
+      },
+      {
+        "atMs": 1100,
+        "actor": "bastion",
+        "skill": "skill.bastion.provocation",
+        "target": "bandit_epee3_ev1"
+      },
+      {
+        "atMs": 1700,
+        "actor": "bastion",
+        "action": "guardStart"
+      },
+      {
+        "atMs": 3200,
+        "actor": "bastion",
+        "action": "guardStop"
+      },
+      {
+        "atMs": 3300,
+        "actor": "bastion",
+        "skill": "skill.bastion.frappe_du_rempart",
+        "target": "bandit_epee3_ev1"
+      },
+      {
+        "atMs": 4500,
+        "actor": "bastion",
+        "skill": "skill.bastion.onde_de_rupture",
+        "target": "bandit_epee3_ev2"
+      },
+      {
+        "atMs": 6000,
+        "actor": "bastion",
+        "skill": "skill.bastion.heurt_de_bouclier",
+        "target": "bandit_epee3_ev2"
+      }
+    ]
+  }
+}
