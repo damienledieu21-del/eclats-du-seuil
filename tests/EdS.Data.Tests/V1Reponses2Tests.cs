@@ -538,7 +538,7 @@ public class V1Reponses2GuildeTests
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
         foreach (JsonNode? n in root["data"]!["npcs"]!.AsArray())
-            if ((string)n!["id"]! == Mistress) n["position"] = new JsonArray(0, -1.6);
+            if ((string)n!["id"]! == Mistress) V23TestData.Move(n!, new JsonArray(0, -1.6));
         StoryLoadResult r = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Vallons.Value, ItemsCatalog, V16TestData.Interiors);
         Assert.True(r.IsValid, r.Report.ToString());
         return r.Story!;

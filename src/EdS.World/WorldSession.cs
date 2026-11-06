@@ -643,14 +643,41 @@ namespace EdS.World
         /// un PNJ qui a une place de nuit dans sa zone (<see cref="ZoneDefinition.NightSpots"/>) se tient devant sa porte : on lui parle là, ses
         /// quêtes, livraisons et boutique restent joignables ; sinon (le jour, ou sans place de nuit), sa place de l'histoire.
         /// </summary>
+        /// <remarks>
+        /// Sous-lot V2.3 (villageois qui suivent leur journée) : un PNJ qui a un emploi du temps (<see cref="Npc.Schedule"/>) est à la place de
+        /// son créneau en cours, à toute heure (sa place de nuit de la zone ne sert plus) ; sous une vraie pluie, à l'abri du créneau s'il en a
+        /// un (<see cref="NpcSlot"/>). Tout est recalculé de l'heure du monde et du temps : rien n'est sauvegardé.
+        /// </remarks>
         public GroundVector NpcPosition(Npc npc)
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (NpcSlot(npc) is { } slot) return slot.Position;
             if (Definition is null || Zone.Time.Phase != DayPhase.Night || (npc.Zone ?? _storyZone) != Definition.Id) return npc.Position;
             return Definition.NightSpotOf(npc.Id) ?? npc.Position;
         }
 
         GroundVector INarrativeWorld.NpcPosition(Npc npc) => NpcPosition(npc);
+
+        /// <summary>
+        /// Sous-lot V2.3 : activité et place du PNJ <paramref name="npc"/> d'après son emploi du temps, à l'heure du monde ; sous une vraie
+        /// pluie (averse ou orage, <see cref="Shelters"/> : une pluie fine ne chasse personne), l'abri du créneau s'il en a un. Null : pas
+        /// d'emploi du temps.
+        /// </summary>
+        public (string Activity, GroundVector Position)? NpcSlot(Npc npc)
+        {
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (!(npc.SlotAt(Zone.Time.Minute) is ScheduleSlot slot)) return null;
+            if (slot.Rain is SchedulePlace shelter && Shelters(Weather.Kind)) return (shelter.Activity, shelter.Position);
+            return (slot.Activity, slot.Position);
+        }
+
+        /// <summary>Sous-lot V2.3 : activité du PNJ à cette heure (null : pas d'emploi du temps).</summary>
+        public string? NpcActivity(Npc npc) => NpcSlot(npc)?.Activity;
+
+        string? INarrativeWorld.NpcActivity(Npc npc) => NpcActivity(npc);
+
+        /// <summary>Sous-lot V2.3 : temps qui fait s'abriter les PNJ qui ont un abri (averse et orage).</summary>
+        public static bool Shelters(WeatherKind kind) => kind == WeatherKind.Shower || kind == WeatherKind.Storm;
 
         int INarrativeWorld.Level => Level;
 

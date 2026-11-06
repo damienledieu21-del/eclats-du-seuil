@@ -256,6 +256,9 @@ namespace EdS.World
         /// <summary>Sous-lot V2.1 : place du PNJ à l'heure du monde (devant sa porte la nuit, s'il rentre chez lui).</summary>
         GroundVector NpcPosition(Npc npc);
 
+        /// <summary>Sous-lot V2.3 : activité du PNJ à l'heure du monde et sous le temps qu'il fait (null : pas d'emploi du temps).</summary>
+        string? NpcActivity(Npc npc);
+
         /// <summary>Réponses du 31 octobre 2026 : jour du monde (fin des contrats pressés).</summary>
         long Day { get; }
 
@@ -580,7 +583,9 @@ namespace EdS.World
             IReadOnlyList<(string Id, bool Contract, Objective Objective)> deliveries = Deliveries(npc);
             for (int k = 0; k < deliveries.Count; k++)
                 options.Add(new DialogueOption(own + k, DeliverText, deliveries[k].Id, deliveries[k].Objective.Id, deliveries[k].Objective.Value));
-            return new DialogueView(npc, node?.Id ?? string.Empty, node?.Text ?? DeliveryOnlyText, options);
+            // Sous-lot V2.3 : la première réplique du moment dont les conditions sont réunies remplace le texte du nœud.
+            string text = node is null ? DeliveryOnlyText : node.Lines.FirstOrDefault(l => All(l.Conditions))?.Text ?? node.Text;
+            return new DialogueView(npc, node?.Id ?? string.Empty, text, options);
         }
 
         /// <summary>
@@ -1123,6 +1128,7 @@ namespace EdS.World
             ConditionKind.HasItem => _world.Inventory.Count(c.Id) >= c.Value,
             ConditionKind.Phase => PhaseId(_world.Phase) == c.Id,
             ConditionKind.Weather => WorldWeather.Matches(_world.Weather, c.Id),   // sous-lot V2.2
+            ConditionKind.Activity => _book.HasNpc(c.Id) && _world.NpcActivity(_book.Npc(c.Id)) == c.Step,   // sous-lot V2.3
             ConditionKind.InPlace => _world.InPlace(c.Id),
             ConditionKind.LevelAtLeast => (_bonusXp > 0 ? _world.LevelWith(_bonusXp) : _world.Level) >= c.Value,   // sous-lot V1.6
             ConditionKind.GuildRankAtLeast => _card != null && _card.Rank >= GuildRanks.IndexOf(c.Id),   // sous-lot V1.7

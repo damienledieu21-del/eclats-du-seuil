@@ -108,3 +108,17 @@ Quand **Pain-d'Épice, le chat de Rosalie** est dans le sac (quête du chapitre 
 | 7.8 | Ton avis : taille, couleur, vitesse, distance, sons | — | [ ] | |
 
 **Sons (facultatifs, CC0 déposés par toi)** : dans `unity/Assets/Style/Sounds/` un fichier dont le nom contient `miaou` ou `meow` (miaulement) et un autre avec `ronron` ou `purr` (ronronnement), puis **Préparer l'essai de style**. Sans eux, un miaulement et un ronronnement faits par le code. Limites : formes simples (pas de modèle 3D) ; rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; en reparaissant derrière toi après une porte, il peut se trouver un instant contre un mur (il n'a pas de collision).
+
+## 8. La journée du village (V2.3)
+
+Menus **Éclats du Seuil → Essai de la journée du village : …**, hors du mode Jeu (détail : [UNITY.md](UNITY.md#essai-v23--la-journée-du-village)).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 8.1 | Menu « 12 h 15, midi », puis jouer | Firmin vend son pain sur la place, Garin et le capitaine mangent devant l'auberge ; sous leur nom, ce qu'ils font | [ ] | |
+| 8.2 | À l'étal de Garin, touche **F** | Un message dit qu'il est à la taverne ; devant l'auberge, on lui achète | [ ] | |
+| 8.3 | Menu « 19 h 45, la taverne » ; parler à Firmin, Maëlle, Aldric (s'il y est encore), Renart, puis à Mathurin dans l'auberge | Chacun a une réplique du soir ; Mathurin parle de ceux qui sont sur la terrasse | [ ] | |
+| 8.4 | Menu « 5 h 30, l'aube » ; « 14 h 30 » | Firmin au fournil (sa réplique de l'aube) ; l'après-midi, Firmin fait la sieste devant chez lui | [ ] | |
+| 8.5 | Menu « la prochaine averse » | Ceux qui sont dehors vont s'abriter et le disent | [ ] | |
+| 8.6 | Regarder les passants du bourg un moment | Certains vont et viennent (puits, maison, auberge), puis reprennent leur place | [ ] | |
+

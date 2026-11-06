@@ -652,6 +652,17 @@ namespace EdS.Runtime
                 Say("text.ui.trade.closed_home", Text(keeper.Name));
                 return false;
             }
+            // Sous-lot V2.3 : de jour, à l'étal d'un marchand parti ailleurs (son emploi du temps : la taverne, le repas…), la boutique dit où
+            // il est (on lui achète là-bas).
+            // Relecture indépendante de la PR #103 : seulement une boutique ouverte ; sinon la vraie raison (rang, pas encore ouverte).
+            if (AwayStallInReach is Npc away && World.NpcActivity(away) is string activity && World.MerchantOf(away.Id) is Merchant awayShop)
+            {
+                TradeRefusal status = World.TradeStatus(awayShop.Id);
+                if (status == TradeRefusal.None) Say("text.ui.trade.away", Text(away.Name), Text(ActivityText(activity)));
+                else if (status == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");
+                else Say("text.ui.trade.notyetopen");
+                return false;
+            }
             Say("text.ui.nothing_here");
             return false;
         }
@@ -665,6 +676,26 @@ namespace EdS.Runtime
                     && World.MerchantOf(n.Id) is Merchant m && World.CanTrade(m.Id) == TradeRefusal.Closed)
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
             : null;
+
+        /// <summary>
+        /// Sous-lot V2.3 : marchand dont l'étal est à portée alors que lui est vraiment ailleurs (hors de portée) d'après son emploi du temps,
+        /// et dont la boutique n'est pas fermée à cette heure (fermée : <see cref="ClosedStallInReach"/>) ; null sinon.
+        /// </summary>
+        public Npc? AwayStallInReach => Me is GroundVector p
+            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !Within(p, World.NpcPosition(n), Narrative.TalkRange)
+                    && World.NpcActivity(n) != null && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
+                .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
+            : null;
+
+        /// <summary>Sous-lot V2.3 : clé du texte d'une activité de l'emploi du temps (« au fournil », « à la taverne »…).</summary>
+        public static string ActivityText(string activity) => StoryValidator.ActivityTextPrefix + activity;
+
+        /// <summary>
+        /// Sous-lot V2.3 : ce que fait le PNJ <paramref name="npc"/> à cette heure, en mots (« au fournil ») ; null s'il n'a pas d'emploi du
+        /// temps. Pour l'étiquette au-dessus de lui.
+        /// </summary>
+        public string? ActivityOf(string npc) =>
+            World.Narrative is { } story && story.Book.HasNpc(npc) && World.NpcActivity(story.Book.Npc(npc)) is string activity ? Text(ActivityText(activity)) : null;
 
         // --- Portes (intérieurs) ----------------------------------------------------------------------------------------
 

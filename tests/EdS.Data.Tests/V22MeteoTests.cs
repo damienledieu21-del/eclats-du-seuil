@@ -278,7 +278,8 @@ public sealed class V22MeteoTests : IDisposable
     public void Histoire_livree_en_schema_8_avec_les_repliques_du_temps()
     {
         StoryBook book = Book(Shipped.Value);
-        Assert.Equal((8, StoryValidator.CurrentSchemaVersion, "0.14.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
+        Assert.Equal((9, StoryValidator.CurrentSchemaVersion, "0.15.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();
@@ -327,6 +328,7 @@ public sealed class V22MeteoTests : IDisposable
 
         // En schéma 7, la condition weather est inconnue (au chemin précis) ; sans elle, le fichier est lu.
         JsonObject seven = StoryJson();
+        V23TestData.WithoutSchedules(seven);   // sous-lot V2.3 : sans emplois du temps ni répliques du moment (schéma 9)
         seven["schemaVersion"] = 7;
         StoryLoadResult refused = Read(seven);
         Assert.Contains(refused.Report.Errors, x => x.Path == path + ".if" && x.Code == ValidationCode.InvalidValue && x.Message.Contains("weather"));
@@ -339,7 +341,7 @@ public sealed class V22MeteoTests : IDisposable
         StoryLoadResult read = Read(seven);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(7, read.Story!.SchemaVersion);
-        seven["schemaVersion"] = 9;
+        seven["schemaVersion"] = 10;
         Assert.Contains(Read(seven).Report.Errors, x => x.Path == "$.schemaVersion" && x.Code == ValidationCode.UnsupportedSchemaVersion);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));

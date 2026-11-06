@@ -117,8 +117,22 @@ namespace EdS.Data.Story
         /// lues telles quelles (elles ne le connaissent pas).
         /// Version 8 (sous-lot V2.2, météo) : condition <c>weather</c> (<c>id</c> parmi <see cref="Weathers"/>, sans valeur ni étape : le temps
         /// qu'il fait dehors). Les versions 4 à 7 restent lues telles quelles (elles ne la connaissent pas).
+        /// Version 9 (sous-lot V2.3, villageois qui suivent leur journée) : emploi du temps facultatif d'un PNJ (<c>schedule</c> : créneaux
+        /// <c>at</c> « HH:MM » croissants, <c>activity</c>, <c>position</c>, abri facultatif sous la pluie <c>rain</c> : <c>activity</c>,
+        /// <c>position</c>), condition <c>activity</c> (<c>id</c> d'un PNJ qui a un emploi du temps, <c>step</c> une de ses activités) et
+        /// répliques facultatives d'un nœud selon le moment (<c>lines</c> : <c>conditions</c>, au moins une, et <c>text</c>). Les versions 4 à 8
+        /// restent lues telles quelles (elles ne les connaissent pas).
         /// </summary>
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 9;
+
+        /// <summary>Sous-lot V2.3 : version 8, encore lue (sans emploi du temps, condition <c>activity</c> ni répliques <c>lines</c>).</summary>
+        public const int Schema8 = 8;
+
+        /// <summary>Sous-lot V2.3 : créneaux d'un emploi du temps au plus, répliques d'un nœud au plus, longueur d'une activité au plus.</summary>
+        public const int MaxScheduleSlots = 12, MaxLines = 8, MaxActivityLength = 32;
+
+        /// <summary>Sous-lot V2.3 : préfixe de la clé du texte d'une activité (« text.activity.taverne »).</summary>
+        public const string ActivityTextPrefix = "text.activity.";
 
         /// <summary>Sous-lot V2.2 : version 7, encore lue (sans la condition <c>weather</c>).</summary>
         public const int Schema7 = 7;
@@ -167,6 +181,7 @@ namespace EdS.Data.Story
             ["levelAtLeast"] = ConditionKind.LevelAtLeast, ["questReward"] = ConditionKind.QuestReward,
             ["guildRankAtLeast"] = ConditionKind.GuildRankAtLeast,   // sous-lot V1.7
             ["weather"] = ConditionKind.Weather,   // sous-lot V2.2
+            ["activity"] = ConditionKind.Activity,   // sous-lot V2.3 (schéma 9)
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -223,7 +238,7 @@ namespace EdS.Data.Story
             // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
             // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6) ; sous-lot V1.9.7 : la version 6 aussi (sans skipQuest).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
-                || document.SchemaVersion == Schema7
+                || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -253,6 +268,9 @@ namespace EdS.Data.Story
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
+
+            /// <summary>Sous-lot V2.3 : activités de l'emploi du temps de chaque PNJ qui en a un (conditions <c>activity</c>).</summary>
+            private readonly Dictionary<string, HashSet<string>> _activities = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
             /// <summary>Plafond de niveau actuel, pour l'avertissement des conditions <c>levelAtLeast</c> trop hautes (null : aucun).</summary>
             public int? LevelCap { get; set; }
@@ -313,17 +331,24 @@ namespace EdS.Data.Story
                         bool ok = Text(n.Name, path + ".name");
                         // Sous-lot V1.6 : un PNJ peut vivre dans un intérieur (une autre zone du monde) ; sa position est alors dans cette zone.
                         ZoneDefinition home = _zone;
+                        bool homeKnown = true;   // relecture de la PR #103 : zone inconnue, déjà refusée : pas de contrôle des places
                         if (n.Zone != null)
                         {
                             if (n.Zone == _zone.Id) { _r.Add(path + ".zone", ValidationCode.InvalidValue, "zone de l'histoire : ne pas la donner."); ok = false; }
                             else if (_interiors.FirstOrDefault(z => z.Id == n.Zone) is ZoneDefinition inside) home = inside;
-                            else { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {n.Zone} » (une zone reliée par des portes attendue)."); ok = false; }
+                            else { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {n.Zone} » (une zone reliée par des portes attendue)."); ok = homeKnown = false; }
                         }
                         if (n.Position is null || n.Position.X is null || n.Position.Z is null) { TextsValidator.Missing(_r, path + ".position", "[x, z]"); ok = false; }
                         else if (!Inside(Point(n.Position), home)) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de sa zone."); ok = false; }
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
-                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone));
+                        List<ScheduleSlot>? schedule = CheckSchedule(n.Schedule, path + ".schedule", homeKnown ? home : null);
+                        if (schedule is null) ok = false;
+                        // Relecture de la PR #103 : les activités d'un emploi du temps valide comptent même si le PNJ est refusé pour autre
+                        // chose (une zone inconnue) : pas d'erreurs en cascade sur les répliques qui en parlent.
+                        if (schedule != null && schedule.Count > 0 && n.Id != null && !_activities.ContainsKey(n.Id))
+                            _activities[n.Id] = new HashSet<string>(schedule.SelectMany(x => x.Rain is null ? new[] { x.Activity } : new[] { x.Activity, x.Rain.Activity }), StringComparer.Ordinal);
+                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule));
                     }
 
                 // Sous-lot V2.1 (zones en schéma 8) : un PNJ qui rentre chez lui la nuit existe et vit dans la zone de sa place de nuit.
@@ -358,6 +383,80 @@ namespace EdS.Data.Story
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
                 if (!_r.IsValid || contentVersion is null) return null;
                 return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes);
+            }
+
+            /// <summary>
+            /// Sous-lot V2.3 (schéma 9) : emploi du temps d'un PNJ (absent : liste vide). De 1 à <see cref="MaxScheduleSlots"/> créneaux, heures
+            /// « HH:MM » strictement croissantes, activités bien formées, places dans l'aire praticable de la zone du PNJ et hors des obstacles
+            /// (on doit pouvoir lui parler) ; abri sous la pluie facultatif, aux mêmes règles. Null : erreur au rapport.
+            /// </summary>
+            /// <param name="home">Zone du PNJ ; null si elle est inconnue (déjà refusée) : les places ne sont alors pas jugées.</param>
+            private List<ScheduleSlot>? CheckSchedule(List<ScheduleSlotData?>? data, string path, ZoneDefinition? home)
+            {
+                var slots = new List<ScheduleSlot>();
+                if (data is null) return slots;
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path, ValidationCode.InvalidValue, $"emploi du temps inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return null;
+                }
+                if (data.Count < 1 || data.Count > MaxScheduleSlots) { _r.Add(path, ValidationCode.OutOfRange, $"de 1 à {MaxScheduleSlots} créneaux."); return null; }
+                bool ok = true;
+                int previous = -1;
+                for (int i = 0; i < data.Count; i++)
+                {
+                    string p = $"{path}[{i}]";
+                    if (data[i] is not ScheduleSlotData x) { TextsValidator.Missing(_r, p, "créneau"); ok = false; continue; }
+                    bool slotOk = true;
+                    int minute = -1;
+                    if (x.At is null) { TextsValidator.Missing(_r, p + ".at", "heure de début « HH:MM »"); slotOk = false; }
+                    else if (!(MinuteOf(x.At) is int m)) { _r.Add(p + ".at", ValidationCode.InvalidValue, $"heure « {x.At} » mal formée : « HH:MM », de 00:00 à 23:59."); slotOk = false; }
+                    else if (m <= previous) { _r.Add(p + ".at", ValidationCode.InvalidValue, $"heure « {x.At} » : après celle du créneau précédent attendue (heures croissantes)."); slotOk = false; }
+                    else previous = minute = m;
+                    slotOk &= Activity(x.Activity, p + ".activity");
+                    slotOk &= Spot(x.Position, p + ".position", home);
+                    SchedulePlace? rain = null;
+                    if (x.Rain != null)
+                    {
+                        bool rainOk = Activity(x.Rain.Activity, p + ".rain.activity") & Spot(x.Rain.Position, p + ".rain.position", home);
+                        if (rainOk) rain = new SchedulePlace(x.Rain.Activity!, Point(x.Rain.Position!));
+                        else slotOk = false;
+                    }
+                    if (slotOk) slots.Add(new ScheduleSlot(minute, x.Activity!, Point(x.Position!), rain));
+                    else ok = false;
+                }
+                return ok ? slots : null;
+            }
+
+            /// <summary>Sous-lot V2.3 : minute du jour d'une heure « HH:MM » (00:00 à 23:59), ou null si elle est mal formée.</summary>
+            public static int? MinuteOf(string at)
+            {
+                if (at.Length != 5 || at[2] != ':') return null;
+                foreach (int i in new[] { 0, 1, 3, 4 })
+                    if (at[i] < '0' || at[i] > '9') return null;
+                int hour = (at[0] - '0') * 10 + (at[1] - '0'), minute = (at[3] - '0') * 10 + (at[4] - '0');
+                return hour < 24 && minute < 60 ? hour * 60 + minute : (int?)null;
+            }
+
+            private bool Activity(string? activity, string path)
+            {
+                if (activity is null) { TextsValidator.Missing(_r, path, "activité (« fournil », « taverne »…)"); return false; }
+                // Chaque activité a son texte (« text.activity.fournil » : « au fournil »), montré au-dessus du PNJ et par la boutique.
+                if (activity.Length <= MaxActivityLength && LocalId.IsMatch(activity)) return Text(ActivityTextPrefix + activity, path);
+                _r.Add(path, ValidationCode.InvalidValue, $"activité « {activity} » mal formée : minuscules, chiffres et « _ », {MaxActivityLength} caractères au plus.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V2.3 : une place de l'emploi du temps, dans l'aire praticable de la zone du PNJ et hors des obstacles.</summary>
+            private bool Spot(PointData? position, string path, ZoneDefinition? home)
+            {
+                if (position is null || position.X is null || position.Z is null) { TextsValidator.Missing(_r, path, "[x, z]"); return false; }
+                if (home is null) return true;
+                GroundVector at = Point(position);
+                if (!Inside(at, home)) { _r.Add(path, ValidationCode.OutOfRange, "place hors de l'aire praticable de la zone du PNJ."); return false; }
+                if (home.Setup.Space is CombatSpace space && ZoneValidator.Clear(at, ZoneValidator.CharacterRadius, space, "d'un PNJ") is string why)
+                { _r.Add(path, ValidationCode.InvalidValue, why); return false; }
+                return true;
             }
 
             /// <summary>
@@ -516,10 +615,41 @@ namespace EdS.Data.Story
                             else nodeOk = false;
                         }
                     }
-                    if (nodeOk && n.Id != null) nodes.Add(new DialogueNode(n.Id, n.Text!, choices));
+                    List<DialogueLine>? lines = LinesOf(n.Lines, p + ".lines");
+                    if (lines is null) nodeOk = false;
+                    if (nodeOk && n.Id != null) nodes.Add(new DialogueNode(n.Id, n.Text!, choices, lines));
                     else ok = false;
                 }
                 return ok && x.Id != null ? new Dialogue(x.Id, entries, nodes) : null;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.3 (schéma 9) : répliques d'un nœud selon le moment (absentes : liste vide). Au plus <see cref="MaxLines"/> ; chacune
+            /// a au moins une condition (sans condition, elle cacherait toujours le texte du nœud) et un texte connu. Null : erreur au rapport.
+            /// </summary>
+            private List<DialogueLine>? LinesOf(List<DialogueLineData?>? data, string path)
+            {
+                var lines = new List<DialogueLine>();
+                if (data is null) return lines;
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path, ValidationCode.InvalidValue, $"répliques « lines » inconnues en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return null;
+                }
+                if (data.Count > MaxLines) { _r.Add(path, ValidationCode.LimitExceeded, $"au plus {MaxLines} répliques."); return null; }
+                bool ok = true;
+                for (int i = 0; i < data.Count; i++)
+                {
+                    string p = $"{path}[{i}]";
+                    if (data[i] is not DialogueLineData x) { TextsValidator.Missing(_r, p, "réplique"); ok = false; continue; }
+                    bool lineOk = Text(x.Text, p + ".text");
+                    List<StoryCondition>? conditions = ConditionsOf(x.Conditions, p + ".conditions");
+                    if (conditions is null) lineOk = false;
+                    else if (conditions.Count == 0) { _r.Add(p + ".conditions", ValidationCode.InvalidValue, "au moins une condition : sans condition, mettre le texte dans le nœud."); lineOk = false; }
+                    if (lineOk) lines.Add(new DialogueLine(conditions!, x.Text!));
+                    else ok = false;
+                }
+                return ok ? lines : null;
             }
 
             private Quest? CheckQuest(QuestData q, string path)
@@ -615,6 +745,7 @@ namespace EdS.Data.Story
                         ConditionKind.HasItem => ItemRef(t, p) && Value(t, p, 1, MaxCount) && NoStep(t, p),
                         ConditionKind.Phase => Ref(t, p, Phases, "moment de la journée") && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.Weather => WeatherKnown(p) && Ref(t, p, Weathers, "temps") && NoValue(t, p) && NoStep(t, p),   // sous-lot V2.2
+                        ConditionKind.Activity => ActivityRef(t, p) && NoValue(t, p),   // sous-lot V2.3 (schéma 9)
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -852,15 +983,38 @@ namespace EdS.Data.Story
             /// <summary>Sous-lot V2.2 : la condition <c>weather</c> n'existe qu'à partir de la version 8 du format.</summary>
             private bool WeatherKnown(string p)
             {
-                if (_schema >= 8) return true;
-                _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « weather » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                if (_schema >= Schema8) return true;
+                _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « weather » inconnue en version {_schema} du format : version {Schema8} demandée.");
+                return false;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.3 (schéma 9) : condition <c>activity</c> : <c>id</c> un PNJ qui a un emploi du temps, <c>step</c> une activité de son
+            /// emploi du temps (créneau ou abri).
+            /// </summary>
+            private bool ActivityRef(TermData t, string p)
+            {
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « activity » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return false;
+                }
+                if (!Ref(t, p, _npcs, "PNJ")) return false;
+                if (!_activities.TryGetValue(t.Id!, out HashSet<string> known))
+                {
+                    _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » n'a pas d'emploi du temps.");
+                    return false;
+                }
+                if (t.Step is null) { TextsValidator.Missing(_r, p + ".step", "activité de l'emploi du temps"); return false; }
+                if (known.Contains(t.Step)) return true;
+                _r.Add(p + ".step", ValidationCode.UnknownReference, $"activité inconnue « {t.Step} » de « {t.Id} » ; possibles : {string.Join(", ", known)}.");
                 return false;
             }
 
             private bool NoStep(TermData t, string p)
             {
                 if (!t.Present.Contains("step") && t.Step is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
-                _r.Add(p + ".step", ValidationCode.InvalidValue, "seule la condition questAt a une étape.");
+                _r.Add(p + ".step", ValidationCode.InvalidValue, "seules les conditions questAt et activity ont une étape.");
                 return false;
             }
 
