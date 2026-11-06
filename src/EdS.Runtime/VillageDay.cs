@@ -7,7 +7,7 @@ namespace EdS.Runtime
     /// <summary>Sous-lot V2.3 : la course d'un villageois du décor dans sa journée.</summary>
     public enum VillagerErrand
     {
-        /// <summary>Il reste à son poste toute la journée (les marcheurs, et un villageois sur quatre).</summary>
+        /// <summary>Il reste à son poste toute la journée (les marcheurs seulement).</summary>
         None = 0,
 
         /// <summary>Le matin, il va au puits de la place (le marché, les nouvelles), puis revient.</summary>
@@ -108,7 +108,8 @@ namespace EdS.Runtime
         public static VillagerErrand ErrandOf(StyleVillager villager)
         {
             if (villager.Walks || villager.Activity == VillagerActivity.Walk) return VillagerErrand.None;
-            return (VillagerErrand)StyleRules.Variant((villager.Id ?? string.Empty) + "/journee", 4);
+            // Réponse de Damien (question 8 de la PR #103) : un passant sur trois pour chaque course (tous en ont une).
+            return (VillagerErrand)(StyleRules.Variant((villager.Id ?? string.Empty) + "/journee", 3) + 1);
         }
 
         /// <summary>Décalage propre au villageois, de −<see cref="Spread"/> à +<see cref="Spread"/> minutes.</summary>
@@ -253,12 +254,12 @@ namespace EdS.Runtime
             if (minute < 7 * 60)
                 return "À voir : Firmin au fournil (sa réplique de l'aube), Odile au moulin, la veuve qui prie devant la chapelle, le fermier aux champs.";
             if (minute < 11 * 60 + 30)
-                return "À voir : chacun à son travail, comme au début du jeu (Firmin au fournil, Maëlle à la forge, Garin et Bertille à leur étal). Les villageois du décor : un sur quatre va au puits de la place, puis revient.";
+                return "À voir : chacun à son travail, comme au début du jeu (Firmin au fournil, Maëlle à la forge, Garin et Bertille à leur étal). Les villageois du décor : un sur trois va au puits de la place, puis revient.";
             if (minute < 14 * 60)
-                return "À voir : midi. Firmin vend son pain sur la place ; Odile rince ses sacs à la rivière ; Maëlle mange devant chez elle, l'apprentie va au puits du village ; Aldric au tir à l'arc ; le capitaine et Garin mangent à la taverne (devant l'auberge) ; Bertille et Renart aux nouvelles, au puits. Garin vend à la taverne : à son étal, un message dit où il est. Un villageois du décor sur quatre rentre manger (il disparaît dans une maison).";
+                return "À voir : midi. Firmin vend son pain sur la place ; Odile rince ses sacs à la rivière ; Maëlle mange devant chez elle, l'apprentie va au puits du village ; Aldric au tir à l'arc ; le capitaine et Garin mangent à la taverne (devant l'auberge) ; Bertille et Renart aux nouvelles, au puits. Garin vend à la taverne : à son étal, un message dit où il est. Un villageois du décor sur trois rentre manger (il disparaît dans une maison).";
             if (minute < 18 * 60 + 30)
                 return "À voir : l'après-midi. Firmin fait la sieste devant sa maison (« je repose mes yeux »), Sauge à la cueillette dans les champs (de 15 h à 16 h 30), Lison qui joue près de la chapelle, Aldric qui file à la taverne vers 16 h 30.";
-            return "À voir : le soir. La taverne (la terrasse devant l'auberge) se remplit : Firmin, Maëlle, Bertille, Renart, le fermier ; Mathurin, à l'intérieur, en parle. Gaspard au coin du feu, le doyen, l'herboriste et la fermière à la veillée du hameau, l'apprentie à l'entraînement près du moulin. Un villageois du décor sur quatre vient devant l'auberge. Sous une averse, chacun s'abrite sous l'auvent.";
+            return "À voir : le soir. La taverne (la terrasse devant l'auberge) se remplit : Firmin, Maëlle, Bertille, Renart, le fermier ; Mathurin, à l'intérieur, en parle. Gaspard au coin du feu, le doyen, l'herboriste et la fermière à la veillée du hameau, l'apprentie à l'entraînement près du moulin. Un villageois du décor sur trois vient devant l'auberge. Sous une averse, chacun s'abrite sous l'auvent.";
         }
     }
 }

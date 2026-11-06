@@ -331,23 +331,24 @@ namespace EdS.Data.Story
                         bool ok = Text(n.Name, path + ".name");
                         // Sous-lot V1.6 : un PNJ peut vivre dans un intérieur (une autre zone du monde) ; sa position est alors dans cette zone.
                         ZoneDefinition home = _zone;
+                        bool homeKnown = true;   // relecture de la PR #103 : zone inconnue, déjà refusée : pas de contrôle des places
                         if (n.Zone != null)
                         {
                             if (n.Zone == _zone.Id) { _r.Add(path + ".zone", ValidationCode.InvalidValue, "zone de l'histoire : ne pas la donner."); ok = false; }
                             else if (_interiors.FirstOrDefault(z => z.Id == n.Zone) is ZoneDefinition inside) home = inside;
-                            else { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {n.Zone} » (une zone reliée par des portes attendue)."); ok = false; }
+                            else { _r.Add(path + ".zone", ValidationCode.UnknownReference, $"zone inconnue « {n.Zone} » (une zone reliée par des portes attendue)."); ok = homeKnown = false; }
                         }
                         if (n.Position is null || n.Position.X is null || n.Position.Z is null) { TextsValidator.Missing(_r, path + ".position", "[x, z]"); ok = false; }
                         else if (!Inside(Point(n.Position), home)) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de sa zone."); ok = false; }
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
-                        List<ScheduleSlot>? schedule = CheckSchedule(n.Schedule, path + ".schedule", home);
+                        List<ScheduleSlot>? schedule = CheckSchedule(n.Schedule, path + ".schedule", homeKnown ? home : null);
                         if (schedule is null) ok = false;
-                        if (ok && n.Id != null)
-                        {
-                            npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule));
-                            if (schedule!.Count > 0) _activities[n.Id] = new HashSet<string>(npcs[npcs.Count - 1].Activities, StringComparer.Ordinal);
-                        }
+                        // Relecture de la PR #103 : les activités d'un emploi du temps valide comptent même si le PNJ est refusé pour autre
+                        // chose (une zone inconnue) : pas d'erreurs en cascade sur les répliques qui en parlent.
+                        if (schedule != null && schedule.Count > 0 && n.Id != null && !_activities.ContainsKey(n.Id))
+                            _activities[n.Id] = new HashSet<string>(schedule.SelectMany(x => x.Rain is null ? new[] { x.Activity } : new[] { x.Activity, x.Rain.Activity }), StringComparer.Ordinal);
+                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule));
                     }
 
                 // Sous-lot V2.1 (zones en schéma 8) : un PNJ qui rentre chez lui la nuit existe et vit dans la zone de sa place de nuit.
@@ -389,7 +390,8 @@ namespace EdS.Data.Story
             /// « HH:MM » strictement croissantes, activités bien formées, places dans l'aire praticable de la zone du PNJ et hors des obstacles
             /// (on doit pouvoir lui parler) ; abri sous la pluie facultatif, aux mêmes règles. Null : erreur au rapport.
             /// </summary>
-            private List<ScheduleSlot>? CheckSchedule(List<ScheduleSlotData?>? data, string path, ZoneDefinition home)
+            /// <param name="home">Zone du PNJ ; null si elle est inconnue (déjà refusée) : les places ne sont alors pas jugées.</param>
+            private List<ScheduleSlot>? CheckSchedule(List<ScheduleSlotData?>? data, string path, ZoneDefinition? home)
             {
                 var slots = new List<ScheduleSlot>();
                 if (data is null) return slots;
@@ -446,9 +448,10 @@ namespace EdS.Data.Story
             }
 
             /// <summary>Sous-lot V2.3 : une place de l'emploi du temps, dans l'aire praticable de la zone du PNJ et hors des obstacles.</summary>
-            private bool Spot(PointData? position, string path, ZoneDefinition home)
+            private bool Spot(PointData? position, string path, ZoneDefinition? home)
             {
                 if (position is null || position.X is null || position.Z is null) { TextsValidator.Missing(_r, path, "[x, z]"); return false; }
+                if (home is null) return true;
                 GroundVector at = Point(position);
                 if (!Inside(at, home)) { _r.Add(path, ValidationCode.OutOfRange, "place hors de l'aire praticable de la zone du PNJ."); return false; }
                 if (home.Setup.Space is CombatSpace space && ZoneValidator.Clear(at, ZoneValidator.CharacterRadius, space, "d'un PNJ") is string why)

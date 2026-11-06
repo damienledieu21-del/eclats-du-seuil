@@ -39,7 +39,7 @@ public class V16RelectureTests
         JsonObject root = StoryJson();
         JsonObject n = Npc(root, npc);
         Door door = Inside((string)n["zone"]!).Doors[0];
-        n["position"] = new JsonArray(Math.Round(door.Position.X.Raw / 10000.0, 4), Math.Round(door.Position.Z.Raw / 10000.0 + 1.5, 4));
+        V23TestData.Move(n!, new JsonArray(Math.Round(door.Position.X.Raw / 10000.0, 4), Math.Round(door.Position.Z.Raw / 10000.0 + 1.5, 4)));
         more?.Invoke(root);
         StoryLoadResult r = Read(root);
         Assert.True(r.IsValid, r.Report.ToString());

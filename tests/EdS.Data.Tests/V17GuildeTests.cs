@@ -73,8 +73,8 @@ public class V17GuildeTests : IDisposable
         JsonObject root = StoryJson();
         foreach (JsonNode? n in root["data"]!["npcs"]!.AsArray())
         {
-            if ((string)n!["id"]! == Mistress) n["position"] = new JsonArray(0, -1.6);
-            if ((string)n["id"]! == "npc.intendant_guilde") n["position"] = new JsonArray(1.2, -2.2);
+            if ((string)n!["id"]! == Mistress) V23TestData.Move(n!, new JsonArray(0, -1.6));
+            if ((string)n["id"]! == "npc.intendant_guilde") V23TestData.Move(n!, new JsonArray(1.2, -2.2));
         }
         return ReadStory(root);
     });
@@ -762,7 +762,7 @@ public class V17GuildeTests : IDisposable
     private static JsonObject MoveNpc(JsonObject root, string npc, double x, double z)
     {
         foreach (JsonNode? n in root["data"]!["npcs"]!.AsArray())
-            if ((string)n!["id"]! == npc) n["position"] = new JsonArray(x, z);
+            if ((string)n!["id"]! == npc) V23TestData.Move(n!, new JsonArray(x, z));
         return root;
     }
 
@@ -897,7 +897,7 @@ public class V17GuildeTests : IDisposable
     {
         JsonObject story = StoryJson();
         foreach (JsonNode? n in story["data"]!["npcs"]!.AsArray())
-            if ((string)n!["id"]! == Mistress) n["position"] = new JsonArray(0, -1.6);
+            if ((string)n!["id"]! == Mistress) V23TestData.Move(n!, new JsonArray(0, -1.6));
         QuestOf(story, TrialF)["requires"] = new JsonArray(new JsonObject { ["if"] = "levelAtLeast", ["value"] = 99 });
         StoryBook book = ReadStory(story);
         GuildLoadResult g = ReadGuild(GuildJson(), book);

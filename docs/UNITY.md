@@ -665,7 +665,9 @@ Les PNJ importants suivent leur journée (emploi du temps de l'histoire) et les 
 3. **Le soir** : la terrasse de l'auberge se remplit (Firmin, Maëlle, Bertille, Renart, le fermier) ; Gaspard au coin du feu ; veillée au hameau ; Mathurin (dans l'auberge) parle de ceux qui sont dehors.
 4. **Leurs répliques changent avec le lieu** (F) : Firmin à la sieste, Aldric « en ronde assise » à la taverne, Lison qui joue au loup… Les quêtes passent toujours avant.
 5. **Sous une averse** (pas une pluie fine), ceux qui sont dehors vont à l'abri (sous l'auvent de l'auberge, du moulin, de l'étal) et le disent.
-6. **Passants du bourg** : un sur quatre va au puits le matin, un sur quatre rentre manger à midi (il disparaît dans une maison), un sur quatre vient devant l'auberge le soir, puis chacun revient à sa place (la nuit et sous l'averse, ils rentrent comme avant).
+6. **Passants du bourg** : un sur trois va au puits le matin, un sur trois rentre manger à midi (il disparaît dans une maison), un sur trois vient devant l'auberge le soir, puis chacun revient à sa place (la nuit et sous l'averse, ils rentrent comme avant).
+
+7. **Dans les maisons** : Mathurin descend à la cave l'après-midi et sert entre les tables le soir, Frère Anselme balaie les bancs et ouvre la porte aux vêpres, Sœur Albe prie à midi, Rosalie à sa fenêtre (et sa lanterne le soir) ou à son rouet, Dame Brunehilde au tableau puis au coin du feu, Aubin à table à midi, Ysaline dans les rayonnages ; dehors, Ysarn l'oreille contre une pierre, le déserteur à la maraude, Thibaut sur les tombes.
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les PNJ et les passants marchent en ligne droite (ils peuvent frôler un mur) ; la « taverne » est la terrasse devant l'auberge : les PNJ du dehors n'entrent pas dans l'intérieur.
 

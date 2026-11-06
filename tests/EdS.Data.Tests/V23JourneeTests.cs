@@ -100,6 +100,9 @@ public sealed class V23JourneeTests : IDisposable
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
             "npc.epiciere", "npc.herboriste", "npc.renart", "npc.lison", "npc.veuve", "npc.fermier", "npc.doyen", "npc.herboriste_hameau", "npc.fermiere",
+            // Réponse de Damien (question 6) : on en rajoute, dehors et dans les intérieurs (chacun dans sa zone).
+            "npc.ysarn", "npc.deserteur", "npc.thibaut", "npc.aubergiste", "npc.pretre", "npc.albe", "npc.habitant", "npc.maitresse_guilde",
+            "npc.intendant_guilde", "npc.archiviste",
         };
         Assert.Equal(scheduled.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Schedule.Count > 0).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // Chaque activité a son texte (sous le nom du PNJ, et pour la boutique).
@@ -108,7 +111,7 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 40, 80);
+        Assert.InRange(lines.Count, 60, 100);
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Activity));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -184,7 +187,7 @@ public sealed class V23JourneeTests : IDisposable
         Refused(lines + "[0].conditions", ValidationCode.InvalidValue, r => L(r, 0)["conditions"] = new JsonArray());
         Refused(lines + "[0].text", ValidationCode.UnknownReference, r => L(r, 0)["text"] = "text.v23.inconnu");
         Refused(lines + "[0].conditions[0].id", ValidationCode.UnknownReference, r => C(r)["id"] = "npc.personne");
-        Refused(lines + "[0].conditions[0].id", ValidationCode.InvalidValue, r => C(r)["id"] = "npc.thibaut");   // pas d'emploi du temps
+        Refused(lines + "[0].conditions[0].id", ValidationCode.InvalidValue, r => C(r)["id"] = "npc.ysolde");   // pas d'emploi du temps
         Refused(lines + "[0].conditions[0].step", ValidationCode.UnknownReference, r => C(r)["step"] = "tir");   // une activité d'Aldric
         Refused(lines + "[0].conditions[0].step", ValidationCode.MissingField, r => C(r).Remove("step"));
         Refused(lines + "[0].conditions[0].value", ValidationCode.InvalidValue, r => C(r)["value"] = 1);
@@ -298,7 +301,7 @@ public sealed class V23JourneeTests : IDisposable
         Assert.Equal("taverne", firmin.SlotAt(21 * 60 + 29)!.Activity);
         Assert.Equal("fournil", firmin.SlotAt(21 * 60 + 30)!.Activity);
         Assert.Equal("fournil", firmin.SlotAt(1439)!.Activity);
-        Assert.Null(Shipped.Value.Npc("npc.thibaut").SlotAt(600));
+        Assert.Null(Shipped.Value.Npc("npc.ysolde").SlotAt(600));
         Assert.Equal(new[] { "fournil", "marche", "abri", "sieste", "taverne" }, firmin.Activities);
     }
 
@@ -463,7 +466,7 @@ public sealed class V23JourneeTests : IDisposable
         Assert.Null(a.NpcInReach);
         Assert.Equal("npc.armurier", a.AwayStallInReach!.Id);
         Assert.Equal("à la taverne", a.ActivityOf("npc.armurier"));
-        Assert.Null(a.ActivityOf("npc.thibaut"));
+        Assert.Null(a.ActivityOf("npc.ysolde"));
         Assert.False(a.Interact());
         Assert.Equal("Garin, l'armurier n'est pas à son étal à cette heure : on le trouve à la taverne, et sa boutique avec lui.", a.DrainMessages().First());
     }
@@ -498,7 +501,9 @@ public sealed class V23JourneeTests : IDisposable
     {
         var villagers = Enumerable.Range(0, 400).Select(i => new StyleVillager("v" + i, "paysan", VillagerActivity.Idle, -40, -10, 90)).ToList();
         var counts = villagers.GroupBy(VillageDay.ErrandOf).ToDictionary(g => g.Key, g => g.Count());
-        foreach (VillagerErrand e in Enum.GetValues(typeof(VillagerErrand))) Assert.InRange(counts[e], 60, 140);
+        // Réponse de Damien (question 8) : un sur trois pour chaque course ; personne ne reste toute la journée (sauf les marcheurs).
+        Assert.False(counts.ContainsKey(VillagerErrand.None));
+        foreach (VillagerErrand e in new[] { VillagerErrand.Market, VillagerErrand.Lunch, VillagerErrand.Tavern }) Assert.InRange(counts[e], 100, 170);
         // Les marcheurs gardent leur allée.
         Assert.Equal(VillagerErrand.None, VillageDay.ErrandOf(new StyleVillager("m", "paysan", VillagerActivity.Walk, 0, 0, 0, 5, 5)));
         foreach (StyleVillager v in villagers)
@@ -617,6 +622,28 @@ public sealed class V23JourneeTests : IDisposable
 /// <summary>Sous-lot V2.3 : aides des tests des histoires d'avant le schéma 9.</summary>
 public static class V23TestData
 {
+    /// <summary>
+    /// Déplace un PNJ de l'histoire <paramref name="root"/> (tests qui le rapprochent d'une porte, parfois contre un meuble) : il reste là,
+    /// sans emploi du temps ; les répliques qui parlent de ses activités partent avec lui.
+    /// </summary>
+    public static void Move(JsonNode npc, JsonArray position)
+    {
+        npc["position"] = position;
+        npc.AsObject().Remove("schedule");
+        string id = (string)npc["id"]!;
+        JsonNode root = npc.Root;
+        if (root["data"]?["dialogues"] is not JsonArray dialogues) return;
+        foreach (JsonNode? dialogue in dialogues)
+            foreach (JsonNode? node in dialogue!["nodes"]!.AsArray())
+                if (node!["lines"] is JsonArray lines)
+                {
+                    for (int k = lines.Count - 1; k >= 0; k--)
+                        if (lines[k]!["conditions"]!.AsArray().Any(c => (string?)c!["if"] == "activity" && (string?)c["id"] == id)) lines.RemoveAt(k);
+                    if (lines.Count == 0) node.AsObject().Remove("lines");
+                }
+    }
+
+
     /// <summary>
     /// Enlève d'une histoire ce que le schéma 9 apporte (emplois du temps, répliques du moment), pour la relire dans une version plus ancienne
     /// (tests des schémas 4 à 8).
