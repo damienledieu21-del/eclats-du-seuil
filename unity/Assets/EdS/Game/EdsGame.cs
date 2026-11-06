@@ -520,10 +520,10 @@ namespace EdS.Game
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
+            _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
-            _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses de la journée
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
             UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
             SyncGestures();
