@@ -235,4 +235,31 @@ public sealed class V1910DejaRencontreTests
         w.VisitGuild();
         Assert.DoesNotContain(w.Narrative!.Facts, f => f.StartsWith(StoryValidator.MetFactPrefix, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Un_talk_refuse_laisse_le_premier_accueil_du_dialogue_ouvert()
+    {
+        WorldSession w = Near("renart");
+        w.Step();
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.renart", out DialogueView? first));
+        Assert.Equal(DialogueRefusal.TooFar, w.Talk("npc.armurier", out DialogueView? _));
+        Assert.Equal(DialogueRefusal.NothingToSay, w.Talk("npc.personne", out DialogueView? _));
+        Assert.Equal(first!.Text, w.Narrative!.Open!.Text);   // toujours la présentation
+    }
+
+    [Theory]
+    [InlineData(195, true)]
+    [InlineData(196, false)]
+    [InlineData(200, false)]
+    public void Id_de_pnj_trop_long_pour_son_fait_rencontre_refuse_au_chemin_precis(int length, bool valid)
+    {
+        JsonObject root = StoryJson();
+        string id = "npc.x" + new string('a', length - 5);
+        Assert.Equal(length, id.Length);
+        string old = root["data"]!["npcs"]![0]!["id"]!.GetValue<string>();
+        string text = root.ToJsonString().Replace("\"" + old + "\"", "\"" + id + "\"");
+        StoryLoadResult read = StoryJsonReader.ReadStory(text, Texts, Zone(), ItemsCatalog, V16TestData.Interiors);
+        if (valid) Assert.DoesNotContain(read.Report.Errors, x => x.Path == "$.data.npcs[0].id");
+        else Assert.Contains(read.Report.Errors, x => x.Path == "$.data.npcs[0].id" && x.Code == ValidationCode.InvalidValue);
+    }
 }

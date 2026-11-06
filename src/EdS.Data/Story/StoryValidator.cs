@@ -343,6 +343,9 @@ namespace EdS.Data.Story
                         string path = $"$.data.npcs[{i}]";
                         if (_d.Npcs[i] is not NpcData n) continue;
                         bool ok = Text(n.Name, path + ".name");
+                        // Sous-lot V1.9.10 : le fait « déjà rencontré » dérivé de l'id doit rester un fait valide (200 caractères au plus).
+                        if (n.Id != null && !IsFactId(MetFact(n.Id)) && NpcId.IsMatch(n.Id))
+                        { _r.Add(path + ".id", ValidationCode.InvalidValue, $"identifiant trop long : le fait « {MetFactPrefix}… » du PNJ dépasserait 200 caractères (195 au plus)."); ok = false; }
                         // Sous-lot V1.6 : un PNJ peut vivre dans un intérieur (une autre zone du monde) ; sa position est alors dans cette zone.
                         ZoneDefinition home = _zone;
                         bool homeKnown = true;   // relecture de la PR #103 : zone inconnue, déjà refusée : pas de contrôle des places

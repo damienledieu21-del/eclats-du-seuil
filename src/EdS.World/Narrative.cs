@@ -456,8 +456,18 @@ namespace EdS.World
         /// <summary>Parle à un PNJ : à portée, le personnage présent et vivant ; ouvre le nœud de la première entrée qui convient.</summary>
         public DialogueRefusal Talk(string npc, out DialogueView? view)
         {
+            // V1.9.10 : un nouveau Talk accepté (même PNJ, sans Close) repart d'un dialogue neuf ; un Talk refusé laisse le dialogue ouvert
+            // (et son marqueur de premier accueil) tel qu'il était.
+            string? previous = _firstMet;
+            _firstMet = null;
+            DialogueRefusal refusal = TalkCore(npc, out view);
+            if (refusal != DialogueRefusal.None) _firstMet = previous;
+            return refusal;
+        }
+
+        private DialogueRefusal TalkCore(string npc, out DialogueView? view)
+        {
             view = null;
-            _firstMet = null;   // V1.9.10 : un nouveau Talk (même PNJ, sans Close) repart d'un dialogue neuf
             if (npc is null || !_book.HasNpc(npc)) return DialogueRefusal.NothingToSay;
             Npc n = _book.Npc(npc);
             if (!InRange(n)) return DialogueRefusal.TooFar;
