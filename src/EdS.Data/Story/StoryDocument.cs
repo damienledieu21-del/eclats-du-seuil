@@ -65,6 +65,35 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 (schéma 3) : zone d'un intérieur où vit le PNJ ; facultatif (absent : la zone de l'histoire).</summary>
         public string? Zone { get; set; }
+
+        /// <summary>Sous-lot V2.3 (schéma 9) : emploi du temps ; facultatif (absent : le PNJ reste à sa place).</summary>
+        public List<ScheduleSlotData?>? Schedule { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.3 (schéma 9) : un créneau de l'emploi du temps (voir <see cref="ScheduleSlot"/>).</summary>
+    public sealed class ScheduleSlotData
+    {
+        /// <summary>Heure de début, « HH:MM » (00:00 à 23:59).</summary>
+        public string? At { get; set; }
+        public string? Activity { get; set; }
+        public PointData? Position { get; set; }
+
+        /// <summary>Abri sous une vraie pluie ; facultatif.</summary>
+        public SchedulePlaceData? Rain { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.3 (schéma 9) : place et activité (l'abri d'un créneau).</summary>
+    public sealed class SchedulePlaceData
+    {
+        public string? Activity { get; set; }
+        public PointData? Position { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.3 (schéma 9) : réplique d'un nœud selon le moment.</summary>
+    public sealed class DialogueLineData
+    {
+        public List<TermData?>? Conditions { get; set; }
+        public string? Text { get; set; }
     }
 
     public sealed class DialogueData
@@ -88,6 +117,9 @@ namespace EdS.Data.Story
         public string? Id { get; set; }
         public string? Text { get; set; }
         public List<DialogueChoiceData?>? Choices { get; set; }
+
+        /// <summary>Sous-lot V2.3 (schéma 9) : répliques selon le moment ; facultatif.</summary>
+        public List<DialogueLineData?>? Lines { get; set; }
     }
 
     public sealed class DialogueChoiceData

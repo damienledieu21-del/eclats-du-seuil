@@ -21,7 +21,8 @@
         5,
         6,
         7,
-        8
+        8,
+        9
       ]
     },
     "kind": {
@@ -76,6 +77,43 @@
                 "type": "string",
                 "pattern": "^zone\\.[a-z][a-z0-9_]*$",
                 "description": "Sous-lot V1.6 : intérieur où vit le PNJ (absent : la zone de l'histoire)."
+              },
+              "schedule": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "at",
+                    "activity",
+                    "position"
+                  ],
+                  "properties": {
+                    "at": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "activity": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 32
+                    },
+                    "position": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "rain": {
+                      "$ref": "#/$defs/schedulePlace"
+                    }
+                  }
+                },
+                "description": "Sous-lot V2.3 (schéma 9) : emploi du temps du PNJ, heures « HH:MM » croissantes ; abri facultatif sous une vraie pluie."
               }
             }
           }
@@ -173,6 +211,29 @@
                           }
                         }
                       }
+                    },
+                    "lines": {
+                      "type": "array",
+                      "maxItems": 8,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "conditions",
+                          "text"
+                        ],
+                        "properties": {
+                          "conditions": {
+                            "$ref": "#/$defs/conditions",
+                            "minItems": 1
+                          },
+                          "text": {
+                            "type": "string",
+                            "pattern": "^text(\\.[a-z0-9_]+)+$"
+                          }
+                        }
+                      },
+                      "description": "Sous-lot V2.3 (schéma 9) : répliques selon le moment ; la première dont les conditions sont réunies remplace le texte du nœud."
                     }
                   }
                 }
@@ -418,7 +479,8 @@
             "levelAtLeast",
             "questReward",
             "guildRankAtLeast",
-            "weather"
+            "weather",
+            "activity"
           ]
         },
         "id": {
@@ -475,6 +537,29 @@
       "maxItems": 8,
       "items": {
         "$ref": "#/$defs/effect"
+      }
+    },
+    "schedulePlace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activity",
+        "position"
+      ],
+      "properties": {
+        "activity": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 32
+        },
+        "position": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
       }
     }
   }
