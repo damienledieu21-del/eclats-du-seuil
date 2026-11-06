@@ -412,7 +412,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V1.9.9 : clé du message d'une nouvelle forme du chef <paramref name="boss"/> : la sienne (« text.ui.boss_phase.{chef} »,
-        /// par exemple les Voix de la Rupture qui sortent de l'écho), sinon le message commun (« text.ui.boss_phase »).
+        /// par exemple les Voix de la Rupture qui sortent de l'écho), sinon le message commun (« text.ui.boss_phase », « {0} se relève, plus redoutable encore ! », {0} : le nom du chef).
         /// </summary>
         public string BossPhaseText(string boss)
         {
@@ -447,7 +447,7 @@ namespace EdS.Runtime
             foreach (LootGained l in step.Loot) Say(l.Kept ? "text.ui.loot" : "text.ui.loot_lost", ItemName(l.Item), l.Count);
             foreach (BossEvent b in step.Boss)
             {
-                if (b.Kind == BossEventKind.FormArrived && b.Phase > 0) Say(BossPhaseText(b.Boss));
+                if (b.Kind == BossEventKind.FormArrived && b.Phase > 0) Say(BossPhaseText(b.Boss), DisplayNames.Of(b.Boss));   // le message commun nomme le chef
                 else if (b.Kind == BossEventKind.Defeated) Say("text.ui.boss_defeated");
             }
             foreach ((string item, int count) in step.Rewards) Say("text.ui.reward", ItemName(item), count);

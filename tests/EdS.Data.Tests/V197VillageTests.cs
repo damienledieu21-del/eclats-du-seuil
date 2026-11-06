@@ -186,7 +186,8 @@ public class V197VillageTests
         JsonArray nodes = dialogues[d]!["nodes"]!.AsArray();
         int n = nodes.ToList().FindIndex(x => x!["id"]!.GetValue<string>() == "reveil_en_cours");
         JsonArray choices = nodes[n]!["choices"]!.AsArray();
-        int c = choices.Count - 1;
+        // V1.9.9 : des réponses « le village se souvient » suivent ; on vise celle qui passe le tutoriel.
+        int c = choices.ToList().FindIndex(x => x!["effects"]!.AsArray().Any(e => e!["do"]!.GetValue<string>() == "skipQuest"));
         choices[c]!["effects"]![0]!["id"] = "quest.inconnue";
         string path = $"$.data.dialogues[{d}].nodes[{n}].choices[{c}].effects[0]";
         Assert.Contains(Read(root).Report.Errors, e => e.Path == path + ".id" && e.Code == ValidationCode.UnknownReference);

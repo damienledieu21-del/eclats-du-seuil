@@ -198,19 +198,19 @@ public class V199Chapitre1MaxTests
     {
         Recipe recipe = Crafting(Vallons.Value).Recipe("recipe.remede_d_echo");
         Assert.Equal(("herboristerie", 3, "forge"), (recipe.Profession, recipe.RequiredLevel, recipe.Place));
-        Assert.Equal(new[] { ("item.herbe_de_l_aube", 3), (Poussiere, 2) }, recipe.Inputs);
+        Assert.Equal(new[] { ("item.herbe_de_l_aube", 3), (Poussiere, 3) }, recipe.Inputs);   // choix de Damien du 6 novembre 2026 : trois poussières
         Assert.Equal(("item.remede_de_l_aube", 1), recipe.Output);
-        SavedCharacter herboriste = Hero(3, null, new ItemStack("item.herbe_de_l_aube", 3), new ItemStack(Poussiere, 3))
+        SavedCharacter herboriste = Hero(3, null, new ItemStack("item.herbe_de_l_aube", 3), new ItemStack(Poussiere, 4))
             .WithProfessions(new Dictionary<string, long> { ["herboristerie"] = 400 });
         WorldSession w = Open(Forge, herboriste);
         Assert.Equal(CraftRefusal.None, w.Craft("recipe.remede_d_echo", out CraftEvent? made));
         Assert.Equal("item.remede_de_l_aube", made!.Item);
         Assert.Equal((0, 1, 1), (w.Inventory.Count("item.herbe_de_l_aube"), w.Inventory.Count(Poussiere), w.Inventory.Count("item.remede_de_l_aube")));
         // Refus atomique : il manque une poussière, rien n'est pris.
-        WorldSession manque = Open(Forge, Hero(3, null, new ItemStack("item.herbe_de_l_aube", 3), new ItemStack(Poussiere, 1))
+        WorldSession manque = Open(Forge, Hero(3, null, new ItemStack("item.herbe_de_l_aube", 3), new ItemStack(Poussiere, 2))
             .WithProfessions(new Dictionary<string, long> { ["herboristerie"] = 400 }));
         Assert.Equal(CraftRefusal.NotEnough, manque.Craft("recipe.remede_d_echo", out _));
-        Assert.Equal((3, 1), (manque.Inventory.Count("item.herbe_de_l_aube"), manque.Inventory.Count(Poussiere)));
+        Assert.Equal((3, 2), (manque.Inventory.Count("item.herbe_de_l_aube"), manque.Inventory.Count(Poussiere)));
     }
 
     [Fact]
@@ -302,6 +302,46 @@ public class V199Chapitre1MaxTests
         Assert.DoesNotContain(Say(Open(Where(npc), saved.Character!), npc, node).Options, o => o.Text == ask);
     }
 
+    /// <summary>Les répliques « le village se souvient » et celles de la poussière (réponses dites une fois).</summary>
+    private static readonly string[] Memories =
+    {
+        "text.ch1.gaspard.croc_mort.dire", "text.ch1.gaspard.poussiere.dire", "text.ch1.gaspard.aldric.dire", "text.ch1.odile.croc_mort.dire",
+        "text.ch1.odile.chat.dire", "text.ch1.odile.puits.dire", "text.ch1.archer_garde.croc_mort.dire", "text.ch1.boulanger.croc_mort.dire",
+        "text.ch1.boulanger.chat_rentre.dire", "text.ch1.boulanger.aldric.dire", "text.ch1.herboriste.croc_mort.dire", "text.ch1.herboriste.puits.dire",
+        "text.ch1.herboriste.poussiere.montrer", "text.ch1.maelle.croc_mort.dire",
+    };
+
+    private static string Signature(DialogueChoice c) =>
+        c.Text + "|" + string.Join(",", c.Conditions.Select(x => $"{x.Kind}:{x.Id}:{x.Value}:{x.Step}")) + "|" + c.Next;
+
+    [Fact]
+    public void Chaque_replique_est_proposee_depuis_toutes_les_entrees_du_PNJ()
+    {
+        // Relecture de la PR #100 : une réplique ne doit pas être masquée par une entrée prioritaire (une offre, une étape en cours) :
+        // chaque nœud où mène une entrée du PNJ la propose, avec les mêmes conditions (au plus huit réponses par nœud).
+        int checkedNodes = 0;
+        foreach (Dialogue d in Story.Value.Dialogues)
+        {
+            string[] memories = d.Nodes.SelectMany(n => n.Choices).Where(c => Memories.Contains(c.Text)).Select(Signature).Distinct().ToArray();
+            if (memories.Length == 0) continue;
+            foreach (string entry in d.Entries.Select(e => e.Node).Distinct())
+            {
+                DialogueNode node = d.Nodes.Single(n => n.Id == entry);
+                string[] offered = node.Choices.Select(Signature).ToArray();
+                Assert.All(memories, m => Assert.True(offered.Contains(m), $"{d.Id} / {entry} : il manque {m}"));
+                Assert.True(node.Choices.Count <= 8, $"{d.Id} / {entry}");
+                checkedNodes++;
+            }
+        }
+        Assert.Equal(Memories.Length, Story.Value.Dialogues.SelectMany(d => d.Nodes).SelectMany(n => n.Choices).Select(c => c.Text).Intersect(Memories).Count());
+        Assert.True(checkedNodes >= 60, checkedNodes.ToString());
+        // Exemples joués : Sauge pendant les champignons, Gaspard à l'étape de Croc-Gris.
+        WorldSession s = Open(Herboriste, Hero(4, With(Array.Empty<string>(), ("quest.champignons_de_sauge", "cueillir")), new ItemStack(Poussiere, 1)));
+        Pick(s, Say(s, "npc.herboriste", "ch1_champignons_attente"), "text.ch1.herboriste.poussiere.montrer", "ch1_poussiere");
+        WorldSession g = Open(Gaspard, Hero(3, With(new[] { "fact.traces.recit" }, (Mission, "croc_gris")), new ItemStack(Poussiere, 1)));
+        Pick(g, Say(g, "npc.gaspard", "ch1_croc"), "text.ch1.gaspard.poussiere.dire", "ch1_poussiere");
+    }
+
     [Fact]
     public void Le_village_se_souvient_aussi_la_nuit_et_apres_la_mission()
     {
@@ -349,12 +389,17 @@ public class V199Chapitre1MaxTests
         try
         {
             AdventureSession a = Adventure(Path.Combine(dir, "partie.json"));
-            foreach (string boss in new[] { "echo_de_la_rupture", "croc_gris", "chef_des_bandits" })
+            // Les chefs à plusieurs formes des données livrées ont chacun leur message (le Gardien garde le sien, celui d'avant).
+            foreach (string boss in new[] { "gardien_du_seuil", "echo_de_la_rupture", "croc_gris", "chef_des_bandits" })
             {
                 Assert.Equal("text.ui.boss_phase." + boss, a.BossPhaseText(boss));
                 Assert.True(a.Texts.Has(a.BossPhaseText(boss)));
             }
-            Assert.Equal("text.ui.boss_phase", a.BossPhaseText("gardien"));   // repli : le message commun
+            Assert.Equal("Le Gardien du Seuil se relève, éveillé !", a.Text(a.BossPhaseText("gardien_du_seuil")));
+            // Repli pour un chef sans message à lui : le message commun, neutre, qui nomme le chef.
+            Assert.Equal("text.ui.boss_phase", a.BossPhaseText("loup_blanc"));
+            Assert.Equal("Loup blanc se relève, plus redoutable encore !",
+                string.Format(System.Globalization.CultureInfo.InvariantCulture, a.Text("text.ui.boss_phase"), DisplayNames.Of("loup_blanc")));
             Assert.Contains("Voix de la Rupture", a.Text(a.BossPhaseText("echo_de_la_rupture")));
         }
         finally
