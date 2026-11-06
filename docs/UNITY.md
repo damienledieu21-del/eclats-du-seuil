@@ -654,7 +654,7 @@ Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'AP
 
 ### Essai V2.4 : animaux paisibles et bêtes qui se battent
 
-Menu **Éclats du Seuil → Essai des animaux : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **l'aube des cerfs** (prochaine aube à 5 h 10 sans averse ni orage), **le crépuscule des lièvres** (19 h 10), **la brume (loups gris et échos)** (prochain matin de brume). Le message dit où aller. Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#7-les-animaux-v24) ; règles : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
+Menu **Éclats du Seuil → Essai des animaux : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **l'aube des cerfs** (prochaine aube à 5 h 10 sans averse ni orage), **le crépuscule des lièvres** (19 h 10), **la brume (loups gris et échos)** (prochain matin de brume). Le message dit où aller. Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#8-les-animaux-v24) ; règles : [MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24).
 
 - **Cerfs et lièvres** : aucun modèle livré ; ils sont **dessinés en formes simples** (`WildlifeLook`, pièces de `EdS.Runtime.Wildlife`) : corps, cou, tête, bois et queue blanche pour le cerf ; corps rond, longues oreilles et queue blanche pour le lièvre ; les pattes balancent et le corps rebondit à la course (le lièvre bondit), immobiles à l'arrêt ; couchés sur le flanc à leur mort. Un matériau par couleur, partagé. Ils se tournent dans le sens de leur course (le moteur les oriente).
 - **Loups gris de la brume** : le modèle du loup ; **échos de la brume** : pâles comme ceux de la nuit (`loup_echo5`, `loup_echo6`).

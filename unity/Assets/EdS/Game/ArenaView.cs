@@ -356,7 +356,10 @@ namespace EdS.Game
         }
 
         /// <summary>Essai réaliste 7 : pieds d'un combattant affiché (sur le tablier du pont s'il y est), ou null.</summary>
-        public Vector3? Feet(string id) => id != null && _bodies.TryGetValue(id, out GameObject body) && body.activeSelf ? body.transform.position - Vector3.up : (Vector3?)null;
+        /// <summary>Revue Codex de la PR #102 : hauteur du centre d'un corps au-dessus de ses pieds (m) ; partagée avec le compagnon.</summary>
+        public const float FeetOffset = 1f;
+
+        public Vector3? Feet(string id) => id != null && _bodies.TryGetValue(id, out GameObject body) && body.activeSelf ? body.transform.position - Vector3.up * FeetOffset : (Vector3?)null;
 
         /// <summary>Essai réaliste 7 : hauteur affichée d'un combattant (son modèle, sinon la capsule de 2 m).</summary>
         public float Height(string id) => id != null && _looks.TryGetValue(id, out StyleBody look) ? look.Height : 2f;

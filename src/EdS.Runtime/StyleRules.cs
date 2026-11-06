@@ -216,6 +216,12 @@ namespace EdS.Runtime
 
         /// <summary>Essai réaliste 7 : butin ramassé (pièces).</summary>
         Coin = 12,
+
+        /// <summary>Sous-lot V2.2.1 : miaulement d'un compagnon d'affichage (sans fichier : un miaulement fait par le code).</summary>
+        Meow = 13,
+
+        /// <summary>Sous-lot V2.2.1 : ronronnement d'un compagnon d'affichage (sans fichier : un ronronnement fait par le code).</summary>
+        Purr = 14,
     }
 
     /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
@@ -398,6 +404,9 @@ namespace EdS.Runtime
             [StyleSound.Grunt] = new[] { "grunt", "boar", "pig", "oink" },
             [StyleSound.Roar] = new[] { "roar", "troll", "monster" },
             [StyleSound.Coin] = new[] { "coin" },
+            // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
+            [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
+            [StyleSound.Purr] = new[] { "ronron", "purr" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
