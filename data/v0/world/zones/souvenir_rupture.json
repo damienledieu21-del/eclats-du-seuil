@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 7,
   "kind": "zone",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "id": "zone.souvenir_rupture",
     "name": "Souvenir de la Rupture",
@@ -40,7 +40,8 @@
         "id": "echo_de_la_rupture",
         "scenario": "zones/souvenir_rupture_echo",
         "forms": [
-          "echo_de_la_rupture"
+          "echo_de_la_rupture",
+          "voix_de_la_rupture"
         ],
         "fact": "fact.ch1.souvenir.vecu",
         "rewards": []

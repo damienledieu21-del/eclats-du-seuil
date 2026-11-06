@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 3,
   "kind": "crafting",
-  "contentVersion": "0.6.0-provisoire",
+  "contentVersion": "0.7.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -306,6 +306,28 @@
           "count": 1
         },
         "xp": 70
+      },
+      {
+        "id": "recipe.remede_d_echo",
+        "name": "text.recipe.remede_d_echo",
+        "profession": "herboristerie",
+        "requiredLevel": 3,
+        "place": "forge",
+        "inputs": [
+          {
+            "item": "item.herbe_de_l_aube",
+            "count": 3
+          },
+          {
+            "item": "item.poussiere_d_echo",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.remede_de_l_aube",
+          "count": 1
+        },
+        "xp": 45
       }
     ],
     "nodes": [
