@@ -162,7 +162,8 @@ namespace EdS.World
                     bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < now;
                     if (v.IsDead) life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
-                    else if (!life.Leashing && v.IsPresent && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+                    else if (!life.Leashing && !Flees(life.Population) && v.IsPresent && v.Engaged && v.CurrentTarget is string target
+                        && Beyond(v, engine.View(target), life.Population.LeashRange))
                     {
                         // Revue Codex de la PR #45 : un départ refusé par le pilote (plafond de commandes, refus atomique) ne fait pas échouer le
                         // tick ; la laisse est retentée au tick suivant.
@@ -260,7 +261,8 @@ namespace EdS.World
                 return Respawn(zone, life, now, tickMs, reserved);
             }
             if (life.Withdrawing || life.Leashing || !v.IsPresent) return null;
-            if (v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+            // Relecture de la PR #104 : une bête qui fuit n'a pas de laisse (elle reste où sa fuite l'a menée : aucune vie usée).
+            if (!Flees(life.Population) && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
             {
                 if (TryLeave(zone, life.Current))
                 {
@@ -269,7 +271,9 @@ namespace EdS.World
                 }
                 return null;
             }
-            if (!want && !v.Engaged && TryLeave(zone, life.Current))
+            // Relecture de la PR #104 : hors de ses heures ou de son temps, elle s'en va aussi d'un combat de bêtes (ou d'une fuite) ; un combat
+            // contre un joueur la retient, comme avant.
+            if (!want && !HeldByFight(engine, v, life.Population) && TryLeave(zone, life.Current))
             {
                 life.Withdrawing = true;
                 return new PopulationEvent(PopulationEventKind.Withdrew, life.Population.Creature, life.Current, now);
@@ -277,10 +281,40 @@ namespace EdS.World
             return null;
         }
 
+        /// <summary>
+        /// Relecture de la PR #104 : places de combattants qu'une bête d'ambiance (<see cref="IsAmbient"/>) ne prend jamais : elles restent aux
+        /// autres créatures (celles des quêtes, des contrats et des chasses). Une bête d'ambiance qui n'a plus de place attend la session
+        /// suivante, sans annonce.
+        /// </summary>
+        public const int QuestReserve = 64;
+
+        /// <summary>
+        /// Relecture de la PR #104 : bête d'ambiance : une bête qui fuit (cerf, lièvre) ou une créature qui ne vient que par son temps (la brume).
+        /// Aucune quête ne les demande ; leurs arrivées n'entament jamais <see cref="QuestReserve"/>.
+        /// </summary>
+        internal static bool IsAmbient(Population population) => Flees(population) || population.Weather != null;
+
+        private static bool Flees(Population population) => population.Template.Behavior?.Flee == true;
+
+        /// <summary>
+        /// Retenue par un combat : engagée, sauf une bête qui fuit (elle ne se bat pas) et une bête qui ne vise qu'une autre bête (combat de
+        /// bêtes). Engagée contre un joueur, ou sans cible, elle reste, comme avant.
+        /// </summary>
+        private static bool HeldByFight(CombatEngine engine, CombatantView v, Population population)
+        {
+            if (!v.Engaged || Flees(population)) return false;
+            return !(v.CurrentTarget is string target && engine.View(target).Kind == CombatantKind.Assailant);
+        }
+
         private PopulationEvent? Respawn(Zone zone, Life life, long now, long tickMs, int reserved)
         {
             CombatEngine engine = zone.Engine;
             AssailantSetup t = life.Population.Template;
+            if (IsAmbient(life.Population) && checked(engine.CombatantIds.Count + reserved + QuestReserve) >= zone.Setup.Combat.MaxCombatants)
+            {
+                life.Exhausted = true;   // relecture de la PR #104 : sans annonce ; la réserve reste aux autres créatures
+                return null;
+            }
             if (checked(engine.CombatantIds.Count + reserved) >= zone.Setup.Combat.MaxCombatants)
             {
                 life.Exhausted = true;

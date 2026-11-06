@@ -43,16 +43,22 @@ namespace EdS.Simulation.Engine
         /// une créature ennemie ne compte que si elle est à distance d'engagement (une bête ne court pas après une bête qu'elle ne voit pas, à
         /// l'autre bout de la carte) ; un personnage, à toute distance, comme avant (la laisse du monde décide).
         /// </summary>
-        private Fighter? Nearest(Fighter assailant)
+        private Fighter? Nearest(Fighter assailant, bool engaging = false)
         {
             Fighter? best = null;
             long bestDistance = 0;
             long? sight = assailant.Behavior?.AggroRange?.Raw;
+            // Pas encore engagé : comme avant (sa cible n'est qu'indicative, pour l'affichage et le pilote).
+            bool noticed = assailant.Noticed || assailant.Behavior is null || (!assailant.Engaged && !engaging);
             foreach (Fighter f in _fightersById)
             {
                 if (f.Out || !Enemies(f, assailant) || f.Body is null) continue;
                 long d = EdgeDistance(assailant.Body!, f.Body);
                 if (f.Character is null && f.Assailant != null && sight is long range && d > range) continue;   // sous-lot V2.4
+                // Relecture de la PR #104 : un joueur au loin, seulement s'il l'a remarqué.
+                if (f.Character != null && !noticed && sight is long seen && d > seen) continue;
+                // Relecture de la PR #104 : une bête à bout (1 PV) n'est plus visée par les bêtes (elles ne peuvent pas l'achever) : le combat cesse.
+                if (f.Character is null && f.Assailant != null && assailant.Assailant != null && f.Health is long h && h <= 1) continue;
                 if (best is null || d < bestDistance)
                 {
                     best = f;
@@ -81,9 +87,21 @@ namespace EdS.Simulation.Engine
             if (!HasBehaviors) return;
             foreach (Fighter f in _fightersById)
             {
-                if (f.Behavior is not { } behavior || f.Engaged || f.Out) continue;
+                if (f.Behavior is not { } behavior || f.Out) continue;
+                if (f.Engaged)
+                {
+                    // Relecture de la PR #104 : une bête engagée contre des bêtes seulement remarque un joueur qui entre à sa distance
+                    // d'engagement (ou qui la frappe, ou qu'un allié de sa meute a remarqué) ; avant, elle ne court pas après lui au loin.
+                    if (f.Noticed) continue;
+                    bool noticed = Notices(f, behavior);
+                    Reserve(Cost.Op);
+                    Charge(1);
+                    f.Noticed = noticed;
+                    continue;
+                }
                 string? reason = EngageReason(f, behavior);
-                Fighter? target = reason is null ? null : SingleTarget(f);
+                if (reason != null) f.Noticed = Notices(f, behavior);   // avant la cible : elle en dépend
+                Fighter? target = reason is null ? null : SingleTarget(f, engaging: true);
                 Reserve(Cost.Op + Cost.Line.If(reason != null));
                 Charge(1);
                 if (reason is null) continue;
@@ -91,6 +109,25 @@ namespace EdS.Simulation.Engine
                 f.EngagedTick = tick;
                 EmitDiagnostic(tick, CombatPhase.Commands, "engaged", w => w.Field("actor", f.Id).Field("target", target?.Id).Field("reason", reason));
             }
+        }
+
+        /// <summary>
+        /// Relecture de la PR #104 : <paramref name="f"/> a-t-il remarqué un joueur ? Frappé par un personnage, provoqué, un personnage ennemi
+        /// vivant à sa distance d'engagement, ou un allié de sa meute engagé à cette distance qui l'a remarqué. Seul un ennemi qui a remarqué un
+        /// joueur le vise au-delà de sa distance d'engagement (<see cref="Nearest"/>) : une bête engagée contre une autre bête ne part pas à
+        /// travers la carte vers un joueur qu'elle n'a pas vu (elle userait les vies de la session, laisse après laisse).
+        /// </summary>
+        private bool Notices(Fighter f, AssailantBehavior behavior)
+        {
+            if (f.HurtByCharacter || f.Taunted || behavior.AggroRange is null) return true;
+            long aggro = behavior.AggroRange.Value.Raw;
+            foreach (Fighter other in _fightersById)
+                if (!other.Out && other.Character != null && Enemies(other, f) && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return true;
+            if (!behavior.Pack) return false;
+            foreach (Fighter ally in _fightersById)
+                if (ally != f && !ally.Out && ally.Team == f.Team && ally.Behavior != null && ally.Engaged && ally.Noticed && EdgeDistance(f.Body!, ally.Body!) <= aggro)
+                    return true;
+            return false;
         }
 
         /// <summary>

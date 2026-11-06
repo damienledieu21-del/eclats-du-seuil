@@ -20,7 +20,7 @@
 {"tick":10,"seq":18,"phase":"movement","event":"moved","combatants":[{"combatant":"cerf","position":[3.5457,9.2574],"facing":[-0.2563,0.9666]},{"combatant":"loup","position":[6.2,0],"facing":[1,0]},{"combatant":"sanglier","position":[10.5,0],"facing":[1,0]}]}
 {"tick":11,"seq":19,"phase":"movement","event":"moved","combatants":[{"combatant":"cerf","position":[3.463,9.5458],"facing":[-0.2756,0.9613]},{"combatant":"loup","position":[6.4,0],"facing":[1,0]},{"combatant":"sanglier","position":[10.7,0],"facing":[1,0]}]}
 {"tick":12,"seq":20,"phase":"movement","event":"moved","combatants":[{"combatant":"cerf","position":[3.3748,9.8325],"facing":[-0.2941,0.9558]},{"combatant":"loup","position":[6.6,0],"facing":[1,0]},{"combatant":"sanglier","position":[10.9,0],"facing":[1,0]}]}
-{"tick":13,"seq":21,"phase":"movement","event":"moved","combatants":[{"combatant":"cerf","position":[3.3748,9.8325],"facing":[-0.8703,-0.4925]},{"combatant":"loup","position":[6.8,0],"facing":[1,0]},{"combatant":"sanglier","position":[11.1,0],"facing":[1,0]}]}
+{"tick":13,"seq":21,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[6.8,0],"facing":[1,0]},{"combatant":"sanglier","position":[11.1,0],"facing":[1,0]}]}
 {"tick":14,"seq":22,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[7,0],"facing":[1,0]},{"combatant":"sanglier","position":[11.3,0],"facing":[1,0]}]}
 {"tick":15,"seq":23,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[7.2,0],"facing":[1,0]},{"combatant":"sanglier","position":[11.5,0],"facing":[1,0]}]}
 {"tick":16,"seq":24,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[7.4,0],"facing":[1,0]},{"combatant":"sanglier","position":[11.7,0],"facing":[1,0]}]}
@@ -39,7 +39,7 @@
 {"tick":27,"seq":37,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[9.6,0],"facing":[1,0]},{"combatant":"sanglier","position":[13.9,0],"facing":[1,0]}]}
 {"tick":28,"seq":38,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[9.8,0],"facing":[1,0]},{"combatant":"sanglier","position":[14.1,0],"facing":[1,0]}]}
 {"tick":29,"seq":39,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[10,0],"facing":[1,0]},{"combatant":"sanglier","position":[14.3,0],"facing":[1,0]}]}
-{"tick":30,"seq":40,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":30,"seq":40,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":30,"seq":41,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[10.2,0],"facing":[1,0]},{"combatant":"sanglier","position":[14.5,0],"facing":[1,0]}]}
 {"tick":31,"seq":42,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[10.4,0],"facing":[1,0]},{"combatant":"sanglier","position":[14.7,0],"facing":[1,0]}]}
 {"tick":32,"seq":43,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[10.6,0],"facing":[1,0]},{"combatant":"sanglier","position":[14.9,0],"facing":[1,0]}]}
@@ -90,7 +90,7 @@
 {"tick":78,"seq":88,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[15.8,0],"facing":[1,0]},{"combatant":"sanglier","position":[18.6261,0],"facing":[1,0]}]}
 {"tick":79,"seq":89,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[16,0],"facing":[1,0]},{"combatant":"sanglier","position":[18.8761,0],"facing":[1,0]}]}
 {"tick":80,"seq":90,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
-{"tick":80,"seq":91,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":80,"seq":91,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":80,"seq":92,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[16.2,0],"facing":[1,0]},{"combatant":"sanglier","position":[19.1261,0],"facing":[1,0]}]}
 {"tick":81,"seq":93,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[16.4,0],"facing":[1,0]},{"combatant":"sanglier","position":[19.3761,0],"facing":[1,0]}]}
 {"tick":82,"seq":94,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[16.6,0],"facing":[1,0]},{"combatant":"sanglier","position":[19.6261,0],"facing":[1,0]}]}
@@ -123,7 +123,7 @@
 {"tick":115,"seq":121,"phase":"resolution","event":"damage","eid":7,"cause":6,"source":"loup","target":"sanglier","skill":null,"attack":"morsure","critical":false,"fragile":false,"defense":"none","amount":5,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":160,"damageTaken":10}
 {"tick":120,"seq":122,"phase":"commands","event":"attackStarted","eid":8,"cause":null,"root":"assailantTurn:sanglier:1","actor":"sanglier","attack":"charge","target":"loup","rawDamage":25,"unblockable":false,"applies":[],"shape":"line","telegraphMs":1000,"impactTick":140,"guardable":true,"parryable":false,"origin":[23.1,0],"axis":[-1,0],"range":10,"width":1.4}
 {"tick":120,"seq":123,"phase":"movement","event":"moved","combatants":[{"combatant":"sanglier","position":[23.1,0],"facing":[-1,0]}]}
-{"tick":130,"seq":124,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":130,"seq":124,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":140,"seq":125,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":140,"seq":126,"phase":"resolution","event":"attackLanded","eid":9,"cause":8,"actor":"sanglier","attack":"charge","pulse":0,"targets":["loup"]}
 {"tick":140,"seq":127,"phase":"resolution","event":"damage","eid":10,"cause":9,"source":"sanglier","target":"loup","skill":null,"attack":"charge","critical":false,"fragile":false,"defense":"none","amount":13,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":124,"damageTaken":26}
@@ -145,7 +145,7 @@
 {"tick":170,"seq":143,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":175,"seq":144,"phase":"commands","event":"attackStarted","eid":13,"cause":null,"root":"assailantTurn:loup:5","actor":"loup","attack":"morsure","target":"sanglier","rawDamage":10,"unblockable":false,"applies":[],"shape":"target","telegraphMs":0,"impactTick":175,"guardable":true,"parryable":true,"range":1}
 {"tick":175,"seq":145,"phase":"resolution","event":"damage","eid":14,"cause":13,"source":"loup","target":"sanglier","skill":null,"attack":"morsure","critical":false,"fragile":false,"defense":"none","amount":5,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":150,"damageTaken":20}
-{"tick":180,"seq":146,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":180,"seq":146,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":200,"seq":147,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":200,"seq":148,"phase":"commands","event":"attackStarted","eid":15,"cause":null,"root":"assailantTurn:sanglier:2","actor":"sanglier","attack":"charge","target":"loup","rawDamage":25,"unblockable":false,"applies":[],"shape":"line","telegraphMs":1000,"impactTick":220,"guardable":true,"parryable":false,"origin":[23.1,0],"axis":[-1,0],"range":10,"width":1.4}
 {"tick":200,"seq":149,"phase":"movement","event":"moved","combatants":[{"combatant":"sanglier","position":[23.1,0],"facing":[-1,0]}]}
@@ -165,7 +165,7 @@
 {"tick":228,"seq":163,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[20.6,0],"facing":[1,0]},{"combatant":"sanglier","position":[22.9261,0],"facing":[1,0]}]}
 {"tick":229,"seq":164,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[20.8,0],"facing":[1,0]},{"combatant":"sanglier","position":[23.1,0],"facing":[1,0]}]}
 {"tick":230,"seq":165,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
-{"tick":230,"seq":166,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":230,"seq":166,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":230,"seq":167,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[21,0],"facing":[1,0]}]}
 {"tick":231,"seq":168,"phase":"movement","event":"moved","combatants":[{"combatant":"loup","position":[21.2,0],"facing":[1,0]}]}
 {"tick":235,"seq":169,"phase":"commands","event":"attackStarted","eid":20,"cause":null,"root":"assailantTurn:loup:7","actor":"loup","attack":"morsure","target":"sanglier","rawDamage":10,"unblockable":false,"applies":[],"shape":"target","telegraphMs":0,"impactTick":235,"guardable":true,"parryable":true,"range":1}
@@ -173,7 +173,7 @@
 {"tick":260,"seq":171,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":265,"seq":172,"phase":"commands","event":"attackStarted","eid":22,"cause":null,"root":"assailantTurn:loup:8","actor":"loup","attack":"morsure","target":"sanglier","rawDamage":10,"unblockable":false,"applies":[],"shape":"target","telegraphMs":0,"impactTick":265,"guardable":true,"parryable":true,"range":1}
 {"tick":265,"seq":173,"phase":"resolution","event":"damage","eid":23,"cause":22,"source":"loup","target":"sanglier","skill":null,"attack":"morsure","critical":false,"fragile":false,"defense":"none","amount":5,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":135,"damageTaken":35}
-{"tick":280,"seq":174,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":280,"seq":174,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":280,"seq":175,"phase":"commands","event":"attackStarted","eid":24,"cause":null,"root":"assailantTurn:sanglier:3","actor":"sanglier","attack":"charge","target":"loup","rawDamage":25,"unblockable":false,"applies":[],"shape":"line","telegraphMs":1000,"impactTick":300,"guardable":true,"parryable":false,"origin":[23.1,0],"axis":[-1,0],"range":10,"width":1.4}
 {"tick":280,"seq":176,"phase":"movement","event":"moved","combatants":[{"combatant":"sanglier","position":[23.1,0],"facing":[-1,0]}]}
 {"tick":290,"seq":177,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
@@ -197,14 +197,14 @@
 {"tick":320,"seq":195,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":325,"seq":196,"phase":"commands","event":"attackStarted","eid":29,"cause":null,"root":"assailantTurn:loup:10","actor":"loup","attack":"morsure","target":"sanglier","rawDamage":10,"unblockable":false,"applies":[],"shape":"target","telegraphMs":0,"impactTick":325,"guardable":true,"parryable":true,"range":1}
 {"tick":325,"seq":197,"phase":"resolution","event":"damage","eid":30,"cause":29,"source":"loup","target":"sanglier","skill":null,"attack":"morsure","critical":false,"fragile":false,"defense":"none","amount":5,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":125,"damageTaken":45}
-{"tick":330,"seq":198,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":330,"seq":198,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":350,"seq":199,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
 {"tick":355,"seq":200,"phase":"commands","event":"attackStarted","eid":31,"cause":null,"root":"assailantTurn:loup:11","actor":"loup","attack":"morsure","target":"sanglier","rawDamage":10,"unblockable":false,"applies":[],"shape":"target","telegraphMs":0,"impactTick":355,"guardable":true,"parryable":true,"range":1}
 {"tick":355,"seq":201,"phase":"resolution","event":"damage","eid":32,"cause":31,"source":"loup","target":"sanglier","skill":null,"attack":"morsure","critical":false,"fragile":false,"defense":"none","amount":5,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":120,"damageTaken":50}
 {"tick":360,"seq":202,"phase":"commands","event":"attackStarted","eid":33,"cause":null,"root":"assailantTurn:sanglier:4","actor":"sanglier","attack":"charge","target":"loup","rawDamage":25,"unblockable":false,"applies":[],"shape":"line","telegraphMs":1000,"impactTick":380,"guardable":true,"parryable":false,"origin":[23.1,0],"axis":[-1,0],"range":10,"width":1.4}
 {"tick":360,"seq":203,"phase":"movement","event":"moved","combatants":[{"combatant":"sanglier","position":[23.1,0],"facing":[-1,0]}]}
 {"tick":380,"seq":204,"phase":"commands","event":"attackSkipped","actor":"bandit","attack":"coup","target":"bastion","reason":"notEngaged"}
-{"tick":380,"seq":205,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":"bastion","reason":"targetOutOfRange"}
+{"tick":380,"seq":205,"phase":"commands","event":"attackSkipped","actor":"cerf","attack":"sabot","target":null,"reason":"noTarget"}
 {"tick":380,"seq":206,"phase":"resolution","event":"attackLanded","eid":34,"cause":33,"actor":"sanglier","attack":"charge","pulse":0,"targets":["loup"]}
 {"tick":380,"seq":207,"phase":"resolution","event":"damage","eid":35,"cause":34,"source":"sanglier","target":"loup","skill":null,"attack":"charge","critical":false,"fragile":false,"defense":"none","amount":13,"absorbed":0,"absorbedBy":[],"transferred":0,"overkill":0,"health":85,"damageTaken":65}
 {"tick":380,"seq":208,"phase":"resolution","event":"pushed","actor":"sanglier","attack":"charge","target":"loup","position":[19.2,0]}

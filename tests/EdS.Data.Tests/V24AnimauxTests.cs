@@ -386,33 +386,83 @@ public class V24AnimauxMondeTests
     }
 
     [Fact]
-    public void Une_bete_tuee_par_une_autre_ne_compte_pas()
+    public void Une_bete_n_en_tue_jamais_une_autre()
     {
-        // Un sanglier à 1 PV posé à côté d'un loup de la meute (au nord du pré) : le loup le tue. Le Bastion est là, vivant, mais ne l'a pas
-        // frappé : ni expérience, ni butin. Ensuite, un sanglier frappé par le Bastion compte comme avant.
+        // Relecture de la PR #104 : un sanglier posé au milieu des loups du pré : ils se battent, il tombe à 1 PV et y reste (les loups ne
+        // le visent plus) ; aucune mort, donc aucune vie de la session usée et aucune récompense. C'est au joueur d'achever.
         ZoneDefinition z = Zone(scenario: s =>
         {
             JsonArray c = s["data"]!["combatants"]!.AsArray();
-            JsonObject boar = c.Select(x => x!.AsObject()).Single(x => (string)x["id"]! == "sanglier");
-            boar["health"] = 1;
-            boar["position"] = new JsonArray(-12, 25);
+            c.Select(x => x!.AsObject()).Single(x => (string)x["id"]! == "sanglier")["position"] = new JsonArray(-12, 25);
         });
         WorldSession w = At(TickAt(0, 12 * 60), z);
         var experience = new List<ExperienceGained>();
-        var loot = new List<LootGained>();
-        bool dead = false;
-        for (int i = 0; i < 400 && !dead; i++)
+        for (int i = 0; i < 3000; i++) experience.AddRange(w.Step().Experience);
+        CombatantView boar = w.Zone.Engine.View("sanglier");
+        Assert.False(boar.IsDead);
+        Assert.Equal(1L, boar.Health);
+        Assert.False(boar.HurtByCharacter);
+        Assert.All(w.Zone.Engine.CombatantIds, id => Assert.False(w.Zone.Engine.View(id).IsDead));
+        Assert.Empty(experience);
+        // Les loups ne le visent plus : plus aucun coup après sa chute à 1 PV.
+        long taken = boar.Counters.DamageTaken;
+        for (int i = 0; i < 400; i++) w.Step();
+        Assert.Equal(taken, w.Zone.Engine.View("sanglier").Counters.DamageTaken);
+    }
+
+    [Fact]
+    public void Longue_session_sans_le_joueur_les_populations_des_quetes_repeuplent_toujours()
+    {
+        // Relecture de la PR #104 : une session entière (de 4 h à 11 h d'un matin de brume, presque une heure de jeu) où le joueur ne fait rien, avec
+        // de la prédation forcée : le sanglier des ruines (contrats) au milieu des loups du pré, deux cerfs et un lièvre à côté d'eux. Les
+        // bêtes se battent, fuient, arrivent à l'aube et avec la brume, partent quand elle se lève. Aucune mort sans le joueur (une bête n'en
+        // tue jamais une autre), aucune laisse pour une bête qui fuit, les bêtes d'ambiance ne prennent jamais les 64 dernières places : à la
+        // fin, une population de quête repeuple encore 60 fois de suite.
+        ZoneDefinition z = Zone(scenario: s =>
+        {
+            JsonArray c = s["data"]!["combatants"]!.AsArray();
+            JsonObject Of(string id) => c.Select(x => x!.AsObject()).Single(x => (string)x["id"]! == id);
+            Of("sanglier")["position"] = new JsonArray(-12, 25);
+            Of("cerf1")["position"] = new JsonArray(-9, 26);
+            Of("cerf2")["position"] = new JsonArray(-14, 24);
+            Of("lievre1")["position"] = new JsonArray(-7, 27);
+        });
+        long misty = DayWith(WeatherKind.Mist, 6 * 60);
+        WorldSession w = At(TickAt(misty, 4 * 60), z);
+        var population = new List<PopulationEvent>();
+        var deaths = new List<string>();
+        long creatureHits = 0;
+        int max = ShippedData.Rules.Combat.MaxCombatants;
+        while (!w.Zone.IsOver && w.Zone.Time.Hour < 11)
         {
             SessionStep step = w.Step();
-            experience.AddRange(step.Experience);
-            loot.AddRange(step.Loot);
-            dead = w.Zone.Engine.View("sanglier").IsDead;
+            population.AddRange(step.Population);
+            Assert.Empty(step.Experience);
         }
-        Assert.True(dead);
-        Assert.False(w.Zone.Engine.View("sanglier").HurtByCharacter);
-        Assert.False(w.Zone.Engine.View("bastion").IsDead);
-        Assert.Empty(experience);
-        Assert.Empty(loot);
+        foreach (string id in w.Zone.Engine.CombatantIds)
+        {
+            CombatantView v = w.Zone.Engine.View(id);
+            if (v.IsDead) deaths.Add(id);
+            if (v.Kind == CombatantKind.Assailant) creatureHits += v.Counters.DamageTaken;
+        }
+        Assert.True(w.Zone.Time.Hour >= 11);
+        Assert.True(creatureHits > 0, "les bêtes ne se sont pas battues");
+        Assert.Empty(deaths);   // aucune mort sans le joueur
+        Assert.DoesNotContain(population, e => e.Kind == PopulationEventKind.Exhausted);
+        Assert.DoesNotContain(population, e => e.Kind == PopulationEventKind.Leashed && Vallons.PopulationOf(e.Population)!.Template.Behavior!.Flee);
+        Assert.Contains(population, e => e.Kind == PopulationEventKind.Withdrew && Mist.Contains(e.Population));   // la brume s'est levée
+        Assert.True(max - w.Zone.Engine.CombatantIds.Count >= ZonePopulations.QuestReserve - 8,
+            $"{w.Zone.Engine.CombatantIds.Count} combattants sur {max}");
+        // Une population de quête (le loup du moulin, objectifs « loup ») repeuple toujours : 60 départs de suite, 60 retours.
+        for (int n = 0; n < 60; n++)
+        {
+            string current = w.CurrentCreature("loup1");
+            w.Zone.Leave(current);
+            bool back = false;
+            for (int i = 0; i < 40 && !back; i++)
+                back = w.Step().Population.Any(e => e.Kind == PopulationEventKind.Respawned && e.Population == "loup1");
+            Assert.True(back, $"loup1 n'est pas revenu au départ n° {n + 1}");
+        }
     }
 
     [Fact]

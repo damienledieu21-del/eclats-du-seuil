@@ -258,6 +258,12 @@ namespace EdS.Simulation.Engine
             /// </summary>
             public bool HurtByCharacter;
 
+            /// <summary>
+            /// Relecture de la PR #104 : ennemi à comportement qui a remarqué un joueur (voir <c>Notices</c>) ; seul il vise un joueur au-delà de
+            /// sa distance d'engagement. Vrai d'emblée sans distance d'engagement. Hors journal ; dans l'instantané (format 5).
+            /// </summary>
+            public bool Noticed;
+
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
             /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
@@ -618,6 +624,7 @@ namespace EdS.Simulation.Engine
                 Presence = setup.ArrivalMs is null ? Presence.Present : Presence.Pending,
                 Engaged = setup is AssailantSetup { Behavior: { AggroRange: null } } };   // sous-lot 11.5 : sans distance d'engagement, engagé d'emblée
             if (f.Engaged) f.EngagedTick = 0;
+            f.Noticed = f.Engaged;   // relecture de la PR #104 : engagé d'emblée, il a « remarqué » tout le monde
             f.Result.Id = setup.Id;
             f.Result.Team = setup.Team;
             switch (setup)
@@ -1168,7 +1175,9 @@ namespace EdS.Simulation.Engine
         /// application ou renouvellement), sinon la cible du scénario. Une provocation est retirée à la mort de sa source : la source
         /// retenue est toujours vivante.
         /// </summary>
-        private Fighter? SingleTarget(Fighter assailant)
+        /// <param name="engaging">Relecture de la PR #104 : cible au moment de son engagement (comme un engagé : un joueur au loin seulement
+        /// s'il l'a remarqué).</param>
+        private Fighter? SingleTarget(Fighter assailant, bool engaging = false)
         {
             StatusInstance? taunt = null;
             foreach (StatusInstance status in assailant.Statuses.Values)
@@ -1178,7 +1187,7 @@ namespace EdS.Simulation.Engine
             Fighter? scripted = setup.Target is null ? null : _byId[setup.Target];
             // Sous-lot 11.5 : un ennemi qui a un comportement vise sa cible de scénario si elle est là et vivante, sinon l'ennemi le plus proche.
             if (setup.Behavior is null) return scripted;
-            return scripted is { Out: false } ? scripted : Nearest(assailant);
+            return scripted is { Out: false } ? scripted : Nearest(assailant, engaging);
         }
 
         /// <summary>
@@ -1186,6 +1195,17 @@ namespace EdS.Simulation.Engine
         /// (<see cref="CombatSetup.Truces"/>). Sans trêve, exactement « équipes différentes », comme avant.
         /// </summary>
         private bool Enemies(Fighter a, Fighter b) => _setup.Hostile(a.Team, b.Team);
+
+        /// <summary>
+        /// Relecture de la PR #104 : dégâts d'un impact ou d'un tick de DOT de <paramref name="source"/> sur <paramref name="target"/>, ramenés
+        /// pour qu'une créature n'en tue jamais une autre (créatures d'équipes ennemies) : la cible garde au moins 1 PV (0 dégât à 1 PV).
+        /// Sinon, le montant tel quel.
+        /// </summary>
+        private long InfightingCap(Fighter? source, Fighter target, long amount)
+        {
+            if (source?.Assailant is null || target.Assailant is null || !Enemies(source, target) || target.Health is not long health) return amount;
+            return Math.Min(amount, Math.Max(0, health - 1));
+        }
 
         /// <summary>
         /// Sous-lot 8.3 (X5) : cibles d'une action, dans l'ordre de leurs identifiants pour un ciblage de groupe : la cible désignée
@@ -1462,6 +1482,10 @@ namespace EdS.Simulation.Engine
             // Sous-lot 8.6 (X10) : dégâts atténués par la défense de cet impact (garde, parade, réductions de dégâts subis) = montant sans
             // réduction − montant ; même tirage critique, mêmes bonus. Hors journal ; préparé avant toute affectation.
             long mitigated = checked(target.Result.DamageMitigated + Unmitigated(input, mitigation, amount));
+            // Relecture de la PR #104 : une bête ne tue jamais une autre bête (combat entre créatures de deux équipes) : le coup s'arrête à 1 PV
+            // (après le calcul des dégâts atténués : ce n'est pas une réduction). Les bêtes se blessent ; c'est au joueur d'achever. Aucune mort
+            // sans le joueur, donc aucune vie de la session usée par la prédation.
+            amount = InfightingCap(actor, target, amount);
 
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
             // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
@@ -2319,6 +2343,7 @@ namespace EdS.Simulation.Engine
             // Correctif 7.3.1 (A73-M01) : PV et compteurs préparés et vérifiés avant toute affectation (voir PrepareDamage). Sous-lot 8.2
             // (A6) : les boucliers de la cible absorbent aussi les DOT.
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
+            amount = InfightingCap(source, target, amount);   // relecture de la PR #104 : jamais mortel entre bêtes
             // Sous-lot 8.3 (X6) : une protection transfère aussi sa part d'un tick de DOT.
             Transfer transfer = PlanTransfer(target, amount);
             Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);

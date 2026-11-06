@@ -227,7 +227,7 @@ namespace EdS.Simulation.Engine
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
-                .Field("hurtByCharacter", f.HurtByCharacter);   // sous-lot V2.4 (format 5)
+                .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed);   // sous-lot V2.4 (format 5)
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -1037,6 +1037,7 @@ namespace EdS.Simulation.Engine
                 // (distance actuelle moins les pas que l'un et l'autre ont pu faire depuis).
                 Require(f.EngagedTick is not long engagedTick || f.Behavior?.AggroRange is null || EngagementPossible(f, engagedTick),
                     $"Engagement de {who} au tick {f.EngagedTick} sans cause possible.");
+                Require(!f.Noticed || f.Engaged, $"{who} a remarqué un joueur sans être engagé.");   // relecture de la PR #104
                 // Revue Codex de la PR #33 (13e tour) : une annonce jusqu'à la fin vient d'un tour d'assaillant déjà joué, dont l'impact (tour +
                 // télégraphie) tombe au plus tôt à la fin du combat.
                 Require(!f.AnnouncedToEnd || AnnouncedToEndPossible(f), $"Annonce jusqu'à la fin de {who} sans tour qui la donne.");
@@ -2013,6 +2014,7 @@ namespace EdS.Simulation.Engine
             f.Struck = n["struck"].Bool;
             f.Taunted = n["taunted"].Bool;
             f.HurtByCharacter = n["hurtByCharacter"].Bool;   // sous-lot V2.4 (format 5)
+            f.Noticed = n["noticed"].Bool;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),
