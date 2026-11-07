@@ -161,6 +161,90 @@ namespace EdS.Runtime
         public static string Create(string path, string dataDirectory, string scenariosDirectory, string group, int stage, string? stamp = null) =>
             Create(path, EventTrial.LoadZone(dataDirectory, scenariosDirectory), group, stage, stamp);
 
+        /// <summary>Sous-lot V2.6.1 : quête de Sœur Albe (« Les cicatrices du Seuil »).</summary>
+        public const string ScarQuest = "quest.cicatrices_du_seuil";
+
+        /// <summary>
+        /// Sous-lot V2.6.1 (essai de la propagation) : une cicatrice aux ruines au palier de propagation, depuis le délai de propagation
+        /// (<c>spreadDays</c> jours avant aujourd'hui), et rien au lac : à l'entrée dans les Vallons, le froid gagne le lac ; le pré suit
+        /// <c>spreadDays</c> jours plus tard. Rend le message à montrer.
+        /// </summary>
+        public static string Propagate(string path, ZoneDefinition zone, string? stamp = null)
+        {
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
+            SaveReadResult read = SaveStore.Read(path);
+            if (!(read.Save is WorldSave save) || save.Character is null) return "Sauvegarde illisible ou sans personnage : " + (read.Problem ?? "lance d'abord l'aventure une fois.");
+            WorldEventDefinition? e = zone.Events.FirstOrDefault(x => x.Scar is WorldEventScar r && r.Spreads && x.Groups.Any(g => g.SpreadTo.Count > 0));
+            if (e is null) return "Aucune faille dont la cicatrice se propage dans la zone : rien n'a changé.";
+            WorldEventGroup from = e.Groups.First(g => g.SpreadTo.Count > 0);
+            WorldEventScar rule = e.Scar!;
+            long day = new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick).Day;
+            long since = Math.Max(0, day - rule.SpreadDays);
+            string key = WorldScarRules.Key(zone.Id, e.Id, from.Id);
+            var targets = new HashSet<string>(from.SpreadTo.Select(g => WorldScarRules.Key(zone.Id, e.Id, g)), StringComparer.Ordinal);
+            var scars = save.Character.Scars.Where(x => x.Id != key && !targets.Contains(x.Id)).Concat(new[] { new SavedScar(key, rule.SpreadStage, since, since) }).ToList();
+            string copy = DayTrial.KeepCopy(path, stamp);
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(scars), save.Migrated));
+            return $"Cicatrice au palier {rule.SpreadStage} {Where(from.Id)} depuis {rule.SpreadDays} jours du monde, et plus rien {string.Join(" ni ", from.SpreadTo.Select(Where))}. "
+                + $"En entrant dans les Vallons, le froid gagne {Where(from.SpreadTo[0])} ; la voisine suivante {rule.SpreadDays} jours plus tard. Purifier la nouvelle accorde {rule.SpreadDays} jours de répit ; purifier la source arrête tout. Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6.1 (essai de la quête de Sœur Albe) : la première cicatrice connue, la quête commencée (première étape) et suivie,
+        /// une cicatrice aux ruines au palier 1 (sans écho rôdeur) s'il n'y en a aucune, et deux éclats de Seuil dans le sac (s'ils tiennent).
+        /// Rend le message à montrer.
+        /// </summary>
+        public static string StartQuest(string path, ZoneDefinition zone, string? stamp = null)
+        {
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
+            SaveReadResult read = SaveStore.Read(path);
+            if (!(read.Save is WorldSave save) || save.Character is null) return "Sauvegarde illisible ou sans personnage : " + (read.Problem ?? "lance d'abord l'aventure une fois.");
+            WorldEventDefinition? e = zone.Events.FirstOrDefault(x => x.Scar != null);
+            if (e is null) return "Aucune faille à cicatrice dans la zone : rien n'a changé.";
+            SavedCharacter hero = save.Character;
+            SavedStory story = hero.Story;
+            if (story.Quests.TryGetValue(ScarQuest, out QuestProgress? known) && known.IsDone) return "La quête des cicatrices est déjà finie pour ce personnage : rien n'a changé.";
+            var quests = story.Quests.ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal);
+            quests[ScarQuest] = new QuestProgress("premiere");
+            string[] facts = story.Facts.Concat(e.Scar!.BornFact is string born ? new[] { born } : Array.Empty<string>()).ToArray();
+            hero = hero.WithStory(new SavedStory(facts, quests, story.Trust, story.Discoveries, ScarQuest, story.Guild, story.Hunted));
+            string where = "";
+            if (!hero.Scars.Any(s => s.Id.StartsWith(WorldScarRules.Key(zone.Id, e.Id, string.Empty), StringComparison.Ordinal)))
+            {
+                long day = new WorldClock(zone.Setup.Combat.TickMilliseconds).At(save.WorldTick).Day;
+                WorldEventGroup first = e.Groups[0];
+                hero = hero.WithScars(hero.Scars.Concat(new[] { new SavedScar(WorldScarRules.Key(zone.Id, e.Id, first.Id), 1, day, day) }));
+                where = $" Une cicatrice t'attend {Where(first.Id)} (palier 1, sans écho rôdeur).";
+            }
+            string item = e.Scar.PurifyItem;
+            var inventory = hero.Inventory.ToList();
+            int i = inventory.FindIndex(x => x.Item == item && x.Properties.Count == 0 && x.Count <= 18);
+            if (i >= 0) inventory[i] = new ItemStack(item, inventory[i].Count + 2);
+            else inventory.Add(new ItemStack(item, 2));
+            string shards = " Deux éclats de Seuil sont dans ton sac.";
+            try
+            {
+                hero = hero.WithItems(inventory, hero.EquipmentInstances);
+            }
+            catch (ArgumentException)
+            {
+                shards = " Ton sac est plein : pas d'éclat de Seuil ajouté.";
+            }
+            string copy = DayTrial.KeepCopy(path, stamp);
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, hero, save.Migrated));
+            return "Quête « Les cicatrices du Seuil » commencée et suivie : purifie une cicatrice, retourne voir Sœur Albe (à la chapelle, ou sur le parvis de 17 h à 18 h), puis purifie-en deux autres."
+                + where + shards + $" Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
+        }
+
+        /// <summary>Mêmes essais, la zone lue des données du dépôt (menu de l'éditeur).</summary>
+        public static string Propagate(string path, string dataDirectory, string scenariosDirectory, string? stamp = null) =>
+            Propagate(path, EventTrial.LoadZone(dataDirectory, scenariosDirectory), stamp);
+
+        public static string StartQuest(string path, string dataDirectory, string scenariosDirectory, string? stamp = null) =>
+            StartQuest(path, EventTrial.LoadZone(dataDirectory, scenariosDirectory), stamp);
+
         private static string Where(string group) => group switch
         {
             "ruines" => "dans les ruines",

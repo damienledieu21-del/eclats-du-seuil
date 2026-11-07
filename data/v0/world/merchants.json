@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 3,
   "kind": "merchants",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "values": [
       {
@@ -368,6 +368,10 @@
       {
         "item": "item.collier_de_croc_gris",
         "value": 900
+      },
+      {
+        "item": "item.chapelet_de_l_aube",
+        "value": 1200
       },
       {
         "item": "item.chapeau_de_lune",

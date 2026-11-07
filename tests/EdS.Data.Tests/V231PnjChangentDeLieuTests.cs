@@ -41,7 +41,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     private static readonly string[] Roamers =
     {
         "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant", "npc.intendant_guilde", "npc.boulanger",
-        "npc.renart", "npc.fermier", "npc.capitaine",
+        "npc.renart", "npc.fermier", "npc.capitaine", "npc.albe",   // V2.6.1 : la veille du soir de Sœur Albe sur le parvis
     };
 
     private static long TickAt(long day, int minute)
@@ -101,7 +101,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     public void Histoire_livree_en_schema_10_avec_les_PNJ_qui_changent_de_lieu()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((10, 10, 9, "0.20.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
+        Assert.Equal((11, 11, 9, "0.21.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine" },
@@ -123,6 +123,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     {
         JsonObject nine = StoryJson();
         nine["schemaVersion"] = 9;
+        V261TestData.WithoutSuites(nine);   // V2.6.1 : sans ce qui demande la version 11
         int rosalie = NpcIndex(nine, "npc.habitant");
         int messe = SlotIndex(nine, "npc.habitant", "06:30");
         Assert.Contains(Read(nine).Report.Errors, x => x.Path == $"$.data.npcs[{rosalie}].schedule[{messe}].zone" && x.Code == ValidationCode.InvalidValue);

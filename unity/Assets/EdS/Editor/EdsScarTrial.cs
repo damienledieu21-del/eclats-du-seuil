@@ -8,7 +8,7 @@ namespace EdS.Game.Editor
     /// <summary>
     /// Sous-lot V2.6 (« le Seuil qui grandit ») : pour l'essai des cicatrices, crée une cicatrice dans la sauvegarde (aux ruines, au lac ou
     /// dans le pré, au palier 1 ou 3), avance les jours du monde (elle grandit d'un palier tous les deux jours), ou efface toutes les
-    /// cicatrices. À lancer hors du mode Jeu (la partie en cours réécrirait sa sauvegarde). Une copie de la sauvegarde est gardée.
+    /// cicatrices ; sous-lot V2.6.1 : propager une cicatrice au lieu voisin, lancer la quête de Sœur Albe. À lancer hors du mode Jeu (la partie en cours réécrirait sa sauvegarde). Une copie de la sauvegarde est gardée.
     /// </summary>
     public static class EdsScarTrial
     {
@@ -37,6 +37,15 @@ namespace EdS.Game.Editor
 
         [MenuItem("Éclats du Seuil/Essai du Seuil qui grandit : avancer de 6 jours du monde")]
         private static void SixDays() => Days(6);
+
+        // Sous-lot V2.6.1 (« suites du Seuil ») : propagation au lieu voisin, quête de Sœur Albe.
+        [MenuItem("Éclats du Seuil/Essai des suites du Seuil : propager une cicatrice (des ruines vers le lac)")]
+        private static void Spread() =>
+            Run(() => ScarTrial.Propagate(SavePath, Path.Combine(RepoRoot, "data", "v0"), Path.Combine(RepoRoot, "scenarios"), Stamp));
+
+        [MenuItem("Éclats du Seuil/Essai des suites du Seuil : lancer la quête de Sœur Albe (une cicatrice, deux éclats)")]
+        private static void Quest() =>
+            Run(() => ScarTrial.StartQuest(SavePath, Path.Combine(RepoRoot, "data", "v0"), Path.Combine(RepoRoot, "scenarios"), Stamp));
 
         [MenuItem("Éclats du Seuil/Essai du Seuil qui grandit : effacer toutes les cicatrices")]
         private static void Clear() => Run(() => ScarTrial.Clear(SavePath, Stamp));

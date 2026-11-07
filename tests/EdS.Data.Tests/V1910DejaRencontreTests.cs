@@ -150,7 +150,7 @@ public sealed class V1910DejaRencontreTests
     [Fact]
     public void Le_fait_est_lisible_par_les_conditions_mais_jamais_pose_par_un_effet()
     {
-        Assert.Equal(10, StoryValidator.CurrentSchemaVersion);   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau)
+        Assert.Equal(11, StoryValidator.CurrentSchemaVersion);   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau) ; V2.6.1 : 11
         Assert.Equal("fact.met.renart", StoryValidator.MetFact("npc.renart"));
         Assert.True(Read(StoryJson()).IsValid);
 
@@ -191,6 +191,7 @@ public sealed class V1910DejaRencontreTests
         JsonObject eight = StoryJson();
         V23TestData.WithoutSchedules(eight);
         eight["schemaVersion"] = 8;
+        V261TestData.WithoutSuites(eight);   // V2.6.1 : sans ce qui demande la version 11
         foreach (JsonNode? d in eight["data"]!["dialogues"]!.AsArray())
             foreach (JsonNode? n in d!["nodes"]!.AsArray()) n!.AsObject().Remove("lines");
         StoryLoadResult read = Read(eight);

@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((10, 10, "0.20.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((11, 11, "0.21.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -124,6 +124,7 @@ public sealed class V23JourneeTests : IDisposable
     {
         JsonObject eight = StoryJson();
         eight["schemaVersion"] = 8;
+        V261TestData.WithoutSuites(eight);   // V2.6.1 : sans ce qui demande la version 11
         StoryLoadResult refused = Read(eight);
         int firmin = NpcIndex(eight, "npc.boulanger");
         (int d, int n) = NodeIndex(eight, "dialogue.boulanger", "apres");
@@ -133,6 +134,7 @@ public sealed class V23JourneeTests : IDisposable
         JsonObject entry = StoryJson();
         V23TestData.WithoutSchedules(entry);
         entry["schemaVersion"] = 8;
+        V261TestData.WithoutSuites(entry);   // V2.6.1 : sans ce qui demande la version 11
         entry["data"]!["dialogues"]![d]!["entries"]![0]!["conditions"]!.AsArray().Add(new JsonObject { ["if"] = "activity", ["id"] = "npc.boulanger", ["step"] = "fournil" });
         Assert.Contains(Read(entry).Report.Errors, x => x.Path == $"$.data.dialogues[{d}].entries[0].conditions[1].if" && x.Code == ValidationCode.InvalidValue);
         V23TestData.WithoutSchedules(eight);
