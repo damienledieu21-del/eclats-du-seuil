@@ -118,11 +118,15 @@ namespace EdS.World
                 if (!first) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Thanks, e.Id, o.Group.Id, o.Day));
                 // La première récompense est donnée tout de suite si elle tient ; sinon elle reste due (owed) jusqu'à ce qu'elle tienne.
                 else GiveEventReward(e, notices);   // sac plein : due, annoncée par le tick (WorldEvents.Step)
+                // Sous-lot V2.6 : une faille refermée fait reculer la cicatrice qui est à sa place, et arrête les autres de grandir.
+                if (e.Kind == WorldEventKind.Rift) ScarRecede(e, o.Group.Id, o.Day, notices);
             }
             else if (outcome == EventOutcome.Lost)
             {
                 notices.Add(new WorldEventNotice(lostKind ?? WorldEventNoticeKind.Lost, e.Id, o.Group.Id, o.Day));
                 if (e.LostFact is string fact) _eventFacts.Add(fact);
+                // Sous-lot V2.6 : une faille restée ouverte laisse une cicatrice (ou creuse celle qui est déjà là).
+                if (e.Kind == WorldEventKind.Rift) ScarFromLost(e, o, notices);
             }
         }
 
@@ -153,6 +157,7 @@ namespace EdS.World
             var notices = new List<WorldEventNotice>(_queuedNotices);
             _queuedNotices.Clear();
             if (_events != null) notices.AddRange(_events.Step(this, Zone, FormsToCome));
+            if (_events != null) StepScars(notices);   // sous-lot V2.6 : paliers gagnés avec les jours, fait « profonde »
             foreach (string fact in _eventFacts)
                 if (Narrative != null) Narrative.Learn(fact, story);
                 else if (!_pendingFacts.Contains(fact)) _pendingFacts.Add(fact);

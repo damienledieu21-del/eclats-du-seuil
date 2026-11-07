@@ -150,9 +150,10 @@ public class V25EvenementsTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((10, 9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.WeatherSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal((13, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
-        Assert.Equal((10, "0.13.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
+        // V2.6 : zones en schéma 11 (10 encore lu), sauvegarde v14, Vallons au contenu 0.14.0.
+        Assert.Equal((11, 10, 9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
+        Assert.Equal((11, "0.14.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
         // Ni le moteur, ni les règles, ni le journal ne changent.
         Assert.Equal(("0.29.0", 23, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -555,7 +556,7 @@ public class V25EvenementsTests
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Equal(json, SaveJsonReader.Write(r.Save!));
         Assert.Equal(new[] { "zone.vallons/attaque_hameau", "zone.vallons/faille_du_seuil" }, r.Save!.Character!.Events.Select(e => e.Id));
-        Assert.Contains("\"schemaVersion\": 13", json);
+        Assert.Contains(SaveVersion.Current, json);   // V2.6 : 14
         Assert.Contains("\"events\": []", SaveJsonReader.Write(Saved()));
     }
 
@@ -565,13 +566,15 @@ public class V25EvenementsTests
         JsonObject root = SaveJson(Saved());
         root["schemaVersion"] = 12;
         root["data"]!["character"]!.AsObject().Remove("events");
+        root["data"]!["character"]!.AsObject().Remove("scars");   // V2.6
         SaveLoadResult r = SaveJsonReader.Read(root.ToJsonString());
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Empty(r.Save!.Character!.Events);
-        Assert.Contains("\"schemaVersion\": 13", SaveJsonReader.Write(r.Save));
+        Assert.Contains(SaveVersion.Current, SaveJsonReader.Write(r.Save));
         // En version 12, le registre est un champ inconnu.
         JsonObject v12 = SaveJson(Saved());
         v12["schemaVersion"] = 12;
+        v12["data"]!["character"]!.AsObject().Remove("scars");   // V2.6
         Assert.Contains(SaveJsonReader.Read(v12.ToJsonString()).Report.Errors, e => e.Path == "$.data.character.events" && e.Code == ValidationCode.UnknownField);
     }
 
@@ -626,7 +629,7 @@ public class V25EvenementsTests
     public void Textes_d_un_moment_variante_puis_commun()
     {
         Assert.Equal(new[] { "annonce", "debut", "vague", "victoire", "defaite", "absence", "recompense", "attente", "merci", "fin" },
-            Enum.GetValues<WorldEventNoticeKind>().Select(AdventureSession.Moment));
+            Enum.GetValues<WorldEventNoticeKind>().Where(k => !AdventureSession.IsScarNotice(k)).Select(AdventureSession.Moment));   // V2.6 : les cicatrices à part
     }
 
     [Fact]

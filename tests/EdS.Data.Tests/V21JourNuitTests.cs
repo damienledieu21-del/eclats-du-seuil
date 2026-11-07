@@ -89,8 +89,8 @@ public sealed class V21JourNuitTests : IDisposable
     public void Vallons_livres_au_schema_8()
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
-        Assert.Equal((10, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal(10, Vallons.SchemaVersion);   // V2.5 : 10 (événements)
+        Assert.Equal((11, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal(11, Vallons.SchemaVersion);   // V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -158,7 +158,7 @@ public sealed class V21JourNuitTests : IDisposable
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 11 })
+        foreach (int version in new[] { 6, 12 })
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));
@@ -355,7 +355,7 @@ public sealed class V21JourNuitTests : IDisposable
         Until(w, DayPhase.Night, 20);
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", text, StringComparison.Ordinal);
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         // Session suivante, toujours la nuit : les bêtes de la nuit sont là d'emblée, les sangliers dorment.
         var next = new WorldSession(back, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));

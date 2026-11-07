@@ -227,7 +227,7 @@ public sealed class V22MeteoTests : IDisposable
         Assert.True(w.Weather.Raining);
         string text = SaveJsonReader.Write(w.Save());
         Assert.DoesNotContain("weather", text, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         var next = new WorldSession(back, Shipped.Value, ShippedData, Progression, ItemsCatalog, Book(Shipped.Value), market: new Market(ShippedMerchants));
         Assert.Equal(w.Zone.Time, next.Zone.Time);
@@ -279,7 +279,7 @@ public sealed class V22MeteoTests : IDisposable
     {
         StoryBook book = Book(Shipped.Value);
         // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
-        Assert.Equal((10, StoryValidator.CurrentSchemaVersion, "0.19.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((10, StoryValidator.CurrentSchemaVersion, "0.20.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();

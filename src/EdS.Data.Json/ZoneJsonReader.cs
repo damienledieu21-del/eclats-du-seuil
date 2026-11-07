@@ -274,8 +274,42 @@ namespace EdS.Data.Json
                 ["reward"] = (v, p) => e.Reward = ReadEventReward(input, v, p),
                 ["lostFact"] = (v, p) => e.LostFact = input.Text(v, p),
                 ["minLevel"] = (v, p) => e.MinLevel = input.Int32(v, p),   // choix de Damien du 7 novembre 2026
+                ["scar"] = (v, p) => e.Scar = ReadScar(input, v, p),   // sous-lot V2.6 (schéma 11)
             });
             return ok ? e : null;
+        }
+
+        /// <summary>Sous-lot V2.6 (schéma 11) : la cicatrice d'une faille restée ouverte.</summary>
+        private static WorldEventScarData? ReadScar(JsonInput input, JsonElement element, string path)
+        {
+            var s = new WorldEventScarData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["growDays"] = (v, p) => s.GrowDays = input.Int32(v, p),
+                ["maxStage"] = (v, p) => s.MaxStage = input.Int32(v, p),
+                ["radius"] = (v, p) => s.Radius = input.Decimal(v, p),
+                ["radiusPerStage"] = (v, p) => s.RadiusPerStage = input.Decimal(v, p),
+                ["strengthPercent"] = (v, p) => s.StrengthPercent = input.Int32(v, p),
+                ["hauntStage"] = (v, p) => s.HauntStage = input.Int32(v, p),
+                ["hauntRespawnMinutes"] = (v, p) => s.HauntRespawnMinutes = input.Int32(v, p),
+                ["purifyItem"] = (v, p) => s.PurifyItem = input.Text(v, p),
+                ["purifyXp"] = (v, p) => s.PurifyXp = input.Int64(v, p),
+                ["bornFact"] = (v, p) => s.BornFact = input.Text(v, p),
+                ["deepFact"] = (v, p) => s.DeepFact = input.Text(v, p),
+                ["purifiedFact"] = (v, p) => s.PurifiedFact = input.Text(v, p),
+            });
+            return ok ? s : null;
+        }
+
+        private static WorldEventCreatureData? ReadEventCreature(JsonInput input, JsonElement element, string path)
+        {
+            var c = new WorldEventCreatureData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["like"] = (cv, cp) => c.Like = input.Text(cv, cp),
+                ["position"] = (cv, cp) => c.Position = ScenarioJsonReader.ReadPoint(input, cv, cp),
+            });
+            return ok ? c : null;
         }
 
         private static WorldEventGroupData? ReadEventGroup(JsonInput input, JsonElement element, string path)
@@ -287,16 +321,9 @@ namespace EdS.Data.Json
                 ["weight"] = (v, p) => g.Weight = input.Int32(v, p),
                 ["position"] = (v, p) => g.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["creatures"] = (v, p) => g.Creatures = input.ReadLimitedList(v, p, ZoneValidator.MaxEventCreatures,
-                    n => $"{n} créatures, au plus {ZoneValidator.MaxEventCreatures}.", (x, xp) =>
-                    {
-                        var c = new WorldEventCreatureData();
-                        bool cok = input.ReadFields(x, xp, new Dictionary<string, Action<JsonElement, string>>
-                        {
-                            ["like"] = (cv, cp) => c.Like = input.Text(cv, cp),
-                            ["position"] = (cv, cp) => c.Position = ScenarioJsonReader.ReadPoint(input, cv, cp),
-                        });
-                        return cok ? c : null;
-                    }),
+                    n => $"{n} créatures, au plus {ZoneValidator.MaxEventCreatures}.", (x, xp) => ReadEventCreature(input, x, xp)),
+                ["haunts"] = (v, p) => g.Haunts = input.ReadLimitedList(v, p, ZoneValidator.MaxScarHaunts,   // sous-lot V2.6 (schéma 11)
+                    n => $"{n} échos rôdeurs, au plus {ZoneValidator.MaxScarHaunts}.", (x, xp) => ReadEventCreature(input, x, xp)),
             });
             return ok ? g : null;
         }

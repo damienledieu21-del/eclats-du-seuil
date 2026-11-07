@@ -111,6 +111,8 @@ namespace EdS.Game
             // La clarté de la nuit se règle dans le catalogue (1 : la nuit prévue) ; elle ne touche pas le jour.
             ambient = Mathf.Min(1f, ambient * Mathf.Lerp(1f, catalog.NightBrightness, (float)light.Night)) * (float)weather.Ambient;
             Color ambientTint = Tint(light.AmbientTint) * Tint(weather.AmbientTint) * ambient;
+            // Sous-lot V2.6 : près d'une cicatrice du Seuil, la lumière tire vers le froid.
+            ambientTint = Color.Lerp(ambientTint, ambientTint * ScarCold, _scarFade);
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = catalog.AmbientSky * ambientTint;
             RenderSettings.ambientEquatorColor = catalog.AmbientHorizon * ambientTint;
@@ -121,7 +123,8 @@ namespace EdS.Game
             float fogStart = catalogFog ? catalog.FogStart : 30f, fogEnd = catalogFog ? catalog.FogEnd : 180f;
             RenderSettings.fog = catalogFog || weatherFog;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint);
+            RenderSettings.fogColor = Color.Lerp(catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint), ScarCold * (0.4f + 0.6f * ambient), _scarFade * 0.7f);
+            if (_scarFade > 0.01f) RenderSettings.fog = true;
             if (_sky != null)
             {
                 if (_sky.HasProperty("_Exposure"))
@@ -132,7 +135,7 @@ namespace EdS.Game
             NightShare = (float)light.Night;
             // La brume du matin et la pluie rapprochent la brume du catalogue (jamais à moins de 9 m : on voit toujours autour de soi).
             RenderSettings.fogStartDistance = fogStart * (float)weather.FogStart;
-            RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd);
+            RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd * Mathf.Lerp(1f, 0.3f, _scarFade));   // sous-lot V2.6 : brume froide plus proche
             if (_camera != null) _camera.farClipPlane = Mathf.Max(250f, catalog.FogEnd + 20f);
             if (_sun != null)
             {
@@ -145,7 +148,7 @@ namespace EdS.Game
             {
                 _colors.postExposure.value = catalog.Exposure + (float)light.Exposure + (float)weather.Exposure;
                 _colors.contrast.value = catalog.Contrast;
-                _colors.saturation.value = catalog.Saturation + (float)light.Saturation + (float)weather.Saturation;
+                _colors.saturation.value = catalog.Saturation + (float)light.Saturation + (float)weather.Saturation - 70f * _scarFade;   // sous-lot V2.6 : couleurs fanées
                 _vignette.intensity.value = catalog.Vignette;
                 // Le halo coûte cher sur téléphone (Note8) : seulement sur ordinateur.
                 _bloom.active = !Application.isMobilePlatform && catalog.Bloom > 0f;
@@ -310,6 +313,17 @@ namespace EdS.Game
         /// clair (entraînement, réseau). Appelée avant <see cref="SetDayLight"/>, qui l'applique.
         /// </summary>
         public static void SetWeather(WeatherLook? look) => _weather = look ?? WeatherLook.Clear;
+
+        /// <summary>
+        /// Sous-lot V2.6 : à quel point les couleurs se fanent autour de la caméra (0 à 1 ; une cicatrice du Seuil) : moins de couleurs, une
+        /// lumière et une brume plus froides, une brume plus proche. Affichage seulement.
+        /// </summary>
+        public static void SetScarFade(float fade) => _scarFade = Mathf.Clamp01(fade);
+
+        private static float _scarFade;
+
+        /// <summary>Teinte froide d'une cicatrice (lumière et brume).</summary>
+        private static readonly Color ScarCold = new Color(0.62f, 0.7f, 0.82f);
 
         private static Color Tint(StyleTint t) => new Color((float)t.R, (float)t.G, (float)t.B);
 

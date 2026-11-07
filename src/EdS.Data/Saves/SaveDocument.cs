@@ -77,6 +77,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 (version 13) : registre des événements du monde.</summary>
         public List<SavedEventData?>? Events { get; set; }
 
+        /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes.</summary>
+        public List<SavedScarData?>? Scars { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

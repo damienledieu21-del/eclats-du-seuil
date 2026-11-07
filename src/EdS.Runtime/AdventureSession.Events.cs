@@ -34,6 +34,12 @@ namespace EdS.Runtime
             WorldEventNoticeKind.Rewarded => "recompense",
             WorldEventNoticeKind.RewardWaiting => "attente",
             WorldEventNoticeKind.Thanks => "merci",
+            WorldEventNoticeKind.ScarBorn => "cicatrice",
+            WorldEventNoticeKind.ScarGrew => "cicatrice_grandit",
+            WorldEventNoticeKind.ScarReceded => "cicatrice_recule",
+            WorldEventNoticeKind.ScarHealed => "cicatrice_guerie",
+            WorldEventNoticeKind.ScarPurified => "cicatrice_purifiee",
+            WorldEventNoticeKind.ScarStirs => "cicatrice_rode",
             _ => "fin",
         };
 
@@ -48,9 +54,19 @@ namespace EdS.Runtime
 
         private void EventNotice(WorldEventNotice n)
         {
-            if (EventText(n.Event, n.Group, Moment(n.Kind)) is string key) Say(key);
+            // Sous-lot V2.6 : les annonces d'une cicatrice disent son palier ({0}) et son lieu ({1}).
+            if (EventText(n.Event, n.Group, Moment(n.Kind)) is string key)
+            {
+                if (IsScarNotice(n.Kind)) Say(key, n.Wave, ScarPlace(n.Event, n.Group));
+                else Say(key);
+            }
             EventsAnnounced++;
             LastEventNotice = n;
+            if (n.Kind == WorldEventNoticeKind.ScarPurified)
+            {
+                _dirty = true;
+                if (n.Xp > 0) Say("text.ui.scar.purified", n.Xp);
+            }
             if (n.Kind != WorldEventNoticeKind.Rewarded) return;
             _dirty = true;
             Say("text.ui.event.reward", n.Xp, MoneyText(n.Money));

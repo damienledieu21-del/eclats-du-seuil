@@ -45,11 +45,17 @@ namespace EdS.Data.Saves
         /// <summary>Lignes du registre, au plus.</summary>
         public const int MaxEntries = 64;
 
+        /// <summary>
+        /// Revue Codex de la PR #110 (tour 3) : longueur au plus d'une clé du registre ou d'une cicatrice dans la sauvegarde (une seule borne,
+        /// celle du lecteur et de l'écrivain ; <c>ZoneValidator</c> vérifie que les clés composées des zones la respectent).
+        /// </summary>
+        public const int MaxKeyLength = 128;
+
         public static readonly IReadOnlyList<string> OutcomeNames = Array.AsReadOnly(new[] { "none", "won", "lost" });
 
         public SavedEvent(string id, long won, long lost, long last, EventOutcome outcome, bool owed = false)
         {
-            if (!SaveValidator.IsEventKey(id)) throw new ArgumentException($"Événement « {id} » hors du format des sauvegardes.", nameof(id));
+            if (!SaveValidator.IsEventKey(id) || id.Length > MaxKeyLength) throw new ArgumentException($"Événement « {id} » hors du format des sauvegardes.", nameof(id));
             if (won < 0 || won > MaxCount) throw new ArgumentOutOfRangeException(nameof(won));
             if (lost < 0 || lost > MaxCount) throw new ArgumentOutOfRangeException(nameof(lost));
             if (last < -1 || last > MaxDay) throw new ArgumentOutOfRangeException(nameof(last));

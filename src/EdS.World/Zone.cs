@@ -134,6 +134,17 @@ namespace EdS.World
 
         private readonly HashSet<string> _keyed = new HashSet<string>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Relecture de la PR #110 : combattants de passage (échos rôdeurs d'une cicatrice, qui reviennent sans fin sous une identité
+        /// nouvelle) : leur mort est rendue comme une première fois, sans être inscrite au registre (qui resterait borné).
+        /// </summary>
+        private readonly HashSet<string> _transient = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>Relecture de la PR #110 : la mort du combattant <paramref name="combatant"/> ne sera pas inscrite au registre.</summary>
+        internal void Transient(string combatant) => _transient.Add(combatant ?? throw new ArgumentNullException(nameof(combatant)));
+
+        internal bool IsTransient(string combatant) => _transient.Contains(combatant);
+
         /// <summary>La mort de ce combattant à ce tick ajouterait-elle une clé au registre ? (mortel, présent ou arrivant à ce tick, ni mort ni
         /// parti, clé pas encore inscrite)</summary>
         private bool NewDeathPossible(string combatant)
@@ -142,7 +153,7 @@ namespace EdS.World
             CombatantView view = _engine.View(combatant);
             // Revue Codex de la PR #42 (5e tour) : présent, ou dont l'arrivée est due à ce tick ; une arrivée future ou refusée ne meurt pas ce tick.
             bool here = view.IsPresent || (!view.HasLeft && view.ArrivalTick == _engine.CurrentTick);
-            return here && !view.HasLeft && view.MaxHealth != null && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
+            return here && !view.HasLeft && view.MaxHealth != null && !_transient.Contains(combatant) && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
         }
 
         private bool DeathKeyFits(string combatant) => SaveValidator.IsEventKey(EventKey(ZoneEventKind.Death, combatant));
@@ -199,7 +210,7 @@ namespace EdS.World
                 if (_dead.Contains(combatant) || !_engine.View(combatant).IsDead) continue;
                 _dead.Add(combatant);
                 string key = EventKey(ZoneEventKind.Death, combatant);
-                events.Add(new ZoneEvent(ZoneEventKind.Death, key, combatant, tick, _consumed.Add(key)));
+                events.Add(new ZoneEvent(ZoneEventKind.Death, key, combatant, tick, _transient.Contains(combatant) || _consumed.Add(key)));
             }
             return events;
         }

@@ -483,8 +483,13 @@ namespace EdS.Data.Zones
         /// sont encore lues (sans ces champs).
         /// </summary>
         /// <remarks>Version 10 (sous-lot V2.5, événements du monde) : <c>events</c> facultatif (voir <see cref="CheckEvents"/>) ; les versions 9, 8
-        /// et 7 sont encore lues (sans eux).</remarks>
-        public const int CurrentSchemaVersion = 10;
+        /// et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6, « le Seuil qui grandit ») : <c>scar</c> facultatif sur une faille et
+        /// <c>haunts</c> facultatif sur une variante d'une faille à cicatrice (voir <see cref="CheckScar"/>) ; la version 10 est encore lue (sans
+        /// eux).</remarks>
+        public const int CurrentSchemaVersion = 11;
+
+        /// <summary>Sous-lot V2.6 : version encore lue (sous-ensemble de la version 11, sans cicatrices).</summary>
+        public const int EventsSchemaVersion = 10;
 
         /// <summary>Sous-lot V2.5 : version encore lue (sous-ensemble de la version 10, sans <c>events</c>).</summary>
         public const int WeatherSchemaVersion = 9;
@@ -549,13 +554,15 @@ namespace EdS.Data.Zones
             // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit) ; sous-lot V2.4 : la version 8 aussi
             // (sans temps de population).
             // Sous-lot V2.5 : la version 9 aussi (sans événements).
+            // Sous-lot V2.6 : la version 10 aussi (sans cicatrices).
             int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion
-                || document.SchemaVersion == WeatherSchemaVersion ? document.SchemaVersion!.Value : CurrentSchemaVersion;
+                || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
             bool schema8 = document.SchemaVersion >= PreviousSchemaVersion;
             bool schema9 = document.SchemaVersion >= WeatherSchemaVersion;
-            bool schema10 = document.SchemaVersion >= CurrentSchemaVersion;
+            bool schema10 = document.SchemaVersion >= EventsSchemaVersion;
+            bool schema11 = document.SchemaVersion >= CurrentSchemaVersion;
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -844,9 +851,9 @@ namespace EdS.Data.Zones
             var events = new List<WorldEventDefinition>();
             if (d.Events != null)
             {
-                if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {CurrentSchemaVersion} attendu.");
+                if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {EventsSchemaVersion} attendu.");
                 else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
-                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit);
+                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null);
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null
@@ -972,13 +979,22 @@ namespace EdS.Data.Zones
         {
             if (zones is null) throw new ArgumentNullException(nameof(zones));
             report ??= new ValidationReport();
-            int total = 0;
+            int total = 0, scars = 0;
             foreach (ZoneDefinition z in zones)
             {
                 total = checked(total + z.Events.Count(e => e.Settles));
                 if (total <= SavedEvent.MaxEntries) continue;
                 report.Add("$.data.events", ValidationCode.LimitExceeded,
                     $"zone « {z.Id} » : {total} événements à issue dans les zones reliées, au plus {SavedEvent.MaxEntries} (registre d'un personnage).");
+                break;
+            }
+            // Sous-lot V2.6 : une cicatrice au plus par variante de faille à cicatrice ; toutes tiennent dans la sauvegarde d'un personnage.
+            foreach (ZoneDefinition z in zones)
+            {
+                scars = checked(scars + z.Events.Where(e => e.Scar != null).Sum(e => e.Groups.Count));
+                if (scars <= SavedScar.MaxEntries) continue;
+                report.Add("$.data.events", ValidationCode.LimitExceeded,
+                    $"zone « {z.Id} » : {scars} cicatrices possibles dans les zones reliées, au plus {SavedScar.MaxEntries} (sauvegarde d'un personnage).");
                 break;
             }
             return report;
@@ -1169,7 +1185,9 @@ namespace EdS.Data.Zones
         /// <summary>Emprise (centre, rayon) entière dans l'aire praticable et hors de tout obstacle (passages fermés compris) ; null si elle tient.</summary>
         internal static string? Clear(GroundVector p, Fixed r, CombatSpace space, string who)
         {
-            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
+            // Revue Codex de la PR #110 (tour 2) : comparé aux bornes de l'aire (finies, validées) et jamais calculé à partir du point, qui peut
+            // être une valeur représentable extrême : aucun débordement avant que le point soit reconnu hors de l'aire.
+            if (p.X < space.Min.X + r || p.X > space.Max.X - r || p.Z < space.Min.Z + r || p.Z > space.Max.Z - r)
                 return $"l'emprise {who} ({r} m) déborde de l'aire praticable de la zone.";
             foreach (SpaceObstacle o in space.Obstacles)
                 if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))

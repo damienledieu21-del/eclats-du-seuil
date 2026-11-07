@@ -567,7 +567,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((13, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.5 : 13 (registre des événements)
+        Assert.Equal((14, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
         Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",
@@ -577,7 +577,7 @@ public class V18cBonusTests : IDisposable
         Assert.False(r.Save!.Migrated);
         Assert.Equal(new[] { BoonKind.Meal, BoonKind.Weapon }, r.Save.Character!.Boons.Select(b => b.Kind));
         Assert.Equal(text, SaveJsonReader.Write(r.Save));
-        Assert.Contains("      \"boons\": [],\n      \"events\": []\n", Written(), StringComparison.Ordinal);
+        Assert.Contains("      \"boons\": [],\n      \"events\": [],\n      \"scars\": []\n", Written(), StringComparison.Ordinal);
     }
 
     /// <summary>Texte d'une sauvegarde de version 12, une ligne remplacée.</summary>
@@ -630,7 +630,7 @@ public class V18cBonusTests : IDisposable
     {
         // Une sauvegarde de version 11 (celle de V1.4 à V1.8b) : pas de « boons ».
         string v11 = Written().Replace(SaveVersion.Current + ",", "\"schemaVersion\": 11,", StringComparison.Ordinal)
-            .Replace(",\n      \"boons\": [],\n      \"events\": []\n", "\n", StringComparison.Ordinal);
+            .Replace(",\n      \"boons\": [],\n      \"events\": [],\n      \"scars\": []\n", "\n", StringComparison.Ordinal);
         SaveLoadResult r = SaveJsonReader.Read(v11);
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.True(r.Save!.Migrated);
