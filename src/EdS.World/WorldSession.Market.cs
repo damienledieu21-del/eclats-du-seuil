@@ -63,9 +63,12 @@ namespace EdS.World
             Npc npc = (Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Book.Npc(m.Npc);
             // Sous-lot V2.1 : la boutique est à l'étal (la place du PNJ dans l'histoire) ; la nuit, un marchand qui rentre chez lui se tient
             // devant sa porte. À l'étal comme à sa porte, une boutique fermée à cette heure le dit ; ouverte, on achète auprès du marchand.
-            GroundVector? at = ((INarrativeWorld)this).PlayerPositionIn(npc.Zone);
-            bool nearNpc = at is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
-            bool nearStall = at is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
+            // Relecture indépendante de la PR #109 : l'étal est dans la zone où vit le PNJ, le marchand dans celle de son créneau (V2.3.1) :
+            // devant un étal fermé, la boutique dit qu'elle est fermée même si le marchand est à l'auberge.
+            GroundVector? atNpc = ((INarrativeWorld)this).PlayerPositionIn(NpcZone(npc));
+            GroundVector? atStall = ((INarrativeWorld)this).PlayerPositionIn(npc.Zone);
+            bool nearNpc = atNpc is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
+            bool nearStall = atStall is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
             if (!nearNpc && !nearStall) return TradeRefusal.TooFar;
             TradeRefusal status = TradeStatus(merchant);
             if (status == TradeRefusal.Closed) return TradeRefusal.Closed;

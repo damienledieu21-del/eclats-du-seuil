@@ -66,7 +66,7 @@ public class V193bSuitesTests
     public void Histoire_en_schema_5_l_apprentie_finit_par_une_epee_de_qualite_superieure()
     {
         StoryBook book = Story.Value;
-        Assert.Equal((9, 9), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
+        Assert.Equal((10, 10), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.3.1 : schéma 10   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
         Assert.Equal(new[] { "colombe", "minerai", "forger", "montrer", "epee" }, book.Quest(Apprentie).Steps.Select(s => s.Id));
         Objective o = book.Quest(Apprentie).Steps[^1].Objective;
         Assert.Equal((ObjectiveKind.CraftQuality, "item.epee_de_garde", ItemQuality.Superior, 1L), (o.Kind, o.Id, o.Quality, o.Value));
@@ -118,7 +118,7 @@ public class V193bSuitesTests
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(4, read.Story!.SchemaVersion);
         // Plus ancien ou plus récent : refusé.
-        foreach (int version in new[] { 3, 10 })   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9
+        foreach (int version in new[] { 3, 11 })   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10
         {
             root["schemaVersion"] = version;
             Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);

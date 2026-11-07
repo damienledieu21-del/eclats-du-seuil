@@ -259,6 +259,12 @@ namespace EdS.World
         /// <summary>Sous-lot V2.3 : activité du PNJ à l'heure du monde et sous le temps qu'il fait (null : pas d'emploi du temps).</summary>
         string? NpcActivity(Npc npc);
 
+        /// <summary>
+        /// Sous-lot V2.3.1 : zone où se tient le PNJ à l'heure du monde (celle de son créneau en cours ; null : la zone de l'histoire), comme
+        /// <see cref="Npc.Zone"/> : on lui parle quand on est dans cette zone.
+        /// </summary>
+        string? NpcZone(Npc npc);
+
         /// <summary>Réponses du 31 octobre 2026 : jour du monde (fin des contrats pressés).</summary>
         long Day { get; }
 
@@ -445,6 +451,15 @@ namespace EdS.World
         /// <summary>Dialogue ouvert, ou null.</summary>
         public DialogueView? Open => _open is { } o ? View(o.Npc, o.Node) : null;
 
+        /// <summary>Sous-lot V2.3.1 : PNJ du dialogue ouvert, ou null.</summary>
+        public string? OpenNpc => _open?.Npc;
+
+        /// <summary>
+        /// Sous-lot V2.3.1 : nombre de dialogues ouverts depuis le chargement (chaque Talk accepté en ouvre un neuf) : distingue deux dialogues
+        /// de suite avec le même PNJ. Jamais sauvegardé.
+        /// </summary>
+        public long Opened { get; private set; }
+
         public SavedStory ToSaved() => new SavedStory(_facts,
             _quests.ToDictionary(q => q.Key, q => new QuestProgress(q.Value.Step < 0 ? QuestProgress.Done
                     : q.Value.Step == _book.Quest(q.Key).Steps.Count ? QuestProgress.Reward : _book.Quest(q.Key).Steps[q.Value.Step].Id, q.Value.Progress),
@@ -483,6 +498,7 @@ namespace EdS.World
                 _open = (npc, d, null);
             }
             else _open = (npc, d, d.Node(entry.Node));
+            Opened++;
             // Sous-lot V1.9.10 : premier dialogue avec ce PNJ ? Son fait « déjà rencontré » est appris maintenant (rien d'autre ne change : la
             // sauvegarde garde un fait de plus), mais reste « inconnu » pour les conditions tant que ce dialogue est ouvert (Known).
             string met = StoryValidator.MetFact(npc);
@@ -634,7 +650,7 @@ namespace EdS.World
         }
 
         private bool InRange(Npc n) =>
-            _world.PlayerPositionIn(n.Zone) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, _world.NpcPosition(n), EdS.Domain.Numerics.Fixed.Zero, TalkRange);
+            _world.PlayerPositionIn(_world.NpcZone(n)) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, _world.NpcPosition(n), EdS.Domain.Numerics.Fixed.Zero, TalkRange);
 
         /// <summary>
         /// Sous-lot V1.6 : le personnage parle à <paramref name="npc"/> : chaque étape en cours « parler à » ce PNJ est remplie (ordre ordinal

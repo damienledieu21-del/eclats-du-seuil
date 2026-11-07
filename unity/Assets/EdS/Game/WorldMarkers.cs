@@ -50,6 +50,18 @@ namespace EdS.Game
             /// <summary>Sous-lot V2.3 : ce qu'il fait à cette heure (« au fournil »), sous son nom ; null : rien à montrer.</summary>
             public string Activity;
             public string Label;
+
+            /// <summary>
+            /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : le PNJ est dans la zone pour le cœur (<see cref="WorldMarker.Present"/>) ; absent,
+            /// son repère est à la porte par où il part ou reviendra.
+            /// </summary>
+            public bool Present = true;
+
+            /// <summary>Sous-lot V2.3.1 : le PNJ est montré (caché une fois arrivé à la porte quand il part, montré à la porte quand il revient).</summary>
+            public bool Shown = true;
+
+            /// <summary>Sous-lot V2.3.1 : l'état montré est à appliquer (au premier passage de <see cref="Walk"/>, avec le corps de la pièce).</summary>
+            public bool Dirty = true;
         }
 
         private readonly GameObject _root;
@@ -78,10 +90,13 @@ namespace EdS.Game
             bool dressedIndoors = adventure.Indoors && catalog != null && catalog.Villagers > 0 && catalog.Character("paysan") != null;
             // Relecture de la PR #99 : la place et la pose de jour viennent de l'histoire (NpcsByDay), même pour une partie chargée la nuit.
             var byDay = adventure.NpcsByDay().ToDictionary(n => n.Id);
-            foreach (WorldMarker npc in adventure.Npcs())
+            // Sous-lot V2.3.1 : tous ceux qui passent ici dans la journée ; un absent attend, caché, à la porte par où il reviendra.
+            foreach (WorldMarker npc in adventure.NpcStage())
             {
                 WorldMarker day = byDay.TryGetValue(npc.Id, out WorldMarker d0) ? d0 : npc;
                 Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+                m.Present = npc.Present;
+                m.Shown = npc.Present;
                 _npcs[npc.Id] = m;
                 if (dressedIndoors)
                 {
@@ -335,16 +350,28 @@ namespace EdS.Game
         /// </summary>
         /// <param name="arena">Revue Codex de la PR #103 : dans une pièce, le corps visible d'un PNJ est un villageois du décor (le repère est
         /// caché) : il suit le repère, à chaque image (null : pas de corps à suivre).</param>
+        /// <remarks>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : un PNJ qui part dans une autre zone marche jusqu'à la porte (son repère y est, <see
+        /// cref="AdventureSession.NpcStage"/>), puis disparaît ; quand il revient, il apparaît à la porte et marche jusqu'à sa place. Le cœur
+        /// le tient déjà pour parti (on ne lui parle plus ici dès l'heure de son créneau) : ce n'est que l'affichage.
+        /// </remarks>
         public void Walk(AdventureSession adventure, float deltaTime, ArenaView arena = null)
         {
             _npcAge += deltaTime;
             if (_npcAge >= 0.5f)
             {
                 _npcAge = 0f;
-                foreach (WorldMarker npc in adventure.Npcs())
+                foreach (WorldMarker npc in adventure.NpcStage())
                     if (_npcs.TryGetValue(npc.Id, out Marker m))
                     {
                         m.Data = npc;
+                        // Il revient : il apparaît à la porte (où son repère attendait), puis marche jusqu'à sa place.
+                        if (npc.Present && !m.Shown)
+                        {
+                            m.Shown = true;
+                            m.Dirty = true;
+                        }
+                        m.Present = npc.Present;
                         // Sous-lot V2.3 : son activité de l'emploi du temps, sous son nom (relue avec sa place).
                         string activity = adventure.ActivityOf(npc.Id);
                         if (activity != m.Activity || m.Label == null)
@@ -360,6 +387,23 @@ namespace EdS.Game
                 var target = new Vector3((float)m.Data.X, at.y, (float)m.Data.Z);
                 Vector3 step = Vector3.MoveTowards(at, target, NpcWalk * deltaTime);
                 bool moving = (step - at).sqrMagnitude > 1e-8f;
+                // Sous-lot V2.3.1 : parti, arrivé à la porte : il disparaît (un caché ne marche pas, il attend à la porte).
+                if (!m.Present && m.Shown && !moving)
+                {
+                    m.Shown = false;
+                    m.Dirty = true;
+                }
+                if (!m.Shown && moving)
+                {
+                    m.Body.transform.position = step = target;
+                    moving = false;
+                }
+                if (m.Dirty)
+                {
+                    m.Dirty = false;
+                    m.Body.SetActive(m.Shown);
+                    if (arena != null) arena.ShowSpeaker(m.Data.Id, m.Shown);
+                }
                 m.Walking = moving;
                 if (moving)
                 {

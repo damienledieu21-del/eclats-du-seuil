@@ -22,7 +22,8 @@
         6,
         7,
         8,
-        9
+        9,
+        10
       ]
     },
     "kind": {
@@ -108,12 +109,17 @@
                         "type": "number"
                       }
                     },
+                    "zone": {
+                      "type": "string",
+                      "pattern": "^zone\\.[a-z][a-z0-9_]*$",
+                      "description": "Sous-lot V2.3.1 (schéma 10) : zone de la place du créneau, si ce n'est pas celle du PNJ (un intérieur relié par des portes, ou la zone de l'histoire)."
+                    },
                     "rain": {
                       "$ref": "#/$defs/schedulePlace"
                     }
                   }
                 },
-                "description": "Sous-lot V2.3 (schéma 9) : emploi du temps du PNJ, heures « HH:MM » croissantes ; abri facultatif sous une vraie pluie."
+                "description": "Sous-lot V2.3 (schéma 9) : emploi du temps du PNJ, heures « HH:MM » croissantes ; abri facultatif sous une vraie pluie ; V2.3.1 (schéma 10) : zone facultative d'un créneau (le PNJ change de lieu)."
               }
             }
           }

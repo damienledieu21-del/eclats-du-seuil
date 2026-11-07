@@ -131,6 +131,7 @@ namespace EdS.Data.Json
                 ["at"] = (v, p) => s.At = input.Text(v, p),
                 ["activity"] = (v, p) => s.Activity = input.Text(v, p),
                 ["position"] = (v, p) => s.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["zone"] = (v, p) => s.Zone = input.Text(v, p),   // sous-lot V2.3.1 (schéma 10)
                 ["rain"] = (v, p) => s.Rain = ReadPlace(input, v, p),
             }) ? s : null;
         }

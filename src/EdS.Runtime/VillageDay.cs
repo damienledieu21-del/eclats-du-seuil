@@ -98,6 +98,15 @@ namespace EdS.Runtime
     /// </summary>
     public static class VillageDay
     {
+        /// <summary>
+        /// Revue Codex de la PR #109 (sous-lot V2.3.1) : un corps de villageois est montré. Le corps d'un PNJ qui parle (<paramref
+        /// name="speaker"/>, le corps d'une pièce) n'obéit qu'au cœur : caché seulement quand il est sorti par la porte (<paramref
+        /// name="gone"/>) ; ni la nuit, ni la pluie, ni les courses des passants ne le cachent (on lui parle là, le cœur l'y tient). Un
+        /// passant du décor : pas la nuit (sauf un veilleur), pas sous une vraie pluie (sauf un sur trois), pas rentré manger.
+        /// </summary>
+        public static bool Shown(bool speaker, bool gone, bool night, bool awakeAtNight, bool sheltering, bool staysOutInRain, bool away) =>
+            speaker ? !gone : (!night || awakeAtNight) && (!sheltering || staysOutInRain) && !away && !gone;
+
         /// <summary>Fenêtres des courses (minutes du jour du monde), avant le décalage propre à chacun.</summary>
         public const int MarketFrom = 9 * 60, MarketTo = 10 * 60 + 30, LunchFrom = 12 * 60, LunchTo = 13 * 60 + 15, TavernFrom = 19 * 60, TavernTo = 21 * 60 + 45;
 
@@ -256,10 +265,31 @@ namespace EdS.Runtime
             if (minute < 11 * 60 + 30)
                 return "À voir : chacun à son travail, comme au début du jeu (Firmin au fournil, Maëlle à la forge, Garin et Bertille à leur étal). Les villageois du décor : un sur trois va au puits de la place, puis revient.";
             if (minute < 14 * 60)
-                return "À voir : midi. Firmin vend son pain sur la place ; Odile rince ses sacs à la rivière ; Maëlle mange devant chez elle, l'apprentie va au puits du village ; Aldric au tir à l'arc ; le capitaine et Garin mangent à la taverne (devant l'auberge) ; Bertille et Renart aux nouvelles, au puits. Garin vend à la taverne : à son étal, un message dit où il est. Un villageois du décor sur trois rentre manger (il disparaît dans une maison).";
+                return "À voir : midi. Firmin vend son pain sur la place ; Odile rince ses sacs à la rivière ; Maëlle mange devant chez elle, l'apprentie va au puits du village ; Aldric au tir à l'arc ; le capitaine, Garin et Aubin mangent à la taverne (dans la salle de l'auberge, sous-lot V2.3.1) ; Bertille, Renart et Rosalie aux nouvelles, au puits. Garin vend à la taverne : à son étal, un message dit où il est. Un villageois du décor sur trois rentre manger (il disparaît dans une maison).";
             if (minute < 18 * 60 + 30)
                 return "À voir : l'après-midi. Firmin fait la sieste devant sa maison (« je repose mes yeux »), Sauge à la cueillette dans les champs (de 15 h à 16 h 30), Lison qui joue près de la chapelle, Aldric qui file à la taverne vers 16 h 30.";
-            return "À voir : le soir. La taverne (la terrasse devant l'auberge) se remplit : Firmin, Maëlle, Bertille, Renart, le fermier ; Mathurin, à l'intérieur, en parle. Gaspard au coin du feu, le doyen, l'herboriste et la fermière à la veillée du hameau, l'apprentie à l'entraînement près du moulin. Un villageois du décor sur trois vient devant l'auberge. Sous une averse, chacun s'abrite sous l'auvent.";
+            return "À voir : le soir. La taverne (la salle de l'auberge, sous-lot V2.3.1) se remplit : Firmin, Maëlle, Bertille, Renart, le fermier, et le capitaine pour sa chope de 20 h 30 ; Mathurin les sert et en parle ; Aldric, lui, finit sa « ronde assise » sur la terrasse à 19 h. Gaspard au coin du feu, le doyen, l'herboriste et la fermière à la veillée du hameau, l'apprentie à l'entraînement près du moulin. Un villageois du décor sur trois vient devant l'auberge. Sous une averse, chacun s'abrite sous l'auvent.";
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : pour le menu « Essai des PNJ qui changent de lieu » de l'éditeur : ce que Damien doit
+    /// voir au moment choisi (d'après les emplois du temps de l'histoire, contenu 0.19.0 ; à tenir à jour avec eux).
+    /// </summary>
+    public static class RoamingTrial
+    {
+        public static string Guide(int minute)
+        {
+            if (minute >= 6 * 60 + 30 && minute < 7 * 60 + 30)
+                return "À voir : Rosalie sort de chez elle par sa porte et entre dans la chapelle, pour la prière du matin (sur un banc, « à la prière du matin ») ; la veuve prie dehors, sur la marche. Entre dans la chapelle : Rosalie y est, plus dans sa maison. À 7 h 30, elle rentre chez elle.";
+            if (minute >= 12 * 60 && minute < 13 * 60)
+                return "À voir : midi. Rosalie sort au puits du bourg (aux nouvelles avec Bertille et Renart) ; Garin, le capitaine et Aubin (l'intendant de la guilde) mangent dans la salle de l'auberge : on y achète à Garin, et la réserve d'Aubin le suit.";
+            if (minute >= 15 * 60 + 30 && minute < 17 * 60 + 15)
+                return "À voir : l'après-midi. À 15 h 30, Frère Anselme sort de la chapelle pour sa tournée (il rejoint la veuve sur la route du lac) ; à 16 h, Mathurin sort fumer sur la terrasse de l'auberge (« sur la terrasse, sa pipe à la main ») et Rosalie fait le tour de la place du bourg ; à 16 h 30, Anselme entre dans l'auberge bénir le tonneau neuf de Mathurin. Chacun marche jusqu'à la porte, disparaît, puis apparaît de l'autre côté.";
+            if (minute >= 18 * 60 && minute < 21 * 60 + 30)
+                return "À voir : le soir, la salle de l'auberge se remplit. Firmin (18 h 30), Renart et le fermier (19 h), Maëlle et Bertille (19 h 30) entrent par la porte de l'auberge et s'assoient ; le capitaine vient boire sa chope à 20 h 30 ; à 21 h, Mathurin sort fumer sa pipe. Parle à quelqu'un juste avant qu'il parte : il finit la conversation, puis s'en va.";
+            return "À voir : chacun est chez lui (personne ne change de lieu entre 21 h 30 et 6 h 30, ni le matin de 7 h 30 à 11 h 30). Essaie 6 h 35 (Rosalie à la chapelle), 12 h 05 (le puits et la salle), 16 h 05 (Mathurin et Anselme) ou 19 h 40 (la salle pleine).";
         }
     }
 }
+

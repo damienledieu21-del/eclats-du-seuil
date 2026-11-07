@@ -563,6 +563,9 @@ namespace EdS.Game
         /// <summary>Revue Codex de la PR #103 : le corps visible d'un PNJ d'une pièce suit son repère (emploi du temps).</summary>
         public bool MoveSpeaker(string id, float x, float z, float deltaTime) => _space != null && _space.MoveSpeaker(id, x, z, deltaTime);
 
+        /// <summary>Sous-lot V2.3.1 : montre ou cache le corps visible d'un PNJ de la pièce (il sort par la porte, ou rentre).</summary>
+        public bool ShowSpeaker(string id, bool shown) => _space != null && _space.ShowSpeaker(id, shown);
+
         public void SyncSpace(ICombatClient combat, Vector3 camera, float deltaTime)
         {
             if (_space == null || _player == null) return;
