@@ -1185,7 +1185,9 @@ namespace EdS.Data.Zones
         /// <summary>Emprise (centre, rayon) entière dans l'aire praticable et hors de tout obstacle (passages fermés compris) ; null si elle tient.</summary>
         internal static string? Clear(GroundVector p, Fixed r, CombatSpace space, string who)
         {
-            if (p.X - r < space.Min.X || p.X + r > space.Max.X || p.Z - r < space.Min.Z || p.Z + r > space.Max.Z)
+            // Revue Codex de la PR #110 (tour 2) : comparé aux bornes de l'aire (finies, validées) et jamais calculé à partir du point, qui peut
+            // être une valeur représentable extrême : aucun débordement avant que le point soit reconnu hors de l'aire.
+            if (p.X < space.Min.X + r || p.X > space.Max.X - r || p.Z < space.Min.Z + r || p.Z > space.Max.Z - r)
                 return $"l'emprise {who} ({r} m) déborde de l'aire praticable de la zone.";
             foreach (SpaceObstacle o in space.Obstacles)
                 if (o.Points.Count >= 3 && ConvexPolygon.IsStrictlyConvex(o.Points, out _) && new ConvexPolygon(o.Points).OverlapsCircle(p.X.Raw, p.Z.Raw, r.Raw))

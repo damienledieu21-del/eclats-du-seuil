@@ -648,6 +648,14 @@ namespace EdS.World
                 if (v.HasLeft || refused)
                 {
                     Changed();
+                    // Revue Codex de la PR #110 (tour 2) : un écho rôdeur qui a fui (laisse) ne revient pas une seconde plus tard : il est
+                    // parti, et revient après le délai des rôdeurs (StepHaunts) ; une arrivée refusée réessaie comme les autres.
+                    if (s.Haunt && v.HasLeft && !ending)
+                    {
+                        s.Leashing = false;
+                        s.Gone = true;
+                        return;
+                    }
                     // Laisse (ou arrivée refusée) : une vie calme revient à sa place une seconde plus tard, si une nouvelle place se réserve
                     // maintenant (relecture de la PR #107 : avant tout retour) ; sinon elle a pris la fuite. Après la fin, elle est partie.
                     s.Leashing = false;

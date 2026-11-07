@@ -404,6 +404,69 @@ public class V26SeuilGranditTests
         Assert.Empty(w.Scars);
     }
 
+    // --- Revue Codex de la PR #110 (tour 2) ---------------------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("radius", "922337203685477.5807", ".scar.radius")]
+    [InlineData("radius", "-922337203685477.5808", ".scar.radius")]
+    [InlineData("radiusPerStage", "922337203685477.5807", ".scar.radiusPerStage")]
+    [InlineData("radiusPerStage", "-922337203685477.5808", ".scar.radiusPerStage")]
+    public void Rayons_extremes_refuses_sans_debordement(string field, string json, string path)
+    {
+        int i = RiftIndex(ZoneJson());
+        ZoneLoadResult r = Mutated(root => RiftJson(root)["scar"]![field] = JsonNode.Parse(json));
+        AssertError(r, $"$.data.events[{i}]{path}", ValidationCode.OutOfRange);
+        // Les deux à la fois : chacun son erreur, aucun calcul du rayon maximal.
+        ZoneLoadResult both = Mutated(root =>
+        {
+            RiftJson(root)["scar"]!["radius"] = JsonNode.Parse("922337203685477.5807");
+            RiftJson(root)["scar"]!["radiusPerStage"] = JsonNode.Parse("922337203685477.5807");
+        });
+        AssertError(both, $"$.data.events[{i}].scar.radius", ValidationCode.OutOfRange);
+        AssertError(both, $"$.data.events[{i}].scar.radiusPerStage", ValidationCode.OutOfRange);
+    }
+
+    [Theory]
+    [InlineData("haunts", "922337203685477.5807")]
+    [InlineData("haunts", "-922337203685477.5808")]
+    [InlineData("creatures", "922337203685477.5807")]
+    [InlineData("position", "-922337203685477.5808")]
+    public void Places_extremes_refusees_sans_debordement(string what, string extreme)
+    {
+        int i = RiftIndex(ZoneJson());
+        JsonArray Far() => new JsonArray(JsonNode.Parse(extreme), JsonNode.Parse(extreme));
+        ZoneLoadResult r = Mutated(root =>
+        {
+            JsonObject g = RiftJson(root)["groups"]![0]!.AsObject();
+            if (what == "position") g["position"] = Far();
+            else g[what]![0]!["position"] = Far();
+        });
+        string path = what == "position" ? $"$.data.events[{i}].groups[0].position" : $"$.data.events[{i}].groups[0].{what}[0].position";
+        AssertError(r, path, ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Un_rodeur_qui_fuit_revient_apres_le_delai_des_rodeurs()
+    {
+        WorldSession w = Session(Zone(-18, -12), Noon(6), WithScar(Hero(), Ruins, 2, 6));
+        Run(w, 40);
+        string fled = Assert.Single(w.Scars.Single().Haunts);
+        w.Zone.Leave(fled);   // comme une laisse dépassée : il quitte la zone
+        long left = WorldEventSchedule.Absolute(w.Zone.Time);
+        Run(w, 600);   // quatre minutes du monde : pas de retour une seconde plus tard
+        Assert.True(w.Zone.Engine.View(fled).HasLeft);
+        Assert.Empty(w.Scars.Single().Haunts);
+        string? back = null;
+        for (int t = 0; t < 30_000 && back is null; t++)
+        {
+            w.Step();
+            if (t % 100 == 0 && w.Scars.Single().Haunts.Count > 0) back = w.Scars.Single().Haunts[0];
+        }
+        Assert.NotNull(back);
+        Assert.NotEqual(fled, back);
+        Assert.InRange(WorldEventSchedule.Absolute(w.Zone.Time) - left, 120, 125);   // hauntRespawnMinutes
+    }
+
     // --- Purification --------------------------------------------------------------------------------------------------------------
 
     [Fact]

@@ -260,11 +260,16 @@ namespace EdS.Data.Zones
             int? strength = Range(s.StrengthPercent, "strengthPercent", "force des échos par palier, en pour cent", 0, MaxScarStrengthPercent);
             int? haunt = Range(s.HauntStage, "hauntStage", "palier des échos rôdeurs", 1, max ?? MaxScarStage);
             int? respawn = Range(s.HauntRespawnMinutes, "hauntRespawnMinutes", "retour d'un écho rôdeur, en minutes du monde", MinHauntRespawn, MaxHauntRespawn);
+            // Revue Codex de la PR #110 (tour 2) : le rayon au palier maximal n'est calculé qu'avec des valeurs déjà dans leurs bornes
+            // (rayon et rayon par palier au plus 60 m, palier au plus 8) : aucun débordement possible, même pour une valeur représentable extrême.
+            Fixed? radius = null, perStage = null;
             if (s.Radius is null) { Missing(report, path + ".radius", "rayon au palier 1, en mètres"); ok = false; }
             else if (s.Radius.Value <= Fixed.Zero || s.Radius.Value > MaxScarRadius) { report.Add(path + ".radius", ValidationCode.OutOfRange, $"rayon hors de ]0, {MaxScarRadius}] m."); ok = false; }
+            else radius = s.Radius.Value;
             if (s.RadiusPerStage is null) { Missing(report, path + ".radiusPerStage", "rayon gagné par palier, en mètres (0 pour aucun)"); ok = false; }
             else if (s.RadiusPerStage.Value < Fixed.Zero || s.RadiusPerStage.Value > MaxScarRadius) { report.Add(path + ".radiusPerStage", ValidationCode.OutOfRange, $"rayon par palier hors de [0, {MaxScarRadius}] m."); ok = false; }
-            else if (s.Radius is Fixed r && max is int m && r + s.RadiusPerStage.Value * Fixed.FromInt(m - 1) > MaxScarRadius)
+            else perStage = s.RadiusPerStage.Value;
+            if (radius is Fixed r && perStage is Fixed ps && max is int m && r + ps * Fixed.FromInt(m - 1) > MaxScarRadius)
             { report.Add(path + ".radiusPerStage", ValidationCode.OutOfRange, $"rayon au palier {m} au-delà de {MaxScarRadius} m."); ok = false; }
             if (s.PurifyItem is null) { Missing(report, path + ".purifyItem", "objet qui purifie la cicatrice"); ok = false; }
             else if (!items.TryGetItem(s.PurifyItem, out _)) { report.Add(path + ".purifyItem", ValidationCode.UnknownReference, $"objet inconnu « {s.PurifyItem} »."); ok = false; }
