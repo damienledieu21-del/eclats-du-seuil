@@ -28,6 +28,17 @@ namespace EdS.World
             return (int)Math.Max(1, Math.Min(rule.MaxStage, checked(scar.Stage + grown)));
         }
 
+        /// <summary>
+        /// Sous-lot V2.6.1 : jour du monde où la cicatrice <paramref name="scar"/> atteint (ou a atteint) le palier de propagation de
+        /// <paramref name="rule"/> : <see cref="SavedScar.Since"/> si elle y est déjà, sinon <c>Since + (spreadStage − Stage) × growDays</c> ;
+        /// null sans propagation.
+        /// </summary>
+        public static long? SpreadReachDay(SavedScar scar, WorldEventScar rule)
+        {
+            if (!rule.Spreads) return null;
+            return scar.Stage >= rule.SpreadStage ? scar.Since : checked(scar.Since + (long)(rule.SpreadStage - scar.Stage) * rule.GrowDays);
+        }
+
         /// <summary>Jour du monde où la cicatrice gagnera son prochain palier, ou null si elle est au palier maximal.</summary>
         public static long? NextStageDay(SavedScar scar, WorldEventScar rule, long day)
         {

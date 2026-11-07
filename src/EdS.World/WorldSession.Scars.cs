@@ -216,17 +216,6 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V2.6.1 : jour du monde où la cicatrice <paramref name="scar"/> atteint (ou a atteint) le palier de propagation de
-        /// <paramref name="rule"/> : <see cref="SavedScar.Since"/> si elle y est déjà, sinon <c>Since + (spreadStage − Stage) × growDays</c> ;
-        /// null sans propagation.
-        /// </summary>
-        internal static long? SpreadReachDay(SavedScar scar, WorldEventScar rule)
-        {
-            if (!rule.Spreads) return null;
-            return scar.Stage >= rule.SpreadStage ? scar.Since : checked(scar.Since + (long)(rule.SpreadStage - scar.Stage) * rule.GrowDays);
-        }
-
-        /// <summary>
         /// Sous-lot V2.6.1 : propagation des cicatrices au lieu voisin, recalculée du temps du monde (le même résultat que la partie ait été
         /// jouée ou non pendant ces jours). Une cicatrice qui a atteint le palier de propagation depuis <see cref="WorldEventScar.SpreadDays"/>
         /// jours fait naître une cicatrice (palier 1, née ce jour-là) chez la première de ses voisines (<see cref="WorldEventGroup.SpreadTo"/>)
@@ -250,7 +239,7 @@ namespace EdS.World
                     foreach (WorldEventGroup g in e.Groups)
                     {
                         if (g.SpreadTo.Count == 0 || !(FindScar(WorldScarRules.Key(zone.Id, e.Id, g.Id)) is SavedScar s)) continue;
-                        if (!(SpreadReachDay(s, rule) is long reach)) continue;
+                        if (!(WorldScarRules.SpreadReachDay(s, rule) is long reach)) continue;
                         long day = checked(reach + rule.SpreadDays);
                         if (day > today || day >= best) continue;
                         string? free = g.SpreadTo.FirstOrDefault(n => FindScar(WorldScarRules.Key(zone.Id, e.Id, n)) is null);
