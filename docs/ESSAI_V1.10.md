@@ -201,3 +201,20 @@ Menu **Éclats du Seuil → Essai des PNJ qui changent de lieu : …**, **hors d
 | 13.6 | Parler à un PNJ juste avant son départ et laisser le dialogue ouvert | Il **finit la conversation** (il ne part qu'à la fermeture du dialogue) | [ ] | |
 | 13.7 | Suivre une quête de Rosalie ou de Mathurin quand il est ailleurs | L'étoile de la carte mène à la porte de la zone où il est ; on lui parle là-bas | [ ] | |
 | 13.8 | Ton avis : qui entre dans la salle, Aldric seul sur la terrasse, horaires, répliques | — | [ ] | |
+
+## 16. Vrais modèles et sons (V2.9)
+
+Avant l'essai : déposer `Cat_Stripe_DreamNoms.fbx` dans `Assets/Style/Sketchfab/Animaux/`, puis menu **Éclats du Seuil → Préparer l'essai de style** ; la fenêtre doit dire « Cerf : Stag_Quaternius.fbx, biche : Deer_Quaternius.fbx, lièvre : Rabbit_Pneshik.fbx, chat : Cat_Stripe_DreamNoms.fbx » et « Voix des bêtes, cloches et failles : 11 sur 11 ». Pour voir les bêtes sans attendre : les menus d'essai des animaux et des bêtes qui se promènent (§ 9 et 12), de la nuit, de la brume et des événements. Détail : [UNITY.md](UNITY.md#essai-v29--vrais-modèles-et-sons).
+
+| # | À faire | Ce que tu dois voir et entendre | OK | Remarque |
+|---|---|---|---|---|
+| 16.1 | Prendre Pain-d'Épice (le chat de Rosalie), marcher, courir, s'arrêter longtemps | Un vrai **chat roux** à rayures plus foncées (collier rouge), qui marche et court en suivant ton allure, attend debout, fouette de la queue, regarde autour de lui, se tapit ; il **miaule** (vrais miaulements, pas toujours le même) et **ronronne** quelques secondes | [ ] | |
+| 16.2 | « l'aube des cerfs », Play, sud du lac des Aubes | Un **cerf à bois** (le chef) et des **biches** qui broutent tête basse (en boucle, sans se figer), marchent, puis **galopent** ensemble quand tu approches ; à l'aube, de temps en temps (une fois toutes les deux ou trois minutes), un **brame** au loin | [ ] | |
+| 16.3 | « le crépuscule des lièvres », champs du sud | De vrais **lièvres** (texture) qui mangent, sautillent, **détalent** avec un bruit de course dans l'herbe | [ ] | |
+| 16.4 | Le matin, champs du sud (sangliers) | Des **sangliers** qui marchent dans le bon sens (sinon : régler **Boar Yaw**, voir UNITY.md), se dandinent, fouillent le groin au sol ; des **grognements** de près ; ils chargent le groin en avant ; morts, couchés sur le flanc | [ ] | |
+| 16.5 | La nuit (menu « 21 h 55 ») et la brume ; s'approcher des loups | Loups **gris** (modèle de l'Asset Store ou de Quaternius), **hurlements** de temps en temps du côté de la meute ; en combat : galop, attaque, coup reçu, mort ; le **loup blanc** du contrat est blanc ; les échos restent pâles et bleutés | [ ] | |
+| 16.6 | Attaque du hameau (menu des événements) | Le **tocsin** sonne vite, du côté du hameau ; si tu le défends : la **cloche d'église** | [ ] | |
+| 16.7 | Une faille du Seuil | **Verre qui éclate** à l'ouverture, **bourdonnement** autour d'elle (plus fort en s'approchant), **miroir qui explose** quand elle se referme ; une cicatrice qui grandit crisse | [ ] | |
+| 16.8 | Entrer dans une maison, mettre en pause | Les voix des bêtes se taisent | [ ] | |
+| 16.9 | Sur le Note8 | L'image reste fluide avec les bêtes animées ; les sons ne coupent pas | [ ] | |
+| 16.10 | Ton avis : modèles (loup de Quaternius ou loup réaliste ?), taille des bêtes, couleur du chat, fréquence des hurlements et du brame, volume (**Beast Volume**), portée (**Beast Hearing**) | — | [ ] | |

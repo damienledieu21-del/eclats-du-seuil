@@ -690,6 +690,49 @@ Menu **Éclats du Seuil → Essai des bêtes qui se promènent : …** (hors du 
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les loups qui patrouillent n'ont pas d'animation de reniflement propre sans clip du pack.
 
+### Essai V2.9 : vrais modèles et sons
+
+Demande de Damien du 7 novembre 2026 : remplacer les formes simples par de vrais modèles et de vrais sons, « le mieux possible ». Les fichiers (tous gratuits, CC0 ou CC BY 4.0 : [crédits](CREDITS.md)) restent chez Damien dans `unity/Assets/Style`, **non suivis par git**. Sans eux, chacun garde ses formes simples et ses sons faits par le code.
+
+**Déposer** (déjà fait chez Damien, sauf le chat converti) :
+
+- `Assets/Style/Animals/Quaternius/` : `Wolf_Quaternius.fbx`, `Stag_Quaternius.fbx`, `Deer_Quaternius.fbx` ;
+- `Assets/Style/Sketchfab/Animaux/` : `Rabbit_Pneshik.fbx` et `Rabbit_Pneshik_tex.png`, `Boar_Hanabi.fbx`, et **`Cat_Stripe_DreamNoms.fbx`** (le chat converti par Claude depuis la source Blender livrée avec le modèle : Unity ne lit pas le `.glb`, qui peut rester à côté ; le fichier `Source/Cat_Stripe_DreamNoms.blend.txt` ne sert à rien et peut être supprimé) ;
+- `Assets/Style/Sounds/Animaux/` : les `eds_…ogg` (miaulements, ronron, cloches, verre, miroir, hurlements, brame, sanglier, lièvre, bourdon).
+
+**Préparer** : menu **Éclats du Seuil → Préparer l'essai de style**. Il trouve les bêtes par leur nom (« stag », « deer », « rabbit », « boar », « cat », « wolf_quaternius »…), règle leur import (animations « Legacy » : attente, marche, galop et brouter en boucle), donne au lièvre sa texture (matériau `Generated/Rabbit_Pneshik.mat`), laisse au sanglier et au chat leurs couleurs (une préparation précédente qui leur aurait collé la texture du lièvre est défaite), garde les longs enregistrements compressés en mémoire (téléphone), et range tout dans le catalogue. Sa fenêtre dit « Cerf : …, biche : …, lièvre : …, chat : … » et « Voix des bêtes, cloches et failles : 11 sur 11 ».
+
+**Qui prend quoi** :
+
+| Bête | Modèle | Animations |
+|---|---|---|
+| Loups (gris, de la nuit, de la brume, Croc-Gris) | le loup réaliste de l'Asset Store s'il est là (inchangé), sinon `Wolf_Quaternius` (à la place du loup du premier pack, qui n'avait que l'attente et la marche) | attente, marche, galop, attaque, coup reçu, mort, manger (quand il fouille) |
+| Loup blanc (contrat de la guilde) | le même, éclairci (**White Wolf Color**) | idem |
+| Échos | le même, pâli et bleuté comme avant | idem |
+| Cerfs | `cerf1` (le chef) et un sur trois : `Stag_Quaternius` (bois) ; les autres : `Deer_Quaternius` (biche) | attente, marche, galop (fuite), brouter (« Eating »), mort |
+| Lièvres | `Rabbit_Pneshik` | attente, marche, course (fuite), manger, mort |
+| Sangliers | `Boar_Hanabi` (sans squelette) | **par le code** : il se dandine au pas, bondit un peu au trot, fouille le groin au sol par à-coups, charge le groin en avant, sursaute quand on le frappe, se couche sur le flanc à sa mort |
+| Pain-d'Épice | `Cat_Stripe_DreamNoms`, **teint en roux** (pelage et rayures du compagnon ; collier rouge et yeux verts gardés, les yeux luisent la nuit) | marche, course, attente, queue qui fouette (assis, étirement), regard qui fait le tour, tapi (en boule) |
+
+Les marches et galops prennent une cadence qui suit la vitesse (moins de pattes qui glissent). Toutes les bêtes sont centrées sur leur corps (le sanglier et le lièvre sont posés loin de leur origine dans leur fichier).
+
+**Sons** (en 3D, à la place de la bête ; distance d'écoute : **Beast Hearing**, 60 m ; volume : **Beast Volume**) :
+
+- **Pain-d'Épice** : un des six miaulements, mélangés mais toujours dans le même ordre ; le ronron joué par passages de 7 s (le fichier dure 91 s). Sans fichier : les sons faits par le code.
+- **Loups** : hurlements la nuit et dans la brume, toutes les 35 à 80 s, venant du loup le plus proche (jusqu'à 120 m) ; passages choisis dans les deux enregistrements là où l'on entend la meute.
+- **Cerfs** : brame rare (toutes les 100 à 220 s), seulement de 4 h 30 à 7 h 30 et de 18 h 30 à 21 h 30, d'un cerf à bois, sur un des six appels mesurés dans l'enregistrement de 149 s.
+- **Lièvres** : un bruit de course dans l'herbe quand l'un détale.
+- **Sangliers** : grognements courts (2,6 s) toutes les 9 à 22 s, du sanglier le plus proche à moins de 30 m.
+- **Hameau attaqué (V2.5)** : le **tocsin**, neuf coups rapides de la cloche, entendu de loin ; hameau défendu : la **cloche d'église** une douzaine de secondes.
+- **Failles du Seuil (V2.5, V2.6)** : **verre qui éclate** à l'ouverture (plus bas à chaque vague), **bourdonnement** en boucle autour de la faille ouverte, **miroir qui explose** quand elle se referme (ou s'échappe) ; une cicatrice qui grandit crisse comme du verre (plus grave).
+- Les voix se taisent en pause, pendant une scène et dans une maison ; quatre à la fois au plus.
+
+**Réglages du catalogue** (`Assets/Style/Resources/StyleCatalog`, en-tête « Sous-lot V2.9 ») : **Stag Yaw**, **Doe Yaw**, **Hare Yaw**, **Cat Yaw** (et **Wolf Yaw**, **Boar Yaw**) tournent un modèle qui marche de travers (90, 180, −90…). La préparation propose une fois **Boar Yaw = 60,7** pour le sanglier de Hanabi_Map (son groin pointe à 60,7° dans son fichier, mesuré sous Blender) ; **si le sanglier marche de côté ou à reculons, essayer −60,7 ou 240,7**. **Tint Cat** (teindre le chat), **Cat Height** (0,36 m), **White Wolf Color**.
+
+Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#16-vrais-modèles-et-sons-v29).
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; l'orientation du sanglier et la taille des bêtes sont calculées, pas vérifiées dans Unity ; le sanglier n'a pas de vraies pattes qui bougent (le corps se balance) ; l'auteur du chat juge lui-même ses animations d'attente « ratées » (seules la marche et la course sont soignées), elles servent faute de mieux ; le chat ne s'assoit pas vraiment (debout, la queue qui fouette) ; aucun son de cerf ou de lièvre blessé.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
