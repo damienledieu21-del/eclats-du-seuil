@@ -27,6 +27,20 @@ namespace EdS.Game
             public bool Flown;
             public float Back;
             public Vector3 Home;
+
+            // Demande de Damien du 7 novembre 2026 (19 h 58) : errance d'affichage dans son aire (marche, repos), sans traverser les maisons.
+            public string Walk;
+            public float MinX, MinZ, MaxX, MaxZ;
+            public float Radius;
+            public float Speed;
+            public float Height;
+            public float Lift;
+            public float Yaw;
+            public bool Moving;
+            public Vector3 Target;
+            public float RestUntil;
+            public int Wander;
+            public bool Grazer;
         }
 
         private readonly List<Beast> _beasts = new List<Beast>();
@@ -103,7 +117,16 @@ namespace EdS.Game
                 look.transform.SetParent(_root.transform, false);
                 look.transform.position = at + Vector3.up * (-bottom * s);
                 look.transform.rotation = Quaternion.Euler(0f, 360f * Next(), 0f);
-                var beast = new Beast { Slot = slot, Root = look.transform, Animation = look.GetComponentInChildren<Animation>(), Next = 2f + 8f * Next(), Home = look.transform.position };
+                float yaw = 360f * Next();
+                look.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                var beast = new Beast
+                {
+                    Slot = slot, Root = look.transform, Animation = look.GetComponentInChildren<Animation>(), Next = 2f + 8f * Next(), Home = look.transform.position,
+                    MinX = (float)place.MinX + 1.5f, MinZ = (float)place.MinZ + 1.5f, MaxX = (float)place.MaxX - 1.5f, MaxZ = (float)place.MaxZ - 1.5f,
+                    Radius = slot == StyleSlot.Dog ? 12f : slot == StyleSlot.Crow ? 2.5f : slot == StyleSlot.Horse ? 7f : 6f,
+                    Speed = slot == StyleSlot.Dog ? 1.8f : slot == StyleSlot.Crow ? 1.0f : slot == StyleSlot.Horse ? 1.1f : 0.7f,
+                    Height = height, Lift = -bottom * s, Yaw = yaw, Grazer = grazer, RestUntil = 3f + 10f * Next(), Wander = placed * 131,
+                };
                 if (beast.Animation != null)
                 {
                     foreach (AnimationState state in beast.Animation)
@@ -115,6 +138,7 @@ namespace EdS.Game
                         else if (tail == "idle2") beast.Idle2 = name;
                         else if (tail == "eat" || tail == "sit") beast.Rest = name;
                         else if (tail == "takeoff") beast.TakeOff = name;
+                        else if (tail == "walk") beast.Walk = name;
                     }
                     beast.Idle = beast.Idle ?? beast.Rest ?? beast.TakeOff;
                     foreach (AnimationState state in beast.Animation) state.wrapMode = state.name == beast.TakeOff ? WrapMode.ClampForever : WrapMode.Loop;
@@ -156,9 +180,10 @@ namespace EdS.Game
                 if (b.Slot == StyleSlot.Crow)
                 {
                     Crow(b, player);
-                    continue;
+                    if (b.Flown) continue;
                 }
-                if (_beastClock < b.Next) continue;
+                Roam(b, i, deltaTime);
+                if (b.Moving || b.Slot == StyleSlot.Crow || _beastClock < b.Next) continue;
                 b.Step++;
                 b.Next = _beastClock + 8f + 10f * (BeastCalls.Pick(b.Step + i * 31, 100) / 100f);
                 int pick = BeastCalls.Pick(b.Step + i * 17, 3);
@@ -177,6 +202,77 @@ namespace EdS.Game
                         sound == StyleSound.Rooster || sound == StyleSound.Owl ? 0.7f : 0.5f, 1.5f);
                 _callIn[i] = (float)BeastCalls.Interval(sound, _calls++);
             }
+        }
+
+        /// <summary>
+        /// Errance d'une bête de la ferme : au repos jusqu'à <see cref="Beast.RestUntil"/>, puis un but autour de sa place
+        /// (<see cref="BeastCalls.WanderTarget"/>), pris seulement s'il est dans son aire, hors des maisons et des obstacles (le chemin en
+        /// ligne droite est sondé tous les mètres), hors des champs cultivés pour les vaches et les chevaux ; sinon un autre, puis le repos.
+        /// Elle y marche (clip de marche s'il existe, sinon un pas balancé par le code), se tourne en douceur, puis se repose. Sans allocation.
+        /// </summary>
+        private void Roam(Beast b, int index, float deltaTime)
+        {
+            if (b.Root == null) return;
+            Vector3 at = b.Root.position;
+            if (!b.Moving)
+            {
+                if (_beastClock < b.RestUntil) return;
+                for (int k = 0; k < 4 && !b.Moving; k++)
+                {
+                    (double tx, double tz) = BeastCalls.WanderTarget(b.Wander++ + index * 977, b.Home.x, b.Home.z, b.Radius);
+                    if (Reachable(b, at.x, at.z, (float)tx, (float)tz))
+                    {
+                        b.Target = new Vector3((float)tx, 0f, (float)tz);
+                        b.Moving = true;
+                    }
+                }
+                if (!b.Moving)
+                {
+                    b.RestUntil = _beastClock + 4f;
+                    return;
+                }
+                if (b.Animation != null && (b.Walk ?? b.Idle) != null && b.Slot != StyleSlot.Crow) b.Animation.CrossFade(b.Walk ?? b.Idle, 0.3f);
+            }
+            (double x, double z, double yaw, bool arrived) = BeastCalls.Step(at.x, at.z, b.Target.x, b.Target.z, b.Speed, deltaTime);
+            b.Yaw = Mathf.MoveTowardsAngle(b.Yaw, (float)yaw, 160f * deltaTime);
+            float px = (float)x, pz = (float)z, bob = 0f, pitch = 0f, roll = 0f, sway = 0f;
+            if (b.Slot == StyleSlot.Crow) bob = 0.12f * Mathf.Abs(Mathf.Sin(_beastClock * 9f));   // le corbeau sautille
+            else if (b.Walk == null)
+            {
+                // Pas de clip de marche (vache, chien) : le corps se balance au pas, comme le sanglier sans squelette.
+                (double gb, double gp, double gr, double gy) = BeastCalls.StaticGait(b.Speed, _beastClock, null);
+                bob = (float)gb * b.Height;
+                pitch = (float)gp;
+                roll = (float)gr;
+                sway = (float)gy;
+            }
+            if (arrived)
+            {
+                b.Moving = false;
+                bob = pitch = roll = sway = 0f;
+                b.RestUntil = _beastClock + (float)BeastCalls.RestSeconds(b.Wander + index);
+                b.Next = _beastClock;   // une attitude de repos tout de suite
+                if (b.Animation != null && b.Idle != null && b.Slot != StyleSlot.Crow) b.Animation.CrossFade(b.Idle, 0.4f);
+            }
+            b.Root.position = new Vector3(px, StyleWorld.StandHeight(px, pz) + b.Lift + bob, pz);
+            b.Root.rotation = Quaternion.Euler(pitch, b.Yaw + sway, roll);
+        }
+
+        /// <summary>Le but est-il dans l'aire de la bête, et le chemin droit jusqu'à lui libre (maisons, obstacles, champs, routes) ?</summary>
+        private bool Reachable(Beast b, float x0, float z0, float x1, float z1)
+        {
+            if (x1 < b.MinX || x1 > b.MaxX || z1 < b.MinZ || z1 > b.MaxZ) return false;
+            float margin = b.Slot == StyleSlot.Crow ? 0.4f : 1.2f;
+            float dx = x1 - x0, dz = z1 - z0, length = Mathf.Sqrt(dx * dx + dz * dz);
+            int steps = Mathf.Max(1, Mathf.CeilToInt(length));
+            for (int i = 1; i <= steps; i++)
+            {
+                float x = x0 + dx * i / steps, z = z0 + dz * i / steps;
+                if (InObstacle(x, z, margin)) return false;
+                if (b.Grazer && InField(x, z, 0.3f)) return false;
+                if (b.Slot != StyleSlot.Dog && TownRules.RoadAt(x, z, _roads).Edge < 0.8) return false;
+            }
+            return true;
         }
 
         private void Crow(Beast b, Vector3 player)
@@ -201,6 +297,7 @@ namespace EdS.Game
             else if (b.Root.gameObject.activeSelf) b.Root.gameObject.SetActive(false);
             if (_beastClock < b.Back) return;
             b.Flown = false;
+            b.Moving = false;
             b.Root.position = b.Home;
             b.Root.gameObject.SetActive(true);
             state.time = 0f;

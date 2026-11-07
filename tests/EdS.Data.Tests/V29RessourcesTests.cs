@@ -405,4 +405,28 @@ public sealed class V29RessourcesTests
             Assert.Contains(author, licences, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void Les_betes_de_la_ferme_errent_autour_de_leur_place()
+    {
+        var angles = new System.Collections.Generic.HashSet<int>();
+        for (int n = 0; n < 200; n++)
+        {
+            (double x, double z) = BeastCalls.WanderTarget(n, 10, -5, 6);
+            double d = Math.Sqrt((x - 10) * (x - 10) + (z + 5) * (z + 5));
+            Assert.InRange(d, 6 * 0.35 - 1e-9, 6 + 1e-9);
+            Assert.Equal((x, z), BeastCalls.WanderTarget(n, 10, -5, 6));   // déterministe
+            angles.Add((int)(Math.Atan2(x - 10, z + 5) * 180 / Math.PI + 180) / 45);
+            Assert.InRange(BeastCalls.RestSeconds(n), 6, 16);
+        }
+        Assert.True(angles.Count >= 8);   // dans toutes les directions
+        Assert.Equal((3.0, 4.0), BeastCalls.WanderTarget(1, 3, 4, double.NaN));
+        var s = BeastCalls.Step(0, 0, 0, 10, 2, 0.5);
+        Assert.Equal((0.0, 1.0, 0.0, false), s);
+        s = BeastCalls.Step(0, 0, 10, 0, 2, 0.5);
+        Assert.Equal(90, s.Yaw, 6);
+        Assert.True(BeastCalls.Step(0, 0, 0.5, 0, 2, 1).Arrived);
+        Assert.Equal((0.5, 0.0), (BeastCalls.Step(0, 0, 0.5, 0, 2, 1).X, BeastCalls.Step(0, 0, 0.5, 0, 2, 1).Z));
+        Assert.False(BeastCalls.Step(0, 0, 3, 4, 1, 0).Arrived);   // en pause : rien ne bouge
+    }
 }

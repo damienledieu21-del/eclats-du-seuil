@@ -183,6 +183,36 @@ namespace EdS.Runtime
             return (bob, pitch, roll, yaw);
         }
 
+        /// <summary>
+        /// Sous-lot V2.9 (demande de Damien du 7 novembre 2026, 19 h 58 : les bêtes de la ferme se déplacent) : <paramref name="n"/>-ième
+        /// but d'errance autour de la place d'attache (<paramref name="homeX"/>, <paramref name="homeZ"/>), à moins de <paramref name="radius"/>
+        /// mètres (au moins le tiers), dans une direction mélangée ; toujours le même pour le même n. Affichage seulement.
+        /// </summary>
+        public static (double X, double Z) WanderTarget(int n, double homeX, double homeZ, double radius)
+        {
+            if (double.IsNaN(radius) || radius <= 0) return (homeX, homeZ);
+            double angle = 2 * Math.PI * (Mix(n) % 3600) / 3600.0;
+            double distance = radius * (0.35 + 0.65 * (Mix(n + 7919) % 1000) / 1000.0);
+            return (homeX + distance * Math.Sin(angle), homeZ + distance * Math.Cos(angle));
+        }
+
+        /// <summary>Sous-lot V2.9 : secondes de repos (brouter, s'asseoir, regarder) entre deux marches : 6 à 16 s.</summary>
+        public static double RestSeconds(int n) => 6 + 10 * (Mix(n + 104729) % 1000) / 1000.0;
+
+        /// <summary>
+        /// Sous-lot V2.9 : un pas de marche de (<paramref name="x"/>, <paramref name="z"/>) vers (<paramref name="tx"/>, <paramref name="tz"/>)
+        /// à <paramref name="speed"/> m/s pendant <paramref name="dt"/> s ; arrivé (à 5 cm près), il s'arrête au but. Rend la nouvelle place,
+        /// le cap (degrés, 0 vers +z, 90 vers +x) et l'arrivée.
+        /// </summary>
+        public static (double X, double Z, double Yaw, bool Arrived) Step(double x, double z, double tx, double tz, double speed, double dt)
+        {
+            double dx = tx - x, dz = tz - z, d = Math.Sqrt(dx * dx + dz * dz);
+            double yaw = d > 1e-9 ? Math.Atan2(dx, dz) * 180 / Math.PI : 0;
+            double move = Math.Max(0, speed) * Math.Max(0, dt);
+            if (double.IsNaN(d) || d <= 0.05 || move >= d) return (tx, tz, yaw, true);
+            return (x + dx / d * move, z + dz / d * move, yaw, false);
+        }
+
         /// <summary>Mélange d'un compteur (empreinte entière, sans hasard ni allocation).</summary>
         private static int Mix(int n)
         {
