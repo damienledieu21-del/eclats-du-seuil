@@ -619,6 +619,7 @@ namespace EdS.Runtime
         {
             if (World.IsDefeated) return false;
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
+            if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
             if (NpcInReach is Npc npc)
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
