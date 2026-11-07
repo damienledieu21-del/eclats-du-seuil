@@ -846,6 +846,28 @@ public class V25EvenementsTests
         Assert.True(e.CombatantIds.Count <= max);
     }
 
+    [Theory]
+    [InlineData(0, "reward.fact", "fact.met.doyen")]
+    [InlineData(1, "reward.fact", "fact.met.renart")]
+    [InlineData(0, "lostFact", "fact.met.herboriste_hameau")]
+    [InlineData(1, "lostFact", "fact.met.x")]
+    public void Faits_deja_rencontre_reserves_refuses(int index, string field, string fact)
+    {
+        // Revue Codex de la PR #107 (tour 3) : un fait « déjà rencontré » n'est appris qu'au premier dialogue avec le PNJ : une réussite ou
+        // un échec d'événement ne le pose jamais (le premier échange deviendrait des retrouvailles). Même règle que pour le fait d'un chef.
+        ZoneLoadResult r = Mutated(root =>
+        {
+            if (field == "lostFact") Event(root, index)["lostFact"] = fact;
+            else Event(root, index)["reward"]!["fact"] = fact;
+        });
+        AssertError(r, $"$.data.events[{index}].{field}", ValidationCode.InvalidValue);
+        Assert.Contains(r.Report.Errors, e => e.Message.Contains("réservé", StringComparison.Ordinal));
+        // Le fait du chef suit la même règle.
+        AssertError(Mutated(root => root["data"]!["boss"]!["fact"] = "fact.met.gaspard"), "$.data.boss.fact", ValidationCode.InvalidValue);
+        // Un fait voisin, non réservé, reste accepté.
+        Assert.True(Mutated(root => Event(root, index)["lostFact"] = "fact.metaux.fondus").IsValid);
+    }
+
     /// <summary>Occurrences de toutes les fenêtres jusqu'au jour <paramref name="days"/> (vérité par force brute).</summary>
     private static List<EventOccurrence> All(WorldEventDefinition e, long days) =>
         Enumerable.Range(0, (int)(days / e.EveryDays) + 2).Select(w => WorldEventSchedule.InWindow(Vallons.Id, Vallons.Id, e, w)).OfType<EventOccurrence>().ToList();

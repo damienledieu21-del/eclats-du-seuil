@@ -146,8 +146,7 @@ namespace EdS.Data.Zones
                 }
                 else if (e.Reward is null) { if (known) { Missing(report, path + ".reward", "récompense de la première réussite"); ok = false; } }
                 else if ((reward = CheckEventReward(e.Reward, path + ".reward", items, report)) is null) ok = false;
-                if (e.LostFact != null && (e.LostFact.Length > 200 || !FactId.IsMatch(e.LostFact)))
-                { report.Add(path + ".lostFact", ValidationCode.InvalidValue, $"fait « {e.LostFact} » mal formé : « fact.… »."); ok = false; }
+                if (e.LostFact != null && !CheckDeclaredFact(e.LostFact, path + ".lostFact", report)) ok = false;   // revue Codex de la PR #107 : « fact.met.… » réservé
                 if (ok)
                     events.Add(new WorldEventDefinition(e.Id!, kind, every!.Value, chance!.Value, first!.Value, start!.Value, spread!.Value, announce!.Value,
                         duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact));
@@ -214,7 +213,7 @@ namespace EdS.Data.Zones
                         else given.Add((item, count));
                     }
             }
-            if (r.Fact != null && (r.Fact.Length > 200 || !FactId.IsMatch(r.Fact))) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {r.Fact} » mal formé : « fact.… »."); ok = false; }
+            if (r.Fact != null && !CheckDeclaredFact(r.Fact, path + ".fact", report)) ok = false;   // revue Codex de la PR #107 : « fact.met.… » réservé
             return ok ? new WorldEventReward(r.Xp!.Value, r.Money!.Value, given, r.Fact) : null;
         }
 

@@ -1062,9 +1062,7 @@ namespace EdS.Data.Zones
                     { report.Add(p, ValidationCode.InvalidValue, $"forme refusée par la simulation de la zone : {refused}"); ok = false; }
                     else templates.Add(form);
                 }
-            if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
-            else if (b.Fact.StartsWith(EdS.Data.Story.StoryValidator.MetFactPrefix, StringComparison.Ordinal))
-            { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » réservé : « {EdS.Data.Story.StoryValidator.MetFactPrefix}… » est appris par le cœur au premier dialogue avec un PNJ."); ok = false; }
+            if (!CheckDeclaredFact(b.Fact, path + ".fact", report)) ok = false;
             var rewards = new List<(string, int)>();
             if (b.Rewards is null) { Missing(report, path + ".rewards", "récompenses de la première victoire, éventuellement vide"); ok = false; }
             else if (b.Rewards.Count > MaxRewards) { report.Add(path + ".rewards", ValidationCode.LimitExceeded, $"au plus {MaxRewards} récompenses."); ok = false; }
@@ -1082,6 +1080,23 @@ namespace EdS.Data.Zones
 
         private static bool Overlap(CombatantPlacement a, CombatantPlacement b) =>
             Planar.CirclesOverlap(a.Position.X.Raw, a.Position.Z.Raw, a.Radius.Raw, b.Position.X.Raw, b.Position.Z.Raw, b.Radius.Raw);
+
+        /// <summary>
+        /// Un fait déclaré par une zone (fait d'un chef, faits d'un événement du monde) : bien formé (« fact.… », 200 caractères au plus) et
+        /// jamais réservé : un fait « déjà rencontré » (<see cref="EdS.Data.Story.StoryValidator.MetFactPrefix"/>) n'est appris que par le
+        /// cœur au premier dialogue avec un PNJ (sous-lot V1.9.10 ; revue Codex de la PR #107, tour 3). Une seule règle pour toute la zone.
+        /// </summary>
+        internal static bool CheckDeclaredFact(string? fact, string path, ValidationReport report)
+        {
+            if (fact is null || fact.Length > 200 || !FactId.IsMatch(fact)) { report.Add(path, ValidationCode.InvalidValue, $"fait « {fact} » mal formé : « fact.… »."); return false; }
+            if (fact.StartsWith(EdS.Data.Story.StoryValidator.MetFactPrefix, StringComparison.Ordinal))
+            {
+                report.Add(path, ValidationCode.InvalidValue,
+                    $"fait « {fact} » réservé : « {EdS.Data.Story.StoryValidator.MetFactPrefix}… » est appris par le cœur au premier dialogue avec un PNJ.");
+                return false;
+            }
+            return true;
+        }
 
         private static bool CheckId(string? id, string path, IEnumerable<string> previous, ValidationReport report)
         {
