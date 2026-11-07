@@ -91,7 +91,8 @@ public class V193Chapitre3Tests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -307,7 +308,7 @@ public class V193Chapitre3Tests
         Assert.Equal((xp + 280, money + 180), (w.Character.Xp, w.Money));
         Say(w, "npc.fermier", "ch3_sangliers_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Sangliers, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.elixir_de_garde 2", $"QuestCompleted {Sangliers}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.elixir_de_garde 2", $"QuestCompleted {Sangliers}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.fermier", "ch3_apres");
     }
 
@@ -364,7 +365,7 @@ public class V193Chapitre3Tests
         Assert.Equal((xp + 340, money + 200), (w.Character.Xp, w.Money));
         Say(w, "npc.fermiere", "ch3_vergers_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Vergers, 0, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.brigandine 1", $"QuestCompleted {Vergers}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.brigandine 1", $"QuestCompleted {Vergers}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.fermiere", "ch3_apres");
     }
 
@@ -394,7 +395,7 @@ public class V193Chapitre3Tests
         Assert.Equal((xp + 260, money + 150), (w.Character.Xp, w.Money));
         Say(w, "npc.herboriste_hameau", "ch3_potions_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Potions, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.potion_de_soin 5", $"QuestCompleted {Potions}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.potion_de_soin 5", $"QuestCompleted {Potions}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.herboriste_hameau", "ch3_apres");
     }
 
@@ -427,7 +428,7 @@ public class V193Chapitre3Tests
         Assert.Equal((xp + 360, money + 220), (w.Character.Xp, w.Money));
         Say(w, "npc.odile", "ch3_pont_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Pont, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.rondache_du_lac 1", $"QuestCompleted {Pont}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.rondache_du_lac 1", $"QuestCompleted {Pont}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.odile", "apres");
     }
 
