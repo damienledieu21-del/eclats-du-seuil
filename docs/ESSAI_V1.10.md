@@ -220,6 +220,21 @@ Menu **Éclats du Seuil → Essai des suites du Seuil : …**, **hors du mode Je
 | 14.10 | Aldric (après les échos rôdeurs), le capitaine (après une propagation) | Une réplique chacun, une seule fois | [ ] | |
 | 14.11 | Ton avis : vitesse de la propagation (2 jours au palier 4), voisins (les ruines au milieu), quête (trois cicatrices), récompense, répliques | — | [ ] | |
 
+## 15. Les chemins (V2.8)
+
+(Le § 14 est réservé à un autre lot.) Menu **Éclats du Seuil → Essai des chemins : …**, **hors du mode Jeu** (il avance la partie au bon moment ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#recherche-de-chemin-sous-lot-v28).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 15.1 | « 11 h 30 (les PNJ traversent le bourg) », puis Play ; rester sur la place du bourg | Les PNJ quittent leur place du matin et **contournent les maisons, les étals et le puits** : ils longent un coin puis repartent droit ; aucun ne traverse un mur ni ne s'y colle | [ ] | |
+| 15.2 | Suivre Firmin jusqu'au marché, puis à la sieste (14 h) | Il prend la rue, tourne au coin de sa maison et s'arrête **devant** sa porte | [ ] | |
+| 15.3 | « 19 h (portes de l'auberge, passants) », puis Play ; rester devant l'auberge | Les passants viennent devant l'auberge **par les rues** ; les clients de la taverne marchent **jusqu'à la porte** en contournant les maisons, puis disparaissent | [ ] | |
+| 15.4 | Entrer dans l'auberge | Les clients **apparaissent à la porte** et vont s'asseoir **entre les tables** (sans les traverser) | [ ] | |
+| 15.5 | Dehors, te faire poursuivre par un loup puis passer derrière une maison ou un gros rocher | Le loup **fait le tour** au lieu de rester collé au mur ; il te rattrape par le côté | [ ] | |
+| 15.6 | Effrayer un lièvre ou un cerf contre une clôture ou un muret | Il **file de biais** le long de l'obstacle au lieu de s'y bloquer | [ ] | |
+| 15.7 | Monter sur un point que la bête ne peut pas atteindre (de l'autre côté d'une palissade fermée, si tu en trouves un) | Elle **t'attend sans bouger**, tournée vers toi ; jamais d'aller-retour | [ ] | |
+| 15.8 | Ton avis : allure des détours, PNJ qui vont droit s'il n'y a vraiment aucun chemin, tireurs qui restent coincés contre un mur en reculant | — | [ ] | |
+
 ## 16. Vrais modèles et sons (V2.9)
 
 Avant l'essai : déposer `Cat_Stripe_DreamNoms.fbx` dans `Assets/Style/Sketchfab/Animaux/`, puis menu **Éclats du Seuil → Préparer l'essai de style** ; la fenêtre doit dire « Cerf : Stag_Quaternius.fbx, biche : Deer_Quaternius.fbx, lièvre : Rabbit_Pneshik.fbx, chat : Cat_Stripe_DreamNoms.fbx » et « Voix des bêtes, cloches et failles : 11 sur 11 ». Pour voir les bêtes sans attendre : les menus d'essai des animaux et des bêtes qui se promènent (§ 9 et 12), de la nuit, de la brume et des événements. Détail : [UNITY.md](UNITY.md#essai-v29--vrais-modèles-et-sons).

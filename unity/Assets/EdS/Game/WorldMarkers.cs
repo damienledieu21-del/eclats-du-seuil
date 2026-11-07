@@ -62,6 +62,12 @@ namespace EdS.Game
 
             /// <summary>Sous-lot V2.3.1 : l'état montré est à appliquer (au premier passage de <see cref="Walk"/>, avec le corps de la pièce).</summary>
             public bool Dirty = true;
+
+            /// <summary>
+            /// Sous-lot V2.8 (recherche de chemin) : son trajet, qui contourne les maisons et les murs (recalculé quand sa place change) ;
+            /// sans chemin, il va droit comme avant.
+            /// </summary>
+            public readonly Walker Route = new Walker { StraightWhenBlocked = true };
         }
 
         private readonly GameObject _root;
@@ -358,6 +364,7 @@ namespace EdS.Game
         public void Walk(AdventureSession adventure, float deltaTime, ArenaView arena = null)
         {
             _npcAge += deltaTime;
+            WalkPaths paths = adventure.Paths;   // sous-lot V2.8
             if (_npcAge >= 0.5f)
             {
                 _npcAge = 0f;
@@ -385,7 +392,14 @@ namespace EdS.Game
             {
                 Vector3 at = m.Body.transform.position;
                 var target = new Vector3((float)m.Data.X, at.y, (float)m.Data.Z);
-                Vector3 step = Vector3.MoveTowards(at, target, NpcWalk * deltaTime);
+                // Sous-lot V2.8 : il vise le prochain point de passage de son trajet (le but lui-même si la ligne droite est libre).
+                Vector3 aim = target;
+                if (m.Shown)
+                {
+                    (double ax, double az) = m.Route.Next(paths, at.x, at.z, target.x, target.z);
+                    aim = new Vector3((float)ax, at.y, (float)az);
+                }
+                Vector3 step = Vector3.MoveTowards(at, aim, NpcWalk * deltaTime);
                 bool moving = (step - at).sqrMagnitude > 1e-8f;
                 // Sous-lot V2.3.1 : parti, arrivé à la porte : il disparaît (un caché ne marche pas, il attend à la porte).
                 if (!m.Present && m.Shown && !moving)
@@ -393,9 +407,10 @@ namespace EdS.Game
                     m.Shown = false;
                     m.Dirty = true;
                 }
-                if (!m.Shown && moving)
+                if (!m.Shown && (target - at).sqrMagnitude > 1e-8f)
                 {
                     m.Body.transform.position = step = target;
+                    m.Route.Reset();
                     moving = false;
                 }
                 if (m.Dirty)
@@ -408,7 +423,7 @@ namespace EdS.Game
                 if (moving)
                 {
                     m.Body.transform.position = step;
-                    Vector3 way = target - at;
+                    Vector3 way = aim - at;
                     way.y = 0f;
                     if (m.Faces && way.sqrMagnitude > 0.0001f) m.Body.transform.rotation = Quaternion.LookRotation(way);
                     // Arrivé : à sa place de jour, sa pose de jour ; devant sa porte, il regarde la rue (dos à la porte).

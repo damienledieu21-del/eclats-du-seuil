@@ -22,7 +22,7 @@ namespace EdS.Data.Tests;
 public class V18dBonusModifieDataTests
 {
     private const string Bonus = "entrainement_bonus";
-    private const string Latest = "reference-0.29.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.26.0-contenu-0.6.0-regles-0.15.0";
+    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.26.0-contenu-0.6.0-regles-0.15.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -53,7 +53,7 @@ public class V18dBonusModifieDataTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.29.0", 23, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal("gear", CombatActionIds.Of(CombatAction.Gear));
         Assert.DoesNotContain("gear", CombatActionIds.Named);   // écrite à part, comme consume
     }

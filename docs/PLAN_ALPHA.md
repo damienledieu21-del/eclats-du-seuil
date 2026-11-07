@@ -154,6 +154,8 @@ Le détail de chaque chantier est dans le [plan des Vallons, section 3](PLAN_VAL
 
 Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallons en très grand », [plan des Vallons, section 7](PLAN_VALLONS_SOLO.md#7-après-la-vague-1)). Les identifiants V2.x sont proposés ici.
 
+**Nom des sous-lots** (relecture de la PR #113, 7 novembre 2026) : le lot de recherche de chemin (PR #113, accord de Damien du 7 novembre 2026) s'appelle **« V2.8 bis — Recherche de chemin »** dans ce plan, pour ne pas se confondre avec le chantier n° 20 « V2.8 — Fêtes, stock changeant, essai » ; ses commits et sa documentation (MONDE, MOTEUR) le nomment « V2.8 ». Aucun autre identifiant n'est renommé.
+
 ### 13. V2.1 — Jour et nuit qui changent le monde (M)
 
 - La journée de 3 h et la nuit de 22 h à 5 h (déjà dans le jeu, PR #74) changent le monde : lanternes allumées, villageois rentrés, créatures de nuit, nuit bleue et lisible (sujets 32 et 49).

@@ -49,6 +49,9 @@ namespace EdS.Game
             public Quaternion[] LegBase;
             public float Stride;
             public bool Stepping;
+
+            /// <summary>Sous-lot V2.8 sur main : trajet par la recherche de chemin (contourne maisons, murs, rochers).</summary>
+            public readonly Walker Route = new Walker();
         }
 
         private readonly List<Beast> _beasts = new List<Beast>();
@@ -237,6 +240,7 @@ namespace EdS.Game
                     {
                         b.Target = new Vector3((float)tx, 0f, (float)tz);
                         b.Moving = true;
+                        b.Route.Reset();
                     }
                 }
                 if (!b.Moving)
@@ -253,7 +257,16 @@ namespace EdS.Game
                     b.Stepping = true;
                 }
             }
-            (double x, double z, double yaw, bool arrived) = BeastCalls.Step(at.x, at.z, b.Target.x, b.Target.z, b.Speed, deltaTime);
+            // Sous-lot V2.8 (main) : le point de passage suivant du trajet trouvé par la recherche de chemin (le trajet n'est calculé qu'au
+            // changement de but) ; sans chemin, la bête renonce et se repose.
+            (double wx, double wz) = b.Route.Next(Paths, at.x, at.z, b.Target.x, b.Target.z);
+            if (b.Route.Blocked)
+            {
+                Settle(b, index);
+                return;
+            }
+            (double x, double z, double yaw, bool reached) = BeastCalls.Step(at.x, at.z, wx, wz, b.Speed, deltaTime);
+            bool arrived = reached && Mathf.Abs((float)wx - b.Target.x) < 0.06f && Mathf.Abs((float)wz - b.Target.z) < 0.06f;
             float moved = Mathf.Sqrt(((float)x - at.x) * ((float)x - at.x) + ((float)z - at.z) * ((float)z - at.z));
             b.Yaw = Mathf.MoveTowardsAngle(b.Yaw, (float)yaw, 160f * deltaTime);
             float px = (float)x, pz = (float)z, bob = 0f, pitch = 0f, roll = 0f, sway = 0f;
@@ -284,18 +297,8 @@ namespace EdS.Game
             }
             if (arrived)
             {
-                b.Moving = false;
-                if (b.Stepping)
-                {
-                    for (int l = 0; l < b.Legs.Length; l++)
-                        if (b.Legs[l] != null) b.Legs[l].localRotation = b.LegBase[l];
-                    b.Stepping = false;
-                    if (b.Animation != null && b.Idle != null) b.Animation.Play(b.Idle);
-                }
+                Settle(b, index);
                 bob = pitch = roll = sway = 0f;
-                b.RestUntil = _beastClock + (float)BeastCalls.RestSeconds(b.Wander + index);
-                b.Next = _beastClock;   // une attitude de repos tout de suite
-                if (b.Animation != null && b.Idle != null && b.Slot != StyleSlot.Crow) b.Animation.CrossFade(b.Idle, 0.4f);
             }
             b.Root.position = new Vector3(px, StyleWorld.StandHeight(px, pz) + b.Lift + bob, pz);
             b.Root.rotation = Quaternion.Euler(pitch, b.Yaw + sway, roll);
@@ -325,20 +328,37 @@ namespace EdS.Game
             b.LegBase = new Quaternion[legs.Count];
         }
 
-        /// <summary>Le but est-il dans l'aire de la bête, et le chemin droit jusqu'à lui libre (maisons, obstacles, champs, routes) ?</summary>
+        /// <summary>Fin d'une marche (arrivée ou chemin introuvable) : pattes et attente rendues, repos de 6 à 16 s.</summary>
+        private void Settle(Beast b, int index)
+        {
+            b.Moving = false;
+            if (b.Stepping)
+            {
+                for (int l = 0; l < b.Legs.Length; l++)
+                    if (b.Legs[l] != null) b.Legs[l].localRotation = b.LegBase[l];
+                b.Stepping = false;
+            }
+            b.RestUntil = _beastClock + (float)BeastCalls.RestSeconds(b.Wander + index);
+            b.Next = _beastClock;   // une attitude de repos tout de suite
+            if (b.Animation != null && b.Idle != null && b.Slot != StyleSlot.Crow) b.Animation.CrossFade(b.Idle, 0.4f);
+        }
+
+        /// <summary>
+        /// Le but convient-il : dans l'aire de la bête, hors des maisons et des obstacles, hors des champs cultivés pour les vaches et les
+        /// chevaux, hors des routes (sauf le chien) ? Le chemin lui-même vient de la recherche de chemin (sous-lot V2.8 sur main), qui
+        /// contourne maisons, murs et rochers ; une ligne droite qui couperait un champ reste refusée aux vaches et aux chevaux.
+        /// </summary>
         private bool Reachable(Beast b, float x0, float z0, float x1, float z1)
         {
             if (x1 < b.MinX || x1 > b.MaxX || z1 < b.MinZ || z1 > b.MaxZ) return false;
             float margin = b.Slot == StyleSlot.Crow ? 0.4f : 1.2f;
+            if (InObstacle(x1, z1, margin)) return false;
+            if (b.Slot != StyleSlot.Dog && TownRules.RoadAt(x1, z1, _roads).Edge < 0.8) return false;
+            if (!b.Grazer) return true;
             float dx = x1 - x0, dz = z1 - z0, length = Mathf.Sqrt(dx * dx + dz * dz);
             int steps = Mathf.Max(1, Mathf.CeilToInt(length));
             for (int i = 1; i <= steps; i++)
-            {
-                float x = x0 + dx * i / steps, z = z0 + dz * i / steps;
-                if (InObstacle(x, z, margin)) return false;
-                if (b.Grazer && InField(x, z, 0.3f)) return false;
-                if (b.Slot != StyleSlot.Dog && TownRules.RoadAt(x, z, _roads).Edge < 0.8) return false;
-            }
+                if (InField(x0 + dx * i / steps, z0 + dz * i / steps, 0.3f)) return false;
             return true;
         }
 

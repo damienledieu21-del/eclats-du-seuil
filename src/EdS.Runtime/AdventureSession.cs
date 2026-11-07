@@ -1407,6 +1407,25 @@ namespace EdS.Runtime
 
         private AdventureMap? _map;
         private int _mapSession = -1;
+        private WalkPaths? _paths;
+        private int _pathsSession = -1;
+
+        /// <summary>
+        /// Sous-lot V2.8 (recherche de chemin) : trajets des PNJ et des passants de la zone ouverte (ils contournent son décor) ; recalculés
+        /// à chaque nouvelle session, comme la carte.
+        /// </summary>
+        public WalkPaths Paths
+        {
+            get
+            {
+                if (_paths is null || _pathsSession != Opened)
+                {
+                    _paths = new WalkPaths(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."));
+                    _pathsSession = Opened;
+                }
+                return _paths;
+            }
+        }
 
         /// <summary>
         /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
