@@ -171,7 +171,9 @@ namespace EdS.Game
                 Vector3? at = null;
                 foreach (WorldEventView v in AdventureEvents(zone))
                     if (v.Event.Id == e.Id && v.Rift is GroundVector g) at = new Vector3(Raw(g.X), 1f, Raw(g.Z));
-                return Burst(StyleSound.Glass, at, kind == WorldEventNoticeKind.Wave ? 0.5f : 1f);
+                // 2e vague : un portail qui s'ouvre (au départ seulement), avec le verre qui éclate.
+                bool portal = kind == WorldEventNoticeKind.Started && Burst(StyleSound.Portal, at, 0.8f);
+                return Burst(StyleSound.Glass, at, kind == WorldEventNoticeKind.Wave ? 0.5f : 1f) || portal;
             }
             if (Clip(StyleSound.Tocsin) == null) return false;
             if (kind != WorldEventNoticeKind.Started) return true;   // une vague d'un pillage : le tocsin sonne déjà
@@ -275,7 +277,8 @@ namespace EdS.Game
         /// <summary>Le hameau est défendu : la cloche d'église sonne une douzaine de secondes (un passage du long enregistrement).</summary>
         private void Church(WorldEventDefinition e, ZoneDefinition zone)
         {
-            AudioClip clip = Clip(StyleSound.ChurchBell);
+            // 2e vague : une des cloches d'église déposées (quatre), mélangées.
+            AudioClip clip = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.Sound(StyleSound.ChurchBell, BeastCalls.Pick(_churches, 1 << 20)) : null;
             if (clip == null) return;
             _strikesLeft = 0;
             AudioSource bell = _bells[0];

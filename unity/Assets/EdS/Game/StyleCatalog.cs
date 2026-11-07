@@ -176,6 +176,15 @@ namespace EdS.Game
         public GameObject Hare;
         [Tooltip("Chat compagnon (Stripe the Cat de DreamNoms, converti en FBX) ; teint aux couleurs de Pain-d'Épice.")]
         public GameObject Cat;
+        [Tooltip("2e vague : corbeau, vache, chien et cheval (Sketchfab, convertis) : les bêtes de la ferme et des champs, posées par le jeu.")]
+        public GameObject Crow;
+        public GameObject Cow;
+        public GameObject Dog;
+        public GameObject Horse;
+        [Tooltip("Bêtes de la ferme et des champs (vaches, chevaux, chiens, corbeaux) : 1 = le nombre prévu, 0 = aucune (la moitié sur téléphone).")]
+        [Range(0f, 2f)] public float Livestock = 1f;
+        [Tooltip("Volume des pas du personnage (herbe, gravier, feuilles, plancher).")]
+        [Range(0f, 1f)] public float StepVolume = 0.35f;
         public float StagYaw;
         public float DoeYaw;
         public float HareYaw;
@@ -402,6 +411,10 @@ namespace EdS.Game
                 case StyleSlot.Doe: return Doe;
                 case StyleSlot.Hare: return Hare;
                 case StyleSlot.Cat: return Cat;
+                case StyleSlot.Crow: return Crow;
+                case StyleSlot.Cow: return Cow;
+                case StyleSlot.Dog: return Dog;
+                case StyleSlot.Horse: return Horse;
                 default: return null;
             }
         }

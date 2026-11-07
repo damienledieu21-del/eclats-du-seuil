@@ -558,6 +558,12 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.1 : le décor de la nuit (lanternes, fenêtres, feux follets, hiboux, villageois rentrés).</summary>
         public void Night(Vector3 camera, bool worldNight, float deltaTime) => _space?.Night(camera, worldNight, deltaTime);
 
+        /// <summary>Sous-lot V2.9 (2e vague) : les bêtes de la ferme et des champs, et leurs cris (<see cref="SpaceView.Life"/>).</summary>
+        public void Life(Vector3 player, int minute, float deltaTime) => _space?.Life(player, minute, deltaTime);
+
+        /// <summary>Sous-lot V2.9 (2e vague) : le bruit d'un pas à cette place (herbe sans décor).</summary>
+        public StyleSound StepSound(Vector3 at, bool forest) => _space != null ? _space.StepSound(at.x, at.z, forest) : StyleSound.StepGrass;
+
         /// <summary>Sous-lot V2.2 : le décor du temps (flaques, villageois qui s'abritent).</summary>
         public void Weather(WeatherLook look) => _space?.Weather(look);
 

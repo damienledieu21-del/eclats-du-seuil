@@ -42,6 +42,9 @@ namespace EdS.Game
         private Quaternion _baseRotation;
         private float _metersToLocal;
         private float _clock;
+        private float _overlayUntil;
+        private StyleMotion _overlayMotion;
+        private bool _overlaid;
 
         // Essai réaliste 7 : geste en cours (attaque, sort, coup reçu) et sa fin.
         private float _actionUntil;
@@ -165,6 +168,15 @@ namespace EdS.Game
             }
             if (_animation == null) return;
             string clip = Pick(motion, prefer, variant);
+            // Sous-lot V2.9 (2e vague) : une bête sans clip d'attaque (le loup de roo3d, le cerf élaphe) ou de coup reçu charge ou sursaute par
+            // le code, par-dessus son animation.
+            bool missing = clip == null || ((motion == StyleMotion.Attack || motion == StyleMotion.Cast) && clip == Pick(StyleMotion.Idle));
+            if (_beast && missing)
+            {
+                _overlayUntil = Time.time + (motion == StyleMotion.Hurt || motion == StyleMotion.GuardHit ? 0.3f : 0.55f);
+                _overlayMotion = motion;
+                return;
+            }
             if (clip == null) return;
             AnimationState state = _animation[clip];
             _actionUntil = Time.time + (state != null ? Mathf.Clamp(state.length, shortest, longest) : shortest);
@@ -230,6 +242,7 @@ namespace EdS.Game
                 _playingState = _beast ? _animation[clip] : null;
                 _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
             }
+            if (_beast) Overlay(dead);
             // Sous-lot V2.9 : la cadence de la marche et du galop suit la vitesse (moins de pattes qui glissent), d'après la taille de la bête.
             if (_playingState != null)
             {
@@ -237,6 +250,25 @@ namespace EdS.Game
                 float reference = _playingMotion == StyleMotion.Walk ? 1.2f * stride : _playingMotion == StyleMotion.Run ? 5.5f * stride : 0f;
                 _playingState.speed = reference > 0f ? Mathf.Clamp(_speed / reference, 0.6f, 1.7f) : 1f;
             }
+        }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : charge (groin ou museau en avant) ou sursaut d'une bête animée sans le clip voulu ; puis sa place d'origine.</summary>
+        private void Overlay(bool dead)
+        {
+            if (_look == null || _fallen) return;
+            if (dead || Time.time >= _overlayUntil)
+            {
+                if (!_overlaid) return;
+                _overlaid = false;
+                _look.localPosition = _basePosition;
+                _look.localRotation = _baseRotation;
+                return;
+            }
+            _overlaid = true;
+            float push = Mathf.Sin(Mathf.PI * (1f - Mathf.Clamp01((_overlayUntil - Time.time) / 0.55f)));
+            bool hurt = _overlayMotion == StyleMotion.Hurt || _overlayMotion == StyleMotion.GuardHit;
+            _look.localPosition = _basePosition + new Vector3(0f, 0f, hurt ? -0.08f * Height * push : 0.25f * Height * push) * _metersToLocal;
+            _look.localRotation = _baseRotation * Quaternion.Euler(hurt ? -6f * push : 10f * push, 0f, hurt ? 6f * push : 0f);
         }
 
         /// <summary>

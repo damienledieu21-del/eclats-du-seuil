@@ -74,8 +74,13 @@ namespace EdS.Game.Editor
             string doe = StyleRules.Candidates(models, StyleSlot.Doe).FirstOrDefault();
             string hare = StyleRules.Candidates(models, StyleSlot.Hare).FirstOrDefault();
             string cat = StyleRules.Candidates(models, StyleSlot.Cat).FirstOrDefault();
-            foreach (string animated in new[] { stag, doe, hare, cat }.Where(p => p != null)) Legacy(animated, false);
-            var animals = new HashSet<string>(new[] { wolf, boar, stag, doe, hare, cat }.Where(p => p != null));
+            // 2e vague : corbeau, vache, chien, cheval (bêtes de la ferme et des champs, posées par le jeu).
+            string crow = StyleRules.Candidates(models, StyleSlot.Crow).FirstOrDefault();
+            string cow = StyleRules.Candidates(models, StyleSlot.Cow).FirstOrDefault();
+            string dog = StyleRules.Candidates(models, StyleSlot.Dog).FirstOrDefault();
+            string horse = StyleRules.Candidates(models, StyleSlot.Horse).FirstOrDefault();
+            foreach (string animated in new[] { stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null)) Legacy(animated, false);
+            var animals = new HashSet<string>(new[] { wolf, boar, stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null));
             foreach (string animal in animals) AnimalMaterial(animal, notes);
 
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe). Les personnages de Mixamo ont les leurs
@@ -89,8 +94,7 @@ namespace EdS.Game.Editor
             var trees = new Dictionary<string, string>();
             foreach (string tree in StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Where(IsSketchfab))
                 if (TreePrefab(tree, notes) is string prefab) trees[tree] = prefab;
-            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)
-                && !animals.Contains(p)))
+            foreach (string model in models.Where(p => !animals.Contains(p)).Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
                 RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
@@ -131,6 +135,10 @@ namespace EdS.Game.Editor
             catalog.Doe = Load(doe);
             catalog.Hare = Load(hare);
             catalog.Cat = Load(cat);
+            catalog.Crow = Load(crow);
+            catalog.Cow = Load(cow);
+            catalog.Dog = Load(dog);
+            catalog.Horse = Load(horse);
             // Sous-lot V2.9 : la rotation proposée pour un modèle connu (le sanglier de Hanabi_Map regarde de travers dans son fichier),
             // mise une seule fois : un réglage fait ensuite à la main est gardé.
             if (catalog.AnimalVersion < StyleCatalog.AnimalDefaults)
@@ -223,7 +231,7 @@ namespace EdS.Game.Editor
                 .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
                 .Where(s => s.Clips.Length > 0).ToArray();
             catalog.Music = System.Enum.GetValues(typeof(StyleMusic)).Cast<StyleMusic>()
-                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(StyleRules.MusicRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(m => m.Clip != null).ToArray();
             catalog.Ambiences = System.Enum.GetValues(typeof(StyleAmbience)).Cast<StyleAmbience>()
                 .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
@@ -301,9 +309,13 @@ namespace EdS.Game.Editor
             int grounds = new[] { catalog.SoilColor, catalog.RockColor, catalog.GrassColor }.Count(t => t != null);
             int voices = new[] { StyleSound.Meow, StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.HareDash, StyleSound.BoarGrumble, StyleSound.Tocsin,
                 StyleSound.ChurchBell, StyleSound.Glass, StyleSound.Shatter, StyleSound.RiftHum }.Count(k => catalog.Sound(k, 0) != null);
+            int world = new[] { StyleSound.Portal, StyleSound.StepGrass, StyleSound.StepGravel, StyleSound.StepLeaves, StyleSound.StepWood, StyleSound.Caw,
+                StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl }.Count(k => catalog.Sound(k, 0) != null);
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
                 + "\nCerf : " + Name(stag) + ", biche : " + Name(doe) + ", lièvre : " + Name(hare) + ", chat : " + Name(cat)
+                + "\nFerme : corbeau " + Name(crow) + ", vache " + Name(cow) + ", chien " + Name(dog) + ", cheval " + Name(horse)
                 + "\nVoix des bêtes, cloches et failles : " + voices + " sur 11 (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
+                + "\nPortail, pas et cris de la ferme : " + world + " sur 13"
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
@@ -311,7 +323,7 @@ namespace EdS.Game.Editor
                 + "\nEau : " + (catalog.SampleWater != null ? "eau du sample (ordinateur)" : catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
-                + ", musiques : " + catalog.Music.Length + " sur 4, ambiances : " + catalog.Ambiences.Length + " sur 3"
+                + ", musiques : " + catalog.Music.Length + " sur 6, ambiances : " + catalog.Ambiences.Length + " sur 12"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
                 + "\n\n" + models.Count + " modèles, " + textures.Count + " textures et " + sounds.Count + " sons trouvés dans Assets/Style. Appuie sur Play."

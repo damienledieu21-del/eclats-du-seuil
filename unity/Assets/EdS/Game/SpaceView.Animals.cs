@@ -1,0 +1,221 @@
+using System.Collections.Generic;
+using EdS.Runtime;
+using UnityEngine;
+
+namespace EdS.Game
+{
+    /// <summary>
+    /// Sous-lot V2.9 (2e vague de ressources, demande de Damien du 7 novembre 2026 : « animer le village et les fermes ») : vaches dans les
+    /// champs, chevaux au hameau, chiens au bourg et au hameau, corbeaux posés dans les champs et les ruines (ils s'envolent quand on
+    /// approche, reviennent une minute plus tard), avec leurs cris en 3D (meuglements, hennissements, aboiements, croassements) ; le coq à
+    /// l'aube, les poules et les moutons le jour au hameau, la hulotte la nuit dans la forêt. Ni collision ni combat : décor seulement. Sans
+    /// modèle au catalogue, rien n'est posé (les cris de la ferme restent, sans bête à voir). Places fixes, tirées du nom de la zone.
+    /// </summary>
+    public sealed partial class SpaceView
+    {
+        private sealed class Beast
+        {
+            public StyleSlot Slot;
+            public Transform Root;
+            public Animation Animation;
+            public string Idle;
+            public string Idle2;
+            public string Rest;      // manger, s'asseoir
+            public string TakeOff;   // le corbeau
+            public float Next;
+            public int Step;
+            public bool Flown;
+            public float Back;
+            public Vector3 Home;
+        }
+
+        private readonly List<Beast> _beasts = new List<Beast>();
+        private readonly List<(StyleSound Sound, Vector3 At)> _farmCalls = new List<(StyleSound, Vector3)>();
+        private readonly float[] _callIn = new float[16];
+        private int _calls;
+        private SoundPool _farmVoices;
+        private float _beastClock;
+
+        private static readonly StyleSound[] FarmSounds =
+            { StyleSound.Moo, StyleSound.Neigh, StyleSound.Bark, StyleSound.Caw, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl };
+
+        /// <summary>Pose les bêtes de la ferme et des champs d'après les lieux de la carte (rien dans une maison ou sans carte).</summary>
+        private void Livestock(AdventureMap map)
+        {
+            if (map == null || map.Indoor) return;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            float k = catalog != null ? catalog.Livestock * (Application.isMobilePlatform ? 0.5f : 1f) : 1f;
+            _farmVoices = new SoundPool(_root.transform, "Cris de la ferme (V2.9)", 3);
+            foreach (MapPlace place in map.Places)
+            {
+                string key = StyleRules.Key(place.Id);
+                if (key.StartsWith("champs", System.StringComparison.Ordinal))
+                {
+                    Herd(place, StyleSlot.Cow, Mathf.RoundToInt(3 * k), 1.5f, StyleSound.Moo);
+                    Herd(place, StyleSlot.Crow, Mathf.RoundToInt(5 * k), 0.32f, StyleSound.Caw);
+                    _farmCalls.Add((StyleSound.Sheep, PlaceCenter(place)));
+                }
+                else if (key.StartsWith("hameau", System.StringComparison.Ordinal))
+                {
+                    Herd(place, StyleSlot.Horse, Mathf.RoundToInt(2 * k), 1.75f, StyleSound.Neigh);
+                    Herd(place, StyleSlot.Dog, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Bark);
+                    _farmCalls.Add((StyleSound.Rooster, PlaceCenter(place)));
+                    _farmCalls.Add((StyleSound.Hens, PlaceCenter(place)));
+                }
+                else if (key.StartsWith("bourg", System.StringComparison.Ordinal)) Herd(place, StyleSlot.Dog, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Bark);
+                else if (key.StartsWith("ruines", System.StringComparison.Ordinal)) Herd(place, StyleSlot.Crow, Mathf.RoundToInt(3 * k), 0.32f, StyleSound.Caw);
+                else if (key.StartsWith("foret", System.StringComparison.Ordinal)) _farmCalls.Add((StyleSound.Owl, PlaceCenter(place)));
+            }
+            for (int i = 0; i < _callIn.Length; i++) _callIn[i] = 5f + 3f * i;
+        }
+
+        private static Vector3 PlaceCenter(MapPlace p) => new Vector3((float)(p.MinX + p.MaxX) * 0.5f, 0f, (float)(p.MinZ + p.MaxZ) * 0.5f);
+
+        /// <summary>
+        /// <paramref name="count"/> bêtes de <paramref name="slot"/> dans le lieu, à des places tirées de son nom (hors des obstacles, des
+        /// champs cultivés pour les vaches et les chevaux, des routes), de hauteur <paramref name="height"/> ; leur cri est noté.
+        /// </summary>
+        private void Herd(MapPlace place, StyleSlot slot, int count, float height, StyleSound call)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            GameObject prefab = catalog != null ? catalog.Model(slot, null) : null;
+            uint seed = (uint)StyleRules.Variant(place.Id + slot, 1 << 30) + 7u;
+            float Next()
+            {
+                seed = seed * 1664525u + 1013904223u;
+                return (seed >> 8) / 16777216f;
+            }
+            int placed = 0;
+            for (int attempt = 0; attempt < count * 30 && placed < count; attempt++)
+            {
+                float x = Mathf.Lerp((float)place.MinX + 2f, (float)place.MaxX - 2f, Next());
+                float z = Mathf.Lerp((float)place.MinZ + 2f, (float)place.MaxZ - 2f, Next());
+                bool grazer = slot == StyleSlot.Cow || slot == StyleSlot.Horse;
+                if (InObstacle(x, z, slot == StyleSlot.Crow ? 0.5f : 2f) || (grazer && InField(x, z, 0.5f)) || TownRules.RoadAt(x, z, _roads).Edge < 1.2) continue;
+                var at = new Vector3(x, StyleWorld.StandHeight(x, z), z);
+                if (placed == 0) _farmCalls.Add((call, at));
+                placed++;
+                if (prefab == null) continue;
+                GameObject look = StyleLook.Fit(prefab, height * (0.92f + 0.16f * Next()), 0f, null, false, out float bottom, out GameObject _, true);
+                look.name = slot + " " + placed + " (V2.9)";
+                float s = look.transform.localScale.y;
+                look.transform.SetParent(_root.transform, false);
+                look.transform.position = at + Vector3.up * (-bottom * s);
+                look.transform.rotation = Quaternion.Euler(0f, 360f * Next(), 0f);
+                var beast = new Beast { Slot = slot, Root = look.transform, Animation = look.GetComponentInChildren<Animation>(), Next = 2f + 8f * Next(), Home = look.transform.position };
+                if (beast.Animation != null)
+                {
+                    foreach (AnimationState state in beast.Animation)
+                    {
+                        string name = state.name;
+                        int bar = name.LastIndexOf('|');
+                        string tail = StyleRules.Key(bar >= 0 ? name.Substring(bar + 1) : name);
+                        if (tail == "idle") beast.Idle = name;
+                        else if (tail == "idle2") beast.Idle2 = name;
+                        else if (tail == "eat" || tail == "sit") beast.Rest = name;
+                        else if (tail == "takeoff") beast.TakeOff = name;
+                    }
+                    beast.Idle = beast.Idle ?? beast.Rest ?? beast.TakeOff;
+                    foreach (AnimationState state in beast.Animation) state.wrapMode = state.name == beast.TakeOff ? WrapMode.ClampForever : WrapMode.Loop;
+                    if (slot == StyleSlot.Crow && beast.TakeOff != null)
+                    {
+                        // Posé : la première image de l'envol, figée.
+                        AnimationState perch = beast.Animation[beast.TakeOff];
+                        if (perch != null)
+                        {
+                            beast.Animation.Play(beast.TakeOff);
+                            perch.time = 0f;
+                            perch.speed = 0f;
+                        }
+                    }
+                    else if (beast.Idle != null)
+                    {
+                        beast.Animation.Play(beast.Idle);
+                        AnimationState idle = beast.Animation[beast.Idle];
+                        if (idle != null) idle.time = idle.length * Next();
+                    }
+                }
+                _beasts.Add(beast);
+            }
+        }
+
+        /// <summary>
+        /// À chaque image : les bêtes changent d'attitude de temps en temps (attente, manger, s'asseoir), les corbeaux s'envolent quand
+        /// <paramref name="camera"/> (le personnage, à peu près) passe à moins de 7 m, et les cris de la ferme suivent l'heure du monde.
+        /// </summary>
+        public void Life(Vector3 player, int minute, float deltaTime)
+        {
+            _farmVoices?.Update();
+            if (deltaTime <= 0f) return;
+            _beastClock += deltaTime;
+            for (int i = 0; i < _beasts.Count; i++)
+            {
+                Beast b = _beasts[i];
+                if (b.Root == null || b.Animation == null) continue;
+                if (b.Slot == StyleSlot.Crow)
+                {
+                    Crow(b, player);
+                    continue;
+                }
+                if (_beastClock < b.Next) continue;
+                b.Step++;
+                b.Next = _beastClock + 8f + 10f * (BeastCalls.Pick(b.Step + i * 31, 100) / 100f);
+                int pick = BeastCalls.Pick(b.Step + i * 17, 3);
+                string clip = pick == 0 && b.Rest != null ? b.Rest : pick == 1 && b.Idle2 != null ? b.Idle2 : b.Idle;
+                if (clip != null) b.Animation.CrossFade(clip, 0.5f);
+            }
+            for (int i = 0; i < _farmCalls.Count && i < _callIn.Length; i++)
+            {
+                _callIn[i] -= deltaTime;
+                if (_callIn[i] > 0f) continue;
+                (StyleSound sound, Vector3 at) = _farmCalls[i];
+                bool time = BeastCalls.CallTime(sound, minute);
+                float reach = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastHearing : 60f;
+                if (time && (at - player).sqrMagnitude < reach * reach * 2.25f && _farmVoices != null)
+                    _farmVoices.Play(sound, _calls, at, sound == StyleSound.Hens || sound == StyleSound.Sheep ? 5f : 3f,
+                        sound == StyleSound.Rooster || sound == StyleSound.Owl ? 0.7f : 0.5f, 1.5f);
+                _callIn[i] = (float)BeastCalls.Interval(sound, _calls++);
+            }
+        }
+
+        private void Crow(Beast b, Vector3 player)
+        {
+            if (b.TakeOff == null) return;
+            AnimationState state = b.Animation[b.TakeOff];
+            if (state == null) return;
+            if (!b.Flown)
+            {
+                Vector3 d = b.Root.position - player;
+                d.y = 0f;
+                if (d.sqrMagnitude > 49f) return;
+                b.Flown = true;
+                b.Back = _beastClock + 60f;
+                state.time = 0f;
+                state.speed = 1f;
+                if (_farmVoices != null) _farmVoices.Play(StyleSound.Caw, _calls++, b.Root.position, 2.5f, 0.5f, 1f);
+                return;
+            }
+            // Envolé : il monte et s'éloigne, puis disparaît à la fin de l'envol ; il revient se poser une minute plus tard.
+            if (state.time < state.length) b.Root.position += (b.Root.forward * 2.5f + Vector3.up * 1.2f) * Time.deltaTime;
+            else if (b.Root.gameObject.activeSelf) b.Root.gameObject.SetActive(false);
+            if (_beastClock < b.Back) return;
+            b.Flown = false;
+            b.Root.position = b.Home;
+            b.Root.gameObject.SetActive(true);
+            state.time = 0f;
+            state.speed = 0f;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : le bruit d'un pas en (<paramref name="x"/>, <paramref name="z"/>) : plancher dans une maison, gravier
+        /// sur une route ou un sol nu, feuilles en forêt (<paramref name="forest"/>), herbe ailleurs (<see cref="StyleRules.StepSound"/>).
+        /// </summary>
+        public StyleSound StepSound(float x, float z, bool forest)
+        {
+            if (_indoor) return StyleSound.StepWood;
+            RoadHit road = TownRules.RoadAt(x, z, _roads);
+            double grass = TownRules.RoadMix(_spots.Mix(x, z), x, z, road).Grass;
+            return StyleRules.StepSound(false, road.Edge, grass, forest);
+        }
+    }
+}

@@ -202,4 +202,161 @@ public sealed class V29RessourcesTests
         Assert.InRange(maxPitch, 1, 8);
         Assert.True(minRootPitch > 0);   // il fouille le groin vers le sol
     }
+
+    // --- 2e vague (7 novembre 2026, au soir) : modèles réalistes convertis, ambiances par lieu, pas, ferme, musiques de Scott Buckley ---
+
+    private static readonly string[] Models2 =
+    {
+        "Assets/Style/Sketchfab/Animaux2/CerfRouge_Suiteofart.fbx", "Assets/Style/Sketchfab/Animaux2/Elan_WildMesh.fbx",
+        "Assets/Style/Sketchfab/Animaux2/Faon_AssetsAnimated.fbx", "Assets/Style/Sketchfab/Animaux2/Sanglier_Dakta.fbx",
+        "Assets/Style/Sketchfab/Animaux2/Lievre_bluekiwi.fbx", "Assets/Style/Sketchfab/Animaux2/Loup_rhcreations.fbx",
+        "Assets/Style/Sketchfab/Animaux2/Loup_roo3d.fbx", "Assets/Style/Sketchfab/Animaux2/Corbeau_alexanders823.fbx",
+        "Assets/Style/Sketchfab/Animaux2/Vache_rukh3d.fbx", "Assets/Style/Sketchfab/Animaux2/Chien_quander.fbx",
+        "Assets/Style/Sketchfab/Animaux2/Cheval_henry7.fbx",
+    };
+
+    private const string Monde = "Assets/Style/Sounds/Monde/";
+
+    [Fact]
+    public void Deuxieme_vague_le_meilleur_modele_par_bete()
+    {
+        string[] all = Models.Concat(Models2).ToArray();
+        Assert.EndsWith("CerfRouge_Suiteofart.fbx", StyleRules.Candidates(all, StyleSlot.Stag).First());
+        Assert.EndsWith("Elan_WildMesh.fbx", StyleRules.Candidates(all, StyleSlot.Stag)[1]);
+        Assert.EndsWith("Faon_AssetsAnimated.fbx", StyleRules.Candidates(all, StyleSlot.Doe).First());
+        Assert.DoesNotContain(StyleRules.Candidates(all, StyleSlot.Doe), p => p.Contains("Cerf") || p.Contains("Elan"));
+        Assert.EndsWith("Sanglier_Dakta.fbx", StyleRules.Candidates(all, StyleSlot.Boar).First());
+        Assert.EndsWith("Lievre_bluekiwi.fbx", StyleRules.Candidates(all, StyleSlot.Hare).First());
+        Assert.EndsWith("Loup_roo3d.fbx", StyleRules.Candidates(all, StyleSlot.Wolf).First());
+        Assert.DoesNotContain(StyleRules.Candidates(all, StyleSlot.Wolf), p => p.Contains("rhcreations"));
+        Assert.EndsWith("Corbeau_alexanders823.fbx", Assert.Single(StyleRules.Candidates(all, StyleSlot.Crow)));
+        Assert.EndsWith("Vache_rukh3d.fbx", Assert.Single(StyleRules.Candidates(all, StyleSlot.Cow)));
+        Assert.EndsWith("Chien_quander.fbx", Assert.Single(StyleRules.Candidates(all, StyleSlot.Dog)));
+        Assert.EndsWith("Cheval_henry7.fbx", Assert.Single(StyleRules.Candidates(all, StyleSlot.Horse)));
+        foreach (StyleSlot decor in new[] { StyleSlot.Tree, StyleSlot.Rock, StyleSlot.Plant, StyleSlot.Debris, StyleSlot.Shrub, StyleSlot.Hero, StyleSlot.Cat })
+            Assert.DoesNotContain(StyleRules.Candidates(all, decor), p => p.Contains("Animaux2"));
+        // Clips des modèles convertis (noms donnés par Claude à la conversion).
+        string[] boar = { "Idle", "Idle_2", "Walk", "Trot", "Run", "Eat", "Dig", "Attack", "Death", "Hurt", "Lie" };
+        Assert.Equal("Eat", StyleRules.Clip(boar, StyleMotion.Graze));
+        Assert.Equal("Run", StyleRules.Clip(boar, StyleMotion.Run));
+        Assert.Equal("Hurt", StyleRules.Clip(boar, StyleMotion.Hurt));
+        Assert.Equal("Idle", StyleRules.Clip(boar, StyleMotion.Idle));
+        Assert.True(StyleRules.Loops("Dig") && StyleRules.Loops("Trot") && !StyleRules.Loops("Hurt"));
+        Assert.Equal(1.35, StyleRules.BeastHeight("cerf2"));
+    }
+
+    [Fact]
+    public void Deuxieme_vague_ambiances_et_bruitages_du_dossier_Monde()
+    {
+        Assert.Equal(StyleAmbience.Village, StyleRules.AmbienceOf(Monde + "eds_BSB1346_village_centre.ogg"));
+        Assert.Equal(StyleAmbience.Village, StyleRules.AmbienceOf(Monde + "eds_BSB2969_conversations_dehors.ogg"));
+        Assert.Equal(StyleAmbience.Village, StyleRules.AmbienceOf(Monde + "eds_FS578072_ramonmineiro_village_medieval.ogg"));
+        Assert.Equal(StyleAmbience.Market, StyleRules.AmbienceOf(Monde + "eds_BSB2728_marche_exterieur_1.ogg"));
+        Assert.Equal(StyleAmbience.Market, StyleRules.AmbienceOf(Monde + "eds_FS424790_bolkmar_marche_medieval.ogg"));
+        Assert.Equal(StyleAmbience.Tavern, StyleRules.AmbienceOf(Monde + "eds_FS326313_ivolipa_taverne_rires.ogg"));
+        Assert.Equal(StyleAmbience.Tavern, StyleRules.AmbienceOf(Monde + "eds_BSB0480_ambiance_bar.ogg"));
+        Assert.Equal(StyleAmbience.Forge, StyleRules.AmbienceOf(Monde + "eds_FS386149_ldezem_forge_charbon.ogg"));
+        Assert.Equal(StyleAmbience.Campfire, StyleRules.AmbienceOf(Monde + "eds_FS660298_AmbientX_feu_de_camp.ogg"));
+        Assert.Equal(StyleAmbience.River, StyleRules.AmbienceOf(Monde + "eds_BSB2713_foret_ruisseau.ogg"));
+        Assert.Equal(StyleAmbience.Forest, StyleRules.AmbienceOf(Monde + "eds_BSB0100_foret.ogg"));
+        Assert.Equal(StyleAmbience.Countryside, StyleRules.AmbienceOf(Monde + "eds_BSB0097_campagne.ogg"));
+        Assert.Equal(StyleAmbience.Wind, StyleRules.AmbienceOf(Monde + "eds_BSB0595_vent.ogg"));
+        Assert.Equal(StyleAmbience.Night, StyleRules.AmbienceOf(Monde + "eds_FS852877_simous00_grillons_cigales.ogg"));
+        foreach (string sfx in new[] { "eds_BSB1854_cheval_marche_chemin.ogg", "eds_BSB3589_enclume_1.ogg", "eds_BSB1764_hulotte_2.ogg", "eds_BSB0956_corbeaux.ogg",
+                     "eds_BSB0137_pas_feuilles.ogg", "eds_BSB0292_petite_cloche.ogg", "eds_FS471304_marianabe22_ouverture_portail.ogg" })
+            Assert.Null(StyleRules.AmbienceOf(Monde + sfx));
+        Assert.True(StyleRules.IsLongRecording(Monde + "eds_FS326313_ivolipa_taverne_rires.ogg"));
+        string[] world = new[]
+        {
+            "eds_FS386149_ldezem_forge_charbon.ogg", "eds_BSB3589_enclume_1.ogg", "eds_BSB0292_petite_cloche.ogg", "eds_FS646519_kevp888_cloche_village_FR.ogg",
+            "eds_FS426642_Garuda1982_cloche_eglise.ogg", "eds_FS622816_klankbeeld_cloches_eglise.ogg", "eds_FS471304_marianabe22_ouverture_portail.ogg",
+            "eds_FS768664_berkup_portail_ouverture.ogg", "eds_FS521587_Fission9_pas_herbe.ogg", "eds_FS223154_Yoyodaman234_pas_gravier.ogg",
+            "eds_BSB0137_pas_feuilles.ogg", "eds_BSB0376_pas_parquet.ogg", "eds_BSB0956_corbeaux.ogg", "eds_BSB3463_corneille_3.ogg", "eds_BSB0440_coq.ogg",
+            "eds_BSB0978_poules.ogg", "eds_BSB2343_mouton.ogg", "eds_BSB0546_vache_1.ogg", "eds_BSB2954_chien_aboie.ogg", "eds_BSB0284_cheval_hennit_1.ogg",
+            "eds_BSB1764_hulotte_2.ogg", "eds_BSB1854_cheval_marche_chemin.ogg", "eds_BSB1795_whoosh_3.ogg",
+        }.Select(f => Monde + f).Concat(Sounds).ToArray();
+        Assert.EndsWith("eds_BSB0292_petite_cloche.ogg", StyleRules.PickSound(world, StyleSound.Tocsin));   // un seul coup, frappé vite
+        Assert.Equal(4, StyleRules.PickSounds(world, StyleSound.ChurchBell, 6).Count);   // trois de la 2e vague et celle de la 1re
+        Assert.Contains(StyleRules.PickSounds(world, StyleSound.ChurchBell, 6), p => p.Contains("kevp888"));
+        Assert.EndsWith("enclume_1.ogg", StyleRules.PickSound(world, StyleSound.Craft));   // la forge est une ambiance, l'enclume un bruitage
+        Assert.Equal(2, StyleRules.PickSounds(world, StyleSound.Portal, 6).Count);
+        Assert.EndsWith("pas_herbe.ogg", StyleRules.PickSound(world, StyleSound.StepGrass));   // pas le lièvre dans l'herbe
+        Assert.EndsWith("pas_gravier.ogg", StyleRules.PickSound(world, StyleSound.StepGravel));
+        Assert.EndsWith("pas_feuilles.ogg", StyleRules.PickSound(world, StyleSound.StepLeaves));
+        Assert.EndsWith("pas_parquet.ogg", StyleRules.PickSound(world, StyleSound.StepWood));
+        Assert.EndsWith("corbeaux.ogg", StyleRules.PickSound(world, StyleSound.Caw));
+        Assert.EndsWith("vache_1.ogg", StyleRules.PickSound(world, StyleSound.Moo));
+        Assert.EndsWith("chien_aboie.ogg", StyleRules.PickSound(world, StyleSound.Bark));
+        Assert.EndsWith("cheval_hennit_1.ogg", StyleRules.PickSound(world, StyleSound.Neigh));
+        Assert.EndsWith("coq.ogg", StyleRules.PickSound(world, StyleSound.Rooster));
+        Assert.EndsWith("poules.ogg", StyleRules.PickSound(world, StyleSound.Hens));
+        Assert.EndsWith("mouton.ogg", StyleRules.PickSound(world, StyleSound.Sheep));
+        Assert.EndsWith("hulotte_2.ogg", StyleRules.PickSound(world, StyleSound.Owl));
+    }
+
+    [Fact]
+    public void Deuxieme_vague_musiques_de_Scott_Buckley()
+    {
+        const string music = "Assets/Style/Music/";
+        Assert.Equal(StyleMusic.Exploration, StyleRules.MusicOf(music + "ScottBuckley/eds_musique_ScottBuckley_IntoTheWilds.mp3"));
+        Assert.Equal(StyleMusic.Story, StyleRules.MusicOf(music + "ScottBuckley/eds_musique_ScottBuckley_LegendOfKvothe.mp3"));
+        Assert.Equal(StyleMusic.Threshold, StyleRules.MusicOf(music + "ScottBuckley/eds_musique_ScottBuckley_Sanctum.mp3"));
+        Assert.True(StyleRules.MusicRank(music + "ScottBuckley/eds_musique_ScottBuckley_IntoTheWilds.mp3")
+            < StyleRules.MusicRank(music + "MatthewPablo/Woodland Fantasy.mp3"));
+        Assert.Equal(int.MaxValue, StyleRules.MusicRank("Assets/Style/Sounds/x.ogg"));
+        Assert.Equal(StyleMusic.Threshold, StyleRules.MusicFor(false, false, true, true, false));
+        Assert.Equal(StyleMusic.Story, StyleRules.MusicFor(false, false, false, true, true));
+        Assert.Equal(StyleMusic.Combat, StyleRules.MusicFor(false, true, false, true, true));
+        Assert.Equal(StyleMusic.Village, StyleRules.MusicFor(false, false, true, false, false));
+    }
+
+    [Fact]
+    public void Deuxieme_vague_ambiances_par_lieu_et_par_heure()
+    {
+        AmbiencePlace bourg = StyleRules.PlaceAmbience(new[] { "bourg" }, "zone.vallons", false);
+        Assert.Equal(AmbiencePlace.Town, bourg);
+        Assert.Equal(AmbiencePlace.TavernInside, StyleRules.PlaceAmbience(Array.Empty<string>(), "zone.auberge", true));
+        Assert.Equal(AmbiencePlace.Camp | AmbiencePlace.Fields, StyleRules.PlaceAmbience(new[] { "camp_des_rodeurs", "pre_nord" }, "zone.vallons", false));
+        Assert.Equal(AmbiencePlace.Forest, StyleRules.PlaceAmbience(new[] { "foret_des_loups" }, null, false));
+        Assert.Equal(AmbiencePlace.Threshold, StyleRules.PlaceAmbience(new[] { "coeur_du_seuil" }, null, false));
+        double V(StyleAmbience a, AmbiencePlace p, double hour, double forge = double.NaN, bool indoors = false, double night = 0, double rain = 0) =>
+            StyleRules.PlaceVolume(a, p, hour * 60, forge, false, indoors, night, rain);
+        Assert.True(V(StyleAmbience.Market, bourg, 9.5) > 0.7);          // le marché du matin
+        Assert.InRange(V(StyleAmbience.Market, bourg, 15), 0.2, 0.3);   // plus calme l'après-midi
+        Assert.Equal(0, V(StyleAmbience.Market, bourg, 22));
+        Assert.True(V(StyleAmbience.Market, bourg, 9.5, rain: 1) < V(StyleAmbience.Market, bourg, 9.5));
+        Assert.Equal(0, V(StyleAmbience.Tavern, bourg, 12));
+        Assert.True(V(StyleAmbience.Tavern, bourg, 21) > 0.2);            // la taverne le soir, de loin
+        Assert.Equal(0.9, V(StyleAmbience.Tavern, AmbiencePlace.TavernInside, 12, indoors: true));
+        Assert.Equal(0, V(StyleAmbience.Village, bourg, 12, indoors: true));
+        Assert.True(V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: 3) > 0.8);   // près de Maëlle, le jour
+        Assert.Equal(0, V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: 40));
+        Assert.Equal(0, V(StyleAmbience.Forge, AmbiencePlace.None, 23, forge: 3));
+        Assert.True(V(StyleAmbience.Campfire, AmbiencePlace.Camp, 23, night: 1) > V(StyleAmbience.Campfire, AmbiencePlace.Camp, 12));
+        Assert.Equal(0, V(StyleAmbience.Countryside, AmbiencePlace.Fields | AmbiencePlace.Town, 12));   // au hameau, la rumeur du village
+        Assert.True(V(StyleAmbience.Forest, AmbiencePlace.Forest, 12) > V(StyleAmbience.Forest, AmbiencePlace.Forest, 1, night: 1));
+        Assert.Equal(0, V(StyleAmbience.Birds, bourg, 12));
+        Assert.True(StyleRules.IsPlaceAmbience(StyleAmbience.Market) && !StyleRules.IsPlaceAmbience(StyleAmbience.Night));
+    }
+
+    [Fact]
+    public void Deuxieme_vague_pas_et_cris_de_la_ferme()
+    {
+        Assert.Equal(StyleSound.StepWood, StyleRules.StepSound(true, 0, 1, true));
+        Assert.Equal(StyleSound.StepGravel, StyleRules.StepSound(false, 0.2, 1, true));
+        Assert.Equal(StyleSound.StepLeaves, StyleRules.StepSound(false, 5, 1, true));
+        Assert.Equal(StyleSound.StepGrass, StyleRules.StepSound(false, 5, 0.8, false));
+        Assert.Equal(StyleSound.StepGravel, StyleRules.StepSound(false, 5, 0.1, false));
+        Assert.True(double.IsPositiveInfinity(BeastCalls.StepLength(0.1)));
+        Assert.Equal(0.75, BeastCalls.StepLength(1.5));
+        Assert.Equal(1.4, BeastCalls.StepLength(9), 6);
+        Assert.Contains(BeastCalls.Cue("eds_FS521587_Fission9_pas_herbe", 4.35, 3, 0.5).Start, new[] { 0.07, 0.77, 1.47, 2.245, 3.02, 3.77 });
+        Assert.Equal((0.0, 0.6), BeastCalls.Cue("eds_FS223154_Yoyodaman234_pas_gravier", 0.69, 9, 0.5));
+        Assert.Contains(BeastCalls.Cue("eds_FS646519_kevp888_cloche_village_FR", 72.5, 1, 12).Start, new[] { 17.0, 30.0, 44.0 });
+        Assert.True(BeastCalls.CallTime(StyleSound.Rooster, 6 * 60) && !BeastCalls.CallTime(StyleSound.Rooster, 12 * 60));
+        Assert.True(BeastCalls.CallTime(StyleSound.Owl, 23 * 60) && !BeastCalls.CallTime(StyleSound.Owl, 12 * 60));
+        Assert.True(BeastCalls.CallTime(StyleSound.Moo, 12 * 60) && !BeastCalls.CallTime(StyleSound.Moo, 2 * 60));
+        foreach (StyleSound farm in new[] { StyleSound.Caw, StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl })
+            for (int n = 0; n < 50; n++) Assert.InRange(BeastCalls.Interval(farm, n), 10, 80);
+    }
 }

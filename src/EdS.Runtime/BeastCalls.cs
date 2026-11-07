@@ -23,6 +23,18 @@ namespace EdS.Runtime
             ("757773", new[] { (4.25, 4.5), (32.25, 6.0), (60.75, 7.0), (90.5, 6.0), (109.75, 7.0), (134.0, 8.0) }),
             ("158780", new[] { (1.5, 9.0), (9.0, 9.0), (16.5, 9.0), (22.0, 9.0) }),
             ("762242", new[] { (13.0, 9.0), (20.0, 9.0), (27.0, 9.0), (31.5, 9.0) }),
+            // 2e vague (mesurés de même, au vingt-cinquième de seconde) : un pas à la fois dans les enregistrements de pas (herbe de Fission9,
+            // gravier de Yoyodaman234, feuilles et parquet de BigSoundBank), un meuglement, un aboiement, un cri de hulotte, les volées des
+            // cloches d'église (celle de kevp888 commence après 17 s de rue, celle de klankbeeld après deux minutes).
+            ("521587", new[] { (0.07, 0.45), (0.77, 0.45), (1.47, 0.45), (2.245, 0.45), (3.02, 0.45), (3.77, 0.45) }),
+            ("223154", new[] { (0.0, 0.6) }),
+            ("BSB0137", new[] { (0.295, 0.5), (1.17, 0.5), (1.895, 0.5), (2.845, 0.5), (3.62, 0.5), (4.595, 0.5), (5.495, 0.5), (6.47, 0.5), (7.245, 0.5) }),
+            ("BSB0376", new[] { (0.02, 0.4), (1.695, 0.4), (3.295, 0.4), (4.12, 0.4), (4.92, 0.4), (5.795, 0.4), (6.395, 0.4), (7.17, 0.4), (8.295, 0.4), (9.17, 0.4), (10.02, 0.4), (10.87, 0.4) }),
+            ("BSB0546", new[] { (1.5, 3.0), (5.5, 3.0), (9.5, 3.5) }),
+            ("BSB2954", new[] { (0.0, 1.6), (4.5, 1.6), (10.5, 1.6), (13.5, 1.6) }),
+            ("BSB1764", new[] { (0.0, 3.0), (5.0, 2.9) }),
+            ("646519", new[] { (17.0, 12.0), (30.0, 12.0), (44.0, 12.0) }),
+            ("622816", new[] { (200.0, 12.0), (400.0, 12.0), (600.0, 12.0) }),
         };
 
         /// <summary>
@@ -52,13 +64,23 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Secondes avant le prochain appel du son <paramref name="sound"/> (<paramref name="n"/> : appels déjà faits) : hurlements toutes
-        /// les 35 à 80 s, brame toutes les 100 à 220 s (rare), grognements du sanglier toutes les 9 à 22 s ; 30 s pour un autre son.
+        /// les 35 à 80 s, brame toutes les 100 à 220 s (rare), grognements du sanglier toutes les 9 à 22 s ; 2e vague : corbeaux 10 à 25 s,
+        /// vache 20 à 50 s, chien 15 à 40 s, cheval 30 à 70 s, coq 40 à 80 s, poules 18 à 38 s, mouton 25 à 55 s, hulotte 30 à 70 s ; 30 s pour
+        /// un autre son.
         /// </summary>
         public static double Interval(StyleSound sound, int n)
         {
             double u = Mix(n) % 1000 / 1000.0;
             switch (sound)
             {
+                case StyleSound.Caw: return 10 + 15 * u;
+                case StyleSound.Moo: return 20 + 30 * u;
+                case StyleSound.Bark: return 15 + 25 * u;
+                case StyleSound.Neigh: return 30 + 40 * u;
+                case StyleSound.Rooster: return 40 + 40 * u;
+                case StyleSound.Hens: return 18 + 20 * u;
+                case StyleSound.Sheep: return 25 + 30 * u;
+                case StyleSound.Owl: return 30 + 40 * u;
                 case StyleSound.Howl: return 35 + 45 * u;
                 case StyleSound.Bellow: return 100 + 120 * u;
                 case StyleSound.BoarGrumble: return 9 + 13 * u;
@@ -93,6 +115,29 @@ namespace EdS.Runtime
             if (double.IsNaN(t) || t < 0 || t >= length) return 0;
             double fadeOut = Math.Min(1.0, length / 3);
             return Math.Max(0, Math.Min(1, Math.Min(t / 0.3, (length - t) / fadeOut)));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : un pas tous les combien de mètres d'après la vitesse (m/s) : 0,75 m au pas, jusqu'à 1,4 m en courant ;
+        /// à l'arrêt (sous 0,3 m/s), aucun pas.
+        /// </summary>
+        public static double StepLength(double speed) =>
+            double.IsNaN(speed) || speed < 0.3 ? double.PositiveInfinity : 0.75 + 0.65 * Math.Max(0, Math.Min(1, (speed - 2) / 4));
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : moments des cris de la ferme : le coq chante à l'aube (4 h 45 à 8 h), poules, vaches, chevaux, chiens et
+        /// moutons le jour (6 h à 21 h), corbeaux le jour, la hulotte la nuit (20 h 30 à 5 h 30).
+        /// </summary>
+        public static bool CallTime(StyleSound sound, int minute)
+        {
+            int m = ((minute % 1440) + 1440) % 1440;
+            switch (sound)
+            {
+                case StyleSound.Rooster: return m >= 285 && m < 480;
+                case StyleSound.Owl: return m >= 1230 || m < 330;
+                case StyleSound.Caw: return m >= 330 && m < 1230;
+                default: return m >= 360 && m < 1260;
+            }
         }
 
         /// <summary>Tocsin : nombre de coups et écart (s) entre deux coups (une cloche frappée vite, comme une alarme).</summary>

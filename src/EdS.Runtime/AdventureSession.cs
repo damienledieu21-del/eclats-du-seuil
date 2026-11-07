@@ -26,8 +26,12 @@ namespace EdS.Runtime
     /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
     public readonly struct AdventureMood
     {
-        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0, double rain = 0)
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0, double rain = 0,
+            AmbiencePlace places = AmbiencePlace.None, double minute = 720, double forgeDistance = double.NaN)
         {
+            Places = places;
+            Minute = double.IsNaN(minute) ? 720 : minute;
+            ForgeDistance = forgeDistance;
             Night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
             Rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
             InVillage = inVillage;
@@ -57,7 +61,16 @@ namespace EdS.Runtime
         /// Relecture de la PR #101 : la même ambiance avec la pluie <paramref name="rain"/> (celle qui est montrée : le temps forcé par le menu
         /// d'essai compris), pour que la nappe de pluie suive ce qu'on voit.
         /// </summary>
-        public AdventureMood WithRain(double rain) => new AdventureMood(InVillage, Fighting, BossEngaged, RiverDistance, Indoors, Night, rain);
+        public AdventureMood WithRain(double rain) => new AdventureMood(InVillage, Fighting, BossEngaged, RiverDistance, Indoors, Night, rain, Places, Minute, ForgeDistance);
+
+        /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance autour du personnage (bourg, camp, champs, forêt, auberge, Seuil).</summary>
+        public AmbiencePlace Places { get; }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : minute du jour du monde (marché le matin, taverne le soir, forge le jour).</summary>
+        public double Minute { get; }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : distance (m) au lieu « forge » (0 dedans) ; NaN sans forge dans la zone.</summary>
+        public double ForgeDistance { get; }
     }
 
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>
@@ -1575,7 +1588,20 @@ namespace EdS.Runtime
                 double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
-            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(WorldMinute()), Weather().Rain / (double)WorldWeather.Scale);
+            // Sous-lot V2.9 (2e vague) : lieux des ambiances (marché, taverne, forge, camp, campagne, forêt) et distance à la forge de Maëlle.
+            AmbiencePlace places = StyleRules.PlaceAmbience(_zone.PlacesAt(p).Select(pl => pl.Id), _zone.Id, _zone.Indoor);
+            double forge = double.NaN;
+            foreach (Place pl in _zone.Places)
+            {
+                if (!pl.Id.StartsWith("forge", StringComparison.Ordinal)) continue;
+                double fx = Math.Max(0, Math.Max(pl.Min.X.Raw / 10000.0 - x, x - pl.Max.X.Raw / 10000.0));
+                double fz = Math.Max(0, Math.Max(pl.Min.Z.Raw / 10000.0 - z, z - pl.Max.Z.Raw / 10000.0));
+                double d = Math.Sqrt(fx * fx + fz * fz);
+                forge = double.IsNaN(forge) ? d : Math.Min(forge, d);
+            }
+            double minute = WorldMinute();
+            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+                places, minute, forge);
         }
 
         /// <summary>

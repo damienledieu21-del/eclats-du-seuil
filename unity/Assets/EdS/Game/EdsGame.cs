@@ -127,6 +127,7 @@ namespace EdS.Game
         // l'image précédente (l'éclat d'or, la fanfare).
         private Effects _effects;
         private StyleAudio _music;
+        private Footsteps _footsteps;   // sous-lot V2.9 (2e vague)
 
         /// <summary>Sous-lot V2.2 : pluie, éclairs et tonnerre de l'aventure.</summary>
         private StyleWeather _weatherFx;
@@ -351,6 +352,8 @@ namespace EdS.Game
             // Relecture de l'essai 7 : la musique est détruite ; la prochaine aventure la recrée (ses ambiances comprises).
             _music?.Destroy();
             _music = null;
+            _footsteps?.Destroy();
+            _footsteps = null;
             _weatherFx?.Destroy();   // sous-lot V2.2
             _companions?.Destroy();   // sous-lot V2.2.1
             _companions = null;
@@ -552,14 +555,22 @@ namespace EdS.Game
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, _paused ? 0f : Time.deltaTime);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
-            // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
-            // pause, pendant une scène et dans une maison.
-            _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
-                _paused || a.InScene || a.Indoors ? 0f : Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
             UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
             SyncGestures();
+            // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
+            // pause, pendant une scène et dans une maison.
+            _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
+                _paused || a.InScene || a.Indoors ? 0f : Time.deltaTime);
+            // Sous-lot V2.9 (2e vague) : bêtes de la ferme et leurs cris ; pas du personnage selon le sol.
+            if (_arena.Player != null)
+            {
+                _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || a.InScene ? 0f : Time.deltaTime);
+                if (_footsteps == null && StyleCatalog.Loaded != null) _footsteps = new Footsteps(_camera.Camera.transform);
+                _footsteps?.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
+                    !_paused && !a.InScene, Time.deltaTime);
+            }
             // Essai réaliste 7 : musique et ambiances d'après le lieu et le combat (plus bas pendant la pause ou un écran ouvert). Relecture :
             // le lieu et le combat sont relus quatre fois par seconde (les fondus durent deux secondes et demie), les volumes à chaque image.
             if (_music != null)
@@ -571,6 +582,7 @@ namespace EdS.Game
                     _moodAge = 0f;
                 }
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
+                _music.Story = a.InScene;   // sous-lot V2.9 (2e vague) : la musique des scènes de l'histoire
                 _music.Update(_mood, _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
             }
         }
