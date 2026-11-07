@@ -105,6 +105,7 @@ namespace EdS.Game
         public SpaceView(CombatSpace space, Transform parent, AdventureMap map = null)
         {
             Key = KeyOf(space, map);
+            _space = space;
             foreach (SpaceObstacle o in space.Obstacles)
                 _shapes.Add((Raw(o.Points.Min(p => p.X.Raw)), Raw(o.Points.Min(p => p.Z.Raw)), Raw(o.Points.Max(p => p.X.Raw)), Raw(o.Points.Max(p => p.Z.Raw)),
                     o.Points.Select(p => ((double)Raw(p.X.Raw), (double)Raw(p.Z.Raw))).ToList()));
@@ -487,6 +488,23 @@ namespace EdS.Game
             public VillagerPlan Plan;
             public VillagerGoal Goal;
             public int GoalMinute = -1;
+
+            /// <summary>Sous-lot V2.8 (recherche de chemin) : son trajet vers la place de sa course, qui contourne les maisons.</summary>
+            public readonly Walker Route = new Walker { StraightWhenBlocked = true };
+        }
+
+        /// <summary>Sous-lot V2.8 : espace de la vue (pour les trajets des passants, construits à la première course).</summary>
+        private readonly CombatSpace _space;
+        private WalkPaths _paths;
+
+        /// <summary>Sous-lot V2.8 : trajets des passants dans cet espace (construits une fois, à la première demande).</summary>
+        private WalkPaths Paths
+        {
+            get
+            {
+                if (_paths == null) _paths = new WalkPaths(_space);
+                return _paths;
+            }
         }
 
         /// <summary>
@@ -642,7 +660,9 @@ namespace EdS.Game
             }
             VillagerGoal goal = v.Goal;
             Vector3 at = v.Body.position;
-            var target = new Vector3((float)goal.X, v.Height, (float)goal.Z);
+            // Sous-lot V2.8 : il suit son trajet, qui contourne les maisons (le but lui-même si la ligne droite est libre).
+            (double ax, double az) = v.Route.Next(Paths, at.x, at.z, goal.X, goal.Z);
+            var target = new Vector3((float)ax, v.Height, (float)az);
             Vector3 step = Vector3.MoveTowards(at, target, WalkSpeed * deltaTime);
             bool moving = (step - at).sqrMagnitude > 1e-8f;
             if (moving)

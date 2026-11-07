@@ -27,14 +27,14 @@ namespace EdS.Data.Tests;
 /// Sous-lot V2.4.1 (bêtes qui se promènent ; réponse de Damien du 6 novembre 2026 à la question 8 de la PR #104) : moteur 0.29.0, journal au
 /// format 23 (<c>wander</c> dans l'en-tête, ligne <c>calmed</c>), scénarios en schéma 17, règles en schéma 16 (contenu 0.17.0, bloc
 /// <c>combat.wander</c>), instantané au format 6 (<c>quietSince</c>, <c>calms</c>) ; nouvelle référence figée
-/// <c>Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0</c> (corps identiques pour les anciens journaux, et <c>espace_promenade</c>).
+/// <c>Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0</c> (corps identiques pour les anciens journaux, et <c>espace_promenade</c>).
 /// </summary>
 [Trait("Category", "Behavior")]
 [Trait("Category", "Regression")]
 public class V241PromenadeMoteurTests
 {
     private const string Promenade = "espace_promenade";
-    private const string Latest = "reference-0.29.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
+    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
     private static readonly string[] Deer = { "cerf2", "cerf3", "cerf_chef" };
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
@@ -72,7 +72,7 @@ public class V241PromenadeMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.29.0", 23, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal((Fixed.FromInt(30), 15_000L), (ShippedData.Rules.Combat.WanderMaxRadius, ShippedData.Rules.Combat.WanderCalmMs));
     }

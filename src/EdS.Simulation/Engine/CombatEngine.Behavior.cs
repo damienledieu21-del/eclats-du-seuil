@@ -301,8 +301,9 @@ namespace EdS.Simulation.Engine
                         // orientation, direction déterministe.
                         (gx, gz) = vx == 0 && vz == 0 ? (checked(-f.Body.FacingX), checked(-f.Body.FacingZ)) : (checked(-vx), checked(-vz));
                         maxStep = checked(near - d);
-                        // Sous-lot V2.8 : recul ou fuite barré : de biais si c'est libre.
-                        if (Planar.TryNormalize(gx, gz, out long rx, out long rz)) (gx, gz) = RetreatDirection(i, x, z, rx, rz, maxStep);
+                        // Sous-lot V2.8 : fuite d'une bête barrée (mur, bord de l'aire) : de biais si c'est libre. Le recul d'un tireur ne change
+                        // pas (il reste coincé contre un mur : l'équilibrage des combats en dépend, V18EquilibreTests).
+                        if (behavior.Flee && Planar.TryNormalize(gx, gz, out long rx, out long rz) && RetreatDirection(i, x, z, rx, rz, maxStep, out long bx, out long bz)) (gx, gz) = (bx, bz);
                     }
                     else
                     {

@@ -11,8 +11,8 @@ namespace EdS.Simulation.Engine
     /// <item><b>Ligne droite barrée</b> (approche d'une cible, place d'anneau d'une meute, errance, retour chez soi, file d'une harde) : chemin
     /// A* sur la grille de navigation de sa classe d'emprise (<see cref="Navigator"/>), lissé : il vise la case la plus lointaine qu'il
     /// atteint en ligne droite. Aucun chemin (but enfermé, autre rive sans passage) : il reste sur place (et se tourne vers sa cible).</item>
-    /// <item><b>Recul et fuite</b> : si la ligne droite pour s'éloigner est barrée, il essaie de biais (45°, puis 90°, à gauche d'abord) ;
-    /// sinon il recule droit et glisse comme avant.</item>
+    /// <item><b>Fuite</b> (bête qui fuit, <c>flee</c>) : si la ligne droite pour s'éloigner est barrée (décor, bord de l'aire), elle essaie de
+    /// biais (45°, puis 90°, à gauche d'abord) ; sinon elle fuit droit et glisse comme avant. Le recul d'un tireur ne change pas.</item>
     /// <item><b>Budget</b> : au plus <see cref="MaxPathQueriesPerTick"/> recherches de chemin par tick, dans un ordre qui tourne avec le tick
     /// (aucun combattant toujours servi le dernier) ; au-delà, il va droit et glisse (comme avant V2.8). Chaque recherche développe au plus
     /// <see cref="MaxPathExpanded"/> cases.</item>
@@ -78,11 +78,14 @@ namespace EdS.Simulation.Engine
 
         /// <summary>
         /// Recul (ou fuite) de <paramref name="i"/> dans la direction (ux, uz) (unitaire) : la première direction d'essai dont le sous-pas
-        /// d'essai reste dans l'aire et ne touche aucun obstacle ; la direction d'origine si aucune (il glisse, comme avant V2.8).
+        /// d'essai reste dans l'aire et ne touche aucun obstacle : vrai et (dx, dz) si c'est un biais ; faux pour garder la direction d'origine
+        /// (libre, ou rien de libre : il glisse, comme avant V2.8).
         /// </summary>
-        private (long X, long Z) RetreatDirection(int i, long[] x, long[] z, long ux, long uz, long wanted)
+        private bool RetreatDirection(int i, long[] x, long[] z, long ux, long uz, long wanted, out long dx, out long dz)
         {
-            if (_navigator is null) return (ux, uz);
+            dx = ux;
+            dz = uz;
+            if (_navigator is null) return false;
             Body b = _fightersById[i].Body!;
             long probe = Math.Max(RetreatProbeMin, Math.Min(RetreatProbeMax, wanted));
             foreach (int angle in RetreatAngles)
@@ -90,9 +93,13 @@ namespace EdS.Simulation.Engine
                 Angles.Rotate(ux, uz, angle, out long rx, out long rz);
                 long ex = checked(x[i] + rx * probe / Planar.Unit), ez = checked(z[i] + rz * probe / Planar.Unit);
                 if (ex < checked(_minX + b.Radius) || ex > checked(_maxX - b.Radius) || ez < checked(_minZ + b.Radius) || ez > checked(_maxZ - b.Radius)) continue;
-                if (_navigator.Clear(x[i], z[i], ex, ez, b.Radius)) return (rx, rz);
+                if (!_navigator.Clear(x[i], z[i], ex, ez, b.Radius)) continue;
+                if (angle == 0) return false;   // droit : la direction d'avant V2.8, à l'identique
+                dx = rx;
+                dz = rz;
+                return true;
             }
-            return (ux, uz);
+            return false;
         }
     }
 }
