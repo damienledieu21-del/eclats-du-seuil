@@ -101,7 +101,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     public void Histoire_livree_en_schema_10_avec_les_PNJ_qui_changent_de_lieu()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((10, 10, 9, "0.19.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
+        Assert.Equal((10, 10, 9, "0.20.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine" },
@@ -407,7 +407,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         foreach (Npc npc in Shipped.Value.Npcs)
             Assert.Equal((a.NpcZone(npc), a.NpcPosition(npc), a.NpcActivity(npc)), (b.NpcZone(npc), b.NpcPosition(npc), b.NpcActivity(npc)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   // rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   // V2.6 : 14 (cicatrices) ; rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
         Assert.DoesNotContain("zone.auberge", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Shipped.Value, market: new Market(ShippedMerchants));
         back.Step();

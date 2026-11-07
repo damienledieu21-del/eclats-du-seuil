@@ -152,6 +152,22 @@ namespace EdS.Data.Json
                         return eok ? ev : null;
                     });
                 },
+                ["scars"] = (v, p) =>   // sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes
+                {
+                    c.Present.Add("scars");
+                    c.Scars = input.ReadLimitedList(v, p, SavedScar.MaxEntries, n => $"{n} cicatrices, au plus {SavedScar.MaxEntries}.", (e, ip) =>
+                    {
+                        var sc = new SavedScarData();
+                        bool sok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["id"] = (ev2, ep) => sc.Id = input.Text(ev2, ep),
+                            ["stage"] = (ev2, ep) => sc.Stage = input.Int32(ev2, ep),
+                            ["since"] = (ev2, ep) => sc.Since = input.Int64(ev2, ep),
+                            ["born"] = (ev2, ep) => sc.Born = input.Int64(ev2, ep),
+                        });
+                        return sok ? sc : null;
+                    });
+                },
             });
             return ok ? c : null;
         }
@@ -444,18 +460,33 @@ namespace EdS.Data.Json
             b.Append("      \"boons\": [").Append(string.Join(", ", c.Boons.Select(x => "{\"kind\": \"" + BoonKinds.Id(x.Kind) + "\", \"item\": " + Quoted(x.Item)
                 + ", \"ticks\": " + x.Ticks.ToString(CultureInfo.InvariantCulture) + "}"))).Append("],\n");
             // Sous-lot V2.5 (version 13) : registre des événements du monde, une ligne par événement, rangé par identifiant.
-            if (c.Events.Count == 0) b.Append("      \"events\": []\n");
+            if (c.Events.Count == 0) b.Append("      \"events\": [],\n");
             else
             {
                 b.Append("      \"events\": [\n");
                 for (int i = 0; i < c.Events.Count; i++)
                 {
                     SavedEvent e = c.Events[i];
-                    if (!SaveValidator.IsEventKey(e.Id) || e.Id.Length > 128) throw new ArgumentException($"Événement « {e.Id} » hors du format des sauvegardes.", nameof(c));
+                    if (!SaveValidator.IsEventKey(e.Id) || e.Id.Length > SavedEvent.MaxKeyLength) throw new ArgumentException($"Événement « {e.Id} » hors du format des sauvegardes.", nameof(c));
                     b.Append("        {\"id\": \"").Append(e.Id).Append('"').Append(", \"won\": ").Append(e.Won.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"lost\": ").Append(e.Lost.ToString(CultureInfo.InvariantCulture)).Append(", \"last\": ").Append(e.Last.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"outcome\": \"").Append(SavedEvent.OutcomeNames[(int)e.Outcome]).Append('"').Append(e.Owed ? ", \"owed\": true" : "")
                         .Append(i + 1 < c.Events.Count ? "},\n" : "}\n");
+                }
+                b.Append("      ],\n");
+            }
+            // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.
+            if (c.Scars.Count == 0) b.Append("      \"scars\": []\n");
+            else
+            {
+                b.Append("      \"scars\": [\n");
+                for (int i = 0; i < c.Scars.Count; i++)
+                {
+                    SavedScar x = c.Scars[i];
+                    if (!SaveValidator.IsEventKey(x.Id) || x.Id.Length > SavedEvent.MaxKeyLength) throw new ArgumentException($"Cicatrice « {x.Id} » hors du format des sauvegardes.", nameof(c));
+                    b.Append("        {\"id\": \"").Append(x.Id).Append("\", \"stage\": ").Append(x.Stage.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"since\": ").Append(x.Since.ToString(CultureInfo.InvariantCulture)).Append(", \"born\": ").Append(x.Born.ToString(CultureInfo.InvariantCulture))
+                        .Append(i + 1 < c.Scars.Count ? "},\n" : "}\n");
                 }
                 b.Append("      ]\n");
             }

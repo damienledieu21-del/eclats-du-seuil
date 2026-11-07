@@ -209,6 +209,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Des zones se corrompent au fil du temps, des failles à refermer, des couleurs qui se fanent près des failles (sujet 49).
 - Dépend de V2.5.
 - Formats : monde, sauvegarde (état des failles).
+- **État** (7 novembre 2026, PR en brouillon) : zones en schéma 11 (cicatrice d'une faille, échos rôdeurs ; schéma 10 encore lu), sauvegarde v14 (cicatrices ; v13 encore lue) ; moteur, règles, journal et scénarios inchangés. Une faille restée ouverte (là ou pendant l'absence) laisse une **cicatrice** à sa place : palier 1, un de plus tous les 2 jours du monde jusqu'au 4, rayon de 8 à 20 m ; **couleurs fanées et brume froide** autour (Unity), échos de la faille plus forts (+15 % par palier), **échos rôdeurs** à partir du palier 2 (un par palier, de retour 2 h du monde après leur mort, hors de la réserve des quêtes) ; une faille refermée à sa place la fait **reculer** d'un palier et arrête les autres de grandir ; un **éclat de Seuil** posé en son cœur la **purifie** (200 points) ; Sauge, Sœur Albe et Firmin en parlent ; menu « Essai du Seuil qui grandit » ([MONDE.md](MONDE.md#le-seuil-qui-grandit-sous-lot-v26), [ESSAI_V1.10.md](ESSAI_V1.10.md#11-le-seuil-qui-grandit-v26)). Reste l'essai de Damien sous Unity.
 
 ### 19. V2.7 — Réputation (M)
 

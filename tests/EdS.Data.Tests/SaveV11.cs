@@ -15,5 +15,8 @@ internal static class SaveV11
     public static string V11(string text) => Regex.Replace(V12(text), ",\n      \"boons\": \\[[^\n]*\\]\n", "\n");
 
     /// <summary>Sous-lot V2.5 : la sauvegarde sous la forme de la version 12, sans le registre des événements (dernier champ du personnage).</summary>
-    public static string V12(string text) => Regex.Replace(text, ",\n      \"events\": (\\[\\]|\\[\n(        [^\n]*\n)*      \\])\n", "\n");
+    public static string V12(string text) => Regex.Replace(V13(text), ",\n      \"events\": (\\[\\]|\\[\n(        [^\n]*\n)*      \\])\n", "\n");
+
+    /// <summary>Sous-lot V2.6 : la sauvegarde sous la forme de la version 13, sans les cicatrices (dernier champ du personnage).</summary>
+    public static string V13(string text) => Regex.Replace(text, ",\n      \"scars\": (\\[\\]|\\[\n(        [^\n]*\n)*      \\])\n", "\n");
 }

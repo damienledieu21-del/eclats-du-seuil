@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 10,
   "kind": "story",
-  "contentVersion": "0.19.0-provisoire",
+  "contentVersion": "0.20.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -5687,6 +5687,19 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v26.herboriste.cicatrice"
+              }
+            ],
+            "node": "v26_cicatrice"
+          },
+          {
+            "conditions": [
+              {
                 "if": "phase",
                 "id": "night"
               }
@@ -6225,6 +6238,84 @@
             "id": "v22_brume",
             "text": "text.v22.herboriste.brume",
             "choices": [
+              {
+                "text": "text.ch1.herboriste.poussiere.montrer",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.sauge.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.sauge.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.herboriste.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.herboriste.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.herboriste.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.herboriste.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.herboriste.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.herboriste.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v26_cicatrice",
+            "text": "text.v26.herboriste.cicatrice",
+            "choices": [
+              {
+                "text": "text.v26.herboriste.cicatrice.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.herboriste.cicatrice"
+                  }
+                ],
+                "next": null
+              },
               {
                 "text": "text.ch1.herboriste.poussiere.montrer",
                 "conditions": [
@@ -8718,6 +8809,19 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_purifiee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v26.boulanger.purifiee"
+              }
+            ],
+            "node": "v26_purifiee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "phase",
                 "id": "night"
               }
@@ -10104,6 +10208,108 @@
                 "text": "text.v23.boulanger.abri"
               }
             ]
+          },
+          {
+            "id": "v26_purifiee",
+            "text": "text.v26.boulanger.purifiee",
+            "choices": [
+              {
+                "text": "text.v26.boulanger.purifiee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.boulanger.purifiee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.boulanger.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.boulanger.chat_rentre.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.boulanger.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
           }
         ]
       },
@@ -11085,6 +11291,19 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_rode"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v26.albe.rode"
+              }
+            ],
+            "node": "v26_rode"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questDone",
                 "id": "quest.bourg_d_aube"
               }
@@ -12045,6 +12264,23 @@
                 "text": "text.ch3.albe.apres.partir",
                 "conditions": [],
                 "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v26_rode",
+            "text": "text.v26.albe.rode",
+            "choices": [
+              {
+                "text": "text.v26.albe.rode.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.albe.rode"
+                  }
+                ],
                 "next": null
               }
             ]

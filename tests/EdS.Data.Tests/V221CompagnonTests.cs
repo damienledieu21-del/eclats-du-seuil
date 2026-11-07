@@ -223,7 +223,7 @@ public sealed class V221CompagnonTests
         Assert.Equal("Assets/Style/Sounds/Animaux/chat_ronron.ogg", StyleRules.PickSound(files, StyleSound.Purr));
         Assert.Null(StyleRules.PickSound(new[] { "Assets/Style/Sounds/Combat/swish_1.ogg" }, StyleSound.Meow));
         foreach (StyleSound sound in Enum.GetValues(typeof(StyleSound))) StyleRules.PickSounds(files, sound, 6);   // chaque son a ses mots
-        Assert.Equal(13, EdS.Data.Saves.SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */
+        Assert.Equal(14, EdS.Data.Saves.SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */
     }
 
     [Fact]

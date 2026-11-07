@@ -79,7 +79,7 @@ public sealed class V1910DejaRencontreTests
         w.Narrative!.Close();
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains("fact.met.renart", text, StringComparison.Ordinal);
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   // format inchangé par V1.9.10 ; V2.5 : 13 (registre des événements)
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   // format inchangé par V1.9.10 ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         WorldSave back = SaveJsonReader.Read(text).Save!;
 
         WorldSession again = Near("renart", back);

@@ -412,7 +412,7 @@ public class V193bSuitesTests
     {
         Dialogue albe = Story.Value.Dialogue("dialogue.albe");
         // Sous-lot V1.9.5 : douze entrées (les quatre des anciennes étapes de la mission sont parties : parties converties à la lecture).
-        Assert.Equal(12, albe.Entries.Count);
+        Assert.Equal(13, albe.Entries.Count);   // V2.6 : les échos rôdeurs
         Assert.Equal(new[] { "ch2_accueil", "ch2_en_cours", "ch2_apres", "ch2_herbes_attente" },
             albe.Nodes.Where(n => n.Choices.Any(c => c.Next == "ch3_lettre")).Select(n => n.Id));
         // Le mot d'après le chapitre 2 garde ses réponses d'avant, dans l'ordre ; la lettre vient après.
