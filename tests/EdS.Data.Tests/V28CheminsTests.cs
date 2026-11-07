@@ -429,6 +429,122 @@ public class V28CheminsGrilleTests
         Assert.Equal(NavSteer.Path, normal.Steer(r, R(0.8), R(-0.1), R(-10), R(0), out long nx, out _));
         Assert.True(nx > R(0.8));
     }
+    [Fact]
+    public void Arete_diagonale_coupee_par_un_obstacle_minuscule()
+    {
+        // Revue Codex de la PR #113 (tour 2), cas exact : emprise 0,1 m, cases de 0,5 m (centres en 0,25 et 0,75), carré de 2 cm en
+        // (0,49 ; 0,49)–(0,51 ; 0,51) : les quatre cases autour restent libres, mais les deux diagonales passent dessus.
+        var square = Rect(0.49, 0.49, 0.51, 0.51);
+        var grid = new NavGrid(R(-10), R(-10), R(10), R(10), new[] { square }, R(0.1));
+        int sw = grid.NearestFree(R(0.25), R(0.25), 0), se = grid.NearestFree(R(0.75), R(0.25), 0);
+        int nw = grid.NearestFree(R(0.25), R(0.75), 0), ne = grid.NearestFree(R(0.75), R(0.75), 0);
+        Assert.Equal((R(0.25), R(0.25), R(0.75), R(0.75)), (grid.CellX(sw), grid.CellZ(sw), grid.CellX(ne), grid.CellZ(ne)));
+        Assert.True(grid.IsFree(sw) && grid.IsFree(se) && grid.IsFree(nw) && grid.IsFree(ne));
+        Assert.Equal(-1, grid.Neighbor(sw, 1));   // nord-est
+        Assert.Equal(-1, grid.Neighbor(se, 3));   // nord-ouest
+        Assert.Equal(-1, grid.Neighbor(ne, 5));   // sud-ouest (même arête vue de l'autre bout)
+        Assert.Equal(se, grid.Neighbor(sw, 0));   // l'orthogonale, à 0,24 m du carré, reste ouverte
+        var path = new int[16];
+        Assert.Equal(NavStatus.Found, new NavSearch().Find(grid, sw, ne, 100, path, out int length));
+        Assert.Equal(3, length);   // par un côté, jamais au travers
+        for (int k = 1; k < length; k++)
+            Assert.False(square.OverlapsCapsule(grid.CellX(path[k - 1]), grid.CellZ(path[k - 1]), grid.CellX(path[k]), grid.CellZ(path[k]), R(0.1)));
+    }
+
+    [Fact]
+    public void Arete_orthogonale_coupee_par_un_mur_fin()
+    {
+        // Mur de 2 cm entre deux rangées de centres libres (0,24 m de part et d'autre) : on en fait le tour, on ne le traverse pas.
+        var wall = Rect(0.49, -5, 0.51, 5);
+        long r = R(0.1);
+        var grid = new NavGrid(R(-10), R(-10), R(10), R(10), new[] { wall }, r);
+        int west = grid.NearestFree(R(0.25), R(0.25), 0), east = grid.NearestFree(R(0.75), R(0.25), 0);
+        Assert.True(grid.IsFree(west) && grid.IsFree(east));
+        Assert.Equal(-1, grid.Neighbor(west, 0));
+        Assert.Equal(-1, grid.Neighbor(east, 4));
+        Assert.Equal(1, grid.ComponentCount);   // on passe par les bouts du mur
+        var nav = new Navigator(R(-10), R(-10), R(10), R(10), new[] { wall });
+        Assert.Equal(NavSteer.Path, nav.Steer(r, R(0.25), R(0.25), R(0.75), R(0.25), out _, out _));
+        List<GroundVector> route = nav.Route(r, R(0.25), R(0.25), R(0.75), R(0.25))!;
+        Assert.True(route.Count >= 2, $"{route.Count} points");
+        AssertClearRoute(nav, r, (0.25, 0.25), route);
+        Assert.True(route.Max(p => Math.Abs(p.Z.Raw)) > R(5), "le trajet passe par un bout du mur");
+    }
+
+    [Fact]
+    public void Toutes_les_aretes_ouvertes_sont_libres_pour_l_emprise()
+    {
+        // Revue Codex de la PR #113 (tour 2), exhaustif : sur une aire semée d'obstacles minuscules, fins, en biais et ordinaires, pour
+        // trois emprises, chaque arête rendue par Neighbor est libre (gélule exacte), et chaque arête refusée entre deux cases libres
+        // (hors coin coupé) touche un obstacle.
+        var obstacles = new List<ConvexPolygon>
+        {
+            Rect(0.49, 0.49, 0.51, 0.51), Rect(-3.01, -6, -2.99, 6), Rect(2, -1, 6, 3), Rect(-7.2, 4.4, -6.9, 4.7),
+            new ConvexPolygon(new[] { P(4, -7), P(7, -4), P(6.98, -3.98), P(3.98, -6.98) }),   // mur fin en biais
+            new ConvexPolygon(new[] { P(-6, -6), P(-4, -7), P(-3.5, -5), P(-5.5, -4) }),
+        };
+        foreach (double radius in new[] { 0.1, 0.35, 0.6 })
+        {
+            long sweep = Navigator.RadiusClass(R(radius));
+            var grid = new NavGrid(R(-10), R(-10), R(10), R(10), obstacles, sweep);
+            int open = 0, closed = 0;
+            for (int c = 0; c < grid.Count; c++)
+            {
+                if (!grid.IsFree(c)) continue;
+                for (int d = 0; d < 8; d++)
+                {
+                    int col = c % grid.Width + new[] { 1, 1, 0, -1, -1, -1, 0, 1 }[d], row = c / grid.Width + new[] { 0, 1, 1, 1, 0, -1, -1, -1 }[d];
+                    if (col < 0 || row < 0 || col >= grid.Width || row >= grid.Height) continue;
+                    int nb = row * grid.Width + col;
+                    if (!grid.IsFree(nb)) continue;
+                    bool hits = obstacles.Any(o => o.OverlapsCapsule(grid.CellX(c), grid.CellZ(c), grid.CellX(nb), grid.CellZ(nb), sweep));
+                    int got = grid.Neighbor(c, d);
+                    if (got >= 0)
+                    {
+                        Assert.Equal(nb, got);
+                        Assert.False(hits, $"rayon {radius} : arête {c} → {nb} ouverte à travers un obstacle");
+                        open++;
+                    }
+                    else
+                    {
+                        bool corner = NavGrid.Diagonal(d) && (!grid.IsFree(c - c % grid.Width + col) || !grid.IsFree(row * grid.Width + c % grid.Width));
+                        Assert.True(hits || corner, $"rayon {radius} : arête {c} → {nb} fermée sans raison");
+                        closed++;
+                    }
+                }
+            }
+            Assert.True(open > 0 && closed > 0);
+        }
+    }
+
+    [Fact]
+    public void Trajets_et_points_vises_libres_avec_obstacles_fins()
+    {
+        // Les trajets lissés (affichage) et le point visé (moteur) ne traversent jamais un obstacle fin, depuis des départs quelconques.
+        var obstacles = new[] { Rect(0.49, 0.49, 0.51, 0.51), Rect(-3.01, -6, -3, 6), Rect(2.99, -8, 3.01, 2) };
+        var nav = new Navigator(R(-10), R(-10), R(10), R(10), obstacles);
+        foreach (double radius in new[] { 0.1, 0.35 })
+        {
+            long r = R(radius);
+            for (int i = 0; i < 40; i++)
+            {
+                double fx = -9 + (i * 7) % 18 + 0.13, fz = -9 + (i * 5) % 18 + 0.07, tx = 9 - (i * 3) % 18 - 0.11, tz = -9 + (i * 11) % 18 + 0.21;
+                if (obstacles.Any(o => o.OverlapsCircle(R(fx), R(fz), r)) || obstacles.Any(o => o.OverlapsCircle(R(tx), R(tz), r))) continue;
+                List<GroundVector>? route = nav.Route(r, R(fx), R(fz), R(tx), R(tz));
+                if (route is null) continue;
+                // Le premier segment part de la place exacte : il est libre, ou mène au centre de la case de départ (à moins d'une case).
+                long ax = R(fx), az = R(fz);
+                for (int k = 0; k < route.Count; k++)
+                {
+                    GroundVector p = route[k];
+                    bool clear = nav.Clear(ax, az, p.X.Raw, p.Z.Raw, r);
+                    Assert.True(clear || (k == 0 && Planar.WithinDistance(ax, az, p.X.Raw, p.Z.Raw, R(0.75))), $"trajet {i}, rayon {radius}, segment {k} vers {p}");
+                    ax = p.X.Raw;
+                    az = p.Z.Raw;
+                }
+            }
+        }
+    }
 }
 
 /// <summary>Sous-lot V2.8 : les PNJ et les passants de l'affichage contournent les maisons des Vallons (Runtime, Unity).</summary>

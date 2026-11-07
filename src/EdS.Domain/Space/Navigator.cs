@@ -176,8 +176,16 @@ namespace EdS.Domain.Space
                     return kind;
                 }
             }
-            aimX = grid.CellX(cells[1]);
-            aimZ = grid.CellZ(cells[1]);
+            // Revue Codex de la PR #113 (tour 2) : rien de visible devant : il rejoint d'abord le centre de sa case de départ s'il le voit
+            // (de là, chaque arête du chemin est ouverte pour son emprise), sinon la case suivante (le décor le fait glisser).
+            int fallback = Clear(fromX, fromZ, grid.CellX(cells[0]), grid.CellZ(cells[0]), radius) ? 0 : 1;
+            aimX = grid.CellX(cells[fallback]);
+            aimZ = grid.CellZ(cells[fallback]);
+            if (aimX == fromX && aimZ == fromZ)
+            {
+                aimX = grid.CellX(cells[1]);
+                aimZ = grid.CellZ(cells[1]);
+            }
             return kind;
         }
 
@@ -204,7 +212,10 @@ namespace EdS.Domain.Space
             if (!complete && cells.Length <= 1) return null;
             NavGrid grid = Grid(radius);
             long ax = fromX, az = fromZ;
-            int at = 0;
+            // Revue Codex de la PR #113 (tour 2) : « at » est la case dont le marcheur occupe le centre (−1 au départ : il est à sa place,
+            // pas au centre de sa case). Faute de raccourci visible, il passe par la case suivante : depuis un centre, l'arête est ouverte
+            // pour son emprise ; depuis le départ, il rejoint d'abord le centre de sa case de départ.
+            int at = -1;
             while (true)
             {
                 if (status == NavStatus.Found && Clear(ax, az, toX, toZ, radius)) break;
@@ -216,6 +227,11 @@ namespace EdS.Domain.Space
                         next = k;
                         break;
                     }
+                if (next == 0 && grid.CellX(cells[0]) == ax && grid.CellZ(cells[0]) == az)
+                {
+                    at = 0;
+                    continue;
+                }
                 ax = grid.CellX(cells[next]);
                 az = grid.CellZ(cells[next]);
                 route.Add(GroundVector.FromRaw(ax, az));

@@ -7,7 +7,8 @@ namespace EdS.Domain.Space
     /// Sous-lot V2.8 (recherche de chemin) : grille de navigation d'une aire et de ses obstacles pour une emprise donnée, en unités brutes
     /// (0,0001 m), sans flottant. Une case est <b>libre</b> si un disque de rayon <see cref="Clearance"/> (l'emprise, plus un quart de case
     /// de marge) posé en son centre reste dans l'aire et ne chevauche aucun obstacle (test exact de <see cref="ConvexPolygon.OverlapsCircle"/>).
-    /// Les cases libres sont reliées en 8-voisinage, sans couper un coin (une diagonale exige ses deux cases orthogonales libres) ; les
+    /// Les cases libres sont reliées en 8-voisinage par des arêtes ouvertes (la gélule de l'emprise d'un centre à l'autre ne touche aucun
+    /// obstacle, revue Codex de la PR #113) et sans couper un coin (une diagonale exige ses deux cases orthogonales libres) ; les
     /// composantes connexes sont calculées une fois : « aucun chemin » se sait sans chercher. Immuable une fois construite.
     /// </summary>
     public sealed class NavGrid
@@ -20,6 +21,12 @@ namespace EdS.Domain.Space
 
         private readonly bool[] _free;
         private readonly int[] _component;
+
+        /// <summary>
+        /// Revue Codex de la PR #113 (tour 2) : arêtes fermées, un bit par direction (0 à 7) : le disque de rayon <see cref="Radius"/> balayé
+        /// d'un centre de case libre au centre voisin libre touche un obstacle (un obstacle fin ou minuscule entre deux centres libres).
+        /// </summary>
+        private readonly byte[] _closed;
         private readonly ConvexPolygon[] _obstacles;
 
         public long OriginX { get; }
@@ -78,6 +85,33 @@ namespace EdS.Domain.Space
                         if (_free[k] && o.OverlapsCircle(CenterX(col), CenterZ(row), Clearance)) _free[k] = false;
                     }
             }
+            // Revue Codex de la PR #113 (tour 2) : chaque arête entre deux cases libres (orthogonale ou diagonale) est jugée contre chaque
+            // obstacle proche : la gélule de l'emprise (rayon Radius, au moins une unité brute) d'un centre à l'autre ne doit rien chevaucher
+            // (test exact en entiers). Un obstacle plus fin ou plus petit qu'une case ne laisse donc plus passer une arête au travers.
+            _closed = new byte[_free.Length];
+            long sweep = Math.Max(1, radius);
+            long reach = checked(sweep + 2 * cell);
+            foreach (ConvexPolygon o in _obstacles)
+            {
+                int c0 = Math.Max(0, ColumnOf(checked(o.MinX - reach))), c1 = Math.Min(Width - 1, ColumnOf(checked(o.MaxX + reach)));
+                int r0 = Math.Max(0, RowOf(checked(o.MinZ - reach))), r1 = Math.Min(Height - 1, RowOf(checked(o.MaxZ + reach)));
+                for (int row = r0; row <= r1; row++)
+                    for (int col = c0; col <= c1; col++)
+                    {
+                        int k = row * Width + col;
+                        if (!_free[k]) continue;
+                        for (int d = 0; d < 4; d++)   // est, nord-est, nord, nord-ouest ; l'arête opposée (d + 4) est celle du voisin
+                        {
+                            int nc = col + StepX[d], nr = row + StepZ[d];
+                            if (nc < 0 || nr < 0 || nc >= Width || nr >= Height) continue;
+                            int nb = nr * Width + nc;
+                            if (!_free[nb] || (_closed[k] & (1 << d)) != 0) continue;
+                            if (!o.OverlapsCapsule(CenterX(col), CenterZ(row), CenterX(nc), CenterZ(nr), sweep)) continue;
+                            _closed[k] |= (byte)(1 << d);
+                            _closed[nb] |= (byte)(1 << (d + 4));
+                        }
+                    }
+            }
             // Composantes connexes (même voisinage que la recherche), numérotées dans l'ordre des cases.
             _component = new int[_free.Length];
             var queue = new int[_free.Length];
@@ -113,14 +147,17 @@ namespace EdS.Domain.Space
         /// <summary>La direction <paramref name="d"/> (0 à 7) est-elle diagonale ?</summary>
         public static bool Diagonal(int d) => (d & 1) == 1;
 
-        /// <summary>Voisin libre de la case <paramref name="c"/> dans la direction <paramref name="d"/>, sans couper de coin ; −1 sinon.</summary>
+        /// <summary>
+        /// Voisin libre de la case <paramref name="c"/> dans la direction <paramref name="d"/>, par une arête ouverte (la gélule de l'emprise
+        /// d'un centre à l'autre ne touche aucun obstacle) et, en diagonale, sans couper de coin (les deux cases orthogonales libres) ; −1 sinon.
+        /// </summary>
         public int Neighbor(int c, int d)
         {
             int col = c % Width, row = c / Width;
             int nc = col + StepX[d], nr = row + StepZ[d];
             if (nc < 0 || nr < 0 || nc >= Width || nr >= Height) return -1;
             int k = nr * Width + nc;
-            if (!_free[k]) return -1;
+            if (!_free[k] || (_closed[c] & (1 << d)) != 0) return -1;
             if (Diagonal(d) && (!_free[row * Width + nc] || !_free[nr * Width + col])) return -1;
             return k;
         }

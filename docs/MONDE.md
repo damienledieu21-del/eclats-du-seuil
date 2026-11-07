@@ -853,6 +853,8 @@ Accord de Damien du 7 novembre 2026 : les PNJ, les passants, les bêtes qui erre
 
 **Relecture indépendante de la PR #113 (tour 1)** : statut de chaque chemin gardé en cache avec lui (un chemin tronqué au tampon est partiel : la réponse ne dépend jamais du cache) ; état d'errance affiché tiré de la même passe que les intentions (même ordre tournant, même budget) ; chemin partiel qui ne s'écarte pas de la case de départ : la créature va droit et glisse comme avant au lieu de rester bloquée pour toujours ; un marcheur de l'affichage relance son trajet quand les trajets de la zone sont refaits ; tests ajoutés (cache, poche, budget épuisé, maison symétrique sans changement de côté, reprise d'un chemin partiel).
 
+**Revue Codex de la PR #113 (tour 2)** : chaque arête de la grille (orthogonale ou diagonale) est vérifiée contre les obstacles avec l'emprise : un obstacle minuscule ou un mur fin entre deux cases libres ne se traverse plus (tests du cas exact, d'un mur fin, de toutes les arêtes d'une aire semée d'obstacles) ; journaux figés inchangés.
+
 **Réponses de Damien du 7 novembre 2026 (18 h 59, « Tout ok », transmises par la session de coordination)** aux 4 questions de la PR #113 : toutes les recommandations sont retenues :
 1. PNJ et passants sans aucun chemin : ils vont droit comme avant ;
 2. tireurs (archers, rôdeurs) : pas de recul de biais, ils restent coincés contre un mur ;
