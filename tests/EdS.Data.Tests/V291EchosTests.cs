@@ -184,4 +184,41 @@ public sealed class V291EchosTests
         Assert.Equal(0, EchoLooks.ScarStageAt(scars, -10.01, 0)); // juste dehors
         Assert.Equal(0, EchoLooks.ScarStageAt(scars, 0, 30));     // loin
     }
+
+    private static string Unity(string file) =>
+        File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", file));
+
+    private static string Between(string text, string start, string end)
+    {
+        int i = text.IndexOf(start, StringComparison.Ordinal);
+        Assert.True(i >= 0, start);
+        int j = text.IndexOf(end, i + start.Length, StringComparison.Ordinal);
+        Assert.True(j > i, end);
+        return text.Substring(i, j - i);
+    }
+
+    [Fact]
+    public void Contexte_des_echos_donne_avant_que_l_arene_habille_les_corps()
+    {
+        // Revue Codex de la PR #115 : Populate habille les échos une seule fois ; le contexte (chefs déjà tués, créatures du Seuil) doit
+        // être donné avant, sinon un chef vaincu d'une partie chargée resterait ordinaire.
+        string game = Unity("EdsGame.cs");
+        string show = Between(game, "_arena.Paint = id => _adventure == null", "_shownSession = _adventure.Opened;");
+        int context = show.IndexOf("EchoContext(_adventure);", StringComparison.Ordinal), populate = show.IndexOf("_arena.Populate(_combat, _adventure.Map);", StringComparison.Ordinal);
+        Assert.True(context >= 0 && populate > context);
+        string frame = Between(game, "_stage?.BeforeSync();", "_arena.Sync(_combat, player, null);");
+        Assert.Contains("EchoContext(a);", frame, StringComparison.Ordinal);
+        Assert.Contains("_arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);",
+            Between(game, "private void EchoContext(AdventureSession a)", "private void SeuilCreatures"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Formes_simples_du_gibier_faites_avant_l_habit_d_echo()
+    {
+        // Revue Codex de la PR #115 : un gibier sorti du Seuil sans modèle reçoit ses formes simples avant Dress (sinon seule sa capsule,
+        // cachée ensuite, serait fantôme).
+        string look = Between(Unity("ArenaView.cs"), "private void Look(string id, GameObject body, bool player)", "\n        }");
+        int wild = look.IndexOf("new WildlifeLook(body, kind)", StringComparison.Ordinal), dress = look.IndexOf("_ghosts.Dress(", StringComparison.Ordinal);
+        Assert.True(wild >= 0 && dress > wild);
+    }
 }

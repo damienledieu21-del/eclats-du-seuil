@@ -280,13 +280,14 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : Croc-Gris est un loup bien plus grand que les autres (StyleRules.BeastHeight).
             StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
+            // Sous-lot V2.4 : un cerf ou un lièvre sans modèle prend sa forme simple (corps, pattes, bois ou oreilles). Revue Codex
+            // de la PR #115 : avant l'habit d'écho, pour qu'un gibier sorti du Seuil soit fantôme tout entier (pas seulement sa capsule cachée).
+            if (!player && look == null && Wildlife.KindOf(id) is WildlifeKind kind && kind != WildlifeKind.None) _wild[id] = new WildlifeLook(body, kind);
             // Sous-lot V2.1 : les échos de la nuit, pâles ; V2.9.1 : tous les échos (EchoLooks.Of), fantômes si le shader des échos est là.
             // Décision de Damien du 7 novembre 2026 : est un écho ce qui revient après sa mort ou ce qui sort du Seuil.
             EchoKind echo = player ? EchoKind.None
                 : EchoLooks.Of(id, _fromSeuil != null && _fromSeuil.Contains(id), _slainBefore != null && _slainBefore(id));
             if (echo != EchoKind.None && !_ghosts.Dress(id, body, echo, look != null ? look.Height : 1.6f)) Echo(body);
-            // Sous-lot V2.4 : un cerf ou un lièvre sans modèle prend sa forme simple (corps, pattes, bois ou oreilles).
-            if (!player && look == null && Wildlife.KindOf(id) is WildlifeKind kind && kind != WildlifeKind.None) _wild[id] = new WildlifeLook(body, kind);
         }
 
         /// <summary>

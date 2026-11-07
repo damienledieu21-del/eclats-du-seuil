@@ -294,6 +294,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : l'Écho de la Rupture est une silhouette de lumière (avant la couleur des chefs).
             _arena.Paint = id => _adventure == null ? (Color?)null
                 : _stage?.Paint(id) ?? (_adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null);
+            EchoContext(_adventure);   // revue Codex de la PR #115 : avant Populate, qui habille les échos une seule fois
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
             // Sous-lot V1.9.8 : entrer dans le souvenir ou en sortir passe par un fondu blanc (la mise en scène), pas par le noir des portes.
             if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
@@ -319,6 +320,17 @@ namespace EdS.Game
         private Func<string, bool> _slainChief;
 
         private bool KnowsFact(string fact) => _adventure != null && _adventure.World.Narrative != null && _adventure.World.Narrative.Knows(fact);
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : la nuit, les cicatrices, les créatures sorties du Seuil et les chefs déjà tués, donnés à l'arène avant chaque
+        /// <c>Sync</c> et (revue Codex de la PR #115) avant chaque <c>Populate</c> : un chef vaincu d'une partie chargée revient en écho.
+        /// </summary>
+        private void EchoContext(AdventureSession a)
+        {
+            SeuilCreatures(a);
+            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
+            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);
+        }
 
         private void SeuilCreatures(AdventureSession a)
         {
@@ -549,9 +561,7 @@ namespace EdS.Game
             _stage?.BeforeSync();
             // Sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices ; décision de Damien du 7 novembre 2026 : ce qui sort du Seuil
             // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
-            SeuilCreatures(a);
-            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
-            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);
+            EchoContext(a);
             _arena.Sync(_combat, player, null);
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
