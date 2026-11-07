@@ -429,4 +429,27 @@ public sealed class V29RessourcesTests
         Assert.Equal((0.5, 0.0), (BeastCalls.Step(0, 0, 0.5, 0, 2, 1).X, BeastCalls.Step(0, 0, 0.5, 0, 2, 1).Z));
         Assert.False(BeastCalls.Step(0, 0, 3, 4, 1, 0).Arrived);   // en pause : rien ne bouge
     }
+
+    [Fact]
+    public void Revue_Codex_les_pattes_de_la_vache_et_du_chien_sont_reconnues()
+    {
+        Assert.Equal((false, true), BeastCalls.LegOf("L_hip_jnt.24_022"));
+        Assert.Equal((false, false), BeastCalls.LegOf("R_hip_jnt.14_012"));
+        Assert.Equal((true, true), BeastCalls.LegOf("L_shoulder_jnt.105_0101"));
+        Assert.Equal((true, false), BeastCalls.LegOf("R_shoulder_jnt.115_0111"));
+        Assert.Equal((true, true), BeastCalls.LegOf("LEGF.L_037"));
+        Assert.Equal((false, false), BeastCalls.LegOf("LEGB.R_039"));
+        Assert.Equal((false, true), BeastCalls.LegOf("Thigh.L_CatArmature"));
+        foreach (string not in new[] { "L_knee_jnt.25_023", "R_foot_jnt.17_015", "r_leg_corrective.23_021", "LEGB.L_end_050", "spine_01", "L_clavicle_jnt", "", null! })
+            Assert.Null(BeastCalls.LegOf(not));
+        // Pas en diagonale : avant gauche avec arrière droite, à l'opposé des deux autres ; borné.
+        for (double s = 0; s < 3; s += 0.1)
+        {
+            Assert.Equal(BeastCalls.LegSwing(s, 1.2, true, true), BeastCalls.LegSwing(s, 1.2, false, false), 9);
+            Assert.Equal(-BeastCalls.LegSwing(s, 1.2, true, true), BeastCalls.LegSwing(s, 1.2, true, false), 9);
+            Assert.InRange(BeastCalls.LegSwing(s, 1.2, false, true), -22, 22);
+        }
+        Assert.Equal(0, BeastCalls.LegSwing(double.NaN, 1, true, true));
+        Assert.Equal(0, BeastCalls.LegSwing(1, 0, true, true));
+    }
 }

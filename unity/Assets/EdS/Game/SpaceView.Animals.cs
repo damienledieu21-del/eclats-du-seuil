@@ -41,6 +41,14 @@ namespace EdS.Game
             public float RestUntil;
             public int Wander;
             public bool Grazer;
+
+            // Revue Codex de la PR #114 (tour 2) : sans clip de marche (vache, chien), les hauts de pattes balancent par le code.
+            public Transform[] Legs;
+            public bool[] LegFront;
+            public bool[] LegLeft;
+            public Quaternion[] LegBase;
+            public float Stride;
+            public bool Stepping;
         }
 
         private readonly List<Beast> _beasts = new List<Beast>();
@@ -141,6 +149,10 @@ namespace EdS.Game
                         else if (tail == "walk") beast.Walk = name;
                     }
                     beast.Idle = beast.Idle ?? beast.Rest ?? beast.TakeOff;
+                }
+                if (beast.Walk == null && slot != StyleSlot.Crow) Legs(beast, look);
+                if (beast.Animation != null)
+                {
                     foreach (AnimationState state in beast.Animation) state.wrapMode = state.name == beast.TakeOff ? WrapMode.ClampForever : WrapMode.Loop;
                     if (slot == StyleSlot.Crow && beast.TakeOff != null)
                     {
@@ -176,7 +188,8 @@ namespace EdS.Game
             for (int i = 0; i < _beasts.Count; i++)
             {
                 Beast b = _beasts[i];
-                if (b.Root == null || b.Animation == null) continue;
+                // Revue Codex de la PR #114 (tour 2) : une bête sans composant Animation erre quand même (marche faite par le code).
+                if (b.Root == null) continue;
                 if (b.Slot == StyleSlot.Crow)
                 {
                     Crow(b, player);
@@ -188,7 +201,7 @@ namespace EdS.Game
                 b.Next = _beastClock + 8f + 10f * (BeastCalls.Pick(b.Step + i * 31, 100) / 100f);
                 int pick = BeastCalls.Pick(b.Step + i * 17, 3);
                 string clip = pick == 0 && b.Rest != null ? b.Rest : pick == 1 && b.Idle2 != null ? b.Idle2 : b.Idle;
-                if (clip != null) b.Animation.CrossFade(clip, 0.5f);
+                if (clip != null && b.Animation != null) b.Animation.CrossFade(clip, 0.5f);
             }
             for (int i = 0; i < _farmCalls.Count && i < _callIn.Length; i++)
             {
@@ -231,9 +244,17 @@ namespace EdS.Game
                     b.RestUntil = _beastClock + 4f;
                     return;
                 }
-                if (b.Animation != null && (b.Walk ?? b.Idle) != null && b.Slot != StyleSlot.Crow) b.Animation.CrossFade(b.Walk ?? b.Idle, 0.3f);
+                if (b.Walk != null && b.Animation != null) b.Animation.CrossFade(b.Walk, 0.3f);
+                else if (b.Legs != null && b.Legs.Length > 0)
+                {
+                    // Marche faite par le code : l'animation d'attente est arrêtée (elle réécrirait les pattes), la pose du moment sert de base.
+                    if (b.Animation != null) b.Animation.Stop();
+                    for (int l = 0; l < b.Legs.Length; l++) b.LegBase[l] = b.Legs[l].localRotation;
+                    b.Stepping = true;
+                }
             }
             (double x, double z, double yaw, bool arrived) = BeastCalls.Step(at.x, at.z, b.Target.x, b.Target.z, b.Speed, deltaTime);
+            float moved = Mathf.Sqrt(((float)x - at.x) * ((float)x - at.x) + ((float)z - at.z) * ((float)z - at.z));
             b.Yaw = Mathf.MoveTowardsAngle(b.Yaw, (float)yaw, 160f * deltaTime);
             float px = (float)x, pz = (float)z, bob = 0f, pitch = 0f, roll = 0f, sway = 0f;
             if (b.Slot == StyleSlot.Crow) bob = 0.12f * Mathf.Abs(Mathf.Sin(_beastClock * 9f));   // le corbeau sautille
@@ -246,9 +267,31 @@ namespace EdS.Game
                 roll = (float)gr;
                 sway = (float)gy;
             }
+            if (b.Stepping)
+            {
+                b.Stride += moved;
+                // Les pattes ont leur propre pas : le corps ne fait plus qu'un léger tangage et un petit rebond.
+                roll *= 0.4f;
+                sway *= 0.4f;
+                Vector3 right = b.Root.right;
+                for (int l = 0; l < b.Legs.Length; l++)
+                {
+                    Transform leg = b.Legs[l];
+                    if (leg == null) continue;
+                    leg.localRotation = b.LegBase[l];
+                    leg.rotation = Quaternion.AngleAxis((float)BeastCalls.LegSwing(b.Stride, 1.1f * b.Height, b.LegFront[l], b.LegLeft[l]), right) * leg.rotation;
+                }
+            }
             if (arrived)
             {
                 b.Moving = false;
+                if (b.Stepping)
+                {
+                    for (int l = 0; l < b.Legs.Length; l++)
+                        if (b.Legs[l] != null) b.Legs[l].localRotation = b.LegBase[l];
+                    b.Stepping = false;
+                    if (b.Animation != null && b.Idle != null) b.Animation.Play(b.Idle);
+                }
                 bob = pitch = roll = sway = 0f;
                 b.RestUntil = _beastClock + (float)BeastCalls.RestSeconds(b.Wander + index);
                 b.Next = _beastClock;   // une attitude de repos tout de suite
@@ -256,6 +299,30 @@ namespace EdS.Game
             }
             b.Root.position = new Vector3(px, StyleWorld.StandHeight(px, pz) + b.Lift + bob, pz);
             b.Root.rotation = Quaternion.Euler(pitch, b.Yaw + sway, roll);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #114 (tour 2) : hauts de pattes du squelette (<see cref="BeastCalls.LegOf"/>), quatre au plus ; aucun si le
+        /// modèle n'a pas d'os reconnus (le corps seul se balance alors).
+        /// </summary>
+        private static void Legs(Beast b, GameObject look)
+        {
+            var legs = new List<Transform>();
+            var front = new List<bool>();
+            var left = new List<bool>();
+            foreach (Transform t in look.GetComponentsInChildren<Transform>(true))
+            {
+                if (legs.Count >= 4) break;
+                (bool Front, bool Left)? leg = BeastCalls.LegOf(t.name);
+                if (leg == null) continue;
+                legs.Add(t);
+                front.Add(leg.Value.Front);
+                left.Add(leg.Value.Left);
+            }
+            b.Legs = legs.ToArray();
+            b.LegFront = front.ToArray();
+            b.LegLeft = left.ToArray();
+            b.LegBase = new Quaternion[legs.Count];
         }
 
         /// <summary>Le but est-il dans l'aire de la bête, et le chemin droit jusqu'à lui libre (maisons, obstacles, champs, routes) ?</summary>

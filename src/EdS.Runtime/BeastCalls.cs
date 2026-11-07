@@ -213,6 +213,46 @@ namespace EdS.Runtime
             return (x + dx / d * move, z + dz / d * move, yaw, false);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #114 (tour 2) : os d'une patte d'après son nom, pour la marche faite par le code d'une bête sans clip de
+        /// marche (la vache, le chien) : haut de patte avant (« shoulder », « upperarm », « LEGF ») ou arrière (« hip », « thigh », « LEGB »),
+        /// côté gauche ou droit (« L_hip », « LEGF.L », « Thigh.L »). Null si ce n'est pas un haut de patte (genou, pied, bout, correctif).
+        /// </summary>
+        public static (bool Front, bool Left)? LegOf(string boneName)
+        {
+            if (string.IsNullOrEmpty(boneName)) return null;
+            bool? front = null, left = null;
+            int i = 0;
+            while (i < boneName.Length)
+            {
+                while (i < boneName.Length && !char.IsLetter(boneName[i])) i++;
+                int start = i;
+                while (i < boneName.Length && char.IsLetter(boneName[i])) i++;
+                if (i == start) continue;
+                string w = boneName.Substring(start, i - start).ToLowerInvariant();
+                switch (w)
+                {
+                    case "end": case "corrective": case "foot": case "knee": case "elbow": case "toe": case "clavicle": case "ik": case "pole": return null;
+                    case "shoulder": case "upperarm": case "legf": case "frontleg": front = true; break;
+                    case "hip": case "thigh": case "legb": case "backleg": case "hindleg": front = false; break;
+                    case "l": case "left": left = true; break;
+                    case "r": case "right": left = false; break;
+                }
+            }
+            return front is bool f && left is bool l ? (f, l) : ((bool Front, bool Left)?)null;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #114 (tour 2) : angle (degrés) d'une patte au pas, d'après la distance parcourue (<paramref name="stride"/>,
+        /// m) et la longueur d'un pas complet (<paramref name="cycle"/>, m) : pas en diagonale (avant gauche avec arrière droite), 22° au plus.
+        /// </summary>
+        public static double LegSwing(double stride, double cycle, bool front, bool left)
+        {
+            if (double.IsNaN(stride) || double.IsInfinity(stride) || double.IsNaN(cycle) || cycle <= 0) return 0;
+            double phase = 2 * Math.PI * (stride % (cycle * 1000)) / cycle + (front == left ? 0 : Math.PI);
+            return 22 * Math.Sin(phase);
+        }
+
         /// <summary>Mélange d'un compteur (empreinte entière, sans hasard ni allocation).</summary>
         private static int Mix(int n)
         {
