@@ -74,6 +74,26 @@ namespace EdS.Data.Story
         }
     }
 
+    /// <summary>
+    /// Sous-lot V2.7 : couvre-feu : quand <see cref="Faction"/> hait le personnage, elle le chasse du lieu <see cref="Place"/> aux moments
+    /// <see cref="Phases"/>, jusqu'au point sûr <see cref="SafePoint"/>.
+    /// </summary>
+    public sealed class ReputationCurfew
+    {
+        public string Faction { get; }
+        public string Place { get; }
+        public IReadOnlyList<string> Phases { get; }
+        public string SafePoint { get; }
+
+        internal ReputationCurfew(string faction, string place, IEnumerable<string> phases, string safePoint)
+        {
+            Faction = faction;
+            Place = place;
+            Phases = Array.AsReadOnly(phases.ToArray());
+            SafePoint = safePoint;
+        }
+    }
+
     /// <summary>Sous-lot V2.7 : un changement de réputation d'une faction.</summary>
     public readonly struct ReputationChange
     {
@@ -111,18 +131,43 @@ namespace EdS.Data.Story
         /// <summary>Événement du monde de la zone : changements à sa réussite (Won) et à son échec (Lost).</summary>
         public IReadOnlyDictionary<string, (IReadOnlyList<ReputationChange> Won, IReadOnlyList<ReputationChange> Lost)> Events { get; }
 
-        /// <summary>Prix d'achat chez les marchands, en pour cent, par palier des villageois ; vide : prix inchangés.</summary>
+        /// <summary>Événement : changements d'un échec pendant l'absence (sinon ceux de <see cref="Events"/>, Lost).</summary>
+        public IReadOnlyDictionary<string, IReadOnlyList<ReputationChange>> Missed { get; }
+
+        /// <summary>Factions dont les PNJ (<see cref="Npc.Faction"/>) ne parlent plus à qui elles haïssent, dans l'ordre des factions.</summary>
+        public IReadOnlyList<string> Shun { get; }
+
+        /// <summary>Couvre-feu (réponse de Damien du 7 novembre 2026 : la garde qui hait le personnage le chasse du bourg la nuit), ou null.</summary>
+        public ReputationCurfew? Curfew { get; }
+
+        /// <summary>Points sûrs secrets de la zone et le fait qui les révèle (le passage secret des bandits).</summary>
+        public IReadOnlyList<(string SafePoint, string Fact)> Hidden { get; }
+
+        /// <summary>Prix d'achat chez les marchands, en pour cent, par palier de la faction du marchand ; vide : prix inchangés.</summary>
         public IReadOnlyList<int> Prices { get; }
 
+        /// <summary>
+        /// Prix de vente au marchand (ce qu'il paie), en pour cent, par palier de sa faction (réponse de Damien du 7 novembre 2026 : racheté plus
+        /// cher si apprécié) ; vide : inchangés.
+        /// </summary>
+        public IReadOnlyList<int> SellPrices { get; }
+
         private ReputationRules()
-            : this(null, null, null, null, null)
+            : this(null, null, null, null, null, null, null, null, null, null)
         {
         }
 
         internal ReputationRules(IDictionary<string, IReadOnlyList<ReputationChange>>? links, IDictionary<string, IReadOnlyList<ReputationChange>>? acts,
             IDictionary<string, IReadOnlyList<ReputationChange>>? defeated,
-            IDictionary<string, (IReadOnlyList<ReputationChange>, IReadOnlyList<ReputationChange>)>? events, IReadOnlyList<int>? prices)
+            IDictionary<string, (IReadOnlyList<ReputationChange>, IReadOnlyList<ReputationChange>)>? events, IReadOnlyList<int>? prices,
+            IReadOnlyList<int>? sellPrices = null, IDictionary<string, IReadOnlyList<ReputationChange>>? missed = null, IEnumerable<string>? shun = null,
+            ReputationCurfew? curfew = null, IEnumerable<(string, string)>? hidden = null)
         {
+            Missed = Freeze(missed);
+            Shun = Array.AsReadOnly((shun ?? Array.Empty<string>()).OrderBy(f => Reputations.Factions.ToList().IndexOf(f)).ToArray());
+            Curfew = curfew;
+            Hidden = Array.AsReadOnly((hidden ?? Array.Empty<(string, string)>()).ToArray());
+            SellPrices = Array.AsReadOnly((sellPrices ?? Array.Empty<int>()).ToArray());
             Links = Freeze(links);
             Acts = Freeze(acts);
             Defeated = Freeze(defeated);
@@ -137,7 +182,12 @@ namespace EdS.Data.Story
                 (map ?? new Dictionary<string, IReadOnlyList<ReputationChange>>()).ToDictionary(x => x.Key, x => (IReadOnlyList<ReputationChange>)x.Value.ToList().AsReadOnly()),
                 StringComparer.Ordinal));
 
-        public bool IsEmpty => Links.Count == 0 && Acts.Count == 0 && Defeated.Count == 0 && Events.Count == 0 && Prices.Count == 0;
+        public bool IsEmpty => Links.Count == 0 && Acts.Count == 0 && Defeated.Count == 0 && Events.Count == 0 && Prices.Count == 0 && SellPrices.Count == 0
+            && Shun.Count == 0 && Curfew is null && Hidden.Count == 0;
+
+        /// <summary>Changements d'un échec pendant l'absence (<see cref="Missed"/>, sinon ceux d'un échec).</summary>
+        public IReadOnlyList<ReputationChange> MissedOf(string eventId) =>
+            Missed.TryGetValue(eventId, out IReadOnlyList<ReputationChange> c) ? c : EventOf(eventId, won: false);
 
         public IReadOnlyList<ReputationChange> Act(string act) => Acts.TryGetValue(act, out IReadOnlyList<ReputationChange> c) ? c : NoChange;
 
@@ -153,5 +203,8 @@ namespace EdS.Data.Story
 
         /// <summary>Prix d'achat en pour cent au palier <paramref name="tier"/> des villageois (100 sans règle).</summary>
         public int PricePercent(int tier) => Prices.Count == Reputations.Tiers.Count && tier >= 0 && tier < Prices.Count ? Prices[tier] : 100;
+
+        /// <summary>Prix de vente en pour cent au palier <paramref name="tier"/> (100 sans règle).</summary>
+        public int SellPercent(int tier) => SellPrices.Count == Reputations.Tiers.Count && tier >= 0 && tier < SellPrices.Count ? SellPrices[tier] : 100;
     }
 }

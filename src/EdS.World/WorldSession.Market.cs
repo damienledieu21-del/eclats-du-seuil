@@ -49,17 +49,47 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public IReadOnlyList<MerchantOffer> Stock(string merchant)
         {
-            IReadOnlyList<MerchantOffer> stock = NeedMarket().Stock(merchant, Zone.Time.Day);
-            int percent = PricePercent;
+            Market market = NeedMarket();
+            IReadOnlyList<MerchantOffer> stock = market.Stock(merchant, Zone.Time.Day);
+            int percent = PricePercentOf(merchant);
             if (percent == 100) return stock;
-            return stock.Select(o => o.WithPrice(ReputationPrice(o.Price, percent))).ToList().AsReadOnly();
+            // Jamais sous la valeur de base de l'objet : acheter puis revendre ne fait toujours pas gagner d'argent.
+            return stock.Select(o => o.WithPrice(market.Book.TryGetValue(o.Item, out long value)
+                ? Math.Max(value, ReputationPrice(o.Price, percent)) : ReputationPrice(o.Price, percent))).ToList().AsReadOnly();
         }
 
         /// <summary>
-        /// Sous-lot V2.7 : prix d'achat chez les marchands, en pour cent du prix du jour, selon le palier de la réputation auprès des
-        /// villageois (<see cref="EdS.Data.Story.ReputationRules.Prices"/> ; 100 sans règle ni histoire). Les prix de vente ne changent pas.
+        /// Sous-lot V2.7 : prix d'achat chez les marchands des villageois, en pour cent du prix du jour (<see cref="PricePercentOf"/>).
         /// </summary>
         public int PricePercent => Narrative is Narrative n ? n.Book.Reputation.PricePercent(n.StandingIndex("villagers")) : 100;
+
+        /// <summary>
+        /// Sous-lot V2.7 : prix d'achat chez <paramref name="merchant"/>, en pour cent du prix du jour, selon le palier de la réputation auprès de
+        /// sa faction (<see cref="EdS.Data.Story.ReputationRules.Prices"/> ; 100 sans règle ni histoire).
+        /// </summary>
+        /// <exception cref="ArgumentException">Marchand inconnu.</exception>
+        public int PricePercentOf(string merchant) =>
+            Narrative is Narrative n ? n.Book.Reputation.PricePercent(n.StandingIndex(NeedMarket().Book.Merchant(merchant).Faction)) : 100;
+
+        /// <summary>
+        /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : ce que paie <paramref name="merchant"/> à la vente, en pour cent, selon le
+        /// palier de sa faction (<see cref="EdS.Data.Story.ReputationRules.SellPrices"/> ; 100 sans règle).
+        /// </summary>
+        public int SellPercentOf(string merchant) =>
+            Narrative is Narrative n ? n.Book.Reputation.SellPercent(n.StandingIndex(NeedMarket().Book.Merchant(merchant).Faction)) : 100;
+
+        /// <summary>
+        /// Sous-lot V2.7 : pièces que paie <paramref name="merchant"/> pour une unité de <paramref name="item"/> (pièce en bon état), selon la
+        /// réputation, jamais au-dessus de la valeur de base de l'objet ; 0 s'il ne se vend pas.
+        /// </summary>
+        public long SellUnit(string merchant, string item)
+        {
+            Market market = NeedMarket();
+            long unit = market.UnitPrice(merchant, item);
+            int percent = SellPercentOf(merchant);
+            if (unit <= 0 || percent == 100 || !market.Book.TryGetValue(item, out long value)) return unit;
+            return Math.Min(Math.Max(1, value), ReputationPrice(unit, percent));
+        }
 
         /// <summary>Sous-lot V2.7 : prix au pour cent <paramref name="percent"/>, arrondi au plus proche, une pièce de cuivre au moins.</summary>
         public static long ReputationPrice(long price, int percent) => price <= 0 ? price : Math.Max(1, checked(price * percent + 50) / 100);
@@ -101,6 +131,14 @@ namespace EdS.World
             if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             if (m.Fact != null && !(Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
+            // Sous-lot V2.7 (réponses de Damien du 7 novembre 2026) : haï de sa faction, le marchand refuse ; le marché noir des bandits ne s'ouvre
+            // qu'au palier qu'il demande (le receleur parle sinon comme un autre).
+            if (Narrative is Narrative n)
+            {
+                int tier = n.StandingIndex(m.Faction);
+                if (m.Standing != null && tier < Reputations.TierIndex(m.Standing)) return TradeRefusal.NotYetOpen;
+                if (tier == 0) return TradeRefusal.Shunned;
+            }
             return TradeRefusal.None;
         }
 
@@ -168,7 +206,7 @@ namespace EdS.World
             long gain = 0;
             for (int i = 0; i < lots.Count; i++)
             {
-                long unit = market.UnitPrice(merchant, lots[i].Item);
+                long unit = SellUnit(merchant, lots[i].Item);   // sous-lot V2.7 : selon la réputation
                 foreach (ItemStack s in removed[i]) paid[i] = checked(paid[i] + WornPrice(unit, s) * s.Count);
                 gain = checked(gain + paid[i]);
             }
@@ -202,7 +240,7 @@ namespace EdS.World
             if (count > stack.Count) return TradeRefusal.NotEnough;
             if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
             if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
-            long paid = checked(WornPrice(market.UnitPrice(merchant, stack.Item), stack) * count);   // sous-lot V1.8 : pièce usée moins chère
+            long paid = checked(WornPrice(SellUnit(merchant, stack.Item), stack) * count);   // sous-lot V2.7 : selon la réputation   // sous-lot V1.8 : pièce usée moins chère
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
             if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;

@@ -142,7 +142,7 @@ namespace EdS.Runtime
         }
 
         /// <summary>Pièces que paie la boutique ouverte pour une unité de <paramref name="item"/> (0 : il ne se vend pas, ou pas de boutique).</summary>
-        public long SellPrice(string item) => Shop is string id ? _market.UnitPrice(id, item) : 0;
+        public long SellPrice(string item) => Shop is string id ? World.SellUnit(id, item) : 0;   // sous-lot V2.7 : selon la réputation
 
         /// <summary>Lots vendus, rachetables au même prix (le plus récent d'abord).</summary>
         public IReadOnlyList<ShopLot> Buyback() =>

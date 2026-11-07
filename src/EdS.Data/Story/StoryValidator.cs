@@ -403,7 +403,14 @@ namespace EdS.Data.Story
                         else if (schedule is null && n.Schedule != null && n.Id != null && !_activities.ContainsKey(n.Id) && _schema >= Schema9)
                             _activities[n.Id] = new HashSet<string>(n.Schedule.Where(x => x != null).SelectMany(x => new[] { x!.Activity, x.Rain?.Activity })
                                 .Where(a => a != null && a.Length <= MaxActivityLength && LocalId.IsMatch(a)).Select(a => a!), StringComparer.Ordinal);
-                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule));
+                        // Sous-lot V2.7 (schéma 12) : faction du PNJ.
+                        if (n.Faction != null && (!Since12("faction", path + ".faction") || !Reputations.IsFaction(n.Faction)))
+                        {
+                            if (_schema >= CurrentSchemaVersion)
+                                _r.Add(path + ".faction", ValidationCode.UnknownReference, $"faction inconnue « {n.Faction} » ; possibles : {string.Join(", ", Reputations.Factions)}.");
+                            ok = false;
+                        }
+                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule).WithFaction(n.Faction));
                     }
 
                 // Sous-lot V2.1 (zones en schéma 8) : un PNJ qui rentre chez lui la nuit existe et vit dans la zone de sa place de nuit.
@@ -446,12 +453,12 @@ namespace EdS.Data.Story
                 }
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
+                // Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives (avant les faits attendus : un point sûr secret en attend un).
+                ReputationRules? reputation = _d.Reputation is ReputationData rd ? CheckReputation(rd) : ReputationRules.None;
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
-                // Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives.
-                ReputationRules? reputation = _d.Reputation is ReputationData rd ? CheckReputation(rd) : ReputationRules.None;
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
                 return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation);
             }
@@ -1197,41 +1204,85 @@ namespace EdS.Data.Story
                 var defeated = Map(r.Defeated, path + ".defeated", Reputations.MaxAct,
                     k => _zone.Populations.Any(x => x.Creature == k || x.Family == k), "population ou famille de créatures");
                 var events = new Dictionary<string, (IReadOnlyList<ReputationChange>, IReadOnlyList<ReputationChange>)>(StringComparer.Ordinal);
+                var missed = new Dictionary<string, IReadOnlyList<ReputationChange>>(StringComparer.Ordinal);
                 if (r.Events != null)
                     foreach (var e in r.Events)
                     {
                         string ep = path + ".events." + e.Key;
                         if (!_zone.Events.Any(x => x.Id == e.Key)) { _r.Add(ep, ValidationCode.UnknownReference, $"événement du monde inconnu « {e.Key} »."); continue; }
                         if (e.Value is null) continue;
-                        if (e.Value.Won is null && e.Value.Lost is null) { TextsValidator.Missing(_r, ep, "won ou lost"); continue; }
+                        if (e.Value.Won is null && e.Value.Lost is null && e.Value.Missed is null) { TextsValidator.Missing(_r, ep, "won, lost ou missed"); continue; }
                         List<ReputationChange>? won = e.Value.Won is null ? new List<ReputationChange>() : Changes(e.Value.Won, ep + ".won", Reputations.MaxAct);
                         List<ReputationChange>? lost = e.Value.Lost is null ? new List<ReputationChange>() : Changes(e.Value.Lost, ep + ".lost", Reputations.MaxAct);
                         if (won != null && lost != null) events[e.Key] = (won, lost);
+                        if (e.Value.Missed != null && Changes(e.Value.Missed, ep + ".missed", Reputations.MaxAct) is List<ReputationChange> m) missed[e.Key] = m;
                     }
-                int[]? prices = null;
-                if (r.Prices != null)
+                int[]? Percents(List<KeyValuePair<string, int?>>? map, string field)
                 {
-                    prices = new int[Reputations.Tiers.Count];
+                    if (map is null) return null;
+                    var result = new int[Reputations.Tiers.Count];
                     var seen = new HashSet<string>(StringComparer.Ordinal);
-                    foreach (KeyValuePair<string, int?> x in r.Prices)
+                    foreach (KeyValuePair<string, int?> x in map)
                     {
-                        string pp = path + ".prices." + x.Key;
+                        string pp = path + "." + field + "." + x.Key;
                         int tier = Reputations.TierIndex(x.Key);
                         if (tier < 0) { _r.Add(pp, ValidationCode.UnknownReference, $"palier inconnu « {x.Key} » ; possibles : {string.Join(", ", Reputations.Tiers)}."); continue; }
                         if (x.Value is not int v) { TextsValidator.Missing(_r, pp, "entier"); continue; }
                         if (v < Reputations.MinPricePercent || v > Reputations.MaxPricePercent)
                         { _r.Add(pp, ValidationCode.OutOfRange, $"prix hors de [{Reputations.MinPricePercent}, {Reputations.MaxPricePercent}] %."); continue; }
-                        prices[tier] = v;
+                        result[tier] = v;
                         seen.Add(x.Key);
                     }
                     foreach (string tier in Reputations.Tiers)
-                        if (!seen.Contains(tier) && !_r.HasErrorAtOrAbove(path + ".prices." + tier)) TextsValidator.Missing(_r, path + ".prices." + tier, "prix de ce palier, en pour cent");
+                        if (!seen.Contains(tier) && !_r.HasErrorAtOrAbove(path + "." + field + "." + tier)) TextsValidator.Missing(_r, path + "." + field + "." + tier, "prix de ce palier, en pour cent");
+                    return result;
                 }
+                int[]? prices = Percents(r.Prices, "prices");
+                int[]? sellPrices = Percents(r.SellPrices, "sellPrices");   // réponse de Damien du 7 novembre 2026 : la vente suit aussi
+                // Réponses de Damien du 7 novembre 2026 : factions qui ne parlent plus à qui elles haïssent, couvre-feu, points sûrs secrets.
+                var shun = new List<string>();
+                if (r.Shun != null)
+                    for (int i = 0; i < r.Shun.Count; i++)
+                    {
+                        string sp = $"{path}.shun[{i}]";
+                        if (!Reputations.IsFaction(r.Shun[i])) _r.Add(sp, ValidationCode.UnknownReference, $"faction inconnue « {r.Shun[i]} ».");
+                        else if (shun.Contains(r.Shun[i]!)) _r.Add(sp, ValidationCode.DuplicateId, $"faction « {r.Shun[i]} » déjà nommée.");
+                        else shun.Add(r.Shun[i]!);
+                    }
+                ReputationCurfew? curfew = null;
+                if (r.Curfew is ReputationCurfewData c)
+                {
+                    string cp = path + ".curfew";
+                    bool cok = true;
+                    if (!Reputations.IsFaction(c.Faction)) { _r.Add(cp + ".faction", ValidationCode.UnknownReference, $"faction inconnue « {c.Faction} »."); cok = false; }
+                    if (c.Place is null || !_zone.Places.Any(x => x.Id == c.Place)) { _r.Add(cp + ".place", ValidationCode.UnknownReference, $"lieu inconnu « {c.Place} »."); cok = false; }
+                    if (c.SafePoint is null || !_zone.SafePoints.Any(x => x.Id == c.SafePoint)) { _r.Add(cp + ".safePoint", ValidationCode.UnknownReference, $"point sûr inconnu « {c.SafePoint} »."); cok = false; }
+                    if (c.Phases is null || c.Phases.Count == 0) { TextsValidator.Missing(_r, cp + ".phases", "moments du couvre-feu"); cok = false; }
+                    else
+                        for (int i = 0; i < c.Phases.Count; i++)
+                            if (c.Phases[i] is null || !Phases.Contains(c.Phases[i]!))
+                            { _r.Add($"{cp}.phases[{i}]", ValidationCode.UnknownReference, $"moment inconnu « {c.Phases[i]} » ; possibles : {string.Join(", ", Phases)}."); cok = false; }
+                    if (cok) curfew = new ReputationCurfew(c.Faction!, c.Place!, c.Phases!.Select(x => x!).Distinct(StringComparer.Ordinal), c.SafePoint!);
+                }
+                var hidden = new List<(string, string)>();
+                if (r.Hidden != null)
+                    for (int i = 0; i < r.Hidden.Count; i++)
+                    {
+                        string hp = $"{path}.hidden[{i}]";
+                        if (r.Hidden[i] is not ReputationHiddenData h) { TextsValidator.Missing(_r, hp, "point sûr et fait"); continue; }
+                        bool hok = true;
+                        if (h.SafePoint is null || !_zone.SafePoints.Any(x => x.Id == h.SafePoint)) { _r.Add(hp + ".safePoint", ValidationCode.UnknownReference, $"point sûr inconnu « {h.SafePoint} »."); hok = false; }
+                        else if (h.SafePoint == _zone.Entry.Id || hidden.Any(x => x.Item1 == h.SafePoint) || h.SafePoint == curfew?.SafePoint)
+                        { _r.Add(hp + ".safePoint", ValidationCode.InvalidValue, $"point sûr « {h.SafePoint} » : ni l'entrée, ni le couvre-feu, ni deux fois."); hok = false; }
+                        if (!IsFactId(h.Fact)) { _r.Add(hp + ".fact", ValidationCode.InvalidValue, $"fait « {h.Fact} » mal formé : « fact.… »."); hok = false; }
+                        else _factsNeeded.Add((h.Fact!, hp + ".fact"));
+                        if (hok) hidden.Add((h.SafePoint!, h.Fact!));
+                    }
                 // Les noms des factions et des paliers sont des textes du jeu (l'interface les affiche).
                 for (int i = 0; i < Reputations.Factions.Count; i++) Text(Reputations.FactionText(Reputations.Factions[i]), path);
                 for (int i = 0; i < Reputations.Tiers.Count; i++) Text(Reputations.TierText(Reputations.Tiers[i]), path);
                 if (_r.TotalCount != errors) return null;
-                return new ReputationRules(links, acts, defeated, events, prices);
+                return new ReputationRules(links, acts, defeated, events, prices, sellPrices, missed, shun, curfew, hidden);
             }
 
             /// <summary>Sous-lot V2.6.1 : <c>id</c> est une faille à cicatrice de la zone de l'histoire.</summary>

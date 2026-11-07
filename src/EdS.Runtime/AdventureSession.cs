@@ -389,6 +389,7 @@ namespace EdS.Runtime
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
+            if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             if (boons && steps > 0) _dirty = true;
             _sinceSave += seconds;
             // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
@@ -662,6 +663,7 @@ namespace EdS.Runtime
                     if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
                     if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                     if (shop == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");   // sous-lot V1.7 : la réserve de la guilde
+                    if (shop == TradeRefusal.Shunned) Say("text.ui.trade.shunned");   // sous-lot V2.7 : haï de sa faction
                 }
                 // Sous-lot V1.7 : parler à la maîtresse de guilde ouvre son tableau (inscription, contrats, épreuve).
                 if (IsGuildmistress(npc.Id)) return OpenGuild();
@@ -670,6 +672,7 @@ namespace EdS.Runtime
                 // rempli s'annonce (au tick suivant), pas « rien à dire ».
                 if (refusal == DialogueRefusal.NothingToSay && World.Narrative?.LastTalkFilled > 0) return true;
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
+                if (refusal == DialogueRefusal.Shunned) Say("text.ui.shunned", Text(npc.Name));   // sous-lot V2.7 : la garde ne lui parle plus
                 return refusal == DialogueRefusal.None;
             }
             if (NodeInReach is GatheringNode node)

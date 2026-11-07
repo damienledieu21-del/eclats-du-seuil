@@ -60,6 +60,12 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V1.9.3b (schéma 3) : fait de l'histoire demandé pour ouvrir la boutique (l'étal de Renart, après son aveu), ou null.</summary>
         public string? Fact { get; set; }
 
+        /// <summary>Sous-lot V2.7 (schéma 4) : faction du marchand, dont la réputation règle ses prix (absente : « villagers »).</summary>
+        public string? Faction { get; set; }
+
+        /// <summary>Sous-lot V2.7 (schéma 4) : palier de sa faction demandé pour ouvrir la boutique (le marché noir des bandits), ou null.</summary>
+        public string? Standing { get; set; }
+
         public List<OfferData?>? Offers { get; set; }
     }
 
@@ -125,9 +131,17 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V1.9.3b : fait de l'histoire demandé pour ouvrir la boutique (appris par le personnage), ou null.</summary>
         public string? Fact { get; }
 
+        /// <summary>Sous-lot V2.7 : faction dont la réputation règle les prix et l'accueil (« villagers » par défaut).</summary>
+        public string Faction { get; }
+
+        /// <summary>Sous-lot V2.7 : palier de <see cref="Faction"/> demandé pour ouvrir la boutique, ou null.</summary>
+        public string? Standing { get; }
+
         internal Merchant(string id, string npc, string greeting, int sellPercent, IEnumerable<string> closed, int daily, IEnumerable<MerchantOffer> offers,
-            string? rank = null, string? fact = null)
+            string? rank = null, string? fact = null, string faction = "villagers", string? standing = null)
         {
+            Faction = faction;
+            Standing = standing;
             Rank = rank;
             Fact = fact;
             Id = id;
@@ -211,9 +225,14 @@ namespace EdS.Data.Merchants
         /// et d'une offre (rang demandé pour l'acheter), au moins celui de la boutique. Version 3 (sous-lot V1.9.3b) : <c>fact</c> facultatif
         /// d'un marchand (fait de l'histoire demandé pour ouvrir sa boutique, posé par au moins un effet <c>setFact</c> de l'histoire : l'étal
         /// de Renart, après son aveu). Un fichier en version 2 (<see cref="PreviousSchemaVersion"/>) reste lu (sans <c>fact</c>) ; une version
-        /// plus ancienne est refusée (pré-alpha).
+        /// plus ancienne est refusée (pré-alpha). Version 4 (sous-lot V2.7, réputation) : <c>faction</c> facultative d'un marchand (une faction de
+        /// <see cref="Reputations.Factions"/> ; absente : « villagers ») et <c>standing</c> facultatif (palier de cette faction demandé pour ouvrir
+        /// la boutique : le marché noir des bandits). Les versions 2 et 3 restent lues.
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
+
+        /// <summary>Sous-lot V2.7 : version 3, encore lue (sans <c>faction</c> ni <c>standing</c>).</summary>
+        public const int Schema3 = 3;
 
         /// <summary>Sous-lot V1.9.3b : version précédente, encore lue (sous-ensemble de la version 3, sans <c>fact</c>).</summary>
         public const int PreviousSchemaVersion = 2;
@@ -235,7 +254,7 @@ namespace EdS.Data.Merchants
             if (items is null) throw new ArgumentNullException(nameof(items));
             ValidationReport r = report ?? new ValidationReport();
             // Sous-lot V1.9.3b : la version 2 est encore lue (sous-ensemble de la version 3).
-            int supported = document.SchemaVersion == PreviousSchemaVersion ? PreviousSchemaVersion : CurrentSchemaVersion;
+            int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema3 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new MerchantsLoadResult(r, null);
             // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
@@ -352,13 +371,21 @@ namespace EdS.Data.Merchants
             // Sous-lot V1.9.3b (schéma 3) : fait demandé pour ouvrir la boutique, posé quelque part dans l'histoire (sinon jamais ouverte).
             if (m.Fact != null)
             {
-                if (schema < CurrentSchemaVersion)
-                { r.Add(p + ".fact", ValidationCode.InvalidValue, $"champ « fact » inconnu en version {schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
+                if (schema < Schema3)
+                { r.Add(p + ".fact", ValidationCode.InvalidValue, $"champ « fact » inconnu en version {schema} du format : version {Schema3} demandée."); ok = false; }
                 else if (!StoryValidator.IsFactId(m.Fact)) { r.Add(p + ".fact", ValidationCode.InvalidValue, $"fait « {m.Fact} » mal formé : « fact.… »."); ok = false; }
                 else if (!FactsSet(story).Contains(m.Fact))
                 { r.Add(p + ".fact", ValidationCode.UnknownReference, $"fait « {m.Fact} » jamais posé par l'histoire (aucun setFact) : la boutique ne s'ouvrirait jamais."); ok = false; }
             }
-            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank, m.Fact) : null;
+            // Sous-lot V2.7 (schéma 4) : faction et palier demandé.
+            foreach ((string field, string? value) in new[] { ("faction", m.Faction), ("standing", m.Standing) })
+                if (value != null && schema < CurrentSchemaVersion)
+                { r.Add(p + "." + field, ValidationCode.InvalidValue, $"champ « {field} » inconnu en version {schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
+            if (m.Faction != null && !Reputations.IsFaction(m.Faction))
+            { r.Add(p + ".faction", ValidationCode.UnknownReference, $"faction inconnue « {m.Faction} » ; possibles : {string.Join(", ", Reputations.Factions)}."); ok = false; }
+            if (m.Standing != null && Reputations.TierIndex(m.Standing) < 0)
+            { r.Add(p + ".standing", ValidationCode.UnknownReference, $"palier inconnu « {m.Standing} » ; possibles : {string.Join(", ", Reputations.Tiers)}."); ok = false; }
+            return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank, m.Fact, m.Faction ?? "villagers", m.Standing) : null;
         }
 
         /// <summary>Sous-lot V1.9.3b : faits posés par l'histoire (effets <c>setFact</c> des réponses, des étapes et des quêtes).</summary>

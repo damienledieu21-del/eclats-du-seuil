@@ -147,7 +147,8 @@
               -13
             ]
           }
-        ]
+        ],
+        "faction": "rangers"
       },
       {
         "id": "npc.armurier",
@@ -749,7 +750,8 @@
               3.5
             ]
           }
-        ]
+        ],
+        "faction": "villagers"
       },
       {
         "id": "npc.archer_garde",
@@ -807,7 +809,8 @@
               -3
             ]
           }
-        ]
+        ],
+        "faction": "guard"
       },
       {
         "id": "npc.albe",
@@ -1083,7 +1086,8 @@
               -33
             ]
           }
-        ]
+        ],
+        "faction": "villagers"
       },
       {
         "id": "npc.herboriste_hameau",
@@ -1283,7 +1287,8 @@
               56
             ]
           }
-        ]
+        ],
+        "faction": "guard"
       },
       {
         "id": "npc.capitaine",
@@ -1336,7 +1341,8 @@
               -8
             ]
           }
-        ]
+        ],
+        "faction": "guard"
       },
       {
         "id": "npc.deserteur",
@@ -1371,7 +1377,8 @@
               -30
             ]
           }
-        ]
+        ],
+        "faction": "bandits"
       },
       {
         "id": "npc.ysarn",
@@ -1417,6 +1424,16 @@
         ],
         "dialogue": "dialogue.ysolde",
         "zone": "zone.souvenir_rupture"
+      },
+      {
+        "id": "npc.receleur",
+        "name": "text.v27.npc.receleur.name",
+        "position": [
+          70.5,
+          -27.5
+        ],
+        "dialogue": "dialogue.receleur",
+        "faction": "bandits"
       }
     ],
     "dialogues": [
@@ -12177,6 +12194,34 @@
               {
                 "conditions": [
                   {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "honored"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
+                  }
+                ],
+                "text": "text.v27.archer_garde.bandits.honored"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "liked"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archer_garde"
+                  }
+                ],
+                "text": "text.v27.archer_garde.bandits.liked"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.archer_garde"
                   }
@@ -16794,6 +16839,20 @@
               {
                 "conditions": [
                   {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "liked"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.thibaut"
+                  }
+                ],
+                "text": "text.v27.thibaut.bandits.liked"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.thibaut"
                   }
@@ -17893,6 +17952,31 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.v27.sentier_des_contrebandiers",
+                "step": "retour"
+              }
+            ],
+            "node": "v27_deserteur_sentier_merci"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.v27.remede_du_camp",
+                "step": "potions"
+              },
+              {
+                "if": "hasItem",
+                "id": "item.potion_de_soin",
+                "value": 3
+              }
+            ],
+            "node": "v27_deserteur_remede_merci"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.v27.mot_de_passe",
                 "step": "retour"
               }
@@ -17940,6 +18024,50 @@
               }
             ],
             "node": "v27_deserteur_offre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v27.remede_du_camp"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v27.deserteur_remede.plus_tard"
+              },
+              {
+                "if": "questDone",
+                "id": "quest.v27.mot_de_passe"
+              },
+              {
+                "if": "standingAtLeast",
+                "id": "bandits",
+                "step": "liked"
+              }
+            ],
+            "node": "v27_deserteur_remede_offre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.v27.sentier_des_contrebandiers"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v27.deserteur_sentier.plus_tard"
+              },
+              {
+                "if": "questDone",
+                "id": "quest.v27.remede_du_camp"
+              },
+              {
+                "if": "standingAtLeast",
+                "id": "bandits",
+                "step": "honored"
+              }
+            ],
+            "node": "v27_deserteur_sentier_offre"
           },
           {
             "conditions": [
@@ -18192,6 +18320,54 @@
                 ],
                 "effects": [],
                 "next": "v27_deserteur_offre"
+              },
+              {
+                "text": "text.v27.deserteur_remede.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_remede.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.mot_de_passe"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_remede_offre"
+              },
+              {
+                "text": "text.v27.deserteur_sentier.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_sentier.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.sentier_des_contrebandiers"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "honored"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_sentier_offre"
               }
             ],
             "lines": [
@@ -18266,6 +18442,82 @@
           {
             "id": "v27_deserteur_merci",
             "text": "text.v27.deserteur.merci",
+            "choices": []
+          },
+          {
+            "id": "v27_deserteur_remede_offre",
+            "text": "text.v27.deserteur_remede.offre",
+            "choices": [
+              {
+                "text": "text.v27.deserteur_remede.offre.oui",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v27.remede_du_camp"
+                  }
+                ],
+                "next": "v27_deserteur_remede_oui"
+              },
+              {
+                "text": "text.v27.deserteur_remede.offre.non",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v27.deserteur_remede.plus_tard"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v27_deserteur_remede_oui",
+            "text": "text.v27.deserteur_remede.oui",
+            "choices": []
+          },
+          {
+            "id": "v27_deserteur_remede_merci",
+            "text": "text.v27.deserteur_remede.merci",
+            "choices": []
+          },
+          {
+            "id": "v27_deserteur_sentier_offre",
+            "text": "text.v27.deserteur_sentier.offre",
+            "choices": [
+              {
+                "text": "text.v27.deserteur_sentier.offre.oui",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.v27.sentier_des_contrebandiers"
+                  }
+                ],
+                "next": "v27_deserteur_sentier_oui"
+              },
+              {
+                "text": "text.v27.deserteur_sentier.offre.non",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v27.deserteur_sentier.plus_tard"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v27_deserteur_sentier_oui",
+            "text": "text.v27.deserteur_sentier.oui",
+            "choices": []
+          },
+          {
+            "id": "v27_deserteur_sentier_merci",
+            "text": "text.v27.deserteur_sentier.merci",
             "choices": []
           }
         ]
@@ -18537,6 +18789,54 @@
             "id": "apres_fils",
             "text": "text.ch1.ysolde.apres_fils",
             "choices": []
+          }
+        ]
+      },
+      {
+        "id": "dialogue.receleur",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v27.receleur.accueil",
+            "choices": [
+              {
+                "text": "text.v27.receleur.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "reputationBelow",
+                    "id": "bandits",
+                    "value": -299
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.receleur"
+                  }
+                ],
+                "text": "text.v27.receleur.hostile"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.receleur"
+                  }
+                ],
+                "text": "text.v27.receleur.retrouvailles"
+              }
+            ]
           }
         ]
       }
@@ -21580,6 +21880,101 @@
             "value": 60
           }
         ]
+      },
+      {
+        "id": "quest.v27.remede_du_camp",
+        "name": "text.v27.remede_du_camp.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "questDone",
+            "id": "quest.v27.mot_de_passe"
+          },
+          {
+            "if": "standingAtLeast",
+            "id": "bandits",
+            "step": "liked"
+          }
+        ],
+        "steps": [
+          {
+            "id": "potions",
+            "text": "text.v27.remede_du_camp.potions",
+            "objective": {
+              "kind": "deliver",
+              "id": "item.potion_de_soin",
+              "value": 3,
+              "npc": "npc.deserteur"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 200
+          },
+          {
+            "do": "giveMoney",
+            "value": 180
+          },
+          {
+            "do": "reputation",
+            "id": "bandits",
+            "value": 40
+          }
+        ]
+      },
+      {
+        "id": "quest.v27.sentier_des_contrebandiers",
+        "name": "text.v27.sentier_des_contrebandiers.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "questDone",
+            "id": "quest.v27.remede_du_camp"
+          },
+          {
+            "if": "standingAtLeast",
+            "id": "bandits",
+            "step": "honored"
+          }
+        ],
+        "steps": [
+          {
+            "id": "camp",
+            "text": "text.v27.sentier_des_contrebandiers.camp",
+            "objective": {
+              "kind": "reach",
+              "id": "camp_des_rodeurs"
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.v27.sentier_des_contrebandiers.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.deserteur"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 250
+          },
+          {
+            "do": "setFact",
+            "id": "fact.v27.sentier_revele"
+          },
+          {
+            "do": "reputation",
+            "id": "bandits",
+            "value": 50
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -21756,6 +22151,9 @@
           },
           "lost": {
             "villagers": -20
+          },
+          "missed": {
+            "villagers": -5
           }
         },
         "faille_du_seuil": {
@@ -21776,7 +22174,33 @@
         "liked": 95,
         "honored": 90,
         "hero": 80
-      }
+      },
+      "sellPrices": {
+        "hated": 70,
+        "hostile": 80,
+        "wary": 90,
+        "neutral": 100,
+        "liked": 105,
+        "honored": 110,
+        "hero": 120
+      },
+      "shun": [
+        "guard"
+      ],
+      "curfew": {
+        "faction": "guard",
+        "place": "bourg",
+        "phases": [
+          "night"
+        ],
+        "safePoint": "place_du_village"
+      },
+      "hidden": [
+        {
+          "safePoint": "planque_des_contrebandiers",
+          "fact": "fact.v27.sentier_revele"
+        }
+      ]
     }
   }
 }

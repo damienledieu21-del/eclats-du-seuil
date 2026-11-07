@@ -77,6 +77,8 @@ namespace EdS.Data.Json
                 ["daily"] = (v, p) => x.Daily = input.Int32(v, p),
                 ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
                 ["fact"] = (v, p) => x.Fact = input.Text(v, p),   // sous-lot V1.9.3b (schéma 3)
+                ["faction"] = (v, p) => x.Faction = input.Text(v, p),   // sous-lot V2.7 (schéma 4)
+                ["standing"] = (v, p) => x.Standing = input.Text(v, p),
                 ["offers"] = (v, p) => x.Offers = input.ReadLimitedList(v, p, MerchantValidator.MaxOffers,
                     n => $"{n} offres, au plus {MerchantValidator.MaxOffers}.", (e, ip) => ReadOffer(input, e, ip)),
             }) ? x : null;

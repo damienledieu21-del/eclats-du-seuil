@@ -125,7 +125,7 @@ public class V261SuitesDuSeuilTests
     {
         Assert.Equal((12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((12, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((12, "0.15.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
+        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
         Assert.Equal((12, "0.22.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.22.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.14.0-provisoire", ItemsCatalog.ContentVersion);

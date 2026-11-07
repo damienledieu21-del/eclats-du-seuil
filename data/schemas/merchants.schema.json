@@ -18,7 +18,8 @@
     "schemaVersion": {
       "enum": [
         2,
-        3
+        3,
+        4
       ]
     },
     "kind": {
@@ -126,6 +127,14 @@
                   "sss"
                 ],
                 "description": "Sous-lot V1.7 (schéma 2) : rang de la Guilde des aventuriers demandé pour ouvrir la boutique (la boutique de la guilde) ; facultatif."
+              },
+              "faction": {
+                "enum": ["villagers", "guard", "rangers", "bandits"],
+                "description": "Sous-lot V2.7 (schéma 4) : faction dont la réputation règle les prix et l'accueil (absente : villagers)."
+              },
+              "standing": {
+                "enum": ["hated", "hostile", "wary", "neutral", "liked", "honored", "hero"],
+                "description": "Sous-lot V2.7 (schéma 4) : palier de la faction demandé pour ouvrir la boutique (le marché noir des bandits) ; facultatif."
               },
               "fact": {
                 "type": "string",

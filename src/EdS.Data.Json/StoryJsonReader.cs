@@ -119,6 +119,7 @@ namespace EdS.Data.Json
                 ["position"] = (v, p) => n.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["dialogue"] = (v, p) => n.Dialogue = input.Text(v, p),
                 ["zone"] = (v, p) => n.Zone = input.Text(v, p),   // sous-lot V1.6 (schéma 3)
+                ["faction"] = (v, p) => n.Faction = input.Text(v, p),   // sous-lot V2.7 (schéma 12)
                 ["schedule"] = (v, p) => n.Schedule = List(input, v, p, StoryValidator.MaxScheduleSlots, ReadSlot),   // sous-lot V2.3 (schéma 9)
             }) ? n : null;
         }
@@ -271,6 +272,28 @@ namespace EdS.Data.Json
                 ["acts"] = (v, p) => r.Acts = NestedMap(input, v, p),
                 ["defeated"] = (v, p) => r.Defeated = NestedMap(input, v, p),
                 ["prices"] = (v, p) => r.Prices = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["sellPrices"] = (v, p) => r.SellPrices = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["shun"] = (v, p) => r.Shun = input.ReadLimitedList(v, p, 4, n => $"{n} factions, au plus 4.", (e, ip) => input.Text(e, ip)),
+                ["curfew"] = (v, p) =>
+                {
+                    var c = new ReputationCurfewData();
+                    r.Curfew = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["faction"] = (w, wp) => c.Faction = input.Text(w, wp),
+                        ["place"] = (w, wp) => c.Place = input.Text(w, wp),
+                        ["phases"] = (w, wp) => c.Phases = input.ReadLimitedList(w, wp, 4, n => $"{n} moments, au plus 4.", (e, ip) => input.Text(e, ip)),
+                        ["safePoint"] = (w, wp) => c.SafePoint = input.Text(w, wp),
+                    }) ? c : null;
+                },
+                ["hidden"] = (v, p) => r.Hidden = input.ReadLimitedList(v, p, 8, n => $"{n} points sûrs secrets, au plus 8.", (e, ip) =>
+                {
+                    var h = new ReputationHiddenData();
+                    return input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["safePoint"] = (w, wp) => h.SafePoint = input.Text(w, wp),
+                        ["fact"] = (w, wp) => h.Fact = input.Text(w, wp),
+                    }) ? h : null;
+                }),
                 ["events"] = (v, p) =>
                 {
                     if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « événement : réussite, échec »")) return;
@@ -283,6 +306,7 @@ namespace EdS.Data.Json
                         {
                             ["won"] = (w, wp) => x.Won = ScenarioJsonReader.ReadIntegerMap(input, w, wp),
                             ["lost"] = (l, lp) => x.Lost = ScenarioJsonReader.ReadIntegerMap(input, l, lp),
+                            ["missed"] = (l, lp) => x.Missed = ScenarioJsonReader.ReadIntegerMap(input, l, lp),
                         });
                         events.Add(new KeyValuePair<string, ReputationEventData?>(e.Name, ok ? x : null));
                     }

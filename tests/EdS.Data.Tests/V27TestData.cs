@@ -14,6 +14,7 @@ internal static class V27TestData
     {
         JsonObject data = root["data"]!.AsObject();
         data.Remove("reputation");
+        foreach (JsonNode? n in data["npcs"]!.AsArray()) n!.AsObject().Remove("faction");
         JsonArray quests = data["quests"]!.AsArray();
         foreach (JsonNode? q in quests.Where(q => ((string?)q!["id"])!.StartsWith("quest.v27.", StringComparison.Ordinal)).ToList()) quests.Remove(q);
         foreach (JsonNode? d in data["dialogues"]!.AsArray())

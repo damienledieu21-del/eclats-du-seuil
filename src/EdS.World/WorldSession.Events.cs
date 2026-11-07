@@ -112,7 +112,7 @@ namespace EdS.World
             long lost = outcome == EventOutcome.Lost ? Math.Min(SavedEvent.MaxCount, checked(entry.Lost + 1)) : entry.Lost;
             if (!SetEventEntry(e, new SavedEvent(entry.Id, won, lost, Math.Min(SavedEvent.MaxDay, o.Day), outcome, entry.Owed || first))) return;
             // Sous-lot V2.7 : la réputation suit l'issue (le hameau défendu, la faille refermée), une fois par occurrence réglée.
-            if (outcome == EventOutcome.Won || outcome == EventOutcome.Lost) Narrative?.EventSettled(e.Id, outcome == EventOutcome.Won);
+            if (outcome == EventOutcome.Won || outcome == EventOutcome.Lost) Narrative?.EventSettled(e.Id, outcome == EventOutcome.Won, lostKind == WorldEventNoticeKind.Missed);   // pendant l'absence : plus faible
             if (outcome == EventOutcome.Won)
             {
                 notices.Add(new WorldEventNotice(WorldEventNoticeKind.Won, e.Id, o.Group.Id, o.Day));

@@ -77,7 +77,7 @@ public class V26SeuilGranditTests
     {
         Assert.Equal((12, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
         Assert.Equal((15, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
-        Assert.Equal((12, "0.15.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
         Assert.Equal("0.22.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         Assert.Equal("0.22.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios ne changent (ceux de V2.4.1).

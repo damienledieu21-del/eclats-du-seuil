@@ -370,7 +370,6 @@ public class V27ReputationTests
     [InlineData(700, 80)]
     [InlineData(-150, 110)]
     [InlineData(-400, 120)]
-    [InlineData(-800, 130)]
     public void Prix_d_achat_selon_les_villageois(int villagers, int percent)
     {
         const string merchant = "merchant.herboriste";

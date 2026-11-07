@@ -58,6 +58,12 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.9.3b : boutique pas encore ouverte, faute du fait de l'histoire qu'elle demande (l'étal de Renart avant son aveu).</summary>
         NotYetOpen = 15,
+
+        /// <summary>
+        /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : le personnage est haï de la faction du marchand : il refuse de commercer (le
+        /// PNJ parle alors comme un autre).
+        /// </summary>
+        Shunned = 16,
     }
 
     /// <summary>Un lot vendu, rachetable au même prix pendant la session de jeu : objet, quantité, pièces reçues (cuivre).</summary>

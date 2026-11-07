@@ -287,6 +287,15 @@ namespace EdS.Data.Story
         /// </summary>
         public IReadOnlyList<ScheduleSlot> Schedule { get; }
 
+        /// <summary>Sous-lot V2.7 (schéma 12) : faction du PNJ, ou null.</summary>
+        public string? Faction { get; private set; }
+
+        internal Npc WithFaction(string? faction)
+        {
+            Faction = faction;
+            return this;
+        }
+
         internal Npc(string id, string name, GroundVector position, string dialogue, string? zone = null, IEnumerable<ScheduleSlot>? schedule = null)
         {
             Id = id;

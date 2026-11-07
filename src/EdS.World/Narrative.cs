@@ -168,6 +168,12 @@ namespace EdS.World
         /// choisir : rien n'a changé.
         /// </summary>
         Locked = 7,
+
+        /// <summary>
+        /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : la faction du PNJ hait le personnage et ne lui parle plus
+        /// (<see cref="ReputationRules.Shun"/> : la garde).
+        /// </summary>
+        Shunned = 8,
     }
 
     /// <summary>
@@ -483,8 +489,14 @@ namespace EdS.World
         /// Sous-lot V2.7 : un événement du monde <paramref name="eventId"/> de la zone de l'histoire vient d'être réglé (réussi ou perdu, une
         /// seule fois par occurrence) : ses changements de réputation, annoncés au tick suivant.
         /// </summary>
-        internal void EventSettled(string eventId, bool won) =>
-            ChangeReputation(_book.Reputation.EventOf(eventId, won), won ? "eventWon" : "eventLost", _queued);
+        /// <param name="missed">Réponse de Damien du 7 novembre 2026 : perdu pendant l'absence (une baisse plus faible, <see cref="ReputationRules.MissedOf"/>).</param>
+        internal void EventSettled(string eventId, bool won, bool missed = false) =>
+            ChangeReputation(won ? _book.Reputation.EventOf(eventId, true) : missed ? _book.Reputation.MissedOf(eventId) : _book.Reputation.EventOf(eventId, false),
+                won ? "eventWon" : missed ? "eventMissed" : "eventLost", _queued);
+
+        /// <summary>Sous-lot V2.7 : le PNJ <paramref name="npc"/> est d'une faction qui ne parle plus à qui elle hait, et elle hait le personnage.</summary>
+        public bool IsShunnedBy(string npc) =>
+            npc != null && _book.HasNpc(npc) && _book.Npc(npc).Faction is string f && _book.Reputation.Shun.Contains(f) && StandingIndex(f) == 0;
         public bool Knows(string fact) => _facts.Contains(fact);
         public bool IsDone(string quest) => _quests.TryGetValue(quest, out var q) && q.Step < 0;
         public bool IsActive(string quest) => _quests.TryGetValue(quest, out var q) && q.Step >= 0;
@@ -551,6 +563,8 @@ namespace EdS.World
         {
             // V1.9.10 : un nouveau Talk accepté (même PNJ, sans Close) repart d'un dialogue neuf ; un Talk refusé laisse le dialogue ouvert
             // (et son marqueur de premier accueil) tel qu'il était.
+            // Sous-lot V2.7 : un PNJ d'une faction qui hait le personnage (et qui ne parle plus, Shun) ne lui parle pas ; rien ne change.
+            if (IsShunnedBy(npc)) { view = null; return DialogueRefusal.Shunned; }
             string? previous = _firstMet;
             _firstMet = null;
             DialogueRefusal refusal = TalkCore(npc, out view);

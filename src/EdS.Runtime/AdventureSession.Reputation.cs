@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.World;
 
@@ -46,6 +49,35 @@ namespace EdS.Runtime
                 list.Add(new ReputationEntry(f, name, value, tier, tierName, string.Format(Text("text.ui.reputation.row"), name, tierName, value)));
             }
             return list.AsReadOnly();
+        }
+
+        /// <summary>Sous-lot V2.7 : nombre de fois où le couvre-feu a reconduit le personnage (tests, interface).</summary>
+        public int Expulsions { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : si le couvre-feu tombe (<see cref="WorldSession.CurfewSafePoint"/>), hors
+        /// dialogue et hors suite obligée, le personnage est reconduit au point sûr du couvre-feu, comme un voyage rapide (session d'arrivée
+        /// construite, puis la partie sauvegardée, puis la session ouverte) ; une sauvegarde impossible ne change rien (réessayé au tick suivant).
+        /// </summary>
+        private void EnforceCurfew()
+        {
+            if (!(World.CurfewSafePoint is string safePoint) || Dialogue != null || MustContinue) return;
+            WorldSave here = World.Save();
+            var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            WorldSession next = Build(moved, _zone, safePoint, null);
+            try
+            {
+                Write(moved);
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+            {
+                Say("text.ui.save_failed", e.Message);
+                return;
+            }
+            _lastSafePoint = safePoint;
+            Expulsions = checked(Expulsions + 1);
+            Commit(next);
+            Say("text.ui.curfew", _zone.SafePoints.First(s => s.Id == safePoint).Name);
         }
 
         /// <summary>Sous-lot V2.7 : seul un changement de palier s'annonce (les petits changements se lisent sur la carte d'aventurier).</summary>
