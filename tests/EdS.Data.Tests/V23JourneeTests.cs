@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((9, 9, "0.16.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((9, 9, "0.17.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -387,7 +387,7 @@ public sealed class V23JourneeTests : IDisposable
         WorldSession a = At(tick), b = At(tick);
         foreach (Npc npc in a.Narrative!.Book.Npcs) Assert.Equal(a.NpcPosition(npc), b.NpcPosition(b.Narrative!.Book.Npc(npc.Id)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(12, SaveValidator.CurrentSchemaVersion);   // rien de l'emploi du temps n'est sauvegardé
+        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // rien de l'emploi du temps n'est sauvegardé
         Assert.DoesNotContain("schedule", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
         back.Step();

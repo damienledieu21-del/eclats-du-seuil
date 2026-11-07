@@ -141,6 +141,7 @@ public class Lot125StoryTests
         root["data"]!["character"]!.AsObject().Remove("money");   // sous-lot V1.1 (version 6)
         root["data"]!["character"]!.AsObject().Remove("crafts");   // sous-lot V1.4 (version 11)
         root["data"]!["character"]!.AsObject().Remove("boons");   // sous-lot V1.8c (version 12)
+        root["data"]!["character"]!.AsObject().Remove("events");   // sous-lot V2.5 (version 13)
         string v3 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v3).IsValid);
         SaveDocument old = Document(v3);

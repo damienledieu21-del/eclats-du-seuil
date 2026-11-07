@@ -156,7 +156,7 @@ public class Lot123ItemTests
         JsonObject root = JsonNode.Parse(text)!.AsObject();
         root["schemaVersion"] = 2;
         JsonObject character = root["data"]!["character"]!.AsObject();
-        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money", "crafts", "boons" }) character.Remove(field);   // V1.1 : bourse ; V1.8c : bonus
+        foreach (string field in new[] { "inventory", "equipment", "story", "professions", "money", "crafts", "boons", "events" }) character.Remove(field);   // V1.1 : bourse ; V1.8c : bonus
         string v2 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v2).IsValid);
         SaveDocument old = SaveDocumentOf(v2);

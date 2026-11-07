@@ -394,6 +394,12 @@ namespace EdS.Data.Story
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);   // « fact.met.… » refusé pour un chef par ZoneValidator
                 // Sous-lot V1.9.10 : le premier dialogue avec chaque PNJ apprend son fait « déjà rencontré ».
                 foreach (string npcId in _npcs) _factsSet.Add(MetFact(npcId));
+                // Sous-lot V2.5 : la première réussite d'un événement du monde apprend son fait, le premier échec le sien.
+                foreach (WorldEventDefinition e in _zone.Events)
+                {
+                    if (e.Reward?.Fact is string won) _factsSet.Add(won);
+                    if (e.LostFact is string lost) _factsSet.Add(lost);
+                }
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
                 // Un fait attendu doit pouvoir être appris : sinon la condition ou l'objectif ne serait jamais rempli.

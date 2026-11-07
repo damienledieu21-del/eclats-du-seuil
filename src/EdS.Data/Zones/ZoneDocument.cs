@@ -63,6 +63,12 @@ namespace EdS.Data.Zones
         /// se tient devant sa porte, où l'on peut toujours lui parler ; facultatif.
         /// </summary>
         public List<NightSpotData?>? NightSpots { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.5 (schéma 10, événements du monde) : attaques, failles du Seuil et chasses de bêtes déclenchées par le temps du monde ;
+        /// facultatif.
+        /// </summary>
+        public List<WorldEventData?>? Events { get; set; }
     }
 
     /// <summary>Sous-lot V2.1 (schéma 8) : place d'un PNJ la nuit, devant sa porte.</summary>

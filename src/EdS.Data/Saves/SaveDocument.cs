@@ -74,6 +74,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V1.8c (version 12) : bonus actifs (plat, élixir, huile ou pierre d'arme), dans l'ordre des places.</summary>
         public List<BoonData?>? Boons { get; set; }
 
+        /// <summary>Sous-lot V2.5 (version 13) : registre des événements du monde.</summary>
+        public List<SavedEventData?>? Events { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

@@ -465,6 +465,7 @@ namespace EdS.Runtime
             foreach (PopulationEvent p in step.Population)
                 if (p.Kind == PopulationEventKind.Sign) Say(p.Creature);
             foreach (StoryEvent e in step.Story) Story(e);
+            foreach (WorldEventNotice n in step.Events) EventNotice(n);   // sous-lot V2.5 : événements du monde
             if (step.Defeated) Say("text.ui.defeated");
             // Sous-lot V1.4 : une pièce usée à zéro par ce combat ne donne plus ses bonus (à réparer).
             if (step.Wear is WearReport wear && wear.WornOut.Count > 0) Say("text.ui.worn_out", string.Join(", ", wear.WornOut.Select(ItemName)));
@@ -617,6 +618,7 @@ namespace EdS.Runtime
         public bool Interact()
         {
             if (World.IsDefeated) return false;
+            if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (NpcInReach is Npc npc)
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique

@@ -342,8 +342,9 @@ namespace EdS.Data.Zones
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
-            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null)
+            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null)
         {
+            Events = Frozen.List(events ?? Array.Empty<WorldEventDefinition>(), nameof(events));
             NightSpots = Frozen.List(nightSpots ?? Array.Empty<NightSpot>(), nameof(nightSpots));
             Scaling = scaling;
             Boss = boss;
@@ -367,6 +368,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Sous-lot V2.1 (schéma 8) : PNJ qui rentrent chez eux la nuit, dans l'ordre du fichier (vide sans eux).</summary>
         public IReadOnlyList<NightSpot> NightSpots { get; }
+
+        /// <summary>Sous-lot V2.5 (schéma 10) : événements du monde de la zone, dans l'ordre du fichier (vide sans eux).</summary>
+        public IReadOnlyList<WorldEventDefinition> Events { get; }
+
+        /// <summary>Sous-lot V2.5 : événement <paramref name="id"/> de la zone, ou null.</summary>
+        public WorldEventDefinition? EventOf(string id) => Events.FirstOrDefault(e => e.Id == id);
 
         /// <summary>Sous-lot V2.1 : place la nuit du PNJ <paramref name="npc"/> dans cette zone, ou null (il reste où il est).</summary>
         public GroundVector? NightSpotOf(string npc) => NightSpots.FirstOrDefault(n => n.Npc == npc)?.Position;
@@ -430,7 +437,7 @@ namespace EdS.Data.Zones
                 p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events);
         }
     }
 
@@ -453,7 +460,7 @@ namespace EdS.Data.Zones
     /// mortelles du scénario (réapparition de 1 s à 1 h, multiple du tick ; laisse de 1 à 100 m ; table de butin connue), passages sur des
     /// obstacles du scénario.
     /// </summary>
-    public static class ZoneValidator
+    public static partial class ZoneValidator
     {
         public const string Kind = "zone";
 
@@ -475,7 +482,12 @@ namespace EdS.Data.Zones
         /// « shower », « storm », « rain » ; <c>sign</c> facultatif ; se combine avec <c>hours</c>, exclusif de <c>night</c>). Les versions 8 et 7
         /// sont encore lues (sans ces champs).
         /// </summary>
-        public const int CurrentSchemaVersion = 9;
+        /// <remarks>Version 10 (sous-lot V2.5, événements du monde) : <c>events</c> facultatif (voir <see cref="CheckEvents"/>) ; les versions 9, 8
+        /// et 7 sont encore lues (sans eux).</remarks>
+        public const int CurrentSchemaVersion = 10;
+
+        /// <summary>Sous-lot V2.5 : version encore lue (sous-ensemble de la version 10, sans <c>events</c>).</summary>
+        public const int WeatherSchemaVersion = 9;
 
         /// <summary>Sous-lot V2.4 : version encore lue (sous-ensemble de la version 9, sans <c>weather</c>).</summary>
         public const int PreviousSchemaVersion = 8;
@@ -536,12 +548,14 @@ namespace EdS.Data.Zones
             report ??= new ValidationReport();
             // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit) ; sous-lot V2.4 : la version 8 aussi
             // (sans temps de population).
-            int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion ? document.SchemaVersion!.Value
-                : CurrentSchemaVersion;
+            // Sous-lot V2.5 : la version 9 aussi (sans événements).
+            int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion
+                || document.SchemaVersion == WeatherSchemaVersion ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
             bool schema8 = document.SchemaVersion >= PreviousSchemaVersion;
-            bool schema9 = document.SchemaVersion >= CurrentSchemaVersion;
+            bool schema9 = document.SchemaVersion >= WeatherSchemaVersion;
+            bool schema10 = document.SchemaVersion >= CurrentSchemaVersion;
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -681,7 +695,7 @@ namespace EdS.Data.Zones
                     PopulationWeather? weather = null;
                     if (p.Weather is WeatherData wd)
                     {
-                        if (!schema9) { report.Add(path + ".weather", ValidationCode.InvalidValue, $"temps d'une population : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        if (!schema9) { report.Add(path + ".weather", ValidationCode.InvalidValue, $"temps d'une population : schéma {WeatherSchemaVersion} attendu."); ok = false; }
                         else if (p.Night != null) { report.Add(path + ".weather", ValidationCode.InvalidValue, "« weather » et « night » ne vont pas ensemble : une créature rare de la nuit vient par tous les temps."); ok = false; }
                         else if ((weather = CheckWeather(wd, path + ".weather", report)) is null) ok = false;
                     }
@@ -826,12 +840,20 @@ namespace EdS.Data.Zones
                         if (ok) nightSpots.Add(new NightSpot(n.Npc!, Point(n.Position!)));
                     }
             }
+            // Sous-lot V2.5 (schéma 10) : événements du monde.
+            var events = new List<WorldEventDefinition>();
+            if (d.Events != null)
+            {
+                if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {CurrentSchemaVersion} attendu.");
+                else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
+                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit);
+            }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events));
         }
 
         /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>
@@ -937,6 +959,28 @@ namespace EdS.Data.Zones
                 if (!byId.ContainsKey(z.Id)) byId.Add(z.Id, z);
                 else report.Add("$", ValidationCode.DuplicateId, $"zone « {z.Id} » donnée deux fois.");
             foreach (ZoneDefinition z in zones) CheckDoorsOf(z, byId, report);
+            CheckEventRegistry(zones, report);
+            return report;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #107 : les événements à issue de toutes les zones reliées tiennent dans le registre d'un personnage
+        /// (<see cref="SavedEvent.MaxEntries"/> lignes, une par événement) ; sinon une erreur <c>$.data.events</c> nomme la première zone
+        /// qui dépasse la borne (une réussite ne pourrait pas être gardée : sa récompense serait perdue).
+        /// </summary>
+        public static ValidationReport CheckEventRegistry(IReadOnlyList<ZoneDefinition> zones, ValidationReport? report = null)
+        {
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            report ??= new ValidationReport();
+            int total = 0;
+            foreach (ZoneDefinition z in zones)
+            {
+                total = checked(total + z.Events.Count(e => e.Settles));
+                if (total <= SavedEvent.MaxEntries) continue;
+                report.Add("$.data.events", ValidationCode.LimitExceeded,
+                    $"zone « {z.Id} » : {total} événements à issue dans les zones reliées, au plus {SavedEvent.MaxEntries} (registre d'un personnage).");
+                break;
+            }
             return report;
         }
 
@@ -1019,9 +1063,7 @@ namespace EdS.Data.Zones
                     { report.Add(p, ValidationCode.InvalidValue, $"forme refusée par la simulation de la zone : {refused}"); ok = false; }
                     else templates.Add(form);
                 }
-            if (b.Fact is null || b.Fact.Length > 200 || !FactId.IsMatch(b.Fact)) { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » mal formé : « fact.… »."); ok = false; }
-            else if (b.Fact.StartsWith(EdS.Data.Story.StoryValidator.MetFactPrefix, StringComparison.Ordinal))
-            { report.Add(path + ".fact", ValidationCode.InvalidValue, $"fait « {b.Fact} » réservé : « {EdS.Data.Story.StoryValidator.MetFactPrefix}… » est appris par le cœur au premier dialogue avec un PNJ."); ok = false; }
+            if (!CheckDeclaredFact(b.Fact, path + ".fact", report)) ok = false;
             var rewards = new List<(string, int)>();
             if (b.Rewards is null) { Missing(report, path + ".rewards", "récompenses de la première victoire, éventuellement vide"); ok = false; }
             else if (b.Rewards.Count > MaxRewards) { report.Add(path + ".rewards", ValidationCode.LimitExceeded, $"au plus {MaxRewards} récompenses."); ok = false; }
@@ -1039,6 +1081,23 @@ namespace EdS.Data.Zones
 
         private static bool Overlap(CombatantPlacement a, CombatantPlacement b) =>
             Planar.CirclesOverlap(a.Position.X.Raw, a.Position.Z.Raw, a.Radius.Raw, b.Position.X.Raw, b.Position.Z.Raw, b.Radius.Raw);
+
+        /// <summary>
+        /// Un fait déclaré par une zone (fait d'un chef, faits d'un événement du monde) : bien formé (« fact.… », 200 caractères au plus) et
+        /// jamais réservé : un fait « déjà rencontré » (<see cref="EdS.Data.Story.StoryValidator.MetFactPrefix"/>) n'est appris que par le
+        /// cœur au premier dialogue avec un PNJ (sous-lot V1.9.10 ; revue Codex de la PR #107, tour 3). Une seule règle pour toute la zone.
+        /// </summary>
+        internal static bool CheckDeclaredFact(string? fact, string path, ValidationReport report)
+        {
+            if (fact is null || fact.Length > 200 || !FactId.IsMatch(fact)) { report.Add(path, ValidationCode.InvalidValue, $"fait « {fact} » mal formé : « fact.… »."); return false; }
+            if (fact.StartsWith(EdS.Data.Story.StoryValidator.MetFactPrefix, StringComparison.Ordinal))
+            {
+                report.Add(path, ValidationCode.InvalidValue,
+                    $"fait « {fact} » réservé : « {EdS.Data.Story.StoryValidator.MetFactPrefix}… » est appris par le cœur au premier dialogue avec un PNJ.");
+                return false;
+            }
+            return true;
+        }
 
         private static bool CheckId(string? id, string path, IEnumerable<string> previous, ValidationReport report)
         {

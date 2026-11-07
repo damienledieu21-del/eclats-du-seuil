@@ -134,6 +134,24 @@ namespace EdS.Data.Json
                         return bok ? b : null;
                     });
                 },
+                ["events"] = (v, p) =>   // sous-lot V2.5 (version 13) : registre des événements du monde
+                {
+                    c.Present.Add("events");
+                    c.Events = input.ReadLimitedList(v, p, SavedEvent.MaxEntries, n => $"{n} lignes, au plus {SavedEvent.MaxEntries}.", (e, ip) =>
+                    {
+                        var ev = new SavedEventData();
+                        bool eok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["id"] = (ev2, ep) => ev.Id = input.Text(ev2, ep),
+                            ["won"] = (ev2, ep) => ev.Won = input.Int64(ev2, ep),
+                            ["lost"] = (ev2, ep) => ev.Lost = input.Int64(ev2, ep),
+                            ["last"] = (ev2, ep) => ev.Last = input.Int64(ev2, ep),
+                            ["outcome"] = (ev2, ep) => ev.Outcome = input.Text(ev2, ep),
+                            ["owed"] = (ev2, ep) => ev.Owed = input.Boolean(ev2, ep),
+                        });
+                        return eok ? ev : null;
+                    });
+                },
             });
             return ok ? c : null;
         }
@@ -424,7 +442,23 @@ namespace EdS.Data.Json
             if (c.Boons.Any(x => !SaveValidator.IsItemId(x.Item) || x.Ticks < 1 || x.Ticks > BoonKinds.MaxTicks))
                 throw new ArgumentException("Bonus actifs hors du format des sauvegardes.", nameof(c));
             b.Append("      \"boons\": [").Append(string.Join(", ", c.Boons.Select(x => "{\"kind\": \"" + BoonKinds.Id(x.Kind) + "\", \"item\": " + Quoted(x.Item)
-                + ", \"ticks\": " + x.Ticks.ToString(CultureInfo.InvariantCulture) + "}"))).Append("]\n");
+                + ", \"ticks\": " + x.Ticks.ToString(CultureInfo.InvariantCulture) + "}"))).Append("],\n");
+            // Sous-lot V2.5 (version 13) : registre des événements du monde, une ligne par événement, rangé par identifiant.
+            if (c.Events.Count == 0) b.Append("      \"events\": []\n");
+            else
+            {
+                b.Append("      \"events\": [\n");
+                for (int i = 0; i < c.Events.Count; i++)
+                {
+                    SavedEvent e = c.Events[i];
+                    if (!SaveValidator.IsEventKey(e.Id) || e.Id.Length > 128) throw new ArgumentException($"Événement « {e.Id} » hors du format des sauvegardes.", nameof(c));
+                    b.Append("        {\"id\": \"").Append(e.Id).Append('"').Append(", \"won\": ").Append(e.Won.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"lost\": ").Append(e.Lost.ToString(CultureInfo.InvariantCulture)).Append(", \"last\": ").Append(e.Last.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"outcome\": \"").Append(SavedEvent.OutcomeNames[(int)e.Outcome]).Append('"').Append(e.Owed ? ", \"owed\": true" : "")
+                        .Append(i + 1 < c.Events.Count ? "},\n" : "}\n");
+                }
+                b.Append("      ]\n");
+            }
             b.Append("    },\n");
         }
 

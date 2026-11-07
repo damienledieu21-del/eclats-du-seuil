@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "kind": "zone",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -1405,6 +1405,272 @@
         "position": [
           -69,
           -45
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "attaque_hameau",
+        "kind": "raid",
+        "everyDays": 2,
+        "chancePercent": 70,
+        "minLevel": 6,
+        "firstDay": 1,
+        "start": "20:30",
+        "spreadMinutes": 60,
+        "announceMinutes": 90,
+        "durationMinutes": 240,
+        "aftermathMinutes": 1440,
+        "place": "hameau",
+        "refuge": [
+          61.5,
+          -22
+        ],
+        "villagers": [
+          "npc.doyen",
+          "npc.herboriste_hameau"
+        ],
+        "groups": [
+          {
+            "id": "bandits",
+            "weight": 2,
+            "creatures": [
+              {
+                "like": "bandit_epee3",
+                "position": [
+                  97,
+                  -22
+                ]
+              },
+              {
+                "like": "bandit_epee3",
+                "position": [
+                  99,
+                  -27
+                ]
+              },
+              {
+                "like": "bandit_arc3",
+                "position": [
+                  95,
+                  -18.5
+                ]
+              }
+            ]
+          },
+          {
+            "id": "loups",
+            "weight": 1,
+            "creatures": [
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  97,
+                  -22
+                ]
+              },
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  99,
+                  -27
+                ]
+              },
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  95,
+                  -18.5
+                ]
+              }
+            ]
+          }
+        ],
+        "reward": {
+          "xp": 400,
+          "money": 300,
+          "items": [
+            {
+              "item": "item.remede_de_l_aube",
+              "count": 2
+            }
+          ],
+          "fact": "fact.event.attaque_hameau.defendu"
+        },
+        "lostFact": "fact.event.attaque_hameau.pille"
+      },
+      {
+        "id": "faille_du_seuil",
+        "kind": "rift",
+        "everyDays": 3,
+        "chancePercent": 80,
+        "firstDay": 2,
+        "start": "23:00",
+        "spreadMinutes": 180,
+        "announceMinutes": 60,
+        "durationMinutes": 180,
+        "aftermathMinutes": 1440,
+        "groups": [
+          {
+            "id": "ruines",
+            "weight": 2,
+            "position": [
+              21,
+              -7
+            ],
+            "creatures": [
+              {
+                "like": "loup_echo1",
+                "position": [
+                  23,
+                  -7
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  21,
+                  -10
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  19.5,
+                  -9
+                ]
+              }
+            ]
+          },
+          {
+            "id": "lac",
+            "weight": 1,
+            "position": [
+              14,
+              -42
+            ],
+            "creatures": [
+              {
+                "like": "loup_echo1",
+                "position": [
+                  16,
+                  -41
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  12,
+                  -41
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  14,
+                  -39.5
+                ]
+              }
+            ]
+          },
+          {
+            "id": "pre",
+            "weight": 1,
+            "position": [
+              -12,
+              30
+            ],
+            "creatures": [
+              {
+                "like": "loup_echo1",
+                "position": [
+                  -10,
+                  31
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  -14,
+                  29
+                ]
+              },
+              {
+                "like": "loup_echo1",
+                "position": [
+                  -12,
+                  32.5
+                ]
+              }
+            ]
+          }
+        ],
+        "waves": 3,
+        "waveMs": 30000,
+        "reward": {
+          "xp": 450,
+          "money": 250,
+          "items": [
+            {
+              "item": "item.eclat_de_seuil",
+              "count": 1
+            }
+          ],
+          "fact": "fact.event.faille_du_seuil.refermee"
+        },
+        "lostFact": "fact.event.faille_du_seuil.restee_ouverte"
+      },
+      {
+        "id": "chasse_de_l_aube",
+        "kind": "hunt",
+        "everyDays": 1,
+        "chancePercent": 50,
+        "firstDay": 1,
+        "start": "05:15",
+        "spreadMinutes": 45,
+        "announceMinutes": 0,
+        "durationMinutes": 60,
+        "groups": [
+          {
+            "id": "champs",
+            "weight": 1,
+            "creatures": [
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  -43,
+                  -42
+                ]
+              },
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  -52,
+                  -50
+                ]
+              }
+            ]
+          },
+          {
+            "id": "champs_ouest",
+            "weight": 1,
+            "creatures": [
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  -79,
+                  -57
+                ]
+              },
+              {
+                "like": "loup_nuit5",
+                "position": [
+                  -88,
+                  -55
+                ]
+              }
+            ]
+          }
         ]
       }
     ]

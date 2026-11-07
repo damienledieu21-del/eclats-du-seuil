@@ -196,6 +196,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Dépend de V2.1 et V1.9.3 (le hameau).
 - Formats : monde (nouveau bloc d'événements), sauvegarde (registre).
 - Essai : oui, court (une attaque du hameau).
+- **État** (6 novembre 2026, PR en brouillon) : zones en schéma 10 (bloc `events`, schémas 9, 8 et 7 encore lus), sauvegarde v13 (registre des événements du personnage, v12 encore lue) ; moteur, règles, journal et scénarios inchangés (nouveau journal figé du scénario `evenement_hameau`). **L'attaque du hameau** (un soir sur deux environ, bandits ou loups, annonce 1 h 30 avant, cloche, villageois au refuge, récompense de la première défense donnée une seule fois, remerciements de Josse et d'Aubine, fumée et débris une journée après un pillage), **la faille du Seuil** (aux ruines, au lac ou dans le pré, trois vagues d'échos, à refermer avec la touche d'action), **la chasse de l'aube** (deux loups contre les sangliers des champs, sans mort ni registre) ; menu « Essai des événements » ([MONDE.md](MONDE.md#événements-du-monde-sous-lot-v25), [ESSAI_V1.10.md](ESSAI_V1.10.md#10-les-événements-du-monde-v25)). Reste l'essai de Damien sous Unity.
 
 ### 18. V2.6 — Le Seuil qui grandit (M)
 

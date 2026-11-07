@@ -141,6 +141,8 @@ namespace EdS.Data.Json
                     (e, ip) => ReadDoor(input, e, ip)),
                 ["nightSpots"] = (v, p) => d.NightSpots = input.ReadLimitedList(v, p, ZoneValidator.MaxNightSpots,
                     n => $"{n} places de nuit, au plus {ZoneValidator.MaxNightSpots}.", (e, ip) => ReadNightSpot(input, e, ip)),   // sous-lot V2.1 (schéma 8)
+                ["events"] = (v, p) => d.Events = input.ReadLimitedList(v, p, ZoneValidator.MaxEvents,
+                    n => $"{n} événements, au plus {ZoneValidator.MaxEvents}.", (e, ip) => ReadEvent(input, e, ip)),   // sous-lot V2.5 (schéma 10)
             });
             return ok ? d : null;
         }
@@ -242,6 +244,84 @@ namespace EdS.Data.Json
                 ["minLevel"] = (v, p) => place.MinLevel = input.Int32(v, p),   // sous-lot V1.8 (schéma 7)
             });
             return ok ? place : null;
+        }
+
+        /// <summary>Sous-lot V2.5 (schéma 10) : un événement du monde.</summary>
+        private static WorldEventData? ReadEvent(JsonInput input, JsonElement element, string path)
+        {
+            var e = new WorldEventData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => e.Id = input.Text(v, p),
+                ["kind"] = (v, p) => e.Kind = input.Text(v, p),
+                ["everyDays"] = (v, p) => e.EveryDays = input.Int32(v, p),
+                ["chancePercent"] = (v, p) => e.ChancePercent = input.Int32(v, p),
+                ["firstDay"] = (v, p) => e.FirstDay = input.Int32(v, p),
+                ["start"] = (v, p) => e.Start = input.Text(v, p),
+                ["spreadMinutes"] = (v, p) => e.SpreadMinutes = input.Int32(v, p),
+                ["announceMinutes"] = (v, p) => e.AnnounceMinutes = input.Int32(v, p),
+                ["durationMinutes"] = (v, p) => e.DurationMinutes = input.Int32(v, p),
+                ["aftermathMinutes"] = (v, p) => e.AftermathMinutes = input.Int32(v, p),
+                ["weather"] = (v, p) => e.Weather = ReadWeather(input, v, p),
+                ["place"] = (v, p) => e.Place = input.Text(v, p),
+                ["refuge"] = (v, p) => e.Refuge = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["villagers"] = (v, p) => e.Villagers = input.ReadLimitedList(v, p, ZoneValidator.MaxEventVillagers,
+                    n => $"{n} villageois, au plus {ZoneValidator.MaxEventVillagers}.", (x, xp) => input.Text(x, xp)),
+                ["groups"] = (v, p) => e.Groups = input.ReadLimitedList(v, p, ZoneValidator.MaxEventGroups,
+                    n => $"{n} variantes, au plus {ZoneValidator.MaxEventGroups}.", (x, xp) => ReadEventGroup(input, x, xp)),
+                ["waves"] = (v, p) => e.Waves = input.Int32(v, p),
+                ["waveMs"] = (v, p) => e.WaveMs = input.Int64(v, p),
+                ["reward"] = (v, p) => e.Reward = ReadEventReward(input, v, p),
+                ["lostFact"] = (v, p) => e.LostFact = input.Text(v, p),
+                ["minLevel"] = (v, p) => e.MinLevel = input.Int32(v, p),   // choix de Damien du 7 novembre 2026
+            });
+            return ok ? e : null;
+        }
+
+        private static WorldEventGroupData? ReadEventGroup(JsonInput input, JsonElement element, string path)
+        {
+            var g = new WorldEventGroupData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => g.Id = input.Text(v, p),
+                ["weight"] = (v, p) => g.Weight = input.Int32(v, p),
+                ["position"] = (v, p) => g.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["creatures"] = (v, p) => g.Creatures = input.ReadLimitedList(v, p, ZoneValidator.MaxEventCreatures,
+                    n => $"{n} créatures, au plus {ZoneValidator.MaxEventCreatures}.", (x, xp) =>
+                    {
+                        var c = new WorldEventCreatureData();
+                        bool cok = input.ReadFields(x, xp, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["like"] = (cv, cp) => c.Like = input.Text(cv, cp),
+                            ["position"] = (cv, cp) => c.Position = ScenarioJsonReader.ReadPoint(input, cv, cp),
+                        });
+                        return cok ? c : null;
+                    }),
+            });
+            return ok ? g : null;
+        }
+
+        private static WorldEventRewardData? ReadEventReward(JsonInput input, JsonElement element, string path)
+        {
+            var r = new WorldEventRewardData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["xp"] = (v, p) => r.Xp = input.Int64(v, p),
+                ["money"] = (v, p) => r.Money = input.Int64(v, p),
+                ["items"] = (v, p) => r.Items = input.ReadLimitedList(v, p, ZoneValidator.MaxEventRewardItems,
+                    n => $"{n} objets, au plus {ZoneValidator.MaxEventRewardItems}.", (x, xp) =>
+                    {
+                        var item = new RewardData();
+                        bool iok = input.ReadFields(x, xp, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["item"] = (iv, ip) => item.Item = input.Text(iv, ip),
+                            ["count"] = (iv, ip) => item.Count = input.Int32(iv, ip),
+                        });
+                        return iok ? item : null;
+                    }),
+                ["fact"] = (v, p) => r.Fact = input.Text(v, p),
+            });
+            return ok ? r : null;
         }
 
         private static PopulationData? ReadPopulation(JsonInput input, JsonElement element, string path)

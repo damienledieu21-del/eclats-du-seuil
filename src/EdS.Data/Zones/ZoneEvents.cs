@@ -1,0 +1,227 @@
+using System;
+using System.Collections.Generic;
+using EdS.Data.Scenarios;
+using EdS.Domain.Collections;
+using EdS.Domain.Space;
+
+namespace EdS.Data.Zones
+{
+    // Sous-lot V2.5 (schéma 10, événements du monde) : forme lue (avant validation) et forme validée des événements d'une zone.
+
+    /// <summary>Sous-lot V2.5 (schéma 10) : un événement du monde tel que lu dans le fichier, avant validation.</summary>
+    public sealed class WorldEventData
+    {
+        public string? Id { get; set; }
+        public string? Kind { get; set; }
+        public int? EveryDays { get; set; }
+        public int? ChancePercent { get; set; }
+        public int? FirstDay { get; set; }
+        public string? Start { get; set; }
+        public int? SpreadMinutes { get; set; }
+        public int? AnnounceMinutes { get; set; }
+        public int? DurationMinutes { get; set; }
+        public int? AftermathMinutes { get; set; }
+        public WeatherData? Weather { get; set; }
+        public string? Place { get; set; }
+        public PointData? Refuge { get; set; }
+        public List<string?>? Villagers { get; set; }
+        public List<WorldEventGroupData?>? Groups { get; set; }
+        public int? Waves { get; set; }
+        public long? WaveMs { get; set; }
+        public WorldEventRewardData? Reward { get; set; }
+        public string? LostFact { get; set; }
+
+        /// <summary>Choix de Damien du 7 novembre 2026 : niveau minimum du personnage (facultatif, 1) ; en dessous, l'événement n'a pas lieu pour lui.</summary>
+        public int? MinLevel { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.5 : une variante d'un événement (les bandits ou les loups ; la faille des ruines ou celle du lac).</summary>
+    public sealed class WorldEventGroupData
+    {
+        public string? Id { get; set; }
+        public int? Weight { get; set; }
+
+        /// <summary>Faille : où elle s'ouvre (obligatoire pour une faille, refusé ailleurs).</summary>
+        public PointData? Position { get; set; }
+
+        public List<WorldEventCreatureData?>? Creatures { get; set; }
+    }
+
+    public sealed class WorldEventCreatureData
+    {
+        /// <summary>Population de la zone dont la créature prend le modèle (chiffres, famille, butin, laisse).</summary>
+        public string? Like { get; set; }
+
+        public PointData? Position { get; set; }
+    }
+
+    public sealed class WorldEventRewardData
+    {
+        public long? Xp { get; set; }
+        public long? Money { get; set; }
+        public List<RewardData?>? Items { get; set; }
+        public string? Fact { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.5 : sorte d'événement du monde.</summary>
+    public enum WorldEventKind
+    {
+        /// <summary>Attaque d'un lieu (le hameau) : à défendre en venant à bout des assaillants avant la fin.</summary>
+        Raid = 0,
+
+        /// <summary>Faille du Seuil : des échos en sortent par vagues ; on la referme quand plus aucun n'est debout.</summary>
+        Rift = 1,
+
+        /// <summary>Chasse de bêtes entre elles (la meute qui attaque les sangliers à l'aube) : ni récompense ni registre.</summary>
+        Hunt = 2,
+    }
+
+    /// <summary>Sous-lot V2.5 : une créature d'un événement, sur le modèle d'une population de la zone.</summary>
+    public sealed class WorldEventCreature
+    {
+        public string Like { get; }
+        public GroundVector Position { get; }
+
+        internal WorldEventCreature(string like, GroundVector position)
+        {
+            Like = like;
+            Position = position;
+        }
+    }
+
+    /// <summary>Sous-lot V2.5 : variante d'un événement, tirée selon son poids.</summary>
+    public sealed class WorldEventGroup
+    {
+        public string Id { get; }
+        public int Weight { get; }
+
+        /// <summary>Faille : où elle s'ouvre ; null pour une attaque ou une chasse.</summary>
+        public GroundVector? Position { get; }
+
+        public IReadOnlyList<WorldEventCreature> Creatures { get; }
+
+        internal WorldEventGroup(string id, int weight, GroundVector? position, IEnumerable<WorldEventCreature> creatures)
+        {
+            Id = id;
+            Weight = weight;
+            Position = position;
+            Creatures = Frozen.List(creatures, nameof(creatures));
+        }
+    }
+
+    /// <summary>Sous-lot V2.5 : récompense de la première réussite d'un personnage (donnée une seule fois, registre de la sauvegarde).</summary>
+    public sealed class WorldEventReward
+    {
+        public long Xp { get; }
+        public long Money { get; }
+        public IReadOnlyList<(string Item, int Count)> Items { get; }
+
+        /// <summary>Fait appris à la première réussite (remerciements des PNJ), ou null.</summary>
+        public string? Fact { get; }
+
+        internal WorldEventReward(long xp, long money, IEnumerable<(string, int)> items, string? fact)
+        {
+            Xp = xp;
+            Money = money;
+            Items = Frozen.List(items, nameof(items));
+            Fact = fact;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.5 (schéma 10) : événement du monde d'une zone, déclenché par le temps du monde, de façon déterministe. Les jours du monde
+    /// sont pris par fenêtres de <see cref="EveryDays"/> jours ; dans chaque fenêtre, l'événement a sa chance (<see cref="ChancePercent"/>), un
+    /// jour, une minute de départ (de <see cref="StartMinute"/> à <see cref="StartMinute"/> + <see cref="SpreadMinutes"/>) et une variante,
+    /// tirés par un <c>Pcg32</c> initialisé par la clé de la fenêtre (<c>EdS.World.WorldEventSchedule</c>).
+    /// </summary>
+    public sealed class WorldEventDefinition
+    {
+        public string Id { get; }
+        public WorldEventKind Kind { get; }
+        public int EveryDays { get; }
+        public int ChancePercent { get; }
+
+        /// <summary>Premier jour du monde où il peut avoir lieu (le jour 0 commence à 8 h : rien avant la première vraie journée).</summary>
+        public int FirstDay { get; }
+
+        /// <summary>Minute du monde (0 à 1 439) du départ au plus tôt.</summary>
+        public int StartMinute { get; }
+
+        public int SpreadMinutes { get; }
+
+        /// <summary>Annonce, en minutes du monde avant le départ (0 : aucune).</summary>
+        public int AnnounceMinutes { get; }
+
+        public int DurationMinutes { get; }
+
+        /// <summary>Conséquences visibles d'un échec, en minutes du monde après la fin (0 : aucune).</summary>
+        public int AftermathMinutes { get; }
+
+        /// <summary>Temps où il peut commencer (celui du départ), ou null : par tous les temps.</summary>
+        public PopulationWeather? Weather { get; }
+
+        /// <summary>Lieu de la zone concerné (le hameau), ou null.</summary>
+        public string? Place { get; }
+
+        /// <summary>Attaque : où se réfugient les villageois (<see cref="Villagers"/>), ou null.</summary>
+        public GroundVector? Refuge { get; }
+
+        public IReadOnlyList<string> Villagers { get; }
+        public IReadOnlyList<WorldEventGroup> Groups { get; }
+
+        /// <summary>Faille : nombre de vagues d'échos (1 ailleurs).</summary>
+        public int Waves { get; }
+
+        /// <summary>Faille : écart entre deux vagues, en ms (0 ailleurs).</summary>
+        public long WaveMs { get; }
+
+        /// <summary>Récompense de la première réussite, ou null (une chasse n'en a pas).</summary>
+        public WorldEventReward? Reward { get; }
+
+        /// <summary>Fait appris au premier échec (les PNJ s'en souviennent), ou null.</summary>
+        public string? LostFact { get; }
+
+        /// <summary>
+        /// Choix de Damien du 7 novembre 2026 (question 2 de la PR #107) : niveau minimum du personnage. En dessous, l'événement n'a pas lieu
+        /// pour lui : ni annonce, ni arrivée, ni issue (ni pillage, ni pillage pendant l'absence) ; ses occurrences sont seulement notées
+        /// au registre, sans issue.
+        /// </summary>
+        public int MinLevel { get; }
+
+        /// <summary>L'événement a une issue gardée au registre du personnage (attaque, faille ; pas une chasse).</summary>
+        public bool Settles => Kind != WorldEventKind.Hunt;
+
+        public int TotalWeight { get; }
+
+        internal WorldEventDefinition(string id, WorldEventKind kind, int everyDays, int chancePercent, int firstDay, int startMinute, int spreadMinutes,
+            int announceMinutes, int durationMinutes, int aftermathMinutes, PopulationWeather? weather, string? place, GroundVector? refuge,
+            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1)
+        {
+            MinLevel = minLevel;
+            Id = id;
+            Kind = kind;
+            EveryDays = everyDays;
+            ChancePercent = chancePercent;
+            FirstDay = firstDay;
+            StartMinute = startMinute;
+            SpreadMinutes = spreadMinutes;
+            AnnounceMinutes = announceMinutes;
+            DurationMinutes = durationMinutes;
+            AftermathMinutes = aftermathMinutes;
+            Weather = weather;
+            Place = place;
+            Refuge = refuge;
+            Villagers = Frozen.List(villagers, nameof(villagers));
+            Groups = Frozen.List(groups, nameof(groups));
+            Waves = waves;
+            WaveMs = waveMs;
+            Reward = reward;
+            LostFact = lostFact;
+            int total = 0;
+            foreach (WorldEventGroup g in Groups) total = checked(total + g.Weight);
+            TotalWeight = total;
+        }
+
+        public static readonly IReadOnlyList<string> KindNames = Array.AsReadOnly(new[] { "raid", "rift", "hunt" });
+    }
+}
