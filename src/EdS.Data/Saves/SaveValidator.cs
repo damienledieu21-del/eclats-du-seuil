@@ -904,7 +904,7 @@ namespace EdS.Data.Saves
                 string p = $"{path}[{i}]";
                 if (scars[i] is not SavedScarData x) { Missing(report, p, "cicatrice"); continue; }
                 if (x.Id is null) Missing(report, p + ".id", "cicatrice « zone.…/<faille>/<variante> »");
-                else if (!IsEventKey(x.Id) || x.Id.Length > 128 || x.Id.Count(ch => ch == '/') != 2)
+                else if (!IsEventKey(x.Id) || x.Id.Length > SavedEvent.MaxKeyLength || x.Id.Count(ch => ch == '/') != 2)
                     report.Add(p + ".id", ValidationCode.InvalidValue, $"cicatrice « {x.Id} » mal formée : « zone.<nom>/<faille>/<variante> » attendu.");
                 else if (previous != null && string.CompareOrdinal(previous, x.Id) >= 0)
                     report.Add(p + ".id", ValidationCode.InvalidValue, "lignes rangées par identifiant, une seule par cicatrice (forme canonique).");
@@ -938,7 +938,7 @@ namespace EdS.Data.Saves
                 string p = $"{path}[{i}]";
                 if (events[i] is not SavedEventData e) { Missing(report, p, "ligne du registre des événements"); continue; }
                 if (e.Id is null) Missing(report, p + ".id", "événement « zone.…/<événement> »");
-                else if (!IsEventKey(e.Id) || e.Id.Length > 128) report.Add(p + ".id", ValidationCode.InvalidValue, $"événement « {e.Id} » mal formé : « zone.<nom>/<événement> » attendu.");
+                else if (!IsEventKey(e.Id) || e.Id.Length > SavedEvent.MaxKeyLength) report.Add(p + ".id", ValidationCode.InvalidValue, $"événement « {e.Id} » mal formé : « zone.<nom>/<événement> » attendu.");
                 else if (previous != null && string.CompareOrdinal(previous, e.Id) >= 0)
                     report.Add(p + ".id", ValidationCode.InvalidValue, "lignes rangées par identifiant, une seule par événement (forme canonique).");
                 else previous = e.Id;

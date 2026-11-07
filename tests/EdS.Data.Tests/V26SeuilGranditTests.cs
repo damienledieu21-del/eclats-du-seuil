@@ -467,6 +467,45 @@ public class V26SeuilGranditTests
         Assert.InRange(WorldEventSchedule.Absolute(w.Zone.Time) - left, 120, 125);   // hauntRespawnMinutes
     }
 
+    // --- Revue Codex de la PR #110 (tour 3) : clés composées dans la borne de la sauvegarde ----------------------------------------
+
+    private static readonly string LongZone = "zone." + new string('a', 59);   // 64 caractères, la borne d'un identifiant de zone
+
+    private static ZoneLoadResult Keys(string eventId, string group)
+    {
+        Assert.Equal(64, LongZone.Length);
+        return Mutated(root =>
+        {
+            root["data"]!["id"] = LongZone;
+            JsonObject rift = RiftJson(root);
+            rift["groups"]![0]!["id"] = group;
+            rift["id"] = eventId;
+        });
+    }
+
+    [Fact]
+    public void Cles_composees_aux_bornes_de_la_sauvegarde()
+    {
+        int i = RiftIndex(ZoneJson());
+        // Registre : 64 + 1 + 63 = 128 caractères, accepté ; mais la cicatrice des ruines ferait 135 caractères : refusée à sa variante.
+        ZoneLoadResult r = Keys(new string('f', 63), "ruines");
+        AssertError(r, $"$.data.events[{i}].groups[0].id", ValidationCode.LimitExceeded);
+        Assert.DoesNotContain(r.Report.Errors, e => e.Path == $"$.data.events[{i}].id");
+        // Registre : 64 + 1 + 64 = 129 caractères : refusé à l'événement (même formule que le cœur).
+        AssertError(Keys(new string('f', 64), "g"), $"$.data.events[{i}].id", ValidationCode.LimitExceeded);
+        Assert.Equal(129, WorldEventSchedule.RegistryKey(LongZone, new string('f', 64)).Length);
+        // Cicatrice : 64 + 1 + 20 + 1 + 42 = 128 caractères exactement : acceptée, et la partie l'écrit et la relit.
+        string ev = new string('f', 20), g = new string('g', 42);
+        ZoneLoadResult ok = Keys(ev, g);
+        Assert.DoesNotContain(ok.Report.Errors, e => e.Path.StartsWith($"$.data.events[{i}]", StringComparison.Ordinal));
+        string key = WorldScarRules.Key(LongZone, ev, g);
+        Assert.Equal((128, ZoneValidator.ScarKey(LongZone, ev, g)), (key.Length, key));
+        WorldSave save = Saved(new SavedScar(key, 1, 0, 0));
+        Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(save)).IsValid);
+        Assert.Throws<ArgumentException>(() => new SavedScar(key + "x", 1, 0, 0));
+        Assert.Throws<ArgumentException>(() => new SavedEvent(new string('a', 129), 0, 0, -1, EventOutcome.None));   // même borne que l'écrivain
+    }
+
     // --- Purification --------------------------------------------------------------------------------------------------------------
 
     [Fact]

@@ -13,7 +13,7 @@ namespace EdS.World
     public static class WorldScarRules
     {
         /// <summary>Clé d'une cicatrice dans la sauvegarde : <c>zone.vallons/faille_du_seuil/ruines</c>.</summary>
-        public static string Key(string zone, string eventId, string group) => zone + "/" + eventId + "/" + group;
+        public static string Key(string zone, string eventId, string group) => ZoneValidator.ScarKey(zone, eventId, group);
 
         /// <summary>
         /// Palier de la cicatrice <paramref name="scar"/> au jour du monde <paramref name="day"/> : son palier gardé, plus un tous les

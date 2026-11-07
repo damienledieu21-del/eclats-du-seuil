@@ -175,7 +175,7 @@ namespace EdS.World
         }
 
         /// <summary>Clé du registre d'un personnage pour l'événement <paramref name="eventId"/> de la zone <paramref name="zone"/>.</summary>
-        public static string RegistryKey(string zone, string eventId) => zone + "/" + eventId;
+        public static string RegistryKey(string zone, string eventId) => ZoneValidator.EventRegistryKey(zone, eventId);
     }
 
     /// <summary>Sous-lot V2.5 : ce qu'un événement du monde annonce à un tick.</summary>

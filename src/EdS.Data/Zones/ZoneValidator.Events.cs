@@ -48,7 +48,7 @@ namespace EdS.Data.Zones
         /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
         /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
         private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
-            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true)
+            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true, string? zoneId = null)
         {
             const string root = "$.data.events";
             if (data.Count < 1 || data.Count > MaxEvents)
@@ -164,6 +164,14 @@ namespace EdS.Data.Zones
                     if (ml < 1 || ml > maxLevel) { report.Add(path + ".minLevel", ValidationCode.OutOfRange, $"niveau minimum hors de [1, {maxLevel}]."); ok = false; }
                     else minLevel = ml;
                 }
+                // Revue Codex de la PR #110 (tour 3) : les clés composées que la partie écrira dans la sauvegarde (registre, cicatrices)
+                // tiennent dans sa borne, avec la même formule que le cœur.
+                if (zoneId != null && known && kind != WorldEventKind.Hunt && e.Id != null && EventRegistryKey(zoneId, e.Id).Length > SavedEvent.MaxKeyLength)
+                { report.Add(path + ".id", ValidationCode.LimitExceeded, $"clé du registre « {EventRegistryKey(zoneId, e.Id)} » au-delà de {SavedEvent.MaxKeyLength} caractères (sauvegarde)."); ok = false; }
+                if (zoneId != null && scar != null && e.Id != null && e.Groups != null)
+                    for (int g = 0; g < e.Groups.Count; g++)
+                        if (e.Groups[g]?.Id is string gid && ScarKey(zoneId, e.Id, gid).Length > SavedEvent.MaxKeyLength)
+                        { report.Add($"{path}.groups[{g}].id", ValidationCode.LimitExceeded, $"clé de cicatrice « {ScarKey(zoneId, e.Id, gid)} » au-delà de {SavedEvent.MaxKeyLength} caractères (sauvegarde)."); ok = false; }
                 if (ok)
                     events.Add(new WorldEventDefinition(e.Id!, kind, every!.Value, chance!.Value, first!.Value, start!.Value, spread!.Value, announce!.Value,
                         duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel, scar));
@@ -306,6 +314,12 @@ namespace EdS.Data.Zones
             if (r.Fact != null && !CheckDeclaredFact(r.Fact, path + ".fact", report)) ok = false;   // revue Codex de la PR #107 : « fact.met.… » réservé
             return ok ? new WorldEventReward(r.Xp!.Value, r.Money!.Value, given, r.Fact) : null;
         }
+
+        /// <summary>Sous-lot V2.5 : clé du registre d'un personnage pour un événement (<c>zone.vallons/attaque_hameau</c>) ; la seule formule (cœur et validateur).</summary>
+        public static string EventRegistryKey(string zone, string eventId) => zone + "/" + eventId;
+
+        /// <summary>Sous-lot V2.6 : clé d'une cicatrice dans la sauvegarde (<c>zone.vallons/faille_du_seuil/ruines</c>) ; la seule formule (cœur et validateur).</summary>
+        public static string ScarKey(string zone, string eventId, string group) => zone + "/" + eventId + "/" + group;
 
         /// <summary>Sous-lot V2.5 : minute du jour d'une heure « HH:MM » (00:00 à 23:59), ou null.</summary>
         public static int? ParseClock(string? text)

@@ -853,7 +853,7 @@ namespace EdS.Data.Zones
             {
                 if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {EventsSchemaVersion} attendu.");
                 else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
-                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11);
+                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null);
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null

@@ -27,7 +27,7 @@ namespace EdS.Data.Saves
 
         public SavedScar(string id, int stage, long since, long born)
         {
-            if (!SaveValidator.IsEventKey(id) || id.Length > 128) throw new ArgumentException($"Cicatrice « {id} » hors du format des sauvegardes.", nameof(id));
+            if (!SaveValidator.IsEventKey(id) || id.Length > SavedEvent.MaxKeyLength) throw new ArgumentException($"Cicatrice « {id} » hors du format des sauvegardes.", nameof(id));
             if (stage < 1 || stage > MaxStage) throw new ArgumentOutOfRangeException(nameof(stage));
             if (since < 0 || since > SavedEvent.MaxDay) throw new ArgumentOutOfRangeException(nameof(since));
             if (born < 0 || born > since) throw new ArgumentOutOfRangeException(nameof(born));

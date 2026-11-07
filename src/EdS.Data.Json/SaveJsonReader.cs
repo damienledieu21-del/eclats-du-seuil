@@ -467,7 +467,7 @@ namespace EdS.Data.Json
                 for (int i = 0; i < c.Events.Count; i++)
                 {
                     SavedEvent e = c.Events[i];
-                    if (!SaveValidator.IsEventKey(e.Id) || e.Id.Length > 128) throw new ArgumentException($"Événement « {e.Id} » hors du format des sauvegardes.", nameof(c));
+                    if (!SaveValidator.IsEventKey(e.Id) || e.Id.Length > SavedEvent.MaxKeyLength) throw new ArgumentException($"Événement « {e.Id} » hors du format des sauvegardes.", nameof(c));
                     b.Append("        {\"id\": \"").Append(e.Id).Append('"').Append(", \"won\": ").Append(e.Won.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"lost\": ").Append(e.Lost.ToString(CultureInfo.InvariantCulture)).Append(", \"last\": ").Append(e.Last.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"outcome\": \"").Append(SavedEvent.OutcomeNames[(int)e.Outcome]).Append('"').Append(e.Owed ? ", \"owed\": true" : "")
@@ -483,7 +483,7 @@ namespace EdS.Data.Json
                 for (int i = 0; i < c.Scars.Count; i++)
                 {
                     SavedScar x = c.Scars[i];
-                    if (!SaveValidator.IsEventKey(x.Id) || x.Id.Length > 128) throw new ArgumentException($"Cicatrice « {x.Id} » hors du format des sauvegardes.", nameof(c));
+                    if (!SaveValidator.IsEventKey(x.Id) || x.Id.Length > SavedEvent.MaxKeyLength) throw new ArgumentException($"Cicatrice « {x.Id} » hors du format des sauvegardes.", nameof(c));
                     b.Append("        {\"id\": \"").Append(x.Id).Append("\", \"stage\": ").Append(x.Stage.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"since\": ").Append(x.Since.ToString(CultureInfo.InvariantCulture)).Append(", \"born\": ").Append(x.Born.ToString(CultureInfo.InvariantCulture))
                         .Append(i + 1 < c.Scars.Count ? "},\n" : "}\n");
