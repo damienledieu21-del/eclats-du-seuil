@@ -26,6 +26,18 @@ namespace EdS.Runtime
 
         /// <summary>Essai réaliste (27 octobre 2026) : arbuste des haies (« haie_ouest » était un bloc de pierre).</summary>
         Shrub = 8,
+
+        /// <summary>Sous-lot V2.9 (vrais modèles) : cerf à bois (« Stag » de Quaternius), le chef de la harde et un cerf sur trois.</summary>
+        Stag = 9,
+
+        /// <summary>Sous-lot V2.9 : biche (« Deer » de Quaternius), les autres cerfs de la harde.</summary>
+        Doe = 10,
+
+        /// <summary>Sous-lot V2.9 : lièvre (« Rabbit » de Pneshik, Sketchfab).</summary>
+        Hare = 11,
+
+        /// <summary>Sous-lot V2.9 : le chat compagnon (« Stripe the Cat » de DreamNoms, Sketchfab, converti en FBX), teint aux couleurs du compagnon.</summary>
+        Cat = 12,
     }
 
     /// <summary>Essai réaliste : matière d'un bâtiment (textures d'un dossier « Surfaces »).</summary>
@@ -228,6 +240,33 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.2.1 : ronronnement d'un compagnon d'affichage (sans fichier : un ronronnement fait par le code).</summary>
         Purr = 14,
+
+        /// <summary>Sous-lot V2.9 : hurlement des loups (la nuit et par brume), un passage d'un long enregistrement.</summary>
+        Howl = 15,
+
+        /// <summary>Sous-lot V2.9 : brame du cerf (rare, à l'aube et au crépuscule).</summary>
+        Bellow = 16,
+
+        /// <summary>Sous-lot V2.9 : lièvre qui détale dans l'herbe.</summary>
+        HareDash = 17,
+
+        /// <summary>Sous-lot V2.9 : grognements d'un sanglier qui fouille (passages courts d'un long enregistrement).</summary>
+        BoarGrumble = 18,
+
+        /// <summary>Sous-lot V2.9 : cloche du tocsin (attaque du hameau), frappée vite et plusieurs fois.</summary>
+        Tocsin = 19,
+
+        /// <summary>Sous-lot V2.9 : cloche d'église (le hameau défendu).</summary>
+        ChurchBell = 20,
+
+        /// <summary>Sous-lot V2.9 : verre qui éclate (une faille du Seuil s'ouvre, une cicatrice grandit).</summary>
+        Glass = 21,
+
+        /// <summary>Sous-lot V2.9 : miroir qui explose (une faille du Seuil se referme).</summary>
+        Shatter = 22,
+
+        /// <summary>Sous-lot V2.9 : bourdonnement d'une faille ouverte (en boucle, en 3D).</summary>
+        RiftHum = 23,
     }
 
     /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
@@ -365,7 +404,9 @@ namespace EdS.Runtime
             // Le paladin de Mixamo d'abord, sinon le chevalier des packs. Les fichiers d'animation de Mixamo (« Sword And Shield Idle »)
             // ne sont pas des héros.
             [StyleSlot.Hero] = (new[] { "paladin", "knight" }, new[] { "weapon", "sword", "shield" }),
-            [StyleSlot.Wolf] = (new[] { "wolf" }, new string[0]),
+            // Sous-lot V2.9 : le loup de Quaternius (« Wolf_Quaternius », animé : marche, galop, attaque, mort, manger) passe devant le loup
+            // du premier pack (attente et marche seulement) ; le loup réaliste de l'Asset Store (PackAnimal) reste devant les deux.
+            [StyleSlot.Wolf] = (new[] { "wolfquaternius", "wolf" }, new string[0]),
             [StyleSlot.Boar] = (new[] { "boar", "pig" }, new string[0]),
             // Essai réaliste 4 (27 octobre 2026) : les arbres de Sketchfab d'evolveduk s'appellent « oak », « Pine », « Spruce », « birch ».
             [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple", "oak", "spruce", "beech", "fir" },
@@ -378,6 +419,11 @@ namespace EdS.Runtime
             [StyleSlot.Shrub] = (new[] { "shrub", "hedge", "bush" }, new[] { "dead", "berry", "flower" }),
             // Les personnages sont rangés par dossier (StyleRules.Characters), pas reconnus par leur nom.
             [StyleSlot.Character] = (new string[0], new string[0]),
+            // Sous-lot V2.9 : bêtes paisibles et chat (le chat est reconnu par un mot entier, voir Matches).
+            [StyleSlot.Stag] = (new[] { "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
+            [StyleSlot.Doe] = (new[] { "deerquaternius", "deer", "doe", "biche", "hind" }, new[] { "stag", "reindeer", "cerf", "behind" }),
+            [StyleSlot.Hare] = (new[] { "rabbitpneshik", "rabbit", "hare", "lievre", "bunny" }, new[] { "share", "hardware" }),
+            [StyleSlot.Cat] = (new[] { "catstripe", "stripecat", "cat", "chat" }, new string[0]),
         };
 
         /// <summary>Mots des objets de décor (nom du fichier), par ordre de préférence.</summary>
@@ -413,6 +459,25 @@ namespace EdS.Runtime
             // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
             [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
             [StyleSound.Purr] = new[] { "ronron", "purr" },
+            // Sous-lot V2.9 (vrais sons, fichiers déposés par Damien dans « Sounds/Animaux ») : voix des bêtes, cloches, failles.
+            [StyleSound.Howl] = new[] { "hurlement", "howling", "howl" },
+            [StyleSound.Bellow] = new[] { "brame", "bellow", "rut" },
+            [StyleSound.HareDash] = new[] { "lievre", "hare", "rabbit", "smallanimal" },
+            [StyleSound.BoarGrumble] = new[] { "sanglier", "grogne", "wildboar" },
+            [StyleSound.Tocsin] = new[] { "tocsin", "clochebsb", "cloche", "handbell" },
+            [StyleSound.ChurchBell] = new[] { "eglise", "church", "chapelle" },
+            [StyleSound.Glass] = new[] { "verre", "glassbreak", "glass" },
+            [StyleSound.Shatter] = new[] { "miroir", "mirror", "shatter" },
+            [StyleSound.RiftHum] = new[] { "faille", "bourdon", "humming", "drone" },
+        };
+
+        /// <summary>
+        /// Sous-lot V2.9 : mots qu'un son ne doit pas contenir pour <paramref name="sound"/> (la cloche du tocsin n'est pas celle de l'église,
+        /// le tocsin n'est pas une cloche d'église).
+        /// </summary>
+        private static readonly Dictionary<StyleSound, string[]> SoundAvoid = new Dictionary<StyleSound, string[]>
+        {
+            [StyleSound.Tocsin] = new[] { "eglise", "church", "chapelle" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
@@ -516,6 +581,11 @@ namespace EdS.Runtime
             // Intérieurs : les meubles et objets des intérieurs (dossier « Interieurs ») ne sont pas du décor des Vallons.
             if (InteriorRules.IsInterior(path)) return false;
             string file = Key(FileName(path));
+            // Sous-lot V2.9 : « cat » se cache dans trop de noms (« catapult », « location ») : le chat est un mot entier du nom
+            // (« Cat_Stripe_DreamNoms », « chat_roux »), ou « StripeCat ».
+            if (slot == StyleSlot.Cat)
+                return file.Contains("catstripe") || file.Contains("stripecat")
+                    || Words(path).Any(w => w == "cat" || w == "chat" || w == "kitty" || w == "kitten");
             (string[] want, string[] avoid) = Models[slot];
             return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
         }
@@ -866,8 +936,9 @@ namespace EdS.Runtime
             // Essai réaliste 7 : les musiques et les ambiances ne sont pas des bruitages.
             var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
             foreach (string word in Sounds[sound])
-                if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word)) is string found) return found;
+                if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word) && !avoid.Any(x => Key(FileName(p)).Contains(x))) is string found) return found;
             return null;
         }
 
@@ -880,9 +951,11 @@ namespace EdS.Runtime
         {
             var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
             foreach (string word in Sounds[sound])
             {
-                List<string> found = files.Where(p => Key(FileName(p)).Contains(word)).Take(Math.Max(0, max)).ToList();
+                List<string> found = files.Where(p => Key(FileName(p)).Contains(word) && !avoid.Any(x => Key(FileName(p)).Contains(x)))
+                    .Take(Math.Max(0, max)).ToList();
                 if (found.Count > 0) return found;
             }
             return Array.Empty<string>();
@@ -1097,9 +1170,12 @@ namespace EdS.Runtime
             return Key(bar >= 0 ? c.Substring(bar + 1) : c);
         }
 
-        /// <summary>Animations qui tournent en boucle (attente, marche, course).</summary>
+        /// <summary>
+        /// Animations qui tournent en boucle (attente, marche, course ; sous-lot V2.9 : brouter, « Eating » des bêtes de Quaternius, qui
+        /// restait figé sur sa dernière image).
+        /// </summary>
         public static bool Loops(string clip) =>
-            new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run }.Any(m => HasWord(clip, Clips[m]))
+            new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run, StyleMotion.Graze }.Any(m => HasWord(clip, Clips[m]))
                 && !HasWord(clip, Clips[StyleMotion.Death]) && !HasWord(clip, Clips[StyleMotion.Attack])
                 && !HasWord(clip, Clips[StyleMotion.Hurt]) && !HasWord(clip, Clips[StyleMotion.Cast]);
 
@@ -1320,7 +1396,36 @@ namespace EdS.Runtime
             // Sous-lot V1.9.8 : Croc-Gris (ses deux formes) est un loup.
             if (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("crocgris", StringComparison.Ordinal)) return StyleSlot.Wolf;
             if (key.StartsWith("sanglier", StringComparison.Ordinal)) return StyleSlot.Boar;
+            // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
+            if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
+            if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
             return StyleSlot.Character;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : un cerf de la harde est un cerf à bois (le chef, « cerf1 », puis un sur trois : « cerf4 », « cerf7 »…) ou une biche
+        /// (les autres) ; les vies suivantes (« cerf4_v2 ») gardent le leur. Affichage seulement.
+        /// </summary>
+        public static StyleSlot DeerSlot(string id)
+        {
+            Match m = Regex.Match(id ?? string.Empty, "^cerf(\\d+)");
+            if (!m.Success || !int.TryParse(m.Groups[1].Value, out int n)) return StyleSlot.Stag;
+            return n % 3 == 1 ? StyleSlot.Stag : StyleSlot.Doe;
+        }
+
+        /// <summary>Sous-lot V2.9 : une bête habillée d'un modèle (loup, sanglier, cerf, biche, lièvre) : centrée sur son corps, voix 3D.</summary>
+        public static bool IsBeast(StyleSlot slot) =>
+            slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare;
+
+        /// <summary>
+        /// Sous-lot V2.9 : rotation (degrés) proposée par la préparation pour un modèle connu qui ne regarde pas devant lui une fois importé :
+        /// le sanglier de Hanabi_Map est tourné de 60,7° dans son fichier (mesuré sous Blender : le groin pointe à 60,7° de l'axe) ; les
+        /// bêtes de Quaternius, le lièvre de Pneshik et le chat regardent devant eux (0). Réglable ensuite dans le catalogue.
+        /// </summary>
+        public static double ModelYaw(string path)
+        {
+            string file = Key(FileName(path));
+            return file.Contains("hanabi") || file.Contains("jabali") ? 60.7 : 0;
         }
 
         /// <summary>
@@ -1332,6 +1437,9 @@ namespace EdS.Runtime
             string key = Key(id);
             if (key.StartsWith("crocgrisenrage", StringComparison.Ordinal)) return 1.5;
             if (key.StartsWith("crocgris", StringComparison.Ordinal)) return 1.4;
+            // Sous-lot V2.9 : hauteur des modèles des bêtes paisibles (bois ou oreilles compris).
+            if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id) == StyleSlot.Stag ? 2.05 : 1.6;
+            if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
             return 0.95;
         }
 
