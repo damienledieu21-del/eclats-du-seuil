@@ -72,7 +72,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(("0.29.0", 23, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire", "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
-        Assert.Equal((11, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((12, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public class V24AnimauxMoteurTests
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
         Assert.Equal(16, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json")))!;
-        Assert.Equal(new[] { 7, 8, 9, 10, 11 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
+        Assert.Equal(new[] { 7, 8, 9, 10, 11, 12 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
     }
 }
 
