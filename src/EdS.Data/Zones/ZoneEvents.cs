@@ -30,6 +30,9 @@ namespace EdS.Data.Zones
         public long? WaveMs { get; set; }
         public WorldEventRewardData? Reward { get; set; }
         public string? LostFact { get; set; }
+
+        /// <summary>Choix de Damien du 7 novembre 2026 : niveau minimum du personnage (facultatif, 1) ; en dessous, l'événement n'a pas lieu pour lui.</summary>
+        public int? MinLevel { get; set; }
     }
 
     /// <summary>Sous-lot V2.5 : une variante d'un événement (les bandits ou les loups ; la faille des ruines ou celle du lac).</summary>
@@ -178,6 +181,13 @@ namespace EdS.Data.Zones
         /// <summary>Fait appris au premier échec (les PNJ s'en souviennent), ou null.</summary>
         public string? LostFact { get; }
 
+        /// <summary>
+        /// Choix de Damien du 7 novembre 2026 (question 2 de la PR #107) : niveau minimum du personnage. En dessous, l'événement n'a pas lieu
+        /// pour lui : ni annonce, ni arrivée, ni issue (ni pillage, ni pillage pendant l'absence) ; ses occurrences sont seulement notées
+        /// au registre, sans issue.
+        /// </summary>
+        public int MinLevel { get; }
+
         /// <summary>L'événement a une issue gardée au registre du personnage (attaque, faille ; pas une chasse).</summary>
         public bool Settles => Kind != WorldEventKind.Hunt;
 
@@ -185,8 +195,9 @@ namespace EdS.Data.Zones
 
         internal WorldEventDefinition(string id, WorldEventKind kind, int everyDays, int chancePercent, int firstDay, int startMinute, int spreadMinutes,
             int announceMinutes, int durationMinutes, int aftermathMinutes, PopulationWeather? weather, string? place, GroundVector? refuge,
-            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact)
+            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1)
         {
+            MinLevel = minLevel;
             Id = id;
             Kind = kind;
             EveryDays = everyDays;

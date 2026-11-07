@@ -273,6 +273,7 @@ namespace EdS.Data.Json
                 ["waveMs"] = (v, p) => e.WaveMs = input.Int64(v, p),
                 ["reward"] = (v, p) => e.Reward = ReadEventReward(input, v, p),
                 ["lostFact"] = (v, p) => e.LostFact = input.Text(v, p),
+                ["minLevel"] = (v, p) => e.MinLevel = input.Int32(v, p),   // choix de Damien du 7 novembre 2026
             });
             return ok ? e : null;
         }

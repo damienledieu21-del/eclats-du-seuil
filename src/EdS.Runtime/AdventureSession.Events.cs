@@ -144,6 +144,7 @@ namespace EdS.Runtime
                 : o.Event.Kind == WorldEventKind.Raid
                     ? $"La cloche du hameau de la carrière va sonner ({(o.Group.Id == "loups" ? "des loups" : "des bandits")}) : fais halte au hameau de la carrière, ou voyage jusque-là."
                     : "Les loups vont sortir du bois près des sangliers des champs du sud.";
+            if (o.Event.MinLevel > 1) where += $" Seulement pour un personnage de niveau {o.Event.MinLevel} ou plus (en dessous, rien ne se passe).";
             return $"Partie avancée au {clock.At(tick)} (tick {tick}), {LeadMinutes} minutes du monde avant le départ. {where} Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }
 

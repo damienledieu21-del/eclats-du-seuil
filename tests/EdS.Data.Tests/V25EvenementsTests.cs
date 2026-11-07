@@ -60,6 +60,7 @@ public class V25EvenementsTests
         ZoneLoadResult r = Mutated(root =>
         {
             if (riftWaves is int waves) Event(root, 1)["waves"] = waves;
+            Event(root, 0)["minLevel"] = 1;   // le personnage d'essai est de niveau 1 (l'attaque livrée demande le niveau 6)
             foreach (int i in new[] { 0, 1 })
                 foreach (JsonNode? g in Event(root, i)["groups"]!.AsArray())
                 {
@@ -74,6 +75,14 @@ public class V25EvenementsTests
     private static WorldSession Session(ZoneDefinition zone, long tick, SavedCharacter? hero = null, string safePoint = "hameau_de_la_carriere") =>
         new(new WorldSave("zone.vallons", tick, 0, new[] { PlayerCharacters.PlacesKey }, hero ?? Hero()), zone, ShippedData, Progression, ItemsCatalog, Book(zone),
             safePoint: safePoint);
+
+    /// <summary>Choix de Damien du 7 novembre 2026 : un personnage au niveau minimum de l'attaque du hameau (6).</summary>
+    private static SavedCharacter Veteran()
+    {
+        long xp = 0;
+        while (Progression.LevelFor(xp) < 6) xp += 10;
+        return Hero().WithXp(xp);
+    }
 
     private static EventOccurrence First(ZoneDefinition zone, string id, long fromMinute = 1440) =>
         WorldEventSchedule.Next(zone.Id, zone.Id, zone.EventOf(id)!, fromMinute)!;
@@ -155,6 +164,7 @@ public class V25EvenementsTests
         WorldEventDefinition raid = Vallons.EventOf(Raid)!, rift = Vallons.EventOf(Rift)!, hunt = Vallons.EventOf(Hunt)!;
         Assert.Equal((WorldEventKind.Raid, 2, 70, 20 * 60 + 30, 60, 90, 240, "hameau"), (raid.Kind, raid.EveryDays, raid.ChancePercent, raid.StartMinute, raid.SpreadMinutes,
             raid.AnnounceMinutes, raid.DurationMinutes, raid.Place));
+        Assert.Equal((6, 1, 1), (raid.MinLevel, rift.MinLevel, hunt.MinLevel));   // choix de Damien du 7 novembre 2026
         Assert.Equal(new[] { "npc.doyen", "npc.herboriste_hameau" }, raid.Villagers);
         Assert.Equal(new[] { "bandits", "loups" }, raid.Groups.Select(g => g.Id));
         Assert.Equal((400L, 300L, "fact.event.attaque_hameau.defendu", "fact.event.attaque_hameau.pille"), (raid.Reward!.Xp, raid.Reward.Money, raid.Reward.Fact, raid.LostFact));
@@ -218,6 +228,8 @@ public class V25EvenementsTests
     [InlineData(2, "aftermathMinutes", "60", ".aftermathMinutes")]
     [InlineData(1, "waveMs", "1025", ".waveMs")]
     [InlineData(0, "weather", "{\"kinds\": [\"mist\"], \"sign\": \"text.x\"}", ".weather.sign")]
+    [InlineData(0, "minLevel", "0", ".minLevel")]
+    [InlineData(1, "minLevel", "1000", ".minLevel")]
     public void Refus_au_chemin_precis(int index, string field, string json, string path)
     {
         AssertError(Mutated(root => Event(root, index)[field] = JsonNode.Parse(json)), $"$.data.events[{index}]{path}");
@@ -290,7 +302,7 @@ public class V25EvenementsTests
     public void Annonce_cloche_refuge_puis_pillage_si_personne_ne_vient()
     {
         EventOccurrence o = First(Vallons, Raid);
-        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.AnnounceAt), safePoint: "place_du_village");
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.AnnounceAt), Veteran(), safePoint: "place_du_village");
         List<WorldEventNotice> notices = Run(w, 2);
         Assert.Equal((WorldEventNoticeKind.Announced, o.Group.Id), (notices.Single().Kind, notices.Single().Group));
         Assert.Equal(WorldEventPhase.Announced, w.WorldEvents.Single().Phase);
@@ -343,7 +355,7 @@ public class V25EvenementsTests
         Assert.Equal((1L, 0L, EventOutcome.Won, false), (entry.Won, entry.Lost, entry.Outcome, entry.Owed));
         Assert.Empty(w.WorldEvents);
         // Les villageois sortent du refuge dès la victoire.
-        Assert.NotEqual(WorldSession.RefugeActivity, w.NpcActivity(w.Narrative.Book.Npc("npc.doyen")));
+        Assert.NotEqual(WorldSession.RefugeActivity, w.NpcActivity(w.Narrative!.Book.Npc("npc.doyen")));
         // La sauvegarde (v13) garde le registre ; la même occurrence n'est plus jamais réglée.
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
         WorldSession again = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) + 100, saved.Character);
@@ -398,12 +410,12 @@ public class V25EvenementsTests
         EventOccurrence o = First(Vallons, Raid);
         long after = WorldEventSchedule.TickAt(Clock, o.EndAt + 30);
         // Un personnage qui découvre les événements : rien de passé ne compte contre lui (première ligne du registre).
-        WorldSession fresh = Session(Vallons, after);
+        WorldSession fresh = Session(Vallons, after, Veteran());
         Assert.DoesNotContain(Run(fresh, 2), n => n.Kind == WorldEventNoticeKind.Missed);
         Assert.Equal((o.Day, EventOutcome.None), (fresh.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Last,
             fresh.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Outcome));
         // Un personnage qui connaissait le hameau et n'est pas venu : manqué, annoncé à son retour.
-        SavedCharacter known = Hero().WithEvents(new[] { new SavedEvent("zone.vallons/attaque_hameau", 0, 0, o.Day - 1, EventOutcome.None) });
+        SavedCharacter known = Veteran().WithEvents(new[] { new SavedEvent("zone.vallons/attaque_hameau", 0, 0, o.Day - 1, EventOutcome.None) });
         WorldSession back = Session(Vallons, after, known);
         WorldEventNotice missed = Run(back, 2).Single(n => n.Event == Raid);
         Assert.Equal((WorldEventNoticeKind.Missed, o.Day), (missed.Kind, missed.Day));
@@ -417,7 +429,7 @@ public class V25EvenementsTests
         EventOccurrence o = First(Vallons, Raid);
         string Trace()
         {
-            WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 3);
+            WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 3, Veteran());
             var lines = Run(w, 400).Select(n => $"{n.Kind}:{n.Event}:{n.Group}:{n.Day}").ToList();
             return string.Join("|", lines) + "#" + string.Join(",", w.Zone.Engine.CombatantIds) + "#" + w.Zone.Engine.Snapshot().Text;
         }
@@ -430,7 +442,7 @@ public class V25EvenementsTests
         // Une créature d'événement prend le butin et la famille de son modèle, sous une identité à elle (le meneur des bandits d'une quête
         // reste à vaincre lui-même).
         EventOccurrence o = First(Vallons, Raid);
-        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2);
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2, Veteran());
         Run(w, 5);
         string c = w.WorldEvents.Single().Creatures[0];
         Assert.NotEqual(o.Group.Creatures[0].Like, c);
@@ -643,7 +655,7 @@ public class V25EvenementsTests
         try
         {
             string path = Path.Combine(dir, "vallons.json");
-            SaveStore.Write(path, new WorldSave("zone.vallons", 0, 1, new[] { PlayerCharacters.PlacesKey }, Hero()));
+            SaveStore.Write(path, new WorldSave("zone.vallons", 0, 1, new[] { PlayerCharacters.PlacesKey }, Veteran()));   // l'attaque demande le niveau 6
             foreach (string id in new[] { Hunt, Rift, Raid })
             {
                 long before = SaveStore.Read(path).Save!.WorldTick;
@@ -866,6 +878,36 @@ public class V25EvenementsTests
         AssertError(Mutated(root => root["data"]!["boss"]!["fact"] = "fact.met.gaspard"), "$.data.boss.fact", ValidationCode.InvalidValue);
         // Un fait voisin, non réservé, reste accepté.
         Assert.True(Mutated(root => Event(root, index)["lostFact"] = "fact.metaux.fondus").IsValid);
+    }
+
+    // --- Choix de Damien du 7 novembre 2026 : pas d'attaque du hameau avant le niveau 6 -------------------------------------------
+
+    [Fact]
+    public void Sous_le_niveau_minimum_ni_annonce_ni_attaque_ni_pillage()
+    {
+        EventOccurrence o = First(Vallons, Raid);
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.AnnounceAt) - 2, Hero(), safePoint: "place_du_village");
+        Assert.True(w.Level < 6);
+        List<WorldEventNotice> notices = Run(w, checked((int)(WorldEventSchedule.TickAt(Clock, o.EndAt) - WorldEventSchedule.TickAt(Clock, o.AnnounceAt)) + 40));
+        Assert.DoesNotContain(notices, n => n.Event == Raid);
+        Assert.DoesNotContain(w.WorldEvents, v => v.Event.Id == Raid);
+        Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id.Contains("_ev", StringComparison.Ordinal) && !id.StartsWith("loup_echo", StringComparison.Ordinal));
+        Assert.NotEqual(WorldSession.RefugeActivity, w.NpcActivity(w.Narrative!.Book.Npc("npc.doyen")));
+        SavedEvent entry = w.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau");
+        Assert.Equal((0L, 0L, o.Day, EventOutcome.None), (entry.Won, entry.Lost, entry.Last, entry.Outcome));
+        Assert.False(w.Aftermath(Raid));
+        Assert.DoesNotContain("fact.event.attaque_hameau.pille", w.Narrative.ToSaved().Facts);
+        // Pendant l'absence non plus : un personnage de niveau 1 qui connaissait le hameau ne le retrouve pas pillé.
+        SavedCharacter known = Hero().WithEvents(new[] { new SavedEvent("zone.vallons/attaque_hameau", 0, 0, o.Day - 1, EventOutcome.None) });
+        WorldSession back = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.EndAt + 30), known);
+        Assert.DoesNotContain(Run(back, 3), n => n.Event == Raid);
+        Assert.Equal((0L, o.Day, EventOutcome.None), (back.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Lost,
+            back.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Last, back.EventRegistry.Single(e => e.Id == "zone.vallons/attaque_hameau").Outcome));
+        Assert.False(back.Aftermath(Raid));
+        // Au niveau 6, l'occurrence suivante a lieu.
+        EventOccurrence next = First(Vallons, Raid, o.EndAt);
+        WorldSession vet = Session(Vallons, WorldEventSchedule.TickAt(Clock, next.StartAt) - 2, Veteran().WithEvents(back.EventRegistry));
+        Assert.Contains(Run(vet, 4), n => n.Kind == WorldEventNoticeKind.Started && n.Event == Raid);
     }
 
     /// <summary>Occurrences de toutes les fenêtres jusqu'au jour <paramref name="days"/> (vérité par force brute).</summary>

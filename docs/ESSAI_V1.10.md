@@ -144,7 +144,7 @@ Menu **Éclats du Seuil → Essai des événements : …**, **hors du mode Jeu**
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 10.1 | « l'attaque du hameau maintenant », puis Play ; voyage rapide au **hameau de la carrière** | En haut, « En cours : L'attaque du hameau » (ou « Bientôt : … ») ; l'annonce (« Des feux s'allument sur la crête… » ou un hurlement) | [ ] | |
+| 10.1 | Avec un personnage **de niveau 6 ou plus** (en dessous, rien ne se passe : choix du 7 novembre), « l'attaque du hameau maintenant », puis Play ; voyage rapide au **hameau de la carrière** | En haut, « En cours : L'attaque du hameau » (ou « Bientôt : … ») ; l'annonce (« Des feux s'allument sur la crête… » ou un hurlement) | [ ] | |
 | 10.2 | Attendre quelques secondes | **La cloche** sonne trois coups ; message « La cloche du hameau sonne à toute volée ! » ; trois bandits (ou trois loups) entrent par l'est ; **Josse et Aubine** courent au pied de la carrière (étiquette « à l'abri au pied de la carrière ») | [ ] | |
 | 10.3 | Vaincre les assaillants | « Le hameau de la carrière est sauf… », puis la bourse de Josse : **400 points, 3 argent, deux remèdes de l'aube** ; Josse et Aubine reviennent | [ ] | |
 | 10.4 | Parler à Josse, puis à Aubine | Leur **remerciement** (une seule fois chacun) | [ ] | |

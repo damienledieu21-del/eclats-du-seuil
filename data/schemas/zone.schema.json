@@ -892,6 +892,11 @@
               "lostFact": {
                 "type": "string",
                 "pattern": "^fact(\\.[a-z0-9_]+)+$"
+              },
+              "minLevel": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Choix de Damien du 7 novembre 2026 : niveau minimum du personnage (1 par défaut) ; en dessous, l'événement n'a pas lieu pour lui (ni annonce, ni attaque, ni pillage, ni pillage pendant l'absence)."
               }
             }
           },

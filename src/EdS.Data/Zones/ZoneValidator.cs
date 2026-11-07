@@ -845,7 +845,8 @@ namespace EdS.Data.Zones
             if (d.Events != null)
             {
                 if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {CurrentSchemaVersion} attendu.");
-                else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events);
+                else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
+                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit);
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null

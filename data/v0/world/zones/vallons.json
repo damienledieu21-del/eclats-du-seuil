@@ -1414,6 +1414,7 @@
         "kind": "raid",
         "everyDays": 2,
         "chancePercent": 70,
+        "minLevel": 6,
         "firstDay": 1,
         "start": "20:30",
         "spreadMinutes": 60,

@@ -41,12 +41,13 @@ namespace EdS.Data.Zones
         /// <c>creatures</c> de 1 à 8 : <c>like</c> une population de la zone, <c>position</c> dans l'aire et hors des obstacles), <c>waves</c>
         /// et <c>waveMs</c> (faille seulement : 1 à 5 vagues, 1 s à 10 min), <c>reward</c> (obligatoire pour une attaque ou une faille, refusé
         /// pour une chasse : <c>xp</c>, <c>money</c>, <c>items</c> facultatif, <c>fact</c> facultatif) et <c>lostFact</c> facultatif (pas pour
-        /// une chasse). Une chasse ne prend que des bêtes (populations des équipes de bêtes, jamais des bandits).
+        /// une chasse), <c>minLevel</c> facultatif (niveau minimum du personnage, de 1 au niveau maximal ; choix de Damien du 7 novembre 2026).
+        /// Une chasse ne prend que des bêtes (populations des équipes de bêtes, jamais des bandits).
         /// </summary>
         /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
         /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
         private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
-            long tick, ValidationReport report, List<WorldEventDefinition> events)
+            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel)
         {
             const string root = "$.data.events";
             if (data.Count < 1 || data.Count > MaxEvents)
@@ -147,9 +148,16 @@ namespace EdS.Data.Zones
                 else if (e.Reward is null) { if (known) { Missing(report, path + ".reward", "récompense de la première réussite"); ok = false; } }
                 else if ((reward = CheckEventReward(e.Reward, path + ".reward", items, report)) is null) ok = false;
                 if (e.LostFact != null && !CheckDeclaredFact(e.LostFact, path + ".lostFact", report)) ok = false;   // revue Codex de la PR #107 : « fact.met.… » réservé
+                // Choix de Damien du 7 novembre 2026 : niveau minimum du personnage, de 1 au niveau maximal des règles.
+                int minLevel = 1;
+                if (e.MinLevel is int ml)
+                {
+                    if (ml < 1 || ml > maxLevel) { report.Add(path + ".minLevel", ValidationCode.OutOfRange, $"niveau minimum hors de [1, {maxLevel}]."); ok = false; }
+                    else minLevel = ml;
+                }
                 if (ok)
                     events.Add(new WorldEventDefinition(e.Id!, kind, every!.Value, chance!.Value, first!.Value, start!.Value, spread!.Value, announce!.Value,
-                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact));
+                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel));
             }
         }
 

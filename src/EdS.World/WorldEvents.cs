@@ -429,6 +429,13 @@ namespace EdS.World
                     }
                     if (o is null) continue;
                     _tried[e.Id] = o.Day;
+                    if (world.Level < e.MinLevel)
+                    {
+                        // Choix de Damien du 7 novembre 2026 : sous le niveau minimum, l'occurrence n'a pas lieu pour ce personnage : ni annonce,
+                        // ni arrivée, ni issue ; elle est seulement notée au registre (sans issue), pour ne jamais compter plus tard.
+                        if (e.Settles) world.SettleEvent(e, o, EventOutcome.None, null, notices);
+                        continue;
+                    }
                     _runs[e.Id] = run = new Run { Occurrence = o };
                 }
                 StepRun(world, zone, run, now, nowTick, reserved, notices);
@@ -465,7 +472,9 @@ namespace EdS.World
                     world.SetEventEntry(e, new SavedEvent(WorldEventSchedule.RegistryKey(_zone.Id, e.Id), 0, 0, last?.Day ?? -1, EventOutcome.None));
                     continue;
                 }
-                if (last != null && last.Day > world.EventEntry(e).Last) world.SettleEvent(e, last, EventOutcome.Lost, WorldEventNoticeKind.Missed, notices);
+                // Choix de Damien du 7 novembre 2026 : sous le niveau minimum, pas de pillage pendant l'absence (notée sans issue).
+                if (last != null && last.Day > world.EventEntry(e).Last)
+                    world.SettleEvent(e, last, world.Level < e.MinLevel ? EventOutcome.None : EventOutcome.Lost, WorldEventNoticeKind.Missed, notices);
             }
         }
 
