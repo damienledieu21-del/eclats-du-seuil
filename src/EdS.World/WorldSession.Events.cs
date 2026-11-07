@@ -33,6 +33,17 @@ namespace EdS.World
         /// <summary>Sous-lot V2.5 : la créature <paramref name="combatant"/> vient d'un événement du monde.</summary>
         public bool IsEventCreature(string combatant) => _events?.Of(combatant) != null;
 
+        /// <summary>Formes de chef encore à venir (places gardées).</summary>
+        private int FormsToCome => _fights.Sum(f => f.FormsToCome);
+
+        /// <summary>
+        /// Revue Codex de la PR #107 (tour 2) : places de combattants gardées pour des arrivées déjà décidées : les formes de chef à venir et
+        /// les créatures d'événement réservées pas encore arrivées (<see cref="World.WorldEvents.PendingPlaces"/>). Une seule source : les
+        /// populations la reçoivent, et les événements comptent les mêmes deux nombres (<see cref="World.WorldEvents.Fits"/>) ; aucune
+        /// arrivée de population ne prend la place d'une créature d'événement réservée.
+        /// </summary>
+        internal int ReservedPlaces => checked(FormsToCome + (_events?.PendingPlaces ?? 0));
+
         private Population? PopulationOfCombatant(string combatant) => _populations?.Of(combatant) ?? _events?.Of(combatant);
 
         internal Population PopulationFor(string creature) =>
@@ -141,7 +152,7 @@ namespace EdS.World
         {
             var notices = new List<WorldEventNotice>(_queuedNotices);
             _queuedNotices.Clear();
-            if (_events != null) notices.AddRange(_events.Step(this, Zone, _fights.Sum(f => f.FormsToCome)));
+            if (_events != null) notices.AddRange(_events.Step(this, Zone, FormsToCome));
             foreach (string fact in _eventFacts)
                 if (Narrative != null) Narrative.Learn(fact, story);
                 else if (!_pendingFacts.Contains(fact)) _pendingFacts.Add(fact);

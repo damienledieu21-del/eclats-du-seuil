@@ -97,15 +97,36 @@ namespace EdS.World
             return new EventOccurrence(e, window, day, minute, group);
         }
 
-        /// <summary>Occurrence en cours ou annoncée à la minute absolue <paramref name="now"/> (annonce ≤ maintenant &lt; fin), ou null.</summary>
-        public static EventOccurrence? Around(string zone, string weatherZone, WorldEventDefinition e, long now)
+        /// <summary>
+        /// Fenêtres dont l'occurrence peut toucher le jour <paramref name="day"/> : un départ a lieu au plus 1 j 12 h après le début de son
+        /// jour (minute de départ et écart), s'annonce au plus 12 h avant et dure au plus 12 h : les jours de <c>day - 2</c> à <c>day + 1</c>
+        /// suffisent (revue Codex de la PR #107, tour 2 : un départ après minuit appartient à la fenêtre précédente).
+        /// </summary>
+        private static IEnumerable<long> WindowsAround(WorldEventDefinition e, long day)
+        {
+            long first = Math.Max(0, day - 2) / e.EveryDays, last = Math.Max(0, day + 1) / e.EveryDays;
+            for (long w = first; w <= last; w++) yield return w;
+        }
+
+        /// <summary>
+        /// Occurrences en cours ou annoncées à la minute absolue <paramref name="now"/> (annonce ≤ maintenant &lt; fin), par départ croissant
+        /// (deux peuvent se chevaucher : une faille de 1 h et l'annonce de la suivante).
+        /// </summary>
+        public static IReadOnlyList<EventOccurrence> AllAround(string zone, string weatherZone, WorldEventDefinition e, long now)
         {
             if (e is null) throw new ArgumentNullException(nameof(e));
-            long window = Math.Max(0, now / WorldClock.MinutesPerDay) / e.EveryDays;
-            // Une occurrence s'annonce au plus 12 h avant et dure au plus 12 h : la fenêtre en cours, la précédente et la suivante suffisent.
-            for (long w = window + 1; w >= window - 1; w--)
-                if (InWindow(zone, weatherZone, e, w) is EventOccurrence o && o.AnnounceAt <= now && now < o.EndAt) return o;
-            return null;
+            var list = new List<EventOccurrence>();
+            foreach (long w in WindowsAround(e, Math.Max(0, now) / WorldClock.MinutesPerDay))
+                if (InWindow(zone, weatherZone, e, w) is EventOccurrence o && o.AnnounceAt <= now && now < o.EndAt) list.Add(o);
+            list.Sort((a, b) => a.StartAt.CompareTo(b.StartAt));
+            return list;
+        }
+
+        /// <summary>Occurrence en cours ou annoncée à la minute absolue <paramref name="now"/>, la première par son départ, ou null.</summary>
+        public static EventOccurrence? Around(string zone, string weatherZone, WorldEventDefinition e, long now)
+        {
+            IReadOnlyList<EventOccurrence> all = AllAround(zone, weatherZone, e, now);
+            return all.Count > 0 ? all[0] : null;
         }
 
         /// <summary>Dernière occurrence finie à la minute absolue <paramref name="now"/> (fin ≤ maintenant), ou null.</summary>
@@ -113,19 +134,35 @@ namespace EdS.World
         {
             if (e is null) throw new ArgumentNullException(nameof(e));
             long window = checked(Math.Max(0, now / WorldClock.MinutesPerDay) / e.EveryDays + 1);
-            for (int i = 0; i < MaxSearch && window - i >= 0; i++)
-                if (InWindow(zone, weatherZone, e, window - i) is EventOccurrence o && o.EndAt <= now) return o;
-            return null;
+            // Revue Codex de la PR #107 (tour 2) : la fin la plus tardive, pas la fenêtre la plus récente (une faille de la fenêtre précédente
+            // peut finir après celle d'une fenêtre plus récente) : la fenêtre trouvée et les deux d'avant sont comparées.
+            EventOccurrence? best = null;
+            long stopAt = -1;
+            for (int i = 0; i < MaxSearch && window - i >= 0 && window - i >= stopAt; i++)
+                if (InWindow(zone, weatherZone, e, window - i) is EventOccurrence o && o.EndAt <= now)
+                {
+                    if (best is null) stopAt = window - i - 2;
+                    if (best is null || o.EndAt > best.EndAt) best = o;
+                }
+            return best;
         }
 
         /// <summary>Prochaine occurrence qui commence à la minute absolue <paramref name="from"/> ou après, ou null.</summary>
         public static EventOccurrence? Next(string zone, string weatherZone, WorldEventDefinition e, long from)
         {
             if (e is null) throw new ArgumentNullException(nameof(e));
-            long window = Math.Max(0, from / WorldClock.MinutesPerDay) / e.EveryDays;
-            for (int i = 0; i < MaxSearch; i++)
-                if (InWindow(zone, weatherZone, e, checked(window + i)) is EventOccurrence o && o.StartAt >= from) return o;
-            return null;
+            // Revue Codex de la PR #107 (tour 2) : une occurrence de la fenêtre précédente peut partir après minuit, après le changement de
+            // fenêtre : la recherche commence deux jours plus tôt et garde le départ le plus proche (la fenêtre trouvée et la suivante).
+            long window = Math.Max(0, from / WorldClock.MinutesPerDay - 2) / e.EveryDays;
+            EventOccurrence? best = null;
+            long stopAt = long.MaxValue;
+            for (int i = 0; i < MaxSearch && checked(window + i) <= stopAt; i++)
+                if (InWindow(zone, weatherZone, e, checked(window + i)) is EventOccurrence o && o.StartAt >= from)
+                {
+                    if (best is null) stopAt = checked(window + i + 1);
+                    if (best is null || o.StartAt < best.StartAt) best = o;
+                }
+            return best;
         }
 
         /// <summary>Occurrence du jour <paramref name="day"/>, ou null.</summary>
@@ -380,10 +417,17 @@ namespace EdS.World
                 if (run is null)
                 {
                     if (!minuteChanged) continue;
-                    if (!(WorldEventSchedule.Around(_zone.Id, _weatherZone, e, now) is EventOccurrence o)) continue;
-                    if (e.Settles && world.EventEntry(e).Last >= o.Day) continue;   // déjà réglée pour ce personnage
-                    // Relecture de la PR #107 : une occurrence n'est tentée qu'une fois par session (pas de place, registre plein : rien ne la relance).
-                    if (_tried.TryGetValue(e.Id, out long tried) && tried == o.Day) continue;
+                    // Revue Codex de la PR #107 (tour 2) : la première occurrence en cours ni réglée ni déjà tentée (deux peuvent se chevaucher).
+                    EventOccurrence? o = null;
+                    foreach (EventOccurrence c in WorldEventSchedule.AllAround(_zone.Id, _weatherZone, e, now))
+                    {
+                        if (e.Settles && world.EventEntry(e).Last >= c.Day) continue;   // déjà réglée pour ce personnage
+                        // Relecture de la PR #107 : une occurrence n'est tentée qu'une fois par session (pas de place, registre plein : rien ne la relance).
+                        if (_tried.TryGetValue(e.Id, out long tried) && tried >= c.Day) continue;
+                        o = c;
+                        break;
+                    }
+                    if (o is null) continue;
                     _tried[e.Id] = o.Day;
                     _runs[e.Id] = run = new Run { Occurrence = o };
                 }

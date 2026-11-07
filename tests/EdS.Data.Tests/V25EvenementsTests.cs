@@ -696,13 +696,16 @@ public class V25EvenementsTests
     }
 
     /// <summary>Remplit la session de bandits immobiles au loin jusqu'à ne laisser que <paramref name="left"/> places hors de la réserve.</summary>
-    private static void Fill(WorldSession w, int left)
+    private static void Fill(WorldSession w, int left) => FillTo(w, w.Zone.Setup.Combat.MaxCombatants - ZonePopulations.QuestReserve - left);
+
+    /// <summary>Remplit la session de bandits immobiles au loin jusqu'à <paramref name="total"/> combattants.</summary>
+    private static void FillTo(WorldSession w, int total)
     {
         CombatEngine e = w.Zone.Engine;
         AssailantSetup model = (AssailantSetup)w.Zone.Setup.Combatants.Single(c => c.Id == "bandit_epee3");
-        int max = w.Zone.Setup.Combat.MaxCombatants, n = 0;
-        for (int x = 66; x <= 138 && e.CombatantIds.Count + ZonePopulations.QuestReserve + left < max; x += 3)
-            for (int z = -68; z <= -46 && e.CombatantIds.Count + ZonePopulations.QuestReserve + left < max; z += 3)
+        int n = 0;
+        for (int x = 66; x <= 138 && e.CombatantIds.Count < total; x += 3)
+            for (int z = -68; z <= -46 && e.CombatantIds.Count < total; z += 3)
             {
                 var place = new CombatantPlacement(new GroundVector(Fixed.FromInt(x), Fixed.FromInt(z)), model.Placement!.Radius);
                 try
@@ -713,7 +716,7 @@ public class V25EvenementsTests
                 catch (ArgumentException) { }
                 w.Step();
             }
-        Assert.Equal(max - ZonePopulations.QuestReserve - left, e.CombatantIds.Count);
+        Assert.Equal(total, e.CombatantIds.Count);
     }
 
     [Fact]
@@ -806,6 +809,77 @@ public class V25EvenementsTests
         n2.AddRange(Run(b2, 3));
         Assert.Single(n2, n => n.Kind == WorldEventNoticeKind.Rewarded);
         Assert.Equal(money + 300, b2.Money);
+    }
+
+    // --- Revue Codex de la PR #107, tour 2 ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Les_populations_ne_prennent_pas_la_place_reservee_d_une_creature_d_evenement()
+    {
+        // L'assaillant doit arriver sur une place tenue par un combattant immobile : il attend, sa place réservée. La session est remplie
+        // jusqu'à cette seule place ; à 22 h, les loups de la nuit ne la prennent pas (épuisés), et l'assaillant arrive dès qu'elle se libère.
+        ZoneDefinition zone = Weak(64.5, -69);
+        EventOccurrence o = First(zone, Raid);
+        WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 20);
+        CombatEngine e = w.Zone.Engine;
+        // Un cerf (il ne bouge que si un ennemi l'approche) tient la place.
+        AssailantSetup model = zone.PopulationOf("cerf1")!.Template;
+        e.Join(new AssailantSetup("bouchon", model.Team, model.Armor, model.MagicResistance, model.Target, model.FirstAttackMs, model.IntervalMs, model.Attacks,
+            model.Initiative, model.StatusResistance, model.Triggers, model.Health, new CombatantPlacement(new GroundVector(Fixed.Parse("64.5"), Fixed.FromInt(-69)),
+            model.Placement!.Radius), e.CurrentTick * 50, model.Behavior));
+        Run(w, 60);
+        Assert.Equal(1, w.EventsRuntime!.PendingPlaces);
+        int max = w.Zone.Setup.Combat.MaxCombatants;
+        FillTo(w, max - w.ReservedPlaces);
+        long at22 = WorldEventSchedule.TickAt(Clock, o.Day * 1440 + 22 * 60 + 2);
+        List<PopulationEvent> population = new();
+        while (w.Zone.StartWorldTick + e.CurrentTick < at22) population.AddRange(w.Step().Population);
+        Assert.Contains(population, p => p.Kind == PopulationEventKind.Exhausted && p.Population.StartsWith("loup_nuit", StringComparison.Ordinal));
+        Assert.DoesNotContain(population, p => p.Kind == PopulationEventKind.Respawned);
+        Assert.Equal(max - w.ReservedPlaces, e.CombatantIds.Count);
+        Assert.Equal(1, w.EventsRuntime.PendingPlaces);
+        // La place se libère : l'assaillant arrive, sans dépasser le plafond.
+        w.Zone.Leave("bouchon");
+        Run(w, 60);
+        Assert.Equal(0, w.EventsRuntime.PendingPlaces);
+        Assert.Single(w.WorldEvents.Single().Creatures);
+        Assert.True(e.CombatantIds.Count <= max);
+    }
+
+    /// <summary>Occurrences de toutes les fenêtres jusqu'au jour <paramref name="days"/> (vérité par force brute).</summary>
+    private static List<EventOccurrence> All(WorldEventDefinition e, long days) =>
+        Enumerable.Range(0, (int)(days / e.EveryDays) + 2).Select(w => WorldEventSchedule.InWindow(Vallons.Id, Vallons.Id, e, w)).OfType<EventOccurrence>().ToList();
+
+    [Fact]
+    public void Calendrier_aux_bornes_de_minuit_et_des_fenetres()
+    {
+        foreach (WorldEventDefinition e in Vallons.Events)
+        {
+            List<EventOccurrence> all = All(e, 400);
+            for (long from = 1440; from < 300 * 1440; from += 97)
+            {
+                EventOccurrence? next = WorldEventSchedule.Next(Vallons.Id, Vallons.Id, e, from);
+                EventOccurrence? truth = all.Where(x => x.StartAt >= from).OrderBy(x => x.StartAt).FirstOrDefault();
+                Assert.Equal(truth?.StartAt, next?.StartAt);
+                Assert.Equal(all.Where(x => x.AnnounceAt <= from && from < x.EndAt).OrderBy(x => x.StartAt).Select(x => x.StartAt),
+                    WorldEventSchedule.AllAround(Vallons.Id, Vallons.Id, e, from).Select(x => x.StartAt));
+                Assert.Equal(all.Where(x => x.EndAt <= from).Select(x => (long?)x.EndAt).DefaultIfEmpty(null).Max(),
+                    WorldEventSchedule.LastEnded(Vallons.Id, Vallons.Id, e, from)?.EndAt);
+            }
+        }
+        // Une faille qui part après minuit, le dernier jour de sa fenêtre : à minuit (fenêtre suivante), elle est toujours la prochaine.
+        WorldEventDefinition rift = Vallons.EventOf(Rift)!;
+        EventOccurrence late = All(rift, 400).First(x => x.StartAt >= (x.Day + 1) * 1440 + EventTrial.LeadMinutes && (x.Day + 1) % rift.EveryDays == 0);
+        long midnight = (late.Day + 1) * 1440;
+        Assert.Equal(late.StartAt, WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, midnight)!.StartAt);
+        Assert.Equal(late.StartAt, WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, midnight - 1)!.StartAt);
+        Assert.True(WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, late.StartAt + 1)!.StartAt > late.StartAt);
+        Assert.Equal(late.StartAt, EventTrial.NextOf(Vallons, Rift, Clock, WorldEventSchedule.TickAt(Clock, midnight))!.StartAt);
+        Assert.Equal(late.StartAt, WorldEventSchedule.Around(Vallons.Id, Vallons.Id, rift, late.StartAt + 10)!.StartAt);
+        Assert.Equal(late.StartAt, WorldEventSchedule.LastEnded(Vallons.Id, Vallons.Id, rift, late.EndAt)!.StartAt);
+        // En session : à minuit passé, la faille d'avant minuit est suivie et s'ouvre à son heure.
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, late.StartAt) - 3, safePoint: "place_du_village");
+        Assert.Contains(Run(w, 6), n => n.Kind == WorldEventNoticeKind.Started && n.Event == Rift && n.Day == late.Day);
     }
 }
 

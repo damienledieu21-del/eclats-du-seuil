@@ -843,7 +843,7 @@ namespace EdS.World
             if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, _fights.Sum(f => f.FormsToCome), Wanted) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, ReservedPlaces, Wanted) ?? Array.Empty<PopulationEvent>();
             var story = new List<StoryEvent>();
             // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
             IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);
