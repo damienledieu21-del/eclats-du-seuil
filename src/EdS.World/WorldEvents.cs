@@ -210,6 +210,24 @@ namespace EdS.World
 
         /// <summary>Fin d'une chasse : les bêtes de l'événement s'en vont.</summary>
         Ended = 9,
+
+        /// <summary>Sous-lot V2.6 : une faille restée ouverte laisse une cicatrice (<see cref="WorldEventNotice.Wave"/> : son palier).</summary>
+        ScarBorn = 10,
+
+        /// <summary>Sous-lot V2.6 : une cicatrice gagne un palier (avec les jours, ou une nouvelle faille restée ouverte à sa place).</summary>
+        ScarGrew = 11,
+
+        /// <summary>Sous-lot V2.6 : une faille refermée à sa place fait reculer la cicatrice d'un palier.</summary>
+        ScarReceded = 12,
+
+        /// <summary>Sous-lot V2.6 : une faille refermée efface une cicatrice du premier palier.</summary>
+        ScarHealed = 13,
+
+        /// <summary>Sous-lot V2.6 : une cicatrice purifiée (un éclat de Seuil) ; <see cref="WorldEventNotice.Xp"/> : l'expérience gagnée.</summary>
+        ScarPurified = 14,
+
+        /// <summary>Sous-lot V2.6 : des échos se lèvent autour d'une cicatrice (une fois quand ils reviennent).</summary>
+        ScarStirs = 15,
     }
 
     public sealed class WorldEventNotice
@@ -321,7 +339,21 @@ namespace EdS.World
             public bool Withdrawn;
 
             public long? RetryAt;
+
+            /// <summary>Sous-lot V2.6 : PV et dégâts, en pour cent de ceux du modèle (cicatrice du Seuil ; 100 sinon).</summary>
+            public long Strength = 100;
         }
+
+        /// <summary>Sous-lot V2.6 : échos rôdeurs d'une cicatrice (une place par écho rôdeur de la variante) et minute absolue de leur retour.</summary>
+        private sealed class Haunt
+        {
+            public Slot?[] Slots = Array.Empty<Slot?>();
+            public long[] ReadyAt = Array.Empty<long>();
+            public bool Stirred;
+        }
+
+        /// <summary>Sous-lot V2.6 : échos rôdeurs par cicatrice (clé de la sauvegarde), dans l'ordre des clés.</summary>
+        private readonly SortedDictionary<string, Haunt> _haunts = new SortedDictionary<string, Haunt>(StringComparer.Ordinal);
 
         private sealed class Run
         {
@@ -375,7 +407,21 @@ namespace EdS.World
         /// Relecture de la PR #107 : places réservées et pas encore prises : créatures d'événement sans combattant (pas encore arrivées, place
         /// occupée, arrivée refusée, laisse). Chacune garde sa place jusqu'à son arrivée ou son abandon.
         /// </summary>
-        internal int PendingPlaces => _runs.Values.Where(r => r != null).Sum(r => r!.Slots.Count(s => s.Current is null && !s.Dead && !s.Gone));
+        internal int PendingPlaces => checked(_runs.Values.Where(r => r != null).Sum(r => r!.Slots.Count(Pending))
+            + _haunts.Values.Sum(h => h.Slots.Count(s => s != null && Pending(s))));
+
+        private static bool Pending(Slot s) => s.Current is null && !s.Dead && !s.Gone;
+
+        /// <summary>Sous-lot V2.6 : une faille de l'événement <paramref name="eventId"/> est ouverte à la variante <paramref name="group"/>.</summary>
+        public bool RiftOpenAt(string eventId, string group) =>
+            _runs.TryGetValue(eventId, out Run? r) && r is { Started: true, Closed: false, Ending: false, Refused: false } && r.Occurrence.Group.Id == group;
+
+        /// <summary>Sous-lot V2.6 : échos rôdeurs de la cicatrice <paramref name="key"/> debout dans la zone.</summary>
+        public IReadOnlyList<string> HauntsOf(string key) =>
+            _haunts.TryGetValue(key, out Haunt? h) ? h.Slots.Where(s => s is { Dead: false, Gone: false } && s.Current != null).Select(s => s!.Current!).ToList() : (IReadOnlyList<string>)Array.Empty<string>();
+
+        /// <summary>Sous-lot V2.6 : la cicatrice <paramref name="key"/> a des échos rôdeurs debout ou qui vont arriver (place réservée).</summary>
+        public bool HauntsRemain(string key) => _haunts.TryGetValue(key, out Haunt? h) && h.Slots.Any(s => s is { Dead: false, Gone: false });
 
         public IReadOnlyList<WorldEventView> Views(Zone zone)
         {
@@ -446,6 +492,7 @@ namespace EdS.World
                     _runs[e.Id] = null;
                 }
             }
+            StepHaunts(world, zone, now, nowTick, reserved, minuteChanged, notices);
             // Récompense due (sac plein à la réussite, ou dans une session précédente) : donnée dès qu'elle tient.
             foreach (WorldEventDefinition e in _zone.Events)
                 if (e.Settles && world.EventEntry(e).Owed)
@@ -546,8 +593,10 @@ namespace EdS.World
 
         private void AddWave(Run run, WorldSession world)
         {
+            // Sous-lot V2.6 : une faille qui s'ouvre sur une cicatrice crache des échos plus forts (palier de la cicatrice à cette vague).
+            long strength = world.ScarStrength(run.Occurrence.Event, run.Occurrence.Group.Id);
             foreach (WorldEventCreature c in run.Occurrence.Group.Creatures)
-                run.Slots.Add(new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1 });
+                run.Slots.Add(new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = strength });
         }
 
         /// <summary>
@@ -610,7 +659,7 @@ namespace EdS.World
         private void Join(Zone zone, Slot s, long now, long tickMs)
         {
             CombatEngine engine = zone.Engine;
-            AssailantSetup t = s.Like.Template;
+            AssailantSetup t = s.Strength > 100 ? ZoneScaling.Strengthen(s.Like.Template, s.Strength) : s.Like.Template;
             CombatantPlacement model = t.Placement!;
             var place = new CombatantPlacement(s.Creature.Position, model.Radius, model.Facing, model.Speed);
             if (Occupied(engine, place))
@@ -658,6 +707,67 @@ namespace EdS.World
             catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6 : échos qui rôdent autour des cicatrices. À partir de <see cref="WorldEventScar.HauntStage"/>, une cicatrice garde
+        /// autour d'elle un écho rôdeur de plus par palier (au plus les <c>haunts</c> de sa variante), plus forts selon son palier ; un écho
+        /// vaincu ou enfui revient <see cref="WorldEventScar.HauntRespawnMinutes"/> minutes du monde plus tard. Même règle de place que les
+        /// événements (réserve des quêtes, places gardées), réservée avant l'arrivée ; sans place, il attend la minute suivante. Pendant qu'une
+        /// faille est ouverte à sa place, aucun ne se lève. Une cicatrice effacée laisse partir les siens dès qu'ils sont au calme.
+        /// </summary>
+        private void StepHaunts(WorldSession world, Zone zone, long now, long nowTick, int reserved, bool minuteChanged, List<WorldEventNotice> notices)
+        {
+            long tickMs = zone.Engine.TickMilliseconds;
+            var live = new HashSet<string>(StringComparer.Ordinal);
+            foreach ((string key, WorldEventDefinition e, WorldEventGroup g, int stage) in world.ScarStates())
+            {
+                live.Add(key);
+                WorldEventScar rule = e.Scar!;
+                if (g.Haunts.Count == 0) continue;
+                if (!_haunts.TryGetValue(key, out Haunt? h))
+                    _haunts[key] = h = new Haunt { Slots = new Slot?[g.Haunts.Count], ReadyAt = new long[g.Haunts.Count] };
+                int want = RiftOpenAt(e.Id, g.Id) ? 0 : rule.HauntsAt(stage, g.Haunts.Count);
+                bool rose = false;
+                for (int i = 0; i < h.Slots.Length; i++)
+                {
+                    if (h.Slots[i] is Slot s)
+                    {
+                        StepSlot(zone, s, nowTick, tickMs, reserved, false);
+                        if (s.Dead || s.Gone)
+                        {
+                            h.Slots[i] = null;
+                            h.ReadyAt[i] = checked(now + rule.HauntRespawnMinutes);
+                        }
+                        continue;
+                    }
+                    if (i >= want || !minuteChanged || now < h.ReadyAt[i] || !Reserve(zone, reserved, 1)) continue;
+                    WorldEventCreature c = g.Haunts[i];
+                    h.Slots[i] = new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = rule.StrengthAt(stage) };
+                    rose = true;
+                }
+                // Une annonce quand ils se lèvent (une fois, puis de nouveau après qu'ils ont tous été vaincus).
+                bool any = h.Slots.Any(x => x != null);
+                if (rose && !h.Stirred) notices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarStirs, e.Id, g.Id, now / WorldClock.MinutesPerDay, stage));
+                h.Stirred = any;
+            }
+            // Cicatrices effacées (purifiées, guéries) : leurs échos s'en vont dès qu'ils ne se battent plus contre un personnage.
+            foreach (KeyValuePair<string, Haunt> pair in _haunts)
+            {
+                if (live.Contains(pair.Key)) continue;
+                for (int i = 0; i < pair.Value.Slots.Length; i++)
+                {
+                    if (!(pair.Value.Slots[i] is Slot s)) continue;
+                    StepSlot(zone, s, nowTick, tickMs, reserved, true);
+                    if (s.Current != null && !s.Dead && !s.Gone)
+                    {
+                        CombatantView v = zone.Engine.View(s.Current);
+                        if (v.IsPresent && !HeldByPlayer(zone.Engine, v) && TryLeave(zone, s.Current)) s.Gone = s.Withdrawn = true;
+                    }
+                    if (s.Dead || s.Gone) pair.Value.Slots[i] = null;
+                }
+                pair.Value.Stirred = false;
             }
         }
 

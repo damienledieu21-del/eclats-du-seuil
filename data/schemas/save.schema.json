@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 13
+      "const": 14
     },
     "kind": {
       "const": "save"
@@ -85,7 +85,8 @@
                 "money",
                 "crafts",
                 "boons",
-                "events"
+                "events",
+                "scars"
               ],
               "properties": {
                 "id": {
@@ -607,6 +608,43 @@
                     }
                   },
                   "description": "Sous-lot V2.5 (version 13) : registre des événements du monde du personnage (zone.vallons/attaque_hameau…), rangé par identifiant : occurrences réussies et manquées, jour du monde de la dernière réglée (-1 : aucune) et son issue ; owed (seulement vrai) : la récompense de la première réussite attend une place dans le sac. Liste vide pour une sauvegarde antérieure."
+                },
+                "scars": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "stage",
+                      "since",
+                      "born"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9_.]+/[a-z0-9_.]+/[a-z0-9_.]+$",
+                        "maxLength": 128
+                      },
+                      "stage": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 8
+                      },
+                      "since": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "born": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    }
+                  },
+                  "description": "Sous-lot V2.6 (version 14) : cicatrices des failles du Seuil restées ouvertes (zone.vallons/faille_du_seuil/ruines…), rangées par identifiant : palier au jour du monde since (il gagne un palier tous les growDays jours de la zone, jusqu'au maximum), jour de naissance born (au plus since). Liste vide pour une sauvegarde antérieure."
                 }
               }
             }

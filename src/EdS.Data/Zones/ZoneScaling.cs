@@ -48,7 +48,22 @@ namespace EdS.Data.Zones
         {
             if (creature is null) throw new ArgumentNullException(nameof(creature));
             if (to <= from || (HealthPerLevelPercent == 0 && DamagePerLevelPercent == 0)) return creature;
-            long hp = Percent(HealthPerLevelPercent, from, to), dmg = Percent(DamagePerLevelPercent, from, to);
+            return Multiply(creature, Percent(HealthPerLevelPercent, from, to), Percent(DamagePerLevelPercent, from, to));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6 : la créature <paramref name="creature"/> avec <paramref name="percent"/> % de ses PV et de ses dégâts bruts (les échos
+        /// d'une cicatrice du Seuil ; au moins 100 : jamais affaiblie), mêmes arrondis et plafonds que <see cref="Scale"/>.
+        /// </summary>
+        public static AssailantSetup Strengthen(AssailantSetup creature, long percent)
+        {
+            if (creature is null) throw new ArgumentNullException(nameof(creature));
+            if (percent < 100 || percent > 10_000) throw new ArgumentOutOfRangeException(nameof(percent));
+            return percent == 100 ? creature : Multiply(creature, percent, percent);
+        }
+
+        private static AssailantSetup Multiply(AssailantSetup creature, long hp, long dmg)
+        {
             long? health = creature.Health is long h ? Math.Min(AssailantSetup.MaxHealth, checked(h * hp) / 100) : (long?)null;
             var attacks = creature.Attacks.Select(a => new AssailantAttack(a.Id, Math.Min(CombatantStats.MaxRawDamage, checked(a.RawDamage * dmg) / 100), a.DamageType, a.Targeting, a.Unblockable,
                 a.Applies, a.Shape, a.TelegraphMs, a.Range, a.Radius, a.Angle, a.Width, a.Center, a.PersistentMs, a.PulseMs, a.GuardableOverride,

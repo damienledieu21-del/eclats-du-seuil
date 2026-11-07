@@ -263,12 +263,20 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 : même personnage avec un autre registre des événements.</summary>
         public SavedCharacter WithEvents(IEnumerable<SavedEvent> events) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, events ?? throw new ArgumentNullException(nameof(events)));
+                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars);
+
+        /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.</summary>
+        public IReadOnlyList<SavedScar> Scars { get; }
+
+        /// <summary>Sous-lot V2.6 : même personnage avec d'autres cicatrices.</summary>
+        public SavedCharacter WithScars(IEnumerable<SavedScar> scars) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)));
 
         /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
         public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                boons ?? throw new ArgumentNullException(nameof(boons)), Events);
+                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars);
 
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
@@ -282,9 +290,10 @@ namespace EdS.Data.Saves
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
             long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null,
             IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null,
-            IEnumerable<SavedEvent>? events = null)
+            IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null)
         {
             Events = SavedEvent.Canonical(events);
+            Scars = SavedScar.Canonical(scars);
             Boons = SavedBoon.Canonical(boons);
             if (crafts < 0 || crafts > MaxCrafts) throw new ArgumentOutOfRangeException(nameof(crafts), crafts, $"Fabrications hors de [0, {MaxCrafts}].");
             Crafts = crafts;
@@ -329,7 +338,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -338,7 +347,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts, Boons, Events);
+                null, Crafts, Boons, Events, Scars);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -347,15 +356,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts, Boons, Events);
+                null, worn, Crafts, Boons, Events, Scars);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -363,15 +372,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -379,7 +388,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
     }
 
     /// <summary>
@@ -482,7 +491,14 @@ namespace EdS.Data.Saves
         /// événements du monde (une liste éventuellement vide, rangée par identifiant ; chaque ligne <c>{ "id", "won", "lost", "last", "outcome" }</c>,
         /// <c>owed</c> facultatif ; voir <see cref="SavedEvent"/>). Une sauvegarde de version 12 ou antérieure est lue telle quelle (registre vide)
         /// et mise à jour ; elle n'a pas d'<c>events</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 13;
+        /// <remarks>Version 14 (sous-lot V2.6, <see cref="ScarsSince"/>) : <c>scars</c> obligatoire dans le personnage : les cicatrices des failles
+        /// restées ouvertes (une liste éventuellement vide, rangée par identifiant ; chaque ligne <c>{ "id", "stage", "since", "born" }</c> ; voir
+        /// <see cref="SavedScar"/>). Une sauvegarde de version 13 ou antérieure est lue telle quelle (aucune cicatrice) et mise à jour ; elle n'a
+        /// pas de <c>scars</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 14;
+
+        /// <summary>Sous-lot V2.6 : version où les cicatrices (<c>scars</c>) entrent dans la sauvegarde.</summary>
+        public const int ScarsSince = 14;
 
         /// <summary>Sous-lot V1.8c : version où les bonus actifs (<c>boons</c>) entrent dans la sauvegarde.</summary>
         public const int BoonsSince = 12;
@@ -845,6 +861,14 @@ namespace EdS.Data.Saves
             }
             else if (c.Events is null) Missing(report, path + ".events", "registre des événements du monde, éventuellement vide");
             else CheckEvents(c.Events, path + ".events", report);
+            // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes ; une sauvegarde antérieure n'en a aucune.
+            if (version < ScarsSince)
+            {
+                if (c.Present.Contains("scars") || c.Scars != null)
+                    report.Add(path + ".scars", ValidationCode.UnknownField, $"champ inconnu en version {version} (cicatrices : version {ScarsSince}).");
+            }
+            else if (c.Scars is null) Missing(report, path + ".scars", "cicatrices des failles restées ouvertes, éventuellement aucune");
+            else CheckScars(c.Scars, path + ".scars", report);
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -857,7 +881,42 @@ namespace EdS.Data.Saves
                 version < ItemStateSince ? 0 : c.Crafts!.Value,
                 version < BoonsSince ? null : c.Boons!.Select(b => new SavedBoon(BoonKindOf(b!.Kind!), b.Item!, b.Ticks!.Value)),
                 version < EventsSince ? null : c.Events!.Select(e => new SavedEvent(e!.Id!, e.Won!.Value, e.Lost!.Value, e.Last!.Value,
-                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false)));
+                    (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false)),
+                version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6 (version 14) : forme des cicatrices : au plus <see cref="SavedScar.MaxEntries"/> lignes rangées par identifiant (clé
+        /// « zone.…/faille/variante »), sans doublon ; palier de 1 à <see cref="SavedScar.MaxStage"/> ; jour de référence <c>since</c> de 0 à
+        /// <see cref="SavedEvent.MaxDay"/> ; jour de naissance <c>born</c> de 0 à <c>since</c>. L'accord avec les failles de la zone (variante
+        /// connue, palier sous le maximum de la zone) est vérifié quand la partie reprend.
+        /// </summary>
+        private static void CheckScars(List<SavedScarData?> scars, string path, ValidationReport report)
+        {
+            if (scars.Count > SavedScar.MaxEntries)
+            {
+                report.Add(path, ValidationCode.LimitExceeded, $"{scars.Count} cicatrices, au plus {SavedScar.MaxEntries}.");
+                return;
+            }
+            string? previous = null;
+            for (int i = 0; i < scars.Count; i++)
+            {
+                string p = $"{path}[{i}]";
+                if (scars[i] is not SavedScarData x) { Missing(report, p, "cicatrice"); continue; }
+                if (x.Id is null) Missing(report, p + ".id", "cicatrice « zone.…/<faille>/<variante> »");
+                else if (!IsEventKey(x.Id) || x.Id.Length > 128 || x.Id.Count(ch => ch == '/') != 2)
+                    report.Add(p + ".id", ValidationCode.InvalidValue, $"cicatrice « {x.Id} » mal formée : « zone.<nom>/<faille>/<variante> » attendu.");
+                else if (previous != null && string.CompareOrdinal(previous, x.Id) >= 0)
+                    report.Add(p + ".id", ValidationCode.InvalidValue, "lignes rangées par identifiant, une seule par cicatrice (forme canonique).");
+                else previous = x.Id;
+                if (x.Stage is null) Missing(report, p + ".stage", "palier au jour « since »");
+                else if (x.Stage < 1 || x.Stage > SavedScar.MaxStage) report.Add(p + ".stage", ValidationCode.OutOfRange, $"palier hors de [1, {SavedScar.MaxStage}].");
+                if (x.Since is null) Missing(report, p + ".since", "jour du monde de référence du palier");
+                else if (x.Since < 0 || x.Since > SavedEvent.MaxDay) report.Add(p + ".since", ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
+                if (x.Born is null) Missing(report, p + ".born", "jour du monde de sa naissance");
+                else if (x.Born < 0 || (x.Since is long since && since >= 0 && since <= SavedEvent.MaxDay ? x.Born > since : x.Born > SavedEvent.MaxDay))
+                    report.Add(p + ".born", ValidationCode.OutOfRange, "jour de naissance hors de [0, since].");
+            }
         }
 
         /// <summary>

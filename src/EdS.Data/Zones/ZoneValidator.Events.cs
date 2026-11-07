@@ -6,6 +6,7 @@ using EdS.Data.Items;
 using EdS.Data.Saves;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 
 namespace EdS.Data.Zones
@@ -47,7 +48,7 @@ namespace EdS.Data.Zones
         /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
         /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
         private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
-            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel)
+            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true)
         {
             const string root = "$.data.events";
             if (data.Count < 1 || data.Count > MaxEvents)
@@ -131,12 +132,20 @@ namespace EdS.Data.Zones
                 }
                 else if (e.Waves != null || e.WaveMs != null)
                 { report.Add(path + (e.Waves != null ? ".waves" : ".waveMs"), ValidationCode.InvalidValue, "des vagues seulement pour une faille (« rift »)."); ok = false; }
+                // Sous-lot V2.6 (schéma 11) : cicatrice d'une faille restée ouverte.
+                WorldEventScar? scar = null;
+                if (e.Scar != null)
+                {
+                    if (!schema11) { report.Add(path + ".scar", ValidationCode.InvalidValue, $"cicatrice d'une faille : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                    else if (known && kind != WorldEventKind.Rift) { report.Add(path + ".scar", ValidationCode.InvalidValue, "seule une faille (« rift ») laisse une cicatrice."); ok = false; }
+                    else if ((scar = CheckScar(e.Scar, path + ".scar", items, report)) is null) ok = false;
+                }
                 var groups = new List<WorldEventGroup>();
                 if (e.Groups is null) { Missing(report, path + ".groups", "variantes de l'événement"); ok = false; }
                 else if (e.Groups.Count < 1 || e.Groups.Count > MaxEventGroups) { report.Add(path + ".groups", ValidationCode.OutOfRange, $"de 1 à {MaxEventGroups} variantes."); ok = false; }
                 else
                     for (int g = 0; g < e.Groups.Count; g++)
-                        if (CheckGroup(e.Groups[g], $"{path}.groups[{g}]", known ? kind : (WorldEventKind?)null, groups, space, populations, report) is WorldEventGroup group)
+                        if (CheckGroup(e.Groups[g], $"{path}.groups[{g}]", known ? kind : (WorldEventKind?)null, groups, space, populations, report, e.Scar != null) is WorldEventGroup group)
                             groups.Add(group);
                         else ok = false;
                 WorldEventReward? reward = null;
@@ -157,12 +166,12 @@ namespace EdS.Data.Zones
                 }
                 if (ok)
                     events.Add(new WorldEventDefinition(e.Id!, kind, every!.Value, chance!.Value, first!.Value, start!.Value, spread!.Value, announce!.Value,
-                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel));
+                        duration!.Value, aftermath, weather, e.Place, refuge, villagers, groups, waves, waveMs, reward, e.LostFact, minLevel, scar));
             }
         }
 
         private static WorldEventGroup? CheckGroup(WorldEventGroupData? g, string path, WorldEventKind? kind, List<WorldEventGroup> previous, CombatSpace? space,
-            List<Population> populations, ValidationReport report)
+            List<Population> populations, ValidationReport report, bool scarred = false)
         {
             if (g is null) { Missing(report, path, "variante"); return null; }
             bool ok = CheckId(g.Id, path + ".id", previous.Select(x => x.Id), report);
@@ -179,10 +188,29 @@ namespace EdS.Data.Zones
             var creatures = new List<WorldEventCreature>();
             if (g.Creatures is null) { Missing(report, path + ".creatures", "créatures de la variante"); return null; }
             if (g.Creatures.Count < 1 || g.Creatures.Count > MaxEventCreatures) { report.Add(path + ".creatures", ValidationCode.OutOfRange, $"de 1 à {MaxEventCreatures} créatures."); return null; }
-            for (int c = 0; c < g.Creatures.Count; c++)
+            if (!CheckEventCreatures(g.Creatures, path + ".creatures", kind, space, populations, report, creatures)) ok = false;
+            // Sous-lot V2.6 (schéma 11) : échos qui rôdent autour de la cicatrice (une faille à cicatrice seulement), de 1 à MaxScarHaunts.
+            var haunts = new List<WorldEventCreature>();
+            if (g.Haunts != null)
             {
-                string cp = $"{path}.creatures[{c}]";
-                if (g.Creatures[c] is not WorldEventCreatureData d) { Missing(report, cp, "créature"); ok = false; continue; }
+                if (!scarred) { report.Add(path + ".haunts", ValidationCode.InvalidValue, "des échos rôdeurs seulement pour une faille à cicatrice (« scar »)."); ok = false; }
+                else if (g.Haunts.Count < 1 || g.Haunts.Count > MaxScarHaunts) { report.Add(path + ".haunts", ValidationCode.OutOfRange, $"de 1 à {MaxScarHaunts} échos rôdeurs."); ok = false; }
+                else if (!CheckEventCreatures(g.Haunts, path + ".haunts", kind, space, populations, report, haunts)) ok = false;
+                else if (haunts.FirstOrDefault(h => creatures.Any(c => c.Position.X == h.Position.X && c.Position.Z == h.Position.Z)) is WorldEventCreature same)
+                { report.Add($"{path}.haunts[{haunts.IndexOf(same)}].position", ValidationCode.DuplicateId, "un écho rôdeur à la place d'une créature de la faille."); ok = false; }
+            }
+            return ok ? new WorldEventGroup(g.Id!, g.Weight!.Value, position, creatures, haunts) : null;
+        }
+
+        /// <summary>Créatures d'une variante (ou ses échos rôdeurs, sous-lot V2.6) : modèle connu et qui se bat, place libre, une par place.</summary>
+        private static bool CheckEventCreatures(List<WorldEventCreatureData?> list, string root, WorldEventKind? kind, CombatSpace? space, List<Population> populations,
+            ValidationReport report, List<WorldEventCreature> creatures)
+        {
+            bool ok = true;
+            for (int c = 0; c < list.Count; c++)
+            {
+                string cp = $"{root}[{c}]";
+                if (list[c] is not WorldEventCreatureData d) { Missing(report, cp, "créature"); ok = false; continue; }
                 Population? like = d.Like is null ? null : populations.FirstOrDefault(p => p.Creature == d.Like);
                 if (d.Like is null) { Missing(report, cp + ".like", "population de la zone dont elle prend le modèle"); ok = false; }
                 else if (like is null) { report.Add(cp + ".like", ValidationCode.UnknownReference, $"population « {d.Like} » absente de la zone."); ok = false; }
@@ -197,7 +225,56 @@ namespace EdS.Data.Zones
                 { report.Add(cp + ".position", ValidationCode.DuplicateId, "deux créatures d'une variante à la même place."); ok = false; }
                 if (ok) creatures.Add(new WorldEventCreature(d.Like!, Point(d.Position!)));
             }
-            return ok ? new WorldEventGroup(g.Id!, g.Weight!.Value, position, creatures) : null;
+            return ok;
+        }
+
+        /// <summary>Sous-lot V2.6 : bornes d'une cicatrice (provisoires).</summary>
+        public const int MaxScarStage = SavedScar.MaxStage, MaxScarGrowDays = 30, MaxScarStrengthPercent = 100, MinHauntRespawn = 10, MaxHauntRespawn = 1440;
+
+        /// <summary>Sous-lot V2.6 : échos rôdeurs d'une variante, au plus.</summary>
+        public const int MaxScarHaunts = 4;
+
+        /// <summary>Sous-lot V2.6 : rayon d'une cicatrice au plus (palier maximal compris), en mètres ; expérience d'une purification au plus.</summary>
+        public static readonly Fixed MaxScarRadius = Fixed.FromInt(60);
+        public const long MaxPurifyXp = 100_000;
+
+        /// <summary>
+        /// Sous-lot V2.6 (schéma 11) : <c>scar</c> d'une faille : <c>growDays</c> (1 à 30 jours du monde par palier), <c>maxStage</c> (1 à
+        /// <see cref="MaxScarStage"/>), <c>radius</c> (rayon au palier 1, plus de 0) et <c>radiusPerStage</c> (0 ou plus ; au palier maximal, au
+        /// plus <see cref="MaxScarRadius"/> m), <c>strengthPercent</c> (0 à 100 % de PV et de dégâts par palier au-delà du premier),
+        /// <c>hauntStage</c> (1 à <c>maxStage</c>) et <c>hauntRespawnMinutes</c> (10 à 1 440), <c>purifyItem</c> (objet du catalogue, un par
+        /// purification), <c>purifyXp</c> (0 à 100 000), <c>bornFact</c>, <c>deepFact</c>, <c>purifiedFact</c> facultatifs (« fact.met.… »
+        /// réservé).
+        /// </summary>
+        private static WorldEventScar? CheckScar(WorldEventScarData s, string path, ItemCatalog items, ValidationReport report)
+        {
+            bool ok = true;
+            int? Range(int? value, string field, string what, int min, int max)
+            {
+                if (value is null) { Missing(report, path + "." + field, what); ok = false; return null; }
+                if (value < min || value > max) { report.Add(path + "." + field, ValidationCode.OutOfRange, $"{what} hors de [{min}, {max}]."); ok = false; return null; }
+                return value;
+            }
+            int? grow = Range(s.GrowDays, "growDays", "jours du monde par palier", 1, MaxScarGrowDays);
+            int? max = Range(s.MaxStage, "maxStage", "palier maximal", 1, MaxScarStage);
+            int? strength = Range(s.StrengthPercent, "strengthPercent", "force des échos par palier, en pour cent", 0, MaxScarStrengthPercent);
+            int? haunt = Range(s.HauntStage, "hauntStage", "palier des échos rôdeurs", 1, max ?? MaxScarStage);
+            int? respawn = Range(s.HauntRespawnMinutes, "hauntRespawnMinutes", "retour d'un écho rôdeur, en minutes du monde", MinHauntRespawn, MaxHauntRespawn);
+            if (s.Radius is null) { Missing(report, path + ".radius", "rayon au palier 1, en mètres"); ok = false; }
+            else if (s.Radius.Value <= Fixed.Zero || s.Radius.Value > MaxScarRadius) { report.Add(path + ".radius", ValidationCode.OutOfRange, $"rayon hors de ]0, {MaxScarRadius}] m."); ok = false; }
+            if (s.RadiusPerStage is null) { Missing(report, path + ".radiusPerStage", "rayon gagné par palier, en mètres (0 pour aucun)"); ok = false; }
+            else if (s.RadiusPerStage.Value < Fixed.Zero || s.RadiusPerStage.Value > MaxScarRadius) { report.Add(path + ".radiusPerStage", ValidationCode.OutOfRange, $"rayon par palier hors de [0, {MaxScarRadius}] m."); ok = false; }
+            else if (s.Radius is Fixed r && max is int m && r + s.RadiusPerStage.Value * Fixed.FromInt(m - 1) > MaxScarRadius)
+            { report.Add(path + ".radiusPerStage", ValidationCode.OutOfRange, $"rayon au palier {m} au-delà de {MaxScarRadius} m."); ok = false; }
+            if (s.PurifyItem is null) { Missing(report, path + ".purifyItem", "objet qui purifie la cicatrice"); ok = false; }
+            else if (!items.TryGetItem(s.PurifyItem, out _)) { report.Add(path + ".purifyItem", ValidationCode.UnknownReference, $"objet inconnu « {s.PurifyItem} »."); ok = false; }
+            if (s.PurifyXp is null) { Missing(report, path + ".purifyXp", "expérience d'une purification (0 pour aucune)"); ok = false; }
+            else if (s.PurifyXp < 0 || s.PurifyXp > MaxPurifyXp) { report.Add(path + ".purifyXp", ValidationCode.OutOfRange, $"expérience hors de [0, {MaxPurifyXp}]."); ok = false; }
+            if (s.BornFact != null && !CheckDeclaredFact(s.BornFact, path + ".bornFact", report)) ok = false;
+            if (s.DeepFact != null && !CheckDeclaredFact(s.DeepFact, path + ".deepFact", report)) ok = false;
+            if (s.PurifiedFact != null && !CheckDeclaredFact(s.PurifiedFact, path + ".purifiedFact", report)) ok = false;
+            return ok ? new WorldEventScar(grow!.Value, max!.Value, s.Radius!.Value, s.RadiusPerStage!.Value, strength!.Value, haunt!.Value, respawn!.Value,
+                s.PurifyItem!, s.PurifyXp!.Value, s.BornFact, s.DeepFact, s.PurifiedFact) : null;
         }
 
         private static WorldEventReward? CheckEventReward(WorldEventRewardData r, string path, ItemCatalog items, ValidationReport report)

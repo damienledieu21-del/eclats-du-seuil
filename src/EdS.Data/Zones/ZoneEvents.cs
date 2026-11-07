@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EdS.Data.Scenarios;
 using EdS.Domain.Collections;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 
 namespace EdS.Data.Zones
@@ -33,6 +34,26 @@ namespace EdS.Data.Zones
 
         /// <summary>Choix de Damien du 7 novembre 2026 : niveau minimum du personnage (facultatif, 1) ; en dessous, l'événement n'a pas lieu pour lui.</summary>
         public int? MinLevel { get; set; }
+
+        /// <summary>Sous-lot V2.6 (schéma 11) : cicatrice laissée par une faille restée ouverte (faille seulement, facultatif).</summary>
+        public WorldEventScarData? Scar { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.6 (schéma 11) : la cicatrice d'une faille, telle que lue, avant validation.</summary>
+    public sealed class WorldEventScarData
+    {
+        public int? GrowDays { get; set; }
+        public int? MaxStage { get; set; }
+        public Fixed? Radius { get; set; }
+        public Fixed? RadiusPerStage { get; set; }
+        public int? StrengthPercent { get; set; }
+        public int? HauntStage { get; set; }
+        public int? HauntRespawnMinutes { get; set; }
+        public string? PurifyItem { get; set; }
+        public long? PurifyXp { get; set; }
+        public string? BornFact { get; set; }
+        public string? DeepFact { get; set; }
+        public string? PurifiedFact { get; set; }
     }
 
     /// <summary>Sous-lot V2.5 : une variante d'un événement (les bandits ou les loups ; la faille des ruines ou celle du lac).</summary>
@@ -45,6 +66,9 @@ namespace EdS.Data.Zones
         public PointData? Position { get; set; }
 
         public List<WorldEventCreatureData?>? Creatures { get; set; }
+
+        /// <summary>Sous-lot V2.6 (schéma 11) : échos qui rôdent autour de la cicatrice de cette faille (faille avec cicatrice seulement).</summary>
+        public List<WorldEventCreatureData?>? Haunts { get; set; }
     }
 
     public sealed class WorldEventCreatureData
@@ -100,12 +124,16 @@ namespace EdS.Data.Zones
 
         public IReadOnlyList<WorldEventCreature> Creatures { get; }
 
-        internal WorldEventGroup(string id, int weight, GroundVector? position, IEnumerable<WorldEventCreature> creatures)
+        /// <summary>Sous-lot V2.6 : échos qui rôdent autour de la cicatrice de cette faille, dans l'ordre où ils viennent (vide sans cicatrice).</summary>
+        public IReadOnlyList<WorldEventCreature> Haunts { get; }
+
+        internal WorldEventGroup(string id, int weight, GroundVector? position, IEnumerable<WorldEventCreature> creatures, IEnumerable<WorldEventCreature>? haunts = null)
         {
             Id = id;
             Weight = weight;
             Position = position;
             Creatures = Frozen.List(creatures, nameof(creatures));
+            Haunts = Frozen.List(haunts ?? Array.Empty<WorldEventCreature>(), nameof(haunts));
         }
     }
 
@@ -188,6 +216,9 @@ namespace EdS.Data.Zones
         /// </summary>
         public int MinLevel { get; }
 
+        /// <summary>Sous-lot V2.6 (schéma 11) : cicatrice laissée par une occurrence restée ouverte (faille seulement), ou null.</summary>
+        public WorldEventScar? Scar { get; }
+
         /// <summary>L'événement a une issue gardée au registre du personnage (attaque, faille ; pas une chasse).</summary>
         public bool Settles => Kind != WorldEventKind.Hunt;
 
@@ -195,9 +226,10 @@ namespace EdS.Data.Zones
 
         internal WorldEventDefinition(string id, WorldEventKind kind, int everyDays, int chancePercent, int firstDay, int startMinute, int spreadMinutes,
             int announceMinutes, int durationMinutes, int aftermathMinutes, PopulationWeather? weather, string? place, GroundVector? refuge,
-            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1)
+            IEnumerable<string> villagers, IEnumerable<WorldEventGroup> groups, int waves, long waveMs, WorldEventReward? reward, string? lostFact, int minLevel = 1, WorldEventScar? scar = null)
         {
             MinLevel = minLevel;
+            Scar = scar;
             Id = id;
             Kind = kind;
             EveryDays = everyDays;
@@ -223,5 +255,66 @@ namespace EdS.Data.Zones
         }
 
         public static readonly IReadOnlyList<string> KindNames = Array.AsReadOnly(new[] { "raid", "rift", "hunt" });
+    }
+
+    /// <summary>
+    /// Sous-lot V2.6 (schéma 11, « le Seuil qui grandit ») : la cicatrice qu'une faille restée ouverte laisse à sa place. Elle naît au palier
+    /// 1 et gagne un palier tous les <see cref="GrowDays"/> jours du monde, jusqu'à <see cref="MaxStage"/> ; son rayon grandit avec elle. Les
+    /// échos qui sortent d'une faille à sa place, et ceux qui rôdent autour d'elle (à partir de <see cref="HauntStage"/>), ont
+    /// <see cref="StrengthPercent"/> % de PV et de dégâts en plus par palier au-delà du premier. Elle recule d'un palier quand on referme une
+    /// faille à sa place, et disparaît quand on la purifie avec un <see cref="PurifyItem"/>. Valeurs provisoires.
+    /// </summary>
+    public sealed class WorldEventScar
+    {
+        public int GrowDays { get; }
+        public int MaxStage { get; }
+
+        /// <summary>Rayon de la cicatrice au palier 1, en mètres.</summary>
+        public Fixed Radius { get; }
+
+        /// <summary>Rayon gagné à chaque palier au-delà du premier, en mètres.</summary>
+        public Fixed RadiusPerStage { get; }
+
+        public int StrengthPercent { get; }
+
+        /// <summary>Palier à partir duquel des échos rôdent autour de la cicatrice (un de plus par palier, au plus les <c>haunts</c> de la variante).</summary>
+        public int HauntStage { get; }
+
+        /// <summary>Minutes du monde avant qu'un écho rôdeur vaincu ou enfui revienne.</summary>
+        public int HauntRespawnMinutes { get; }
+
+        public string PurifyItem { get; }
+        public long PurifyXp { get; }
+
+        /// <summary>Faits appris : la première cicatrice, la première qui atteint <see cref="HauntStage"/>, la première purifiée (ou null).</summary>
+        public string? BornFact { get; }
+        public string? DeepFact { get; }
+        public string? PurifiedFact { get; }
+
+        internal WorldEventScar(int growDays, int maxStage, Fixed radius, Fixed radiusPerStage, int strengthPercent, int hauntStage, int hauntRespawnMinutes,
+            string purifyItem, long purifyXp, string? bornFact, string? deepFact, string? purifiedFact)
+        {
+            GrowDays = growDays;
+            MaxStage = maxStage;
+            Radius = radius;
+            RadiusPerStage = radiusPerStage;
+            StrengthPercent = strengthPercent;
+            HauntStage = hauntStage;
+            HauntRespawnMinutes = hauntRespawnMinutes;
+            PurifyItem = purifyItem;
+            PurifyXp = purifyXp;
+            BornFact = bornFact;
+            DeepFact = deepFact;
+            PurifiedFact = purifiedFact;
+        }
+
+        /// <summary>Rayon au palier <paramref name="stage"/> (au moins 1).</summary>
+        public Fixed RadiusAt(int stage) => Radius + RadiusPerStage * Fixed.FromInt(Math.Max(0, stage - 1));
+
+        /// <summary>Pour cent des PV et des dégâts des échos au palier <paramref name="stage"/> (100 au palier 1 ou sans cicatrice).</summary>
+        public long StrengthAt(int stage) => checked(100L + (long)StrengthPercent * Math.Max(0, stage - 1));
+
+        /// <summary>Échos rôdeurs voulus au palier <paramref name="stage"/> pour une variante qui en a <paramref name="available"/>.</summary>
+        public int HauntsAt(int stage, int available) => stage < HauntStage ? 0 : Math.Min(available, stage - HauntStage + 1);
     }
 }

@@ -399,6 +399,10 @@ namespace EdS.Data.Story
                 {
                     if (e.Reward?.Fact is string won) _factsSet.Add(won);
                     if (e.LostFact is string lost) _factsSet.Add(lost);
+                    // Sous-lot V2.6 : la première cicatrice, la première profonde, la première purifiée.
+                    if (e.Scar?.BornFact is string born) _factsSet.Add(born);
+                    if (e.Scar?.DeepFact is string deep) _factsSet.Add(deep);
+                    if (e.Scar?.PurifiedFact is string purified) _factsSet.Add(purified);
                 }
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
