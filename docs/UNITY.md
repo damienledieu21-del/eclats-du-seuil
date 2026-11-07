@@ -729,9 +729,44 @@ Les marches et galops prennent une cadence qui suit la vitesse (moins de pattes 
 
 **Réglages du catalogue** (`Assets/Style/Resources/StyleCatalog`, en-tête « Sous-lot V2.9 ») : **Stag Yaw**, **Doe Yaw**, **Hare Yaw**, **Cat Yaw** (et **Wolf Yaw**, **Boar Yaw**) tournent un modèle qui marche de travers (90, 180, −90…). La préparation propose une fois **Boar Yaw = 60,7** pour le sanglier de Hanabi_Map (son groin pointe à 60,7° dans son fichier, mesuré sous Blender) ; **si le sanglier marche de côté ou à reculons, essayer −60,7 ou 240,7**. **Tint Cat** (teindre le chat), **Cat Height** (0,36 m), **White Wolf Color**.
 
+#### 2e vague (7 novembre 2026, au soir) : bêtes plus réalistes, ferme, ambiances par lieu, pas, musiques
+
+Déposée chez Damien : `Assets/Style/Sketchfab/Animaux2/` (modèles en `.glb`, que Unity ne lit pas), `Assets/Style/Sounds/Monde/` (ambiances et bruitages), `Assets/Style/Music/ScottBuckley/` (trois musiques). **À déposer** dans `Assets/Style/Sketchfab/Animaux2/` : les FBX convertis par Claude (même nom, `.fbx`) : `CerfRouge_Suiteofart`, `Elan_WildMesh`, `Faon_AssetsAnimated`, `Sanglier_Dakta`, `Lievre_bluekiwi`, `Loup_roo3d`, `Loup_rhcreations` (facultatif, non retenu), `Corbeau_alexanders823`, `Vache_rukh3d`, `Chien_quander`, `Cheval_henry7` ; les `.glb` peuvent rester (Unity les ignore). Puis **Préparer l'essai de style** : la fenêtre dit aussi « Ferme : corbeau …, vache …, chien …, cheval … » et « Portail, pas et cris de la ferme : 13 sur 13 ».
+
+Conversion (Claude, Blender 5.2 en ligne de commande) : la chaîne d'objets vides de Sketchfab est aplatie (les bêtes sont debout, groin ou museau vers l'avant : aucune rotation à régler), seules les animations utiles sont gardées et renommées (`Idle`, `Walk`, `Trot`, `Run`, `Eat`, `Dig`, `Attack`, `Hurt`, `Death`, `Lie`…, les variantes « en place » quand le modèle en a), les textures de 4096 px ramenées à 2048 px et incluses dans le fichier ; chaque FBX a été relu sous Blender (poses de chaque clip au sol, debout). Le lièvre de bluekiwi avait sa texture sur l'émission : rebranchée sur la couleur.
+
+**Le meilleur modèle par bête** (la préparation choisit dans cet ordre ; un modèle absent laisse sa place au suivant, puis aux formes simples) :
+
+| Bête | Ordre | Remarque |
+|---|---|---|
+| Cerf à bois | cerf élaphe de Suiteofart → élan de WildMesh → Stag de Quaternius | le cerf élaphe n'a ni mort, ni brouter, ni attaque : il se couche sur le flanc à sa mort, reste au repos pour brouter ; l'élan galope « en avançant » (son galop déplace le modèle) |
+| Biche | faon d'Assets_Animated → Deer de Quaternius | 1,35 m |
+| Sanglier | sanglier de Dakta.Grower.Nzl → Hanabi_Map | **sans texture** dans son fichier : il prend la couleur **Boar Color** du catalogue (brun foncé uni) |
+| Lièvre | lièvre de bluekiwi.dog → lapin de Pneshik | attente, marche, course seulement |
+| Loup | loup réaliste de l'Asset Store (inchangé) → loup de roo3d → Quaternius | le loup de roo3d n'a ni attaque, ni mort, ni coup reçu |
+
+Une bête **sans clip d'attaque ou de coup reçu** charge (museau en avant) ou sursaute par le code, par-dessus son animation.
+
+**Ferme et champs** (décor seulement, ni collision ni combat ; **Livestock** du catalogue : 1 = prévu, 0 = aucune, moitié sur téléphone) : trois vaches et cinq corbeaux dans les champs, deux chevaux et un chien au hameau, un chien au bourg, trois corbeaux aux ruines, posés hors des bâtiments, des routes et (vaches, chevaux) des champs cultivés ; ils changent d'attitude de temps en temps (attente, manger, s'asseoir) ; les **corbeaux s'envolent** en croassant à moins de 7 m et reviennent une minute plus tard. Cris en 3D : meuglements, hennissements, aboiements, croassements le jour ; le **coq** à l'aube (4 h 45 à 8 h) et les **poules** le jour au hameau ; le **mouton** aux champs ; la **hulotte** la nuit dans la forêt des Loups.
+
+**Ambiances par lieu et par heure** (fichiers du dossier `Sounds/Monde`, reconnus par leur nom ; volume général : **Ambience Volume**) :
+
+- au bourg, au village et au hameau : **rumeur** de 6 h à 21 h, **marché** de 7 h 30 à 13 h (plus faible jusqu'à 18 h), **taverne** de loin de 18 h 30 à 23 h 30 ; dans l'auberge : la taverne seule ;
+- **forge** (charbon et soufflet) jusqu'à 25 m du lieu « forge » de Maëlle, de 7 h à 19 h ;
+- **feu de camp** au camp des rôdeurs et à la carrière (plus fort la nuit) ;
+- **campagne** aux champs, vergers, plaines, pré et lac, le jour ; **forêt** dans la forêt des Loups (plus calme la nuit) ; la forêt et son ruisseau comptent comme la rivière ;
+- les **grillons** de simous00 servent de nappe de nuit si Damien n'a pas déposé la sienne (`nuit_grillons_hibou.ogg` passe devant) ;
+- la pluie baisse le marché, la campagne et le feu ; le combat baisse tout de moitié.
+
+**Pas du personnage** (**Step Volume**, 0,35) : un pas tous les 0,75 m au pas (1,4 m en courant), pris un à un dans les enregistrements : **gravier** sur les routes et les sols sans herbe, **feuilles** dans la forêt, **herbe** ailleurs, **plancher** dans les maisons.
+
+**Failles** : un **portail** qui s'ouvre (au départ) avec le verre. **Tocsin** : la **petite cloche** (un seul coup, frappée vite) ; **hameau défendu** : une des quatre **cloches d'église** (dont celle du village français de kevp888, CC BY).
+
+**Musiques** de Scott Buckley : « Into The Wilds » pour l'**exploration** (devant « Woodland Fantasy »), « Sanctum » **au Seuil** et à son cœur (hors combat), « The Legend of Kvothe » pendant les **scènes de l'histoire** (sauf le souvenir, qui a son chant).
+
 Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#16-vrais-modèles-et-sons-v29).
 
-Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; l'orientation du sanglier et la taille des bêtes sont calculées, pas vérifiées dans Unity ; le sanglier n'a pas de vraies pattes qui bougent (le corps se balance) ; l'auteur du chat juge lui-même ses animations d'attente « ratées » (seules la marche et la course sont soignées), elles servent faute de mieux ; le chat ne s'assoit pas vraiment (debout, la queue qui fouette) ; aucun son de cerf ou de lièvre blessé.
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les FBX convertis ont été relus sous Blender, pas dans Unity ; le cheval de henry_7 a des pièces (crinière, selle) mal tenues par son squelette sous Blender, à vérifier ; les bêtes de la ferme ne marchent pas (elles changent d'attitude sur place) ; l'orientation du sanglier de Hanabi et la taille des bêtes sont calculées, pas vérifiées dans Unity ; le sanglier n'a pas de vraies pattes qui bougent (le corps se balance) ; l'auteur du chat juge lui-même ses animations d'attente « ratées » (seules la marche et la course sont soignées), elles servent faute de mieux ; le chat ne s'assoit pas vraiment (debout, la queue qui fouette) ; aucun son de cerf ou de lièvre blessé.
 
 ## 8. En cas de problème
 

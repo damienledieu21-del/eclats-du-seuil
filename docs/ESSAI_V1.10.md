@@ -218,3 +218,11 @@ Avant l'essai : déposer `Cat_Stripe_DreamNoms.fbx` dans `Assets/Style/Sketchfab
 | 16.8 | Entrer dans une maison, mettre en pause | Les voix des bêtes se taisent | [ ] | |
 | 16.9 | Sur le Note8 | L'image reste fluide avec les bêtes animées ; les sons ne coupent pas | [ ] | |
 | 16.10 | Ton avis : modèles (loup de Quaternius ou loup réaliste ?), taille des bêtes, couleur du chat, fréquence des hurlements et du brame, volume (**Beast Volume**), portée (**Beast Hearing**) | — | [ ] | |
+| 16.11 | 2e vague : déposer les FBX convertis dans `Assets/Style/Sketchfab/Animaux2/`, préparer | La fenêtre cite `CerfRouge_Suiteofart`, `Faon_AssetsAnimated`, `Lievre_bluekiwi`, `Sanglier_Dakta`, et « Ferme : corbeau …, vache …, chien …, cheval … » | [ ] | |
+| 16.12 | Cerfs, biches, lièvres, sangliers, loups (comme 16.2 à 16.5) | Modèles réalistes, debout, dans le bon sens ; le sanglier brun uni ; une bête sans attaque charge le museau en avant | [ ] | |
+| 16.13 | Champs du sud, hameau, bourg, ruines, le jour ; puis s'approcher des corbeaux | Vaches, chevaux, chiens, corbeaux ; meuglements, hennissements, aboiements ; les corbeaux s'envolent en croassant et reviennent une minute plus tard | [ ] | |
+| 16.14 | Le bourg à 9 h 30, à 15 h, à 21 h ; entrer dans l'auberge ; passer devant la forge de Maëlle | Marché le matin, rumeur l'après-midi, taverne le soir (rires dans l'auberge), charbon et soufflet près de la forge | [ ] | |
+| 16.15 | Marcher sur une route, dans l'herbe, dans la forêt des Loups, dans une maison | Pas sur le gravier, dans l'herbe, dans les feuilles, sur le plancher | [ ] | |
+| 16.16 | Hameau à l'aube ; forêt la nuit ; camp des rôdeurs | Le coq ; la hulotte ; le feu de camp | [ ] | |
+| 16.17 | Explorer ; aller au Seuil ; une scène de l'histoire | « Into The Wilds », « Sanctum », « The Legend of Kvothe » | [ ] | |
+| 16.18 | Ton avis : quel loup (Asset Store, roo3d, Quaternius), quel lièvre (bluekiwi ou Pneshik), le cerf élaphe sans mort ni brouter, nombre de bêtes de la ferme (**Livestock**), volume des pas (**Step Volume**) | — | [ ] | |
