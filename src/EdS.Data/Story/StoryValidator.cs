@@ -468,6 +468,13 @@ namespace EdS.Data.Story
                     if (slotOk) slots.Add(new ScheduleSlot(minute, x.Activity!, Point(x.Position!), rain, zone));
                     else ok = false;
                 }
+                // Relecture indépendante de la PR #109 : le dernier créneau passe minuit (jusqu'au premier) : le PNJ dort chez lui.
+                if (ok && home != null && slots.Count > 0 && slots[slots.Count - 1].Zone != homeZone)
+                {
+                    _r.Add($"{path}[{slots.Count - 1}].zone", ValidationCode.InvalidValue,
+                        "le dernier créneau de la journée passe minuit : il doit être dans la zone du PNJ (il ne dort pas ailleurs).");
+                    return null;
+                }
                 return ok ? slots : null;
             }
 

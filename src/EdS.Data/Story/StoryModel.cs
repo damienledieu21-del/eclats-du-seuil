@@ -263,6 +263,9 @@ namespace EdS.Data.Story
             Dialogue = dialogue;
             Zone = zone;
             Schedule = Frozen.List(schedule ?? Array.Empty<ScheduleSlot>(), nameof(schedule));
+            // Relecture indépendante de la PR #109 : calculées une fois (lues à chaque image par l'affichage).
+            Zones = new System.Collections.ObjectModel.ReadOnlyCollection<string?>(new[] { Zone }.Concat(Schedule.Select(s => s.Zone)).Distinct().ToArray());
+            Roams = Schedule.Any(s => s.Zone != Zone);
         }
 
         /// <summary>Sous-lot V2.3 : le créneau en cours à la minute <paramref name="minute"/> du jour (null : pas d'emploi du temps).</summary>
@@ -286,10 +289,10 @@ namespace EdS.Data.Story
         /// Sous-lot V2.3.1 : zones où le PNJ peut se tenir dans la journée (la sienne d'abord, puis celles de ses créneaux, sans doublon ; null :
         /// la zone de l'histoire).
         /// </summary>
-        public IReadOnlyList<string?> Zones => new[] { Zone }.Concat(Schedule.Select(s => s.Zone)).Distinct().ToList();
+        public IReadOnlyList<string?> Zones { get; }
 
         /// <summary>Sous-lot V2.3.1 : le PNJ change de zone dans sa journée (un créneau ailleurs que chez lui).</summary>
-        public bool Roams => Schedule.Any(s => s.Zone != Zone);
+        public bool Roams { get; }
 
         /// <summary>Sous-lot V2.3 : activités que l'emploi du temps peut donner (créneaux et abris), sans doublon, dans l'ordre du fichier.</summary>
         public IEnumerable<string> Activities => Schedule.SelectMany(s => s.Rain is null ? new[] { s.Activity } : new[] { s.Activity, s.Rain.Activity }).Distinct(StringComparer.Ordinal);

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using EdS.Data.Json;
+using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
@@ -63,14 +64,14 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         EdS.Domain.Numerics.Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
     /// <summary>Partie dehors (point d'entrée en <paramref name="x"/>, <paramref name="z"/>), à ce tick.</summary>
-    private static WorldSession Outside(long tick, double x, double z, SavedCharacter? hero = null) => Session(new WorldSave("zone.vallons", tick, 0,
-        new[] { PlayerCharacters.PlacesKey }, hero ?? Hero(1000)), Zone(x, z), null);
+    private static WorldSession Outside(long tick, double x, double z, SavedCharacter? hero = null, MerchantBook? merchants = null) => Session(new WorldSave("zone.vallons", tick, 0,
+        new[] { PlayerCharacters.PlacesKey }, hero ?? Hero(1000)), Zone(x, z), null, merchants);
 
     private static WorldSession Inside(string id, long tick, double x, double z, SavedCharacter? hero = null) => V231TestData.Inside(id, tick, x, z, Shipped.Value, hero);
 
-    private static WorldSession Session(WorldSave save, ZoneDefinition zone, string? storyZone)
+    private static WorldSession Session(WorldSave save, ZoneDefinition zone, string? storyZone, MerchantBook? merchants = null)
     {
-        var w = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, Shipped.Value, storyZone: storyZone, market: new Market(ShippedMerchants));
+        var w = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, Shipped.Value, storyZone: storyZone, market: new Market(merchants ?? ShippedMerchants));
         w.Step();
         return w;
     }
@@ -267,6 +268,88 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         WorldSession guild = Inside("zone.guilde", TickAt(day, noon), -4.5, 1.5);
         Assert.False(guild.NpcHere(Shipped.Value.Npc("npc.intendant_guilde")));
         Assert.NotEqual(TradeRefusal.None, guild.CanTrade("merchant.guilde"));
+    }
+
+    [Fact]
+    public void Devant_un_etal_ferme_la_boutique_le_dit_meme_si_le_marchand_est_a_l_auberge()
+    {
+        // Relecture indépendante de la PR #109 : l'étal se juge dans la zone où vit le PNJ, le marchand dans celle de son créneau.
+        JsonObject root = MerchantsJson();
+        foreach (JsonNode? m in root["data"]!["merchants"]!.AsArray())
+            if ((string?)m!["id"] == "merchant.epicier") m["closed"] = new JsonArray("dusk", "night");
+        MerchantsLoadResult read = ReadMerchants(root);
+        Assert.True(read.IsValid, read.Report.ToString());
+        int evening = 20 * 60;
+        long day = DryDay(evening);
+        WorldSession stall = Outside(TickAt(day, evening), -50.8, 7.2, merchants: read.Book);
+        Assert.False(stall.NpcHere(Shipped.Value.Npc("npc.epiciere")));   // Bertille boit à l'auberge
+        Assert.Equal(TradeRefusal.Closed, stall.CanTrade("merchant.epicier"));
+        // Ailleurs dans le bourg : trop loin, comme avant.
+        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, evening), -18, -12, merchants: read.Book).CanTrade("merchant.epicier"));
+        // Boutique livrée (fermée la nuit seulement), même heure : trop loin de Bertille (la vraie raison est donnée par l'étal, AwayStallInReach).
+        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, evening), -50.8, 7.2).CanTrade("merchant.epicier"));
+    }
+
+    [Fact]
+    public void Le_dernier_creneau_passe_minuit_chez_le_PNJ()
+    {
+        // Le dernier créneau vaut jusqu'au premier du lendemain : un PNJ ne dort pas ailleurs (refus au chemin précis).
+        JsonObject root = StoryJson();
+        int mathurin = NpcIndex(root, "npc.aubergiste");
+        int last = root["data"]!["npcs"]![mathurin]!["schedule"]!.AsArray().Count - 1;
+        Refused($"$.data.npcs[{mathurin}].schedule[{last}].zone", ValidationCode.InvalidValue, r =>
+        {
+            JsonNode slot = r["data"]!["npcs"]![mathurin]!["schedule"]![last]!;
+            slot["zone"] = "zone.vallons";
+            slot["position"] = new JsonArray(-67.6, 4.3);
+        });
+        // Livré : de 23 h 59 à minuit, chacun reste dans sa zone, et la partie qui passe minuit ne déplace personne d'une zone à l'autre.
+        foreach (Npc npc in Shipped.Value.Npcs) Assert.Equal((npc.Zone, npc.Zone), (npc.ZoneAt(1439), npc.ZoneAt(0)));
+        long day = DryDay(23 * 60 + 59);
+        WorldSession w = Outside(TickAt(day, 23 * 60 + 59), -18, -12);
+        var before = Shipped.Value.Npcs.Select(n => (n.Id, w.NpcZone(n), w.NpcHere(n))).ToList();
+        for (int i = 0; i < 4000 && w.Zone.Time.Minute != 1; i++) w.Step();
+        Assert.Equal((day + 1, 1), (w.Zone.Time.Day, w.Zone.Time.Minute));
+        Assert.Equal(before, Shipped.Value.Npcs.Select(n => (n.Id, w.NpcZone(n), w.NpcHere(n))).ToList());
+    }
+
+    [Fact]
+    public void Pendant_une_attaque_un_PNJ_dans_une_autre_zone_ne_court_pas_au_refuge()
+    {
+        // Relecture indépendante de la PR #109 (comportement figé) : la cloche n'envoie au refuge que les villageois qui sont dans la zone
+        // de l'attaque ; Firmin, ajouté aux villageois, reste dans la salle de l'auberge (son créneau) et ne rejoint le refuge qu'en sortant.
+        JsonObject zoneRoot = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        JsonObject raid = zoneRoot["data"]!["events"]!.AsArray().Select(e => e!.AsObject()).Single(e => (string?)e["id"] == "attaque_hameau");
+        raid["minLevel"] = 1;
+        raid["villagers"]!.AsArray().Add("npc.boulanger");
+        ZoneLoadResult loaded = ZoneJsonReader.Read(zoneRoot.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        ZoneDefinition zone = loaded.Zone!;
+        WorldEventDefinition e = zone.EventOf("attaque_hameau")!;
+        // Une attaque qui commence pendant que Firmin est à l'auberge (18 h 30 à 21 h 30) et dure au-delà de 21 h 30.
+        EventOccurrence? o = null;
+        for (long from = 1440; o is null; )
+        {
+            EventOccurrence next = WorldEventSchedule.Next(zone.Id, zone.Id, e, from)!;
+            long minute = next.StartAt % WorldClock.MinutesPerDay;
+            if (minute >= 18 * 60 + 30 && minute < 21 * 60 && next.EndAt - (next.StartAt - minute) > 21 * 60 + 35) o = next;
+            from = next.StartAt + 1;
+            Assert.True(from < 1440 * 400, "aucune attaque le soir");
+        }
+        var clock = new WorldClock(50);
+        StoryBook book = Book(zone);
+        var w = new WorldSession(new WorldSave("zone.vallons", WorldEventSchedule.TickAt(clock, o.StartAt), 0, new[] { PlayerCharacters.PlacesKey }, Hero(1000)),
+            zone, ShippedData, Progression, ItemsCatalog, book, safePoint: "place_du_village");
+        for (int i = 0; i < 20; i++) w.Step();
+        Npc firmin = book.Npc("npc.boulanger"), doyen = book.Npc("npc.doyen");
+        Assert.Equal(WorldSession.RefugeActivity, w.NpcActivity(doyen));
+        Assert.Equal(("zone.auberge", "taverne", P(-1.9, 2.0)), (w.NpcZone(firmin), w.NpcActivity(firmin), w.NpcPosition(firmin)));
+        Assert.False(w.NpcHere(firmin));
+        // À 21 h 30, il sort de l'auberge : l'attaque dure encore, il court au refuge.
+        for (int i = 0; i < 200_000 && w.Zone.Time.Minute != 21 * 60 + 31; i++) w.Step();
+        Assert.Equal(21 * 60 + 31, w.Zone.Time.Minute);
+        Assert.Equal(((string?)null, WorldSession.RefugeActivity), (w.NpcZone(firmin), w.NpcActivity(firmin)));
+        Assert.Equal(w.NpcPosition(doyen), w.NpcPosition(firmin));
     }
 
     [Fact]
