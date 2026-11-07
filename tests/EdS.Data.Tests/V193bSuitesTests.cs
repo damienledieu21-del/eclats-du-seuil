@@ -184,7 +184,7 @@ public class V193bSuitesTests
     [Fact]
     public void Marchands_en_schema_3_l_etal_de_Renart_demande_l_aveu()
     {
-        Assert.Equal((3, 3), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));
+        Assert.Equal((4, 4), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));   // V2.7 : schéma 4 (faction, palier) ; formes du schéma 3 inchangées
         Assert.Equal(Aveu, ShippedMerchants.Merchant("merchant.renart").Fact);
         Assert.All(ShippedMerchants.Merchants.Where(m => m.Id != "merchant.renart"), m => Assert.Null(m.Fact));
         // Le fait vient de l'aveu (une réponse du dialogue de Renart), et c'est l'objectif de la dernière étape du chapitre 2.
@@ -209,6 +209,10 @@ public class V193bSuitesTests
     {
         (JsonObject root, JsonObject renart, string path) = RenartJson();
         root["schemaVersion"] = 2;
+        // V2.7 : sans faction ni palier (schéma 4), ni le marché noir des bandits.
+        JsonArray all = root["data"]!["merchants"]!.AsArray();
+        foreach (JsonNode? m in all.Where(m => (string?)m!["id"] == "merchant.receleur").ToList()) all.Remove(m);
+        foreach (JsonNode? m in all) m!.AsObject().Remove("faction");
         MerchantsLoadResult refused = ReadMerchants(root);
         Assert.Contains(refused.Report.Errors, e => e.Path == path + ".fact" && e.Code == ValidationCode.InvalidValue);
         renart.Remove("fact");

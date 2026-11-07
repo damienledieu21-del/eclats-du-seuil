@@ -805,7 +805,7 @@ namespace EdS.Runtime
             }
             _zone = target;
             // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
-            _lastSafePoint = target.SafePoints.OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
+            _lastSafePoint = target.SafePoints.Where(sp => !World.IsSecret(sp.Id)).OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
             Commit(next);
             // Sous-lot V1.9.6 : entrer dans une scène ou en sortir ne s'annonce pas comme une porte.
             if (_story.SceneIn(target.Id) is null && _story.SceneIn(from) is null) Say("text.ui.door_entered", target.Name);
@@ -1398,7 +1398,7 @@ namespace EdS.Runtime
             ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList()
             : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
-        public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();
+        public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Where(s => !World.IsSecret(s.Id)).Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();   // V2.7 : la planque secrète reste cachée
 
         /// <summary>
         /// Essai du 12.9 (Damien, 25 octobre 2026) : ateliers où l'on fabrique (lieux des recettes, la forge de Maëlle), au centre de leur lieu,
@@ -1692,7 +1692,7 @@ namespace EdS.Runtime
 
         private void TrackSafePoint()
         {
-            if (Me is GroundVector p && _zone.SafePoints.FirstOrDefault(s => Within(p, s.Position, RestRange)) is SafePoint near) _lastSafePoint = near.Id;
+            if (Me is GroundVector p && _zone.SafePoints.FirstOrDefault(s => Within(p, s.Position, RestRange) && !World.IsSecret(s.Id)) is SafePoint near) _lastSafePoint = near.Id;
         }
 
         /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon l'entrée).</summary>

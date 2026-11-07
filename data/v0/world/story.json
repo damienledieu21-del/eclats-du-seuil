@@ -18830,6 +18830,11 @@
               {
                 "conditions": [
                   {
+                    "if": "reputationBelow",
+                    "id": "bandits",
+                    "value": 100
+                  },
+                  {
                     "if": "fact",
                     "id": "fact.met.receleur"
                   }

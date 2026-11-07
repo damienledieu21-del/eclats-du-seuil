@@ -360,12 +360,12 @@ public class V197VillageTests
     public void Cinq_quetes_du_village_livrees()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(11).SkipLast(5).Select(q => q.Id));   // V2.7 : puis les quatre quêtes de faction   // ajoutées à la fin (V2.6.1 : la quête des cicatrices après elles)
+        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(13).SkipLast(7).Select(q => q.Id));   // V2.7 : puis les six quêtes de faction   // ajoutées à la fin (V2.6.1 : la quête des cicatrices après elles)
         Assert.All(new[] { Chat, Puits, Garde, Champignons, Contrat }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
-        Assert.Equal(28, book.Npcs.Count);
+        Assert.Equal(29, book.Npcs.Count);   // V2.7 : Gaut le receleur
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
         Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }

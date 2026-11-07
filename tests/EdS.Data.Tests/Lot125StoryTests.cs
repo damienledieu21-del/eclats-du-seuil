@@ -235,7 +235,7 @@ public class Lot125StoryTests
         // V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste.
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant",
                 "npc.maitresse_guilde", "npc.intendant_guilde", "npc.archiviste", "npc.boulanger", "npc.archer_garde", "npc.albe", "npc.renart", "npc.lison", "npc.apprentie",
-                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.ysolde" },   // V1.9.6 : la reine Ysolde (scène du souvenir) ; V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4 ; V1.9.5 : chapitre 5
+                "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.ysolde", "npc.receleur" },   // V1.9.6 : la reine Ysolde (scène du souvenir) ; V1.9.1 : chapitre 1 ; V1.9.2 : chapitre 2 ; V1.9.3 : chapitre 3 ; V1.9.4 : chapitre 4 ; V1.9.5 : chapitre 5
             book.Npcs.Select(n => n.Id));
         Quest mission = book.Quest(Mission);
         // 12.7 : le chef ; V1.9.1 : la meute et Gaspard (fin du chapitre 1) ; V1.9.5 : manifestation, rôdeur, chef et retour au chapitre 5.

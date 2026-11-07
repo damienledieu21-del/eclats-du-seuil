@@ -61,6 +61,9 @@ namespace EdS.World
             return null;
         }
 
+        /// <summary>Sous-lot V2.7 : le point sûr <paramref name="safePoint"/> est secret et pas encore révélé (ni carte, ni repos, ni retour).</summary>
+        public bool IsSecret(string safePoint) => SecretFact(safePoint) is string fact && !Narrative!.Knows(fact);
+
         /// <summary>
         /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : le couvre-feu tombe : la faction du couvre-feu hait le personnage, il est
         /// dans son lieu à l'un de ses moments, présent, vivant et hors combat ; le point sûr où il est reconduit, sinon null.

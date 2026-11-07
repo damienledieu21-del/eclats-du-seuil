@@ -169,8 +169,8 @@ public class V196OuvertureTests
         Assert.Equal(new[] { "odile", "frapper", "garder", "parer", "boire", "retour" }, opening.Steps.Select(s => s.Id));
         Assert.Equal(new[] { ("strike", 3L), ("guard", 2L), ("parry", 1L), ("drink", 1L) },
             opening.Steps.Where(s => s.Objective.Kind == ObjectiveKind.Practice).Select(s => (s.Objective.Id, s.Objective.Value)));
-        // Ajoutée à la fin : les chemins d'avant restent (sous-lot V1.9.7 : cinq quêtes du village la suivent ; V2.6.1 : la quête des cicatrices ; V2.7 : les quatre quêtes de faction).
-        Assert.Equal(book.Quests.Count - 11, book.Quests.ToList().FindIndex(q => q.Id == Opening));
+        // Ajoutée à la fin : les chemins d'avant restent (sous-lot V1.9.7 : cinq quêtes du village la suivent ; V2.6.1 : la quête des cicatrices ; V2.7 : les six quêtes de faction).
+        Assert.Equal(book.Quests.Count - 13, book.Quests.ToList().FindIndex(q => q.Id == Opening));
         // Le texte de chaque étape nomme les touches du PC et les gestes au doigt.
         foreach ((string step, string pc, string touch) in new[] { ("odile", "Z Q S D", "pouce"), ("frapper", "touches 1 à 4", "boutons 1 à 4"),
                      ("garder", "clic droit ou Maj", "Garde"), ("parer", "Espace", "Parade"), ("boire", "(P", "Potion") })
