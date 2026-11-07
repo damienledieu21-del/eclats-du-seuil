@@ -30,9 +30,10 @@ namespace EdS.Simulation.Engine
         /// Version du format de l'instantané (indépendante de celle du journal) : 2 depuis le sous-lot 11.5 (engagement des ennemis), 3 depuis
         /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus), 4 depuis le sous-lot V1.8d (bonus d'équipement en vigueur
         /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>), 5 depuis le sous-lot V2.4
-        /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires).
+        /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires), 6 depuis le sous-lot V2.4.1 (bête
+        /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois ; le reste de l'errance se déduit du tick et des places).
         /// </summary>
-        public const int FormatVersion = 5;
+        public const int FormatVersion = 6;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -227,7 +228,8 @@ namespace EdS.Simulation.Engine
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
-                .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed);   // sous-lot V2.4 (format 5)
+                .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed)   // sous-lot V2.4 (format 5)
+                .Field("quietSince", f.QuietSince).Field("calms", f.Calms);   // sous-lot V2.4.1 (format 6)
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -1025,7 +1027,12 @@ namespace EdS.Simulation.Engine
                 Require(f.GlobalCooldownReadyTick >= 0 && f.RegenGranted >= 0 && f.NextTurn >= 0 && (f.NextAttackTick is null || f.NextAttackTick >= CurrentTick),
                     $"Échéances de {who} impossibles.");
                 // Sous-lot V2.4 : frappé par un personnage, il a été frappé (le contraire ne vaut pas : une bête mordue par une autre).
-                Require(!f.HurtByCharacter || f.Struck, $"{who} frappé par un personnage sans avoir été frappé.");
+                // Sous-lot V2.4.1 : un calme remet « frappé » à faux (seul un nouveau coup réengage la bête).
+                Require(!f.HurtByCharacter || f.Struck || f.Calms > 0, $"{who} frappé par un personnage sans avoir été frappé.");
+                // Sous-lot V2.4.1 : seule une bête qui erre se calme ; au calme depuis un tick déjà joué, depuis son engagement, engagée.
+                Require(f.Calms >= 0 && f.Calms <= CurrentTick && (f.Calms == 0 || f.Behavior?.Wander != null), $"Calmes de {who} impossibles.");
+                Require(f.QuietSince is not long quietSince || (f.Behavior?.Wander != null && f.Engaged && f.EngagedTick is long since
+                    && quietSince >= since && quietSince <= CurrentTick - 1), $"Calme de {who} impossible.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
                 Require(f.Behavior is null ? !f.Engaged : f.Engaged || f.Behavior.AggroRange != null, $"Engagement de {who} impossible.");
                 // 16e tour de la PR #33 : un engagé a son tick d'engagement (0 d'emblée sans distance d'engagement, sinon un tick déjà joué).
@@ -1178,7 +1185,7 @@ namespace EdS.Simulation.Engine
                     Require(f.Out || f.Behavior != null || (b.Moving == shouldMove && (!b.Moving || (b.DirectionX == moveX && b.DirectionZ == moveZ))),
                         $"Marche de {who} différente de sa dernière commande move ou stop.");
                     // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement pas encore engagé ne marche pas.
-                    Require(f.Behavior is null || f.Engaged || !b.Moving, $"Marche de {who}, pas encore engagé.");
+                    Require(f.Behavior is null || f.Engaged || f.Behavior.Wander != null || !b.Moving, $"Marche de {who}, pas encore engagé.");   // V2.4.1 : sauf une bête qui erre
                     Require(!b.Moving || f.Behavior != null || _setup.Commands.Any(c => c.Action == CombatAction.Move && c.Actor == f.Id && c.AtMs / _tickMs <= previous),
                         $"Marche ou sélection de {who} sans commande à son origine.");
                     // 22e tour : la cible sélectionnée est celle de la dernière commande select admise (par tick, puis par rang), null compris.
@@ -1502,7 +1509,8 @@ namespace EdS.Simulation.Engine
             if (GuardTurnPossible(f)) return null;
             // Sous-lot 11.5 : un ennemi à comportement engagé se tourne vers sa cible, une charge vers son axe ; pas encore engagé, il n'a jamais
             // bougé (revue Codex de la PR #33, 13e tour).
-            if (FreeMover(f) || f.Behavior != null && f.Engaged) return null;
+            // Sous-lot V2.4.1 : une bête qui erre se tourne vers où elle marche.
+            if (FreeMover(f) || f.Behavior != null && (f.Engaged || f.Behavior.Wander != null)) return null;
             var facings = new HashSet<(long X, long Z)>();
             GroundVector start = f.Setup.Placement!.Facing;
             if (Planar.TryNormalize(start.X.Raw, start.Z.Raw, out long sx, out long sz)) facings.Add((sx, sz));
@@ -1542,6 +1550,8 @@ namespace EdS.Simulation.Engine
             // Revue Codex de la PR #33 (13e tour) : un ennemi à comportement marche sans commande (placement), d'au plus un pas par tick,
             // seulement une fois engagé (l'engagement ne se perd pas) : tous ses ticks présents et vivants s'il l'est, aucun sinon.
             // 16e tour : depuis son engagement seulement.
+            // Sous-lot V2.4.1 : une bête qui erre marche aussi sans être engagée (tous ses ticks présents et vivants).
+            if (g.Behavior?.Wander != null) return checked(end - start + 1);
             if (g.Behavior != null)
             {
                 if (!g.Engaged) return 0;
@@ -2015,6 +2025,8 @@ namespace EdS.Simulation.Engine
             f.Taunted = n["taunted"].Bool;
             f.HurtByCharacter = n["hurtByCharacter"].Bool;   // sous-lot V2.4 (format 5)
             f.Noticed = n["noticed"].Bool;
+            f.QuietSince = n["quietSince"].NullableLong;   // sous-lot V2.4.1 (format 6)
+            f.Calms = n["calms"].Long;
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

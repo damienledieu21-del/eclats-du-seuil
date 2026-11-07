@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 16
+      "const": 17
     },
     "kind": {
       "const": "scenario"
@@ -355,6 +355,63 @@
             "flee": {
               "type": "boolean",
               "description": "Sous-lot V2.4 (schéma 16) : bête qui fuit (cerf, lièvre) : engagée, elle ne s'approche jamais et s'éloigne de sa cible tant qu'elle est en deçà de minRange (obligatoirement > 0, sans encircle). Faux par défaut."
+            },
+            "wander": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "style": {
+                  "enum": ["graze", "hop", "patrol", "root"],
+                  "description": "Manière d'errer : brouter (cerf), sautiller (lièvre), patrouiller sur un circuit (loup), fouiller (sanglier)."
+                },
+                "radius": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "description": "Rayon de l'aire d'errance autour de sa place de départ (m), au plus combat.wander.maxRadius des règles."
+                },
+                "pace": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1,
+                  "description": "Allure, fraction de sa vitesse."
+                },
+                "legMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 600000,
+                  "description": "Durée d'une étape (pause, puis marche), multiple du tick."
+                },
+                "pauseMs": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0 },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "Pause au début de chaque étape, tirée dans [min, max] ms (multiples du tick, max au plus legMs)."
+                },
+                "group": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]*$",
+                  "description": "Harde ou meute (même équipe) : les membres suivent leur chef en formation."
+                },
+                "lead": {
+                  "type": "boolean",
+                  "description": "Chef de son groupe (au plus un par groupe). Faux par défaut."
+                },
+                "spacing": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10,
+                  "description": "Écart de la formation (m) ; 2 par défaut."
+                },
+                "points": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 8,
+                  "description": "Points du circuit d'une patrouille ; 4 par défaut."
+                }
+              },
+              "required": ["style", "radius", "pace", "legMs", "pauseMs"],
+              "description": "Sous-lot V2.4.1 (schéma 17) : errance déterministe hors combat (aggroRange obligatoire). Hors de son aire, la bête rentre d'abord à sa place ; engagée, elle se bat ou fuit comme avant ; au calme (combat.wander.calmMs), elle se désengage et rentre."
             }
           },
           "description": "Sous-lot 11.5 : comportement d'un assaillant d'un combat positionné (il se déplace seul : pas de move ni de stop pour lui ; cible : provocation, sinon sa target présente et vivante, sinon l'ennemi le plus proche)."

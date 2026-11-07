@@ -262,6 +262,19 @@ namespace EdS.Domain.Combat
         public Fixed InfightingDamageReduction { get; init; } = Fixed.FromRatio(1, 2);
 
         /// <summary>
+        /// Sous-lot V2.4.1 (schéma 16, bêtes qui se promènent) : rayon maximal de l'aire d'errance d'une bête autour de sa place
+        /// (<c>combat.wander.maxRadius</c>, 30 m livrés), dans ]0, 100].
+        /// </summary>
+        public Fixed WanderMaxRadius { get; init; } = Fixed.FromInt(30);
+
+        /// <summary>
+        /// Sous-lot V2.4.1 : temps au calme (aucun ennemi à sa distance d'engagement, et, pour une bête qui ne fuit pas, plus de cible) avant
+        /// qu'une bête qui erre se désengage et rentre à sa place (<c>combat.wander.calmMs</c>, 15 000 ms livrées), multiple du tick, dans
+        /// [1 000, 600 000].
+        /// </summary>
+        public long WanderCalmMs { get; init; } = 15_000;
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -335,6 +348,11 @@ namespace EdS.Domain.Combat
                     nameof(GuardDamageReduction), nameof(MaxGuardDamageReduction)));
             Fraction(ParryDamageReduction, nameof(ParryDamageReduction));
             Fraction(InfightingDamageReduction, nameof(InfightingDamageReduction));   // sous-lot V2.4
+            // Sous-lot V2.4.1 : errance des bêtes.
+            if (WanderMaxRadius <= Fixed.Zero || WanderMaxRadius > Fixed.FromInt(100))
+                errors.Add(new RuleViolation("doit être dans ]0, 100] m.", nameof(WanderMaxRadius)));
+            if (WanderCalmMs < 1000 || WanderCalmMs > 600_000 || (TickMilliseconds > 0 && WanderCalmMs % TickMilliseconds != 0))
+                errors.Add(new RuleViolation("doit être dans [1 000, 600 000] ms et un multiple du tick.", nameof(WanderCalmMs)));
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
             else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))
