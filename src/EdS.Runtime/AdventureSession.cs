@@ -74,7 +74,13 @@ namespace EdS.Runtime
         /// <summary>Nœud de récolte prêt (repoussé) ; toujours vrai pour un PNJ ou un point sûr.</summary>
         public bool Ready { get; }
 
-        internal WorldMarker(string id, string name, GroundVector position, string? profession = null, bool ready = true)
+        /// <summary>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu, <see cref="AdventureSession.NpcStage"/>) : le PNJ est dans la zone ; faux s'il est
+        /// ailleurs (sa place est alors la porte par où il est sorti, ou par où il reviendra). Toujours vrai pour le reste.
+        /// </summary>
+        public bool Present { get; }
+
+        internal WorldMarker(string id, string name, GroundVector position, string? profession = null, bool ready = true, bool present = true)
         {
             Id = id;
             Name = name;
@@ -82,6 +88,7 @@ namespace EdS.Runtime
             Z = position.Z.Raw / 10000.0;
             Profession = profession;
             Ready = ready;
+            Present = present;
         }
     }
 
@@ -603,8 +610,17 @@ namespace EdS.Runtime
         public Npc? NpcInReach => Me is GroundVector p
             ? HereNpcs.Where(n => Within(p, World.NpcPosition(n), Narrative.TalkRange)).OrderBy(n => Distance2(p, World.NpcPosition(n))).FirstOrDefault() : null;
 
-        /// <summary>Sous-lot V1.6 : PNJ de la zone en cours (ceux de l'histoire dehors, ceux de la pièce dans un intérieur).</summary>
-        private IEnumerable<Npc> HereNpcs => _story.NpcsIn(World.InStoryZone ? null : _zone.Id);
+        /// <summary>
+        /// Sous-lot V1.6 : PNJ de la zone en cours (ceux de l'histoire dehors, ceux de la pièce dans un intérieur). Sous-lot V2.3.1 : ceux qui
+        /// s'y tiennent à cette heure (un PNJ qui change de lieu n'est que dans la zone de son créneau en cours).
+        /// </summary>
+        private IEnumerable<Npc> HereNpcs => _story.VisitorsOf(HereKey).Where(World.NpcHere);
+
+        /// <summary>Sous-lot V2.3.1 : PNJ qui vivent dans la zone en cours (leurs étals y sont), où qu'ils soient à cette heure.</summary>
+        private IEnumerable<Npc> HomeNpcs => _story.NpcsIn(HereKey);
+
+        /// <summary>Sous-lot V2.3.1 : la zone en cours, dans la convention de l'histoire (null : la zone de l'histoire).</summary>
+        private string? HereKey => World.InStoryZone ? null : _zone.Id;
 
         /// <summary>Nœud de récolte prêt le plus proche à portée, ou null.</summary>
         public GatheringNode? NodeInReach => Me is GroundVector p && World.InStoryZone
@@ -674,7 +690,7 @@ namespace EdS.Runtime
         /// nuit, devant sa porte) et que sa boutique est fermée à cette heure ; null sinon.
         /// </summary>
         public Npc? ClosedStallInReach => Me is GroundVector p
-            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !Within(p, World.NpcPosition(n), Narrative.TalkRange)
+            ? HomeNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !(World.NpcHere(n) && Within(p, World.NpcPosition(n), Narrative.TalkRange))
                     && World.MerchantOf(n.Id) is Merchant m && World.CanTrade(m.Id) == TradeRefusal.Closed)
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
             : null;
@@ -684,7 +700,7 @@ namespace EdS.Runtime
         /// et dont la boutique n'est pas fermée à cette heure (fermée : <see cref="ClosedStallInReach"/>) ; null sinon.
         /// </summary>
         public Npc? AwayStallInReach => Me is GroundVector p
-            ? HereNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !Within(p, World.NpcPosition(n), Narrative.TalkRange)
+            ? HomeNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !(World.NpcHere(n) && Within(p, World.NpcPosition(n), Narrative.TalkRange))
                     && World.NpcActivity(n) != null && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
             : null;
@@ -1325,7 +1341,37 @@ namespace EdS.Runtime
         /// Relecture de la PR #99 : les PNJ de la zone à leur place de jour (celle de l'histoire), quelle que soit l'heure : l'affichage y
         /// prend leur place et leur pose de jour, même pour une partie chargée la nuit.
         /// </summary>
-        public IReadOnlyList<WorldMarker> NpcsByDay() => HereNpcs.Select(n => new WorldMarker(n.Id, Text(n.Name), n.Position)).ToList();
+        public IReadOnlyList<WorldMarker> NpcsByDay() => _story.VisitorsOf(HereKey).Select(n => new WorldMarker(n.Id, Text(n.Name), DayPlace(n))).ToList();
+
+        /// <summary>
+        /// Sous-lot V2.3.1 : place de jour du PNJ <paramref name="npc"/> dans la zone en cours : sa place de l'histoire s'il y vit, sinon celle
+        /// de son premier créneau ici (un visiteur : Firmin dans la salle de l'auberge).
+        /// </summary>
+        private GroundVector DayPlace(Npc npc) =>
+            npc.Zone == HereKey ? npc.Position : npc.Schedule.FirstOrDefault(s => s.Zone == HereKey)?.Position ?? npc.Position;
+
+        /// <summary>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : tous les PNJ qui passent dans la zone en cours à un moment de la journée (ceux qui y
+        /// vivent et leurs visiteurs), pour l'affichage : présents (<see cref="WorldMarker.Present"/>), à leur place de l'heure ; absents, à la
+        /// porte par où ils sont partis (ou reviendront) vers la zone où ils se tiennent. L'affichage fait marcher un PNJ jusqu'à la porte, le
+        /// cache, puis le montre à la porte de l'autre côté et le fait marcher jusqu'à sa place. Le cœur ne connaît que <see cref="Npcs"/>.
+        /// </summary>
+        public IReadOnlyList<WorldMarker> NpcStage() => _story.VisitorsOf(HereKey)
+            .Select(n => World.NpcHere(n) ? new WorldMarker(n.Id, Text(n.Name), World.NpcPosition(n))
+                : new WorldMarker(n.Id, Text(n.Name), DoorToward(World.NpcZone(n)), present: false))
+            .ToList();
+
+        /// <summary>
+        /// Sous-lot V2.3.1 : porte de la zone en cours vers la zone <paramref name="zone"/> (null : celle de l'histoire) ; sinon, depuis un
+        /// intérieur, la porte vers la zone de l'histoire (on y passe toujours) ; sinon l'entrée de la zone.
+        /// </summary>
+        public GroundVector DoorToward(string? zone)
+        {
+            string target = zone ?? ZoneId;
+            Door? door = _zone.Doors.FirstOrDefault(d => d.To == target)
+                ?? (World.InStoryZone ? null : _zone.Doors.FirstOrDefault(d => d.To == ZoneId));
+            return door?.Position ?? _zone.Entry.Position;
+        }
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
@@ -1366,7 +1412,8 @@ namespace EdS.Runtime
                             .Concat(Nodes().Select(n => (n.X, n.Z))).Concat(Doors().Select(d => (d.X, d.Z))),
                         VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
-                        _zone.Indoor ? Npcs().Select(n => (n.Id, n.X, n.Z)) : null);
+                        // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
+                        _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null);
                     _mapSession = Opened;
                 }
                 return _map;
@@ -1421,11 +1468,13 @@ namespace EdS.Runtime
                     ObjectiveKind.Passage => NpcWith(EffectKind.OpenPassage, o.Id),
                     _ => null,
                 };
-                if (npc != null && npc.Zone == (World.InStoryZone ? null : _zone.Id)) return At(World.NpcPosition(npc));
-                // Intérieurs : le PNJ vit dans une pièce dont une porte est ici ; sinon, dans une pièce, la porte de sortie.
-                if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => d.To == npc.Zone) is Door toNpc) return At(toNpc.Position);
+                // Sous-lot V2.3.1 : là où le PNJ se tient à cette heure (il change de lieu dans sa journée).
+                string? npcZone = npc is null ? null : World.NpcZone(npc);
+                if (npc != null && npcZone == HereKey) return At(World.NpcPosition(npc));
+                // Intérieurs : le PNJ est dans une pièce dont une porte est ici ; sinon, dans une pièce, la porte de sortie.
+                if (npcZone != null && _zone.Doors.FirstOrDefault(d => d.To == npcZone) is Door toNpc) return At(toNpc.Position);
                 // Sous-lot V1.7 : une pièce derrière une autre (les archives, derrière la guilde) : la porte de la pièce qui y mène.
-                if (npc?.Zone != null && _zone.Doors.FirstOrDefault(d => _zones.FirstOrDefault(z => z.Id == d.To)?.Doors.Any(x => x.To == npc.Zone) == true) is Door via)
+                if (npcZone != null && _zone.Doors.FirstOrDefault(d => _zones.FirstOrDefault(z => z.Id == d.To)?.Doors.Any(x => x.To == npcZone) == true) is Door via)
                     return At(via.Position);
                 if (!World.InStoryZone)
                 {

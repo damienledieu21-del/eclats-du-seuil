@@ -242,10 +242,11 @@ namespace EdS.Game
 
         /// <summary>
         /// Un villageois du décor est dehors : pas la nuit (sauf les veilleurs), pas sous une vraie pluie (sauf un sur trois), et, sous-lot
-        /// V2.3, pas rentré manger chez lui.
+        /// V2.3, pas rentré manger chez lui ; sous-lot V2.3.1, pas sorti par la porte (un PNJ d'une pièce parti dans une autre zone).
         /// </summary>
+        /// <remarks>Revue Codex de la PR #109 : le corps d'un PNJ qui parle n'obéit qu'au cœur (<see cref="VillageDay.Shown"/>).</remarks>
         private bool Shown(Villager v) =>
-            (!_worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)) && !v.Away;
+            VillageDay.Shown(v.Speaker, v.Gone, _worldNight, NightLamps.AwakeAtNight(v.Data), _sheltering, WeatherCycle.StaysOutInRain(v.Data), v.Away);
 
         private static void SetGlow(Material material, Color color, Color emission)
         {
