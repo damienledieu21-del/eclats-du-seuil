@@ -33,19 +33,19 @@
 |---|---|---|
 | Sauvegarde | v13 (v12 encore lue) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
-| Règles (contenu) | 0.16.0 (écrit « 0.16.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
-| Moteur | 0.28.0 | `CombatEngine.cs` (`Version`) |
-| Journal | 22 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 16 | `ScenarioValidator.cs` |
-| Instantané (format) | 5 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
+| Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
+| Moteur | 0.29.0 | `CombatEngine.cs` (`Version`) |
+| Journal | 23 | `CombatEngine.cs` (`LogFormatVersion`) |
+| Scénarios (schéma) | 17 | `ScenarioValidator.cs` |
+| Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v10 (v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v9 (v4 à v8 encore lues) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
 
-Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.28.0-contenu-0.6.0-regles-0.16.0`.
-À ne pas confondre : version du contenu des règles (0.16.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 15).
+Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0`.
+À ne pas confondre : version du contenu des règles (0.17.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 16).
 
 ## 5. Où chercher
 

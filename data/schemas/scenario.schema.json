@@ -395,7 +395,7 @@
                 },
                 "lead": {
                   "type": "boolean",
-                  "description": "Chef de son groupe (au plus un par groupe). Faux par défaut."
+                  "description": "Chef de son groupe (le premier chef désigné qui erre mène ; sans lui, le premier membre qui erre). Faux par défaut."
                 },
                 "spacing": {
                   "type": "number",

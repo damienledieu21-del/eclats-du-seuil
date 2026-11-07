@@ -404,11 +404,10 @@ namespace EdS.Domain.Combat
         }
 
         /// <summary>
-        /// Sous-lot V2.4.1 : le même comportement, errance sans groupe (une créature d'événement copiée d'une population ne rejoint pas la harde
-        /// ou la meute de son modèle) ; lui-même s'il n'a pas de groupe.
+        /// Sous-lot V2.4.1 : le même comportement, sans errance (une créature d'événement copiée d'une population attend à sa place, comme en
+        /// V2.5) ; lui-même s'il n'erre pas.
         /// </summary>
-        public AssailantBehavior WithoutWanderGroup() =>
-            Wander?.Group is null ? this : new AssailantBehavior(MaxRange, MinRange, AggroRange, Encircle, Pack, Flee, Wander.WithoutGroup());
+        public AssailantBehavior WithoutWander() => Wander is null ? this : new AssailantBehavior(MaxRange, MinRange, AggroRange, Encircle, Pack, Flee);
     }
 
     /// <summary>Sous-lot V2.4.1 : manière d'errer d'une bête hors combat.</summary>
@@ -462,7 +461,7 @@ namespace EdS.Domain.Combat
         /// <summary>Harde ou meute (même équipe, même nom) ; null : seule.</summary>
         public string? Group { get; }
 
-        /// <summary>Chef de son groupe (au plus un par groupe) ; sans chef désigné au calme, le premier membre au calme par identifiant.</summary>
+        /// <summary>Chef de son groupe : le premier chef désigné qui erre (ordre des identifiants) ; sans lui, le premier membre qui erre.</summary>
         public bool Lead { get; }
 
         /// <summary>Écart de la formation (m), dans ]0, 10].</summary>
@@ -485,9 +484,6 @@ namespace EdS.Domain.Combat
             Spacing = spacing ?? Fixed.FromInt(2);
             Points = points;
         }
-
-        /// <summary>La même errance, sans groupe ni rôle de chef.</summary>
-        public WanderBehavior WithoutGroup() => new WanderBehavior(Style, Radius, Pace, LegMs, PauseMinMs, PauseMaxMs, null, false, Spacing, Points);
 
         /// <summary>Identifiant de la manière, comme dans le fichier de scénario.</summary>
         public static string StyleId(WanderStyle style) => style switch
@@ -1550,7 +1546,7 @@ namespace EdS.Domain.Combat
         /// Sous-lot V2.4.1 : errance d'une bête. Elle attend qu'on l'engage (distance d'engagement obligatoire) ; rayon dans
         /// ]0, <c>combat.wander.maxRadius</c>] ; allure dans ]0, 1] ; étape multiple du tick dans [1 s, 10 min] ; pause dans [0, étape],
         /// minimale au plus égale à la maximale, multiples du tick ; écart dans ]0, 10] m ; circuit de 2 à 8 points ; groupe au nom valide.
-        /// Au plus un chef par groupe et un groupe d'une seule équipe : contrôlés sur tout le combat (<see cref="ValidateWanderGroups"/>).
+        /// Un groupe d'une seule équipe : contrôlé sur tout le combat (<see cref="ValidateWanderGroups"/>).
         /// </summary>
         private void ValidateWander(AssailantSetup a, WanderBehavior w, string at, List<RuleViolation> errors)
         {
@@ -1575,23 +1571,19 @@ namespace EdS.Domain.Combat
         }
 
         /// <summary>
-        /// Sous-lot V2.4.1 : sur tout le combat (combattants du scénario), un groupe d'errance appartient à une seule équipe et a au plus un
-        /// chef désigné. Une arrivée pilotée (réapparition) reprend le comportement de son modèle : elle rejoint son groupe.
+        /// Sous-lot V2.4.1 : sur tout le combat (combattants du scénario et arrivées), un groupe d'errance appartient à une seule équipe. Une
+        /// réapparition reprend le comportement de son modèle (chef compris) : plusieurs chefs désignés peuvent donc coexister, morts ou
+        /// partis ; le chef est le premier chef désigné qui erre (ordre des identifiants).
         /// </summary>
         private void ValidateWanderGroups(List<RuleViolation> errors)
         {
             var teams = new Dictionary<string, string>(StringComparer.Ordinal);
-            var leads = new Dictionary<string, string>(StringComparer.Ordinal);
             for (int i = 0; i < Combatants.Count; i++)
             {
-                if (Combatants[i] is not AssailantSetup { Behavior: { Wander: { Group: string group } w } } a) continue;
-                string at = $"combatants[{i}].behavior.wander";
+                if (Combatants[i] is not AssailantSetup { Behavior: { Wander: { Group: string group } } } a) continue;
                 if (teams.TryGetValue(group, out string? team) && team != a.Team)
-                    errors.Add(new RuleViolation($"groupe « {group} » déjà pris par l'équipe « {team} ».", at + ".group"));
+                    errors.Add(new RuleViolation($"groupe « {group} » déjà pris par l'équipe « {team} ».", $"combatants[{i}].behavior.wander.group"));
                 else teams[group] = a.Team;
-                if (!w.Lead) continue;
-                if (leads.TryGetValue(group, out string? lead)) errors.Add(new RuleViolation($"groupe « {group} » déjà mené par « {lead} ».", at + ".lead"));
-                else leads[group] = a.Id;
             }
         }
 

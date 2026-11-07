@@ -77,8 +77,24 @@ namespace EdS.Simulation.Engine
             Fighter f = _fightersById[i];
             WanderBehavior w = f.Behavior!.Wander!;
             Fighter? leader = WanderLeader(f);
-            if (leader != null && leader != f) return Follow(i, _fightersById.IndexOf(leader), x, z);
+            if (leader != null && leader != f && FollowsLeader(f, leader, x, z)) return Follow(i, _fightersById.IndexOf(leader), x, z);
             return Roam(i, tick, x, z, w);
+        }
+
+        /// <summary>Un membre ne suit son chef que s'il le sait près de chez lui (à <see cref="FollowRange"/> + rayons) ; sinon il erre seul.</summary>
+        private static readonly long FollowRange = Fixed.FromInt(20).Raw;
+
+        /// <summary>
+        /// <paramref name="f"/> suit-il <paramref name="leader"/> ? Seulement si le chef est à moins de <see cref="FollowRange"/> plus leurs deux
+        /// rayons d'errance de la maison du membre : un chef parti loin (une poursuite, une autre place) ne traîne pas sa harde à travers la
+        /// carte ; le membre erre alors seul chez lui.
+        /// </summary>
+        private bool FollowsLeader(Fighter f, Fighter leader, long[] x, long[] z)
+        {
+            int l = _fightersById.IndexOf(leader);
+            GroundVector home = f.Setup.Placement!.Position;
+            long reach = checked(FollowRange + f.Behavior!.Wander!.Radius.Raw + leader.Behavior!.Wander!.Radius.Raw);
+            return Planar.LengthSquared(checked(x[l] - home.X.Raw), checked(z[l] - home.Z.Raw)) <= checked(reach * reach);
         }
 
         /// <summary>Plan d'un chef ou d'une bête seule : retour, pause, puis marche vers le point de l'étape.</summary>
@@ -139,7 +155,7 @@ namespace EdS.Simulation.Engine
             for (int k = 0; k < _fightersById.Count && k <= i; k++)
             {
                 Fighter g = _fightersById[k];
-                if (k != l && Wanders(g) && g.Team == f.Team && g.Behavior!.Wander!.Group == w.Group) rank++;
+                if (k != l && Wanders(g) && g.Team == f.Team && g.Behavior!.Wander!.Group == w.Group && FollowsLeader(g, leader, x, z)) rank++;
             }
             Body lb = leader.Body!;
             long backX = checked(-lb.FacingX), backZ = checked(-lb.FacingZ);

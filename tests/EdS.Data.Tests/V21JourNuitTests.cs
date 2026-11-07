@@ -8,6 +8,7 @@ using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Runtime;
@@ -305,12 +306,15 @@ public sealed class V21JourNuitTests : IDisposable
             Assert.Contains(events, e => e.Kind == PopulationEventKind.Withdrew && e.Population == id);
             Assert.False(Present(w, id));
         }
-        // Les sangliers se réveillent à leur place, sans annonce.
+        // Les sangliers se réveillent à leur place, sans annonce (sous-lot V2.4.1 : ils fouillent ensuite autour, dans leur aire d'errance).
         foreach (string id in Sleepers)
         {
             Assert.Contains(events, e => e.Kind == PopulationEventKind.Respawned && e.Population == id);
             Assert.True(Present(w, id));
-            Assert.Equal(Vallons.PopulationOf(id)!.Template.Placement!.Position, w.Zone.Engine.View(w.CurrentCreature(id)).Position);
+            AssailantSetup t = Vallons.PopulationOf(id)!.Template;
+            GroundVector home = t.Placement!.Position, now = w.Zone.Engine.View(w.CurrentCreature(id)).Position!.Value;
+            double gap = Math.Sqrt(Math.Pow((now.X.Raw - home.X.Raw) / 1e4, 2) + Math.Pow((now.Z.Raw - home.Z.Raw) / 1e4, 2));
+            Assert.True(gap <= t.Behavior!.Wander!.Radius.Raw / 1e4 + 0.5, $"{id} à {gap:0.##} m de sa place");
         }
         Assert.DoesNotContain(events, e => e.Kind == PopulationEventKind.Sign);
     }

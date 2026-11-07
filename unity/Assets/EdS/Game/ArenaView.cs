@@ -623,10 +623,10 @@ namespace EdS.Game
             foreach (OtherState other in combat.Others())
             {
                 if (_looks.TryGetValue(other.Id, out StyleBody look) && _bodies.TryGetValue(other.Id, out GameObject shown) && shown.activeSelf)
-                    look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime);
-                // Sous-lot V2.4 : les bêtes paisibles galopent ou bondissent quand elles fuient.
+                    look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime, false, other.View.Wander);   // V2.4.1 : broute, fouille
+                // Sous-lot V2.4 : les bêtes paisibles galopent ou bondissent quand elles fuient. V2.4.1 : elles broutent, guettent, se tapissent.
                 if (_wild.TryGetValue(other.Id, out WildlifeLook wild) && _bodies.TryGetValue(other.Id, out GameObject animal) && animal.activeSelf)
-                    wild.Update(animal.transform.position, other.View.IsDead, Time.deltaTime);
+                    wild.Update(animal.transform.position, other.View.IsDead, Time.deltaTime, other.View.Wander);
             }
 
             if (player.TargetId != null && _bodies.TryGetValue(player.TargetId, out GameObject target) && target.activeSelf)
