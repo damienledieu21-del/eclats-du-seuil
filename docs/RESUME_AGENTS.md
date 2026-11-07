@@ -34,8 +34,8 @@
 | Sauvegarde | v14 (v13 encore lue) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
-| Moteur | 0.29.0 | `CombatEngine.cs` (`Version`) |
-| Journal | 23 | `CombatEngine.cs` (`LogFormatVersion`) |
+| Moteur | 0.30.0 | `CombatEngine.cs` (`Version`) |
+| Journal | 24 | `CombatEngine.cs` (`LogFormatVersion`) |
 | Scénarios (schéma) | 17 | `ScenarioValidator.cs` |
 | Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
@@ -44,7 +44,7 @@
 | Histoire (schéma) | v10 (v4 à v9 encore lues) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
 
-Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0`.
+Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0` (V2.8, recherche de chemin : `EdS.Domain/Space/Navigator.cs`).
 À ne pas confondre : version du contenu des règles (0.17.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 16).
 
 ## 5. Où chercher

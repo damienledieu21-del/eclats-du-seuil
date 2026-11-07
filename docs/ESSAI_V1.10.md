@@ -201,3 +201,18 @@ Menu **Éclats du Seuil → Essai des PNJ qui changent de lieu : …**, **hors d
 | 13.6 | Parler à un PNJ juste avant son départ et laisser le dialogue ouvert | Il **finit la conversation** (il ne part qu'à la fermeture du dialogue) | [ ] | |
 | 13.7 | Suivre une quête de Rosalie ou de Mathurin quand il est ailleurs | L'étoile de la carte mène à la porte de la zone où il est ; on lui parle là-bas | [ ] | |
 | 13.8 | Ton avis : qui entre dans la salle, Aldric seul sur la terrasse, horaires, répliques | — | [ ] | |
+
+## 15. Les chemins (V2.8)
+
+(Le § 14 est réservé à un autre lot.) Menu **Éclats du Seuil → Essai des chemins : …**, **hors du mode Jeu** (il avance la partie au bon moment ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#recherche-de-chemin-sous-lot-v28).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 15.1 | « 11 h 30 (les PNJ traversent le bourg) », puis Play ; rester sur la place du bourg | Les PNJ quittent leur place du matin et **contournent les maisons, les étals et le puits** : ils longent un coin puis repartent droit ; aucun ne traverse un mur ni ne s'y colle | [ ] | |
+| 15.2 | Suivre Firmin jusqu'au marché, puis à la sieste (14 h) | Il prend la rue, tourne au coin de sa maison et s'arrête **devant** sa porte | [ ] | |
+| 15.3 | « 19 h (portes de l'auberge, passants) », puis Play ; rester devant l'auberge | Les passants viennent devant l'auberge **par les rues** ; les clients de la taverne marchent **jusqu'à la porte** en contournant les maisons, puis disparaissent | [ ] | |
+| 15.4 | Entrer dans l'auberge | Les clients **apparaissent à la porte** et vont s'asseoir **entre les tables** (sans les traverser) | [ ] | |
+| 15.5 | Dehors, te faire poursuivre par un loup puis passer derrière une maison ou un gros rocher | Le loup **fait le tour** au lieu de rester collé au mur ; il te rattrape par le côté | [ ] | |
+| 15.6 | Effrayer un lièvre ou un cerf contre une clôture ou un muret | Il **file de biais** le long de l'obstacle au lieu de s'y bloquer | [ ] | |
+| 15.7 | Monter sur un point que la bête ne peut pas atteindre (de l'autre côté d'une palissade fermée, si tu en trouves un) | Elle **t'attend sans bouger**, tournée vers toi ; jamais d'aller-retour | [ ] | |
+| 15.8 | Ton avis : allure des détours, PNJ qui vont droit s'il n'y a vraiment aucun chemin, tireurs qui restent coincés contre un mur en reculant | — | [ ] | |

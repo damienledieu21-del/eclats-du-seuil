@@ -19,7 +19,8 @@ namespace EdS.Simulation.Engine
     /// <item><b>Placement</b> (phase de déplacement, positions du début de la phase) : il approche si sa cible est au-delà de <c>maxRange</c>,
     /// recule en deçà de <c>minRange</c>, s'arrête entre les deux et se tourne vers elle ; avec <c>encircle</c>, la meute qui vise la même
     /// cible se répartit autour d'elle, à parts égales, dans l'ordre où elle l'entoure déjà. Il s'arrête pendant l'annonce d'une de ses
-    /// attaques. Le décor et les autres emprises le font glisser comme une marche ordinaire ; il n'y a pas de recherche de chemin.</item>
+    /// attaques. Les autres emprises le font glisser comme une marche ordinaire ; sous-lot V2.8, le décor qui barre la ligne droite est contourné
+    /// (recherche de chemin, <c>CombatEngine.Paths.cs</c>).</item>
     /// <item><b>Charge</b> (<see cref="AssailantAttack.Charge"/>) : à l'impact de la bande, après ses coups, l'ennemi fonce depuis sa place
     /// vers le bout de la bande verrouillée, ou jusqu'au premier obstacle ou à la première emprise solide (<c>charged</c>), sans laisser un
     /// joueur sans issue (règle A).</item>

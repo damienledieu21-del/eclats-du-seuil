@@ -690,6 +690,16 @@ Menu **Éclats du Seuil → Essai des bêtes qui se promènent : …** (hors du 
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les loups qui patrouillent n'ont pas d'animation de reniflement propre sans clip du pack.
 
+### Essai V2.8 : les chemins
+
+Menu **Éclats du Seuil → Essai des chemins : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **11 h 30 (les PNJ traversent le bourg)** et **19 h (portes de l'auberge, passants)**. Fiche d'essai : [ESSAI_V1.10.md](ESSAI_V1.10.md#15-les-chemins-v28) ; règles : [MONDE.md](MONDE.md#recherche-de-chemin-sous-lot-v28).
+
+- **PNJ** (`WorldMarkers.Walk`) : chaque repère a un `Walker` ; il vise le prochain point de passage du trajet (`AdventureSession.Paths`, recalculé quand sa place change), puis sa place ; parti, il marche jusqu'à la porte et disparaît (comme en V2.3.1). Dans une pièce, le corps suit le repère (`ArenaView.MoveSpeaker`).
+- **Passants** (`SpaceView.Errand`) : même chose vers la place de leur course (trajets de l'espace de la vue, construits à la première course).
+- Sans aucun chemin, ils vont droit comme avant (`Walker.StraightWhenBlocked`).
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement).
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
