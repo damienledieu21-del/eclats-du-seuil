@@ -1444,19 +1444,6 @@
           {
             "conditions": [
               {
-                "if": "fact",
-                "id": "fact.event.faille_du_seuil.cicatrice_purifiee"
-              },
-              {
-                "if": "notFact",
-                "id": "fact.v26.odile.purifiee"
-              }
-            ],
-            "node": "v26_purifiee"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questDone",
                 "id": "quest.traces_sous_le_moulin"
               }
@@ -3054,23 +3041,6 @@
             "id": "ch1_puits",
             "text": "text.ch1.odile.puits",
             "choices": []
-          },
-          {
-            "id": "v26_purifiee",
-            "text": "text.v26.odile.purifiee",
-            "choices": [
-              {
-                "text": "text.v26.odile.purifiee.partir",
-                "conditions": [],
-                "effects": [
-                  {
-                    "do": "setFact",
-                    "id": "fact.v26.odile.purifiee"
-                  }
-                ],
-                "next": null
-              }
-            ]
           }
         ]
       },
@@ -3758,19 +3728,6 @@
               }
             ],
             "node": "ch1_croc"
-          },
-          {
-            "conditions": [
-              {
-                "if": "fact",
-                "id": "fact.event.faille_du_seuil.cicatrice"
-              },
-              {
-                "if": "notFact",
-                "id": "fact.v26.gaspard.cicatrice"
-              }
-            ],
-            "node": "v26_cicatrice"
           },
           {
             "conditions": [
@@ -5551,23 +5508,6 @@
             "id": "ch1_aldric_moque",
             "text": "text.ch1.gaspard.aldric_moque",
             "choices": []
-          },
-          {
-            "id": "v26_cicatrice",
-            "text": "text.v26.gaspard.cicatrice",
-            "choices": [
-              {
-                "text": "text.v26.gaspard.cicatrice.partir",
-                "conditions": [],
-                "effects": [
-                  {
-                    "do": "setFact",
-                    "id": "fact.v26.gaspard.cicatrice"
-                  }
-                ],
-                "next": null
-              }
-            ]
           }
         ]
       },
@@ -5681,6 +5621,19 @@
               }
             ],
             "node": "ch1_champignons_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v26.herboriste.cicatrice"
+              }
+            ],
+            "node": "v26_cicatrice"
           },
           {
             "conditions": [
@@ -6283,6 +6236,23 @@
                   }
                 ],
                 "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v26_cicatrice",
+            "text": "text.v26.herboriste.cicatrice",
+            "choices": [
+              {
+                "text": "text.v26.herboriste.cicatrice.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.herboriste.cicatrice"
+                  }
+                ],
+                "next": null
               }
             ]
           }
@@ -8505,6 +8475,19 @@
           {
             "conditions": [
               {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_purifiee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v26.boulanger.purifiee"
+              }
+            ],
+            "node": "v26_purifiee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "phase",
                 "id": "night"
               }
@@ -9889,6 +9872,23 @@
                   }
                 ],
                 "text": "text.v23.boulanger.abri"
+              }
+            ]
+          },
+          {
+            "id": "v26_purifiee",
+            "text": "text.v26.boulanger.purifiee",
+            "choices": [
+              {
+                "text": "text.v26.boulanger.purifiee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.boulanger.purifiee"
+                  }
+                ],
+                "next": null
               }
             ]
           }
