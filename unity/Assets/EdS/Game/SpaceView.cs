@@ -475,6 +475,12 @@ namespace EdS.Game
             public float Height = 1f;
             /// <summary>Sous-lot V2.3 : rentré chez lui pour sa course (caché).</summary>
             public bool Away;
+
+            /// <summary>Sous-lot V2.3.1 : PNJ d'une pièce sorti par la porte (il est dans une autre zone) : caché.</summary>
+            public bool Gone;
+
+            /// <summary>Revue Codex de la PR #109 : corps d'un PNJ qui parle (« npc.… ») : ni la nuit, ni la pluie, ni les courses ne le cachent.</summary>
+            public bool Speaker;
             /// <summary>Sous-lot V2.3 : l'activité jouée en ce moment (changée seulement quand elle change).</summary>
             public VillagerActivity Playing;
             /// <summary>Relecture de la PR #103 : sa course, calculée au placement ; la place visée, relue quand la minute change.</summary>
@@ -514,6 +520,19 @@ namespace EdS.Game
                 v.Playing = play;
                 v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
             }
+            return true;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : montre ou cache le corps visible du PNJ <paramref name="id"/> d'une pièce (caché quand
+        /// il est sorti par la porte, montré quand il rentre). Faux si la pièce n'a pas de corps pour lui.
+        /// </summary>
+        public bool ShowSpeaker(string id, bool shown)
+        {
+            if (id == null || !_speakers.TryGetValue(id, out Villager v) || v.Body == null) return false;
+            v.Gone = !shown;
+            bool visible = Shown(v);
+            if (v.Body.gameObject.activeSelf != visible) v.Body.gameObject.SetActive(visible);
             return true;
         }
 
@@ -575,12 +594,14 @@ namespace EdS.Game
                 body.transform.localScale = body.transform.localScale * size;
                 body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
-                VillagerPlan plan = VillageDay.Plan(v, _errands);   // relecture de la PR #103 : une fois, au placement
+                // Revue Codex de la PR #109 : le corps d'un PNJ qui parle ne fait pas de courses (le cœur le place).
+                bool speaker = v.Id != null && v.Id.StartsWith("npc.", System.StringComparison.Ordinal);
+                VillagerPlan plan = VillageDay.Plan(v, speaker ? null : _errands);   // relecture de la PR #103 : une fois, au placement
                 var placed = new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity,
-                    Plan = plan, Goal = plan.Post };
+                    Plan = plan, Goal = plan.Post, Speaker = speaker };
                 _villagers.Add(placed);
                 // Revue Codex de la PR #103 : le corps d'un PNJ qui parle (identifiant « npc.… ») suit son repère.
-                if (v.Id != null && v.Id.StartsWith("npc.", System.StringComparison.Ordinal)) _speakers[v.Id] = placed;
+                if (speaker) _speakers[v.Id] = placed;
             }
         }
 

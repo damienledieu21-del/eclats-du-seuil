@@ -78,6 +78,12 @@ namespace EdS.Data.Story
         public string? Activity { get; set; }
         public PointData? Position { get; set; }
 
+        /// <summary>
+        /// Sous-lot V2.3.1 (schéma 10) : zone de la place du créneau, si ce n'est pas celle où vit le PNJ (un intérieur relié à la zone de
+        /// l'histoire, ou la zone de l'histoire pour un PNJ d'un intérieur) ; facultatif (absent : la zone du PNJ).
+        /// </summary>
+        public string? Zone { get; set; }
+
         /// <summary>Abri sous une vraie pluie ; facultatif.</summary>
         public SchedulePlaceData? Rain { get; set; }
     }

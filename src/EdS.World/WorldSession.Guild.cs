@@ -33,7 +33,7 @@ namespace EdS.World
         {
             if (!(Guild is GuildBook guild) || Narrative is null) return GuildRefusal.NoGuild;
             Npc npc = Narrative.Book.Npc(guild.Npc);
-            if (!(((INarrativeWorld)this).PlayerPositionIn(npc.Zone) is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange))
+            if (!(((INarrativeWorld)this).PlayerPositionIn(NpcZone(npc)) is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange))
                 return GuildRefusal.TooFar;
             return GuildRefusal.None;
         }

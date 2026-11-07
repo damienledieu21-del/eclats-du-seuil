@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((9, 9, "0.18.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((10, 10, "0.19.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -111,7 +111,7 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 60, 100);
+        Assert.InRange(lines.Count, 60, 130);   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
         Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)));
@@ -311,7 +311,7 @@ public sealed class V23JourneeTests : IDisposable
     [InlineData(11 * 60 + 29, "fournil", -42, 3.5)]
     [InlineData(11 * 60 + 30, "marche", -55.5, -4.5)]
     [InlineData(15 * 60, "sieste", -38.5, 4.8)]
-    [InlineData(19 * 60, "taverne", -65.5, 2.8)]
+    [InlineData(19 * 60, "taverne", -1.9, 2.0)]   // V2.3.1 : dans la salle de l'auberge (zone de son créneau)
     [InlineData(23 * 60, "fournil", -42, 3.5)]
     public void Firmin_suit_sa_journee(int minute, string activity, double x, double z)
     {
@@ -401,7 +401,9 @@ public sealed class V23JourneeTests : IDisposable
     {
         int noon = 12 * 60 + 15;
         long day = DryDay(noon);
-        WorldSession tavern = At(TickAt(day, noon), Zone(-64.5, 1.4));
+        // V2.3.1 : la taverne est dans la salle de l'auberge (Garin n'est plus sur la terrasse).
+        Assert.Equal(DialogueRefusal.TooFar, At(TickAt(day, noon), Zone(-64.5, 1.4)).Talk("npc.armurier", out DialogueView? _));
+        WorldSession tavern = V231TestData.Inside("zone.auberge", TickAt(day, noon), 3.5, 0.8, Shipped.Value);
         Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? _));   // V1.9.10 : la première fois, il se présente
         tavern.Narrative!.Close();
         Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? there));

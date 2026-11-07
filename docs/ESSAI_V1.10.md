@@ -115,9 +115,9 @@ Menus **Éclats du Seuil → Essai de la journée du village : …**, hors du mo
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 8.1 | Menu « 12 h 15, midi », puis jouer | Firmin vend son pain sur la place, Garin et le capitaine mangent devant l'auberge ; sous leur nom, ce qu'ils font | [ ] | |
-| 8.2 | À l'étal de Garin, touche **F** | Un message dit qu'il est à la taverne ; devant l'auberge, on lui achète | [ ] | |
-| 8.3 | Menu « 19 h 45, la taverne » ; parler à Firmin, Maëlle, Aldric (s'il y est encore), Renart, puis à Mathurin dans l'auberge | Chacun a une réplique du soir ; Mathurin parle de ceux qui sont sur la terrasse | [ ] | |
+| 8.1 | Menu « 12 h 15, midi », puis jouer | Firmin vend son pain sur la place, Garin et le capitaine mangent dans la salle de l'auberge (V2.3.1) ; sous leur nom, ce qu'ils font | [ ] | |
+| 8.2 | À l'étal de Garin, touche **F** | Un message dit qu'il est à la taverne ; dans la salle de l'auberge, on lui achète | [ ] | |
+| 8.3 | Menu « 19 h 45, la taverne » ; parler à Firmin, Maëlle, Aldric (s'il y est encore), Renart, puis à Mathurin dans l'auberge | Chacun a une réplique du soir ; depuis V2.3.1, ils sont dans la salle de l'auberge (Aldric seul sur la terrasse) et Mathurin parle d'eux | [ ] | |
 | 8.4 | Menu « 5 h 30, l'aube » ; « 14 h 30 » | Firmin au fournil (sa réplique de l'aube) ; l'après-midi, Firmin fait la sieste devant chez lui | [ ] | |
 | 8.5 | Menu « la prochaine averse » | Ceux qui sont dehors vont s'abriter et le disent | [ ] | |
 | 8.6 | Regarder les passants du bourg un moment | Certains vont et viennent (puits, maison, auberge), puis reprennent leur place | [ ] | |
@@ -169,3 +169,18 @@ Menu **Éclats du Seuil → Essai des événements : …**, **hors du mode Jeu**
 | 12.5 | « le crépuscule (lièvres) », puis Play ; aller aux champs du sud et aux vergers | Les **lièvres sautillent par à-coups** (petits bonds, arrêts tapis), se dressent aux aguets entre deux ; ils fuient toujours à 6 m | [ ] | |
 | 12.6 | Rester une heure du monde au **village** et au **camp de la carrière** | Aucune bête ne vient d'elle-même jusqu'à toi ; aucune bagarre entre bêtes qui se promènent | [ ] | |
 | 12.7 | Ton avis : allures (cerf lent, lièvre vif), pauses, taille des aires (4 m pour un cerf, 3 m pour un loup), 15 s de calme, la meute de Croc-Gris qui reste au pré | — | [ ] | |
+
+## 13. Les PNJ qui changent de lieu (V2.3.1)
+
+Menu **Éclats du Seuil → Essai des PNJ qui changent de lieu : …**, **hors du mode Jeu** (il avance la partie jusqu'à cinq minutes avant le départ ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#pnj-qui-changent-de-lieu-sous-lot-v231).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 13.1 | « 6 h 25, Rosalie va prier », puis Play ; entrer chez Rosalie, attendre 6 h 30 | Rosalie **marche jusqu'à sa porte et disparaît** ; dans la chapelle, elle est assise sur un banc (« à la prière du matin ») ; à 7 h 30 elle rentre | [ ] | |
+| 13.2 | « 11 h 55, le puits et la salle », puis Play ; aller au puits du bourg, puis entrer dans l'auberge | Rosalie au puits avec Bertille et Renart ; dans la salle, **Garin, le capitaine et Aubin** à table ; on achète à Garin dans la salle | [ ] | |
+| 13.3 | « 15 h 55, Mathurin sort fumer », Play, rester dans l'auberge | Mathurin marche jusqu'à la porte et disparaît ; dehors, il est sous l'auvent (« sur la terrasse, sa pipe à la main »), avec sa réplique | [ ] | |
+| 13.4 | « 15 h 25, la tournée de Frère Anselme », Play ; aller sur la route du lac | Anselme sort de la chapelle et rejoint la veuve ; à 16 h 30 il entre dans l'auberge (« pour une bénédiction ») ; Sœur Albe et la veuve en parlent | [ ] | |
+| 13.5 | « 18 h 25, la salle se remplit », Play, rester dans la salle | Firmin, Renart, le fermier, Maëlle, Bertille **apparaissent à la porte** et vont s'asseoir ; à 20 h 30 le capitaine ; à 21 h Mathurin sort fumer | [ ] | |
+| 13.6 | Parler à un PNJ juste avant son départ et laisser le dialogue ouvert | Il **finit la conversation** (il ne part qu'à la fermeture du dialogue) | [ ] | |
+| 13.7 | Suivre une quête de Rosalie ou de Mathurin quand il est ailleurs | L'étoile de la carte mène à la porte de la zone où il est ; on lui parle là-bas | [ ] | |
+| 13.8 | Ton avis : qui entre dans la salle, Aldric seul sur la terrasse, horaires, répliques | — | [ ] | |

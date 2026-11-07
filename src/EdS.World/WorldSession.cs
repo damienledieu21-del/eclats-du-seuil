@@ -585,8 +585,44 @@ namespace EdS.World
 
         /// <summary>Parle à un PNJ (à portée, personnage présent et vivant).</summary>
         /// <exception cref="InvalidOperationException">Partie sans histoire.</exception>
-        public DialogueRefusal Talk(string npc, out DialogueView? view) =>
-            (Narrative ?? throw new InvalidOperationException("Partie sans histoire.")).Talk(npc, out view);
+        /// <remarks>
+        /// Sous-lot V2.3.1 : le PNJ finit la conversation avant de partir : tant que ce dialogue reste ouvert, il garde la zone, la place et
+        /// l'activité qu'il avait quand on lui a parlé (<see cref="NpcZone"/>, <see cref="NpcSlot"/>), même si son créneau change entre-temps ;
+        /// il rejoint le créneau en cours dès que le dialogue se ferme. Rien n'est sauvegardé (un dialogue ouvert ne l'est pas non plus).
+        /// </remarks>
+        public DialogueRefusal Talk(string npc, out DialogueView? view)
+        {
+            Narrative story = Narrative ?? throw new InvalidOperationException("Partie sans histoire.");
+            Npc? who = npc != null && story.Book.HasNpc(npc) ? story.Book.Npc(npc) : null;
+            (string? Zone, (string Activity, GroundVector Position)? Slot)? before = who is null ? null : (ZoneNow(who), SlotNow(who));
+            DialogueRefusal refusal = story.Talk(npc!, out view);
+            if (refusal == DialogueRefusal.None && who != null && before is { } b && story.OpenNpc == who.Id)
+                _held = new Held(who.Id, story.Opened, b.Zone, b.Slot);
+            return refusal;
+        }
+
+        /// <summary>Sous-lot V2.3.1 : ce que garde le PNJ d'un dialogue ouvert (voir <see cref="Talk"/>).</summary>
+        private sealed class Held
+        {
+            public readonly string Npc;
+            public readonly long Dialogue;
+            public readonly string? Zone;
+            public readonly (string Activity, GroundVector Position)? Slot;
+
+            public Held(string npc, long dialogue, string? zone, (string Activity, GroundVector Position)? slot)
+            {
+                Npc = npc;
+                Dialogue = dialogue;
+                Zone = zone;
+                Slot = slot;
+            }
+        }
+
+        private Held? _held;
+
+        /// <summary>Sous-lot V2.3.1 : ce que garde <paramref name="npc"/>, si son dialogue (ouvert par <see cref="Talk"/>) l'est encore.</summary>
+        private Held? HeldBy(Npc npc) =>
+            _held is { } h && h.Npc == npc.Id && Narrative is { } story && story.OpenNpc == npc.Id && story.Opened == h.Dialogue ? h : null;
 
         /// <summary>Choisit une réponse du dialogue ouvert ; rend les événements de ses effets (rien en cas de refus).</summary>
         public DialogueRefusal Choose(int index, out DialogueView? next, out IReadOnlyList<StoryEvent> events)
@@ -665,13 +701,34 @@ namespace EdS.World
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
             // Sous-lot V2.5 : pendant une attaque, les villageois du lieu sont au refuge (la cloche a sonné).
-            if (RefugeOf(npc.Id) is GroundVector refuge && (npc.Zone ?? _storyZone) == Definition?.Id) return refuge;
+            if (RefugeOf(npc.Id) is GroundVector refuge && (NpcZone(npc) ?? _storyZone) == Definition?.Id) return refuge;
             if (NpcSlot(npc) is { } slot) return slot.Position;
             if (Definition is null || Zone.Time.Phase != DayPhase.Night || (npc.Zone ?? _storyZone) != Definition.Id) return npc.Position;
             return Definition.NightSpotOf(npc.Id) ?? npc.Position;
         }
 
         GroundVector INarrativeWorld.NpcPosition(Npc npc) => NpcPosition(npc);
+
+        /// <summary>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : zone où se tient le PNJ <paramref name="npc"/> à l'heure du monde : celle de son
+        /// créneau en cours (<see cref="Npc.ZoneAt"/> ; même convention que <see cref="Npc.Zone"/>, null : la zone de l'histoire). Un PNJ
+        /// n'est jamais à deux endroits : il est dans cette zone, à <see cref="NpcPosition"/>, et nulle part ailleurs ; on lui parle, on lui
+        /// livre et on commerce avec lui là. Pendant un dialogue ouvert avec lui, la zone d'alors (<see cref="Talk"/>). Recalculé de l'heure :
+        /// rien n'est sauvegardé.
+        /// </summary>
+        public string? NpcZone(Npc npc)
+        {
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            return HeldBy(npc) is { } held ? held.Zone : ZoneNow(npc);
+        }
+
+        string? INarrativeWorld.NpcZone(Npc npc) => NpcZone(npc);
+
+        /// <summary>Sous-lot V2.3.1 : zone du créneau en cours, sans tenir compte d'un dialogue ouvert.</summary>
+        private string? ZoneNow(Npc npc) => npc.ZoneAt(Zone.Time.Minute);
+
+        /// <summary>Sous-lot V2.3.1 : le PNJ se tient dans la zone ouverte (celle du personnage).</summary>
+        public bool NpcHere(Npc npc) => (NpcZone(npc) ?? _storyZone) == (Definition?.Id ?? _storyZone);
 
         /// <summary>
         /// Sous-lot V2.3 : activité et place du PNJ <paramref name="npc"/> d'après son emploi du temps, à l'heure du monde ; sous une vraie
@@ -681,9 +738,18 @@ namespace EdS.World
         public (string Activity, GroundVector Position)? NpcSlot(Npc npc)
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
-            if (!(npc.SlotAt(Zone.Time.Minute) is ScheduleSlot slot)) return null;
+            if (npc.Schedule.Count == 0) return null;
             // Sous-lot V2.5 : pendant une attaque, au refuge (activité « refuge »), quel que soit le créneau.
-            if (RefugeOf(npc.Id) is GroundVector refuge && (npc.Zone ?? _storyZone) == Definition?.Id) return (RefugeActivity, refuge);
+            if (RefugeOf(npc.Id) is GroundVector refuge && (NpcZone(npc) ?? _storyZone) == Definition?.Id) return (RefugeActivity, refuge);
+            // Sous-lot V2.3.1 : pendant un dialogue ouvert avec lui, la place et l'activité d'alors.
+            if (HeldBy(npc) is { } held) return held.Slot;
+            return SlotNow(npc);
+        }
+
+        /// <summary>Sous-lot V2.3 : créneau en cours (ou son abri sous une vraie pluie), sans refuge ni dialogue ouvert.</summary>
+        private (string Activity, GroundVector Position)? SlotNow(Npc npc)
+        {
+            if (!(npc.SlotAt(Zone.Time.Minute) is ScheduleSlot slot)) return null;
             if (slot.Rain is SchedulePlace shelter && Shelters(Weather.Kind)) return (shelter.Activity, shelter.Position);
             return (slot.Activity, slot.Position);
         }

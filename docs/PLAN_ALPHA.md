@@ -182,6 +182,12 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Formats : histoire (PNJ en nouvelle version).
 - **État** (6 novembre 2026, PR en brouillon) : histoire en schéma 9 (emplois du temps `schedule` des PNJ, abri sous l'averse, condition `activity`, répliques `lines` d'un nœud selon le moment ; schémas 4 à 8 encore lus), sauvegarde inchangée (version 12) ; vingt-sept PNJ ont leur journée (dont ceux des intérieurs, dans leur pièce ; réponses de Damien du 6 novembre 2026) (Firmin au fournil la nuit, au marché à midi, à la sieste l'après-midi, à la taverne le soir…), soixante-deux répliques du moment, la boutique d'un marchand parti dit où il est ; passants du bourg (un sur trois par course) qui vont au puits, rentrent manger ou viennent devant l'auberge ; sous Unity, activité sous le nom des PNJ et menu « Essai de la journée du village » ([MONDE.md](MONDE.md#villageois-qui-suivent-leur-journée-sous-lot-v23), [UNITY.md](UNITY.md#essai-v23--la-journée-du-village)). Reste l'essai de Damien sous Unity.
 
+### 15 bis. V2.3.1 — PNJ qui changent de lieu (M)
+
+- Accord de Damien du 7 novembre 2026 : lever la limite « un PNJ vit dans une seule zone » (réponse du 6 novembre : la taverne sur la terrasse pour l'alpha, « plus tard une salle pleine le soir » ; Rosalie ne pouvait pas sortir).
+- Formats : histoire en schéma 10 (zone d'un créneau) ; sauvegarde inchangée.
+- **État** (7 novembre 2026, PR en brouillon) : un créneau peut placer le PNJ dans une autre zone (intérieur ↔ dehors), validé au chemin précis (zone inconnue, porte manquante) ; le cœur suit le PNJ (parler, livrer, commercer, repères de quête), il finit la conversation avant de partir ; contenu 0.19.0 : la salle de l'auberge se remplit le soir et à midi, Rosalie sort (chapelle, puits, place), Mathurin fume sur la terrasse, Frère Anselme fait sa tournée ; sous Unity, le PNJ marche jusqu'à la porte, disparaît et réapparaît de l'autre côté ; menu « Essai des PNJ qui changent de lieu » ([MONDE.md](MONDE.md#pnj-qui-changent-de-lieu-sous-lot-v231), [ESSAI_V1.10.md](ESSAI_V1.10.md#13-les-pnj-qui-changent-de-lieu-v231)).
+
 ### 16. V2.4 — Animaux paisibles et bêtes qui se battent (M)
 
 - Animaux paisibles (cerfs, lièvres), loups et sangliers qui se battent entre eux, premier écosystème des Vallons.

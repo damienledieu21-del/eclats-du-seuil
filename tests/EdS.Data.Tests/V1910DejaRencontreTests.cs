@@ -150,7 +150,7 @@ public sealed class V1910DejaRencontreTests
     [Fact]
     public void Le_fait_est_lisible_par_les_conditions_mais_jamais_pose_par_un_effet()
     {
-        Assert.Equal(9, StoryValidator.CurrentSchemaVersion);   // pas de nouveau schéma
+        Assert.Equal(10, StoryValidator.CurrentSchemaVersion);   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau)
         Assert.Equal("fact.met.renart", StoryValidator.MetFact("npc.renart"));
         Assert.True(Read(StoryJson()).IsValid);
 
