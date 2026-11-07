@@ -219,8 +219,12 @@ namespace EdS.Simulation.Engine
                 if (f.Behavior is null || f.Out) continue;
                 if (f.Engaged && SingleTarget(f) is { Out: false } t) targets[i] = _fightersById.IndexOf(t);
             }
-            for (int i = 0; i < n; i++)
+            // Sous-lot V2.8 : budget de recherches de chemin du tick, servi dans un ordre qui tourne avec le tick.
+            ResetPathBudget();
+            int rotation = n == 0 ? 0 : (int)(tick % n);
+            for (int k = 0; k < n; k++)
             {
+                int i = (k + rotation) % n;
                 Fighter f = _fightersById[i];
                 if (f.Behavior is not { } behavior || f.Out) continue;
                 // Sous-lot V2.4.1 : une bête au calme qui erre se promène (sans état propre ; voir CombatEngine.Wander.cs).
@@ -253,6 +257,14 @@ namespace EdS.Simulation.Engine
                     // Revue Codex de la PR #33 (tour 11) : le pas s'arrête à sa place d'anneau. Accéléré (altérations de vitesse), un pas
                     // plus long que la tolérance la dépasserait, puis repartirait en sens inverse au tick suivant.
                     maxStep = Domain.Numerics.IntMath.Sqrt(Planar.LengthSquared(gx, gz));
+                    // Sous-lot V2.8 : place d'anneau derrière un obstacle : il la contourne ; sans chemin, il attend tourné vers sa cible.
+                    if (!SteerToward(i, x, z, px, pz, out long sx, out long sz))
+                    {
+                        intentions[i] = new Intention(false, 0, 0, j);
+                        continue;
+                    }
+                    gx = checked(sx - x[i]);
+                    gz = checked(sz - z[i]);
                 }
                 else
                 {
@@ -272,6 +284,16 @@ namespace EdS.Simulation.Engine
                     {
                         (gx, gz) = (vx, vz);
                         maxStep = checked(d - far);
+                        // Sous-lot V2.8 : la ligne jusqu'où il s'arrêtera est barrée : il contourne (chemin vers la cible) ; aucun chemin : il
+                        // attend, tourné vers elle.
+                        long stopX = checked(x[i] + Domain.Numerics.IntMath.MulDiv(vx, maxStep, d, Domain.Numerics.RoundingMode.Floor));
+                        long stopZ = checked(z[i] + Domain.Numerics.IntMath.MulDiv(vz, maxStep, d, Domain.Numerics.RoundingMode.Floor));
+                        if (!SteerToward(i, x, z, x[j], z[j], stopX, stopZ, out long sx, out long sz))
+                        {
+                            intentions[i] = new Intention(false, 0, 0, j);
+                            continue;
+                        }
+                        (gx, gz) = (checked(sx - x[i]), checked(sz - z[i]));
                     }
                     else if (d < checked(near - BandTolerance))
                     {
@@ -279,6 +301,8 @@ namespace EdS.Simulation.Engine
                         // orientation, direction déterministe.
                         (gx, gz) = vx == 0 && vz == 0 ? (checked(-f.Body.FacingX), checked(-f.Body.FacingZ)) : (checked(-vx), checked(-vz));
                         maxStep = checked(near - d);
+                        // Sous-lot V2.8 : recul ou fuite barré : de biais si c'est libre.
+                        if (Planar.TryNormalize(gx, gz, out long rx, out long rz)) (gx, gz) = RetreatDirection(i, x, z, rx, rz, maxStep);
                     }
                     else
                     {

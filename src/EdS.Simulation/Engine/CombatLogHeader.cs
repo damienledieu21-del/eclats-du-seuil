@@ -24,6 +24,12 @@ namespace EdS.Simulation.Engine
                 .Field("formatVersion", CombatEngine.LogFormatVersion)
                 .Field("engineVersion", CombatEngine.Version)
                 .Field("tickMs", setup.Combat.TickMilliseconds);
+            // Sous-lot V2.8 (format 24) : bornes de la recherche de chemin, seulement pour un combat positionné.
+            if (setup.Space != null)
+                w.Name("navigation").BeginObject()
+                    .Field("queriesPerTick", CombatEngine.MaxPathQueriesPerTick)
+                    .Field("maxExpanded", CombatEngine.MaxPathExpanded)
+                    .EndObject();
 
             w.Name("data").BeginObject();
             WriteIdentity(w.Name("rules"), setup.Data.Rules, withId: false);

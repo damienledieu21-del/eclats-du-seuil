@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.29.0";
+        public const string Version = "0.30.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -111,9 +111,12 @@ namespace EdS.Simulation.Engine
         /// porter <c>wander</c> (errance hors combat : <c>style</c>, <c>radius</c>, <c>pace</c>, <c>legMs</c>, <c>pauseMs</c>, <c>group</c>,
         /// <c>lead</c>, <c>spacing</c>, <c>points</c>) ; une bête qui erre marche sans être engagée (lignes <c>moved</c>), et une bête engagée
         /// qui erre se désengage au calme (nouvelle ligne <c>calmed</c>, diagnostic : <c>actor</c>). Sans bête qui erre, un combat écrit
-        /// exactement les mêmes lignes qu'au format 22. Un journal d'un autre format est refusé au rejeu.
+        /// exactement les mêmes lignes qu'au format 22. 24 (sous-lot V2.8, recherche de chemin) : l'en-tête d'un combat positionné porte
+        /// <c>navigation</c> (<c>queriesPerTick</c>, <c>maxExpanded</c>) ; un ennemi à comportement dont la ligne droite est barrée par le décor
+        /// contourne (lignes <c>moved</c> différentes), ou attend s'il n'a aucun chemin. Ligne droite libre partout : mêmes lignes
+        /// d'événements qu'au format 23. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 23;
+        public const int LogFormatVersion = 24;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";

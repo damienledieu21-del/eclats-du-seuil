@@ -200,6 +200,9 @@ namespace EdS.Simulation.Engine
             if (Planar.LengthSquared(vx, vz) <= checked(tolerance * tolerance) || !Planar.TryNormalize(vx, vz, out long ux, out long uz))
                 return new WanderPlan(Intention.Hold, rest);
             long distance = IntMath.Sqrt(Planar.LengthSquared(vx, vz));
+            // Sous-lot V2.8 : un obstacle entre la bête et son point : elle le contourne ; aucun chemin : elle attend (étape suivante).
+            if (!SteerToward(i, x, z, gx, gz, out long sx, out long sz)) return new WanderPlan(Intention.Hold, rest);
+            if ((sx != gx || sz != gz) && !Planar.TryNormalize(checked(sx - x[i]), checked(sz - z[i]), out ux, out uz)) return new WanderPlan(Intention.Hold, rest);
             return new WanderPlan(new Intention(true, ux, uz, -1, distance, pace), moving);
         }
 
@@ -301,6 +304,7 @@ namespace EdS.Simulation.Engine
                     z[k] = _fightersById[k].Body?.Z ?? 0;
                 }
                 var states = new string?[n];
+                ResetPathBudget();   // sous-lot V2.8 : passe d'affichage, son propre budget
                 for (int k = 0; k < n; k++)
                     if (Wanders(_fightersById[k])) states[k] = PlanWander(k, tick, x, z).State;
                 _wanderStates = states;
