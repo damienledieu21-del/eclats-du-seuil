@@ -103,7 +103,10 @@ public class V16QuetesTests
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
         Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone",
                 "$.data.npcs[27].zone", "$.data.scenes[0].zone" },   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
-            alone.Report.Errors.Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
+            alone.Report.Errors.Where(e => !e.Path.Contains(".schedule[", StringComparison.Ordinal)).Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
+        // Sous-lot V2.3.1 : les créneaux qui mènent dans un intérieur (la salle de l'auberge) visent aussi une zone inconnue.
+        Assert.All(alone.Report.Errors.Where(e => e.Path.Contains(".schedule[", StringComparison.Ordinal)),
+            e => Assert.True(e.Path.EndsWith(".zone", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownReference, e.ToString()));
         Assert.All(alone.Report.Errors, e => Assert.Equal(ValidationCode.UnknownReference, e.Code));
     }
 

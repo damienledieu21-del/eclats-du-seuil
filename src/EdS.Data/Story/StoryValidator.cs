@@ -122,8 +122,14 @@ namespace EdS.Data.Story
         /// <c>position</c>), condition <c>activity</c> (<c>id</c> d'un PNJ qui a un emploi du temps, <c>step</c> une de ses activités) et
         /// répliques facultatives d'un nœud selon le moment (<c>lines</c> : <c>conditions</c>, au moins une, et <c>text</c>). Les versions 4 à 8
         /// restent lues telles quelles (elles ne les connaissent pas).
+        /// Version 10 (sous-lot V2.3.1, PNJ qui changent de lieu) : zone facultative d'un créneau (<c>schedule[i].zone</c>) : le PNJ se tient
+        /// ailleurs que chez lui pendant ce créneau (un intérieur relié à la zone de l'histoire par une porte dans chaque sens, ou la zone de
+        /// l'histoire pour un PNJ d'un intérieur) ; sa place et son abri sont dans cette zone. Les versions 4 à 9 restent lues telles quelles.
         /// </summary>
-        public const int CurrentSchemaVersion = 9;
+        public const int CurrentSchemaVersion = 10;
+
+        /// <summary>Sous-lot V2.3.1 : version 9, encore lue (sans zone de créneau).</summary>
+        public const int Schema9 = 9;
 
         /// <summary>Sous-lot V2.3 : version 8, encore lue (sans emploi du temps, condition <c>activity</c> ni répliques <c>lines</c>).</summary>
         public const int Schema8 = 8;
@@ -247,7 +253,7 @@ namespace EdS.Data.Story
             // Sous-lot V1.9.3b : la version 4 est encore lue (sous-ensemble de la version 5).
             // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6) ; sous-lot V1.9.7 : la version 6 aussi (sans skipQuest).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
-                || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8
+                || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8 || document.SchemaVersion == Schema9
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -359,12 +365,17 @@ namespace EdS.Data.Story
                         else if (!Inside(Point(n.Position), home)) { _r.Add(path + ".position", ValidationCode.OutOfRange, "PNJ hors de l'aire praticable de sa zone."); ok = false; }
                         if (n.Dialogue is null) { TextsValidator.Missing(_r, path + ".dialogue", "dialogue du PNJ"); ok = false; }
                         else if (!_dialogues.Contains(n.Dialogue)) { _r.Add(path + ".dialogue", ValidationCode.UnknownReference, $"dialogue inconnu « {n.Dialogue} »."); ok = false; }
-                        List<ScheduleSlot>? schedule = CheckSchedule(n.Schedule, path + ".schedule", homeKnown ? home : null);
+                        List<ScheduleSlot>? schedule = CheckSchedule(n.Schedule, path + ".schedule", homeKnown ? home : null, n.Zone);
                         if (schedule is null) ok = false;
                         // Relecture de la PR #103 : les activités d'un emploi du temps valide comptent même si le PNJ est refusé pour autre
                         // chose (une zone inconnue) : pas d'erreurs en cascade sur les répliques qui en parlent.
                         if (schedule != null && schedule.Count > 0 && n.Id != null && !_activities.ContainsKey(n.Id))
                             _activities[n.Id] = new HashSet<string>(schedule.SelectMany(x => x.Rain is null ? new[] { x.Activity } : new[] { x.Activity, x.Rain.Activity }), StringComparer.Ordinal);
+                        // Sous-lot V2.3.1 : un emploi du temps refusé pour sa zone (inconnue, porte manquante) garde ses activités bien formées :
+                        // pas d'erreurs en cascade sur les répliques qui en parlent.
+                        else if (schedule is null && n.Schedule != null && n.Id != null && !_activities.ContainsKey(n.Id) && _schema >= Schema9)
+                            _activities[n.Id] = new HashSet<string>(n.Schedule.Where(x => x != null).SelectMany(x => new[] { x!.Activity, x.Rain?.Activity })
+                                .Where(a => a != null && a.Length <= MaxActivityLength && LocalId.IsMatch(a)).Select(a => a!), StringComparer.Ordinal);
                         if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule));
                     }
 
@@ -375,7 +386,8 @@ namespace EdS.Data.Story
                         NightSpot spot = z.NightSpots[i];
                         Npc? who = npcs.FirstOrDefault(x => x.Id == spot.Npc);
                         string where = $"{z.Id}:$.data.nightSpots[{i}].npc";
-                        if (who is null) _r.Add(where, ValidationCode.UnknownReference, $"PNJ inconnu « {spot.Npc} ».");
+                        // Sous-lot V2.3.1 : un PNJ déclaré mais refusé pour autre chose (une zone de créneau inconnue) n'est pas « inconnu » ici.
+                        if (who is null) { if (!_npcs.Contains(spot.Npc)) _r.Add(where, ValidationCode.UnknownReference, $"PNJ inconnu « {spot.Npc} »."); }
                         else if ((who.Zone ?? _zone.Id) != z.Id) _r.Add(where, ValidationCode.InvalidValue, $"« {spot.Npc} » ne vit pas dans la zone « {z.Id} ».");
                     }
 
@@ -416,13 +428,15 @@ namespace EdS.Data.Story
             /// (on doit pouvoir lui parler) ; abri sous la pluie facultatif, aux mêmes règles. Null : erreur au rapport.
             /// </summary>
             /// <param name="home">Zone du PNJ ; null si elle est inconnue (déjà refusée) : les places ne sont alors pas jugées.</param>
-            private List<ScheduleSlot>? CheckSchedule(List<ScheduleSlotData?>? data, string path, ZoneDefinition? home)
+            /// <param name="homeZone">Sous-lot V2.3.1 : zone du PNJ telle que le fichier la donne (null : la zone de l'histoire) ; un créneau
+            /// sans zone y reste.</param>
+            private List<ScheduleSlot>? CheckSchedule(List<ScheduleSlotData?>? data, string path, ZoneDefinition? home, string? homeZone)
             {
                 var slots = new List<ScheduleSlot>();
                 if (data is null) return slots;
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema9)
                 {
-                    _r.Add(path, ValidationCode.InvalidValue, $"emploi du temps inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path, ValidationCode.InvalidValue, $"emploi du temps inconnu en version {_schema} du format : version {Schema9} demandée.");
                     return null;
                 }
                 if (data.Count < 1 || data.Count > MaxScheduleSlots) { _r.Add(path, ValidationCode.OutOfRange, $"de 1 à {MaxScheduleSlots} créneaux."); return null; }
@@ -439,18 +453,59 @@ namespace EdS.Data.Story
                     else if (m <= previous) { _r.Add(p + ".at", ValidationCode.InvalidValue, $"heure « {x.At} » : après celle du créneau précédent attendue (heures croissantes)."); slotOk = false; }
                     else previous = minute = m;
                     slotOk &= Activity(x.Activity, p + ".activity");
-                    slotOk &= Spot(x.Position, p + ".position", home);
+                    // Sous-lot V2.3.1 (schéma 10) : le créneau peut être dans une autre zone que celle du PNJ.
+                    string? zone = homeZone;
+                    ZoneDefinition? where = home;
+                    if (x.Zone != null && !SlotZone(x.Zone, p + ".zone", home is null ? null : homeZone ?? _zone.Id, out zone, out where)) slotOk = false;
+                    slotOk &= Spot(x.Position, p + ".position", where);
                     SchedulePlace? rain = null;
                     if (x.Rain != null)
                     {
-                        bool rainOk = Activity(x.Rain.Activity, p + ".rain.activity") & Spot(x.Rain.Position, p + ".rain.position", home);
+                        bool rainOk = Activity(x.Rain.Activity, p + ".rain.activity") & Spot(x.Rain.Position, p + ".rain.position", where);
                         if (rainOk) rain = new SchedulePlace(x.Rain.Activity!, Point(x.Rain.Position!));
                         else slotOk = false;
                     }
-                    if (slotOk) slots.Add(new ScheduleSlot(minute, x.Activity!, Point(x.Position!), rain));
+                    if (slotOk) slots.Add(new ScheduleSlot(minute, x.Activity!, Point(x.Position!), rain, zone));
                     else ok = false;
                 }
                 return ok ? slots : null;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.3.1 (schéma 10) : zone d'un créneau (<c>schedule[i].zone</c>) : la zone de l'histoire, ou un intérieur relié à elle
+            /// par une porte dans chaque sens (le PNJ sort par l'une et entre par l'autre) ; pas celle du PNJ (ne pas la donner), pas la pièce
+            /// d'une scène. La zone du PNJ, si c'est un intérieur, doit aussi avoir ses deux portes. <paramref name="zone"/> : la zone retenue
+            /// (null : celle de l'histoire) ; <paramref name="where"/> : sa définition (null si elle est refusée : places non jugées).
+            /// </summary>
+            /// <param name="home">Identifiant de la zone du PNJ ; null si elle est inconnue (déjà refusée).</param>
+            private bool SlotZone(string id, string path, string? home, out string? zone, out ZoneDefinition? where)
+            {
+                zone = null;
+                where = null;
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add(path, ValidationCode.InvalidValue, $"zone d'un créneau inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return false;
+                }
+                if (id == home) { _r.Add(path, ValidationCode.InvalidValue, $"zone du PNJ « {id} » : ne pas la donner (un créneau sans zone y reste)."); return false; }
+                ZoneDefinition? found = id == _zone.Id ? _zone : _interiors.FirstOrDefault(z => z.Id == id);
+                if (found is null) { _r.Add(path, ValidationCode.UnknownReference, $"zone inconnue « {id} » (la zone de l'histoire ou un intérieur relié par des portes attendu)."); return false; }
+                bool ok = true;
+                foreach (string side in new[] { id, home }.Where(z => z != null && z != _zone.Id).Select(z => z!))
+                {
+                    if (_d.Scenes?.Any(sc => sc?.Zone == side) == true)
+                    { _r.Add(path, ValidationCode.InvalidValue, $"« {side} » est la pièce d'une scène : aucun PNJ n'y va ni n'en sort."); ok = false; continue; }
+                    ZoneDefinition? inside = _interiors.FirstOrDefault(z => z.Id == side);
+                    if (inside is null) continue;   // zone du PNJ inconnue : déjà refusée
+                    if (!_zone.Doors.Any(d => d.To == side))
+                    { _r.Add(path, ValidationCode.InvalidValue, $"porte manquante : aucune porte de « {_zone.Id} » vers « {side} » (le PNJ ne peut pas passer)."); ok = false; }
+                    else if (!inside.Doors.Any(d => d.To == _zone.Id))
+                    { _r.Add(path, ValidationCode.InvalidValue, $"porte manquante : aucune porte de « {side} » vers « {_zone.Id} » (le PNJ ne peut pas passer)."); ok = false; }
+                }
+                if (!ok) return false;
+                zone = id == _zone.Id ? null : id;
+                where = found;
+                return true;
             }
 
             /// <summary>Sous-lot V2.3 : minute du jour d'une heure « HH:MM » (00:00 à 23:59), ou null si elle est mal formée.</summary>
@@ -658,9 +713,9 @@ namespace EdS.Data.Story
             {
                 var lines = new List<DialogueLine>();
                 if (data is null) return lines;
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema9)
                 {
-                    _r.Add(path, ValidationCode.InvalidValue, $"répliques « lines » inconnues en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path, ValidationCode.InvalidValue, $"répliques « lines » inconnues en version {_schema} du format : version {Schema9} demandée.");
                     return null;
                 }
                 if (data.Count > MaxLines) { _r.Add(path, ValidationCode.LimitExceeded, $"au plus {MaxLines} répliques."); return null; }
@@ -1028,9 +1083,9 @@ namespace EdS.Data.Story
             /// </summary>
             private bool ActivityRef(TermData t, string p)
             {
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema9)
                 {
-                    _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « activity » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(p + ".if", ValidationCode.InvalidValue, $"condition « activity » inconnue en version {_schema} du format : version {Schema9} demandée.");
                     return false;
                 }
                 if (!Ref(t, p, _npcs, "PNJ")) return false;

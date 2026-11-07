@@ -276,6 +276,21 @@ namespace EdS.Data.Story
             return current;
         }
 
+        /// <summary>
+        /// Sous-lot V2.3.1 (schéma 10) : zone où se tient le PNJ à la minute <paramref name="minute"/> du jour : celle de son créneau en cours
+        /// (même convention que <see cref="Zone"/> : null pour la zone de l'histoire), ou sa zone sans emploi du temps.
+        /// </summary>
+        public string? ZoneAt(int minute) => SlotAt(minute) is ScheduleSlot slot ? slot.Zone : Zone;
+
+        /// <summary>
+        /// Sous-lot V2.3.1 : zones où le PNJ peut se tenir dans la journée (la sienne d'abord, puis celles de ses créneaux, sans doublon ; null :
+        /// la zone de l'histoire).
+        /// </summary>
+        public IReadOnlyList<string?> Zones => new[] { Zone }.Concat(Schedule.Select(s => s.Zone)).Distinct().ToList();
+
+        /// <summary>Sous-lot V2.3.1 : le PNJ change de zone dans sa journée (un créneau ailleurs que chez lui).</summary>
+        public bool Roams => Schedule.Any(s => s.Zone != Zone);
+
         /// <summary>Sous-lot V2.3 : activités que l'emploi du temps peut donner (créneaux et abris), sans doublon, dans l'ordre du fichier.</summary>
         public IEnumerable<string> Activities => Schedule.SelectMany(s => s.Rain is null ? new[] { s.Activity } : new[] { s.Activity, s.Rain.Activity }).Distinct(StringComparer.Ordinal);
     }
@@ -292,12 +307,19 @@ namespace EdS.Data.Story
         public GroundVector Position { get; }
         public SchedulePlace? Rain { get; }
 
-        internal ScheduleSlot(int minute, string activity, GroundVector position, SchedulePlace? rain)
+        /// <summary>
+        /// Sous-lot V2.3.1 (schéma 10) : zone de la place (et de l'abri) du créneau, même convention que <see cref="Npc.Zone"/> (null : la
+        /// zone de l'histoire) ; celle du PNJ quand le fichier ne la donne pas.
+        /// </summary>
+        public string? Zone { get; }
+
+        internal ScheduleSlot(int minute, string activity, GroundVector position, SchedulePlace? rain, string? zone = null)
         {
             Minute = minute;
             Activity = activity;
             Position = position;
             Rain = rain;
+            Zone = zone;
         }
     }
 
@@ -568,6 +590,12 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.6 : PNJ qui vivent dans la zone <paramref name="zone"/> (null : la zone de l'histoire), dans l'ordre du fichier.</summary>
         public IEnumerable<Npc> NpcsIn(string? zone) => Npcs.Where(n => n.Zone == zone);
+
+        /// <summary>
+        /// Sous-lot V2.3.1 : PNJ qui peuvent se tenir dans la zone <paramref name="zone"/> à un moment de la journée (ceux qui y vivent et ceux
+        /// dont un créneau y mène ; null : la zone de l'histoire), dans l'ordre de l'histoire.
+        /// </summary>
+        public IEnumerable<Npc> VisitorsOf(string? zone) => Npcs.Where(n => n.Zones.Contains(zone));
 
         /// <summary>Sous-lot V1.9.6 : scène jouée dans la zone <paramref name="zone"/>, ou null.</summary>
         public Scene? SceneIn(string? zone) => Scenes.FirstOrDefault(s => s.Zone == zone);

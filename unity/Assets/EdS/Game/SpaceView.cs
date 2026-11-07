@@ -475,6 +475,9 @@ namespace EdS.Game
             public float Height = 1f;
             /// <summary>Sous-lot V2.3 : rentré chez lui pour sa course (caché).</summary>
             public bool Away;
+
+            /// <summary>Sous-lot V2.3.1 : PNJ d'une pièce sorti par la porte (il est dans une autre zone) : caché.</summary>
+            public bool Gone;
             /// <summary>Sous-lot V2.3 : l'activité jouée en ce moment (changée seulement quand elle change).</summary>
             public VillagerActivity Playing;
             /// <summary>Relecture de la PR #103 : sa course, calculée au placement ; la place visée, relue quand la minute change.</summary>
@@ -514,6 +517,19 @@ namespace EdS.Game
                 v.Playing = play;
                 v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
             }
+            return true;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : montre ou cache le corps visible du PNJ <paramref name="id"/> d'une pièce (caché quand
+        /// il est sorti par la porte, montré quand il rentre). Faux si la pièce n'a pas de corps pour lui.
+        /// </summary>
+        public bool ShowSpeaker(string id, bool shown)
+        {
+            if (id == null || !_speakers.TryGetValue(id, out Villager v) || v.Body == null) return false;
+            v.Gone = !shown;
+            bool visible = Shown(v);
+            if (v.Body.gameObject.activeSelf != visible) v.Body.gameObject.SetActive(visible);
             return true;
         }
 

@@ -242,10 +242,10 @@ namespace EdS.Game
 
         /// <summary>
         /// Un villageois du décor est dehors : pas la nuit (sauf les veilleurs), pas sous une vraie pluie (sauf un sur trois), et, sous-lot
-        /// V2.3, pas rentré manger chez lui.
+        /// V2.3, pas rentré manger chez lui ; sous-lot V2.3.1, pas sorti par la porte (un PNJ d'une pièce parti dans une autre zone).
         /// </summary>
         private bool Shown(Villager v) =>
-            (!_worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)) && !v.Away;
+            (!_worldNight || NightLamps.AwakeAtNight(v.Data)) && (!_sheltering || WeatherCycle.StaysOutInRain(v.Data)) && !v.Away && !v.Gone;
 
         private static void SetGlow(Material material, Color color, Color emission)
         {
