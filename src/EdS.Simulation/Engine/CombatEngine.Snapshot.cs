@@ -1613,7 +1613,9 @@ namespace EdS.Simulation.Engine
         {
             if (f.Struck || f.Result.DamageTaken > 0 || f.Taunted) return true;
             // Sous-lot 11.9 : la meute n'entraîne qu'un ennemi de meute (pack).
-            if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null && a.EngagedTick is long at && at <= tick)) return true;
+            // Revue Codex de la PR #111 (tour 2) : un allié qui erre et s'est calmé a pu être engagé à ce tick (son tick n'est plus gardé).
+            if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null
+                && (a.EngagedTick is long at && at <= tick || a.Calms > 0))) return true;
             if (f.Body is null || FreeMover(f)) return true;
             long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
             foreach (Fighter g in _fightersById)
@@ -1649,10 +1651,10 @@ namespace EdS.Simulation.Engine
         private bool AttackLandedPossible(Fighter g, System.Func<AssailantAttack, bool> which)
         {
             if (g.Assailant is not { } a) return false;
-            if (g.Behavior != null && g.EngagedTick is null) return false;
+            if (EarliestEngagement(g) is not long engaged) return false;
             // Les tours d'une même attaque (rang j modulo le nombre d'attaques) tombent de plus en plus tard : le premier de ce rang qui suit
             // l'engagement est le plus tôt possible.
-            long engaged = g.Behavior != null ? g.EngagedTick!.Value : long.MinValue, start = TurnTick(g, 0), interval = a.IntervalMs / _tickMs;
+            long start = TurnTick(g, 0), interval = a.IntervalMs / _tickMs;
             int n = a.Attacks.Count;
             for (int j = 0; j < n; j++)
             {
@@ -1665,12 +1667,25 @@ namespace EdS.Simulation.Engine
             return false;
         }
 
+        /// <summary>
+        /// Plus petit tick à partir duquel <paramref name="g"/> a pu attaquer : <see cref="long.MinValue"/> sans comportement (il attaque
+        /// d'emblée) ; pour un ennemi à comportement, son tick d'engagement, ou null s'il ne s'est jamais engagé. Revue Codex de la PR #111
+        /// (tour 2) : une bête qui erre et s'est déjà calmée a pu être engagée, et attaquer (charger, repousser, annoncer), pendant un
+        /// engagement antérieur dont le tick n'est plus gardé : le plus tôt possible est alors son arrivée (un majorant, donc sûr ; la reprise
+        /// vérifiée par rejeu reste exacte).
+        /// </summary>
+        private static long? EarliestEngagement(Fighter g)
+        {
+            if (g.Behavior is null) return long.MinValue;
+            if (g.Calms > 0) return g.ArrivedTick ?? 0;
+            return g.EngagedTick;
+        }
+
         private bool AnnouncedToEndPossible(Fighter f)
         {
             if (f.Assailant is not { } a || f.NextTurn <= 0) return false;
             // 17e tour de la PR #33 : un ennemi à comportement n'annonce rien avant son engagement (attackSkipped).
-            if (f.Behavior != null && f.EngagedTick is null) return false;
-            long engagedAt = f.Behavior != null ? f.EngagedTick!.Value : long.MinValue;
+            if (EarliestEngagement(f) is not long engagedAt) return false;
             long start = TurnTick(f, 0), interval = a.IntervalMs / _tickMs, previous = CurrentTick - 1;
             // Dernier tour joué : avant NextTurn, et à un tick au plus le précédent.
             long last = checked(f.NextTurn - 1);

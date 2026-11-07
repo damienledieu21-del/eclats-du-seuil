@@ -437,6 +437,85 @@ public class V241PromenadeMoteurTests
     }
 
     [Fact]
+    public void Charge_puis_calme_l_instantane_se_relit_a_chaque_tick_et_se_reprend_a_l_identique()
+    {
+        // Revue Codex de la PR #111 (tour 2) : un sanglier qui erre charge un loup qui erre (seul, sans groupe) ; ils se blessent jusqu'à
+        // 1 PV (une bête n'en tue pas une autre), puis se calment. « Chargé » reste vrai après le calme : à chaque tick, l'instantané authentique
+        // se relit (tous les contrôles de cohérence), et, après le calme, la reprise vérifiée par rejeu continue à l'identique.
+        CombatSetup setup = ReadMutated(r =>
+        {
+            JsonArray c = r["data"]!["combatants"]!.AsArray();
+            c[0]!["position"] = new JsonArray(-35, 25);   // le Bastion loin de tout
+            r["data"]!["commands"] = new JsonArray();
+            c[8]!["health"] = 40;
+            JsonObject wolf = c[5]!.DeepClone().AsObject();
+            wolf["id"] = "loup_seul";
+            wolf["position"] = new JsonArray(20, -9);
+            wolf["health"] = 30;
+            wolf["behavior"]!["wander"]!.AsObject().Remove("group");
+            c.Add(wolf);
+            r["data"]!["durationMs"] = 60000;
+        }, scenario: Promenade).Setup!;
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log);
+        bool afterCalm = false;
+        CombatEngine? copy = null;
+        MemoryCombatLog? copyLog = null;
+        int from = 0;
+        while (!engine.IsFinished)
+        {
+            CombatSnapshot snapshot = engine.Snapshot();
+            CombatEngine.Restore(engine.CompletedSetup(), snapshot, new MemoryCombatLog());   // contrôles de cohérence à chaque tick
+            string boar = snapshot.Text.Split('\n').Single(l => l.StartsWith("{\"fighter\":\"sanglier\",\"presence\"", StringComparison.Ordinal));
+            if (!afterCalm && boar.Contains("\"charged\":true", StringComparison.Ordinal) && boar.Contains("\"calms\":1", StringComparison.Ordinal))
+            {
+                afterCalm = true;
+                copyLog = new MemoryCombatLog();
+                copy = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, copyLog);
+                from = log.Lines.Count;
+            }
+            engine.Step();
+            if (copy != null)
+            {
+                copy.Step();
+                if (!engine.IsFinished) Assert.Equal(engine.Snapshot().Text, copy.Snapshot().Text);
+            }
+        }
+        Assert.True(afterCalm, "le sanglier n'a pas chargé puis ne s'est pas calmé");
+        Assert.Equal(log.Lines.Skip(from), copyLog!.Lines);
+        Assert.Contains(log.Lines, l => l.Contains("\"event\":\"charged\",\"actor\":\"sanglier\"", StringComparison.Ordinal));
+        Assert.DoesNotContain(log.Lines, l => l.Contains("\"event\":\"died\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Harde_calmee_puis_reengagee_l_instantane_se_relit_a_chaque_tick()
+    {
+        // Revue Codex de la PR #111 (tour 2) : la harde effrayée se calme, puis le Bastion revient : un cerf la voit, les autres s'engagent
+        // par la meute (un allié dont le tick d'engagement d'avant le calme n'est plus gardé). À chaque tick, l'instantané se relit.
+        CombatSetup setup = ReadMutated(r =>
+        {
+            r["data"]!["combatants"]![0]!["position"] = new JsonArray(-20, 4);
+            r["data"]!["durationMs"] = 60000;
+            r["data"]!["commands"] = new JsonArray(
+                new JsonObject { ["atMs"] = 0, ["actor"] = "bastion", ["action"] = "move", ["direction"] = new JsonArray(0, -1) },
+                new JsonObject { ["atMs"] = 4000, ["actor"] = "bastion", ["action"] = "stop" },
+                new JsonObject { ["atMs"] = 35000, ["actor"] = "bastion", ["action"] = "move", ["direction"] = new JsonArray(0, 1) },
+                new JsonObject { ["atMs"] = 39000, ["actor"] = "bastion", ["action"] = "stop" });
+        }, scenario: Promenade).Setup!;
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log);
+        while (!engine.IsFinished)
+        {
+            CombatEngine.Restore(engine.CompletedSetup(), engine.Snapshot(), new MemoryCombatLog());
+            engine.Step();
+        }
+        List<JsonElement> events = Events(log);
+        Assert.Contains(events, e => e.GetProperty("event").GetString() == "calmed");
+        long firstCalm = events.First(e => e.GetProperty("event").GetString() == "calmed").GetProperty("tick").GetInt64();
+        Assert.Contains(events, e => e.GetProperty("event").GetString() == "engaged" && e.GetProperty("tick").GetInt64() > firstCalm);
+    }
+
+    [Fact]
     public void Instantane_au_format_5_refuse()
     {
         var engine = new CombatEngine(Load(), new MemoryCombatLog());

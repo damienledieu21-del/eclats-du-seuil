@@ -241,6 +241,11 @@ namespace EdS.Simulation.Engine
                 f.Noticed = noticed;
                 return false;
             }
+            // Revue Codex de la PR #111 (tour 2) : ce qui tient à l'engagement est remis à zéro (engagé, son tick, remarqué, coup reçu,
+            // provocation reçue, coup d'un personnage depuis le calme ; une annonce en cours ou jusqu'à la fin empêche le calme, voir Quiet).
+            // « Chargée » (Charged) reste : c'est un fait passé qui libère sa place des bornes de ses pas dans l'instantané ; les contrôles
+            // de l'instantané prennent alors son arrivée comme plus tôt engagement possible (EarliestEngagement). Les assaillants n'ont ni
+            // recharge ni charge de rempart à remettre.
             f.Engaged = false;
             f.EngagedTick = null;
             f.Noticed = false;
