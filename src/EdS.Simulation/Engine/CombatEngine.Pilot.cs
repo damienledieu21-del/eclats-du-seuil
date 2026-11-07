@@ -100,6 +100,13 @@ namespace EdS.Simulation.Engine
         /// <summary>Sous-lot V2.4 : bête qui fuit (cerf, lièvre : comportement <c>flee</c>).</summary>
         public bool Flees { get; internal set; }
 
+        /// <summary>
+        /// Sous-lot V2.4.1 : ce que fait une bête qui erre (pas engagée) : <c>walk</c> (marche), <c>return</c> (rentre à sa place), <c>hop</c>
+        /// (bond), <c>crouch</c> (entre deux bonds), <c>graze</c> (broute), <c>root</c> (fouille), <c>watch</c> (guette) ; null si elle n'erre
+        /// pas (engagée, ou sans errance). Pour l'affichage (animations de marche et de broutage).
+        /// </summary>
+        public string? Wander { get; internal set; }
+
         /// <summary>Ses attaques sont bloquées à ce tick (contrôle actif).</summary>
         public bool AttacksBlocked { get; internal set; }
 
@@ -259,6 +266,7 @@ namespace EdS.Simulation.Engine
                 view.CurrentTarget = ViewTarget(f, tick);
                 view.Engaged = f.Behavior is null || f.Engaged;
                 view.Flees = f.Behavior?.Flee == true;
+                view.Wander = WanderState(f, tick);   // sous-lot V2.4.1
                 view.AttacksBlocked = Blocked(StatusBlocks.AssailantAttacks);
             }
             return view;

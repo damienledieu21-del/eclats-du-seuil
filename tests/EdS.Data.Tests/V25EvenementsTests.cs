@@ -154,7 +154,7 @@ public class V25EvenementsTests
         Assert.Equal((13, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
         Assert.Equal((10, "0.13.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
         // Ni le moteur, ni les règles, ni le journal ne changent.
-        Assert.Equal(("0.28.0", 22, 16), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.29.0", 23, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
 
     [Fact]
@@ -834,11 +834,11 @@ public class V25EvenementsTests
         EventOccurrence o = First(zone, Raid);
         WorldSession w = Session(zone, WorldEventSchedule.TickAt(Clock, o.StartAt) - 20);
         CombatEngine e = w.Zone.Engine;
-        // Un cerf (il ne bouge que si un ennemi l'approche) tient la place.
+        // Un cerf (il ne bouge que si un ennemi l'approche ; sous-lot V2.4.1 : sans errance) tient la place.
         AssailantSetup model = zone.PopulationOf("cerf1")!.Template;
         e.Join(new AssailantSetup("bouchon", model.Team, model.Armor, model.MagicResistance, model.Target, model.FirstAttackMs, model.IntervalMs, model.Attacks,
             model.Initiative, model.StatusResistance, model.Triggers, model.Health, new CombatantPlacement(new GroundVector(Fixed.Parse("64.5"), Fixed.FromInt(-69)),
-            model.Placement!.Radius), e.CurrentTick * 50, model.Behavior));
+            model.Placement!.Radius), e.CurrentTick * 50, model.Behavior!.WithoutWander()));
         Run(w, 60);
         Assert.Equal(1, w.EventsRuntime!.PendingPlaces);
         int max = w.Zone.Setup.Combat.MaxCombatants;
@@ -951,7 +951,7 @@ public class V25EvenementsTests
 [Trait("Category", "Regression")]
 public class V25EvenementScenarioTests
 {
-    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.28.0-regles-0.16.0", "evenement_hameau.jsonl");
+    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.29.0-regles-0.17.0", "evenement_hameau.jsonl");
 
     [Fact]
     public void Scenario_d_evenement_fige_identique_et_rejoue()

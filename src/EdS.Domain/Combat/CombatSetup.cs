@@ -385,7 +385,14 @@ namespace EdS.Domain.Combat
         /// </summary>
         public bool Flee { get; }
 
-        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false, bool pack = true, bool flee = false)
+        /// <summary>
+        /// Sous-lot V2.4.1 (bêtes qui se promènent, scénario en schéma 17) : errance déterministe hors combat ; null : la bête attend à sa
+        /// place, comme avant.
+        /// </summary>
+        public WanderBehavior? Wander { get; }
+
+        public AssailantBehavior(Fixed maxRange, Fixed? minRange = null, Fixed? aggroRange = null, bool encircle = false, bool pack = true, bool flee = false,
+            WanderBehavior? wander = null)
         {
             MaxRange = maxRange;
             MinRange = minRange ?? Fixed.Zero;
@@ -393,7 +400,109 @@ namespace EdS.Domain.Combat
             Encircle = encircle;
             Pack = pack;
             Flee = flee;
+            Wander = wander;
         }
+
+        /// <summary>
+        /// Sous-lot V2.4.1 : le même comportement, sans errance (une créature d'événement copiée d'une population attend à sa place, comme en
+        /// V2.5) ; lui-même s'il n'erre pas.
+        /// </summary>
+        public AssailantBehavior WithoutWander() => Wander is null ? this : new AssailantBehavior(MaxRange, MinRange, AggroRange, Encircle, Pack, Flee);
+    }
+
+    /// <summary>Sous-lot V2.4.1 : manière d'errer d'une bête hors combat.</summary>
+    public enum WanderStyle
+    {
+        /// <summary>Brouter (cerf) : longues pauses tête basse, puis quelques pas lents vers un autre coin d'herbe ; la harde se tient groupée.</summary>
+        Graze = 0,
+
+        /// <summary>Sautiller (lièvre) : de petits bonds par à-coups, arrêts aux aguets entre deux.</summary>
+        Hop = 1,
+
+        /// <summary>Patrouiller (loup) : un circuit de points autour de sa place, courtes haltes ; la meute suit son chef en file.</summary>
+        Patrol = 2,
+
+        /// <summary>Fouiller (sanglier) : petits déplacements, longues pauses groin au sol.</summary>
+        Root = 3,
+    }
+
+    /// <summary>
+    /// Sous-lot V2.4.1 (bêtes qui se promènent ; réponse de Damien du 6 novembre 2026 à la question 8 de la PR #104 : « un petit lot du
+    /// moteur, errance déterministe ») : errance d'une bête pas engagée, sans état propre ni tirage du générateur du combat. Le temps est pris
+    /// par étapes de <see cref="LegMs"/> (décalées d'une bête à l'autre) : chaque étape commence par une pause tirée dans
+    /// [<see cref="PauseMinMs"/>, <see cref="PauseMaxMs"/>], puis la bête marche à <see cref="Pace"/> de sa vitesse vers un point de son aire
+    /// (disque de <see cref="Radius"/> autour de sa place de départ, ou point du circuit d'une patrouille) et s'y arrête. Les tirages viennent
+    /// d'un <c>Pcg32</c> initialisé par la graine du combat, l'identifiant de la bête et le numéro de l'étape. Hors de son aire (après une
+    /// fuite, un combat), elle revient d'abord à sa place. Un <see cref="Group"/> forme une harde ou une meute : son chef (<see cref="Lead"/>,
+    /// sinon le premier membre au calme par identifiant) erre, les autres le suivent en formation à <see cref="Spacing"/> mètres.
+    /// </summary>
+    public sealed class WanderBehavior
+    {
+        /// <summary>Bornes techniques (les règles bornent le rayon : <c>combat.wander.maxRadius</c>).</summary>
+        public const long MinLegMs = 1_000, MaxLegMs = 600_000;
+        public const int MinPoints = 2, MaxPoints = 8;
+        public static readonly Fixed MaxSpacing = Fixed.FromInt(10);
+
+        public WanderStyle Style { get; }
+
+        /// <summary>Rayon de son aire autour de sa place de départ (m), dans ]0, <c>combat.wander.maxRadius</c>].</summary>
+        public Fixed Radius { get; }
+
+        /// <summary>Allure, fraction de sa vitesse, dans ]0, 1].</summary>
+        public Fixed Pace { get; }
+
+        /// <summary>Durée d'une étape (pause, puis marche), multiple du tick, dans [1 s, 10 min].</summary>
+        public long LegMs { get; }
+
+        /// <summary>Pause au début de chaque étape, tirée dans [min, max] (multiples du tick, max au plus la durée d'une étape).</summary>
+        public long PauseMinMs { get; }
+        public long PauseMaxMs { get; }
+
+        /// <summary>Harde ou meute (même équipe, même nom) ; null : seule.</summary>
+        public string? Group { get; }
+
+        /// <summary>Chef de son groupe : le premier chef désigné qui erre (ordre des identifiants) ; sans lui, le premier membre qui erre.</summary>
+        public bool Lead { get; }
+
+        /// <summary>Écart de la formation (m), dans ]0, 10].</summary>
+        public Fixed Spacing { get; }
+
+        /// <summary>Nombre de points du circuit d'une patrouille, dans [2, 8] (ignoré pour les autres manières).</summary>
+        public int Points { get; }
+
+        public WanderBehavior(WanderStyle style, Fixed radius, Fixed pace, long legMs, long pauseMinMs, long pauseMaxMs, string? group = null,
+            bool lead = false, Fixed? spacing = null, int points = 4)
+        {
+            Style = style;
+            Radius = radius;
+            Pace = pace;
+            LegMs = legMs;
+            PauseMinMs = pauseMinMs;
+            PauseMaxMs = pauseMaxMs;
+            Group = group;
+            Lead = lead;
+            Spacing = spacing ?? Fixed.FromInt(2);
+            Points = points;
+        }
+
+        /// <summary>Identifiant de la manière, comme dans le fichier de scénario.</summary>
+        public static string StyleId(WanderStyle style) => style switch
+        {
+            WanderStyle.Graze => "graze",
+            WanderStyle.Hop => "hop",
+            WanderStyle.Patrol => "patrol",
+            _ => "root",
+        };
+
+        /// <summary>Manière d'après son identifiant ; null s'il est inconnu.</summary>
+        public static WanderStyle? ParseStyle(string? id) => id switch
+        {
+            "graze" => WanderStyle.Graze,
+            "hop" => WanderStyle.Hop,
+            "patrol" => WanderStyle.Patrol,
+            "root" => WanderStyle.Root,
+            _ => null,
+        };
     }
 
     /// <summary>
@@ -924,6 +1033,7 @@ namespace EdS.Domain.Combat
                         break;
                 }
             }
+            ValidateWanderGroups(errors);   // sous-lot V2.4.1
             for (int i = 0; i < Combatants.Count; i++)
                 if (Combatants[i] is AssailantSetup { Target: { } targetId } assailant)
                 {
@@ -1429,6 +1539,52 @@ namespace EdS.Domain.Combat
             // Sous-lot V2.4 : une bête qui fuit garde sa distance de fuite (minRange > 0) et ne cerne personne.
             if (b.Flee && b.MinRange == Fixed.Zero) errors.Add(new RuleViolation("une bête qui fuit a une distance de fuite (minRange > 0).", at + ".minRange"));
             if (b.Flee && b.Encircle) errors.Add(new RuleViolation("une bête qui fuit ne cerne pas sa cible (encircle).", at + ".encircle"));
+            if (b.Wander is { } w) ValidateWander(a, w, at + ".wander", errors);   // sous-lot V2.4.1
+        }
+
+        /// <summary>
+        /// Sous-lot V2.4.1 : errance d'une bête. Elle attend qu'on l'engage (distance d'engagement obligatoire) ; rayon dans
+        /// ]0, <c>combat.wander.maxRadius</c>] ; allure dans ]0, 1] ; étape multiple du tick dans [1 s, 10 min] ; pause dans [0, étape],
+        /// minimale au plus égale à la maximale, multiples du tick ; écart dans ]0, 10] m ; circuit de 2 à 8 points ; groupe au nom valide.
+        /// Un groupe d'une seule équipe : contrôlé sur tout le combat (<see cref="ValidateWanderGroups"/>).
+        /// </summary>
+        private void ValidateWander(AssailantSetup a, WanderBehavior w, string at, List<RuleViolation> errors)
+        {
+            long tick = Combat.TickMilliseconds;
+            if (a.Behavior!.AggroRange is null) errors.Add(new RuleViolation("une bête qui erre attend qu'on l'engage (aggroRange obligatoire).", at));
+            if (w.Radius <= Fixed.Zero || w.Radius > Combat.WanderMaxRadius)
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"rayon hors de ]0, {Combat.WanderMaxRadius}] m (combat.wander.maxRadius).", at + ".radius"));
+            if (w.Pace <= Fixed.Zero || w.Pace > Fixed.One) errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, "allure hors de ]0, 1].", at + ".pace"));
+            if (w.LegMs < WanderBehavior.MinLegMs || w.LegMs > WanderBehavior.MaxLegMs || w.LegMs % tick != 0)
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                    $"étape hors de [{WanderBehavior.MinLegMs}, {WanderBehavior.MaxLegMs}] ms ou pas un multiple du tick ({tick} ms).", at + ".legMs"));
+            else if (w.PauseMinMs < 0 || w.PauseMaxMs > w.LegMs || w.PauseMinMs > w.PauseMaxMs || w.PauseMinMs % tick != 0 || w.PauseMaxMs % tick != 0)
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit,
+                    $"pause hors de [0, {w.LegMs}] ms, bornes inversées ou pas multiples du tick ({tick} ms).", at + ".pauseMs"));
+            if (w.Spacing <= Fixed.Zero || w.Spacing > WanderBehavior.MaxSpacing)
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"écart hors de ]0, {WanderBehavior.MaxSpacing}] m.", at + ".spacing"));
+            if (w.Points < WanderBehavior.MinPoints || w.Points > WanderBehavior.MaxPoints)
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"circuit hors de [{WanderBehavior.MinPoints}, {WanderBehavior.MaxPoints}] points.", at + ".points"));
+            if (w.Group != null && !IsValidName(w.Group))
+                errors.Add(new RuleViolation("groupe invalide : minuscules, chiffres et « _ », commençant par une lettre.", at + ".group"));
+            if (w.Group is null && w.Lead) errors.Add(new RuleViolation("un chef mène un groupe (group obligatoire).", at + ".lead"));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.4.1 : sur tout le combat (combattants du scénario et arrivées), un groupe d'errance appartient à une seule équipe. Une
+        /// réapparition reprend le comportement de son modèle (chef compris) : plusieurs chefs désignés peuvent donc coexister, morts ou
+        /// partis ; le chef est le premier chef désigné qui erre (ordre des identifiants).
+        /// </summary>
+        private void ValidateWanderGroups(List<RuleViolation> errors)
+        {
+            var teams = new Dictionary<string, string>(StringComparer.Ordinal);
+            for (int i = 0; i < Combatants.Count; i++)
+            {
+                if (Combatants[i] is not AssailantSetup { Behavior: { Wander: { Group: string group } } } a) continue;
+                if (teams.TryGetValue(group, out string? team) && team != a.Team)
+                    errors.Add(new RuleViolation($"groupe « {group} » déjà pris par l'équipe « {team} ».", $"combatants[{i}].behavior.wander.group"));
+                else teams[group] = a.Team;
+            }
         }
 
         private void ValidateAssailantShape(AssailantSetup a, string path, long tick, List<RuleViolation> errors)

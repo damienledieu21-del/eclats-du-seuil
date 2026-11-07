@@ -156,6 +156,20 @@ Menu **Éclats du Seuil → Essai des événements : …**, **hors du mode Jeu**
 | 10.10 | « la chasse de l'aube », puis Play ; aller aux **champs du sud** | Deux loups sortent du bois et attaquent un sanglier ; personne ne meurt (une bête n'en tue pas une autre) ; ils repartent après une heure du monde | [ ] | |
 | 10.11 | Ton avis : fréquence (un soir sur deux, une faille tous les trois jours), annonces, difficulté (les assaillants ont le niveau du hameau), récompenses, cloche | — | [ ] | |
 
+## 12. Les bêtes qui se promènent (V2.4.1)
+
+(Le § 11 est réservé au Seuil qui grandit, V2.6.) Menu **Éclats du Seuil → Essai des bêtes qui se promènent : …**, **hors du mode Jeu** (il avance la partie au bon moment ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#bêtes-qui-se-promènent-sous-lot-v241).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 12.1 | « le matin (harde, meute, sangliers) », puis Play ; aller au sud du **lac des Aubes** et rester à distance (plus de 10 m) | Les trois **cerfs broutent tête basse** (petits coups de mâchoire), relèvent la tête de temps en temps, puis font quelques **pas lents** vers un autre coin d'herbe, **groupés autour du premier** | [ ] | |
+| 12.2 | T'approcher à moins de 9 m, puis repartir loin (plus de 14 m) et attendre | La harde **détale ensemble** comme avant ; environ **15 s** après ton départ, elle **revient au pas** brouter chez elle | [ ] | |
+| 12.3 | Passer la porte du moulin, regarder les loups de la **lisière de la forêt** et ceux du **nord** (à distance) | Les loups **patrouillent en file**, le chef devant, sur un petit circuit, avec de courtes haltes ; ils ne viennent pas vers toi tant que tu restes à plus de 7 m | [ ] | |
+| 12.4 | Aller aux **champs du sud** et à l'est (sangliers) | Les **sangliers fouillent** : longues pauses groin au sol, quelques pas, puis encore | [ ] | |
+| 12.5 | « le crépuscule (lièvres) », puis Play ; aller aux champs du sud et aux vergers | Les **lièvres sautillent par à-coups** (petits bonds, arrêts tapis), se dressent aux aguets entre deux ; ils fuient toujours à 6 m | [ ] | |
+| 12.6 | Rester une heure du monde au **village** et au **camp de la carrière** | Aucune bête ne vient d'elle-même jusqu'à toi ; aucune bagarre entre bêtes qui se promènent | [ ] | |
+| 12.7 | Ton avis : allures (cerf lent, lièvre vif), pauses, taille des aires (4 m pour un cerf, 3 m pour un loup), 15 s de calme, la meute de Croc-Gris qui reste au pré | — | [ ] | |
+
 ## 13. Les PNJ qui changent de lieu (V2.3.1)
 
 Menu **Éclats du Seuil → Essai des PNJ qui changent de lieu : …**, **hors du mode Jeu** (il avance la partie jusqu'à cinq minutes avant le départ ; une copie de la sauvegarde est gardée). Détail : [MONDE.md](MONDE.md#pnj-qui-changent-de-lieu-sous-lot-v231).

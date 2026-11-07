@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.28.0";
+        public const string Version = "0.29.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -107,10 +107,13 @@ namespace EdS.Simulation.Engine
         /// directs d'une créature sur une créature d'une autre équipe sont réduits par <c>combat.infighting.damageReduction</c> des règles (même
         /// ligne <c>damage</c>) ; une créature ne vise une créature ennemie qu'à sa distance d'engagement ; le scénario de l'en-tête peut porter
         /// <c>truces</c> (trêves entre équipes de créatures). Sans bête qui fuit ni créatures de deux équipes, un combat écrit exactement les
-        /// mêmes lignes qu'au format 21. Un
-        /// journal d'un autre format est refusé au rejeu.
+        /// mêmes lignes qu'au format 21. 23 (sous-lot V2.4.1, bêtes qui se promènent) : le comportement d'un assaillant de l'en-tête peut
+        /// porter <c>wander</c> (errance hors combat : <c>style</c>, <c>radius</c>, <c>pace</c>, <c>legMs</c>, <c>pauseMs</c>, <c>group</c>,
+        /// <c>lead</c>, <c>spacing</c>, <c>points</c>) ; une bête qui erre marche sans être engagée (lignes <c>moved</c>), et une bête engagée
+        /// qui erre se désengage au calme (nouvelle ligne <c>calmed</c>, diagnostic : <c>actor</c>). Sans bête qui erre, un combat écrit
+        /// exactement les mêmes lignes qu'au format 22. Un journal d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 22;
+        public const int LogFormatVersion = 23;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -263,6 +266,25 @@ namespace EdS.Simulation.Engine
             /// sa distance d'engagement. Vrai d'emblée sans distance d'engagement. Hors journal ; dans l'instantané (format 5).
             /// </summary>
             public bool Noticed;
+
+            /// <summary>
+            /// Sous-lot V2.4.1 : bête engagée qui erre, au calme depuis ce tick (aucun ennemi à sa distance d'engagement, voir <c>Quiet</c>) ;
+            /// null sinon. Au bout de <c>combat.wander.calmMs</c>, elle se désengage. Dans l'instantané (format 6).
+            /// </summary>
+            public long? QuietSince;
+
+            /// <summary>
+            /// Sous-lot V2.4.1 : nombre de fois qu'elle s'est calmée (désengagée). Après un calme, seul un nouveau coup reçu (<see cref="Struck"/>,
+            /// remis à faux) l'engage pour « hit » : les dégâts déjà subis ne comptent plus. Dans l'instantané (format 6).
+            /// </summary>
+            public long Calms;
+
+            /// <summary>
+            /// Relecture de la PR #111 : frappée par un personnage depuis son dernier calme (comme <see cref="HurtByCharacter"/> tant qu'elle ne
+            /// s'est jamais calmée). Un calme la remet à faux, pas <see cref="HurtByCharacter"/> (le crédit du joueur reste) : une bête calmée
+            /// puis réengagée contre une bête ne « remarque » pas d'emblée un joueur au loin. Dans l'instantané (format 6).
+            /// </summary>
+            public bool CharacterHitSinceCalm;
 
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
@@ -1495,7 +1517,7 @@ namespace EdS.Simulation.Engine
             TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
             // Sous-lot V2.4 (revue Codex de la PR #104, tour 2) : avec les autres affectations de l'impact, après les calculs vérifiés.
-            if (actor.Character != null) target.HurtByCharacter = true;
+            if (actor.Character != null) target.HurtByCharacter = target.CharacterHitSinceCalm = true;   // V2.4.1 : depuis son dernier calme
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;
@@ -2350,7 +2372,7 @@ namespace EdS.Simulation.Engine
             DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
-            if (source?.Character != null) target.HurtByCharacter = true;   // sous-lot V2.4 (revue Codex de la PR #104, tour 2 : avec les affectations)
+            if (source?.Character != null) target.HurtByCharacter = target.CharacterHitSinceCalm = true;   // sous-lot V2.4 (V2.4.1 : depuis le calme) (revue Codex de la PR #104, tour 2 : avec les affectations)
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;

@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 15,
+  "schemaVersion": 16,
   "kind": "rules",
-  "contentVersion": "0.16.0-provisoire",
+  "contentVersion": "0.17.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -141,6 +141,10 @@
       },
       "infighting": {
         "damageReduction": 0.5
+      },
+      "wander": {
+        "maxRadius": 30,
+        "calmMs": 15000
       }
     },
     "statuses": [

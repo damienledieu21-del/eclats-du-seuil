@@ -622,7 +622,8 @@ namespace EdS.World
             string id;
             do id = $"{s.Like.Creature}_ev{_counter = checked(_counter + 1)}"; while (taken.Contains(id));
             var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
-                t.StatusResistance, t.Triggers, t.Health, place, checked(now * tickMs), t.Behavior);
+                // Sous-lot V2.4.1 : elle n'erre pas (elle attend à sa place, comme en V2.5 : la faille, l'attaque, la chasse ne changent pas).
+                t.StatusResistance, t.Triggers, t.Health, place, checked(now * tickMs), t.Behavior?.WithoutWander());
             try
             {
                 engine.Join(setup);

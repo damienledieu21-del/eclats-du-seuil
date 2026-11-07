@@ -15,12 +15,25 @@ namespace EdS.Simulation.Randomness
         public const ulong DefaultStream = 54UL;
 
         private ulong _state;
-        private readonly ulong _increment;
+        private ulong _increment;
 
         /// <param name="seed">Graine (« initstate » dans la référence).</param>
         /// <param name="stream">Identifiant de flux (« initseq ») : deux flux différents donnent des suites indépendantes
         /// pour la même graine, ce qui permet un flux par combattant.</param>
         public Pcg32(ulong seed, ulong stream = DefaultStream)
+        {
+            _increment = (stream << 1) | 1UL;
+            _state = 0UL;
+            Step();
+            unchecked { _state += seed; }
+            Step();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.4.1 (relecture de la PR #111) : resème ce générateur comme <c>new Pcg32(seed, stream)</c>, sans allocation (même suite
+        /// ensuite). Pour un générateur de travail réutilisé, jamais pour celui d'un combattant (son état est dans l'instantané).
+        /// </summary>
+        public void Reseed(ulong seed, ulong stream)
         {
             _increment = (stream << 1) | 1UL;
             _state = 0UL;
