@@ -421,24 +421,59 @@ public class V261SuitesDuSeuilTests
     [Fact]
     public void Purifier_avant_le_premier_tick_d_une_reprise_garde_les_propagations_passees()
     {
-        // Ruines au palier 4 depuis le jour 10, le lac déjà pris (cicatrice du jour, sans écho) ; reprise au jour 30, purification du lac avant
-        // le premier tick : le pré, gagné au jour 12 pendant l'absence, est fait d'abord ; le répit des ruines part ensuite (jour 30).
+        // Ruines au palier 4 depuis le jour 10, le lac déjà pris (cicatrice du jour, sans écho) ; reprise au jour 30, purification du lac tentée
+        // avant le premier tick : le pré, gagné au jour 12 pendant l'absence, n'est jamais perdu ; le répit des ruines part ensuite (jour 30).
         SavedCharacter hero = WithScar(WithScar(Hero(0, new ItemStack(Shard, 1)), Ruins, 4, 10), Lake, 1, 30);
         WorldSession w = Session(Zone(15.5, -42), Noon(30), hero);
-        ScarRefusal first = w.PurifyScar(Lake);
-        if (first == ScarRefusal.TooFar)
-        {
-            // Le personnage n'est pas encore là avant le premier tick : rien n'a changé ; le premier tick rattrape, puis la purification.
-            Assert.Equal(hero.Scars, w.SavedScars);
-            Run(w, 2);
-            Assert.Equal(ScarRefusal.None, w.PurifyScar(Lake));
-        }
+        // Avant le premier tick, le personnage n'est pas encore entré : refusé (trop loin), et rien n'a changé.
+        Assert.Equal(ScarRefusal.TooFar, w.PurifyScar(Lake));
+        Assert.Equal(hero.Scars, w.SavedScars);
+        // Le premier tick rattrape (le pré au jour 12) ; la purification d'ensuite fait partir le répit des ruines d'aujourd'hui.
+        Assert.Contains(Run(w, 2), n => n.Kind == WorldEventNoticeKind.ScarSpread && n.Group == "pre" && n.Day == 12);
+        Assert.Equal(ScarRefusal.None, w.PurifyScar(Lake));
         Assert.Equal("pre:1@12/12;ruines:4@30/10", Scars(w));
         Assert.Equal("lac", Assert.Single(Run(w, 1), n => n.Kind == WorldEventNoticeKind.ScarPurified).Group);
         // Le lac revient deux jours plus tard (jour 32), pas avant.
         SavedCharacter after = w.Save().Character!.WithEvents(Array.Empty<SavedEvent>());   // sans failles manquées entre-temps
         Assert.DoesNotContain(Run(Session(Zone(-18, -12), Noon(31), after), 2), n => n.Kind == WorldEventNoticeKind.ScarSpread);
         Assert.Contains(Run(Session(Zone(-18, -12), Noon(32), after), 2), n => n.Kind == WorldEventNoticeKind.ScarSpread && n.Group == "lac");
+    }
+
+    [Fact]
+    public void Une_faille_manquee_a_la_source_pendant_l_absence_n_efface_pas_les_propagations_dues()
+    {
+        // Revue Codex de la PR #112 (tour 2) : ruines au palier 4 depuis le jour 10 (voisines dues aux jours 12 et 14), puis une faille manquée
+        // aux ruines plus tard pendant l'absence : réglée au premier tick, elle passe après les propagations de ces jours-là.
+        WorldEventDefinition rift = Vallons.EventOf(Rift)!;
+        EventOccurrence o = WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, 15 * 1440)!;
+        while (o.Group.Id != "ruines") o = WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, checked(o.EndAt + 1))!;
+        Assert.True(o.Day >= 15);
+        SavedCharacter hero = WithScar(Hero().WithEvents(new[] { new SavedEvent(WorldEventSchedule.RegistryKey(Vallons.Id, Rift), 0, 0, -1, EventOutcome.None) }), Ruins, 4, 10);
+        WorldSession w = Session(Zone(-18, -12), WorldEventSchedule.TickAt(Clock, checked(o.EndAt + 60)), hero);
+        var notices = Run(w, 2);
+        Assert.Equal(new[] { ("lac", 12L), ("pre", 14L) }, notices.Where(n => n.Kind == WorldEventNoticeKind.ScarSpread).Select(n => (n.Group, n.Day)));
+        Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.ScarGrew && n.Group == "ruines" && n.Wave == 4);
+        // Au palier maximal, la faille manquée ne change rien à la source : ni palier, ni délai.
+        Assert.Equal("lac:1@12/12;pre:1@14/14;ruines:4@14/10", Scars(w));
+        // Ordre des notices : les propagations (jours 12 et 14) avant la faille manquée (plus tard).
+        int lastSpread = notices.FindLastIndex(n => n.Kind == WorldEventNoticeKind.ScarSpread), grew = notices.FindIndex(n => n.Kind == WorldEventNoticeKind.ScarGrew);
+        Assert.True(lastSpread < grew, $"{lastSpread} < {grew}");
+    }
+
+    [Fact]
+    public void Une_faille_manquee_creuse_sans_perdre_la_phase()
+    {
+        // Sous le maximum : un palier d'avance, au même rythme (palier 1 au jour 10, un palier tous les deux jours ; faille manquée au jour 13).
+        WorldEventScar rule = Vallons.EventOf(Rift)!.Scar!;
+        SavedScar s = new(Ruins, 1, 10, 10), deeper = WorldScarRules.Deepen(s, rule, 13);
+        Assert.Equal((3, 12L, 10L), (deeper.Stage, deeper.Since, deeper.Born));
+        for (long day = 13; day <= 20; day++)
+            Assert.Equal(Math.Min(4, WorldScarRules.StageAt(s, rule, day) + 1), WorldScarRules.StageAt(deeper, rule, day));
+        // Au maximum : la même ligne.
+        SavedScar max = new(Ruins, 2, 10, 10);
+        Assert.Same(max, WorldScarRules.Deepen(max, rule, 30));
+        // Un jour d'avant « since » compte comme « since ».
+        Assert.Equal((2, 10L), (WorldScarRules.Deepen(s, rule, 5).Stage, WorldScarRules.Deepen(s, rule, 5).Since));
     }
 
     [Fact]
@@ -677,8 +712,15 @@ public class V261SuitesDuSeuilTests
             Assert.Contains("Une cicatrice t'attend dans les ruines", ScarTrial.StartQuest(path, DataDirectory, ScenariosDirectory, "c"));
             Assert.Equal((Ruins, 1), SaveStore.Read(path).Save!.Character!.Scars.Select(s => (s.Id, s.Stage)).Single());
             Assert.Contains("Aucune sauvegarde", ScarTrial.Propagate(Path.Combine(dir, "absente.json"), DataDirectory, ScenariosDirectory));
-            Assert.True(File.Exists(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "unity", "Assets", "EdS", "Editor", "EdsScarTrial.cs"))
-                || true);   // le menu Unity est compilé par Unity (hors de ces tests)
+            // Les menus Unity de l'essai (compilés par Unity, pas par ces tests) : lus dans le dépôt.
+            string menu = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsScarTrial.cs"));
+            Assert.Contains("[MenuItem(\"Éclats du Seuil/Essai des suites du Seuil : propager", menu, StringComparison.Ordinal);
+            Assert.Contains("[MenuItem(\"Éclats du Seuil/Essai des suites du Seuil : lancer la quête", menu, StringComparison.Ordinal);
+            Assert.Contains("ScarTrial.Propagate(", menu, StringComparison.Ordinal);
+            Assert.Contains("ScarTrial.StartQuest(", menu, StringComparison.Ordinal);
+            Assert.Contains("isPlayingOrWillChangePlaymode", menu, StringComparison.Ordinal);
+            // Et le § 14 de l'essai.
+            Assert.Contains("## 14. Les suites du Seuil (V2.6.1)", File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "docs", "ESSAI_V1.10.md")), StringComparison.Ordinal);
         }
         finally
         {

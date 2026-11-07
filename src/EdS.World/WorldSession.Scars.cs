@@ -113,8 +113,11 @@ namespace EdS.World
         private void ScarFromLost(WorldEventDefinition e, EventOccurrence o, List<WorldEventNotice> notices)
         {
             if (!(e.Scar is WorldEventScar rule) || Definition is null) return;
+            // Revue Codex de la PR #112 (tour 2) : les propagations dues jusqu'au jour de l'occurrence sont faites d'abord (ordre des jours) :
+            // recreuser la source avant les aurait effacées (une reprise après une absence règle la faille avant le rattrapage du tick).
+            SpreadScars(notices, o.Day);
             string key = WorldScarRules.Key(Definition.Id, e.Id, o.Group.Id);
-            SavedScar? old = _character.Scars.FirstOrDefault(x => x.Id == key);
+            SavedScar? old = FindScar(key);
             long day = Math.Min(SavedEvent.MaxDay, Math.Max(o.Day, old?.Since ?? 0));
             if (old is null)
             {
@@ -123,8 +126,9 @@ namespace EdS.World
                 if (rule.BornFact is string born) _eventFacts.Add(born);
                 return;
             }
-            int stage = Math.Min(rule.MaxStage, WorldScarRules.StageAt(old, rule, day) + 1);
-            SetScars(_character.Scars.Where(x => x.Id != key).Concat(new[] { new SavedScar(key, stage, day, old.Born) }));
+            SavedScar deeper = WorldScarRules.Deepen(old, rule, day);
+            SetScars(_character.Scars.Where(x => x.Id != key).Concat(new[] { deeper }));
+            int stage = WorldScarRules.StageAt(deeper, rule, day);
             notices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarGrew, e.Id, o.Group.Id, o.Day, stage));
             if (_scarStagesSeen != null) _scarStagesSeen[key] = stage;
         }
@@ -136,6 +140,7 @@ namespace EdS.World
         internal void ScarRecede(WorldEventDefinition e, string group, long occurrenceDay, List<WorldEventNotice> notices)
         {
             if (!(e.Scar is WorldEventScar rule) || Definition is null) return;
+            SpreadScars(notices);   // revue Codex de la PR #112 (tour 2) : les propagations dues d'abord, puis le recul
             string key = WorldScarRules.Key(Definition.Id, e.Id, group);
             long today = Math.Min(SavedEvent.MaxDay, Today);
             string prefix = WorldScarRules.Key(Definition.Id, e.Id, string.Empty);
@@ -227,10 +232,12 @@ namespace EdS.World
         /// propagation ne naît que là où il n'y a pas de cicatrice, au plus une par variante : au plus autant de tours que de variantes, aucune
         /// boucle possible. Rien si les cicatrices sont pleines (borne technique, vérifiée au chargement des zones).
         /// </summary>
-        private void SpreadScars(List<WorldEventNotice> notices)
+        /// <param name="until">Revue Codex de la PR #112 (tour 2) : jour jusqu'auquel rattraper (le jour d'une occurrence réglée avant le tick) ;
+        /// absent : aujourd'hui.</param>
+        private void SpreadScars(List<WorldEventNotice> notices, long? until = null)
         {
             if (!(Definition is ZoneDefinition zone) || !InStoryZone) return;
-            long today = Math.Min(SavedEvent.MaxDay, Today);
+            long today = Math.Min(SavedEvent.MaxDay, Math.Min(Today, until ?? long.MaxValue));
             foreach (WorldEventDefinition e in zone.Events)
             {
                 if (!(e.Scar is WorldEventScar rule) || !rule.Spreads) continue;
