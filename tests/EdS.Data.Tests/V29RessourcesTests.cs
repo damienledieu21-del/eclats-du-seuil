@@ -78,6 +78,11 @@ public sealed class V29RessourcesTests
         Assert.EndsWith("wolf_growl_1.ogg", StyleRules.PickSound(Sounds, StyleSound.Growl));
         Assert.Null(StyleRules.PickSound(Sounds, StyleSound.Grunt));
         Assert.EndsWith("impactPunch_medium_000.ogg", StyleRules.PickSound(Sounds, StyleSound.Hit));
+        // Les longs enregistrements restent compressés en mémoire (téléphone) ; les miaulements, le verre et le lièvre sont décompressés.
+        Assert.Equal(8, Sounds.Count(StyleRules.IsLongRecording));
+        Assert.False(StyleRules.IsLongRecording("Assets/Style/Sounds/Animaux/eds_miaou_1_BSB1889.ogg"));
+        Assert.False(StyleRules.IsLongRecording("Assets/Style/Ambience/pluie.ogg"));
+        Assert.False(StyleRules.IsLongRecording(null!));
         foreach (StyleSound other in new[] { StyleSound.Cast, StyleSound.Death, StyleSound.Coin, StyleSound.Swing, StyleSound.Roar, StyleSound.Potion })
             Assert.Null(StyleRules.PickSound(Sounds, other));
     }

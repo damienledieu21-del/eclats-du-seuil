@@ -552,6 +552,10 @@ namespace EdS.Game
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, _paused ? 0f : Time.deltaTime);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
+            // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
+            // pause, pendant une scène et dans une maison.
+            _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
+                _paused || a.InScene || a.Indoors ? 0f : Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
             UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre

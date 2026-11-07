@@ -61,8 +61,11 @@ namespace EdS.Game
                 _gone.Remove(v.Key);
                 if (!_scars.TryGetValue(v.Key, out Shown s) || s.Stage != v.Stage)
                 {
+                    // Sous-lot V2.9 : une cicatrice qui grandit sous nos yeux crisse comme du verre qui se fend (pas à son apparition).
+                    bool grew = s != null && v.Stage > s.Stage;
                     if (s != null && s.Root != null) Object.Destroy(s.Root);
                     _scars[v.Key] = s = Build(v);
+                    if (grew) Crack(s.Root.transform.position);
                 }
                 Animate(s, deltaTime);
             }
@@ -127,6 +130,31 @@ namespace EdS.Game
                 float size = 0.25f + 0.2f * Mathf.Sin(_time + i * 0.9f) * 0.5f + 0.1f;
                 t.localScale = new Vector3(size, size, size);
             }
+        }
+
+        private AudioSource _crack;
+
+        /// <summary>Sous-lot V2.9 : le verre qui éclate (fichier déposé par Damien), en 3D à la cicatrice, assez bas ; rien sans fichier.</summary>
+        private void Crack(Vector3 at)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            AudioClip clip = catalog != null ? catalog.Sound(StyleSound.Glass, 0) : null;
+            if (clip == null) return;
+            if (_crack == null)
+            {
+                var go = new GameObject("Verre des cicatrices");
+                go.transform.SetParent(_root.transform, false);
+                _crack = go.AddComponent<AudioSource>();
+                _crack.playOnAwake = false;
+                _crack.spatialBlend = 1f;
+                _crack.dopplerLevel = 0f;
+                _crack.rolloffMode = AudioRolloffMode.Linear;
+                _crack.minDistance = 4f;
+            }
+            _crack.maxDistance = catalog.BeastHearing * 1.5f;
+            _crack.transform.position = at + Vector3.up;
+            _crack.pitch = 0.8f;   // plus grave qu'une faille : la terre qui se fend
+            _crack.PlayOneShot(clip, 0.6f * catalog.BeastVolume);
         }
 
         private static Transform Piece(PrimitiveType shape, string name, Color color, Transform parent)

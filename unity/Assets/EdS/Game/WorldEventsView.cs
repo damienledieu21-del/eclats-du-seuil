@@ -28,6 +28,20 @@ namespace EdS.Game
         private int _heard;
         private float _time;
 
+        // Sous-lot V2.9 (vrais sons déposés par Damien) : tocsin frappé vite au hameau attaqué (deux sources qui se relaient, pour que la
+        // cloche résonne entre deux coups), cloche d'église quand le hameau est défendu, verre qui éclate à l'ouverture d'une faille,
+        // bourdonnement en boucle de chaque faille ouverte, miroir qui explose quand elle se referme. Sans fichier : la cloche faite par le code.
+        private readonly AudioSource[] _bells = new AudioSource[2];
+        private readonly AudioSource _burst;
+        private readonly Dictionary<string, AudioSource> _hums = new Dictionary<string, AudioSource>();
+        private readonly Dictionary<string, Vector3> _riftAt = new Dictionary<string, Vector3>();
+        private int _strikesLeft;
+        private float _nextStrike;
+        private int _strike;
+        private float _churchLength;
+        private float _churchStarted;
+        private int _churches;
+
         public WorldEventsView()
         {
             _root = new GameObject("Événements du monde (V2.5)");
@@ -35,7 +49,31 @@ namespace EdS.Game
             _audio.playOnAwake = false;
             _audio.spatialBlend = 0f;
             _audio.volume = 0.55f;
+            for (int i = 0; i < _bells.Length; i++) _bells[i] = Source3D("Tocsin " + i, 0.7f);
+            _burst = Source3D("Verre des failles", 1f);
         }
+
+        private AudioSource Source3D(string name, float blend)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(_root.transform, false);
+            AudioSource source = go.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.loop = false;
+            source.spatialBlend = blend;
+            source.dopplerLevel = 0f;
+            source.rolloffMode = AudioRolloffMode.Linear;
+            source.minDistance = 4f;
+            source.maxDistance = Hearing(1f);
+            return source;
+        }
+
+        /// <summary>Distance d'écoute réglée dans le catalogue (60 m sans lui), multipliée par <paramref name="factor"/>.</summary>
+        private static float Hearing(float factor) => (StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastHearing : 60f) * factor;
+
+        private static float Volume => StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastVolume : 0.8f;
+
+        private static AudioClip Clip(StyleSound sound) => StyleCatalog.Loaded != null ? StyleCatalog.Loaded.Sound(sound, 0) : null;
 
         public void Destroy()
         {
@@ -61,6 +99,7 @@ namespace EdS.Game
         public void Sync(AdventureSession a, float deltaTime)
         {
             if (a == null) return;
+            _session = a;
             _time += deltaTime;
             WorldSession w = a.World;
             bool outside = w.InStoryZone && w.Definition != null;
@@ -75,11 +114,14 @@ namespace EdS.Game
                     if (!_rifts.TryGetValue(v.Event.Id, out List<Transform> pieces)) _rifts[v.Event.Id] = pieces = BuildRift(v.Event.Id, at);
                     float opening = Mathf.Clamp01((float)((w.Zone.Engine.CurrentTick - v.StartTick) / 60.0));   // trois secondes pour s'ouvrir
                     ShowRift(pieces, opening);
+                    if (pieces.Count > 0 && pieces[0] != null) _riftAt[v.Event.Id] = pieces[0].position;
+                    Hum(v.Event.Id, pieces, opening);
                 }
             foreach (string id in _gone)
             {
                 foreach (Transform t in _rifts[id]) if (t != null) Object.Destroy(t.gameObject);
                 _rifts.Remove(id);
+                _hums.Remove(id);   // la source était sur l'ancre, détruite avec elle
             }
             // Conséquences d'une attaque manquée : fumée et débris au lieu de l'événement.
             if (outside)
@@ -105,10 +147,147 @@ namespace EdS.Game
                 WorldEventDefinition e = n == null || w.Definition == null ? null : w.Definition.EventOf(n.Event);
                 if (e != null && (n.Kind == WorldEventNoticeKind.Started || n.Kind == WorldEventNoticeKind.Wave) && e.Kind != WorldEventKind.Hunt)
                 {
-                    _audio.pitch = e.Kind == WorldEventKind.Rift ? 0.45f : 1f;
-                    _audio.PlayOneShot(Bell);
+                    if (!Announce(e, n.Kind, w.Definition))
+                    {
+                        _audio.pitch = e.Kind == WorldEventKind.Rift ? 0.45f : 1f;
+                        _audio.PlayOneShot(Bell);
+                    }
                 }
+                else if (e != null && e.Kind == WorldEventKind.Rift && (n.Kind == WorldEventNoticeKind.Won || n.Kind == WorldEventNoticeKind.Lost))
+                    Burst(StyleSound.Shatter, _riftAt.TryGetValue(e.Id, out Vector3 at) ? at : (Vector3?)null, 1f);
+                else if (e != null && e.Kind == WorldEventKind.Raid && n.Kind == WorldEventNoticeKind.Won) Church(e, w.Definition);
             }
+            Ring(deltaTime);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : le son d'un départ avec les fichiers déposés : tocsin au hameau attaqué (au départ seulement), verre qui éclate à la
+        /// faille qui s'ouvre (et à chaque vague, plus bas). Faux sans fichier (la cloche faite par le code sonne alors).
+        /// </summary>
+        private bool Announce(WorldEventDefinition e, WorldEventNoticeKind kind, ZoneDefinition zone)
+        {
+            if (e.Kind == WorldEventKind.Rift)
+            {
+                Vector3? at = null;
+                foreach (WorldEventView v in AdventureEvents(zone))
+                    if (v.Event.Id == e.Id && v.Rift is GroundVector g) at = new Vector3(Raw(g.X), 1f, Raw(g.Z));
+                return Burst(StyleSound.Glass, at, kind == WorldEventNoticeKind.Wave ? 0.5f : 1f);
+            }
+            if (Clip(StyleSound.Tocsin) == null) return false;
+            if (kind != WorldEventNoticeKind.Started) return true;   // une vague d'un pillage : le tocsin sonne déjà
+            Vector3 center = PlaceCenter(e, zone) ?? Vector3.zero;
+            foreach (AudioSource bell in _bells)
+            {
+                bell.transform.position = center + Vector3.up * 6f;
+                bell.maxDistance = Hearing(3f);
+            }
+            _strikesLeft = BeastCalls.TocsinStrikes;
+            _nextStrike = 0f;
+            return true;
+        }
+
+        /// <summary>Les failles vues à cette image (null sans session) : pour placer le verre qui éclate.</summary>
+        private IReadOnlyList<WorldEventView> AdventureEvents(ZoneDefinition zone) => _session != null ? _session.World.WorldEvents : NoEvents;
+
+        private static readonly WorldEventView[] NoEvents = new WorldEventView[0];
+        private AdventureSession _session;
+
+        /// <summary>Centre du lieu de l'événement (le hameau), ou null.</summary>
+        private static Vector3? PlaceCenter(WorldEventDefinition e, ZoneDefinition zone)
+        {
+            if (zone == null || e.Place == null) return null;
+            foreach (Place p in zone.Places)
+                if (p.Id == e.Place) return new Vector3((Raw(p.Min.X) + Raw(p.Max.X)) * 0.5f, 0f, (Raw(p.Min.Z) + Raw(p.Max.Z)) * 0.5f);
+            return null;
+        }
+
+        /// <summary>Un son court de faille (verre, miroir) à sa place (ou à la caméra) ; faux sans fichier.</summary>
+        private bool Burst(StyleSound sound, Vector3? at, float volume)
+        {
+            AudioClip clip = Clip(sound);
+            if (clip == null || _burst == null) return false;
+            _burst.spatialBlend = at.HasValue ? 1f : 0f;
+            if (at.HasValue) _burst.transform.position = at.Value;
+            _burst.maxDistance = Hearing(2f);
+            _burst.PlayOneShot(clip, volume * Volume);
+            return true;
+        }
+
+        /// <summary>
+        /// Bourdonnement d'une faille ouverte : une source en boucle sur son ancre, qui monte avec l'ouverture (début du fichier pris d'après
+        /// la faille, pour que deux failles ne bourdonnent pas à l'unisson).
+        /// </summary>
+        private void Hum(string id, List<Transform> pieces, float opening)
+        {
+            if (!_hums.TryGetValue(id, out AudioSource hum))
+            {
+                AudioClip clip = Clip(StyleSound.RiftHum);
+                if (clip == null || pieces.Count == 0 || pieces[0] == null) return;
+                hum = pieces[0].gameObject.AddComponent<AudioSource>();
+                hum.playOnAwake = false;
+                hum.loop = true;
+                hum.spatialBlend = 1f;
+                hum.dopplerLevel = 0f;
+                hum.rolloffMode = AudioRolloffMode.Linear;
+                hum.minDistance = 3f;
+                hum.maxDistance = Hearing(0.7f);
+                hum.clip = clip;
+                hum.time = clip.length * StyleRules.Variant(id, 100) / 100f * 0.9f;
+                hum.volume = 0f;
+                hum.Play();
+                _hums[id] = hum;
+            }
+            if (hum != null) hum.volume = 0.55f * Volume * opening;
+        }
+
+        /// <summary>Tocsin : un coup toutes les <see cref="BeastCalls.TocsinGap"/> secondes, sur deux sources qui se relaient.</summary>
+        private void Ring(float deltaTime)
+        {
+            if (_churchLength > 0f)
+            {
+                float t = Time.time - _churchStarted;
+                AudioSource church = _bells[0];
+                if (t >= _churchLength || church == null)
+                {
+                    if (church != null) church.Stop();
+                    _churchLength = 0f;
+                }
+                else church.volume = 0.8f * Volume * (float)BeastCalls.Envelope(t, _churchLength);
+            }
+            if (_strikesLeft <= 0) return;
+            _nextStrike -= deltaTime;
+            if (_nextStrike > 0f) return;
+            AudioClip clip = Clip(StyleSound.Tocsin);
+            if (clip == null)
+            {
+                _strikesLeft = 0;
+                return;
+            }
+            AudioSource bell = _bells[_strike++ % _bells.Length];
+            bell.clip = clip;
+            bell.time = 0f;
+            bell.volume = 0.9f * Volume;
+            bell.Play();
+            _strikesLeft--;
+            _nextStrike = (float)BeastCalls.TocsinGap;
+        }
+
+        /// <summary>Le hameau est défendu : la cloche d'église sonne une douzaine de secondes (un passage du long enregistrement).</summary>
+        private void Church(WorldEventDefinition e, ZoneDefinition zone)
+        {
+            AudioClip clip = Clip(StyleSound.ChurchBell);
+            if (clip == null) return;
+            _strikesLeft = 0;
+            AudioSource bell = _bells[0];
+            bell.transform.position = (PlaceCenter(e, zone) ?? Vector3.zero) + Vector3.up * 6f;
+            bell.maxDistance = Hearing(3f);
+            (double start, double length) = BeastCalls.Cue(clip.name, clip.length, _churches++, 12);
+            bell.clip = clip;
+            bell.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
+            bell.volume = 0f;
+            bell.Play();
+            _churchStarted = Time.time;
+            _churchLength = (float)length;
         }
 
         private List<Transform> BuildRift(string id, GroundVector at)

@@ -37,6 +37,9 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.4 : bêtes paisibles dessinées en formes simples (cerfs, lièvres), par combattant.</summary>
         private readonly Dictionary<string, WildlifeLook> _wild = new Dictionary<string, WildlifeLook>();
+
+        /// <summary>Sous-lot V2.9 : voix des bêtes (hurlements, brame, grognements, lièvre qui détale), faites au premier besoin.</summary>
+        private BeastVoices _voices;
         private GameObject _shield;
         private Renderer _shieldRenderer;
         private GameObject _targetRing;
@@ -144,6 +147,7 @@ namespace EdS.Game
             _bodies.Clear();
             _looks.Clear();
             _wild.Clear();
+            _voices?.Clear();
             _renderers.Clear();
             foreach (Material material in _glowing.Values)
                 if (material != null) Object.Destroy(material);
@@ -630,6 +634,9 @@ namespace EdS.Game
                 // Sous-lot V2.4 : les bêtes paisibles galopent ou bondissent quand elles fuient. V2.4.1 : elles broutent, guettent, se tapissent.
                 if (_wild.TryGetValue(other.Id, out WildlifeLook wild) && _bodies.TryGetValue(other.Id, out GameObject animal) && animal.activeSelf)
                     wild.Update(animal.transform.position, other.View.IsDead, Time.deltaTime, other.View.Wander);
+                // Sous-lot V2.9 : les bêtes donnent de la voix (modèle ou formes simples).
+                if (_voices != null && _bodies.TryGetValue(other.Id, out GameObject heard) && heard.activeSelf)
+                    _voices.Hear(other.Id, heard.transform.position, other.View.IsDead, Time.deltaTime);
             }
 
             if (player.TargetId != null && _bodies.TryGetValue(player.TargetId, out GameObject target) && target.activeSelf)
@@ -648,6 +655,21 @@ namespace EdS.Game
                 _allyRing.transform.position = new Vector3(p.x, p.y - 0.93f, p.z);
             }
             else _allyRing.SetActive(false);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : après <see cref="Sync"/>, les bêtes vues donnent de la voix (<see cref="BeastVoices"/>) ; rien sans catalogue de style.
+        /// <paramref name="listener"/> : la caméra ; <paramref name="minute"/> : minute du jour du monde ; <paramref name="deltaTime"/> : 0 en pause.
+        /// </summary>
+        public void Voices(Vector3 listener, int minute, bool night, bool mist, float deltaTime)
+        {
+            if (_voices == null)
+            {
+                if (StyleCatalog.Loaded == null) return;
+                _voices = new BeastVoices(_root.transform);
+                return;   // les bêtes seront notées à la prochaine image
+            }
+            _voices.Update(listener, minute, night, mist, deltaTime);
         }
 
         private void Tint(string id, bool dead, bool stunned)

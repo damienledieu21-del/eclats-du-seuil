@@ -961,6 +961,26 @@ namespace EdS.Runtime
             return Array.Empty<string>();
         }
 
+        /// <summary>Sous-lot V2.9 : sons faits de longs enregistrements (joués par passages), gardés compressés en mémoire sur le téléphone.</summary>
+        private static readonly StyleSound[] LongSounds =
+            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum };
+
+        /// <summary>
+        /// Sous-lot V2.9 : le fichier est-il un long enregistrement (ronronnement, hurlements, brame, grognements, cloches, bourdonnement) ?
+        /// Décompressé au chargement, il prendrait des dizaines de Mo : il reste compressé en mémoire (comme les ambiances).
+        /// </summary>
+        public static bool IsLongRecording(string path)
+        {
+            if (path is null || InMusicFolder(path) || InAmbienceFolder(path)) return false;
+            string file = Key(FileName(path));
+            foreach (StyleSound sound in LongSounds)
+            {
+                string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
+                if (Sounds[sound].Any(w => file.Contains(w)) && !avoid.Any(x => file.Contains(x))) return true;
+            }
+            return false;
+        }
+
         /// <summary>Essai réaliste 7 : musique d'un fichier rangé dans un dossier « Music » (ou « Musique »), d'après son nom ; null sinon.</summary>
         public static StyleMusic? MusicOf(string path)
         {
