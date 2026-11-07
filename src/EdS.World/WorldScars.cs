@@ -39,6 +39,25 @@ namespace EdS.World
             return scar.Stage >= rule.SpreadStage ? scar.Since : checked(scar.Since + (long)(rule.SpreadStage - scar.Stage) * rule.GrowDays);
         }
 
+        /// <summary>
+        /// Sous-lot V2.6.1 (relecture de la PR #112) : la cicatrice <paramref name="scar"/>, son délai de propagation reparti du jour
+        /// <paramref name="day"/> (une propagation faite, ou le répit d'une purification), <b>sans toucher à sa croissance</b> : au palier
+        /// maximal (palier figé), <c>Since</c> devient <paramref name="day"/> ; en dessous, <c>Since</c> n'avance que de paliers entiers
+        /// (<c>k × growDays</c>, <c>Stage + k</c>), si bien que <see cref="StageAt"/> rend le même palier à tout jour à partir de
+        /// <paramref name="day"/> ; le délai repart alors du dernier palier gagné (au plus <c>growDays − 1</c> jours plus tôt, jamais avant la
+        /// propagation précédente). Le format de la sauvegarde ne change pas.
+        /// </summary>
+        public static SavedScar RestartSpread(SavedScar scar, WorldEventScar rule, long day)
+        {
+            if (scar is null) throw new ArgumentNullException(nameof(scar));
+            if (rule is null) throw new ArgumentNullException(nameof(rule));
+            if (day < scar.Since) return scar;
+            int stage = StageAt(scar, rule, day);
+            if (stage >= rule.MaxStage) return new SavedScar(scar.Id, rule.MaxStage, day, scar.Born);
+            long k = checked(day - scar.Since) / rule.GrowDays;   // stage < MaxStage : Stage + k = stage, au plus 8
+            return new SavedScar(scar.Id, stage, checked(scar.Since + k * rule.GrowDays), scar.Born);
+        }
+
         /// <summary>Jour du monde où la cicatrice gagnera son prochain palier, ou null si elle est au palier maximal.</summary>
         public static long? NextStageDay(SavedScar scar, WorldEventScar rule, long day)
         {

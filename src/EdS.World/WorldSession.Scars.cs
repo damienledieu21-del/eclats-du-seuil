@@ -177,9 +177,12 @@ namespace EdS.World
             if (Inventory.Available(rule.PurifyItem) < 1) return ScarRefusal.NoItem;
             // Tout est vérifié : l'objet d'abord (refus atomique de l'inventaire), puis le reste, qui ne peut plus échouer.
             if (Inventory.Remove(rule.PurifyItem, 1) != InventoryRefusal.None) return ScarRefusal.NoItem;
+            // Relecture de la PR #112 : les propagations dues (une session reprise après une absence, avant son premier tick) sont faites
+            // d'abord, à leurs jours ; le répit ne part qu'ensuite (sinon il effacerait des propagations passées). Aucune ne vise cette place.
+            SpreadScars(_queuedNotices);
             int stage = WorldScarRules.StageAt(_character.Scars.First(x => x.Id == key), rule, Today);
             _character = _character.WithScars(_character.Scars.Where(x => x.Id != key));
-            RebaseSpreaders(e, Math.Min(SavedEvent.MaxDay, Today));   // sous-lot V2.6.1 : répit avant que la voisine ne la rouvre
+            RebaseSpreaders(e, g.Id, Math.Min(SavedEvent.MaxDay, Today));   // sous-lot V2.6.1 : répit avant que la voisine ne la rouvre
             Narrative?.Purified(e.Id);   // sous-lot V2.6.1 : objectif « purify » (quête de Sœur Albe)
             long xp = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + rule.PurifyXp));
             long gained = xp - _character.Xp;
@@ -248,7 +251,7 @@ namespace EdS.World
                     }
                     if (source is null || from is null || to is null) break;
                     string born = WorldScarRules.Key(zone.Id, e.Id, to.Id);
-                    var rebased = new SavedScar(source.Id, WorldScarRules.StageAt(source, rule, best), best, source.Born);
+                    SavedScar rebased = WorldScarRules.RestartSpread(source, rule, best);
                     if (!SetScars(_character.Scars.Where(x => x.Id != source.Id).Concat(new[] { rebased, new SavedScar(born, 1, best, best) }))) break;
                     notices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarSpread, e.Id, to.Id, best, 1, spreadFrom: from.Id));
                     if (rule.SpreadFact is string fact && !KnowsFact(fact) && !_eventFacts.Contains(fact)) _eventFacts.Add(fact);
@@ -265,22 +268,25 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V2.6.1 : après une purification, les cicatrices de la même faille qui ont déjà atteint le palier de propagation repartent
-        /// d'aujourd'hui (leur palier d'aujourd'hui gardé) : la place purifiée a <see cref="WorldEventScar.SpreadDays"/> jours de répit avant que
-        /// le froid ne revienne de la voisine (sans cela, une voisine au palier 4 depuis longtemps la rouvrirait au tick suivant).
+        /// Sous-lot V2.6.1 : après la purification de la variante <paramref name="purified"/>, les cicatrices qui se propagent vers elle
+        /// (<see cref="WorldEventGroup.SpreadTo"/>) et ont déjà atteint le palier de propagation font repartir leur délai d'aujourd'hui
+        /// (<see cref="WorldScarRules.RestartSpread"/> : leur croissance n'est pas touchée) : la place purifiée a
+        /// <see cref="WorldEventScar.SpreadDays"/> jours de répit avant que le froid ne revienne (sans cela, une voisine au palier 4 depuis
+        /// longtemps la rouvrirait au tick suivant). Relecture de la PR #112 : seules les sources de cette place, pas toutes les cicatrices de la faille.
         /// </summary>
-        private void RebaseSpreaders(WorldEventDefinition e, long today)
+        private void RebaseSpreaders(WorldEventDefinition e, string purified, long today)
         {
             if (!(e.Scar is WorldEventScar rule) || !rule.Spreads || Definition is null) return;
-            string prefix = WorldScarRules.Key(Definition.Id, e.Id, string.Empty);
+            var sources = new HashSet<string>(e.Groups.Where(g => g.SpreadTo.Contains(purified)).Select(g => WorldScarRules.Key(Definition.Id, e.Id, g.Id)),
+                StringComparer.Ordinal);
             var next = new List<SavedScar>(_character.Scars.Count);
             bool changed = false;
             foreach (SavedScar s in _character.Scars)
             {
-                int stage = WorldScarRules.StageAt(s, rule, today);
-                if (s.Id.StartsWith(prefix, StringComparison.Ordinal) && today >= s.Since && stage >= rule.SpreadStage && s.Since != today)
+                if (sources.Contains(s.Id) && today >= s.Since && WorldScarRules.StageAt(s, rule, today) >= rule.SpreadStage
+                    && WorldScarRules.RestartSpread(s, rule, today) is SavedScar r && (r.Since != s.Since || r.Stage != s.Stage))
                 {
-                    next.Add(new SavedScar(s.Id, stage, today, s.Born));
+                    next.Add(r);
                     changed = true;
                 }
                 else next.Add(s);

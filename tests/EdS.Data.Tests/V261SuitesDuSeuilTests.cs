@@ -349,6 +349,98 @@ public class V261SuitesDuSeuilTests
         Assert.Empty(Session(Zone(-18, -12), Noon(40), source.Save().Character!).SavedScars);
     }
 
+    /// <summary>Vallons où la cicatrice se propage dès le palier 2 (sous le maximum, 4), un jour après ; <paramref name="spread"/> faux : sans voisines.</summary>
+    private static ZoneDefinition EarlySpread(bool spread)
+    {
+        ZoneLoadResult r = Mutated(root =>
+        {
+            JsonObject rift = RiftJson(root);
+            rift["scar"]!["spreadStage"] = 2;
+            rift["scar"]!["spreadDays"] = 1;
+            if (!spread) foreach (JsonNode? g in rift["groups"]!.AsArray()) g!.AsObject().Remove("spreadTo");
+            root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-18, -12);
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Zone!;
+    }
+
+    [Fact]
+    public void La_propagation_ne_change_pas_la_croissance_de_la_source()
+    {
+        // Relecture de la PR #112 : la source (palier 1 au jour 10, un palier tous les deux jours) a le même palier, jour après jour, qu'elle se
+        // propage (palier 2 au jour 12, lac au jour 13, pré au jour 13 ou après) ou non.
+        SavedCharacter hero = WithScar(Hero(), Ruins, 1, 10);
+        ZoneDefinition with = EarlySpread(true), without = EarlySpread(false);
+        for (long day = 10; day <= 22; day++)
+        {
+            WorldSession a = Session(with, Noon(day), hero), b = Session(without, Noon(day), hero);
+            Run(a, 2);
+            Run(b, 2);
+            Assert.Equal(b.Scars.Single(v => v.Key == Ruins).Stage, a.Scars.Single(v => v.Key == Ruins).Stage);
+            if (day >= 13) Assert.Equal(new[] { Lake, Meadow, Ruins }, a.SavedScars.Select(x => x.Id));
+            else Assert.Single(a.SavedScars);
+        }
+        // Au palier maximal (la règle livrée), le délai repart du jour même ; en dessous, du dernier palier gagné.
+        WorldEventScar rule = with.EventOf(Rift)!.Scar!;
+        SavedScar s = new(Ruins, 1, 10, 10);
+        Assert.Equal((2, 12L), (WorldScarRules.RestartSpread(s, rule, 13).Stage, WorldScarRules.RestartSpread(s, rule, 13).Since));
+        Assert.Equal((4, 40L), (WorldScarRules.RestartSpread(s, rule, 40).Stage, WorldScarRules.RestartSpread(s, rule, 40).Since));
+        Assert.Same(s, WorldScarRules.RestartSpread(s, rule, 9));
+    }
+
+    [Fact]
+    public void Le_repit_ne_vaut_que_pour_les_sources_de_la_place_purifiee()
+    {
+        // Le pré n'a qu'une source, les ruines : elles repartent du jour 20 ; le lac (palier 4 lui aussi, vers les ruines seulement) garde son délai.
+        SavedCharacter hero = WithScar(WithScar(WithScar(Hero(0, new ItemStack(Shard, 1)), Ruins, 4, 10), Lake, 4, 10), Meadow, 1, 20);   // le pré, né du jour : sans écho
+        WorldSession w = Session(Zone(-10.5, 30), Noon(20), hero);
+        Run(w, 2);
+        Assert.Equal(ScarRefusal.None, w.PurifyScar(Meadow));
+        Assert.Equal("lac:4@10/10;ruines:4@20/10", Scars(w));
+    }
+
+    [Fact]
+    public void Sauvegardee_et_reprise_en_plein_rattrapage_meme_resultat()
+    {
+        SavedCharacter hero = WithScar(Hero(), Ruins, 4, 10);
+        WorldSession direct = Session(Zone(-18, -12), Noon(60), hero);
+        Run(direct, 2);
+        foreach (long pause in new long[] { 11, 12, 13, 14, 15 })
+        {
+            WorldSession first = Session(Zone(-18, -12), Noon(pause), hero);
+            Assert.Equal(hero.Scars, first.Save().Character!.Scars);   // rien avant le premier tick
+            Run(first, 2);
+            // (registre des événements vidé : les failles manquées entre-temps creuseraient des cicatrices, ce n'est pas ce qu'on compare)
+            SavedCharacter saved = SaveJsonReader.Read(SaveJsonReader.Write(first.Save())).Save!.Character!.WithEvents(Array.Empty<SavedEvent>());
+            WorldSession resumed = Session(Zone(-18, -12), Noon(60), saved);
+            Run(resumed, 2);
+            Assert.Equal(Scars(direct), Scars(resumed));
+        }
+    }
+
+    [Fact]
+    public void Purifier_avant_le_premier_tick_d_une_reprise_garde_les_propagations_passees()
+    {
+        // Ruines au palier 4 depuis le jour 10, le lac déjà pris (cicatrice du jour, sans écho) ; reprise au jour 30, purification du lac avant
+        // le premier tick : le pré, gagné au jour 12 pendant l'absence, est fait d'abord ; le répit des ruines part ensuite (jour 30).
+        SavedCharacter hero = WithScar(WithScar(Hero(0, new ItemStack(Shard, 1)), Ruins, 4, 10), Lake, 1, 30);
+        WorldSession w = Session(Zone(15.5, -42), Noon(30), hero);
+        ScarRefusal first = w.PurifyScar(Lake);
+        if (first == ScarRefusal.TooFar)
+        {
+            // Le personnage n'est pas encore là avant le premier tick : rien n'a changé ; le premier tick rattrape, puis la purification.
+            Assert.Equal(hero.Scars, w.SavedScars);
+            Run(w, 2);
+            Assert.Equal(ScarRefusal.None, w.PurifyScar(Lake));
+        }
+        Assert.Equal("pre:1@12/12;ruines:4@30/10", Scars(w));
+        Assert.Equal("lac", Assert.Single(Run(w, 1), n => n.Kind == WorldEventNoticeKind.ScarPurified).Group);
+        // Le lac revient deux jours plus tard (jour 32), pas avant.
+        SavedCharacter after = w.Save().Character!.WithEvents(Array.Empty<SavedEvent>());   // sans failles manquées entre-temps
+        Assert.DoesNotContain(Run(Session(Zone(-18, -12), Noon(31), after), 2), n => n.Kind == WorldEventNoticeKind.ScarSpread);
+        Assert.Contains(Run(Session(Zone(-18, -12), Noon(32), after), 2), n => n.Kind == WorldEventNoticeKind.ScarSpread && n.Group == "lac");
+    }
+
     [Fact]
     public void Une_cicatrice_propagee_vit_comme_les_autres()
     {
@@ -383,8 +475,9 @@ public class V261SuitesDuSeuilTests
         Assert.True(r.IsValid, r.Report.ToString());
         WorldSession w = Session(r.Zone!, Noon(500), WithScar(Hero(), Meadow, 1, 400));
         Run(w, 2);
-        // Pré (source) vers les ruines au jour 401 ; au jour 402, les ruines et le pré peuvent gagner le lac : les ruines d'abord (ordre des variantes).
-        Assert.Equal("lac:1@402/402;pre:1@401/400;ruines:1@402/401", Scars(w));
+        // Pré (source) vers les ruines au jour 401 ; sous le palier maximal, le délai repart du dernier palier gagné (jour 400, la croissance
+        // n'est pas touchée) : le pré gagne aussi le lac au jour 401.
+        Assert.Equal("lac:1@401/401;pre:1@400/400;ruines:1@401/401", Scars(w));
         Assert.Equal(3, w.SavedScars.Count);
     }
 
