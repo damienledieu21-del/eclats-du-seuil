@@ -67,6 +67,21 @@ namespace EdS.Game.Editor
             if (packBoar != null) boar = packBoar;
             IReadOnlyList<string> heroClips = StyleRules.Companions(hero, models);
             foreach (string clip in heroClips) Legacy(clip, true);
+            // Sous-lot V2.9 (vrais modèles déposés par Damien) : cerf à bois et biche de Quaternius, lièvre de Pneshik, chat de DreamNoms
+            // (converti en FBX) ; animations « Legacy » (attente, marche, galop et brouter en boucle). Les bêtes gardent leurs couleurs : elles
+            // ne passent pas par les matériaux de Poly Haven (le lièvre, rangé avec le sanglier et le chat, aurait donné sa texture aux deux).
+            string stag = StyleRules.Candidates(models, StyleSlot.Stag).FirstOrDefault();
+            string doe = StyleRules.Candidates(models, StyleSlot.Doe).FirstOrDefault();
+            string hare = StyleRules.Candidates(models, StyleSlot.Hare).FirstOrDefault();
+            string cat = StyleRules.Candidates(models, StyleSlot.Cat).FirstOrDefault();
+            // 2e vague : corbeau, vache, chien, cheval (bêtes de la ferme et des champs, posées par le jeu).
+            string crow = StyleRules.Candidates(models, StyleSlot.Crow).FirstOrDefault();
+            string cow = StyleRules.Candidates(models, StyleSlot.Cow).FirstOrDefault();
+            string dog = StyleRules.Candidates(models, StyleSlot.Dog).FirstOrDefault();
+            string horse = StyleRules.Candidates(models, StyleSlot.Horse).FirstOrDefault();
+            foreach (string animated in new[] { stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null)) Legacy(animated, false);
+            var animals = new HashSet<string>(new[] { wolf, boar, stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null));
+            foreach (string animal in animals) AnimalMaterial(animal, notes);
 
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe). Les personnages de Mixamo ont les leurs
             // (MixamoMaterials) : à une deuxième préparation, leurs textures déjà sorties ne doivent pas les remplacer toutes par une seule.
@@ -79,7 +94,7 @@ namespace EdS.Game.Editor
             var trees = new Dictionary<string, string>();
             foreach (string tree in StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Where(IsSketchfab))
                 if (TreePrefab(tree, notes) is string prefab) trees[tree] = prefab;
-            foreach (string model in models.Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
+            foreach (string model in models.Where(p => !animals.Contains(p)).Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
                 RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
@@ -100,7 +115,7 @@ namespace EdS.Game.Editor
             }
             // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
-            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && Untextured(p))) AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
+            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && Untextured(p))) AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
             string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
@@ -116,6 +131,25 @@ namespace EdS.Game.Editor
             catalog.Hero = Load(hero);
             catalog.Wolf = Load(wolf);
             catalog.Boar = Load(boar);
+            catalog.Stag = Load(stag);
+            catalog.Doe = Load(doe);
+            catalog.Hare = Load(hare);
+            catalog.Cat = Load(cat);
+            catalog.Crow = Load(crow);
+            catalog.Cow = Load(cow);
+            catalog.Dog = Load(dog);
+            catalog.Horse = Load(horse);
+            // Sous-lot V2.9 : la rotation proposée pour un modèle connu (le sanglier de Hanabi_Map regarde de travers dans son fichier),
+            // mise une seule fois : un réglage fait ensuite à la main est gardé.
+            if (catalog.AnimalVersion < StyleCatalog.AnimalDefaults)
+            {
+                if (boar != null && StyleRules.ModelYaw(boar) != 0)
+                {
+                    catalog.BoarYaw = (float)StyleRules.ModelYaw(boar);
+                    notes.Add("Sanglier : rotation de " + catalog.BoarYaw + "° (Boar Yaw) ; s'il marche de travers, la régler dans le catalogue.");
+                }
+                catalog.AnimalVersion = StyleCatalog.AnimalDefaults;
+            }
             catalog.HeroClips = heroClips.SelectMany(Clips).ToArray();
             catalog.Trees = StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Select(p => trees.TryGetValue(p, out string prefab) ? prefab : p).Select(Load)
                 .Where(m => m != null).ToArray();
@@ -197,7 +231,7 @@ namespace EdS.Game.Editor
                 .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
                 .Where(s => s.Clips.Length > 0).ToArray();
             catalog.Music = System.Enum.GetValues(typeof(StyleMusic)).Cast<StyleMusic>()
-                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(StyleRules.MusicRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(m => m.Clip != null).ToArray();
             catalog.Ambiences = System.Enum.GetValues(typeof(StyleAmbience)).Cast<StyleAmbience>()
                 .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
@@ -273,7 +307,15 @@ namespace EdS.Game.Editor
 
             int found = new[] { catalog.Hit, catalog.Block, catalog.Parry, catalog.Death, catalog.Potion, catalog.Gather, catalog.Craft }.Count(c => c != null);
             int grounds = new[] { catalog.SoilColor, catalog.RockColor, catalog.GrassColor }.Count(t => t != null);
+            int voices = new[] { StyleSound.Meow, StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.HareDash, StyleSound.BoarGrumble, StyleSound.Tocsin,
+                StyleSound.ChurchBell, StyleSound.Glass, StyleSound.Shatter, StyleSound.RiftHum }.Count(k => catalog.Sound(k, 0) != null);
+            int world = new[] { StyleSound.Portal, StyleSound.StepGrass, StyleSound.StepGravel, StyleSound.StepLeaves, StyleSound.StepWood, StyleSound.Caw,
+                StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl }.Count(k => catalog.Sound(k, 0) != null);
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
+                + "\nCerf : " + Name(stag) + ", biche : " + Name(doe) + ", lièvre : " + Name(hare) + ", chat : " + Name(cat)
+                + "\nFerme : corbeau " + Name(crow) + ", vache " + Name(cow) + ", chien " + Name(dog) + ", cheval " + Name(horse)
+                + "\nVoix des bêtes, cloches et failles : " + voices + " sur 11 (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
+                + "\nPortail, pas et cris de la ferme : " + world + " sur 13"
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
@@ -281,7 +323,7 @@ namespace EdS.Game.Editor
                 + "\nEau : " + (catalog.SampleWater != null ? "eau du sample (ordinateur)" : catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
-                + ", musiques : " + catalog.Music.Length + " sur 4, ambiances : " + catalog.Ambiences.Length + " sur 3"
+                + ", musiques : " + catalog.Music.Length + " sur 6, ambiances : " + catalog.Ambiences.Length + " sur 12"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
                 + "\n\n" + models.Count + " modèles, " + textures.Count + " textures et " + sounds.Count + " sons trouvés dans Assets/Style. Appuie sur Play."
@@ -317,6 +359,52 @@ namespace EdS.Game.Editor
             }
             importer.clipAnimations = clips;
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : une bête livrée avec sa texture à côté d'elle, d'un autre nom que celui de sa matière (« Rabbit_Pneshik_tex.png »
+        /// pour la matière « Color_Forest » du lièvre) : un matériau URP Lit fait de cette texture (dans <c>Generated</c>) remplace ses
+        /// matières. Seule une texture dont le nom commence par celui du modèle compte (le sanglier et le chat, rangés au même endroit,
+        /// gardent leurs couleurs). Sans elle, rien ne change.
+        /// </summary>
+        private static void AnimalMaterial(string modelPath, List<string> notes)
+        {
+            if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
+            string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
+            string stem = StyleRules.Key(Path.GetFileNameWithoutExtension(modelPath));
+            string color = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct()
+                .Where(p => Path.GetDirectoryName(p).Replace('\\', '/') == folder && StyleRules.IsColorMap(p)
+                    && StyleRules.Key(Path.GetFileNameWithoutExtension(p)).StartsWith(stem, System.StringComparison.Ordinal))
+                .OrderBy(p => p, System.StringComparer.Ordinal).FirstOrDefault();
+            if (color == null)
+            {
+                // Une préparation d'avant V2.9 a pu relier ses matières à celles de Poly Haven (la texture du lièvre posée sur le sanglier) :
+                // ces liens vers « Generated » sont retirés, la bête retrouve ses couleurs.
+                List<AssetImporter.SourceAssetIdentifier> stale = importer.GetExternalObjectMap()
+                    .Where(pair => pair.Value is Material && AssetDatabase.GetAssetPath(pair.Value).StartsWith(Generated + "/", System.StringComparison.Ordinal))
+                    .Select(pair => pair.Key).ToList();
+                foreach (AssetImporter.SourceAssetIdentifier key in stale) importer.RemoveRemap(key);
+                if (stale.Count > 0)
+                {
+                    importer.SaveAndReimport();
+                    notes.Add(Path.GetFileName(modelPath) + " : couleurs d'origine rendues (" + stale.Count + " matières).");
+                }
+                return;
+            }
+            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+            List<Material> embedded = AssetDatabase.LoadAllAssetsAtPath(modelPath).OfType<Material>().ToList();
+            if (lit == null || embedded.Count == 0) return;
+            string path = Generated + "/" + Path.GetFileNameWithoutExtension(modelPath) + ".mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(lit);
+                AssetDatabase.CreateAsset(material, path);
+            }
+            Configure(material, lit, null, 0f, Texture2DAt(color), null, false);
+            foreach (Material m in embedded) importer.AddRemap(new AssetImporter.SourceAssetIdentifier(m), material);
+            importer.SaveAndReimport();
+            notes.Add(Path.GetFileName(modelPath) + " : texture " + Path.GetFileName(color) + ".");
         }
 
         /// <summary>
@@ -1179,8 +1267,9 @@ namespace EdS.Game.Editor
             if (!(AssetImporter.GetAtPath(path) is AudioImporter importer)) return;
             AudioImporterSampleSettings settings = importer.defaultSampleSettings;
             // Relecture de l'essai 7 : d'après le dossier (un fichier de « Music » au nom non reconnu reste lu en continu, pas décompressé).
+            // Sous-lot V2.9 : un long enregistrement (ronronnement, hurlements, brame, cloches, bourdonnement) reste compressé en mémoire.
             AudioClipLoadType load = StyleRules.InMusicFolder(path) ? AudioClipLoadType.Streaming
-                : StyleRules.InAmbienceFolder(path) ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+                : StyleRules.InAmbienceFolder(path) || StyleRules.IsLongRecording(path) ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
             // Un réglage propre au téléphone (Android) masquerait celui-ci : il est retiré.
             bool android = importer.ContainsSampleSettingsOverride("Android");
             if (android) importer.ClearSampleSettingOverride("Android");

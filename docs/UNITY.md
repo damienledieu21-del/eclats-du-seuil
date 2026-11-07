@@ -700,6 +700,86 @@ Menu **Éclats du Seuil → Essai des chemins : …** (hors du mode Jeu ; seul l
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement).
 
+### Essai V2.9 : vrais modèles et sons
+
+Demande de Damien du 7 novembre 2026 : remplacer les formes simples par de vrais modèles et de vrais sons, « le mieux possible ». Les fichiers (tous gratuits, CC0 ou CC BY 4.0 : [crédits](CREDITS.md)) restent chez Damien dans `unity/Assets/Style`, **non suivis par git**. Sans eux, chacun garde ses formes simples et ses sons faits par le code.
+
+**Déposer** (déjà fait chez Damien, sauf le chat converti) :
+
+- `Assets/Style/Animals/Quaternius/` : `Wolf_Quaternius.fbx`, `Stag_Quaternius.fbx`, `Deer_Quaternius.fbx` ;
+- `Assets/Style/Sketchfab/Animaux/` : `Rabbit_Pneshik.fbx` et `Rabbit_Pneshik_tex.png`, `Boar_Hanabi.fbx`, et **`Cat_Stripe_DreamNoms.fbx`** (le chat converti par Claude depuis la source Blender livrée avec le modèle : Unity ne lit pas le `.glb`, qui peut rester à côté ; le fichier `Source/Cat_Stripe_DreamNoms.blend.txt` ne sert à rien et peut être supprimé) ;
+- `Assets/Style/Sounds/Animaux/` : les `eds_…ogg` (miaulements, ronron, cloches, verre, miroir, hurlements, brame, sanglier, lièvre, bourdon).
+
+**Préparer** : menu **Éclats du Seuil → Préparer l'essai de style**. Il trouve les bêtes par leur nom (« stag », « deer », « rabbit », « boar », « cat », « wolf_quaternius »…), règle leur import (animations « Legacy » : attente, marche, galop et brouter en boucle), donne au lièvre sa texture (matériau `Generated/Rabbit_Pneshik.mat`), laisse au sanglier et au chat leurs couleurs (une préparation précédente qui leur aurait collé la texture du lièvre est défaite), garde les longs enregistrements compressés en mémoire (téléphone), et range tout dans le catalogue. Sa fenêtre dit « Cerf : …, biche : …, lièvre : …, chat : … » et « Voix des bêtes, cloches et failles : 11 sur 11 ».
+
+**Qui prend quoi** :
+
+| Bête | Modèle | Animations |
+|---|---|---|
+| Loups (gris, de la nuit, de la brume, Croc-Gris) | le loup réaliste de l'Asset Store s'il est là (inchangé), sinon `Wolf_Quaternius` (à la place du loup du premier pack, qui n'avait que l'attente et la marche) | attente, marche, galop, attaque, coup reçu, mort, manger (quand il fouille) |
+| Loup blanc (contrat de la guilde) | le même, éclairci (**White Wolf Color**) | idem |
+| Échos | le même, pâli et bleuté comme avant | idem |
+| Cerfs | `cerf1` (le chef) et un sur trois : `Stag_Quaternius` (bois) ; les autres : `Deer_Quaternius` (biche) | attente, marche, galop (fuite), brouter (« Eating »), mort |
+| Lièvres | `Rabbit_Pneshik` | attente, marche, course (fuite), manger, mort |
+| Sangliers | `Boar_Hanabi` (sans squelette) | **par le code** : il se dandine au pas, bondit un peu au trot, fouille le groin au sol par à-coups, charge le groin en avant, sursaute quand on le frappe, se couche sur le flanc à sa mort |
+| Pain-d'Épice | `Cat_Stripe_DreamNoms`, **teint en roux** (pelage et rayures du compagnon ; collier rouge et yeux verts gardés, les yeux luisent la nuit) | marche, course, attente, queue qui fouette (assis, étirement), regard qui fait le tour, tapi (en boule) |
+
+Les marches et galops prennent une cadence qui suit la vitesse (moins de pattes qui glissent). Toutes les bêtes sont centrées sur leur corps (le sanglier et le lièvre sont posés loin de leur origine dans leur fichier).
+
+**Sons** (en 3D, à la place de la bête ; distance d'écoute : **Beast Hearing**, 60 m ; volume : **Beast Volume**) :
+
+- **Pain-d'Épice** : un des six miaulements, mélangés mais toujours dans le même ordre ; le ronron joué par passages de 7 s (le fichier dure 91 s). Sans fichier : les sons faits par le code.
+- **Loups** : hurlements la nuit et dans la brume, toutes les 35 à 80 s, venant du loup le plus proche (jusqu'à 120 m) ; passages choisis dans les deux enregistrements là où l'on entend la meute.
+- **Cerfs** : brame rare (toutes les 100 à 220 s), seulement de 4 h 30 à 7 h 30 et de 18 h 30 à 21 h 30, d'un cerf à bois, sur un des six appels mesurés dans l'enregistrement de 149 s.
+- **Lièvres** : un bruit de course dans l'herbe quand l'un détale.
+- **Sangliers** : grognements courts (2,6 s) toutes les 9 à 22 s, du sanglier le plus proche à moins de 30 m.
+- **Hameau attaqué (V2.5)** : le **tocsin**, neuf coups rapides de la cloche, entendu de loin ; hameau défendu : la **cloche d'église** une douzaine de secondes.
+- **Failles du Seuil (V2.5, V2.6)** : **verre qui éclate** à l'ouverture (plus bas à chaque vague), **bourdonnement** en boucle autour de la faille ouverte, **miroir qui explose** quand elle se referme (ou s'échappe) ; une cicatrice qui grandit crisse comme du verre (plus grave).
+- Les voix se taisent en pause, pendant une scène et dans une maison ; quatre à la fois au plus.
+
+**Réglages du catalogue** (`Assets/Style/Resources/StyleCatalog`, en-tête « Sous-lot V2.9 ») : **Stag Yaw**, **Doe Yaw**, **Hare Yaw**, **Cat Yaw** (et **Wolf Yaw**, **Boar Yaw**) tournent un modèle qui marche de travers (90, 180, −90…). La préparation propose une fois **Boar Yaw = 60,7** pour le sanglier de Hanabi_Map (son groin pointe à 60,7° dans son fichier, mesuré sous Blender) ; **si le sanglier marche de côté ou à reculons, essayer −60,7 ou 240,7**. **Tint Cat** (teindre le chat), **Cat Height** (0,36 m), **White Wolf Color**.
+
+**Décisions de Damien du 7 novembre 2026 (19 h 39)**, sur les trois recommandations de la PR #114 : les loups prennent le loup réaliste de l'Asset Store d'abord, puis celui de roo3d, puis celui de Quaternius ; un cerf à bois sur trois dans la harde (le chef compris), les autres sont des biches ; la fréquence actuelle des hurlements (toutes les 35 à 80 s la nuit et par brume) et du brame (toutes les 100 à 220 s à l'aube et au crépuscule) est gardée pour l'essai.
+
+#### 2e vague (7 novembre 2026, au soir) : bêtes plus réalistes, ferme, ambiances par lieu, pas, musiques
+
+Déposée chez Damien : `Assets/Style/Sketchfab/Animaux2/` (modèles en `.glb`, que Unity ne lit pas), `Assets/Style/Sounds/Monde/` (ambiances et bruitages), `Assets/Style/Music/ScottBuckley/` (trois musiques). **À déposer** dans `Assets/Style/Sketchfab/Animaux2/` : les FBX convertis par Claude (même nom, `.fbx`) : `CerfRouge_Suiteofart`, `Elan_WildMesh`, `Faon_AssetsAnimated`, `Sanglier_Dakta`, `Lievre_bluekiwi`, `Loup_roo3d`, `Loup_rhcreations` (facultatif, non retenu), `Corbeau_alexanders823`, `Vache_rukh3d`, `Chien_quander`, `Cheval_henry7` ; les `.glb` peuvent rester (Unity les ignore). Puis **Préparer l'essai de style** : la fenêtre dit aussi « Ferme : corbeau …, vache …, chien …, cheval … » et « Portail, pas et cris de la ferme : 13 sur 13 ».
+
+Conversion (Claude, Blender 5.2 en ligne de commande) : la chaîne d'objets vides de Sketchfab est aplatie (les bêtes sont debout, groin ou museau vers l'avant : aucune rotation à régler), seules les animations utiles sont gardées et renommées (`Idle`, `Walk`, `Trot`, `Run`, `Eat`, `Dig`, `Attack`, `Hurt`, `Death`, `Lie`…, les variantes « en place » quand le modèle en a), les textures de 4096 px ramenées à 2048 px et incluses dans le fichier ; chaque FBX a été relu sous Blender (poses de chaque clip au sol, debout). Le lièvre de bluekiwi avait sa texture sur l'émission : rebranchée sur la couleur.
+
+**Le meilleur modèle par bête** (la préparation choisit dans cet ordre ; un modèle absent laisse sa place au suivant, puis aux formes simples) :
+
+| Bête | Ordre | Remarque |
+|---|---|---|
+| Cerf à bois | élan de WildMesh → cerf élaphe de Suiteofart → Stag de Quaternius | **demande de Damien du 7 novembre 2026 (19 h 58)** : l'élan d'abord, toutes ses postures sont animées (attente, marche, trot, course, sprint, brouter, coup reçu, mort, couché) ; son déplacement intégré aux clips de marche, de trot, de course et de mort a été retiré à la conversion (il marche sur place, le jeu le déplace). Le cerf élaphe en repli (ni mort, ni brouter, ni attaque : couché sur le flanc à sa mort) |
+| Biche | faon d'Assets_Animated → Deer de Quaternius | 1,35 m |
+| Sanglier | sanglier de Dakta.Grower.Nzl → Hanabi_Map | **demande de Damien du 7 novembre 2026 (19 h 58)** : livré sans texture, il a reçu à la conversion une **texture de pelage peinte par Claude** (1024 px, sur ses UV, d'après la place de chaque point dans la pose debout : dos et crinière sombres, flancs bruns, ventre plus clair, pattes et sabots noirs, groin, soies striées le long du corps) ; il était aussi tourné de 42° dans son fichier : redressé à la conversion. Les sangliers d'anru97580 (texturé, mais d'échelle cassée à la conversion) et d'emptypen2477 (sans texture) ont été essayés et ne sont pas retenus |
+| Lièvre | lièvre de bluekiwi.dog → lapin de Pneshik | attente, marche, course seulement |
+| Loup | loup réaliste de l'Asset Store (inchangé) → loup de roo3d → Quaternius | le loup de roo3d n'a ni attaque, ni mort, ni coup reçu |
+
+Une bête **sans clip d'attaque ou de coup reçu** charge (museau en avant) ou sursaute par le code, par-dessus son animation.
+
+**Ferme et champs** (décor seulement, ni collision ni combat ; **Livestock** du catalogue : 1 = prévu, 0 = aucune, moitié sur téléphone) : trois vaches et cinq corbeaux dans les champs, deux chevaux et un chien au hameau, un chien au bourg, trois corbeaux aux ruines, posés hors des bâtiments, des routes et (vaches, chevaux) des champs cultivés. **Ils se déplacent** (demande de Damien du 7 novembre 2026, 19 h 58 ; affichage seulement, rien dans le cœur) : chacun erre autour de sa place dans son lieu (vaches 6 m, chevaux 7 m, chien 12 m au trot, corbeaux 2,5 m en sautillant), marche jusqu'à un but puis se repose 6 à 16 s (attente, manger, s'asseoir), se tourne en douceur ; un but n'est pris que s'il est dans le lieu, hors des maisons, des obstacles et des routes (sauf pour le chien) et, pour les vaches et les chevaux, si la ligne droite ne coupe pas un champ cultivé ; le trajet vient de la **recherche de chemin du sous-lot V2.8** (`Walker`, `WalkPaths` : il contourne maisons, murs et rochers, calculé seulement au changement de but) ; sans chemin, la bête renonce et se repose. Les chevaux ont leur clip de marche ; la vache et le chien n'en ont pas dans leur fichier : pendant la marche, leur attente est arrêtée et les **hauts de pattes de leur squelette balancent par le code** (pas en diagonale, d'après la distance parcourue ; os reconnus par leur nom : `L_hip`, `R_shoulder` du chien, `LEGF.L`, `LEGB.R` de la vache), avec un léger tangage et un petit rebond du corps ; un modèle sans os reconnus ni composant Animation erre quand même, le corps seul balancé (revue Codex de la PR #114, tour 2). Mêmes buts et mêmes repos d'une partie à l'autre (déterministe, `BeastCalls.WanderTarget`), sans allocation par image ; les **corbeaux s'envolent** en croassant à moins de 7 m et reviennent une minute plus tard. Cris en 3D : meuglements, hennissements, aboiements, croassements le jour ; le **coq** à l'aube (4 h 45 à 8 h) et les **poules** le jour au hameau ; le **mouton** aux champs ; la **hulotte** la nuit dans la forêt des Loups.
+
+**Ambiances par lieu et par heure** (fichiers du dossier `Sounds/Monde`, reconnus par leur nom ; volume général : **Ambience Volume**) :
+
+- au bourg, au village et au hameau : **rumeur** de 6 h à 21 h, **marché** de 7 h 30 à 13 h (plus faible jusqu'à 18 h), **taverne** de loin de 18 h 30 à 23 h 30 ; dans l'auberge : la taverne seule ;
+- **forge** (charbon et soufflet) jusqu'à 25 m du lieu « forge » de Maëlle, de 7 h à 19 h ;
+- **feu de camp** au camp des rôdeurs et à la carrière (plus fort la nuit) ;
+- **campagne** aux champs, vergers, plaines, pré et lac, le jour ; **forêt** dans la forêt des Loups (plus calme la nuit) ; la forêt et son ruisseau comptent comme la rivière ;
+- les **grillons** de simous00 servent de nappe de nuit si Damien n'a pas déposé la sienne (`nuit_grillons_hibou.ogg` passe devant) ;
+- la pluie baisse le marché, la campagne et le feu ; le combat baisse tout de moitié.
+
+**Pas du personnage** (**Step Volume**, 0,35) : un pas tous les 0,75 m au pas (1,4 m en courant), pris un à un dans les enregistrements : **gravier** sur les routes et les sols sans herbe, **feuilles** dans la forêt, **herbe** ailleurs, **plancher** dans les maisons.
+
+**Failles** : un **portail** qui s'ouvre (au départ) avec le verre. **Tocsin** : la **petite cloche** (un seul coup, frappée vite) ; **hameau défendu** : une des quatre **cloches d'église** (dont celle du village français de kevp888, CC BY).
+
+**Musiques** de Scott Buckley : « Into The Wilds » pour l'**exploration** (devant « Woodland Fantasy »), « Sanctum » **au Seuil** et à son cœur (hors combat), « The Legend of Kvothe » pendant les **scènes de l'histoire** (sauf le souvenir, qui a son chant).
+
+Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#16-vrais-modèles-et-sons-v29).
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les FBX convertis ont été relus sous Blender, pas dans Unity ; le cheval de henry_7 a des pièces (crinière, selle) mal tenues par son squelette sous Blender, à vérifier ; la marche de la vache et du chien est faite par le code (les os de pattes de la vache sont peut-être des cibles qui ne déforment rien : alors seul le corps se balance) ; la texture du sanglier est peinte par le code (crédible de loin, sans le détail d'une photo) ; l'orientation du sanglier de Hanabi et la taille des bêtes sont calculées, pas vérifiées dans Unity ; le sanglier n'a pas de vraies pattes qui bougent (le corps se balance) ; l'auteur du chat juge lui-même ses animations d'attente « ratées » (seules la marche et la course sont soignées), elles servent faute de mieux ; le chat ne s'assoit pas vraiment (debout, la queue qui fouette) ; aucun son de cerf ou de lièvre blessé.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

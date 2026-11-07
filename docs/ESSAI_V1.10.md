@@ -234,3 +234,28 @@ Menu **Éclats du Seuil → Essai des suites du Seuil : …**, **hors du mode Je
 | 15.6 | Effrayer un lièvre ou un cerf contre une clôture ou un muret | Il **file de biais** le long de l'obstacle au lieu de s'y bloquer | [ ] | |
 | 15.7 | Monter sur un point que la bête ne peut pas atteindre (de l'autre côté d'une palissade fermée, si tu en trouves un) | Elle **t'attend sans bouger**, tournée vers toi ; jamais d'aller-retour | [ ] | |
 | 15.8 | Ton avis : allure des détours, PNJ qui vont droit s'il n'y a vraiment aucun chemin, tireurs qui restent coincés contre un mur en reculant | — | [ ] | |
+
+## 16. Vrais modèles et sons (V2.9)
+
+Avant l'essai : déposer `Cat_Stripe_DreamNoms.fbx` dans `Assets/Style/Sketchfab/Animaux/`, puis menu **Éclats du Seuil → Préparer l'essai de style** ; la fenêtre doit dire « Cerf : Stag_Quaternius.fbx, biche : Deer_Quaternius.fbx, lièvre : Rabbit_Pneshik.fbx, chat : Cat_Stripe_DreamNoms.fbx » et « Voix des bêtes, cloches et failles : 11 sur 11 ». Pour voir les bêtes sans attendre : les menus d'essai des animaux et des bêtes qui se promènent (§ 9 et 12), de la nuit, de la brume et des événements. Détail : [UNITY.md](UNITY.md#essai-v29--vrais-modèles-et-sons).
+
+| # | À faire | Ce que tu dois voir et entendre | OK | Remarque |
+|---|---|---|---|---|
+| 16.1 | Prendre Pain-d'Épice (le chat de Rosalie), marcher, courir, s'arrêter longtemps | Un vrai **chat roux** à rayures plus foncées (collier rouge), qui marche et court en suivant ton allure, attend debout, fouette de la queue, regarde autour de lui, se tapit ; il **miaule** (vrais miaulements, pas toujours le même) et **ronronne** quelques secondes | [ ] | |
+| 16.2 | « l'aube des cerfs », Play, sud du lac des Aubes | Un **cerf à bois** (le chef) et des **biches** qui broutent tête basse (en boucle, sans se figer), marchent, puis **galopent** ensemble quand tu approches ; à l'aube, de temps en temps (une fois toutes les deux ou trois minutes), un **brame** au loin | [ ] | |
+| 16.3 | « le crépuscule des lièvres », champs du sud | De vrais **lièvres** (texture) qui mangent, sautillent, **détalent** avec un bruit de course dans l'herbe | [ ] | |
+| 16.4 | Le matin, champs du sud (sangliers) | Des **sangliers** qui marchent dans le bon sens (sinon : régler **Boar Yaw**, voir UNITY.md), se dandinent, fouillent le groin au sol ; des **grognements** de près ; ils chargent le groin en avant ; morts, couchés sur le flanc | [ ] | |
+| 16.5 | La nuit (menu « 21 h 55 ») et la brume ; s'approcher des loups | Loups **gris** (modèle de l'Asset Store ou de Quaternius), **hurlements** de temps en temps du côté de la meute ; en combat : galop, attaque, coup reçu, mort ; le **loup blanc** du contrat est blanc ; les échos restent pâles et bleutés | [ ] | |
+| 16.6 | Attaque du hameau (menu des événements) | Le **tocsin** sonne vite, du côté du hameau ; si tu le défends : la **cloche d'église** | [ ] | |
+| 16.7 | Une faille du Seuil | **Verre qui éclate** à l'ouverture, **bourdonnement** autour d'elle (plus fort en s'approchant), **miroir qui explose** quand elle se referme ; une cicatrice qui grandit crisse | [ ] | |
+| 16.8 | Entrer dans une maison, mettre en pause | Les voix des bêtes se taisent | [ ] | |
+| 16.9 | Sur le Note8 | L'image reste fluide avec les bêtes animées ; les sons ne coupent pas | [ ] | |
+| 16.10 | Ton avis : modèles (loup de Quaternius ou loup réaliste ?), taille des bêtes, couleur du chat, fréquence des hurlements et du brame, volume (**Beast Volume**), portée (**Beast Hearing**) | — | [ ] | |
+| 16.11 | 2e vague : déposer les FBX convertis dans `Assets/Style/Sketchfab/Animaux2/`, préparer | La fenêtre cite `CerfRouge_Suiteofart`, `Faon_AssetsAnimated`, `Lievre_bluekiwi`, `Sanglier_Dakta`, et « Ferme : corbeau …, vache …, chien …, cheval … » | [ ] | |
+| 16.12 | Cerfs, biches, lièvres, sangliers, loups (comme 16.2 à 16.5) ; déposer d'abord les nouveaux `Elan_WildMesh.fbx` et `Sanglier_Dakta.fbx` (7 novembre, 20 h) | Le cerf est l'**élan** : il broute vraiment, marche et galope sur place sans glisser en avant, sursaute quand on le frappe, s'effondre à sa mort ; le **sanglier a un pelage** (dos sombre, flancs bruns, pattes noires) et marche droit ; une bête sans attaque charge le museau en avant | [ ] | |
+| 16.13 | Champs du sud, hameau, bourg, ruines, le jour ; rester quelques minutes ; puis s'approcher des corbeaux | Vaches, chevaux, chiens, corbeaux qui **se promènent** dans leur coin (marche, arrêt, broutage), sans traverser les maisons ni les routes (le chien, si) ; meuglements, hennissements, aboiements ; les corbeaux sautillent, s'envolent en croassant et reviennent une minute plus tard | [ ] | |
+| 16.14 | Le bourg à 9 h 30, à 15 h, à 21 h ; entrer dans l'auberge ; passer devant la forge de Maëlle | Marché le matin, rumeur l'après-midi, taverne le soir (rires dans l'auberge), charbon et soufflet près de la forge | [ ] | |
+| 16.15 | Marcher sur une route, dans l'herbe, dans la forêt des Loups, dans une maison | Pas sur le gravier, dans l'herbe, dans les feuilles, sur le plancher | [ ] | |
+| 16.16 | Hameau à l'aube ; forêt la nuit ; camp des rôdeurs | Le coq ; la hulotte ; le feu de camp | [ ] | |
+| 16.17 | Explorer ; aller au Seuil ; une scène de l'histoire | « Into The Wilds », « Sanctum », « The Legend of Kvothe » | [ ] | |
+| 16.18 | Ton avis : quel loup (Asset Store, roo3d, Quaternius), quel lièvre (bluekiwi ou Pneshik), le cerf élaphe sans mort ni brouter, nombre de bêtes de la ferme (**Livestock**), volume des pas (**Step Volume**) | — | [ ] | |

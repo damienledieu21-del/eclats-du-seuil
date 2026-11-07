@@ -26,7 +26,8 @@ namespace EdS.Game
         private readonly List<string> _gone = new List<string>();
         private string _place;
         private float _night;
-        private int _variant;
+        private int _meows;
+        private int _purrs;
 
         /// <summary>
         /// Une image. <paramref name="active"/> : compagnons à montrer ; <paramref name="hidden"/> : mise en scène (souvenir) en cours, la bête
@@ -87,19 +88,24 @@ namespace EdS.Game
             {
                 case CompanionCue.Appear:
                 case CompanionCue.Meow:
-                    body.Meow(Clip(StyleSound.Meow), cue == CompanionCue.Appear ? 0.3f : 0.4f, 0.92f + 0.06f * (_variant++ % 4));
+                    // Sous-lot V2.9 : un des miaulements déposés, mélangés mais toujours dans le même ordre (BeastCalls.Pick) ; un vrai
+                    // miaulement garde presque sa hauteur, celui fait par le code varie davantage.
+                    AudioClip meow = Clip(StyleSound.Meow, BeastCalls.Pick(_meows, 1 << 20));
+                    float pitch = meow == CatSounds.Meow ? 0.92f + 0.06f * (_meows % 4) : 0.97f + 0.02f * (_meows % 4);
+                    _meows++;
+                    body.Meow(meow, cue == CompanionCue.Appear ? 0.3f : 0.4f, pitch);
                     break;
                 case CompanionCue.Purr:
-                    body.Purr(Clip(StyleSound.Purr));
+                    body.Purr(Clip(StyleSound.Purr, _purrs), _purrs++);
                     break;
             }
         }
 
         /// <summary>Le son déposé par Damien (mots « miaou », « ronron »…), sinon celui fait par le code.</summary>
-        private AudioClip Clip(StyleSound sound)
+        private AudioClip Clip(StyleSound sound, int variant)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            AudioClip clip = catalog != null ? catalog.Sound(sound, _variant) : null;
+            AudioClip clip = catalog != null ? catalog.Sound(sound, variant) : null;
             if (clip != null) return clip;
             return sound == StyleSound.Purr ? CatSounds.Purr : CatSounds.Meow;
         }
@@ -197,12 +203,23 @@ namespace EdS.Game
         private readonly Transform[] _tail = new Transform[TailSegments];
         private readonly Transform[] _ears = new Transform[2];
         private readonly List<Material> _materials = new List<Material>();
-        private readonly Material _eyes;
+        private Material _eyes;
         private readonly Color _eyeColor;
         private readonly AudioSource _voice;
         private readonly AudioSource _purr;   // relecture de la PR #102 : à part, le pitch des miaulements ne le change pas
         private readonly float _length;
         private float _clock;
+
+        // Sous-lot V2.9 : le vrai chat (catalogue), animé par ses clips ; sans lui, le chat en formes simples.
+        private readonly Animation _animation;
+        private readonly string[] _poseClips = new string[6];   // marche, course, attente, queue, regard, tapi
+        private string _playing;
+        private AnimationState _playingState;
+        private float _purrStarted;
+        private float _purrLength;
+
+        private const int ClipWalk = 0, ClipRun = 1, ClipIdle = 2, ClipTail = 3, ClipLook = 4, ClipCrouch = 5;
+        private static readonly string[] ClipKeys = { "walk", "run", "idle", "idletailflick", "idlelookaround", "crouchidle" };
 
         // Posture affichée (fondue vers la posture voulue).
         private float _hipY = Leg, _pitch, _front, _hind, _headPitch, _headYaw, _tailLift = 40f, _tailCurl, _tailSide, _paw, _curl;
@@ -212,15 +229,25 @@ namespace EdS.Game
             _length = (float)definition.Length;
             Color coat = Tint(definition.Coat), marks = Tint(definition.Marks);
             _eyeColor = Tint(definition.Eyes);
+
+            _root = new GameObject("Compagnon : " + definition.Name);
+            _root.layer = 2;   // « Ignore Raycast »
+            _scale = Node("Taille", _root.transform, Vector3.zero);
+            // Sous-lot V2.9 : le vrai chat du catalogue (Stripe the Cat), teint aux couleurs du compagnon ; sinon les formes simples.
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog != null && catalog.Cat != null)
+            {
+                _animation = Model(catalog, definition, coat, marks);
+                _voice = Voice(_root, 0.75f);
+                _purr = Voice(_root, 0.85f);
+                _scale.localScale = Vector3.zero;
+                return;
+            }
             Material fur = Track(ArenaView.MakeMaterial(coat));
             Material dark = Track(ArenaView.MakeMaterial(marks));
             Material cream = Track(ArenaView.MakeMaterial(Color.Lerp(coat, Color.white, 0.65f)));
             Material nose = Track(ArenaView.MakeMaterial(new Color(0.85f, 0.45f, 0.5f)));
             _eyes = Track(ArenaView.MakeMaterial(_eyeColor));
-
-            _root = new GameObject("Compagnon : " + definition.Name);
-            _root.layer = 2;   // « Ignore Raycast »
-            _scale = Node("Taille", _root.transform, Vector3.zero);
             _hips = Node("Hanches", _scale, new Vector3(0f, Leg, -_length * 0.4f));
 
             // Le corps : une capsule couchée, un ventre clair, trois rayures sur le dos.
@@ -267,22 +294,77 @@ namespace EdS.Game
                 at = new Vector3(0f, 0f, -0.065f);
             }
 
-            _voice = _root.AddComponent<AudioSource>();
-            if (_voice != null)
-            {
-                _voice.playOnAwake = false;
-                _voice.spatialBlend = 0.75f;   // on l'entend de son côté, sans qu'il disparaisse quand la caméra recule
-                _voice.loop = false;
-            }
-            _purr = _root.AddComponent<AudioSource>();
-            if (_purr != null)
-            {
-                _purr.playOnAwake = false;
-                _purr.spatialBlend = 0.85f;
-                _purr.loop = false;
-                _purr.pitch = 1f;
-            }
+            _voice = Voice(_root, 0.75f);   // on l'entend de son côté, sans qu'il disparaisse quand la caméra recule
+            _purr = Voice(_root, 0.85f);
             _scale.localScale = Vector3.zero;
+        }
+
+        private static AudioSource Voice(GameObject root, float blend)
+        {
+            AudioSource source = root.AddComponent<AudioSource>();
+            if (source == null) return null;
+            source.playOnAwake = false;
+            source.spatialBlend = blend;
+            source.loop = false;
+            source.pitch = 1f;
+            source.rolloffMode = AudioRolloffMode.Linear;   // sous-lot V2.9 : entendu jusqu'à 30 m
+            source.minDistance = 2f;
+            source.maxDistance = 30f;
+            return source;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : le modèle du chat, à la taille du compagnon (<see cref="StyleCatalog.CatHeight"/> pour 48 cm de long), centré,
+        /// sans collision, teint (pelage : <c>MainColor</c> ; rayures : <c>DarkerColor</c> ; yeux : <c>Glass</c>, qui luisent la nuit) ;
+        /// ses clips (marche, course, attentes, tapi) tournent en boucle. Rend son composant Animation, ou null.
+        /// </summary>
+        private Animation Model(StyleCatalog catalog, CompanionDefinition definition, Color coat, Color marks)
+        {
+            float height = catalog.CatHeight * Mathf.Max(0.2f, _length / 0.48f);
+            GameObject look = StyleLook.Fit(catalog.Cat, height, 0f, null, false, out float bottom, out GameObject _, true);
+            float k = look.transform.localScale.y;
+            look.transform.SetParent(_scale, false);
+            look.transform.localPosition = new Vector3(0f, -bottom * k, 0f);
+            look.transform.localRotation = Quaternion.Euler(0f, catalog.CatYaw, 0f);
+            foreach (Transform t in look.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = 2;
+            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                foreach (Material m in r.materials)
+                {
+                    Track(m);
+                    string name = m.name;
+                    if (name.StartsWith("Glass", StringComparison.Ordinal))
+                    {
+                        ArenaView.ApplyColor(m, _eyeColor);
+                        _eyes = m;
+                    }
+                    else if (!catalog.TintCat) continue;
+                    else if (name.StartsWith("MainColor", StringComparison.Ordinal)) ArenaView.ApplyColor(m, coat);
+                    else if (name.StartsWith("DarkerColor", StringComparison.Ordinal)) ArenaView.ApplyColor(m, marks);
+                }
+            }
+            Animation animation = look.GetComponentInChildren<Animation>();
+            if (animation == null) return null;
+            foreach (AnimationState state in animation)
+            {
+                state.wrapMode = WrapMode.Loop;
+                string name = state.name;
+                int bar = name.LastIndexOf('|');
+                string key = StyleRules.Key(bar >= 0 ? name.Substring(bar + 1) : name);
+                for (int i = 0; i < ClipKeys.Length; i++)
+                    if (key == ClipKeys[i] && _poseClips[i] == null) _poseClips[i] = name;
+            }
+            // Un clip absent prend l'attente, puis la marche, puis le premier.
+            string any = null;
+            foreach (AnimationState state in animation)
+            {
+                any = state.name;
+                break;
+            }
+            for (int i = 0; i < _poseClips.Length; i++)
+                if (_poseClips[i] == null) _poseClips[i] = _poseClips[ClipIdle] ?? _poseClips[ClipWalk] ?? any;
+            return animation;
         }
 
         public void Show(bool shown)
@@ -299,6 +381,12 @@ namespace EdS.Game
             float p = (float)f.Presence;
             float pop = f.Leaving ? p : p * (1f + 0.18f * Mathf.Sin(Mathf.PI * p));
             _scale.localScale = new Vector3(pop, pop, pop);
+            FadePurr();
+            if (_hips == null)
+            {
+                Animate(f, night);
+                return;
+            }
 
             Target(f, out float hipY, out float pitch, out float front, out float hind, out float headPitch, out float headYaw,
                 out float tailLift, out float tailCurl, out float tailSide, out float paw, out float curl);
@@ -431,10 +519,74 @@ namespace EdS.Game
             _voice.PlayOneShot(clip, volume);
         }
 
-        public void Purr(AudioClip clip)
+        /// <summary>
+        /// Sous-lot V2.9 : le vrai chat suit sa posture avec ses clips : marche ou course (cadence d'après sa vitesse), attente debout, queue
+        /// qui fouette assis ou en s'étirant, regard qui fait le tour, tapi pour la boule ; yeux qui luisent la nuit.
+        /// </summary>
+        private void Animate(CompanionFollower f, float night)
+        {
+            if (_eyes != null)
+            {
+                _eyes.EnableKeyword("_EMISSION");
+                if (_eyes.HasProperty("_EmissionColor")) _eyes.SetColor("_EmissionColor", _eyeColor * (0.15f + 1.6f * night));
+            }
+            if (_animation == null) return;
+            float speed = (float)f.Speed;
+            int pose;
+            switch (f.Pose)
+            {
+                case CompanionPose.Walk: pose = speed < 0.05f ? ClipIdle : speed < 2.5f ? ClipWalk : ClipRun; break;
+                case CompanionPose.Sit:
+                case CompanionPose.Stretch: pose = ClipTail; break;
+                case CompanionPose.Look: pose = ClipLook; break;
+                case CompanionPose.Curl: pose = ClipCrouch; break;
+                default: pose = ClipIdle; break;
+            }
+            string clip = _poseClips[pose];
+            if (clip == null) return;
+            if (clip != _playing)
+            {
+                _playing = clip;
+                _playingState = _animation[clip];
+                _animation.CrossFade(clip, 0.25f);
+            }
+            if (_playingState != null)
+                _playingState.speed = pose == ClipWalk ? Mathf.Clamp(speed / 0.9f, 0.6f, 1.6f) : pose == ClipRun ? Mathf.Clamp(speed / 4f, 0.7f, 1.6f) : 1f;
+        }
+
+        /// <summary>
+        /// Ronronnement : un long enregistrement (plus de 8 s) n'est joué que par passages de 7 s, avec un fondu (<see cref="BeastCalls.Cue"/>) ;
+        /// le ronronnement fait par le code, en entier.
+        /// </summary>
+        public void Purr(AudioClip clip, int n)
         {
             if (_purr == null || clip == null) return;
-            _purr.PlayOneShot(clip, 0.35f);
+            if (clip.length <= 8f)
+            {
+                _purr.PlayOneShot(clip, 0.35f);
+                return;
+            }
+            (double start, double length) = BeastCalls.Cue(clip.name, clip.length, n, 7);
+            _purr.clip = clip;
+            _purr.volume = 0.35f * (float)BeastCalls.Envelope(0, length);
+            _purr.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
+            _purr.Play();
+            _purrStarted = Time.unscaledTime;   // relecture de la PR #114 : le passage finit même en pause (timeScale à 0)
+            _purrLength = (float)length;
+        }
+
+        private void FadePurr()
+        {
+            if (_purrLength <= 0f || _purr == null) return;
+            float t = Time.unscaledTime - _purrStarted;
+            if (t >= _purrLength)
+            {
+                _purr.Stop();
+                _purr.volume = 1f;
+                _purrLength = 0f;
+                return;
+            }
+            _purr.volume = 0.35f * (float)BeastCalls.Envelope(t, _purrLength);
         }
 
         public void Destroy()

@@ -91,12 +91,16 @@ namespace EdS.Game
         /// </summary>
         public bool Hushed { get; set; }
 
+        /// <summary>Sous-lot V2.9 (2e vague) : une scène de l'histoire se joue (musique « Story », « The Legend of Kvothe », si elle est là).</summary>
+        public bool Story { get; set; }
+
         public void Update(AdventureMood mood, bool paused, float deltaTime)
         {
             float now = Time.time;
             if (mood.Fighting || mood.BossEngaged) _lastFight = now;
             bool fighting = now - _lastFight < CombatLinger;
-            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage));
+            // Sous-lot V2.9 (2e vague) : la musique du Seuil (« Sanctum ») au Seuil, celle des scènes de l'histoire pendant une scène.
+            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (mood.Places & AmbiencePlace.Threshold) != 0, Story));
             if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
                 Switch(wanted);
             else if (wanted != _playing)
@@ -127,8 +131,11 @@ namespace EdS.Game
             {
                 // Relecture de l'essai 7 : une nappe arrêtée (aventure quittée puis reprise) repart.
                 if (!layer.Value.isPlaying) layer.Value.Play();
-                float target = ambience * (float)StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors, mood.Night,
-                    mood.Rain);   // sous-lot V2.2 : la nappe de pluie suit la pluie
+                // Sous-lot V2.9 (2e vague) : marché, taverne, forge, feu de camp, campagne et forêt suivent le lieu et l'heure du monde.
+                float target = ambience * (float)(StyleRules.IsPlaceAmbience(layer.Key)
+                    ? StyleRules.PlaceVolume(layer.Key, mood.Places, mood.Minute, mood.ForgeDistance, fighting, mood.Indoors, mood.Night, mood.Rain)
+                    : StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors, mood.Night,
+                        mood.Rain));   // sous-lot V2.2 : la nappe de pluie suit la pluie
                 layer.Value.volume = Mathf.MoveTowards(layer.Value.volume, target, deltaTime * 0.5f);
             }
         }
@@ -138,6 +145,7 @@ namespace EdS.Game
         {
             if (_music.ContainsKey(wanted)) return wanted;
             if (wanted == StyleMusic.Boss && _music.ContainsKey(StyleMusic.Combat)) return StyleMusic.Combat;
+            if (wanted == StyleMusic.Story && _playing is StyleMusic current && current != StyleMusic.Combat && current != StyleMusic.Boss) return current;
             return StyleMusic.Exploration;
         }
 

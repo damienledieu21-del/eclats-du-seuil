@@ -163,6 +163,7 @@ namespace EdS.Game
             Pavements();
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg
+            Livestock(map);   // sous-lot V2.9 (2e vague) : vaches, chevaux, chiens, corbeaux, cris de la ferme
             NightDecor(space, map);   // sous-lot V2.1 : lanternes, réverbères, feux follets, hiboux
             WeatherDecor();   // sous-lot V2.2 : flaques le long des chemins
             Plants(space);

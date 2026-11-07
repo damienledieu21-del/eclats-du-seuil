@@ -35,3 +35,33 @@ Demandes de Damien du 28 octobre 2026 (« sons d'interface libres : clic, compé
 | `Resources/EdsInterface/Sons/niveau.ogg`, `quete.ogg` | [« Music Jingles »](https://kenney.nl/assets/music-jingles) de **Kenney** (*jingles_STEEL02*, *jingles_PIZZI02*) | CC0 ; renommés |
 | `Resources/EdsInterface/Particules/*.png` | [« Particle Pack »](https://kenney.nl/assets/particle-pack) de **Kenney** (avec les modèles de filtres d'Indigo Ray, Craig Nisbet, Zoltan Erdokovy, Heliagon, ThreeDee, Killst4r et Tim2501) | CC0 ; réduites de 512 × 512 à 128 × 128 et renommées |
 
+
+## Ressources de l'essai de style sous licence CC BY (non suivies par git)
+
+Relecture de la PR #114 : `docs/CREDITS.md` renvoie ici pour les auteurs à citer. Les fichiers suivants sont déposés chez Damien dans `unity/Assets/Style` (non suivis par git) ; leur licence demande de citer l'auteur là où le jeu est montré. Liste complète (CC0 compris) : [docs/CREDITS.md](../../../../docs/CREDITS.md).
+
+| Ressource | Auteur | Licence |
+| --- | --- | --- |
+| Musiques « Enchanted Festival », « Woodland Fantasy », « Heroic Demise » (essai réaliste 7) | **Matthew Pablo**, www.matthewpablo.com (OpenGameArt) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Musiques « Into The Wilds », « The Legend of Kvothe », « Sanctum » (V2.9) | **Scott Buckley**, www.scottbuckley.com.au | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Low-poly animated rabbit » (lièvre, V2.9) | **Pneshik** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Low Poly Wild Boar » (sanglier, V2.9) | **Hanabi_Map** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Stripe the Cat Rigged and Animated » (Pain-d'Épice, V2.9) | **DreamNoms** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Deer-red » (cerf élaphe, V2.9) | **Suiteofart** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Realistic Animated Elk 3D Model » (élan, V2.9) | **WildMesh_3D** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Fawn_A3 » (biches, V2.9) | **Assets_Animated** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Wild Boar - Male » (sanglier, V2.9) | **Dakta.Grower.Nzl** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Boar » et « Wild Boar » (sangliers essayés, non retenus, V2.9) | **anru97580** et **emptypen2477** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Hare (animated) » (lièvre, V2.9) | **bluekiwi.dog** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Grey Wolf (Rigged and Animated) » (V2.9, non retenu) | **rhcreations** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Animated Wolf Scene » (loup, V2.9) | **roo3d** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Crow » (corbeaux, V2.9) | **alexanders823** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Farm Cow Animated Dairy cattle » (vaches, V2.9) | **rukh3d** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Animated Dog, Shiba Inu » (chiens, V2.9) | **quander** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Horse » (chevaux, V2.9) | **henry_7** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Wolves howling (spontaneous and free) » (hurlements, V2.9) | **Sacha.Julien** (Freesound n° 762242) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Red Deer Stag Bellowing » (brame, V2.9) | **naturenotesuk** (Freesound n° 757773) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Small Animal Running on Grass » (lièvre qui détale, V2.9) | **JiggleSticks** (Freesound n° 635012) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « 220718_2057_FR_ChurchBell » (cloche d'église, V2.9) | **kevp888** (Freesound n° 646519) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+
+Les autres ressources de l'essai de style sous CC BY (moulin, arbres et bâtiments de Sketchfab, icônes) sont listées dans `docs/CREDITS.md`.

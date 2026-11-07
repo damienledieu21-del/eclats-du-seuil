@@ -26,6 +26,30 @@ namespace EdS.Runtime
 
         /// <summary>Essai réaliste (27 octobre 2026) : arbuste des haies (« haie_ouest » était un bloc de pierre).</summary>
         Shrub = 8,
+
+        /// <summary>Sous-lot V2.9 (vrais modèles) : cerf à bois (« Stag » de Quaternius), le chef de la harde et un cerf sur trois.</summary>
+        Stag = 9,
+
+        /// <summary>Sous-lot V2.9 : biche (« Deer » de Quaternius), les autres cerfs de la harde.</summary>
+        Doe = 10,
+
+        /// <summary>Sous-lot V2.9 : lièvre (« Rabbit » de Pneshik, Sketchfab).</summary>
+        Hare = 11,
+
+        /// <summary>Sous-lot V2.9 : le chat compagnon (« Stripe the Cat » de DreamNoms, Sketchfab, converti en FBX), teint aux couleurs du compagnon.</summary>
+        Cat = 12,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : corbeaux posés dans les champs et les ruines (ils s'envolent quand on approche).</summary>
+        Crow = 13,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : vaches des champs.</summary>
+        Cow = 14,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : chiens du bourg et du hameau.</summary>
+        Dog = 15,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : chevaux du hameau.</summary>
+        Horse = 16,
     }
 
     /// <summary>Essai réaliste : matière d'un bâtiment (textures d'un dossier « Surfaces »).</summary>
@@ -228,6 +252,52 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.2.1 : ronronnement d'un compagnon d'affichage (sans fichier : un ronronnement fait par le code).</summary>
         Purr = 14,
+
+        /// <summary>Sous-lot V2.9 : hurlement des loups (la nuit et par brume), un passage d'un long enregistrement.</summary>
+        Howl = 15,
+
+        /// <summary>Sous-lot V2.9 : brame du cerf (rare, à l'aube et au crépuscule).</summary>
+        Bellow = 16,
+
+        /// <summary>Sous-lot V2.9 : lièvre qui détale dans l'herbe.</summary>
+        HareDash = 17,
+
+        /// <summary>Sous-lot V2.9 : grognements d'un sanglier qui fouille (passages courts d'un long enregistrement).</summary>
+        BoarGrumble = 18,
+
+        /// <summary>Sous-lot V2.9 : cloche du tocsin (attaque du hameau), frappée vite et plusieurs fois.</summary>
+        Tocsin = 19,
+
+        /// <summary>Sous-lot V2.9 : cloche d'église (le hameau défendu).</summary>
+        ChurchBell = 20,
+
+        /// <summary>Sous-lot V2.9 : verre qui éclate (une faille du Seuil s'ouvre, une cicatrice grandit).</summary>
+        Glass = 21,
+
+        /// <summary>Sous-lot V2.9 : miroir qui explose (une faille du Seuil se referme).</summary>
+        Shatter = 22,
+
+        /// <summary>Sous-lot V2.9 : bourdonnement d'une faille ouverte (en boucle, en 3D).</summary>
+        RiftHum = 23,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : portail qui s'ouvre (une faille du Seuil s'ouvre, avec le verre).</summary>
+        Portal = 24,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : pas du personnage selon le sol (herbe, gravier et terre battue, feuilles, plancher).</summary>
+        StepGrass = 25,
+        StepGravel = 26,
+        StepLeaves = 27,
+        StepWood = 28,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : cris des bêtes de la ferme et des champs, et de la hulotte la nuit.</summary>
+        Caw = 29,
+        Moo = 30,
+        Bark = 31,
+        Neigh = 32,
+        Rooster = 33,
+        Hens = 34,
+        Sheep = 35,
+        Owl = 36,
     }
 
     /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
@@ -244,6 +314,12 @@ namespace EdS.Runtime
 
         /// <summary>Face au Gardien.</summary>
         Boss = 3,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : au Seuil et à son cœur, hors combat.</summary>
+        Threshold = 4,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : pendant une scène de l'histoire (souvenir, mise en scène), si elle n'a pas son propre chant.</summary>
+        Story = 5,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -263,6 +339,52 @@ namespace EdS.Runtime
         /// Sous-lot V2.2 : un coup de tonnerre, joué une fois après chaque éclair (jamais en boucle) ; sans fichier, un tonnerre de synthèse.
         /// </summary>
         Thunder = 5,
+
+        /// <summary>Sous-lot V2.9 (2e vague) : rumeur du bourg et du hameau habités, le jour (centre du village, conversations).</summary>
+        Village = 6,
+
+        /// <summary>Sous-lot V2.9 : le marché, le matin surtout.</summary>
+        Market = 7,
+
+        /// <summary>Sous-lot V2.9 : la taverne : rires dans l'auberge, et de loin le soir au bourg.</summary>
+        Tavern = 8,
+
+        /// <summary>Sous-lot V2.9 : la forge (charbon et soufflet) près de Maëlle, le jour.</summary>
+        Forge = 9,
+
+        /// <summary>Sous-lot V2.9 : feu de camp (camp des rôdeurs, camp de la carrière).</summary>
+        Campfire = 10,
+
+        /// <summary>Sous-lot V2.9 : campagne (champs, vergers, plaines, pré), le jour.</summary>
+        Countryside = 11,
+
+        /// <summary>Sous-lot V2.9 : la forêt (forêt des Loups).</summary>
+        Forest = 12,
+    }
+
+    /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance, autour du personnage (plusieurs à la fois).</summary>
+    [Flags]
+    public enum AmbiencePlace
+    {
+        None = 0,
+
+        /// <summary>Bourg, village ou hameau (habités : <c>TownRules.Inhabited</c>).</summary>
+        Town = 1,
+
+        /// <summary>Camp (des rôdeurs, de la carrière) : un feu.</summary>
+        Camp = 2,
+
+        /// <summary>Champs, vergers, plaines, pré, lac.</summary>
+        Fields = 4,
+
+        /// <summary>Forêt.</summary>
+        Forest = 8,
+
+        /// <summary>Dans l'auberge (intérieur).</summary>
+        TavernInside = 16,
+
+        /// <summary>Au Seuil (et à son cœur) : la musique du Seuil.</summary>
+        Threshold = 32,
     }
 
     /// <summary>
@@ -365,8 +487,13 @@ namespace EdS.Runtime
             // Le paladin de Mixamo d'abord, sinon le chevalier des packs. Les fichiers d'animation de Mixamo (« Sword And Shield Idle »)
             // ne sont pas des héros.
             [StyleSlot.Hero] = (new[] { "paladin", "knight" }, new[] { "weapon", "sword", "shield" }),
-            [StyleSlot.Wolf] = (new[] { "wolf" }, new string[0]),
-            [StyleSlot.Boar] = (new[] { "boar", "pig" }, new string[0]),
+            // Sous-lot V2.9 : le loup de Quaternius (« Wolf_Quaternius », animé : marche, galop, attaque, mort, manger) passe devant le loup
+            // du premier pack (attente et marche seulement) ; le loup réaliste de l'Asset Store (PackAnimal) reste devant les deux.
+            // 2e vague : le loup réaliste de roo3d (Sketchfab, converti) passe devant celui de Quaternius ; celui de rhcreations (une seule
+            // animation, couché de travers dans son fichier) n'est pas pris.
+            [StyleSlot.Wolf] = (new[] { "louproo3d", "wolfquaternius", "wolf", "loup" }, new[] { "rhcreations", "loupe" }),
+            // 2e vague : le sanglier animé de Dakta.Grower.Nzl (73 animations) passe devant celui de Hanabi_Map (sans squelette).
+            [StyleSlot.Boar] = (new[] { "sanglierdakta", "sanglier", "boar", "pig" }, new string[0]),
             // Essai réaliste 4 (27 octobre 2026) : les arbres de Sketchfab d'evolveduk s'appellent « oak », « Pine », « Spruce », « birch ».
             [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple", "oak", "spruce", "beech", "fir" },
                 new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch", "fire" }),
@@ -378,6 +505,17 @@ namespace EdS.Runtime
             [StyleSlot.Shrub] = (new[] { "shrub", "hedge", "bush" }, new[] { "dead", "berry", "flower" }),
             // Les personnages sont rangés par dossier (StyleRules.Characters), pas reconnus par leur nom.
             [StyleSlot.Character] = (new string[0], new string[0]),
+            // Sous-lot V2.9 : bêtes paisibles et chat (le chat est reconnu par un mot entier, voir Matches).
+            // Demande de Damien du 7 novembre 2026 (19 h 58) : l'élan de WildMesh d'abord (brouter, mort, coup reçu, fuite : toutes ses postures
+            // sont animées), puis le cerf élaphe de Suiteofart (sans mort ni broutage), puis le cerf de Quaternius.
+            [StyleSlot.Stag] = (new[] { "elan", "elk", "cerfrouge", "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
+            [StyleSlot.Doe] = (new[] { "faon", "fawn", "deerquaternius", "deer", "doe", "biche", "hind" }, new[] { "stag", "reindeer", "cerf", "behind", "elan" }),
+            [StyleSlot.Hare] = (new[] { "lievrebluekiwi", "lievre", "rabbitpneshik", "rabbit", "hare", "bunny" }, new[] { "share", "hardware" }),
+            [StyleSlot.Cat] = (new[] { "catstripe", "stripecat", "cat", "chat" }, new string[0]),
+            [StyleSlot.Crow] = (new[] { "corbeau", "crow", "raven", "corneille" }, new string[0]),
+            [StyleSlot.Cow] = (new[] { "vache", "cow" }, new[] { "cowl", "scow" }),
+            [StyleSlot.Dog] = (new[] { "chien", "dog" }, new[] { "dogwood" }),
+            [StyleSlot.Horse] = (new[] { "cheval", "horse" }, new[] { "horseshoe" }),
         };
 
         /// <summary>Mots des objets de décor (nom du fichier), par ordre de préférence.</summary>
@@ -402,7 +540,7 @@ namespace EdS.Runtime
             [StyleSound.Death] = new[] { "impactsoftheavy", "impactwoodheavy", "death", "fall" },
             [StyleSound.Potion] = new[] { "bottle", "drink", "potion", "liquid", "handlesmallleather", "cloth" },
             [StyleSound.Gather] = new[] { "impactmining", "chop", "dig", "gather" },
-            [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot" },
+            [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot", "enclume" },
             // Essai réaliste 7 : packs CC0 d'OpenGameArt (artisticdude, rubberduck) et de Kenney.
             [StyleSound.Swing] = new[] { "swish", "swing", "whoosh" },
             [StyleSound.Cast] = new[] { "spell", "magic", "cast" },
@@ -413,15 +551,58 @@ namespace EdS.Runtime
             // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
             [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
             [StyleSound.Purr] = new[] { "ronron", "purr" },
+            // Sous-lot V2.9 (vrais sons, fichiers déposés par Damien dans « Sounds/Animaux ») : voix des bêtes, cloches, failles.
+            [StyleSound.Howl] = new[] { "hurlement", "howling", "howl" },
+            [StyleSound.Bellow] = new[] { "brame", "bellow", "rut" },
+            [StyleSound.HareDash] = new[] { "lievre", "hare", "rabbit", "smallanimal" },
+            [StyleSound.BoarGrumble] = new[] { "sanglier", "grogne", "wildboar" },
+            // 2e vague : la petite cloche (un seul coup, BigSoundBank n° 292) sonne le tocsin, frappée vite ; les cloches d'église (dont celle
+            // du village français de kevp888) sonnent quand le hameau est défendu.
+            [StyleSound.Tocsin] = new[] { "tocsin", "petitecloche", "clochebsb", "cloche", "handbell" },
+            [StyleSound.ChurchBell] = new[] { "cloche", "eglise", "church", "chapelle" },
+            [StyleSound.Glass] = new[] { "verre", "glassbreak", "glass" },
+            [StyleSound.Shatter] = new[] { "miroir", "mirror", "shatter" },
+            [StyleSound.RiftHum] = new[] { "faille", "bourdon", "humming", "drone" },
+            // 2e vague (sons déposés dans « Sounds/Monde ») : portail des failles, pas selon le sol, bêtes de la ferme et des champs.
+            [StyleSound.Portal] = new[] { "portail", "portal" },
+            [StyleSound.StepGrass] = new[] { "pasherbe", "footstepsongrass", "grassstep" },
+            [StyleSound.StepGravel] = new[] { "pasgravier", "gravelstep", "gravel", "gravier" },
+            [StyleSound.StepLeaves] = new[] { "pasfeuilles", "leavesstep", "leaves" },
+            [StyleSound.StepWood] = new[] { "pasparquet", "parquet", "woodstep" },
+            [StyleSound.Caw] = new[] { "corbeaux", "corneille", "crow", "caw" },
+            [StyleSound.Moo] = new[] { "vache", "moo" },
+            [StyleSound.Bark] = new[] { "chienaboie", "aboie", "bark" },
+            [StyleSound.Neigh] = new[] { "hennit", "neigh" },
+            [StyleSound.Rooster] = new[] { "coq", "rooster" },
+            [StyleSound.Hens] = new[] { "poules", "chicken", "hens" },
+            [StyleSound.Sheep] = new[] { "mouton", "sheep" },
+            [StyleSound.Owl] = new[] { "hulotte", "owl" },
+        };
+
+        /// <summary>
+        /// Sous-lot V2.9 : mots qu'un son ne doit pas contenir pour <paramref name="sound"/> (la cloche du tocsin n'est pas celle de l'église,
+        /// le tocsin n'est pas une cloche d'église).
+        /// </summary>
+        private static readonly Dictionary<StyleSound, string[]> SoundAvoid = new Dictionary<StyleSound, string[]>
+        {
+            [StyleSound.Tocsin] = new[] { "eglise", "church", "chapelle", "clochevillage" },
+            // La cloche d'église n'est ni le tocsin de la 1re vague (BigSoundBank n° 135) ni la petite cloche (n° 292).
+            [StyleSound.ChurchBell] = new[] { "clochebsb0135", "petitecloche" },
+            // « eds_lievre_herbe » (le lièvre qui détale) n'est pas un pas dans l'herbe ; le cheval qui marche n'est pas un marché.
+            [StyleSound.StepGrass] = new[] { "lievre" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
         private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
-            (StyleMusic.Exploration, new[] { "exploration", "explore", "woodland", "field" }),
+            // Sous-lot V2.9 (2e vague) : Scott Buckley : « Into The Wilds » (exploration, passe devant), « Sanctum » (le Seuil),
+            // « The Legend of Kvothe » (les scènes de l'histoire).
+            (StyleMusic.Exploration, new[] { "wilds", "exploration", "explore", "woodland", "field" }),
             (StyleMusic.Village, new[] { "village", "town", "festival" }),
             (StyleMusic.Combat, new[] { "combat", "battle", "fight" }),
             (StyleMusic.Boss, new[] { "boss", "heroic", "epic" }),
+            (StyleMusic.Threshold, new[] { "sanctum", "seuil", "threshold" }),
+            (StyleMusic.Story, new[] { "kvothe", "legend", "chapitre", "chapter" }),
         };
 
         /// <summary>
@@ -434,7 +615,15 @@ namespace EdS.Runtime
             (StyleAmbience.Rain, new[] { "pluie", "rain", "averse" }),
             (StyleAmbience.Thunder, new[] { "orage", "thunder", "tonnerre" }),
             (StyleAmbience.Night, new[] { "nuit", "night", "grillon", "cricket", "hibou", "owl" }),   // sous-lot V2.1, avant tout le reste
-            (StyleAmbience.River, new[] { "riviere", "river", "stream", "water" }),
+            // Sous-lot V2.9 (2e vague, dossier « Sounds/Monde ») : lieux habités ; la forêt et son ruisseau sont une rivière.
+            (StyleAmbience.Tavern, new[] { "taverne", "tavern", "ambiancebar", "auberge" }),
+            (StyleAmbience.Market, new[] { "marcheexterieur", "marchemedieval", "market" }),
+            (StyleAmbience.Village, new[] { "villagecentre", "villagemedieval", "conversations", "villageambience" }),
+            (StyleAmbience.Forge, new[] { "forge", "charbon", "coal" }),
+            (StyleAmbience.Campfire, new[] { "feudecamp", "campfire" }),
+            (StyleAmbience.River, new[] { "riviere", "river", "stream", "water", "ruisseau" }),
+            (StyleAmbience.Countryside, new[] { "campagne", "countryside" }),
+            (StyleAmbience.Forest, new[] { "foret" }),
             (StyleAmbience.Wind, new[] { "vent", "wind", "outdoor", "dehors" }),
             (StyleAmbience.Birds, new[] { "oiseaux", "birds", "morning", "forest" }),
         };
@@ -516,6 +705,11 @@ namespace EdS.Runtime
             // Intérieurs : les meubles et objets des intérieurs (dossier « Interieurs ») ne sont pas du décor des Vallons.
             if (InteriorRules.IsInterior(path)) return false;
             string file = Key(FileName(path));
+            // Sous-lot V2.9 : « cat » se cache dans trop de noms (« catapult », « location ») : le chat est un mot entier du nom
+            // (« Cat_Stripe_DreamNoms », « chat_roux »), ou « StripeCat ».
+            if (slot == StyleSlot.Cat)
+                return file.Contains("catstripe") || file.Contains("stripecat")
+                    || Words(path).Any(w => w == "cat" || w == "chat" || w == "kitty" || w == "kitten");
             (string[] want, string[] avoid) = Models[slot];
             return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
         }
@@ -864,10 +1058,11 @@ namespace EdS.Runtime
         public static string? PickSound(IEnumerable<string> paths, StyleSound sound)
         {
             // Essai réaliste 7 : les musiques et les ambiances ne sont pas des bruitages.
-            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p) && AmbienceOf(p) is null)
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
             foreach (string word in Sounds[sound])
-                if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word)) is string found) return found;
+                if (files.FirstOrDefault(p => Key(FileName(p)).Contains(word) && !avoid.Any(x => Key(FileName(p)).Contains(x))) is string found) return found;
             return null;
         }
 
@@ -878,14 +1073,37 @@ namespace EdS.Runtime
         /// </summary>
         public static IReadOnlyList<string> PickSounds(IEnumerable<string> paths, StyleSound sound, int max)
         {
-            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p))
+            var files = (paths ?? Array.Empty<string>()).Where(p => p != null && !InMusicFolder(p) && !InAmbienceFolder(p) && AmbienceOf(p) is null)
                 .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
             foreach (string word in Sounds[sound])
             {
-                List<string> found = files.Where(p => Key(FileName(p)).Contains(word)).Take(Math.Max(0, max)).ToList();
+                List<string> found = files.Where(p => Key(FileName(p)).Contains(word) && !avoid.Any(x => Key(FileName(p)).Contains(x)))
+                    .Take(Math.Max(0, max)).ToList();
                 if (found.Count > 0) return found;
             }
             return Array.Empty<string>();
+        }
+
+        /// <summary>Sous-lot V2.9 : sons faits de longs enregistrements (joués par passages), gardés compressés en mémoire sur le téléphone.</summary>
+        private static readonly StyleSound[] LongSounds =
+            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum };
+
+        /// <summary>
+        /// Sous-lot V2.9 : le fichier est-il un long enregistrement (ronronnement, hurlements, brame, grognements, cloches, bourdonnement) ?
+        /// Décompressé au chargement, il prendrait des dizaines de Mo : il reste compressé en mémoire (comme les ambiances).
+        /// </summary>
+        public static bool IsLongRecording(string path)
+        {
+            if (path is null || InMusicFolder(path) || InAmbienceFolder(path)) return false;
+            if (AmbienceOf(path) != null) return true;   // 2e vague : les ambiances du dossier « Monde »
+            string file = Key(FileName(path));
+            foreach (StyleSound sound in LongSounds)
+            {
+                string[] avoid = SoundAvoid.TryGetValue(sound, out string[]? a) ? a : Array.Empty<string>();
+                if (Sounds[sound].Any(w => file.Contains(w)) && !avoid.Any(x => file.Contains(x))) return true;
+            }
+            return false;
         }
 
         /// <summary>Essai réaliste 7 : musique d'un fichier rangé dans un dossier « Music » (ou « Musique »), d'après son nom ; null sinon.</summary>
@@ -901,7 +1119,9 @@ namespace EdS.Runtime
         /// <summary>Essai réaliste 7 : ambiance d'un fichier rangé dans un dossier « Ambience » (ou « Ambiance »), d'après son nom ; null sinon.</summary>
         public static StyleAmbience? AmbienceOf(string path)
         {
-            if (!InAmbienceFolder(path)) return null;
+            // Sous-lot V2.9 (2e vague) : les ambiances du dossier « Sounds/Monde » (marché, taverne, forge…) comptent aussi ; les autres sons
+            // de ce dossier (pas, cris des bêtes, cloches) restent des bruitages.
+            if (!InAmbienceFolder(path) && !InWorldFolder(path)) return null;
             string file = Key(FileName(path));
             foreach ((StyleAmbience kind, string[] words) in AmbienceWords)
                 if (words.Any(w => file.Contains(w))) return kind;
@@ -917,12 +1137,152 @@ namespace EdS.Runtime
         /// <summary>Relecture de l'essai 7 : le fichier est-il rangé dans un dossier d'ambiances (« Ambience », « Ambiance ») ?</summary>
         public static bool InAmbienceFolder(string path) => Segments(path).Any(s => s == "ambience" || s == "ambiance" || s == "ambiances");
 
+        /// <summary>Sous-lot V2.9 (2e vague) : le fichier est-il rangé dans un dossier « Monde » (ambiances et bruitages du monde) ?</summary>
+        public static bool InWorldFolder(string path) => Segments(path).Any(s => s == "monde" || s == "world");
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : rang d'une musique parmi celles de son genre (le premier mot trouvé : « Into The Wilds » passe devant
+        /// « Woodland Fantasy » pour l'exploration), puis l'ordre ordinal ; <see cref="int.MaxValue"/> si ce n'est pas une musique.
+        /// </summary>
+        public static int MusicRank(string path)
+        {
+            if (!(MusicOf(path) is StyleMusic kind)) return int.MaxValue;
+            string file = Key(FileName(path));
+            string[] words = MusicWords.First(m => m.Kind == kind).Words;
+            for (int i = 0; i < words.Length; i++)
+                if (file.Contains(words[i])) return i;
+            return words.Length;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance d'après les lieux de la zone où se trouve le personnage
+        /// (<paramref name="placeIds"/>) et la zone elle-même (<paramref name="zoneId"/> ; l'auberge est une taverne).
+        /// </summary>
+        public static AmbiencePlace PlaceAmbience(IEnumerable<string> placeIds, string? zoneId, bool indoors)
+        {
+            AmbiencePlace places = PlaceAmbience((string?)null, zoneId, indoors);
+            foreach (string id in placeIds ?? Array.Empty<string>()) places |= PlaceAmbience(id);
+            return places;
+        }
+
+        /// <summary>L'auberge (intérieur) est une taverne : <see cref="AmbiencePlace.TavernInside"/>, sinon rien ; <paramref name="placeId"/> ignoré s'il est nul.</summary>
+        public static AmbiencePlace PlaceAmbience(string? placeId, string? zoneId, bool indoors) =>
+            (indoors && zoneId != null && HasIdWord(zoneId, "auberge", true) ? AmbiencePlace.TavernInside : AmbiencePlace.None)
+            | (placeId != null ? PlaceAmbience(placeId) : AmbiencePlace.None);
+
+        /// <summary>
+        /// Relecture de la PR #114 : ambiances d'un lieu d'après les mots de son identifiant (« camp_des_rodeurs », « pre_nord »), mot entier
+        /// ou début de mot, jamais un bout de mot (« place » n'est pas le lac, « prison » n'est pas un pré). Sans allocation.
+        /// </summary>
+        public static AmbiencePlace PlaceAmbience(string placeId)
+        {
+            var places = AmbiencePlace.None;
+            if (string.IsNullOrEmpty(placeId)) return places;
+            if (HasIdWord(placeId, "village", true) || HasIdWord(placeId, "bourg", true) || HasIdWord(placeId, "hameau", true)) places |= AmbiencePlace.Town;
+            if (HasIdWord(placeId, "camp", false) || HasIdWord(placeId, "carriere", true)) places |= AmbiencePlace.Camp;
+            if (HasIdWord(placeId, "champ", true) || HasIdWord(placeId, "verger", true) || HasIdWord(placeId, "plaine", true)
+                || HasIdWord(placeId, "pre", false) || HasIdWord(placeId, "lac", false)) places |= AmbiencePlace.Fields;
+            if (HasIdWord(placeId, "foret", true) || HasIdWord(placeId, "bois", false)) places |= AmbiencePlace.Forest;
+            if (HasIdWord(placeId, "seuil", false)) places |= AmbiencePlace.Threshold;
+            return places;
+        }
+
+        /// <summary>
+        /// Un mot de <paramref name="id"/> (coupé aux signes : « camp_des_rodeurs » → camp, des, rodeurs) vaut-il <paramref name="word"/>
+        /// (ou, avec <paramref name="prefix"/>, commence-t-il par lui) ? Casse ignorée, sans allocation.
+        /// </summary>
+        private static bool HasIdWord(string id, string word, bool prefix)
+        {
+            int i = 0;
+            while (i < id.Length)
+            {
+                while (i < id.Length && !char.IsLetter(id[i])) i++;
+                int start = i;
+                while (i < id.Length && char.IsLetter(id[i])) i++;
+                int length = i - start;
+                if (length == 0) continue;
+                if ((prefix ? length >= word.Length : length == word.Length)
+                    && string.Compare(id, start, word, 0, word.Length, StringComparison.OrdinalIgnoreCase) == 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Distance (m) du point au rectangle (0 dedans) ; NaN si une coordonnée est NaN.</summary>
+        public static double RectDistance(double x, double z, double minX, double minZ, double maxX, double maxZ)
+        {
+            double dx = Math.Max(0, Math.Max(minX - x, x - maxX)), dz = Math.Max(0, Math.Max(minZ - z, z - maxZ));
+            return Math.Sqrt(dx * dx + dz * dz);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : le bruit d'un pas d'après le sol : plancher dans une maison, gravier sur une route (bord à moins de
+        /// 0,8 m : <paramref name="roadEdge"/>) ou sur un sol sans herbe, feuilles en forêt, herbe ailleurs (<paramref name="grass"/> : part
+        /// d'herbe du sol, 0 à 1).
+        /// </summary>
+        public static StyleSound StepSound(bool indoors, double roadEdge, double grass, bool forest)
+        {
+            if (indoors) return StyleSound.StepWood;
+            if (!double.IsNaN(roadEdge) && roadEdge < 0.8) return StyleSound.StepGravel;
+            if (forest) return StyleSound.StepLeaves;
+            return double.IsNaN(grass) || grass >= 0.5 ? StyleSound.StepGrass : StyleSound.StepGravel;
+        }
+
         /// <summary>
         /// Essai réaliste 7 : musique à jouer. Le Gardien engagé l'emporte, puis le combat (un adversaire vivant tout proche), puis le
         /// village, sinon l'exploration.
         /// </summary>
         public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage) =>
             bossEngaged ? StyleMusic.Boss : fighting ? StyleMusic.Combat : inVillage ? StyleMusic.Village : StyleMusic.Exploration;
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : comme <see cref="MusicFor(bool, bool, bool)"/>, et la musique d'une scène de l'histoire
+        /// (<paramref name="story"/>) après le combat, puis celle du Seuil (<paramref name="threshold"/>) avant le village.
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story) =>
+            bossEngaged ? StyleMusic.Boss : fighting ? StyleMusic.Combat : story ? StyleMusic.Story : threshold ? StyleMusic.Threshold
+                : inVillage ? StyleMusic.Village : StyleMusic.Exploration;
+
+        /// <summary>
+        /// Sous-lot V2.9 (2e vague) : volume (0 à 1) des ambiances de lieu d'après l'heure du monde (<paramref name="minute"/>), les lieux
+        /// (<paramref name="places"/>), la distance à la forge (<paramref name="forgeDistance"/>, m ; +∞ sans forge), la nuit et la pluie :
+        /// rumeur du bourg de 6 h à 21 h, marché de 7 h 30 à 13 h (plus faible l'après-midi), taverne le soir de loin et toujours dans
+        /// l'auberge, forge de 7 h à 19 h jusqu'à 25 m, feu de camp (plus fort la nuit), campagne le jour, forêt (plus calme la nuit). Les
+        /// autres nappes : <see cref="AmbienceVolume(StyleAmbience, double, bool, bool, bool, double, double)"/>.
+        /// </summary>
+        public static double PlaceVolume(StyleAmbience ambience, AmbiencePlace places, double minute, double forgeDistance, bool fighting, bool indoors,
+            double night, double rain)
+        {
+            double calm = fighting ? 0.5 : 1;
+            double h = double.IsNaN(minute) ? 12 : (((minute % 1440) + 1440) % 1440) / 60.0;
+            night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
+            rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
+            bool town = (places & AmbiencePlace.Town) != 0;
+            double Window(double from, double to, double fade) => Math.Max(0, Math.Min(1, Math.Min((h - from) / fade, (to - h) / fade)));
+            switch (ambience)
+            {
+                case StyleAmbience.Tavern:
+                    if ((places & AmbiencePlace.TavernInside) != 0) return 0.9 * calm;
+                    return !indoors && town ? 0.3 * calm * Window(18.5, 23.5, 0.5) : 0;
+                case StyleAmbience.Market:
+                    return !indoors && town ? calm * (1 - 0.7 * rain) * (0.8 * Window(7.5, 13, 0.5) + 0.25 * Window(13, 18, 0.5)) : 0;
+                case StyleAmbience.Village:
+                    return !indoors && town ? 0.55 * calm * (1 - 0.5 * rain) * Window(6, 21, 1) : 0;
+                case StyleAmbience.Forge:
+                    if (indoors || double.IsNaN(forgeDistance) || double.IsInfinity(forgeDistance) || forgeDistance < 0) return 0;
+                    return 0.9 * calm * Math.Max(0, Math.Min(1, (25 - forgeDistance) / 20)) * Window(7, 19, 0.5);
+                case StyleAmbience.Campfire:
+                    return !indoors && (places & AmbiencePlace.Camp) != 0 ? calm * (0.4 + 0.4 * night) * (1 - 0.6 * rain) : 0;
+                case StyleAmbience.Countryside:
+                    return !indoors && (places & AmbiencePlace.Fields) != 0 && !town ? 0.6 * calm * (1 - night) * (1 - 0.8 * rain) : 0;
+                case StyleAmbience.Forest:
+                    return !indoors && (places & AmbiencePlace.Forest) != 0 ? 0.8 * calm * (1 - 0.5 * night) * (1 - 0.5 * rain) : 0;
+                default:
+                    return 0;
+            }
+        }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : l'ambiance est-elle une ambiance de lieu (<see cref="PlaceVolume"/>) ?</summary>
+        public static bool IsPlaceAmbience(StyleAmbience ambience) => ambience >= StyleAmbience.Village;
 
         /// <summary>
         /// Essai réaliste 7 : volume d'une nappe d'ambiance (0 à 1) : la rivière d'après la distance à son lit (pleine à 4 m, éteinte à
@@ -1097,9 +1457,12 @@ namespace EdS.Runtime
             return Key(bar >= 0 ? c.Substring(bar + 1) : c);
         }
 
-        /// <summary>Animations qui tournent en boucle (attente, marche, course).</summary>
+        /// <summary>
+        /// Animations qui tournent en boucle (attente, marche, course ; sous-lot V2.9 : brouter, « Eating » des bêtes de Quaternius, qui
+        /// restait figé sur sa dernière image).
+        /// </summary>
         public static bool Loops(string clip) =>
-            new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run }.Any(m => HasWord(clip, Clips[m]))
+            new[] { StyleMotion.Idle, StyleMotion.Walk, StyleMotion.Run, StyleMotion.Graze }.Any(m => HasWord(clip, Clips[m]))
                 && !HasWord(clip, Clips[StyleMotion.Death]) && !HasWord(clip, Clips[StyleMotion.Attack])
                 && !HasWord(clip, Clips[StyleMotion.Hurt]) && !HasWord(clip, Clips[StyleMotion.Cast]);
 
@@ -1320,7 +1683,36 @@ namespace EdS.Runtime
             // Sous-lot V1.9.8 : Croc-Gris (ses deux formes) est un loup.
             if (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("crocgris", StringComparison.Ordinal)) return StyleSlot.Wolf;
             if (key.StartsWith("sanglier", StringComparison.Ordinal)) return StyleSlot.Boar;
+            // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
+            if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
+            if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
             return StyleSlot.Character;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : un cerf de la harde est un cerf à bois (le chef, « cerf1 », puis un sur trois : « cerf4 », « cerf7 »…) ou une biche
+        /// (les autres) ; les vies suivantes (« cerf4_v2 ») gardent le leur. Affichage seulement.
+        /// </summary>
+        public static StyleSlot DeerSlot(string id)
+        {
+            Match m = Regex.Match(id ?? string.Empty, "^cerf(\\d+)");
+            if (!m.Success || !int.TryParse(m.Groups[1].Value, out int n)) return StyleSlot.Stag;
+            return n % 3 == 1 ? StyleSlot.Stag : StyleSlot.Doe;
+        }
+
+        /// <summary>Sous-lot V2.9 : une bête habillée d'un modèle (loup, sanglier, cerf, biche, lièvre) : centrée sur son corps, voix 3D.</summary>
+        public static bool IsBeast(StyleSlot slot) =>
+            slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare;
+
+        /// <summary>
+        /// Sous-lot V2.9 : rotation (degrés) proposée par la préparation pour un modèle connu qui ne regarde pas devant lui une fois importé :
+        /// le sanglier de Hanabi_Map est tourné de 60,7° dans son fichier (mesuré sous Blender : le groin pointe à 60,7° de l'axe) ; les
+        /// bêtes de Quaternius, le lièvre de Pneshik et le chat regardent devant eux (0). Réglable ensuite dans le catalogue.
+        /// </summary>
+        public static double ModelYaw(string path)
+        {
+            string file = Key(FileName(path));
+            return file.Contains("hanabi") || file.Contains("jabali") ? 60.7 : 0;
         }
 
         /// <summary>
@@ -1332,6 +1724,9 @@ namespace EdS.Runtime
             string key = Key(id);
             if (key.StartsWith("crocgrisenrage", StringComparison.Ordinal)) return 1.5;
             if (key.StartsWith("crocgris", StringComparison.Ordinal)) return 1.4;
+            // Sous-lot V2.9 : hauteur des modèles des bêtes paisibles (bois ou oreilles compris).
+            if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id) == StyleSlot.Stag ? 2.1 : 1.35;   // 2e vague : biches du modèle de faon
+            if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
             return 0.95;
         }
 

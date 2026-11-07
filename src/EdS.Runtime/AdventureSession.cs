@@ -26,8 +26,12 @@ namespace EdS.Runtime
     /// <summary>Essai réaliste 7 : lieu et combat autour du personnage, pour la musique et les ambiances (voir <see cref="AdventureSession.Mood"/>).</summary>
     public readonly struct AdventureMood
     {
-        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0, double rain = 0)
+        public AdventureMood(bool inVillage, bool fighting, bool bossEngaged, double riverDistance, bool indoors = false, double night = 0, double rain = 0,
+            AmbiencePlace places = AmbiencePlace.None, double minute = 720, double forgeDistance = double.PositiveInfinity)
         {
+            Places = places;
+            Minute = double.IsNaN(minute) ? 720 : minute;
+            ForgeDistance = double.IsNaN(forgeDistance) ? double.PositiveInfinity : forgeDistance;
             Night = double.IsNaN(night) ? 0 : Math.Max(0, Math.Min(1, night));
             Rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
             InVillage = inVillage;
@@ -57,7 +61,16 @@ namespace EdS.Runtime
         /// Relecture de la PR #101 : la même ambiance avec la pluie <paramref name="rain"/> (celle qui est montrée : le temps forcé par le menu
         /// d'essai compris), pour que la nappe de pluie suive ce qu'on voit.
         /// </summary>
-        public AdventureMood WithRain(double rain) => new AdventureMood(InVillage, Fighting, BossEngaged, RiverDistance, Indoors, Night, rain);
+        public AdventureMood WithRain(double rain) => new AdventureMood(InVillage, Fighting, BossEngaged, RiverDistance, Indoors, Night, rain, Places, Minute, ForgeDistance);
+
+        /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance autour du personnage (bourg, camp, champs, forêt, auberge, Seuil).</summary>
+        public AmbiencePlace Places { get; }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : minute du jour du monde (marché le matin, taverne le soir, forge le jour).</summary>
+        public double Minute { get; }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : distance (m) au lieu « forge » (0 dedans) ; +∞ sans forge dans la zone (jamais NaN).</summary>
+        public double ForgeDistance { get; }
     }
 
     /// <summary>Un PNJ, un nœud de récolte ou un point sûr à montrer dans la zone (nom déjà traduit).</summary>
@@ -1571,11 +1584,38 @@ namespace EdS.Runtime
         /// <see cref="BossMusicRange"/> ; rivière : distance à l'eau (obstacles « riviere… », lac compris ; mètres, 0 dedans, NaN sans eau).
         /// Affichage seulement : rien ne change dans le monde.
         /// </summary>
+        /// <summary>Relecture de la PR #114 : contour d'une eau en mètres, fait une fois par obstacle (pas à chaque lecture de l'ambiance).</summary>
+        private readonly Dictionary<SpaceObstacle, IReadOnlyList<(double X, double Z)>> _waterShapes = new Dictionary<SpaceObstacle, IReadOnlyList<(double X, double Z)>>();
+
+        private IReadOnlyList<(double X, double Z)> WaterShape(SpaceObstacle water)
+        {
+            if (_waterShapes.TryGetValue(water, out IReadOnlyList<(double X, double Z)>? shape)) return shape;
+            var points = new List<(double X, double Z)>(water.Points.Count);
+            foreach (GroundVector q in water.Points) points.Add((q.X.Raw / 10000.0, q.Z.Raw / 10000.0));
+            _waterShapes[water] = points;
+            return points;
+        }
+
         public AdventureMood Mood()
         {
             if (!(Me is GroundVector p) || World.IsDefeated) return new AdventureMood(false, false, false, double.NaN);
             // Vallons agrandis : le bourg et le hameau sont habités comme le village.
-            bool village = _zone.Indoor || _zone.PlacesAt(p).Any(x => TownRules.Inhabited(x.Id));
+            // Relecture de la PR #114 : sans LINQ (quatre fois par seconde) : un seul tour des lieux pour le village, les ambiances (V2.9) et
+            // la distance à la forge de Maëlle (+∞ sans forge dans la zone).
+            double x = p.X.Raw / 10000.0, z = p.Z.Raw / 10000.0;
+            bool village = _zone.Indoor;
+            AmbiencePlace places = StyleRules.PlaceAmbience((string?)null, _zone.Id, _zone.Indoor);
+            double forge = double.PositiveInfinity;
+            foreach (Place pl in _zone.Places)
+            {
+                if (pl.Contains(p))
+                {
+                    village |= TownRules.Inhabited(pl.Id);
+                    places |= StyleRules.PlaceAmbience(pl.Id);
+                }
+                if (pl.Id.StartsWith("forge", StringComparison.Ordinal))
+                    forge = Math.Min(forge, StyleRules.RectDistance(x, z, pl.Min.X.Raw / 10000.0, pl.Min.Z.Raw / 10000.0, pl.Max.X.Raw / 10000.0, pl.Max.Z.Raw / 10000.0));
+            }
             // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
             bool fighting = false, boss = false;
             long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
@@ -1592,14 +1632,15 @@ namespace EdS.Runtime
             // Vallons agrandis : la distance à l'eau elle-même (bras de la rivière et lac, obstacles « riviere… »), et non plus au seul lieu
             // « riviere » du village : la rivière s'entend sur toute sa longueur.
             double river = double.NaN;
-            double x = p.X.Raw / 10000.0, z = p.Z.Raw / 10000.0;
             foreach (SpaceObstacle water in World.Zone.Setup.Space?.Obstacles ?? Array.Empty<SpaceObstacle>())
             {
                 if (!water.Id.StartsWith("riviere", StringComparison.Ordinal)) continue;
-                double d = Math.Max(0, -StyleRules.InsideDistance(x, z, water.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()));
+                double d = Math.Max(0, -StyleRules.InsideDistance(x, z, WaterShape(water)));
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
-            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(WorldMinute()), Weather().Rain / (double)WorldWeather.Scale);
+            double minute = WorldMinute();
+            return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
+                places, minute, forge);
         }
 
         /// <summary>

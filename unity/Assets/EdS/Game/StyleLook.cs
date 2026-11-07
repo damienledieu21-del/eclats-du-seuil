@@ -32,6 +32,20 @@ namespace EdS.Game
         private bool _started;
         private float _speed;
 
+        // Sous-lot V2.9 : une bête (loup, sanglier, cerf, biche, lièvre) règle la cadence de sa marche et de son galop sur sa vitesse ; un
+        // modèle sans squelette (le sanglier de Hanabi_Map) est animé par le code (BeastCalls.StaticGait).
+        private bool _beast;
+        private AnimationState _playingState;
+        private StyleMotion _playingMotion;
+        private bool _procedural;
+        private Vector3 _basePosition;
+        private Quaternion _baseRotation;
+        private float _metersToLocal;
+        private float _clock;
+        private float _overlayUntil;
+        private StyleMotion _overlayMotion;
+        private bool _overlaid;
+
         // Essai réaliste 7 : geste en cours (attaque, sort, coup reçu) et sa fin.
         private float _actionUntil;
         private StyleMotion _actionMotion;
@@ -57,6 +71,20 @@ namespace EdS.Game
                 _clips.Add(state.name);
                 state.wrapMode = StyleRules.Loops(state.name) ? WrapMode.Loop : WrapMode.ClampForever;
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : une bête (<see cref="StyleRules.IsBeast"/>) ; sans animation, elle est animée par le code autour de sa place
+        /// (<paramref name="basePosition"/>, <paramref name="baseRotation"/> : celles du modèle dans son corps ; <paramref name="metersToLocal"/> :
+        /// un mètre dans les unités du corps).
+        /// </summary>
+        internal void Beast(Vector3 basePosition, Quaternion baseRotation, float metersToLocal)
+        {
+            _beast = true;
+            _procedural = _animation == null || _clips.Count == 0;
+            _basePosition = basePosition;
+            _baseRotation = baseRotation;
+            _metersToLocal = metersToLocal;
         }
 
         /// <summary>
@@ -130,8 +158,25 @@ namespace EdS.Game
 
         private void Act(StyleMotion motion, string prefer, int variant, float shortest, float longest)
         {
-            if (_animation == null || _fallen) return;
+            if (_fallen) return;
+            if (_procedural)
+            {
+                // Sous-lot V2.9 : le sanglier sans squelette charge (le groin en avant) ou encaisse (un sursaut).
+                _actionUntil = Time.time + (motion == StyleMotion.Hurt || motion == StyleMotion.GuardHit ? 0.3f : 0.55f);
+                _actionMotion = motion;
+                return;
+            }
+            if (_animation == null) return;
             string clip = Pick(motion, prefer, variant);
+            // Sous-lot V2.9 (2e vague) : une bête sans clip d'attaque (le loup de roo3d, le cerf élaphe) ou de coup reçu charge ou sursaute par
+            // le code, par-dessus son animation.
+            bool missing = clip == null || ((motion == StyleMotion.Attack || motion == StyleMotion.Cast) && clip == Pick(StyleMotion.Idle));
+            if (_beast && missing)
+            {
+                _overlayUntil = Time.time + (motion == StyleMotion.Hurt || motion == StyleMotion.GuardHit ? 0.3f : 0.55f);
+                _overlayMotion = motion;
+                return;
+            }
             if (clip == null) return;
             AnimationState state = _animation[clip];
             _actionUntil = Time.time + (state != null ? Mathf.Clamp(state.length, shortest, longest) : shortest);
@@ -171,7 +216,7 @@ namespace EdS.Game
                 _look.localRotation = _look.localRotation * Quaternion.Euler(0f, 0f, 90f);
                 return;
             }
-            if (_animation == null) return;
+            if (_animation == null && !_procedural) return;
             if (_started && deltaTime > 0f)
             {
                 Vector3 d = position - _last;
@@ -181,12 +226,74 @@ namespace EdS.Game
             }
             _last = position;
             _started = true;
+            if (_procedural)
+            {
+                Procedural(dead, deltaTime, wander);
+                return;
+            }
             // Essai réaliste 7 : un geste en cours (attaque, sort, coup reçu) l'emporte sur l'allure, pas sur la mort.
             bool acting = !dead && Time.time < _actionUntil && _actionClip != null;
-            string clip = acting ? _actionClip : Pick(StyleRules.Motion(_speed, dead, false, guarding, wander));
-            if (clip == null || clip == _playing) return;
-            _playing = clip;
-            _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
+            StyleMotion motion = acting ? _actionMotion : StyleRules.Motion(_speed, dead, false, guarding, wander);
+            string clip = acting ? _actionClip : Pick(motion);
+            if (clip != null && clip != _playing)
+            {
+                _playing = clip;
+                _playingMotion = motion;
+                _playingState = _beast ? _animation[clip] : null;
+                _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
+            }
+            if (_beast) Overlay(dead);
+            // Sous-lot V2.9 : la cadence de la marche et du galop suit la vitesse (moins de pattes qui glissent), d'après la taille de la bête.
+            if (_playingState != null)
+            {
+                float stride = Mathf.Sqrt(Mathf.Max(0.2f, Height));
+                float reference = _playingMotion == StyleMotion.Walk ? 1.2f * stride : _playingMotion == StyleMotion.Run ? 5.5f * stride : 0f;
+                _playingState.speed = reference > 0f ? Mathf.Clamp(_speed / reference, 0.6f, 1.7f) : 1f;
+            }
+        }
+
+        /// <summary>Sous-lot V2.9 (2e vague) : charge (groin ou museau en avant) ou sursaut d'une bête animée sans le clip voulu ; puis sa place d'origine.</summary>
+        private void Overlay(bool dead)
+        {
+            if (_look == null || _fallen) return;
+            if (dead || Time.time >= _overlayUntil)
+            {
+                if (!_overlaid) return;
+                _overlaid = false;
+                _look.localPosition = _basePosition;
+                _look.localRotation = _baseRotation;
+                return;
+            }
+            _overlaid = true;
+            float push = Mathf.Sin(Mathf.PI * (1f - Mathf.Clamp01((_overlayUntil - Time.time) / 0.55f)));
+            bool hurt = _overlayMotion == StyleMotion.Hurt || _overlayMotion == StyleMotion.GuardHit;
+            _look.localPosition = _basePosition + new Vector3(0f, 0f, hurt ? -0.08f * Height * push : 0.25f * Height * push) * _metersToLocal;
+            _look.localRotation = _baseRotation * Quaternion.Euler(hurt ? -6f * push : 10f * push, 0f, hurt ? 6f * push : 0f);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9 : allure d'un modèle sans squelette (<see cref="BeastCalls.StaticGait"/>) : il se dandine au pas, bondit au trot,
+        /// fouille le groin au sol, charge le groin en avant ; mort, il se couche sur le flanc (plus haut).
+        /// </summary>
+        private void Procedural(bool dead, float deltaTime, string wander)
+        {
+            if (dead || _look == null) return;
+            _clock += deltaTime;
+            (double bob, double pitch, double roll, double yaw) = BeastCalls.StaticGait(_speed, _clock, wander);
+            float forward = 0f;
+            if (Time.time < _actionUntil)
+            {
+                float left = Mathf.Clamp01((_actionUntil - Time.time) / 0.55f);
+                float push = Mathf.Sin(Mathf.PI * (1f - left));
+                if (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit) roll += 8.0 * push;
+                else
+                {
+                    pitch += 14.0 * push;
+                    forward = 0.25f * Height * push;
+                }
+            }
+            _look.localPosition = _basePosition + new Vector3(0f, (float)bob * Height, forward) * _metersToLocal;
+            _look.localRotation = _baseRotation * Quaternion.Euler((float)pitch, (float)yaw, (float)roll);
         }
     }
 
@@ -204,7 +311,8 @@ namespace EdS.Game
             GameObject prefab = catalog != null ? catalog.Model(slot, id) : null;
             if (prefab == null) return null;
             if (slot == StyleSlot.Character && catalog.Character(id) is CharacterLook character && character.Height > 0f) height = character.Height;
-            GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model);
+            bool beast = StyleRules.IsBeast(slot);
+            GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model, beast);
             Vector3 s = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
             float k = look.transform.localScale.y;
@@ -218,11 +326,20 @@ namespace EdS.Game
             // le rendu n'affiche pas) et sortaient blancs ; leurs matériaux sans texture prennent la couleur du catalogue.
             // Essai réaliste 8 : le loup réaliste de l'Asset Store a ses textures sur « _MainTex » ou sur d'autres propriétés (pelage) : il
             // garde ses couleurs.
+            // Sous-lot V2.9 : seuls les matériaux sans texture restés blancs la prennent (les bêtes de Quaternius ont leurs couleurs : pelage,
+            // ventre clair, yeux, truffe) ; le loup blanc du contrat de la guilde est éclairci (sauf les yeux et la truffe, sombres).
             if (slot == StyleSlot.Wolf || slot == StyleSlot.Boar)
+            {
+                bool white = slot == StyleSlot.Wolf && StyleRules.Key(id ?? "").StartsWith("loupblanc", System.StringComparison.Ordinal);
                 foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
                     foreach (Material m in r.materials)
-                        if (!Textured(m, "_BaseMap") && !Textured(m, "_MainTex") && !Textured(m, "_BaseColorMap"))
-                            ArenaView.ApplyColor(m, slot == StyleSlot.Wolf ? catalog.WolfColor : catalog.BoarColor);
+                    {
+                        if (Textured(m, "_BaseMap") || Textured(m, "_MainTex") || Textured(m, "_BaseColorMap")) continue;
+                        Color c = BaseColor(m);
+                        if (white && c.maxColorComponent > 0.1f) ArenaView.ApplyColor(m, Color.Lerp(c, catalog.WhiteWolfColor, 0.8f));
+                        else if (Mathf.Min(c.r, Mathf.Min(c.g, c.b)) > 0.85f) ArenaView.ApplyColor(m, slot == StyleSlot.Wolf ? catalog.WolfColor : catalog.BoarColor);
+                    }
+            }
             Animation animation = look.GetComponentInChildren<Animation>();
             // Essai réaliste 8 : un prefab de pack garde son Animator, qui ne sait pas jouer des animations « Legacy » : coupé, le
             // composant Animation joue.
@@ -241,8 +358,14 @@ namespace EdS.Game
                 foreach (AnimationClip clip in clips)
                     if (clip != null && animation.GetClip(clip.name) == null) animation.AddClip(clip, clip.name);
             }
-            return new StyleBody(look.transform, animation, height);
+            var styled = new StyleBody(look.transform, animation, height);
+            if (beast) styled.Beast(look.transform.localPosition, look.transform.localRotation, 1f / Mathf.Max(0.01f, s.y));
+            return styled;
         }
+
+        /// <summary>Couleur de base d'un matériau (URP ou ancien rendu), blanc sans couleur.</summary>
+        internal static Color BaseColor(Material m) =>
+            m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
 
         /// <summary>Le matériau a-t-il une texture sur <paramref name="property"/> ?</summary>
         private static bool Textured(Material m, string property) => m.HasProperty(property) && m.GetTexture(property) != null;
@@ -282,7 +405,8 @@ namespace EdS.Game
         /// (<see cref="StyleRules.NaturalScale"/>), légèrement variée.
         /// </para>
         /// </summary>
-        private static GameObject Fit(GameObject prefab, float height, float width, string part, bool natural, out float bottom, out GameObject model)
+        internal static GameObject Fit(GameObject prefab, float height, float width, string part, bool natural, out float bottom, out GameObject model,
+            bool center = false)
         {
             var look = new GameObject(prefab.name + " (essai de style)");
             model = Object.Instantiate(prefab, look.transform, false);
@@ -311,6 +435,9 @@ namespace EdS.Game
             }
             bottom = any ? bounds.min.y : 0f;
             float size = any ? bounds.size.y : 0f;
+            // Sous-lot V2.9 : une bête est ramenée au centre de son corps (le sanglier de Hanabi_Map et le lièvre de Pneshik sont posés loin
+            // de leur origine dans leur fichier) : elle tourne sur elle-même et reste sous sa barre de vie.
+            if (center && any) model.transform.localPosition -= new Vector3(bounds.center.x, 0f, bounds.center.z);
             float k;
             if (width > 0f && any) k = (float)StyleRules.Scale(Mathf.Max(bounds.size.x, bounds.size.z), width);
             else if (natural) k = (float)StyleRules.NaturalScale(size, height) * (0.85f + 0.003f * StyleRules.Variant(part ?? prefab.name, 100));

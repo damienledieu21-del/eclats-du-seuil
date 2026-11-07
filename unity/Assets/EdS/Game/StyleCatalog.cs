@@ -167,6 +167,44 @@ namespace EdS.Game
         public float WolfYaw;
         public float BoarYaw;
 
+        [Header("Sous-lot V2.9 : vrais modèles des bêtes et du chat (remplis par le menu)")]
+        [Tooltip("Cerf à bois (Stag de Quaternius) : le chef de la harde et un cerf sur trois ; sans lui, les formes simples.")]
+        public GameObject Stag;
+        [Tooltip("Biche (Deer de Quaternius) : les autres cerfs de la harde.")]
+        public GameObject Doe;
+        [Tooltip("Lièvre (Rabbit de Pneshik, Sketchfab).")]
+        public GameObject Hare;
+        [Tooltip("Chat compagnon (Stripe the Cat de DreamNoms, converti en FBX) ; teint aux couleurs de Pain-d'Épice.")]
+        public GameObject Cat;
+        [Tooltip("2e vague : corbeau, vache, chien et cheval (Sketchfab, convertis) : les bêtes de la ferme et des champs, posées par le jeu.")]
+        public GameObject Crow;
+        public GameObject Cow;
+        public GameObject Dog;
+        public GameObject Horse;
+        [Tooltip("Bêtes de la ferme et des champs (vaches, chevaux, chiens, corbeaux) : 1 = le nombre prévu, 0 = aucune (la moitié sur téléphone).")]
+        [Range(0f, 2f)] public float Livestock = 1f;
+        [Tooltip("Volume des pas du personnage (herbe, gravier, feuilles, plancher).")]
+        [Range(0f, 1f)] public float StepVolume = 0.35f;
+        public float StagYaw;
+        public float DoeYaw;
+        public float HareYaw;
+        public float CatYaw;
+        [Tooltip("Couleur du loup blanc du contrat de la guilde (les loups gris gardent les couleurs de leur modèle).")]
+        public Color WhiteWolfColor = new Color(0.9f, 0.9f, 0.88f);
+        [Tooltip("Teindre le chat aux couleurs du compagnon (Pain-d'Épice est roux) ; décoché : les couleurs du modèle.")]
+        public bool TintCat = true;
+        [Tooltip("Hauteur (m) du chat, oreilles comprises.")]
+        [Range(0.2f, 0.7f)] public float CatHeight = 0.36f;
+        [Tooltip("Volume des voix des bêtes (hurlements, brame, grognements, lièvre) et des sons des failles et du tocsin.")]
+        [Range(0f, 1f)] public float BeastVolume = 0.8f;
+        [Tooltip("Distance (m) jusqu'où l'on entend une bête (les hurlements et le brame portent deux fois plus loin, le tocsin trois fois).")]
+        [Range(10f, 150f)] public float BeastHearing = 60f;
+
+        /// <summary>Sous-lot V2.9 : version des réglages proposés par la préparation (rotation du sanglier de Hanabi), mis une seule fois.</summary>
+        public const int AnimalDefaults = 1;
+
+        [HideInInspector] public int AnimalVersion;
+
         [Header("Essai réaliste : animations du héros (fichiers Mixamo à côté de son modèle)")]
         public AnimationClip[] HeroClips = new AnimationClip[0];
 
@@ -369,12 +407,33 @@ namespace EdS.Game
                 case StyleSlot.Debris: return Pick(Debris, id);
                 case StyleSlot.Character: return Character(id)?.Model;
                 case StyleSlot.Shrub: return Pick(Shrubs, id);
+                case StyleSlot.Stag: return Stag;
+                case StyleSlot.Doe: return Doe;
+                case StyleSlot.Hare: return Hare;
+                case StyleSlot.Cat: return Cat;
+                case StyleSlot.Crow: return Crow;
+                case StyleSlot.Cow: return Cow;
+                case StyleSlot.Dog: return Dog;
+                case StyleSlot.Horse: return Horse;
                 default: return null;
             }
         }
 
-        public float Yaw(StyleSlot slot, string id = null) => slot == StyleSlot.Hero ? HeroYaw : slot == StyleSlot.Wolf ? WolfYaw : slot == StyleSlot.Boar ? BoarYaw
-            : slot == StyleSlot.Character ? Character(id)?.Yaw ?? 0f : 0f;
+        public float Yaw(StyleSlot slot, string id = null)
+        {
+            switch (slot)
+            {
+                case StyleSlot.Hero: return HeroYaw;
+                case StyleSlot.Wolf: return WolfYaw;
+                case StyleSlot.Boar: return BoarYaw;
+                case StyleSlot.Stag: return StagYaw;
+                case StyleSlot.Doe: return DoeYaw;
+                case StyleSlot.Hare: return HareYaw;
+                case StyleSlot.Cat: return CatYaw;
+                case StyleSlot.Character: return Character(id)?.Yaw ?? 0f;
+                default: return 0f;
+            }
+        }
 
         /// <summary>Essai réaliste 8 : l'effet de combat <paramref name="kind"/> d'un pack, ou null.</summary>
         public VfxLook Effect(StyleVfx kind)
