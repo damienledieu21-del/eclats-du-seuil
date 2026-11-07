@@ -183,12 +183,18 @@ namespace EdS.Domain.Space
         /// précédent quand c'est possible (le plus lointain d'abord) ; vide si la ligne droite est libre (aller droit) ; null s'il n'y a pas
         /// de chemin. Un chemin partiel finit à la case la plus proche du but.
         /// </summary>
-        public List<GroundVector>? Route(long radius, long fromX, long fromZ, long toX, long toZ)
+        public List<GroundVector>? Route(long radius, long fromX, long fromZ, long toX, long toZ) => Route(radius, fromX, fromZ, toX, toZ, out _);
+
+        /// <summary>Comme <see cref="Route(long, long, long, long, long)"/> ; <paramref name="complete"/> : faux pour un chemin partiel (à reprendre
+        /// depuis son bout).</summary>
+        public List<GroundVector>? Route(long radius, long fromX, long fromZ, long toX, long toZ, out bool complete)
         {
             var route = new List<GroundVector>();
+            complete = true;
             if (Clear(fromX, fromZ, toX, toZ, radius)) return route;
             int[]? cells = Cells(radius, fromX, fromZ, toX, toZ, out NavStatus status);
             if (cells is null) return null;
+            complete = status == NavStatus.Found;
             NavGrid grid = Grid(radius);
             long ax = fromX, az = fromZ;
             int at = 0;
