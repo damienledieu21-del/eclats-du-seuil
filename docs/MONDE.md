@@ -711,6 +711,15 @@ Un PNJ sait si le joueur lui a déjà parlé : son **premier accueil** (sa prés
 
 Limites : une partie enregistrée **pendant** un premier dialogue garde le fait (le dialogue ouvert n'est pas sauvegardé) : au rechargement, le PNJ est « déjà rencontré » ; un PNJ rencontré avant cette version (parties en cours) se présente encore une fois ; parler à la maîtresse de la guilde au tableau (sans ouvrir son dialogue) ne compte pas comme une rencontre.
 
+### Retrouvailles pour tous (sous-lot V1.9.11)
+
+Choix de Damien du 7 novembre 2026 : ajouter des PNJ avec retrouvailles. **Histoire et textes en contenu 0.18.0** (schéma 9 inchangé) ; sauvegarde, règles, moteur, journal et zones intouchés.
+
+- **Douze PNJ de plus** ont leur réplique (`text.v1911.<pnj>.retrouvailles`, même mécanisme : condition `fact.met.<pnj>`, dernière réplique de l'accueil, mêmes réponses que l'accueil, texte neutre vis-à-vis des quêtes) : Aubin (intendant, aussi dans son nœud de membre), Ysaline, Lison, Colombe, maître Josse, Aubine, Achille, Garance, Mahaut, Thibaut, Colin, Ysarn. Sans retrouvailles : Firmin, Maëlle, Gaspard (dernier nœud déjà un accueil de retour) et la reine Ysolde (figure d'un souvenir de la Rupture, pas une habitante). Tous les autres PNJ qui parlent en ont désormais une (test générique).
+- **Rosalie corrigée** (`text.v1910.habitant.retrouvailles`) : plus de « salopé » (trop familier) ni de chat qui suppose Pain-d'Épice rentré.
+- **Réponses de Damien du 7 novembre 2026** : présentation sur tout le premier dialogue : d'accord ; parties en cours (PNJ rencontrés avant V1.9.10, présentation redite une fois) : acceptable ; réponses de l'accueil gardées : d'accord ; ajouter des PNJ : oui (ce sous-lot).
+- **Tests** : `V1911RetrouvaillesTests` (catégorie World) : retrouvailles dernières de l'accueil, conditionnées, courtes, pour chaque PNJ qui parle ; exceptions vérifiées ; Aubin membre ; premier dialogue puis suivants (six PNJ) ; Rosalie. Tests de version adaptés (0.18.0).
+
 ## Animaux paisibles et bêtes qui se battent (sous-lot V2.4)
 
 Chantier V2.4 du [plan de l'alpha](PLAN_ALPHA.md#16-v24--animaux-paisibles-et-bêtes-qui-se-battent-m), avec la suite de V2.2 (réponse de Damien du 6 novembre 2026 : « plus d'échos et de loups par brume ») : le **premier écosystème des Vallons**. Valeurs **provisoires**, réglables. **Formats** : moteur 0.28.0, journal au format 22, scénarios en schéma 16, règles en schéma 15 (contenu 0.16.0), instantané au format 5 ([MOTEUR.md](MOTEUR.md#bêtes-qui-se-battent-sous-lot-v24), [DONNEES.md](DONNEES.md#bêtes-qui-se-battent-bêtes-qui-fuient-sous-lot-v24)) ; zones en **schéma 9** (8 et 7 encore lues), zone des Vallons au contenu 0.12.0, son scénario 0.7.0, textes 0.14.0. **Sauvegarde inchangée** (version 12), histoire, objets, marchands et guilde inchangés.

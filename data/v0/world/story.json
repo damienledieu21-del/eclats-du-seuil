@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 9,
   "kind": "story",
-  "contentVersion": "0.17.0-provisoire",
+  "contentVersion": "0.18.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -8172,6 +8172,15 @@
                   }
                 ],
                 "text": "text.v23.aubin.repas"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.intendant_guilde"
+                  }
+                ],
+                "text": "text.v1911.intendant_guilde.retrouvailles"
               }
             ]
           },
@@ -8184,6 +8193,17 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.intendant_guilde"
+                  }
+                ],
+                "text": "text.v1911.intendant_guilde.retrouvailles"
               }
             ]
           }
@@ -8322,6 +8342,15 @@
                   }
                 ],
                 "text": "text.v23.ysaline.rayonnages"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v1911.archiviste.retrouvailles"
               }
             ]
           },
@@ -12342,6 +12371,15 @@
                   }
                 ],
                 "text": "text.v23.lison.abri"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
+                  }
+                ],
+                "text": "text.v1911.lison.retrouvailles"
               }
             ]
           },
@@ -12565,6 +12603,15 @@
                   }
                 ],
                 "text": "text.v23.apprentie.soir"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apprentie"
+                  }
+                ],
+                "text": "text.v1911.apprentie.retrouvailles"
               }
             ]
           },
@@ -12776,6 +12823,15 @@
                   }
                 ],
                 "text": "text.v23.doyen.veillee"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.doyen"
+                  }
+                ],
+                "text": "text.v1911.doyen.retrouvailles"
               }
             ]
           },
@@ -13144,6 +13200,15 @@
                   }
                 ],
                 "text": "text.v23.herboriste_hameau.veillee"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.herboriste_hameau"
+                  }
+                ],
+                "text": "text.v1911.herboriste_hameau.retrouvailles"
               }
             ]
           },
@@ -13440,6 +13505,15 @@
                   }
                 ],
                 "text": "text.v23.fermier.taverne"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermier"
+                  }
+                ],
+                "text": "text.v1911.fermier.retrouvailles"
               }
             ]
           },
@@ -13639,6 +13713,15 @@
                   }
                 ],
                 "text": "text.v23.fermiere.veillee"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fermiere"
+                  }
+                ],
+                "text": "text.v1911.fermiere.retrouvailles"
               }
             ]
           },
@@ -13787,6 +13870,15 @@
                   }
                 ],
                 "text": "text.v23.veuve.chapelle"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.veuve"
+                  }
+                ],
+                "text": "text.v1911.veuve.retrouvailles"
               }
             ]
           },
@@ -13991,6 +14083,15 @@
                   }
                 ],
                 "text": "text.v23.thibaut.tombes"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.thibaut"
+                  }
+                ],
+                "text": "text.v1911.thibaut.retrouvailles"
               }
             ]
           },
@@ -14916,6 +15017,15 @@
                   }
                 ],
                 "text": "text.v23.deserteur.maraude"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.deserteur"
+                  }
+                ],
+                "text": "text.v1911.deserteur.retrouvailles"
               }
             ]
           },
@@ -15082,6 +15192,15 @@
                   }
                 ],
                 "text": "text.v23.ysarn.ecoute"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.ysarn"
+                  }
+                ],
+                "text": "text.v1911.ysarn.retrouvailles"
               }
             ]
           },

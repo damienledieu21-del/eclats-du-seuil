@@ -108,12 +108,12 @@ public class V199Chapitre1MaxTests
     {
         ItemCatalog items = ItemJsonReader.ReadFile(Path.Combine(DataDirectory, "world", "items.json"), ShippedData).Catalog!;
         Assert.Equal((7, 7, "0.13.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
-        Assert.Equal((9, "0.17.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
+        Assert.Equal((9, "0.18.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
         Assert.Equal("0.7.0-provisoire", ShippedMerchants.ContentVersion);
         Assert.Equal("0.7.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.2.0-provisoire", Guilde.Value.ContentVersion);
         Assert.Equal((10, "0.13.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.4 : animaux, brume
-        Assert.Equal("0.17.0-provisoire", Texts.ContentVersion);   // V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
+        Assert.Equal("0.18.0-provisoire", Texts.ContentVersion);   // V1.9.11 : retrouvailles de tous les PNJ qui parlent ; V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(old.Save())).Save!;
