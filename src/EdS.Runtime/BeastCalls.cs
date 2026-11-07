@@ -109,12 +109,18 @@ namespace EdS.Runtime
             return (false, wasCalm || speed < HareCalm);
         }
 
-        /// <summary>Volume d'un passage (0 à 1) à <paramref name="t"/> secondes de son début : montée en 0,3 s, descente sur la dernière seconde.</summary>
+        /// <summary>
+        /// Volume d'un passage (0 à 1) à <paramref name="t"/> secondes de son début : montée en 0,3 s (au plus le quart du passage), descente
+        /// sur la dernière seconde (au plus le tiers). Relecture de la PR #114 : un passage de moins d'une seconde (un pas, un coup) n'a pas
+        /// de montée : il part à plein volume dès sa première image.
+        /// </summary>
         public static double Envelope(double t, double length)
         {
-            if (double.IsNaN(t) || t < 0 || t >= length) return 0;
+            if (double.IsNaN(t) || double.IsNaN(length) || t < 0 || t >= length) return 0;
+            double fadeIn = length < 1 ? 0 : Math.Min(0.3, length / 4);
             double fadeOut = Math.Min(1.0, length / 3);
-            return Math.Max(0, Math.Min(1, Math.Min(t / 0.3, (length - t) / fadeOut)));
+            double rise = fadeIn > 0 ? t / fadeIn : 1;
+            return Math.Max(0, Math.Min(1, Math.Min(rise, (length - t) / fadeOut)));
         }
 
         /// <summary>

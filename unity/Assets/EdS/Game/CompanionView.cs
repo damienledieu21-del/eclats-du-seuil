@@ -568,17 +568,17 @@ namespace EdS.Game
             }
             (double start, double length) = BeastCalls.Cue(clip.name, clip.length, n, 7);
             _purr.clip = clip;
-            _purr.volume = 0f;
+            _purr.volume = 0.35f * (float)BeastCalls.Envelope(0, length);
             _purr.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
             _purr.Play();
-            _purrStarted = Time.time;
+            _purrStarted = Time.unscaledTime;   // relecture de la PR #114 : le passage finit même en pause (timeScale à 0)
             _purrLength = (float)length;
         }
 
         private void FadePurr()
         {
             if (_purrLength <= 0f || _purr == null) return;
-            float t = Time.time - _purrStarted;
+            float t = Time.unscaledTime - _purrStarted;
             if (t >= _purrLength)
             {
                 _purr.Stop();

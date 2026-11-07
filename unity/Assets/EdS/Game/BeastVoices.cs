@@ -203,12 +203,13 @@ namespace EdS.Game
             source.transform.position = at + Vector3.up;
             source.maxDistance = catalog.BeastHearing * range;
             source.clip = clip;
-            source.volume = 0f;
-            source.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
-            source.Play();
             voice.Started = Time.unscaledTime;
             voice.Length = (float)length;
             voice.Volume = volume * (beastVolume ? catalog.BeastVolume : 1f);
+            // Relecture de la PR #114 : le volume de la première image est déjà le bon (un pas part à plein volume, sans montée).
+            source.volume = voice.Volume * (float)BeastCalls.Envelope(0, length);
+            source.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
+            source.Play();
             voice.Busy = true;
             return true;
         }

@@ -368,6 +368,14 @@ public class Essai7MoodTests : IDisposable
         Assert.False(mood.BossEngaged);
         Assert.False(double.IsNaN(mood.RiverDistance));
         Assert.InRange(mood.RiverDistance, 0, 40);
+        // Sous-lot V2.9 (relecture de la PR #114) : lieux des ambiances, heure du monde et distance à la forge (finie : la forge est aux Vallons).
+        Assert.True((mood.Places & AmbiencePlace.Town) != 0);
+        Assert.InRange(mood.Minute, 0, 1440);
+        Assert.InRange(mood.ForgeDistance, 0, 200);
+        AdventureMood rainy = mood.WithRain(0.7);
+        Assert.Equal((mood.Places, mood.Minute, mood.ForgeDistance, 0.7), (rainy.Places, rainy.Minute, rainy.ForgeDistance, rainy.Rain));
+        Assert.True(double.IsPositiveInfinity(new AdventureMood(false, false, false, 0, forgeDistance: double.NaN).ForgeDistance));
+        Assert.True(double.IsPositiveInfinity(new AdventureMood(false, false, false, 0).ForgeDistance));
         // Rien ne change dans le monde : deux lectures donnent la même chose, le temps n'a pas avancé.
         long tick = a.Combat.Tick;
         AdventureMood again = a.Mood();

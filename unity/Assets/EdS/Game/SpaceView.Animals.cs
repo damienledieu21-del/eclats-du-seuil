@@ -31,7 +31,7 @@ namespace EdS.Game
 
         private readonly List<Beast> _beasts = new List<Beast>();
         private readonly List<(StyleSound Sound, Vector3 At)> _farmCalls = new List<(StyleSound, Vector3)>();
-        private readonly float[] _callIn = new float[16];
+        private float[] _callIn = new float[0];   // relecture de la PR #114 : un compte à rebours par cri noté, autant que la zone en a
         private int _calls;
         private SoundPool _farmVoices;
         private float _beastClock;
@@ -66,6 +66,7 @@ namespace EdS.Game
                 else if (key.StartsWith("ruines", System.StringComparison.Ordinal)) Herd(place, StyleSlot.Crow, Mathf.RoundToInt(3 * k), 0.32f, StyleSound.Caw);
                 else if (key.StartsWith("foret", System.StringComparison.Ordinal)) _farmCalls.Add((StyleSound.Owl, PlaceCenter(place)));
             }
+            _callIn = new float[_farmCalls.Count];
             for (int i = 0; i < _callIn.Length; i++) _callIn[i] = 5f + 3f * i;
         }
 

@@ -33,6 +33,7 @@ namespace EdS.Game
         // bourdonnement en boucle de chaque faille ouverte, miroir qui explose quand elle se referme. Sans fichier : la cloche faite par le code.
         private readonly AudioSource[] _bells = new AudioSource[2];
         private readonly AudioSource _burst;
+        private readonly AudioSource _church;   // relecture de la PR #114 : à part, le tocsin ne la partage plus
         private readonly Dictionary<string, AudioSource> _hums = new Dictionary<string, AudioSource>();
         private readonly Dictionary<string, Vector3> _riftAt = new Dictionary<string, Vector3>();
         private int _strikesLeft;
@@ -51,6 +52,7 @@ namespace EdS.Game
             _audio.volume = 0.55f;
             for (int i = 0; i < _bells.Length; i++) _bells[i] = Source3D("Tocsin " + i, 0.7f);
             _burst = Source3D("Verre des failles", 1f);
+            _church = Source3D("Cloche d'église", 0.7f);
         }
 
         private AudioSource Source3D(string name, float blend)
@@ -247,8 +249,9 @@ namespace EdS.Game
         {
             if (_churchLength > 0f)
             {
-                float t = Time.time - _churchStarted;
-                AudioSource church = _bells[0];
+                // Relecture de la PR #114 : temps réel (timeScale à 0 en pause : le passage finit quand même).
+                float t = Time.unscaledTime - _churchStarted;
+                AudioSource church = _church;
                 if (t >= _churchLength || church == null)
                 {
                     if (church != null) church.Stop();
@@ -280,16 +283,15 @@ namespace EdS.Game
             // 2e vague : une des cloches d'église déposées (quatre), mélangées.
             AudioClip clip = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.Sound(StyleSound.ChurchBell, BeastCalls.Pick(_churches, 1 << 20)) : null;
             if (clip == null) return;
-            _strikesLeft = 0;
-            AudioSource bell = _bells[0];
+            AudioSource bell = _church;
             bell.transform.position = (PlaceCenter(e, zone) ?? Vector3.zero) + Vector3.up * 6f;
             bell.maxDistance = Hearing(3f);
             (double start, double length) = BeastCalls.Cue(clip.name, clip.length, _churches++, 12);
             bell.clip = clip;
             bell.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
-            bell.volume = 0f;
+            bell.volume = 0.8f * Volume * (float)BeastCalls.Envelope(0, length);
             bell.Play();
-            _churchStarted = Time.time;
+            _churchStarted = Time.unscaledTime;
             _churchLength = (float)length;
         }
 

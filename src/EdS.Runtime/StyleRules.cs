@@ -1159,18 +1159,58 @@ namespace EdS.Runtime
         /// </summary>
         public static AmbiencePlace PlaceAmbience(IEnumerable<string> placeIds, string? zoneId, bool indoors)
         {
-            var places = AmbiencePlace.None;
-            if (indoors && Key(zoneId ?? string.Empty).Contains("auberge")) places |= AmbiencePlace.TavernInside;
-            foreach (string id in placeIds ?? Array.Empty<string>())
-            {
-                string key = Key(id);
-                if (key.Contains("village") || key.Contains("bourg") || key.Contains("hameau")) places |= AmbiencePlace.Town;
-                if (key.Contains("camp") || key.Contains("carriere")) places |= AmbiencePlace.Camp;
-                if (key.Contains("champs") || key.Contains("vergers") || key.Contains("plaine") || key.Contains("pre") || key.Contains("lac")) places |= AmbiencePlace.Fields;
-                if (key.Contains("foret") || key.Contains("bois")) places |= AmbiencePlace.Forest;
-                if (key.Contains("seuil")) places |= AmbiencePlace.Threshold;
-            }
+            AmbiencePlace places = PlaceAmbience((string?)null, zoneId, indoors);
+            foreach (string id in placeIds ?? Array.Empty<string>()) places |= PlaceAmbience(id);
             return places;
+        }
+
+        /// <summary>L'auberge (intérieur) est une taverne : <see cref="AmbiencePlace.TavernInside"/>, sinon rien ; <paramref name="placeId"/> ignoré s'il est nul.</summary>
+        public static AmbiencePlace PlaceAmbience(string? placeId, string? zoneId, bool indoors) =>
+            (indoors && zoneId != null && HasIdWord(zoneId, "auberge", true) ? AmbiencePlace.TavernInside : AmbiencePlace.None)
+            | (placeId != null ? PlaceAmbience(placeId) : AmbiencePlace.None);
+
+        /// <summary>
+        /// Relecture de la PR #114 : ambiances d'un lieu d'après les mots de son identifiant (« camp_des_rodeurs », « pre_nord »), mot entier
+        /// ou début de mot, jamais un bout de mot (« place » n'est pas le lac, « prison » n'est pas un pré). Sans allocation.
+        /// </summary>
+        public static AmbiencePlace PlaceAmbience(string placeId)
+        {
+            var places = AmbiencePlace.None;
+            if (string.IsNullOrEmpty(placeId)) return places;
+            if (HasIdWord(placeId, "village", true) || HasIdWord(placeId, "bourg", true) || HasIdWord(placeId, "hameau", true)) places |= AmbiencePlace.Town;
+            if (HasIdWord(placeId, "camp", false) || HasIdWord(placeId, "carriere", true)) places |= AmbiencePlace.Camp;
+            if (HasIdWord(placeId, "champ", true) || HasIdWord(placeId, "verger", true) || HasIdWord(placeId, "plaine", true)
+                || HasIdWord(placeId, "pre", false) || HasIdWord(placeId, "lac", false)) places |= AmbiencePlace.Fields;
+            if (HasIdWord(placeId, "foret", true) || HasIdWord(placeId, "bois", false)) places |= AmbiencePlace.Forest;
+            if (HasIdWord(placeId, "seuil", false)) places |= AmbiencePlace.Threshold;
+            return places;
+        }
+
+        /// <summary>
+        /// Un mot de <paramref name="id"/> (coupé aux signes : « camp_des_rodeurs » → camp, des, rodeurs) vaut-il <paramref name="word"/>
+        /// (ou, avec <paramref name="prefix"/>, commence-t-il par lui) ? Casse ignorée, sans allocation.
+        /// </summary>
+        private static bool HasIdWord(string id, string word, bool prefix)
+        {
+            int i = 0;
+            while (i < id.Length)
+            {
+                while (i < id.Length && !char.IsLetter(id[i])) i++;
+                int start = i;
+                while (i < id.Length && char.IsLetter(id[i])) i++;
+                int length = i - start;
+                if (length == 0) continue;
+                if ((prefix ? length >= word.Length : length == word.Length)
+                    && string.Compare(id, start, word, 0, word.Length, StringComparison.OrdinalIgnoreCase) == 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Distance (m) du point au rectangle (0 dedans) ; NaN si une coordonnée est NaN.</summary>
+        public static double RectDistance(double x, double z, double minX, double minZ, double maxX, double maxZ)
+        {
+            double dx = Math.Max(0, Math.Max(minX - x, x - maxX)), dz = Math.Max(0, Math.Max(minZ - z, z - maxZ));
+            return Math.Sqrt(dx * dx + dz * dz);
         }
 
         /// <summary>
@@ -1203,7 +1243,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.9 (2e vague) : volume (0 à 1) des ambiances de lieu d'après l'heure du monde (<paramref name="minute"/>), les lieux
-        /// (<paramref name="places"/>), la distance à la forge (<paramref name="forgeDistance"/>, m ; NaN sans forge), la nuit et la pluie :
+        /// (<paramref name="places"/>), la distance à la forge (<paramref name="forgeDistance"/>, m ; +∞ sans forge), la nuit et la pluie :
         /// rumeur du bourg de 6 h à 21 h, marché de 7 h 30 à 13 h (plus faible l'après-midi), taverne le soir de loin et toujours dans
         /// l'auberge, forge de 7 h à 19 h jusqu'à 25 m, feu de camp (plus fort la nuit), campagne le jour, forêt (plus calme la nuit). Les
         /// autres nappes : <see cref="AmbienceVolume(StyleAmbience, double, bool, bool, bool, double, double)"/>.
@@ -1227,7 +1267,7 @@ namespace EdS.Runtime
                 case StyleAmbience.Village:
                     return !indoors && town ? 0.55 * calm * (1 - 0.5 * rain) * Window(6, 21, 1) : 0;
                 case StyleAmbience.Forge:
-                    if (indoors || double.IsNaN(forgeDistance) || forgeDistance < 0) return 0;
+                    if (indoors || double.IsNaN(forgeDistance) || double.IsInfinity(forgeDistance) || forgeDistance < 0) return 0;
                     return 0.9 * calm * Math.Max(0, Math.Min(1, (25 - forgeDistance) / 20)) * Window(7, 19, 0.5);
                 case StyleAmbience.Campfire:
                     return !indoors && (places & AmbiencePlace.Camp) != 0 ? calm * (0.4 + 0.4 * night) * (1 - 0.6 * rain) : 0;

@@ -178,6 +178,12 @@ public sealed class V29RessourcesTests
         Assert.Equal(0, BeastCalls.Envelope(5, 5));
         Assert.Equal(1, BeastCalls.Envelope(2, 5));
         Assert.InRange(BeastCalls.Envelope(0.1, 5), 0.3, 0.4);
+        // Relecture de la PR #114 : un passage court (un pas, un coup) part à plein volume ; un passage d'une à deux secondes monte vite.
+        Assert.Equal(1, BeastCalls.Envelope(0, 0.45));
+        Assert.Equal(1, BeastCalls.Envelope(0.1, 0.6));
+        Assert.Equal(0, BeastCalls.Envelope(0, 2));
+        Assert.Equal(1, BeastCalls.Envelope(0.3, 2), 6);
+        Assert.Equal(0, BeastCalls.Envelope(1, double.NaN));
     }
 
     [Fact]
@@ -319,6 +325,22 @@ public sealed class V29RessourcesTests
         Assert.Equal(AmbiencePlace.Camp | AmbiencePlace.Fields, StyleRules.PlaceAmbience(new[] { "camp_des_rodeurs", "pre_nord" }, "zone.vallons", false));
         Assert.Equal(AmbiencePlace.Forest, StyleRules.PlaceAmbience(new[] { "foret_des_loups" }, null, false));
         Assert.Equal(AmbiencePlace.Threshold, StyleRules.PlaceAmbience(new[] { "coeur_du_seuil" }, null, false));
+        // Relecture de la PR #114 : mots entiers ou débuts de mots, jamais un bout de mot.
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("place"));      // pas le lac
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("prison"));     // pas un pré
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("presbytere"));
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("boiserie"));
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("campanile"));
+        Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("lac"));
+        Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("Pre_Nord"));
+        Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("plaine_est"));
+        Assert.Equal(AmbiencePlace.Town, StyleRules.PlaceAmbience("Place du village"));
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience(""));
+        Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience((string?)null, "zone.vallons", true));
+        Assert.Equal(AmbiencePlace.TavernInside | AmbiencePlace.Town, StyleRules.PlaceAmbience("bourg", "zone.auberge", true));
+        Assert.Equal(0, StyleRules.RectDistance(-20, -4, -23, -7, -17, -1));
+        Assert.Equal(5, StyleRules.RectDistance(-12, -4, -23, -7, -17, -1), 9);
+        Assert.Equal(5, StyleRules.RectDistance(-26, 3, -23, -7, -17, -1), 9);
         double V(StyleAmbience a, AmbiencePlace p, double hour, double forge = double.NaN, bool indoors = false, double night = 0, double rain = 0) =>
             StyleRules.PlaceVolume(a, p, hour * 60, forge, false, indoors, night, rain);
         Assert.True(V(StyleAmbience.Market, bourg, 9.5) > 0.7);          // le marché du matin
@@ -331,6 +353,8 @@ public sealed class V29RessourcesTests
         Assert.Equal(0, V(StyleAmbience.Village, bourg, 12, indoors: true));
         Assert.True(V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: 3) > 0.8);   // près de Maëlle, le jour
         Assert.Equal(0, V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: 40));
+        Assert.Equal(0, V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: double.PositiveInfinity));   // zone sans forge
+        Assert.True(V(StyleAmbience.Forge, AmbiencePlace.None, 10, forge: 0) > 0.8);   // dans la forge
         Assert.Equal(0, V(StyleAmbience.Forge, AmbiencePlace.None, 23, forge: 3));
         Assert.True(V(StyleAmbience.Campfire, AmbiencePlace.Camp, 23, night: 1) > V(StyleAmbience.Campfire, AmbiencePlace.Camp, 12));
         Assert.Equal(0, V(StyleAmbience.Countryside, AmbiencePlace.Fields | AmbiencePlace.Town, 12));   // au hameau, la rumeur du village
@@ -358,5 +382,20 @@ public sealed class V29RessourcesTests
         Assert.True(BeastCalls.CallTime(StyleSound.Moo, 12 * 60) && !BeastCalls.CallTime(StyleSound.Moo, 2 * 60));
         foreach (StyleSound farm in new[] { StyleSound.Caw, StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl })
             for (int n = 0; n < 50; n++) Assert.InRange(BeastCalls.Interval(farm, n), 10, 80);
+    }
+
+    [Fact]
+    public void Relecture_les_auteurs_CC_BY_sont_cites_dans_les_credits_et_les_licences()
+    {
+        string root = Lot93UnityPackageTests.Root;
+        string credits = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "docs", "CREDITS.md"));
+        string licences = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "unity", "Assets", "EdS", "Interface", "LICENCES.md"));
+        foreach (string author in new[] { "Matthew Pablo", "Scott Buckley", "Pneshik", "Hanabi_Map", "DreamNoms", "Suiteofart", "WildMesh_3D", "Assets_Animated",
+                     "Dakta.Grower.Nzl", "bluekiwi.dog", "rhcreations", "roo3d", "alexanders823", "rukh3d", "quander", "henry_7", "Sacha.Julien", "naturenotesuk",
+                     "JiggleSticks", "kevp888" })
+        {
+            Assert.Contains(author, credits, StringComparison.Ordinal);
+            Assert.Contains(author, licences, StringComparison.Ordinal);
+        }
     }
 }

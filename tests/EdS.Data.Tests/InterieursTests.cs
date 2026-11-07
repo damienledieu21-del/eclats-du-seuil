@@ -329,6 +329,9 @@ public class InterieursTests : IDisposable
         a.Advance(0.2);
         Assert.True(a.Mood().Indoors);
         Assert.True(a.Mood().InVillage);
+        // Sous-lot V2.9 : dans l'auberge, la taverne ; pas de forge dans la zone (+∞, jamais NaN).
+        Assert.Equal(AmbiencePlace.TavernInside, a.Mood().Places & AmbiencePlace.TavernInside);
+        Assert.True(double.IsPositiveInfinity(a.Mood().ForgeDistance));
         Assert.True(a.UseDoor());
         Assert.False(a.Indoors);
         Assert.Equal("zone.vallons", a.World.Definition!.Id);
