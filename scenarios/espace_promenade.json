@@ -1,0 +1,533 @@
+{
+  "$schema": "../data/schemas/scenario.schema.json",
+  "schemaVersion": 17,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 2041,
+    "durationMs": 60000,
+    "truces": [
+      [
+        "meute",
+        "bandits"
+      ],
+      [
+        "gibier",
+        "bandits"
+      ]
+    ],
+    "space": {
+      "bounds": {
+        "min": [
+          -40,
+          -30
+        ],
+        "max": [
+          40,
+          30
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "bastion",
+        "type": "character",
+        "team": "joueurs",
+        "initiative": 0,
+        "class": "class.bastion",
+        "build": {
+          "level": 30,
+          "attributes": {
+            "force": 30,
+            "dexterite": 10,
+            "intelligence": 6,
+            "vitalite": 30,
+            "volonte": 15,
+            "endurance": 20
+          },
+          "talents": {
+            "talent.bastion.rempart.garde_stable": 3,
+            "talent.bastion.rempart.echo_defensif": 1,
+            "talent.bastion.rempart.peau_de_fer": 5,
+            "talent.bastion.rempart.souffle_du_roc": 4,
+            "talent.bastion.rempart.poids_du_rempart": 5,
+            "talent.bastion.rempart.rempart_eternel": 1,
+            "talent.bastion.gardien.egide_reactive": 3,
+            "talent.bastion.gardien.vigilance": 5,
+            "talent.bastion.contrecoup.riposte_precise": 2
+          },
+          "activeSkills": [
+            "skill.bastion.frappe_du_rempart",
+            "skill.bastion.heurt_de_bouclier",
+            "skill.bastion.provocation",
+            "skill.bastion.onde_de_rupture"
+          ],
+          "ultimate": "skill.bastion.bastion_absolu",
+          "passiveSkills": [
+            "skill.bastion.endurance_du_roc",
+            "skill.bastion.bouclier_lourd",
+            "skill.bastion.reserve_de_charges",
+            "skill.bastion.posture_de_fer"
+          ]
+        },
+        "position": [
+          -35,
+          -25
+        ],
+        "facing": [
+          0,
+          1
+        ],
+        "radius": 0.5
+      },
+      {
+        "id": "cerf2",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 90,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "sabot",
+            "rawDamage": 8,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -22,
+          12
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.7,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 14,
+          "minRange": 14,
+          "aggroRange": 9,
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 5,
+            "pace": 0.25,
+            "legMs": 10000,
+            "pauseMs": [
+              4000,
+              8000
+            ],
+            "group": "harde"
+          }
+        }
+      },
+      {
+        "id": "cerf3",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 90,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "sabot",
+            "rawDamage": 8,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -18,
+          12
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.7,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 14,
+          "minRange": 14,
+          "aggroRange": 9,
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 5,
+            "pace": 0.25,
+            "legMs": 10000,
+            "pauseMs": [
+              4000,
+              8000
+            ],
+            "group": "harde"
+          }
+        }
+      },
+      {
+        "id": "cerf_chef",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 90,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "sabot",
+            "rawDamage": 8,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -20,
+          10
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 0.7,
+        "speed": 6,
+        "behavior": {
+          "maxRange": 14,
+          "minRange": 14,
+          "aggroRange": 9,
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 5,
+            "pace": 0.25,
+            "legMs": 10000,
+            "pauseMs": [
+              4000,
+              8000
+            ],
+            "group": "harde",
+            "lead": true
+          }
+        }
+      },
+      {
+        "id": "lievre",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 30,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 3,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          0,
+          -15
+        ],
+        "facing": [
+          0,
+          1
+        ],
+        "radius": 0.3,
+        "speed": 7,
+        "behavior": {
+          "maxRange": 10,
+          "minRange": 10,
+          "aggroRange": 6,
+          "pack": false,
+          "flee": true,
+          "wander": {
+            "style": "hop",
+            "radius": 4,
+            "pace": 0.8,
+            "legMs": 4000,
+            "pauseMs": [
+              1000,
+              2500
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          22,
+          17
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 6,
+            "pace": 0.4,
+            "legMs": 6000,
+            "pauseMs": [
+              500,
+              1500
+            ],
+            "group": "meute_nord",
+            "spacing": 1.5,
+            "points": 4
+          }
+        }
+      },
+      {
+        "id": "loup3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          18,
+          17
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 6,
+            "pace": 0.4,
+            "legMs": 6000,
+            "pauseMs": [
+              500,
+              1500
+            ],
+            "group": "meute_nord",
+            "spacing": 1.5,
+            "points": 4
+          }
+        }
+      },
+      {
+        "id": "loup_chef",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          20,
+          15
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 6,
+            "pace": 0.4,
+            "legMs": 6000,
+            "pauseMs": [
+              500,
+              1500
+            ],
+            "group": "meute_nord",
+            "spacing": 1.5,
+            "points": 4,
+            "lead": true
+          }
+        }
+      },
+      {
+        "id": "sanglier",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          20,
+          -15
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.3,
+            "legMs": 8000,
+            "pauseMs": [
+              3000,
+              6000
+            ]
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "atMs": 10000,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          0.46,
+          0.89
+        ]
+      },
+      {
+        "atMs": 16000,
+        "actor": "bastion",
+        "action": "stop"
+      },
+      {
+        "atMs": 20000,
+        "actor": "bastion",
+        "action": "move",
+        "direction": [
+          -0.46,
+          -0.89
+        ]
+      },
+      {
+        "atMs": 26000,
+        "actor": "bastion",
+        "action": "stop"
+      }
+    ]
+  }
+}

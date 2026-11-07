@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 17,
   "kind": "scenario",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -1450,7 +1450,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_moulin",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -1489,7 +1502,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_moulin",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -1528,7 +1553,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_pre",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -1573,7 +1611,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -1664,7 +1712,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_pre",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -1703,7 +1763,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_pre",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -1748,7 +1820,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -1793,7 +1875,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -1884,7 +1976,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 2.5,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_foret",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -1923,7 +2028,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_foret",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -1962,7 +2079,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nord",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -2001,7 +2131,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nord",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -2040,7 +2182,17 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
         }
       },
       {
@@ -2085,7 +2237,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 1.5,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -2130,7 +2292,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -2175,7 +2347,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -2220,7 +2402,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -2265,7 +2457,17 @@
           "maxRange": 6,
           "minRange": 3,
           "aggroRange": 10,
-          "pack": false
+          "pack": false,
+          "wander": {
+            "style": "root",
+            "radius": 3,
+            "pace": 0.25,
+            "legMs": 9000,
+            "pauseMs": [
+              4000,
+              7000
+            ]
+          }
         }
       },
       {
@@ -2408,7 +2610,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_est",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -2447,7 +2662,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_est",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -2875,7 +3102,17 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 10,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 4,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
         }
       },
       {
@@ -3170,7 +3407,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nuit",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -3209,7 +3459,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nuit",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -3248,7 +3510,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nuit",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -3287,7 +3561,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_nuit",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -3326,7 +3612,17 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
         }
       },
       {
@@ -3365,7 +3661,17 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
         }
       },
       {
@@ -3404,7 +3710,17 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 2.5,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
         }
       },
       {
@@ -3599,7 +3915,20 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 2,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_brume",
+            "spacing": 1.5,
+            "lead": true
+          }
         }
       },
       {
@@ -3638,7 +3967,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 2,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_brume",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -3677,7 +4018,19 @@
         "behavior": {
           "maxRange": 0.5,
           "aggroRange": 7,
-          "encircle": true
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 2,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_brume",
+            "spacing": 1.5
+          }
         }
       },
       {
@@ -3795,7 +4148,20 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_lac",
+            "spacing": 2,
+            "lead": true
+          }
         }
       },
       {
@@ -3835,7 +4201,19 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_lac",
+            "spacing": 2
+          }
         }
       },
       {
@@ -3875,7 +4253,19 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_lac",
+            "spacing": 2
+          }
         }
       },
       {
@@ -3915,7 +4305,20 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_foret",
+            "spacing": 2,
+            "lead": true
+          }
         }
       },
       {
@@ -3955,7 +4358,19 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_foret",
+            "spacing": 2
+          }
         }
       },
       {
@@ -3995,7 +4410,19 @@
           "maxRange": 14,
           "minRange": 14,
           "aggroRange": 9,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "graze",
+            "radius": 4,
+            "pace": 0.2,
+            "legMs": 12000,
+            "pauseMs": [
+              5000,
+              10000
+            ],
+            "group": "harde_foret",
+            "spacing": 2
+          }
         }
       },
       {
@@ -4036,7 +4463,17 @@
           "minRange": 10,
           "aggroRange": 6,
           "pack": false,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "hop",
+            "radius": 4,
+            "pace": 0.6,
+            "legMs": 5000,
+            "pauseMs": [
+              1500,
+              3500
+            ]
+          }
         }
       },
       {
@@ -4077,7 +4514,17 @@
           "minRange": 10,
           "aggroRange": 6,
           "pack": false,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "hop",
+            "radius": 3,
+            "pace": 0.6,
+            "legMs": 5000,
+            "pauseMs": [
+              1500,
+              3500
+            ]
+          }
         }
       },
       {
@@ -4118,7 +4565,17 @@
           "minRange": 10,
           "aggroRange": 6,
           "pack": false,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "hop",
+            "radius": 4,
+            "pace": 0.6,
+            "legMs": 5000,
+            "pauseMs": [
+              1500,
+              3500
+            ]
+          }
         }
       },
       {
@@ -4159,7 +4616,17 @@
           "minRange": 10,
           "aggroRange": 6,
           "pack": false,
-          "flee": true
+          "flee": true,
+          "wander": {
+            "style": "hop",
+            "radius": 4,
+            "pace": 0.6,
+            "legMs": 5000,
+            "pauseMs": [
+              1500,
+              3500
+            ]
+          }
         }
       }
     ],

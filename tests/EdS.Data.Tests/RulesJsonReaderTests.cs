@@ -29,8 +29,8 @@ public class RulesJsonReaderTests
     {
         RulesLoadResult result = RulesJsonReader.ReadFile(ShippedPath);
         Assert.True(result.IsValid, result.Report.ToString());
-        Assert.Equal(15, result.Rules!.SchemaVersion);   // V2.4 : bêtes qui se battent ; V1.3 : effets d'équipement ; sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections ; 11.4c : arc, annonces ; V1.2 : boucliers
-        Assert.Equal("0.16.0-provisoire", result.Rules.ContentVersion);   // 0.16.0 : bêtes qui se battent (V2.4) ; 0.15.0 : barre de V1.8 ; 0.14.0 : effets d'équipement (V1.3) ; 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
+        Assert.Equal(16, result.Rules!.SchemaVersion);   // V2.4.1 : bêtes qui se promènent ; V2.4 : bêtes qui se battent ; V1.3 : effets d'équipement ; sous-lot 11.4a : déplacement et contact ; 11.4b : portée des protections ; 11.4c : arc, annonces ; V1.2 : boucliers
+        Assert.Equal("0.17.0-provisoire", result.Rules.ContentVersion);   // 0.17.0 : bêtes qui se promènent (V2.4.1) ; 0.16.0 : bêtes qui se battent (V2.4) ; 0.15.0 : barre de V1.8 ; 0.14.0 : effets d'équipement (V1.3) ; 0.13.0 : garde des boucliers (V1.2) ; 0.12.0 : 128 combattants ; 0.9.0 : déplacement et contact (11.4a) ; 0.10.0 : portée du lien protecteur (11.4b) ; 0.11.0 : arc et annonces (11.4c)
         Assert.Matches("^sha256:[0-9a-f]{64}$", result.Rules.Fingerprint);
     }
 
@@ -124,8 +124,9 @@ public class RulesJsonReaderTests
         // Relecture de la PR #78 : combat.equipment.allowedStatuses (liste vide), schéma 14 et contenu 0.14.0 gardés (non fusionnés ; empreinte de la PR avant : 358fc35a…).
         // Sous-lot V1.8 : contenu 0.15.0, schéma inchangé : places actives aux niveaux 1, 1, 1, 1, 10, 20 et ultime au niveau 1 (ancienne
         // empreinte 0413744a…). Sous-lot V2.4 : schéma 15, contenu 0.16.0, bloc combat.infighting (ancienne empreinte 88485de3…).
+        // Sous-lot V2.4.1 : schéma 16, contenu 0.17.0, bloc combat.wander (ancienne empreinte 7eec9f45…).
         Assert.Equal(
-            "sha256:7eec9f453ee7d0e0d0119d880e327b8bcb1957f652c55a1b149fdac0880b60c9",
+            "sha256:88d8af375545c93af46a5e19e08502e0e8a0dafaed439762b707aa063b277657",
             RulesJsonReader.Read(ShippedJson).Rules!.Fingerprint);
     }
 
@@ -133,7 +134,7 @@ public class RulesJsonReaderTests
 
     [Fact]
     public void Version_de_schema_future_non_prise_en_charge() =>
-        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 16), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertSingleError(ReadMutated(r => r["schemaVersion"] = 15), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
 
     [Fact]
     public void Format_5_sans_plafonds_refuse_explicitement()
