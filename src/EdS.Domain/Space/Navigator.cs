@@ -115,11 +115,23 @@ namespace EdS.Domain.Space
         /// Chemin (cases) de la classe de <paramref name="radius"/> entre les cases libres les plus proches des deux points ; null si
         /// aucun. Gardé en cache ; <paramref name="status"/> : <see cref="NavStatus.Found"/> ou <see cref="NavStatus.Partial"/>.
         /// </summary>
-        public int[]? Cells(long radius, long fromX, long fromZ, long toX, long toZ, out NavStatus status)
+        public int[]? Cells(long radius, long fromX, long fromZ, long toX, long toZ, out NavStatus status) =>
+            Cells(radius, fromX, fromZ, toX, toZ, out status, out _);
+
+        /// <summary>
+        /// Comme <see cref="Cells(long, long, long, long, long, out NavStatus)"/> ; <paramref name="unattached"/> : vrai si aucune case libre
+        /// n'est atteignable en ligne droite depuis le départ (le marcheur est coincé entre des obstacles plus près qu'une case).
+        /// </summary>
+        public int[]? Cells(long radius, long fromX, long fromZ, long toX, long toZ, out NavStatus status, out bool unattached)
         {
             NavGrid grid = Grid(radius);
             status = NavStatus.None;
-            int start = grid.NearestFree(fromX, fromZ, StartReach), goal = grid.NearestFree(toX, toZ, GoalReach);
+            // Revue Codex de la PR #113 (tour 3) : départ et but ne se rattachent qu'à une case qu'ils atteignent en ligne droite avec leur
+            // emprise (jamais à une case derrière un mur fin). Un but où l'emprise ne tient pas (dans un obstacle) garde la case libre la
+            // plus proche : il n'y a pas de ligne droite à juger.
+            int start = Attach(grid, fromX, fromZ, StartReach, radius);
+            unattached = start < 0;
+            int goal = Standable(toX, toZ, radius) ? Attach(grid, toX, toZ, GoalReach, radius) : grid.NearestFree(toX, toZ, GoalReach);
             if (start < 0 || goal < 0 || grid.Component(start) != grid.Component(goal)) return null;
             long key = checked((RadiusClass(radius) / RadiusStep << 40) | ((long)start << 20) | (long)goal);
             // Relecture de la PR #113 : le statut est gardé avec le chemin (un chemin tronqué finit sur une autre case que le but, mais
@@ -141,6 +153,49 @@ namespace EdS.Domain.Space
             return cells;
         }
 
+        private readonly int[] _candidates = new int[(2 * GoalReach + 1) * (2 * GoalReach + 1)];
+        private readonly long[] _distances = new long[(2 * GoalReach + 1) * (2 * GoalReach + 1)];
+
+        /// <summary>L'emprise tient-elle au point (x, z) sans chevaucher d'obstacle ?</summary>
+        private bool Standable(long x, long z, long radius)
+        {
+            long r = Math.Max(1, radius);
+            foreach (ConvexPolygon o in _obstacles)
+                if (o.OverlapsCircle(x, z, r)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #113 (tour 3) : case libre la plus proche de (x, z), dans un carré de ±<paramref name="reach"/> cases, que
+        /// l'emprise atteint en ligne droite depuis (x, z) sans toucher d'obstacle : les cases libres sont examinées par distance croissante
+        /// au point, puis par indice (départage stable) ; −1 s'il n'y en a pas. Aucune allocation (tampons du navigateur).
+        /// </summary>
+        private int Attach(NavGrid grid, long x, long z, int reach, long radius)
+        {
+            int col = grid.ColumnOf(x), row = grid.RowOf(z), n = 0;
+            for (int r = Math.Max(0, row - reach); r <= Math.Min(grid.Height - 1, row + reach); r++)
+                for (int c = Math.Max(0, col - reach); c <= Math.Min(grid.Width - 1, col + reach); c++)
+                {
+                    int k = r * grid.Width + c;
+                    if (!grid.IsFree(k)) continue;
+                    _candidates[n] = k;
+                    _distances[n] = Planar.LengthSquared(checked(grid.CenterX(c) - x), checked(grid.CenterZ(r) - z));
+                    n++;
+                }
+            // Tri par sélection, au fil de l'examen (au plus 81 candidats) : distance, puis indice de case.
+            for (int i = 0; i < n; i++)
+            {
+                int best = i;
+                for (int j = i + 1; j < n; j++)
+                    if (_distances[j] < _distances[best] || (_distances[j] == _distances[best] && _candidates[j] < _candidates[best])) best = j;
+                (_candidates[i], _candidates[best]) = (_candidates[best], _candidates[i]);
+                (_distances[i], _distances[best]) = (_distances[best], _distances[i]);
+                int k = _candidates[i];
+                if (Clear(x, z, grid.CellX(k), grid.CellZ(k), radius)) return k;
+            }
+            return -1;
+        }
+
         /// <summary>
         /// Point à viser pour aller de (from) à (to) : le but lui-même si la ligne droite est libre (<see cref="NavSteer.Direct"/>) ; sinon
         /// la case la plus lointaine du chemin (au plus <see cref="Lookahead"/> cases devant) que l'emprise atteint en ligne droite (lissage),
@@ -152,9 +207,17 @@ namespace EdS.Domain.Space
             aimX = toX;
             aimZ = toZ;
             if (Clear(fromX, fromZ, toX, toZ, radius)) return NavSteer.Direct;
-            int[]? cells = Cells(radius, fromX, fromZ, toX, toZ, out NavStatus status);
+            int[]? cells = Cells(radius, fromX, fromZ, toX, toZ, out NavStatus status, out bool unattached);
             aimX = fromX;
             aimZ = fromZ;
+            // Revue Codex de la PR #113 (tour 3) : coincé à moins d'une case d'obstacles (aucune case atteignable en ligne droite) : il va
+            // droit et glisse, comme avant V2.8, au lieu de rester immobile pour toujours.
+            if (unattached)
+            {
+                aimX = toX;
+                aimZ = toZ;
+                return NavSteer.Straight;
+            }
             if (cells is null || cells.Length == 0) return NavSteer.None;
             NavGrid grid = Grid(radius);
             NavSteer kind = status == NavStatus.Found ? NavSteer.Path : NavSteer.Partial;

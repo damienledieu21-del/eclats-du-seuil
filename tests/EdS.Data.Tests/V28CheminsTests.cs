@@ -545,6 +545,48 @@ public class V28CheminsGrilleTests
             }
         }
     }
+    [Fact]
+    public void Depart_et_but_rattaches_a_une_case_atteignable_jamais_derriere_un_mur_fin()
+    {
+        // Revue Codex de la PR #113 (tour 3), cas exact : aire (−2, −2)–(2, 2), emprise 0,1 m, mur fin (0,10 ; −2)–(0,12 ; 2), obstacle
+        // (0,60 ; −0,50)–(0,70 ; 0,50), départ (0,23 ; 0), but (1,50 ; 0). La case libre la plus proche du départ, (−0,25 ; −0,25), est de
+        // l'autre côté du mur : elle n'est plus choisie ; la créature contourne l'obstacle au lieu de rester immobile.
+        var wall = Rect(0.10, -2, 0.12, 2);
+        var block = Rect(0.60, -0.50, 0.70, 0.50);
+        var nav = new Navigator(R(-2), R(-2), R(2), R(2), new[] { wall, block });
+        long r = R(0.1);
+        NavGrid grid = nav.Grid(r);
+        int nearest = grid.NearestFree(R(0.23), 0, Navigator.StartReach);
+        Assert.Equal((R(-0.25), R(-0.25)), (grid.CellX(nearest), grid.CellZ(nearest)));   // l'ancien rattachement, derrière le mur
+        int[]? cells = nav.Cells(r, R(0.23), 0, R(1.5), 0, out NavStatus status);
+        Assert.NotNull(cells);
+        Assert.Equal(NavStatus.Found, status);
+        Assert.True(grid.CellX(cells![0]) > R(0.12), $"départ rattaché en {grid.CellX(cells[0])}");
+        Assert.True(nav.Clear(R(0.23), 0, grid.CellX(cells[0]), grid.CellZ(cells[0]), r));
+        Assert.Equal(NavSteer.Path, nav.Steer(r, R(0.23), 0, R(1.5), 0, out long ax, out long az));
+        Assert.True(ax > R(0.12) && nav.Clear(R(0.23), 0, ax, az, r), $"point visé ({ax}, {az})");
+        List<GroundVector> route = nav.Route(r, R(0.23), 0, R(1.5), 0)!;
+        Assert.Equal(P(1.5, 0), route[^1]);
+        AssertClearRoute(nav, r, (0.23, 0), route);
+        // Même chose pour le but : (0,23 ; 0) depuis (1,50 ; 0).
+        int[]? back = nav.Cells(r, R(1.5), 0, R(0.23), 0, out NavStatus backStatus);
+        Assert.NotNull(back);
+        Assert.Equal(NavStatus.Found, backStatus);
+        Assert.True(grid.CellX(back![^1]) > R(0.12));
+        AssertClearRoute(nav, r, (1.5, 0), nav.Route(r, R(1.5), 0, R(0.23), 0)!);
+    }
+
+    [Fact]
+    public void Coince_sans_case_atteignable_va_droit()
+    {
+        // Emprise de 0,1 m serrée entre deux murs fins à 0,11 m : aucune case libre n'est atteignable en ligne droite : il va droit et
+        // glisse (comme avant V2.8), il ne reste pas immobile pour toujours.
+        var nav = new Navigator(R(-5), R(-5), R(5), R(5), new[] { Rect(-0.13, -1, -0.11, 1), Rect(0.11, -1, 0.13, 1), Rect(-0.13, 1, 0.13, 1.02), Rect(-0.13, -1.02, 0.13, -1) });
+        long r = R(0.1);
+        Assert.Equal(NavSteer.Straight, nav.Steer(r, 0, 0, R(3), 0, out long ax, out long az));
+        Assert.Equal((R(3), 0L), (ax, az));
+        Assert.Null(nav.Route(r, 0, 0, R(3), 0));
+    }
 }
 
 /// <summary>Sous-lot V2.8 : les PNJ et les passants de l'affichage contournent les maisons des Vallons (Runtime, Unity).</summary>
