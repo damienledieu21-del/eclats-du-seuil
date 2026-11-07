@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 10,
+  "schemaVersion": 11,
   "kind": "story",
-  "contentVersion": "0.20.0-provisoire",
+  "contentVersion": "0.21.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -842,6 +842,30 @@
               3.2,
               4.4
             ]
+          },
+          {
+            "at": "17:00",
+            "activity": "veille",
+            "position": [
+              -69.6,
+              -6.4
+            ],
+            "zone": "zone.vallons",
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -71.6,
+                -5.4
+              ]
+            }
+          },
+          {
+            "at": "18:00",
+            "activity": "livres",
+            "position": [
+              3.2,
+              4.4
+            ]
           }
         ]
       },
@@ -1508,15 +1532,6 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.le_seuil"
-              }
-            ],
-            "node": "apres"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questAt",
                 "id": "quest.le_seuil",
                 "step": "voix"
@@ -1536,20 +1551,108 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.traces_sous_le_moulin"
-              }
-            ],
-            "node": "ch5_ch1_apres"
-          },
-          {
-            "conditions": [
-              {
                 "if": "questActive",
                 "id": "quest.traces_sous_le_moulin"
               }
             ],
             "node": "en_cours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.cicatrices_du_seuil"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.odile.quete"
+              }
+            ],
+            "node": "v261_quete"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_purifiee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.odile.purifiee"
+              }
+            ],
+            "node": "v261_purifiee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_propagee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.odile.propagee"
+              }
+            ],
+            "node": "v261_propagee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.odile.cicatrice"
+              }
+            ],
+            "node": "v261_cicatrice"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.restee_ouverte"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.odile.restee"
+              }
+            ],
+            "node": "v261_restee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "scarsAtLeast",
+                "id": "faille_du_seuil",
+                "value": 1
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.odile"
+              }
+            ],
+            "node": "v261_froid"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.le_seuil"
+              }
+            ],
+            "node": "apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              }
+            ],
+            "node": "ch5_ch1_apres"
           },
           {
             "conditions": [],
@@ -3133,6 +3236,463 @@
             "id": "ch1_puits",
             "text": "text.ch1.odile.puits",
             "choices": []
+          },
+          {
+            "id": "v261_restee",
+            "text": "text.v261.odile.restee",
+            "choices": [
+              {
+                "text": "text.v261.odile.restee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.odile.restee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v261_cicatrice",
+            "text": "text.v261.odile.cicatrice",
+            "choices": [
+              {
+                "text": "text.v261.odile.cicatrice.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.odile.cicatrice"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v261_propagee",
+            "text": "text.v261.odile.propagee",
+            "choices": [
+              {
+                "text": "text.v261.odile.propagee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.odile.propagee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v261_purifiee",
+            "text": "text.v261.odile.purifiee",
+            "choices": [
+              {
+                "text": "text.v261.odile.purifiee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.odile.purifiee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v261_quete",
+            "text": "text.v261.odile.quete",
+            "choices": [
+              {
+                "text": "text.v261.odile.quete.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.odile.quete"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
+          },
+          {
+            "id": "v261_froid",
+            "text": "text.v261.odile.froid",
+            "choices": [
+              {
+                "text": "text.v261.odile.froid.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.odile.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.odile.chat.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.chat_de_rosalie"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.chat"
+                  }
+                ],
+                "next": "ch1_chat"
+              },
+              {
+                "text": "text.ch1.odile.puits.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.puits_du_moulin"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.odile.puits"
+                  }
+                ],
+                "next": "ch1_puits"
+              }
+            ]
           }
         ]
       },
@@ -3808,11 +4368,90 @@
           {
             "conditions": [
               {
+                "if": "questDone",
+                "id": "quest.cicatrices_du_seuil"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.gaspard.apres"
+              }
+            ],
+            "node": "v261_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.cicatrices_du_seuil"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.gaspard.quete"
+              }
+            ],
+            "node": "v261_quete"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_propagee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.gaspard.propagee"
+              }
+            ],
+            "node": "v261_propagee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.gaspard.cicatrice"
+              }
+            ],
+            "node": "v261_cicatrice"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
+                "id": "fact.event.faille_du_seuil.refermee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.gaspard.refermee"
+              }
+            ],
+            "node": "v261_refermee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "phase",
                 "id": "night"
               }
             ],
             "node": "ch1_nuit"
+          },
+          {
+            "conditions": [
+              {
+                "if": "scarsAtLeast",
+                "id": "faille_du_seuil",
+                "value": 2
+              },
+              {
+                "if": "fact",
+                "id": "fact.met.gaspard"
+              }
+            ],
+            "node": "v261_froid"
           },
           {
             "conditions": [],
@@ -5584,6 +6223,594 @@
             "id": "ch1_aldric_moque",
             "text": "text.ch1.gaspard.aldric_moque",
             "choices": []
+          },
+          {
+            "id": "v261_refermee",
+            "text": "text.v261.gaspard.refermee",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.refermee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.gaspard.refermee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v261_cicatrice",
+            "text": "text.v261.gaspard.cicatrice",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.cicatrice.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.gaspard.cicatrice"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v261_propagee",
+            "text": "text.v261.gaspard.propagee",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.propagee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.gaspard.propagee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v261_quete",
+            "text": "text.v261.gaspard.quete",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.quete.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.gaspard.quete"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.remede_de_l_aube",
+                    "value": 1
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v261_apres",
+            "text": "text.v261.gaspard.apres",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.apres.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.gaspard.apres"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v261_froid",
+            "text": "text.v261.gaspard.froid",
+            "choices": [
+              {
+                "text": "text.v261.gaspard.froid.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              }
+            ]
           }
         ]
       },
@@ -10421,6 +11648,19 @@
             "conditions": [
               {
                 "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_rode"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.archer_garde.rode"
+              }
+            ],
+            "node": "v261_rode"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
                 "id": "fact.ch1.aldric.moque"
               }
             ],
@@ -11193,6 +12433,43 @@
                 "text": "text.v23.aldric.abri"
               }
             ]
+          },
+          {
+            "id": "v261_rode",
+            "text": "text.v261.archer_garde.rode",
+            "choices": [
+              {
+                "text": "text.v261.archer_garde.rode.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.archer_garde.rode"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              }
+            ]
           }
         ]
       },
@@ -11256,6 +12533,26 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.cicatrices_du_seuil",
+                "step": "retour"
+              }
+            ],
+            "node": "v261_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.cicatrices_du_seuil",
+                "step": "fin"
+              }
+            ],
+            "node": "v261_fin"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questReward",
                 "id": "quest.herbes_pour_la_chapelle"
               }
@@ -11270,6 +12567,29 @@
               }
             ],
             "node": "ch2_herbes_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.cicatrices_du_seuil"
+              },
+              {
+                "if": "scarsBelow",
+                "id": "faille_du_seuil",
+                "value": 1
+              }
+            ],
+            "node": "v261_guet"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.cicatrices_du_seuil"
+              }
+            ],
+            "node": "v261_attente"
           },
           {
             "conditions": [
@@ -11292,6 +12612,19 @@
             "conditions": [
               {
                 "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.cicatrices_du_seuil"
+              }
+            ],
+            "node": "v261_offre"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
                 "id": "fact.event.faille_du_seuil.cicatrice_rode"
               },
               {
@@ -11300,6 +12633,19 @@
               }
             ],
             "node": "v26_rode"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.cicatrices_du_seuil"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.albe.apres"
+              }
+            ],
+            "node": "v261_apres"
           },
           {
             "conditions": [
@@ -11411,6 +12757,34 @@
                   }
                 ],
                 "text": "text.v23.albe.priere"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "veille"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.veille"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.abri"
               },
               {
                 "conditions": [
@@ -11740,6 +13114,36 @@
                   }
                 ],
                 "next": "ch5_ancienne"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "veille"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.veille"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.abri"
               }
             ]
           },
@@ -12279,6 +13683,224 @@
                   {
                     "do": "setFact",
                     "id": "fact.v26.albe.rode"
+                  }
+                ],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v261_offre",
+            "text": "text.v261.albe.offre",
+            "choices": [
+              {
+                "text": "text.v261.albe.offre.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.cicatrices_du_seuil"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v261.albe.offre.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "veille"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.veille"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.abri"
+              }
+            ]
+          },
+          {
+            "id": "v261_attente",
+            "text": "text.v261.albe.attente",
+            "choices": [
+              {
+                "text": "text.v261.albe.attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.v261.albe.attente.rode",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.event.faille_du_seuil.cicatrice_rode"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v26.albe.rode"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.albe.rode"
+                  }
+                ],
+                "next": "v26_rode"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "veille"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.veille"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.abri"
+              }
+            ]
+          },
+          {
+            "id": "v261_guet",
+            "text": "text.v261.albe.guet",
+            "choices": [
+              {
+                "text": "text.v261.albe.guet.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.v261.albe.attente.rode",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.event.faille_du_seuil.cicatrice_rode"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v26.albe.rode"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v26.albe.rode"
+                  }
+                ],
+                "next": "v26_rode"
+              }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "veille"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.veille"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.albe",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.albe"
+                  }
+                ],
+                "text": "text.v261.albe.abri"
+              }
+            ]
+          },
+          {
+            "id": "v261_retour",
+            "text": "text.v261.albe.retour",
+            "choices": [
+              {
+                "text": "text.v261.albe.retour.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v261_fin",
+            "text": "text.v261.albe.fin",
+            "choices": [
+              {
+                "text": "text.v261.albe.fin.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v261_apres",
+            "text": "text.v261.albe.apres",
+            "choices": [
+              {
+                "text": "text.v261.albe.apres.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.albe.apres"
                   }
                 ],
                 "next": null
@@ -14881,6 +16503,19 @@
             "conditions": [
               {
                 "if": "fact",
+                "id": "fact.event.faille_du_seuil.cicatrice_propagee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v261.capitaine.propagee"
+              }
+            ],
+            "node": "v261_propagee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "fact",
                 "id": "fact.ch4.chef.livre"
               },
               {
@@ -15484,6 +17119,23 @@
                 ],
                 "effects": [],
                 "next": "ch1_aldric_secret"
+              }
+            ]
+          },
+          {
+            "id": "v261_propagee",
+            "text": "text.v261.capitaine.propagee",
+            "choices": [
+              {
+                "text": "text.v261.capitaine.propagee.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v261.capitaine.propagee"
+                  }
+                ],
+                "next": null
               }
             ]
           }
@@ -18682,6 +20334,88 @@
             "do": "giveItem",
             "id": "item.pierre_a_aiguiser",
             "value": 2
+          }
+        ]
+      },
+      {
+        "id": "quest.cicatrices_du_seuil",
+        "name": "text.v261.quest.cicatrices.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "fact",
+            "id": "fact.event.faille_du_seuil.cicatrice"
+          }
+        ],
+        "steps": [
+          {
+            "id": "premiere",
+            "text": "text.v261.quest.cicatrices.premiere",
+            "objective": {
+              "kind": "purify",
+              "id": "faille_du_seuil",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.v261.quest.cicatrices.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": [
+              {
+                "do": "giveItem",
+                "id": "item.eclat_de_seuil",
+                "value": 1
+              },
+              {
+                "do": "trust",
+                "id": "npc.albe",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "id": "toutes",
+            "text": "text.v261.quest.cicatrices.toutes",
+            "objective": {
+              "kind": "purify",
+              "id": "faille_du_seuil",
+              "value": 2
+            },
+            "effects": []
+          },
+          {
+            "id": "fin",
+            "text": "text.v261.quest.cicatrices.fin",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.albe"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 900
+          },
+          {
+            "do": "giveMoney",
+            "value": 700
+          },
+          {
+            "do": "trust",
+            "id": "npc.albe",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.chapelet_de_l_aube",
+            "value": 1
           }
         ]
       }

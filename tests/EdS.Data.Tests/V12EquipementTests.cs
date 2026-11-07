@@ -109,8 +109,10 @@ public class V12EquipementTests
     public void Prix_des_objets_et_offres_de_Garin()
     {
         var market = new Market(ShippedMerchants);
-        foreach (ItemDefinition item in ItemsCatalog.Items.Where(i => i.Type == ItemType.Equipment && i.Slot != "shard"))
+        // V2.6.1 : sauf le chapelet de l'Aube, récompense unique de la quête de Sœur Albe (réponse de Damien du 7 novembre 2026 : il ne se vend pas).
+        foreach (ItemDefinition item in ItemsCatalog.Items.Where(i => i.Type == ItemType.Equipment && i.Slot != "shard" && i.Id != "item.chapelet_de_l_aube"))
             Assert.True(ShippedMerchants.Values.ContainsKey(item.Id), item.Id);
+        Assert.False(ShippedMerchants.Values.ContainsKey("item.chapelet_de_l_aube"));
         Assert.False(ShippedMerchants.Values.ContainsKey("item.eclat_du_seuil_endormi"));   // l'Éclat du personnage ne se vend pas
         var garin = ShippedMerchants.Merchant("merchant.armurier");
         foreach (string item in new[] { "item.targe_d_osier", "item.coiffe_de_cuir", "item.bottes_de_cuir", "item.cape_de_laine" })

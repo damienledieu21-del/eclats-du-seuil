@@ -34,7 +34,7 @@ public class V18bTests
     public void Zones_en_schema_7_niveaux_minimums_et_reglage()
     {
         ZoneDefinition z = Vallons;
-        Assert.Equal((11, 11), (z.SchemaVersion, ZoneValidator.CurrentSchemaVersion));   // V2.6 : schéma 11 (cicatrices) ; V2.5 : schéma 10 (événements)   // V2.4 : schéma 9 (temps) ; V2.1 : schéma 8 (jour et nuit)
+        Assert.Equal((12, 12), (z.SchemaVersion, ZoneValidator.CurrentSchemaVersion));   // V2.6.1 : schéma 12 (propagation) ; V2.6 : schéma 11 (cicatrices) ; V2.5 : schéma 10 (événements)   // V2.4 : schéma 9 (temps) ; V2.1 : schéma 8 (jour et nuit)
         ZoneScaling s = z.Scaling!;
         Assert.Equal((1, 5, 12, 30, 2), (s.BaseLevel, s.BossBaseLevel, s.HealthPerLevelPercent, s.DamagePerLevelPercent, s.EaseLevels));
         int Min(string place) => z.Places.Single(p => p.Id == place).MinLevel;
@@ -229,7 +229,7 @@ public class V18bTests
     public void Usure_selon_le_niveau_et_la_rarete()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((7, "0.13.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // V1.9.9 : 0.13.0 (poussière d'écho, couronne du pré) ; V1.9.7 : 0.12.0 (collier de Croc-Gris, chapeau-de-lune, objets de quête du village) ; V1.9.6 : 0.11.0 (croc de Croc-Gris) ; V1.9.4 : 0.10.0 (objets de quête du chapitre 4) ; V1.9.3 : 0.9.0 (objets de quête du chapitre 3) ; V1.9.2 : 0.8.0 (objets de quête du chapitre 2) ; V1.9.1 : 0.7.0 (miche du matin) ; V1.8c : version 7 (objets de bonus)
+        Assert.Equal((7, "0.14.0-provisoire"), (c.SchemaVersion, c.ContentVersion));   // V2.6.1 : 0.14.0 (chapelet de l'Aube) ; V1.9.9 : 0.13.0 (poussière d'écho, couronne du pré) ; V1.9.7 : 0.12.0 (collier de Croc-Gris, chapeau-de-lune, objets de quête du village) ; V1.9.6 : 0.11.0 (croc de Croc-Gris) ; V1.9.4 : 0.10.0 (objets de quête du chapitre 4) ; V1.9.3 : 0.9.0 (objets de quête du chapitre 3) ; V1.9.2 : 0.8.0 (objets de quête du chapitre 2) ; V1.9.1 : 0.7.0 (miche du matin) ; V1.8c : version 7 (objets de bonus)
         Assert.Equal((100, 3, 1), (c.WearMax, c.WearPerFullHealth, c.WearLevelResistPercent));
         Assert.Equal(new[] { 0, 20, 40, 60, 80, 100 }, c.WearRarityResistPercent);
         Assert.Equal(0, c.WearResistPercent(c.Item("item.epee_du_novice")));            // commune de niveau 1

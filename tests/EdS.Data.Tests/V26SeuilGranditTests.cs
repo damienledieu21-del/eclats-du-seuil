@@ -75,11 +75,11 @@ public class V26SeuilGranditTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((11, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
+        Assert.Equal((12, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
         Assert.Equal((14, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
-        Assert.Equal((11, "0.14.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
-        Assert.Equal("0.20.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
-        Assert.Equal("0.20.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
+        Assert.Equal((12, "0.15.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal("0.21.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
+        Assert.Equal("0.21.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios ne changent (ceux de V2.4.1).
         Assert.Equal(("0.29.0", 23, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -106,7 +106,11 @@ public class V26SeuilGranditTests
         {
             root["schemaVersion"] = 10;
             RiftJson(root).Remove("scar");
-            foreach (JsonNode? g in RiftJson(root)["groups"]!.AsArray()) g!.AsObject().Remove("haunts");
+            foreach (JsonNode? g in RiftJson(root)["groups"]!.AsArray())
+            {
+                g!.AsObject().Remove("haunts");
+                g.AsObject().Remove("spreadTo");   // V2.6.1 (schéma 12)
+            }
         });
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Null(r.Zone!.EventOf(Rift)!.Scar);
@@ -478,8 +482,14 @@ public class V26SeuilGranditTests
         {
             root["data"]!["id"] = LongZone;
             JsonObject rift = RiftJson(root);
+            string old = (string)rift["groups"]![0]!["id"]!;
             rift["groups"]![0]!["id"] = group;
             rift["id"] = eventId;
+            // V2.6.1 : les voisines de propagation suivent le nouveau nom de la variante.
+            foreach (JsonNode? other in rift["groups"]!.AsArray())
+                if (other!["spreadTo"] is JsonArray to)
+                    for (int k = 0; k < to.Count; k++)
+                        if ((string?)to[k] == old) to[k] = group;
         });
     }
 
@@ -620,9 +630,9 @@ public class V26SeuilGranditTests
         Assert.Equal(750, AdventureSession.FadeAt(scars, Point(31, -7)));     // à 10 m d'un rayon de 20 m : 1 - 1/4
         Assert.Equal(0, AdventureSession.FadeAt(scars, Point(41, -7)));       // au bord
         Assert.Equal(0, AdventureSession.FadeAt(Array.Empty<ScarView>(), Point(21, -7)));
-        Assert.Equal(new[] { "cicatrice", "cicatrice_grandit", "cicatrice_recule", "cicatrice_guerie", "cicatrice_purifiee", "cicatrice_rode" },
+        Assert.Equal(new[] { "cicatrice", "cicatrice_grandit", "cicatrice_recule", "cicatrice_guerie", "cicatrice_purifiee", "cicatrice_rode", "cicatrice_propagee" },
             Enum.GetValues<WorldEventNoticeKind>().Where(AdventureSession.IsScarNotice).Select(AdventureSession.Moment));
-        foreach (string m in new[] { "cicatrice", "cicatrice_grandit", "cicatrice_recule", "cicatrice_guerie", "cicatrice_purifiee", "cicatrice_rode" })
+        foreach (string m in new[] { "cicatrice", "cicatrice_grandit", "cicatrice_recule", "cicatrice_guerie", "cicatrice_purifiee", "cicatrice_rode", "cicatrice_propagee" })
             Assert.True(Texts.Has("text.event.faille_du_seuil." + m), m);
         Assert.All(Vallons.EventOf(Rift)!.Groups, g => Assert.True(Texts.Has("text.event.faille_du_seuil.lieu." + g.Id), g.Id));
         Assert.All(new[] { "purify", "too_far", "haunts", "rift_open", "no_item", "purified", "label", "stage.1", "stage.4" }, k => Assert.True(Texts.Has("text.ui.scar." + k), k));

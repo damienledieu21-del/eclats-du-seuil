@@ -270,6 +270,9 @@ namespace EdS.World
 
         /// <summary>Relecture de la PR #81 : jour du monde du tick qui vient d'être simulé (avant le premier tick : <see cref="Day"/>).</summary>
         long SimulatedDay { get; }
+
+        /// <summary>Sous-lot V2.6.1 : cicatrices gardées de la faille <paramref name="eventId"/> de la zone de l'histoire (conditions de cicatrices).</summary>
+        int ScarCount(string eventId);
     }
 
     /// <summary>
@@ -768,6 +771,20 @@ namespace EdS.World
                 }
         }
 
+        /// <summary>
+        /// Sous-lot V2.6.1 (quête de Sœur Albe) : une cicatrice de la faille <paramref name="rift"/> vient d'être purifiée : compte pour les
+        /// objectifs « purify » en cours de cette faille, jusqu'au nombre demandé.
+        /// </summary>
+        internal void Purified(string rift)
+        {
+            foreach (string id in _quests.Keys.ToArray())
+                if (CurrentStep(id) is { Objective: { Kind: ObjectiveKind.Purify } o } && o.Id == rift && _quests[id].Progress < o.Value)
+                {
+                    _quests[id] = (_quests[id].Step, Math.Min(o.Value, checked(_quests[id].Progress + 1)));
+                    Revision++;
+                }
+        }
+
         /// <summary>Relecture de la PR #94 : une quête en cours demande encore le geste <paramref name="action"/> à son étape actuelle.</summary>
         internal bool WantsPractice(string action) =>
             _quests.Any(q => CurrentStep(q.Key) is { Objective: { Kind: ObjectiveKind.Practice } o } && o.Id == action && q.Value.Progress < o.Value);
@@ -1149,6 +1166,7 @@ namespace EdS.World
             ObjectiveKind.GuildRank => _card != null && _card.Rank >= GuildRanks.IndexOf(o.Id),   // sous-lot V1.7
             ObjectiveKind.CraftQuality => _world.Inventory.CountAtLeast(o.Id, o.Quality) >= o.Value,   // sous-lot V1.9.3b
             ObjectiveKind.Practice => progress >= o.Value,   // sous-lot V1.9.6
+            ObjectiveKind.Purify => progress >= o.Value,   // sous-lot V2.6.1
             _ => _world.IsEquipped(o.Id),
         };
 
@@ -1178,6 +1196,8 @@ namespace EdS.World
             ConditionKind.InPlace => _world.InPlace(c.Id),
             ConditionKind.LevelAtLeast => (_bonusXp > 0 ? _world.LevelWith(_bonusXp) : _world.Level) >= c.Value,   // sous-lot V1.6
             ConditionKind.GuildRankAtLeast => _card != null && _card.Rank >= GuildRanks.IndexOf(c.Id),   // sous-lot V1.7
+            ConditionKind.ScarsAtLeast => _world.ScarCount(c.Id) >= c.Value,   // sous-lot V2.6.1
+            ConditionKind.ScarsBelow => _world.ScarCount(c.Id) < c.Value,
             _ => _world.IsPassageOpen(c.Id),
         };
 

@@ -228,6 +228,13 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.6 : des échos se lèvent autour d'une cicatrice (une fois quand ils reviennent).</summary>
         ScarStirs = 15,
+
+        /// <summary>
+        /// Sous-lot V2.6.1 : une cicatrice au palier de propagation en fait naître une au lieu voisin (<see cref="WorldEventNotice.Group"/> :
+        /// la nouvelle ; <see cref="WorldEventNotice.From"/> : celle d'où vient le froid ; <see cref="WorldEventNotice.Day"/> : le jour de la
+        /// propagation).
+        /// </summary>
+        ScarSpread = 16,
     }
 
     public sealed class WorldEventNotice
@@ -241,9 +248,13 @@ namespace EdS.World
         public long Money { get; }
         public IReadOnlyList<(string Item, int Count)> Items { get; }
 
+        /// <summary>Sous-lot V2.6.1 : variante d'où vient une propagation (<see cref="WorldEventNoticeKind.ScarSpread"/>), sinon vide.</summary>
+        public string From { get; }
+
         internal WorldEventNotice(WorldEventNoticeKind kind, string ev, string group, long day, int wave = 0, long xp = 0, long money = 0,
-            IReadOnlyList<(string, int)>? items = null)
+            IReadOnlyList<(string, int)>? items = null, string spreadFrom = "")
         {
+            From = spreadFrom;
             Kind = kind;
             Event = ev;
             Group = group;

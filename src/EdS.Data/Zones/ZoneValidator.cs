@@ -485,8 +485,12 @@ namespace EdS.Data.Zones
         /// <remarks>Version 10 (sous-lot V2.5, événements du monde) : <c>events</c> facultatif (voir <see cref="CheckEvents"/>) ; les versions 9, 8
         /// et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6, « le Seuil qui grandit ») : <c>scar</c> facultatif sur une faille et
         /// <c>haunts</c> facultatif sur une variante d'une faille à cicatrice (voir <see cref="CheckScar"/>) ; la version 10 est encore lue (sans
-        /// eux).</remarks>
-        public const int CurrentSchemaVersion = 11;
+        /// eux). Version 12 (sous-lot V2.6.1, « suites du Seuil ») : propagation facultative d'une cicatrice au lieu voisin (<c>scar.spreadStage</c>,
+        /// <c>scar.spreadDays</c>, <c>scar.spreadFact</c>, <c>groups[g].spreadTo</c>) ; la version 11 est encore lue (sans elle).</remarks>
+        public const int CurrentSchemaVersion = 12;
+
+        /// <summary>Sous-lot V2.6.1 : version encore lue (sous-ensemble de la version 12, sans propagation des cicatrices).</summary>
+        public const int ScarsSchemaVersion = 11;
 
         /// <summary>Sous-lot V2.6 : version encore lue (sous-ensemble de la version 11, sans cicatrices).</summary>
         public const int EventsSchemaVersion = 10;
@@ -554,15 +558,17 @@ namespace EdS.Data.Zones
             // Sous-lot V2.1 : la version 7 est encore lue (sans heures de population ni places de nuit) ; sous-lot V2.4 : la version 8 aussi
             // (sans temps de population).
             // Sous-lot V2.5 : la version 9 aussi (sans événements).
-            // Sous-lot V2.6 : la version 10 aussi (sans cicatrices).
+            // Sous-lot V2.6 : la version 10 aussi (sans cicatrices). Sous-lot V2.6.1 : la version 11 aussi (sans propagation).
             int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion
-                || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion ? document.SchemaVersion!.Value : CurrentSchemaVersion;
+                || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion || document.SchemaVersion == ScarsSchemaVersion
+                ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
             bool schema8 = document.SchemaVersion >= PreviousSchemaVersion;
             bool schema9 = document.SchemaVersion >= WeatherSchemaVersion;
             bool schema10 = document.SchemaVersion >= EventsSchemaVersion;
-            bool schema11 = document.SchemaVersion >= CurrentSchemaVersion;
+            bool schema11 = document.SchemaVersion >= ScarsSchemaVersion;
+            bool schema12 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -853,7 +859,7 @@ namespace EdS.Data.Zones
             {
                 if (!schema10) report.Add("$.data.events", ValidationCode.InvalidValue, $"événements du monde : schéma {EventsSchemaVersion} attendu.");
                 else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
-                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null);
+                    scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null, schema12);
             }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null

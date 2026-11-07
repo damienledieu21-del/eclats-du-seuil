@@ -201,3 +201,21 @@ Menu **Éclats du Seuil → Essai des PNJ qui changent de lieu : …**, **hors d
 | 13.6 | Parler à un PNJ juste avant son départ et laisser le dialogue ouvert | Il **finit la conversation** (il ne part qu'à la fermeture du dialogue) | [ ] | |
 | 13.7 | Suivre une quête de Rosalie ou de Mathurin quand il est ailleurs | L'étoile de la carte mène à la porte de la zone où il est ; on lui parle là-bas | [ ] | |
 | 13.8 | Ton avis : qui entre dans la salle, Aldric seul sur la terrasse, horaires, répliques | — | [ ] | |
+
+## 14. Les suites du Seuil (V2.6.1)
+
+Menu **Éclats du Seuil → Essai des suites du Seuil : …**, **hors du mode Jeu** (une copie de la sauvegarde est gardée à chaque fois). Détail : [MONDE.md](MONDE.md#suites-du-seuil-sous-lot-v261).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 14.1 | « propager une cicatrice (des ruines vers le lac) », puis Play | Message « Le froid a cheminé sous l'herbe depuis la cicatrice aux ruines : une nouvelle cicatrice s'ouvre au lac des Aubes. » ; au lac, un rond d'herbe pâle au palier 1 ; aux ruines, palier 4 et trois échos rôdeurs | [ ] | |
+| 14.2 | Arrêter, « avancer de 2 jours du monde », Play | Le froid gagne aussi **le pré** (même message) ; le lac a grandi d'un palier | [ ] | |
+| 14.3 | Purifier la cicatrice du **lac** (un éclat), puis avancer de 2 jours | Pendant 2 jours, rien ; ensuite le lac se rouvre, tant que les **ruines** ne sont pas purifiées | [ ] | |
+| 14.4 | Purifier les **ruines** (vaincre d'abord leurs rôdeurs), puis avancer de plusieurs jours | Plus aucune cicatrice ne naît | [ ] | |
+| 14.5 | « lancer la quête de Sœur Albe », puis Play | Journal : « Les cicatrices du Seuil » suivie ; l'étoile de la carte montre la cicatrice la plus proche ; deux éclats dans le sac | [ ] | |
+| 14.6 | Purifier une cicatrice, puis aller voir **Sœur Albe** (à la chapelle, ou **sur le parvis de 17 h à 18 h**) | Elle rend un éclat (« Les vieux livres disaient vrai… ») ; l'étape suivante demande deux cicatrices (compteur 0/2) | [ ] | |
+| 14.7 | Sans aucune cicatrice, lui parler pendant la quête | Elle dit de **guetter la prochaine faille** (la quête attend) | [ ] | |
+| 14.8 | Purifier deux autres cicatrices (« propager » en fait naître), revenir la voir | « Trois. Vous en avez refermé trois… » ; **chapelet de l'Aube** et 900 points, une seule fois ; ensuite un mot d'après, une fois | [ ] | |
+| 14.9 | Parler à **Gaspard** (son poste près des ruines) et à **Odile** (au moulin) après une cicatrice, une propagation, une purification | Une réplique par chose vue, une seule fois chacune ; ensuite, tant qu'il reste des cicatrices, un mot sur le froid ; pendant la quête, Gaspard donne un remède de l'aube | [ ] | |
+| 14.10 | Aldric (après les échos rôdeurs), le capitaine (après une propagation) | Une réplique chacun, une seule fois | [ ] | |
+| 14.11 | Ton avis : vitesse de la propagation (2 jours au palier 4), voisins (les ruines au milieu), quête (trois cicatrices), récompense, répliques | — | [ ] | |
