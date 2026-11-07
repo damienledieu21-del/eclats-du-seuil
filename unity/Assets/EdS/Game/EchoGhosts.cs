@@ -10,7 +10,7 @@ namespace EdS.Game
     /// « EdS/Echo » (une copie par matériau d'origine et par sorte d'écho, partagée par tous les échos) ; la dissolution, la solidité et
     /// l'éclat de chaque écho passent par un bloc de propriétés (aucune copie par écho). L'écho se forme en braises à son apparition, se défait
     /// en braises à sa mort, laisse quelques lueurs derrière lui quand il bouge. Sans le shader (absent, non pris en charge, rendu sans URP),
-    /// <see cref="Dress"/> rend faux et l'arène garde le loup pâle de la V2.1. Affichage seulement.
+    /// <see cref="Dress"/> rend faux et l'arène garde le loup pâle de la V2.1 : un écho ne devient jamais invisible. Affichage seulement.
     /// </summary>
     public sealed class EchoGhosts
     {
@@ -19,6 +19,13 @@ namespace EdS.Game
 
         private static Material _template;
         private static bool _templateLoaded;
+
+        // Relecture de la PR #115 : identifiants des propriétés pris une fois.
+        private static readonly int DissolveId = Shader.PropertyToID("_Dissolve"), SolidityId = Shader.PropertyToID("_Solidity"),
+            GlowId = Shader.PropertyToID("_Glow"), SeedId = Shader.PropertyToID("_Seed"), HeightId = Shader.PropertyToID("_Height");
+
+        /// <summary>Écart en deçà duquel le bloc de propriétés n'est pas renvoyé (relecture de la PR #115).</summary>
+        private const float Epsilon = 0.004f;
 
         private sealed class Ghost
         {
@@ -32,11 +39,15 @@ namespace EdS.Game
             public Vector3 Last;
             public float Trail;
             public Color Ember;
+            public float SentDissolve = -1f, SentSolidity = -1f, SentGlow = -1f;   // valeurs déjà envoyées (-1 : rien d'envoyé)
+            public int Seen;
         }
 
         private readonly Dictionary<string, Ghost> _ghosts = new Dictionary<string, Ghost>();
         private readonly Dictionary<(Material, EchoKind), Material> _materials = new Dictionary<(Material, EchoKind), Material>();
         private readonly bool _mobile = Application.isMobilePlatform;
+        private readonly List<string> _gone = new List<string>();
+        private int _frame;
 
         /// <summary>Le matériau modèle du shader des échos, ou null s'il manque ou n'est pas pris en charge.</summary>
         public static Material Template
@@ -45,8 +56,12 @@ namespace EdS.Game
             {
                 if (_templateLoaded) return _template;
                 _templateLoaded = true;
-                _template = Resources.Load<Material>(MaterialName);
-                if (_template == null)
+                // Relecture de la PR #115 : le shader n'a qu'un sous-shader pour URP (« FallBack Off ») ; hors d'URP ou non pris en charge, il
+                // ne dessinerait rien (ou en rose) : pas de modèle, l'écho garde sa teinte pâle de la V2.1.
+                if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline == null) return _template = null;
+                Material loaded = Resources.Load<Material>(MaterialName);
+                if (loaded != null && loaded.shader != null && loaded.shader.isSupported) _template = loaded;
+                else
                 {
                     Shader shader = Shader.Find("EdS/Echo");
                     if (shader != null && shader.isSupported) _template = new Material(shader);
@@ -88,7 +103,7 @@ namespace EdS.Game
                 renderer.receiveShadows = false;
                 renderers.Add(renderer);
             }
-            _ghosts[id] = new Ghost
+            var ghost = new Ghost
             {
                 Kind = kind,
                 Renderers = renderers.ToArray(),
@@ -97,7 +112,12 @@ namespace EdS.Game
                 Height = Mathf.Max(0.4f, height),
                 Last = body.transform.position,
                 Ember = Rgb(style.Ember),
+                Seen = _frame,
             };
+            ghost.Block.SetFloat(SeedId, ghost.Seed);
+            ghost.Block.SetFloat(HeightId, ghost.Height);
+            ghost.Block.SetFloat(DissolveId, 1f);   // invisible jusqu'à sa formation
+            _ghosts[id] = ghost;
             return true;
         }
 
@@ -113,9 +133,12 @@ namespace EdS.Game
                 m.SetTextureScale("_BaseMap", source.GetTextureScale(map));
                 m.SetTextureOffset("_BaseMap", source.GetTextureOffset(map));
             }
-            // Poils et feuilles découpés : la même découpe (sinon les cartes de poils deviendraient des plaques).
+            // Poils et feuilles découpés : la même découpe (sinon les cartes de poils deviendraient des plaques). Relecture de la PR #115 : un
+            // matériau d'URP en fondu (« _Surface » à 1 : poils en transparence) est découpé à 0,3 (le shader des échos n'a pas de fondu
+            // propre à la texture) ; un matériau d'un autre shader sans découpe reste plein (limite, UNITY.md).
             bool clipped = source.HasProperty("_AlphaClip") && source.GetFloat("_AlphaClip") > 0.5f && source.HasProperty("_Cutoff");
-            m.SetFloat("_Cutoff", clipped ? source.GetFloat("_Cutoff") : 0f);
+            bool blended = source.HasProperty("_Surface") && source.GetFloat("_Surface") > 0.5f;
+            m.SetFloat("_Cutoff", clipped ? source.GetFloat("_Cutoff") : blended ? 0.3f : 0f);
             m.SetColor("_Tint", Rgb(style.Body));
             m.SetColor("_RimColor", Rgb(style.Rim));
             m.SetColor("_EdgeColor", Rgb(style.Ember) * 1.6f);
@@ -132,7 +155,9 @@ namespace EdS.Game
         /// </summary>
         public void Update(string id, GameObject body, bool dead, double health, int scarStage, float night, Effects effects, float deltaTime)
         {
-            if (body == null || !_ghosts.TryGetValue(id, out Ghost g) || !body.activeSelf) return;
+            if (body == null || !_ghosts.TryGetValue(id, out Ghost g)) return;
+            g.Seen = _frame;
+            if (!body.activeSelf) return;
             Vector3 feet = body.transform.position - Vector3.up * ArenaView.FeetOffset;
             if (g.Shown < 0f)
             {
@@ -151,13 +176,19 @@ namespace EdS.Game
             float dissolve = (float)EchoLooks.Dissolve(g.Shown, g.Dead >= 0f ? g.Dead : (double?)null);
             float solidity = (float)EchoLooks.Solidity(g.Kind, health, scarStage, night);
             float glow = (float)EchoLooks.Glow(scarStage, night);
-            g.Block.SetFloat("_Dissolve", dissolve);
-            g.Block.SetFloat("_Solidity", solidity);
-            g.Block.SetFloat("_Glow", glow);
-            g.Block.SetFloat("_Seed", g.Seed);
-            g.Block.SetFloat("_Height", g.Height);
-            for (int i = 0; i < g.Renderers.Length; i++)
-                if (g.Renderers[i] != null) g.Renderers[i].SetPropertyBlock(g.Block);
+            // Relecture de la PR #115 : le bloc n'est renvoyé que si une valeur a bougé (un écho formé, immobile, de jour : rien par image).
+            if (Mathf.Abs(dissolve - g.SentDissolve) > Epsilon || Mathf.Abs(solidity - g.SentSolidity) > Epsilon || Mathf.Abs(glow - g.SentGlow) > Epsilon
+                || (dissolve != g.SentDissolve && (dissolve == 0f || dissolve == 1f)))
+            {
+                g.Block.SetFloat(DissolveId, dissolve);
+                g.Block.SetFloat(SolidityId, solidity);
+                g.Block.SetFloat(GlowId, glow);
+                for (int i = 0; i < g.Renderers.Length; i++)
+                    if (g.Renderers[i] != null) g.Renderers[i].SetPropertyBlock(g.Block);
+                g.SentDissolve = dissolve;
+                g.SentSolidity = solidity;
+                g.SentGlow = glow;
+            }
             // Traînée : quelques lueurs là où il passe, seulement quand il bouge (discret en combat).
             Vector3 at = body.transform.position;
             float moved = (at - g.Last).magnitude;
@@ -169,6 +200,38 @@ namespace EdS.Game
                 g.Trail -= 1f;
                 effects.Wisp(feet + Vector3.up * (g.Height * 0.5f), g.Ember);
             }
+        }
+
+        /// <summary>
+        /// Relecture de la PR #115 : le combattant n'est plus là (pas encore arrivé, parti, retiré) : il rejouera sa formation à son retour.
+        /// </summary>
+        public void Absent(string id)
+        {
+            if (id == null || !_ghosts.TryGetValue(id, out Ghost g)) return;
+            g.Seen = _frame;
+            if (g.Shown < 0f && g.Dead < 0f) return;
+            g.Shown = -1f;
+            g.Dead = -1f;
+            g.Trail = 0f;
+            g.Block.SetFloat(DissolveId, 1f);
+            for (int i = 0; i < g.Renderers.Length; i++)
+                if (g.Renderers[i] != null) g.Renderers[i].SetPropertyBlock(g.Block);
+            g.SentDissolve = 1f;
+        }
+
+        /// <summary>Début d'une image : les échos seront marqués vus par <see cref="Update"/> ou <see cref="Absent"/>.</summary>
+        public void BeginFrame() => _frame++;
+
+        /// <summary>
+        /// Relecture de la PR #115 : fin d'une image : les échos que le combat ne montre plus (identité disparue du moteur, corps détruit)
+        /// sont oubliés aussitôt (sans allocation tant que rien ne disparaît).
+        /// </summary>
+        public void EndFrame()
+        {
+            _gone.Clear();
+            foreach (KeyValuePair<string, Ghost> pair in _ghosts)
+                if (pair.Value.Seen != _frame) _gone.Add(pair.Key);
+            for (int i = 0; i < _gone.Count; i++) _ghosts.Remove(_gone[i]);
         }
 
         private static Color Rgb((double R, double G, double B) c) => new Color((float)c.R, (float)c.G, (float)c.B);

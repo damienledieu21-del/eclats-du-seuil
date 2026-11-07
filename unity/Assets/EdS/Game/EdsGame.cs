@@ -314,6 +314,23 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.5 : failles du Seuil, hameau pillé, cloche (affichage des événements du monde).</summary>
         private WorldEventsView _worldEvents;
 
+        // Sous-lot V2.9.1 : créatures sorties du Seuil (reprises à chaque image, sans allocation), chefs déjà tués.
+        private readonly HashSet<string> _fromSeuil = new HashSet<string>();
+        private Func<string, bool> _slainChief;
+
+        private bool KnowsFact(string fact) => _adventure != null && _adventure.World.Narrative != null && _adventure.World.Narrative.Knows(fact);
+
+        private void SeuilCreatures(AdventureSession a)
+        {
+            _fromSeuil.Clear();
+            foreach (WorldEventView v in a.World.WorldEvents)
+                if (v.Rift != null)
+                    for (int i = 0; i < v.Creatures.Count; i++) _fromSeuil.Add(v.Creatures[i]);
+            IReadOnlyList<ScarView> scars = a.Scars;
+            for (int i = 0; i < scars.Count; i++)
+                for (int j = 0; j < scars[i].Haunts.Count; j++) _fromSeuil.Add(scars[i].Haunts[j]);
+        }
+
         /// <summary>Sous-lot V2.6 : cicatrices du Seuil (couleurs fanées, brume froide, pointes sombres).</summary>
         private ScarsView _scars;
 
@@ -530,7 +547,11 @@ namespace EdS.Game
             _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
-            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars);   // sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices
+            // Sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices ; décision de Damien du 7 novembre 2026 : ce qui sort du Seuil
+            // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
+            SeuilCreatures(a);
+            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
+            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);
             _arena.Sync(_combat, player, null);
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).

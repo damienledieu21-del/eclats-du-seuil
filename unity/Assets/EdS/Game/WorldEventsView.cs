@@ -65,6 +65,10 @@ namespace EdS.Game
         private static Material _tearTemplate;
         private static bool _tearLoaded;
 
+        // Relecture de la PR #115 : identifiants pris une fois, caméra gardée.
+        internal static readonly int OpeningId = Shader.PropertyToID("_Opening"), IntensityId = Shader.PropertyToID("_Intensity");
+        private Camera _camera;
+
         /// <summary>Sous-lot V2.9.1 : le matériau modèle de « EdS/Faille », ou null s'il manque ou n'est pas pris en charge.</summary>
         internal static Material TearTemplate
         {
@@ -72,7 +76,10 @@ namespace EdS.Game
             {
                 if (_tearLoaded) return _tearTemplate;
                 _tearLoaded = true;
-                _tearTemplate = Resources.Load<Material>(TearMaterialName);
+                // Relecture de la PR #115 : sous-shader pour URP seulement (« FallBack Off ») : hors d'URP ou non pris en charge, formes simples.
+                if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline == null) return _tearTemplate = null;
+                Material loaded = Resources.Load<Material>(TearMaterialName);
+                _tearTemplate = loaded != null && loaded.shader != null && loaded.shader.isSupported ? loaded : null;
                 if (_tearTemplate == null)
                 {
                     Shader shader = Shader.Find("EdS/Faille");
@@ -89,11 +96,17 @@ namespace EdS.Game
             if (template == null) return null;
             var m = new Material(template) { name = "Déchirure du Seuil" };
             m.SetFloat("_Seed", seed);
-            // Distorsion de la scène seulement sur ordinateur (son rendu garde l'image opaque de la scène, EdsStyle) ; jamais sur téléphone.
-            m.SetFloat("_Distort", distort && !Application.isMobilePlatform ? 1f : 0f);
+            // Distorsion de la scène seulement si le rendu actif garde l'image opaque de la scène (ordinateur, EdsStyle) : sans elle,
+            // SampleSceneColor rendrait du noir (relecture de la PR #115) ; jamais sur téléphone.
+            m.SetFloat("_Distort", distort && !Application.isMobilePlatform && OpaqueTexture ? 1f : 0f);
             m.renderQueue = 3050;
             return m;
         }
+
+        /// <summary>Relecture de la PR #115 : le rendu URP actif garde-t-il l'image opaque de la scène ?</summary>
+        private static bool OpaqueTexture =>
+            UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp
+            && urp.supportsCameraOpaqueTexture;
 
         /// <summary>Sous-lot V2.9.1 : un quad de déchirure sous <paramref name="parent"/>, sans ombre.</summary>
         internal static Transform TearQuad(string name, Transform parent, Material material)
@@ -426,10 +439,11 @@ namespace EdS.Game
             }
             if (tear.Material != null)
             {
-                tear.Material.SetFloat("_Opening", opening);
-                tear.Material.SetFloat("_Intensity", 0.7f + 0.5f * pulse);
+                tear.Material.SetFloat(OpeningId, opening);
+                tear.Material.SetFloat(IntensityId, 0.7f + 0.5f * pulse);
             }
-            Camera camera = Camera.main;
+            if (_camera == null) _camera = Camera.main;
+            Camera camera = _camera;
             if (tear.Quad != null && camera != null)
             {
                 Vector3 to = camera.transform.position - tear.Quad.position;

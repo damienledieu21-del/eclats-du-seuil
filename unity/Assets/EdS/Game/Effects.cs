@@ -17,7 +17,7 @@ namespace EdS.Game
         /// <summary>Nom du matériau modèle emporté dans le jeu construit (<c>EdsBuildShaders</c>).</summary>
         public const string MaterialName = "EdsParticule";
 
-        private enum Kind { Spark, Flash, Glow, Ring, Smoke, Dust, Mote, Emblem, Star, Slash, Swirl, Beam }
+        private enum Kind { Spark, Flash, Glow, Ring, Smoke, Dust, Mote, Emblem, Star, Slash, Swirl, Beam, Pull }
 
         private readonly Dictionary<Kind, ParticleSystem> _systems = new Dictionary<Kind, ParticleSystem>();
         private readonly System.Random _random = new System.Random(20261028);
@@ -44,6 +44,9 @@ namespace EdS.Game
             Make(root, template, Kind.Slash, "taille", true, ParticleSystemRenderMode.Billboard, Grow(0.85f, 1.15f), 0f, 16);
             Make(root, template, Kind.Swirl, "tourbillon", true, ParticleSystemRenderMode.HorizontalBillboard, Grow(0.4f, 1.1f), 0f, 16);
             Make(root, template, Kind.Beam, "rayon", true, ParticleSystemRenderMode.VerticalBillboard, Grow(0.8f, 1f), 0f, 8);
+            // Sous-lot V2.9.1 (relecture de la PR #115) : les lueurs aspirées par les failles ont leur système, pour ne pas prendre les lueurs
+            // des coups (48) : 128 sur ordinateur, 64 sur téléphone.
+            Make(root, template, Kind.Pull, "lueur", true, ParticleSystemRenderMode.Billboard, Grow(0.8f, 1.2f), 0f, Application.isMobilePlatform ? 64 : 128);
         }
 
         /// <summary>Les effets du jeu, ou null si le shader des particules manque (rien ne s'affiche alors).</summary>
@@ -358,7 +361,7 @@ namespace EdS.Game
             Vector3 from = center + RandomDirection() * radius;
             if (from.y < 0.1f) from.y = 0.1f + Range(0f, 0.6f);
             float life = Range(0.9f, 1.5f);
-            EmitOne(Kind.Glow, from, (center - from) / life, Range(0.08f, 0.18f), life, color, Range(0f, 360f));
+            EmitOne(Kind.Pull, from, (center - from) / life, Range(0.08f, 0.18f), life, color, Range(0f, 360f));
         }
 
         /// <summary>Frappe au sol d'un adversaire (cri et onde du Gardien) : onde, poussière ; <paramref name="radius"/> en mètres.</summary>

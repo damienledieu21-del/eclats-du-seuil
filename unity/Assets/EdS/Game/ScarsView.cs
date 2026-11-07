@@ -110,7 +110,7 @@ namespace EdS.Game
             s.Tear = WorldEventsView.NewTear(StyleRules.Variant(v.Key, 1000) / 37f, false);
             if (s.Tear != null)
             {
-                s.Tear.SetFloat("_Opening", (float)EchoLooks.ScarOpening(v.Stage));
+                s.Tear.SetFloat(WorldEventsView.OpeningId, (float)EchoLooks.ScarOpening(v.Stage));
                 Transform tear = WorldEventsView.TearQuad("dechirure", s.Root.transform, s.Tear);
                 tear.localPosition = new Vector3(0f, 0.07f, 0f);
                 tear.localRotation = Quaternion.Euler(90f, StyleRules.Variant(v.Key, 180), 0f);
@@ -137,7 +137,7 @@ namespace EdS.Game
 
         private void Animate(Shown s, float deltaTime)
         {
-            if (s.Tear != null) s.Tear.SetFloat("_Intensity", 0.35f + 0.12f * s.Stage * (float)EchoLooks.Pulse(_time, 0.3 + 0.1 * s.Stage));
+            if (s.Tear != null) s.Tear.SetFloat(WorldEventsView.IntensityId, 0.35f + 0.12f * s.Stage * (float)EchoLooks.Pulse(_time, 0.3 + 0.1 * s.Stage));
             for (int i = 0; i < s.Motes.Count; i++)
             {
                 Transform t = s.Motes[i];

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdS.Data.Zones;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -14,13 +15,16 @@ namespace EdS.Runtime
         /// <summary>Pas un écho : rendu ordinaire.</summary>
         None = 0,
 
-        /// <summary>Une bête revenue après sa mort (« loup3_v2 », « sanglier_v4 », un chef qui revient) : gris-bleu pâle, la plus fragile.</summary>
+        /// <summary>Une bête revenue après sa mort (« loup3_v2 », « sanglier_v4 »), un chef déjà tué qu'on recombat : gris-bleu pâle, la plus fragile.</summary>
         Returned = 1,
 
         /// <summary>Un écho de la nuit (« loup_echo3 ») : bleu froid.</summary>
         Night = 2,
 
-        /// <summary>Un écho craché par une faille ou rôdant autour d'une cicatrice (« loup_echo1_ev4 ») : violet du Seuil.</summary>
+        /// <summary>
+        /// Un écho craché par une faille ou rôdant autour d'une cicatrice (« loup_echo1_ev4 », ou toute créature sortie du Seuil, gibier
+        /// compris) : violet du Seuil.
+        /// </summary>
         Rift = 3,
 
         /// <summary>Le loup blanc (« le même loup qui revient ») : blanc d'argent, presque solide.</summary>
@@ -76,11 +80,19 @@ namespace EdS.Runtime
         public const double MinSolidity = 0.35;
 
         /// <summary>
-        /// La sorte d'écho de <paramref name="id"/> (identité du combattant dans le moteur), ou <see cref="EchoKind.None"/>. Une vie suivante
-        /// (« _v2 », donnée par la réapparition des populations ou par une forme de chef revenue) n'est un écho que pour une bête (loup,
-        /// Croc-Gris, sanglier) : bandits et rôdeurs sont des hommes, le gibier paisible (cerfs, lièvres) n'en est pas (question à Damien).
+        /// La sorte d'écho de <paramref name="id"/> (identité du combattant dans le moteur), ou <see cref="EchoKind.None"/>. Décision de Damien
+        /// du 7 novembre 2026 (22 h 45, PR #115) : est un écho ce qui revient après sa mort ou ce qui sort du Seuil.
+        /// <list type="bullet">
+        /// <item><paramref name="fromSeuil"/> : la créature sort d'une faille ou rôde autour d'une cicatrice (créatures de la faille, échos
+        /// rôdeurs) : écho du Seuil, quelle qu'elle soit (gibier compris).</item>
+        /// <item><paramref name="slainBefore"/> : un chef (ou le Gardien) déjà tué qu'on recombat (son fait de victoire est connu,
+        /// <see cref="ChiefSlain"/>) : écho. Un chef contre qui le joueur a perdu n'est jamais mort : pas un écho.</item>
+        /// <item>Une vie suivante (« _v2 », réapparition des populations) d'un loup ou d'un sanglier : écho. Le gibier (cerfs, lièvres) qui
+        /// revient n'en est pas un (la forêt se repeuple), ni les bandits et les rôdeurs (des hommes). Une forme de chef « _v2 » vient d'une
+        /// arrivée refusée (<c>BossFight</c>), pas d'une mort : pas un écho.</item>
+        /// </list>
         /// </summary>
-        public static EchoKind Of(string? id)
+        public static EchoKind Of(string? id, bool fromSeuil = false, bool slainBefore = false)
         {
             string key = (id ?? string.Empty).Trim().ToLowerInvariant();
             if (key.Length == 0) return EchoKind.None;
@@ -88,16 +100,41 @@ namespace EdS.Runtime
                 return EchoKind.Rupture;
             if (key.StartsWith("loup_blanc", StringComparison.Ordinal)) return EchoKind.WhiteWolf;
             if (key.StartsWith("loup_echo", StringComparison.Ordinal)) return HasSuffix(key, "_ev") ? EchoKind.Rift : EchoKind.Night;
+            if (fromSeuil) return EchoKind.Rift;
+            if (slainBefore) return EchoKind.Returned;
             if (HasSuffix(key, "_v") && IsBeast(key)) return EchoKind.Returned;
             return EchoKind.None;
         }
 
         /// <summary>Vrai pour un écho, quelle que soit sa sorte.</summary>
-        public static bool IsEcho(string? id) => Of(id) != EchoKind.None;
+        public static bool IsEcho(string? id, bool fromSeuil = false, bool slainBefore = false) => Of(id, fromSeuil, slainBefore) != EchoKind.None;
 
+        /// <summary>
+        /// Vrai si <paramref name="id"/> est une forme d'un chef de <paramref name="zone"/> (ou de son Gardien) dont le fait de victoire est
+        /// connu (<paramref name="knows"/>) : il a été tué, et il revient. Une vie « _v2 » d'une forme compte comme la forme.
+        /// </summary>
+        public static bool ChiefSlain(ZoneDefinition? zone, Func<string, bool>? knows, string? id)
+        {
+            if (zone == null || knows == null || string.IsNullOrEmpty(id)) return false;
+            string key = id!;
+            int life = key.LastIndexOf("_v", StringComparison.Ordinal);
+            if (life > 0 && HasSuffix(key, "_v")) key = key.Substring(0, life);
+            if (zone.Boss is Boss boss && IsForm(boss, key)) return knows(boss.Fact);
+            for (int i = 0; i < zone.Chiefs.Count; i++)
+                if (IsForm(zone.Chiefs[i], key)) return knows(zone.Chiefs[i].Fact);
+            return false;
+        }
+
+        private static bool IsForm(Boss chief, string key)
+        {
+            for (int i = 0; i < chief.Forms.Count; i++)
+                if (string.Equals(chief.Forms[i].Id, key, StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        // Bêtes de chair qui reviennent en écho (pas Croc-Gris : ses « _v2 » viennent d'une arrivée refusée, voir ChiefSlain).
         private static bool IsBeast(string key) =>
-            key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("croc_gris", StringComparison.Ordinal)
-            || key.StartsWith("crocgris", StringComparison.Ordinal) || key.StartsWith("sanglier", StringComparison.Ordinal);
+            (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("sanglier", StringComparison.Ordinal));
 
         /// <summary>Vrai si <paramref name="key"/> finit par <paramref name="marker"/> suivi d'au moins un chiffre (« loup3_v2 », « loup_echo1_ev4 »).</summary>
         private static bool HasSuffix(string key, string marker)

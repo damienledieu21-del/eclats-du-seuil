@@ -1,7 +1,14 @@
 using System;
+using System.IO;
+using System.Linq;
+using EdS.Data.Json;
+using EdS.Data.Zones;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.World;
 using Xunit;
+using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
 
@@ -23,8 +30,8 @@ public sealed class V291EchosTests
     [InlineData("voix_de_la_rupture", EchoKind.Rupture)]
     [InlineData("loup3_v2", EchoKind.Returned)]
     [InlineData("sanglier_v4", EchoKind.Returned)]
-    [InlineData("croc_gris_v2", EchoKind.Returned)]
-    [InlineData("croc_gris_enrage_v3", EchoKind.Returned)]
+    [InlineData("croc_gris_v2", EchoKind.None)]
+    [InlineData("croc_gris_enrage_v3", EchoKind.None)]
     [InlineData("loup_nuit5_v2", EchoKind.Returned)]
     [InlineData("loup3", EchoKind.None)]
     [InlineData("loup_nuit5_ev2", EchoKind.None)]
@@ -42,6 +49,43 @@ public sealed class V291EchosTests
     {
         Assert.Equal(expected, EchoLooks.Of(id));
         Assert.Equal(expected != EchoKind.None, EchoLooks.IsEcho(id));
+    }
+
+    [Fact]
+    public void Decision_du_7_novembre_ce_qui_sort_du_Seuil_et_le_chef_deja_tue()
+    {
+        // Le gibier qui revient n'est pas un écho (la forêt se repeuple) ; sorti d'une faille ou d'une cicatrice, si.
+        Assert.Equal(EchoKind.None, EchoLooks.Of("cerf2_v3"));
+        Assert.Equal(EchoKind.Rift, EchoLooks.Of("cerf2_ev1", fromSeuil: true));
+        Assert.Equal(EchoKind.Rift, EchoLooks.Of("lievre1", fromSeuil: true));
+        Assert.Equal(EchoKind.Rift, EchoLooks.Of("loup_nuit5_ev2", fromSeuil: true));
+        Assert.Equal(EchoKind.None, EchoLooks.Of("loup_nuit5_ev2"));   // attaque du hameau, chasse de l'aube : pas du Seuil
+        // Un chef déjà tué qu'on recombat : écho ; un chef contre qui on a perdu (jamais mort) : non.
+        Assert.Equal(EchoKind.Returned, EchoLooks.Of("croc_gris", slainBefore: true));
+        Assert.Equal(EchoKind.None, EchoLooks.Of("croc_gris", slainBefore: false));
+        // Les sortes propres gardent la leur.
+        Assert.Equal(EchoKind.WhiteWolf, EchoLooks.Of("loup_blanc", true, true));
+        Assert.Equal(EchoKind.Rupture, EchoLooks.Of("echo_de_la_rupture", true, true));
+        Assert.True(EchoLooks.IsEcho("croc_gris", slainBefore: true) && !EchoLooks.IsEcho("croc_gris"));
+    }
+
+    [Fact]
+    public void Chef_tue_d_apres_son_fait_de_victoire()
+    {
+        ZoneDefinition zone = Vallons();
+        Func<string, bool> slain = fact => fact == "fact.croc_gris.vaincu" || fact == "fact.chef.vaincu";
+        Func<string, bool> none = _ => false;
+        Assert.True(EchoLooks.ChiefSlain(zone, slain, "croc_gris"));
+        Assert.True(EchoLooks.ChiefSlain(zone, slain, "croc_gris_enrage"));
+        Assert.True(EchoLooks.ChiefSlain(zone, slain, "croc_gris_enrage_v2"));
+        Assert.True(EchoLooks.ChiefSlain(zone, slain, "gardien_eveille"));
+        Assert.False(EchoLooks.ChiefSlain(zone, slain, "chef_des_bandits"));   // son fait n'est pas connu
+        Assert.False(EchoLooks.ChiefSlain(zone, none, "croc_gris"));          // perdu contre lui : jamais mort
+        Assert.False(EchoLooks.ChiefSlain(zone, slain, "loup3"));
+        Assert.False(EchoLooks.ChiefSlain(zone, slain, "croc_gris_v"));
+        Assert.False(EchoLooks.ChiefSlain(null, slain, "croc_gris"));
+        Assert.False(EchoLooks.ChiefSlain(zone, null, "croc_gris"));
+        Assert.False(EchoLooks.ChiefSlain(zone, slain, null));
     }
 
     [Fact]
@@ -117,5 +161,27 @@ public sealed class V291EchosTests
         Assert.Equal(EchoLooks.TrailRate(EchoKind.Night, 0.5, false) / 2, EchoLooks.TrailRate(EchoKind.Night, 0.5, true), 6);
         Assert.True(EchoLooks.TrailRate(EchoKind.Night, 1, false) > EchoLooks.TrailRate(EchoKind.Night, 0, false));
         Assert.InRange(EchoLooks.TrailRate(EchoKind.Rupture, 1, false), 1, 10);
+    }
+
+    private static ZoneDefinition Vallons() => ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+        Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!).Zone!;
+
+    private static ScarView Scar(WorldEventDefinition e, string key, double x, double z, double radius, int stage) =>
+        new ScarView(key, e, e.Groups[0], new GroundVector(Fixed.FromRaw((long)(x * 10000)), Fixed.FromRaw((long)(z * 10000))), stage,
+            Fixed.FromRaw((long)(radius * 10000)), 0, null, Array.Empty<string>(), false);
+
+    [Fact]
+    public void Palier_de_la_cicatrice_la_plus_forte_qui_couvre_la_place()
+    {
+        WorldEventDefinition rift = Vallons().Events.Single(e => e.Id == "faille_du_seuil");
+        // Deux cicatrices qui se recouvrent : (0, 0) rayon 10 au palier 1, (8, 0) rayon 6 au palier 3.
+        var scars = new[] { Scar(rift, "a", 0, 0, 10, 1), Scar(rift, "b", 8, 0, 6, 3) };
+        Assert.Equal(1, EchoLooks.ScarStageAt(scars, -5, 0));     // dans la première seule
+        Assert.Equal(3, EchoLooks.ScarStageAt(scars, 6, 0));      // dans les deux : la plus forte
+        Assert.Equal(3, EchoLooks.ScarStageAt(scars.Reverse().ToArray(), 6, 0));   // l'ordre ne compte pas
+        Assert.Equal(1, EchoLooks.ScarStageAt(scars, -10, 0));    // au bord du rayon : dedans
+        Assert.Equal(3, EchoLooks.ScarStageAt(scars, 14, 0));     // au bord de la seconde
+        Assert.Equal(0, EchoLooks.ScarStageAt(scars, -10.01, 0)); // juste dehors
+        Assert.Equal(0, EchoLooks.ScarStageAt(scars, 0, 30));     // loin
     }
 }
