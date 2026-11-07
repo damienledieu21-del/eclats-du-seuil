@@ -161,5 +161,6 @@ public class CombatReplayTests
     // Sous-lot V1.8d : moteur 0.27.0, format 21, scénario en schéma 15 ; sans bonus modifié : seul l'en-tête change.
     // Sous-lot V2.4 : moteur 0.28.0, format 22, règles 0.16.0, scénario en schéma 16 ; seul l'en-tête change (ancienne empreinte a1012297…).
     // Sous-lot V2.4.1 : moteur 0.29.0, format 23, règles 0.17.0, scénario en schéma 17 ; seul l'en-tête change (ancienne empreinte d42dd12e…).
-    internal const string MannequinLogHash = "3f0887097cca0e9d56756cfab6a27f2d1b70a183356f374ef3d4962e10d1d0eb";
+    // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; seul l'en-tête change (ancienne empreinte 3f088709…).
+    internal const string MannequinLogHash = "df3226adbd1bb7032b48308379936b9f33e208fdfdb4eb8d0264acce9cd5981f";
 }

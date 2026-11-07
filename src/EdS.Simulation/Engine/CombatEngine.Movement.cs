@@ -90,6 +90,7 @@ namespace EdS.Simulation.Engine
             _maxZ = space.Max.Z.Raw;
             _maxStep = IntMath.MulDiv(SpaceLimits.MaxSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
             _probeStep = IntMath.MulDiv(_rules.MovementSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
+            InitPaths();   // sous-lot V2.8
             BuildSolid();
         }
 

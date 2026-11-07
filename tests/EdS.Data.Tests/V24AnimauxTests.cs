@@ -32,14 +32,14 @@ internal static class V24Numbers
 /// Sous-lot V2.4 (animaux paisibles et bêtes qui se battent) : moteur 0.28.0 et journal au format 22 (bêtes qui fuient, trêves entre équipes
 /// de créatures, coups réduits entre créatures, une créature ne vise une créature qu'à sa distance d'engagement), scénarios en schéma 16,
 /// règles en schéma 15 (contenu 0.16.0), instantané au format 5, zones en schéma 9 (populations selon le temps) ; nouvelle référence figée
-/// <c>Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0</c> (les quatre journaux d'entraînement, corps identiques, et <c>espace_betes</c>).
+/// <c>Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0</c> (les quatre journaux d'entraînement, corps identiques, et <c>espace_betes</c>).
 /// </summary>
 [Trait("Category", "Behavior")]
 [Trait("Category", "Regression")]
 public class V24AnimauxMoteurTests
 {
     private const string Betes = "espace_betes";
-    private const string Latest = "reference-0.29.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.27.0-contenu-0.6.0-regles-0.15.0";
+    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.27.0-contenu-0.6.0-regles-0.15.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -69,7 +69,7 @@ public class V24AnimauxMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.29.0", 23, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire", "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
         Assert.Equal((12, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
@@ -104,7 +104,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
         JsonElement before = JsonDocument.Parse(old[0]).RootElement, after = JsonDocument.Parse(latest[0]).RootElement;
-        Assert.Equal((21, "0.27.0", 23, "0.29.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
+        Assert.Equal((21, "0.27.0", 24, "0.30.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
             after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 

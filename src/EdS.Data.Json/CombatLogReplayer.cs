@@ -154,6 +154,7 @@ namespace EdS.Data.Json
                         ["classes"] = (cv, cp) => classes = input.ReadList(cv, cp, (e, ip) => ReadIdentity(input, e, ip, null)),
                     }),
                     ["scenario"] = (v, p) => scenario = v,
+                    ["navigation"] = (v, p) => { },   // sous-lot V2.8 (format 24) : bornes du moteur, refaites et comparées au rejeu
                 });
                 if (!ok) return;
                 if (type != "header" || format != CombatEngine.LogFormat)

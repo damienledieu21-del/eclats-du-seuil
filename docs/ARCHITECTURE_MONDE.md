@@ -48,6 +48,7 @@ Exigences retenues, reprises du cadrage :
    Le mode « combat fermé » d'aujourd'hui reste, pour les essais, les mesures et les duels.
 2. **Les rencontres** sont calculées par la zone : quelles entités se battent, qui y a participé, quand elles sont réinitialisées (Q8). Le crédit d'une action (dégâts, protection, soutien) se lit dans le journal, déjà relié par la provenance des effets.
 3. **Le temps du monde** (jour, nuit, réapparitions) est compté en ticks de la zone, jamais à l'horloge réelle.
+5. **Recherche de chemin** (sous-lot V2.8) : la zone a une **grille de navigation** par classe d'emprise, calculée de ses obstacles (`EdS.Domain.Space.Navigator`) ; les créatures du cœur (poursuite, anneau, errance, retour, file, fuite d'une bête) l'utilisent dans le moteur, avec un budget borné par tick et des réponses pures (rien dans l'instantané, même résultat après une reprise ou sur le serveur). L'**affichage** (PNJ, passants) se sert de la même navigation (`EdS.Runtime.WalkPaths`, `Walker`) sur l'espace de la zone ouverte : le cœur décide toujours de la place d'un PNJ, l'affichage seulement du trajet ([MOTEUR.md](MOTEUR.md#recherche-de-chemin-sous-lot-v28), [MONDE.md](MONDE.md#recherche-de-chemin-sous-lot-v28)).
 4. **Les identités ne sont jamais réutilisées.** Un loup qui réapparaît est une nouvelle entité. Un boss réveillé (réveil renforcé, H4) a une nouvelle vie, d'identité distincte. La première mort reste enregistrée (contrat du 11.1).
 
 ## 5. Entrée dans une zone, état courant, mises à jour
