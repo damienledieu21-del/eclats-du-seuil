@@ -84,6 +84,7 @@ namespace EdS.Runtime
                 case StyleSound.Howl: return 35 + 45 * u;
                 case StyleSound.Bellow: return 100 + 120 * u;
                 case StyleSound.BoarGrumble: return 9 + 13 * u;
+                case StyleSound.Bray: return 45 + 60 * u;   // sous-lot V2.9.2 : l'âne
                 default: return 30;
             }
         }
@@ -150,6 +151,13 @@ namespace EdS.Runtime
         public const int TocsinStrikes = 9;
 
         public const double TocsinGap = 0.75;
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (3e vague) : rythme du tocsin d'après la cloche : la grosse cloche de la tour de Falun (n° 760390), qui résonne
+        /// longtemps, sonne sept coups espacés de 1,4 s ; une petite cloche, neuf coups rapides (<see cref="TocsinStrikes"/>, <see cref="TocsinGap"/>).
+        /// </summary>
+        public static (int Strikes, double Gap) TocsinRhythm(string? clipName) =>
+            StyleRules.Key(clipName ?? string.Empty).Contains("fs760390") ? (7, 1.4) : (TocsinStrikes, TocsinGap);
 
         /// <summary>
         /// Allure d'un modèle sans squelette (le sanglier de Hanabi_Map) : décalage vertical (fraction de sa hauteur), tangage, roulis et
@@ -230,11 +238,19 @@ namespace EdS.Runtime
                 while (i < boneName.Length && char.IsLetter(boneName[i])) i++;
                 if (i == start) continue;
                 string w = boneName.Substring(start, i - start).ToLowerInvariant();
+                // Sous-lot V2.9.2 : la vache de nataliekirk nomme ses pattes « L_Front_1 », « R_Hind_1 » (puis 2 et 3, plus bas) : seul le haut (1).
+                if (w == "front" || w == "hind")
+                {
+                    int d = i;
+                    while (d < boneName.Length && (boneName[d] == '_' || boneName[d] == '.')) d++;
+                    if (d < boneName.Length && char.IsDigit(boneName[d]) && boneName[d] != '1') return null;
+                    if (d + 1 < boneName.Length && char.IsDigit(boneName[d]) && char.IsDigit(boneName[d + 1])) return null;
+                }
                 switch (w)
                 {
                     case "end": case "corrective": case "foot": case "knee": case "elbow": case "toe": case "clavicle": case "ik": case "pole": return null;
-                    case "shoulder": case "upperarm": case "legf": case "frontleg": front = true; break;
-                    case "hip": case "thigh": case "legb": case "backleg": case "hindleg": front = false; break;
+                    case "shoulder": case "upperarm": case "legf": case "frontleg": case "front": front = true; break;
+                    case "hip": case "thigh": case "legb": case "backleg": case "hindleg": case "hind": front = false; break;
                     case "l": case "left": left = true; break;
                     case "r": case "right": left = false; break;
                 }
