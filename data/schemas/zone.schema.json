@@ -21,9 +21,10 @@
         8,
         9,
         10,
-        11
+        11,
+        12
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle)."
     },
     "kind": {
       "const": "zone"
@@ -833,6 +834,16 @@
                         }
                       }
                     },
+                    "spreadTo": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 8,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Schéma 12 (sous-lot V2.6.1) : variantes voisines de la même faille où la cicatrice de celle-ci se propage, la plus proche d'abord (faille dont la cicatrice a spreadStage)."
+                    },
                     "haunts": {
                       "type": "array",
                       "minItems": 1,
@@ -994,6 +1005,22 @@
                     "pattern": "^fact(\\.[a-z0-9_]+)+$"
                   },
                   "purifiedFact": {
+                    "type": "string",
+                    "pattern": "^fact(\\.[a-z0-9_]+)+$"
+                  },
+                  "spreadStage": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8,
+                    "description": "Schéma 12 (sous-lot V2.6.1) : palier à partir duquel la cicatrice se propage à ses voisines (spreadTo), avec spreadDays."
+                  },
+                  "spreadDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 30,
+                    "description": "Schéma 12 : jours du monde entre le palier de propagation (ou la propagation précédente, ou une purification) et la naissance d'une cicatrice chez la première voisine qui n'en a pas."
+                  },
+                  "spreadFact": {
                     "type": "string",
                     "pattern": "^fact(\\.[a-z0-9_]+)+$"
                   }

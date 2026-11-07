@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.13.0-provisoire",
+  "contentVersion": "0.14.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1678,6 +1678,21 @@
           "maxHealth": 60,
           "maxEndurance": 10
         }
+      },
+      {
+        "id": "item.chapelet_de_l_aube",
+        "name": "Chapelet de l'Aube",
+        "icon": "amulette_de_l_aube",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "neck",
+        "requiredLevel": 6,
+        "bonus": {
+          "magicResistance": 40,
+          "statusResistance": 20,
+          "maxHealth": 40
+        },
+        "named": true
       }
     ],
     "loot": [

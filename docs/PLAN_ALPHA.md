@@ -218,6 +218,13 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Formats : monde, sauvegarde (état des failles).
 - **État** (7 novembre 2026, PR en brouillon) : zones en schéma 11 (cicatrice d'une faille, échos rôdeurs ; schéma 10 encore lu), sauvegarde v14 (cicatrices ; v13 encore lue) ; moteur, règles, journal et scénarios inchangés. Une faille restée ouverte (là ou pendant l'absence) laisse une **cicatrice** à sa place : palier 1, un de plus tous les 2 jours du monde jusqu'au 4, rayon de 8 à 20 m ; **couleurs fanées et brume froide** autour (Unity), échos de la faille plus forts (+15 % par palier), **échos rôdeurs** à partir du palier 2 (un par palier, de retour 2 h du monde après leur mort, hors de la réserve des quêtes) ; une faille refermée à sa place la fait **reculer** d'un palier et arrête les autres de grandir ; un **éclat de Seuil** posé en son cœur la **purifie** (200 points) ; Sauge, Sœur Albe et Firmin en parlent ; menu « Essai du Seuil qui grandit » ([MONDE.md](MONDE.md#le-seuil-qui-grandit-sous-lot-v26), [ESSAI_V1.10.md](ESSAI_V1.10.md#11-le-seuil-qui-grandit-v26)). Reste l'essai de Damien sous Unity.
 
+### 18 bis. V2.6.1 — Suites du Seuil (S)
+
+- Propagation d'une cicatrice au lieu voisin et quête de Sœur Albe pour les purifier ; borne de 16 répliques par PNJ montée (réponses de Damien du 7 novembre 2026 aux questions 5 et 6 de la PR #110 ; accord du 7 novembre : « fais tout et cherche le mieux possible »).
+- Dépend de V2.6.
+- Formats : zones (schéma 12), histoire (schéma 11) ; sauvegarde v14 inchangée.
+- **État** (7 novembre 2026, PR en brouillon) : une cicatrice au palier 4 depuis 2 jours du monde fait naître une cicatrice chez sa voisine (ruines vers le lac puis le pré ; lac et pré vers les ruines), recalculé du temps du monde, borné ; quête « Les cicatrices du Seuil » (purifier une cicatrice, revenir voir Sœur Albe, en purifier deux autres ; chapelet de l'Aube) ; Sœur Albe veille sur le parvis de 17 h à 18 h ; Gaspard, Odile, Aldric et le capitaine en parlent ; menus d'essai ([MONDE.md](MONDE.md#suites-du-seuil-sous-lot-v261), [ESSAI_V1.10.md](ESSAI_V1.10.md#14-les-suites-du-seuil-v261)). Reste l'essai de Damien sous Unity.
+
 ### 19. V2.7 — Réputation (M)
 
 - Réputation auprès des villageois, de la garde, des rôdeurs et des bandits ; conditions des dialogues et des quêtes qui la lisent.
@@ -662,6 +669,7 @@ Les autres éléments relevés sont rattachés à un chantier : guide d'écritur
 | 16 | V2.4 Animaux et bêtes qui se battent | M | 12 | — | 14, 15, 19 |
 | 17 | V2.5 Événements du monde | L | 13, 9 | Oui, court | 46 |
 | 18 | V2.6 Le Seuil qui grandit | M | 17 | — | 46 |
+| 18 bis | V2.6.1 Suites du Seuil | S | 18 | Oui, court (§ 14) | 46 |
 | 19 | V2.7 Réputation | M | 2 | — | 16 |
 | 20 | V2.8 Fêtes, stock changeant, essai | M | 13 à 19 | Oui, court | 21 |
 | 21 | V3.1 Donjons : moteur et crypte | L | 12, 13 | Oui, court | 20, 46 |

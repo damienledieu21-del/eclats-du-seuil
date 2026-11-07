@@ -138,7 +138,7 @@ public class V197VillageTests
     [Fact]
     public void Histoire_en_schema_7_avec_skipQuest()
     {
-        Assert.Equal((10, 10), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
+        Assert.Equal((11, 11), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
         Assert.Equal(EffectKind.SkipQuest, StoryValidator.Effects["skipQuest"]);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -155,6 +155,7 @@ public class V197VillageTests
         JsonObject root = StoryJson();
         V23TestData.WithoutSchedules(root);   // V2.3 : sans emplois du temps ni répliques du moment (schéma 9)
         root["schemaVersion"] = 6;
+        V261TestData.WithoutSuites(root);   // V2.6.1 : sans ce qui demande la version 11
         StoryLoadResult refused = Read(root);
         Assert.False(refused.IsValid);
         Assert.Contains(refused.Report.Errors, e => e.Path.StartsWith("$.data.dialogues[0].nodes[", StringComparison.Ordinal)
@@ -179,7 +180,7 @@ public class V197VillageTests
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
-        root["schemaVersion"] = 11;   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10
+        root["schemaVersion"] = 12;   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
         Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
     }
 
@@ -358,14 +359,14 @@ public class V197VillageTests
     public void Cinq_quetes_du_village_livrees()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(6).Select(q => q.Id));   // ajoutées à la fin
+        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(7).SkipLast(1).Select(q => q.Id));   // ajoutées à la fin (V2.6.1 : la quête des cicatrices après elles)
         Assert.All(new[] { Chat, Puits, Garde, Champignons, Contrat }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
-        // Aucun PNJ nouveau ; seize entrées au plus par dialogue ; Sœur Albe en garde douze, Odile seize.
+        // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
         Assert.Equal(28, book.Npcs.Count);
-        Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 16, d.Id));
-        Assert.Equal((13, 16), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
+        Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }
 
     [Fact]

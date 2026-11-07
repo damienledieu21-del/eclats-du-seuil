@@ -40,6 +40,7 @@ namespace EdS.Runtime
             WorldEventNoticeKind.ScarHealed => "cicatrice_guerie",
             WorldEventNoticeKind.ScarPurified => "cicatrice_purifiee",
             WorldEventNoticeKind.ScarStirs => "cicatrice_rode",
+            WorldEventNoticeKind.ScarSpread => "cicatrice_propagee",   // sous-lot V2.6.1
             _ => "fin",
         };
 
@@ -57,7 +58,8 @@ namespace EdS.Runtime
             // Sous-lot V2.6 : les annonces d'une cicatrice disent son palier ({0}) et son lieu ({1}).
             if (EventText(n.Event, n.Group, Moment(n.Kind)) is string key)
             {
-                if (IsScarNotice(n.Kind)) Say(key, n.Wave, ScarPlace(n.Event, n.Group));
+                // Sous-lot V2.6.1 : une propagation dit aussi d'où vient le froid ({2}).
+                if (IsScarNotice(n.Kind)) Say(key, n.Wave, ScarPlace(n.Event, n.Group), ScarPlace(n.Event, n.From));
                 else Say(key);
             }
             EventsAnnounced++;

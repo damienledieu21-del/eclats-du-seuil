@@ -297,6 +297,9 @@ namespace EdS.Data.Json
                 ["bornFact"] = (v, p) => s.BornFact = input.Text(v, p),
                 ["deepFact"] = (v, p) => s.DeepFact = input.Text(v, p),
                 ["purifiedFact"] = (v, p) => s.PurifiedFact = input.Text(v, p),
+                ["spreadStage"] = (v, p) => s.SpreadStage = input.Int32(v, p),   // sous-lot V2.6.1 (schéma 12)
+                ["spreadDays"] = (v, p) => s.SpreadDays = input.Int32(v, p),
+                ["spreadFact"] = (v, p) => s.SpreadFact = input.Text(v, p),
             });
             return ok ? s : null;
         }
@@ -324,6 +327,8 @@ namespace EdS.Data.Json
                     n => $"{n} créatures, au plus {ZoneValidator.MaxEventCreatures}.", (x, xp) => ReadEventCreature(input, x, xp)),
                 ["haunts"] = (v, p) => g.Haunts = input.ReadLimitedList(v, p, ZoneValidator.MaxScarHaunts,   // sous-lot V2.6 (schéma 11)
                     n => $"{n} échos rôdeurs, au plus {ZoneValidator.MaxScarHaunts}.", (x, xp) => ReadEventCreature(input, x, xp)),
+                ["spreadTo"] = (v, p) => g.SpreadTo = input.ReadLimitedList(v, p, ZoneValidator.MaxEventGroups,   // sous-lot V2.6.1 (schéma 12)
+                    n => $"{n} variantes voisines, au plus {ZoneValidator.MaxEventGroups}.", (x, xp) => input.Text(x, xp)),
             });
             return ok ? g : null;
         }
