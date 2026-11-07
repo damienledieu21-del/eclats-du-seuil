@@ -286,7 +286,8 @@ namespace EdS.Game
             // Sous-lot V2.1 : les échos de la nuit, pâles ; V2.9.1 : tous les échos (EchoLooks.Of), fantômes si le shader des échos est là.
             // Décision de Damien du 7 novembre 2026 : est un écho ce qui revient après sa mort ou ce qui sort du Seuil.
             EchoKind echo = player ? EchoKind.None
-                : EchoLooks.Of(id, _fromSeuil != null && _fromSeuil.Contains(id), _slainBefore != null && _slainBefore(id));
+                : EchoLooks.Of(id, _fromSeuil != null && _fromSeuil.Contains(id), _slainBefore != null && _slainBefore(id),
+                    _afterDeath != null && _afterDeath(id));
             if (echo != EchoKind.None && !_ghosts.Dress(id, body, echo, look != null ? look.Height : 1.6f)) Echo(body);
         }
 
@@ -340,8 +341,10 @@ namespace EdS.Game
         /// Sous-lot V2.9.1 : avant <see cref="Sync"/>, la nuit (les échos y brillent plus) et les cicatrices du Seuil (null : aucune ; un écho
         /// sur une cicatrice est plus solide et plus vif, selon son palier).
         /// </summary>
-        public void Echoes(bool night, IReadOnlyList<ScarView> scars, ICollection<string> fromSeuil = null, System.Func<string, bool> slainBefore = null)
+        public void Echoes(bool night, IReadOnlyList<ScarView> scars, ICollection<string> fromSeuil = null, System.Func<string, bool> slainBefore = null,
+            System.Func<string, bool> afterDeath = null)
         {
+            _afterDeath = afterDeath;
             _nightTarget = night ? 1f : 0f;
             _scarList = scars;
             _fromSeuil = fromSeuil;
@@ -351,6 +354,7 @@ namespace EdS.Game
         // Décision de Damien du 7 novembre 2026 (PR #115) : les créatures sorties du Seuil (faille, échos rôdeurs) et les chefs déjà tués.
         private ICollection<string> _fromSeuil;
         private System.Func<string, bool> _slainBefore;
+        private System.Func<string, bool> _afterDeath;   // revue Codex de la PR #115 : vie revenue après une vraie mort
 
         /// <summary>Sous-lot V2.9.1 : le combattant est-il un écho fantôme (il meurt en braises, sans la poussière d'une bête) ?</summary>
         public bool IsGhost(string id) => _ghosts.Has(id);

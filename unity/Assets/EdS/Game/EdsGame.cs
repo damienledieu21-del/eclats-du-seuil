@@ -318,6 +318,7 @@ namespace EdS.Game
         // Sous-lot V2.9.1 : créatures sorties du Seuil (reprises à chaque image, sans allocation), chefs déjà tués.
         private readonly HashSet<string> _fromSeuil = new HashSet<string>();
         private Func<string, bool> _slainChief;
+        private Func<string, bool> _returned;   // revue Codex de la PR #115 : vies revenues après une vraie mort
 
         private bool KnowsFact(string fact) => _adventure != null && _adventure.World.Narrative != null && _adventure.World.Narrative.Knows(fact);
 
@@ -329,7 +330,8 @@ namespace EdS.Game
         {
             SeuilCreatures(a);
             if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
-            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);
+            if (_returned == null) _returned = id => _adventure != null && _adventure.World.ReturnedFromDeath(id);
+            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief, _returned);
         }
 
         private void SeuilCreatures(AdventureSession a)

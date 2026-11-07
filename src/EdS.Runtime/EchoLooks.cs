@@ -87,12 +87,13 @@ namespace EdS.Runtime
         /// rôdeurs) : écho du Seuil, quelle qu'elle soit (gibier compris).</item>
         /// <item><paramref name="slainBefore"/> : un chef (ou le Gardien) déjà tué qu'on recombat (son fait de victoire est connu,
         /// <see cref="ChiefSlain"/>) : écho. Un chef contre qui le joueur a perdu n'est jamais mort : pas un écho.</item>
-        /// <item>Une vie suivante (« _v2 », réapparition des populations) d'un loup ou d'un sanglier : écho. Le gibier (cerfs, lièvres) qui
-        /// revient n'en est pas un (la forêt se repeuple), ni les bandits et les rôdeurs (des hommes). Une forme de chef « _v2 » vient d'une
-        /// arrivée refusée (<c>BossFight</c>), pas d'une mort : pas un écho.</item>
+        /// <item><paramref name="afterDeath"/> : un loup ou un sanglier revenu après la mort de sa vie précédente
+        /// (<c>WorldSession.ReturnedFromDeath</c>, revue Codex de la PR #115) : écho. Le suffixe « _v2 » seul ne suffit pas (première
+        /// arrivée d'une créature de la nuit, laisse, retour à ses heures, forme de chef après une arrivée refusée : sans mort). Le gibier
+        /// (cerfs, lièvres) qui revient n'en est pas un (la forêt se repeuple), ni les bandits et les rôdeurs (des hommes).</item>
         /// </list>
         /// </summary>
-        public static EchoKind Of(string? id, bool fromSeuil = false, bool slainBefore = false)
+        public static EchoKind Of(string? id, bool fromSeuil = false, bool slainBefore = false, bool afterDeath = false)
         {
             string key = (id ?? string.Empty).Trim().ToLowerInvariant();
             if (key.Length == 0) return EchoKind.None;
@@ -102,12 +103,13 @@ namespace EdS.Runtime
             if (key.StartsWith("loup_echo", StringComparison.Ordinal)) return HasSuffix(key, "_ev") ? EchoKind.Rift : EchoKind.Night;
             if (fromSeuil) return EchoKind.Rift;
             if (slainBefore) return EchoKind.Returned;
-            if (HasSuffix(key, "_v") && IsBeast(key)) return EchoKind.Returned;
+            if (afterDeath && IsBeast(key)) return EchoKind.Returned;
             return EchoKind.None;
         }
 
         /// <summary>Vrai pour un écho, quelle que soit sa sorte.</summary>
-        public static bool IsEcho(string? id, bool fromSeuil = false, bool slainBefore = false) => Of(id, fromSeuil, slainBefore) != EchoKind.None;
+        public static bool IsEcho(string? id, bool fromSeuil = false, bool slainBefore = false, bool afterDeath = false) =>
+            Of(id, fromSeuil, slainBefore, afterDeath) != EchoKind.None;
 
         /// <summary>
         /// Vrai si <paramref name="id"/> est une forme d'un chef de <paramref name="zone"/> (ou de son Gardien) dont le fait de victoire est
@@ -132,7 +134,7 @@ namespace EdS.Runtime
             return false;
         }
 
-        // Bêtes de chair qui reviennent en écho (pas Croc-Gris : ses « _v2 » viennent d'une arrivée refusée, voir ChiefSlain).
+        // Bêtes de chair qui reviennent en écho après leur mort (un chef revient par ChiefSlain).
         private static bool IsBeast(string key) =>
             (key.StartsWith("loup", StringComparison.Ordinal) || key.StartsWith("sanglier", StringComparison.Ordinal));
 

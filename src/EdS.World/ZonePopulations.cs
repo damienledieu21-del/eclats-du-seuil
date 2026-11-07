@@ -87,7 +87,23 @@ namespace EdS.World
 
             /// <summary>Sous-lot V2.1 : créature à heures morte à ses heures : elle revient après son délai, sans annoncer son retour.</summary>
             public bool Slain;
+
+            /// <summary>
+            /// Sous-lot V2.9.1 (revue Codex de la PR #115) : la vie en cours est morte ; la suivante revient après une mort (un écho). Une
+            /// première arrivée, une laisse ou un retour à ses heures ne passent pas par là.
+            /// </summary>
+            public bool Died;
         }
+
+        // Sous-lot V2.9.1 : vies revenues après la mort de la précédente (affichage des échos ; pas sauvegardé : une session nouvelle repart
+        // des créatures du scénario, sans vie suivante).
+        private readonly HashSet<string> _afterDeath = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Sous-lot V2.9.1 (revue Codex de la PR #115) : vrai si <paramref name="combatant"/> est une vie revenue après la mort de la précédente
+        /// (pas une première arrivée, une laisse ni un retour à ses heures sans mort). Affichage seulement.
+        /// </summary>
+        public bool ReturnedFromDeath(string combatant) => combatant != null && _afterDeath.Contains(combatant);
 
         private readonly List<Life> _lives;
         private readonly Dictionary<string, Population> _byCreature = new Dictionary<string, Population>(StringComparer.Ordinal);
@@ -160,7 +176,11 @@ namespace EdS.World
                 {
                     CombatantView v = engine.View(life.Current);
                     bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < now;
-                    if (v.IsDead) life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
+                    if (v.IsDead)
+                    {
+                        life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
+                        life.Died = true;   // sous-lot V2.9.1
+                    }
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
                     else if (!life.Leashing && !Flees(life.Population) && v.IsPresent && v.Engaged && v.CurrentTarget is string target
                         && Beyond(v, engine.View(target), life.Population.LeashRange))
@@ -241,6 +261,7 @@ namespace EdS.World
                 life.Dormant = true;
                 life.Withdrawing = false;
                 life.Slain = hours;
+                life.Died = true;   // sous-lot V2.9.1
                 life.RespawnAt = checked(now - 1 + life.Population.RespawnMs / tickMs);
                 return null;
             }
@@ -348,6 +369,8 @@ namespace EdS.World
             life.Current = id;
             life.RespawnAt = null;
             life.Leashing = false;
+            if (life.Died) _afterDeath.Add(id);   // sous-lot V2.9.1 : un écho
+            life.Died = false;
             _byCreature[id] = life.Population;
             return new PopulationEvent(PopulationEventKind.Respawned, t.Id, id, now);
         }

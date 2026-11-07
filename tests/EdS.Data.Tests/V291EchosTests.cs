@@ -28,11 +28,11 @@ public sealed class V291EchosTests
     [InlineData("loup_blanc_v2", EchoKind.WhiteWolf)]
     [InlineData("echo_de_la_rupture", EchoKind.Rupture)]
     [InlineData("voix_de_la_rupture", EchoKind.Rupture)]
-    [InlineData("loup3_v2", EchoKind.Returned)]
-    [InlineData("sanglier_v4", EchoKind.Returned)]
+    [InlineData("loup3_v2", EchoKind.None)]   // revue Codex de la PR #115 : le suffixe seul ne dit pas une mort
+    [InlineData("sanglier_v4", EchoKind.None)]
     [InlineData("croc_gris_v2", EchoKind.None)]
     [InlineData("croc_gris_enrage_v3", EchoKind.None)]
-    [InlineData("loup_nuit5_v2", EchoKind.Returned)]
+    [InlineData("loup_nuit1_v2", EchoKind.None)]   // première arrivée d'un loup de la nuit, partie commencée de jour
     [InlineData("loup3", EchoKind.None)]
     [InlineData("loup_nuit5_ev2", EchoKind.None)]
     [InlineData("croc_gris", EchoKind.None)]
@@ -67,6 +67,13 @@ public sealed class V291EchosTests
         Assert.Equal(EchoKind.WhiteWolf, EchoLooks.Of("loup_blanc", true, true));
         Assert.Equal(EchoKind.Rupture, EchoLooks.Of("echo_de_la_rupture", true, true));
         Assert.True(EchoLooks.IsEcho("croc_gris", slainBefore: true) && !EchoLooks.IsEcho("croc_gris"));
+        // Revue Codex de la PR #115 : une bête revenue après une vraie mort (WorldSession.ReturnedFromDeath) : écho ; pas le gibier ni les hommes.
+        Assert.Equal(EchoKind.Returned, EchoLooks.Of("loup3_v2", afterDeath: true));
+        Assert.Equal(EchoKind.Returned, EchoLooks.Of("sanglier_v4", afterDeath: true));
+        Assert.Equal(EchoKind.Returned, EchoLooks.Of("loup_nuit5_v2", afterDeath: true));
+        Assert.Equal(EchoKind.None, EchoLooks.Of("cerf4_v2", afterDeath: true));
+        Assert.Equal(EchoKind.None, EchoLooks.Of("bandit_epee3_v2", afterDeath: true));
+        Assert.Equal(EchoKind.None, EchoLooks.Of("loup_nuit5_v2"));
     }
 
     [Fact]
@@ -208,7 +215,7 @@ public sealed class V291EchosTests
         Assert.True(context >= 0 && populate > context);
         string frame = Between(game, "_stage?.BeforeSync();", "_arena.Sync(_combat, player, null);");
         Assert.Contains("EchoContext(a);", frame, StringComparison.Ordinal);
-        Assert.Contains("_arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief);",
+        Assert.Contains("_arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief, _returned);",
             Between(game, "private void EchoContext(AdventureSession a)", "private void SeuilCreatures"), StringComparison.Ordinal);
     }
 
