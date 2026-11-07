@@ -506,8 +506,9 @@ namespace EdS.Runtime
             // Les personnages sont rangés par dossier (StyleRules.Characters), pas reconnus par leur nom.
             [StyleSlot.Character] = (new string[0], new string[0]),
             // Sous-lot V2.9 : bêtes paisibles et chat (le chat est reconnu par un mot entier, voir Matches).
-            // 2e vague (choix de Damien : le cerf élaphe de Suiteofart d'abord) ; puis l'élan de WildMesh, puis le cerf de Quaternius.
-            [StyleSlot.Stag] = (new[] { "cerfrouge", "elan", "elk", "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
+            // Demande de Damien du 7 novembre 2026 (19 h 58) : l'élan de WildMesh d'abord (brouter, mort, coup reçu, fuite : toutes ses postures
+            // sont animées), puis le cerf élaphe de Suiteofart (sans mort ni broutage), puis le cerf de Quaternius.
+            [StyleSlot.Stag] = (new[] { "elan", "elk", "cerfrouge", "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
             [StyleSlot.Doe] = (new[] { "faon", "fawn", "deerquaternius", "deer", "doe", "biche", "hind" }, new[] { "stag", "reindeer", "cerf", "behind", "elan" }),
             [StyleSlot.Hare] = (new[] { "lievrebluekiwi", "lievre", "rabbitpneshik", "rabbit", "hare", "bunny" }, new[] { "share", "hardware" }),
             [StyleSlot.Cat] = (new[] { "catstripe", "stripecat", "cat", "chat" }, new string[0]),

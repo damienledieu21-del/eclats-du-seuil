@@ -227,8 +227,15 @@ public sealed class V29RessourcesTests
     public void Deuxieme_vague_le_meilleur_modele_par_bete()
     {
         string[] all = Models.Concat(Models2).ToArray();
-        Assert.EndsWith("CerfRouge_Suiteofart.fbx", StyleRules.Candidates(all, StyleSlot.Stag).First());
-        Assert.EndsWith("Elan_WildMesh.fbx", StyleRules.Candidates(all, StyleSlot.Stag)[1]);
+        // Demande de Damien du 7 novembre 2026 (19 h 58) : l'élan (toutes postures animées) d'abord, le cerf élaphe en repli.
+        Assert.EndsWith("Elan_WildMesh.fbx", StyleRules.Candidates(all, StyleSlot.Stag).First());
+        Assert.EndsWith("CerfRouge_Suiteofart.fbx", StyleRules.Candidates(all, StyleSlot.Stag)[1]);
+        string[] elk = { "Idle", "Walk", "Trot", "Run", "Sprint", "Eat", "Death", "Hurt", "Lie" };
+        Assert.Equal("Eat", StyleRules.Clip(elk, StyleMotion.Graze));
+        Assert.Equal("Death", StyleRules.Clip(elk, StyleMotion.Death));
+        Assert.Equal("Hurt", StyleRules.Clip(elk, StyleMotion.Hurt));
+        Assert.Equal("Run", StyleRules.Clip(elk, StyleMotion.Run));
+        Assert.Equal("Walk", StyleRules.Clip(elk, StyleMotion.Walk));
         Assert.EndsWith("Faon_AssetsAnimated.fbx", StyleRules.Candidates(all, StyleSlot.Doe).First());
         Assert.DoesNotContain(StyleRules.Candidates(all, StyleSlot.Doe), p => p.Contains("Cerf") || p.Contains("Elan"));
         Assert.EndsWith("Sanglier_Dakta.fbx", StyleRules.Candidates(all, StyleSlot.Boar).First());

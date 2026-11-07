@@ -741,9 +741,9 @@ Conversion (Claude, Blender 5.2 en ligne de commande) : la chaîne d'objets vide
 
 | Bête | Ordre | Remarque |
 |---|---|---|
-| Cerf à bois | cerf élaphe de Suiteofart → élan de WildMesh → Stag de Quaternius | le cerf élaphe n'a ni mort, ni brouter, ni attaque : il se couche sur le flanc à sa mort, reste au repos pour brouter ; l'élan galope « en avançant » (son galop déplace le modèle) |
+| Cerf à bois | élan de WildMesh → cerf élaphe de Suiteofart → Stag de Quaternius | **demande de Damien du 7 novembre 2026 (19 h 58)** : l'élan d'abord, toutes ses postures sont animées (attente, marche, trot, course, sprint, brouter, coup reçu, mort, couché) ; son déplacement intégré aux clips de marche, de trot, de course et de mort a été retiré à la conversion (il marche sur place, le jeu le déplace). Le cerf élaphe en repli (ni mort, ni brouter, ni attaque : couché sur le flanc à sa mort) |
 | Biche | faon d'Assets_Animated → Deer de Quaternius | 1,35 m |
-| Sanglier | sanglier de Dakta.Grower.Nzl → Hanabi_Map | **sans texture** dans son fichier : il prend la couleur **Boar Color** du catalogue (brun foncé uni) |
+| Sanglier | sanglier de Dakta.Grower.Nzl → Hanabi_Map | **demande de Damien du 7 novembre 2026 (19 h 58)** : livré sans texture, il a reçu à la conversion une **texture de pelage peinte par Claude** (1024 px, sur ses UV, d'après la place de chaque point dans la pose debout : dos et crinière sombres, flancs bruns, ventre plus clair, pattes et sabots noirs, groin, soies striées le long du corps) ; il était aussi tourné de 42° dans son fichier : redressé à la conversion. Les sangliers d'anru97580 (texturé, mais d'échelle cassée à la conversion) et d'emptypen2477 (sans texture) ont été essayés et ne sont pas retenus |
 | Lièvre | lièvre de bluekiwi.dog → lapin de Pneshik | attente, marche, course seulement |
 | Loup | loup réaliste de l'Asset Store (inchangé) → loup de roo3d → Quaternius | le loup de roo3d n'a ni attaque, ni mort, ni coup reçu |
 

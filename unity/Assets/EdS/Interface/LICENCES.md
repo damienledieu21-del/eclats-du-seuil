@@ -51,6 +51,7 @@ Relecture de la PR #114 : `docs/CREDITS.md` renvoie ici pour les auteurs à cite
 | « Realistic Animated Elk 3D Model » (élan, V2.9) | **WildMesh_3D** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Fawn_A3 » (biches, V2.9) | **Assets_Animated** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Wild Boar - Male » (sanglier, V2.9) | **Dakta.Grower.Nzl** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Boar » et « Wild Boar » (sangliers essayés, non retenus, V2.9) | **anru97580** et **emptypen2477** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Hare (animated) » (lièvre, V2.9) | **bluekiwi.dog** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Grey Wolf (Rigged and Animated) » (V2.9, non retenu) | **rhcreations** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Animated Wolf Scene » (loup, V2.9) | **roo3d** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
