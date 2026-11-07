@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.17.0-provisoire",
+  "contentVersion": "0.18.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1426,13 +1426,25 @@
       "text.v1910.epiciere.retrouvailles": "Mon petit, te revoilà ! Les bons clients, on les reconnaît à leur retour. Les autres, à leurs dettes.",
       "text.v1910.aubergiste.retrouvailles": "Te revoilà ! Le banc t'a manqué, avoue. Je ne le dirai à personne, ça ruinerait ma réputation.",
       "text.v1910.pretre.retrouvailles": "Que l'Aube te garde, voyageur. Tu reviens : la chapelle n'oublie pas ceux qui reviennent.",
-      "text.v1910.habitant.retrouvailles": "Encore toi ! Entre, entre, et essuie-toi les pieds : j'ai tout lavé, et le chat a tout salopé.",
+      "text.v1910.habitant.retrouvailles": "Te voilà ! Entre, entre, et essuie-toi les pieds : j'ai lavé le seuil ce matin. Assieds-toi, tu as l'air d'avoir marché.",
       "text.v1910.maitresse_guilde.retrouvailles": "Te revoilà à la Maison de la Guilde. Le tableau est là, le feu aussi. Sers-toi de l'un ou de l'autre.",
       "text.v1910.archer_garde.retrouvailles": "Halte ! … Ah, c'est toi. Passe, passe. Je m'exerçais à faire peur ; ça ne marche que sur les sangliers.",
       "text.v1910.albe.retrouvailles": "Que l'Aube vous garde de nouveau, voyageur. Vous revenez : c'est rare, ici, et ce n'est pas désagréable.",
       "text.v1910.renart.retrouvailles": "Vous revoilà. Je savais que vous reviendriez : on revient toujours chez celui qui dit les choses au juste prix. Le mien.",
       "text.v1910.capitaine.retrouvailles": "Encore toi. Tant mieux : une recrue qui revient vaut mieux qu'un archer qui perd ses flèches.",
-      "text.ui.event.rift.waves": "La faille n'a pas fini : d'autres échos vont encore en sortir."
+      "text.ui.event.rift.waves": "La faille n'a pas fini : d'autres échos vont encore en sortir.",
+      "text.v1911.intendant_guilde.retrouvailles": "Te revoilà. La clé est toujours à ma ceinture, la réserve toujours en ordre. Je l'ai recomptée deux fois : un intendant ne se fie jamais à un seul compte.",
+      "text.v1911.archiviste.retrouvailles": "Tiens, tu reviens. J'ai gardé ta place entre les rayonnages. Assieds-toi, et ne touche à rien : l'ordre est fragile.",
+      "text.v1911.lison.retrouvailles": "C'est toi ! Je t'ai reconnu à ton pas. Si, je te jure ! Maman dit de ne pas te parler, alors je parle vite.",
+      "text.v1911.apprentie.retrouvailles": "Ah ! Tu es revenu. Je… je disais justement au seau que tu reviendrais. Il n'y croyait pas. Il a tort, hein ?",
+      "text.v1911.doyen.retrouvailles": "Te revoilà. Les pierres sont là, et nous avec. Assieds-toi si tu veux : le muret a porté pire que toi.",
+      "text.v1911.herboriste_hameau.retrouvailles": "Tiens, te revoilà ! Montre tes mains. Rien ne tremble : tu as mangé. Alors assieds-toi, tu es chez toi.",
+      "text.v1911.fermier.retrouvailles": "Ah, c'est toi. Le blé pousse, les bêtes rôdent, et tu reviens. Après la pluie, le blé : on fait avec.",
+      "text.v1911.fermiere.retrouvailles": "Te revoilà ! Fais attention où tu marches. Mes pommiers t'ont reconnu, eux : ils boudent un peu moins.",
+      "text.v1911.veuve.retrouvailles": "Te revoilà. J'ai reconnu ton pas avant de lever les yeux. On apprend à reconnaître les pas, quand on attend.",
+      "text.v1911.thibaut.retrouvailles": "C'est toi. Reste au mur, parle bas. Les marcheurs bruyants reviennent rarement. Toi, si.",
+      "text.v1911.deserteur.retrouvailles": "Ah, c'est toi ! J'ai failli me cacher derrière un sac. Pardon, je sursaute pour tout. Ta tête, au moins, je la connais.",
+      "text.v1911.ysarn.retrouvailles": "Toi. Toi, de nouveau. Les pierres te connaissent, maintenant. Elles… elles chuchotent ton pas. Chut."
     }
   }
 }

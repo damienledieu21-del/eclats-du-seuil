@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((9, 9, "0.17.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((9, 9, "0.18.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -114,7 +114,7 @@ public sealed class V23JourneeTests : IDisposable
         Assert.InRange(lines.Count, 60, 100);
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
-        Assert.All(lines, l => Assert.True(l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)));
+        Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
