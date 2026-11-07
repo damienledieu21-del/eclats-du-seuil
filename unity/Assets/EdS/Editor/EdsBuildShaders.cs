@@ -38,6 +38,12 @@ namespace EdS.Editor
         /// <summary>Essai réaliste 7 : matériau des particules, chargé par le jeu (nom partagé avec <c>Effects.MaterialName</c>).</summary>
         public const string ParticuleName = "EdsParticule";
 
+        /// <summary>Sous-lot V2.9.1 : matériau des échos fantômes (nom partagé avec <c>EchoGhosts.MaterialName</c>).</summary>
+        public const string EchoName = "EdsEcho";
+
+        /// <summary>Sous-lot V2.9.1 : matériau des déchirures des failles (nom partagé avec <c>WorldEventsView.TearMaterialName</c>).</summary>
+        public const string FailleName = "EdsFaille";
+
         private const string Folder = "Assets/EdS/Resources";
 
         private static string TemplatePath => Folder + "/" + TemplateName + ".mat";
@@ -88,6 +94,13 @@ namespace EdS.Editor
             Shader particule = Shader.Find("EdS/Particule");
             if (particule != null) AssetDatabase.CreateAsset(new Material(particule), Folder + "/" + ParticuleName + ".mat");
             else Debug.LogWarning("Éclats du Seuil : shader « EdS/Particule » absent ; le jeu construit n'aura pas d'effets en particules.");
+            // Sous-lot V2.9.1 : échos fantômes et déchirures des failles ; sans eux, échos pâles (V2.1) et failles en formes simples (V2.5).
+            Shader echo = Shader.Find("EdS/Echo");
+            if (echo != null) AssetDatabase.CreateAsset(new Material(echo), Folder + "/" + EchoName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « EdS/Echo » absent ; le jeu construit dessinera les échos pâles.");
+            Shader faille = Shader.Find("EdS/Faille");
+            if (faille != null) AssetDatabase.CreateAsset(new Material(faille), Folder + "/" + FailleName + ".mat");
+            else Debug.LogWarning("Éclats du Seuil : shader « EdS/Faille » absent ; le jeu construit dessinera les failles en formes simples.");
             AssetDatabase.SaveAssets();
             Debug.Log("Éclats du Seuil : matériau modèle « " + shader.name + " » emporté dans le jeu construit.");
         }

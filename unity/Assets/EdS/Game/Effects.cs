@@ -320,6 +320,47 @@ namespace EdS.Game
             Burst(Kind.Smoke, ground, 4, 0.3f, 0.8f, 0.8f, 1.4f, 0.9f, 1.3f, new Color(0.6f, 0.58f, 0.55f, 0.5f), 0f);
         }
 
+        /// <summary>
+        /// Sous-lot V2.9.1 : un écho qui se forme : lueurs de sa couleur qui montent autour de lui, un éclat à la poitrine.
+        /// </summary>
+        public void EchoForm(Vector3 feet, float height, Color color)
+        {
+            Rise(Kind.Mote, feet, Application.isMobilePlatform ? 8 : 16, 0.7f, 0.06f, 0.14f, 0.7f, 1.3f, color);
+            Burst(Kind.Glow, Chest(feet, height), 1, 0f, 0f, 1.2f, 1.6f, 0.5f, 0.6f, new Color(color.r, color.g, color.b, 0.6f), 0f);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : un écho qui meurt se défait en braises : étincelles de sa couleur lancées vers le haut, lueurs qui montent, un
+        /// éclair pâle (au lieu de la poussière d'une bête de chair).
+        /// </summary>
+        public void EchoEmbers(Vector3 feet, float height, Color color)
+        {
+            bool phone = Application.isMobilePlatform;
+            Burst(Kind.Spark, Chest(feet, height), phone ? 8 : 18, 0.6f, 2.2f, 0.05f, 0.12f, 0.6f, 1.2f, color, 1f);
+            Rise(Kind.Mote, feet, phone ? 10 : 24, 0.6f, 0.05f, 0.12f, 1f, 1.8f, color);
+            Burst(Kind.Flash, Chest(feet, height), 1, 0f, 0f, 1.4f, 1.8f, 0.3f, 0.35f, new Color(color.r, color.g, color.b, 0.7f), 0f);
+        }
+
+        /// <summary>Sous-lot V2.9.1 : une lueur de la traînée d'un écho, qui monte doucement et s'éteint.</summary>
+        public void Wisp(Vector3 at, Color color)
+        {
+            Vector3 jitter = new Vector3(Range(-0.25f, 0.25f), Range(-0.2f, 0.2f), Range(-0.25f, 0.25f));
+            EmitOne(Kind.Mote, at + jitter, new Vector3(0f, Range(0.2f, 0.5f), 0f), Range(0.05f, 0.1f), Range(0.6f, 1f),
+                new Color(color.r, color.g, color.b, 0.7f), Range(0f, 360f));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : une lueur aspirée par une faille : née à <paramref name="radius"/> mètres de <paramref name="center"/>, elle y
+        /// arrive en fin de vie.
+        /// </summary>
+        public void Pull(Vector3 center, float radius, Color color)
+        {
+            Vector3 from = center + RandomDirection() * radius;
+            if (from.y < 0.1f) from.y = 0.1f + Range(0f, 0.6f);
+            float life = Range(0.9f, 1.5f);
+            EmitOne(Kind.Glow, from, (center - from) / life, Range(0.08f, 0.18f), life, color, Range(0f, 360f));
+        }
+
         /// <summary>Frappe au sol d'un adversaire (cri et onde du Gardien) : onde, poussière ; <paramref name="radius"/> en mètres.</summary>
         public void Slam(Vector3 feet, float radius)
         {

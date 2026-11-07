@@ -4,6 +4,7 @@ using EdS.Domain.Combat;
 using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.Simulation.Engine;
+using EdS.World;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -40,6 +41,15 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.9 : voix des bêtes (hurlements, brame, grognements, lièvre qui détale), faites au premier besoin.</summary>
         private BeastVoices _voices;
+
+        // Sous-lot V2.9.1 : échos fantômes (shader « EdS/Echo »), la nuit lissée et les cicatrices du Seuil qui les rendent plus forts.
+        private readonly EchoGhosts _ghosts = new EchoGhosts();
+        private float _night;
+        private float _nightTarget;
+        private IReadOnlyList<ScarView> _scarList;
+
+        /// <summary>Sous-lot V2.9.1 : les effets en particules (braises et traînée des échos) ; null : sans particules.</summary>
+        public Effects Effects { get; set; }
         private GameObject _shield;
         private Renderer _shieldRenderer;
         private GameObject _targetRing;
@@ -155,6 +165,7 @@ namespace EdS.Game
             foreach (Material material in _echoMaterials.Values)
                 if (material != null) Object.Destroy(material);
             _echoMaterials.Clear();
+            _ghosts.Clear();
             _baseColors.Clear();
             if (_player != null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
@@ -269,7 +280,9 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : Croc-Gris est un loup bien plus grand que les autres (StyleRules.BeastHeight).
             StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
-            if (!player && NightLamps.IsEcho(id)) Echo(body);   // sous-lot V2.1 : les échos de la nuit
+            // Sous-lot V2.1 : les échos de la nuit, pâles ; V2.9.1 : tous les échos (EchoLooks.Of), fantômes si le shader des échos est là.
+            EchoKind echo = player ? EchoKind.None : EchoLooks.Of(id);
+            if (echo != EchoKind.None && !_ghosts.Dress(id, body, echo, look != null ? look.Height : 1.6f)) Echo(body);
             // Sous-lot V2.4 : un cerf ou un lièvre sans modèle prend sa forme simple (corps, pattes, bois ou oreilles).
             if (!player && look == null && Wildlife.KindOf(id) is WildlifeKind kind && kind != WildlifeKind.None) _wild[id] = new WildlifeLook(body, kind);
         }
@@ -317,6 +330,33 @@ namespace EdS.Game
                     }
                 }
                 renderer.sharedMaterials = materials;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : avant <see cref="Sync"/>, la nuit (les échos y brillent plus) et les cicatrices du Seuil (null : aucune ; un écho
+        /// sur une cicatrice est plus solide et plus vif, selon son palier).
+        /// </summary>
+        public void Echoes(bool night, IReadOnlyList<ScarView> scars)
+        {
+            _nightTarget = night ? 1f : 0f;
+            _scarList = scars;
+        }
+
+        /// <summary>Sous-lot V2.9.1 : le combattant est-il un écho fantôme (il meurt en braises, sans la poussière d'une bête) ?</summary>
+        public bool IsGhost(string id) => _ghosts.Has(id);
+
+        private void SyncGhosts(ICombatClient combat)
+        {
+            _night = Mathf.MoveTowards(_night, _nightTarget, Time.deltaTime * 0.25f);   // quatre secondes de fondu
+            foreach (OtherState other in combat.Others())
+            {
+                if (!_ghosts.Has(other.Id) || !_bodies.TryGetValue(other.Id, out GameObject body)) continue;
+                CombatantView v = other.View;
+                double health = v.MaxHealth is long max && max > 0 && v.Health is long h ? (double)h / max : 1.0;
+                Vector3 at = body.transform.position;
+                int stage = EchoLooks.ScarStageAt(_scarList, at.x, at.z);
+                _ghosts.Update(other.Id, body, v.IsDead, health, stage, _night, Effects, Time.deltaTime);
             }
         }
 
@@ -631,6 +671,7 @@ namespace EdS.Game
                 Tint(other.Id, other.View.IsDead, other.View.States.Contains("stun"));
             }
             Tint(combat.PlayerId, me.IsDead, me.States.Contains("stun"));
+            SyncGhosts(combat);   // sous-lot V2.9.1
             // Essai de style : les modèles suivent l'allure affichée de leur corps.
             if (_looks.TryGetValue(combat.PlayerId, out StyleBody mine)) mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);
             foreach (OtherState other in combat.Others())

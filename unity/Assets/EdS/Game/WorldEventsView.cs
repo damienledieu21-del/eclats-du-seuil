@@ -43,6 +43,72 @@ namespace EdS.Game
         private float _churchStarted;
         private int _churches;
 
+        // Sous-lot V2.9.1 : la déchirure lumineuse de chaque faille (shader « EdS/Faille »), sa lumière qui bat, les lueurs aspirées ; plus
+        // grande sur une cicatrice, selon son palier (EchoLooks.Rift). Sans le shader : les formes simples de la V2.5 seules.
+        private sealed class Tear
+        {
+            public Transform Quad;
+            public Material Material;
+            public Light Light;
+            public float Pull;
+        }
+
+        private readonly Dictionary<string, Tear> _tears = new Dictionary<string, Tear>();
+        private static readonly Color PullColor = new Color(0.75f, 0.5f, 1f, 0.8f);
+
+        /// <summary>Sous-lot V2.9.1 : les effets en particules (lueurs aspirées par les failles) ; null : sans particules.</summary>
+        public Effects Effects { get; set; }
+
+        /// <summary>Matériau modèle des déchirures, emporté dans le jeu construit (<c>EdsBuildShaders</c>).</summary>
+        public const string TearMaterialName = "EdsFaille";
+
+        private static Material _tearTemplate;
+        private static bool _tearLoaded;
+
+        /// <summary>Sous-lot V2.9.1 : le matériau modèle de « EdS/Faille », ou null s'il manque ou n'est pas pris en charge.</summary>
+        internal static Material TearTemplate
+        {
+            get
+            {
+                if (_tearLoaded) return _tearTemplate;
+                _tearLoaded = true;
+                _tearTemplate = Resources.Load<Material>(TearMaterialName);
+                if (_tearTemplate == null)
+                {
+                    Shader shader = Shader.Find("EdS/Faille");
+                    if (shader != null && shader.isSupported) _tearTemplate = new Material(shader);
+                }
+                return _tearTemplate;
+            }
+        }
+
+        /// <summary>Sous-lot V2.9.1 : une copie du matériau des déchirures, réglée (null sans le shader). À détruire avec son objet.</summary>
+        internal static Material NewTear(float seed, bool distort)
+        {
+            Material template = TearTemplate;
+            if (template == null) return null;
+            var m = new Material(template) { name = "Déchirure du Seuil" };
+            m.SetFloat("_Seed", seed);
+            // Distorsion de la scène seulement sur ordinateur (son rendu garde l'image opaque de la scène, EdsStyle) ; jamais sur téléphone.
+            m.SetFloat("_Distort", distort && !Application.isMobilePlatform ? 1f : 0f);
+            m.renderQueue = 3050;
+            return m;
+        }
+
+        /// <summary>Sous-lot V2.9.1 : un quad de déchirure sous <paramref name="parent"/>, sans ombre.</summary>
+        internal static Transform TearQuad(string name, Transform parent, Material material)
+        {
+            GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = name;
+            Object.Destroy(quad.GetComponent<Collider>());
+            Renderer renderer = quad.GetComponent<Renderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            quad.transform.SetParent(parent, false);
+            return quad.transform;
+        }
+
         public WorldEventsView()
         {
             _root = new GameObject("Événements du monde (V2.5)");
@@ -81,6 +147,9 @@ namespace EdS.Game
         {
             if (_root != null) Object.Destroy(_root);
             _rifts.Clear();
+            foreach (Tear t in _tears.Values)
+                if (t.Material != null) Object.Destroy(t.Material);
+            _tears.Clear();
             _aftermaths.Clear();
             _smokes.Clear();
         }
@@ -116,6 +185,7 @@ namespace EdS.Game
                     if (!_rifts.TryGetValue(v.Event.Id, out List<Transform> pieces)) _rifts[v.Event.Id] = pieces = BuildRift(v.Event.Id, at);
                     float opening = Mathf.Clamp01((float)((w.Zone.Engine.CurrentTick - v.StartTick) / 60.0));   // trois secondes pour s'ouvrir
                     ShowRift(pieces, opening);
+                    ShowTear(v.Event.Id, pieces, opening, EchoLooks.ScarStageAt(a.Scars, Raw(at.X), Raw(at.Z)), deltaTime);
                     if (pieces.Count > 0 && pieces[0] != null) _riftAt[v.Event.Id] = pieces[0].position;
                     Hum(v.Event.Id, pieces, opening);
                 }
@@ -123,6 +193,8 @@ namespace EdS.Game
             {
                 foreach (Transform t in _rifts[id]) if (t != null) Object.Destroy(t.gameObject);
                 _rifts.Remove(id);
+                if (_tears.TryGetValue(id, out Tear tear) && tear.Material != null) Object.Destroy(tear.Material);
+                _tears.Remove(id);
                 _hums.Remove(id);   // la source était sur l'ancre, détruite avec elle
             }
             // Conséquences d'une attaque manquée : fumée et débris au lieu de l'événement.
@@ -320,7 +392,58 @@ namespace EdS.Game
             light.intensity = 2.2f;
             light.transform.SetParent(anchor.transform, false);
             light.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+            // Sous-lot V2.9.1 : la déchirure remplace le cœur pâle et son bord (les éclats sombres qui tournent restent).
+            Material material = NewTear(StyleRules.Variant(id, 1000) / 37f, true);
+            if (material != null)
+            {
+                Transform quad = TearQuad("Déchirure", anchor.transform, material);
+                quad.localPosition = new Vector3(0f, 1.6f, 0f);
+                quad.localScale = new Vector3(1.6f, 3.6f, 1f);
+                for (int i = 1; i < pieces.Count; i++)
+                    if (pieces[i] != null && (pieces[i].name == "coeur" || pieces[i].name == "bord")) pieces[i].gameObject.SetActive(false);
+                _tears[id] = new Tear { Quad = quad, Material = material, Light = light };
+            }
+            else _tears[id] = new Tear { Light = light };
             return pieces;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : la faille grandit avec le palier de la cicatrice où elle s'ouvre, sa lumière bat, la déchirure se tourne vers la
+        /// caméra (autour de l'axe vertical), des lueurs sont aspirées vers elle.
+        /// </summary>
+        private void ShowTear(string id, List<Transform> pieces, float opening, int stage, float deltaTime)
+        {
+            if (!_tears.TryGetValue(id, out Tear tear) || pieces.Count == 0 || pieces[0] == null) return;
+            Transform anchor = pieces[0];
+            (double scale, double hz, double pullRate, double light) = EchoLooks.Rift(stage, Application.isMobilePlatform);
+            float k = (float)scale;
+            anchor.localScale = new Vector3(k, k, k);
+            float pulse = (float)EchoLooks.Pulse(_time + StyleRules.Variant(id, 100) * 0.13f, hz);
+            if (tear.Light != null)
+            {
+                tear.Light.intensity = (float)light * pulse * opening;
+                tear.Light.range = 9f * k;
+            }
+            if (tear.Material != null)
+            {
+                tear.Material.SetFloat("_Opening", opening);
+                tear.Material.SetFloat("_Intensity", 0.7f + 0.5f * pulse);
+            }
+            Camera camera = Camera.main;
+            if (tear.Quad != null && camera != null)
+            {
+                Vector3 to = camera.transform.position - tear.Quad.position;
+                to.y = 0f;
+                if (to.sqrMagnitude > 0.01f) tear.Quad.rotation = Quaternion.LookRotation(Vector3.zero - to);   // le quad de Unity se voit de face depuis -z
+            }
+            if (Effects == null || deltaTime <= 0f || opening <= 0f) return;
+            tear.Pull += deltaTime * (float)pullRate * opening;
+            Vector3 center = anchor.position + Vector3.up * (1.6f * k);
+            while (tear.Pull >= 1f)
+            {
+                tear.Pull -= 1f;
+                Effects.Pull(center, 2.6f * k, PullColor);
+            }
         }
 
         private void ShowRift(List<Transform> pieces, float opening)

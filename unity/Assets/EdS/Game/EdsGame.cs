@@ -169,6 +169,7 @@ namespace EdS.Game
                 _talentView = TalentTreeView.Create();
                 _book = AdventureBook.Create();
                 _effects = Effects.Create();   // essai réaliste 7 : rien sans le shader des particules
+                _arena.Effects = _effects;   // sous-lot V2.9.1 : braises et traînée des échos
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
                 _stage = new StoryStage(_camera.Camera.transform);   // sous-lot V1.9.8
             }
@@ -529,6 +530,7 @@ namespace EdS.Game
             _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
+            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars);   // sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices
             _arena.Sync(_combat, player, null);
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
@@ -549,7 +551,7 @@ namespace EdS.Game
             _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
                 _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
             // Sous-lot V2.5 : événements du monde (faille, pillage, cloche).
-            if (_worldEvents == null) _worldEvents = new WorldEventsView();
+            if (_worldEvents == null) _worldEvents = new WorldEventsView { Effects = _effects };   // V2.9.1 : lueurs aspirées
             _worldEvents.Sync(a, _paused ? 0f : Time.deltaTime);
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
@@ -1276,7 +1278,9 @@ namespace EdS.Game
                 case FeedbackKind.Blocked: _effects.Blocked(feet, height); break;
                 case FeedbackKind.PerfectParry: _effects.Parry(feet, height); break;
                 case FeedbackKind.GuardBroken: _effects.GuardBroken(feet, height); break;
-                case FeedbackKind.Died: _effects.Death(feet); break;
+                case FeedbackKind.Died:
+                    if (!_arena.IsGhost(id)) _effects.Death(feet);   // sous-lot V2.9.1 : un écho se défait en braises (EchoGhosts)
+                    break;
             }
         }
 
