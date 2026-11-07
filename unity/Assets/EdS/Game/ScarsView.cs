@@ -25,6 +25,8 @@ namespace EdS.Game
             public readonly List<Transform> Motes = new List<Transform>();
         }
 
+        private static readonly ScarView[] NoScars = new ScarView[0];
+
         private readonly GameObject _root;
         private readonly Dictionary<string, Shown> _scars = new Dictionary<string, Shown>();
         private readonly List<string> _gone = new List<string>();
@@ -50,11 +52,12 @@ namespace EdS.Game
             _time += deltaTime;
             WorldSession w = a.World;
             bool outside = w.InStoryZone && w.Definition != null && !a.InScene;
-            IReadOnlyList<ScarView> scars = outside ? a.Scars : (IReadOnlyList<ScarView>)new ScarView[0];
+            IReadOnlyList<ScarView> scars = outside ? a.Scars : NoScars;
             _gone.Clear();
             _gone.AddRange(_scars.Keys);
-            foreach (ScarView v in scars)
+            for (int i = 0; i < scars.Count; i++)   // relecture de la PR #110 : sans allocation par image
             {
+                ScarView v = scars[i];
                 _gone.Remove(v.Key);
                 if (!_scars.TryGetValue(v.Key, out Shown s) || s.Stage != v.Stage)
                 {

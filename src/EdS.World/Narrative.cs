@@ -766,6 +766,9 @@ namespace EdS.World
         /// Sous-lot V1.9.6 : passe la scène <paramref name="scene"/> à jouer : son fait de fin est appris (annoncé au tick suivant), comme si
         /// elle avait été jouée. Faux, sans rien changer, si elle n'est pas à jouer.
         /// </summary>
+        /// <summary>Relecture de la PR #110 : fait appris tout de suite, hors d'un tick (sa nouvelle est rendue au tick suivant).</summary>
+        internal bool LearnQueued(string fact) => Learn(fact, _queued);
+
         internal bool SkipScene(string scene)
         {
             if (!(PendingScene is Scene s) || s.Id != scene) return false;

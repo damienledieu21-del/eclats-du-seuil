@@ -342,6 +342,9 @@ namespace EdS.World
 
             /// <summary>Sous-lot V2.6 : PV et dégâts, en pour cent de ceux du modèle (cicatrice du Seuil ; 100 sinon).</summary>
             public long Strength = 100;
+
+            /// <summary>Relecture de la PR #110 : écho rôdeur d'une cicatrice.</summary>
+            public bool Haunt;
         }
 
         /// <summary>Sous-lot V2.6 : échos rôdeurs d'une cicatrice (une place par écho rôdeur de la variante) et minute absolue de leur retour.</summary>
@@ -377,6 +380,14 @@ namespace EdS.World
         private readonly HashSet<string> _waitingAnnounced = new HashSet<string>(StringComparer.Ordinal);
         private int _counter;
         private bool _opened;
+
+        /// <summary>
+        /// Relecture de la PR #110 : change dès qu'une créature d'événement ou un écho rôdeur arrive, tombe, part, ou qu'une occurrence
+        /// commence ou finit (les vues des cicatrices ne sont recalculées que si elle change).
+        /// </summary>
+        public int Version { get; private set; }
+
+        private void Changed() => Version = unchecked(Version + 1);
 
         /// <summary>Relecture de la PR #107 : jour de la dernière occurrence tentée par événement (une occurrence n'est tentée qu'une fois par session).</summary>
         private readonly Dictionary<string, long> _tried = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -483,6 +494,7 @@ namespace EdS.World
                         continue;
                     }
                     _runs[e.Id] = run = new Run { Occurrence = o };
+                    Changed();
                 }
                 StepRun(world, zone, run, now, nowTick, reserved, notices);
                 if (Settled(run) || (run.Ending && run.Slots.Count == 0))
@@ -490,6 +502,7 @@ namespace EdS.World
                     if (!run.Closed && e.Settles) Settle(world, run, notices);
                     else if (!e.Settles && !run.Refused) notices.Add(new WorldEventNotice(WorldEventNoticeKind.Ended, e.Id, run.Occurrence.Group.Id, run.Occurrence.Day));
                     _runs[e.Id] = null;
+                    Changed();
                 }
             }
             StepHaunts(world, zone, now, nowTick, reserved, minuteChanged, notices);
@@ -540,6 +553,7 @@ namespace EdS.World
             {
                 run.Started = true;
                 run.Announced = true;
+                Changed();
                 if (!Reserve(zone, reserved, o.Group.Creatures.Count))
                 {
                     // Plus de place hors de la réserve des quêtes : l'occurrence n'a pas lieu, réglée sans issue (ni victoire ni pillage).
@@ -626,12 +640,14 @@ namespace EdS.World
                 bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < now;
                 if (v.IsDead)
                 {
+                    Changed();
                     s.Dead = true;
                     s.Hurt |= v.HurtByCharacter;
                     return;
                 }
                 if (v.HasLeft || refused)
                 {
+                    Changed();
                     // Laisse (ou arrivée refusée) : une vie calme revient à sa place une seconde plus tard, si une nouvelle place se réserve
                     // maintenant (relecture de la PR #107 : avant tout retour) ; sinon elle a pris la fuite. Après la fin, elle est partie.
                     s.Leashing = false;
@@ -684,6 +700,9 @@ namespace EdS.World
             s.Current = id;
             s.RetryAt = null;
             _byCreature[id] = s.Like;
+            // Relecture de la PR #110 : un écho rôdeur revient sans fin : sa mort n'est pas inscrite au registre (borné).
+            if (s.Haunt) zone.Transient(id);
+            Changed();
         }
 
         private static bool Occupied(CombatEngine engine, CombatantPlacement place)
@@ -729,26 +748,29 @@ namespace EdS.World
                 if (!_haunts.TryGetValue(key, out Haunt? h))
                     _haunts[key] = h = new Haunt { Slots = new Slot?[g.Haunts.Count], ReadyAt = new long[g.Haunts.Count] };
                 int want = RiftOpenAt(e.Id, g.Id) ? 0 : rule.HauntsAt(stage, g.Haunts.Count);
-                bool rose = false;
+                long strength = rule.StrengthAt(stage);
+                bool rose = false, any = false;
                 for (int i = 0; i < h.Slots.Length; i++)
                 {
                     if (h.Slots[i] is Slot s)
                     {
-                        StepSlot(zone, s, nowTick, tickMs, reserved, false);
-                        if (s.Dead || s.Gone)
-                        {
-                            h.Slots[i] = null;
-                            h.ReadyAt[i] = checked(now + rule.HauntRespawnMinutes);
-                        }
+                        // Relecture de la PR #110 : un écho de trop (la cicatrice a reculé, une faille s'ouvre à sa place) ou plus fort que son
+                        // palier s'en va dès qu'il ne se bat plus contre un personnage ; il revient à la minute suivante s'il est encore voulu.
+                        bool surplus = i >= want || s.Strength > strength;
+                        StepSlot(zone, s, nowTick, tickMs, reserved, surplus);
+                        if (surplus && Withdraw(zone, s)) h.ReadyAt[i] = now;
+                        else if (s.Dead || s.Gone) h.ReadyAt[i] = checked(now + rule.HauntRespawnMinutes);
+                        if (s.Dead || s.Gone) h.Slots[i] = null;
+                        else any = true;
                         continue;
                     }
                     if (i >= want || !minuteChanged || now < h.ReadyAt[i] || !Reserve(zone, reserved, 1)) continue;
                     WorldEventCreature c = g.Haunts[i];
-                    h.Slots[i] = new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = rule.StrengthAt(stage) };
-                    rose = true;
+                    h.Slots[i] = new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = strength, Haunt = true };
+                    rose = any = true;
+                    Changed();
                 }
                 // Une annonce quand ils se lèvent (une fois, puis de nouveau après qu'ils ont tous été vaincus).
-                bool any = h.Slots.Any(x => x != null);
                 if (rose && !h.Stirred) notices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarStirs, e.Id, g.Id, now / WorldClock.MinutesPerDay, stage));
                 h.Stirred = any;
             }
@@ -760,15 +782,31 @@ namespace EdS.World
                 {
                     if (!(pair.Value.Slots[i] is Slot s)) continue;
                     StepSlot(zone, s, nowTick, tickMs, reserved, true);
-                    if (s.Current != null && !s.Dead && !s.Gone)
-                    {
-                        CombatantView v = zone.Engine.View(s.Current);
-                        if (v.IsPresent && !HeldByPlayer(zone.Engine, v) && TryLeave(zone, s.Current)) s.Gone = s.Withdrawn = true;
-                    }
+                    Withdraw(zone, s);
                     if (s.Dead || s.Gone) pair.Value.Slots[i] = null;
                 }
                 pair.Value.Stirred = false;
             }
+        }
+
+        /// <summary>
+        /// Relecture de la PR #110 : un écho rôdeur qui n'est plus voulu part s'il est au calme (pas encore arrivé : il ne viendra pas) ; vrai
+        /// s'il est parti ainsi (pas vaincu).
+        /// </summary>
+        private bool Withdraw(Zone zone, Slot s)
+        {
+            if (s.Dead || s.Gone) return s.Withdrawn;
+            if (s.Current is null)
+            {
+                s.Gone = s.Withdrawn = true;
+                Changed();
+                return true;
+            }
+            CombatantView v = zone.Engine.View(s.Current);
+            if (!v.IsPresent || HeldByPlayer(zone.Engine, v) || !TryLeave(zone, s.Current)) return false;
+            s.Gone = s.Withdrawn = true;
+            Changed();
+            return true;
         }
 
         private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices) =>
@@ -791,6 +829,7 @@ namespace EdS.World
             r.Closed = true;
             world.SettleEvent(r.Occurrence.Event, r.Occurrence, EventOutcome.Won, null, notices);
             _runs[eventId] = null;
+            Changed();
             return RiftRefusal.None;
         }
     }

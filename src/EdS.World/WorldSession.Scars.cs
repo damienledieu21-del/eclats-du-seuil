@@ -46,19 +46,42 @@ namespace EdS.World
             return null;
         }
 
-        /// <summary>Sous-lot V2.6 : cicatrices de la zone, pour l'affichage (palier, rayon, échos rôdeurs, faille ouverte à leur place).</summary>
+        private static readonly IReadOnlyList<ScarView> NoScars = new ScarView[0];
+
+        /// <summary>Relecture de la PR #110 : vues gardées tant que les cicatrices, le jour et les échos ne changent pas (lues plusieurs fois par image).</summary>
+        private IReadOnlyList<ScarView> _scarViews = NoScars;
+        private IReadOnlyList<SavedScar>? _scarViewsOf;
+        private long _scarViewsDay = -1;
+        private int _scarViewsVersion = -1;
+
+        /// <summary>
+        /// Sous-lot V2.6 : cicatrices de la zone, pour l'affichage (palier, rayon, échos rôdeurs, faille ouverte à leur place). Relecture de la
+        /// PR #110 : recalculées seulement quand les cicatrices du personnage, le jour du monde ou les échos changent ; sinon la même liste.
+        /// </summary>
         public IReadOnlyList<ScarView> Scars
         {
             get
             {
-                var list = new List<ScarView>();
-                foreach ((string key, WorldEventDefinition e, WorldEventGroup g, int stage) in ScarStates())
-                {
-                    SavedScar saved = _character.Scars.First(x => x.Id == key);
-                    list.Add(new ScarView(key, e, g, g.Position!.Value, stage, e.Scar!.RadiusAt(stage), saved.Born, WorldScarRules.NextStageDay(saved, e.Scar, Today),
-                        _events?.HauntsOf(key) ?? Array.Empty<string>(), _events?.RiftOpenAt(e.Id, g.Id) ?? false));
-                }
-                return list;
+                IReadOnlyList<SavedScar> saved = _character.Scars;
+                if (saved.Count == 0) return NoScars;
+                long today = Today;
+                int version = _events?.Version ?? 0;
+                if (ReferenceEquals(saved, _scarViewsOf) && today == _scarViewsDay && version == _scarViewsVersion) return _scarViews;
+                var list = new List<ScarView>(saved.Count);
+                if (Definition is ZoneDefinition zone && InStoryZone)
+                    for (int i = 0; i < saved.Count; i++)
+                    {
+                        SavedScar s = saved[i];
+                        if (!(ScarOf(zone, s.Id) is (WorldEventDefinition e, WorldEventGroup g))) continue;
+                        int stage = WorldScarRules.StageAt(s, e.Scar!, today);
+                        list.Add(new ScarView(s.Id, e, g, g.Position!.Value, stage, e.Scar!.RadiusAt(stage), s.Born, WorldScarRules.NextStageDay(s, e.Scar, today),
+                            _events?.HauntsOf(s.Id) ?? Array.Empty<string>(), _events?.RiftOpenAt(e.Id, g.Id) ?? false));
+                    }
+                _scarViews = list.Count == 0 ? NoScars : list;
+                _scarViewsOf = saved;
+                _scarViewsDay = today;
+                _scarViewsVersion = version;
+                return _scarViews;
             }
         }
 
@@ -110,7 +133,7 @@ namespace EdS.World
         /// Sous-lot V2.6 : une faille de <paramref name="e"/> refermée à la variante <paramref name="group"/> : la cicatrice qui y est recule d'un
         /// palier (effacée au palier 1) ; les autres cicatrices de la faille s'arrêtent de grandir (leur palier d'aujourd'hui repart d'aujourd'hui).
         /// </summary>
-        private void ScarRecede(WorldEventDefinition e, string group, long occurrenceDay, List<WorldEventNotice> notices)
+        internal void ScarRecede(WorldEventDefinition e, string group, long occurrenceDay, List<WorldEventNotice> notices)
         {
             if (!(e.Scar is WorldEventScar rule) || Definition is null) return;
             string key = WorldScarRules.Key(Definition.Id, e.Id, group);
@@ -160,7 +183,12 @@ namespace EdS.World
             long gained = xp - _character.Xp;
             _character = _character.WithXp(xp);
             _queuedNotices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarPurified, e.Id, g.Id, Today, stage, gained));
-            if (rule.PurifiedFact is string fact) _eventFacts.Add(fact);
+            // Relecture de la PR #110 : le fait est appris tout de suite, avec l'expérience et l'effacement (une sauvegarde le garde).
+            if (rule.PurifiedFact is string fact)
+            {
+                if (Narrative != null) Narrative.LearnQueued(fact);
+                else if (!_pendingFacts.Contains(fact)) _pendingFacts.Add(fact);
+            }
             _scarStagesSeen = null;
             return ScarRefusal.None;
         }

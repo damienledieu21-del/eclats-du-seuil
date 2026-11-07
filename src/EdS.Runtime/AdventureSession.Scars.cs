@@ -28,8 +28,18 @@ namespace EdS.Runtime
         public static readonly Fixed ScarReach = Fixed.FromInt(4);
 
         /// <summary>Sous-lot V2.6 : cicatrice dont le cœur est à portée (pour la purifier), ou null ; jamais pendant qu'une faille y est ouverte.</summary>
-        public ScarView? ScarInReach => Me is GroundVector p && !World.IsDefeated
-            ? Scars.FirstOrDefault(v => !v.RiftOpen && Within(p, v.Position, ScarReach)) : null;
+        public ScarView? ScarInReach
+        {
+            get
+            {
+                // Relecture de la PR #110 : lue à chaque image : une boucle sur la liste gardée par le monde, sans allocation.
+                IReadOnlyList<ScarView> scars = Scars;
+                if (scars.Count == 0 || World.IsDefeated || !(Me is GroundVector p)) return null;
+                for (int i = 0; i < scars.Count; i++)
+                    if (!scars[i].RiftOpen && Within(p, scars[i].Position, ScarReach)) return scars[i];
+                return null;
+            }
+        }
 
         /// <summary>Sous-lot V2.6 : purifie la cicatrice à portée ; un message dit pourquoi si c'est refusé.</summary>
         public bool PurifyScar()
@@ -72,13 +82,21 @@ namespace EdS.Runtime
         {
             get
             {
-                if (!(Me is GroundVector p)) return null;
-                ScarView? v = Scars.Where(x => Within(p, x.Position, x.Radius)).OrderByDescending(x => x.Stage).FirstOrDefault();
+                IReadOnlyList<ScarView> scars = Scars;
+                if (scars.Count == 0 || !(Me is GroundVector p)) return null;
+                ScarView? v = null;
+                for (int i = 0; i < scars.Count; i++)
+                    if (Within(p, scars[i].Position, scars[i].Radius) && (v is null || scars[i].Stage > v.Stage)) v = scars[i];
                 if (v is null) return null;
+                if (ReferenceEquals(v, _labelOf)) return _label;   // relecture de la PR #110 : le même texte tant que la vue ne change pas
                 string stage = Texts.Has($"text.ui.scar.stage.{v.Stage}") ? " — " + Text($"text.ui.scar.stage.{v.Stage}") : string.Empty;
-                return string.Format(System.Globalization.CultureInfo.InvariantCulture, Text("text.ui.scar.label"), v.Stage, v.MaxStage) + stage;
+                _labelOf = v;
+                return _label = string.Format(System.Globalization.CultureInfo.InvariantCulture, Text("text.ui.scar.label"), v.Stage, v.MaxStage) + stage;
             }
         }
+
+        private ScarView? _labelOf;
+        private string? _label;
     }
 
     /// <summary>

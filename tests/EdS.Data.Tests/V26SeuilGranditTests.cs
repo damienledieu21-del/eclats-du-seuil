@@ -331,6 +331,79 @@ public class V26SeuilGranditTests
         Assert.True(w.Scars.Single().RiftOpen);
     }
 
+    // --- Relecture indépendante de la PR #110 ----------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Rechargee_au_milieu_d_un_palier_rien_ne_change()
+    {
+        // Née au jour 3, palier 1 ; au jour 4 (milieu du palier), une session, une sauvegarde, une autre session : même palier, rien d'annoncé.
+        WorldSession w = Session(Zone(-18, -12), Noon(4), WithScar(Hero(), Lake, 1, 3));
+        Run(w, 3);
+        ScarView before = w.Scars.Single();
+        Assert.Same(w.Scars, w.Scars);   // vues gardées entre deux lectures
+        WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
+        var again = new WorldSession(saved, Zone(-18, -12), ShippedData, Progression, ItemsCatalog, Book(Vallons), safePoint: "place_du_village");
+        Assert.DoesNotContain(Run(again, 3), n => n.Kind == WorldEventNoticeKind.ScarGrew || n.Kind == WorldEventNoticeKind.ScarBorn);
+        ScarView after = again.Scars.Single();
+        Assert.Equal((1, 5L, Fixed.FromInt(8)), (before.Stage, before.NextStageDay!.Value, before.Radius));
+        Assert.Equal((before.Stage, before.NextStageDay, before.Radius), (after.Stage, after.NextStageDay, after.Radius));
+        Assert.Equal(("lac", 1, 3L, 3L), again.SavedScars.Select(s => (s.Id.Split('/')[2], s.Stage, s.Since, s.Born)).Single());
+    }
+
+    [Fact]
+    public void Recul_avec_echos_debout_ceux_de_trop_s_en_vont_et_les_autres_reviennent_a_leur_force()
+    {
+        WorldSession w = Session(Zone(-18, -12), Noon(6), WithScar(Hero(), Ruins, 3, 6));
+        Run(w, 40);
+        IReadOnlyList<string> first = w.Scars.Single().Haunts;
+        Assert.Equal(2, first.Count);
+        Assert.All(first, id => Assert.True(w.Zone.IsTransient(id)));   // morts jamais inscrites au registre (retours sans fin)
+        long model = w.Definition!.PopulationOf("loup_echo1")!.Template.Health!.Value;
+        WorldEventDefinition rift = w.Definition.EventOf(Rift)!;
+        var notices = new List<WorldEventNotice>();
+        w.ScarRecede(rift, "ruines", 6, notices);
+        Assert.Equal(2, Assert.Single(notices, n => n.Kind == WorldEventNoticeKind.ScarReceded).Wave);
+        Run(w, 400);   // plus de deux minutes du monde
+        ScarView v = w.Scars.Single();
+        Assert.Equal(2, v.Stage);
+        string haunt = Assert.Single(v.Haunts);
+        Assert.Equal(model * 115 / 100, w.Zone.Engine.View(haunt).MaxHealth);
+        Assert.All(first, id => Assert.True(w.Zone.Engine.View(id).HasLeft, id));   // partis au calme, pas vaincus
+        // Effacée tout à fait (deux reculs) : son écho s'en va, et rien ne se lève plus.
+        w.ScarRecede(rift, "ruines", 6, notices);
+        w.ScarRecede(rift, "ruines", 6, notices);
+        Assert.Single(notices, n => n.Kind == WorldEventNoticeKind.ScarHealed);
+        Run(w, 400);
+        Assert.Empty(w.Scars);
+        Assert.True(w.Zone.Engine.View(haunt).HasLeft);
+        Assert.Empty(w.SavedScars);
+    }
+
+    [Fact]
+    public void Au_palier_maximal_une_autre_faille_ratee_ne_depasse_pas_la_borne()
+    {
+        (SavedCharacter hero, EventOccurrence o, long tick) = Away();
+        WorldSession w = Session(Vallons, tick, WithScar(hero, $"zone.vallons/faille_du_seuil/{o.Group.Id}", 4, o.Day));
+        WorldEventNotice grew = Assert.Single(Run(w, 2), n => n.Kind == WorldEventNoticeKind.ScarGrew);
+        Assert.Equal(4, grew.Wave);
+        Assert.Equal(4, Assert.Single(w.SavedScars).Stage);
+    }
+
+    [Fact]
+    public void Une_faille_sans_cicatrice_crache_des_echos_a_leur_force()
+    {
+        WorldEventDefinition rift = Vallons.EventOf(Rift)!;
+        EventOccurrence o = WorldEventSchedule.Next(Vallons.Id, Vallons.Id, rift, 1440)!;
+        WorldSession w = Session(Vallons, WorldEventSchedule.TickAt(Clock, o.StartAt) - 2, Hero());
+        Run(w, 6);
+        WorldEventView ev = w.WorldEvents.Single(x => x.Event.Id == Rift);
+        long model = w.Definition!.PopulationOf("loup_echo1")!.Template.Health!.Value;
+        Assert.NotEmpty(ev.Creatures);
+        Assert.All(ev.Creatures, id => Assert.Equal(model, w.Zone.Engine.View(id).MaxHealth));
+        Assert.All(ev.Creatures, id => Assert.False(w.Zone.IsTransient(id)));   // les créatures d'une faille restent inscrites
+        Assert.Empty(w.Scars);
+    }
+
     // --- Purification --------------------------------------------------------------------------------------------------------------
 
     [Fact]
@@ -360,6 +433,8 @@ public class V26SeuilGranditTests
         Run(w, 2);
         long xp = w.Character.Xp;
         Assert.Equal(ScarRefusal.None, w.PurifyScar(Ruins));
+        // Relecture de la PR #110 : le fait est appris tout de suite (une sauvegarde avant le tick suivant le garde).
+        Assert.Contains("fact.event.faille_du_seuil.cicatrice_purifiee", w.Save().Character!.Story.Facts);
         Assert.Equal(0, w.Inventory.Count(Shard));
         Assert.Equal(xp + 200, w.Character.Xp);
         Assert.Equal(new[] { Lake }, w.SavedScars.Select(s => s.Id));
