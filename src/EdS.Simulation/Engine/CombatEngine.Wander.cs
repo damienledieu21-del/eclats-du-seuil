@@ -304,9 +304,14 @@ namespace EdS.Simulation.Engine
                     z[k] = _fightersById[k].Body?.Z ?? 0;
                 }
                 var states = new string?[n];
-                ResetPathBudget();   // sous-lot V2.8 : passe d'affichage, son propre budget
+                // Relecture de la PR #113 (sous-lot V2.8) : l'état affiché vient de la même passe que les intentions (même ordre tournant,
+                // même budget de recherches de chemin partagé avec les poursuivants) : il dit ce que la bête fera.
+                if (_spatial) Intentions(tick, x, z, states);
+                else
+                    for (int k = 0; k < n; k++)
+                        if (Wanders(_fightersById[k])) states[k] = PlanWander(k, tick, x, z).State;
                 for (int k = 0; k < n; k++)
-                    if (Wanders(_fightersById[k])) states[k] = PlanWander(k, tick, x, z).State;
+                    if (!Wanders(_fightersById[k])) states[k] = null;
                 _wanderStates = states;
                 _wanderStatesTick = tick;
             }

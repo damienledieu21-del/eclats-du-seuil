@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Scenarios;
@@ -177,6 +178,84 @@ public class V28CheminsMoteurTests
         }
         Assert.True(engine.PathSearches > 0);
     }
+    /// <summary>Douze sangliers qui patrouillent, chacun enfermé dans un petit enclos : chaque point de leur circuit est hors d'atteinte.</summary>
+    private static CombatSetup PennedBoars() => ReadMutated(r =>
+    {
+        JsonObject data = r["data"]!.AsObject();
+        data["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-40, -30), ["max"] = new JsonArray(40, 30) };
+        var obstacles = new JsonArray();
+        var combatants = new JsonArray();
+        JsonNode bastion = data["combatants"]![0]!.DeepClone();
+        bastion["position"] = new JsonArray(36, 26);
+        combatants.Add(bastion);
+        JsonNode wolf = data["combatants"]![1]!;
+        for (int k = 0; k < 12; k++)
+        {
+            double cx = -30 + (k % 6) * 12, cz = k < 6 ? -10 : 10;
+            JsonArray Box(double x0, double z0, double x1, double z1) => new JsonArray(new JsonArray(x0, z0), new JsonArray(x1, z0), new JsonArray(x1, z1), new JsonArray(x0, z1));
+            obstacles.Add(new JsonObject { ["id"] = $"enclos{k}_o", ["points"] = Box(cx - 2.1, cz - 2.1, cx - 1.6, cz + 2.1) });
+            obstacles.Add(new JsonObject { ["id"] = $"enclos{k}_e", ["points"] = Box(cx + 1.6, cz - 2.1, cx + 2.1, cz + 2.1) });
+            obstacles.Add(new JsonObject { ["id"] = $"enclos{k}_n", ["points"] = Box(cx - 1.6, cz + 1.6, cx + 1.6, cz + 2.1) });
+            obstacles.Add(new JsonObject { ["id"] = $"enclos{k}_s", ["points"] = Box(cx - 1.6, cz - 2.1, cx + 1.6, cz - 1.6) });
+            JsonNode boar = wolf.DeepClone();
+            boar["id"] = $"sanglier{k:00}";
+            boar["team"] = "gibier";
+            boar["position"] = new JsonArray(cx, cz);
+            boar["radius"] = 0.9;
+            boar["behavior"] = new JsonObject
+            {
+                ["maxRange"] = 0.5, ["aggroRange"] = 3, ["pack"] = false,
+                ["wander"] = new JsonObject { ["style"] = "patrol", ["radius"] = 3, ["pace"] = 0.5, ["legMs"] = 2000, ["pauseMs"] = new JsonArray(100, 200) },
+            };
+            combatants.Add(boar);
+        }
+        data["space"]!["obstacles"] = obstacles;
+        data["combatants"] = combatants;
+        data.Remove("truces");
+    }, scenario: Chemins).Setup!;
+
+    [Fact]
+    public void Etat_affiche_de_l_errance_egal_a_l_intention_sous_budget_epuise()
+    {
+        // Relecture de la PR #113 : douze bêtes ont besoin d'une recherche à chaque étape, huit seulement en ont une par tick (ordre qui
+        // tourne avec le tick) : l'état affiché vient de la même passe que l'intention (« patrol » marche, sinon elle attend).
+        CombatSetup setup = PennedBoars();
+        var engine = new CombatEngine(setup, new MemoryCombatLog());
+        string[] ids = Enumerable.Range(0, 12).Select(k => $"sanglier{k:00}").ToArray();
+        int straight = 0, held = 0;
+        for (int t = 0; t < 200; t++)
+        {
+            var shown = ids.ToDictionary(id => id, id => engine.View(id).Wander);
+            engine.Step();
+            foreach (string id in ids)
+            {
+                bool moving = engine.View(id).MoveDirection != null;
+                Assert.True(moving == (shown[id] == "walk"), $"tick {t}, {id} : affiché « {shown[id]} », marche {moving}");
+                if (moving) straight++;
+                else if (shown[id] != null) held++;
+            }
+        }
+        // Les deux cas se présentent : budget épuisé (droit, il glisse contre son enclos) et aucun chemin (il attend).
+        Assert.True(straight > 0 && held > 0, $"{straight} pas droits, {held} attentes");
+    }
+
+    [Fact]
+    public void Contourne_une_maison_symetrique_sans_changer_de_cote()
+    {
+        // Relecture de la PR #113 : devant un obstacle symétrique, le départage stable choisit un côté et le garde (aucune oscillation).
+        var engine = new CombatEngine(Load(), new MemoryCombatLog());
+        int side = 0;
+        while (!engine.IsFinished && At(engine, "loup_maison").Z.Raw > 40_000)
+        {
+            engine.Step();
+            long x = At(engine, "loup_maison").X.Raw;
+            if (Math.Abs(x) < 5_000) continue;
+            int now = Math.Sign(x);
+            if (side == 0) side = now;
+            Assert.Equal(side, now);
+        }
+        Assert.NotEqual(0, side);
+    }
 }
 
 /// <summary>Sous-lot V2.8 : grille de navigation et A* (EdS.Domain), sans moteur.</summary>
@@ -301,12 +380,54 @@ public class V28CheminsGrilleTests
         var search = new NavSearch();
         var path = new int[64];
         int start = grid.NearestFree(R(-900), R(-900), 2), goal = grid.NearestFree(R(900), R(900), 2);
-        Assert.Equal(NavStatus.Found, search.Find(grid, start, goal, 8_192, path, out int length));
-        Assert.Equal(64, length);   // chemin tronqué au tampon : seules les premières cases comptent pour avancer
+        // Chemin tronqué au tampon : seules les premières cases comptent pour avancer, et il est rendu partiel (relecture de la PR #113).
+        Assert.Equal(NavStatus.Partial, search.Find(grid, start, goal, 8_192, path, out int length));
+        Assert.Equal(64, length);
+        var whole = new int[4_096];
+        Assert.Equal(NavStatus.Found, search.Find(grid, start, goal, 8_192, whole, out int full));
+        Assert.Equal(goal, whole[full - 1]);
         Assert.Equal(start, path[0]);
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
         Assert.True(GC.GetAllocatedBytesForCurrentThread() - allocated < 4_096);
+    }
+    [Fact]
+    public void Statut_garde_en_cache_reponses_identiques_au_premier_appel()
+    {
+        // Relecture de la PR #113 : un chemin partiel en cache rend le même statut, le même trajet et le même « complet » qu'au premier appel.
+        var obstacles = new[] { Rect(-1, -18, 1, 20) };
+        long r = R(0.5);
+        var nav = new Navigator(R(-20), R(-20), R(20), R(20), obstacles, maxExpanded: 200);
+        List<GroundVector> first = nav.Route(r, R(-10), R(10), R(10), R(10), out bool c1)!;
+        NavSteer s1 = nav.Steer(r, R(-10), R(10), R(10), R(10), out long a1, out long b1);
+        long searches = nav.Searches;
+        List<GroundVector> second = nav.Route(r, R(-10), R(10), R(10), R(10), out bool c2)!;
+        NavSteer s2 = nav.Steer(r, R(-10), R(10), R(10), R(10), out long a2, out long b2);
+        Assert.Equal(searches, nav.Searches);   // servi par le cache
+        Assert.False(c1);
+        Assert.Equal(first, second);
+        Assert.Equal((c1, s1, a1, b1), (c2, s2, a2, b2));
+        Assert.Equal(NavSteer.Partial, s1);
+    }
+
+    [Fact]
+    public void Poche_sans_progres_va_droit_jamais_bloque()
+    {
+        // Relecture de la PR #113 : au fond d'une poche ouverte à l'opposé du but, avec un budget trop petit pour en sortir, la case de
+        // départ reste la plus proche du but : au lieu de rester sur place pour toujours, il va droit (comme avant V2.8) et glisse.
+        var pocket = new[] { Rect(-0.5, -6, 0, 6), Rect(0, 5.5, 10, 6), Rect(0, -6, 10, -5.5) };
+        var nav = new Navigator(R(-20), R(-20), R(20), R(20), pocket, maxExpanded: 20);
+        long r = R(0.5);
+        // Départ dans la case la plus à l'ouest de la poche (centre à 0,75 m, à plus de 0,625 m du fond), dans la rangée du but.
+        Assert.Equal(NavSteer.Straight, nav.Steer(r, R(0.8), R(-0.1), R(-10), R(0), out long ax, out long az));
+        Assert.Equal((R(-10), R(0)), (ax, az));
+        // L'affichage n'a pas de trajet : le marcheur applique son repli (rester, ou aller droit).
+        Assert.Null(nav.Route(r, R(0.8), R(-0.1), R(-10), R(0), out bool complete));
+        Assert.False(complete);
+        // Avec le budget normal, il sort de la poche par l'est.
+        var normal = new Navigator(R(-20), R(-20), R(20), R(20), pocket);
+        Assert.Equal(NavSteer.Path, normal.Steer(r, R(0.8), R(-0.1), R(-10), R(0), out long nx, out _));
+        Assert.True(nx > R(0.8));
     }
 }
 
@@ -408,5 +529,56 @@ public class V28CheminsMondeTests
             Assert.Equal(PathsTrial.EveningMinute, new WorldClock(50).At(((WorldSave)SaveStore.Read(path).Save!).WorldTick).Minute);
         }
         finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void Marcheur_reprend_un_chemin_partiel_jusqu_au_but()
+    {
+        // Relecture de la PR #113 : budget de 40 cases par recherche, un muret près du départ et un long trajet ensuite : le premier
+        // trajet est partiel (au-delà du muret), le marcheur le reprend depuis son bout (au plus Walker.MaxResumes fois) et arrive sans
+        // traverser le muret.
+        var wall = new SpaceObstacle("mur", new[] { GroundVector.Parse("-15.5", "8"), GroundVector.Parse("-14.5", "8"), GroundVector.Parse("-14.5", "10.2"), GroundVector.Parse("-15.5", "10.2") });
+        var paths = new WalkPaths(new CombatSpace(GroundVector.Parse("-20", "-20"), GroundVector.Parse("20", "20"), new[] { wall }), maxExpanded: 40);
+        List<(double X, double Z)>? first = paths.Route(-18, 10.5, 10, 10.5, out bool complete);
+        Assert.NotNull(first);
+        Assert.False(complete);
+        var walker = new Walker();
+        double x = -18, z = 10.5;
+        var poly = new ConvexPolygon(wall.Points);
+        for (int step = 0; step < 4_000; step++)
+        {
+            (double tx, double tz) = walker.Next(paths, x, z, 10, 10.5);
+            double dx = tx - x, dz = tz - z, d = Math.Sqrt(dx * dx + dz * dz);
+            if (d < 1e-9) break;
+            double move = Math.Min(d, 0.1);
+            x += dx / d * move;
+            z += dz / d * move;
+            Assert.False(poly.OverlapsCircle((long)Math.Round(x * 1e4), (long)Math.Round(z * 1e4), 1_000), $"dans le mur en ({x:0.00}, {z:0.00})");
+        }
+        Assert.True(Math.Abs(x - 10) < 0.06 && Math.Abs(z - 10.5) < 0.06, $"arrêté en ({x:0.00}, {z:0.00})");
+        Assert.False(walker.Blocked);
+        // Un budget trop petit pour progresser assez avant MaxResumes reprises : il s'arrête (sans aller-retour) au lieu de tourner en rond.
+        var tight = new WalkPaths(new CombatSpace(GroundVector.Parse("-20", "-20"), GroundVector.Parse("20", "20"), new[] { wall }), maxExpanded: 3);
+        var stuck = new Walker();
+        (double X, double Z) last = (-18, 10);
+        for (int i = 0; i < Walker.MaxResumes + 3; i++) last = stuck.Next(tight, last.X, last.Z, 10, 10);
+        Assert.True(stuck.Blocked);
+        Assert.Equal(last, stuck.Next(tight, last.X, last.Z, 10, 10));
+    }
+
+    [Fact]
+    public void Marcheur_relance_son_trajet_quand_les_trajets_changent()
+    {
+        // Relecture de la PR #113 : même but, mais la zone a été rouverte (AdventureSession.Paths reconstruit, décor différent).
+        var open = new WalkPaths(new CombatSpace(GroundVector.Parse("-20", "-20"), GroundVector.Parse("20", "20")));
+        var walled = new WalkPaths(new CombatSpace(GroundVector.Parse("-20", "-20"), GroundVector.Parse("20", "20"), new[]
+        {
+            new SpaceObstacle("mur", new[] { GroundVector.Parse("-1", "-5"), GroundVector.Parse("1", "-5"), GroundVector.Parse("1", "5"), GroundVector.Parse("-1", "5") }),
+        }));
+        var walker = new Walker();
+        Assert.Equal((10.0, 0.0), walker.Next(open, -10, 0, 10, 0));
+        (double X, double Z) aim = walker.Next(walled, -10, 0, 10, 0);
+        Assert.NotEqual((10.0, 0.0), aim);
+        Assert.True(Math.Abs(aim.Z) > 5, $"point visé {aim}");
     }
 }

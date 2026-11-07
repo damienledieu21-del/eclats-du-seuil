@@ -237,7 +237,7 @@ namespace EdS.Domain.Space
         /// Chemin de <paramref name="start"/> à <paramref name="goal"/> (cases libres de la même grille), écrit dans
         /// <paramref name="path"/> du départ à l'arrivée ; <paramref name="length"/> cases (0 si <see cref="NavStatus.None"/>). Au plus
         /// <paramref name="maxExpanded"/> cases développées ; <paramref name="path"/> doit pouvoir tenir le chemin (sinon il est tronqué au
-        /// départ : seules les premières cases comptent pour avancer).
+        /// départ : seules les premières cases comptent pour avancer, et le statut est alors <see cref="NavStatus.Partial"/>).
         /// </summary>
         public NavStatus Find(NavGrid grid, int start, int goal, int maxExpanded, int[] path, out int length)
         {
@@ -307,7 +307,8 @@ namespace EdS.Domain.Space
             for (int c = end; c >= 0; c = _parent[c], at--)
                 if (at < path.Length) path[at] = c;
             length = Math.Min(count, path.Length);
-            return found ? NavStatus.Found : NavStatus.Partial;
+            // Relecture de la PR #113 : un chemin tronqué au tampon n'atteint pas le but dans ce qui est rendu : il est partiel.
+            return found && count <= path.Length ? NavStatus.Found : NavStatus.Partial;
         }
 
         private const long CellMask = (1L << 18) - 1;

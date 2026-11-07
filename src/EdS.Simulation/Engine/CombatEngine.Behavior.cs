@@ -203,7 +203,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Tolérance autour de la bande de distance d'un ennemi (2 mm, en unités brutes) : les arrondis d'un pas borné y restent.</summary>
         private const long BandTolerance = 20;
 
-        private Intention?[] Intentions(long tick, long[] x, long[] z)
+        private Intention?[] Intentions(long tick, long[] x, long[] z, string?[]? wanderStates = null)
         {
             int n = _fightersById.Count;
             var intentions = new Intention?[n];
@@ -231,7 +231,9 @@ namespace EdS.Simulation.Engine
                 // Sous-lot V2.4.1 : une bête au calme qui erre se promène (sans état propre ; voir CombatEngine.Wander.cs).
                 if (behavior.Wander != null && !f.Engaged)
                 {
-                    intentions[i] = PlanWander(i, tick, x, z).Intention;
+                    WanderPlan plan = PlanWander(i, tick, x, z);
+                    intentions[i] = plan.Intention;
+                    if (wanderStates != null) wanderStates[i] = plan.State;   // relecture de la PR #113 : l'affichage refait la même passe
                     continue;
                 }
                 int j = targets[i];

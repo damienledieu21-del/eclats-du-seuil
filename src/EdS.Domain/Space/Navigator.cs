@@ -17,6 +17,12 @@ namespace EdS.Domain.Space
 
         /// <summary>Aucun chemin : il reste sur place (jamais d'aller-retour).</summary>
         None,
+
+        /// <summary>
+        /// Relecture de la PR #113 : budget de recherche épuisé sans s'écarter de la case de départ (poche dont la sortie s'éloigne du but
+        /// plus loin que le budget) : il va droit vers le but et glisse, comme avant V2.8 (jamais bloqué pour toujours par la recherche).
+        /// </summary>
+        Straight,
     }
 
     /// <summary>
@@ -43,7 +49,7 @@ namespace EdS.Domain.Space
         private readonly long _minX, _minZ, _maxX, _maxZ;
         private readonly ConvexPolygon[] _obstacles;
         private readonly Dictionary<long, NavGrid> _grids = new Dictionary<long, NavGrid>();
-        private readonly Dictionary<long, int[]> _cache = new Dictionary<long, int[]>();
+        private readonly Dictionary<long, (int[] Cells, NavStatus Status)> _cache = new Dictionary<long, (int[] Cells, NavStatus Status)>();
         private readonly NavSearch _search = new NavSearch();
         private readonly int[] _buffer = new int[MaxPathCells];
 
@@ -116,10 +122,12 @@ namespace EdS.Domain.Space
             int start = grid.NearestFree(fromX, fromZ, StartReach), goal = grid.NearestFree(toX, toZ, GoalReach);
             if (start < 0 || goal < 0 || grid.Component(start) != grid.Component(goal)) return null;
             long key = checked((RadiusClass(radius) / RadiusStep << 40) | ((long)start << 20) | (long)goal);
-            if (_cache.TryGetValue(key, out int[]? cached))
+            // Relecture de la PR #113 : le statut est gardé avec le chemin (un chemin tronqué finit sur une autre case que le but, mais
+            // un chemin partiel peut aussi finir à côté) : la réponse ne dépend jamais du cache.
+            if (_cache.TryGetValue(key, out (int[] Cells, NavStatus Status) cached))
             {
-                status = cached.Length > 0 && cached[cached.Length - 1] == goal ? NavStatus.Found : NavStatus.Partial;
-                return cached;
+                status = cached.Status;
+                return cached.Cells;
             }
             status = _search.Find(grid, start, goal, MaxExpanded, _buffer, out int length);
             Searches++;
@@ -128,17 +136,16 @@ namespace EdS.Domain.Space
             if (status == NavStatus.None) return null;
             var cells = new int[length];
             Array.Copy(_buffer, cells, length);
-            // Un chemin partiel qui n'atteint pas le but finit ailleurs : sa dernière case n'est pas « goal » (marque du statut en cache).
-            if (status == NavStatus.Partial && length > 0 && cells[length - 1] == goal) status = NavStatus.Found;
             if (_cache.Count >= CacheSize) _cache.Clear();
-            _cache[key] = cells;
+            _cache[key] = (cells, status);
             return cells;
         }
 
         /// <summary>
         /// Point à viser pour aller de (from) à (to) : le but lui-même si la ligne droite est libre (<see cref="NavSteer.Direct"/>) ; sinon
         /// la case la plus lointaine du chemin (au plus <see cref="Lookahead"/> cases devant) que l'emprise atteint en ligne droite (lissage),
-        /// ou la première case du chemin ; <see cref="NavSteer.None"/> s'il n'y a pas de chemin (le point visé est alors le départ).
+        /// ou la première case du chemin ; <see cref="NavSteer.None"/> s'il n'y a pas de chemin (le point visé est alors le départ) ;
+        /// <see cref="NavSteer.Straight"/> (le but) si la recherche, bornée, n'a rien trouvé de plus proche que la case de départ.
         /// </summary>
         public NavSteer Steer(long radius, long fromX, long fromZ, long toX, long toZ, out long aimX, out long aimZ)
         {
@@ -154,13 +161,9 @@ namespace EdS.Domain.Space
             // Arrivé dans la case du but (ou chemin d'une case) : le dernier bout se fait droit (le décor fait glisser).
             if (cells.Length == 1)
             {
-                if (status == NavStatus.Found)
-                {
-                    aimX = toX;
-                    aimZ = toZ;
-                    return kind;
-                }
-                return NavSteer.None;
+                aimX = toX;
+                aimZ = toZ;
+                return status == NavStatus.Found ? kind : NavSteer.Straight;
             }
             int last = Math.Min(cells.Length - 1, Lookahead);
             for (int k = last; k >= 1; k--)
@@ -181,7 +184,8 @@ namespace EdS.Domain.Space
         /// <summary>
         /// Trajet complet lissé (pour l'affichage : PNJ et passants) : points de passage de (from) à (to), le but compris, chacun visible du
         /// précédent quand c'est possible (le plus lointain d'abord) ; vide si la ligne droite est libre (aller droit) ; null s'il n'y a pas
-        /// de chemin. Un chemin partiel finit à la case la plus proche du but.
+        /// de chemin, ou si la recherche bornée n'a rien trouvé de plus proche que la case de départ. Un chemin partiel finit à la case la
+        /// plus proche du but.
         /// </summary>
         public List<GroundVector>? Route(long radius, long fromX, long fromZ, long toX, long toZ) => Route(radius, fromX, fromZ, toX, toZ, out _);
 
@@ -195,6 +199,9 @@ namespace EdS.Domain.Space
             int[]? cells = Cells(radius, fromX, fromZ, toX, toZ, out NavStatus status);
             if (cells is null) return null;
             complete = status == NavStatus.Found;
+            // Partiel sans s'écarter de la case de départ : pas de trajet (null) ; le marcheur de l'affichage applique son repli
+            // (rester, ou aller droit : Walker.StraightWhenBlocked).
+            if (!complete && cells.Length <= 1) return null;
             NavGrid grid = Grid(radius);
             long ax = fromX, az = fromZ;
             int at = 0;

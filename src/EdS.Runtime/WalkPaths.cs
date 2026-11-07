@@ -20,13 +20,13 @@ namespace EdS.Runtime
         private readonly Navigator _navigator;
         private readonly long _radius;
 
-        public WalkPaths(CombatSpace space, double radius = DefaultRadius)
+        public WalkPaths(CombatSpace space, double radius = DefaultRadius, int maxExpanded = MaxExpanded)
         {
             if (space is null) throw new ArgumentNullException(nameof(space));
             if (!(radius > 0 && radius <= 5)) throw new ArgumentOutOfRangeException(nameof(radius));
             // L'affichage n'a pas de budget par tick : une recherche peut développer plus de cases que dans le moteur (un trajet ne se
             // calcule qu'au changement de but).
-            _navigator = Navigator.ForSpace(space, MaxExpanded);
+            _navigator = Navigator.ForSpace(space, maxExpanded);
             _radius = Raw(radius);
         }
 
@@ -71,6 +71,8 @@ namespace EdS.Runtime
         private int _at;
         private bool _complete = true;
         private int _resumes;
+        private WalkPaths? _paths;
+        private bool _planned;
 
         /// <summary>Reprises au plus d'un chemin partiel (au bout, la recherche repart de là) avant de rester sur place.</summary>
         public const int MaxResumes = 8;
@@ -91,8 +93,12 @@ namespace EdS.Runtime
         /// </summary>
         public (double X, double Z) Next(WalkPaths? paths, double x, double z, double gx, double gz)
         {
-            if (double.IsNaN(_goalX) || Math.Abs(gx - _goalX) > Reach || Math.Abs(gz - _goalZ) > Reach)
+            // Relecture de la PR #113 : un autre jeu de trajets (zone rouverte, décor changé : AdventureSession.Paths reconstruit) relance
+            // aussi le trajet, même vers le même but.
+            if (!_planned || !ReferenceEquals(paths, _paths) || Math.Abs(gx - _goalX) > Reach || Math.Abs(gz - _goalZ) > Reach)
             {
+                _planned = true;
+                _paths = paths;
                 _goalX = gx;
                 _goalZ = gz;
                 _resumes = 0;
@@ -138,6 +144,8 @@ namespace EdS.Runtime
             _at = 0;
             _complete = true;
             _resumes = 0;
+            _planned = false;
+            _paths = null;
             _goalX = _goalZ = double.NaN;
             Blocked = false;
         }
