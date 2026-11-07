@@ -179,6 +179,8 @@ namespace EdS.World
             if (Inventory.Remove(rule.PurifyItem, 1) != InventoryRefusal.None) return ScarRefusal.NoItem;
             int stage = WorldScarRules.StageAt(_character.Scars.First(x => x.Id == key), rule, Today);
             _character = _character.WithScars(_character.Scars.Where(x => x.Id != key));
+            RebaseSpreaders(e, Math.Min(SavedEvent.MaxDay, Today));   // sous-lot V2.6.1 : répit avant que la voisine ne la rouvre
+            Narrative?.Purified(e.Id);   // sous-lot V2.6.1 : objectif « purify » (quête de Sœur Albe)
             long xp = Math.Min(SaveValidator.MaxXp, checked(_character.Xp + rule.PurifyXp));
             long gained = xp - _character.Xp;
             _character = _character.WithXp(xp);
@@ -201,6 +203,7 @@ namespace EdS.World
         private void StepScars(List<WorldEventNotice> notices)
         {
             if (_character.Scars.Count == 0) return;
+            SpreadScars(notices);   // sous-lot V2.6.1 : avant les paliers, pour qu'une cicatrice née d'une autre soit notée sans annonce de croissance
             bool first = _scarStagesSeen is null;
             _scarStagesSeen ??= new Dictionary<string, int>(StringComparer.Ordinal);
             foreach ((string key, WorldEventDefinition e, WorldEventGroup g, int stage) in ScarStates())
@@ -210,6 +213,105 @@ namespace EdS.World
                 _scarStagesSeen[key] = stage;
                 if (stage >= e.Scar!.HauntStage && e.Scar.DeepFact is string deep && !KnowsFact(deep) && !_eventFacts.Contains(deep)) _eventFacts.Add(deep);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6.1 : jour du monde où la cicatrice <paramref name="scar"/> atteint (ou a atteint) le palier de propagation de
+        /// <paramref name="rule"/> : <see cref="SavedScar.Since"/> si elle y est déjà, sinon <c>Since + (spreadStage − Stage) × growDays</c> ;
+        /// null sans propagation.
+        /// </summary>
+        internal static long? SpreadReachDay(SavedScar scar, WorldEventScar rule)
+        {
+            if (!rule.Spreads) return null;
+            return scar.Stage >= rule.SpreadStage ? scar.Since : checked(scar.Since + (long)(rule.SpreadStage - scar.Stage) * rule.GrowDays);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6.1 : propagation des cicatrices au lieu voisin, recalculée du temps du monde (le même résultat que la partie ait été
+        /// jouée ou non pendant ces jours). Une cicatrice qui a atteint le palier de propagation depuis <see cref="WorldEventScar.SpreadDays"/>
+        /// jours fait naître une cicatrice (palier 1, née ce jour-là) chez la première de ses voisines (<see cref="WorldEventGroup.SpreadTo"/>)
+        /// qui n'en a pas ; son délai repart de ce jour pour la suivante. Les propagations dues sont faites dans l'ordre de leur jour (à égalité :
+        /// ordre des variantes, puis des voisines), chacune pouvant en permettre une autre plus tard dans le même rattrapage. <b>Bornée</b> : une
+        /// propagation ne naît que là où il n'y a pas de cicatrice, au plus une par variante : au plus autant de tours que de variantes, aucune
+        /// boucle possible. Rien si les cicatrices sont pleines (borne technique, vérifiée au chargement des zones).
+        /// </summary>
+        private void SpreadScars(List<WorldEventNotice> notices)
+        {
+            if (!(Definition is ZoneDefinition zone) || !InStoryZone) return;
+            long today = Math.Min(SavedEvent.MaxDay, Today);
+            foreach (WorldEventDefinition e in zone.Events)
+            {
+                if (!(e.Scar is WorldEventScar rule) || !rule.Spreads) continue;
+                for (int round = 0; round < e.Groups.Count; round++)
+                {
+                    SavedScar? source = null;
+                    WorldEventGroup? from = null, to = null;
+                    long best = long.MaxValue;
+                    foreach (WorldEventGroup g in e.Groups)
+                    {
+                        if (g.SpreadTo.Count == 0 || !(FindScar(WorldScarRules.Key(zone.Id, e.Id, g.Id)) is SavedScar s)) continue;
+                        if (!(SpreadReachDay(s, rule) is long reach)) continue;
+                        long day = checked(reach + rule.SpreadDays);
+                        if (day > today || day >= best) continue;
+                        string? free = g.SpreadTo.FirstOrDefault(n => FindScar(WorldScarRules.Key(zone.Id, e.Id, n)) is null);
+                        if (free is null) continue;
+                        (best, source, from, to) = (day, s, g, e.Groups.First(x => x.Id == free));
+                    }
+                    if (source is null || from is null || to is null) break;
+                    string born = WorldScarRules.Key(zone.Id, e.Id, to.Id);
+                    var rebased = new SavedScar(source.Id, WorldScarRules.StageAt(source, rule, best), best, source.Born);
+                    if (!SetScars(_character.Scars.Where(x => x.Id != source.Id).Concat(new[] { rebased, new SavedScar(born, 1, best, best) }))) break;
+                    notices.Add(new WorldEventNotice(WorldEventNoticeKind.ScarSpread, e.Id, to.Id, best, 1, spreadFrom: from.Id));
+                    if (rule.SpreadFact is string fact && !KnowsFact(fact) && !_eventFacts.Contains(fact)) _eventFacts.Add(fact);
+                }
+            }
+        }
+
+        private SavedScar? FindScar(string key)
+        {
+            IReadOnlyList<SavedScar> scars = _character.Scars;
+            for (int i = 0; i < scars.Count; i++)
+                if (scars[i].Id == key) return scars[i];
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6.1 : après une purification, les cicatrices de la même faille qui ont déjà atteint le palier de propagation repartent
+        /// d'aujourd'hui (leur palier d'aujourd'hui gardé) : la place purifiée a <see cref="WorldEventScar.SpreadDays"/> jours de répit avant que
+        /// le froid ne revienne de la voisine (sans cela, une voisine au palier 4 depuis longtemps la rouvrirait au tick suivant).
+        /// </summary>
+        private void RebaseSpreaders(WorldEventDefinition e, long today)
+        {
+            if (!(e.Scar is WorldEventScar rule) || !rule.Spreads || Definition is null) return;
+            string prefix = WorldScarRules.Key(Definition.Id, e.Id, string.Empty);
+            var next = new List<SavedScar>(_character.Scars.Count);
+            bool changed = false;
+            foreach (SavedScar s in _character.Scars)
+            {
+                int stage = WorldScarRules.StageAt(s, rule, today);
+                if (s.Id.StartsWith(prefix, StringComparison.Ordinal) && today >= s.Since && stage >= rule.SpreadStage && s.Since != today)
+                {
+                    next.Add(new SavedScar(s.Id, stage, today, s.Born));
+                    changed = true;
+                }
+                else next.Add(s);
+            }
+            if (changed) SetScars(next);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.6.1 : cicatrices gardées de la faille <paramref name="eventId"/> de la zone de l'histoire (conditions <c>scarsAtLeast</c>
+        /// et <c>scarsBelow</c> des dialogues : lues aussi depuis un intérieur, la chapelle de Sœur Albe).
+        /// </summary>
+        int INarrativeWorld.ScarCount(string eventId)
+        {
+            string? zone = _storyZone ?? Definition?.Id;
+            if (zone is null) return 0;
+            string prefix = WorldScarRules.Key(zone, eventId, string.Empty);
+            int n = 0;
+            foreach (SavedScar s in _character.Scars)
+                if (s.Id.StartsWith(prefix, StringComparison.Ordinal)) n++;
+            return n;
         }
 
         private bool KnowsFact(string fact) => Narrative?.Knows(fact) ?? _pendingFacts.Contains(fact);

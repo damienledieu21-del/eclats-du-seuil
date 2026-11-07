@@ -48,7 +48,7 @@ namespace EdS.Data.Zones
         /// <remarks>Relecture de la PR #107 : la borne du registre sur toutes les zones reliées est vérifiée par
         /// <see cref="CheckEventRegistry"/> (au chargement des zones reliées).</remarks>
         private static void CheckEvents(List<WorldEventData?> data, CombatSpace? space, List<Place> places, List<Population> populations, ItemCatalog items,
-            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true, string? zoneId = null)
+            long tick, ValidationReport report, List<WorldEventDefinition> events, int maxLevel, bool schema11 = true, string? zoneId = null, bool schema12 = true)
         {
             const string root = "$.data.events";
             if (data.Count < 1 || data.Count > MaxEvents)
@@ -136,9 +136,9 @@ namespace EdS.Data.Zones
                 WorldEventScar? scar = null;
                 if (e.Scar != null)
                 {
-                    if (!schema11) { report.Add(path + ".scar", ValidationCode.InvalidValue, $"cicatrice d'une faille : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                    if (!schema11) { report.Add(path + ".scar", ValidationCode.InvalidValue, $"cicatrice d'une faille : schéma {ScarsSchemaVersion} attendu."); ok = false; }
                     else if (known && kind != WorldEventKind.Rift) { report.Add(path + ".scar", ValidationCode.InvalidValue, "seule une faille (« rift ») laisse une cicatrice."); ok = false; }
-                    else if ((scar = CheckScar(e.Scar, path + ".scar", items, report)) is null) ok = false;
+                    else if ((scar = CheckScar(e.Scar, path + ".scar", items, report, schema12)) is null) ok = false;
                 }
                 var groups = new List<WorldEventGroup>();
                 if (e.Groups is null) { Missing(report, path + ".groups", "variantes de l'événement"); ok = false; }
@@ -148,6 +148,8 @@ namespace EdS.Data.Zones
                         if (CheckGroup(e.Groups[g], $"{path}.groups[{g}]", known ? kind : (WorldEventKind?)null, groups, space, populations, report, e.Scar != null) is WorldEventGroup group)
                             groups.Add(group);
                         else ok = false;
+                // Sous-lot V2.6.1 (schéma 12) : voisines où la cicatrice d'une variante se propage, jugées une fois toutes les variantes lues.
+                if (e.Groups != null && !CheckSpreadTo(e.Groups, path, e.Scar, scar, schema12, groups, report)) ok = false;
                 WorldEventReward? reward = null;
                 if (known && kind == WorldEventKind.Hunt)
                 {
@@ -254,7 +256,7 @@ namespace EdS.Data.Zones
         /// purification), <c>purifyXp</c> (0 à 100 000), <c>bornFact</c>, <c>deepFact</c>, <c>purifiedFact</c> facultatifs (« fact.met.… »
         /// réservé).
         /// </summary>
-        private static WorldEventScar? CheckScar(WorldEventScarData s, string path, ItemCatalog items, ValidationReport report)
+        private static WorldEventScar? CheckScar(WorldEventScarData s, string path, ItemCatalog items, ValidationReport report, bool schema12 = true)
         {
             bool ok = true;
             int? Range(int? value, string field, string what, int min, int max)
@@ -286,8 +288,59 @@ namespace EdS.Data.Zones
             if (s.BornFact != null && !CheckDeclaredFact(s.BornFact, path + ".bornFact", report)) ok = false;
             if (s.DeepFact != null && !CheckDeclaredFact(s.DeepFact, path + ".deepFact", report)) ok = false;
             if (s.PurifiedFact != null && !CheckDeclaredFact(s.PurifiedFact, path + ".purifiedFact", report)) ok = false;
+            // Sous-lot V2.6.1 (schéma 12) : propagation au lieu voisin, facultative (palier et délai ensemble ; le fait seulement avec eux).
+            int spreadStage = 0, spreadDays = 0;
+            if (s.SpreadStage != null || s.SpreadDays != null || s.SpreadFact != null)
+            {
+                string first = s.SpreadStage != null ? ".spreadStage" : s.SpreadDays != null ? ".spreadDays" : ".spreadFact";
+                if (!schema12) { report.Add(path + first, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                else
+                {
+                    if (Range(s.SpreadStage, "spreadStage", "palier de la propagation", 1, max ?? MaxScarStage) is int ss) spreadStage = ss;
+                    if (Range(s.SpreadDays, "spreadDays", "jours du monde avant la propagation", 1, MaxScarSpreadDays) is int sd) spreadDays = sd;
+                    if (s.SpreadFact != null && !CheckDeclaredFact(s.SpreadFact, path + ".spreadFact", report)) ok = false;
+                }
+            }
             return ok ? new WorldEventScar(grow!.Value, max!.Value, s.Radius!.Value, s.RadiusPerStage!.Value, strength!.Value, haunt!.Value, respawn!.Value,
-                s.PurifyItem!, s.PurifyXp!.Value, s.BornFact, s.DeepFact, s.PurifiedFact) : null;
+                s.PurifyItem!, s.PurifyXp!.Value, s.BornFact, s.DeepFact, s.PurifiedFact, spreadStage, spreadDays, s.SpreadFact) : null;
+        }
+
+        /// <summary>Sous-lot V2.6.1 : délai d'une propagation au plus, en jours du monde.</summary>
+        public const int MaxScarSpreadDays = 30;
+
+        /// <summary>
+        /// Sous-lot V2.6.1 (schéma 12) : <c>groups[g].spreadTo</c>, facultatif, seulement sur une faille dont la cicatrice se propage
+        /// (<c>scar.spreadStage</c>) : de 1 à <see cref="MaxEventGroups"/> variantes de la même faille, connues, ni elle-même, ni deux fois. Une
+        /// propagation ne fait que des cicatrices de la faille, au plus une par variante : le nombre de cicatrices reste borné (vérifié au
+        /// chargement des zones reliées) et aucune boucle n'est possible.
+        /// </summary>
+        private static bool CheckSpreadTo(List<WorldEventGroupData?> data, string path, WorldEventScarData? scarData, WorldEventScar? scar, bool schema12,
+            List<WorldEventGroup> groups, ValidationReport report)
+        {
+            bool ok = true;
+            var known = new HashSet<string>(data.Where(g => g?.Id != null).Select(g => g!.Id!), StringComparer.Ordinal);
+            for (int g = 0; g < data.Count; g++)
+            {
+                List<string?>? to = data[g]?.SpreadTo;
+                if (to is null) continue;
+                string p = $"{path}.groups[{g}].spreadTo";
+                if (!schema12) { report.Add(p, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {CurrentSchemaVersion} attendu."); ok = false; continue; }
+                if (scarData is null || scarData.SpreadStage is null) { report.Add(p, ValidationCode.InvalidValue, "des voisines seulement pour une faille dont la cicatrice se propage (« scar.spreadStage »)."); ok = false; continue; }
+                if (to.Count < 1 || to.Count > MaxEventGroups) { report.Add(p, ValidationCode.OutOfRange, $"de 1 à {MaxEventGroups} variantes voisines."); ok = false; continue; }
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                bool here = true;
+                for (int k = 0; k < to.Count; k++)
+                {
+                    string? n = to[k];
+                    if (n is null || !known.Contains(n)) { report.Add($"{p}[{k}]", ValidationCode.UnknownReference, $"variante « {n} » absente de la faille."); here = false; }
+                    else if (n == data[g]!.Id) { report.Add($"{p}[{k}]", ValidationCode.InvalidValue, "une cicatrice ne se propage pas à sa propre place."); here = false; }
+                    else if (!seen.Add(n)) { report.Add($"{p}[{k}]", ValidationCode.DuplicateId, $"variante « {n} » déjà donnée."); here = false; }
+                }
+                if (!here) { ok = false; continue; }
+                if (scar != null && groups.FirstOrDefault(x => x.Id == data[g]!.Id) is WorldEventGroup group)
+                    groups[groups.IndexOf(group)] = group.WithSpreadTo(to!);
+            }
+            return ok;
         }
 
         private static WorldEventReward? CheckEventReward(WorldEventRewardData r, string path, ItemCatalog items, ValidationReport report)

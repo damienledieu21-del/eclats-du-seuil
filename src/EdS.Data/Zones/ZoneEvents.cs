@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Scenarios;
 using EdS.Domain.Collections;
 using EdS.Domain.Numerics;
@@ -54,6 +55,11 @@ namespace EdS.Data.Zones
         public string? BornFact { get; set; }
         public string? DeepFact { get; set; }
         public string? PurifiedFact { get; set; }
+
+        /// <summary>Sous-lot V2.6.1 (schéma 12) : propagation au lieu voisin (palier, délai en jours du monde, fait de la première), facultative.</summary>
+        public int? SpreadStage { get; set; }
+        public int? SpreadDays { get; set; }
+        public string? SpreadFact { get; set; }
     }
 
     /// <summary>Sous-lot V2.5 : une variante d'un événement (les bandits ou les loups ; la faille des ruines ou celle du lac).</summary>
@@ -69,6 +75,9 @@ namespace EdS.Data.Zones
 
         /// <summary>Sous-lot V2.6 (schéma 11) : échos qui rôdent autour de la cicatrice de cette faille (faille avec cicatrice seulement).</summary>
         public List<WorldEventCreatureData?>? Haunts { get; set; }
+
+        /// <summary>Sous-lot V2.6.1 (schéma 12) : variantes voisines où sa cicatrice se propage, dans l'ordre (faille à propagation seulement).</summary>
+        public List<string?>? SpreadTo { get; set; }
     }
 
     public sealed class WorldEventCreatureData
@@ -127,14 +136,25 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot V2.6 : échos qui rôdent autour de la cicatrice de cette faille, dans l'ordre où ils viennent (vide sans cicatrice).</summary>
         public IReadOnlyList<WorldEventCreature> Haunts { get; }
 
-        internal WorldEventGroup(string id, int weight, GroundVector? position, IEnumerable<WorldEventCreature> creatures, IEnumerable<WorldEventCreature>? haunts = null)
+        /// <summary>
+        /// Sous-lot V2.6.1 : variantes voisines (même faille) où la cicatrice de celle-ci se propage, dans l'ordre où elle les gagne (la plus
+        /// proche d'abord) ; vide sans propagation.
+        /// </summary>
+        public IReadOnlyList<string> SpreadTo { get; }
+
+        internal WorldEventGroup(string id, int weight, GroundVector? position, IEnumerable<WorldEventCreature> creatures, IEnumerable<WorldEventCreature>? haunts = null,
+            IEnumerable<string>? spreadTo = null)
         {
+            SpreadTo = Frozen.List(spreadTo ?? Array.Empty<string>(), nameof(spreadTo));
             Id = id;
             Weight = weight;
             Position = position;
             Creatures = Frozen.List(creatures, nameof(creatures));
             Haunts = Frozen.List(haunts ?? Array.Empty<WorldEventCreature>(), nameof(haunts));
         }
+
+        /// <summary>Sous-lot V2.6.1 : la même variante, avec ses voisines de propagation (validateur seulement).</summary>
+        internal WorldEventGroup WithSpreadTo(IEnumerable<string?> spreadTo) => new WorldEventGroup(Id, Weight, Position, Creatures, Haunts, spreadTo.Select(x => x!));
     }
 
     /// <summary>Sous-lot V2.5 : récompense de la première réussite d'un personnage (donnée une seule fois, registre de la sauvegarde).</summary>
@@ -291,9 +311,24 @@ namespace EdS.Data.Zones
         public string? DeepFact { get; }
         public string? PurifiedFact { get; }
 
+        /// <summary>
+        /// Sous-lot V2.6.1 : palier à partir duquel la cicatrice se propage à ses variantes voisines (<see cref="WorldEventGroup.SpreadTo"/>),
+        /// 0 sans propagation ; <see cref="SpreadDays"/> jours du monde après l'avoir atteint, une cicatrice naît (palier 1) chez la première
+        /// voisine qui n'en a pas ; le délai repart pour la suivante. <see cref="SpreadFact"/> : fait de la première propagation (ou null).
+        /// </summary>
+        public int SpreadStage { get; }
+        public int SpreadDays { get; }
+        public string? SpreadFact { get; }
+
+        /// <summary>Sous-lot V2.6.1 : la cicatrice se propage (schéma 12, <c>spreadStage</c> donné).</summary>
+        public bool Spreads => SpreadStage > 0;
+
         internal WorldEventScar(int growDays, int maxStage, Fixed radius, Fixed radiusPerStage, int strengthPercent, int hauntStage, int hauntRespawnMinutes,
-            string purifyItem, long purifyXp, string? bornFact, string? deepFact, string? purifiedFact)
+            string purifyItem, long purifyXp, string? bornFact, string? deepFact, string? purifiedFact, int spreadStage = 0, int spreadDays = 0, string? spreadFact = null)
         {
+            SpreadStage = spreadStage;
+            SpreadDays = spreadDays;
+            SpreadFact = spreadFact;
             GrowDays = growDays;
             MaxStage = maxStage;
             Radius = radius;

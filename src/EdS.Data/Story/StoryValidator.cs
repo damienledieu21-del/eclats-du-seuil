@@ -126,7 +126,15 @@ namespace EdS.Data.Story
         /// ailleurs que chez lui pendant ce créneau (un intérieur relié à la zone de l'histoire par une porte dans chaque sens, ou la zone de
         /// l'histoire pour un PNJ d'un intérieur) ; sa place et son abri sont dans cette zone. Les versions 4 à 9 restent lues telles quelles.
         /// </summary>
-        public const int CurrentSchemaVersion = 10;
+        /// <remarks>Version 11 (sous-lot V2.6.1, « suites du Seuil ») : jusqu'à <see cref="MaxEntries"/> (32) répliques par dialogue (16 en
+        /// versions 10 et antérieures, <see cref="MaxEntriesBefore11"/>) ; objectif <c>purify</c> (<c>id</c> une faille à cicatrice de la zone,
+        /// <c>value</c> le nombre de cicatrices purifiées pendant l'étape) ; conditions <c>scarsAtLeast</c> et <c>scarsBelow</c> (<c>id</c> une
+        /// faille à cicatrice, <c>value</c> de 0 à <see cref="EdS.Data.Saves.SavedScar.MaxEntries"/> : cicatrices gardées de cette faille). Les
+        /// versions 4 à 10 restent lues telles quelles.</remarks>
+        public const int CurrentSchemaVersion = 11;
+
+        /// <summary>Sous-lot V2.6.1 : version 10, encore lue (16 répliques par dialogue au plus, sans <c>purify</c> ni conditions de cicatrices).</summary>
+        public const int Schema10 = 10;
 
         /// <summary>Sous-lot V2.3.1 : version 9, encore lue (sans zone de créneau).</summary>
         public const int Schema9 = 9;
@@ -173,8 +181,11 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.1 : pièces de cuivre données par un effet, au plus (10 000 or).</summary>
         public const long MaxMoney = 100_000_000;
-        public const int MaxNpcs = 64, MaxDialogues = 64, MaxNodes = 64, MaxChoices = 8, MaxEntries = 16, MaxQuests = 64, MaxSteps = 32, MaxTerms = 8,
+        public const int MaxNpcs = 64, MaxDialogues = 64, MaxNodes = 64, MaxChoices = 8, MaxEntries = 32, MaxQuests = 64, MaxSteps = 32, MaxTerms = 8,
             MaxDiscoveries = 256;
+        /// <summary>Sous-lot V2.6.1 : répliques d'un dialogue au plus dans les versions 10 et antérieures (32 depuis la version 11).</summary>
+        public const int MaxEntriesBefore11 = 16;
+
         public const long MaxTrust = 100, MaxCount = 999, MaxXp = 1_000_000, MaxDefeat = 1000;
 
         // Tables globales réellement non modifiables (une table partagée modifiée changerait toutes les validations suivantes du processus).
@@ -188,6 +199,7 @@ namespace EdS.Data.Story
             ["guildRankAtLeast"] = ConditionKind.GuildRankAtLeast,   // sous-lot V1.7
             ["weather"] = ConditionKind.Weather,   // sous-lot V2.2
             ["activity"] = ConditionKind.Activity,   // sous-lot V2.3 (schéma 9)
+            ["scarsAtLeast"] = ConditionKind.ScarsAtLeast, ["scarsBelow"] = ConditionKind.ScarsBelow,   // sous-lot V2.6.1 (schéma 11)
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -207,6 +219,7 @@ namespace EdS.Data.Story
             ["guildRank"] = ObjectiveKind.GuildRank,   // sous-lot V1.7
             ["craftQuality"] = ObjectiveKind.CraftQuality,   // sous-lot V1.9.3b (schéma 5)
             ["practice"] = ObjectiveKind.Practice,   // sous-lot V1.9.6 (schéma 6)
+            ["purify"] = ObjectiveKind.Purify,   // sous-lot V2.6.1 (schéma 11)
         });
 
         /// <summary>Sous-lot V1.6 : catégories de quête (onglets du journal).</summary>
@@ -254,6 +267,7 @@ namespace EdS.Data.Story
             // Sous-lot V1.9.6 : la version 5 aussi (sous-ensemble de la version 6) ; sous-lot V1.9.7 : la version 6 aussi (sans skipQuest).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
                 || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8 || document.SchemaVersion == Schema9
+                || document.SchemaVersion == Schema10   // sous-lot V2.6.1
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -493,9 +507,9 @@ namespace EdS.Data.Story
             {
                 zone = null;
                 where = null;
-                if (_schema < CurrentSchemaVersion)
+                if (_schema < Schema10)
                 {
-                    _r.Add(path, ValidationCode.InvalidValue, $"zone d'un créneau inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    _r.Add(path, ValidationCode.InvalidValue, $"zone d'un créneau inconnue en version {_schema} du format : version {Schema10} demandée.");
                     return false;
                 }
                 if (id == home) { _r.Add(path, ValidationCode.InvalidValue, $"zone du PNJ « {id} » : ne pas la donner (un créneau sans zone y reste)."); return false; }
@@ -673,7 +687,9 @@ namespace EdS.Data.Story
                 if (x.Entries is null) { TextsValidator.Missing(_r, path + ".entries", "entrées"); ok = false; }
                 else
                 {
-                    if (x.Entries.Count < 1 || x.Entries.Count > MaxEntries) { _r.Add(path + ".entries", ValidationCode.OutOfRange, $"de 1 à {MaxEntries} entrées."); ok = false; }
+                    // Sous-lot V2.6.1 : 32 répliques depuis la version 11 ; 16 avant (une ancienne histoire est jugée par sa propre borne).
+                    int maxEntries = _schema >= CurrentSchemaVersion ? MaxEntries : MaxEntriesBefore11;
+                    if (x.Entries.Count < 1 || x.Entries.Count > maxEntries) { _r.Add(path + ".entries", ValidationCode.OutOfRange, $"de 1 à {maxEntries} entrées."); ok = false; }
                     for (int i = 0; i < x.Entries.Count; i++)
                     {
                         string p = $"{path}.entries[{i}]";
@@ -839,6 +855,8 @@ namespace EdS.Data.Story
                         ConditionKind.Phase => Ref(t, p, Phases, "moment de la journée") && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.Weather => WeatherKnown(p) && Ref(t, p, Weathers, "temps") && NoValue(t, p) && NoStep(t, p),   // sous-lot V2.2
                         ConditionKind.Activity => ActivityRef(t, p) && NoValue(t, p),   // sous-lot V2.3 (schéma 9)
+                        ConditionKind.ScarsAtLeast or ConditionKind.ScarsBelow =>   // sous-lot V2.6.1 (schéma 11)
+                            Since11(t.Kind, p + ".if") && ScarredRift(t, p) && Value(t, p, 0, EdS.Data.Saves.SavedScar.MaxEntries) && NoStep(t, p),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -924,9 +942,12 @@ namespace EdS.Data.Story
                     _r.Add(path + ".kind", ValidationCode.InvalidValue, $"objectif « practice » inconnu en version {_schema} du format : version {Schema6} demandée.");
                     return null;
                 }
+                // Sous-lot V2.6.1 : purify est nouveau en version 11.
+                if (kind == ObjectiveKind.Purify && !Since11("purify", path + ".kind")) return null;
                 if (kind != ObjectiveKind.CraftQuality && !NoQuality(t, path)) return null;
                 bool ok = kind switch
                 {
+                    ObjectiveKind.Purify => ScarredRift(t, path) && Value(t, path, 1, EdS.Data.Saves.SavedScar.MaxEntries),   // sous-lot V2.6.1
                     ObjectiveKind.Talk => Ref(t, path, _npcs, "PNJ") && NoValue(t, path),
                     ObjectiveKind.Deliver => ItemRef(t, path) && Value(t, path, 1, MaxCount) && NpcRef(t, path),
                     ObjectiveKind.DefeatFamily => Ref(t, path, _zone.Populations.Select(x => x.Family), "famille de créatures") && Value(t, path, 1, MaxDefeat),
@@ -1081,6 +1102,17 @@ namespace EdS.Data.Story
             }
 
             /// <summary>Sous-lot V2.2 : la condition <c>weather</c> n'existe qu'à partir de la version 8 du format.</summary>
+            /// <summary>Sous-lot V2.6.1 : <paramref name="what"/> (objectif <c>purify</c>, conditions de cicatrices) demande la version 11.</summary>
+            private bool Since11(string what, string p)
+            {
+                if (_schema >= CurrentSchemaVersion) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V2.6.1 : <c>id</c> est une faille à cicatrice de la zone de l'histoire.</summary>
+            private bool ScarredRift(TermData t, string p) => Ref(t, p, _zone.Events.Where(e => e.Scar != null).Select(e => e.Id), "faille à cicatrice");
+
             private bool WeatherKnown(string p)
             {
                 if (_schema >= Schema8) return true;

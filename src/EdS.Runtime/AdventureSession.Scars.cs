@@ -12,7 +12,7 @@ namespace EdS.Runtime
     public sealed partial class AdventureSession
     {
         /// <summary>Sous-lot V2.6 : annonce d'une cicatrice (son palier et son lieu dans le texte).</summary>
-        public static bool IsScarNotice(WorldEventNoticeKind kind) => kind >= WorldEventNoticeKind.ScarBorn && kind <= WorldEventNoticeKind.ScarStirs;
+        public static bool IsScarNotice(WorldEventNoticeKind kind) => kind >= WorldEventNoticeKind.ScarBorn && kind <= WorldEventNoticeKind.ScarSpread;
 
         /// <summary>Sous-lot V2.6 : lieu d'une cicatrice, pour les textes (« aux ruines »), sinon une formule commune.</summary>
         public string ScarPlace(string eventId, string group)

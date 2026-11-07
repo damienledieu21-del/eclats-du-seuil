@@ -60,6 +60,13 @@ namespace EdS.Data.Story
         /// temps (<see cref="Npc.Schedule"/>), d'après l'heure du monde et le temps qu'il fait (« fournil », « taverne », « abri »…).
         /// </summary>
         Activity = 16,
+
+        /// <summary>
+        /// Sous-lot V2.6.1 (histoire en schéma 11) : la faille à cicatrice <c>id</c> de la zone de l'histoire a au moins (<c>scarsAtLeast</c>)
+        /// ou moins de (<c>scarsBelow</c>) <c>value</c> cicatrices gardées dans la sauvegarde du personnage.
+        /// </summary>
+        ScarsAtLeast = 17,
+        ScarsBelow = 18,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -161,6 +168,12 @@ namespace EdS.Data.Story
         /// <c>parry</c> (une parade parfaite), <c>drink</c> (un objet de soin bu). Compté par la partie d'après les compteurs du moteur.
         /// </summary>
         Practice = 11,
+
+        /// <summary>
+        /// Sous-lot V2.6.1 (histoire en schéma 11, quête de Sœur Albe) : purifier <see cref="Objective.Value"/> cicatrices de la faille
+        /// <see cref="Objective.Id"/> (un éclat de Seuil posé au cœur) pendant l'étape. Compté par la partie à chaque purification.
+        /// </summary>
+        Purify = 12,
     }
 
     public sealed class StoryCondition
