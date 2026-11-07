@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
+using EdS.Data.Guild;
+using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
@@ -73,6 +78,10 @@ public sealed class V1911RetrouvaillesTests
     }
 
     [Theory]
+    [InlineData("fermiere")]
+    [InlineData("thibaut")]
+    [InlineData("deserteur")]
+    [InlineData("ysarn")]
     [InlineData("lison")]
     [InlineData("apprentie")]
     [InlineData("doyen")]
@@ -97,6 +106,31 @@ public sealed class V1911RetrouvaillesTests
             Assert.Equal(first.Options.Count, next.Options.Count);   // mêmes réponses que l'accueil
             w.Narrative.Close();
         }
+    }
+
+    [Theory]
+    [InlineData("intendant_guilde", "zone.guilde", 0.0, -1.6)]
+    [InlineData("archiviste", "zone.archives", -1.4, 0.0)]
+    public void Premier_dialogue_puis_retrouvailles_dans_les_maisons_de_la_guilde(string k, string interior, double x, double z)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+        foreach (JsonNode? n in root["data"]!["npcs"]!.AsArray())
+            if ((string)n!["id"]! == "npc." + k) V23TestData.Move(n!, new JsonArray(x, z));
+        ZoneDefinition vallons = Zone();
+        StoryBook story = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, vallons, ItemsCatalog, V16TestData.Interiors).Story!;
+        var all = new List<ZoneDefinition> { vallons };
+        all.AddRange(V16TestData.Interiors);
+        GuildBook guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(DataDirectory), Texts, story, vallons, all, ItemsCatalog, ShippedMerchants).Book!;
+        var w = new WorldSession(new WorldSave(interior, 0, 0, System.Array.Empty<string>(), Hero(100)), V16TestData.Interiors.Single(i => i.Id == interior),
+            ShippedData, Progression, ItemsCatalog, story, door: "sortie", storyZone: Vallons, guild: guild);
+        w.Step();
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc." + k, out DialogueView? first));
+        string reunion = $"text.v1911.{k}.retrouvailles";
+        Assert.NotEqual(reunion, first!.Text);
+        w.Narrative!.Close();
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc." + k, out DialogueView? next));
+        Assert.Equal(reunion, next!.Text);
+        Assert.Equal(first.Options.Count, next.Options.Count);
     }
 
     [Fact]

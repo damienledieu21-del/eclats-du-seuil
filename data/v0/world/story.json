@@ -8271,6 +8271,17 @@
                 "effects": [],
                 "next": null
               }
+            ],
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.archiviste"
+                  }
+                ],
+                "text": "text.v1911.archiviste.retrouvailles"
+              }
             ]
           },
           {
