@@ -108,7 +108,7 @@ public class Lot115BehaviorDataTests
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         Assert.Equal(17, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode behavior = schema["$defs"]!["combatant"]!["properties"]!["behavior"]!;
-        Assert.Equal(new[] { "maxRange", "minRange", "aggroRange", "encircle", "pack", "flee" }, behavior["properties"]!.AsObject().Select(p => p.Key));   // V2.4 : flee
+        Assert.Equal(new[] { "maxRange", "minRange", "aggroRange", "encircle", "pack", "flee", "wander" }, behavior["properties"]!.AsObject().Select(p => p.Key));   // V2.4 : flee ; V2.4.1 : wander
         Assert.Equal("boolean", schema["$defs"]!["attack"]!["properties"]!["charge"]!["type"]!.GetValue<string>());
     }
 }
