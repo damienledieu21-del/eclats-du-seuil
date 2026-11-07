@@ -429,6 +429,7 @@ namespace EdS.Data.Story
                     if (e.Scar?.BornFact is string born) _factsSet.Add(born);
                     if (e.Scar?.DeepFact is string deep) _factsSet.Add(deep);
                     if (e.Scar?.PurifiedFact is string purified) _factsSet.Add(purified);
+                    if (e.Scar?.SpreadFact is string spread) _factsSet.Add(spread);   // sous-lot V2.6.1
                 }
                 // Sous-lot V1.9.6 : les scènes (leur fait de fin vient du chef de leur zone, ou d'une scène passée).
                 List<Scene> scenes = CheckScenes();
