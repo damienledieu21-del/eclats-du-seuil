@@ -569,7 +569,7 @@ public class V16QuetesTests
         // bouclier ; leur garde est celle des règles (Shield nul), et le Bastion entre avec la garde de son écu.
         // Fusion de main dans V1.3 : règles 0.14.0 (effets d'équipement) ; ces créatures n'ont pas d'équipement.
         // Sous-lot V1.8 : règles 0.15.0 (barre), rien de changé pour ces créatures.
-        Assert.Equal("0.16.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal("0.17.0-provisoire", ShippedData.Rules.ContentVersion);
         WorldSession w = Play(Zone(), Hero());
         Assert.NotNull(w.EnteredShield);
         string[] creatures = { "bandit_epee1", "bandit_epee2", "bandit_arc1", "bandit_arc2", "chef_des_bandits", "loup_blanc" };

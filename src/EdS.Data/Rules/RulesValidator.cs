@@ -254,6 +254,8 @@ namespace EdS.Data.Rules
                 EquipmentMinTriggerCooldownMs = Int(d, P(c, nameof(CombatRules.EquipmentMinTriggerCooldownMs))),
                 EquipmentStatuses = d.Values[P(c, nameof(CombatRules.EquipmentStatuses))].Tokens!,
                 InfightingDamageReduction = Dec(d, P(c, nameof(CombatRules.InfightingDamageReduction))),   // sous-lot V2.4 (schéma 15)
+                WanderMaxRadius = Dec(d, P(c, nameof(CombatRules.WanderMaxRadius))),   // sous-lot V2.4.1 (schéma 16)
+                WanderCalmMs = Int(d, P(c, nameof(CombatRules.WanderCalmMs))),
                 Statuses = statuses,
             };
         }

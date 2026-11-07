@@ -91,6 +91,13 @@ namespace EdS.Simulation.Engine
                 if (f.Behavior is not { } behavior || f.Out) continue;
                 if (f.Engaged)
                 {
+                    // Sous-lot V2.4.1 : une bête qui erre se calme quand plus rien ne la retient, puis rentre chez elle ; une seule réserve pour
+                    // le calme et « remarqué » (relecture de la PR #111).
+                    if (behavior.Wander != null)
+                    {
+                        RunCalm(tick, f, behavior);
+                        continue;
+                    }
                     // Relecture de la PR #104 : une bête engagée contre des bêtes seulement remarque un joueur qui entre à sa distance
                     // d'engagement (ou qui la frappe, ou qu'un allié de sa meute a remarqué) ; avant, elle ne court pas après lui au loin.
                     if (f.Noticed) continue;
@@ -123,7 +130,8 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private bool Notices(Fighter f, AssailantBehavior behavior)
         {
-            if (f.HurtByCharacter || f.Taunted || behavior.AggroRange is null) return true;
+            // Relecture de la PR #111 : frappée par un personnage depuis son dernier calme (pas avant : le crédit du joueur reste, pas l'éveil).
+            if (f.CharacterHitSinceCalm || f.Taunted || behavior.AggroRange is null) return true;
             long aggro = behavior.AggroRange.Value.Raw;
             foreach (Fighter other in _fightersById)
                 if (!other.Out && other.Character != null && Enemies(other, f) && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return true;
@@ -140,17 +148,21 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private string? EngageReason(Fighter f, AssailantBehavior behavior)
         {
-            if (f.Struck || f.Result.DamageTaken > 0) return "hit";
+            // Sous-lot V2.4.1 : après un calme, seul un nouveau coup compte (Struck est remis à faux, pas les dégâts déjà subis).
+            if (f.Struck || (f.Calms == 0 && f.Result.DamageTaken > 0)) return "hit";
             // Revue Codex de la PR #33 (tour 6) : la provocation reçue est mémorisée, même expirée ou retirée avant cette phase.
             if (f.Taunted) return "taunt";
             long aggro = behavior.AggroRange!.Value.Raw;
+            // Sous-lot V2.4.1 : une bête qui erre ne s'engage pas pour une bête à bout (1 PV), qu'elle ne peut plus viser.
+            bool wanders = behavior.Wander != null;
             foreach (Fighter other in _fightersById)
-                if (!other.Out && Enemies(other, f) && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
+                if (!other.Out && Enemies(other, f) && other.Body != null && !(wanders && SpentBeast(other)) && EdgeDistance(f.Body!, other.Body) <= aggro) return "aggro";
             // La meute : un allié à comportement déjà engagé, à distance d'engagement, l'entraîne (ordre des identifiants, de proche en proche).
             // Sous-lot 11.9 : seulement un ennemi de meute (pack, vrai par défaut) ; un solitaire ne s'engage que pour lui-même.
             if (!behavior.Pack) return null;
             foreach (Fighter ally in _fightersById)
-                if (ally != f && !ally.Out && ally.Team == f.Team && ally.Behavior != null && ally.Engaged && EdgeDistance(f.Body!, ally.Body!) <= aggro) return "pack";
+                if (ally != f && !ally.Out && ally.Team == f.Team && ally.Behavior != null && ally.Engaged && !(wanders && ally.QuietSince != null)
+                    && EdgeDistance(f.Body!, ally.Body!) <= aggro) return "pack";
             return null;
         }
 
@@ -167,13 +179,17 @@ namespace EdS.Simulation.Engine
             public readonly int Face;   // indice de la cible vers laquelle se tourner à l'arrêt ; −1 sinon
             public readonly long MaxStep;   // unités brutes ; long.MaxValue : pas de borne
 
-            public Intention(bool moving, long directionX, long directionZ, int face, long maxStep = long.MaxValue)
+            /// <summary>Sous-lot V2.4.1 : allure, fraction du pas (une bête qui erre marche lentement) ; null : pas entier.</summary>
+            public readonly Fixed? Pace;
+
+            public Intention(bool moving, long directionX, long directionZ, int face, long maxStep = long.MaxValue, Fixed? pace = null)
             {
                 Moving = moving;
                 DirectionX = directionX;
                 DirectionZ = directionZ;
                 Face = face;
                 MaxStep = maxStep;
+                Pace = pace;
             }
 
             public static readonly Intention Hold = new Intention(false, 0, 0, -1);
@@ -186,7 +202,7 @@ namespace EdS.Simulation.Engine
         /// <summary>Tolérance autour de la bande de distance d'un ennemi (2 mm, en unités brutes) : les arrondis d'un pas borné y restent.</summary>
         private const long BandTolerance = 20;
 
-        private Intention?[] Intentions(long[] x, long[] z)
+        private Intention?[] Intentions(long tick, long[] x, long[] z)
         {
             int n = _fightersById.Count;
             var intentions = new Intention?[n];
@@ -207,6 +223,12 @@ namespace EdS.Simulation.Engine
             {
                 Fighter f = _fightersById[i];
                 if (f.Behavior is not { } behavior || f.Out) continue;
+                // Sous-lot V2.4.1 : une bête au calme qui erre se promène (sans état propre ; voir CombatEngine.Wander.cs).
+                if (behavior.Wander != null && !f.Engaged)
+                {
+                    intentions[i] = PlanWander(i, tick, x, z).Intention;
+                    continue;
+                }
                 int j = targets[i];
                 if (j < 0 || announcing.Contains(f))
                 {

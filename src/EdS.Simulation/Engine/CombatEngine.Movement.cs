@@ -176,7 +176,7 @@ namespace EdS.Simulation.Engine
             var plans = new MovePlan[n];
             bool any = false;
             // Sous-lot 11.5 : intentions des ennemis à comportement, d'après les positions du début de la phase.
-            Intention?[] intentions = Intentions(x, z);
+            Intention?[] intentions = Intentions(tick, x, z);
             for (int i = 0; i < n; i++)
             {
                 Fighter f = _fightersById[i];
@@ -187,6 +187,8 @@ namespace EdS.Simulation.Engine
                 if (!f.Out && moving)
                 {
                     long step = StepLength(f, i, x, z);
+                    // Sous-lot V2.4.1 : une bête qui erre marche à son allure.
+                    if (intentions[i] is { Pace: { } pace }) step = Fixed.Multiply(Fixed.FromRaw(step), pace, RoundingMode.Floor).Raw;
                     if (intentions[i] is { } bounded) step = Math.Min(step, bounded.MaxStep);   // revue Codex de la PR #33
                     if (step > 0)
                     {

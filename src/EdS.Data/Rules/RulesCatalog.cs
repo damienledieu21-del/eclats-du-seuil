@@ -180,6 +180,9 @@ namespace EdS.Data.Rules
             new RuleField("combat.equipment.allowedStatuses", RuleValueKind.TokenList, C, nameof(CombatRules.EquipmentStatuses)),
             // Sous-lot V2.4 (schéma 15) : bêtes qui se battent entre elles.
             new RuleField("combat.infighting.damageReduction", RuleValueKind.Decimal, C, nameof(CombatRules.InfightingDamageReduction)),
+            // Sous-lot V2.4.1 (schéma 16) : bêtes qui se promènent.
+            new RuleField("combat.wander.maxRadius", RuleValueKind.Decimal, C, nameof(CombatRules.WanderMaxRadius)),
+            new RuleField("combat.wander.calmMs", RuleValueKind.Int64, C, nameof(CombatRules.WanderCalmMs)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

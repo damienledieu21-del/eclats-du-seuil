@@ -7,7 +7,8 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot V2.4 (animaux paisibles) : cerf ou lièvre dessiné en formes simples (aucun modèle livré) sur le corps d'un combattant : pièces
     /// de <see cref="Wildlife.Parts"/>, pattes qui balancent et corps qui rebondit à la course (<see cref="Wildlife.Gait"/>). La capsule du
-    /// corps est cachée. Affichage seulement.
+    /// corps est cachée. Sous-lot V2.4.1 (bêtes qui se promènent) : la tête tourne autour d'une nuque, qui se baisse pour brouter, se relève
+    /// pour guetter ; un lièvre se ramasse entre deux bonds (<see cref="Wildlife.Pose"/>). Affichage seulement.
     /// </summary>
     public sealed class WildlifeLook
     {
@@ -17,6 +18,9 @@ namespace EdS.Game
         private readonly WildlifeKind _kind;
         private readonly Transform _root;
         private readonly Transform[] _legs = new Transform[5];
+        private Transform _neck;
+        private float _pitch;
+        private float _crouch;
         private Vector3 _last;
         private bool _seen;
         private float _time;
@@ -34,6 +38,12 @@ namespace EdS.Game
             Vector3 s = body.transform.localScale;
             _root.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
             _root.localPosition = new Vector3(0f, -1f, 0f);
+            // Sous-lot V2.4.1 : la nuque, pivot de la tête.
+            var neck = new GameObject("Nuque");
+            _neck = neck.transform;
+            _neck.SetParent(_root, false);
+            var n = Wildlife.Neck(kind);
+            _neck.localPosition = new Vector3((float)n.X, (float)n.Y, (float)n.Z);
             foreach (WildlifePart part in Wildlife.Parts(kind)) Build(part);
         }
 
@@ -59,6 +69,8 @@ namespace EdS.Game
             }
             piece.transform.SetParent(_root, false);
             piece.transform.localPosition = new Vector3((float)part.X, (float)part.Y, (float)part.Z);
+            // Sous-lot V2.4.1 : une pièce de la tête suit la nuque (gardée à sa place, puis rattachée).
+            if (Wildlife.IsHead(part.Name)) piece.transform.SetParent(_neck, true);
             piece.transform.localRotation = Quaternion.Euler((float)part.Pitch, 0f, 0f);
             piece.transform.localScale = scale;
         }
@@ -82,8 +94,11 @@ namespace EdS.Game
             return m;
         }
 
-        /// <summary>Allure de la bête à sa place affichée <paramref name="position"/> ; couchée sur le flanc, immobile, si elle est morte.</summary>
-        public void Update(Vector3 position, bool dead, float deltaTime)
+        /// <summary>
+        /// Allure de la bête à sa place affichée <paramref name="position"/> ; couchée sur le flanc, immobile, si elle est morte. Sous-lot
+        /// V2.4.1 : <paramref name="wander"/> (<c>CombatantView.Wander</c>) donne sa posture : tête basse qui broute, tête haute qui guette.
+        /// </summary>
+        public void Update(Vector3 position, bool dead, float deltaTime, string wander = null)
         {
             if (_root == null) return;
             if (dead)
@@ -102,7 +117,13 @@ namespace EdS.Game
             _seen = true;
             _time += deltaTime;
             (double bob, double[] legs) = Wildlife.Gait(_kind, _speed, _time);
-            _root.localPosition = new Vector3(0f, -1f + (float)bob, 0f);   // le corps garde une hauteur d'échelle 1 (ArenaView.Fit)
+            // Sous-lot V2.4.1 : posture lissée (la tête descend vers l'herbe, se relève pour guetter).
+            (double pitch, double crouch) = Wildlife.Pose(_kind, wander, _time);
+            float ease = 1f - Mathf.Exp(-6f * deltaTime);
+            _pitch = Mathf.Lerp(_pitch, (float)pitch, ease);
+            _crouch = Mathf.Lerp(_crouch, (float)crouch, ease);
+            if (_neck != null) _neck.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
+            _root.localPosition = new Vector3(0f, -1f + (float)bob - _crouch, 0f);   // le corps garde une hauteur d'échelle 1 (ArenaView.Fit)
             for (int i = 1; i < _legs.Length; i++)
                 if (_legs[i] != null) _legs[i].localRotation = Quaternion.Euler((float)legs[i], 0f, 0f);
         }

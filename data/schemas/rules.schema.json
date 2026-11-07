@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 15
+      "const": 16
     },
     "kind": {
       "const": "rules"
@@ -875,6 +875,29 @@
                 "damageReduction"
               ],
               "description": "Bêtes qui se battent entre elles (sous-lot V2.4, schéma 15)."
+            },
+            "wander": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxRadius": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100,
+                  "description": "Rayon maximal de l'aire d'errance d'une bête autour de sa place (m ; 30 livré)."
+                },
+                "calmMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 600000,
+                  "description": "Temps sans ennemi à sa distance d'engagement (et sans cible pour une bête qui ne fuit pas) avant qu'une bête qui erre se désengage et rentre à sa place (ms, multiple du tick ; 15 000 livré)."
+                }
+              },
+              "required": [
+                "maxRadius",
+                "calmMs"
+              ],
+              "description": "Bêtes qui se promènent (sous-lot V2.4.1, schéma 16)."
             }
           },
           "required": [
@@ -893,7 +916,8 @@
             "telegraph",
             "shield",
             "equipment",
-            "infighting"
+            "infighting",
+            "wander"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

@@ -318,6 +318,16 @@ namespace EdS.Simulation.Engine
                         if (behavior.Encircle) w.Field("encircle", true);
                         if (!behavior.Pack) w.Field("pack", false);   // sous-lot 11.9 (format 15)
                         if (behavior.Flee) w.Field("flee", true);   // sous-lot V2.4 (format 22)
+                        if (behavior.Wander is { } wander)   // sous-lot V2.4.1 (format 23), sous la forme du fichier de scénario
+                        {
+                            w.Name("wander").BeginObject().Field("style", Domain.Combat.WanderBehavior.StyleId(wander.Style)).Field("radius", wander.Radius)
+                                .Field("pace", wander.Pace).Field("legMs", wander.LegMs);
+                            w.Name("pauseMs").BeginArray().Value(wander.PauseMinMs).Value(wander.PauseMaxMs).EndArray();
+                            if (wander.Group is { } group) w.Field("group", group);
+                            if (wander.Lead) w.Field("lead", true);
+                            w.Field("spacing", wander.Spacing).Field("points", (long)wander.Points);
+                            w.EndObject();
+                        }
                         w.EndObject();
                     }
                     break;

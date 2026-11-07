@@ -681,6 +681,15 @@ Menu **Éclats du Seuil → Essai des animaux : …** (hors du mode Jeu ; seul l
 
 Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; pas de son propre aux cerfs ni aux lièvres ; un modèle Mixamo ou de l'Asset Store pourra remplacer les formes simples plus tard (dossier `Cerf`, `Lievre`).
 
+### Essai V2.4.1 : bêtes qui se promènent
+
+Menu **Éclats du Seuil → Essai des bêtes qui se promènent : …** (hors du mode Jeu ; seul le temps du monde avance, une copie de la sauvegarde est gardée) : **le matin (harde, meute, sangliers)** (7 h 30 d'un jour sans averse ni orage) et **le crépuscule (lièvres)** (19 h 10). Liste de vérification : [ESSAI_V1.10.md](ESSAI_V1.10.md#12-les-bêtes-qui-se-promènent-v241) ; règles : [MONDE.md](MONDE.md#bêtes-qui-se-promènent-sous-lot-v241).
+
+- **Cerfs et lièvres** (`WildlifeLook`) : la tête (cou, tête, museau, yeux, bois ; oreilles du lièvre) tourne autour d'une **nuque** (`Wildlife.Neck`) ; posture lissée d'après `CombatantView.Wander` (`Wildlife.Pose`) : **tête basse qui mâchonne** pour brouter (`graze`), relevée un instant toutes les sept secondes ; **tête haute** pour guetter (`watch`) ; lièvre **ramassé** entre deux bonds (`crouch`). Les pattes suivent la vitesse affichée, comme avant (marche lente au pas, bonds du lièvre).
+- **Loups et sangliers des packs** (`StyleBody`) : la marche lente joue le clip de marche ; à l'arrêt, une bête qui broute ou fouille joue un clip **« Eat », « Graze », « Sniff » ou « Dig »** s'il existe (`StyleMotion.Graze`, réservé : jamais pris pour l'attente), sinon l'attente.
+
+Limites : rien n'a été vu à l'écran (compilation contre les bouchons de l'API Unity seulement) ; les loups qui patrouillent n'ont pas d'animation de reniflement propre sans clip du pack.
+
 ## 8. En cas de problème
 
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.

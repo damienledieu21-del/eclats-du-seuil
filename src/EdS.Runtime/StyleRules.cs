@@ -186,6 +186,12 @@ namespace EdS.Runtime
 
         /// <summary>Essai réaliste 7 : coup reçu sur la garde (« Sword And Shield Guard Impact ») ; sinon la garde reste.</summary>
         GuardHit = 8,
+
+        /// <summary>
+        /// Sous-lot V2.4.1 (bêtes qui se promènent) : une bête qui broute ou fouille à l'arrêt (« Eat », « Graze », « Sniff », « Dig ») ;
+        /// sinon l'attente.
+        /// </summary>
+        Graze = 9,
     }
 
     /// <summary>Un son de l'essai de style.</summary>
@@ -450,10 +456,11 @@ namespace EdS.Runtime
             [StyleMotion.Cast] = new[] { "cast", "spell", "roar", "taunt", "howl" },
             [StyleMotion.Hurt] = new[] { "impact", "hurt", "react", "damage", "gethit" },
             [StyleMotion.GuardHit] = new[] { "guard" },
+            [StyleMotion.Graze] = new[] { "eat", "graze", "sniff", "dig", "eating" },   // sous-lot V2.4.1
         };
 
         /// <summary>Essai réaliste 7 : animations réservées à leur mouvement (jamais prises pour l'attente, la marche ou une attaque).</summary>
-        private static readonly StyleMotion[] Reserved = { StyleMotion.Block, StyleMotion.Cast, StyleMotion.Hurt, StyleMotion.GuardHit };
+        private static readonly StyleMotion[] Reserved = { StyleMotion.Block, StyleMotion.Cast, StyleMotion.Hurt, StyleMotion.GuardHit, StyleMotion.Graze };
 
         /// <summary>Repli quand le modèle n'a pas l'animation demandée.</summary>
         private static readonly Dictionary<StyleMotion, StyleMotion[]> Fallbacks = new Dictionary<StyleMotion, StyleMotion[]>
@@ -467,6 +474,7 @@ namespace EdS.Runtime
             [StyleMotion.Cast] = new[] { StyleMotion.Attack, StyleMotion.Idle },
             [StyleMotion.Hurt] = new StyleMotion[0],
             [StyleMotion.GuardHit] = new StyleMotion[0],
+            [StyleMotion.Graze] = new[] { StyleMotion.Idle },   // sous-lot V2.4.1
         };
 
         /// <summary>Sources réalistes : dossiers où sont rangés les fichiers de Poly Haven, de Mixamo et de Sketchfab.</summary>
@@ -1118,6 +1126,14 @@ namespace EdS.Runtime
         public static StyleMotion Motion(double speed, bool dead, bool attacking, bool guarding) =>
             dead ? StyleMotion.Death : attacking ? StyleMotion.Attack : speed < 0.3 ? (guarding ? StyleMotion.Block : StyleMotion.Idle)
                 : speed < 3.5 ? StyleMotion.Walk : StyleMotion.Run;
+
+        /// <summary>
+        /// Sous-lot V2.4.1 (bêtes qui se promènent) : comme <see cref="Motion(double, bool, bool, bool)"/>, et une bête arrêtée qui broute ou
+        /// fouille (<paramref name="wander"/> : <c>graze</c>, <c>root</c>, voir <c>CombatantView.Wander</c>) joue le broutage. Une bête qui
+        /// erre marche lentement : sa marche reste la marche.
+        /// </summary>
+        public static StyleMotion Motion(double speed, bool dead, bool attacking, bool guarding, string? wander) =>
+            !dead && !attacking && speed < 0.3 && (wander == "graze" || wander == "root") ? StyleMotion.Graze : Motion(speed, dead, attacking, guarding);
 
         /// <summary>Facteur d'échelle uniforme qui donne au modèle la hauteur voulue (1 si sa hauteur est nulle ou inconnue).</summary>
         public static double Scale(double modelHeight, double height) =>

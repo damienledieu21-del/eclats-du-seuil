@@ -157,6 +157,45 @@ namespace EdS.Runtime
             legs[3] = legs[4] = 40 * run * swing;
             return (0.22 * run * Math.Max(0, swing), legs);
         }
+
+        /// <summary>Sous-lot V2.4.1 : pièces de la tête (rattachées à la nuque, qui se baisse pour brouter).</summary>
+        private static readonly HashSet<string> HeadParts = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "cou", "tete", "museau", "oeil_g", "oeil_d", "bois_g", "bois_d", "andouiller_g", "andouiller_d", "oreille_g", "oreille_d",
+        };
+
+        /// <summary>Sous-lot V2.4.1 : la pièce <paramref name="name"/> tourne-t-elle avec la nuque ?</summary>
+        public static bool IsHead(string name) => name != null && HeadParts.Contains(name);
+
+        /// <summary>Sous-lot V2.4.1 : nuque (pivot de la tête) d'une bête, en mètres dans son repère : là où le cou rejoint le corps.</summary>
+        public static (double X, double Y, double Z) Neck(WildlifeKind kind) => kind == WildlifeKind.Deer ? (0, 1.3, 0.38) : (0, 0.28, 0.12);
+
+        /// <summary>
+        /// Sous-lot V2.4.1 (bêtes qui se promènent) : posture d'une bête selon ce qu'elle fait (<c>CombatantView.Wander</c>) : inclinaison de
+        /// la nuque (degrés, positive vers le sol) et abaissement du corps (m). Un cerf qui broute baisse la tête et mâchonne (petits coups de
+        /// tête) ; qui guette, la relève ; un lièvre tapi entre deux bonds se ramasse, aux aguets il se dresse. Sans état (fuite, combat,
+        /// marche) : tête droite. Affichage seulement.
+        /// </summary>
+        public static (double HeadPitch, double Crouch) Pose(WildlifeKind kind, string? wander, double time)
+        {
+            if (kind == WildlifeKind.None || double.IsNaN(time) || double.IsInfinity(time)) return (0, 0);
+            double t = time % 1000;
+            switch (wander)
+            {
+                case "graze":
+                case "root":
+                    // Tête au sol, petits coups de mâchoire (deux par seconde), un relevé d'un instant toutes les sept secondes.
+                    double lift = (t % 7) < 0.6 ? 35 : 0;
+                    return ((kind == WildlifeKind.Deer ? 62 : 28) - lift + 4 * Math.Sin(2 * Math.PI * 2 * t), 0);
+                case "watch":
+                    // Tête haute, qui balaie un peu.
+                    return (kind == WildlifeKind.Deer ? -8 : -18, kind == WildlifeKind.Hare ? -0.04 : 0);
+                case "crouch":
+                    return (6, kind == WildlifeKind.Hare ? 0.05 : 0);
+                default:
+                    return (0, 0);
+            }
+        }
     }
 
     /// <summary>
@@ -204,6 +243,39 @@ namespace EdS.Runtime
         /// <summary>Avance la sauvegarde au crépuscule (19 h 10) : les lièvres sortent dans les champs du sud et les vergers.</summary>
         public static string MoveToHares(string path, long tickMilliseconds = 50, string? stamp = null) =>
             DayTrial.MoveSave(path, HareMinute, tickMilliseconds, stamp) + " Les lièvres sortent dans les champs du sud et les vergers ; les loups de la nuit arrivent à 22 h.";
+
+        /// <summary>
+        /// Sous-lot V2.4.1 (essai des bêtes qui se promènent) : avance la sauvegarde au matin (7 h 30, un jour sans averse) : les cerfs broutent,
+        /// les loups patrouillent, les sangliers fouillent.
+        /// </summary>
+        public static string MoveToWanderMorning(string path, string zone = "zone.vallons", long tickMilliseconds = 50, string? stamp = null)
+        {
+            if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
+            SaveReadResult read = SaveStore.Read(path);
+            if (!(read.Save is WorldSave save)) return "Sauvegarde illisible : " + (read.Problem ?? "?");
+            var clock = new WorldClock(tickMilliseconds);
+            long tick = DayTrial.NextTickAt(clock, save.WorldTick, WanderMorningMinute);
+            int day = 0;
+            for (; day < WeatherTrial.MaxDays && !DeerWeather(WorldWeather.At(zone, clock.At(tick)).Kind); day++)
+                tick = DayTrial.NextTickAt(clock, checked(tick + 1), WanderMorningMinute);
+            if (day == WeatherTrial.MaxDays) return "Pas de matin sans averse dans les jours qui viennent : rien n'a changé.";
+            string copy = DayTrial.KeepCopy(path, stamp);
+            SaveStore.Write(path, DayTrial.Advanced(save, tick));
+            return $"Partie avancée au {clock.At(tick)} (tick {tick}). " + WanderGuide + $" Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
+        }
+
+        /// <summary>Sous-lot V2.4.1 : minute du matin de l'essai des bêtes qui se promènent (7 h 30).</summary>
+        public const int WanderMorningMinute = 7 * 60 + 30;
+
+        /// <summary>Sous-lot V2.4.1 : où regarder les bêtes qui se promènent (texte de l'essai).</summary>
+        public const string WanderGuide = "Au sud du lac des Aubes, la harde broute en grappe derrière son chef et change de coin d'herbe ; "
+            + "dans le pré au-dessus du moulin, les loups patrouillent en file sur leur circuit ; les sangliers fouillent les champs du sud. "
+            + "Approche-toi d'un cerf : la harde détale, puis, après 15 secondes au calme, revient brouter chez elle.";
+
+        /// <summary>Sous-lot V2.4.1 : avance la sauvegarde au crépuscule : les lièvres sautillent par à-coups dans les champs du sud et les vergers.</summary>
+        public static string MoveToWanderDusk(string path, long tickMilliseconds = 50, string? stamp = null) =>
+            DayTrial.MoveSave(path, HareMinute, tickMilliseconds, stamp) + " Les lièvres sautillent par à-coups dans les champs du sud et les vergers, "
+            + "s'arrêtent aux aguets entre deux bonds ; à 22 h, les loups de la nuit patrouillent en meute autour du moulin.";
 
         /// <summary>Avance la sauvegarde au prochain matin de brume : loups gris aux champs du sud, échos au lac et aux ruines.</summary>
         public static string MoveToMist(string path, string? stamp = null) =>

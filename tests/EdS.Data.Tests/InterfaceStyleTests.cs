@@ -190,7 +190,7 @@ public class InterfaceStyleTests
         string arena = Read("unity", "Assets", "EdS", "Game", "ArenaView.cs");
         Assert.Contains("_shield.SetActive(!styled && me.IsPresent && (me.Guarding || me.ParryOpen || broken));", arena, StringComparison.Ordinal);
         Assert.Contains("mine.Update(_player.transform.position, me.IsDead, Time.deltaTime, me.Guarding || me.ParryOpen);", arena, StringComparison.Ordinal);
-        Assert.Contains("StyleRules.Motion(_speed, dead, false, guarding)", Read("unity", "Assets", "EdS", "Game", "StyleLook.cs"), StringComparison.Ordinal);
+        Assert.Contains("StyleRules.Motion(_speed, dead, false, guarding, wander)", Read("unity", "Assets", "EdS", "Game", "StyleLook.cs"), StringComparison.Ordinal);
 
         // Annonces au sol : shader dédié, réglé par annonce ; imparable signalé.
         string shader = Read("unity", "Assets", "EdS", "Game", "Annonce.shader");

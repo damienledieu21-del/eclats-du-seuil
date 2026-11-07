@@ -209,6 +209,25 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Sous-lot V2.4 (schéma 16) : bête qui fuit (cerf, lièvre) ; facultatif, faux par défaut.</summary>
         public bool? Flee { get; set; }
+
+        /// <summary>Sous-lot V2.4.1 (schéma 17) : errance hors combat ; facultative.</summary>
+        public WanderData? Wander { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.4.1 (schéma 17) : errance d'une bête (voir <c>WanderBehavior</c>).</summary>
+    public sealed class WanderData
+    {
+        public string? Style { get; set; }
+        public Domain.Numerics.Fixed? Radius { get; set; }
+        public Domain.Numerics.Fixed? Pace { get; set; }
+        public long? LegMs { get; set; }
+
+        /// <summary>Pause [min, max] en millisecondes (exactement deux entiers).</summary>
+        public long[]? PauseMs { get; set; }
+        public string? Group { get; set; }
+        public bool? Lead { get; set; }
+        public Domain.Numerics.Fixed? Spacing { get; set; }
+        public long? Points { get; set; }
     }
 
     public sealed class CommandData

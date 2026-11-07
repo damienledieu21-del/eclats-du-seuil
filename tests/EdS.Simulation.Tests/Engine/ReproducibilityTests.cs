@@ -101,8 +101,9 @@ public class ReproducibilityTests
     // empreinte a2d199bf…). Sous-lot V1.3 : moteur 0.26.0, format 20 (effets d'équipement) ; sans équipement : seul l'en-tête change (ancienne
     // empreinte b2855b2b…). Sous-lot V1.8d : moteur 0.27.0, format 21 (bonus modifié) ; sans bonus modifié : seul l'en-tête change
     // (ancienne empreinte 58117fe9…). Sous-lot V2.4 : moteur 0.28.0, format 22 (bêtes qui fuient, trêves, combats entre créatures) ; sans
-    // créatures de deux équipes : seul l'en-tête change (ancienne empreinte 1cb5f862…).
-    internal const string ReferenceHash = "4f4c8fb10877fd53addf25ebc9229dc5ab11ef65944d4162c2c7eac98de4b491";
+    // créatures de deux équipes : seul l'en-tête change (ancienne empreinte 1cb5f862…). Sous-lot V2.4.1 : moteur 0.29.0, format 23 (bêtes
+    // qui se promènent) ; sans bête qui erre : seul l'en-tête change (ancienne empreinte 4f4c8fb1…).
+    internal const string ReferenceHash = "1ba20e03d776f18db99abff79cdadfb12334eb7314f7e177512cadc0c9809a5a";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

@@ -287,7 +287,7 @@ public class V18dGearChangeTests
         while (engine.CurrentTick < 40) engine.Step();
         CombatSnapshot snapshot = engine.Snapshot();
         Assert.Contains("\"gear\":[30,0,0,20,0,1000,50,0]", snapshot.Text);
-        Assert.StartsWith("{\"snapshot\":5,", snapshot.Text);   // V2.4 : format 5 (hurtByCharacter)
+        Assert.StartsWith("{\"snapshot\":6,", snapshot.Text);   // V2.4 : format 5 (hurtByCharacter)
         var resumedLog = new MemoryCombatLog();
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, resumedLog);
         Assert.Equal(more, resumed.View("bastion").Gear);

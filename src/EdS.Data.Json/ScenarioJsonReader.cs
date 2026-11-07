@@ -123,8 +123,42 @@ namespace EdS.Data.Json
                 ["encircle"] = (v, p) => b.Encircle = input.Boolean(v, p),
                 ["pack"] = (v, p) => b.Pack = input.Boolean(v, p),   // sous-lot 11.9 (schéma 9)
                 ["flee"] = (v, p) => b.Flee = input.Boolean(v, p),   // sous-lot V2.4 (schéma 16)
+                ["wander"] = (v, p) => b.Wander = ReadWander(input, v, p),   // sous-lot V2.4.1 (schéma 17)
             });
             return ok ? b : null;
+        }
+
+        /// <summary>Sous-lot V2.4.1 : errance d'une bête.</summary>
+        private static WanderData? ReadWander(JsonInput input, JsonElement element, string path)
+        {
+            var w = new WanderData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["style"] = (v, p) => w.Style = input.Text(v, p),
+                ["radius"] = (v, p) => w.Radius = input.Decimal(v, p),
+                ["pace"] = (v, p) => w.Pace = input.Decimal(v, p),
+                ["legMs"] = (v, p) => w.LegMs = input.Int64(v, p),
+                ["pauseMs"] = (v, p) => w.PauseMs = ReadPair(input, v, p),
+                ["group"] = (v, p) => w.Group = input.Text(v, p),
+                ["lead"] = (v, p) => w.Lead = input.Boolean(v, p),
+                ["spacing"] = (v, p) => w.Spacing = input.Decimal(v, p),
+                ["points"] = (v, p) => w.Points = input.Int64(v, p),
+            });
+            return ok ? w : null;
+        }
+
+        /// <summary>Sous-lot V2.4.1 : tableau d'exactement deux entiers <c>[min, max]</c>.</summary>
+        private static long[]? ReadPair(JsonInput input, JsonElement element, string path)
+        {
+            if (!input.RequireKind(element, JsonValueKind.Array, path, "tableau [min, max]")) return null;
+            IReadOnlyList<JsonElement> items = element.EnumerateArray();
+            if (items.Count != 2)
+            {
+                input.Report.Add(path, ValidationCode.WrongType, $"tableau de deux entiers [min, max] attendu ({items.Count} valeur(s)).", input.LineOf(path));
+                return null;
+            }
+            long? min = input.Int64(items[0], path + "[0]"), max = input.Int64(items[1], path + "[1]");
+            return min is long a && max is long b ? new[] { a, b } : null;
         }
 
         /// <summary>Sous-lot 11.4 : point ou direction, tableau d'exactement deux nombres <c>[x, z]</c>.</summary>

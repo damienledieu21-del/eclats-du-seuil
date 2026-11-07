@@ -196,6 +196,13 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - **Suite de V2.2** (réponse de Damien du 6 novembre 2026) : plus d'échos et de loups par brume, avec une zone en schéma 9 (populations selon le temps), sans gêner les quêtes ni l'étoile des chasses.
 - **État** (6 novembre 2026, PR en brouillon) : quatre équipes de créatures avec des **trêves** (la meute et le gibier se battent ; bandits et échos à part), coups réduits de moitié entre bêtes, une bête ne court qu'après une bête qu'elle voit ; **six cerfs** (aube et jour, abrités sous l'averse) et **quatre lièvres** (crépuscule et nuit) qui **fuient** en harde ; **trois loups gris et deux échos de la brume** (zones en schéma 9, `weather`) ; une bête tuée par une autre ne donne rien ; formes simples sous Unity et menu « Essai des animaux ». Moteur 0.28.0, journal 22, scénarios 16, règles 15 (0.16.0), instantané 5, nouvelle référence figée ; sauvegarde inchangée (12) ([MONDE.md](MONDE.md#animaux-paisibles-et-bêtes-qui-se-battent-sous-lot-v24)). Reste l'essai de Damien sous Unity.
 
+### 16 bis. V2.4.1 — Bêtes qui se promènent (S)
+
+- Réponse de Damien du 6 novembre 2026 (question 8 de la PR #104) : « un petit lot du moteur, errance déterministe ». Validé par Damien le 7 novembre 2026.
+- Dépend de V2.4.
+- Formats : moteur, journal, règles, scénarios, instantané ; nouvelles références figées.
+- **État** (7 novembre 2026, PR en brouillon) : moteur 0.29.0, journal au format 23, scénarios en schéma 17, règles en schéma 16 (contenu 0.17.0), instantané au format 6 ; errance sans état ni tirage du générateur du combat ; cerfs qui broutent en harde derrière leur chef, lièvres qui sautillent par à-coups, loups qui patrouillent en file sur un circuit, sangliers qui fouillent ; retour dans l'aire, calme après 15 s et retour chez soi ; ni bagarre sans raison, ni vie de session consommée, ni bête qui vient d'elle-même sur un point sûr ou un PNJ ; créatures des événements sans errance ; têtes qui broutent sous Unity ; menu « Essai des bêtes qui se promènent » ([MONDE.md](MONDE.md#bêtes-qui-se-promènent-sous-lot-v241)). Reste l'essai de Damien sous Unity.
+
 ### 17. V2.5 — Événements du monde : attaque du hameau, faille du Seuil (L)
 
 - Événements déclenchés par le temps du monde, de façon déterministe, avec une récompense donnée une seule fois par personnage (registre).

@@ -60,9 +60,11 @@ namespace EdS.Data.Scenarios
         /// source « item.… » ou « set.… », <c>modifiers</c> et <c>triggers</c>, bornés par <c>combat.equipment</c> des règles). Version 15 (sous-lot
         /// V1.8d) : action <c>gear</c> (« bonus modifié » d'un personnage) avec son <c>gear</c> (nouveau bonus d'équipement total, mêmes champs et
         /// bornes que celui d'un personnage). Version 16 (sous-lot V2.4, animaux paisibles) : <c>flee</c> facultatif sur un comportement (bête qui
-        /// fuit, à <c>minRange</c> de sa cible). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// fuit, à <c>minRange</c> de sa cible). Version 17 (sous-lot V2.4.1, bêtes qui se promènent) : <c>wander</c> facultatif sur un comportement
+        /// (<c>style</c>, <c>radius</c>, <c>pace</c>, <c>legMs</c>, <c>pauseMs</c> obligatoires ; <c>group</c>, <c>lead</c>, <c>spacing</c>,
+        /// <c>points</c> facultatifs). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 16;
+        public const int CurrentSchemaVersion = 17;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -146,6 +148,11 @@ namespace EdS.Data.Scenarios
             return GearBonus.FromValues(values);
         }
 
+        /// <summary>Sous-lot V2.4.1 : errance d'une bête (champs obligatoires et manière déjà vérifiés ; circuit borné).</summary>
+        private static WanderBehavior BuildWander(WanderData w) =>
+            new WanderBehavior(WanderBehavior.ParseStyle(w.Style)!.Value, w.Radius!.Value, w.Pace!.Value, w.LegMs!.Value, w.PauseMs![0], w.PauseMs[1],
+                w.Group, w.Lead ?? false, w.Spacing, (int)(w.Points ?? 4));
+
         private static CombatSetup Build(ScenarioData scenario, GameData data)
         {
             var combatants = new List<CombatantSetup>();
@@ -176,7 +183,8 @@ namespace EdS.Data.Scenarios
                     combatants.Add(new AssailantSetup(c.Id!, c.Team!, c.Armor!.Value, c.MagicResistance!.Value, c.Target,
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
-                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true, b.Flee ?? false) : null));
+                        c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true, b.Flee ?? false,
+                            b.Wander is { } w ? BuildWander(w) : null) : null));
                 }
                 else
                 {
@@ -217,6 +225,20 @@ namespace EdS.Data.Scenarios
             {
                 _report = report;
                 _data = data;
+            }
+
+            /// <summary>Sous-lot V2.4.1 (schéma 17) : champs obligatoires de l'errance et manière connue.</summary>
+            private void CheckWander(WanderData w, string path)
+            {
+                if (Present(w.Style, path + ".style", "manière d'errer : graze, hop, patrol ou root") && WanderBehavior.ParseStyle(w.Style) is null
+                    && !_report.HasErrorAtOrAbove(path + ".style"))
+                    _report.Add(path + ".style", ValidationCode.InvalidValue, $"manière inconnue « {w.Style} » (graze, hop, patrol ou root).");
+                Present(w.Radius, path + ".radius", "rayon de l'aire d'errance, en mètres");
+                Present(w.Pace, path + ".pace", "allure, fraction de la vitesse");
+                Present(w.LegMs, path + ".legMs", "durée d'une étape, en millisecondes");
+                Present(w.PauseMs, path + ".pauseMs", "pause [min, max] au début d'une étape, en millisecondes");
+                if (w.Points is long points && (points < WanderBehavior.MinPoints || points > WanderBehavior.MaxPoints) && !_report.HasErrorAtOrAbove(path + ".points"))
+                    _report.Add(path + ".points", ValidationCode.OutOfRange, $"circuit hors de [{WanderBehavior.MinPoints}, {WanderBehavior.MaxPoints}] points.");
             }
 
             private bool Present(object? value, string path, string description)
@@ -350,6 +372,7 @@ namespace EdS.Data.Scenarios
                         Present(c.IntervalMs, path + ".intervalMs", "intervalle entre deux attaques, en millisecondes");
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
                         if (c.Behavior is { } behavior) Present(behavior.MaxRange, path + ".behavior.maxRange", "distance maximale à la cible, en mètres");   // sous-lot 11.5
+                        if (c.Behavior?.Wander is { } wander) CheckWander(wander, path + ".behavior.wander");   // sous-lot V2.4.1
                         Triggers.TriggerShape.Check(c.Triggers, path + ".triggers", _report);
                         break;
                 }
