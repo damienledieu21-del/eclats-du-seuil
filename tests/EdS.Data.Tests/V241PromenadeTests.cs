@@ -354,6 +354,100 @@ public class V241PromenadeMoteurTests
     }
 
     [Fact]
+    public void Lievre_frappe_par_le_joueur_se_calme_garde_le_credit_et_ne_remarque_plus_le_joueur_au_loin()
+    {
+        // Relecture de la PR #111 : le Bastion frappe le lièvre puis s'en va loin à l'ouest ; le lièvre se calme (crédit du joueur gardé :
+        // frappé par un personnage), rentre ; un loup arrivé plus tard (arrivalMs, avec son errance, sans groupe) le dérange : réengagé
+        // contre une bête, il ne « remarque » pas le joueur au loin (il ne le vise pas) ; seul un nouveau coup du joueur l'éveillerait.
+        CombatSetup setup = ReadMutated(r =>
+        {
+            JsonArray c = r["data"]!["combatants"]!.AsArray();
+            c[0]!["position"] = new JsonArray(-0.9, -15);
+            c[4]!["health"] = 500;   // il survit au coup
+            JsonObject late = c[5]!.DeepClone().AsObject();
+            late["id"] = "loup_tard";
+            late["position"] = new JsonArray(0, -5);
+            late["arrivalMs"] = 40000;
+            late["behavior"]!["wander"]!.AsObject().Remove("group");
+            c.Add(late);
+            r["data"]!["durationMs"] = 120000;
+            r["data"]!["commands"] = new JsonArray(
+                new JsonObject { ["atMs"] = 0, ["actor"] = "bastion", ["skill"] = "skill.bastion.frappe_du_rempart", ["target"] = "lievre" },
+                new JsonObject { ["atMs"] = 1500, ["actor"] = "bastion", ["action"] = "move", ["direction"] = new JsonArray(-1, 0) },
+                new JsonObject { ["atMs"] = 7000, ["actor"] = "bastion", ["action"] = "stop" });
+        }, scenario: Promenade).Setup!;
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log);
+        bool calmed = false, reengaged = false, wolfWandered = false;
+        while (!engine.IsFinished)
+        {
+            engine.Step();
+            CombatantView hare = engine.View("lievre"), wolf = engine.View("loup_tard");
+            if (wolf.IsPresent && wolf.Wander != null) wolfWandered = true;
+            if (!calmed && log.Lines.Any(l => l.Contains("\"event\":\"calmed\",\"actor\":\"lievre\"", StringComparison.Ordinal)))
+            {
+                calmed = true;
+                Assert.True(hare.HurtByCharacter);   // le crédit du joueur reste
+                Assert.False(hare.Engaged || hare.Noticed);
+            }
+            if (calmed && hare.Engaged)
+            {
+                reengaged = true;
+                Assert.False(hare.Noticed, $"le lièvre remarque le joueur au loin au tick {engine.CurrentTick}");
+                Assert.NotEqual("bastion", hare.CurrentTarget);
+                Assert.True(hare.HurtByCharacter);
+            }
+        }
+        Assert.True(calmed && reengaged && wolfWandered, $"calmé {calmed}, réengagé {reengaged}, loup errant {wolfWandered}");
+        Assert.Contains(log.Lines, l => l.Contains("\"event\":\"combatantJoined\"", StringComparison.Ordinal) && l.Contains("loup_tard", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Chef_parti_un_autre_mene_la_file()
+    {
+        // Relecture de la PR #111 : le chef de la meute quitte le combat (comme mort : il n'erre plus) ; loup2, premier membre qui erre, mène
+        // alors, et loup3 le suit en file. Puis le chef engagé (le Bastion approche) : même relève.
+        CombatSetup setup = ReadMutated(r =>
+            r["data"]!["commands"]!.AsArray().Add(new JsonObject { ["atMs"] = 10000, ["actor"] = "loup_chef", ["action"] = "leave" }), scenario: Promenade).Setup!;
+        var engine = new CombatEngine(setup, new MemoryCombatLog());
+        double gap = 0;
+        int samples = 0;
+        while (!engine.IsFinished)
+        {
+            engine.Step();
+            if (engine.CurrentTick < 400 || engine.CurrentTick % 20 != 0) continue;
+            Assert.False(engine.View("loup_chef").IsPresent);
+            gap += Distance(engine.View("loup3").Position!.Value, engine.View("loup2").Position!.Value);
+            samples++;
+        }
+        Assert.True(gap / samples < 4, $"loup3 à {gap / samples:0.0} m de loup2 en moyenne");
+        // loup2 mène : il patrouille autour de sa propre place (22, 17), plus autour de celle du chef.
+        Assert.True(Distance(engine.View("loup2").Position!.Value, 22, 17) <= 6.5);
+
+        CombatSetup chased = ReadMutated(r =>
+        {
+            r["data"]!["combatants"]![0]!["position"] = new JsonArray(20, 23);
+            r["data"]!["commands"] = new JsonArray();
+        }, scenario: Promenade).Setup!;
+        var e2 = new CombatEngine(chased, new MemoryCombatLog());
+        for (int i = 0; i < 300; i++) e2.Step();
+        Assert.True(e2.View("loup_chef").Engaged);
+        CombatantView follower = e2.View("loup3");
+        if (!follower.Engaged) Assert.NotNull(follower.Wander);   // une bête de la meute restée au calme erre seule ou derrière le nouveau chef
+    }
+
+    [Fact]
+    public void Instantane_au_format_5_refuse()
+    {
+        var engine = new CombatEngine(Load(), new MemoryCombatLog());
+        for (int i = 0; i < 20; i++) engine.Step();
+        string text = engine.Snapshot().Text;
+        Assert.StartsWith("{\"snapshot\":6,", text);
+        string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":6,".Length);
+        Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(old), new MemoryCombatLog()));
+    }
+
+    [Fact]
     public void Une_creature_d_evenement_n_erre_pas()
     {
         AssailantBehavior shipped = Load().Combatants.OfType<AssailantSetup>().Single(a => a.Id == "loup_chef").Behavior!;

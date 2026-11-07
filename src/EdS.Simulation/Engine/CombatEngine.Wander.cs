@@ -32,6 +32,16 @@ namespace EdS.Simulation.Engine
         /// <summary>Flux des tirages de l'errance (« WAND »), mêlé à celui de la bête.</summary>
         private const ulong WanderStream = 0x5741_4E44UL;
 
+        /// <summary>
+        /// Relecture de la PR #111 : générateur de l'errance, réutilisé (resemé à chaque étape d'une bête, sans allocation) ; il ne garde rien
+        /// d'un plan à l'autre (même suite qu'un <see cref="Pcg32"/> neuf de même graine et même flux).
+        /// </summary>
+        private readonly Pcg32 _wanderRandom = new Pcg32(0, WanderStream);
+
+        /// <summary>Relecture de la PR #111 : états d'errance affichés, calculés une fois par tick (et par nombre de combattants).</summary>
+        private string?[]? _wanderStates;
+        private long _wanderStatesTick = -1;
+
         /// <summary>Ticks de course puis d'arrêt d'un bond de lièvre.</summary>
         private const long HopRun = 3, HopCycle = 8;
 
@@ -112,7 +122,8 @@ namespace EdS.Simulation.Engine
             ulong stream = StreamOf(f.Id);
             long t = checked(tick + (long)(stream % (ulong)legTicks));
             long leg = t / legTicks, within = t % legTicks;
-            var random = new Pcg32(unchecked((ulong)_setup.Seed + (ulong)leg * 0x9E37_79B9_7F4A_7C15UL), stream ^ WanderStream);
+            Pcg32 random = _wanderRandom;
+            random.Reseed(unchecked((ulong)_setup.Seed + (ulong)leg * 0x9E37_79B9_7F4A_7C15UL), stream ^ WanderStream);
             long pauseMin = w.PauseMinMs / _tickMs, pauseMax = w.PauseMaxMs / _tickMs;
             long pause = checked(pauseMin + random.NextBounded(checked((uint)(pauseMax - pauseMin + 1))));
             long goalX, goalZ;
@@ -220,11 +231,14 @@ namespace EdS.Simulation.Engine
             long calmTicks = _rules.WanderCalmMs / _tickMs;
             bool calm = since is long s && checked(tick - s) >= calmTicks;
             long calms = calm ? checked(f.Calms + 1) : f.Calms;
+            // Relecture de la PR #111 : « remarqué » (calculé sans rien modifier) partage la réserve du calme : une unité par tick.
+            bool noticed = !calm && (f.Noticed || Notices(f, behavior));
             Reserve(Cost.Op + Cost.Line.If(calm));
             Charge(1);
             if (!calm)
             {
                 f.QuietSince = since;
+                f.Noticed = noticed;
                 return false;
             }
             f.Engaged = false;
@@ -232,6 +246,7 @@ namespace EdS.Simulation.Engine
             f.Noticed = false;
             f.Struck = false;
             f.Taunted = false;
+            f.CharacterHitSinceCalm = false;
             f.QuietSince = null;
             f.Calms = calms;
             EmitDiagnostic(tick, CombatPhase.Commands, "calmed", w => w.Field("actor", f.Id));
@@ -263,19 +278,30 @@ namespace EdS.Simulation.Engine
         /// <summary>Une créature à bout (1 PV) : les bêtes ne la visent plus et ne s'en soucient plus (une bête n'en tue jamais une autre).</summary>
         private static bool SpentBeast(Fighter g) => g.Character is null && g.Assailant != null && g.Health is long h && h <= 1;
 
-        /// <summary>Sous-lot V2.4.1 : état d'errance affiché (vue) ; null si la bête n'erre pas.</summary>
+        /// <summary>
+        /// Sous-lot V2.4.1 : état d'errance affiché (vue) ; null si la bête n'erre pas. Relecture de la PR #111 : les états de toutes les bêtes
+        /// sont calculés une seule fois par tick (les places ne changent qu'en avançant d'un tick ; une arrivée change le nombre de combattants).
+        /// </summary>
         private string? WanderState(Fighter f, long tick)
         {
             if (!Wanders(f)) return null;
             int n = _fightersById.Count;
-            var x = new long[n];
-            var z = new long[n];
-            for (int k = 0; k < n; k++)
+            if (_wanderStates is null || _wanderStatesTick != tick || _wanderStates.Length != n)
             {
-                x[k] = _fightersById[k].Body?.X ?? 0;
-                z[k] = _fightersById[k].Body?.Z ?? 0;
+                var x = new long[n];
+                var z = new long[n];
+                for (int k = 0; k < n; k++)
+                {
+                    x[k] = _fightersById[k].Body?.X ?? 0;
+                    z[k] = _fightersById[k].Body?.Z ?? 0;
+                }
+                var states = new string?[n];
+                for (int k = 0; k < n; k++)
+                    if (Wanders(_fightersById[k])) states[k] = PlanWander(k, tick, x, z).State;
+                _wanderStates = states;
+                _wanderStatesTick = tick;
             }
-            return PlanWander(_fightersById.IndexOf(f), tick, x, z).State;
+            return _wanderStates[_fightersById.IndexOf(f)];
         }
     }
 }

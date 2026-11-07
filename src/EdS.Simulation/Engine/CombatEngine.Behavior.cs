@@ -91,8 +91,13 @@ namespace EdS.Simulation.Engine
                 if (f.Behavior is not { } behavior || f.Out) continue;
                 if (f.Engaged)
                 {
-                    // Sous-lot V2.4.1 : une bête qui erre se calme quand plus rien ne la retient, puis rentre chez elle.
-                    if (behavior.Wander != null && RunCalm(tick, f, behavior)) continue;
+                    // Sous-lot V2.4.1 : une bête qui erre se calme quand plus rien ne la retient, puis rentre chez elle ; une seule réserve pour
+                    // le calme et « remarqué » (relecture de la PR #111).
+                    if (behavior.Wander != null)
+                    {
+                        RunCalm(tick, f, behavior);
+                        continue;
+                    }
                     // Relecture de la PR #104 : une bête engagée contre des bêtes seulement remarque un joueur qui entre à sa distance
                     // d'engagement (ou qui la frappe, ou qu'un allié de sa meute a remarqué) ; avant, elle ne court pas après lui au loin.
                     if (f.Noticed) continue;
@@ -125,7 +130,8 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private bool Notices(Fighter f, AssailantBehavior behavior)
         {
-            if (f.HurtByCharacter || f.Taunted || behavior.AggroRange is null) return true;
+            // Relecture de la PR #111 : frappée par un personnage depuis son dernier calme (pas avant : le crédit du joueur reste, pas l'éveil).
+            if (f.CharacterHitSinceCalm || f.Taunted || behavior.AggroRange is null) return true;
             long aggro = behavior.AggroRange.Value.Raw;
             foreach (Fighter other in _fightersById)
                 if (!other.Out && other.Character != null && Enemies(other, f) && other.Body != null && EdgeDistance(f.Body!, other.Body) <= aggro) return true;

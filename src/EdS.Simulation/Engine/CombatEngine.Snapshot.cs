@@ -31,7 +31,8 @@ namespace EdS.Simulation.Engine
         /// le sous-lot 12.6 (charges des objets de soin, recharge partagée, soins reçus), 4 depuis le sous-lot V1.8d (bonus d'équipement en vigueur
         /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>), 5 depuis le sous-lot V2.4
         /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires), 6 depuis le sous-lot V2.4.1 (bête
-        /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois ; le reste de l'errance se déduit du tick et des places).
+        /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois, frappée par un personnage depuis son dernier calme
+        /// <c>characterHitSinceCalm</c> ; le reste de l'errance se déduit du tick et des places).
         /// </summary>
         public const int FormatVersion = 6;
 
@@ -229,7 +230,8 @@ namespace EdS.Simulation.Engine
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
                 .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed)   // sous-lot V2.4 (format 5)
-                .Field("quietSince", f.QuietSince).Field("calms", f.Calms);   // sous-lot V2.4.1 (format 6)
+                .Field("quietSince", f.QuietSince).Field("calms", f.Calms)   // sous-lot V2.4.1 (format 6)
+                .Field("characterHitSinceCalm", f.CharacterHitSinceCalm);   // relecture de la PR #111
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -1031,6 +1033,10 @@ namespace EdS.Simulation.Engine
                 Require(!f.HurtByCharacter || f.Struck || f.Calms > 0, $"{who} frappé par un personnage sans avoir été frappé.");
                 // Sous-lot V2.4.1 : seule une bête qui erre se calme ; au calme depuis un tick déjà joué, depuis son engagement, engagée.
                 Require(f.Calms >= 0 && f.Calms <= CurrentTick && (f.Calms == 0 || f.Behavior?.Wander != null), $"Calmes de {who} impossibles.");
+                // Relecture de la PR #111 : frappée par un personnage depuis le calme ⇒ frappée par un personnage, et frappée depuis le calme ;
+                // sans calme, les deux marques coïncident.
+                Require((!f.CharacterHitSinceCalm || (f.HurtByCharacter && f.Struck)) && (f.Calms > 0 || f.CharacterHitSinceCalm == f.HurtByCharacter),
+                    $"Coup d'un personnage depuis le calme de {who} impossible.");
                 Require(f.QuietSince is not long quietSince || (f.Behavior?.Wander != null && f.Engaged && f.EngagedTick is long since
                     && quietSince >= since && quietSince <= CurrentTick - 1), $"Calme de {who} impossible.");
                 // Sous-lot 11.5 : seul un ennemi qui a un comportement s'engage ; sans distance d'engagement, il l'est d'emblée.
@@ -2027,6 +2033,7 @@ namespace EdS.Simulation.Engine
             f.Noticed = n["noticed"].Bool;
             f.QuietSince = n["quietSince"].NullableLong;   // sous-lot V2.4.1 (format 6)
             f.Calms = n["calms"].Long;
+            f.CharacterHitSinceCalm = n["characterHitSinceCalm"].Bool;   // relecture de la PR #111
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),
