@@ -452,7 +452,7 @@ public class V16QuetesTests
         // passent en version 8.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 2, Peaux)));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   // V1.3   /* V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   // V1.3   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,
@@ -526,7 +526,7 @@ public class V16QuetesTests
     public void Chef_des_bandits_livre_a_deux_formes()
     {
         ZoneDefinition z = Zone();
-        Assert.Equal(10, z.SchemaVersion);   // V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
+        Assert.Equal(11, z.SchemaVersion);   // V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
         Boss chef = z.Chiefs[0];   // sous-lot V1.9.6 : Croc-Gris est le second (V196OuvertureTests)
         Assert.Equal(new[] { "chef_des_bandits", "croc_gris" }, z.Chiefs.Select(c => c.Id));
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));

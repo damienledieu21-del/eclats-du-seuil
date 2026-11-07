@@ -155,3 +155,21 @@ Menu **Éclats du Seuil → Essai des événements : …**, **hors du mode Jeu**
 | 10.9 | Vaincre les échos, puis F près de la faille (« F : refermer la faille ») | La faille se referme ; récompense : 450 points, 2 argent 50, **un éclat de Seuil** ; plus de vague | [ ] | |
 | 10.10 | « la chasse de l'aube », puis Play ; aller aux **champs du sud** | Deux loups sortent du bois et attaquent un sanglier ; personne ne meurt (une bête n'en tue pas une autre) ; ils repartent après une heure du monde | [ ] | |
 | 10.11 | Ton avis : fréquence (un soir sur deux, une faille tous les trois jours), annonces, difficulté (les assaillants ont le niveau du hameau), récompenses, cloche | — | [ ] | |
+
+## 11. Le Seuil qui grandit (V2.6)
+
+Menu **Éclats du Seuil → Essai du Seuil qui grandit : …**, **hors du mode Jeu** (il écrit une cicatrice dans la sauvegarde, avance les jours du monde ou efface les cicatrices ; une copie de la sauvegarde est gardée à chaque fois). Pour purifier, il faut un **éclat de Seuil** (Renart, la guilde, ou la première faille refermée). Détail : [MONDE.md](MONDE.md#le-seuil-qui-grandit-sous-lot-v26).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 11.1 | « une cicatrice aux ruines (palier 1) », puis Play ; aller aux **ruines** (près du camp de la carrière) | Un rond d'**herbe pâle** au sol (8 m), un cœur gris, trois **pointes sombres**, des grains de **brume froide** qui montent ; en haut, « Cicatrice du Seuil · palier 1 sur 4 — l'herbe pâlit » quand on est dedans | [ ] | |
+| 11.2 | Marcher du bord vers le cœur | Les **couleurs se fanent** peu à peu, la lumière devient froide, la brume se rapproche ; elles reviennent en sortant | [ ] | |
+| 11.3 | Arrêter, « avancer de 2 jours du monde », Play | La cicatrice a **grandi** (palier 2, 12 m, plus de pointes) ; message « Des échos se lèvent autour de la cicatrice… » ; **un écho rôdeur**, un peu plus fort qu'un écho ordinaire | [ ] | |
+| 11.4 | Approcher du cœur avec l'écho debout, appuyer sur F (« F : purifier la cicatrice ») | « Des échos rôdent encore… » ; sans éclat : « Il te faut un éclat de Seuil… » | [ ] | |
+| 11.5 | Vaincre l'écho, puis F au cœur avec un éclat de Seuil | « Tu poses l'éclat de Seuil au cœur… » ; **200 points** ; la cicatrice disparaît, les couleurs reviennent ; l'écho ne revient plus | [ ] | |
+| 11.6 | « une cicatrice aux ruines (palier 3, échos rôdeurs) », puis « avancer de 6 jours » | Palier 4 sur 4 (« le Seuil respire »), 20 m, trois échos rôdeurs à 145 %, couleurs presque grises au cœur | [ ] | |
+| 11.7 | Essai des événements : « ouvrir une faille du Seuil » sur une cicatrice, la refermer | Échos de la faille plus forts ; une fois refermée, « la cicatrice recule » (un palier de moins) | [ ] | |
+| 11.8 | Laisser une faille ouverte (ne pas y aller jusqu'à la fin) | « …une cicatrice froide reste dans l'air », puis « La faille s'est éteinte…, mais elle a laissé une cicatrice » | [ ] | |
+| 11.9 | Parler à **Sauge** (après une cicatrice), à **Sœur Albe** (après des échos rôdeurs), à **Firmin** (après une purification) | Une réplique chacun, une seule fois | [ ] | |
+| 11.10 | « effacer toutes les cicatrices » | Plus rien aux ruines, au lac ni dans le pré | [ ] | |
+| 11.11 | Ton avis : vitesse (un palier tous les 2 jours), force des échos (+15 % par palier), nombre de rôdeurs, prix de la purification (un éclat), couleurs | — | [ ] | |

@@ -365,7 +365,7 @@ public class V197VillageTests
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue ; Sœur Albe en garde douze, Odile seize.
         Assert.Equal(28, book.Npcs.Count);
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 16, d.Id));
-        Assert.Equal((12, 16), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        Assert.Equal((13, 16), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }
 
     [Fact]

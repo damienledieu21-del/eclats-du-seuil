@@ -187,7 +187,7 @@ public class V194Chapitre4Tests
             Assert.Contains(book.Discoveries, x => x.Id == d);
         // Le dialogue de Sœur Albe avait seize entrées (le maximum) : le chapitre 4 passe par des réponses de ses nœuds existants. Sous-lot
         // V1.9.5 : les quatre entrées des anciennes étapes de la mission sont parties (parties converties à la lecture) ; il en garde douze.
-        Assert.Equal(12, book.Dialogue("dialogue.albe").Entries.Count);
+        Assert.Equal(13, book.Dialogue("dialogue.albe").Entries.Count);   // V2.6 : les échos rôdeurs
     }
 
     /// <summary>Distance du point (<paramref name="x"/>, <paramref name="z"/>) au segment [<paramref name="a"/>, <paramref name="b"/>], en mètres.</summary>

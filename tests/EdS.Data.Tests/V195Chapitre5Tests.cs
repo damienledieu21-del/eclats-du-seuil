@@ -186,7 +186,7 @@ public class V195Chapitre5Tests
             "discovery.pierre_gravee_foret", "discovery.pierre_gravee_plaine", "discovery.lecture_des_pierres" })
             Assert.Contains(book.Discoveries, x => x.Id == d);
         // Sœur Albe : douze entrées (les quatre des anciennes étapes sont parties) ; le chapitre 5 passe par des réponses de ses nœuds.
-        Assert.Equal(12, book.Dialogue("dialogue.albe").Entries.Count);
+        Assert.Equal(13, book.Dialogue("dialogue.albe").Entries.Count);   // V2.6 : les échos rôdeurs
         Assert.DoesNotContain(book.Dialogue("dialogue.albe").Entries, e => e.Conditions.Any(c => c.Id == Main));
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= StoryValidator.MaxEntries, d.Id));
         // Récompenses (proposées) : 3 400 points et 21 argent 50 pour le chapitre ; 2 600 points pour les deux quêtes secondaires. Du niveau
@@ -430,7 +430,7 @@ public class V195Chapitre5Tests
         Assert.All(Chapters1To4.Append(Main), q => Assert.True(w.Narrative!.IsDone(q), q));
         Assert.DoesNotContain(Story.Value.Quests.Where(q => q.Category == QuestCategory.Main), q => w.Narrative!.IsActive(q.Id));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
-        Assert.Equal(13, SaveValidator.CurrentSchemaVersion);   /* V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
+        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
         Assert.Equal(new QuestProgress(QuestProgress.Done), saved.Character!.Story.Quests[Main]);
     }
 

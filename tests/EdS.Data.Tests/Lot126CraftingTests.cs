@@ -113,6 +113,7 @@ public class Lot126CraftingTests
         root["data"]!["character"]!.AsObject().Remove("crafts");   // sous-lot V1.4 (version 11)
         root["data"]!["character"]!.AsObject().Remove("boons");   // sous-lot V1.8c (version 12)
         root["data"]!["character"]!.AsObject().Remove("events");   // sous-lot V2.5 (version 13)
+        root["data"]!["character"]!.AsObject().Remove("scars");   // sous-lot V2.6 (version 14)
         root["data"]!["character"]!["story"]!.AsObject().Remove("tracked");   // sous-lot V1.6 (version 7)
         string v4 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v4).IsValid);
@@ -409,7 +410,7 @@ public class Lot126CraftingTests
         SavedCharacter hero = Hero(new Dictionary<string, long> { ["minage"] = 24, ["forge"] = 30, ["herboristerie"] = 0 });
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), hero));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
-        Assert.Contains("      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0,\n      \"crafts\": 0,\n      \"boons\": [],\n      \"events\": []\n    },", text, StringComparison.Ordinal);
+        Assert.Contains("      \"professions\": {\"forge\": 30, \"minage\": 24},\n      \"money\": 0,\n      \"crafts\": 0,\n      \"boons\": [],\n      \"events\": [],\n      \"scars\": []\n    },", text, StringComparison.Ordinal);
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(text, SaveJsonReader.Write(read.Save!));

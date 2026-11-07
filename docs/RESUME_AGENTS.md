@@ -31,7 +31,7 @@
 
 | Élément | Version | Où (grep) |
 |---|---|---|
-| Sauvegarde | v13 (v12 encore lue) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
+| Sauvegarde | v14 (v13 encore lue) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.16.0 (écrit « 0.16.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.28.0 | `CombatEngine.cs` (`Version`) |
@@ -39,7 +39,7 @@
 | Scénarios (schéma) | 16 | `ScenarioValidator.cs` |
 | Instantané (format) | 5 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
-| Zones (schéma) | v10 (v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
+| Zones (schéma) | v11 (v10, v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v9 (v4 à v8 encore lues) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
