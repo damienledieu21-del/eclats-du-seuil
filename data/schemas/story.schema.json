@@ -24,9 +24,10 @@
         8,
         9,
         10,
-        11
+        11,
+        12
       ],
-      "description": "Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
+      "description": "Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
     },
     "kind": {
       "const": "story"
@@ -416,6 +417,19 @@
             }
           }
         },
+        "reputation": {
+          "type": "object",
+          "description": "Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives : liens entre factions (pour cent d'un effet reputation reporté), gestes du monde (questMain, questSide, contract, scarPurified), créatures vaincues (population ou famille), événements du monde (won, lost), prix d'achat des marchands par palier des villageois (pour cent).",
+          "additionalProperties": false,
+          "properties": {
+            "links": { "type": "object", "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "object", "maxProperties": 4, "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "integer", "minimum": -100, "maximum": 100, "not": { "const": 0 } } } },
+            "acts": { "type": "object", "propertyNames": { "enum": ["questMain", "questSide", "contract", "scarPurified"] }, "additionalProperties": { "type": "object", "maxProperties": 4, "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "integer", "minimum": -200, "maximum": 200, "not": { "const": 0 } } } },
+            "defeated": { "type": "object", "additionalProperties": { "type": "object", "maxProperties": 4, "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "integer", "minimum": -200, "maximum": 200, "not": { "const": 0 } } } },
+            "events": { "type": "object", "additionalProperties": { "type": "object", "additionalProperties": false, "properties": { "won": { "type": "object", "maxProperties": 4, "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "integer", "minimum": -200, "maximum": 200, "not": { "const": 0 } } }, "lost": { "type": "object", "maxProperties": 4, "propertyNames": { "enum": ["villagers", "guard", "rangers", "bandits"] }, "additionalProperties": { "type": "integer", "minimum": -200, "maximum": 200, "not": { "const": 0 } } } } } },
+            "prices": { "type": "object", "additionalProperties": false, "required": ["hated", "hostile", "wary", "neutral", "liked", "honored", "hero"],
+              "properties": { "hated": { "type": "integer", "minimum": 50, "maximum": 200 }, "hostile": { "type": "integer", "minimum": 50, "maximum": 200 }, "wary": { "type": "integer", "minimum": 50, "maximum": 200 }, "neutral": { "type": "integer", "minimum": 50, "maximum": 200 }, "liked": { "type": "integer", "minimum": 50, "maximum": 200 }, "honored": { "type": "integer", "minimum": 50, "maximum": 200 }, "hero": { "type": "integer", "minimum": 50, "maximum": 200 } } }
+          }
+        },
         "scenes": {
           "type": "array",
           "maxItems": 16,
@@ -491,7 +505,11 @@
             "weather",
             "activity",
             "scarsAtLeast",
-            "scarsBelow"
+            "scarsBelow",
+            "reputationAtLeast",
+            "reputationBelow",
+            "standing",
+            "standingAtLeast"
           ]
         },
         "id": {
@@ -532,7 +550,8 @@
             "giveGuildPoints",
             "openPassage",
             "discover",
-            "skipQuest"
+            "skipQuest",
+            "reputation"
           ]
         },
         "id": {

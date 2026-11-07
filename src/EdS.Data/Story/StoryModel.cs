@@ -67,6 +67,19 @@ namespace EdS.Data.Story
         /// </summary>
         ScarsAtLeast = 17,
         ScarsBelow = 18,
+
+        /// <summary>
+        /// Sous-lot V2.7 (histoire en schéma 12) : la réputation auprès de la faction <c>id</c> (<see cref="Reputations.Factions"/>) est au moins
+        /// (<c>reputationAtLeast</c>) ou sous (<c>reputationBelow</c>) <c>value</c>.
+        /// </summary>
+        ReputationAtLeast = 19,
+        ReputationBelow = 20,
+
+        /// <summary>Sous-lot V2.7 (schéma 12) : la faction <c>id</c> est exactement au palier <c>step</c> (<see cref="Reputations.Tiers"/>).</summary>
+        Standing = 21,
+
+        /// <summary>Sous-lot V2.7 (schéma 12) : la faction <c>id</c> est au moins au palier <c>step</c>.</summary>
+        StandingAtLeast = 22,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -115,6 +128,12 @@ namespace EdS.Data.Story
         /// commencée ou déjà finie. Exemple : « Je sais me battre », chez Odile, passe le tutoriel de l'ouverture (sans ses 30 points).
         /// </summary>
         SkipQuest = 11,
+
+        /// <summary>
+        /// Sous-lot V2.7 (schéma 12) : change de <c>value</c> (non nul) la réputation auprès de la faction <c>id</c>, bornée ; les factions
+        /// liées (<see cref="ReputationRules.Links"/>) en reçoivent leur part. Jamais refusé.
+        /// </summary>
+        Reputation = 12,
     }
 
     public enum ObjectiveKind
@@ -586,9 +605,13 @@ namespace EdS.Data.Story
         /// <summary>Sous-lot V1.9.6 (schéma 6) : scènes jouées (vide avant).</summary>
         public IReadOnlyList<Scene> Scenes { get; }
 
+        /// <summary>Sous-lot V2.7 (schéma 12) : règles de réputation (<see cref="ReputationRules.None"/> sans section <c>reputation</c>).</summary>
+        public ReputationRules Reputation { get; }
+
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
-            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null)
+            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null)
         {
+            Reputation = reputation ?? ReputationRules.None;
             Scenes = Frozen.List(scenes ?? Array.Empty<Scene>(), nameof(scenes));
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;

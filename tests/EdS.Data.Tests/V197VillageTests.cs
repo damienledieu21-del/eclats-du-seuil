@@ -85,7 +85,8 @@ public class V197VillageTests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation (quêtes finies, créatures vaincues, contrats) a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -138,7 +139,7 @@ public class V197VillageTests
     [Fact]
     public void Histoire_en_schema_7_avec_skipQuest()
     {
-        Assert.Equal((11, 11), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
+        Assert.Equal((12, 12), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.7 : schéma 12 (réputation) ;   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
         Assert.Equal(EffectKind.SkipQuest, StoryValidator.Effects["skipQuest"]);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -180,7 +181,7 @@ public class V197VillageTests
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
-        root["schemaVersion"] = 12;   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
+        root["schemaVersion"] = 13;   // V2.7 : la version 12 est la version courante ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
         Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
     }
 
@@ -359,7 +360,7 @@ public class V197VillageTests
     public void Cinq_quetes_du_village_livrees()
     {
         StoryBook book = Story.Value;
-        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(7).SkipLast(1).Select(q => q.Id));   // ajoutées à la fin (V2.6.1 : la quête des cicatrices après elles)
+        Assert.Equal(new[] { Opening, Chat, Puits, Garde, Champignons, Contrat }, book.Quests.TakeLast(11).SkipLast(5).Select(q => q.Id));   // V2.7 : puis les quatre quêtes de faction   // ajoutées à la fin (V2.6.1 : la quête des cicatrices après elles)
         Assert.All(new[] { Chat, Puits, Garde, Champignons, Contrat }, q => Assert.Equal(QuestCategory.Side, book.Quest(q).Category));
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
@@ -496,7 +497,7 @@ public class V197VillageTests
         Assert.Contains($"RewardToChoose {Champignons}", end);
         Assert.Equal((xp + 90, money + 60), (w.Character.Xp, w.Money));
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Champignons, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Champignons}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Champignons}", "ReputationChanged villagers/questSide 10" }, chosen.Select(e => e.ToString()));
         Say(w, "npc.herboriste", "ch1_champignons_apres");
         Assert.Equal(new[] { "FactLearned fact.ch1.sauge.rond" }, Choose(w, 0));
         Say(w, "npc.herboriste", "accueil");
@@ -526,7 +527,7 @@ public class V197VillageTests
         Assert.Equal((xp + 120, money + 120), (w.Character.Xp, w.Money));
         Say(w, "npc.capitaine", "ch1_contrat_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Contrat, 0, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.elixir_de_vigueur 2", $"QuestCompleted {Contrat}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.elixir_de_vigueur 2", $"QuestCompleted {Contrat}", "ReputationChanged villagers/questSide 10" }, chosen.Select(e => e.ToString()));
         Say(w, "npc.capitaine", "ch4_accueil");
     }
 

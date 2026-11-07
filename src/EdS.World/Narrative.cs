@@ -103,6 +103,16 @@ namespace EdS.World
         /// étapes restantes ni sa récompense.
         /// </summary>
         QuestSkipped = 28,
+
+        /// <summary>
+        /// Sous-lot V2.7 : réputation changée auprès d'une faction (identifiant : la faction ; valeur : le changement réel, après les bornes ;
+        /// étape : ce qui l'a changée, null pour un effet de dialogue ou de quête, sinon « questMain », « questSide », « contract »,
+        /// « scarPurified », « link » (part d'une faction liée), « defeated », « eventWon » ou « eventLost »).
+        /// </summary>
+        ReputationChanged = 29,
+
+        /// <summary>Sous-lot V2.7 : la faction a changé de palier (identifiant : la faction ; étape : le nouveau palier ; valeur : +1 en montant, −1 en descendant).</summary>
+        StandingChanged = 30,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -291,6 +301,9 @@ namespace EdS.World
         private readonly SortedSet<string> _facts;
         private readonly SortedDictionary<string, (int Step, long Progress)> _quests = new SortedDictionary<string, (int, long)>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, int> _trust;
+
+        /// <summary>Sous-lot V2.7 : réputation auprès des factions (absente : 0, neutre).</summary>
+        private readonly SortedDictionary<string, int> _reputation;
         private readonly SortedSet<string> _discoveries;
         private readonly HashSet<string> _blocked = new HashSet<string>(StringComparer.Ordinal);
         /// <summary>Dialogue ouvert ; réponses du 31 octobre 2026 : nœud null quand le PNJ n'a rien à dire mais qu'on peut lui livrer.</summary>
@@ -361,6 +374,8 @@ namespace EdS.World
             }
             _facts = new SortedSet<string>(saved.Facts, StringComparer.Ordinal);
             _trust = new SortedDictionary<string, int>(saved.Trust.ToDictionary(t => t.Key, t => t.Value), StringComparer.Ordinal);
+            _reputation = new SortedDictionary<string, int>(saved.Reputation.Where(r => Reputations.IsFaction(r.Key))
+                .ToDictionary(r => r.Key, r => Reputations.Clamp(r.Value)), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
@@ -410,6 +425,66 @@ namespace EdS.World
         public IReadOnlyCollection<string> Facts => _facts.ToList().AsReadOnly();
         public IReadOnlyCollection<string> Discoveries => _discoveries.ToList().AsReadOnly();
         public int Trust(string npc) => _trust.TryGetValue(npc, out int t) ? t : 0;
+
+        /// <summary>Sous-lot V2.7 : réputation auprès de la faction <paramref name="faction"/> (0 : neutre ; faction inconnue : 0).</summary>
+        public int Reputation(string faction) => faction != null && _reputation.TryGetValue(faction, out int r) ? r : 0;
+
+        /// <summary>Sous-lot V2.7 : rang du palier de la faction (<see cref="Reputations.Tiers"/> ; 3 : neutre).</summary>
+        public int StandingIndex(string faction) => Reputations.TierOf(Reputation(faction));
+
+        /// <summary>Sous-lot V2.7 : palier de la faction (« hated » … « hero »).</summary>
+        public string Standing(string faction) => Reputations.Tiers[StandingIndex(faction)];
+
+        /// <summary>
+        /// Sous-lot V2.7 : change la réputation auprès de <paramref name="faction"/> de <paramref name="delta"/>, bornée à
+        /// [<see cref="Reputations.Min"/>, <see cref="Reputations.Max"/>] ; annonce le changement réel (<see cref="StoryEventKind.ReputationChanged"/>,
+        /// étape <paramref name="cause"/>) et le changement de palier. Jamais refusé. Rend le changement réel.
+        /// </summary>
+        private int ChangeReputation(string faction, long delta, string? cause, List<StoryEvent> events)
+        {
+            if (!Reputations.IsFaction(faction) || delta == 0) return 0;
+            int before = Reputation(faction);
+            int after = Reputations.Clamp(checked(before + delta));
+            if (after == before) return 0;
+            if (after == 0) _reputation.Remove(faction);
+            else _reputation[faction] = after;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.ReputationChanged, faction, cause, after - before));
+            int was = Reputations.TierOf(before), now = Reputations.TierOf(after);
+            if (was != now) events.Add(new StoryEvent(StoryEventKind.StandingChanged, faction, Reputations.Tiers[now], now > was ? 1 : -1));
+            return after - before;
+        }
+
+        /// <summary>Sous-lot V2.7 : applique les changements d'un geste du monde (sans liens : chaque geste dit toutes ses factions).</summary>
+        private void ChangeReputation(IReadOnlyList<ReputationChange> changes, string cause, List<StoryEvent> events)
+        {
+            foreach (ReputationChange c in changes) ChangeReputation(c.Faction, c.Value, cause, events);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.7 : effet <c>reputation</c> : la faction change de <paramref name="delta"/>, puis chaque faction liée
+        /// (<see cref="ReputationRules.Links"/>) de sa part du changement réel (pour cent, tronquée vers zéro ; pas de lien en cascade).
+        /// </summary>
+        private void ReputationEffect(string faction, long delta, List<StoryEvent> events)
+        {
+            int real = ChangeReputation(faction, delta, null, events);
+            if (real == 0) return;
+            foreach (ReputationChange link in _book.Reputation.LinksOf(faction))
+            {
+                long part = checked((long)real * link.Value) / 100;
+                if (part != 0) ChangeReputation(link.Faction, part, "link", events);
+            }
+        }
+
+        /// <summary>Sous-lot V2.7 : réputation de chaque faction non neutre (vue en lecture seule, ordre ordinal).</summary>
+        public IReadOnlyDictionary<string, int> FactionReputations => new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>(_reputation, StringComparer.Ordinal));
+
+        /// <summary>
+        /// Sous-lot V2.7 : un événement du monde <paramref name="eventId"/> de la zone de l'histoire vient d'être réglé (réussi ou perdu, une
+        /// seule fois par occurrence) : ses changements de réputation, annoncés au tick suivant.
+        /// </summary>
+        internal void EventSettled(string eventId, bool won) =>
+            ChangeReputation(_book.Reputation.EventOf(eventId, won), won ? "eventWon" : "eventLost", _queued);
         public bool Knows(string fact) => _facts.Contains(fact);
         public bool IsDone(string quest) => _quests.TryGetValue(quest, out var q) && q.Step < 0;
         public bool IsActive(string quest) => _quests.TryGetValue(quest, out var q) && q.Step >= 0;
@@ -467,7 +542,7 @@ namespace EdS.World
             _quests.ToDictionary(q => q.Key, q => new QuestProgress(q.Value.Step < 0 ? QuestProgress.Done
                     : q.Value.Step == _book.Quest(q.Key).Steps.Count ? QuestProgress.Reward : _book.Quest(q.Key).Steps[q.Value.Step].Id, q.Value.Progress),
                 StringComparer.Ordinal),
-            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted);
+            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted, _reputation);
 
         // --- Dialogues ---------------------------------------------------------------------------
 
@@ -726,6 +801,7 @@ namespace EdS.World
         /// </summary>
         internal void Defeated(string population, string? family = null)
         {
+            ChangeReputation(_book.Reputation.DefeatOf(population, family), "defeated", _queued);   // sous-lot V2.7 (annoncé au tick)
             bool Counts(Objective o) => (o.Kind == ObjectiveKind.Defeat && o.Id == population) || (o.Kind == ObjectiveKind.DefeatFamily && family != null && o.Id == family);
             foreach (string id in _quests.Keys.ToArray())
                 if (CurrentStep(id) is { Objective: { } o } && Counts(o) && _quests[id].Progress < o.Value)
@@ -777,6 +853,7 @@ namespace EdS.World
         /// </summary>
         internal void Purified(string rift)
         {
+            ChangeReputation(_book.Reputation.Act(Reputations.ScarPurified), Reputations.ScarPurified, _queued);   // sous-lot V2.7
             foreach (string id in _quests.Keys.ToArray())
                 if (CurrentStep(id) is { Objective: { Kind: ObjectiveKind.Purify } o } && o.Id == rift && _quests[id].Progress < o.Value)
                 {
@@ -1099,6 +1176,9 @@ namespace EdS.World
         /// </summary>
         private void QuestFinished(string quest, List<StoryEvent> events)
         {
+            // Sous-lot V2.7 : une quête finie (jamais une quête passée) se sait au village.
+            string act = _book.Quest(quest).Category == QuestCategory.Main ? Reputations.QuestMain : Reputations.QuestSide;
+            ChangeReputation(_book.Reputation.Act(act), act, events);
             if (_guild is null || _card is null) return;
             if (_guild.TrialOf(quest) is GuildRank rank)
             {
@@ -1150,6 +1230,7 @@ namespace EdS.World
                 Revision++;
                 events.Add(new StoryEvent(StoryEventKind.ContractDone, id));
                 events.AddRange(applied);
+                ChangeReputation(_book.Reputation.Act(Reputations.Contract), Reputations.Contract, events);   // sous-lot V2.7
             }
         }
 
@@ -1198,6 +1279,10 @@ namespace EdS.World
             ConditionKind.GuildRankAtLeast => _card != null && _card.Rank >= GuildRanks.IndexOf(c.Id),   // sous-lot V1.7
             ConditionKind.ScarsAtLeast => _world.ScarCount(c.Id) >= c.Value,   // sous-lot V2.6.1
             ConditionKind.ScarsBelow => _world.ScarCount(c.Id) < c.Value,
+            ConditionKind.ReputationAtLeast => Reputation(c.Id) >= c.Value,   // sous-lot V2.7
+            ConditionKind.ReputationBelow => Reputation(c.Id) < c.Value,
+            ConditionKind.Standing => StandingIndex(c.Id) == Reputations.TierIndex(c.Step!),
+            ConditionKind.StandingAtLeast => StandingIndex(c.Id) >= Reputations.TierIndex(c.Step!),
             _ => _world.IsPassageOpen(c.Id),
         };
 
@@ -1316,6 +1401,9 @@ namespace EdS.World
                         break;
                     case EffectKind.SkipQuest:
                         Skip(e.Id, events);
+                        break;
+                    case EffectKind.Reputation:   // sous-lot V2.7 : jamais refusé (bornée), factions liées comprises
+                        ReputationEffect(e.Id, e.Value, events);
                         break;
                     default:
                         if (_discoveries.Add(e.Id))

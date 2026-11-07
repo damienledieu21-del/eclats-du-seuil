@@ -463,7 +463,7 @@ public class Lot125StoryTests
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // sous-lot V1.1 : version 6 (bourse) ; V1.2 : 7 (18 places) ; V1.6 : 8 (quête suivie) ; V1.3 : 9 (instances d'objets)
         Assert.Contains("      \"story\": {\n        \"facts\": [\"fact.odile.vexee\", \"fact.traces.recit\"],\n"
             + "        \"quests\": {\"quest.autre\": {\"step\": \"done\", \"progress\": 0}, \"quest.traces_sous_le_moulin\": {\"step\": \"rodeur\", \"progress\": 0}},\n"
-            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"discoveries\": [\"discovery.manifestation\"],\n"
+            + "        \"trust\": {\"npc.maelle\": 2, \"npc.odile\": -1},\n        \"reputation\": {},\n        \"discoveries\": [\"discovery.manifestation\"],\n"
             + "        \"tracked\": null\n      },\n", text, StringComparison.Ordinal);   // sous-lot V1.6 : quête suivie
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, read.Report.ToString());

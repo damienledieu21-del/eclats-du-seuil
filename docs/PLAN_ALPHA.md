@@ -232,6 +232,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Réputation auprès des villageois, de la garde, des rôdeurs et des bandits ; conditions des dialogues et des quêtes qui la lisent.
 - Dépend de V1.6.
 - Formats : sauvegarde, histoire (conditions et effets).
+- **État** (7 novembre 2026, PR en brouillon) : sauvegarde v15 (`story.reputation` ; v14 encore lue), histoire en schéma 12 (conditions `reputationAtLeast`, `reputationBelow`, `standing`, `standingAtLeast`, effet `reputation`, section `reputation` ; schéma 11 encore lu), contenu 0.22.0 ; moteur, règles, journal, zones et scénarios inchangés. Quatre factions, sept paliers de « haï » à « héros » ; factions liées (aider les bandits fâche la garde et le village) ; la réputation suit les quêtes finies, les contrats, les cicatrices purifiées, l'attaque du hameau et la faille, les bandits, loups et échos vaincus ; prix d'achat des marchands selon le palier des villageois ; répliques selon le palier chez Bérenger, Gaspard, Firmin, Josse et Colin ; une quête par faction (le muret du hameau, la ronde du capitaine, la piste des rôdeurs, le mot de passe du camp). Valeurs provisoires : [MONDE.md](MONDE.md#réputation-sous-lot-v27).
 
 ### 20. V2.8 — Fêtes au bourg, marchands au stock changeant, essai de la vague 2 (M)
 

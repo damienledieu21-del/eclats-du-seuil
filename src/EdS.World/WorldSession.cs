@@ -1152,7 +1152,7 @@ namespace EdS.World
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
             else if (_pendingFacts.Count > 0)
                 character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,
-                    character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted));
+                    character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted, character.Story.Reputation));
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);

@@ -47,7 +47,22 @@ namespace EdS.World
 
         /// <summary>Offres du marchand ce jour du monde (<see cref="Market.Stock"/>).</summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
-        public IReadOnlyList<MerchantOffer> Stock(string merchant) => NeedMarket().Stock(merchant, Zone.Time.Day);
+        public IReadOnlyList<MerchantOffer> Stock(string merchant)
+        {
+            IReadOnlyList<MerchantOffer> stock = NeedMarket().Stock(merchant, Zone.Time.Day);
+            int percent = PricePercent;
+            if (percent == 100) return stock;
+            return stock.Select(o => o.WithPrice(ReputationPrice(o.Price, percent))).ToList().AsReadOnly();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.7 : prix d'achat chez les marchands, en pour cent du prix du jour, selon le palier de la réputation auprès des
+        /// villageois (<see cref="EdS.Data.Story.ReputationRules.Prices"/> ; 100 sans règle ni histoire). Les prix de vente ne changent pas.
+        /// </summary>
+        public int PricePercent => Narrative is Narrative n ? n.Book.Reputation.PricePercent(n.StandingIndex("villagers")) : 100;
+
+        /// <summary>Sous-lot V2.7 : prix au pour cent <paramref name="percent"/>, arrondi au plus proche, une pièce de cuivre au moins.</summary>
+        public static long ReputationPrice(long price, int percent) => price <= 0 ? price : Math.Max(1, checked(price * percent + 50) / 100);
 
         /// <summary>
         /// La boutique de <paramref name="merchant"/> est ouverte au personnage : présent et vivant, dans la zone de son PNJ (sous-lot V1.7 : un

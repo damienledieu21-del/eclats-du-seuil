@@ -574,6 +574,9 @@ namespace EdS.Runtime
                 case StoryEventKind.GuildReputation:
                     GuildMessage(e);
                     break;
+                case StoryEventKind.StandingChanged:   // sous-lot V2.7 : un nouveau palier de réputation
+                    ReputationMessage(e);
+                    break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
                     break;

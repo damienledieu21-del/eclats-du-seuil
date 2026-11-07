@@ -42,6 +42,10 @@ namespace EdS.Game
         private Image _cardBar;
         private readonly List<(UiText Name, UiButton Show, string Id)> _cardTitles = new List<(UiText, UiButton, string)>();
         private readonly List<ContractRow> _cardActive = new List<ContractRow>();
+
+        /// <summary>Sous-lot V2.7 : la réputation auprès des quatre factions, sous les contrats en cours.</summary>
+        private UiText _cardReputationTitle;
+        private readonly List<UiText> _cardReputation = new List<UiText>();
         private bool _cardShown;
         private readonly string[] _titleIds = new string[TitleRows];
 
@@ -237,6 +241,9 @@ namespace EdS.Game
                 int index = i;
                 _cardActive.Add(MakeContractRow(_card, 900f, 196f + i * 100f, 540f, 92f, () => AbandonRow(_cardActive, index)));
             }
+            _cardReputationTitle = Text(_card, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleLeft, 900f, 540f, 500f, 20f, 0f, 0.5f, 14f, true);
+            for (int i = 0; i < 4; i++)
+                _cardReputation.Add(Text(_card, UiFace.Body, 18f, UiKit.Ink, TextAnchor.MiddleLeft, 900f, 576f + i * 36f, 540f, 30f, 0f, 0.5f));
         }
 
         private void ToggleTitle(int index)
@@ -279,6 +286,17 @@ namespace EdS.Game
             _cardActiveTitle.Value = card.Member
                 ? (active.Count == 0 ? a.Text("text.ui.guild.active_none") : string.Format(a.Text("text.ui.guild.active"), active.Count, a.Guild.MaxActive)) : "";
             FillActive(a, _cardActive, active, _cardActivePager);
+            // Sous-lot V2.7 : la réputation, membre de la guilde ou non ; couleur selon le palier (mal vu, neutre, bien vu).
+            _cardReputationTitle.Value = a.Text("text.ui.reputation");
+            IReadOnlyList<ReputationEntry> reputation = a.Reputations();
+            for (int i = 0; i < _cardReputation.Count; i++)
+            {
+                bool used = i < reputation.Count;
+                UiKit.Show(_cardReputation[i].Rect, used);
+                if (!used) continue;
+                _cardReputation[i].Value = reputation[i].Text;
+                _cardReputation[i].Color = reputation[i].TierIndex < 3 ? UiKit.Danger : reputation[i].TierIndex > 3 ? UiKit.Dawn : UiKit.Ink;
+            }
         }
     }
 }

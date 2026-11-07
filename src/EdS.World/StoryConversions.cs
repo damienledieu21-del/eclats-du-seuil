@@ -76,7 +76,7 @@ namespace EdS.World
             IEnumerable<string> facts = moved.IsDone && !saved.Facts.Contains(NextFact)
                 ? saved.Facts.Append(NextFact).OrderBy(f => f, StringComparer.Ordinal).ToArray()
                 : saved.Facts;
-            return new SavedStory(facts, quests, saved.Trust, saved.Discoveries, tracked, saved.Guild, saved.Hunted);
+            return new SavedStory(facts, quests, saved.Trust, saved.Discoveries, tracked, saved.Guild, saved.Hunted, saved.Reputation);
         }
     }
 }

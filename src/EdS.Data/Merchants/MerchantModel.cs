@@ -96,6 +96,9 @@ namespace EdS.Data.Merchants
             Always = always;
             Rank = rank;
         }
+
+        /// <summary>Sous-lot V2.7 : la même offre à un autre prix (réputation auprès des villageois).</summary>
+        public MerchantOffer WithPrice(long price) => price == Price ? this : new MerchantOffer(Item, price, Always, Rank);
     }
 
     /// <summary>

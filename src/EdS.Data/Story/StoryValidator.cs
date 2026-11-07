@@ -131,7 +131,16 @@ namespace EdS.Data.Story
         /// <c>value</c> le nombre de cicatrices purifiées pendant l'étape) ; conditions <c>scarsAtLeast</c> et <c>scarsBelow</c> (<c>id</c> une
         /// faille à cicatrice, <c>value</c> de 0 à <see cref="EdS.Data.Saves.SavedScar.MaxEntries"/> : cicatrices gardées de cette faille). Les
         /// versions 4 à 10 restent lues telles quelles.</remarks>
-        public const int CurrentSchemaVersion = 11;
+        /// <remarks>Version 12 (sous-lot V2.7, réputation) : conditions <c>reputationAtLeast</c> et <c>reputationBelow</c> (<c>id</c> une faction
+        /// de <see cref="Reputations.Factions"/>, <c>value</c> de <see cref="Reputations.Min"/> à <see cref="Reputations.Max"/>), <c>standing</c>
+        /// et <c>standingAtLeast</c> (<c>id</c> une faction, <c>step</c> un palier de <see cref="Reputations.Tiers"/>) ; effet <c>reputation</c>
+        /// (<c>id</c> une faction, <c>value</c> non nulle, au plus <see cref="Reputations.MaxEffect"/> en valeur absolue) ; section facultative
+        /// <c>reputation</c> (<see cref="ReputationRules"/> : <c>links</c>, <c>acts</c>, <c>defeated</c>, <c>events</c>, <c>prices</c>). Les
+        /// versions 4 à 11 restent lues telles quelles (elles ne connaissent rien de cela).</remarks>
+        public const int CurrentSchemaVersion = 12;
+
+        /// <summary>Sous-lot V2.7 : version 11, encore lue (sans réputation).</summary>
+        public const int Schema11 = 11;
 
         /// <summary>Sous-lot V2.6.1 : version 10, encore lue (16 répliques par dialogue au plus, sans <c>purify</c> ni conditions de cicatrices).</summary>
         public const int Schema10 = 10;
@@ -200,6 +209,8 @@ namespace EdS.Data.Story
             ["weather"] = ConditionKind.Weather,   // sous-lot V2.2
             ["activity"] = ConditionKind.Activity,   // sous-lot V2.3 (schéma 9)
             ["scarsAtLeast"] = ConditionKind.ScarsAtLeast, ["scarsBelow"] = ConditionKind.ScarsBelow,   // sous-lot V2.6.1 (schéma 11)
+            ["reputationAtLeast"] = ConditionKind.ReputationAtLeast, ["reputationBelow"] = ConditionKind.ReputationBelow,   // sous-lot V2.7 (schéma 12)
+            ["standing"] = ConditionKind.Standing, ["standingAtLeast"] = ConditionKind.StandingAtLeast,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -209,6 +220,7 @@ namespace EdS.Data.Story
             ["giveMoney"] = EffectKind.GiveMoney, ["takeMoney"] = EffectKind.TakeMoney,
             ["giveGuildPoints"] = EffectKind.GiveGuildPoints,   // sous-lot V1.7
             ["skipQuest"] = EffectKind.SkipQuest,   // sous-lot V1.9.7 (schéma 7)
+            ["reputation"] = EffectKind.Reputation,   // sous-lot V2.7 (schéma 12)
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -268,6 +280,7 @@ namespace EdS.Data.Story
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6
                 || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8 || document.SchemaVersion == Schema9
                 || document.SchemaVersion == Schema10   // sous-lot V2.6.1
+                || document.SchemaVersion == Schema11   // sous-lot V2.7
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -437,8 +450,10 @@ namespace EdS.Data.Story
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
-                if (!_r.IsValid || contentVersion is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes);
+                // Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives.
+                ReputationRules? reputation = _d.Reputation is ReputationData rd ? CheckReputation(rd) : ReputationRules.None;
+                if (!_r.IsValid || contentVersion is null || reputation is null) return null;
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation);
             }
 
             /// <summary>
@@ -689,7 +704,7 @@ namespace EdS.Data.Story
                 else
                 {
                     // Sous-lot V2.6.1 : 32 répliques depuis la version 11 ; 16 avant (une ancienne histoire est jugée par sa propre borne).
-                    int maxEntries = _schema >= CurrentSchemaVersion ? MaxEntries : MaxEntriesBefore11;
+                    int maxEntries = _schema >= Schema11 ? MaxEntries : MaxEntriesBefore11;
                     if (x.Entries.Count < 1 || x.Entries.Count > maxEntries) { _r.Add(path + ".entries", ValidationCode.OutOfRange, $"de 1 à {maxEntries} entrées."); ok = false; }
                     for (int i = 0; i < x.Entries.Count; i++)
                     {
@@ -858,6 +873,10 @@ namespace EdS.Data.Story
                         ConditionKind.Activity => ActivityRef(t, p) && NoValue(t, p),   // sous-lot V2.3 (schéma 9)
                         ConditionKind.ScarsAtLeast or ConditionKind.ScarsBelow =>   // sous-lot V2.6.1 (schéma 11)
                             Since11(t.Kind, p + ".if") && ScarredRift(t, p) && Value(t, p, 0, EdS.Data.Saves.SavedScar.MaxEntries) && NoStep(t, p),
+                        ConditionKind.ReputationAtLeast or ConditionKind.ReputationBelow =>   // sous-lot V2.7 (schéma 12)
+                            Since12(t.Kind, p + ".if") && FactionRef(t, p) && Value(t, p, Reputations.Min, Reputations.Max) && NoStep(t, p),
+                        ConditionKind.Standing or ConditionKind.StandingAtLeast =>
+                            Since12(t.Kind, p + ".if") && FactionRef(t, p) && TierRef(t, p) && NoValue(t, p),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -897,6 +916,7 @@ namespace EdS.Data.Story
                         _r.Add(p + ".do", ValidationCode.InvalidValue, $"effet « skipQuest » inconnu en version {_schema} du format : version {Schema7} demandée.");
                         continue;
                     }
+                    if (kind == EffectKind.Reputation && !Since12("reputation", p + ".do")) continue;   // sous-lot V2.7
                     if (kind == EffectKind.SkipQuest && !skip)
                     {
                         _r.Add(p + ".do", ValidationCode.InvalidValue, "effet « skipQuest » permis seulement dans une réponse de dialogue.");
@@ -913,6 +933,7 @@ namespace EdS.Data.Story
                         EffectKind.GiveMoney or EffectKind.TakeMoney => NoId(t, p) && Value(t, p, 1, MaxMoney),
                         EffectKind.GiveGuildPoints => NoId(t, p) && Value(t, p, 1, GuildRanks.MaxAward),   // sous-lot V1.7
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
+                        EffectKind.Reputation => FactionRef(t, p) && Value(t, p, -Reputations.MaxEffect, Reputations.MaxEffect) && NonZero(t, p),   // sous-lot V2.7
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
@@ -1106,9 +1127,111 @@ namespace EdS.Data.Story
             /// <summary>Sous-lot V2.6.1 : <paramref name="what"/> (objectif <c>purify</c>, conditions de cicatrices) demande la version 11.</summary>
             private bool Since11(string what, string p)
             {
+                if (_schema >= Schema11) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {Schema11} demandée.");
+                return false;
+            }
+
+            /// <summary>Sous-lot V2.7 : <paramref name="what"/> (réputation) demande la version 12.</summary>
+            private bool Since12(string what, string p)
+            {
                 if (_schema >= CurrentSchemaVersion) return true;
                 _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
                 return false;
+            }
+
+            /// <summary>Sous-lot V2.7 : <c>id</c> est une faction.</summary>
+            private bool FactionRef(TermData t, string p) => Ref(t, p, Reputations.Factions, "faction");
+
+            /// <summary>Sous-lot V2.7 : <c>step</c> est un palier de réputation.</summary>
+            private bool TierRef(TermData t, string p)
+            {
+                if (t.Step is null) { TextsValidator.Missing(_r, p + ".step", "palier de réputation"); return false; }
+                if (Reputations.TierIndex(t.Step) >= 0) return true;
+                _r.Add(p + ".step", ValidationCode.UnknownReference, $"palier inconnu « {t.Step} » ; possibles : {string.Join(", ", Reputations.Tiers)}.");
+                return false;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.7 (schéma 12) : section <c>reputation</c> : factions connues, changements non nuls et bornés, une faction ne se lie
+            /// pas à elle-même, gestes connus, populations ou familles de la zone, événements de la zone (réussite ou échec, au moins un),
+            /// prix de chaque palier (tous, de <see cref="Reputations.MinPricePercent"/> à <see cref="Reputations.MaxPricePercent"/> %).
+            /// </summary>
+            private ReputationRules? CheckReputation(ReputationData r)
+            {
+                const string path = "$.data.reputation";
+                if (!Since12("reputation", path)) return null;
+                int errors = _r.TotalCount;
+                List<ReputationChange>? Changes(List<KeyValuePair<string, int?>>? map, string p, int max, string? self = null)
+                {
+                    if (map is null) { TextsValidator.Missing(_r, p, "objet « faction : valeur »"); return null; }
+                    if (map.Count == 0) { _r.Add(p, ValidationCode.OutOfRange, "au moins une faction."); return null; }
+                    var list = new List<ReputationChange>();
+                    foreach (KeyValuePair<string, int?> x in map)
+                    {
+                        string fp = p + "." + x.Key;
+                        if (!Reputations.IsFaction(x.Key)) { _r.Add(fp, ValidationCode.UnknownReference, $"faction inconnue « {x.Key} » ; possibles : {string.Join(", ", Reputations.Factions)}."); continue; }
+                        if (x.Key == self) { _r.Add(fp, ValidationCode.InvalidValue, "une faction ne se lie pas à elle-même."); continue; }
+                        if (x.Value is not int v) { TextsValidator.Missing(_r, fp, "entier"); continue; }
+                        if (v == 0 || v < -max || v > max) { _r.Add(fp, ValidationCode.OutOfRange, $"valeur hors de [−{max}, {max}] ou nulle."); continue; }
+                        list.Add(new ReputationChange(x.Key, v));
+                    }
+                    // Ordre des factions (stable, quel que soit l'ordre du fichier).
+                    return list.OrderBy(c => Reputations.Factions.ToList().IndexOf(c.Faction)).ToList();
+                }
+                Dictionary<string, IReadOnlyList<ReputationChange>> Map(List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>? map, string p, int max,
+                    Func<string, bool> known, string what, bool link = false)
+                {
+                    var result = new Dictionary<string, IReadOnlyList<ReputationChange>>(StringComparer.Ordinal);
+                    if (map is null) return result;
+                    foreach (var x in map)
+                    {
+                        string kp = p + "." + x.Key;
+                        if (!known(x.Key)) { _r.Add(kp, ValidationCode.UnknownReference, $"{what} inconnu(e) « {x.Key} »."); continue; }
+                        if (Changes(x.Value, kp, max, link ? x.Key : null) is List<ReputationChange> c) result[x.Key] = c;
+                    }
+                    return result;
+                }
+                var links = Map(r.Links, path + ".links", Reputations.MaxLinkPercent, Reputations.IsFaction, "faction", link: true);
+                var acts = Map(r.Acts, path + ".acts", Reputations.MaxAct, a => Reputations.Acts.Contains(a), "geste");
+                var defeated = Map(r.Defeated, path + ".defeated", Reputations.MaxAct,
+                    k => _zone.Populations.Any(x => x.Creature == k || x.Family == k), "population ou famille de créatures");
+                var events = new Dictionary<string, (IReadOnlyList<ReputationChange>, IReadOnlyList<ReputationChange>)>(StringComparer.Ordinal);
+                if (r.Events != null)
+                    foreach (var e in r.Events)
+                    {
+                        string ep = path + ".events." + e.Key;
+                        if (!_zone.Events.Any(x => x.Id == e.Key)) { _r.Add(ep, ValidationCode.UnknownReference, $"événement du monde inconnu « {e.Key} »."); continue; }
+                        if (e.Value is null) continue;
+                        if (e.Value.Won is null && e.Value.Lost is null) { TextsValidator.Missing(_r, ep, "won ou lost"); continue; }
+                        List<ReputationChange>? won = e.Value.Won is null ? new List<ReputationChange>() : Changes(e.Value.Won, ep + ".won", Reputations.MaxAct);
+                        List<ReputationChange>? lost = e.Value.Lost is null ? new List<ReputationChange>() : Changes(e.Value.Lost, ep + ".lost", Reputations.MaxAct);
+                        if (won != null && lost != null) events[e.Key] = (won, lost);
+                    }
+                int[]? prices = null;
+                if (r.Prices != null)
+                {
+                    prices = new int[Reputations.Tiers.Count];
+                    var seen = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (KeyValuePair<string, int?> x in r.Prices)
+                    {
+                        string pp = path + ".prices." + x.Key;
+                        int tier = Reputations.TierIndex(x.Key);
+                        if (tier < 0) { _r.Add(pp, ValidationCode.UnknownReference, $"palier inconnu « {x.Key} » ; possibles : {string.Join(", ", Reputations.Tiers)}."); continue; }
+                        if (x.Value is not int v) { TextsValidator.Missing(_r, pp, "entier"); continue; }
+                        if (v < Reputations.MinPricePercent || v > Reputations.MaxPricePercent)
+                        { _r.Add(pp, ValidationCode.OutOfRange, $"prix hors de [{Reputations.MinPricePercent}, {Reputations.MaxPricePercent}] %."); continue; }
+                        prices[tier] = v;
+                        seen.Add(x.Key);
+                    }
+                    foreach (string tier in Reputations.Tiers)
+                        if (!seen.Contains(tier) && !_r.HasErrorAtOrAbove(path + ".prices." + tier)) TextsValidator.Missing(_r, path + ".prices." + tier, "prix de ce palier, en pour cent");
+                }
+                // Les noms des factions et des paliers sont des textes du jeu (l'interface les affiche).
+                for (int i = 0; i < Reputations.Factions.Count; i++) Text(Reputations.FactionText(Reputations.Factions[i]), path);
+                for (int i = 0; i < Reputations.Tiers.Count; i++) Text(Reputations.TierText(Reputations.Tiers[i]), path);
+                if (_r.TotalCount != errors) return null;
+                return new ReputationRules(links, acts, defeated, events, prices);
             }
 
             /// <summary>Sous-lot V2.6.1 : <c>id</c> est une faille à cicatrice de la zone de l'histoire.</summary>
@@ -1147,7 +1270,7 @@ namespace EdS.Data.Story
             private bool NoStep(TermData t, string p)
             {
                 if (!t.Present.Contains("step") && t.Step is null) return true;   // revue Codex de la PR #46 : renseigné hors du lecteur JSON aussi
-                _r.Add(p + ".step", ValidationCode.InvalidValue, "seules les conditions questAt et activity ont une étape.");
+                _r.Add(p + ".step", ValidationCode.InvalidValue, "seules les conditions questAt, activity, standing et standingAtLeast ont une étape.");
                 return false;
             }
 
