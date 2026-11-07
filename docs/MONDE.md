@@ -789,6 +789,16 @@ Réponse de Damien du 6 novembre 2026 à la question 8 de la PR #104 (« bêtes 
 - **Sous Unity** : la tête des cerfs et des lièvres tourne autour d'une **nuque** : tête basse qui mâchonne pour brouter, tête haute pour guetter, lièvre ramassé entre deux bonds ; les loups et les sangliers des packs marchent au pas (clip de marche) et jouent un clip de broutage s'ils en ont un (« Eat », « Graze », « Sniff », « Dig »), sinon l'attente ; menu **« Essai des bêtes qui se promènent »** ([UNITY.md](UNITY.md#essai-v241--bêtes-qui-se-promènent), [ESSAI_V1.10.md](ESSAI_V1.10.md#12-les-bêtes-qui-se-promènent-v241)).
 - **Tests** : `V241PromenadeMoteurTests` (catégories Behavior et Regression : versions, référence figée `espace_promenade` identique et rejouée, anciennes références refusées et corps reproduits, déterminisme sans tirage du générateur, aire et allure, file et grappe, harde qui se calme et rentre, instantané au format 6 et retouches refusées, budget épuisé au calme, refus au chemin précis, règles en schéma 16) et `V241PromenadeMondeTests` (World : bêtes des Vallons qui se promènent et celles qui restent, aires ennemies hors de portée, points sûrs et PNJ hors de portée, un matin sans le joueur sans combat ni vie consommée, cerf effrayé qui revient brouter, formes simples, essai).
 
+**Relecture indépendante de la PR #111 (tour 1)** : errance sans allocation (générateur de travail resemé, états affichés calculés une fois par tick) ; après un calme, seul un **nouveau** coup du joueur éveille « remarqué » (le crédit du joueur reste) ; une seule réserve par tick pour une bête engagée qui erre ; tests du lièvre frappé puis calmé, du chef parti remplacé, d'une arrivée tardive qui erre, de l'instantané au format 5 refusé.
+
+**Réponses de Damien du 7 novembre 2026 (14 h 27, « Tout ok »)** aux 6 questions de la PR #111 : toutes les recommandations sont retenues :
+1. la meute du pré de Croc-Gris reste en garde, sans patrouille (l'équilibrage du chef en dépend) ;
+2. le loup blanc, les échos et les bandits restent immobiles ;
+3. le calme de 15 s est gardé ;
+4. les aires et les allures sont gardées pour l'essai ;
+5. les créatures des événements n'errent pas ;
+6. les loups de la nuit du moulin patrouillent seuls.
+
 Limites : pas de recherche de chemin (une bête qui vise un point derrière un obstacle glisse le long et s'arrête ; elle repart à l'étape suivante) ; une bête rentre en ligne droite ; la formation se recalcule à chaque tick d'après le chef (un demi-tour du chef fait passer la file de l'autre côté) ; les bêtes n'errent que dans la zone simulée (déjà toute la carte des Vallons).
 
 ## Événements du monde (sous-lot V2.5)
