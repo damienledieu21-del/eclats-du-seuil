@@ -1,8 +1,8 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "kind": "zone",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -1541,6 +1541,7 @@
                 ]
               }
             ],
+            "spreadTo": ["lac", "pre"],
             "haunts": [
               {
                 "like": "loup_echo1",
@@ -1595,6 +1596,7 @@
                 ]
               }
             ],
+            "spreadTo": ["ruines"],
             "haunts": [
               {
                 "like": "loup_echo1",
@@ -1649,6 +1651,7 @@
                 ]
               }
             ],
+            "spreadTo": ["ruines"],
             "haunts": [
               {
                 "like": "loup_echo1",
@@ -1700,7 +1703,10 @@
           "purifyXp": 200,
           "bornFact": "fact.event.faille_du_seuil.cicatrice",
           "deepFact": "fact.event.faille_du_seuil.cicatrice_rode",
-          "purifiedFact": "fact.event.faille_du_seuil.cicatrice_purifiee"
+          "purifiedFact": "fact.event.faille_du_seuil.cicatrice_purifiee",
+          "spreadStage": 4,
+          "spreadDays": 2,
+          "spreadFact": "fact.event.faille_du_seuil.cicatrice_propagee"
         }
       },
       {

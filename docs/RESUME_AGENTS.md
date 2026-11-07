@@ -39,9 +39,9 @@
 | Scénarios (schéma) | 17 | `ScenarioValidator.cs` |
 | Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
-| Zones (schéma) | v11 (v10, v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
+| Zones (schéma) | v12 (v11, v10, v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v10 (v4 à v9 encore lues) | `Story/StoryValidator.cs` |
+| Histoire (schéma) | v11 (v4 à v10 encore lues ; 32 répliques par dialogue en v11, 16 avant) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0` (V2.8, recherche de chemin : `EdS.Domain/Space/Navigator.cs`).

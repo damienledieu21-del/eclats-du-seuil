@@ -1519,6 +1519,11 @@ namespace EdS.Runtime
                         return nearest is null ? null : At(nearest.Position);
                     case ObjectiveKind.Fact when _zone.Bosses.FirstOrDefault(b => b.Fact == o.Id) is { } boss && boss.Forms[0].Placement is CombatantPlacement chef:
                         return At(chef.Position);
+                    case ObjectiveKind.Purify:
+                        // Sous-lot V2.6.1 : la cicatrice de cette faille la plus proche ; aucune : pas d'étoile (la quête attend la prochaine).
+                        GroundVector me = Me ?? _zone.Entry.Position;
+                        ScarView? scar = World.Scars.Where(v => v.Event.Id == o.Id).OrderBy(v => Distance2(me, v.Position)).ThenBy(v => v.Key, StringComparer.Ordinal).FirstOrDefault();
+                        return scar is null ? null : At(scar.Position);
                 }
                 return null;
             }
