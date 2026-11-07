@@ -851,6 +851,12 @@ namespace EdS.World
         public string CurrentCreature(string population) =>
             (_populations ?? throw new InvalidOperationException("Partie sans zone du monde.")).CurrentOf(population);
 
+        /// <summary>
+        /// Sous-lot V2.9.1 (revue Codex de la PR #115) : <paramref name="combatant"/> est-il une vie revenue après la mort de la précédente ?
+        /// Faux pour une première arrivée, une laisse, un retour à ses heures sans mort, et sans zone du monde. Affichage seulement.
+        /// </summary>
+        public bool ReturnedFromDeath(string combatant) => _populations != null && _populations.ReturnedFromDeath(combatant);
+
         /// <summary>Sous-lot 12.3 : inventaire et équipement du personnage (changements effectifs à la prochaine entrée).</summary>
         public Inventory Inventory { get; }
 

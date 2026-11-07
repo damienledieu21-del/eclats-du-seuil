@@ -192,6 +192,9 @@ public class Lot124ZoneTests
         CombatantView v3 = session.Zone.Engine.View("loup1_v3");
         Assert.Equal((GroundVector.Parse("-16", "-12"), 60L), (v3.Position!.Value, v3.Health!.Value));
         Assert.Equal("loup1_v3", session.CurrentCreature("loup1"));
+        // Sous-lot V2.9.1 : chaque vie suivante revient après la mort de la précédente (un écho) ; la première arrivée, non.
+        Assert.True(session.ReturnedFromDeath("loup1_v2") && session.ReturnedFromDeath("loup1_v3"));
+        Assert.False(session.ReturnedFromDeath("loup1") || session.ReturnedFromDeath("sanglier") || session.ReturnedFromDeath(null!));
         // Le butin de sa population (loot.loup) suit chaque vie : la clé de chaque mort fixe son tirage.
         LootTable table = Items.Loot.Single(t => t.Id == "loot.loup");
         int pelts = new[] { "zone.vallons/1/death/loup1", "zone.vallons/1/death/loup1_v2" }
@@ -248,6 +251,7 @@ public class Lot124ZoneTests
         Assert.Equal(("loup1", PopulationEventKind.Respawned, "loup1_v2"), (population[0].Creature, population[1].Kind, population[1].Creature));
         CombatantView first = session.Zone.Engine.View("loup1");
         Assert.True(first.HasLeft && !first.IsDead);
+        Assert.False(session.ReturnedFromDeath("loup1_v2"));   // sous-lot V2.9.1 : une laisse n'est pas une mort, pas un écho
         Assert.Empty(xp);
         Assert.Equal(new[] { PlayerCharacters.PlacesKey, "zone.vallons/safe/place_du_village" }, session.Save().Consumed);   // V1.1 : seul le point sûr d'entrée, découvert d'emblée (et V1.8 : la barre de V1.8 notée)
         // Plafond : 128 combattants depuis les règles 0.12.0 (64 avant ; décision de Damien du 29 octobre 2026) : les créatures de la zone

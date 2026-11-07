@@ -259,3 +259,21 @@ Avant l'essai : déposer `Cat_Stripe_DreamNoms.fbx` dans `Assets/Style/Sketchfab
 | 16.16 | Hameau à l'aube ; forêt la nuit ; camp des rôdeurs | Le coq ; la hulotte ; le feu de camp | [ ] | |
 | 16.17 | Explorer ; aller au Seuil ; une scène de l'histoire | « Into The Wilds », « Sanctum », « The Legend of Kvothe » | [ ] | |
 | 16.18 | Ton avis : quel loup (Asset Store, roo3d, Quaternius), quel lièvre (bluekiwi ou Pneshik), le cerf élaphe sans mort ni brouter, nombre de bêtes de la ferme (**Livestock**), volume des pas (**Step Volume**) | — | [ ] | |
+
+## 17. Échos fantômes et failles (V2.9.1)
+
+Avant l'essai : menu **Éclats du Seuil → Préparer l'essai de style** (rien à déposer : les deux shaders, `EdS/Echo` et `EdS/Faille`, sont dans le dépôt). Si la console affiche une erreur de shader, note-la ici : le jeu garde alors les échos pâles de la V2.1 et les failles en formes simples de la V2.5 (un écho ne devient jamais invisible). Pour voir sans attendre : menus de la nuit (« minuit »), des événements (« ouvrir une faille du Seuil ») et du Seuil qui grandit (paliers 1 à 3). Détail : [UNITY.md](UNITY.md#essai-v291--échos-fantômes-et-failles).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 17.1 | Menu « minuit », aller vers les échos de la nuit (`loup_echo`) | Des loups **transparents bleu froid**, au **contour lumineux**, qui **scintillent** doucement, avec de fines bandes de lumière qui montent ; aucune ombre au sol ; on ne voit pas leurs pattes à travers le corps | [ ] | |
+| 17.2 | En frapper un, le blesser, le tuer | Plus il est blessé, plus il est **transparent** ; à sa mort, il **se défait en braises** bleues (le haut part le premier), sans poussière ; il disparaît en une seconde et demie | [ ] | |
+| 17.3 | Attendre qu'une bête revienne après sa mort (loup du pré, sanglier : une à trois minutes) | Elle revient **en écho** gris-bleu pâle : elle **se forme en lueurs** qui montent ; en marchant, elle laisse **quelques lueurs** derrière elle (discrètes) | [ ] | |
+| 17.4 | Le loup blanc (contrat de Gaspard, une nuit sur trois environ) | **Blanc d'argent**, presque solide, contour très vif la nuit | [ ] | |
+| 17.5 | Le souvenir de la Rupture (chapitre 1) | L'Écho de la Rupture et les Voix : **or pâle de l'aube**, très solides | [ ] | |
+| 17.6 | Menu « ouvrir une faille du Seuil », la nuit | Une **déchirure verticale** qui s'ouvre en trois secondes : lèvres **déchiquetées qui brûlent** (orange et violet), vide violet qui tourne dedans ; sur ordinateur, le décor autour **ondule**, tiré vers la fente ; des **lueurs sont aspirées** vers elle ; sa lumière **bat** ; la déchirure te fait toujours face. Les échos qu'elle crache sont **violets** | [ ] | |
+| 17.6 bis | Une biche ou un lièvre qui revient après sa mort, de jour | Elle revient **normale** (la forêt se repeuple : pas un écho, décision du 7 novembre) ; si un combat de chef se rejoue (Croc-Gris) : normal après une défaite, en écho gris-bleu après une victoire | [ ] | |
+| 17.7 | Cicatrice au palier 1, puis 3 (menus du Seuil qui grandit), puis rouvrir une faille dessus | Au cœur de la cicatrice, une **déchirure dormante** couchée au sol, plus longue et plus ouverte au palier 3 ; une faille rouverte dessus est **plus grande** (+30 % par palier), bat plus vite, aspire plus de lueurs ; les échos rôdeurs y sont **plus solides et plus vifs** | [ ] | |
+| 17.8 | Combat contre trois échos à la fois, de jour puis de nuit | On voit toujours bien les annonces au sol et la cible ; de nuit, les échos brillent plus (fondu de quatre secondes à la tombée de la nuit) | [ ] | |
+| 17.9 | Sur le Note8 | Image fluide avec trois échos et une faille ; pas de distorsion du décor sur le téléphone (la déchirure seule), moitié moins de lueurs | [ ] | |
+| 17.10 | Ton avis : transparence, force du contour, durée des braises, taille des failles (couleurs déjà validées le 7 novembre) | — | [ ] | |

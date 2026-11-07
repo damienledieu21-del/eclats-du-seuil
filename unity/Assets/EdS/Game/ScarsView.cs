@@ -22,6 +22,7 @@ namespace EdS.Game
             public GameObject Root;
             public Transform Disc;
             public int Stage;
+            public Material Tear;   // sous-lot V2.9.1 : la déchirure dormante (null sans le shader des failles)
             public readonly List<Transform> Motes = new List<Transform>();
         }
 
@@ -40,6 +41,7 @@ namespace EdS.Game
 
         public void Destroy()
         {
+            foreach (Shown s in _scars.Values) Forget(s);
             if (_root != null) Object.Destroy(_root);
             _scars.Clear();
             StyleWorld.SetScarFade(0f);
@@ -63,7 +65,7 @@ namespace EdS.Game
                 {
                     // Sous-lot V2.9 : une cicatrice qui grandit sous nos yeux crisse comme du verre qui se fend (pas à son apparition).
                     bool grew = s != null && v.Stage > s.Stage;
-                    if (s != null && s.Root != null) Object.Destroy(s.Root);
+                    if (s != null) Forget(s);
                     _scars[v.Key] = s = Build(v);
                     if (grew) Crack(s.Root.transform.position);
                 }
@@ -71,7 +73,7 @@ namespace EdS.Game
             }
             foreach (string key in _gone)
             {
-                if (_scars[key].Root != null) Object.Destroy(_scars[key].Root);
+                Forget(_scars[key]);
                 _scars.Remove(key);
             }
             // Couleurs fanées à la place de la caméra (un peu lissées, pour ne pas sauter d'un coup).
@@ -104,6 +106,16 @@ namespace EdS.Game
                 spike.localPosition = new Vector3(Mathf.Cos(angle) * d, h * 0.5f, Mathf.Sin(angle) * d);
                 spike.localRotation = Quaternion.Euler(12f * ((i % 3) - 1), 37f * i, 9f * ((i % 2) * 2 - 1));
             }
+            // Sous-lot V2.9.1 : la déchirure dormante, couchée au cœur, plus longue et plus ouverte à chaque palier (elle bat doucement).
+            s.Tear = WorldEventsView.NewTear(StyleRules.Variant(v.Key, 1000) / 37f, false);
+            if (s.Tear != null)
+            {
+                s.Tear.SetFloat(WorldEventsView.OpeningId, (float)EchoLooks.ScarOpening(v.Stage));
+                Transform tear = WorldEventsView.TearQuad("dechirure", s.Root.transform, s.Tear);
+                tear.localPosition = new Vector3(0f, 0.07f, 0f);
+                tear.localRotation = Quaternion.Euler(90f, StyleRules.Variant(v.Key, 180), 0f);
+                tear.localScale = new Vector3(1.2f + 0.4f * v.Stage, 2f + 0.9f * v.Stage, 1f);
+            }
             // Grains de brume froide : quatre par palier.
             for (int i = 0; i < 4 * v.Stage; i++)
             {
@@ -116,8 +128,16 @@ namespace EdS.Game
             return s;
         }
 
+        /// <summary>Détruit la cicatrice montrée et sa copie du matériau des déchirures.</summary>
+        private static void Forget(Shown s)
+        {
+            if (s.Tear != null) Object.Destroy(s.Tear);
+            if (s.Root != null) Object.Destroy(s.Root);
+        }
+
         private void Animate(Shown s, float deltaTime)
         {
+            if (s.Tear != null) s.Tear.SetFloat(WorldEventsView.IntensityId, 0.35f + 0.12f * s.Stage * (float)EchoLooks.Pulse(_time, 0.3 + 0.1 * s.Stage));
             for (int i = 0; i < s.Motes.Count; i++)
             {
                 Transform t = s.Motes[i];

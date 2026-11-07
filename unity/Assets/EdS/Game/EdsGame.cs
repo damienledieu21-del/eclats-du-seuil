@@ -169,6 +169,7 @@ namespace EdS.Game
                 _talentView = TalentTreeView.Create();
                 _book = AdventureBook.Create();
                 _effects = Effects.Create();   // essai réaliste 7 : rien sans le shader des particules
+                _arena.Effects = _effects;   // sous-lot V2.9.1 : braises et traînée des échos
                 StyleWorld.Ambience(_camera.Camera);   // essai réaliste : ciel, lumière, brume, couleurs (rien sans catalogue)
                 _stage = new StoryStage(_camera.Camera.transform);   // sous-lot V1.9.8
             }
@@ -293,6 +294,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : l'Écho de la Rupture est une silhouette de lumière (avant la couleur des chefs).
             _arena.Paint = id => _adventure == null ? (Color?)null
                 : _stage?.Paint(id) ?? (_adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null);
+            EchoContext(_adventure);   // revue Codex de la PR #115 : avant Populate, qui habille les échos une seule fois
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
             // Sous-lot V1.9.8 : entrer dans le souvenir ou en sortir passe par un fondu blanc (la mise en scène), pas par le noir des portes.
             if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
@@ -312,6 +314,36 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.5 : failles du Seuil, hameau pillé, cloche (affichage des événements du monde).</summary>
         private WorldEventsView _worldEvents;
+
+        // Sous-lot V2.9.1 : créatures sorties du Seuil (reprises à chaque image, sans allocation), chefs déjà tués.
+        private readonly HashSet<string> _fromSeuil = new HashSet<string>();
+        private Func<string, bool> _slainChief;
+        private Func<string, bool> _returned;   // revue Codex de la PR #115 : vies revenues après une vraie mort
+
+        private bool KnowsFact(string fact) => _adventure != null && _adventure.World.Narrative != null && _adventure.World.Narrative.Knows(fact);
+
+        /// <summary>
+        /// Sous-lot V2.9.1 : la nuit, les cicatrices, les créatures sorties du Seuil et les chefs déjà tués, donnés à l'arène avant chaque
+        /// <c>Sync</c> et (revue Codex de la PR #115) avant chaque <c>Populate</c> : un chef vaincu d'une partie chargée revient en écho.
+        /// </summary>
+        private void EchoContext(AdventureSession a)
+        {
+            SeuilCreatures(a);
+            if (_slainChief == null) _slainChief = id => _adventure != null && EchoLooks.ChiefSlain(_adventure.World.Definition, KnowsFact, id);
+            if (_returned == null) _returned = id => _adventure != null && _adventure.World.ReturnedFromDeath(id);
+            _arena.Echoes(a.IsNight, a.InScene ? null : a.Scars, _fromSeuil, _slainChief, _returned);
+        }
+
+        private void SeuilCreatures(AdventureSession a)
+        {
+            _fromSeuil.Clear();
+            foreach (WorldEventView v in a.World.WorldEvents)
+                if (v.Rift != null)
+                    for (int i = 0; i < v.Creatures.Count; i++) _fromSeuil.Add(v.Creatures[i]);
+            IReadOnlyList<ScarView> scars = a.Scars;
+            for (int i = 0; i < scars.Count; i++)
+                for (int j = 0; j < scars[i].Haunts.Count; j++) _fromSeuil.Add(scars[i].Haunts[j]);
+        }
 
         /// <summary>Sous-lot V2.6 : cicatrices du Seuil (couleurs fanées, brume froide, pointes sombres).</summary>
         private ScarsView _scars;
@@ -529,6 +561,9 @@ namespace EdS.Game
             _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
+            // Sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices ; décision de Damien du 7 novembre 2026 : ce qui sort du Seuil
+            // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
+            EchoContext(a);
             _arena.Sync(_combat, player, null);
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
@@ -549,7 +584,7 @@ namespace EdS.Game
             _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
                 _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
             // Sous-lot V2.5 : événements du monde (faille, pillage, cloche).
-            if (_worldEvents == null) _worldEvents = new WorldEventsView();
+            if (_worldEvents == null) _worldEvents = new WorldEventsView { Effects = _effects };   // V2.9.1 : lueurs aspirées
             _worldEvents.Sync(a, _paused ? 0f : Time.deltaTime);
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
@@ -1276,7 +1311,9 @@ namespace EdS.Game
                 case FeedbackKind.Blocked: _effects.Blocked(feet, height); break;
                 case FeedbackKind.PerfectParry: _effects.Parry(feet, height); break;
                 case FeedbackKind.GuardBroken: _effects.GuardBroken(feet, height); break;
-                case FeedbackKind.Died: _effects.Death(feet); break;
+                case FeedbackKind.Died:
+                    if (!_arena.IsGhost(id)) _effects.Death(feet);   // sous-lot V2.9.1 : un écho se défait en braises (EchoGhosts)
+                    break;
             }
         }
 

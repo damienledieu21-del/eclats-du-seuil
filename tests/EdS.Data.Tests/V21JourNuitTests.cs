@@ -315,6 +315,9 @@ public sealed class V21JourNuitTests : IDisposable
             GroundVector home = t.Placement!.Position, now = w.Zone.Engine.View(w.CurrentCreature(id)).Position!.Value;
             double gap = Math.Sqrt(Math.Pow((now.X.Raw - home.X.Raw) / 1e4, 2) + Math.Pow((now.Z.Raw - home.Z.Raw) / 1e4, 2));
             Assert.True(gap <= t.Behavior!.Wander!.Radius.Raw / 1e4 + 0.5, $"{id} à {gap:0.##} m de sa place");
+            // Sous-lot V2.9.1 (revue Codex de la PR #115) : une vie suivante (« _v2 ») sans mort n'est pas un écho.
+            Assert.Contains("_v", w.CurrentCreature(id), StringComparison.Ordinal);
+            Assert.False(w.ReturnedFromDeath(w.CurrentCreature(id)));
         }
         Assert.DoesNotContain(events, e => e.Kind == PopulationEventKind.Sign);
     }

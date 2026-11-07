@@ -401,7 +401,11 @@ public class InterfaceStyleTests
 
         // Textures des particules : une par système d'Effects, PNG de 128 × 128.
         string effects = Read("unity", "Assets", "EdS", "Game", "Effects.cs");
-        string[] textures = System.Text.RegularExpressions.Regex.Matches(effects, @"Make\(root, template, Kind\.\w+, ""(\w+)""").Select(m => m.Groups[1].Value).ToArray();
+        // Sous-lot V2.9.1 : 13 systèmes ; le treizième (lueurs aspirées par les failles, avec son propre plafond) reprend la texture
+        // « lueur » : 12 textures distinctes.
+        string[] systems = System.Text.RegularExpressions.Regex.Matches(effects, @"Make\(root, template, Kind\.\w+, ""(\w+)""").Select(m => m.Groups[1].Value).ToArray();
+        Assert.Equal(13, systems.Length);
+        string[] textures = systems.Distinct(StringComparer.Ordinal).ToArray();
         Assert.Equal(12, textures.Length);
         string particules = Path.Combine(Root, Folder, "Resources", "EdsInterface", "Particules");
         Assert.Equal(textures.OrderBy(n => n, StringComparer.Ordinal), Directory.GetFiles(particules, "*.png").Select(f => Path.GetFileNameWithoutExtension(f)!).OrderBy(n => n, StringComparer.Ordinal));
