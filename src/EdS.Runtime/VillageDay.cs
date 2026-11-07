@@ -98,6 +98,15 @@ namespace EdS.Runtime
     /// </summary>
     public static class VillageDay
     {
+        /// <summary>
+        /// Revue Codex de la PR #109 (sous-lot V2.3.1) : un corps de villageois est montré. Le corps d'un PNJ qui parle (<paramref
+        /// name="speaker"/>, le corps d'une pièce) n'obéit qu'au cœur : caché seulement quand il est sorti par la porte (<paramref
+        /// name="gone"/>) ; ni la nuit, ni la pluie, ni les courses des passants ne le cachent (on lui parle là, le cœur l'y tient). Un
+        /// passant du décor : pas la nuit (sauf un veilleur), pas sous une vraie pluie (sauf un sur trois), pas rentré manger.
+        /// </summary>
+        public static bool Shown(bool speaker, bool gone, bool night, bool awakeAtNight, bool sheltering, bool staysOutInRain, bool away) =>
+            speaker ? !gone : (!night || awakeAtNight) && (!sheltering || staysOutInRain) && !away && !gone;
+
         /// <summary>Fenêtres des courses (minutes du jour du monde), avant le décalage propre à chacun.</summary>
         public const int MarketFrom = 9 * 60, MarketTo = 10 * 60 + 30, LunchFrom = 12 * 60, LunchTo = 13 * 60 + 15, TavernFrom = 19 * 60, TavernTo = 21 * 60 + 45;
 

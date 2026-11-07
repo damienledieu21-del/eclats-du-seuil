@@ -450,6 +450,36 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     }
 
     [Fact]
+    public void Le_corps_d_un_PNJ_qui_parle_n_obeit_qu_au_coeur()
+    {
+        // Revue Codex de la PR #109 : dans l'auberge sous une averse, Renart et le fermier qui entrent à 19 h restent visibles ; la nuit non
+        // plus ne les cache pas (dans une pièce, la nuit du décor ne les remontrerait pas). Seule leur sortie par la porte les cache.
+        foreach (bool night in new[] { false, true })
+            foreach (bool awake in new[] { false, true })
+                foreach (bool rain in new[] { false, true })
+                    foreach (bool staysOut in new[] { false, true })
+                        foreach (bool away in new[] { false, true })
+                        {
+                            Assert.True(VillageDay.Shown(true, false, night, awake, rain, staysOut, away));
+                            Assert.False(VillageDay.Shown(true, true, night, awake, rain, staysOut, away));
+                            // Les passants du décor gardent leurs règles (V2.1 à V2.3).
+                            Assert.Equal((!night || awake) && (!rain || staysOut) && !away, VillageDay.Shown(false, false, night, awake, rain, staysOut, away));
+                            Assert.False(VillageDay.Shown(false, true, night, awake, rain, staysOut, away));
+                        }
+        string root = Lot93UnityPackageTests.Root;
+        string night2 = File.ReadAllText(Path.Combine(root, "unity", "Assets", "EdS", "Game", "SpaceView.Night.cs"));
+        Assert.Contains("VillageDay.Shown(v.Speaker, v.Gone, _worldNight", night2, StringComparison.Ordinal);
+        string space = File.ReadAllText(Path.Combine(root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("VillageDay.Plan(v, speaker ? null : _errands)", space, StringComparison.Ordinal);   // pas de course pour un PNJ
+        Assert.Contains("Speaker = speaker", space, StringComparison.Ordinal);
+        // Les repères des PNJ (dehors) ne sont cachés que par leur départ (WorldMarkers), jamais par la nuit ni la pluie.
+        string markers = File.ReadAllText(Path.Combine(root, "unity", "Assets", "EdS", "Game", "WorldMarkers.cs"));
+        Assert.Contains("m.Body.SetActive(m.Shown);", markers, StringComparison.Ordinal);
+        Assert.DoesNotContain("StaysOutInRain", markers, StringComparison.Ordinal);
+        Assert.DoesNotContain("AwakeAtNight", markers, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Affichage_et_menu_d_essai_des_PNJ_qui_changent_de_lieu()
     {
         string root = Lot93UnityPackageTests.Root;
