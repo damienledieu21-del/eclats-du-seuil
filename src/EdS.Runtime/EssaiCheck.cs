@@ -449,6 +449,17 @@ namespace EdS.Runtime
 
         public static string Mark(EssaiLevel level) => level == EssaiLevel.Ok ? "✅" : level == EssaiLevel.Warning ? "⚠️" : "❌";
 
+        /// <summary>
+        /// Revue Codex de la PR #118 (tour 3) : une seule ligne, de taille fixe, pour le haut de la fenêtre : l'état et le compte par statut ;
+        /// la liste des problèmes (<see cref="Summary"/>) est dans la zone qui défile.
+        /// </summary>
+        public string Headline()
+        {
+            string state = Overall == EssaiLevel.Blocking ? "❌ Bloquant" : Overall == EssaiLevel.Warning ? "⚠️ Prêt avec replis" : "✅ Prêt";
+            return state + " : " + Count(EssaiLevel.Blocking) + " bloquant" + (Count(EssaiLevel.Blocking) > 1 ? "s" : "") + ", " + Count(EssaiLevel.Warning)
+                + " repli" + (Count(EssaiLevel.Warning) > 1 ? "s" : "") + ", " + Count(EssaiLevel.Ok) + " OK." + (Overall == EssaiLevel.Ok ? "" : " Détail plus bas.");
+        }
+
         /// <summary>Résumé en quelques lignes (fenêtre, Console, haut du fichier).</summary>
         public string Summary()
         {

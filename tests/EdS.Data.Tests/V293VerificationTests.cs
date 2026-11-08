@@ -300,4 +300,23 @@ public sealed class V293VerificationTests
         Assert.Contains("EssaiManifest.MissingHumanClips(clipNames)", verification);
         Assert.Contains("if (library && (!importer.importAnimation || clips == 0))", verification);
     }
+
+    [Fact]
+    public void La_fenetre_garde_les_sections_atteignables()
+    {
+        // Revue Codex de la PR #118 (tour 3) : 40 bruitages absents font 40 lignes de résumé ; au-dessus de la zone qui défile, seule la ligne
+        // de taille fixe (Headline) reste ; le résumé complet défile avec les sections.
+        var report = new EssaiReport();
+        for (int i = 0; i < 40; i++) report.Add("Bruitages", EssaiLevel.Warning, "son " + i, "absent : silence");
+        report.Add("Unity", EssaiLevel.Ok, "Rendu URP", "actif");
+        Assert.Equal("⚠️ Prêt avec replis : 0 bloquant, 40 replis, 1 OK. Détail plus bas.", report.Headline());
+        Assert.DoesNotContain("\n", report.Headline());
+        Assert.Equal("✅ Prêt : 0 bloquant, 0 repli, 0 OK.", new EssaiReport().Headline());
+        string window = Script("Editor", "EdsVerificationWindow.cs");
+        int scroll = window.IndexOf("BeginScrollView", StringComparison.Ordinal);
+        Assert.True(scroll > 0);
+        Assert.True(window.IndexOf("_report.Summary()", StringComparison.Ordinal) > scroll, "le résumé complet est dans la zone qui défile");
+        Assert.True(window.IndexOf("_report.Headline()", StringComparison.Ordinal) < scroll);
+        Assert.Single(Regex.Matches(window, @"_report\.Summary\(\)"));
+    }
 }

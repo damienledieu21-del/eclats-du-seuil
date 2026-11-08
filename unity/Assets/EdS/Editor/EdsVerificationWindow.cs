@@ -51,12 +51,17 @@ namespace EdS.Game.Editor
                 GUILayout.Label("Pas encore de rapport : clique sur « Relancer la vérification ».", EditorStyles.wordWrappedLabel);
                 return;
             }
+            // Revue Codex de la PR #118 (tour 3) : au-dessus de la zone qui défile, une seule ligne (état et compte par statut) ; le résumé
+            // complet (jusqu'à une ligne par repli) défile avec les sections, qui restent toujours atteignables.
             Color before = GUI.color;
             GUI.color = ColorOf(_report.Overall);
-            GUILayout.Label(Plain(_report.Summary()), EditorStyles.wordWrappedLabel);
+            GUILayout.Label(Plain(_report.Headline()), EditorStyles.boldLabel);
             GUI.color = before;
             GUILayout.Label("Fichier : " + EssaiManifest.ReportPath, EditorStyles.miniLabel);
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
+            GUI.color = ColorOf(_report.Overall);
+            GUILayout.Label(Plain(_report.Summary()), EditorStyles.wordWrappedLabel);
+            GUI.color = before;
             foreach (IGrouping<string, EssaiLine> section in _report.Lines.GroupBy(l => l.Section))
             {
                 GUILayout.Space(8f);
