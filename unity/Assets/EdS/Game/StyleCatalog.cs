@@ -68,13 +68,16 @@ namespace EdS.Game
             }
         }
 
-        /// <summary>Le matériau d'étoffe de la famille <paramref name="family"/> pour ce corps, variante <paramref name="variant"/>, ou null.</summary>
-        public Material Fabric(WardrobeFamily family, int gender, int variant)
+        /// <summary>
+        /// L'étoffe de racine <paramref name="stem"/> (<see cref="HumanWardrobe.FabricStem"/> du matériau de la pièce) pour ce corps, variante
+        /// <paramref name="variant"/>, ou null (la pièce garde son matériau).
+        /// </summary>
+        public Material Fabric(string stem, int gender, int variant)
         {
-            if (Fabrics == null) return null;
+            if (Fabrics == null || string.IsNullOrEmpty(stem)) return null;
             WardrobeFabric best = null;
             foreach (WardrobeFabric f in Fabrics)
-                if (f != null && f.Family == family && f.Variants != null && f.Variants.Length > 0 && (f.Gender == gender || (f.Gender == 0 && best == null))) best = f;
+                if (f != null && f.Stem == stem && f.Variants != null && f.Variants.Length > 0 && (f.Gender == gender || (f.Gender == 0 && best == null))) best = f;
             if (best == null) return null;
             return best.Variants[Math.Abs(variant) % best.Variants.Length];
         }
@@ -122,6 +125,8 @@ namespace EdS.Game
     {
         public GameObject Model;
         public string Part;
+        [Tooltip("Rang du maillage dans le fichier (-1 : son seul maillage).")]
+        public int PartIndex = -1;
         public WardrobeFamily Family;
         public WardrobeSlot Slot;
         public string Kind;
@@ -134,12 +139,14 @@ namespace EdS.Game
     [Serializable]
     public sealed class WardrobeFabric
     {
+        [Tooltip("Racine du nom commune au matériau des pièces et à ses textures (« ranger », « rangerbelts »).")]
+        public string Stem;
         public WardrobeFamily Family;
         public int Gender;
         public Material[] Variants = new Material[0];
     }
 
-    /// <summary>Sous-lot V2.9.4 : saison des vêtements (Auto : le mois de l'ordinateur, saisons comme dans la vraie vie).</summary>
+    /// <summary>Sous-lot V2.9.4 : saison des vêtements (Auto : la saison du jeu, <see cref="HumanBodies.GameSeason"/> ; les autres la forcent pour l'essai).</summary>
     public enum StyleSeason
     {
         Auto = 0,
@@ -329,7 +336,7 @@ namespace EdS.Game
         [HideInInspector] public int HumanBake;
         [Tooltip("Sous-lot V2.9.4 : vrais vêtements (pièces du pack de Quaternius) sur les corps humains ; décoché ou sans pièces : les tenues peintes.")]
         public bool HumanClothes = true;
-        [Tooltip("Saison des vêtements : Auto suit le mois de l'ordinateur (manteaux l'hiver, têtes nues l'été).")]
+        [Tooltip("Saison des vêtements : Auto suit la saison du jeu (printemps tant qu'il n'y a pas de calendrier) ; les autres la forcent pour l'essai.")]
         public StyleSeason HumanSeason = StyleSeason.Auto;
         [Tooltip("Tenues de fête (beaux habits, couleurs vives, usure effacée) : pour les fêtes du bourg à venir, ou pour l'essai.")]
         public bool HumanFestival;

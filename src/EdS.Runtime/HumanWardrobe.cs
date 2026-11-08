@@ -245,7 +245,14 @@ namespace EdS.Runtime
         /// homme ou femme ; null pour un fichier hors du pack, une pièce de niveau de détail réduit (« LOD1 »), une tête, un corps nu, ou une
         /// pièce non reconnue.
         /// </summary>
-        public static WardrobeItem? Classify(string path, string part)
+        public static WardrobeItem? Classify(string path, string part) => Classify(path, part, false);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #119 : dans un fichier de plusieurs maillages (<paramref name="meshOnly"/>), la place d'une pièce
+        /// est lue sur le nom de son maillage seulement ; un maillage au nom inconnu (« Cube.001 », « Belts ») n'est pas pris pour la pièce
+        /// principale du fichier. La famille et le corps peuvent venir du fichier.
+        /// </summary>
+        public static WardrobeItem? Classify(string path, string part, bool meshOnly)
         {
             string p = (path ?? string.Empty).Replace('\\', '/');
             if (!IsWardrobePath(p)) return null;
@@ -262,7 +269,7 @@ namespace EdS.Runtime
             int gender = all.Contains("female") || all.Contains("woman") || all.Contains("women") ? 2 : all.Contains("male") || all.Contains("man") || all.Contains("men") ? 1 : 0;
             WardrobeFamily? family = FamilyOf(mesh) ?? FamilyOf(named) ?? FamilyOf(all);
             if (family == null) return null;
-            (WardrobeSlot Slot, string Kind)? slot = SlotOf(mesh) ?? SlotOf(named);
+            (WardrobeSlot Slot, string Kind)? slot = meshOnly ? SlotOf(mesh) : SlotOf(mesh) ?? SlotOf(named);
             if (slot == null) return null;
             return new WardrobeItem(family.Value, slot.Value.Slot, slot.Value.Kind, gender, key);
         }
@@ -312,7 +319,14 @@ namespace EdS.Runtime
         /// La tenue de l'humain <paramref name="id"/> dans le rôle <paramref name="role"/> (comme <see cref="HumanLooks.For"/>), d'aspect
         /// <paramref name="look"/>, à la saison <paramref name="season"/>, sous la pluie ou non, un jour de fête ou non.
         /// </summary>
-        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive)
+        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive) =>
+            Plan(id, role, look, season, rain, festive, int.MaxValue);
+
+        /// <summary>
+        /// Comme <see cref="Plan(string, string, HumanLook, WardrobeSeason, bool, bool)"/>, avec au plus <paramref name="maxOptional"/> pièces
+        /// facultatives, dans l'ordre : coiffe, cape, épaulières, col, tablier (<see cref="MaxOptional"/>).
+        /// </summary>
+        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive, int maxOptional)
         {
             string seed = id ?? string.Empty;
             int Roll(string salt, int count) => StyleRules.Variant(seed + "#vetement#" + salt, count);
@@ -423,7 +437,11 @@ namespace EdS.Runtime
             if (festive) wear = Math.Min(wear, outfit == HumanOutfit.Bandit ? 2 : 0);
             int[] tints = festive && outfit != HumanOutfit.Guard && outfit != HumanOutfit.Bandit && outfit != HumanOutfit.Hero ? FestiveTints : TintsOf(outfit);
             int tint = tints[Roll("teinte", tints.Length)];
-            return new WardrobePlan(outfit, requests, Roll("etoffe", 3), tint, wear, season, festive, rain);
+            // Plafond des pièces facultatives (téléphone) : les obligatoires d'abord, puis la coiffe, la cape, les épaulières, le col, le tablier.
+            WardrobeSlot[] order = { WardrobeSlot.Head, WardrobeSlot.Back, WardrobeSlot.Shoulders, WardrobeSlot.Neck, WardrobeSlot.Waist };
+            var kept = requests.Where(q => q.Required).ToList();
+            kept.AddRange(requests.Where(q => !q.Required).OrderBy(q => Array.IndexOf(order, q.Slot)).Take(Math.Max(0, maxOptional)));
+            return new WardrobePlan(outfit, kept, Roll("etoffe", 3), tint, wear, season, festive, rain);
         }
 
         /// <summary>
@@ -502,11 +520,47 @@ namespace EdS.Runtime
         /// <summary>Une coiffe qui cache les cheveux (capuche, casque) : la coiffure n'est pas posée (elle traverserait).</summary>
         public static bool HidesHair(string kind) => kind == "hood" || kind == "helmet";
 
-        /// <summary>Matériau de peau d'une pièce (les mains des bras) : « MI_Regular_Male », « Skin », « Body »… ; sinon c'est l'étoffe.</summary>
+        /// <summary>
+        /// Coiffure portée sous la coiffe <paramref name="kind"/> (relecture de la PR #119) : rien sous une capuche ou un casque ; une coiffure
+        /// courte (rase) sous un chapeau, une couronne ou un cercle, qui traverseraient les cheveux longs, les chignons et la raie ; la coiffure
+        /// d'origine sans coiffe.
+        /// </summary>
+        public static HumanHair HairUnder(string kind, HumanHair hair, bool female)
+        {
+            if (HidesHair(kind)) return HumanHair.None;
+            if (kind == "hat" || kind == "crown" || kind == "circlet")
+                return hair == HumanHair.None ? HumanHair.None : female ? HumanHair.BuzzedFemale : HumanHair.Buzzed;
+            return hair;
+        }
+
+        /// <summary>
+        /// Relecture de la PR #119 : sous les vrais vêtements, le corps doit être remplacé par sa tête seule (<paramref name="headVertices"/> :
+        /// sommets du corps réduit, null s'il n'a pas été fait), faite du même maillage (<paramref name="bodyVertices"/>) ; sinon le corps
+        /// peint resterait dessous (deux tenues l'une dans l'autre) : pas de vrais vêtements.
+        /// </summary>
+        public static bool HeadFits(int? headVertices, int bodyVertices) => headVertices.HasValue && headVertices.Value > 0 && headVertices.Value == bodyVertices;
+
+        /// <summary>
+        /// Pièces facultatives au plus (coiffe, cape, épaulières, col, tablier) : une seule sur téléphone (chaque pièce est un maillage animé
+        /// de plus ; relecture de la PR #119), toutes sur ordinateur.
+        /// </summary>
+        public static int MaxOptional(bool phone) => phone ? 1 : 5;
+
+        /// <summary>Noms réduits des matériaux de peau connus (les mains des bras des pièces, le corps des Universal Base Characters).</summary>
+        private static readonly string[] SkinMaterials =
+        {
+            "miregularmale", "miregularfemale", "mregularmale", "mregularfemale", "regularmale", "regularfemale",
+            "misuperheromale", "misuperherofemale", "msuperheromale", "msuperherofemale", "superheromale", "superherofemale",
+        };
+
+        /// <summary>
+        /// Matériau de peau d'une pièce : seulement les noms connus (« MI_Regular_Male », « MI_Superhero_Female » ; relecture de la PR #119 :
+        /// « Body », « Regular_Belt » sont des étoffes), avec un éventuel suffixe d'instance d'Unity (« (Instance) ») ; sinon c'est une étoffe.
+        /// </summary>
         public static bool IsSkinMaterial(string name)
         {
-            string k = StyleRules.Key(name ?? string.Empty);
-            return k.Contains("regular") || k.Contains("skin") || k.Contains("superhero") || k.Contains("peau") || k == "body" || k.StartsWith("mibody", StringComparison.Ordinal);
+            string n = (name ?? string.Empty).Replace(" (Instance)", string.Empty);
+            return SkinMaterials.Contains(StyleRules.Key(n));
         }
 
         /// <summary>
@@ -515,14 +569,43 @@ namespace EdS.Runtime
         /// </summary>
         public static IReadOnlyList<string> FabricTextures(IEnumerable<string> textures, WardrobeFamily family, int gender)
         {
-            return (textures ?? Array.Empty<string>()).Where(t => t != null && IsWardrobePath(t)).Where(t =>
+            return (textures ?? Array.Empty<string>()).Where(t => t != null && IsWardrobePath(t) && IsColorMap(t)).Where(t =>
             {
                 List<string> w = Words(System.IO.Path.GetFileNameWithoutExtension(t.Replace('\\', '/')));
                 if (FamilyOf(w) != family) return false;
-                if (Any(w, "normal", "nrm", "rough", "roughness", "metal", "metallic", "ao", "occlusion", "orm", "emissive", "emission", "mask", "height", "regular", "skin")) return false;
                 int g = w.Contains("female") ? 2 : w.Contains("male") ? 1 : 0;
                 return g == 0 || gender == 0 || g == gender;
             }).OrderBy(t => t, StringComparer.Ordinal).ToList();
+        }
+
+        /// <summary>
+        /// Carte de couleur d'une étoffe (relecture de la PR #119) : le nom dit « BaseColor », « Albedo », « Diffuse » ou « Color » ; jamais une
+        /// carte de relief, de rugosité, de métal, d'occlusion, d'opacité, de brillance, de détail, ni la peau.
+        /// </summary>
+        public static bool IsColorMap(string path)
+        {
+            List<string> w = Words(System.IO.Path.GetFileNameWithoutExtension((path ?? string.Empty).Replace('\\', '/')));
+            if (Any(w, "normal", "nrm", "rough", "roughness", "metal", "metallic", "ao", "occlusion", "orm", "emissive", "emission", "mask", "height",
+                "opacity", "alpha", "transparency", "specular", "spec", "gloss", "glossiness", "detail", "bump", "displacement", "regular", "skin", "superhero"))
+                return false;
+            return Any(w, "color", "colour", "albedo", "diffuse", "basecolor", "diff");
+        }
+
+        private static readonly string[] StemNoise =
+        {
+            "t", "tx", "tex", "texture", "mi", "m", "mat", "material", "base", "color", "colour", "basecolor", "albedo", "diffuse", "diff", "d",
+            "male", "female", "i", "ii", "iii", "iv", "a", "b", "c", "v", "var", "variant", "variation", "png", "tga", "jpg",
+        };
+
+        /// <summary>
+        /// Racine du nom d'une étoffe, commune à un matériau et à ses textures (relecture de la PR #119 : relier texture et pièce par le nom) :
+        /// « MI_Ranger » et « T_Ranger_2_BaseColor » → ranger ; « MI_Ranger_Belts » et « T_Ranger_Belts_1_BaseColor » → rangerbelts. Sans les
+        /// préfixes, les mots de couleur, le corps et le numéro de variante.
+        /// </summary>
+        public static string FabricStem(string name)
+        {
+            string n = System.IO.Path.GetFileNameWithoutExtension((name ?? string.Empty).Replace(" (Instance)", string.Empty).Replace('\\', '/'));
+            return string.Concat(Words(n).Where(w => !StemNoise.Contains(w) && !w.All(char.IsDigit)));
         }
 
         /// <summary>Texture de peau du pack pour les mains (« T_Regular_Male_Dark_BaseColor ») ; null sinon.</summary>

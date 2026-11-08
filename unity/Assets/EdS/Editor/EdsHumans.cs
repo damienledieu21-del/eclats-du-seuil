@@ -166,15 +166,17 @@ namespace EdS.Game.Editor
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(file);
                 if (prefab == null) continue;
                 SkinnedMeshRenderer[] skins = prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-                // Un fichier d'une seule pièce : reconnue d'après son maillage ou son fichier ; un fichier de plusieurs : chaque maillage à part.
-                foreach (SkinnedMeshRenderer skin in skins)
+                // Un fichier d'une seule pièce : reconnue d'après son maillage ou son fichier ; un fichier de plusieurs : chaque maillage à part,
+                // d'après son seul nom (relecture de la PR #119 : un maillage au nom inconnu n'est pas pris pour la pièce du fichier).
+                for (int k = 0; k < skins.Length; k++)
                 {
+                    SkinnedMeshRenderer skin = skins[k];
                     if (skin.sharedMesh == null) continue;
-                    WardrobeItem? found = HumanWardrobe.Classify(file, skin.gameObject.name);
+                    WardrobeItem? found = HumanWardrobe.Classify(file, skin.gameObject.name, skins.Length > 1);
                     if (!(found is WardrobeItem item)) continue;
                     pieces.Add(new WardrobeLook
                     {
-                        Model = prefab, Part = skins.Length == 1 ? string.Empty : skin.gameObject.name, Family = item.Family, Slot = item.Slot,
+                        Model = prefab, Part = skin.gameObject.name, PartIndex = k, Family = item.Family, Slot = item.Slot,
                         Kind = item.Kind, Gender = item.Gender, Key = item.Key,
                     });
                 }
@@ -183,31 +185,32 @@ namespace EdS.Game.Editor
             if (pieces.Count == 0)
                 return "vrais vêtements : non (" + files.Count + " fichiers dans le dossier des vêtements, aucune pièce reconnue : tenues peintes)";
 
-            // Étoffes : les variantes de texture du pack, par famille et par corps.
+            // Étoffes (relecture de la PR #119) : les cartes de couleur du pack seulement, rangées par racine de nom (celle du matériau des
+            // pièces : « MI_Ranger » ↔ « T_Ranger_2_BaseColor ») et par corps ; les variantes dans l'ordre des noms.
             var fabrics = new List<WardrobeFabric>();
-            foreach (WardrobeFamily family in System.Enum.GetValues(typeof(WardrobeFamily)))
-                foreach (int gender in new[] { 0, 1, 2 })
+            var colorMaps = textures.Where(t => HumanWardrobe.IsWardrobePath(t) && HumanWardrobe.IsColorMap(t)).OrderBy(t => t, System.StringComparer.Ordinal).ToList();
+            foreach (var group in colorMaps.GroupBy(t =>
                 {
-                    if (!pieces.Any(p => p.Family == family)) continue;
-                    IReadOnlyList<string> found = HumanWardrobe.FabricTextures(textures, family, gender);
-                    // Pour un corps : seulement les textures qui lui sont propres s'il y en a (sinon celles des deux, déjà rangées sous 0).
-                    if (gender != 0) found = found.Where(t => HumanWardrobe.FabricTextures(new[] { t }, family, 3 - gender).Count == 0).ToList();
-                    else found = found.Where(t => HumanWardrobe.FabricTextures(new[] { t }, family, 1).Count == 1 && HumanWardrobe.FabricTextures(new[] { t }, family, 2).Count == 1).ToList();
-                    if (found.Count == 0) continue;
-                    var variants = new List<Material>();
-                    for (int v = 0; v < found.Count && v < 6; v++)
-                    {
-                        Material m = MaterialAt("Etoffe_" + family + "_" + gender + "_" + v, lit);
-                        Texture2D t = AssetDatabase.LoadAssetAtPath<Texture2D>(found[v]);
-                        m.SetTexture("_BaseMap", t);
-                        m.SetTexture("_MainTex", t);
-                        m.SetFloat("_Smoothness", 0.2f);
-                        m.enableInstancing = true;
-                        EditorUtility.SetDirty(m);
-                        variants.Add(m);
-                    }
-                    fabrics.Add(new WardrobeFabric { Family = family, Gender = gender, Variants = variants.ToArray() });
+                    string f = StyleRules.Key(Path.GetFileNameWithoutExtension(t));
+                    int g = f.Contains("female") ? 2 : f.Contains("male") ? 1 : 0;
+                    return (HumanWardrobe.FabricStem(t), g);
+                }).Where(g => g.Key.Item1.Length > 0).OrderBy(g => g.Key.Item1, System.StringComparer.Ordinal).ThenBy(g => g.Key.Item2))
+            {
+                var variants = new List<Material>();
+                int v = 0;
+                foreach (string texture in group.Take(6))
+                {
+                    Material m = MaterialAt("Etoffe_" + group.Key.Item1 + "_" + group.Key.Item2 + "_" + v++, lit);
+                    Texture2D t = AssetDatabase.LoadAssetAtPath<Texture2D>(texture);
+                    m.SetTexture("_BaseMap", t);
+                    m.SetTexture("_MainTex", t);
+                    m.SetFloat("_Smoothness", 0.2f);
+                    m.enableInstancing = true;
+                    EditorUtility.SetDirty(m);
+                    variants.Add(m);
                 }
+                fabrics.Add(new WardrobeFabric { Stem = group.Key.Item1, Gender = group.Key.Item2, Variants = variants.ToArray() });
+            }
             humans.Fabrics = fabrics.ToArray();
 
             // Peau des mains : homme clair, homme sombre, femme claire, femme sombre.
@@ -234,8 +237,12 @@ namespace EdS.Game.Editor
 
             humans.MaleHead = HeadOnly(humans.Male, "Tete_H");
             humans.FemaleHead = HeadOnly(humans.Female, "Tete_F");
+            // Relecture de la PR #119 : sans tête seule, le corps peint resterait sous les vêtements : pas de vrais vêtements.
             if (humans.MaleHead == null || humans.FemaleHead == null)
-                notes.Add("Vrais vêtements : tête seule du corps non faite (os de la tête introuvables) : le corps entier reste sous les vêtements.");
+            {
+                humans.Clothes = new WardrobeLook[0];
+                return "vrais vêtements : non (tête seule du corps non faite : os de la tête introuvables ; tenues peintes)";
+            }
 
             // Ce qui est prêt : par famille, les places couvertes ; une famille sans haut, bras, bas ou pieds se complète d'une autre.
             var lines = new List<string>();

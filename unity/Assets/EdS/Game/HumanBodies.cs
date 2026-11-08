@@ -257,9 +257,9 @@ namespace EdS.Game
             foreach (Transform t in model.GetComponentsInChildren<Transform>())
                 if (!bones.ContainsKey(t.name)) bones[t.name] = t;
             // Sous-lot V2.9.4 : les vrais vêtements d'abord (le corps garde sa tenue peinte s'il en manque une pièce ou si l'une ne s'attache pas).
-            bool hideHair = false;
-            if (clothes != null) Clothe(model, humans, look, clothes, bones, out hideHair);
-            if (!hideHair) Attach(model, humans.Hair(look.Hair), bones, outfit, hair1, hair2, humans.Eyes);
+            HumanHair hair = look.Hair;
+            if (clothes != null && Clothe(model, humans, look, clothes, bones, out string headgear)) hair = HumanWardrobe.HairUnder(headgear, look.Hair, look.Female);
+            Attach(model, humans.Hair(hair), bones, outfit, hair1, hair2, humans.Eyes);
             if (look.Beard) Attach(model, humans.Beard, bones, outfit, hair1, hair2, humans.Eyes);
             Vector3 s = model.transform.localScale;
             model.transform.localScale = new Vector3(s.x * (float)look.Width, s.y, s.z * (float)look.Width);
@@ -268,9 +268,9 @@ namespace EdS.Game
 
         /// <summary>
         /// Sous-lot V2.9.4 : la tenue voulue pour ce corps (<see cref="HumanWardrobe.Plan"/>), ou null : pas de vrais vêtements (réglage
-        /// <c>Human Clothes</c> décoché, ou aucune pièce préparée). La saison suit le réglage <c>Human Season</c> (Auto : le mois de
-        /// l'ordinateur, affichage seulement), la pluie le temps qu'il fait quand le corps apparaît, la fête le réglage <c>Human Festival</c>
-        /// ou <see cref="Festival"/>.
+        /// <c>Human Clothes</c> décoché, ou aucune pièce préparée). La saison est celle du jeu (<see cref="GameSeason"/>, sauf réglage
+        /// <c>Human Season</c> forcé), la pluie le temps qu'il fait quand le corps apparaît, la fête le réglage <c>Human Festival</c> ou
+        /// <see cref="Festival"/> ; sur téléphone, une seule pièce facultative (<see cref="HumanWardrobe.MaxOptional"/>).
         /// </summary>
         public static WardrobePlan Clothing(StyleCatalog catalog, StyleSlot slot, string id, string lookId, HumanLook look)
         {
@@ -278,13 +278,20 @@ namespace EdS.Game
                 return null;
             string who = slot == StyleSlot.Hero ? "heros" : lookId ?? id;
             string role = slot == StyleSlot.Hero ? "heros" : id;
-            return HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), catalog.HumanFestival || Festival);
+            return HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), catalog.HumanFestival || Festival,
+                HumanWardrobe.MaxOptional(Application.isMobilePlatform));
         }
 
         /// <summary>Sous-lot V2.9.4 : jour de fête au bourg (posé par les fêtes à venir) : les villageois qui apparaissent sortent leurs beaux habits.</summary>
         public static bool Festival { get; set; }
 
-        /// <summary>Saison des vêtements : le réglage, ou le mois de l'ordinateur (saisons comme dans la vraie vie, choix de Damien du 29 octobre 2026).</summary>
+        /// <summary>
+        /// Sous-lot V2.9.4 (décision de Damien du 8 novembre 2026 : la saison des tenues suit la saison du jeu) : point d'entrée du
+        /// calendrier du jeu, qui pose la saison en cours ; le printemps tant qu'aucun calendrier ne la donne (le calendrier de V2.10 le branchera).
+        /// </summary>
+        public static WardrobeSeason GameSeason { get; set; } = WardrobeSeason.Spring;
+
+        /// <summary>Saison des vêtements : celle du jeu (<see cref="GameSeason"/>), ou celle forcée par le réglage <c>Human Season</c> pour l'essai.</summary>
         public static WardrobeSeason Season(StyleCatalog catalog)
         {
             switch (catalog != null ? catalog.HumanSeason : StyleSeason.Auto)
@@ -293,7 +300,7 @@ namespace EdS.Game
                 case StyleSeason.Summer: return WardrobeSeason.Summer;
                 case StyleSeason.Autumn: return WardrobeSeason.Autumn;
                 case StyleSeason.Winter: return WardrobeSeason.Winter;
-                default: return HumanWardrobe.SeasonOf(System.DateTime.Now.Month);
+                default: return GameSeason;
             }
         }
 
@@ -301,100 +308,90 @@ namespace EdS.Game
         private static readonly Dictionary<(Material, int, int), Material> Worn = new Dictionary<(Material, int, int), Material>();
 
         /// <summary>
-        /// Sous-lot V2.9.4 : habille le corps de vraies pièces (<paramref name="plan"/>) : chaque pièce prend les os du corps par leur nom ;
-        /// s'il manque une pièce obligatoire, ou si l'une ne s'attache pas, tout ce qui a été posé est retiré et le corps garde sa tenue peinte
-        /// (faux rendu). Sinon le corps ne garde que sa tête et son cou (rien ne traverse les vêtements), et <paramref name="hideHair"/> dit si
-        /// une capuche ou un casque couvre les cheveux.
+        /// Sous-lot V2.9.4 : habille le corps de vraies pièces (<paramref name="plan"/>) : chaque pièce prend les os du corps par leur nom.
+        /// Faux, et rien n'est posé (le corps garde sa tenue peinte), si le corps réduit à sa tête manque ou ne va pas à ce corps (relecture de
+        /// la PR #119 : sinon le corps peint resterait dessous), s'il manque une pièce obligatoire, ou si l'une ne s'attache pas. Une pièce
+        /// facultative (coiffe, cape, épaulières, col, tablier) qui ne s'attache pas est seulement omise. Vrai : le corps ne garde que sa tête
+        /// et son cou, et <paramref name="headgear"/> est le genre de la coiffe posée (vide sans coiffe).
         /// </summary>
-        private static bool Clothe(GameObject model, HumanCatalog humans, HumanLook look, WardrobePlan plan, Dictionary<string, Transform> bones, out bool hideHair)
+        private static bool Clothe(GameObject model, HumanCatalog humans, HumanLook look, WardrobePlan plan, Dictionary<string, Transform> bones, out string headgear)
         {
-            hideHair = false;
+            headgear = string.Empty;
+            Mesh head = look.Female ? humans.FemaleHead : humans.MaleHead;
+            SkinnedMeshRenderer body = null;
+            foreach (SkinnedMeshRenderer s in model.GetComponentsInChildren<SkinnedMeshRenderer>())
+                if (s.sharedMesh != null && (body == null || s.sharedMesh.vertexCount > body.sharedMesh.vertexCount)) body = s;
+            if (body == null || !HumanWardrobe.HeadFits(head != null ? head.vertexCount : (int?)null, body.sharedMesh.vertexCount)) return false;
             int[] picks = HumanWardrobe.Resolve(plan, humans.Items, look.Female);
             if (picks == null) return false;
             var placed = new List<GameObject>();
             Material skin = Skin(humans, look);
-            bool covered = false;
+            string gear = string.Empty;
             for (int r = 0; r < picks.Length; r++)
             {
                 if (picks[r] < 0) continue;
                 WardrobeLook piece = humans.Clothes[picks[r]];
-                Material fabric = humans.Fabric(piece.Family, look.Female ? 2 : 1, plan.Fabric);
-                bool ok = Wear(model, piece, bones, fabric, skin, look.DarkSkin, plan, placed);
+                bool ok = Wear(model, piece, bones, humans, look, skin, plan, placed);
                 if (!ok && plan.Requests[r].Required)
                 {
                     foreach (GameObject g in placed) Object.Destroy(g);
                     return false;
                 }
-                if (ok && HumanWardrobe.HidesHair(piece.Kind)) covered = true;
+                if (ok && piece.Slot == WardrobeSlot.Head) gear = piece.Kind ?? string.Empty;
             }
-            // Le corps sous les vêtements : la tête et le cou seulement (préparés) ; sans eux, le corps entier reste (tenue peinte dessous).
-            Mesh head = look.Female ? humans.FemaleHead : humans.MaleHead;
-            if (head != null)
-            {
-                SkinnedMeshRenderer body = null;
-                foreach (SkinnedMeshRenderer s in model.GetComponentsInChildren<SkinnedMeshRenderer>())
-                    if (s.sharedMesh != null && !placed.Contains(s.gameObject) && (body == null || s.sharedMesh.vertexCount > body.sharedMesh.vertexCount)) body = s;
-                if (body != null && body.sharedMesh.vertexCount == head.vertexCount) body.sharedMesh = head;
-            }
-            hideHair = covered;
+            body.sharedMesh = head;
+            headgear = gear;
             return true;
         }
 
         /// <summary>
-        /// Pose une pièce : ses maillages (celui de <see cref="WardrobeLook.Part"/>, ou tous) prennent les os du corps par leur nom ; l'étoffe
-        /// (teinte, usure) et la peau des mains remplacent leurs matériaux. Faux si un os manque (rien n'est posé).
+        /// Pose une pièce : son seul maillage (<see cref="WardrobeLook.PartIndex"/> dans le fichier, relecture de la PR #119) prend les os du
+        /// corps par leur nom ; chaque matériau d'étoffe prend l'étoffe préparée de même nom (<see cref="HumanWardrobe.FabricStem"/> : une pièce
+        /// à plusieurs matériaux garde chacun le sien), teinte et usée ; la peau des mains celle du corps. Faux si un os manque (rien n'est posé).
         /// </summary>
-        private static bool Wear(GameObject model, WardrobeLook piece, Dictionary<string, Transform> bones, Material fabric, Material skin, bool dark,
+        private static bool Wear(GameObject model, WardrobeLook piece, Dictionary<string, Transform> bones, HumanCatalog humans, HumanLook look, Material skin,
             WardrobePlan plan, List<GameObject> placed)
         {
             if (piece == null || piece.Model == null) return false;
             GameObject copy = Object.Instantiate(piece.Model, model.transform, false);
-            var skins = new List<SkinnedMeshRenderer>();
-            foreach (SkinnedMeshRenderer s in copy.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-                if (string.IsNullOrEmpty(piece.Part) || s.gameObject.name == piece.Part) skins.Add(s);
-            var mapped = new List<Transform[]>();
-            foreach (SkinnedMeshRenderer s in skins)
-            {
-                Transform[] old = s.bones;
-                if (old == null || old.Length == 0 || s.sharedMesh == null)
-                {
-                    Object.Destroy(copy);
-                    return false;
-                }
-                var now = new Transform[old.Length];
-                for (int i = 0; i < old.Length; i++)
-                {
-                    if (old[i] == null || !bones.TryGetValue(old[i].name, out Transform b))
-                    {
-                        Object.Destroy(copy);
-                        return false;
-                    }
-                    now[i] = b;
-                }
-                mapped.Add(now);
-            }
-            if (skins.Count == 0)
+            SkinnedMeshRenderer[] all = copy.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            int index = piece.PartIndex < 0 ? 0 : piece.PartIndex;
+            SkinnedMeshRenderer s = index < all.Length ? all[index] : null;
+            if (s == null || s.sharedMesh == null || (!string.IsNullOrEmpty(piece.Part) && s.gameObject.name != piece.Part) || s.bones == null || s.bones.Length == 0)
             {
                 Object.Destroy(copy);
                 return false;
             }
-            for (int k = 0; k < skins.Count; k++)
+            Transform[] old = s.bones;
+            var now = new Transform[old.Length];
+            for (int i = 0; i < old.Length; i++)
             {
-                SkinnedMeshRenderer s = skins[k];
-                s.bones = mapped[k];
-                if (s.rootBone != null && bones.TryGetValue(s.rootBone.name, out Transform root)) s.rootBone = root;
-                s.updateWhenOffscreen = false;
-                Material[] materials = s.sharedMaterials;
-                for (int i = 0; i < materials.Length; i++)
+                if (old[i] == null || !bones.TryGetValue(old[i].name, out Transform b))
                 {
-                    bool isSkin = materials[i] != null && HumanWardrobe.IsSkinMaterial(materials[i].name);
-                    if (isSkin) materials[i] = skin != null ? skin : dark ? Darkened(materials[i]) : materials[i];
-                    else materials[i] = Worn1(fabric != null ? fabric : materials[i], plan.Tint, plan.Wear);
+                    Object.Destroy(copy);
+                    return false;
                 }
-                s.sharedMaterials = materials;
-                s.transform.SetParent(model.transform, false);
-                placed.Add(s.gameObject);
+                now[i] = b;
             }
+            s.bones = now;
+            if (s.rootBone != null && bones.TryGetValue(s.rootBone.name, out Transform root)) s.rootBone = root;
+            s.updateWhenOffscreen = false;
+            Material[] materials = s.sharedMaterials;
+            int gender = look.Female ? 2 : 1;
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] == null) continue;
+                if (HumanWardrobe.IsSkinMaterial(materials[i].name))
+                {
+                    materials[i] = skin != null ? skin : look.DarkSkin ? Darkened(materials[i]) : materials[i];
+                    continue;
+                }
+                Material fabric = humans.Fabric(HumanWardrobe.FabricStem(materials[i].name), gender, plan.Fabric);
+                materials[i] = Worn1(fabric != null ? fabric : materials[i], plan.Tint, plan.Wear);
+            }
+            s.sharedMaterials = materials;
+            s.transform.SetParent(model.transform, false);
+            placed.Add(s.gameObject);
             Object.Destroy(copy);
             return true;
         }

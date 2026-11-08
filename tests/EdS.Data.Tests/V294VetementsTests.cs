@@ -231,4 +231,73 @@ public sealed class V294VetementsTests
         Assert.EndsWith("T_Regular_Female_Light_BaseColor.png", HumanWardrobe.SkinTexture(textures, true, false));
         Assert.Null(HumanWardrobe.SkinTexture(textures, true, true));
     }
+
+    [Fact]
+    public void Relecture_1_sans_tete_seule_qui_va_au_corps_pas_de_vrais_vetements()
+    {
+        Assert.True(HumanWardrobe.HeadFits(12566, 12566));
+        Assert.False(HumanWardrobe.HeadFits(null, 12566));        // tête non préparée : tenue peinte, pas deux tenues l'une dans l'autre
+        Assert.False(HumanWardrobe.HeadFits(12812, 12566));       // tête de l'autre corps
+        Assert.False(HumanWardrobe.HeadFits(0, 0));
+    }
+
+    [Fact]
+    public void Relecture_2_seuls_les_noms_de_peau_connus_sont_de_la_peau()
+    {
+        foreach (string skin in new[] { "MI_Regular_Male", "MI_Regular_Female", "MI_Regular_Male (Instance)", "MI_Superhero_Female", "Regular_Male" })
+            Assert.True(HumanWardrobe.IsSkinMaterial(skin), skin);
+        foreach (string cloth in new[] { "Body", "MI_Body_Ranger", "Regular_Belt", "MI_Ranger", "Skin_Leather", "MI_Peasant_Regular", "" })
+            Assert.False(HumanWardrobe.IsSkinMaterial(cloth), cloth);
+    }
+
+    [Fact]
+    public void Relecture_3_etoffes_reliees_par_le_nom_cartes_de_couleur_seulement()
+    {
+        Assert.Equal("ranger", HumanWardrobe.FabricStem("MI_Ranger"));
+        Assert.Equal("ranger", HumanWardrobe.FabricStem(O + "Textures/T_Ranger_2_BaseColor.png"));
+        Assert.Equal("rangerbelts", HumanWardrobe.FabricStem("MI_Ranger_Belts (Instance)"));
+        Assert.Equal("rangerbelts", HumanWardrobe.FabricStem("T_Ranger_Belts_1_BaseColor"));
+        Assert.NotEqual(HumanWardrobe.FabricStem("MI_Ranger"), HumanWardrobe.FabricStem("MI_Ranger_Belts"));
+        Assert.True(HumanWardrobe.IsColorMap("T_Knight_1_BaseColor.png") && HumanWardrobe.IsColorMap("Wizard_Albedo.png") && HumanWardrobe.IsColorMap("Noble_Diffuse.tga"));
+        foreach (string map in new[] { "T_Knight_Opacity.png", "T_Knight_Alpha.png", "T_Knight_Specular.png", "T_Knight_Detail_Color.png", "T_Knight_Bump.png",
+                     "T_Knight_Normal.png", "T_Knight_1.png", "T_Regular_Male_BaseColor.png" })
+            Assert.False(HumanWardrobe.IsColorMap(map), map);
+    }
+
+    [Fact]
+    public void Relecture_4_dans_un_fichier_a_plusieurs_maillages_seul_le_nom_du_maillage_dit_la_place()
+    {
+        // Un maillage au nom inconnu n'est pas pris pour la pièce du fichier (« Male_Ranger_Body.fbx » qui porte aussi « Straps »).
+        Assert.Null(HumanWardrobe.Classify(O + "Male_Ranger_Body.fbx", "Straps", true));
+        Assert.Null(HumanWardrobe.Classify(O + "Male_Ranger_Body.fbx", "Cube.001", true));
+        Assert.Equal(WardrobeSlot.Body, HumanWardrobe.Classify(O + "Male_Ranger_Body.fbx", "Ranger_Body", true)!.Value.Slot);
+        WardrobeItem hood = HumanWardrobe.Classify(O + "Male_Ranger.fbx", "Hood", true)!.Value;
+        Assert.Equal((WardrobeFamily.Ranger, WardrobeSlot.Head, 1), (hood.Family, hood.Slot, hood.Gender));   // famille et corps lus sur le fichier
+        // Un fichier d'un seul maillage : le nom du fichier suffit.
+        Assert.Equal(WardrobeSlot.Body, HumanWardrobe.Classify(O + "Male_Ranger_Body.fbx", "Cube.001", false)!.Value.Slot);
+    }
+
+    [Fact]
+    public void Relecture_5_et_6_coiffure_sous_la_coiffe_et_plafond_du_telephone()
+    {
+        Assert.Equal(HumanHair.None, HumanWardrobe.HairUnder("hood", HumanHair.Long, true));
+        Assert.Equal(HumanHair.None, HumanWardrobe.HairUnder("helmet", HumanHair.Buzzed, false));
+        Assert.Equal(HumanHair.BuzzedFemale, HumanWardrobe.HairUnder("circlet", HumanHair.Buns, true));
+        Assert.Equal(HumanHair.Buzzed, HumanWardrobe.HairUnder("hat", HumanHair.SimpleParted, false));
+        Assert.Equal(HumanHair.Buzzed, HumanWardrobe.HairUnder("crown", HumanHair.Long, false));
+        Assert.Equal(HumanHair.Long, HumanWardrobe.HairUnder("", HumanHair.Long, true));
+        var items = Items(Full);
+        for (int i = 0; i < 40; i++)
+        {
+            string id = "bourg/garde" + i;
+            HumanLook look = Look(id, "garde");
+            WardrobePlan phone = HumanWardrobe.Plan(id, "garde", look, WardrobeSeason.Winter, true, false, HumanWardrobe.MaxOptional(true));
+            Assert.True(phone.Requests.Count(q => !q.Required) <= 1);
+            Assert.Equal(4, phone.Requests.Count(q => q.Required));
+            Assert.NotNull(HumanWardrobe.Resolve(phone, items, look.Female));
+            WardrobePlan pc = HumanWardrobe.Plan(id, "garde", look, WardrobeSeason.Winter, true, false, HumanWardrobe.MaxOptional(false));
+            // La coiffe passe d'abord sur téléphone.
+            if (pc.Requests.Any(q => q.Slot == WardrobeSlot.Head)) Assert.Contains(phone.Requests, q => q.Slot == WardrobeSlot.Head);
+        }
+    }
 }
