@@ -172,6 +172,7 @@ namespace EdS.Game.Editor
                 if (kept.Any(k => k.name == named.Name)) continue;
                 take.name = named.Name;
                 take.loopTime = named.Loop;
+                take.loopPose = named.Loop;   // relecture de la PR #117 : la pose de fin raccordée à celle du début
                 take.wrapMode = named.Loop ? WrapMode.Loop : WrapMode.ClampForever;
                 // Le mouvement de la racine reste dans la pose : le jeu déplace le corps, les animations « Standard » sont faites sur place.
                 take.lockRootRotation = true;

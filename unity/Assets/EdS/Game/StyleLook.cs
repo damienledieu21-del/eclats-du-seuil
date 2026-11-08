@@ -69,12 +69,8 @@ namespace EdS.Game
             _animation = player;
             _outfit = outfit;
             Height = height;
-            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
-                foreach (Material m in r.materials)
-                {
-                    _materials.Add(m);
-                    _colors.Add(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
-                }
+            // Relecture de la PR #117 : les matériaux ne sont copiés qu'à la première teinte (mort, étourdi), et ces copies sont détruites
+            // avec le corps (MaterialCopies) : les corps humains gardent leurs matériaux partagés (instanciation, mémoire).
             if (player == null) return;
             foreach (string name in player.Names)
             {
@@ -126,8 +122,27 @@ namespace EdS.Game
         public void Tint(bool dead, bool stunned)
         {
             if (!dead && !stunned && !_tinted) return;
+            if (!_copied) CopyMaterials();
             for (int i = 0; i < _materials.Count; i++) ArenaView.ApplyColor(_materials[i], ArenaView.Shade(_colors[i], dead, stunned));
             _tinted = dead || stunned;
+        }
+
+        private bool _copied;
+
+        /// <summary>Copies propres à ce corps de ses matériaux, et leur couleur d'origine (pour la teinte) ; détruites avec lui.</summary>
+        private void CopyMaterials()
+        {
+            _copied = true;
+            if (_look == null) return;
+            MaterialCopies owner = _look.gameObject.GetComponent<MaterialCopies>();
+            if (owner == null) owner = _look.gameObject.AddComponent<MaterialCopies>();   // pas « ?? » : le null de Unity n'est pas celui de C#
+            foreach (Renderer r in _look.GetComponentsInChildren<Renderer>())
+                foreach (Material m in r.materials)
+                {
+                    _materials.Add(m);
+                    owner.Copies.Add(m);
+                    _colors.Add(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
+                }
         }
 
         /// <summary>
@@ -320,13 +335,16 @@ namespace EdS.Game
         /// Sous-lot V2.9.2 : identifiant qui décide de l'aspect d'un corps humain (le villageois « bourg/bavard1 », le PNJ « npc.odile ») ;
         /// sans lui, <paramref name="id"/>.
         /// </param>
-        public static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId = null)
+        public static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId = null) =>
+            Dress(body, slot, id, height, lookId, true);
+
+        private static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId, bool humans)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
             // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
             // modèle du catalogue, comme avant.
-            HumanLook? human = HumanBodies.Wanted(catalog, slot, id, lookId);
+            HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
             GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : catalog.Model(slot, id);
             if (prefab == null) return null;
             if (human is HumanLook sized) height = (float)sized.Height;
@@ -336,6 +354,13 @@ namespace EdS.Game
             if (human is HumanLook person)
             {
                 IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person);
+                // Relecture de la PR #117 : sans animations (graphe impossible), pas de corps figé en pose en T : le modèle d'avant (ou la
+                // forme simple).
+                if (player == null)
+                {
+                    Object.Destroy(look);
+                    return Dress(body, slot, id, height, lookId, false);
+                }
                 Vector3 hs = body.transform.localScale;
                 look.transform.SetParent(body.transform, false);
                 float hk = look.transform.localScale.y;

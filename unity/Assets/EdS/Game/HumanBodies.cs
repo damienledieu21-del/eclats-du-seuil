@@ -79,6 +79,12 @@ namespace EdS.Game
         private float _rate = 4f;
         private int _current = -1;
 
+        // Relecture de la PR #117 : seules les entrées allumées ou en fondu sont parcourues à chaque image (pas les ~55), et rien du tout
+        // une fois le fondu fini ; un instant posé avant le fondu (départ décalé d'un villageois) est gardé par lui.
+        private readonly List<int> _active = new List<int>();
+        private bool[] _preset;
+        private bool _settled;
+
         private HumanMotion()
         {
         }
@@ -107,6 +113,7 @@ namespace EdS.Game
             motion._weight = new float[usable.Count];
             motion._target = new float[usable.Count];
             motion._length = new float[usable.Count];
+            motion._preset = new bool[usable.Count];
             for (int i = 0; i < usable.Count; i++)
             {
                 AnimationClipPlayable playable = AnimationClipPlayable.Create(motion._graph, usable[i]);
@@ -137,15 +144,22 @@ namespace EdS.Game
             if (i == _current) return;
             _current = i;
             _rate = fade > 0.01f ? 1f / fade : 1000f;
-            for (int k = 0; k < _target.Length; k++) _target[k] = k == i ? 1f : 0f;
+            foreach (int k in _active) _target[k] = 0f;
+            _target[i] = 1f;
+            if (!_active.Contains(i)) _active.Add(i);
             AnimationClipPlayable playable = _playables[i];
-            if (_weight[i] <= 0f) playable.SetTime(0.0);
+            if (_weight[i] <= 0f && !_preset[i]) playable.SetTime(0.0);
+            _preset[i] = false;
             playable.Play();
+            _settled = false;
         }
 
         public void SetTime(string name, float time)
         {
-            if (Has(name)) _playables[_index[name]].SetTime(time);
+            if (!Has(name)) return;
+            int i = _index[name];
+            _playables[i].SetTime(time);
+            _preset[i] = i != _current;   // gardé par le fondu qui suit
         }
 
         public void SetSpeed(string name, float speed)
@@ -167,20 +181,28 @@ namespace EdS.Game
         /// <summary>À chaque image : poids vers leur cible, normalisés ; une animation éteinte est mise en pause.</summary>
         internal void Tick(float deltaTime)
         {
-            if (!_graph.IsValid() || _weight == null) return;
+            if (_settled || !_graph.IsValid() || _weight == null) return;
             float step = deltaTime <= 0f ? 1f : _rate * deltaTime;
             float sum = 0f;
-            for (int i = 0; i < _weight.Length; i++)
+            bool moving = false;
+            foreach (int i in _active)
             {
                 _weight[i] = Mathf.MoveTowards(_weight[i], _target[i], deltaTime <= 0f && _target[i] > 0f ? 1f : step);
+                moving |= _weight[i] != _target[i];
                 sum += _weight[i];
             }
-            for (int i = 0; i < _weight.Length; i++)
+            for (int a = _active.Count - 1; a >= 0; a--)
             {
+                int i = _active[a];
                 float w = sum > 0.0001f ? _weight[i] / sum : (i == _current ? 1f : 0f);
                 _mixer.SetInputWeight(i, w);
-                if (_weight[i] <= 0f && _target[i] <= 0f && _playables[i].GetPlayState() == PlayState.Playing) _playables[i].Pause();
+                if (_weight[i] <= 0f && _target[i] <= 0f)
+                {
+                    _playables[i].Pause();
+                    _active.RemoveAt(a);
+                }
             }
+            _settled = !moving;
         }
 
         internal void Destroy()
@@ -249,6 +271,8 @@ namespace EdS.Game
             for (int i = 0; i < materials.Length; i++)
             {
                 string name = materials[i] != null ? materials[i].name.ToLowerInvariant() : string.Empty;
+                // Relecture de la PR #117 : un matériau de sourcils garde le sien (« eyebrow » contient « eye »).
+                if (name.Contains("eyebrow")) continue;
                 Material want = name.Contains("superhero") ? outfit : name.Contains("hair_2") ? hair2 : name.Contains("hair") ? hair1
                     : name.Contains("eye") ? eyes : null;
                 if (want == null) continue;

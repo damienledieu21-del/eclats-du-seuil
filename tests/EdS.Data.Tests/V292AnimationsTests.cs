@@ -307,14 +307,57 @@ public sealed class V292AnimationsTests
     [Fact]
     public void Les_auteurs_CC_BY_des_3e_et_4e_vagues_sont_cites()
     {
+        // Relecture de la PR #117 : chaque œuvre CC BY a sa ligne, avec son titre, son auteur et le lien de la licence ; les modèles de
+        // Sketchfab disent qu'ils ont été convertis par Claude.
         string root = Lot93UnityPackageTests.Root;
-        string credits = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "docs", "CREDITS.md"));
-        string licences = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "unity", "Assets", "EdS", "Interface", "LICENCES.md"));
-        foreach (string author in new[] { "WildMesh_3D", "kill6lucius", "rukh3d", "nataliekirk", "artsiom", "Kristoffer_Andersson", "newlocknew", "tim.kahn",
-                     "kevp888", "Soundrack", "Angus Macnaughton", "Quaternius", "Emma_MA", "RandomMind" })
+        string[] credits = System.IO.File.ReadAllLines(System.IO.Path.Combine(root, "docs", "CREDITS.md"));
+        string[] licences = System.IO.File.ReadAllLines(System.IO.Path.Combine(root, "unity", "Assets", "EdS", "Interface", "LICENCES.md"));
+        const string ccBy = "https://creativecommons.org/licenses/by/4.0/";
+        (string Title, string Author, bool Converted)[] works =
         {
-            Assert.Contains(author, credits, StringComparison.Ordinal);
-            Assert.Contains(author, licences, StringComparison.Ordinal);
+            ("Realistic Animated Doe", "WildMesh_3D", true), ("Realistic Animated Donkey", "WildMesh_3D", true),
+            ("Deer Animated Cel Shading", "WildMesh_3D", true), ("Realistic Animated Bear", "WildMesh_3D", true),
+            ("ANIMAL & FOOD Chicken Model (CS2)", "kill6lucius", true), ("Handpainted Rooster", "rukh3d", true), ("Cow NPC", "nataliekirk", true),
+            ("Free Shar Pei Animated Dog", "artsiom", true), ("Falun Tower Bell Hit Close", "Kristoffer_Andersson", false),
+            ("Summer Rain, garden / metal roof", "newlocknew", false), ("diamond peak stream 02", "tim.kahn", false), ("FR WindyForest", "kevp888", false),
+            ("Lakeside Ambience 06", "Soundrack", false), ("Fantasy Music - Night Town", "Angus Macnaughton", false),
+        };
+        foreach ((string title, string author, bool converted) in works)
+        {
+            string credit = Assert.Single(credits, l => l.Contains(title, StringComparison.Ordinal) && l.Contains("**" + author + "**", StringComparison.Ordinal));
+            Assert.Contains(ccBy, credit, StringComparison.Ordinal);
+            if (converted) Assert.Matches("converti (en FBX )?par Claude", credit);
+            string licence = Assert.Single(licences, l => l.Contains(title, StringComparison.Ordinal));
+            Assert.Contains(author, licence, StringComparison.Ordinal);
+            Assert.Contains(ccBy, licence, StringComparison.Ordinal);
         }
+        Assert.Contains(credits, l => l.Contains("Angus Macnaughton 2014", StringComparison.Ordinal));
+        foreach (string cc0 in new[] { "Emma_MA", "RandomMind", "Quaternius" })
+            Assert.Contains(licences, l => l.Contains(cc0, StringComparison.Ordinal) && l.Contains("CC0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Le_genre_de_chaque_PNJ_nomme_d_ECRITURE_est_connu()
+    {
+        // Relecture de la PR #117 : Rosalie, Aubine, Sauge et Bertille manquaient. Tous les PNJ nommés en gras (« **Prénom, rôle** »).
+        string text = System.IO.File.ReadAllText(System.IO.Path.Combine(Lot93UnityPackageTests.Root, "docs", "ECRITURE.md"));
+        var names = System.Text.RegularExpressions.Regex.Matches(text, @"\*\*(?:Sœur |Frère |Dame |La reine |Le capitaine )?([A-ZÉ][a-zéèëï]+)(?:,[^*]*)?\*\*")
+            .Select(m => m.Groups[1].Value).Distinct().ToList();
+        string[] notPeople = { "Croc", "Pain", "Souvenirs", "Expressions", "Jurons", "Mots", "Réponses", "Règle", "Tutoiement", "Lu", "Montrer", "Court",
+            "Aucun", "Ce", "La", "Le", "Les", "L" };
+        names = names.Where(n => !notPeople.Contains(n)).ToList();
+        Assert.True(names.Count >= 25, string.Join(", ", names));
+        foreach (string name in names) Assert.True(HumanLooks.KnownGender(name) != null, name);
+        foreach (string woman in new[] { "Rosalie", "Aubine", "Sauge", "Bertille", "Odile", "Albe", "Maëlle", "Lison", "Mahaut", "Colombe", "Garance", "Ysolde", "Brunehilde" })
+        {
+            Assert.True(HumanLooks.KnownGender(woman));
+            string ascii = woman.ToLowerInvariant().Replace('ë', 'e').Replace('é', 'e');
+            Assert.True(HumanLooks.For("npc." + ascii, "paysan").Female, ascii);
+        }
+        foreach (string man in new[] { "Gaspard", "Firmin", "Anselme", "Mathurin", "Renart", "Thibaut", "Aldric", "Achille", "Ysarn", "Galeran", "Bérenger" })
+            Assert.False(HumanLooks.KnownGender(man));
+        Assert.True(HumanLooks.For("npc.habitant", "paysan").Female);         // Rosalie
+        Assert.True(HumanLooks.For("npc.herboriste_hameau", "paysan").Female); // Aubine
+        Assert.True(HumanLooks.For("npc.epiciere", "paysan").Female);          // Bertille
     }
 }

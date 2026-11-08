@@ -626,8 +626,10 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.9.2 : un pillage ou une faille est-il en cours dans la zone (annoncé ou en cours, pas fini) ?</summary>
         private static bool Assault(AdventureSession a)
         {
-            foreach (WorldEventView v in a.World.WorldEvents)
-                if ((v.Event.Kind == EdS.Data.Zones.WorldEventKind.Raid || v.Event.Kind == EdS.Data.Zones.WorldEventKind.Rift) && v.Phase != WorldEventPhase.Ending) return true;
+            // Relecture de la PR #117 : boucle indexée (chaque image, sans énumérateur).
+            IReadOnlyList<WorldEventView> events = a.World.WorldEvents;
+            for (int i = 0; i < events.Count; i++)
+                if (events[i] is WorldEventView v && (v.Event.Kind == EdS.Data.Zones.WorldEventKind.Raid || v.Event.Kind == EdS.Data.Zones.WorldEventKind.Rift) && v.Phase != WorldEventPhase.Ending) return true;
             return false;
         }
 

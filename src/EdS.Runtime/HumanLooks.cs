@@ -107,15 +107,39 @@ namespace EdS.Runtime
             (HumanOutfit.Hero, (92, 106, 128), (70, 72, 80), (48, 40, 34)),        // acier bleuté
         };
 
-        /// <summary>Genre des PNJ nommés (docs/ECRITURE.md) : vrai pour une femme. Les autres sont tirés de leur identifiant.</summary>
+        /// <summary>
+        /// Genre des PNJ nommés (docs/ECRITURE.md, relu le 8 novembre 2026) et des rôles de leurs identifiants : vrai pour une femme. Les
+        /// autres sont tirés de leur identifiant.
+        /// </summary>
         private static readonly Dictionary<string, bool> KnownFemale = new Dictionary<string, bool>(StringComparer.Ordinal)
         {
+            // Prénoms (relecture de la PR #117 : tous les PNJ nommés d'ECRITURE.md).
+            ["rosalie"] = true, ["aubine"] = true, ["sauge"] = true, ["bertille"] = true, ["colombe"] = true, ["garance"] = true, ["mahaut"] = true,
+            ["brunehilde"] = true, ["achille"] = false, ["aldric"] = false, ["ancel"] = false, ["colin"] = false, ["firmin"] = false, ["galeran"] = false,
+            ["guerin"] = false, ["berenger"] = false,
             ["odile"] = true, ["albe"] = true, ["maelle"] = true, ["lison"] = true, ["ysolde"] = true, ["epiciere"] = true, ["apprentie"] = true,
             ["veuve"] = true, ["fermiere"] = true, ["maitresse"] = true, ["herboriste"] = true, ["habitant"] = true, ["habitante"] = true,
             ["boulanger"] = false, ["pretre"] = false, ["renart"] = false, ["gaspard"] = false, ["capitaine"] = false, ["doyen"] = false,
             ["fermier"] = false, ["intendant"] = false, ["armurier"] = false, ["thibaut"] = false, ["deserteur"] = false, ["archiviste"] = false,
             ["ysarn"] = false, ["aubergiste"] = false, ["mathurin"] = false, ["anselme"] = false,
         };
+
+        /// <summary>Genre connu d'un nom ou d'un rôle (réduit : « Maëlle » → maelle) : vrai pour une femme, null s'il n'est pas connu.</summary>
+        public static bool? KnownGender(string name) => KnownFemale.TryGetValue(Plain(name), out bool f) ? f : (bool?)null;
+
+        /// <summary>Nom réduit sans accents (« Maëlle » → maelle, « Bérenger » → berenger).</summary>
+        private static string Plain(string name)
+        {
+            // Sans String.Normalize (inopérant en mode de globalisation invariante) : les lettres accentuées du français, une à une.
+            const string accented = "àâäéèêëîïôöùûüçœæ", plain = "aaaeeeeiioouuucoa";
+            var chars = StyleRules.Key(name ?? string.Empty).ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                int at = accented.IndexOf(chars[i]);
+                if (at >= 0) chars[i] = plain[at];
+            }
+            return new string(chars);
+        }
 
         /// <summary>Âgés : cheveux gris.</summary>
         private static readonly string[] Elders = { "doyen", "veuve", "archiviste" };
