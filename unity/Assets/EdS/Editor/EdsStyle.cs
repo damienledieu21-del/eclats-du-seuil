@@ -352,6 +352,7 @@ namespace EdS.Game.Editor
         /// <summary>Sous-lot V2.9.2 : un fichier des corps humains (corps, coiffure, bibliothèque d'animations, mannequin de Quaternius).</summary>
         private static bool HumanFile(string path) =>
             HumanLooks.BodyOf(path) != null || HumanLooks.HairOf(path) != null || HumanLooks.IsAnimationLibrary(path)
+            || HumanWardrobe.IsWardrobePath(path)   // sous-lot V2.9.4 : les vêtements (matériaux refaits par EdsHumans)
             || StyleRules.Key(Path.GetFileNameWithoutExtension(path)).StartsWith("ual", System.StringComparison.Ordinal)
             || StyleRules.Key(Path.GetFileNameWithoutExtension(path)).StartsWith("mannequin", System.StringComparison.Ordinal);
 
