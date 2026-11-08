@@ -241,4 +241,35 @@ public sealed class V293VerificationTests
         Assert.Contains("prefabs.Where(Renders)", body);
         Assert.Contains("EdsStyle.PackAnimalCandidate(", Script("Editor", "EdsVerification.cs"));
     }
+
+    [Fact]
+    public void Les_vrais_vetements_attendus_sont_reconnus_comme_par_la_preparation()
+    {
+        // Sous-lot V2.9.4 (pack Modular Character Outfits - Fantasy) : chaque pièce attendue est du dossier des vêtements, de sa famille
+        // et à sa place ; les pièces d'une famille suffisent à rendre les vrais vêtements prêts (même règle que EdsHumans).
+        foreach ((WardrobeFamily family, IReadOnlyList<string> parts) in EssaiManifest.OutfitFamilies)
+        {
+            Assert.Equal(EssaiManifest.OutfitBasicSlots.Count, parts.Count);
+            var listing = parts.Select(p => (Path: p, Meshes: new[] { System.IO.Path.GetFileNameWithoutExtension(p) })).ToList();
+            IReadOnlyList<WardrobePart> pieces = HumanWardrobe.Pieces(listing);
+            for (int i = 0; i < parts.Count; i++)
+            {
+                Assert.True(HumanWardrobe.IsWardrobePath(parts[i]), parts[i]);
+                Assert.Contains(pieces, x => x.Item.Family == family && x.Item.Slot == EssaiManifest.OutfitBasicSlots[i]);
+            }
+            Assert.True(EssaiManifest.OutfitReady(pieces.Select(x => x.Item.Slot)));
+            Assert.False(EssaiManifest.OutfitReady(pieces.Select(x => x.Item.Slot).Where(x => x != WardrobeSlot.Feet)));
+        }
+        Assert.Equal(Enum.GetValues<WardrobeFamily>().Where(f => f == WardrobeFamily.Peasant || f == WardrobeFamily.Ranger), EssaiManifest.OutfitFamilies.Select(f => f.Family));
+        Assert.All(EssaiManifest.OutfitTextures, t => Assert.True(HumanWardrobe.IsWardrobePath(t) && HumanWardrobe.IsColorMap(t), t));
+        Assert.Equal(EssaiManifest.OutfitSkins[0], HumanWardrobe.SkinTexture(EssaiManifest.OutfitSkins, false, true));
+        Assert.Equal(EssaiManifest.OutfitSkins[1], HumanWardrobe.SkinTexture(EssaiManifest.OutfitSkins, true, true));
+        string humans = Script("Editor", "EdsHumans.cs");
+        Assert.Contains("EssaiManifest.OutfitReady(pieces.Select(p => p.Slot))", humans);
+        Assert.Contains("EssaiManifest.OutfitFolder", humans);
+        Assert.DoesNotContain("new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet }", humans);
+        string verification = Script("Editor", "EdsVerification.cs");
+        Assert.Contains("HumanWardrobe.Pieces(listing)", verification);
+        Assert.Contains("EssaiManifest.OutfitReady(", verification);
+    }
 }

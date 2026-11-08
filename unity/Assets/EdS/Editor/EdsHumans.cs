@@ -159,7 +159,7 @@ namespace EdS.Game.Editor
             List<string> files = models.Where(HumanWardrobe.IsWardrobePath).Where(p => p.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase))
                 .OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             if (files.Count == 0)
-                return "vrais vêtements : non (aucune pièce dans Assets/Style/Quaternius/Outfits : tenues peintes)";
+                return "vrais vêtements : non (aucune pièce dans " + EssaiManifest.OutfitFolder + " : tenues peintes)";
             // Pièces d'après les noms de leurs maillages (HumanWardrobe.Pieces : ceintures et brassards posés avec leur pièce, chaque pièce
             // prise une fois, dans « Modular Parts » plutôt que dans la tenue entière « Outfits » qui porte les mêmes maillages).
             var prefabs = new List<GameObject>();
@@ -265,7 +265,8 @@ namespace EdS.Game.Editor
                 if (mine.Count == 0) continue;
                 lines.Add(family + " " + mine.Count);
             }
-            bool basic = new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet }.All(slot => pieces.Any(p => p.Slot == slot));
+            // Sous-lot V2.9.3 : règle partagée avec le vérificateur d'essai (EssaiManifest.OutfitReady).
+            bool basic = EssaiManifest.OutfitReady(pieces.Select(p => p.Slot));
             if (!basic)
                 return "vrais vêtements : non (" + pieces.Count + " pièces, mais il manque un haut, des bras, un bas ou des pieds : tenues peintes)";
             int heads = pieces.Count(p => p.Slot == WardrobeSlot.Head), cloaks = pieces.Count(p => p.Slot == WardrobeSlot.Back);

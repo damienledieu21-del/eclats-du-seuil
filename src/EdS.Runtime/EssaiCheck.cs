@@ -244,6 +244,43 @@ namespace EdS.Runtime
             HairFolder + "/Hair_BuzzedFemale.fbx", HairFolder + "/Hair_Beard.fbx",
         };
 
+        // --- Vrais vêtements (V2.9.4 : Modular Character Outfits - Fantasy de Quaternius, pièces reconnues par HumanWardrobe) -----------------
+
+        /// <summary>Dossier du pack de vêtements (y copier <c>Exports/FBX (Unity)</c> et <c>Textures</c> du zip).</summary>
+        public const string OutfitFolder = Root + "/Quaternius/Outfits";
+        private const string OutfitParts = OutfitFolder + "/Exports/FBX (Unity)/Modular Parts/";
+
+        /// <summary>Places qu'une tenue doit couvrir pour que les vrais vêtements soient pris (sinon les tenues peintes).</summary>
+        public static readonly IReadOnlyList<WardrobeSlot> OutfitBasicSlots = new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet };
+
+        /// <summary>Les pièces trouvées (<paramref name="slots"/>) couvrent-elles chaque place de <see cref="OutfitBasicSlots"/> ?</summary>
+        public static bool OutfitReady(IEnumerable<WardrobeSlot> slots)
+        {
+            var have = new HashSet<WardrobeSlot>(slots ?? Array.Empty<WardrobeSlot>());
+            return OutfitBasicSlots.All(have.Contains);
+        }
+
+        /// <summary>Familles du pack gratuit et une pièce attendue par place (homme), pour dire quoi déposer.</summary>
+        public static readonly IReadOnlyList<(WardrobeFamily Family, IReadOnlyList<string> Parts)> OutfitFamilies = new[]
+        {
+            (WardrobeFamily.Peasant, (IReadOnlyList<string>)new[] { OutfitParts + "Male_Peasant_Body.fbx", OutfitParts + "Male_Peasant_Arms.fbx",
+                OutfitParts + "Male_Peasant_Legs.fbx", OutfitParts + "Male_Peasant_Feet.fbx" }),
+            (WardrobeFamily.Ranger, (IReadOnlyList<string>)new[] { OutfitParts + "Male_Ranger_Body.fbx", OutfitParts + "Male_Ranger_Arms.fbx",
+                OutfitParts + "Male_Ranger_Legs.fbx", OutfitParts + "Male_Ranger_Feet_Boots.fbx" }),
+        };
+
+        /// <summary>Étoffes (cartes de couleur) attendues, une par famille.</summary>
+        public static readonly IReadOnlyList<string> OutfitTextures = new[]
+        {
+            OutfitFolder + "/Textures/Peasant/T_Peasant_BaseColor.png", OutfitFolder + "/Textures/Ranger/T_Ranger_BaseColor.png",
+        };
+
+        /// <summary>Peau des mains (sombre ; la claire en est tirée) : homme, femme (<see cref="HumanWardrobe.SkinTexture"/>).</summary>
+        public static readonly IReadOnlyList<string> OutfitSkins = new[]
+        {
+            OutfitFolder + "/Textures/Base/T_Regular_Male_Dark_BaseColor.png", OutfitFolder + "/Textures/Base/T_Regular_Female_Dark_BaseColor.png",
+        };
+
         // --- Textures (essais réalistes) : dossiers conseillés ; les fichiers sont reconnus par StyleRules (Sky, GroundTexture, SurfaceTexture). ---
 
         public const string SkyFolder = Root + "/PolyHaven/Sky";

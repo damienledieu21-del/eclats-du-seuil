@@ -249,6 +249,9 @@ namespace EdS.Game.Editor
             Step("Corps humains", 0.75f);
             CheckHumans(report, models, textures);
 
+            Step("Vrais vêtements", 0.8f);
+            CheckOutfits(report, models, textures);
+
             Step("Sons et musiques", 0.85f);
             // Comme la préparation : les fichiers dans l'ordre, le premier qui se charge comme un son.
             foreach (EssaiAudio audio in EssaiManifest.Sounds) AddAudio(report, Noises, audio, StyleRules.PickSounds(sounds, audio.Sound.Value, 6));
@@ -361,6 +364,66 @@ namespace EdS.Game.Editor
                 if (found != null) report.Add(Humans, EssaiLevel.Ok, label, EssaiManifest.FileName(found));
                 else report.Add(Humans, EssaiLevel.Warning, label, "absente : une autre coiffure la remplace",
                     "Garde le dossier « " + EssaiManifest.HairFolder.Substring(EssaiManifest.HumanFolder.Length + 1) + " » dans " + EssaiManifest.HumanFolder + ".");
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.4 : vrais vêtements (pack Modular Character Outfits - Fantasy). Mêmes règles que la préparation (EdsHumans.Clothes) :
+        /// fichiers du dossier des vêtements (<see cref="HumanWardrobe.IsWardrobePath"/>), pièces d'après les noms de leurs maillages
+        /// (<see cref="HumanWardrobe.Pieces"/>), prêts si les places de base sont couvertes (<see cref="EssaiManifest.OutfitReady"/>) ; sinon les
+        /// tenues peintes (repli). Rien n'est importé ni modifié.
+        /// </summary>
+        private static void CheckOutfits(EssaiReport report, List<string> models, List<string> textures)
+        {
+            const string label = "Vrais vêtements", painted = "absents : tenues peintes sur la peau";
+            string deposit = "Copie « Exports/FBX (Unity) » et « Textures » du pack Modular Character Outfits - Fantasy (Quaternius) dans " + EssaiManifest.OutfitFolder + ".";
+            List<string> files = models.Where(HumanWardrobe.IsWardrobePath).Where(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            if (files.Count == 0)
+            {
+                report.Add(Humans, EssaiLevel.Warning, label, painted, deposit);
+                return;
+            }
+            var listing = new List<(string Path, string[] Meshes)>();
+            var unprepared = new List<string>();
+            foreach (string file in files)
+            {
+                if (AssetImporter.GetAtPath(file) is ModelImporter importer && (importer.animationType != ModelImporterAnimationType.Generic || importer.importAnimation))
+                    unprepared.Add(EssaiManifest.FileName(file));
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(file);
+                SkinnedMeshRenderer[] skins = prefab != null ? prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true) : new SkinnedMeshRenderer[0];
+                listing.Add((file, skins.Select(k => k.sharedMesh != null ? k.gameObject.name : null).ToArray()));
+            }
+            IReadOnlyList<WardrobePart> pieces = HumanWardrobe.Pieces(listing);
+            if (!EssaiManifest.OutfitReady(pieces.Select(p => p.Item.Slot)))
+            {
+                List<WardrobeSlot> lacking = EssaiManifest.OutfitBasicSlots.Where(s => pieces.All(p => p.Item.Slot != s)).ToList();
+                report.Add(Humans, EssaiLevel.Warning, label, pieces.Count + " pièces, il manque : " + string.Join(", ", lacking) + " : tenues peintes", deposit);
+            }
+            else if (unprepared.Count > 0)
+                report.Add(Humans, EssaiLevel.Warning, label, "pas encore préparés (" + unprepared.Count + " fichiers pas en « Generic » sans animation)", Prepare);
+            else report.Add(Humans, EssaiLevel.Ok, label, "prêts (" + pieces.Count + " pièces)");
+            foreach ((WardrobeFamily family, IReadOnlyList<string> parts) in EssaiManifest.OutfitFamilies)
+            {
+                List<string> missing = parts.Where((p, i) => pieces.All(x => x.Item.Family != family || x.Item.Slot != EssaiManifest.OutfitBasicSlots[i])).ToList();
+                if (missing.Count == 0) report.Add(Humans, EssaiLevel.Ok, "Vêtements " + family, "haut, bras, bas et pieds");
+                else report.Add(Humans, EssaiLevel.Warning, "Vêtements " + family, "incomplets : une autre famille complète la tenue",
+                    "Dépose " + string.Join(", ", missing.Select(EssaiManifest.FileName)) + " dans " + EssaiManifest.Folder(missing[0]) + ".");
+            }
+            List<string> fabrics = textures.Where(t => HumanWardrobe.IsWardrobePath(t) && HumanWardrobe.IsColorMap(t)).Select(EssaiManifest.FileName).ToList();
+            foreach (string expected in EssaiManifest.OutfitTextures)
+            {
+                string name = EssaiManifest.FileName(expected);
+                if (fabrics.Any(f => string.Equals(f, name, StringComparison.OrdinalIgnoreCase))) report.Add(Humans, EssaiLevel.Ok, "Étoffe " + name, "présente");
+                else report.Add(Humans, EssaiLevel.Warning, "Étoffe " + name, "absente : pièces sans leur texture", "Dépose " + name + " dans " + EssaiManifest.Folder(expected) + ".");
+            }
+            for (int i = 0; i < EssaiManifest.OutfitSkins.Count; i++)
+            {
+                string found = HumanWardrobe.SkinTexture(textures, i == 1, true);
+                string who = i == 1 ? "Peau des mains (femme)" : "Peau des mains (homme)";
+                if (found != null) report.Add(Humans, EssaiLevel.Ok, who, EssaiManifest.FileName(found));
+                else report.Add(Humans, EssaiLevel.Warning, who, "absente : mains sans leur peau", "Dépose " + EssaiManifest.FileName(EssaiManifest.OutfitSkins[i])
+                    + " dans " + EssaiManifest.Folder(EssaiManifest.OutfitSkins[i]) + ".");
             }
         }
 
