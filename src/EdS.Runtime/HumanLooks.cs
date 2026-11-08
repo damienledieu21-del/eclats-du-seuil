@@ -329,6 +329,13 @@ namespace EdS.Runtime
             return ClipNames.TryGetValue(k, out (string, bool) found) ? found : ((string, bool)?)null;
         }
 
+        /// <summary>
+        /// Sous-lot V2.9.3 : noms que la préparation donne aux animations des bibliothèques (« Idle », « Walk », « Attack_A »…), sans doublon,
+        /// dans l'ordre ordinal. Le vérificateur d'essai dit lesquels manquent.
+        /// </summary>
+        public static IReadOnlyList<string> CanonicalNames() =>
+            ClipNames.Values.Select(v => v.Name).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+
         private static readonly Dictionary<string, (string Name, bool Loop)> ClipNames = new Dictionary<string, (string, bool)>(StringComparer.Ordinal)
         {
             // UAL1 : vie courante.

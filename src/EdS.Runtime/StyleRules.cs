@@ -1176,6 +1176,27 @@ namespace EdS.Runtime
             return Array.Empty<string>();
         }
 
+        /// <summary>Sous-lot V2.9.3 : mots cherchés dans le nom d'un fichier pour <paramref name="sound"/>, par ordre de préférence (vérificateur d'essai).</summary>
+        public static IReadOnlyList<string> SoundWords(StyleSound sound) => Sounds[sound];
+
+        /// <summary>Sous-lot V2.9.3 : mots cherchés dans le nom d'une musique de <paramref name="music"/>, par ordre de préférence.</summary>
+        public static IReadOnlyList<string> MusicWordsOf(StyleMusic music) => MusicWords.First(m => m.Kind == music).Words;
+
+        /// <summary>Sous-lot V2.9.3 : mots cherchés dans le nom d'une ambiance de <paramref name="ambience"/>, dans l'ordre où on les essaie.</summary>
+        public static IReadOnlyList<string> AmbienceWordsOf(StyleAmbience ambience) =>
+            AmbienceWords.Where(a => a.Kind == ambience).SelectMany(a => a.Words).ToList();
+
+        /// <summary>
+        /// Sous-lot V2.9.3 : musiques de <paramref name="music"/> parmi <paramref name="paths"/>, la meilleure d'abord (rang du mot, puis ordre
+        /// ordinal). La préparation prend la première qui se charge ; le vérificateur d'essai dit laquelle.
+        /// </summary>
+        public static IReadOnlyList<string> MusicFiles(IEnumerable<string> paths, StyleMusic music) =>
+            (paths ?? Array.Empty<string>()).Where(p => p != null && MusicOf(p) == music).OrderBy(MusicRank).ThenBy(p => p, StringComparer.Ordinal).ToList();
+
+        /// <summary>Sous-lot V2.9.3 : ambiances de <paramref name="ambience"/> parmi <paramref name="paths"/>, la meilleure d'abord (comme <see cref="MusicFiles"/>).</summary>
+        public static IReadOnlyList<string> AmbienceFiles(IEnumerable<string> paths, StyleAmbience ambience) =>
+            (paths ?? Array.Empty<string>()).Where(p => p != null && AmbienceOf(p) == ambience).OrderBy(AmbienceRank).ThenBy(p => p, StringComparer.Ordinal).ToList();
+
         /// <summary>Sous-lot V2.9 : sons faits de longs enregistrements (joués par passages), gardés compressés en mémoire sur le téléphone.</summary>
         private static readonly StyleSound[] LongSounds =
             { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum,
