@@ -246,6 +246,8 @@ namespace EdS.Runtime
             ("chest", InteriorProp.Chest), ("crate", InteriorProp.Crate), ("barrel", InteriorProp.Barrel), ("bucket", InteriorProp.Bucket),
             ("lanternchandelier", InteriorProp.HangingLantern), ("chandelier", InteriorProp.Chandelier), ("lantern", InteriorProp.Lantern),
             ("candleholder", InteriorProp.Candelabra), ("candelabr", InteriorProp.Candelabra), ("candlestick", InteriorProp.Candlestick),
+            ("tankard", InteriorProp.Goblets), ("cauldron", InteriorProp.Pot), ("jug", InteriorProp.Bottles),   // V2.11 (5e vague)
+            ("oillamp", InteriorProp.Lantern), ("nightstand", InteriorProp.Commode),
             ("bowl", InteriorProp.Bowl), ("plate", InteriorProp.Plate), ("goblet", InteriorProp.Goblets), ("ceramicpot", InteriorProp.ClayPot),
             ("pot", InteriorProp.Pot), ("bottle", InteriorProp.Bottles), ("basket", InteriorProp.Basket), ("cuttingboard", InteriorProp.CuttingBoard),
             ("spoon", InteriorProp.Spoon), ("apple", InteriorProp.Apple), ("onion", InteriorProp.Onion), ("shield", InteriorProp.Shield),
@@ -255,8 +257,13 @@ namespace EdS.Runtime
         };
 
         /// <summary>Le fichier est-il un objet d'intérieur (rangé dans un dossier « Interieurs ») ?</summary>
-        public static bool IsInterior(string path) =>
-            ("/" + (path ?? string.Empty).Replace('\\', '/').ToLowerInvariant() + "/").Contains("/interieurs/");
+        public static bool IsInterior(string path)
+        {
+            // Sous-lot V2.11 (5e vague) : aussi « PolyHaven/Interieurs2 » (tables, chaises, lits, armoires, lampes) et « PolyHaven/Cuisine »
+            // (casseroles, pots, cruche, bol), rangés à part pour ne rien écraser chez Damien.
+            string p = "/" + (path ?? string.Empty).Replace('\\', '/').ToLowerInvariant() + "/";
+            return p.Contains("/interieurs/") || p.Contains("/interieurs2/") || p.Contains("/cuisine/");
+        }
 
         /// <summary>Objet d'intérieur que représente le modèle <paramref name="path"/> (nom du fichier), ou <see cref="InteriorProp.None"/>.</summary>
         public static InteriorProp PropOf(string path)

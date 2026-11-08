@@ -132,7 +132,9 @@ namespace EdS.Runtime
                 (Uaa + "Deer_Quaternius.fbx", true)),
             new EssaiModel("Lièvre", StyleSlot.Hare, "lièvre en formes simples", false, (A2 + "Lievre_bluekiwi.fbx", true), (A1 + "Rabbit_Pneshik.fbx", true)),
             new EssaiModel("Pain-d'Épice (chat)", StyleSlot.Cat, "chat en formes simples", false, (A1 + "Cat_Stripe_DreamNoms.fbx", true)),
-            new EssaiModel("Corbeau", StyleSlot.Crow, "pas de corbeau dans les champs", false, (A2 + "Corbeau_alexanders823.fbx", true)),
+            // Sous-lot V2.11 (5e vague) : le corbeau animé d'emptypen2477 (envol et vol) d'abord.
+            new EssaiModel("Corbeau", StyleSlot.Crow, "pas de corbeau dans les champs", false, (Wave5.Folder + "Creatures/eds_SF_Animated_Crow_emptypen2477.fbx", true),
+                (A2 + "Corbeau_alexanders823.fbx", true)),
             new EssaiModel("Vache", StyleSlot.Cow, "pas de vache dans les champs", false, (A3 + "Vache_nataliekirk.fbx", true), (A2 + "Vache_rukh3d.fbx", true),
                 (Uaa + "Cow.fbx", true), (Farm + "Cow.fbx", true), (Uaa + "Bull.fbx", true)),
             new EssaiModel("Chien", StyleSlot.Dog, "pas de chien au hameau", false, (A3 + "Chien_SharPei_artsiom.fbx", true), (A2 + "Chien_quander.fbx", true),
@@ -199,6 +201,8 @@ namespace EdS.Runtime
             new EssaiAudio("scènes de l'histoire (The Legend of Kvothe)", Root + "/Music/ScottBuckley", "musique du lieu", music: StyleMusic.Story),
             new EssaiAudio("bourg la nuit (Night Town)", Root + "/Music/OGA", "musique du village", music: StyleMusic.VillageNight),
             new EssaiAudio("auberge (The Old Tower Inn)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Inn),
+            new EssaiAudio("forge (Song of the Forge, V2.11)", Root + "/Music/ScottBuckley2", "musique du village", music: StyleMusic.Forge),
+            new EssaiAudio("crypte (The Long Dark, V2.11 : aucun lieu encore)", Root + "/Music/ScottBuckley2", "musique d'exploration", music: StyleMusic.Crypt),
         };
 
         /// <summary>Ambiances attendues (une par valeur de <see cref="StyleAmbience"/>).</summary>
@@ -219,6 +223,10 @@ namespace EdS.Runtime
             new EssaiAudio("forêt", Root + "/Sounds/Monde", "silence", ambience: StyleAmbience.Forest),
             new EssaiAudio("salle de l'auberge à table", Root + "/Sounds/Monde", "silence", ambience: StyleAmbience.Dining),
             new EssaiAudio("bord du lac", Root + "/Sounds/Monde", "silence", ambience: StyleAmbience.Lake),
+            new EssaiAudio("braises du four de Firmin (V2.11)", Root + "/Sounds/Boulangerie", "silence", ambience: StyleAmbience.Bakery),
+            new EssaiAudio("meule du moulin (V2.11)", Root + "/Sounds/Boulangerie", "silence", ambience: StyleAmbience.Mill),
+            new EssaiAudio("foule des fêtes (V2.11)", Root + "/Sounds/Fete", "silence", ambience: StyleAmbience.Festival),
+            new EssaiAudio("air de la crypte (V2.11 : aucun lieu encore)", Root + "/Sounds/Donjon", "silence", ambience: StyleAmbience.Crypt),
         };
 
         // --- Corps humains (4e vague, V2.9.2 : Universal Base Characters, Universal Animation Library) ---------------------------------
