@@ -304,20 +304,38 @@ Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Ani
 | 18.18 | Après Croc-Gris, niveau 14 : parler à Gaspard | Il propose « Le vieux Brunot » (sa balafre, ses cicatrices) ; griffures dans la forêt, Brunot abattu, retour : la **cape du vieux Brunot** | [ ] | |
 | 18.19 | Ton avis : les visages, la force des ours, la quête de Brunot | — | [ ] | |
 
-## 19. Marchands vivants et fêtes du bourg (V2.10)
+## 19. Vrais vêtements des villageois (V2.9.4)
+
+Avant l'essai : *Modular Character Outfits - Fantasy* [Standard] de Quaternius dans `Assets/Style/Quaternius/Outfits/` (`Exports/FBX (Unity)` et `Textures` : fait le 8 novembre 2026) ([UNITY.md](UNITY.md#essai-v294--vrais-vêtements-des-villageois)), puis menu **Éclats du Seuil → Préparer l'essai de style**. Note ici la fin de la ligne « Corps humains : … ; vrais vêtements : … ».
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 19.1 | Fenêtre de la préparation | « vrais vêtements : prêts (20 pièces : Peasant 8, Ranger 12 ; 2 coiffes, 0 capes ; 4 étoffes, peau des mains) » (et la note « aucune cape ») ; sinon la raison (à envoyer à Claude avec la liste des fichiers du dossier `Outfits`) | [ ] | |
+| 19.2 | Le bourg, « 12 h 15, midi », de près | Les villageois portent de **vrais vêtements** (tissu qui a du volume, plis, manches, bottes) ; plus d'effet « collant » ; la peau ne traverse nulle part (bras, cuisses, ventre) ; mains et visages à la bonne couleur de peau ; personne de nu ni d'invisible | [ ] | |
+| 19.3 | Les métiers (version gratuite : paysan et rôdeur) | Gardes en rôdeur **bleu** avec épaulières, sentinelles en rôdeur **rouge**, Sœur Albe en **laine claire** (capuche une fois sur deux), Renart en **prune**, Maëlle en cuir avec brassards, paysans en habits de paysan (lin, saule, rouille, guède), rôdeurs en **vert**, bandits **encapuchonnés** et usés ; mains de la couleur du visage (claire ou sombre) | [ ] | |
+| 19.4 | Variété | Deux paysans voisins ne sont pas habillés pareil (pièces, teinte, usure) ; chacun garde la même tenue d'une partie à l'autre | [ ] | |
+| 19.5 | Catalogue : **Human Season** sur *Winter*, Play (*Auto* : la saison du jeu, printemps tant qu'il n'y a pas de calendrier) | Capes et capuches presque partout (pas à la forge) ; les gardes ont un gorgerin ; sur *Summer* : têtes nues, pas de cape | [ ] | |
+| 19.6 | Une averse (V2.2), puis entrer et ressortir d'une maison | Les villageois qui apparaissent sous la pluie ont la **capuche** levée ; une capuche ou un casque ne laisse pas passer les cheveux | [ ] | |
+| 19.7 | Catalogue : **Human Festival** coché, Play | Couleurs de fête (or, garance, bleuet), habits neufs, marchands et aubergiste en noble, le capitaine sans cuirasse | [ ] | |
+| 19.8 | Catalogue : **Human Clothes** décoché, Play | Retour exact aux **tenues peintes** de V2.9.2 | [ ] | |
+| 19.9 | Animations | Marche, travail, parler, combat : les vêtements suivent le corps (pas de pièce qui reste en l'air ou en pose en T) | [ ] | |
+| 19.10 | Sur le Note8 | Image toujours fluide au bourg à midi | [ ] | |
+| 19.11 | Ton avis : les tenues par métier, les couleurs, faut-il la version *Source* (15 $, décision après cet essai) pour avoir tout le pack ? | — | [ ] | |
+
+## 20. Marchands vivants et fêtes du bourg (V2.10)
 
 Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des fêtes** avancent la partie (hors du mode Jeu) au prochain jour de marché (8 h), à la foire de printemps (9 h), à la fête des moissons (10 h 30), à la veillée de l'Aube (19 h), ou au lendemain à 9 h (le stock se regagne). Valeurs provisoires : [MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210).
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 19.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
-| 19.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
-| 19.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
-| 19.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
-| 19.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
-| 19.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
-| 19.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
-| 19.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
-| 19.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
-| 19.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
-| 19.11 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |
+| 20.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
+| 20.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
+| 20.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
+| 20.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
+| 20.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
+| 20.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
+| 20.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
+| 20.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
+| 20.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
+| 20.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
+| 20.11 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |

@@ -240,7 +240,7 @@ Contenu décidé le 29 octobre 2026 (« Vallons plus vivants » et « Les Vallon
 - Dépend de V2.1 à V2.7.
 - Formats : marchands, histoire.
 - Essai : oui, court (la vague 2 entière, en une séance).
-- **État** (8 novembre 2026, PR en brouillon, sous le nom « V2.10 — marchands vivants et fêtes du bourg ») : marchands en schéma 5 (stock fini qui se regagne chaque jour, vitrine des objets revendus, prix de saison et de temps, contrecoups du hameau pillé, de la faille restée ouverte et de la route d'Ambre coupée, étal ambulant), histoire en schéma 13 (calendrier, quatre fêtes, invités sur la place, Maître Anseau le colporteur, concours de Firmin, d'Aldric et de frère Anselme), sauvegarde v16 ; moteur, règles, journal, zones et scénarios inchangés ([MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210), [ESSAI_V1.10.md](ESSAI_V1.10.md#19-marchands-vivants-et-fêtes-du-bourg-v210)).
+- **État** (8 novembre 2026, PR en brouillon, sous le nom « V2.10 — marchands vivants et fêtes du bourg ») : marchands en schéma 5 (stock fini qui se regagne chaque jour, vitrine des objets revendus, prix de saison et de temps, contrecoups du hameau pillé, de la faille restée ouverte et de la route d'Ambre coupée, étal ambulant), histoire en schéma 13 (calendrier, quatre fêtes, invités sur la place, Maître Anseau le colporteur, concours de Firmin, d'Aldric et de frère Anselme), sauvegarde v16 ; moteur, règles, journal, zones et scénarios inchangés ([MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210), [ESSAI_V1.10.md](ESSAI_V1.10.md#20-marchands-vivants-et-fêtes-du-bourg-v210)).
 
 ## Bloc 3 — Part des vagues 3 et 4 gardée avant le lot 13
 

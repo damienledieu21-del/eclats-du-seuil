@@ -248,7 +248,7 @@ namespace EdS.Game
         /// Habille la copie <paramref name="model"/> d'un corps (homme ou femme) selon <paramref name="look"/> et rend son lecteur
         /// d'animations (null si l'avatar n'est pas Humanoid : le corps reste immobile, jamais invisible).
         /// </summary>
-        internal static IClipPlayer Dress(GameObject model, HumanCatalog humans, HumanLook look)
+        internal static IClipPlayer Dress(GameObject model, HumanCatalog humans, HumanLook look, WardrobePlan clothes = null)
         {
             Material outfit = humans.Outfit(look.Female, look.DarkSkin, look.Palette);
             Material hair1 = Tint(humans.Hair1, look.HairTone), hair2 = Tint(humans.Hair2, look.HairTone);
@@ -256,11 +256,192 @@ namespace EdS.Game
             var bones = new Dictionary<string, Transform>();
             foreach (Transform t in model.GetComponentsInChildren<Transform>())
                 if (!bones.ContainsKey(t.name)) bones[t.name] = t;
-            Attach(model, humans.Hair(look.Hair), bones, outfit, hair1, hair2, humans.Eyes);
+            // Sous-lot V2.9.4 : les vrais vêtements d'abord (le corps garde sa tenue peinte s'il en manque une pièce ou si l'une ne s'attache pas).
+            HumanHair hair = look.Hair;
+            if (clothes != null && Clothe(model, humans, look, clothes, bones, out string headgear)) hair = HumanWardrobe.HairUnder(headgear, look.Hair, look.Female);
+            Attach(model, humans.Hair(hair), bones, outfit, hair1, hair2, humans.Eyes);
             if (look.Beard) Attach(model, humans.Beard, bones, outfit, hair1, hair2, humans.Eyes);
             Vector3 s = model.transform.localScale;
             model.transform.localScale = new Vector3(s.x * (float)look.Width, s.y, s.z * (float)look.Width);
             return HumanMotion.Create(model.GetComponentInChildren<Animator>(), humans.Clips);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.4 : la tenue voulue pour ce corps (<see cref="HumanWardrobe.Plan"/>), ou null : pas de vrais vêtements (réglage
+        /// <c>Human Clothes</c> décoché, ou aucune pièce préparée). La saison est celle du jeu (<see cref="GameSeason"/>, sauf réglage
+        /// <c>Human Season</c> forcé), la pluie le temps qu'il fait quand le corps apparaît, la fête le réglage <c>Human Festival</c> ou
+        /// <see cref="Festival"/> ; sur téléphone, une seule pièce facultative (<see cref="HumanWardrobe.MaxOptional"/>).
+        /// </summary>
+        public static WardrobePlan Clothing(StyleCatalog catalog, StyleSlot slot, string id, string lookId, HumanLook look)
+        {
+            if (catalog == null || !catalog.HumanClothes || catalog.Humans == null || catalog.Humans.Clothes == null || catalog.Humans.Clothes.Length == 0)
+                return null;
+            string who = slot == StyleSlot.Hero ? "heros" : lookId ?? id;
+            string role = slot == StyleSlot.Hero ? "heros" : id;
+            return HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), catalog.HumanFestival || Festival,
+                HumanWardrobe.MaxOptional(Application.isMobilePlatform));
+        }
+
+        /// <summary>Sous-lot V2.9.4 : jour de fête au bourg (posé par les fêtes à venir) : les villageois qui apparaissent sortent leurs beaux habits.</summary>
+        public static bool Festival { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.9.4 (décision de Damien du 8 novembre 2026 : la saison des tenues suit la saison du jeu) : point d'entrée du
+        /// calendrier du jeu, qui pose la saison en cours ; le printemps tant qu'aucun calendrier ne la donne (le calendrier de V2.10 le branchera).
+        /// </summary>
+        public static WardrobeSeason GameSeason { get; set; } = WardrobeSeason.Spring;
+
+        /// <summary>Saison des vêtements : celle du jeu (<see cref="GameSeason"/>), ou celle forcée par le réglage <c>Human Season</c> pour l'essai.</summary>
+        public static WardrobeSeason Season(StyleCatalog catalog)
+        {
+            switch (catalog != null ? catalog.HumanSeason : StyleSeason.Auto)
+            {
+                case StyleSeason.Spring: return WardrobeSeason.Spring;
+                case StyleSeason.Summer: return WardrobeSeason.Summer;
+                case StyleSeason.Autumn: return WardrobeSeason.Autumn;
+                case StyleSeason.Winter: return WardrobeSeason.Winter;
+                default: return GameSeason;
+            }
+        }
+
+        /// <summary>Étoffes et peaux teintes et usées, partagées (une copie par matériau, teinte et usure : jamais une par personnage).</summary>
+        private static readonly Dictionary<(Material, int, int), Material> Worn = new Dictionary<(Material, int, int), Material>();
+
+        /// <summary>
+        /// Sous-lot V2.9.4 : habille le corps de vraies pièces (<paramref name="plan"/>) : chaque pièce prend les os du corps par leur nom.
+        /// Faux, et rien n'est posé (le corps garde sa tenue peinte), si le corps réduit à sa tête manque ou ne va pas à ce corps (relecture de
+        /// la PR #119 : sinon le corps peint resterait dessous), s'il manque une pièce obligatoire, ou si l'une ne s'attache pas. Une pièce
+        /// facultative (coiffe, cape, épaulières, col, tablier) qui ne s'attache pas est seulement omise. Vrai : le corps ne garde que sa tête
+        /// et son cou, et <paramref name="headgear"/> est le genre de la coiffe posée (vide sans coiffe).
+        /// </summary>
+        private static bool Clothe(GameObject model, HumanCatalog humans, HumanLook look, WardrobePlan plan, Dictionary<string, Transform> bones, out string headgear)
+        {
+            headgear = string.Empty;
+            Mesh head = look.Female ? humans.FemaleHead : humans.MaleHead;
+            SkinnedMeshRenderer body = null;
+            foreach (SkinnedMeshRenderer s in model.GetComponentsInChildren<SkinnedMeshRenderer>())
+                if (s.sharedMesh != null && (body == null || s.sharedMesh.vertexCount > body.sharedMesh.vertexCount)) body = s;
+            if (body == null || !HumanWardrobe.HeadFits(head != null ? head.vertexCount : (int?)null, body.sharedMesh.vertexCount)) return false;
+            int[] picks = HumanWardrobe.Resolve(plan, humans.Items, look.Female);
+            if (picks == null) return false;
+            var placed = new List<GameObject>();
+            Material skin = Skin(humans, look);
+            string gear = string.Empty;
+            for (int r = 0; r < picks.Length; r++)
+            {
+                if (picks[r] < 0) continue;
+                WardrobeLook piece = humans.Clothes[picks[r]];
+                bool ok = Wear(model, piece, bones, humans, look, skin, plan, placed);
+                if (!ok && plan.Requests[r].Required)
+                {
+                    foreach (GameObject g in placed) Object.Destroy(g);
+                    return false;
+                }
+                if (ok && piece.Slot == WardrobeSlot.Head) gear = piece.Kind ?? string.Empty;
+            }
+            body.sharedMesh = head;
+            headgear = gear;
+            return true;
+        }
+
+        /// <summary>
+        /// Pose une pièce : son maillage (<see cref="WardrobeLook.PartIndex"/> dans le fichier, relecture de la PR #119) et ceux qui
+        /// l'accompagnent (<see cref="WardrobeLook.Companions"/> : ceintures, brassards) prennent les os du corps par leur nom ; chaque matériau d'étoffe prend l'étoffe préparée de même nom (<see cref="HumanWardrobe.FabricStem"/> : une pièce
+        /// à plusieurs matériaux garde chacun le sien), teinte et usée ; la peau des mains celle du corps. Faux si un os manque (rien n'est posé).
+        /// </summary>
+        private static bool Wear(GameObject model, WardrobeLook piece, Dictionary<string, Transform> bones, HumanCatalog humans, HumanLook look, Material skin,
+            WardrobePlan plan, List<GameObject> placed)
+        {
+            if (piece == null || piece.Model == null) return false;
+            GameObject copy = Object.Instantiate(piece.Model, model.transform, false);
+            SkinnedMeshRenderer[] all = copy.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            int index = piece.PartIndex < 0 ? 0 : piece.PartIndex;
+            SkinnedMeshRenderer main = index < all.Length ? all[index] : null;
+            if (main == null || main.sharedMesh == null || (!string.IsNullOrEmpty(piece.Part) && main.gameObject.name != piece.Part) || !Bind(main, bones, out Transform[] mainBones))
+            {
+                Object.Destroy(copy);
+                return false;
+            }
+            // La pièce et ses maillages d'accompagnement (ceintures, brassards) ; un accompagnement qui ne s'attache pas est laissé.
+            var worn = new List<(SkinnedMeshRenderer Skin, Transform[] Bones)> { (main, mainBones) };
+            if (piece.Companions != null)
+                foreach (int c in piece.Companions)
+                    if (c >= 0 && c < all.Length && c != index && all[c] != null && all[c].sharedMesh != null && Bind(all[c], bones, out Transform[] extra))
+                        worn.Add((all[c], extra));
+            int gender = look.Female ? 2 : 1;
+            foreach ((SkinnedMeshRenderer s, Transform[] mapped) in worn)
+            {
+                s.bones = mapped;
+                if (s.rootBone != null && bones.TryGetValue(s.rootBone.name, out Transform root)) s.rootBone = root;
+                s.updateWhenOffscreen = false;
+                Material[] materials = s.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    if (materials[i] == null) continue;
+                    if (HumanWardrobe.IsSkinMaterial(materials[i].name))
+                    {
+                        materials[i] = skin != null ? skin : look.DarkSkin ? Darkened(materials[i]) : materials[i];
+                        continue;
+                    }
+                    Material fabric = humans.Fabric(HumanWardrobe.FabricStem(materials[i].name), gender, plan.Fabric);
+                    materials[i] = Worn1(fabric != null ? fabric : materials[i], plan.Tint, plan.Wear);
+                }
+                s.sharedMaterials = materials;
+                s.transform.SetParent(model.transform, false);
+                placed.Add(s.gameObject);
+            }
+            Object.Destroy(copy);
+            return true;
+        }
+
+        /// <summary>Les os du corps pour ceux du maillage <paramref name="s"/>, par leur nom ; faux s'il en manque un.</summary>
+        private static bool Bind(SkinnedMeshRenderer s, Dictionary<string, Transform> bones, out Transform[] mapped)
+        {
+            mapped = null;
+            Transform[] old = s.bones;
+            if (old == null || old.Length == 0) return false;
+            var now = new Transform[old.Length];
+            for (int i = 0; i < old.Length; i++)
+            {
+                if (old[i] == null || !bones.TryGetValue(old[i].name, out Transform b)) return false;
+                now[i] = b;
+            }
+            mapped = now;
+            return true;
+        }
+
+        /// <summary>Peau des mains : celle du pack préparée pour ce corps et cette peau, sinon null (celle de la pièce, assombrie pour une peau sombre).</summary>
+        private static Material Skin(HumanCatalog humans, HumanLook look)
+        {
+            int i = (look.Female ? 2 : 0) + (look.DarkSkin ? 1 : 0);
+            Material prepared = humans.Skins != null && i < humans.Skins.Length ? humans.Skins[i] : null;
+            return prepared;
+        }
+
+        /// <summary>Sans texture de peau sombre dans le pack : la peau claire de la pièce assombrie comme la peau peinte (0,62 ; 0,50 ; 0,44), partagée.</summary>
+        private static Material Darkened(Material source)
+        {
+            if (source == null) return null;
+            if (Worn.TryGetValue((source, -1, -1), out Material done) && done != null) return done;
+            var m = new Material(source) { name = source.name + " sombre" };
+            ArenaView.ApplyColor(m, new Color(0.62f, 0.50f, 0.44f));
+            m.enableInstancing = true;
+            Worn[(source, -1, -1)] = m;
+            return m;
+        }
+
+        /// <summary>Copie partagée de <paramref name="source"/> teinte (<see cref="HumanWardrobe.Color"/>) et usée.</summary>
+        private static Material Worn1(Material source, int tint, int wear)
+        {
+            if (source == null) return null;
+            if (Worn.TryGetValue((source, tint, wear), out Material done) && done != null) return done;
+            (double r, double g, double b) = HumanWardrobe.Color(tint, wear);
+            var m = new Material(source) { name = source.name + " " + tint + "-" + wear };
+            ArenaView.ApplyColor(m, new Color((float)r, (float)g, (float)b));
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", (float)HumanWardrobe.Smoothness(wear));
+            m.enableInstancing = true;
+            Worn[(source, tint, wear)] = m;
+            return m;
         }
 
         /// <summary>Matériaux d'un maillage d'après le nom de ceux du fichier : la peau devient la tenue, les cheveux leur couleur, les yeux.</summary>
