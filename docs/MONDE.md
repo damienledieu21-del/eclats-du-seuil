@@ -900,6 +900,8 @@ Ce qui est fait (contenu : zone 0.16.0, scénario des Vallons 0.9.0, objets 0.15
 - **Quête « Le vieux Brunot »** (annexe, niveau 14, après Croc-Gris) : Gaspard la propose (« Je lui ai laissé une balafre en travers du museau il y a vingt ans ; il m'a laissé ces trois-là sur le bras. Les rôdeurs disent qu'il est sorti de sa tanière pour de bon ») ; étapes : les griffures dans la forêt des Loups (découverte), abattre le vieux Brunot, revenir voir Gaspard ; récompenses : 900 XP, 600 pièces, confiance de Gaspard, la **cape du vieux Brunot** (cape très rare, niveau 14, nommée : +90 PV, +50 armure ; valeur 7 600).
 - Butin : peau d'ours (80 %), griffe d'ours (30 %) ; le vieux Brunot : deux de chaque.
 
+**Décision de Damien du 8 novembre 2026** : ces réglages (force des ours, Brunot une nuit sur trois) sont gardés pour l'essai ; le plafond de la session sera rediscuté après l'essai.
+
 Choix techniques (pas des décisions de Damien) : le vieux Brunot est une créature de la zone à une forme, pas un « chef » à deux formes (un quatrième chef changeait l'ordre de toute la session : l'essai d'équilibre du chapitre 5 basculait) ; l'ours et le vieux Brunot ne sont là que la nuit et l'ourse que le jour, parce que les Vallons de nuit sont au plafond de la session (128 combattants, dont 64 gardés aux quêtes) : avec trois créatures de plus la nuit, la troisième vague d'une faille ne sortait plus ; ils sont posés à 29 m au moins de toute autre créature (leurs combats ne changent pas ceux d'à côté).
 
 ## Chapitre 1 au max, le contenu (sous-lot V1.9.9)

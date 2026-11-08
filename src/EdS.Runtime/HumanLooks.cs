@@ -150,9 +150,13 @@ namespace EdS.Runtime
         /// </summary>
         public static HumanLook For(string id, string role)
         {
+            // Revue Codex de la PR #117 (tour 2) : les traits du corps (genre, peau, cheveux, barbe, taille, carrure) ne dépendent que de
+            // l'identité ; un PNJ (« npc.… ») est le même dehors, dans une maison ou à l'auberge, quel que soit le rôle d'affichage passé
+            // (son identifiant, « paysan »…) : son rôle est alors son identité. Le rôle d'un villageois du décor choisit sa tenue et sa part de femmes.
             string who = StyleRules.CharacterOf(id ?? string.Empty);
-            string part = StyleRules.CharacterOf(role ?? string.Empty);
-            string seed = (id ?? string.Empty) + "|" + (role ?? string.Empty);
+            bool npc = (id ?? string.Empty).StartsWith("npc.", StringComparison.Ordinal);
+            string part = npc ? who : StyleRules.CharacterOf(role ?? string.Empty);
+            string seed = id ?? string.Empty;
             int Roll(string salt, int count) => StyleRules.Variant(seed + "#" + salt, count);
             bool female = KnownFemale.TryGetValue(who, out bool f) ? f
                 : KnownFemale.TryGetValue(part, out bool g) ? g

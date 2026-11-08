@@ -399,4 +399,22 @@ public sealed class V292AnimationsTests
         Assert.Equal((0, 2, 0), (StyleRules.Cubs("ours"), StyleRules.Cubs("ourse"), StyleRules.Cubs("vieux_brunot")));
         Assert.Equal((StyleMotion.Cast, (string?)null), (StyleRules.AttackAnimation("rugissement").Motion, StyleRules.AttackAnimation("rugissement").Prefer));
     }
+
+    [Fact]
+    public void Revue_Codex_un_PNJ_a_le_meme_corps_par_tous_les_chemins_d_affichage()
+    {
+        // WorldMarkers : For(npc.Id, npc.Id) ; SpaceView.Villagers et InteriorRules : For(npc.Id, "paysan") ; ArenaView : le rôle de combat.
+        string[] npcs = { "npc.pretre", "npc.maelle", "npc.odile", "npc.gaspard", "npc.habitant", "npc.aubergiste", "npc.capitaine", "npc.renart",
+            "npc.archer_garde", "npc.doyen", "npc.fermier", "npc.apprentie", "npc.inconnu_du_bourg" };
+        foreach (string id in npcs)
+        {
+            HumanLook a = HumanLooks.For(id, id), b = HumanLooks.For(id, "paysan"), c = HumanLooks.For(id, "garde");
+            foreach (HumanLook other in new[] { b, c })
+                Assert.Equal((a.Female, a.DarkSkin, a.Hair, a.Beard, a.HairTone, a.Height, a.Width, a.Outfit, a.Palette),
+                    (other.Female, other.DarkSkin, other.Hair, other.Beard, other.HairTone, other.Height, other.Width, other.Outfit, other.Palette));
+        }
+        // Un villageois du décor garde la tenue de son rôle.
+        Assert.Equal(HumanOutfit.Guard, HumanLooks.For("bourg/garde1", "garde").Outfit);
+        Assert.Equal(HumanOutfit.Peasant, HumanLooks.For("bourg/garde1", "paysan").Outfit);
+    }
 }
