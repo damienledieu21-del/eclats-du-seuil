@@ -266,6 +266,7 @@ public sealed class V292AnimationsTests
         Assert.DoesNotContain(StyleRules.PickSounds(world, StyleSound.ChurchBell, 6), p => p.Contains("760390") || p.Contains("petite"));
         Assert.Contains(StyleRules.PickSounds(world, StyleSound.ChurchBell, 6), p => p.Contains("klankbeeld"));
         Assert.Null(StyleRules.PickSound(world, StyleSound.Bray));
+        Assert.True(StyleRules.IsLongRecording(world[3]));   // les sabots : un long enregistrement, joué par passages
         Assert.Equal((7, 1.4), BeastCalls.TocsinRhythm("eds_FS760390_KristofferAndersson_cloche_tour_Falun"));
         Assert.Equal((BeastCalls.TocsinStrikes, BeastCalls.TocsinGap), BeastCalls.TocsinRhythm("eds_BSB0292_petite_cloche"));
         Assert.InRange(BeastCalls.Interval(StyleSound.Bray, 3), 45, 105);

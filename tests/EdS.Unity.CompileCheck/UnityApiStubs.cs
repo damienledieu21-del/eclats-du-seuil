@@ -9,7 +9,11 @@ namespace UnityEngine
     public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; }
     public class Behaviour : Component { }
     public class MonoBehaviour : Behaviour { }
-    public class Animator : Behaviour { public bool enabled { get; set; } }
+    public class Animator : Behaviour { public bool enabled { get; set; } public Avatar avatar { get; set; } public bool applyRootMotion { get; set; } public AnimatorCullingMode cullingMode { get; set; } public RuntimeAnimatorController runtimeAnimatorController { get; set; } }
+    public enum AnimatorCullingMode { AlwaysAnimate, CullUpdateTransforms, CullCompletely }
+    public class RuntimeAnimatorController : Object { }
+    public sealed class Avatar : Object { public bool isValid => false; public bool isHuman => false; }
+    public struct BoneWeight { public int boneIndex0 { get; set; } public float weight0 { get; set; } }
     public class ScriptableObject : Object { public static T CreateInstance<T>() where T : ScriptableObject => default; public static ScriptableObject CreateInstance(System.Type type) => null; }
     public sealed class GameObject : Object { public GameObject(string n) { } public Transform transform => null; public string tag { get; set; } public T AddComponent<T>() where T : Component => default; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; public T[] GetComponentsInChildren<T>(bool includeInactive) => null; public void SetActive(bool b) { } public bool activeSelf => false; public bool activeInHierarchy => false; public int layer { get; set; } public static GameObject CreatePrimitive(PrimitiveType t) => null; public static GameObject Find(string name) => null; }
     public enum FindObjectsSortMode { None, InstanceID }
@@ -17,7 +21,7 @@ namespace UnityEngine
     public struct RenderParams { public RenderParams(Material mat) { worldBounds = default; shadowCastingMode = default; receiveShadows = false; } public Bounds worldBounds { get; set; } public UnityEngine.Rendering.ShadowCastingMode shadowCastingMode { get; set; } public bool receiveShadows { get; set; } }
     public static class Graphics { public static void RenderMeshInstanced<T>(in RenderParams rparams, Mesh mesh, int submeshIndex, T[] instanceData, int instanceCount = -1, int startInstance = 0) where T : struct { } }
     public enum PrimitiveType { Sphere, Capsule, Cylinder, Cube, Plane, Quad }
-    public class Transform : Component { public Vector3 forward => default; public Vector3 right => default; public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public Vector3 lossyScale => default; public Vector3 eulerAngles { get; set; } public void SetParent(Transform p, bool w) { } public Transform GetChild(int index) => null; public void LookAt(Vector3 v) { } public void SetAsLastSibling() { } public void SetAsFirstSibling() { } public int GetSiblingIndex() => 0; public void SetSiblingIndex(int i) { } }
+    public class Transform : Component { public Vector3 TransformPoint(Vector3 p) => p; public Vector3 forward => default; public Vector3 right => default; public Vector3 position { get; set; } public Quaternion rotation { get; set; } public Vector3 localPosition { get; set; } public Quaternion localRotation { get; set; } public Vector3 localScale { get; set; } public Vector3 lossyScale => default; public Vector3 eulerAngles { get; set; } public void SetParent(Transform p, bool w) { } public Transform GetChild(int index) => null; public void LookAt(Vector3 v) { } public void SetAsLastSibling() { } public void SetAsFirstSibling() { } public int GetSiblingIndex() => 0; public void SetSiblingIndex(int i) { } }
     public sealed class RectTransform : Transform { public Vector2 anchorMin { get; set; } public Vector2 anchorMax { get; set; } public Vector2 pivot { get; set; } public Vector2 sizeDelta { get; set; } public Vector2 anchoredPosition { get; set; } public Vector2 offsetMin { get; set; } public Vector2 offsetMax { get; set; } }
     public static class RectTransformUtility { public static bool ScreenPointToLocalPointInRectangle(RectTransform rect, Vector2 screenPoint, Camera cam, out Vector2 localPoint) { localPoint = default; return false; } }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
@@ -31,7 +35,7 @@ namespace UnityEngine
     public struct Bounds { public Bounds(Vector3 center, Vector3 size) { } public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public Vector3 extents => default; public void Encapsulate(Bounds b) { } }
     public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
     public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } public float length => 0; public float time { get; set; } public float speed { get; set; } }
-    public sealed class AnimationClip : Object { }
+    public sealed class AnimationClip : Object { public float length => 0; }
     public sealed class Animation : Behaviour, System.Collections.IEnumerable { public System.Collections.IEnumerator GetEnumerator() => null; public void AddClip(AnimationClip clip, string newName) { } public AnimationClip GetClip(string name) => null; public AnimationState this[string name] => null; public void Rewind(string name) { } public void CrossFade(string animation, float fadeLength) { } public bool Play(string animation) => false; public bool Play() => false; public void Stop() { } }
     public enum AudioClipLoadType { DecompressOnLoad = 0, CompressedInMemory = 1, Streaming = 2 }
     public sealed class AudioClip : Object { public float length => 0; public static AudioClip Create(string name, int lengthSamples, int channels, int frequency, bool stream) => null; public bool SetData(float[] data, int offsetSamples) => false; }
@@ -39,9 +43,9 @@ namespace UnityEngine
     public enum AudioRolloffMode { Logarithmic, Linear, Custom }
     public sealed class AudioListener : Behaviour { }
     public sealed class MeshRenderer : Renderer { }
-    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } }
+    public sealed class SkinnedMeshRenderer : Renderer { public bool updateWhenOffscreen { get; set; } public Mesh sharedMesh { get; set; } public Transform[] bones { get; set; } public Transform rootBone { get; set; } public void BakeMesh(Mesh mesh) { } }
     public sealed class MeshFilter : Component { public Mesh mesh { get; set; } public Mesh sharedMesh { get; set; } }
-    public sealed class Mesh : Object { public Mesh() { } public UnityEngine.Rendering.IndexFormat indexFormat { get; set; } public int vertexCount => 0; public Vector3[] normals { get; set; } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public Vector2[] uv2 { get; set; } public Color[] colors { get; set; } public int[] triangles { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateTangents() { } public void RecalculateBounds() { } }
+    public sealed class Mesh : Object { public Mesh() { } public UnityEngine.Rendering.IndexFormat indexFormat { get; set; } public int vertexCount => 0; public Vector3[] normals { get; set; } public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public Vector2[] uv2 { get; set; } public Color[] colors { get; set; } public int[] triangles { get; set; } public BoneWeight[] boneWeights { get; set; } public void Clear() { } public void RecalculateNormals() { } public void RecalculateTangents() { } public void RecalculateBounds() { } }
     public static class PlayerPrefs { public static float GetFloat(string key, float defaultValue) => defaultValue; public static void SetFloat(string key, float value) { } public static int GetInt(string key, int defaultValue) => defaultValue; public static void SetInt(string key, int value) { } public static void Save() { } }
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
@@ -138,6 +142,21 @@ namespace UnityEngine
     public static class GUIUtility { public static int keyboardControl { get; set; } }
     public static class Screen { public static int width => 0; public static int height => 0; public static int sleepTimeout { get; set; } public static bool autorotateToPortrait { get; set; } public static bool autorotateToPortraitUpsideDown { get; set; } public static bool autorotateToLandscapeLeft { get; set; } public static bool autorotateToLandscapeRight { get; set; } public static ScreenOrientation orientation { get; set; } }
     public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } public static ShadowQuality shadows { get; set; } public static int antiAliasing { get; set; } }
+}
+namespace UnityEngine.Playables
+{
+    // Sous-lot V2.9.2 : graphe d'animation des corps humains (dans Unity, SetInputWeight, SetTime, SetSpeed, Play, Pause, GetPlayState et
+    // SetSourcePlayable sont des méthodes d'extension : même écriture à l'appel).
+    public interface IPlayable { }
+    public enum DirectorUpdateMode { DSPClock, GameTime, UnscaledGameTime, Manual }
+    public enum PlayState { Paused, Playing }
+    public struct PlayableGraph { public static PlayableGraph Create(string name) => default; public void SetTimeUpdateMode(DirectorUpdateMode mode) { } public void Play() { } public void Destroy() { } public bool IsValid() => false; public bool Connect<U, V>(U source, int sourceOutputPort, V destination, int destinationInputPort) where U : struct, IPlayable where V : struct, IPlayable => false; }
+}
+namespace UnityEngine.Animations
+{
+    public struct AnimationMixerPlayable : UnityEngine.Playables.IPlayable { public static AnimationMixerPlayable Create(UnityEngine.Playables.PlayableGraph graph, int inputCount) => default; public void SetInputWeight(int inputIndex, float weight) { } }
+    public struct AnimationClipPlayable : UnityEngine.Playables.IPlayable { public static AnimationClipPlayable Create(UnityEngine.Playables.PlayableGraph graph, UnityEngine.AnimationClip clip) => default; public void SetApplyFootIK(bool value) { } public void SetTime(double time) { } public void SetSpeed(double speed) { } public void Play() { } public void Pause() { } public UnityEngine.Playables.PlayState GetPlayState() => default; }
+    public struct AnimationPlayableOutput { public static AnimationPlayableOutput Create(UnityEngine.Playables.PlayableGraph graph, string name, UnityEngine.Animator target) => default; public void SetSourcePlayable<V>(V value) where V : struct, UnityEngine.Playables.IPlayable { } }
 }
 namespace UnityEngine.EventSystems
 {
@@ -256,8 +275,9 @@ namespace UnityEditor
     public sealed class SerializedProperty { public float floatValue { get; set; } public int intValue { get; set; } public bool boolValue { get; set; } public long longValue { get; set; } public UnityEngine.Object objectReferenceValue { get; set; } public int arraySize { get; set; } public SerializedProperty GetArrayElementAtIndex(int i) => null; }
     public sealed class SerializedObject { public SerializedObject(UnityEngine.Object o) { } public SerializedProperty FindProperty(string name) => null; public bool ApplyModifiedPropertiesWithoutUndo() => false; }
     public enum ModelImporterAnimationType { None, Legacy, Generic, Human }
-    public sealed class ModelImporterClipAnimation { public string name { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } }
-    public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; public bool ExtractTextures(string folderPath) => false; }
+    public sealed class ModelImporterClipAnimation { public string name { get; set; } public string takeName { get; set; } public bool loopTime { get; set; } public UnityEngine.WrapMode wrapMode { get; set; } public bool lockRootRotation { get; set; } public bool lockRootHeightY { get; set; } public bool lockRootPositionXZ { get; set; } public bool keepOriginalOrientation { get; set; } public bool keepOriginalPositionY { get; set; } public bool keepOriginalPositionXZ { get; set; } }
+    public enum ModelImporterAvatarSetup { NoAvatar, CreateFromThisModel, CopyFromOther }
+    public sealed class ModelImporter : AssetImporter { public ModelImporterAnimationType animationType { get; set; } public ModelImporterAvatarSetup avatarSetup { get; set; } public bool importAnimation { get; set; } public ModelImporterClipAnimation[] clipAnimations { get; set; } public ModelImporterClipAnimation[] defaultClipAnimations => null; public bool ExtractTextures(string folderPath) => false; }
     public enum AudioCompressionFormat { PCM = 0, Vorbis = 1, ADPCM = 2 }
     public struct AudioImporterSampleSettings { public UnityEngine.AudioClipLoadType loadType; public AudioCompressionFormat compressionFormat; public float quality; }
     public sealed class AudioImporter : AssetImporter { public AudioImporterSampleSettings defaultSampleSettings { get; set; } public bool forceToMono { get; set; } public bool ContainsSampleSettingsOverride(string platform) => false; public bool ClearSampleSettingOverride(string platform) => false; }

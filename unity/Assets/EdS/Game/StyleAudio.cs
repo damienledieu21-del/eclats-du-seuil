@@ -94,13 +94,21 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.9 (2e vague) : une scène de l'histoire se joue (musique « Story », « The Legend of Kvothe », si elle est là).</summary>
         public bool Story { get; set; }
 
+        /// <summary>
+        /// Sous-lot V2.9.2 (4e vague) : une attaque du monde est en cours (pillage ou faille) : un combat prend la musique des chefs
+        /// (« Determined Pursuit »).
+        /// </summary>
+        public bool Assault { get; set; }
+
         public void Update(AdventureMood mood, bool paused, float deltaTime)
         {
             float now = Time.time;
             if (mood.Fighting || mood.BossEngaged) _lastFight = now;
             bool fighting = now - _lastFight < CombatLinger;
             // Sous-lot V2.9 (2e vague) : la musique du Seuil (« Sanctum ») au Seuil, celle des scènes de l'histoire pendant une scène.
-            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (mood.Places & AmbiencePlace.Threshold) != 0, Story));
+            // Sous-lot V2.9.2 : l'auberge (« The Old Tower Inn »), le bourg la nuit (« Night Town »), les attaques (« Determined Pursuit »).
+            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (mood.Places & AmbiencePlace.Threshold) != 0, Story,
+                mood.Night, (mood.Places & AmbiencePlace.TavernInside) != 0, Assault));
             if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
                 Switch(wanted);
             else if (wanted != _playing)
@@ -144,7 +152,8 @@ namespace EdS.Game
         private StyleMusic Available(StyleMusic wanted)
         {
             if (_music.ContainsKey(wanted)) return wanted;
-            if (wanted == StyleMusic.Boss && _music.ContainsKey(StyleMusic.Combat)) return StyleMusic.Combat;
+            // Sous-lot V2.9.2 : le Gardien et les attaques prennent le combat, le bourg la nuit et l'auberge la musique du village.
+            if (StyleRules.MusicFallback(wanted) is StyleMusic next && _music.ContainsKey(next)) return next;
             if (wanted == StyleMusic.Story && _playing is StyleMusic current && current != StyleMusic.Combat && current != StyleMusic.Boss) return current;
             return StyleMusic.Exploration;
         }

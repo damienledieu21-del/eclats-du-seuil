@@ -18,6 +18,60 @@ namespace EdS.Game
         public float Yaw;
     }
 
+    /// <summary>
+    /// Sous-lot V2.9.2 (4e vague) : les corps humains des Universal Base Characters de Quaternius, préparés par le menu : corps d'homme et de
+    /// femme (Humanoid), matériaux des tenues peintes (un par corps, peau et tenue : <see cref="HumanLooks.Palettes"/>), coiffures, barbe,
+    /// sourcils, yeux, et les animations Humanoid des Universal Animation Library renommées (<see cref="HumanLooks.CanonicalClip"/>).
+    /// </summary>
+    [Serializable]
+    public sealed class HumanCatalog
+    {
+        public GameObject Male;
+        public GameObject Female;
+        [Tooltip("Tenues : homme peau claire, homme peau sombre, femme peau claire, femme peau sombre, chacun dans l'ordre de HumanLooks.Palettes.")]
+        public Material[] Outfits = new Material[0];
+        [Tooltip("Coiffures (Hair_Buzzed, Hair_SimpleParted, Hair_Long, Hair_Buns, Hair_BuzzedFemale), dans l'ordre de HumanHair (1 à 5).")]
+        public GameObject[] Hairs = new GameObject[0];
+        public GameObject Beard;
+        public Material Hair1;
+        public Material Hair2;
+        public Material Eyes;
+        public AnimationClip[] Clips = new AnimationClip[0];
+
+        /// <summary>Prêts : deux corps, toutes les tenues, une attente et une marche.</summary>
+        public bool Ready
+        {
+            get
+            {
+                if (Male == null || Female == null || Outfits == null || Outfits.Length < 4 * HumanLooks.Palettes.Length || Clips == null) return false;
+                bool idle = false, walk = false;
+                foreach (AnimationClip c in Clips)
+                {
+                    if (c == null) continue;
+                    if (c.name == "Idle") idle = true;
+                    if (c.name == "Walk") walk = true;
+                }
+                return idle && walk;
+            }
+        }
+
+        /// <summary>Matériau de la tenue <paramref name="palette"/> pour ce corps et cette peau, ou null.</summary>
+        public Material Outfit(bool female, bool dark, int palette)
+        {
+            int n = HumanLooks.Palettes.Length;
+            if (Outfits == null || palette < 0 || palette >= n) return null;
+            int i = ((female ? 2 : 0) + (dark ? 1 : 0)) * n + palette;
+            return i < Outfits.Length ? Outfits[i] : null;
+        }
+
+        /// <summary>La coiffure <paramref name="hair"/>, ou null.</summary>
+        public GameObject Hair(HumanHair hair)
+        {
+            int i = (int)hair - 1;
+            return Hairs != null && i >= 0 && i < Hairs.Length ? Hairs[i] : null;
+        }
+    }
+
     /// <summary>Essai réaliste : une matière de bâtiment (couleur, relief, taille d'une répétition).</summary>
     [Serializable]
     public sealed class SurfaceLook
@@ -181,6 +235,21 @@ namespace EdS.Game
         public GameObject Cow;
         public GameObject Dog;
         public GameObject Horse;
+        [Tooltip("Sous-lot V2.9.2 (3e vague) : âne, poule, coq (basse-cour du hameau et du bourg) et ours (prêt pour une créature « ours… »).")]
+        public GameObject Donkey;
+        public GameObject Hen;
+        public GameObject Rooster;
+        public GameObject Bear;
+        public float BearYaw;
+        [Header("Sous-lot V2.9.2 : corps humains (Universal Base Characters et Universal Animation Library, remplis par le menu)")]
+        public HumanCatalog Humans = new HumanCatalog();
+        [Tooltip("Les villageois, les gardes et les PNJ qui parlent prennent les corps humains variés (coché) ou leurs personnages de Mixamo.")]
+        public bool HumanVillagers = true;
+        [Tooltip("Le héros prend un corps humain (tenue d'acier bleuté) quand le paladin de Mixamo manque.")]
+        public bool HumanHero = true;
+
+        /// <summary>Sous-lot V2.9.2 : version des tenues peintes par la préparation (repeintes si elle change).</summary>
+        [HideInInspector] public int HumanBake;
         [Tooltip("Bêtes de la ferme et des champs (vaches, chevaux, chiens, corbeaux) : 1 = le nombre prévu, 0 = aucune (la moitié sur téléphone).")]
         [Range(0f, 2f)] public float Livestock = 1f;
         [Tooltip("Volume des pas du personnage (herbe, gravier, feuilles, plancher).")]
@@ -415,6 +484,10 @@ namespace EdS.Game
                 case StyleSlot.Cow: return Cow;
                 case StyleSlot.Dog: return Dog;
                 case StyleSlot.Horse: return Horse;
+                case StyleSlot.Donkey: return Donkey;
+                case StyleSlot.Hen: return Hen;
+                case StyleSlot.Rooster: return Rooster;
+                case StyleSlot.Bear: return Bear;
                 default: return null;
             }
         }
@@ -430,6 +503,7 @@ namespace EdS.Game
                 case StyleSlot.Doe: return DoeYaw;
                 case StyleSlot.Hare: return HareYaw;
                 case StyleSlot.Cat: return CatYaw;
+                case StyleSlot.Bear: return BearYaw;
                 case StyleSlot.Character: return Character(id)?.Yaw ?? 0f;
                 default: return 0f;
             }

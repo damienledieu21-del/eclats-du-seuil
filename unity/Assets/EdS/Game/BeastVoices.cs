@@ -188,7 +188,8 @@ namespace EdS.Game
         /// Joue un passage du son <paramref name="sound"/> (variante et passage d'après <paramref name="n"/>) à la place <paramref name="at"/>,
         /// entendu jusqu'à <paramref name="range"/> fois la distance du catalogue. Faux sans catalogue, sans fichier ou sans source libre.
         /// </summary>
-        public bool Play(StyleSound sound, int n, Vector3 at, float seconds, float volume, float range, bool beastVolume = true)
+        /// <param name="pitch">Sous-lot V2.9.2 : hauteur (l'âne sans braiment prend le hennissement, plus grave).</param>
+        public bool Play(StyleSound sound, int n, Vector3 at, float seconds, float volume, float range, bool beastVolume = true, float pitch = 1f)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             AudioClip clip = catalog != null ? catalog.Sound(sound, BeastCalls.Pick(n, 1 << 20)) : null;
@@ -209,6 +210,7 @@ namespace EdS.Game
             // Relecture de la PR #114 : le volume de la première image est déjà le bon (un pas part à plein volume, sans montée).
             source.volume = voice.Volume * (float)BeastCalls.Envelope(0, length);
             source.time = Mathf.Clamp((float)start, 0f, Mathf.Max(0f, clip.length - 0.05f));
+            source.pitch = pitch;
             source.Play();
             voice.Busy = true;
             return true;

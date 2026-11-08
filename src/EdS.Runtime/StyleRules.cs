@@ -1176,7 +1176,8 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 : sons faits de longs enregistrements (joués par passages), gardés compressés en mémoire sur le téléphone.</summary>
         private static readonly StyleSound[] LongSounds =
-            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum };
+            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum,
+                StyleSound.Hooves };   // sous-lot V2.9.2 : les sabots, joués par passages
 
         /// <summary>
         /// Sous-lot V2.9 : le fichier est-il un long enregistrement (ronronnement, hurlements, brame, grognements, cloches, bourdonnement) ?

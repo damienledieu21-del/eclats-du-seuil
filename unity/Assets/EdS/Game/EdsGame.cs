@@ -618,8 +618,17 @@ namespace EdS.Game
                 }
                 _music.Hushed = _stage != null && _stage.Hush(a);   // sous-lot V1.9.8 : le chant du souvenir
                 _music.Story = a.InScene;   // sous-lot V2.9 (2e vague) : la musique des scènes de l'histoire
+                _music.Assault = Assault(a);   // sous-lot V2.9.2 : pillage ou faille en cours
                 _music.Update(_mood, _paused || _screens.Open != AdventureScreens.Panel.None || TalentsOpen, Time.deltaTime);
             }
+        }
+
+        /// <summary>Sous-lot V2.9.2 : un pillage ou une faille est-il en cours dans la zone (annoncé ou en cours, pas fini) ?</summary>
+        private static bool Assault(AdventureSession a)
+        {
+            foreach (WorldEventView v in a.World.WorldEvents)
+                if ((v.Event.Kind == EdS.Data.Zones.WorldEventKind.Raid || v.Event.Kind == EdS.Data.Zones.WorldEventKind.Rift) && v.Phase != WorldEventPhase.Ending) return true;
+            return false;
         }
 
         /// <summary>Indication de l'action possible ici (parler, récolter, faire halte, reprendre), ou null.</summary>

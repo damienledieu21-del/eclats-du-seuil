@@ -93,7 +93,8 @@ namespace EdS.Game
             // Sous-lot V1.6 : dans une pièce, le corps d'un PNJ qui parle est un villageois du décor (InteriorRules) ; le repère ne garde que
             // son nom (pas de capsule par-dessus), sauf sans personnages de villageois dans le catalogue.
             StyleCatalog catalog = StyleCatalog.Loaded;
-            bool dressedIndoors = adventure.Indoors && catalog != null && catalog.Villagers > 0 && catalog.Character("paysan") != null;
+            bool dressedIndoors = adventure.Indoors && catalog != null && catalog.Villagers > 0
+                && (catalog.Character("paysan") != null || HumanBodies.Usable(catalog));   // sous-lot V2.9.2 : ou les corps humains
             // Relecture de la PR #99 : la place et la pose de jour viennent de l'histoire (NpcsByDay), même pour une partie chargée la nuit.
             var byDay = adventure.NpcsByDay().ToDictionary(n => n.Id);
             // Sous-lot V2.3.1 : tous ceux qui passent ici dans la journée ; un absent attend, caché, à la porte par où il reviendra.

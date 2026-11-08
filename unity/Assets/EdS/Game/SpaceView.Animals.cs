@@ -50,6 +50,9 @@ namespace EdS.Game
             public float Stride;
             public bool Stepping;
 
+            /// <summary>Sous-lot V2.9.2 : prochain passage de sabots (cheval, âne qui marche).</summary>
+            public float HoofIn;
+
             /// <summary>Sous-lot V2.8 sur main : trajet par la recherche de chemin (contourne maisons, murs, rochers).</summary>
             public readonly Walker Route = new Walker();
         }
@@ -59,10 +62,11 @@ namespace EdS.Game
         private float[] _callIn = new float[0];   // relecture de la PR #114 : un compte à rebours par cri noté, autant que la zone en a
         private int _calls;
         private SoundPool _farmVoices;
+        private SoundPool _hooves;   // sous-lot V2.9.2 : sabots des chevaux et des ânes
         private float _beastClock;
 
         private static readonly StyleSound[] FarmSounds =
-            { StyleSound.Moo, StyleSound.Neigh, StyleSound.Bark, StyleSound.Caw, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl };
+            { StyleSound.Moo, StyleSound.Neigh, StyleSound.Bark, StyleSound.Caw, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl, StyleSound.Bray };
 
         /// <summary>Pose les bêtes de la ferme et des champs d'après les lieux de la carte (rien dans une maison ou sans carte).</summary>
         private void Livestock(AdventureMap map)
@@ -71,6 +75,7 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             float k = catalog != null ? catalog.Livestock * (Application.isMobilePlatform ? 0.5f : 1f) : 1f;
             _farmVoices = new SoundPool(_root.transform, "Cris de la ferme (V2.9)", 3);
+            _hooves = new SoundPool(_root.transform, "Sabots (V2.9.2)", 2);
             foreach (MapPlace place in map.Places)
             {
                 string key = StyleRules.Key(place.Id);
@@ -84,10 +89,18 @@ namespace EdS.Game
                 {
                     Herd(place, StyleSlot.Horse, Mathf.RoundToInt(2 * k), 1.75f, StyleSound.Neigh);
                     Herd(place, StyleSlot.Dog, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Bark);
-                    _farmCalls.Add((StyleSound.Rooster, PlaceCenter(place)));
-                    _farmCalls.Add((StyleSound.Hens, PlaceCenter(place)));
+                    // Sous-lot V2.9.2 (3e vague) : un âne, la basse-cour (cinq poules et le coq) ; leurs cris partent d'eux (le coq et les
+                    // poules chantaient jusqu'ici du milieu du hameau, ce qu'ils font encore sans modèle).
+                    Herd(place, StyleSlot.Donkey, Mathf.RoundToInt(1 * k), 1.35f, StyleSound.Bray);
+                    Herd(place, StyleSlot.Hen, Mathf.RoundToInt(5 * k), 0.42f, StyleSound.Hens);
+                    Herd(place, StyleSlot.Rooster, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Rooster);
                 }
-                else if (key.StartsWith("bourg", System.StringComparison.Ordinal)) Herd(place, StyleSlot.Dog, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Bark);
+                else if (key.StartsWith("bourg", System.StringComparison.Ordinal))
+                {
+                    Herd(place, StyleSlot.Dog, Mathf.RoundToInt(1 * k), 0.55f, StyleSound.Bark);
+                    Herd(place, StyleSlot.Donkey, Mathf.RoundToInt(1 * k), 1.35f, StyleSound.Bray);   // sous-lot V2.9.2 : l'âne du bourg
+                    Herd(place, StyleSlot.Hen, Mathf.RoundToInt(3 * k), 0.42f, StyleSound.Hens);
+                }
                 else if (key.StartsWith("ruines", System.StringComparison.Ordinal)) Herd(place, StyleSlot.Crow, Mathf.RoundToInt(3 * k), 0.32f, StyleSound.Caw);
                 else if (key.StartsWith("foret", System.StringComparison.Ordinal)) _farmCalls.Add((StyleSound.Owl, PlaceCenter(place)));
             }
@@ -103,6 +116,12 @@ namespace EdS.Game
         /// </summary>
         private void Herd(MapPlace place, StyleSlot slot, int count, float height, StyleSound call)
         {
+            // Sous-lot V2.9.2 : sans bête posée (téléphone, Livestock bas), le coq et les poules chantent encore du milieu du hameau, comme avant.
+            if (count <= 0)
+            {
+                if (call == StyleSound.Rooster || call == StyleSound.Hens) _farmCalls.Add((call, PlaceCenter(place)));
+                return;
+            }
             StyleCatalog catalog = StyleCatalog.Loaded;
             GameObject prefab = catalog != null ? catalog.Model(slot, null) : null;
             uint seed = (uint)StyleRules.Variant(place.Id + slot, 1 << 30) + 7u;
@@ -116,7 +135,7 @@ namespace EdS.Game
             {
                 float x = Mathf.Lerp((float)place.MinX + 2f, (float)place.MaxX - 2f, Next());
                 float z = Mathf.Lerp((float)place.MinZ + 2f, (float)place.MaxZ - 2f, Next());
-                bool grazer = slot == StyleSlot.Cow || slot == StyleSlot.Horse;
+                bool grazer = slot == StyleSlot.Cow || slot == StyleSlot.Horse || slot == StyleSlot.Donkey;
                 if (InObstacle(x, z, slot == StyleSlot.Crow ? 0.5f : 2f) || (grazer && InField(x, z, 0.5f)) || TownRules.RoadAt(x, z, _roads).Edge < 1.2) continue;
                 var at = new Vector3(x, StyleWorld.StandHeight(x, z), z);
                 if (placed == 0) _farmCalls.Add((call, at));
@@ -134,8 +153,10 @@ namespace EdS.Game
                 {
                     Slot = slot, Root = look.transform, Animation = look.GetComponentInChildren<Animation>(), Next = 2f + 8f * Next(), Home = look.transform.position,
                     MinX = (float)place.MinX + 1.5f, MinZ = (float)place.MinZ + 1.5f, MaxX = (float)place.MaxX - 1.5f, MaxZ = (float)place.MaxZ - 1.5f,
-                    Radius = slot == StyleSlot.Dog ? 12f : slot == StyleSlot.Crow ? 2.5f : slot == StyleSlot.Horse ? 7f : 6f,
-                    Speed = slot == StyleSlot.Dog ? 1.8f : slot == StyleSlot.Crow ? 1.0f : slot == StyleSlot.Horse ? 1.1f : 0.7f,
+                    Radius = slot == StyleSlot.Dog ? 12f : slot == StyleSlot.Crow ? 2.5f : slot == StyleSlot.Horse ? 7f : slot == StyleSlot.Hen ? 4f
+                        : slot == StyleSlot.Rooster ? 5f : 6f,
+                    Speed = slot == StyleSlot.Dog ? 1.8f : slot == StyleSlot.Crow ? 1.0f : slot == StyleSlot.Horse ? 1.1f : slot == StyleSlot.Donkey ? 0.9f
+                        : slot == StyleSlot.Hen || slot == StyleSlot.Rooster ? 0.5f : 0.7f,
                     Height = height, Lift = -bottom * s, Yaw = yaw, Grazer = grazer, RestUntil = 3f + 10f * Next(), Wander = placed * 131,
                 };
                 if (beast.Animation != null)
@@ -147,7 +168,7 @@ namespace EdS.Game
                         string tail = StyleRules.Key(bar >= 0 ? name.Substring(bar + 1) : name);
                         if (tail == "idle") beast.Idle = name;
                         else if (tail == "idle2") beast.Idle2 = name;
-                        else if (tail == "eat" || tail == "sit") beast.Rest = name;
+                        else if (tail == "eat" || tail == "sit" || (tail == "lie" && beast.Rest == null)) beast.Rest = name;
                         else if (tail == "takeoff") beast.TakeOff = name;
                         else if (tail == "walk") beast.Walk = name;
                     }
@@ -186,6 +207,7 @@ namespace EdS.Game
         public void Life(Vector3 player, int minute, float deltaTime)
         {
             _farmVoices?.Update();
+            _hooves?.Update();
             if (deltaTime <= 0f) return;
             _beastClock += deltaTime;
             for (int i = 0; i < _beasts.Count; i++)
@@ -199,6 +221,7 @@ namespace EdS.Game
                     if (b.Flown) continue;
                 }
                 Roam(b, i, deltaTime);
+                Hooves(b, i, player, deltaTime);
                 if (b.Moving || b.Slot == StyleSlot.Crow || _beastClock < b.Next) continue;
                 b.Step++;
                 b.Next = _beastClock + 8f + 10f * (BeastCalls.Pick(b.Step + i * 31, 100) / 100f);
@@ -213,11 +236,33 @@ namespace EdS.Game
                 (StyleSound sound, Vector3 at) = _farmCalls[i];
                 bool time = BeastCalls.CallTime(sound, minute);
                 float reach = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.BeastHearing : 60f;
+                // Sous-lot V2.9.2 : l'âne sans fichier de braiment prend le hennissement, plus grave.
+                bool bray = sound == StyleSound.Bray && (StyleCatalog.Loaded == null || StyleCatalog.Loaded.Sound(StyleSound.Bray, 0) == null);
                 if (time && (at - player).sqrMagnitude < reach * reach * 2.25f && _farmVoices != null)
-                    _farmVoices.Play(sound, _calls, at, sound == StyleSound.Hens || sound == StyleSound.Sheep ? 5f : 3f,
-                        sound == StyleSound.Rooster || sound == StyleSound.Owl ? 0.7f : 0.5f, 1.5f);
+                    _farmVoices.Play(bray ? StyleSound.Neigh : sound, _calls, at, sound == StyleSound.Hens || sound == StyleSound.Sheep ? 5f : 3f,
+                        sound == StyleSound.Rooster || sound == StyleSound.Owl ? 0.7f : 0.5f, 1.5f, true, bray ? 0.72f : 1f);
                 _callIn[i] = (float)BeastCalls.Interval(sound, _calls++);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (3e vague) : un cheval ou un âne qui marche à moins de 25 m fait claquer ses sabots (un passage de 2,4 s de
+        /// l'enregistrement des pavés, toujours un autre, relancé tant qu'il marche).
+        /// </summary>
+        private void Hooves(Beast b, int index, Vector3 player, float deltaTime)
+        {
+            if (_hooves == null || (b.Slot != StyleSlot.Horse && b.Slot != StyleSlot.Donkey)) return;
+            if (!b.Moving)
+            {
+                b.HoofIn = 0f;
+                return;
+            }
+            b.HoofIn -= deltaTime;
+            if (b.HoofIn > 0f) return;
+            b.HoofIn = 2.3f;
+            if ((b.Root.position - player).sqrMagnitude > 25f * 25f) return;
+            _hooves.Play(StyleSound.Hooves, index * 7 + b.Wander, b.Root.position, 2.4f, b.Slot == StyleSlot.Donkey ? 0.3f : 0.4f, 0.4f, true,
+                b.Slot == StyleSlot.Donkey ? 1.12f : 1f);
         }
 
         /// <summary>
