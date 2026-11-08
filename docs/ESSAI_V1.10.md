@@ -338,4 +338,6 @@ Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil
 | 20.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
 | 20.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
 | 20.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
-| 20.11 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |
+| 20.11 | « jour de marché, 8 h », trois semaines de suite | Une semaine la tourte de Firmin (la première fois : le **tablier de maître**), la suivante le tir d'Aldric (l'**arc de concours**), puis les contes de frère Anselme (le **livre de contes**) ; ensuite des bourses ordinaires | [ ] | |
+| 20.12 | Une fête au bourg, en automne puis en hiver | **King's Feast** aux moissons et à la foire, **Minstrel Dance** au marché et à la veillée ; les villageois en tenues de la saison, beaux habits pendant la fête | [ ] | |
+| 20.13 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |

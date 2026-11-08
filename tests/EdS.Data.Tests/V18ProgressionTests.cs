@@ -353,7 +353,7 @@ public class V18ProgressionTests : IDisposable
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal(("0.26.0", 20), (after.GetProperty("engineVersion").GetString(), after.GetProperty("formatVersion").GetInt32()));
         Assert.Equal(before.GetProperty("engineVersion").GetString(), after.GetProperty("engineVersion").GetString());
-        Assert.Equal("0.15.0-provisoire", after.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString());
+        Assert.Equal("0.16.0-provisoire", after.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString());
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
         // Sous-lot V1.8d : moteur 0.27.0 (format 21) : la référence des règles 0.15.0 du moteur 0.26.0 reste figée et est refusée au rejeu à
         // son tour ; la nouvelle référence (reference-0.27.0-contenu-0.6.0-regles-0.15.0) a le même corps et se rejoue à l'identique.

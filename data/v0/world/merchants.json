@@ -388,6 +388,18 @@
       {
         "item": "item.cape_du_vieux_brunot",
         "value": 7600
+      },
+      {
+        "item": "item.tablier_de_maitre",
+        "value": 400
+      },
+      {
+        "item": "item.arc_de_concours",
+        "value": 450
+      },
+      {
+        "item": "item.livre_de_contes",
+        "value": 400
       }
     ],
     "merchants": [

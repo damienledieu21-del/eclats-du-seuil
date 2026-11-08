@@ -140,6 +140,7 @@ namespace EdS.Data.Json
                 ["day"] = (v, p) => f.Day = input.Int32(v, p),
                 ["from"] = (v, p) => f.From = input.Text(v, p),
                 ["to"] = (v, p) => f.To = input.Text(v, p),
+                ["rounds"] = (v, p) => f.Rounds = input.Int32(v, p),
                 ["guests"] = (v, p) => f.Guests = List(input, v, p, StoryValidator.MaxFestivalGuests, ReadGuest),
             }) ? f : null;
         }

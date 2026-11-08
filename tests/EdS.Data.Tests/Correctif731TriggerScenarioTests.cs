@@ -458,7 +458,7 @@ public class Correctif731TriggerScenarioTests
         Assert.NotEqual(frozen[0], current[0]);
         Assert.Equal(StableHeader(frozen[0], withoutRules: true), StableHeader(current[0], withoutRules: true));
         static string RulesVersion(string header) => JsonDocument.Parse(header).RootElement.GetProperty("data").GetProperty("rules").GetProperty("contentVersion").GetString()!;
-        Assert.Equal(("0.14.0-provisoire", "0.15.0-provisoire"), (RulesVersion(frozen[0]), RulesVersion(current[0])));
+        Assert.Equal(("0.14.0-provisoire", "0.16.0-provisoire"), (RulesVersion(frozen[0]), RulesVersion(current[0])));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()),
             (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));

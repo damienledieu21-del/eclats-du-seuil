@@ -1350,6 +1350,7 @@ namespace EdS.World
             ConditionKind.StandingAtLeast => StandingIndex(c.Id) >= Reputations.TierIndex(c.Step!),
             ConditionKind.Festival => c.Id == StoryValidator.AnyFestival ? _world.Festival != null : _world.Festival == c.Id,   // sous-lot V2.10
             ConditionKind.ContestOpen => _world.Festival == c.Id && ContestDay(c.Id) != _world.Day,
+            ConditionKind.ContestRound => _world.Festival == c.Id && _book.Festival(c.Id).RoundOn(_world.Day) == c.Value,   // sous-lot V2.10 : la rotation des concours
             _ => _world.IsPassageOpen(c.Id),
         };
 

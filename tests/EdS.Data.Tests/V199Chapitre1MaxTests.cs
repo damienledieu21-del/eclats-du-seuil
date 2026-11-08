@@ -107,7 +107,7 @@ public class V199Chapitre1MaxTests
     public void Contenus_montes_sans_changer_de_format()
     {
         ItemCatalog items = ItemJsonReader.ReadFile(Path.Combine(DataDirectory, "world", "items.json"), ShippedData).Catalog!;
-        Assert.Equal((7, 7, "0.15.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
+        Assert.Equal((7, 7, "0.16.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal((13, "0.24.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.6.1 : schéma 11, contenu 0.21.0 ; V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
         Assert.Equal("0.10.0-provisoire", ShippedMerchants.ContentVersion);   // V2.9.2 : 0.9.0 (ours, cape du vieux Brunot) ; V2.7 : 0.8.0 (factions, marché noir) ;   // V2.6.1 : inchangé (le chapelet de l'Aube ne se vend pas, réponse de Damien du 7 novembre 2026)
         Assert.Equal("0.7.0-provisoire", Crafting(Vallons.Value).ContentVersion);

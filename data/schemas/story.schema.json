@@ -463,6 +463,7 @@
               "day": { "type": "integer", "minimum": 0, "maximum": 27 },
               "from": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
               "to": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+              "rounds": { "type": "integer", "minimum": 1, "maximum": 8, "description": "Tours de la rotation des concours (le tour d'une occurrence : son rang modulo ce nombre ; condition contestRound)." },
               "guests": {
                 "type": "array",
                 "maxItems": 16,
@@ -561,7 +562,8 @@
             "standing",
             "standingAtLeast",
             "festival",
-            "contestOpen"
+            "contestOpen",
+            "contestRound"
           ]
         },
         "id": {

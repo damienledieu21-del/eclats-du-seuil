@@ -1728,7 +1728,20 @@
       "text.ui.season.summer": "été",
       "text.ui.season.autumn": "automne",
       "text.ui.season.winter": "hiver",
-      "text.ui.calendar": "{0}, jour {1} de la saison"
+      "text.ui.calendar": "{0}, jour {1} de la saison",
+      "text.v210.boulanger.marche": "Jour de marché ! Je tiens la table du concours : tourte la première semaine, tir d'Aldric la suivante, contes de frère Anselme la troisième. Cette semaine, c'est quoi ? Regarde qui sourit.",
+      "text.v210.boulanger.marche.tourte": "[Concours de la tourte] Présenter une tourte aux herbes de l'Aube (4 herbes de l'Aube).",
+      "text.v210.boulanger.marche.tablier": "Celle-là, je ne l'aurais pas faite mieux. Bon, peut-être un peu mieux. Tiens : mon tablier de maître, celui de mon père. Il n'y en a qu'un. Prends-en soin, il a vu plus de fournées que toi de levers de soleil.",
+      "text.v210.boulanger.marche.gagne": "Encore toi, encore gagné. Le bourg va croire que je te paie. Voilà la bourse du concours.",
+      "text.v210.aldric.marche": "Jour de marché : si c'est la semaine du tir, la cible est au bout de la place. Dix cuivres l'inscription, trois flèches.",
+      "text.v210.aldric.marche.tir_coeur": "[Concours de tir, niveau 3] Payer 10 cuivres et viser le cœur de la cible.",
+      "text.v210.aldric.marche.tir": "[Concours de tir] Payer 10 cuivres et tirer comme on peut.",
+      "text.v210.aldric.marche.arc": "Trois dans le rouge. Tiens, l'arc de concours : le bourg n'en a qu'un, on le donne au premier qui fait taire le meunier. Accroche-le chez toi, ou à ta ceinture. Mais ne tire pas sur les poules.",
+      "text.v210.aldric.marche.gagne": "Le meunier boude, la garde rit. La bourse est à toi.",
+      "text.v210.anselme.marche": "La semaine des contes, je descends sur la place : les enfants écoutent mieux au soleil. Tu as une histoire vraie à leur raconter ?",
+      "text.v210.anselme.marche.conter": "[Concours des contes] Raconter une histoire vraie de la route.",
+      "text.v210.anselme.marche.livre": "Lison a pleuré à la fin, et Firmin aussi, mais il dit que c'était la farine. Prends ce livre : les contes de la veillée, recopiés par les sœurs de l'Aube. Un seul exemplaire, et maintenant ton histoire est dedans.",
+      "text.v210.anselme.marche.gagne": "Le bourg t'a écouté une fois de plus. Prends ce remède, et reviens nous en conter une autre."
     }
   }
 }

@@ -92,6 +92,12 @@ namespace EdS.Data.Story
         /// concouru ce jour-là (effet <c>contest</c>).
         /// </summary>
         ContestOpen = 24,
+
+        /// <summary>
+        /// Sous-lot V2.10 (décision de Damien du 8 novembre 2026) : la fête <c>id</c> bat son plein et c'est le tour <c>value</c> de sa rotation
+        /// des concours (<see cref="Festival.RoundOn"/>).
+        /// </summary>
+        ContestRound = 25,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>

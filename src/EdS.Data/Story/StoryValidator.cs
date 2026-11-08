@@ -151,6 +151,9 @@ namespace EdS.Data.Story
         /// <summary>Sous-lot V2.10 : fêtes au plus, invités d'une fête au plus.</summary>
         public const int MaxFestivals = 16, MaxFestivalGuests = 16;
 
+        /// <summary>Sous-lot V2.10 : tours d'une rotation des concours au plus.</summary>
+        public const int MaxRounds = 8;
+
         /// <summary>Sous-lot V2.10 : identifiant d'une condition <c>festival</c> vraie pendant n'importe quelle fête.</summary>
         public const string AnyFestival = "any";
 
@@ -227,6 +230,7 @@ namespace EdS.Data.Story
             ["reputationAtLeast"] = ConditionKind.ReputationAtLeast, ["reputationBelow"] = ConditionKind.ReputationBelow,   // sous-lot V2.7 (schéma 12)
             ["standing"] = ConditionKind.Standing, ["standingAtLeast"] = ConditionKind.StandingAtLeast,
             ["festival"] = ConditionKind.Festival, ["contestOpen"] = ConditionKind.ContestOpen,   // sous-lot V2.10 (schéma 13)
+            ["contestRound"] = ConditionKind.ContestRound,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -926,6 +930,8 @@ namespace EdS.Data.Story
                         ConditionKind.Festival =>   // sous-lot V2.10 (schéma 13)
                             Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && NoValue(t, p) && NoStep(t, p),
                         ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoStep(t, p)
+                            && Value(t, p, 0, (_d.Festivals?.FirstOrDefault(f => f?.Id == t.Id)?.Rounds ?? 1) - 1),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -1284,7 +1290,9 @@ namespace EdS.Data.Story
                             else ok = false;
                         }
                     if (!ok) continue;
-                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests);
+                    if (f.Rounds != null && (f.Rounds < 1 || f.Rounds > MaxRounds))
+                    { _r.Add(path + ".rounds", ValidationCode.OutOfRange, $"tours de la rotation des concours hors de [1, {MaxRounds}]."); continue; }
+                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests).WithRounds(f.Rounds ?? 1);
                     // Relecture de la PR #120 : deux fêtes ne se chevauchent jamais (même jour possible et heures croisées) : une seule fête à la fois.
                     if (festivals.FirstOrDefault(other => SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)
                     {

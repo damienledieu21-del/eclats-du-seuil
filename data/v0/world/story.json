@@ -9154,6 +9154,15 @@
           {
             "conditions": [
               {
+                "if": "festival",
+                "id": "festival.marche"
+              }
+            ],
+            "node": "v210_marche"
+          },
+          {
+            "conditions": [
+              {
                 "if": "weather",
                 "id": "storm"
               },
@@ -9619,6 +9628,116 @@
           {
             "id": "v210_ecouter",
             "text": "text.v210.anselme.ecoute",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche",
+            "text": "text.v210.anselme.marche",
+            "choices": [
+              {
+                "text": "text.v210.anselme.marche.conter",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 2
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v210.prix.livre"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.livre_de_contes",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v210.prix.livre"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 8
+                  }
+                ],
+                "next": "v210_marche_livre"
+              },
+              {
+                "text": "text.v210.anselme.marche.conter",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 2
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.v210.prix.livre"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.remede_de_l_aube",
+                    "value": 1
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 3
+                  }
+                ],
+                "next": "v210_marche_gagne"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_livre",
+            "text": "text.v210.anselme.marche.livre",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_gagne",
+            "text": "text.v210.anselme.marche.gagne",
             "choices": [
               {
                 "text": "text.v210.au_revoir",
@@ -10833,6 +10952,15 @@
               }
             ],
             "node": "v210_foire"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.marche"
+              }
+            ],
+            "node": "v210_marche"
           },
           {
             "conditions": [
@@ -12720,6 +12848,220 @@
                 "next": null
               }
             ]
+          },
+          {
+            "id": "v210_marche",
+            "text": "text.v210.boulanger.marche",
+            "choices": [
+              {
+                "text": "text.v210.boulanger.marche.tourte",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 0
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v210.prix.tablier"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.tablier_de_maitre",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v210.prix.tablier"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 10
+                  }
+                ],
+                "next": "v210_marche_tablier"
+              },
+              {
+                "text": "text.v210.boulanger.marche.tourte",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 0
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.v210.prix.tablier"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 80
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 5
+                  }
+                ],
+                "next": "v210_marche_gagne"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.boulanger.croc_mort.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "quest.chat_de_rosalie",
+                    "if": "questDone"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.chat",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre",
+                "text": "text.ch1.boulanger.chat_rentre.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.secret",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.moque",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_tablier",
+            "text": "text.v210.boulanger.marche.tablier",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_gagne",
+            "text": "text.v210.boulanger.marche.gagne",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -12844,6 +13186,15 @@
               }
             ],
             "node": "v210_moissons"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.marche"
+              }
+            ],
+            "node": "v210_marche"
           },
           {
             "conditions": [
@@ -13843,6 +14194,181 @@
                 "next": "ch1_croc_mort",
                 "text": "text.ch1.archer_garde.croc_mort.dire"
               },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche",
+            "text": "text.v210.aldric.marche",
+            "choices": [
+              {
+                "text": "text.v210.aldric.marche.tir_coeur",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 1
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v210.prix.arc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 10
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.arc_de_concours",
+                    "value": 1
+                  },
+                  {
+                    "do": "setFact",
+                    "id": "fact.v210.prix.arc"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "guard",
+                    "value": 8
+                  }
+                ],
+                "next": "v210_marche_arc"
+              },
+              {
+                "text": "text.v210.aldric.marche.tir_coeur",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 1
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 3
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.v210.prix.arc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 10
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 60
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "guard",
+                    "value": 4
+                  }
+                ],
+                "next": "v210_marche_gagne"
+              },
+              {
+                "text": "text.v210.aldric.marche.tir",
+                "conditions": [
+                  {
+                    "if": "contestRound",
+                    "id": "festival.marche",
+                    "value": 1
+                  },
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.marche"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 10
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.potion_de_soin",
+                    "value": 1
+                  }
+                ],
+                "next": "v210_tir_rate"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.archer_garde.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.archer_garde.croc_mort.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_arc",
+            "text": "text.v210.aldric.marche.arc",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_marche_gagne",
+            "text": "text.v210.aldric.marche.gagne",
+            "choices": [
               {
                 "text": "text.v210.au_revoir",
                 "conditions": [],
@@ -23830,8 +24356,33 @@
               1.5
             ],
             "activity": "colporteur"
+          },
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -54,
+              0.5
+            ],
+            "activity": "fete_concours"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -58,
+              -9
+            ],
+            "activity": "cible"
+          },
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -52.5,
+              -3.5
+            ],
+            "activity": "conte"
           }
-        ]
+        ],
+        "rounds": 3
       }
     ]
   }

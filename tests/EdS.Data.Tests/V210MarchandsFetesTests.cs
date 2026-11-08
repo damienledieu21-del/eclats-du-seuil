@@ -300,6 +300,57 @@ public class V210MarchandsFetesTests
         Assert.NotEqual("v210_moissons", view!.Node);
     }
 
+    /// <summary>
+    /// Décision de Damien du 8 novembre 2026 : un concours à chaque jour de marché, en rotation (la tourte de Firmin, le tir d'Aldric, les
+    /// contes de frère Anselme), chacun avec sa récompense unique la première fois (tablier de maître, arc de concours, livre de contes), puis
+    /// une récompense ordinaire.
+    /// </summary>
+    [Fact]
+    public void Un_concours_a_chaque_jour_de_marche_en_rotation_et_ses_recompenses_uniques()
+    {
+        Festival marche = Story.Value.Festival("festival.marche");
+        Assert.Equal((3, 0, 1, 2, 0), (marche.Rounds, marche.RoundOn(5), marche.RoundOn(12), marche.RoundOn(19), marche.RoundOn(26)));
+        var pain = new Dictionary<string, QuestProgress> { ["quest.pain_du_matin"] = new QuestProgress(QuestProgress.Done) };
+        SavedCharacter hero = Hero(1_000, new ItemStack(Herbe, 8)).WithStory(new SavedStory(new[] { "fact.met.boulanger", "fact.met.archer_garde", "fact.met.pretre" }, pain));
+        DialogueView Talk(WorldSession w, string npc)
+        {
+            Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? v));
+            return v!;
+        }
+        // Semaine 0 : la tourte ; la première victoire donne le tablier de maître.
+        WorldSession first = Open(-54, 2.1, hero, 5, 8 * 60 + 30);
+        DialogueView view = Talk(first, "npc.boulanger");
+        Assert.Equal("v210_marche", view.Node);
+        Assert.Equal(DialogueRefusal.None, first.Choose(view.Options.Single(o => o.Text == "text.v210.boulanger.marche.tourte").Index, out _, out _));
+        Assert.Equal(1, first.Inventory.Count("item.tablier_de_maitre"));
+        Assert.True(first.Narrative!.Knows("fact.v210.prix.tablier"));
+        SavedCharacter after = Reloaded(first);
+        // Semaine 1 : pas de tourte, le tir d'Aldric.
+        WorldSession tir = Open(-54, 2.1, after, 12, 8 * 60 + 30);
+        Assert.DoesNotContain(Talk(tir, "npc.boulanger").Options, o => o.Text == "text.v210.boulanger.marche.tourte");
+        WorldSession aldric = Open(-58, -7.4, after, 12, 8 * 60 + 30);
+        Assert.Contains(Talk(aldric, "npc.archer_garde").Options, o => o.Text == "text.v210.aldric.marche.tir");
+        // Semaine 2 : les contes, et le livre de contes.
+        WorldSession contes = Open(-52.5, -1.9, after, 19, 8 * 60 + 30);
+        view = Talk(contes, "npc.pretre");
+        Assert.Equal(DialogueRefusal.None, contes.Choose(view.Options.Single(o => o.Text == "text.v210.anselme.marche.conter").Index, out _, out _));
+        Assert.Equal(1, contes.Inventory.Count("item.livre_de_contes"));
+        // Semaine 3 : la tourte revient ; le tablier est déjà donné : la bourse ordinaire.
+        WorldSession again = Open(-54, 2.1, after, 26, 8 * 60 + 30);
+        view = Talk(again, "npc.boulanger");
+        long money = again.Money;
+        Assert.Equal(DialogueRefusal.None, again.Choose(view.Options.Single(o => o.Text == "text.v210.boulanger.marche.tourte").Index, out _, out _));
+        Assert.Equal((money + 80, 1), (again.Money, again.Inventory.Count("item.tablier_de_maitre")));
+        // Une rotation hors de ses tours est refusée au chemin précis.
+        JsonObject root = StoryJson();
+        JsonArray dialogues = root["data"]!["dialogues"]!.AsArray();
+        int d = dialogues.ToList().FindIndex(x => (string?)x!["id"] == "dialogue.boulanger");
+        JsonArray nodes = dialogues[d]!["nodes"]!.AsArray();
+        int n = nodes.ToList().FindIndex(x => (string?)x!["id"] == "v210_marche");
+        nodes[n]!["choices"]![0]!["conditions"]![0]!["value"] = 3;
+        Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == $"$.data.dialogues[{d}].nodes[{n}].choices[0].conditions[0].value" && e.Code == ValidationCode.OutOfRange);
+    }
+
     // --- Stock vivant ----------------------------------------------------------------------------------------------------
 
     [Fact]

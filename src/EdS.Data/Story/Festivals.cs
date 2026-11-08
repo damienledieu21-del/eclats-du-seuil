@@ -80,6 +80,22 @@ namespace EdS.Data.Story
         public int To { get; }
         public IReadOnlyList<FestivalGuest> Guests { get; }
 
+        /// <summary>
+        /// Sous-lot V2.10 (décision de Damien du 8 novembre 2026 : un concours à chaque jour de marché, en rotation) : nombre de tours de la
+        /// rotation des concours (1 : toujours le même) ; le tour d'une occurrence est son rang (semaine ou année du monde) modulo ce nombre.
+        /// </summary>
+        public int Rounds { get; private set; } = 1;
+
+        internal Festival WithRounds(int rounds)
+        {
+            Rounds = rounds;
+            return this;
+        }
+
+        /// <summary>Tour de la rotation des concours le jour <paramref name="day"/> (0 à <see cref="Rounds"/> − 1).</summary>
+        public int RoundOn(long day) =>
+            (int)(day / (Weekday != null ? WorldCalendar.DaysPerWeek : WorldCalendar.DaysPerYear) % Rounds);
+
         internal Festival(string id, string name, int? weekday, int? season, int? day, int from, int to, IEnumerable<FestivalGuest> guests)
         {
             Id = id;
@@ -113,6 +129,7 @@ namespace EdS.Data.Story
         public int? Day { get; set; }
         public string? From { get; set; }
         public string? To { get; set; }
+        public int? Rounds { get; set; }
         public List<FestivalGuestData?>? Guests { get; set; }
     }
 
