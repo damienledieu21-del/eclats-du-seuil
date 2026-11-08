@@ -304,3 +304,21 @@ Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Ani
 | 18.17 | « minuit », au nord-est de la forêt | **L'ours** rôde (signe : des branches cassées) ; griffe, charge annoncée, il se dresse et retombe (cercle annoncé) ; certaines nuits, **le vieux Brunot** (grondement), énorme, qui **rugit** | [ ] | |
 | 18.18 | Après Croc-Gris, niveau 14 : parler à Gaspard | Il propose « Le vieux Brunot » (sa balafre, ses cicatrices) ; griffures dans la forêt, Brunot abattu, retour : la **cape du vieux Brunot** | [ ] | |
 | 18.19 | Ton avis : les visages, la force des ours, la quête de Brunot | — | [ ] | |
+
+## 19. Vrais vêtements des villageois (V2.9.4)
+
+Avant l'essai : *Modular Character Outfits - Fantasy* [Standard] de Quaternius dans `Assets/Style/Quaternius/Outfits/` (`Exports/FBX (Unity)` et `Textures` : fait le 8 novembre 2026) ([UNITY.md](UNITY.md#essai-v294--vrais-vêtements-des-villageois)), puis menu **Éclats du Seuil → Préparer l'essai de style**. Note ici la fin de la ligne « Corps humains : … ; vrais vêtements : … ».
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 19.1 | Fenêtre de la préparation | « vrais vêtements : prêts (20 pièces : Peasant 8, Ranger 12 ; 2 coiffes, 0 capes ; 4 étoffes, peau des mains) » (et la note « aucune cape ») ; sinon la raison (à envoyer à Claude avec la liste des fichiers du dossier `Outfits`) | [ ] | |
+| 19.2 | Le bourg, « 12 h 15, midi », de près | Les villageois portent de **vrais vêtements** (tissu qui a du volume, plis, manches, bottes) ; plus d'effet « collant » ; la peau ne traverse nulle part (bras, cuisses, ventre) ; mains et visages à la bonne couleur de peau ; personne de nu ni d'invisible | [ ] | |
+| 19.3 | Les métiers (version gratuite : paysan et rôdeur) | Gardes en rôdeur **bleu** avec épaulières, sentinelles en rôdeur **rouge**, Sœur Albe en **laine claire** (capuche une fois sur deux), Renart en **prune**, Maëlle en cuir avec brassards, paysans en habits de paysan (lin, saule, rouille, guède), rôdeurs en **vert**, bandits **encapuchonnés** et usés ; mains de la couleur du visage (claire ou sombre) | [ ] | |
+| 19.4 | Variété | Deux paysans voisins ne sont pas habillés pareil (pièces, teinte, usure) ; chacun garde la même tenue d'une partie à l'autre | [ ] | |
+| 19.5 | Catalogue : **Human Season** sur *Winter*, Play (*Auto* : la saison du jeu, printemps tant qu'il n'y a pas de calendrier) | Capes et capuches presque partout (pas à la forge) ; les gardes ont un gorgerin ; sur *Summer* : têtes nues, pas de cape | [ ] | |
+| 19.6 | Une averse (V2.2), puis entrer et ressortir d'une maison | Les villageois qui apparaissent sous la pluie ont la **capuche** levée ; une capuche ou un casque ne laisse pas passer les cheveux | [ ] | |
+| 19.7 | Catalogue : **Human Festival** coché, Play | Couleurs de fête (or, garance, bleuet), habits neufs, marchands et aubergiste en noble, le capitaine sans cuirasse | [ ] | |
+| 19.8 | Catalogue : **Human Clothes** décoché, Play | Retour exact aux **tenues peintes** de V2.9.2 | [ ] | |
+| 19.9 | Animations | Marche, travail, parler, combat : les vêtements suivent le corps (pas de pièce qui reste en l'air ou en pose en T) | [ ] | |
+| 19.10 | Sur le Note8 | Image toujours fluide au bourg à midi | [ ] | |
+| 19.11 | Ton avis : les tenues par métier, les couleurs, faut-il la version *Source* (15 $, décision après cet essai) pour avoir tout le pack ? | — | [ ] | |

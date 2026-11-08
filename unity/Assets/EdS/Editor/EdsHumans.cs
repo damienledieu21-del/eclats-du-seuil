@@ -136,6 +136,8 @@ namespace EdS.Game.Editor
                     }
             }
             humans.Outfits = outfits.ToArray();
+            // Sous-lot V2.9.4 : vrais vêtements (Modular Character Outfits - Fantasy), s'ils sont déposés ; sinon les tenues peintes.
+            string clothes = Clothes(models, textures, humans, lit, notes);
             catalog.Humans = humans;
             catalog.HumanBake = BakeVersion;
             AssetDatabase.SaveAssets();
@@ -143,7 +145,239 @@ namespace EdS.Game.Editor
             int hairCount = humans.Hairs.Count(h => h != null);
             if (hairCount < 5) notes.Add("Corps humains : " + hairCount + " coiffures sur 5 (dossier « Rigged to Head Bone »).");
             return "Corps humains : prêts (" + outfits.Count + " tenues, " + clips.Count + " animations, " + hairCount + " coiffures"
-                + (humans.Beard != null ? ", barbe" : "") + ")";
+                + (humans.Beard != null ? ", barbe" : "") + ") ; " + clothes;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.4 : les pièces des Modular Character Outfits - Fantasy de Quaternius (dossier « Outfits » ou « Modular Character
+        /// Outfits… » sous <c>Assets/Style</c>) : import générique sans animation (leurs maillages prennent les os du corps, comme les
+        /// coiffures), chaque maillage reconnu (<see cref="HumanWardrobe.Classify"/>), un matériau partagé par famille, corps et variante de
+        /// texture, la peau des mains, et les corps réduits à leur tête (portés sous les vêtements). Rend la ligne de la fenêtre.
+        /// </summary>
+        private static string Clothes(List<string> models, List<string> textures, HumanCatalog humans, Shader lit, List<string> notes)
+        {
+            List<string> files = models.Where(HumanWardrobe.IsWardrobePath).Where(p => p.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            if (files.Count == 0)
+                return "vrais vêtements : non (aucune pièce dans Assets/Style/Quaternius/Outfits : tenues peintes)";
+            // Pièces d'après les noms de leurs maillages (HumanWardrobe.Pieces : ceintures et brassards posés avec leur pièce, chaque pièce
+            // prise une fois, dans « Modular Parts » plutôt que dans la tenue entière « Outfits » qui porte les mêmes maillages).
+            var prefabs = new List<GameObject>();
+            var listing = new List<(string Path, string[] Meshes)>();
+            foreach (string file in files)
+            {
+                Generic(file);
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(file);
+                SkinnedMeshRenderer[] skins = prefab != null ? prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true) : new SkinnedMeshRenderer[0];
+                prefabs.Add(prefab);
+                listing.Add((file, skins.Select(k => k.sharedMesh != null ? k.gameObject.name : null).ToArray()));
+            }
+            var pieces = new List<WardrobeLook>();
+            foreach (WardrobePart part in HumanWardrobe.Pieces(listing))
+            {
+                WardrobeItem item = part.Item;
+                pieces.Add(new WardrobeLook
+                {
+                    Model = prefabs[part.File], Part = listing[part.File].Meshes[part.Mesh], PartIndex = part.Mesh, Companions = part.Companions,
+                    Family = item.Family, Slot = item.Slot, Kind = item.Kind, Gender = item.Gender, Key = item.Key,
+                });
+            }
+            humans.Clothes = pieces.ToArray();
+            if (pieces.Count == 0)
+                return "vrais vêtements : non (" + files.Count + " fichiers dans le dossier des vêtements, aucune pièce reconnue : tenues peintes)";
+
+            // Étoffes (relecture de la PR #119) : les cartes de couleur du pack seulement, rangées par racine de nom (celle du matériau des
+            // pièces : « MI_Ranger » ↔ « T_Ranger_2_BaseColor ») et par corps ; les variantes dans l'ordre des noms.
+            var fabrics = new List<WardrobeFabric>();
+            var colorMaps = textures.Where(t => HumanWardrobe.IsWardrobePath(t) && HumanWardrobe.IsColorMap(t)).OrderBy(t => t, System.StringComparer.Ordinal).ToList();
+            foreach (var group in colorMaps.GroupBy(t =>
+                {
+                    string f = StyleRules.Key(Path.GetFileNameWithoutExtension(t));
+                    int g = f.Contains("female") ? 2 : f.Contains("male") ? 1 : 0;
+                    return (HumanWardrobe.FabricStem(t), g);
+                }).Where(g => g.Key.Item1.Length > 0).OrderBy(g => g.Key.Item1, System.StringComparer.Ordinal).ThenBy(g => g.Key.Item2))
+            {
+                var variants = new List<Material>();
+                int v = 0;
+                foreach (string texture in group.Take(6))
+                {
+                    Material m = MaterialAt("Etoffe_" + group.Key.Item1 + "_" + group.Key.Item2 + "_" + v++, lit);
+                    Texture2D t = AssetDatabase.LoadAssetAtPath<Texture2D>(texture);
+                    m.SetTexture("_BaseMap", t);
+                    m.SetTexture("_MainTex", t);
+                    m.SetFloat("_Smoothness", 0.2f);
+                    // Relief de l'étoffe (« T_Peasant_Normal »), s'il est livré.
+                    string bump = textures.FirstOrDefault(n => HumanWardrobe.IsWardrobePath(n) && HumanWardrobe.FabricStem(n.Replace("_Normal", "")) == group.Key.Item1
+                        && StyleRules.Key(Path.GetFileNameWithoutExtension(n)).EndsWith("normal", System.StringComparison.Ordinal));
+                    Texture2D normal = Texture2DAt(bump);
+                    if (normal != null)
+                    {
+                        m.SetTexture("_BumpMap", normal);
+                        m.EnableKeyword("_NORMALMAP");
+                    }
+                    m.enableInstancing = true;
+                    EditorUtility.SetDirty(m);
+                    variants.Add(m);
+                }
+                fabrics.Add(new WardrobeFabric { Stem = group.Key.Item1, Gender = group.Key.Item2, Variants = variants.ToArray() });
+            }
+            humans.Fabrics = fabrics.ToArray();
+
+            // Peau des mains : homme clair, homme sombre, femme claire, femme sombre.
+            var skinsOut = new List<Material>();
+            foreach (bool woman in new[] { false, true })
+                foreach (bool dark in new[] { false, true })
+                {
+                    string texture = HumanWardrobe.SkinTexture(textures, woman, dark);
+                    // Le pack gratuit ne livre que la peau sombre des mains : la peau claire en est tirée, éclaircie comme la peau claire
+                    // des Universal Base Characters l'est de leur peau sombre.
+                    if (texture == null && !dark) texture = LightSkin(textures, woman);
+                    if (texture == null)
+                    {
+                        skinsOut.Add(null);
+                        continue;
+                    }
+                    Material m = MaterialAt("Peau_" + (woman ? "F" : "H") + (dark ? "_sombre" : "_claire"), lit);
+                    Texture2D t = AssetDatabase.LoadAssetAtPath<Texture2D>(texture);
+                    m.SetTexture("_BaseMap", t);
+                    m.SetTexture("_MainTex", t);
+                    m.SetFloat("_Smoothness", 0.3f);
+                    m.enableInstancing = true;
+                    EditorUtility.SetDirty(m);
+                    skinsOut.Add(m);
+                }
+            humans.Skins = skinsOut.ToArray();
+
+            humans.MaleHead = HeadOnly(humans.Male, "Tete_H");
+            humans.FemaleHead = HeadOnly(humans.Female, "Tete_F");
+            // Relecture de la PR #119 : sans tête seule, le corps peint resterait sous les vêtements : pas de vrais vêtements.
+            if (humans.MaleHead == null || humans.FemaleHead == null)
+            {
+                humans.Clothes = new WardrobeLook[0];
+                return "vrais vêtements : non (tête seule du corps non faite : os de la tête introuvables ; tenues peintes)";
+            }
+
+            // Ce qui est prêt : par famille, les places couvertes ; une famille sans haut, bras, bas ou pieds se complète d'une autre.
+            var lines = new List<string>();
+            foreach (WardrobeFamily family in System.Enum.GetValues(typeof(WardrobeFamily)))
+            {
+                var mine = pieces.Where(p => p.Family == family).ToList();
+                if (mine.Count == 0) continue;
+                lines.Add(family + " " + mine.Count);
+            }
+            bool basic = new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet }.All(slot => pieces.Any(p => p.Slot == slot));
+            if (!basic)
+                return "vrais vêtements : non (" + pieces.Count + " pièces, mais il manque un haut, des bras, un bas ou des pieds : tenues peintes)";
+            int heads = pieces.Count(p => p.Slot == WardrobeSlot.Head), cloaks = pieces.Count(p => p.Slot == WardrobeSlot.Back);
+            if (cloaks == 0) notes.Add("Vrais vêtements : aucune cape dans le pack déposé : pas de manteau l'hiver.");
+            return "vrais vêtements : prêts (" + pieces.Count + " pièces : " + string.Join(", ", lines) + " ; " + heads + " coiffes, " + cloaks + " capes ; "
+                + fabrics.Sum(f => f.Variants.Length) + " étoffes" + (skinsOut.Any(m => m != null) ? ", peau des mains" : "") + ")";
+        }
+
+        /// <summary>
+        /// Peau claire des mains (<c>Generated/Humains/Peau_H_claire.png</c>, <c>Peau_F_claire.png</c>) tirée de la peau sombre du pack, chaque
+        /// canal multiplié par <see cref="HumanWardrobe.SkinRatio"/> des peaux claire et sombre des Universal Base Characters ; null s'il manque
+        /// l'une des trois textures.
+        /// </summary>
+        private static string LightSkin(List<string> textures, bool female)
+        {
+            string packDark = HumanWardrobe.SkinTexture(textures, female, true);
+            string light = HumanLooks.SkinTexture(textures, female, false), dark = HumanLooks.SkinTexture(textures, female, true);
+            if (packDark == null || light == null || dark == null) return null;
+            foreach (string path in new[] { packDark, light, dark }) Readable(path);
+            Texture2D src = AssetDatabase.LoadAssetAtPath<Texture2D>(packDark);
+            Texture2D l = AssetDatabase.LoadAssetAtPath<Texture2D>(light), d = AssetDatabase.LoadAssetAtPath<Texture2D>(dark);
+            if (src == null || l == null || d == null) return null;
+            (double, double, double) Mean(Texture2D t)
+            {
+                Color32[] px = t.GetPixels32();
+                double r = 0, g = 0, b = 0;
+                int n = 0;
+                for (int i = 0; i < px.Length; i += 7)
+                {
+                    if (px[i].a < 128) continue;
+                    r += px[i].r;
+                    g += px[i].g;
+                    b += px[i].b;
+                    n++;
+                }
+                return n == 0 ? (1.0, 1.0, 1.0) : (r / n, g / n, b / n);
+            }
+            (double kr, double kg, double kb) = HumanWardrobe.SkinRatio(Mean(l), Mean(d));
+            Color32[] pixels = src.GetPixels32();
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = new Color32((byte)Mathf.Clamp((float)(pixels[i].r * kr), 0f, 255f), (byte)Mathf.Clamp((float)(pixels[i].g * kg), 0f, 255f),
+                    (byte)Mathf.Clamp((float)(pixels[i].b * kb), 0f, 255f), pixels[i].a);
+            var made = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true);
+            made.SetPixels32(pixels);
+            made.Apply();
+            string png = Folder + "/Peau_" + (female ? "F" : "H") + "_claire.png";
+            File.WriteAllBytes(png, made.EncodeToPNG());
+            Object.DestroyImmediate(made);
+            AssetDatabase.ImportAsset(png);
+            if (AssetImporter.GetAtPath(png) is TextureImporter importer)
+            {
+                TextureImporterPlatformSettings android = importer.GetPlatformTextureSettings("Android");
+                android.overridden = true;
+                android.maxTextureSize = Size / 2;
+                importer.SetPlatformTextureSettings(android);
+                importer.SaveAndReimport();
+            }
+            return png;
+        }
+
+        /// <summary>
+        /// Le corps <paramref name="prefab"/> réduit à sa tête et à son cou (triangles dont au moins deux coins sont portés pour moitié par les
+        /// os de la tête ou du cou), mêmes sommets, os et poids : porté sous les vrais vêtements. Rangé dans <c>Generated/Humains</c>.
+        /// </summary>
+        private static Mesh HeadOnly(GameObject prefab, string name)
+        {
+            if (prefab == null) return null;
+            SkinnedMeshRenderer body = prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                .Where(s => s.sharedMesh != null).OrderByDescending(s => s.sharedMesh.vertexCount).FirstOrDefault();
+            if (body == null || body.bones == null) return null;
+            Mesh source = body.sharedMesh;
+            BoneWeight[] weights = source.boneWeights;
+            if (weights == null || weights.Length != source.vertexCount) return null;
+            var headBone = new bool[body.bones.Length];
+            bool any = false;
+            for (int i = 0; i < headBone.Length; i++)
+            {
+                string n = body.bones[i] != null ? body.bones[i].name.ToLowerInvariant() : string.Empty;
+                headBone[i] = n.Contains("head") || n.Contains("neck");
+                any |= headBone[i];
+            }
+            if (!any) return null;
+            float Head(int v)
+            {
+                BoneWeight w = weights[v];
+                float sum = 0f;
+                if (w.boneIndex0 >= 0 && w.boneIndex0 < headBone.Length && headBone[w.boneIndex0]) sum += w.weight0;
+                if (w.boneIndex1 >= 0 && w.boneIndex1 < headBone.Length && headBone[w.boneIndex1]) sum += w.weight1;
+                if (w.boneIndex2 >= 0 && w.boneIndex2 < headBone.Length && headBone[w.boneIndex2]) sum += w.weight2;
+                if (w.boneIndex3 >= 0 && w.boneIndex3 < headBone.Length && headBone[w.boneIndex3]) sum += w.weight3;
+                return sum;
+            }
+            string path = Folder + "/" + name + ".asset";
+            if (AssetDatabase.LoadAssetAtPath<Mesh>(path) != null) AssetDatabase.DeleteAsset(path);
+            Mesh head = Object.Instantiate(source);
+            head.name = name;
+            for (int sub = 0; sub < source.subMeshCount; sub++)
+            {
+                int[] triangles = source.GetTriangles(sub);
+                var kept = new List<int>();
+                for (int t = 0; t + 2 < triangles.Length; t += 3)
+                {
+                    int n = (Head(triangles[t]) >= 0.5f ? 1 : 0) + (Head(triangles[t + 1]) >= 0.5f ? 1 : 0) + (Head(triangles[t + 2]) >= 0.5f ? 1 : 0);
+                    if (n < 2) continue;
+                    kept.Add(triangles[t]);
+                    kept.Add(triangles[t + 1]);
+                    kept.Add(triangles[t + 2]);
+                }
+                head.SetTriangles(kept.ToArray(), sub);
+            }
+            AssetDatabase.CreateAsset(head, path);   // bornes du corps entier gardées (le rendu ne coupe pas la tête trop tôt)
+            return head;
         }
 
         /// <summary>Import Humanoid (avatar fait depuis le modèle) ; pour une bibliothèque, les animations renommées et mises en boucle.</summary>

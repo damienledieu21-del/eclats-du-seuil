@@ -788,6 +788,8 @@ namespace EdS.Runtime
         {
             // Intérieurs : les meubles et objets des intérieurs (dossier « Interieurs ») ne sont pas du décor des Vallons.
             if (InteriorRules.IsInterior(path)) return false;
+            // Sous-lot V2.9.4 : une pièce du pack de vêtements (« Knight_Body ») n'est ni un héros ni un décor.
+            if (HumanWardrobe.IsWardrobePath(path)) return false;
             string file = Key(FileName(path));
             // Sous-lot V2.9 : « cat » se cache dans trop de noms (« catapult », « location ») : le chat est un mot entier du nom
             // (« Cat_Stripe_DreamNoms », « chat_roux »), ou « StripeCat ».
@@ -1052,7 +1054,7 @@ namespace EdS.Runtime
                     if (file.Contains(want[i])) return i;
                 return want.Length;
             }
-            return (paths ?? Array.Empty<string>()).Where(p =>
+            return (paths ?? Array.Empty<string>()).Where(p => !HumanWardrobe.IsWardrobePath(p)).Where(p =>
                 {
                     string file = Key(FileName(p));
                     return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a)) && !InteriorRules.IsInterior(p);
