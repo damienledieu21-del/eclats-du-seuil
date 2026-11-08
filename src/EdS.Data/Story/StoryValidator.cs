@@ -1283,9 +1283,29 @@ namespace EdS.Data.Story
                             if (gOk) guests.Add(new FestivalGuest(g.Npc!, Point(g.Position!), g.Activity!));
                             else ok = false;
                         }
-                    if (ok) festivals.Add(new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests));
+                    if (!ok) continue;
+                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests);
+                    // Relecture de la PR #120 : deux fêtes ne se chevauchent jamais (même jour possible et heures croisées) : une seule fête à la fois.
+                    if (festivals.FirstOrDefault(other => SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)
+                    {
+                        _r.Add(path + ".from", ValidationCode.InvalidValue,
+                            $"« {festival.Id} » chevauche « {clash.Id} » (même jour possible, de {clash.From / 60:00}:{clash.From % 60:00} à {clash.To / 60:00}:{clash.To % 60:00}) : une seule fête à la fois.");
+                        continue;
+                    }
+                    festivals.Add(festival);
                 }
                 return festivals;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.10 : deux fêtes peuvent tomber le même jour. Une année compte 16 semaines exactement (112 jours) et une saison 4 :
+            /// le jour de la semaine d'une fête annuelle est toujours <c>day % 7</c>.
+            /// </summary>
+            private static bool SameDay(Festival a, Festival b)
+            {
+                int WeekdayOf(Festival f) => f.Weekday ?? f.Day!.Value % WorldCalendar.DaysPerWeek;
+                if (a.Weekday != null || b.Weekday != null) return WeekdayOf(a) == WeekdayOf(b);
+                return a.Season == b.Season && a.Day == b.Day;
             }
 
             private bool Since12(string what, string p)

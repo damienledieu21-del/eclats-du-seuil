@@ -35,7 +35,9 @@ namespace EdS.World
         private (int Missing, int Resold) LineToday(SavedStock? line, int full, int restock)
         {
             if (line is null) return (0, 0);
-            long days = Math.Max(0, Zone.Time.Day - line.Day);
+            // Relecture de la PR #120 : au-delà du jour le plus grand d'une sauvegarde (SavedEvent.MaxDay, 10^8 jours), le temps du stock s'arrête
+            // (une ligne y est écrite au plafond) : ni regain ni écoulement de plus après une reprise.
+            long days = Math.Max(0, Math.Min(Zone.Time.Day, SavedEvent.MaxDay) - line.Day);
             long regained = checked(DailyRegain(full, restock) * Math.Min(days, SavedStock.MaxUnits));
             long sold = checked(DailyRegain(line.Resold, restock) * Math.Min(days, SavedStock.MaxUnits));
             return ((int)Math.Max(0, line.Bought - regained), (int)Math.Max(0, line.Resold - sold));

@@ -103,6 +103,28 @@ public class V210MarchandsFetesTests
         Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == path && e.Code == code);
     }
 
+    [Theory]
+    [InlineData(3, "weekday", "0", "festival.marche", "festival.moissons")]   // le jour de marché tomberait le jour des moissons, à leurs heures
+    [InlineData(1, "day", "7", "festival.veillee", "festival.moissons")]   // la veillée (18 h) le jour des moissons (jusqu'à 22 h)
+    [InlineData(1, "from", "\"22:00\"", "festival.veillee", null)]   // la veillée après les moissons, le même jour : heures disjointes
+    public void Deux_fetes_ne_se_chevauchent_jamais(int index, string field, string json, string festival, string? clash)
+    {
+        JsonObject root = StoryJson();
+        JsonObject f = root["data"]!["festivals"]![index]!.AsObject();
+        f[field] = JsonNode.Parse(json);
+        if (field == "day" || field == "from") (f["season"], f["day"]) = ("autumn", 7);
+        StoryLoadResult r = ReadStory(root);
+        if (clash is null)
+        {
+            Assert.DoesNotContain(r.Report.Errors, e => e.Message.Contains("chevauche", StringComparison.Ordinal));
+            return;
+        }
+        Assert.Contains(r.Report.Errors, e => e.Path == $"$.data.festivals[{index}].from" && e.Code == ValidationCode.InvalidValue
+            && e.Message.Contains(festival, StringComparison.Ordinal) && e.Message.Contains(clash, StringComparison.Ordinal));
+        // Les fêtes livrées ne se chevauchent pas : le jour de marché (6e jour) ne tombe jamais sur une fête annuelle (le 1er de la semaine).
+        Assert.True(ReadStory(StoryJson()).IsValid);
+    }
+
     [Fact]
     public void Concours_invites_et_PNJ_de_passage_refuses_au_chemin_precis()
     {
