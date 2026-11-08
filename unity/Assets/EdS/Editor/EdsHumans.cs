@@ -33,9 +33,10 @@ namespace EdS.Game.Editor
             string female = models.FirstOrDefault(p => HumanLooks.BodyOf(p) == true);
             List<string> libraries = models.Where(HumanLooks.IsAnimationLibrary).OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             var missing = new List<string>();
-            if (male == null) missing.Add("Superhero_Male_FullBody.fbx");
-            if (female == null) missing.Add("Superhero_Female_FullBody.fbx");
-            if (libraries.Count == 0) missing.Add("UAL1_Standard.fbx / UAL2_Standard.fbx");
+            // Sous-lot V2.9.3 : noms des fichiers attendus partagés avec le vérificateur d'essai (EssaiManifest).
+            if (male == null) missing.Add(EssaiManifest.FileName(EssaiManifest.MaleBody));
+            if (female == null) missing.Add(EssaiManifest.FileName(EssaiManifest.FemaleBody));
+            if (libraries.Count == 0) missing.Add(string.Join(" / ", EssaiManifest.AnimationLibraries.Select(EssaiManifest.FileName)));
             string skinMale = HumanLooks.SkinTexture(textures, false, false), skinFemale = HumanLooks.SkinTexture(textures, true, false);
             if (skinMale == null || skinFemale == null) missing.Add("textures des corps (T_Superhero_…)");
             if (missing.Count > 0)

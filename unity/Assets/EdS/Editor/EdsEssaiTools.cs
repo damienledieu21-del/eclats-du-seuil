@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using EdS.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -77,6 +78,16 @@ namespace EdS.Game.Editor
                 EditorUtility.DisplayDialog("Essai", "Le jeu tourne déjà (ou démarre). Arrête-le avec le bouton Play, puis relance ce menu.", "OK");
                 return;
             }
+            // 0. Sous-lot V2.9.3 : vérification de l'essai (fenêtre et fichier) ; un problème bloquant demande s'il faut lancer quand même.
+            EssaiReport check = EdsVerification.Run();
+            EdsVerificationWindow.Open(check);
+            if (check.Overall == EssaiLevel.Blocking && !EditorUtility.DisplayDialog("Essai", "La vérification a trouvé un problème bloquant :\n\n"
+                    + string.Join("\n", check.Lines.Where(l => l.Level == EssaiLevel.Blocking).Select(l => "• " + l.Label + " : " + l.Fix))
+                    + "\n\nLe détail est dans la fenêtre « Vérification de l'essai ».", "Lancer quand même", "Arrêter"))
+            {
+                Debug.Log("Éclats du Seuil : lancement arrêté après la vérification. Rien n'a été fait.");
+                return;
+            }
             // 1. La scène de démarrage existe et est dans la liste de construction (sans effet si c'est déjà fait).
             StartupSceneState state = EdsStartupScene.Ensure(false);
             LaunchStep step = EssaiTools.AfterStartupScene(state, AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) != null);
@@ -93,6 +104,8 @@ namespace EdS.Game.Editor
             // 2. Préparation de l'essai de style (relançable, rapport dans la Console).
             if (!EdsStyle.Prepare(false)) return;
             AssetDatabase.SaveAssets();
+            // Le rapport est refait après la préparation (elle règle les imports que la première vérification disait « pas encore préparés »).
+            EdsVerificationWindow.Open(EdsVerification.Run());
             // 3. Ouvre la bonne scène ; une scène modifiée déclenche la question de Unity (annuler arrête tout, rien n'est perdu).
             if (EssaiTools.ShouldOpenStartupSceneAlone(SceneManager.GetActiveScene().path, SceneManager.sceneCount, EdsStartupScene.ScenePath))
             {

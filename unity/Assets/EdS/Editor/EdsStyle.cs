@@ -242,10 +242,10 @@ namespace EdS.Game.Editor
                 .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
                 .Where(s => s.Clips.Length > 0).ToArray();
             catalog.Music = System.Enum.GetValues(typeof(StyleMusic)).Cast<StyleMusic>()
-                .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(StyleRules.MusicRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Select(kind => new MusicLook { Kind = kind, Clip = StyleRules.MusicFiles(sounds, kind).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(m => m.Clip != null).ToArray();
             catalog.Ambiences = System.Enum.GetValues(typeof(StyleAmbience)).Cast<StyleAmbience>()
-                .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(StyleRules.AmbienceRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Select(kind => new AmbienceLook { Kind = kind, Clip = StyleRules.AmbienceFiles(sounds, kind).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(a => a.Clip != null).ToArray();
 
             // Essai réaliste 8 (demande de Damien du 28 octobre 2026) : bâtiments de Sketchfab rangés par genre, mesurés une fois ici ;
@@ -320,18 +320,16 @@ namespace EdS.Game.Editor
 
             int found = new[] { catalog.Hit, catalog.Block, catalog.Parry, catalog.Death, catalog.Potion, catalog.Gather, catalog.Craft }.Count(c => c != null);
             int grounds = new[] { catalog.SoilColor, catalog.RockColor, catalog.GrassColor }.Count(t => t != null);
-            int voices = new[] { StyleSound.Meow, StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.HareDash, StyleSound.BoarGrumble, StyleSound.Tocsin,
-                StyleSound.ChurchBell, StyleSound.Glass, StyleSound.Shatter, StyleSound.RiftHum }.Count(k => catalog.Sound(k, 0) != null);
-            int world = new[] { StyleSound.Portal, StyleSound.StepGrass, StyleSound.StepGravel, StyleSound.StepLeaves, StyleSound.StepWood, StyleSound.Caw,
-                StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl, StyleSound.Hooves,
-                StyleSound.RiftSurge }.Count(k => catalog.Sound(k, 0) != null);
+            // Sous-lot V2.9.3 : listes partagées avec le vérificateur d'essai (EssaiManifest).
+            int voices = EssaiManifest.Voices.Count(k => catalog.Sound(k, 0) != null);
+            int world = EssaiManifest.WorldSounds.Count(k => catalog.Sound(k, 0) != null);
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
                 + "\nCerf : " + Name(stag) + ", biche : " + Name(doe) + ", lièvre : " + Name(hare) + ", chat : " + Name(cat)
                 + "\nFerme : corbeau " + Name(crow) + ", vache " + Name(cow) + ", chien " + Name(dog) + ", cheval " + Name(horse)
                 + "\nBasse-cour : âne " + Name(donkey) + ", poule " + Name(hen) + ", coq " + Name(rooster) + " ; ours : " + Name(bear)
                 + "\n" + humans
-                + "\nVoix des bêtes, cloches et failles : " + voices + " sur 11 (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
-                + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur 15"
+                + "\nVoix des bêtes, cloches et failles : " + voices + " sur " + EssaiManifest.Voices.Count + " (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
+                + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur " + EssaiManifest.WorldSounds.Count
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
