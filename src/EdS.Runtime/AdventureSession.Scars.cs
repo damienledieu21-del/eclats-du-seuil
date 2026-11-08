@@ -209,7 +209,7 @@ namespace EdS.Runtime
             var quests = story.Quests.ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal);
             quests[ScarQuest] = new QuestProgress("premiere");
             string[] facts = story.Facts.Concat(e.Scar!.BornFact is string born ? new[] { born } : Array.Empty<string>()).ToArray();
-            hero = hero.WithStory(new SavedStory(facts, quests, story.Trust, story.Discoveries, ScarQuest, story.Guild, story.Hunted));
+            hero = hero.WithStory(new SavedStory(facts, quests, story.Trust, story.Discoveries, ScarQuest, story.Guild, story.Hunted, story.Reputation));
             string where = "";
             if (!hero.Scars.Any(s => s.Id.StartsWith(WorldScarRules.Key(zone.Id, e.Id, string.Empty), StringComparison.Ordinal)))
             {

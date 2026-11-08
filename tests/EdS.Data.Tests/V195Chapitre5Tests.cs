@@ -85,7 +85,8 @@ public class V195Chapitre5Tests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation (quêtes finies, créatures vaincues, contrats) a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -430,7 +431,7 @@ public class V195Chapitre5Tests
         Assert.All(Chapters1To4.Append(Main), q => Assert.True(w.Narrative!.IsDone(q), q));
         Assert.DoesNotContain(Story.Value.Quests.Where(q => q.Category == QuestCategory.Main), q => w.Narrative!.IsActive(q.Id));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
-        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
+        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
         Assert.Equal(new QuestProgress(QuestProgress.Done), saved.Character!.Story.Quests[Main]);
     }
 
@@ -640,7 +641,7 @@ public class V195Chapitre5Tests
         DialogueView recompense = Say(w, "npc.gaspard", "ch5_loup_recompense");
         Assert.Contains(recompense.Options, o => o.Text == "text.ch5.gaspard.vers_pierres");   // l'autre offre reste accessible
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Loup, 0, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.cape_du_seuil 1", $"QuestCompleted {Loup}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.cape_du_seuil 1", $"QuestCompleted {Loup}", "ReputationChanged villagers/questSide 10" }, chosen.Select(e => e.ToString()));
         Say(w, "npc.gaspard", "ch5_pierres");
     }
 
@@ -680,7 +681,7 @@ public class V195Chapitre5Tests
         Assert.Equal((xp + 1000, money + 600, 1), (w.Character.Xp, w.Money, w.Inventory.Count("item.pierre_gravee")));
         Say(w, "npc.gaspard", "ch5_pierres_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Pierres, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.marteau_des_hautes_pierres 1", $"QuestCompleted {Pierres}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.marteau_des_hautes_pierres 1", $"QuestCompleted {Pierres}", "ReputationChanged villagers/questSide 10" }, chosen.Select(e => e.ToString()));
         Say(w, "npc.gaspard", "ch5_loup_anselme");   // la bête blanche pas encore abattue : Gaspard envoie chez Frère Anselme
     }
 

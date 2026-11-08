@@ -57,7 +57,8 @@ public class V191Chapitre1Tests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -297,7 +298,7 @@ public class V191Chapitre1Tests
         Say(w, "npc.archer_garde", "recompense");
         // Récompense au choix : deux pierres à aiguiser.
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Fleches, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.pierre_a_aiguiser 2", $"QuestCompleted {Fleches}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.pierre_a_aiguiser 2", $"QuestCompleted {Fleches}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         // Sous-lot V1.9.7 : la garde de nuit (niveau 3) pas encore commencée, son offre passe avant le mot d'après (aucune offre masquée).
         Say(w, "npc.archer_garde", "ch1_garde");
     }

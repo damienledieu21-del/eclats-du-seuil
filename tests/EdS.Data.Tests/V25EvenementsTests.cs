@@ -152,8 +152,8 @@ public class V25EvenementsTests
     {
         // V2.6.1 : zones en schéma 12 ; V2.6 : zones en schéma 11 (10 encore lu), sauvegarde v14, Vallons au contenu 0.14.0.
         Assert.Equal((12, 10, 9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal((14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
-        Assert.Equal((12, "0.15.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal((15, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
+        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
         // Ni le moteur, ni les règles, ni le journal ne changent.
         Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -567,6 +567,7 @@ public class V25EvenementsTests
         root["schemaVersion"] = 12;
         root["data"]!["character"]!.AsObject().Remove("events");
         root["data"]!["character"]!.AsObject().Remove("scars");   // V2.6
+        root["data"]!["character"]!["story"]!.AsObject().Remove("reputation");   // V2.7 (version 15)
         SaveLoadResult r = SaveJsonReader.Read(root.ToJsonString());
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Empty(r.Save!.Character!.Events);
@@ -575,6 +576,7 @@ public class V25EvenementsTests
         JsonObject v12 = SaveJson(Saved());
         v12["schemaVersion"] = 12;
         v12["data"]!["character"]!.AsObject().Remove("scars");   // V2.6
+        v12["data"]!["character"]!["story"]!.AsObject().Remove("reputation");   // V2.7 (version 15)
         Assert.Contains(SaveJsonReader.Read(v12.ToJsonString()).Report.Errors, e => e.Path == "$.data.character.events" && e.Code == ValidationCode.UnknownField);
     }
 

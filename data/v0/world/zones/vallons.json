@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 12,
   "kind": "zone",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -47,6 +47,14 @@
         "position": [
           80,
           -38
+        ]
+      },
+      {
+        "id": "planque_des_contrebandiers",
+        "name": "Planque des contrebandiers",
+        "position": [
+          84,
+          58
         ]
       }
     ],

@@ -114,6 +114,7 @@ public class Lot126CraftingTests
         root["data"]!["character"]!.AsObject().Remove("boons");   // sous-lot V1.8c (version 12)
         root["data"]!["character"]!.AsObject().Remove("events");   // sous-lot V2.5 (version 13)
         root["data"]!["character"]!.AsObject().Remove("scars");   // sous-lot V2.6 (version 14)
+        root["data"]!["character"]!["story"]!.AsObject().Remove("reputation");   // V2.7 (version 15)
         root["data"]!["character"]!["story"]!.AsObject().Remove("tracked");   // sous-lot V1.6 (version 7)
         string v4 = root.ToJsonString();
         Assert.True(SaveJsonReader.Read(v4).IsValid);

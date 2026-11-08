@@ -567,7 +567,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((14, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal((15, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
         Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",
@@ -629,7 +629,7 @@ public class V18cBonusTests : IDisposable
     public void Migration_v11_vers_v12_sans_bonus()
     {
         // Une sauvegarde de version 11 (celle de V1.4 à V1.8b) : pas de « boons ».
-        string v11 = Written().Replace(SaveVersion.Current + ",", "\"schemaVersion\": 11,", StringComparison.Ordinal)
+        string v11 = SaveV11.V14(Written()).Replace(SaveVersion.Current + ",", "\"schemaVersion\": 11,", StringComparison.Ordinal)
             .Replace(",\n      \"boons\": [],\n      \"events\": [],\n      \"scars\": []\n", "\n", StringComparison.Ordinal);
         SaveLoadResult r = SaveJsonReader.Read(v11);
         Assert.True(r.IsValid, r.Report.ToString());

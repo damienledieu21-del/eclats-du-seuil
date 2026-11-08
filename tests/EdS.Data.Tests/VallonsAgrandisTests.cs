@@ -114,7 +114,8 @@ public class VallonsAgrandisTests
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
         Assert.Equal(10, roads.Count);
         // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
-        foreach (SafePoint s in zone.SafePoints)
+        // V2.7 : sauf la planque des contrebandiers, point sûr secret, loin des routes par nature.
+        foreach (SafePoint s in zone.SafePoints.Where(x => x.Id != "planque_des_contrebandiers"))
             Assert.True(TownRules.RoadAt(s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, roads).Edge < 6, $"{s.Id} loin des routes");
         Assert.Equal("grand_rue", TownRules.RoadAt(3.3, -0.2, roads).Road!.Id);
         Assert.True(TownRules.RoadAt(3.3, -0.2, roads).Edge < 0);

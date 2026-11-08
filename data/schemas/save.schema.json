@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 14
+      "const": 15
     },
     "kind": {
       "const": "save"
@@ -317,6 +317,7 @@
                     "facts",
                     "quests",
                     "trust",
+                    "reputation",
                     "discoveries",
                     "tracked"
                   ],
@@ -358,6 +359,17 @@
                       "propertyNames": {
                         "pattern": "^quest(\\.[a-z0-9_]+)+$",
                         "maxLength": 200
+                      }
+                    },
+                    "reputation": {
+                      "type": "object",
+                      "description": "Sous-lot V2.7 (version 15) : réputation auprès des factions (villageois, garde, rôdeurs, bandits), non nulle, de -1000 à 1000 ; une réputation nulle (neutre) n'est pas écrite.",
+                      "additionalProperties": false,
+                      "properties": {
+                        "villagers": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
+                        "guard": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
+                        "rangers": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
+                        "bandits": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } }
                       }
                     },
                     "trust": {

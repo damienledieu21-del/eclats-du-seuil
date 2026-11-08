@@ -31,7 +31,7 @@
 
 | Élément | Version | Où (grep) |
 |---|---|---|
-| Sauvegarde | v14 (v13 encore lue) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
+| Sauvegarde | v15 (v14 encore lue ; réputation `story.reputation`, V2.7) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.30.0 | `CombatEngine.cs` (`Version`) |
@@ -41,8 +41,8 @@
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v12 (v11, v10, v9, v8 et v7 encore lues) | `Zones/ZoneValidator.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v11 (v4 à v10 encore lues ; 32 répliques par dialogue en v11, 16 avant) | `Story/StoryValidator.cs` |
-| Marchands (schéma) | v3 (v2 encore lue) | `Merchants/MerchantModel.cs` |
+| Histoire (schéma) | v12 (v4 à v11 encore lues ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
+| Marchands (schéma) | v4 (v2 et v3 encore lues ; faction et palier, V2.7) | `Merchants/MerchantModel.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0` (V2.8, recherche de chemin : `EdS.Domain/Space/Navigator.cs`).
 À ne pas confondre : version du contenu des règles (0.17.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 16).

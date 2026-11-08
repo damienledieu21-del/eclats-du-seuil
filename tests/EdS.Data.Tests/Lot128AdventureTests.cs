@@ -95,7 +95,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(new[] { "Nouvelle partie : bienvenue dans les Vallons d'Aube.", "Journal : " + V11TestData.Texts.Get("text.ch1.quest.reveil.odile") }, a.DrainMessages());
         Assert.Equal(1, a.Opened);
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
-        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
+        Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
         Assert.Equal(13, a.Nodes().Count);   // Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune
         Assert.All(a.Nodes(), n => Assert.True(n.Ready));

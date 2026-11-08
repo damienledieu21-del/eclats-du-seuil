@@ -227,7 +227,7 @@ public sealed class V22MeteoTests : IDisposable
         Assert.True(w.Weather.Raining);
         string text = SaveJsonReader.Write(w.Save());
         Assert.DoesNotContain("weather", text, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         var next = new WorldSession(back, Shipped.Value, ShippedData, Progression, ItemsCatalog, Book(Shipped.Value), market: new Market(ShippedMerchants));
         Assert.Equal(w.Zone.Time, next.Zone.Time);
@@ -279,7 +279,7 @@ public sealed class V22MeteoTests : IDisposable
     {
         StoryBook book = Book(Shipped.Value);
         // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
-        Assert.Equal((11, StoryValidator.CurrentSchemaVersion, "0.21.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((12, StoryValidator.CurrentSchemaVersion, "0.22.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();
@@ -342,7 +342,7 @@ public sealed class V22MeteoTests : IDisposable
         StoryLoadResult read = Read(seven);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(7, read.Story!.SchemaVersion);
-        seven["schemaVersion"] = 12;   // V2.3.1 : la version 10 est la version courante ; V2.6.1 : la version 11
+        seven["schemaVersion"] = 13;   // V2.7 : la version 12 ; V2.3.1 : la version 10 est la version courante ; V2.6.1 : la version 11
         Assert.Contains(Read(seven).Report.Errors, x => x.Path == "$.schemaVersion" && x.Code == ValidationCode.UnsupportedSchemaVersion);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));

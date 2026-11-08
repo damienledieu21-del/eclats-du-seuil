@@ -96,6 +96,7 @@ namespace EdS.Data.Json
                     ["quests"] = (v, p) => d.Quests = List(input, v, p, StoryValidator.MaxQuests, ReadQuest),
                     ["discoveries"] = (v, p) => d.Discoveries = List(input, v, p, StoryValidator.MaxDiscoveries, ReadDiscovery),
                     ["scenes"] = (v, p) => d.Scenes = List(input, v, p, StoryValidator.MaxScenes, ReadScene),   // sous-lot V1.9.6 (schéma 6)
+                    ["reputation"] = (v, p) => d.Reputation = ReadReputation(input, v, p),   // sous-lot V2.7 (schéma 12)
                 });
                 document.Data = ok ? d : null;
             });
@@ -118,6 +119,7 @@ namespace EdS.Data.Json
                 ["position"] = (v, p) => n.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["dialogue"] = (v, p) => n.Dialogue = input.Text(v, p),
                 ["zone"] = (v, p) => n.Zone = input.Text(v, p),   // sous-lot V1.6 (schéma 3)
+                ["faction"] = (v, p) => n.Faction = input.Text(v, p),   // sous-lot V2.7 (schéma 12)
                 ["schedule"] = (v, p) => n.Schedule = List(input, v, p, StoryValidator.MaxScheduleSlots, ReadSlot),   // sous-lot V2.3 (schéma 9)
             }) ? n : null;
         }
@@ -258,6 +260,69 @@ namespace EdS.Data.Json
                 ["text"] = (v, p) => x.Text = input.Text(v, p),
                 ["back"] = (v, p) => x.Back = input.Text(v, p),
             }) ? x : null;
+        }
+
+        /// <summary>Sous-lot V2.7 (schéma 12) : section <c>reputation</c> (liens, gestes, victoires, événements, prix).</summary>
+        private static ReputationData? ReadReputation(JsonInput input, JsonElement element, string path)
+        {
+            var r = new ReputationData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["links"] = (v, p) => r.Links = NestedMap(input, v, p),
+                ["acts"] = (v, p) => r.Acts = NestedMap(input, v, p),
+                ["defeated"] = (v, p) => r.Defeated = NestedMap(input, v, p),
+                ["prices"] = (v, p) => r.Prices = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["sellPrices"] = (v, p) => r.SellPrices = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["shun"] = (v, p) => r.Shun = input.ReadLimitedList(v, p, 4, n => $"{n} factions, au plus 4.", (e, ip) => input.Text(e, ip)),
+                ["curfew"] = (v, p) =>
+                {
+                    var c = new ReputationCurfewData();
+                    r.Curfew = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["faction"] = (w, wp) => c.Faction = input.Text(w, wp),
+                        ["place"] = (w, wp) => c.Place = input.Text(w, wp),
+                        ["phases"] = (w, wp) => c.Phases = input.ReadLimitedList(w, wp, 4, n => $"{n} moments, au plus 4.", (e, ip) => input.Text(e, ip)),
+                        ["safePoint"] = (w, wp) => c.SafePoint = input.Text(w, wp),
+                    }) ? c : null;
+                },
+                ["hidden"] = (v, p) => r.Hidden = input.ReadLimitedList(v, p, 8, n => $"{n} points sûrs secrets, au plus 8.", (e, ip) =>
+                {
+                    var h = new ReputationHiddenData();
+                    return input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["safePoint"] = (w, wp) => h.SafePoint = input.Text(w, wp),
+                        ["fact"] = (w, wp) => h.Fact = input.Text(w, wp),
+                    }) ? h : null;
+                }),
+                ["events"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « événement : réussite, échec »")) return;
+                    var events = new List<KeyValuePair<string, ReputationEventData?>>();
+                    foreach (JsonProperty e in input.UniqueProperties(v, p))
+                    {
+                        var x = new ReputationEventData();
+                        string ep = p + "." + e.Name;
+                        bool ok = input.ReadFields(e.Value, ep, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["won"] = (w, wp) => x.Won = ScenarioJsonReader.ReadIntegerMap(input, w, wp),
+                            ["lost"] = (l, lp) => x.Lost = ScenarioJsonReader.ReadIntegerMap(input, l, lp),
+                            ["missed"] = (l, lp) => x.Missed = ScenarioJsonReader.ReadIntegerMap(input, l, lp),
+                        });
+                        events.Add(new KeyValuePair<string, ReputationEventData?>(e.Name, ok ? x : null));
+                    }
+                    r.Events = events;
+                },
+            }) ? r : null;
+        }
+
+        private static List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>? NestedMap(JsonInput input, JsonElement element, string path)
+        {
+            if (!input.RequireKind(element, JsonValueKind.Object, path, "objet « clé : { faction : valeur } »")) return null;
+            var map = new List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>();
+            foreach (JsonProperty property in input.UniqueProperties(element, path))
+                map.Add(new KeyValuePair<string, List<KeyValuePair<string, int?>>?>(property.Name,
+                    ScenarioJsonReader.ReadIntegerMap(input, property.Value, path + "." + property.Name)));
+            return map;
         }
 
         private static List<TermData?>? Terms(JsonInput input, JsonElement element, string path, string kindField) =>
