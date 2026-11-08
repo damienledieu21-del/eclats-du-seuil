@@ -322,3 +322,30 @@ Avant l'essai : *Modular Character Outfits - Fantasy* [Standard] de Quaternius d
 | 19.9 | Animations | Marche, travail, parler, combat : les vêtements suivent le corps (pas de pièce qui reste en l'air ou en pose en T) | [ ] | |
 | 19.10 | Sur le Note8 | Image toujours fluide au bourg à midi | [ ] | |
 | 19.11 | Ton avis : les tenues par métier, les couleurs, faut-il la version *Source* (15 $, décision après cet essai) pour avoir tout le pack ? | — | [ ] | |
+
+## 20. La 5e vague branchée (V2.11)
+
+Avant l'essai : les dossiers de la 5e vague déposés tels quels sous `Assets/Style` (`Sketchfab/{Creatures,Personnages,Armes,Seuil,Village,Boulangerie,Fete,Donjon,Interieurs}` en **FBX**, `PolyHaven/{Armes,Nourriture,Objets,Interieurs2,Cuisine,Donjon,Decoration,Nature}`, `Fab/Megascans_Pains`, `Mixamo/Metiers`, `Sounds/{Boulangerie,Fete,Donjon,Monstres,Armes,Sorts,FantasySFX_LittleRobot,CC0_rubberduck}`, `Music/{ScottBuckley2,OGA2}`), le pack *6200 Fantasy RPG Icons* de CraftPix importé n'importe où dans `Assets`, puis **Éclats du Seuil → Préparer l'essai de style**, puis **Vérifier l'essai** ([UNITY.md](UNITY.md#essai-v211--la-5e-vague-branchée)).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 20.1 | Fenêtre de la préparation | Une ligne « 5e vague : N ressources branchées sur 22 trouvées, M prêtes pour plus tard, grand loup de Croc-Gris, 9 pains scannés ; gestes de métier : 5 sur 5 ; icônes de CraftPix : X objets sur 117 » | [ ] | |
+| 20.2 | Vérifier l'essai | Sections « 5e vague », « 5e vague prête pour plus tard » et « Icônes et licences hors dépôt » : ✅ ou ⚠️ avec le fichier à déposer ; « Manifeste des licences » ✅ (`Assets/Style/Generated/LICENCES_ASSET_STORE.md`) | [ ] | |
+| 20.3 | Croc-Gris (pré du nord), puis le loup blanc (nuit, quête de Gaspard) | Le **grand loup animé** (marche, course, attaque, rugissement, coup reçu, mort), plus massif que les autres loups ; les autres loups gardent leur modèle | [ ] | Le loup blanc garde le pelage gris du modèle texturé (teinte impossible sur une texture) : à juger |
+| 20.4 | Les corbeaux des champs et des ruines, puis s'approcher | Ils **regardent autour d'eux** posés, puis **décollent et volent** trois secondes ; plumes nettes (pas de carrés noirs autour) | [ ] | |
+| 20.5 | Le souvenir de la Rupture | Galeran est le **chevalier en armure à la lance** (le roi en armure s'il manque) ; il se balance quand il avance ; sans les deux : lance et armure en formes simples **avec le heaume** | [ ] | Le chevalier n'a qu'une attente : glisse-t-il trop ? |
+| 20.6 | Équiper la masse du bourg, la hachette, une épée (héros sans paladin), une cape | La **vraie masse**, la **vraie hache**, la vraie épée **dans la main**, tête en haut (épée : garde en bas) ; la **demi-cape** dans le dos (sur ordinateur ; sur téléphone, la cape simple) | [ ] | Si une arme est à l'envers : catalogue → 5e vague → Grip Sign = −Grip Sign |
+| 20.7 | Les pierres du Seuil, la nuit | Les **menhirs** aux runes qui **luisent** (halo du Bloom) à la place des rochers | [ ] | |
+| 20.8 | Le cœur du Seuil | Grand cristal, quatre touffes de **cristaux lumineux**, le **feu follet** qui flotte, une lueur bleue | [ ] | |
+| 20.9 | Une faille ouverte (événement « faille du Seuil ») | Un **cadre de portail** lumineux autour de la déchirure, toujours de face, et des cristaux à ses pieds | [ ] | |
+| 20.10 | Le bourg : Firmin devant sa maison | Le **four à pain de briques** à sa droite (jamais dans un mur), deux sacs de farine, une table avec **pains scannés** (Megascans) et viennoiseries à sa gauche ; tout près du four, **les braises crépitent** | [ ] | Place à juger (le four fait 3,3 m) |
+| 20.11 | Bertille, les champs, le hameau | Caisse de poires à l'étal, **épouvantail** et bottes de **foin** (brins nets) aux champs, **charrette** au hameau | [ ] | |
+| 20.12 | Catalogue : **Human Festival** coché, le bourg de 9 h à 23 h | Guirlande et bannières sur la place (guirlande : ordinateur seulement), **foule de fête** en fond | [ ] | |
+| 20.13 | Le moulin d'Odile, le jour | La **meule** qui tourne en fond | [ ] | |
+| 20.14 | Près de la forge de Maëlle, le jour | La musique « **Song of the Forge** » remplace celle du village (à moins de 14 m) | [ ] | |
+| 20.15 | Un combat : coups, parade, blocage, sort, rugissement du Gardien | Les sons déjà choisis restent ; les nouveaux ne viennent qu'à défaut | [ ] | |
+| 20.16 | L'auberge, une maison, la chapelle | Nouveaux meubles de Poly Haven (tables, chaises, lits, armoires, lampes), casseroles et chopes, coffre, chaudron | [ ] | |
+| 20.17 | Les villageois au travail | Gestes de métier de Mixamo : au **comptoir** (marchands), **porter** et **la pause** (paysans), **s'agenouiller** (forge, prière à la chapelle) ; sans les fichiers, comme avant | [ ] | |
+| 20.18 | Sac et boutiques | Les objets ont les **icônes peintes de CraftPix** (six épées différentes) ; ceux sans correspondance gardent leur icône | [ ] | Liste des objets mal reliés à envoyer à Claude |
+| 20.19 | Sur le Note8 | Image fluide au bourg et au Seuil ; ni guirlande ni demi-cape ni tours en ruine | [ ] | |
+| 20.20 | Ton avis : pont de pierre de JooL à la place de ton pont cintré ? tours en ruine aux ruines ? quelles créatures de la crypte d'abord ? | — | [ ] | |

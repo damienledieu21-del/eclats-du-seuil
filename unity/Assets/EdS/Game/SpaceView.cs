@@ -317,6 +317,19 @@ namespace EdS.Game
             // Essai réaliste 5 (« le gros bloc en brique, je ne sais pas à quoi il sert » : c'est le front de taille de la carrière) : une
             // paroi de gros rochers sur son emprise.
             if (id.StartsWith("front_de_taille") && QuarryFace(id, points)) return;
+            // Sous-lot V2.11 (5e vague) : les pierres du Seuil sont les menhirs aux runes lumineuses de DragonJojo, sur leur emprise ; sans
+            // eux, un rocher des packs comme avant.
+            if (StyleRules.Key(id).StartsWith("pierreseuil", System.StringComparison.Ordinal) && Wave5View.Has(Wave5Role.Menhir))
+            {
+                float span = Mathf.Max(points.Max(p => p.x) - points.Min(p => p.x), points.Max(p => p.z) - points.Min(p => p.z));
+                GameObject menhir = Wave5View.Place(_root.transform, Wave5Role.Menhir, id, Center(points), StyleRules.Variant(id, 360),
+                    Mathf.Clamp(span * 1.6f, 2f, 3.5f));
+                if (menhir != null)
+                {
+                    AddModelOccluders(menhir);
+                    return;
+                }
+            }
             // Essai de style : un rocher des packs sur l'emprise des blocs de la carrière et des pierres du Seuil.
             if (StyleRules.ForObstacle(id) == StyleSlot.Rock)
             {

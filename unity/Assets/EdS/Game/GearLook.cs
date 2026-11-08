@@ -51,8 +51,10 @@ namespace EdS.Game
             foreach (Transform t in body.GetComponentsInChildren<Transform>())
             {
                 string n = t.name ?? "";
-                if (_hand == null && n.EndsWith("RightHand")) _hand = t;
-                if (_back == null && n.EndsWith("Spine2")) _back = t;
+                // Sous-lot V2.11 : aussi les squelettes de Quaternius (« hand.r », « Hand_R »), pour l'arme en main des corps humains.
+                string low = n.ToLowerInvariant();
+                if (_hand == null && (n.EndsWith("RightHand") || low == "hand.r" || low == "hand_r" || low.EndsWith(":hand_r"))) _hand = t;
+                if (_back == null && (n.EndsWith("Spine2") || low == "chest" || low == "spine_02" || low == "spine.002")) _back = t;
             }
         }
 
@@ -109,6 +111,8 @@ namespace EdS.Game
 
         private void Weapon(WeaponLook look, ItemRarity rarity)
         {
+            // Sous-lot V2.11 (5e vague) : la vraie masse, la hache ou l'épée (le marteau : celui de la forge), sinon les formes simples.
+            if (WeaponModel(look, rarity)) return;
             Color metal = Color.Lerp(new Color(0.72f, 0.74f, 0.78f), AdventureBook.RarityColor(rarity), 0.35f), wood = new Color(0.42f, 0.28f, 0.16f);
             // Dans la main droite du modèle, sinon sur le flanc droit du corps simple (capsule de 2 m centrée à 1 m).
             Transform parent = _styled && _hand != null ? _hand : _body;
@@ -155,8 +159,96 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>
+        /// Sous-lot V2.11 : le modèle de l'arme <paramref name="look"/> dans la main : son grand axe (mesuré par la préparation) dressé, la tête
+        /// en haut (l'épée, garde en bas), à sa longueur, tenu au quart de sa longueur ; teinté de la rareté. Faux sans modèle.
+        /// </summary>
+        private bool WeaponModel(WeaponLook look, ItemRarity rarity)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null) return false;
+            GameObject prefab = null;
+            int axis = 1, sign = 1;
+            float extraYaw = 0f, scale = 1f;
+            if (Wave5.WeaponRole(look) is Wave5Role role && catalog.Look(role) is Wave5Look w)
+            {
+                prefab = w.Model;
+                axis = w.GripAxis;
+                sign = w.GripSign;
+                extraYaw = w.Yaw;
+                scale = w.Scale > 0f ? w.Scale : 1f;
+            }
+            else if (look == WeaponLook.Hammer && catalog.Prop(StyleProp.Hammer) is PropLook hammer)
+            {
+                prefab = hammer.Model;
+                axis = -1;   // mesuré ici
+            }
+            if (prefab == null) return false;
+            Transform parent = _styled && _hand != null ? _hand : _body;
+            // Mesurée à l'origine du monde, sans rotation (la boîte du monde est alors celle du modèle), puis tenue en main.
+            var holder = new GameObject("Arme (V2.11)");
+            GameObject model = Object.Instantiate(prefab, holder.transform, false);
+            foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            if (!StyleLook.VisibleBounds(holder, out Bounds world) || world.size.sqrMagnitude < 1e-6f)
+            {
+                Object.Destroy(holder);
+                return false;
+            }
+            Vector3 size = world.size;
+            if (axis < 0) axis = Wave5.LongAxis(size.x, size.y, size.z);
+            Vector3 along = axis == 0 ? Vector3.right : axis == 2 ? Vector3.forward : Vector3.up;
+            Vector3 center = world.center;
+            float length = axis == 0 ? size.x : axis == 2 ? size.z : size.y;
+            // Le grand axe vers le haut du support, la tête en haut ; puis le support tenu dans la main.
+            Quaternion stand = Quaternion.FromToRotation(along * (sign >= 0 ? 1f : -1f), Vector3.up);
+            model.transform.localRotation = stand * Quaternion.Euler(0f, extraYaw, 0f);
+            model.transform.localPosition = -(stand * center) + Vector3.up * (length * 0.25f);
+            float k = (float)Wave5.WeaponLength(look) * scale / Mathf.Max(0.01f, length);
+            float parentScale = _styled && _hand != null ? Mathf.Max(0.01f, _hand.lossyScale.y) : 1f;
+            holder.transform.SetParent(parent, false);
+            holder.transform.localScale = Vector3.one * (k / parentScale);
+            holder.transform.localPosition = _styled && _hand != null ? Vector3.zero : new Vector3(0.55f, -0.35f, 0.15f);
+            if (rarity != ItemRarity.Common)
+            {
+                Color tint = Color.Lerp(Color.white, AdventureBook.RarityColor(rarity), 0.35f);
+                foreach (Renderer r in holder.GetComponentsInChildren<Renderer>())
+                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, StyleLook.BaseColor(m) * tint);
+            }
+            _shapes.Add(holder);
+            return true;
+        }
+
+        /// <summary>Sous-lot V2.11 : la demi-cape (5e vague) dans le dos, à la largeur des épaules ; faux sans elle (ou sur téléphone).</summary>
+        private bool CloakModel(ItemRarity rarity)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            Wave5Look cape = catalog != null ? catalog.Look(Wave5Role.HalfCape) : null;
+            if (cape == null) return false;
+            Transform parent = _styled && _back != null ? _back : _body;
+            var holder = new GameObject("Cape (V2.11)");
+            Object.Instantiate(cape.Model, holder.transform, false);
+            foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            if (!StyleLook.VisibleBounds(holder, out Bounds b) || b.size.x < 0.01f)
+            {
+                Object.Destroy(holder);
+                return false;
+            }
+            holder.transform.SetParent(parent, false);
+            float parentScale = Mathf.Max(0.01f, parent.lossyScale.y);
+            float k = (float)Wave5.Entry(Wave5Role.HalfCape).Height * (cape.Scale > 0f ? cape.Scale : 1f) / Mathf.Max(b.size.x, b.size.z);
+            holder.transform.localScale = Vector3.one * (k / parentScale);
+            holder.transform.localRotation = Quaternion.Euler(0f, 180f + cape.Yaw, 0f);
+            holder.transform.localPosition = _styled && _back != null ? new Vector3(0f, -0.1f, -0.12f) / parentScale : new Vector3(0f, 0.25f, -0.3f);
+            if (rarity != ItemRarity.Common)
+                foreach (Renderer r in holder.GetComponentsInChildren<Renderer>())
+                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, Color.Lerp(StyleLook.BaseColor(m), AdventureBook.RarityColor(rarity), 0.45f));
+            _shapes.Add(holder);
+            return true;
+        }
+
         private void Cloak(ItemRarity rarity)
         {
+            if (CloakModel(rarity)) return;
             Color cloth = rarity == ItemRarity.Common ? new Color(0.36f, 0.12f, 0.1f) : Color.Lerp(new Color(0.2f, 0.12f, 0.1f), AdventureBook.RarityColor(rarity), 0.55f);
             if (_styled && _back != null)
             {

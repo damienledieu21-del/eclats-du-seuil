@@ -544,17 +544,25 @@ namespace EdS.Runtime
         /// </summary>
         public const string TradeFolder = EssaiManifest.Root + "/Mixamo/Metiers";
 
-        /// <summary>Animations de métiers attendues (mots du nom du fichier), dans l'ordre où Damien les a citées.</summary>
-        public static readonly IReadOnlyList<string> TradeClips = new[] { "Talking", "Carrying", "Stirring", "Picking Up", "Sitting Idle", "Kneeling" };
+        /// <summary>
+        /// Animations de métiers livrées par Damien (« eds_Mixamo_Metier_Talking.fbx »…, rig Mixamo en Humanoid) : mot du nom du fichier, nom
+        /// donné au clip (lu par <see cref="HumanLooks.WorkClip"/>), en boucle ; dans l'ordre de Damien : comptoir, porter, four, pause,
+        /// s'agenouiller. Pétrir et remuer n'existent pas chez Mixamo.
+        /// </summary>
+        public static readonly IReadOnlyList<(string Word, string Clip, string Use)> TradeClips = new[]
+        {
+            ("talking", "Trade_Counter", "au comptoir, à l'étal"), ("carrying", "Trade_Carry", "porter"), ("pickingup", "Trade_Oven", "au four, ramasser"),
+            ("sittingidle", "Trade_Rest", "la pause"), ("kneeling", "Trade_Kneel", "s'agenouiller (travail, prière)"),
+        };
 
         /// <summary>Le fichier est-il rangé dans le dossier des animations de métiers ?</summary>
         public static bool IsTradeClip(string path) =>
             ("/" + (path ?? string.Empty).Replace('\\', '/').ToLowerInvariant() + "/").Contains("/mixamo/metiers/");
 
-        /// <summary>L'animation de métier <paramref name="clip"/> (« Picking Up ») parmi <paramref name="files"/> (nom réduit qui la contient), ou null.</summary>
-        public static string? TradeClip(string clip, IEnumerable<string> files)
+        /// <summary>Le fichier de l'animation de métier dont le nom contient <paramref name="word"/> (« pickingup ») parmi <paramref name="files"/>, ou null.</summary>
+        public static string? TradeClip(string word, IEnumerable<string> files)
         {
-            string want = StyleRules.Key(clip);
+            string want = StyleRules.Key(word);
             return (files ?? Array.Empty<string>()).Where(f => f != null && IsTradeClip(f) && StyleRules.Key(EssaiManifest.FileName(f)).Contains(want))
                 .OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault();
         }

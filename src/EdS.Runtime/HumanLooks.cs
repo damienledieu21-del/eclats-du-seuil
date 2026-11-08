@@ -404,9 +404,12 @@ namespace EdS.Runtime
         public static string? WorkClip(IEnumerable<string> clips, HumanOutfit outfit, int variant)
         {
             var all = (clips ?? Array.Empty<string>()).ToList();
-            string[] want = outfit == HumanOutfit.Smith ? new[] { "Work_Chop", "Gather_Kneel" }
-                : outfit == HumanOutfit.Merchant ? new[] { "Gather_Table", "Interact" }
-                : outfit == HumanOutfit.Peasant ? new[] { "Gather_Harvest", "Gather_Plant", "Gather_Water", "Gather_Kneel" }
+            // Sous-lot V2.11 : les gestes de métier de Mixamo (Wave5.TradeClips) s'ajoutent quand ils sont là : comptoir et four pour les
+            // marchands, porter, la pause et s'agenouiller pour les paysans, s'agenouiller à la forge et pour prier ; sans eux, comme avant.
+            string[] want = outfit == HumanOutfit.Smith ? new[] { "Work_Chop", "Trade_Kneel", "Gather_Kneel" }
+                : outfit == HumanOutfit.Merchant ? new[] { "Trade_Counter", "Gather_Table", "Trade_Oven", "Interact" }
+                : outfit == HumanOutfit.Peasant ? new[] { "Gather_Harvest", "Trade_Carry", "Gather_Plant", "Gather_Water", "Trade_Rest", "Gather_Kneel", "Trade_Kneel" }
+                : outfit == HumanOutfit.Clergy ? new[] { "Trade_Kneel" }
                 : new string[0];
             var found = want.Where(all.Contains).ToList();
             return found.Count == 0 ? null : found[Math.Abs(variant) % found.Count];

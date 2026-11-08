@@ -22,6 +22,8 @@ namespace EdS.Game
             public string Idle2;
             public string Rest;      // manger, s'asseoir
             public string TakeOff;   // le corbeau
+            public string Fly;       // sous-lot V2.11 : le vol du corbeau animé (5e vague)
+            public float FlightEnd;
             public float Next;
             public int Step;
             public bool Flown;
@@ -169,7 +171,8 @@ namespace EdS.Game
                         if (tail == "idle") beast.Idle = name;
                         else if (tail == "idle2") beast.Idle2 = name;
                         else if (tail == "eat" || tail == "sit" || (tail == "lie" && beast.Rest == null)) beast.Rest = name;
-                        else if (tail == "takeoff") beast.TakeOff = name;
+                        else if (tail == "takeoff" || tail == "flyup") beast.TakeOff = name;   // V2.11 : « FlyUp » du corbeau animé
+                        else if (tail == "fly") beast.Fly = name;
                         else if (tail == "walk") beast.Walk = name;
                     }
                     beast.Idle = beast.Idle ?? beast.Rest ?? beast.TakeOff;
@@ -178,7 +181,9 @@ namespace EdS.Game
                 if (beast.Animation != null)
                 {
                     foreach (AnimationState state in beast.Animation) state.wrapMode = state.name == beast.TakeOff ? WrapMode.ClampForever : WrapMode.Loop;
-                    if (slot == StyleSlot.Crow && beast.TakeOff != null)
+                    // Sous-lot V2.11 : le corbeau animé a une vraie attente (il regarde autour de lui) : elle tourne ; l'ancien, sans elle, garde la
+                    // première image de l'envol, figée.
+                    if (slot == StyleSlot.Crow && beast.TakeOff != null && beast.Idle == beast.TakeOff)
                     {
                         // Posé : la première image de l'envol, figée.
                         AnimationState perch = beast.Animation[beast.TakeOff];
@@ -421,11 +426,18 @@ namespace EdS.Game
                 b.Back = _beastClock + 60f;
                 state.time = 0f;
                 state.speed = 1f;
+                // Sous-lot V2.11 : le corbeau animé décolle (« FlyUp »), puis vole (« Fly ») trois secondes avant de disparaître.
+                b.FlightEnd = _beastClock + (b.Fly != null ? Mathf.Max(3f, state.length) : state.length);
+                if (b.Idle != b.TakeOff)
+                {
+                    b.Animation.Play(b.TakeOff);
+                    if (b.Fly != null) b.Animation.CrossFadeQueued(b.Fly, 0.2f);
+                }
                 if (_farmVoices != null) _farmVoices.Play(StyleSound.Caw, _calls++, b.Root.position, 2.5f, 0.5f, 1f);
                 return;
             }
             // Envolé : il monte et s'éloigne, puis disparaît à la fin de l'envol ; il revient se poser une minute plus tard.
-            if (state.time < state.length) b.Root.position += (b.Root.forward * 2.5f + Vector3.up * 1.2f) * Time.deltaTime;
+            if (_beastClock < b.FlightEnd) b.Root.position += (b.Root.forward * 2.5f + Vector3.up * 1.2f) * Time.deltaTime;
             else if (b.Root.gameObject.activeSelf) b.Root.gameObject.SetActive(false);
             if (_beastClock < b.Back) return;
             b.Flown = false;
@@ -434,6 +446,7 @@ namespace EdS.Game
             b.Root.gameObject.SetActive(true);
             state.time = 0f;
             state.speed = 0f;
+            if (b.Idle != null && b.Idle != b.TakeOff) b.Animation.Play(b.Idle);
         }
 
         /// <summary>

@@ -110,13 +110,26 @@ public sealed class V211Wave5Tests
     [Fact]
     public void Animations_de_metiers_a_leur_place_sans_devenir_un_personnage()
     {
-        string talk = Wave5.TradeFolder + "/Talking.fbx", pick = Wave5.TradeFolder + "/Picking Up.fbx";
+        string talk = Wave5.TradeFolder + "/eds_Mixamo_Metier_Talking.fbx", pick = Wave5.TradeFolder + "/eds_Mixamo_Metier_PickingUp.fbx";
+        string kneel = Wave5.TradeFolder + "/eds_Mixamo_Metier_KneelingDown.fbx";
         Assert.True(Wave5.IsTradeClip(talk));
-        Assert.Equal(pick, Wave5.TradeClip("Picking Up", new[] { talk, pick }));
-        Assert.Null(Wave5.TradeClip("Kneeling", new[] { talk, pick }));
-        Assert.Null(Wave5.TradeClip("Talking", new[] { "Assets/Style/Mixamo/Odile/Talking.fbx" }));
+        Assert.Equal(pick, Wave5.TradeClip("pickingup", new[] { talk, pick }));
+        Assert.Equal(kneel, Wave5.TradeClip("kneeling", new[] { talk, kneel }));
+        Assert.Null(Wave5.TradeClip("sittingidle", new[] { talk, pick }));
+        Assert.Null(Wave5.TradeClip("talking", new[] { "Assets/Style/Mixamo/Odile/Talking.fbx" }));
         Assert.Empty(StyleRules.Characters(new[] { talk, pick }));
-        Assert.Equal(6, Wave5.TradeClips.Count);
+        Assert.Equal(5, Wave5.TradeClips.Count);
+        // Les gestes de métier s'ajoutent à ceux de la bibliothèque, sans les retirer ; absents : comme avant.
+        var library = new[] { "Idle", "Gather_Table", "Interact", "Gather_Harvest" };
+        var all = library.Concat(Wave5.TradeClips.Select(t => t.Clip)).ToList();
+        Assert.Equal("Gather_Table", HumanLooks.WorkClip(library, HumanOutfit.Merchant, 0));
+        Assert.Equal("Trade_Counter", HumanLooks.WorkClip(all, HumanOutfit.Merchant, 0));
+        Assert.Contains(HumanLooks.WorkClip(all, HumanOutfit.Peasant, 1), all);
+        Assert.Null(HumanLooks.WorkClip(library, HumanOutfit.Clergy, 0));
+        Assert.Equal("Trade_Kneel", HumanLooks.WorkClip(all, HumanOutfit.Clergy, 3));
+        // Aucun geste de métier n'est pris par la règle commune des villageois (bavarder, regarder, cueillir).
+        foreach (VillagerActivity activity in Enum.GetValues<VillagerActivity>())
+            Assert.DoesNotContain(TownModels.VillagerClip(Wave5.TradeClips.Select(t => t.Clip).Append("Idle"), activity, 0) ?? "Idle", Wave5.TradeClips.Select(t => t.Clip));
     }
 
     [Fact]

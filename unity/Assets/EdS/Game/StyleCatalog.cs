@@ -251,6 +251,34 @@ namespace EdS.Game
     }
 
     /// <summary>
+    /// Sous-lot V2.11 (5e vague) : une ressource de la liste partagée <see cref="Wave5"/> choisie par la préparation : son modèle, sa taille et
+    /// sa rotation réglables à la main (gardées d'une préparation à l'autre), le matériau fait pour un scan photo, et, pour une arme, le sens
+    /// de sa prise (grand axe et bout du haut, mesurés sur ses sommets par la préparation).
+    /// </summary>
+    [Serializable]
+    public sealed class Wave5Look
+    {
+        public Wave5Role Role;
+        public GameObject Model;
+        public float Scale = 1f;
+        public float Yaw;
+        /// <summary>Matériau URP Lit fait depuis les textures d'un scan (Megascans), posé sur tout le modèle ; null sinon.</summary>
+        public Material Material;
+        /// <summary>Arme : grand axe du modèle (0 : x, 1 : y, 2 : z).</summary>
+        public int GripAxis = 1;
+        /// <summary>Arme : +1 si le bout « max » de ce grand axe va en haut, -1 sinon.</summary>
+        public int GripSign = 1;
+    }
+
+    /// <summary>Sous-lot V2.11 : icône du pack de CraftPix (licence de l'Asset Store, hors dépôt) d'un objet, choisie par <see cref="ItemIcons"/>.</summary>
+    [Serializable]
+    public sealed class ItemIconLook
+    {
+        public string Item;
+        public Texture2D Icon;
+    }
+
+    /// <summary>
     /// Essai de style (décision de Damien du 25 octobre 2026) : les modèles et les sons choisis dans les packs gratuits déposés dans
     /// <c>Assets/Style</c>. Rempli par le menu « Éclats du Seuil → Préparer l'essai de style » (<c>Assets/Style/Resources/StyleCatalog.asset</c>),
     /// modifiable à la main dans l'inspecteur (glisser un autre modèle, tourner un modèle qui regarde de travers). Absent : le jeu garde ses
@@ -327,6 +355,15 @@ namespace EdS.Game
         public GameObject Rooster;
         public GameObject Bear;
         public float BearYaw;
+        /// <summary>Sous-lot V2.11 (5e vague) : le grand loup animé d'emptypen2477, pour Croc-Gris et le loup blanc (<see cref="Wave5.IsDireWolf"/>).</summary>
+        public GameObject DireWolf;
+        public float DireWolfYaw;
+        /// <summary>Sous-lot V2.11 : les ressources de la 5e vague trouvées (une par rôle).</summary>
+        public Wave5Look[] Wave5 = new Wave5Look[0];
+        /// <summary>Sous-lot V2.11 : icônes de CraftPix des objets (vide sans le pack : les icônes du jeu restent).</summary>
+        public ItemIconLook[] ItemIcons = new ItemIconLook[0];
+        /// <summary>Sous-lot V2.11 : animations de métiers de Mixamo (<c>Assets/Style/Mixamo/Metiers</c>), prêtes pour les villageois.</summary>
+        public AnimationClip[] TradeClips = new AnimationClip[0];
         [Header("Sous-lot V2.9.2 : corps humains (Universal Base Characters et Universal Animation Library, remplis par le menu)")]
         public HumanCatalog Humans = new HumanCatalog();
         [Tooltip("Les villageois, les gardes et les PNJ qui parlent prennent les corps humains variés (coché) ou leurs personnages de Mixamo.")]
@@ -560,7 +597,7 @@ namespace EdS.Game
             switch (slot)
             {
                 case StyleSlot.Hero: return Hero;
-                case StyleSlot.Wolf: return Wolf;
+                case StyleSlot.Wolf: return DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) ? DireWolf : Wolf;   // V2.11 : Croc-Gris, loup blanc
                 case StyleSlot.Boar: return Boar;
                 case StyleSlot.Tree: return Pick(Trees, id);
                 case StyleSlot.Rock: return Pick(Rocks, id);
@@ -589,7 +626,7 @@ namespace EdS.Game
             switch (slot)
             {
                 case StyleSlot.Hero: return HeroYaw;
-                case StyleSlot.Wolf: return WolfYaw;
+                case StyleSlot.Wolf: return DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) ? DireWolfYaw : WolfYaw;
                 case StyleSlot.Boar: return BoarYaw;
                 case StyleSlot.Stag: return StagYaw;
                 case StyleSlot.Doe: return DoeYaw;
@@ -643,6 +680,35 @@ namespace EdS.Game
         /// <summary>Animations à part d'un modèle : celles du héros (Mixamo) ou d'un personnage ; vide sinon.</summary>
         public AnimationClip[] Clips(StyleSlot slot, string id) =>
             slot == StyleSlot.Hero ? HeroClips : slot == StyleSlot.Character ? Character(id)?.Clips : null;
+
+        /// <summary>Sous-lot V2.11 : la ressource de la 5e vague du rôle <paramref name="role"/>, ou null (pas déposée, ou pas sur ce téléphone).</summary>
+        public Wave5Look Look(Wave5Role role)
+        {
+            if (Wave5 == null) return null;
+            foreach (Wave5Look w in Wave5)
+                if (w != null && w.Role == role && w.Model != null)
+                    return EdS.Runtime.Wave5.Shown(EdS.Runtime.Wave5.Entry(role), Application.isMobilePlatform) ? w : null;
+            return null;
+        }
+
+        /// <summary>Sous-lot V2.11 : toutes les ressources trouvées du rôle (les pains : plusieurs, le meilleur d'abord) ; vide sans elles.</summary>
+        public System.Collections.Generic.List<Wave5Look> Looks(Wave5Role role)
+        {
+            var list = new System.Collections.Generic.List<Wave5Look>();
+            if (Wave5 == null || !EdS.Runtime.Wave5.Shown(EdS.Runtime.Wave5.Entry(role), Application.isMobilePlatform)) return list;
+            foreach (Wave5Look w in Wave5)
+                if (w != null && w.Role == role && w.Model != null) list.Add(w);
+            return list;
+        }
+
+        /// <summary>Sous-lot V2.11 : l'icône de CraftPix de l'objet <paramref name="item"/>, ou null (l'icône du jeu reste).</summary>
+        public Texture2D ItemIcon(string item)
+        {
+            if (ItemIcons == null || string.IsNullOrEmpty(item)) return null;
+            foreach (ItemIconLook i in ItemIcons)
+                if (i != null && i.Icon != null && i.Item == item) return i.Icon;
+            return null;
+        }
 
         /// <summary>Objet de décor, ou null s'il n'a pas de modèle.</summary>
         public PropLook Prop(StyleProp kind)
