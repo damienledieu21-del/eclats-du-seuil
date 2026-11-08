@@ -1169,6 +1169,30 @@ namespace EdS.Game
                 _occluders.Add(new Occluder { Transform = r.transform, Renderer = r, Lower = false, Min = box.min, Max = box.max });
         }
 
+        /// <summary>
+        /// Sous-lot V2.11 (décision de Damien du 9 novembre 2026) : le pont de pierre (« Medieval Bridge » de JooL, 15,4 m de long) posé en
+        /// travers de la rivière (suivant x), un peu plus long que le passage, son parapet à hauteur de main au-dessus du tablier où l'on
+        /// marche ; l'échelle et la rotation se règlent dans le catalogue. Faux sans le modèle.
+        /// </summary>
+        private bool StoneBridge(float x0, float z0, float x1, float z1)
+        {
+            if (!Wave5View.Has(Wave5Role.StoneBridge)) return false;
+            var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            GameObject bridge = Wave5View.Place(_root.transform, Wave5Role.StoneBridge, "pont de pierre", center, 90f);
+            if (bridge == null || !StyleLook.VisibleBounds(bridge, out Bounds b) || b.size.x < 0.5f)
+            {
+                if (bridge != null) Object.Destroy(bridge);
+                return false;
+            }
+            // Son long côté suit x une fois tourné : à la longueur du passage (+15 %), largeur gardée en proportion.
+            float k = (x1 - x0) * 1.15f / b.size.x;
+            bridge.transform.localScale *= k;
+            StyleLook.VisibleBounds(bridge, out b);
+            bridge.transform.position += new Vector3(center.x - b.center.x, BridgeRise + 1.0f - b.max.y, center.z - b.center.z);
+            AddModelOccluders(bridge);
+            return true;
+        }
+
         /// <summary>Flèche (m) du pont cintré : le milieu du tablier est à 4 cm + 35 cm au-dessus du sol.</summary>
         private const float BridgeRise = 0.35f;
 
@@ -1190,6 +1214,13 @@ namespace EdS.Game
             // Essai réaliste (demande de Damien du 27 octobre 2026 : « le pont n'est pas réaliste ») : la rivière coule sous le pont.
             if (_rivers.Count > 0 && BridgeGap(space) is (float gx0, float gz0, float gx1, float gz1))
                 WaterSurface("Rivière (sous le pont)", new List<Vector3> { new Vector3(gx0, 0f, gz0), new Vector3(gx1, 0f, gz0), new Vector3(gx1, 0f, gz1), new Vector3(gx0, 0f, gz1) });
+            // Décision de Damien du 9 novembre 2026 : le pont de pierre de JooL remplace le pont cintré de bois, s'il est déposé (sinon le
+            // pont cintré, comme avant) ; on y marche à la même hauteur (le tablier du moteur ne change pas).
+            if (StoneBridge(x0, z0, x1, z1))
+            {
+                StyleWorld.Deck(x0, z0, x1, z1, BridgeRise);
+                return;
+            }
             Material wood = Built(StyleSurface.Wood, new Color(0.55f, 0.4f, 0.24f), out float woodTile);
             Material bark = StyleWorld.Surface(StyleSurface.Bark, out float barkTile) ?? wood;
             Material stone = Stone(out float stoneTile);

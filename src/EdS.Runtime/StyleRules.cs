@@ -619,7 +619,7 @@ namespace EdS.Runtime
             [StyleProp.Crate] = (new[] { "crate" }, new[] { "pears" }),   // V2.11 : la caisse de poires va à l'étal de Bertille
             [StyleProp.Barrel] = (new[] { "barrel" }, new string[0]),
             [StyleProp.Anvil] = (new[] { "anvil" }, new string[0]),
-            [StyleProp.Bridge] = (new[] { "pier", "bridge" }, new[] { "medievalbridge", "pierudolfs" }),   // V2.11 : le pont de pierre attend le choix de Damien
+            [StyleProp.Bridge] = (new[] { "pier", "bridge" }, new[] { "medievalbridge", "pierudolfs" }),   // V2.11 : le pont de pierre est posé par Wave5 (pas un ponton)
             [StyleProp.Herb] = (new[] { "periwinkle", "herb" }, new string[0]),
             [StyleProp.Mill] = (new[] { "windmill", "mill" }, new string[0]),
         };

@@ -202,6 +202,20 @@ namespace EdS.Game
                 Wave5View.PlaceNear(root, Wave5Role.HayBales, "foin 1", fields.CenterX, fields.CenterZ, 140, 7, 0.8, obstacles, 20);
                 Wave5View.PlaceNear(root, Wave5Role.HayBales, "foin 2", fields.CenterX, fields.CenterZ, 160, 8.5, 0.8, obstacles, 75);
             }
+            // Décision de Damien du 9 novembre 2026 : les tours en ruine aux ruines, sur ordinateur seulement (Wave5 : jamais sur téléphone, où
+            // les ruines restent en formes simples), à la taille du lieu, le long de son plus grand côté.
+            if (Place("ruines") is MapPlace ruins && Wave5View.Has(Wave5Role.RuinedTowers))
+            {
+                bool alongX = ruins.MaxX - ruins.MinX >= ruins.MaxZ - ruins.MinZ;
+                GameObject towers = Wave5View.Place(root, Wave5Role.RuinedTowers, "tours en ruine", new Vector3((float)ruins.CenterX, 0f, (float)ruins.CenterZ), alongX ? 90f : 0f);
+                if (towers != null && StyleLook.VisibleBounds(towers, out Bounds tb))
+                {
+                    float side = (float)System.Math.Max(ruins.MaxX - ruins.MinX, ruins.MaxZ - ruins.MinZ) * 0.8f;
+                    float longest = Mathf.Max(tb.size.x, tb.size.z);
+                    if (longest > side) towers.transform.localScale *= side / longest;
+                    StyleLook.Ground(towers, 0f);
+                }
+            }
             if (Place("hameau") is MapPlace hamlet)
                 Wave5View.PlaceNear(root, Wave5Role.Cart, "charrette", hamlet.CenterX, hamlet.CenterZ, 250, 5, 2.2, obstacles, 70);
             // Les fêtes : réglage « Human Festival » du catalogue (tenues de fête) ; la PR des fêtes du jeu (#120) pourra l'allumer aussi.

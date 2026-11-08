@@ -278,6 +278,10 @@ namespace EdS.Runtime
             E(Wave5Role.Wisp, "Feu follet du cœur du Seuil", Live, "pas de feu follet", Wave5Fix.Untextured | Wave5Fix.Emissive | Wave5Fix.Floats | Wave5Fix.Animated, 0.6,
                 (0.55, 0.75, 1.0), (Folder + "Seuil/eds_SF_Wisp_soul_seyXR.fbx", Sf("Wisp soul", "seyXR", "f4fc937e7e1f4afeb59e2b0ac1c41855"))),
 
+            E(Wave5Role.StoneBridge, "Pont de pierre des Vallons (décision de Damien du 9 novembre 2026)", Live, "le pont cintré fait par le code", Wave5Fix.Heavy, 0,
+                (Folder + "Village/eds_SF_Medieval_Bridge_JooL.fbx", Sf("Medieval Bridge", "_JooL_", "e536f8aa3a15473bb9eaffeb53ae31e9"))),
+            E(Wave5Role.RuinedTowers, "Tours en ruine aux ruines (73 k triangles : ordinateur seulement)", Live, "rien de plus (et toujours sur téléphone)", Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
+                (Folder + "Village/eds_SF_Pack_of_old_towers_in_ruins_taz83.fbx", Sf("Pack of old towers in ruins", "taz83", "f213359c6cbb4c29bf8880764faa0fb8"))),
             // 3. Boulangerie, étals, champs, fêtes.
             E(Wave5Role.BreadOven, "Four à pain de Firmin", Live, "pas de four (Firmin devant sa maison)", Wave5Fix.None, 0,
                 (Folder + "Boulangerie/eds_SF_Brick_Bread_Oven_torricane.fbx", Sf("Brick Bread Oven", "torricane", "f65f1a343b5347caaeb204d2c023667f"))),
@@ -355,10 +359,6 @@ namespace EdS.Runtime
             E(Wave5Role.Dagger, "Dague", Ready, Later, Wave5Fix.None, 0, PolyFile("Armes", "ornate_medieval_dagger", "Ornate Medieval Dagger")),
             E(Wave5Role.Gambeson, "Gambison (sur mannequin)", Ready, Later, Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Armes/eds_SF_Gambeson_Leon_Steiner.fbx", Sf("Gambeson", "Leon.Steiner", "0fc44d2876ed449ca9473e78c83a8d39"))),
-            E(Wave5Role.StoneBridge, "Pont de pierre (le pont cintré de bois reste : choix de Damien)", Ready, "le pont cintré fait par le code", Wave5Fix.Heavy, 0,
-                (Folder + "Village/eds_SF_Medieval_Bridge_JooL.fbx", Sf("Medieval Bridge", "_JooL_", "e536f8aa3a15473bb9eaffeb53ae31e9"))),
-            E(Wave5Role.RuinedTowers, "Tours en ruine (73 k triangles : jamais sur téléphone)", Ready, Later, Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
-                (Folder + "Village/eds_SF_Pack_of_old_towers_in_ruins_taz83.fbx", Sf("Pack of old towers in ruins", "taz83", "f213359c6cbb4c29bf8880764faa0fb8"))),
             E(Wave5Role.Fountain, "Fontaine", Ready, Later, Wave5Fix.None, 0,
                 (Folder + "Village/eds_SF_Medieval_Fountain_Empty_Free_wolfgar74.fbx", Sf("Medieval Fountain Empty (Free)", "wolfgar74", "952a9c257db641229902c36abb97e8bc"))),
             E(Wave5Role.StreetLantern, "Lanterne de rue", Ready, Later, Wave5Fix.None, 0,

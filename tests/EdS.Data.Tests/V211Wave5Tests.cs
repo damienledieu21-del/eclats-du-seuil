@@ -165,6 +165,10 @@ public sealed class V211Wave5Tests
             Assert.True(Wave5.Shown(Wave5.Entry(heavy), false), heavy.ToString());
         }
         Assert.True(Wave5.Shown(Wave5.Entry(Wave5Role.Menhir), true));
+        // Décisions de Damien du 9 novembre 2026 : pont de pierre et tours en ruine branchés (les tours : ordinateur seulement).
+        Assert.Equal(Wave5Use.Live, Wave5.Entry(Wave5Role.StoneBridge).Use);
+        Assert.Equal(Wave5Use.Live, Wave5.Entry(Wave5Role.RuinedTowers).Use);
+        Assert.True(Wave5.Shown(Wave5.Entry(Wave5Role.StoneBridge), true));
         // Tout modèle de plus de 20 000 triangles est marqué lourd (CONVERSION_V5.md).
         foreach (Wave5Role role in new[] { Wave5Role.DireWolf, Wave5Role.Galeran, Wave5Role.Rat, Wave5Role.MarketStalls, Wave5Role.HalfCape, Wave5Role.Bunting,
             Wave5Role.StoneBridge, Wave5Role.Spider, Wave5Role.DungeonKit, Wave5Role.Gambeson, Wave5Role.RuinedTowers })

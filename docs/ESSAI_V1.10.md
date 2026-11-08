@@ -348,4 +348,5 @@ Avant l'essai : les dossiers de la 5e vague déposés tels quels sous `Assets/St
 | 20.17 | Les villageois au travail | Gestes de métier de Mixamo : au **comptoir** (marchands), **porter** et **la pause** (paysans), **s'agenouiller** (forge, prière à la chapelle) ; sans les fichiers, comme avant | [ ] | |
 | 20.18 | Sac et boutiques | Les objets ont les **icônes peintes de CraftPix** (six épées différentes) ; ceux sans correspondance gardent leur icône | [ ] | Liste des objets mal reliés à envoyer à Claude |
 | 20.19 | Sur le Note8 | Image fluide au bourg et au Seuil ; ni guirlande ni demi-cape ni tours en ruine | [ ] | |
-| 20.20 | Ton avis : pont de pierre de JooL à la place de ton pont cintré ? tours en ruine aux ruines ? quelles créatures de la crypte d'abord ? | — | [ ] | |
+| 20.20 | Le pont des Vallons (décision du 9 novembre) | Le **pont de pierre** de JooL en travers de la rivière, à la place du pont cintré ; on le traverse à la même hauteur qu'avant ; sans le modèle, le pont cintré | [ ] | Échelle et hauteur estimées : régler Scale dans le catalogue |
+| 20.21 | Les ruines, sur ordinateur | Les **tours en ruine** de taz83 à la taille du lieu ; sur téléphone, les ruines comme avant | [ ] | |
