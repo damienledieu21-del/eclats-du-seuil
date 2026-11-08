@@ -195,6 +195,93 @@ public class V27ReponsesTests
         Assert.Equal(new[] { "npc.archer_garde", "npc.capitaine", "npc.thibaut" }, Story.Value.Npcs.Where(n => n.Faction == "guard").Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
     }
 
+    // --- Remarques de Codex (tour 2) et décisions de Damien du 8 novembre 2026 --------------------------------------------------
+
+    [Fact]
+    public void Le_sentier_des_bandits_s_atteint_par_le_recel()
+    {
+        // Sans geste répétable, les bandits plafonnent : Colin +50, le mot de passe +60, le remède +40 = 150 (apprécié), sous « honoré » (300).
+        StoryBook book = Story.Value;
+        long once = book.Quest("quest.v27.mot_de_passe").Effects.Concat(book.Quest("quest.v27.remede_du_camp").Effects)
+            .Where(e => e.Kind == EffectKind.Reputation && e.Id == "bandits").Sum(e => e.Value) + 50;
+        Assert.Equal(150, once);
+        Assert.Equal(new[] { ("guard", -1), ("bandits", 2) }, book.Reputation.Act(Reputations.Fence).Select(c => (c.Faction, c.Value)));
+        // Le recel : chaque objet acheté au marché noir rapproche du camp ; 75 potions de soin mènent de 150 à 300.
+        var facts = new[] { "fact.ch4.deserteur.aide", "fact.ch4.deserteur.decide", "fact.met.deserteur", "fact.met.receleur" };
+        var done = new Dictionary<string, QuestProgress>
+        {
+            ["quest.deserteur"] = new QuestProgress(QuestProgress.Done), ["quest.v27.mot_de_passe"] = new QuestProgress(QuestProgress.Done),
+            ["quest.v27.remede_du_camp"] = new QuestProgress(QuestProgress.Done),
+        };
+        SavedCharacter hero = Hero(100_000).WithStory(new SavedStory(facts, done, reputation: new Dictionary<string, int> { ["bandits"] = (int)once }));
+        WorldSession w = Open(69, -27.5, hero);
+        Assert.Equal(TradeRefusal.None, w.Buy("merchant.receleur", "item.potion_de_soin", 75));
+        List<string> events = w.Step().Story.Select(e => e.ToString()).ToList();
+        Assert.Contains("ReputationChanged bandits/fence 150", events);
+        Assert.Contains("ReputationChanged guard/fence -75", events);
+        Assert.Contains("StandingChanged bandits/honored 1", events);
+        Assert.Equal(("honored", 300), (w.Narrative!.Standing("bandits"), w.Narrative.Reputation("bandits")));
+        // Un achat ailleurs ne compte pas.
+        WorldSession bourg = At("merchant.herboriste", hero);
+        Assert.Equal(TradeRefusal.None, bourg.Buy("merchant.herboriste", "item.potion_de_soin"));
+        Assert.DoesNotContain(bourg.Step().Story, e => e.Kind == StoryEventKind.ReputationChanged);
+        // Colin, à 300 : l'offre du sentier.
+        SavedCharacter honored = Hero().WithStory(new SavedStory(facts, done, reputation: new Dictionary<string, int> { ["bandits"] = 300 }));
+        WorldSession colin = Open(66.5, -30, honored);
+        Assert.Equal(DialogueRefusal.None, colin.Talk("npc.deserteur", out DialogueView? offer));
+        Assert.Equal("v27_deserteur_sentier_offre", offer!.Node);
+    }
+
+    [Fact]
+    public void Une_offre_remise_a_plus_tard_se_reprend_apres_la_tour()
+    {
+        // Après la tour silencieuse, l'entrée « quête finie » passe avant l'accueil : la réponse de reprise y est aussi.
+        SavedCharacter hero = Hero().WithStory(new SavedStory(new[] { "fact.v27.capitaine.plus_tard", "fact.met.capitaine" },
+            new Dictionary<string, QuestProgress> { ["quest.tour_silencieuse"] = new QuestProgress(QuestProgress.Done) },
+            reputation: new Dictionary<string, int> { ["guard"] = 150 }));
+        WorldSession w = Play(Zone(-2, -9.5), hero);
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.capitaine", out DialogueView? view));
+        Assert.Equal("ch4_tour_apres", view!.Node);
+        DialogueOption again = Assert.Single(view.Options, o => o.Text == "text.v27.capitaine.encore");
+        Assert.Equal(DialogueRefusal.None, w.Choose(again.Index, out DialogueView? offer, out _));
+        Assert.Equal("v27_capitaine_offre", offer!.Node);
+        // Chaque offre remise à plus tard a sa reprise depuis toutes les entrées qui peuvent passer après elle.
+        foreach (Dialogue d in Story.Value.Dialogues)
+            for (int i = 0; i < d.Entries.Count; i++)
+                if (d.Entries[i].Node.EndsWith("_offre", StringComparison.Ordinal) && d.Entries[i].Node.StartsWith("v27_", StringComparison.Ordinal))
+                {
+                    string key = "text.v27." + d.Entries[i].Node[4..^6] + ".encore";
+                    foreach (DialogueEntry later in d.Entries.Skip(i + 1).Where(e => !e.Node.StartsWith("v27_", StringComparison.Ordinal)))
+                        Assert.True(d.Node(later.Node).Choices.Any(c => c.Text == key), $"{d.Id} / {later.Node} : pas de reprise {key}");
+                }
+    }
+
+    [Fact]
+    public void Haie_la_garde_parle_encore_pour_une_quete_commencee_ou_principale()
+    {
+        var hated = new Dictionary<string, int> { ["guard"] = -800 };
+        // Bérenger : la tour silencieuse en cours (son rapport) : il parle, froidement.
+        SavedCharacter tour = Hero().WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { ["quest.tour_silencieuse"] = new QuestProgress("rapport") },
+            reputation: hated));
+        WorldSession w = Play(Zone(-2, -9.5), tour);
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.capitaine", out DialogueView? view));
+        Assert.Equal("ch4_tour_rapport", view!.Node);
+        Assert.True(w.Narrative!.LastTalkCold);
+        Assert.Equal("{0}, froidement : « Je fais ça pour le bourg, pas pour toi. »", Texts.Get("text.ui.shunned.story"));
+        // Thibaut : la quête principale du chapitre 4 (la lettre de Rosalie).
+        SavedCharacter lettre = Hero().WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { ["quest.tour_et_camp"] = new QuestProgress("lettre") },
+            reputation: hated));
+        Assert.True(Play(Zone(), lettre).Narrative!.SpeaksForQuest("npc.thibaut"));
+        // Rien en cours : il se tait ; il ne propose pas de quête secondaire nouvelle.
+        WorldSession idle = Play(Zone(-2, -9.5), With(Hero(), hated));
+        Assert.Equal(DialogueRefusal.Shunned, idle.Talk("npc.capitaine", out _));
+        Assert.False(idle.Narrative!.LastTalkCold);
+        // Chaque PNJ qui donne une étape de quête principale a une entrée qui la nomme (sinon la règle ne le laisserait pas parler).
+        foreach (Quest q in Story.Value.Quests.Where(q => q.Category == QuestCategory.Main))
+            foreach (QuestStep s in q.Steps.Where(s => s.Objective.Kind is ObjectiveKind.Talk or ObjectiveKind.Deliver))
+                Assert.NotNull(s.Objective.Kind == ObjectiveKind.Talk ? s.Objective.Id : s.Objective.Npc);
+    }
+
     // --- Côté bandits : quêtes en plus et passage secret ---------------------------------------------------------------------
 
     [Fact]

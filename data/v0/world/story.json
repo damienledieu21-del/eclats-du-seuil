@@ -6964,6 +6964,26 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v27.gaspard.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.gaspard.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.piste_des_rodeurs"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "rangers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_gaspard_offre"
               }
             ]
           },
@@ -15445,6 +15465,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.v27.doyen.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.doyen.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.muret_du_hameau"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "villagers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_doyen_offre"
               }
             ],
             "lines": [
@@ -15696,6 +15736,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.v27.doyen.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.doyen.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.muret_du_hameau"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "villagers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_doyen_offre"
               }
             ]
           },
@@ -15708,6 +15768,26 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.v27.doyen.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.doyen.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.muret_du_hameau"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "villagers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_doyen_offre"
               }
             ]
           },
@@ -17588,6 +17668,26 @@
                 ],
                 "effects": [],
                 "next": "ch4_chef_livre"
+              },
+              {
+                "text": "text.v27.capitaine.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.capitaine.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.ronde_du_capitaine"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "guard",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_capitaine_offre"
               }
             ]
           },
@@ -17755,6 +17855,26 @@
                 ],
                 "effects": [],
                 "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.v27.capitaine.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.capitaine.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.ronde_du_capitaine"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "guard",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_capitaine_offre"
               }
             ]
           },
@@ -18102,6 +18222,78 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              },
+              {
+                "text": "text.v27.deserteur.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.mot_de_passe"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.deserteur.aide"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "neutral"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_offre"
+              },
+              {
+                "text": "text.v27.deserteur_remede.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_remede.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.mot_de_passe"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_remede_offre"
+              },
+              {
+                "text": "text.v27.deserteur_sentier.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_sentier.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.sentier_des_contrebandiers"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "honored"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_sentier_offre"
               }
             ],
             "lines": [
@@ -18404,7 +18596,80 @@
           {
             "id": "ch4_colin_apres_livre",
             "text": "text.ch4.deserteur.apres_livre",
-            "choices": []
+            "choices": [
+              {
+                "text": "text.v27.deserteur.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.mot_de_passe"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.ch4.deserteur.aide"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "neutral"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_offre"
+              },
+              {
+                "text": "text.v27.deserteur_remede.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_remede.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.mot_de_passe"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_remede_offre"
+              },
+              {
+                "text": "text.v27.deserteur_sentier.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.deserteur_sentier.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.sentier_des_contrebandiers"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.v27.remede_du_camp"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "bandits",
+                    "step": "honored"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_deserteur_sentier_offre"
+              }
+            ]
           },
           {
             "id": "v27_deserteur_offre",
@@ -22125,6 +22390,10 @@
         "scarPurified": {
           "villagers": 10,
           "rangers": 20
+        },
+        "fence": {
+          "guard": -1,
+          "bandits": 2
         }
       },
       "defeated": {

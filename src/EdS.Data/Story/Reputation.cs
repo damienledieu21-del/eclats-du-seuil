@@ -40,9 +40,16 @@ namespace EdS.Data.Story
         public const int Neutral = 3;
 
         /// <summary>Gestes du monde qui changent la réputation (<see cref="ReputationRules.Acts"/>).</summary>
-        public static IReadOnlyList<string> Acts { get; } = new ReadOnlyCollection<string>(new[] { "questMain", "questSide", "contract", "scarPurified" });
+        public static IReadOnlyList<string> Acts { get; } = new ReadOnlyCollection<string>(new[] { "questMain", "questSide", "contract", "scarPurified", "fence" });
 
         public const string QuestMain = "questMain", QuestSide = "questSide", Contract = "contract", ScarPurified = "scarPurified";
+
+        /// <summary>
+        /// Sous-lot V2.7 (remarque de Codex sur la PR #116) : recel : chaque objet acheté à un marchand des bandits (le marché noir), changement
+        /// multiplié par le nombre d'objets ; la voie répétable vers les paliers hauts des bandits (l'achat coûte toujours au moins la valeur de
+        /// l'objet : pas de boucle gratuite).
+        /// </summary>
+        public const string Fence = "fence";
 
         public static bool IsFaction(string? id) => id != null && Factions.Contains(id);
 

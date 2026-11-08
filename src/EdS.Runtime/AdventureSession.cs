@@ -673,6 +673,7 @@ namespace EdS.Runtime
                 if (refusal == DialogueRefusal.NothingToSay && World.Narrative?.LastTalkFilled > 0) return true;
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
                 if (refusal == DialogueRefusal.Shunned) Say("text.ui.shunned", Text(npc.Name));   // sous-lot V2.7 : la garde ne lui parle plus
+                if (refusal == DialogueRefusal.None && World.Narrative?.LastTalkCold == true) Say("text.ui.shunned.story", Text(npc.Name));   // mais l'histoire continue
                 return refusal == DialogueRefusal.None;
             }
             if (NodeInReach is GatheringNode node)

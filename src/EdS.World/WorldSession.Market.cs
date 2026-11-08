@@ -164,6 +164,7 @@ namespace EdS.World
             if (trial.Add(item, count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
+            if (NeedMarket().Book.Merchant(merchant).Faction == "bandits") Narrative?.Fenced(count);   // sous-lot V2.7 : le recel
             return TradeRefusal.None;
         }
 

@@ -1644,7 +1644,8 @@
       "text.v27.deserteur_sentier.encore": "Le sentier des contrebandiers, Colin ?",
       "text.ui.trade.shunned": "« Je ne vends rien à ceux de ton espèce. » Le marchand te tourne le dos.",
       "text.ui.shunned": "{0} te tourne le dos : la garde ne te parle plus.",
-      "text.ui.curfew": "La garde te chasse du bourg pour la nuit. Te voilà reconduit : {0}."
+      "text.ui.curfew": "La garde te chasse du bourg pour la nuit. Te voilà reconduit : {0}.",
+      "text.ui.shunned.story": "{0}, froidement : « Je fais ça pour le bourg, pas pour toi. »"
     }
   }
 }

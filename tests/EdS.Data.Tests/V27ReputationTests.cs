@@ -84,7 +84,7 @@ public class V27ReputationTests
         StoryBook book = Story.Value;
         ReputationRules r = book.Reputation;
         Assert.Equal(new[] { 130, 120, 110, 100, 95, 90, 80 }, r.Prices);
-        Assert.Equal(new[] { "contract", "questMain", "questSide", "scarPurified" }, r.Acts.Keys);
+        Assert.Equal(new[] { "contract", "fence", "questMain", "questSide", "scarPurified" }, r.Acts.Keys);
         Assert.Equal(new[] { ("villagers", -25), ("guard", -50) }, r.LinksOf("bandits").Select(c => (c.Faction, c.Value)));
         Assert.Equal(new[] { ("guard", 3), ("bandits", -4) }, r.DefeatOf("bandit_epee1", "bandit").Select(c => (c.Faction, c.Value)));
         Assert.Equal(new[] { ("villagers", 40), ("guard", 15) }, r.EventOf("attaque_hameau", won: true).Select(c => (c.Faction, c.Value)));

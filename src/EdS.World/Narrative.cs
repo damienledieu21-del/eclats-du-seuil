@@ -340,6 +340,12 @@ namespace EdS.World
         public int LastTalkFilled { get; private set; }
 
         /// <summary>
+        /// Sous-lot V2.7 (décision de Damien du 8 novembre 2026) : le dernier <see cref="Talk"/> accepté l'a été malgré la haine de la faction du
+        /// PNJ, pour la quête principale : il parle, froidement (« Je fais ça pour le bourg, pas pour toi. »).
+        /// </summary>
+        public bool LastTalkCold { get; private set; }
+
+        /// <summary>
         /// Relecture de la PR #76 : compteur qui change à chaque changement de l'état narratif (l'interface garde son journal tant qu'il ne
         /// bouge pas).
         /// </summary>
@@ -494,6 +500,31 @@ namespace EdS.World
             ChangeReputation(won ? _book.Reputation.EventOf(eventId, true) : missed ? _book.Reputation.MissedOf(eventId) : _book.Reputation.EventOf(eventId, false),
                 won ? "eventWon" : missed ? "eventMissed" : "eventLost", _queued);
 
+        /// <summary>
+        /// Sous-lot V2.7 (décision de Damien du 8 novembre 2026 : l'histoire n'est jamais bloquée par la réputation) : le PNJ
+        /// <paramref name="npc"/> a affaire à une quête : l'étape en cours d'une quête commencée lui parle ou lui livre, ou la première entrée de
+        /// son dialogue qui convient porte sur une quête commencée (à une étape, en cours, à sa récompense), ou ouvre une quête principale. Une
+        /// quête secondaire pas encore commencée ne passe pas (il ne propose rien de neuf à qui sa faction hait).
+        /// </summary>
+        public bool SpeaksForQuest(string npc)
+        {
+            if (npc is null || !_book.HasNpc(npc)) return false;
+            foreach (string id in _quests.Keys)
+                if (CurrentStep(id) is { Objective: { } o }
+                    && ((o.Kind == ObjectiveKind.Talk && o.Id == npc) || (o.Kind == ObjectiveKind.Deliver && o.Npc == npc))) return true;
+            DialogueEntry? entry = _book.Dialogue(_book.Npc(npc).Dialogue).Entries.FirstOrDefault(e => All(e.Conditions));
+            return entry != null && entry.Conditions.Any(c => c.Kind is ConditionKind.QuestActive or ConditionKind.QuestAt or ConditionKind.QuestReward
+                || (c.Kind == ConditionKind.QuestNotStarted && _book.HasQuest(c.Id) && _book.Quest(c.Id).Category == QuestCategory.Main));
+        }
+
+        /// <summary>Sous-lot V2.7 : <paramref name="count"/> objets achetés au marché noir des bandits (geste « fence »), annoncé au tick suivant.</summary>
+        internal void Fenced(int count)
+        {
+            if (count <= 0) return;
+            foreach (ReputationChange c in _book.Reputation.Act(Reputations.Fence))
+                ChangeReputation(c.Faction, checked((long)c.Value * count), Reputations.Fence, _queued);
+        }
+
         /// <summary>Sous-lot V2.7 : le PNJ <paramref name="npc"/> est d'une faction qui ne parle plus à qui elle hait, et elle hait le personnage.</summary>
         public bool IsShunnedBy(string npc) =>
             npc != null && _book.HasNpc(npc) && _book.Npc(npc).Faction is string f && _book.Reputation.Shun.Contains(f) && StandingIndex(f) == 0;
@@ -564,7 +595,10 @@ namespace EdS.World
             // V1.9.10 : un nouveau Talk accepté (même PNJ, sans Close) repart d'un dialogue neuf ; un Talk refusé laisse le dialogue ouvert
             // (et son marqueur de premier accueil) tel qu'il était.
             // Sous-lot V2.7 : un PNJ d'une faction qui hait le personnage (et qui ne parle plus, Shun) ne lui parle pas ; rien ne change.
-            if (IsShunnedBy(npc)) { view = null; return DialogueRefusal.Shunned; }
+            // Décision de Damien du 8 novembre 2026 : l'histoire n'est jamais bloquée par la réputation : pour la quête principale, il parle quand même.
+            bool cold = IsShunnedBy(npc);
+            if (cold && !SpeaksForQuest(npc)) { view = null; return DialogueRefusal.Shunned; }
+            LastTalkCold = cold;
             string? previous = _firstMet;
             _firstMet = null;
             DialogueRefusal refusal = TalkCore(npc, out view);
