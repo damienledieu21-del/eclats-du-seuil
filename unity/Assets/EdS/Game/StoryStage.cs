@@ -116,6 +116,7 @@ namespace EdS.Game
         private Transform _galeranModel;
         private Vector3 _galeranLast;
         private float _galeranStep;
+        private float _galeranBaseY;   // relecture : la hauteur calée à la pose (pieds au sol), gardée sous le balancement
 
         // Les Vallons.
         private GameObject _vallons;
@@ -426,6 +427,7 @@ namespace EdS.Game
             if (model == null) return false;
             model.transform.SetParent(_galeran.transform, true);
             _galeranModel = model.transform;
+            _galeranBaseY = model.transform.localPosition.y;
             _galeranAnimation = model.GetComponentInChildren<Animation>();
             _galeranLast = player.position;
             foreach (Renderer r in player.GetComponentsInChildren<Renderer>())
@@ -455,7 +457,7 @@ namespace EdS.Game
             }
             _galeranStep = moving ? _galeranStep + dt * 9f : 0f;
             Vector3 p = _galeranModel.localPosition;
-            _galeranModel.localPosition = new Vector3(p.x, -1f + (moving ? 0.035f * Mathf.Abs(Mathf.Sin(_galeranStep)) : 0f), p.z);
+            _galeranModel.localPosition = new Vector3(p.x, _galeranBaseY + (moving ? 0.035f * Mathf.Abs(Mathf.Sin(_galeranStep)) : 0f), p.z);
         }
 
         private static List<string> ClipNames(Animation animation)

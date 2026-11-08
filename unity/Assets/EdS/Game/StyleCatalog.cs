@@ -597,7 +597,7 @@ namespace EdS.Game
             switch (slot)
             {
                 case StyleSlot.Hero: return Hero;
-                case StyleSlot.Wolf: return DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) ? DireWolf : Wolf;   // V2.11 : Croc-Gris, loup blanc
+                case StyleSlot.Wolf: return UseDireWolf(id) ? DireWolf : Wolf;   // V2.11 : Croc-Gris, loup blanc
                 case StyleSlot.Boar: return Boar;
                 case StyleSlot.Tree: return Pick(Trees, id);
                 case StyleSlot.Rock: return Pick(Rocks, id);
@@ -626,7 +626,7 @@ namespace EdS.Game
             switch (slot)
             {
                 case StyleSlot.Hero: return HeroYaw;
-                case StyleSlot.Wolf: return DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) ? DireWolfYaw : WolfYaw;
+                case StyleSlot.Wolf: return UseDireWolf(id) ? DireWolfYaw : WolfYaw;
                 case StyleSlot.Boar: return BoarYaw;
                 case StyleSlot.Stag: return StagYaw;
                 case StyleSlot.Doe: return DoeYaw;
@@ -687,15 +687,22 @@ namespace EdS.Game
             if (Wave5 == null) return null;
             foreach (Wave5Look w in Wave5)
                 if (w != null && w.Role == role && w.Model != null)
-                    return EdS.Runtime.Wave5.Shown(EdS.Runtime.Wave5.Entry(role), Application.isMobilePlatform) ? w : null;
+                    return Shown(role) ? w : null;
             return null;
         }
+
+        /// <summary>Relecture de la PR #121 : la ressource se montre-t-elle ici ? (un rôle hors de la liste, comme le corbeau : oui)</summary>
+        private static bool Shown(Wave5Role role) =>
+            !(EdS.Runtime.Wave5.EntryOrNull(role) is Wave5Entry entry) || EdS.Runtime.Wave5.Shown(entry, Application.isMobilePlatform);
+
+        /// <summary>Le grand loup pour Croc-Gris et le loup blanc, sur ordinateur seulement (35 k triangles : le Note8 garde le loup des meutes).</summary>
+        private bool UseDireWolf(string id) => DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) && Shown(Wave5Role.DireWolf);
 
         /// <summary>Sous-lot V2.11 : toutes les ressources trouvées du rôle (les pains : plusieurs, le meilleur d'abord) ; vide sans elles.</summary>
         public System.Collections.Generic.List<Wave5Look> Looks(Wave5Role role)
         {
             var list = new System.Collections.Generic.List<Wave5Look>();
-            if (Wave5 == null || !EdS.Runtime.Wave5.Shown(EdS.Runtime.Wave5.Entry(role), Application.isMobilePlatform)) return list;
+            if (Wave5 == null || !Shown(role)) return list;
             foreach (Wave5Look w in Wave5)
                 if (w != null && w.Role == role && w.Model != null) list.Add(w);
             return list;

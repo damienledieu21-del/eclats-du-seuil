@@ -159,7 +159,9 @@ public sealed class V211Wave5Tests
         Assert.Equal(Wave5Fix.None, Wave5.FixesFor("Loup_roo3d"));
         Assert.Equal(Wave5Fix.None, Wave5.FixesFor(""));
         // Tours en ruine, guirlande, demi-cape, gambison, marché : jamais sur téléphone (Note8) ; sur ordinateur, oui.
-        foreach (Wave5Role heavy in new[] { Wave5Role.RuinedTowers, Wave5Role.Bunting, Wave5Role.HalfCape, Wave5Role.Gambeson, Wave5Role.MarketStalls })
+        // Relecture de la PR #121 : le grand loup, le pont de pierre, les araignées et le rat aussi (repli : loup des meutes, pont cintré).
+        foreach (Wave5Role heavy in new[] { Wave5Role.RuinedTowers, Wave5Role.Bunting, Wave5Role.HalfCape, Wave5Role.Gambeson, Wave5Role.MarketStalls,
+            Wave5Role.DireWolf, Wave5Role.StoneBridge, Wave5Role.Spider, Wave5Role.Rat })
         {
             Assert.False(Wave5.Shown(Wave5.Entry(heavy), true), heavy.ToString());
             Assert.True(Wave5.Shown(Wave5.Entry(heavy), false), heavy.ToString());
@@ -168,11 +170,30 @@ public sealed class V211Wave5Tests
         // Décisions de Damien du 9 novembre 2026 : pont de pierre et tours en ruine branchés (les tours : ordinateur seulement).
         Assert.Equal(Wave5Use.Live, Wave5.Entry(Wave5Role.StoneBridge).Use);
         Assert.Equal(Wave5Use.Live, Wave5.Entry(Wave5Role.RuinedTowers).Use);
-        Assert.True(Wave5.Shown(Wave5.Entry(Wave5Role.StoneBridge), true));
+        Assert.True(Wave5.Shown(Wave5.Entry(Wave5Role.Galeran), true));   // personnage unique, gardé sur téléphone
+        // Tout modèle lourd non montré sur téléphone a un repli dit (« toujours sur téléphone » ou prêt pour plus tard).
+        foreach (Wave5Entry e in Wave5.Entries.Where(e => e.Has(Wave5Fix.NotOnPhone) && e.Use == Wave5Use.Live))
+            Assert.True(e.Without.Contains("téléphone"), e.Role.ToString());
         // Tout modèle de plus de 20 000 triangles est marqué lourd (CONVERSION_V5.md).
         foreach (Wave5Role role in new[] { Wave5Role.DireWolf, Wave5Role.Galeran, Wave5Role.Rat, Wave5Role.MarketStalls, Wave5Role.HalfCape, Wave5Role.Bunting,
             Wave5Role.StoneBridge, Wave5Role.Spider, Wave5Role.DungeonKit, Wave5Role.Gambeson, Wave5Role.RuinedTowers })
             Assert.True(Wave5.Entry(role).Has(Wave5Fix.Heavy), role.ToString());
+    }
+
+    [Fact]
+    public void Role_hors_de_la_liste_et_variantes_posees()
+    {
+        Assert.Null(Wave5.EntryOrNull(Wave5Role.Crow));   // le corbeau est vérifié avec les bêtes
+        Assert.Throws<ArgumentException>(() => Wave5.Entry(Wave5Role.Crow));
+        Assert.NotNull(Wave5.EntryOrNull(Wave5Role.Axe));
+        Assert.Equal(2, Wave5.Variants(Wave5Role.Axe));   // hache et hachette
+        Assert.Equal(Wave5.Entry(Wave5Role.Axe).Files.Count, Wave5.Variants(Wave5Role.Axe));
+        Assert.Equal(1, Wave5.Variants(Wave5Role.Mace));
+        Assert.True(Wave5.Variants(Wave5Role.Bread) <= Wave5.Entry(Wave5Role.Bread).Files.Count);
+        // Le nombre de ressources branchées annoncé dans l'essai suit la liste.
+        int live = Wave5.Entries.Count(e => e.Use == Wave5Use.Live);
+        Assert.Contains("trouvées sur " + live, Doc("docs", "ESSAI_V1.10.md"));
+        Assert.Contains("[a-z0-9_]", Script("Editor", "EdsWave5.cs"));   // identifiants d'objets avec chiffres
     }
 
     [Fact]

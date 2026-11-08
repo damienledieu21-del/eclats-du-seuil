@@ -28,7 +28,9 @@ namespace EdS.Game
             var holder = new GameObject(id + " (V2.11)");
             GameObject model = Object.Instantiate(look.Model, holder.transform, false);
             foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-            foreach (SkinnedMeshRenderer skin in holder.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
+            // Relecture de la PR #121 : calcul hors champ sur ordinateur seulement (le Note8 n'a pas de quoi le payer).
+            if (!Application.isMobilePlatform)
+                foreach (SkinnedMeshRenderer skin in holder.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
             Fix(holder, look.Model.name, look.Material);
             holder.transform.SetParent(parent, false);
             float height = size > 0f ? size : (float)entry.Height;
@@ -79,7 +81,7 @@ namespace EdS.Game
             (double tr, double tg, double tb) = Wave5.TintFor(modelName);
             var tint = new Color((float)tr, (float)tg, (float)tb);
             foreach (Renderer r in root.GetComponentsInChildren<Renderer>())
-                foreach (Material m in r.materials)
+                foreach (Material m in Copies(r, root))
                 {
                     if (m == null) continue;
                     Texture baseMap = m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : m.HasProperty("_MainTex") ? m.GetTexture("_MainTex") : null;
@@ -105,6 +107,26 @@ namespace EdS.Game
                         m.SetColor("_EmissionColor", glow);
                     }
                 }
+        }
+
+        /// <summary>
+        /// Relecture de la PR #121 : copies propres des matériaux de <paramref name="r"/>, posées sur lui et détruites avec <paramref name="owner"/>
+        /// (<see cref="MaterialCopies"/>) : aucune copie n'est perdue quand le décor ou l'arme est refait.
+        /// </summary>
+        public static Material[] Copies(Renderer r, GameObject owner)
+        {
+            Material[] shared = r.sharedMaterials;
+            var copies = new Material[shared.Length];
+            MaterialCopies keeper = owner.GetComponent<MaterialCopies>();
+            if (keeper == null) keeper = owner.AddComponent<MaterialCopies>();   // pas « ?? » : le null de Unity n'est pas celui de C#
+            for (int i = 0; i < shared.Length; i++)
+            {
+                if (shared[i] == null) continue;
+                copies[i] = new Material(shared[i]);
+                keeper.Copies.Add(copies[i]);
+            }
+            r.sharedMaterials = copies;
+            return copies;
         }
 
         /// <summary>Points des obstacles de <paramref name="obstacles"/> (pour <see cref="Wave5.FreeSpot"/>).</summary>

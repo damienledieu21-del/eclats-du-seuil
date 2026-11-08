@@ -19,9 +19,6 @@ namespace EdS.Game.Editor
     {
         private const string Folder = EdsStyle.Generated + "/Wave5";
 
-        /// <summary>Rôles posés en plusieurs exemplaires différents (vitrine du fournil) : jusqu'à ce nombre de fichiers trouvés.</summary>
-        private static readonly Dictionary<Wave5Role, int> Several = new Dictionary<Wave5Role, int> { [Wave5Role.Bread] = 6, [Wave5Role.Pastry] = 4 };
-
         internal static string Prepare(List<string> models, List<string> textures, StyleCatalog catalog, List<string> notes)
         {
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder(EdsStyle.Generated, "Wave5");
@@ -32,7 +29,7 @@ namespace EdS.Game.Editor
             {
                 if (entry.Use == Wave5Use.Interior) continue;   // pris par les intérieurs (EdsStyle, InteriorRules)
                 if (entry.Use == Wave5Use.Live) live++;
-                int max = Several.TryGetValue(entry.Role, out int n) ? n : 1;
+                int max = Wave5.Variants(entry.Role);
                 List<string> found = Found(entry, models).Take(max).ToList();
                 if (found.Count > 0 && entry.Use == Wave5Use.Live) liveFound++;
                 if (found.Count > 0 && entry.Use == Wave5Use.Ready) ready++;
@@ -253,7 +250,7 @@ namespace EdS.Game.Editor
         {
             string file = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "data", "v0", "world", "items.json"));
             if (!File.Exists(file)) return new List<string>();
-            return Regex.Matches(File.ReadAllText(file), "\"id\"\\s*:\\s*\"(item\\.[a-z_]+)\"").Cast<Match>().Select(m => m.Groups[1].Value).Distinct().ToList();
+            return Regex.Matches(File.ReadAllText(file), "\"id\"\\s*:\\s*\"(item\\.[a-z0-9_]+)\"").Cast<Match>().Select(m => m.Groups[1].Value).Distinct().ToList();
         }
 
         /// <summary>Le manifeste des licences hors dépôt (Asset Store, Fab), dans <c>Assets/Style/Generated</c> (non suivi par git).</summary>

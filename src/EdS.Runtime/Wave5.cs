@@ -249,7 +249,7 @@ namespace EdS.Runtime
         public static readonly IReadOnlyList<Wave5Entry> Entries = new[]
         {
             // 1. Ce qui était en formes simples ou en repli.
-            E(Wave5Role.DireWolf, "Croc-Gris et le loup blanc (grand loup animé)", Live, "le loup des autres meutes, plus grand", Wave5Fix.Animated | Wave5Fix.Heavy, 0,
+            E(Wave5Role.DireWolf, "Croc-Gris et le loup blanc (grand loup animé)", Live, "le loup des autres meutes, plus grand (et toujours sur téléphone)", Wave5Fix.Animated | Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Creatures/eds_SF_Animated_Wolf_emptypen2477.fbx", Sf("Animated Wolf", "emptypen2477", "0d82257ee1454f87a05458980e43f1b2"))),
             E(Wave5Role.Galeran, "Galeran en armure (souvenir de la Rupture)", Live, "lance, épaulières et plastron en formes simples", Wave5Fix.Animated | Wave5Fix.Heavy, 1.85,
                 (Folder + "Personnages/eds_SF_Armored_Guard_Knight_Rig_SuperKapoo913.fbx", Sf("Armored Guard Knight Rig", "SuperKapoo913", "b7bba7eddb13470b88eb8b24531cb6b3")),
@@ -278,7 +278,7 @@ namespace EdS.Runtime
             E(Wave5Role.Wisp, "Feu follet du cœur du Seuil", Live, "pas de feu follet", Wave5Fix.Untextured | Wave5Fix.Emissive | Wave5Fix.Floats | Wave5Fix.Animated, 0.6,
                 (0.55, 0.75, 1.0), (Folder + "Seuil/eds_SF_Wisp_soul_seyXR.fbx", Sf("Wisp soul", "seyXR", "f4fc937e7e1f4afeb59e2b0ac1c41855"))),
 
-            E(Wave5Role.StoneBridge, "Pont de pierre des Vallons (décision de Damien du 9 novembre 2026)", Live, "le pont cintré fait par le code", Wave5Fix.Heavy, 0,
+            E(Wave5Role.StoneBridge, "Pont de pierre des Vallons (décision de Damien du 9 novembre 2026)", Live, "le pont cintré fait par le code (et toujours sur téléphone)", Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Village/eds_SF_Medieval_Bridge_JooL.fbx", Sf("Medieval Bridge", "_JooL_", "e536f8aa3a15473bb9eaffeb53ae31e9"))),
             E(Wave5Role.RuinedTowers, "Tours en ruine aux ruines (73 k triangles : ordinateur seulement)", Live, "rien de plus (et toujours sur téléphone)", Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Village/eds_SF_Pack_of_old_towers_in_ruins_taz83.fbx", Sf("Pack of old towers in ruins", "taz83", "f213359c6cbb4c29bf8880764faa0fb8"))),
@@ -324,10 +324,10 @@ namespace EdS.Runtime
                 (Folder + "Fete/eds_SF_Hanging_Banner_awenram.fbx", Sf("Hanging Banner", "awenram", "74d14ebdbbc94d8780f03df21cd93674"))),
 
             // Prêtes : créatures (aucune dans les Vallons aujourd'hui), personnages, armes, décor sans lieu.
-            E(Wave5Role.Spider, "Araignée géante", Ready, Later, Wave5Fix.Animated | Wave5Fix.Heavy, 0,
+            E(Wave5Role.Spider, "Araignée géante", Ready, Later, Wave5Fix.Animated | Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Creatures/eds_SF_Spider_animated_character_TheGameAssets.fbx", Sf("Spider animated character", "TheGameAssets", "746f5c5173ce4f47ad0970b62ee4106e")),
                 (Folder + "Creatures/eds_SF_Animated_Spider_shadocks.fbx", Sf("Animated Spider", "shadocks", "af87017501fc44e39a33c220f2435100"))),
-            E(Wave5Role.Rat, "Rat", Ready, Later, Wave5Fix.Animated | Wave5Fix.Heavy, 0,
+            E(Wave5Role.Rat, "Rat", Ready, Later, Wave5Fix.Animated | Wave5Fix.Heavy | Wave5Fix.NotOnPhone, 0,
                 (Folder + "Creatures/eds_SF_Black_Rat_Free_download_Nestaeric.fbx", Sf("Black Rat ( Free download )", "Nestaeric", "3db3acb4140d4de8bd62a171212bad9c")),
                 PolyFile("Donjon", "street_rat", "Street Rat")),
             E(Wave5Role.Bat, "Chauve-souris", Ready, Later, Wave5Fix.Animated | Wave5Fix.Floats, 0,
@@ -438,7 +438,10 @@ namespace EdS.Runtime
         };
 
         /// <summary>La ressource du rôle <paramref name="role"/>.</summary>
-        public static Wave5Entry Entry(Wave5Role role) => Entries.First(e => e.Role == role);
+        public static Wave5Entry Entry(Wave5Role role) => EntryOrNull(role) ?? throw new ArgumentException("Rôle hors de la liste : " + role, nameof(role));
+
+        /// <summary>Relecture de la PR #121 : la ressource du rôle, ou null pour un rôle hors de <see cref="Entries"/> (le corbeau).</summary>
+        public static Wave5Entry? EntryOrNull(Wave5Role role) => Entries.FirstOrDefault(e => e.Role == role);
 
         /// <summary>
         /// Fichier que la préparation prend pour <paramref name="entry"/> parmi <paramref name="models"/> : le premier de ses fichiers (du meilleur
@@ -514,6 +517,9 @@ namespace EdS.Runtime
             string key = StyleRules.Key(id ?? string.Empty);
             return key.StartsWith("crocgris", StringComparison.Ordinal) || key.StartsWith("loupblanc", StringComparison.Ordinal);
         }
+
+        /// <summary>Relecture de la PR #121 : nombre de fichiers différents posés pour un rôle (vitrine du fournil, haches) ; 1 pour les autres.</summary>
+        public static int Variants(Wave5Role role) => role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
 
         /// <summary>Ressource de l'arme tenue en main pour la forme <paramref name="look"/> (le marteau prend celui de la forge) ; null sinon.</summary>
         public static Wave5Role? WeaponRole(WeaponLook look) =>

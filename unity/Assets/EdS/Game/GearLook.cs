@@ -170,7 +170,9 @@ namespace EdS.Game
             GameObject prefab = null;
             int axis = 1, sign = 1;
             float extraYaw = 0f, scale = 1f;
-            if (Wave5.WeaponRole(look) is Wave5Role role && catalog.Look(role) is Wave5Look w)
+            // Relecture de la PR #121 : deux haches déposées (hache et hachette de Poly Haven) : l'une ou l'autre selon la rareté portée.
+            List<Wave5Look> choices = Wave5.WeaponRole(look) is Wave5Role wanted ? catalog.Looks(wanted) : new List<Wave5Look>();
+            if (choices.Count > 0 && choices[(int)rarity % choices.Count] is Wave5Look w)
             {
                 prefab = w.Model;
                 axis = w.GripAxis;
@@ -212,7 +214,7 @@ namespace EdS.Game
             {
                 Color tint = Color.Lerp(Color.white, AdventureBook.RarityColor(rarity), 0.35f);
                 foreach (Renderer r in holder.GetComponentsInChildren<Renderer>())
-                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, StyleLook.BaseColor(m) * tint);
+                    foreach (Material m in Wave5View.Copies(r, holder)) if (m != null) ArenaView.ApplyColor(m, StyleLook.BaseColor(m) * tint);
             }
             _shapes.Add(holder);
             return true;
@@ -241,7 +243,7 @@ namespace EdS.Game
             holder.transform.localPosition = _styled && _back != null ? new Vector3(0f, -0.1f, -0.12f) / parentScale : new Vector3(0f, 0.25f, -0.3f);
             if (rarity != ItemRarity.Common)
                 foreach (Renderer r in holder.GetComponentsInChildren<Renderer>())
-                    foreach (Material m in r.materials) ArenaView.ApplyColor(m, Color.Lerp(StyleLook.BaseColor(m), AdventureBook.RarityColor(rarity), 0.45f));
+                    foreach (Material m in Wave5View.Copies(r, holder)) if (m != null) ArenaView.ApplyColor(m, Color.Lerp(StyleLook.BaseColor(m), AdventureBook.RarityColor(rarity), 0.45f));
             _shapes.Add(holder);
             return true;
         }
