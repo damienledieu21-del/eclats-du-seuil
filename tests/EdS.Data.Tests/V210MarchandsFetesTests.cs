@@ -351,6 +351,44 @@ public class V210MarchandsFetesTests
         Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == $"$.data.dialogues[{d}].nodes[{n}].choices[0].conditions[0].value" && e.Code == ValidationCode.OutOfRange);
     }
 
+    [Fact]
+    public void Les_fetes_de_frere_Anselme_restent_ouvertes_apres_ses_quetes()
+    {
+        // Revue Codex de la PR #120 (tour 4) : ses quêtes terminées, Anselme conte encore à la veillée et au marché (livre de contes) ; une quête
+        // réellement en cours passe toujours avant la fête.
+        var done = new Dictionary<string, QuestProgress>
+        {
+            ["quest.bete_blanche"] = new QuestProgress(QuestProgress.Done),
+            ["quest.cloches_de_la_chapelle"] = new QuestProgress(QuestProgress.Done),
+        };
+        SavedCharacter hero = Hero(1_000).WithStory(new SavedStory(new[] { "fact.met.pretre" }, done));
+        WorldSession contes = Open(-52.5, -1.9, hero, 19, 8 * 60 + 30);
+        Assert.Equal(DialogueRefusal.None, contes.Talk("npc.pretre", out DialogueView? view));
+        Assert.Equal("v210_marche", view!.Node);
+        Assert.Equal(DialogueRefusal.None, contes.Choose(view.Options.Single(o => o.Text == "text.v210.anselme.marche.conter").Index, out _, out _));
+        Assert.Equal(1, contes.Inventory.Count("item.livre_de_contes"));
+        WorldSession veillee = Open(-71, -3.5, hero, 105, 18 * 60 + 30);
+        Assert.Equal(DialogueRefusal.None, veillee.Talk("npc.pretre", out view));
+        Assert.Equal("v210_veillee", view!.Node);
+        // Chez tous les PNJ : aucune entrée « quête terminée » ne passe avant une entrée de fête (elle capterait la conversation pour toujours).
+        foreach (JsonNode? dialogue in StoryJson()["data"]!["dialogues"]!.AsArray())
+        {
+            var kinds = dialogue!["entries"]!.AsArray().Select(e => (e!["conditions"]?.AsArray() ?? new JsonArray()).Select(c => (string?)c!["if"]).ToList()).ToList();
+            int firstDone = kinds.FindIndex(k => k.Contains("questDone"));
+            int lastFestival = kinds.FindLastIndex(k => k.Contains("festival"));
+            Assert.True(firstDone < 0 || lastFestival < firstDone, $"{dialogue["id"]} : entrée questDone {firstDone} avant la fête {lastFestival}");
+        }
+        // Les cloches en cours passent avant le marché.
+        var started = new Dictionary<string, QuestProgress>
+        {
+            ["quest.bete_blanche"] = new QuestProgress(QuestProgress.Done),
+            ["quest.cloches_de_la_chapelle"] = new QuestProgress(Story.Value.Quest("quest.cloches_de_la_chapelle").Steps[0].Id),
+        };
+        WorldSession busy = Open(-52.5, -1.9, Hero(1_000).WithStory(new SavedStory(new[] { "fact.met.pretre" }, started)), 19, 8 * 60 + 30);
+        Assert.Equal(DialogueRefusal.None, busy.Talk("npc.pretre", out view));
+        Assert.NotEqual("v210_marche", view!.Node);
+    }
+
     // --- Stock vivant ----------------------------------------------------------------------------------------------------
 
     [Fact]
@@ -597,6 +635,54 @@ public class V210MarchandsFetesTests
         Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, Peau, 3));
         Assert.Equal(3, w.Stock(Herboriste).Single(o => o.Item == Peau).Left);
         Assert.Equal(new[] { "merchant.herboriste/item.peau_de_loup", "merchant.herboriste/item.potion_de_soin" }, Reloaded(w).Stock.Select(l => l.Id));
+    }
+
+    [Fact]
+    public void Des_reductions_apres_des_majorations_gardent_le_produit_exact()
+    {
+        // Revue Codex de la PR #120 (tour 4) : 16 règles à 300 %, 16 à 50 %, puis 8 contrecoups en cours à 50 % : 100 × 3^16 / 2^24 = 256 %
+        // (59 % avec l'ancien plafond intermédiaire), et 3^16 / 2^16 seul reste borné à 300 %.
+        JsonObject root = MerchantsJson();
+        var rules = new JsonArray();
+        for (int i = 0; i < 16; i++) rules.Add(new JsonObject { ["season"] = "spring", ["items"] = new JsonArray(Potion), ["percent"] = MerchantValidator.MaxPercent });
+        for (int i = 0; i < 16; i++) rules.Add(new JsonObject { ["season"] = "spring", ["items"] = new JsonArray(Potion), ["percent"] = MerchantValidator.MinPercent });
+        root["data"]!["prices"] = rules;
+        MerchantsLoadResult bare = ReadMerchants(root);
+        Assert.True(bare.IsValid, bare.Report.ToString());
+        Assert.Equal(MerchantValidator.MaxPercent, Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, bare.Book).MarketPercent(Herboriste, Potion));
+        var shocks = new JsonArray();
+        for (int i = 0; i < 8; i++)
+            shocks.Add(new JsonObject { ["id"] = $"baisse_{i}", ["notFact"] = "fact.chef_des_bandits.vaincu", ["items"] = new JsonArray(Potion), ["stockPercent"] = 100, ["pricePercent"] = MerchantValidator.MinPercent });
+        root["data"]!["shocks"] = shocks;
+        MerchantsLoadResult read = ReadMerchants(root);
+        Assert.True(read.IsValid, read.Report.ToString());
+        WorldSession w = Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, read.Book);
+        Assert.Equal(256, w.MarketPercent(Herboriste, Potion));
+        Assert.Equal(154L, w.Stock(Herboriste).Single(o => o.Item == Potion).Price);   // 60 × 256 % = 153,6, arrondi au-dessus
+    }
+
+    [Fact]
+    public void Stock_sauvegarde_plein_achat_refuse_sans_rien_changer_et_vente_sans_vitrine()
+    {
+        // Revue Codex de la PR #120 (tour 4) : 256 lignes encore en cours ; la ligne d'une nouvelle offre ne peut pas s'écrire : l'achat est refusé
+        // avant toute mutation (ni bourse, ni sac, ni stock), la vente se fait sans garder l'objet en vitrine (borne technique documentée).
+        string potion = SavedStock.KeyOf(Herboriste, Potion), peau = SavedStock.KeyOf(Herboriste, Peau);
+        var lines = ShippedMerchants.Merchants.SelectMany(m => ShippedMerchants.Values.Keys
+                .Where(item => !(m.Offers.FirstOrDefault(o => o.Item == item) is MerchantOffer o && o.Stock is null))
+                .Select(item => SavedStock.KeyOf(m.Id, item)))
+            .Where(k => k != potion && k != peau).OrderBy(k => k, StringComparer.Ordinal).Take(SavedStock.MaxEntries)
+            .Select(k => new SavedStock(k, 0, 1, 10)).ToList();
+        Assert.Equal(SavedStock.MaxEntries, lines.Count);
+        WorldSession w = AtHerboriste(Hero(100_000, new ItemStack(Peau, 3)).WithStock(lines), 10);
+        string before = Snapshot(w);
+        Assert.Equal(TradeRefusal.OutOfStock, w.Buy(Herboriste, Potion, 2));
+        Assert.Equal(before, Snapshot(w));
+        Assert.Equal(lines.Select(l => l.Id), Reloaded(w).Stock.Select(l => l.Id));
+        long money = w.Money;
+        Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, Peau, 3));
+        Assert.True(w.Money > money);
+        Assert.Equal(0, w.Inventory.Count(Peau));
+        Assert.DoesNotContain(Reloaded(w).Stock, l => l.Id == peau);
     }
 
     // --- Sauvegarde v16 --------------------------------------------------------------------------------------------------

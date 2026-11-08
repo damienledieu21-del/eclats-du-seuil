@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -24,8 +25,7 @@ namespace EdS.World
         /// <summary>Ligne de stock sauvegardée de <paramref name="item"/> chez <paramref name="merchant"/>, ou null (tout est plein).</summary>
         private SavedStock? StockLine(string merchant, string item)
         {
-            string key = SavedStock.KeyOf(merchant, item);
-            return _character.Stock.FirstOrDefault(x => x.Id == key);
+            return LineIn(_character.Stock, merchant, item);
         }
 
         /// <summary>
@@ -79,23 +79,29 @@ namespace EdS.World
         {
             MerchantBook book = NeedMarket().Book;
             if (book.Prices.Count == 0 && book.Shocks.Count == 0) return 100;
-            // Revue Codex de la PR #120 : chaque étape est bornée (au plus MaxStep, très au-dessus du plafond final) : 32 règles à 300 % ne
-            // dépassent jamais la capacité d'un long, et le résultat reste borné à [MinPercent, MaxPercent] comme avant.
-            long percent = 100;
+            // Revue Codex de la PR #120 (tour 4) : produit exact de tous les facteurs (entier sans borne : au plus 64 facteurs de 300, aucun
+            // débordement possible), arrondi vers le bas une seule fois, puis borné à [MinPercent, MaxPercent] : une réduction qui suit des
+            // majorations n'est jamais faussée par un plafond intermédiaire (16 × 300 % puis 24 × 50 % : 256 %), et l'ordre des règles est sans effet.
+            BigInteger product = 100;
+            int factors = 0;
             string season = Season;
             WeatherState weather = Weather;
             foreach (PriceRule rule in book.Prices)
                 if (rule.Touches(merchant, item) && (rule.Season is null || rule.Season == season) && (rule.Weather is null || WorldWeather.Matches(weather.Kind, rule.Weather)))
-                    percent = Step(percent, rule.Percent);
+                {
+                    product *= rule.Percent;
+                    factors++;
+                }
             foreach (MarketShock shock in book.Shocks)
-                if (shock.Touches(merchant, item) && ShockActive(shock)) percent = Step(percent, shock.PricePercent);
-            return (int)Math.Max(MerchantValidator.MinPercent, Math.Min(MerchantValidator.MaxPercent, percent));
+                if (shock.Touches(merchant, item) && ShockActive(shock))
+                {
+                    product *= shock.PricePercent;
+                    factors++;
+                }
+            BigInteger percent = BigInteger.Divide(product, BigInteger.Pow(100, factors));
+            if (percent < MerchantValidator.MinPercent) return MerchantValidator.MinPercent;
+            return percent > MerchantValidator.MaxPercent ? MerchantValidator.MaxPercent : (int)percent;
         }
-
-        /// <summary>Borne d'une étape du produit des pour cent (10⁹ × 300 tient dans un long).</summary>
-        private const long MaxStep = 1_000_000_000;
-
-        private static long Step(long percent, int by) => Math.Min(MaxStep, Math.Max(1, checked(percent * by) / 100));
 
         /// <summary>
         /// Prix d'achat d'une unité : prix de l'offre, puis la saison, le temps et les contrecoups (<see cref="MarketPercent"/>), puis la
@@ -147,26 +153,29 @@ namespace EdS.World
             return list.AsReadOnly();
         }
 
-        /// <summary>
-        /// Écrit la ligne de stock de <paramref name="item"/> chez <paramref name="merchant"/> au jour du monde (vide : retirée) ; faux, sans rien
-        /// changer, si le stock sauvegardé est plein (borne technique).
-        /// </summary>
-        private bool SetStockLine(string merchant, string item, int missing, int resold)
+        /// <summary>Ligne de <paramref name="item"/> chez <paramref name="merchant"/> dans <paramref name="lines"/>, ou null.</summary>
+        private static SavedStock? LineIn(IReadOnlyList<SavedStock> lines, string merchant, string item)
         {
             string key = SavedStock.KeyOf(merchant, item);
-            if (!SavedStock.IsKey(key)) return false;   // revue Codex de la PR #120 : une clé hors format n'est jamais écrite (refusé, rien ne change)
-            PruneStock();
-            bool exists = _character.Stock.Any(x => x.Id == key);
-            var rest = _character.Stock.Where(x => x.Id != key);
-            if (missing == 0 && resold == 0)
-            {
-                if (exists) _character = _character.WithStock(rest);
-                return true;
-            }
-            if (!exists && _character.Stock.Count >= SavedStock.MaxEntries) return false;
-            _character = _character.WithStock(rest.Concat(new[] { new SavedStock(key, Math.Min(SavedStock.MaxUnits, missing),
-                Math.Min(SavedStock.MaxUnits, resold), Math.Min(SavedEvent.MaxDay, Zone.Time.Day)) }));
-            return true;
+            return lines.FirstOrDefault(x => x.Id == key);
+        }
+
+        /// <summary>
+        /// Lignes de stock <paramref name="lines"/> avec celle de <paramref name="item"/> chez <paramref name="merchant"/> écrite au jour du monde
+        /// (vide : retirée), ou null si elle ne peut pas l'être (clé hors format, stock sauvegardé plein). Calcul pur, sans rien changer.
+        /// </summary>
+        /// <remarks>Revue Codex de la PR #120 (tours 3 et 4) : les lignes revenues à rien (et celles d'un marchand ou d'un objet disparu) sont
+        /// d'abord retirées, comme à la sauvegarde : leur place sert à d'autres sans sauvegarde ni rechargement. Sans effet sur ce qu'on voit (une
+        /// ligne vide aujourd'hui le reste les jours suivants : manque et vitrine ne font que baisser).</remarks>
+        private IReadOnlyList<SavedStock>? StockWith(IReadOnlyList<SavedStock> lines, string merchant, string item, int missing, int resold)
+        {
+            string key = SavedStock.KeyOf(merchant, item);
+            if (!SavedStock.IsKey(key)) return null;   // jamais atteint avec des marchands validés (clé tenue au chargement), refusé sinon
+            var rest = StockToSave(lines).Where(x => x.Id != key).ToList();
+            if (missing == 0 && resold == 0) return rest.AsReadOnly();
+            if (rest.Count >= SavedStock.MaxEntries) return null;
+            rest.Add(new SavedStock(key, Math.Min(SavedStock.MaxUnits, missing), Math.Min(SavedStock.MaxUnits, resold), Math.Min(SavedEvent.MaxDay, Zone.Time.Day)));
+            return rest.AsReadOnly();
         }
 
         /// <summary>
@@ -187,70 +196,50 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Revue Codex de la PR #120 (tour 3) : retire de l'état en cours les lignes revenues à rien aujourd'hui (et celles d'un marchand ou d'un
-        /// objet disparu), comme la sauvegarde : leur place sert à d'autres. Sans effet sur ce qu'on voit (une ligne vide aujourd'hui le reste
-        /// les jours suivants : manque et vitrine ne font que baisser) ; recalculé du jour du monde, déterministe.
+        /// Le stock peut-il donner <paramref name="count"/> unités de l'offre <paramref name="offer"/> (de <see cref="LivingStock"/>) ? Si oui,
+        /// <paramref name="stock"/> reçoit les lignes après la prise (null : offre sans limite, rien à écrire). Ne change rien : l'appelant écrit
+        /// ces lignes avec le reste de la transaction, après tous ses contrôles (revue Codex de la PR #120, tour 4 : refus atomique, aucune
+        /// écriture qui puisse échouer après une mutation).
         /// </summary>
-        private void PruneStock()
+        /// <remarks>Revue Codex de la PR #120 (tour 3) : la quantité se juge contre l'offre réellement proposée : un objet revendu hors du tirage
+        /// du jour n'offre que sa vitrine, jamais le stock de l'offre absente.</remarks>
+        private bool TryTake(string merchant, MerchantOffer offer, int count, out IReadOnlyList<SavedStock>? stock)
         {
-            var kept = StockToSave(_character.Stock).ToList();
-            if (kept.Count != _character.Stock.Count) _character = _character.WithStock(kept);
-        }
-
-        /// <summary>
-        /// Le stock peut-il donner <paramref name="count"/> unités (offre à stock fini) ? Faux aussi si la ligne ne peut pas être écrite
-        /// (stock sauvegardé plein). Ne change rien.
-        /// </summary>
-        /// <remarks>Revue Codex de la PR #120 (tour 3) : la quantité se juge contre l'offre réellement proposée (<paramref name="offer"/>, de
-        /// <see cref="LivingStock"/>) : un objet revendu hors du tirage du jour n'offre que sa vitrine, jamais le stock de l'offre absente.</remarks>
-        private bool CanTake(string merchant, MerchantOffer offer, int count)
-        {
-            string item = offer.Item;
+            stock = null;
             if (!(offer.Left is int left)) return true;
             if (left < count) return false;
-            PruneStock();
-            string key = SavedStock.KeyOf(merchant, item);
-            // Revue Codex de la PR #120 : la ligne doit pouvoir s'écrire (clé au format des sauvegardes), vérifié avant toute mutation.
-            if (!SavedStock.IsKey(key)) return false;
-            return _character.Stock.Any(x => x.Id == key) || _character.Stock.Count < SavedStock.MaxEntries;
-        }
-
-        /// <summary>Retire <paramref name="count"/> unités du stock (la vitrine des objets revendus d'abord), déjà vérifiées par <see cref="CanTake"/>.</summary>
-        private void Take(string merchant, MerchantOffer proposed, int count)
-        {
-            string item = proposed.Item;
-            if (proposed.Left is null) return;
+            string item = offer.Item;
             Merchant m = NeedMarket().Book.Merchant(merchant);
-            MerchantOffer? offer = m.Offers.FirstOrDefault(o => o.Item == item);
-            int full = offer?.Stock ?? 0;
-            (int missing, int resold) = LineToday(StockLine(merchant, item), full, m.Restock);
+            MerchantOffer? data = m.Offers.FirstOrDefault(o => o.Item == item);
+            (int missing, int resold) = LineToday(LineIn(_character.Stock, merchant, item), data?.Stock ?? 0, m.Restock);
             int fromResold = Math.Min(resold, count);
-            // Une offre de vitrine (hors du tirage) ne prend que dans la vitrine : vérifié par CanTake (Left = vitrine).
-            if (proposed.Resold && fromResold < count) throw new InvalidOperationException("Vitrine trop courte après vérification.");
-            if (!SetStockLine(merchant, item, checked(missing + count - fromResold), resold - fromResold))
-                throw new InvalidOperationException("Stock plein après vérification.");
+            if (offer.Resold && fromResold < count) return false;   // une offre de vitrine ne prend que dans la vitrine
+            stock = StockWith(_character.Stock, merchant, item, checked(missing + count - fromResold), resold - fromResold);
+            return stock != null;
         }
 
         /// <summary>
-        /// Le marchand garde en vitrine <paramref name="count"/> unités revendues de <paramref name="item"/> (bornées), s'il le vend à stock fini
-        /// ou ne le vend pas d'ordinaire ; sinon (offre sans limite, objet sans valeur, stock sauvegardé plein) rien.
+        /// Lignes <paramref name="lines"/> après que le marchand a gardé en vitrine <paramref name="count"/> unités revendues de
+        /// <paramref name="item"/> (bornées), s'il le vend à stock fini ou ne le vend pas d'ordinaire ; sinon (offre sans limite, objet sans
+        /// valeur, stock sauvegardé plein) les mêmes lignes. Calcul pur.
         /// </summary>
-        private void Keep(string merchant, string item, int count)
+        private IReadOnlyList<SavedStock> Kept(IReadOnlyList<SavedStock> lines, string merchant, string item, int count)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             MerchantOffer? offer = m.Offers.FirstOrDefault(o => o.Item == item);
-            if ((offer != null && offer.Stock is null) || !NeedMarket().Book.TryGetValue(item, out _)) return;
-            (int missing, int resold) = LineToday(StockLine(merchant, item), offer?.Stock ?? 0, m.Restock);
-            SetStockLine(merchant, item, missing, Math.Min(SavedStock.MaxUnits, checked(resold + count)));
+            if ((offer != null && offer.Stock is null) || !NeedMarket().Book.TryGetValue(item, out _)) return lines;
+            (int missing, int resold) = LineToday(LineIn(lines, merchant, item), offer?.Stock ?? 0, m.Restock);
+            return StockWith(lines, merchant, item, missing, Math.Min(SavedStock.MaxUnits, checked(resold + count))) ?? lines;
         }
 
-        /// <summary>Rachat d'un lot : le marchand le reprend de sa vitrine (autant qu'il en garde encore).</summary>
-        private void Unkeep(string merchant, string item, int count)
+        /// <summary>Lignes <paramref name="lines"/> après un rachat : le marchand reprend le lot de sa vitrine (autant qu'il en garde encore).</summary>
+        private IReadOnlyList<SavedStock> Unkept(IReadOnlyList<SavedStock> lines, string merchant, string item, int count)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             MerchantOffer? offer = m.Offers.FirstOrDefault(o => o.Item == item);
-            (int missing, int resold) = LineToday(StockLine(merchant, item), offer?.Stock ?? 0, m.Restock);
-            if (resold > 0) SetStockLine(merchant, item, missing, resold - Math.Min(resold, count));
+            (int missing, int resold) = LineToday(LineIn(lines, merchant, item), offer?.Stock ?? 0, m.Restock);
+            if (resold <= 0) return lines;
+            return StockWith(lines, merchant, item, missing, resold - Math.Min(resold, count)) ?? lines;
         }
     }
 }

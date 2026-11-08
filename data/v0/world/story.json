@@ -9127,24 +9127,6 @@
           {
             "conditions": [
               {
-                "if": "questDone",
-                "id": "quest.cloches_de_la_chapelle"
-              }
-            ],
-            "node": "ch2_cloches_apres"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questDone",
-                "id": "quest.bete_blanche"
-              }
-            ],
-            "node": "apres"
-          },
-          {
-            "conditions": [
-              {
                 "if": "festival",
                 "id": "festival.veillee"
               }
@@ -9159,6 +9141,24 @@
               }
             ],
             "node": "v210_marche"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.cloches_de_la_chapelle"
+              }
+            ],
+            "node": "ch2_cloches_apres"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.bete_blanche"
+              }
+            ],
+            "node": "apres"
           },
           {
             "conditions": [

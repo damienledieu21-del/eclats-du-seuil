@@ -155,14 +155,15 @@ namespace EdS.World
             if (item is null || !_items.TryGetItem(item, out _)) return TradeRefusal.UnknownItem;
             if (!(Stock(merchant).FirstOrDefault(o => o.Item == item) is MerchantOffer offer)) return TradeRefusal.NotForSale;
             if (!HasRank(offer.Rank)) return TradeRefusal.RankTooLow;   // sous-lot V1.7 : offre de la boutique de la guilde réservée à un rang
-            if (!CanTake(merchant, offer, count)) return TradeRefusal.OutOfStock;   // sous-lot V2.10 : stock vivant
+            // Sous-lot V2.10 : stock vivant ; revue Codex de la PR #120 (tour 4) : les lignes après la prise sont calculées avant toute mutation.
+            if (!TryTake(merchant, offer, count, out IReadOnlyList<SavedStock>? stock)) return TradeRefusal.OutOfStock;
             long price = checked(offer.Price * count);   // au plus 10^8 × 999
             if (!Coins.TryAdd(Money, -price, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();
             if (trial.Add(item, count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
-            Take(merchant, offer, count);
+            if (stock != null) _character = _character.WithStock(stock);
             if (NeedMarket().Book.Merchant(merchant).Faction == "bandits") Narrative?.Fenced(count);   // sous-lot V2.7 : le recel
             return TradeRefusal.None;
         }
@@ -211,13 +212,15 @@ namespace EdS.World
                 gain = checked(gain + paid[i]);
             }
             if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
+            // Sous-lot V2.10 : en vitrine, revendu plus cher ; revue Codex de la PR #120 (tour 4) : lignes calculées avant toute mutation.
+            IReadOnlyList<SavedStock> kept = _character.Stock;
+            for (int i = 0; i < lots.Count; i++) kept = Kept(kept, merchant, lots[i].Item, lots[i].Count);
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(after);
+            _character = _character.WithMoney(after).WithStock(kept);
             // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
             for (int i = 0; i < lots.Count; i++)
             {
                 market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsUnique) ? removed[i] : null, merchant));
-                Keep(merchant, lots[i].Item, lots[i].Count);   // sous-lot V2.10 : en vitrine, revendu plus cher
             }
             return TradeRefusal.None;
         }
@@ -247,10 +250,10 @@ namespace EdS.World
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
             if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
+            IReadOnlyList<SavedStock> kept = Kept(_character.Stock, merchant, stack.Item, count);   // sous-lot V2.10 : en vitrine, revendu plus cher
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(after);
+            _character = _character.WithMoney(after).WithStock(kept);
             market.Record(new SoldLot(stack.Item, count, paid, removed.IsUnique ? new[] { removed } : null, merchant));
-            Keep(merchant, stack.Item, count);   // sous-lot V2.10 : en vitrine, revendu plus cher
             return TradeRefusal.None;
         }
 
@@ -288,10 +291,11 @@ namespace EdS.World
                     if (trial.Add(stack) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             }
             else if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            IReadOnlyList<SavedStock> stock = lot.Merchant != null && market.Book.TryGetMerchant(lot.Merchant, out _)
+                ? Unkept(_character.Stock, lot.Merchant, lot.Item, lot.Count) : _character.Stock;   // sous-lot V2.10
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(left);
+            _character = _character.WithMoney(left).WithStock(stock);
             market.Forget(index);
-            if (lot.Merchant != null && market.Book.TryGetMerchant(lot.Merchant, out _)) Unkeep(lot.Merchant, lot.Item, lot.Count);   // sous-lot V2.10
             return TradeRefusal.None;
         }
     }
