@@ -306,13 +306,13 @@ Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Ani
 
 ## 19. Vrais vêtements des villageois (V2.9.4)
 
-Avant l'essai : télécharger *Modular Character Outfits - Fantasy* [Standard] de Quaternius et copier ses FBX et ses textures dans `Assets/Style/Quaternius/Outfits/` ([UNITY.md](UNITY.md#essai-v294--vrais-vêtements-des-villageois)), puis menu **Éclats du Seuil → Préparer l'essai de style**. Note ici la fin de la ligne « Corps humains : … ; vrais vêtements : … ».
+Avant l'essai : *Modular Character Outfits - Fantasy* [Standard] de Quaternius dans `Assets/Style/Quaternius/Outfits/` (`Exports/FBX (Unity)` et `Textures` : fait le 8 novembre 2026) ([UNITY.md](UNITY.md#essai-v294--vrais-vêtements-des-villageois)), puis menu **Éclats du Seuil → Préparer l'essai de style**. Note ici la fin de la ligne « Corps humains : … ; vrais vêtements : … ».
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 19.1 | Fenêtre de la préparation | « vrais vêtements : prêts (N pièces : Peasant …, Ranger …, … ; … coiffes, … capes ; … étoffes, peau des mains) » ; sinon la raison (à envoyer à Claude avec la liste des fichiers du dossier `Outfits`) | [ ] | |
+| 19.1 | Fenêtre de la préparation | « vrais vêtements : prêts (20 pièces : Peasant 8, Ranger 12 ; 2 coiffes, 0 capes ; 4 étoffes, peau des mains) » (et la note « aucune cape ») ; sinon la raison (à envoyer à Claude avec la liste des fichiers du dossier `Outfits`) | [ ] | |
 | 19.2 | Le bourg, « 12 h 15, midi », de près | Les villageois portent de **vrais vêtements** (tissu qui a du volume, plis, manches, bottes) ; plus d'effet « collant » ; la peau ne traverse nulle part (bras, cuisses, ventre) ; mains et visages à la bonne couleur de peau ; personne de nu ni d'invisible | [ ] | |
-| 19.3 | Les métiers | Gardes en **armure** (souvent un casque, parfois des épaulières), sentinelles en cuir avec épaulières, Sœur Albe en **robe**, Renart en drap **noble**, Maëlle en cuir de forge, paysans en habits de paysan, bandits **encapuchonnés** et usés ; le capitaine a les épaulières au lion | [ ] | |
+| 19.3 | Les métiers (version gratuite : paysan et rôdeur) | Gardes en rôdeur **bleu** avec épaulières, sentinelles en rôdeur **rouge**, Sœur Albe en **laine claire** (capuche une fois sur deux), Renart en **prune**, Maëlle en cuir avec brassards, paysans en habits de paysan (lin, saule, rouille, guède), rôdeurs en **vert**, bandits **encapuchonnés** et usés ; mains de la couleur du visage (claire ou sombre) | [ ] | |
 | 19.4 | Variété | Deux paysans voisins ne sont pas habillés pareil (pièces, teinte, usure) ; chacun garde la même tenue d'une partie à l'autre | [ ] | |
 | 19.5 | Catalogue : **Human Season** sur *Winter*, Play (*Auto* : la saison du jeu, printemps tant qu'il n'y a pas de calendrier) | Capes et capuches presque partout (pas à la forge) ; les gardes ont un gorgerin ; sur *Summer* : têtes nues, pas de cape | [ ] | |
 | 19.6 | Une averse (V2.2), puis entrer et ressortir d'une maison | Les villageois qui apparaissent sous la pluie ont la **capuche** levée ; une capuche ou un casque ne laisse pas passer les cheveux | [ ] | |
