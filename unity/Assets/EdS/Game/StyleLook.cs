@@ -353,7 +353,8 @@ namespace EdS.Game
             GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model, beast);
             if (human is HumanLook person)
             {
-                IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person);
+                // Sous-lot V2.9.4 : les vrais vêtements (le rôle choisit la tenue, l'identifiant ses variantes), sinon la tenue peinte.
+                IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person, HumanBodies.Clothing(catalog, slot, id, lookId, person));
                 // Relecture de la PR #117 : sans animations (graphe impossible), pas de corps figé en pose en T : le modèle d'avant (ou la
                 // forme simple).
                 if (player == null)
