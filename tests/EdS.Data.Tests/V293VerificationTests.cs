@@ -199,10 +199,46 @@ public sealed class V293VerificationTests
         string verification = Script("Editor", "EdsVerification.cs"), tools = Script("Editor", "EdsEssaiTools.cs");
         Assert.Contains("[MenuItem(\"Éclats du Seuil/Vérifier l'essai\")]", verification);
         Assert.Contains("AdventureSession.Load(", verification);   // le validateur du jeu, pas une copie
-        int check = tools.IndexOf("EdsVerification.Run()", StringComparison.Ordinal), scene = tools.IndexOf("EdsStartupScene.Ensure(false)", StringComparison.Ordinal);
-        Assert.True(check > 0 && check < scene, "la vérification passe avant tout le reste");
+        int check = tools.IndexOf("EdsVerification.RunBase()", StringComparison.Ordinal), scene = tools.IndexOf("EdsStartupScene.Ensure(false)", StringComparison.Ordinal);
+        int prepare = tools.IndexOf("EdsStyle.Prepare(false)", StringComparison.Ordinal), after = tools.IndexOf("EdsVerification.RunAfter(check)", StringComparison.Ordinal);
+        Assert.True(check > 0 && check < scene, "la base est vérifiée avant tout le reste");
+        Assert.True(after > prepare, "la suite est vérifiée une fois la préparation faite, en reprenant la base (une seule passe de chaque)");
+        Assert.DoesNotContain("EdsVerification.Run()", tools);
+        // Décision de Damien du 8 novembre 2026 : la fenêtre ne s'ouvre que s'il y a de l'orange ou du rouge.
+        Assert.Contains("if (report.Overall != EssaiLevel.Ok) Open(report);", Script("Editor", "EdsVerificationWindow.cs"));
+        Assert.Contains("✅ tout est prêt", verification);
         string ignore = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, ".gitignore"));
         Assert.Contains("unity/" + EssaiManifest.ReportPath + "\n", ignore.Replace("\r\n", "\n"));
         Assert.Contains("unity/" + EssaiManifest.ReportPath + ".meta\n", ignore.Replace("\r\n", "\n"));
+    }
+
+    [Fact]
+    public void Le_verificateur_n_ecrit_que_son_rapport()
+    {
+        // Relecture indépendante de la PR #118 : la vérification ne modifie rien dans le projet (ni import, ni fichier, ni actif),
+        // sauf le rapport. Les appels d'écriture permis sont en liste blanche, mot pour mot.
+        string[] allowed = { "File.WriteAllText(FullReportPath, text)", "AssetDatabase.ImportAsset(EssaiManifest.ReportPath)" };
+        string[] writes =
+        {
+            "File.Write", "File.Append", "File.Delete", "File.Move", "File.Copy", "File.Create", "Directory.Create", "Directory.Delete", "Directory.Move",
+            "CreateAsset", "SaveAssets", "SetDirty", "SaveAndReimport", "DeleteAsset", "MoveAsset", "CopyAsset", "ImportAsset", "ImportPackage",
+            "CreateFolder", "ExtractTextures", "AddObjectToAsset", "SaveAsPrefabAsset", "Refresh(", "StartAssetEditing", "Legacy(", "EdsHumans.",
+            "EdsStyle.Prepare", "EdsStartupScene.Ensure", "SaveScene", "OpenScene", "EditorBuildSettings.scenes =",
+            "defaultRenderPipeline =", "renderPipeline =", ".animationType =", ".importAnimation =", ".clipAnimations =", "ApplyModifiedProperties",
+            "Object.Destroy", "DestroyImmediate", "Instantiate(", "SessionState.Set", "isPlaying =",
+        };
+        foreach (string file in new[] { "EdsVerification.cs", "EdsVerificationWindow.cs" })
+        {
+            string code = string.Join("\n", Script("Editor", file).Split('\n').Where(l => !l.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+            foreach (string ok in allowed) code = code.Replace(ok, "");
+            foreach (string w in writes) Assert.False(code.Contains(w, StringComparison.Ordinal), file + " écrit dans le projet : « " + w + " »");
+        }
+        // Les fonctions de la préparation qu'il emprunte ne font que lire.
+        string style = Script("Editor", "EdsStyle.cs");
+        int start = style.IndexOf("internal static string PackAnimalCandidate", StringComparison.Ordinal);
+        string body = style.Substring(start, style.IndexOf("\n        }\n", start, StringComparison.Ordinal) - start);
+        Assert.DoesNotContain("Legacy(", body);
+        Assert.Contains("prefabs.Where(Renders)", body);
+        Assert.Contains("EdsStyle.PackAnimalCandidate(", Script("Editor", "EdsVerification.cs"));
     }
 }

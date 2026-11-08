@@ -455,9 +455,8 @@ namespace EdS.Game.Editor
         /// </summary>
         private static string PackAnimal(List<string> prefabs, StyleSlot slot, List<string> notes)
         {
-            string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
+            string path = PackAnimalCandidate(prefabs, slot, out string model);
             if (path == null) return null;
-            string model = AnimatedModel(Load(path));
             if (model == null)
             {
                 notes.Add("Prefab " + Path.GetFileName(path) + " : aucun modèle animé derrière lui, il n'est pas pris.");
@@ -465,6 +464,18 @@ namespace EdS.Game.Editor
             }
             Legacy(model, false);
             notes.Add((slot == StyleSlot.Wolf ? "Loup" : "Sanglier") + " réaliste du pack : " + Path.GetFileName(path) + " (animations de " + Path.GetFileName(model) + ").");
+            return path;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.3 (partagé avec le vérificateur d'essai, sans rien modifier) : prefab de pack que la préparation regarde pour
+        /// <paramref name="slot"/> (seulement ceux qui se dessinent avec URP, <see cref="Renders"/>) et le modèle animé derrière lui
+        /// (<paramref name="model"/>, null s'il n'y en a pas : le prefab n'est alors pas pris). Null sans prefab.
+        /// </summary>
+        internal static string PackAnimalCandidate(List<string> prefabs, StyleSlot slot, out string model)
+        {
+            string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
+            model = path != null ? AnimatedModel(Load(path)) : null;
             return path;
         }
 
@@ -617,7 +628,7 @@ namespace EdS.Game.Editor
         /// Essai réaliste 8 (relecture indépendante) : le prefab se dessine-t-il avec le rendu du projet (tous ses matériaux sur un shader
         /// d'URP) ? Une variante faite pour HDRP ou pour l'ancien rendu sortirait rose.
         /// </summary>
-        private static bool Renders(string path) =>
+        internal static bool Renders(string path) =>
             Load(path) is GameObject prefab && prefab.GetComponentsInChildren<Renderer>(true).Length > 0
             && prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials ?? new Material[0])
                 .All(m => m != null && UrpShader(m.shader));

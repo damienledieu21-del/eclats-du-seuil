@@ -78,9 +78,10 @@ namespace EdS.Game.Editor
                 EditorUtility.DisplayDialog("Essai", "Le jeu tourne déjà (ou démarre). Arrête-le avec le bouton Play, puis relance ce menu.", "OK");
                 return;
             }
-            // 0. Sous-lot V2.9.3 : vérification de l'essai (fenêtre et fichier) ; un problème bloquant demande s'il faut lancer quand même.
-            EssaiReport check = EdsVerification.Run();
-            EdsVerificationWindow.Open(check);
+            // 0. Sous-lot V2.9.3 : vérification de la base (ce qui peut bloquer) ; un problème bloquant ouvre le rapport et demande s'il faut
+            // lancer quand même. Le reste (scène, ressources) est vérifié une fois la préparation faite.
+            EssaiReport check = EdsVerification.RunBase();
+            if (check.Overall == EssaiLevel.Blocking) EdsVerificationWindow.Open(check);
             if (check.Overall == EssaiLevel.Blocking && !EditorUtility.DisplayDialog("Essai", "La vérification a trouvé un problème bloquant :\n\n"
                     + string.Join("\n", check.Lines.Where(l => l.Level == EssaiLevel.Blocking).Select(l => "• " + l.Label + " : " + l.Fix))
                     + "\n\nLe détail est dans la fenêtre « Vérification de l'essai ».", "Lancer quand même", "Arrêter"))
@@ -104,8 +105,8 @@ namespace EdS.Game.Editor
             // 2. Préparation de l'essai de style (relançable, rapport dans la Console).
             if (!EdsStyle.Prepare(false)) return;
             AssetDatabase.SaveAssets();
-            // Le rapport est refait après la préparation (elle règle les imports que la première vérification disait « pas encore préparés »).
-            EdsVerificationWindow.Open(EdsVerification.Run());
+            // La suite du rapport (scène, catalogue, ressources) une fois la préparation faite, en reprenant la base : pas de seconde passe complète.
+            EdsVerificationWindow.ShowIfNeeded(EdsVerification.RunAfter(check));
             // 3. Ouvre la bonne scène ; une scène modifiée déclenche la question de Unity (annuler arrête tout, rien n'est perdu).
             if (EssaiTools.ShouldOpenStartupSceneAlone(SceneManager.GetActiveScene().path, SceneManager.sceneCount, EdsStartupScene.ScenePath))
             {

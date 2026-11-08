@@ -260,7 +260,7 @@ namespace UnityEditor
     [AttributeUsage(AttributeTargets.Method)] public sealed class InitializeOnLoadMethodAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Method)] public sealed class MenuItem : Attribute { public MenuItem(string p) { } }
     // Sous-lot V2.9.3 : fenêtre du vérificateur d'essai.
-    public class EditorWindow : UnityEngine.ScriptableObject { public static T GetWindow<T>(string title) where T : EditorWindow => default; public UnityEngine.Vector2 minSize { get; set; } public void Show() { } public void Repaint() { } }
+    public class EditorWindow : UnityEngine.ScriptableObject { public static T GetWindow<T>(string title) where T : EditorWindow => default; public static bool HasOpenInstances<T>() where T : EditorWindow => false; public UnityEngine.Vector2 minSize { get; set; } public void Show() { } public void Repaint() { } }
     public static class EditorGUILayout { public static UnityEngine.Vector2 BeginScrollView(UnityEngine.Vector2 scroll) => scroll; public static void EndScrollView() { } }
     public static class EditorStyles { public static UnityEngine.GUIStyle boldLabel => null; public static UnityEngine.GUIStyle miniLabel => null; public static UnityEngine.GUIStyle wordWrappedLabel => null; public static UnityEngine.GUIStyle wordWrappedMiniLabel => null; }
     public static class SessionState { public static bool GetBool(string key, bool defaultValue) => defaultValue; public static void SetBool(string key, bool value) { } }

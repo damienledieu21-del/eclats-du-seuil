@@ -14,6 +14,16 @@ namespace EdS.Game.Editor
         private EssaiReport _report;
         private Vector2 _scroll;
 
+        /// <summary>
+        /// Décision de Damien du 8 novembre 2026 : la fenêtre ne s'ouvre que s'il y a de l'orange ou du rouge ; tout vert, la Console dit
+        /// « ✅ tout est prêt » (écrit par <see cref="EdsVerification"/>). Une fenêtre déjà ouverte est mise à jour.
+        /// </summary>
+        internal static void ShowIfNeeded(EssaiReport report)
+        {
+            if (report.Overall != EssaiLevel.Ok) Open(report);
+            else if (HasOpenInstances<EdsVerificationWindow>()) Open(report);
+        }
+
         internal static void Open(EssaiReport report)
         {
             EdsVerificationWindow window = GetWindow<EdsVerificationWindow>("Vérification de l'essai");

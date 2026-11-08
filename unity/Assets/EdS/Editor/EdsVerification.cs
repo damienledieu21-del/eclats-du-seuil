@@ -15,7 +15,11 @@ namespace EdS.Game.Editor
     /// jeu, le paquet <c>com.eclats.core</c>, la scène de démarrage, les données JSON (chargées par le jeu lui-même), puis chaque ressource
     /// attendue (<see cref="EssaiManifest"/>, la liste que suit la préparation) : présente, absente, repli utilisé ou mal importée, avec le
     /// chemin où déposer le fichier. Rapport en fenêtre (<see cref="EdsVerificationWindow"/>), dans la Console et dans
-    /// <see cref="EssaiManifest.ReportPath"/> (non suivi par git). Ne modifie rien dans le projet (seul le rapport est écrit).
+    /// <see cref="EssaiManifest.ReportPath"/> (non suivi par git). Ne modifie rien dans le projet, sauf ce rapport (le test
+    /// <c>V293VerificationTests</c> refuse tout autre appel d'écriture dans ce fichier).
+    /// <para>Deux parties : la base (Unity, rendu, compilation, paquet, données, dossier des ressources : tout ce qui peut bloquer) et la
+    /// suite (scène, catalogue, ressources : ce que la préparation peut changer). « Préparer et lancer l'essai » fait la base avant la
+    /// préparation, puis seulement la suite après, en reprenant la base : une seule passe de chaque.</para>
     /// </summary>
     public static class EdsVerification
     {
@@ -36,19 +40,35 @@ namespace EdS.Game.Editor
         private static string RepoRoot => Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
 
         [MenuItem("Éclats du Seuil/Vérifier l'essai")]
-        private static void FromMenu() => EdsVerificationWindow.Open(Run());
+        private static void FromMenu() => EdsVerificationWindow.ShowIfNeeded(Run());
 
-        /// <summary>Fait toute la vérification, écrit le rapport (fichier et Console) et le renvoie.</summary>
-        internal static EssaiReport Run()
+        /// <summary>Toute la vérification (base et suite), rapport écrit (fichier et Console).</summary>
+        internal static EssaiReport Run() => Run(null, true);
+
+        /// <summary>Seulement la base (ce qui peut bloquer), rapport écrit : le contrôle d'avant la préparation.</summary>
+        internal static EssaiReport RunBase() => Run(null, false);
+
+        /// <summary>Seulement la suite (scène, catalogue, ressources), après les lignes de <paramref name="basis"/> (une base déjà faite).</summary>
+        internal static EssaiReport RunAfter(EssaiReport basis) => Run(basis, true);
+
+        private static EssaiReport Run(EssaiReport basis, bool after)
         {
             var report = new EssaiReport();
             try
             {
-                Step("Unity et rendu", 0.05f);
-                CheckUnity(report);
-                Step("Projet et données", 0.15f);
-                CheckProject(report);
-                if (AssetDatabase.IsValidFolder(EssaiManifest.Root)) CheckResources(report);
+                if (basis == null)
+                {
+                    Step("Unity et rendu", 0.05f);
+                    CheckUnity(report);
+                    Step("Projet et données", 0.15f);
+                    CheckProject(report);
+                }
+                else foreach (EssaiLine line in basis.Lines) report.Add(line.Section, line.Level, line.Label, line.Detail, line.Fix);
+                if (after)
+                {
+                    CheckScene(report);
+                    if (AssetDatabase.IsValidFolder(EssaiManifest.Root)) CheckResources(report);
+                }
             }
             catch (Exception e)
             {
@@ -128,6 +148,17 @@ namespace EdS.Game.Editor
                     "Envoie une capture des erreurs rouges de la Console à Claude.");
             else report.Add(Project, EssaiLevel.Ok, "Paquet com.eclats.core", "compilé (" + CoreAssemblies.Length + " assemblées)");
 
+            CheckData(report);
+
+            if (!AssetDatabase.IsValidFolder(EssaiManifest.Root))
+                report.Add(Project, EssaiLevel.Blocking, "Dossier des ressources", EssaiManifest.Root + " introuvable",
+                    "Dézippe les packs (ou ta sauvegarde Documents/EdS-Sauvegardes) dans unity/Assets/Style, puis relance.");
+            else report.Add(Project, EssaiLevel.Ok, "Dossier des ressources", EssaiManifest.Root);
+        }
+
+        /// <summary>Scène de démarrage, réglages de build et catalogue (« Préparer et lancer l'essai » les fait : vérifiés après).</summary>
+        private static void CheckScene(EssaiReport report)
+        {
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) == null)
                 report.Add(Project, EssaiLevel.Warning, "Scène de démarrage", "absente (" + EdsStartupScene.ScenePath + ")",
                     "Lance « Préparer et lancer l'essai » : il la crée (ou le menu Éclats du Seuil → Créer la scène de démarrage).");
@@ -138,12 +169,8 @@ namespace EdS.Game.Editor
             else report.Add(Project, EssaiLevel.Warning, "Réglages de build", "la scène de démarrage n'est pas en tête de la liste (téléphone, jeu construit)",
                 "Lance le menu Éclats du Seuil → Créer la scène de démarrage.");
 
-            CheckData(report);
-
-            if (!AssetDatabase.IsValidFolder(EssaiManifest.Root))
-                report.Add(Project, EssaiLevel.Blocking, "Dossier des ressources", EssaiManifest.Root + " introuvable",
-                    "Dézippe les packs (ou ta sauvegarde Documents/EdS-Sauvegardes) dans unity/Assets/Style, puis relance.");
-            else if (AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath) == null)
+            if (!AssetDatabase.IsValidFolder(EssaiManifest.Root)) return;
+            if (AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath) == null)
                 report.Add(Project, EssaiLevel.Warning, "Catalogue de l'essai", "pas encore fait (" + EdsStyle.CatalogPath + ")", Prepare);
             else report.Add(Project, EssaiLevel.Ok, "Catalogue de l'essai", EdsStyle.CatalogPath);
         }
@@ -186,9 +213,24 @@ namespace EdS.Game.Editor
             {
                 EssaiModel model = EssaiManifest.Models[i];
                 Step("Modèles : " + model.Label, 0.4f + 0.3f * i / EssaiManifest.Models.Count);
-                string pack = model.PackFirst ? StyleRules.PackAnimal(prefabs, model.Slot) : null;
+                // Le même filtre que la préparation (EdsStyle.PackAnimalCandidate) : un prefab d'un autre rendu qu'URP, ou sans modèle animé,
+                // n'est pas pris ; il est signalé, et c'est le fichier suivant qui compte.
+                string pack = null, refused = null;
+                if (model.PackFirst)
+                {
+                    string candidate = EdsStyle.PackAnimalCandidate(prefabs, model.Slot, out string animated);
+                    if (candidate != null && animated != null) pack = candidate;
+                    else if (candidate != null) refused = EssaiManifest.FileName(candidate) + " (aucun modèle animé derrière lui)";
+                    else if (StyleRules.PackAnimal(prefabs, model.Slot) is string other) refused = EssaiManifest.FileName(other) + " (matériaux hors URP : il sortirait rose)";
+                }
                 ModelPick pick = EssaiManifest.Pick(model, models, pack);
                 (EssaiLevel level, string detail, string fix) = EssaiManifest.Describe(model, pick);
+                if (refused != null)
+                {
+                    level = EssaiLevel.Warning;
+                    detail = "prefab de l'Asset Store non pris : " + refused + " ; " + detail;
+                    if (fix.Length == 0) fix = "Importe la variante URP du pack (dossier « URP »), puis " + Lower(Prepare);
+                }
                 if (pick.Path != null && pick.Path != pack)
                 {
                     string import = ModelImport(pick.Path, pick.Rank < 0 || model.Animated[pick.Rank], out string importFix, out int clips);
@@ -208,9 +250,10 @@ namespace EdS.Game.Editor
             CheckHumans(report, models, textures);
 
             Step("Sons et musiques", 0.85f);
-            foreach (EssaiAudio audio in EssaiManifest.Sounds) AddAudio(report, Noises, audio, StyleRules.PickSound(sounds, audio.Sound.Value));
-            foreach (EssaiAudio audio in EssaiManifest.Music) AddAudio(report, Tunes, audio, StyleRules.MusicFiles(sounds, audio.Music.Value).FirstOrDefault());
-            foreach (EssaiAudio audio in EssaiManifest.Ambiences) AddAudio(report, Places, audio, StyleRules.AmbienceFiles(sounds, audio.Ambience.Value).FirstOrDefault());
+            // Comme la préparation : les fichiers dans l'ordre, le premier qui se charge comme un son.
+            foreach (EssaiAudio audio in EssaiManifest.Sounds) AddAudio(report, Noises, audio, StyleRules.PickSounds(sounds, audio.Sound.Value, 6));
+            foreach (EssaiAudio audio in EssaiManifest.Music) AddAudio(report, Tunes, audio, StyleRules.MusicFiles(sounds, audio.Music.Value));
+            foreach (EssaiAudio audio in EssaiManifest.Ambiences) AddAudio(report, Places, audio, StyleRules.AmbienceFiles(sounds, audio.Ambience.Value));
 
             Step("Textures", 0.95f);
             CheckTextures(report, textures);
@@ -234,7 +277,7 @@ namespace EdS.Game.Editor
             clipCount = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().Count(c => !c.name.StartsWith("__preview__"));
             if (animated && clipCount == 0)
             {
-                fix = "Clic droit sur le fichier → Reimport, puis " + Prepare.Substring(0, 1).ToLowerInvariant() + Prepare.Substring(1);
+                fix = "Clic droit sur le fichier → Reimport, puis " + Lower(Prepare);
                 return "aucune animation dans le fichier";
             }
             string scale = EssaiManifest.ScaleProblem(Height(AssetDatabase.LoadAssetAtPath<GameObject>(path)));
@@ -299,7 +342,7 @@ namespace EdS.Game.Editor
                     report.Add(Humans, EssaiLevel.Warning, "Animations des villageois", "manquent " + string.Join(", ", required) + " : corps humains non prêts", Prepare);
                 else if (others.Count > 0)
                     report.Add(Humans, EssaiLevel.Warning, "Animations des villageois", "manquent " + string.Join(", ", others) + " (un geste proche les remplace)",
-                        "Vérifie que UAL1_Standard.fbx et UAL2_Standard.fbx sont là, puis " + Prepare.Substring(0, 1).ToLowerInvariant() + Prepare.Substring(1));
+                        "Vérifie que UAL1_Standard.fbx et UAL2_Standard.fbx sont là, puis " + Lower(Prepare));
                 else report.Add(Humans, EssaiLevel.Ok, "Animations des villageois", "toutes là (" + HumanLooks.CanonicalNames().Count + ")");
             }
             string[] skinLabels = { "Peau claire (homme)", "Peau sombre (homme)", "Peau claire (femme)", "Peau sombre (femme)" };
@@ -338,7 +381,7 @@ namespace EdS.Game.Editor
             if (!human)
             {
                 report.Add(Humans, EssaiLevel.Warning, label, "avatar Humanoid invalide : Unity n'a pas reconnu le squelette",
-                    "Sélectionne " + EssaiManifest.FileName(path) + " → onglet Rig → Humanoid → Configure, Apply, puis " + Prepare.Substring(0, 1).ToLowerInvariant() + Prepare.Substring(1));
+                    "Sélectionne " + EssaiManifest.FileName(path) + " → onglet Rig → Humanoid → Configure, Apply, puis " + Lower(Prepare));
                 return false;
             }
             int clips = library ? AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().Count(c => !c.name.StartsWith("__preview__")) : 0;
@@ -346,17 +389,21 @@ namespace EdS.Game.Editor
             return true;
         }
 
-        private static void AddAudio(EssaiReport report, string section, EssaiAudio audio, string found)
+        private static void AddAudio(EssaiReport report, string section, EssaiAudio audio, IReadOnlyList<string> files)
         {
+            string found = files.FirstOrDefault(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p) != null);
             (EssaiLevel level, string detail, string fix) = EssaiManifest.Describe(audio, found);
-            if (found != null && AssetDatabase.LoadAssetAtPath<AudioClip>(found) == null)
+            List<string> broken = files.TakeWhile(p => p != found).Select(EssaiManifest.FileName).ToList();
+            if (broken.Count > 0)
             {
                 level = EssaiLevel.Warning;
-                detail += " ; mal importé (Unity ne le lit pas comme un son)";
-                fix = "Clic droit sur le fichier → Reimport ; sinon reconvertis-le en .ogg.";
+                detail = (found != null ? detail + " ; " : "") + "mal importé" + (broken.Count > 1 ? "s" : "") + " (Unity ne le lit pas comme un son) : " + string.Join(", ", broken);
+                fix = "Clic droit sur " + broken[0] + " → Reimport ; sinon reconvertis-le en .ogg.";
             }
             report.Add(section, level, audio.Label, detail, fix);
         }
+
+        private static string Lower(string sentence) => sentence.Substring(0, 1).ToLowerInvariant() + sentence.Substring(1);
 
         private static void CheckTextures(EssaiReport report, List<string> textures)
         {
@@ -401,9 +448,14 @@ namespace EdS.Game.Editor
             {
                 Debug.LogWarning("Éclats du Seuil : rapport non écrit (" + EssaiManifest.ReportPath + ") : " + e.Message);
             }
-            string summary = "Vérification de l'essai\n" + report.Summary() + "\nRapport complet : " + EssaiManifest.ReportPath;
-            if (report.Overall == EssaiLevel.Blocking) Debug.LogWarning(summary);
-            else Debug.Log(summary);
+            // Décision de Damien du 8 novembre 2026 : tout vert = une ligne dans la Console (la fenêtre ne s'ouvre pas) ; le fichier est écrit quand même.
+            if (report.Overall == EssaiLevel.Ok) Debug.Log("Vérification de l'essai : ✅ tout est prêt (" + EssaiManifest.ReportPath + ").");
+            else
+            {
+                string summary = "Vérification de l'essai\n" + report.Summary() + "\nRapport complet : " + EssaiManifest.ReportPath;
+                if (report.Overall == EssaiLevel.Blocking) Debug.LogWarning(summary);
+                else Debug.Log(summary);
+            }
         }
 
         internal static string FullReportPath => Path.Combine(ProjectRoot, EssaiManifest.ReportPath);
