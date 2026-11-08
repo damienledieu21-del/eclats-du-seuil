@@ -350,6 +350,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9.2 (3e vague) : dans l'auberge (« The Old Tower Inn » de RandomMind).</summary>
         Inn = 7,
+
+        /// <summary>Sous-lot V2.10 : les grandes fêtes du bourg, foire et moissons (« Medieval: King's Feast » de RandomMind).</summary>
+        Feast = 8,
+
+        /// <summary>Sous-lot V2.10 : le jour de marché et la veillée (« Medieval: Minstrel Dance » de RandomMind).</summary>
+        Dance = 9,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -427,6 +433,9 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.10 : une fête du bourg bat son plein (la rumeur, le marché et la taverne montent dehors).</summary>
         Festival = 128,
+
+        /// <summary>Sous-lot V2.10 : la fête est une grande fête (foire, moissons : « King's Feast » ; les autres : « Minstrel Dance »).</summary>
+        Feast = 256,
     }
 
     /// <summary>
@@ -667,6 +676,9 @@ namespace EdS.Runtime
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
         private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
+            // Sous-lot V2.10 : les musiques de fête de RandomMind (en tête : « festival » est aussi un mot du village).
+            (StyleMusic.Feast, new[] { "kingsfeast", "feast", "banquet" }),
+            (StyleMusic.Dance, new[] { "minstreldance", "minstrel", "dance" }),
             // Sous-lot V2.9.2 : « Night Town » le soir au bourg, « The Old Tower Inn » dans l'auberge (en tête : « town » est aussi un mot du
             // village).
             (StyleMusic.VillageNight, new[] { "nighttown", "villagenight", "nuitaubourg" }),
@@ -1371,7 +1383,34 @@ namespace EdS.Runtime
         /// scène).
         /// </summary>
         public static StyleMusic? MusicFallback(StyleMusic wanted) =>
-            wanted == StyleMusic.Boss ? StyleMusic.Combat : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn ? StyleMusic.Village : (StyleMusic?)null;
+            wanted == StyleMusic.Boss ? StyleMusic.Combat
+            : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Feast || wanted == StyleMusic.Dance ? StyleMusic.Village   // sous-lot V2.10 : sans la musique de fête, celle du village
+            : (StyleMusic?)null;
+
+        /// <summary>
+        /// Sous-lot V2.10 : musiques attendues (déposées à la main, CC0, OpenGameArt) : chemin sous <c>Assets</c> et genre ; liste partagée avec
+        /// la vérification de l'essai. Absentes : la musique du village (<see cref="MusicFallback"/>).
+        /// </summary>
+        public static IReadOnlyList<(string Path, StyleMusic Kind)> MusicFiles { get; } = new System.Collections.ObjectModel.ReadOnlyCollection<(string, StyleMusic)>(new[]
+        {
+            ("Style/Music/OGA/eds_musique_OGA_RandomMind_KingsFeast.ogg", StyleMusic.Feast),
+            ("Style/Music/OGA/eds_musique_OGA_RandomMind_MinstrelDance.ogg", StyleMusic.Dance),
+        });
+
+        /// <summary>Sous-lot V2.10 : la fête est une grande fête (« King's Feast ») : la foire et les moissons ; les autres dansent (« Minstrel Dance »).</summary>
+        public static bool IsFeast(string? festival) => festival == "festival.foire" || festival == "festival.moissons";
+
+        /// <summary>
+        /// Sous-lot V2.10 : comme <see cref="MusicFor(bool, bool, bool, bool, bool, double, bool, bool)"/>, et, au bourg pendant une fête
+        /// (<paramref name="places"/> : <see cref="AmbiencePlace.Festival"/>, dehors, hors combat et hors scène), la musique de la fête, de
+        /// jour comme de nuit (la veillée).
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault, AmbiencePlace places)
+        {
+            StyleMusic music = MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault);
+            if ((places & AmbiencePlace.Festival) == 0 || (music != StyleMusic.Village && music != StyleMusic.VillageNight)) return music;
+            return (places & AmbiencePlace.Feast) != 0 ? StyleMusic.Feast : StyleMusic.Dance;
+        }
 
         /// <summary>
         /// Sous-lot V2.9 (2e vague) : volume (0 à 1) des ambiances de lieu d'après l'heure du monde (<paramref name="minute"/>), les lieux

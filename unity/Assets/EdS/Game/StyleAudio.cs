@@ -108,7 +108,7 @@ namespace EdS.Game
             // Sous-lot V2.9 (2e vague) : la musique du Seuil (« Sanctum ») au Seuil, celle des scènes de l'histoire pendant une scène.
             // Sous-lot V2.9.2 : l'auberge (« The Old Tower Inn »), le bourg la nuit (« Night Town »), les attaques (« Determined Pursuit »).
             StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (mood.Places & AmbiencePlace.Threshold) != 0, Story,
-                mood.Night, (mood.Places & AmbiencePlace.TavernInside) != 0, Assault));
+                mood.Night, (mood.Places & AmbiencePlace.TavernInside) != 0, Assault, mood.Places));   // sous-lot V2.10 : la musique des fêtes
             if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
                 Switch(wanted);
             else if (wanted != _playing)

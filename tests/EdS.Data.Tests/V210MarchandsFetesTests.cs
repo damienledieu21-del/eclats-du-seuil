@@ -421,6 +421,23 @@ public class V210MarchandsFetesTests
         Assert.Equal(0, Volume(EdS.Runtime.StyleAmbience.Market, EdS.Runtime.AmbiencePlace.Festival));
     }
 
+    [Fact]
+    public void Les_musiques_de_fete_et_leur_repli()
+    {
+        EdS.Runtime.AmbiencePlace fete = EdS.Runtime.AmbiencePlace.Town | EdS.Runtime.AmbiencePlace.Festival;
+        EdS.Runtime.StyleMusic Music(EdS.Runtime.AmbiencePlace p, bool fighting = false, double night = 0) =>
+            EdS.Runtime.StyleRules.MusicFor(false, fighting, true, false, false, night, false, false, p);
+        Assert.Equal(EdS.Runtime.StyleMusic.Feast, Music(fete | EdS.Runtime.AmbiencePlace.Feast));
+        Assert.Equal(EdS.Runtime.StyleMusic.Dance, Music(fete, night: 1));   // la veillée, de nuit
+        Assert.Equal(EdS.Runtime.StyleMusic.Combat, Music(fete, fighting: true));
+        Assert.Equal(EdS.Runtime.StyleMusic.Village, Music(EdS.Runtime.AmbiencePlace.Town));
+        Assert.True(EdS.Runtime.StyleRules.IsFeast("festival.moissons") && EdS.Runtime.StyleRules.IsFeast("festival.foire") && !EdS.Runtime.StyleRules.IsFeast("festival.marche"));
+        foreach ((string path, EdS.Runtime.StyleMusic kind) in EdS.Runtime.StyleRules.MusicFiles)
+            Assert.Equal(kind, EdS.Runtime.StyleRules.MusicOf("Assets/" + path));
+        Assert.Equal(EdS.Runtime.StyleMusic.Village, EdS.Runtime.StyleRules.MusicFallback(EdS.Runtime.StyleMusic.Feast));
+        Assert.Equal(EdS.Runtime.StyleMusic.Village, EdS.Runtime.StyleRules.MusicFallback(EdS.Runtime.StyleMusic.Dance));
+    }
+
     // --- Sauvegarde v16 --------------------------------------------------------------------------------------------------
 
     [Fact]

@@ -1675,6 +1675,7 @@ namespace EdS.Runtime
             }
             double minute = WorldMinute();
             if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
+            if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
             return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
                 places, minute, forge);
         }
