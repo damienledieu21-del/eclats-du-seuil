@@ -233,7 +233,8 @@ namespace EdS.Game.Editor
                 }
                 if (pick.Path != null && pick.Path != pack)
                 {
-                    string import = ModelImport(pick.Path, pick.Rank < 0 || model.Animated[pick.Rank], out string importFix, out int clips);
+                    string import = ModelImport(EssaiManifest.ClipSources(model.Slot, pick.Path, models), pick.Rank < 0 || model.Animated[pick.Rank],
+                        out string importFix, out int clips);
                     if (import != null)
                     {
                         level = EssaiLevel.Warning;
@@ -262,26 +263,33 @@ namespace EdS.Game.Editor
             CheckTextures(report, textures);
         }
 
-        /// <summary>Contrôle d'import d'un modèle choisi : null si tout va bien, sinon le constat (et <paramref name="fix"/>).</summary>
-        private static string ModelImport(string path, bool animated, out string fix, out int clipCount)
+        /// <summary>
+        /// Contrôle d'import d'un modèle choisi (<paramref name="sources"/>[0]) et des fichiers où la préparation prend ses animations
+        /// (<see cref="EssaiManifest.ClipSources"/> : pour le héros, ses compagnons de Mixamo) : null si tout va bien, sinon le constat (et
+        /// <paramref name="fix"/>). Réimporter n'est conseillé que si ni le fichier ni ses compagnons n'ont d'animation.
+        /// </summary>
+        private static string ModelImport(IReadOnlyList<string> sources, bool animated, out string fix, out int clipCount)
         {
             fix = "";
             clipCount = 0;
+            string path = sources[0];
             if (!(AssetImporter.GetAtPath(path) is ModelImporter importer))
             {
                 fix = "Clic droit sur le fichier → Reimport ; s'il reste illisible, redemande le fichier à Claude.";
                 return "mal importé (Unity ne le lit pas comme un modèle)";
             }
-            if (importer.animationType != ModelImporterAnimationType.Legacy)
+            List<string> unprepared = sources.Where(p => AssetImporter.GetAtPath(p) is ModelImporter m && m.animationType != ModelImporterAnimationType.Legacy).ToList();
+            if (unprepared.Count > 0)
             {
                 fix = Prepare;
-                return "pas encore préparé (animations « " + importer.animationType + " » au lieu de « Legacy »)";
+                return "pas encore préparé (animations « " + importer.animationType + " » au lieu de « Legacy »"
+                    + (sources.Count > 1 ? ", " + unprepared.Count + " fichier" + (unprepared.Count > 1 ? "s" : "") + " sur " + sources.Count : "") + ")";
             }
-            clipCount = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().Count(c => !c.name.StartsWith("__preview__"));
+            clipCount = sources.Sum(p => AssetDatabase.LoadAllAssetsAtPath(p).OfType<AnimationClip>().Count(c => !c.name.StartsWith("__preview__")));
             if (animated && clipCount == 0)
             {
                 fix = "Clic droit sur le fichier → Reimport, puis " + Lower(Prepare);
-                return "aucune animation dans le fichier";
+                return sources.Count > 1 ? "aucune animation, ni dans le fichier ni dans les " + (sources.Count - 1) + " fichiers à côté de lui" : "aucune animation dans le fichier";
             }
             string scale = EssaiManifest.ScaleProblem(Height(AssetDatabase.LoadAssetAtPath<GameObject>(path)));
             if (scale != null)
@@ -334,15 +342,17 @@ namespace EdS.Game.Editor
                         + EssaiManifest.Folder(expected) + ".");
                     continue;
                 }
-                if (AddHumanoid(report, label, library, true))
-                    foreach (AnimationClip clip in AssetDatabase.LoadAllAssetsAtPath(library).OfType<AnimationClip>()) clipNames.Add(clip.name);
+                AddHumanoid(report, label, library, true);
+                foreach (AnimationClip clip in AssetDatabase.LoadAllAssetsAtPath(library).OfType<AnimationClip>())
+                    if (!clip.name.StartsWith("__preview__")) clipNames.Add(clip.name);
             }
-            if (clipNames.Count > 0)
+            // Revue Codex de la PR #118 (tour 2) : toujours vérifié (une bibliothèque sans animation importée laisse les corps non prêts).
             {
-                List<string> required = EssaiManifest.RequiredHumanClips.Where(c => !clipNames.Contains(c)).ToList();
+                IReadOnlyList<string> required = EssaiManifest.MissingHumanClips(clipNames);
                 List<string> others = HumanLooks.CanonicalNames().Where(c => !clipNames.Contains(c) && !required.Contains(c)).ToList();
                 if (required.Count > 0)
-                    report.Add(Humans, EssaiLevel.Warning, "Animations des villageois", "manquent " + string.Join(", ", required) + " : corps humains non prêts", Prepare);
+                    report.Add(Humans, EssaiLevel.Warning, "Animations des villageois", "manquent " + string.Join(", ", required) + " : corps humains non prêts",
+                        "Vérifie que UAL1_Standard.fbx et UAL2_Standard.fbx sont là et que leur onglet Animation a « Import Animation » coché, puis " + Lower(Prepare));
                 else if (others.Count > 0)
                     report.Add(Humans, EssaiLevel.Warning, "Animations des villageois", "manquent " + string.Join(", ", others) + " (un geste proche les remplace)",
                         "Vérifie que UAL1_Standard.fbx et UAL2_Standard.fbx sont là, puis " + Lower(Prepare));
@@ -448,6 +458,13 @@ namespace EdS.Game.Editor
                 return false;
             }
             int clips = library ? AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().Count(c => !c.name.StartsWith("__preview__")) : 0;
+            // Revue Codex de la PR #118 (tour 2) : avatar valable mais aucune animation importée (« Import Animation » décoché) : pas prêt.
+            if (library && (!importer.importAnimation || clips == 0))
+            {
+                report.Add(Humans, EssaiLevel.Warning, label, "avatar Humanoid valable, mais aucune animation importée" + (importer.importAnimation ? "" : " (« Import Animation » décoché)"),
+                    "Sélectionne " + EssaiManifest.FileName(path) + " → onglet Animation → coche « Import Animation », Apply, puis " + Lower(Prepare));
+                return false;
+            }
             report.Add(Humans, EssaiLevel.Ok, label, EssaiManifest.FileName(path) + ", avatar Humanoid valable" + (library ? ", " + clips + " animations" : ""));
             return true;
         }

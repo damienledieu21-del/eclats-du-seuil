@@ -272,4 +272,32 @@ public sealed class V293VerificationTests
         Assert.Contains("HumanWardrobe.Pieces(listing)", verification);
         Assert.Contains("EssaiManifest.OutfitReady(", verification);
     }
+
+    [Fact]
+    public void Animations_du_heros_compagnons_compris_et_animations_des_villageois_toujours_verifiees()
+    {
+        // Revue Codex de la PR #118 (tour 2), point 1 : le paladin de Mixamo sans animation intégrée prend celles des fichiers rangés à
+        // côté de lui, comme la préparation (StyleRules.Companions → catalog.HeroClips) ; une bête, son seul fichier.
+        string hero = "Assets/Style/Mixamo/Paladin WProp J Nordstrom.fbx";
+        string[] models =
+        {
+            hero, "Assets/Style/Mixamo/Sword And Shield Idle.fbx", "Assets/Style/Mixamo/Sword And Shield Walk.fbx",
+            "Assets/Style/Mixamo/Archer/Archer Idle.fbx", "Assets/Style/Sketchfab/Animaux2/Elan_WildMesh.fbx",
+        };
+        Assert.Equal(new[] { hero, "Assets/Style/Mixamo/Sword And Shield Idle.fbx", "Assets/Style/Mixamo/Sword And Shield Walk.fbx" },
+            EssaiManifest.ClipSources(StyleSlot.Hero, hero, models));
+        Assert.Equal(new[] { models[4] }, EssaiManifest.ClipSources(StyleSlot.Stag, models[4], models));
+        string verification = Script("Editor", "EdsVerification.cs");
+        Assert.Contains("ModelImport(EssaiManifest.ClipSources(model.Slot, pick.Path, models)", verification);
+        Assert.Contains("clipCount = sources.Sum(", verification);
+        Assert.Contains("StyleRules.Companions(hero, models)", Script("Editor", "EdsStyle.cs"));   // la même source que la préparation
+
+        // Point 2 : sans aucune animation importée, Idle et Walk manquent : jamais de section verte ; le contrôle n'est plus sauté.
+        Assert.Equal(EssaiManifest.RequiredHumanClips, EssaiManifest.MissingHumanClips(Array.Empty<string>()));
+        Assert.Equal(new[] { "Walk" }, EssaiManifest.MissingHumanClips(new[] { "Idle", "Talk" }));
+        Assert.Empty(EssaiManifest.MissingHumanClips(HumanLooks.CanonicalNames()));
+        Assert.DoesNotContain("if (clipNames.Count > 0)", verification);
+        Assert.Contains("EssaiManifest.MissingHumanClips(clipNames)", verification);
+        Assert.Contains("if (library && (!importer.importAnimation || clips == 0))", verification);
+    }
 }

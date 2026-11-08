@@ -291,6 +291,24 @@ namespace EdS.Runtime
         /// <summary>Animations sans lesquelles les corps ne sont pas prêts (<c>HumanCatalog.Ready</c>).</summary>
         public static readonly IReadOnlyList<string> RequiredHumanClips = new[] { "Idle", "Walk" };
 
+        /// <summary>
+        /// Revue Codex de la PR #118 (tour 2) : animations requises absentes de <paramref name="clipNames"/> (celles de toutes les bibliothèques
+        /// trouvées). Toujours vérifié, même sans aucune animation importée : aucune animation = corps non prêts.
+        /// </summary>
+        public static IReadOnlyList<string> MissingHumanClips(IEnumerable<string> clipNames)
+        {
+            var have = new HashSet<string>(clipNames ?? Array.Empty<string>(), StringComparer.Ordinal);
+            return RequiredHumanClips.Where(c => !have.Contains(c)).ToList();
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #118 (tour 2) : fichiers où la préparation cherche les animations d'un modèle choisi. Pour le héros, le modèle
+        /// et ses fichiers compagnons (Mixamo livre chaque animation à part, <see cref="StyleRules.Companions"/>, comme <c>EdsStyle.Prepare</c>
+        /// pour <c>catalog.HeroClips</c>) ; pour une bête, le modèle seul.
+        /// </summary>
+        public static IReadOnlyList<string> ClipSources(StyleSlot slot, string model, IEnumerable<string> models) =>
+            slot == StyleSlot.Hero ? new[] { model }.Concat(StyleRules.Companions(model, models)).ToList() : (IReadOnlyList<string>)new[] { model };
+
         /// <summary>Nom de fichier d'un chemin (« Assets/Style/x/Loup_roo3d.fbx » → « Loup_roo3d.fbx »).</summary>
         public static string FileName(string path)
         {
