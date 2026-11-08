@@ -155,14 +155,14 @@ namespace EdS.World
             if (item is null || !_items.TryGetItem(item, out _)) return TradeRefusal.UnknownItem;
             if (!(Stock(merchant).FirstOrDefault(o => o.Item == item) is MerchantOffer offer)) return TradeRefusal.NotForSale;
             if (!HasRank(offer.Rank)) return TradeRefusal.RankTooLow;   // sous-lot V1.7 : offre de la boutique de la guilde réservée à un rang
-            if (!CanTake(merchant, item, count)) return TradeRefusal.OutOfStock;   // sous-lot V2.10 : stock vivant
+            if (!CanTake(merchant, offer, count)) return TradeRefusal.OutOfStock;   // sous-lot V2.10 : stock vivant
             long price = checked(offer.Price * count);   // au plus 10^8 × 999
             if (!Coins.TryAdd(Money, -price, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();
             if (trial.Add(item, count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
-            Take(merchant, item, count);
+            Take(merchant, offer, count);
             if (NeedMarket().Book.Merchant(merchant).Faction == "bandits") Narrative?.Fenced(count);   // sous-lot V2.7 : le recel
             return TradeRefusal.None;
         }

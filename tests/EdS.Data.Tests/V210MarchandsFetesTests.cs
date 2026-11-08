@@ -565,6 +565,40 @@ public class V210MarchandsFetesTests
         Assert.Equal(before, Snapshot(w));
     }
 
+    [Fact]
+    public void Une_offre_hors_du_tirage_ne_vend_que_sa_vitrine()
+    {
+        // Revue Codex de la PR #120 (tour 3) : les éclats de Seuil (offre tirée, stock 3) revendus un jour où ils ne sont pas tirés : seules
+        // les deux unités de la vitrine sont en vente, le stock de l'offre absente n'est pas touché.
+        const string eclat = "item.eclat_de_seuil";
+        var market = new Market(ShippedMerchants);
+        long day = Enumerable.Range(1, 30).First(d => market.Stock(Herboriste, d).All(o => o.Item != eclat));
+        WorldSession w = Open(-65.2, -6.4, Hero(100_000, new ItemStack(eclat, 2)), day, 9 * 60);
+        Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, eclat, 2));
+        Assert.Equal(2, w.Stock(Herboriste).Single(o => o.Item == eclat).Left);
+        string before = Snapshot(w);
+        Assert.Equal(TradeRefusal.OutOfStock, w.Buy(Herboriste, eclat, 3));
+        Assert.Equal(before, Snapshot(w));
+        Assert.Equal(TradeRefusal.None, w.Buy(Herboriste, eclat, 2));
+        Assert.DoesNotContain(w.Stock(Herboriste), o => o.Item == eclat);
+        Assert.DoesNotContain(Reloaded(w).Stock, l => l.Item == eclat);   // ni manque ni vitrine : le stock normal est intact
+    }
+
+    [Fact]
+    public void Les_lignes_revenues_a_rien_rendent_leur_place()
+    {
+        // Revue Codex de la PR #120 (tour 3) : 256 lignes anciennes, toutes revenues à rien au jour 10, ne bloquent ni l'achat ni la vitrine.
+        var lines = ShippedMerchants.Merchants.SelectMany(m => ShippedMerchants.Values.Keys.Select(item => SavedStock.KeyOf(m.Id, item)))
+            .OrderBy(k => k, StringComparer.Ordinal).Take(SavedStock.MaxEntries).Select(k => new SavedStock(k, 0, 1, 0)).ToList();
+        Assert.Equal(SavedStock.MaxEntries, lines.Count);
+        WorldSession w = AtHerboriste(Hero(100_000, new ItemStack(Peau, 3)).WithStock(lines), 10);
+        Assert.Equal(TradeRefusal.None, w.Buy(Herboriste, Potion, 2));
+        Assert.Equal(28, w.Left(Herboriste, Potion));
+        Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, Peau, 3));
+        Assert.Equal(3, w.Stock(Herboriste).Single(o => o.Item == Peau).Left);
+        Assert.Equal(new[] { "merchant.herboriste/item.peau_de_loup", "merchant.herboriste/item.potion_de_soin" }, Reloaded(w).Stock.Select(l => l.Id));
+    }
+
     // --- Sauvegarde v16 --------------------------------------------------------------------------------------------------
 
     [Fact]

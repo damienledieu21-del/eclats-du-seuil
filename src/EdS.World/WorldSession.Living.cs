@@ -155,6 +155,7 @@ namespace EdS.World
         {
             string key = SavedStock.KeyOf(merchant, item);
             if (!SavedStock.IsKey(key)) return false;   // revue Codex de la PR #120 : une clé hors format n'est jamais écrite (refusé, rien ne change)
+            PruneStock();
             bool exists = _character.Stock.Any(x => x.Id == key);
             var rest = _character.Stock.Where(x => x.Id != key);
             if (missing == 0 && resold == 0)
@@ -186,13 +187,28 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Revue Codex de la PR #120 (tour 3) : retire de l'état en cours les lignes revenues à rien aujourd'hui (et celles d'un marchand ou d'un
+        /// objet disparu), comme la sauvegarde : leur place sert à d'autres. Sans effet sur ce qu'on voit (une ligne vide aujourd'hui le reste
+        /// les jours suivants : manque et vitrine ne font que baisser) ; recalculé du jour du monde, déterministe.
+        /// </summary>
+        private void PruneStock()
+        {
+            var kept = StockToSave(_character.Stock).ToList();
+            if (kept.Count != _character.Stock.Count) _character = _character.WithStock(kept);
+        }
+
+        /// <summary>
         /// Le stock peut-il donner <paramref name="count"/> unités (offre à stock fini) ? Faux aussi si la ligne ne peut pas être écrite
         /// (stock sauvegardé plein). Ne change rien.
         /// </summary>
-        private bool CanTake(string merchant, string item, int count)
+        /// <remarks>Revue Codex de la PR #120 (tour 3) : la quantité se juge contre l'offre réellement proposée (<paramref name="offer"/>, de
+        /// <see cref="LivingStock"/>) : un objet revendu hors du tirage du jour n'offre que sa vitrine, jamais le stock de l'offre absente.</remarks>
+        private bool CanTake(string merchant, MerchantOffer offer, int count)
         {
-            if (!(Left(merchant, item) is int left)) return true;
+            string item = offer.Item;
+            if (!(offer.Left is int left)) return true;
             if (left < count) return false;
+            PruneStock();
             string key = SavedStock.KeyOf(merchant, item);
             // Revue Codex de la PR #120 : la ligne doit pouvoir s'écrire (clé au format des sauvegardes), vérifié avant toute mutation.
             if (!SavedStock.IsKey(key)) return false;
@@ -200,14 +216,17 @@ namespace EdS.World
         }
 
         /// <summary>Retire <paramref name="count"/> unités du stock (la vitrine des objets revendus d'abord), déjà vérifiées par <see cref="CanTake"/>.</summary>
-        private void Take(string merchant, string item, int count)
+        private void Take(string merchant, MerchantOffer proposed, int count)
         {
+            string item = proposed.Item;
+            if (proposed.Left is null) return;
             Merchant m = NeedMarket().Book.Merchant(merchant);
             MerchantOffer? offer = m.Offers.FirstOrDefault(o => o.Item == item);
-            if (offer != null && offer.Stock is null) return;
             int full = offer?.Stock ?? 0;
             (int missing, int resold) = LineToday(StockLine(merchant, item), full, m.Restock);
             int fromResold = Math.Min(resold, count);
+            // Une offre de vitrine (hors du tirage) ne prend que dans la vitrine : vérifié par CanTake (Left = vitrine).
+            if (proposed.Resold && fromResold < count) throw new InvalidOperationException("Vitrine trop courte après vérification.");
             if (!SetStockLine(merchant, item, checked(missing + count - fromResold), resold - fromResold))
                 throw new InvalidOperationException("Stock plein après vérification.");
         }
