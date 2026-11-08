@@ -591,9 +591,10 @@ namespace EdS.Game
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null || catalog.Villagers <= 0) return;
+            bool humans = HumanBodies.Usable(catalog);   // sous-lot V2.9.2 : les corps humains, si les personnages de Mixamo manquent
             foreach (StyleVillager v in villagers)
             {
-                if (catalog.Character(v.Character) == null) continue;
+                if (catalog.Character(v.Character) == null && !humans) continue;
                 GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 body.name = v.Id + " (villageois)";
                 Object.Destroy(body.GetComponent<Collider>());
@@ -601,7 +602,7 @@ namespace EdS.Game
                 body.transform.position = new Vector3((float)v.X, 1f, (float)v.Z);
                 body.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
                 body.transform.rotation = Quaternion.Euler(0f, (float)v.Yaw, 0f);
-                StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.8f);
+                StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.8f, v.Id);   // sous-lot V2.9.2 : l'aspect suit le villageois
                 if (look == null)
                 {
                     Object.Destroy(body);

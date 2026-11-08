@@ -22,8 +22,11 @@ internal static class V261TestData
         foreach (JsonNode? d in data["dialogues"]!.AsArray())
         {
             JsonArray entries = d!["entries"]!.AsArray(), nodes = d["nodes"]!.AsArray();
-            foreach (JsonNode? e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v261_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
-            foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v261_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            // Sous-lot V2.9.2 : sans les deux répliques de Gaspard sur le vieux Brunot (32 répliques au plus ne vient qu'avec la version 11).
+            foreach (JsonNode? e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v261_", StringComparison.Ordinal)
+                || ((string?)e!["node"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
+            foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v261_", StringComparison.Ordinal)
+                || ((string?)n!["id"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
             foreach (JsonNode? n in nodes)
                 if (n!["lines"] is JsonArray lines)
                 {

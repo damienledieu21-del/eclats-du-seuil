@@ -260,7 +260,9 @@ namespace EdS.Game
                     if (v.Event.Id == e.Id && v.Rift is GroundVector g) at = new Vector3(Raw(g.X), 1f, Raw(g.Z));
                 // 2e vague : un portail qui s'ouvre (au départ seulement), avec le verre qui éclate.
                 bool portal = kind == WorldEventNoticeKind.Started && Burst(StyleSound.Portal, at, 0.8f);
-                return Burst(StyleSound.Glass, at, kind == WorldEventNoticeKind.Wave ? 0.5f : 1f) || portal;
+                // Sous-lot V2.9.2 (3e vague) : un souffle d'énergie magique quand la faille s'ouvre et à chaque vague qu'elle crache.
+                bool surge = Burst(StyleSound.RiftSurge, at, kind == WorldEventNoticeKind.Wave ? 0.6f : 0.8f);
+                return Burst(StyleSound.Glass, at, kind == WorldEventNoticeKind.Wave ? 0.5f : 1f) || portal || surge;
             }
             if (Clip(StyleSound.Tocsin) == null) return false;
             if (kind != WorldEventNoticeKind.Started) return true;   // une vague d'un pillage : le tocsin sonne déjà
@@ -270,7 +272,10 @@ namespace EdS.Game
                 bell.transform.position = center + Vector3.up * 6f;
                 bell.maxDistance = Hearing(3f);
             }
-            _strikesLeft = BeastCalls.TocsinStrikes;
+            // Sous-lot V2.9.2 : la grosse cloche de la tour (3e vague) sonne sept coups lents, la petite neuf coups rapides.
+            (int strikes, double gap) = BeastCalls.TocsinRhythm(Clip(StyleSound.Tocsin).name);
+            _strikesLeft = strikes;
+            _strikeGap = (float)gap;
             _nextStrike = 0f;
             return true;
         }
@@ -280,6 +285,7 @@ namespace EdS.Game
 
         private static readonly WorldEventView[] NoEvents = new WorldEventView[0];
         private AdventureSession _session;
+        private float _strikeGap = (float)BeastCalls.TocsinGap;
 
         /// <summary>Centre du lieu de l'événement (le hameau), ou null.</summary>
         private static Vector3? PlaceCenter(WorldEventDefinition e, ZoneDefinition zone)
@@ -359,7 +365,7 @@ namespace EdS.Game
             bell.volume = 0.9f * Volume;
             bell.Play();
             _strikesLeft--;
-            _nextStrike = (float)BeastCalls.TocsinGap;
+            _nextStrike = _strikeGap;
         }
 
         /// <summary>Le hameau est défendu : la cloche d'église sonne une douzaine de secondes (un passage du long enregistrement).</summary>

@@ -50,6 +50,21 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 (2e vague) : chevaux du hameau.</summary>
         Horse = 16,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : ânes du hameau et du bourg (âne de WildMesh).</summary>
+        Donkey = 17,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : poules de la basse-cour (poule de kill6lucius).</summary>
+        Hen = 18,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : le coq de la basse-cour (coq de rukh3d).</summary>
+        Rooster = 19,
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (3e vague) : l'ours de WildMesh, prêt pour une créature « ours… » (aucune dans les Vallons : son arrivée est un
+        /// choix de jeu de Damien).
+        /// </summary>
+        Bear = 20,
     }
 
     /// <summary>Essai réaliste : matière d'un bâtiment (textures d'un dossier « Surfaces »).</summary>
@@ -298,6 +313,15 @@ namespace EdS.Runtime
         Hens = 34,
         Sheep = 35,
         Owl = 36,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : sabots sur les pavés (Freesound n° 437103), sous un cheval ou un âne qui marche.</summary>
+        Hooves = 37,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : souffle d'énergie magique (Freesound n° 522704) quand une faille crache une vague.</summary>
+        RiftSurge = 38,
+
+        /// <summary>Sous-lot V2.9.2 : braiment de l'âne (un fichier « braiment », « bray » ; sans lui, le hennissement plus grave).</summary>
+        Bray = 39,
     }
 
     /// <summary>Essai réaliste 7 : musique de l'essai de style, d'après le lieu et le combat.</summary>
@@ -320,6 +344,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 (2e vague) : pendant une scène de l'histoire (souvenir, mise en scène), si elle n'a pas son propre chant.</summary>
         Story = 5,
+
+        /// <summary>Sous-lot V2.9.2 (4e vague) : le bourg la nuit (« Night Town » d'Angus Macnaughton).</summary>
+        VillageNight = 6,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : dans l'auberge (« The Old Tower Inn » de RandomMind).</summary>
+        Inn = 7,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -360,6 +390,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 : la forêt (forêt des Loups).</summary>
         Forest = 12,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : salle de l'auberge à l'heure des repas (Freesound n° 480724, couverts et conversations).</summary>
+        Dining = 13,
+
+        /// <summary>Sous-lot V2.9.2 (3e vague) : bord du lac (Freesound n° 733274, clapotis et oiseaux d'eau).</summary>
+        Lake = 14,
     }
 
     /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance, autour du personnage (plusieurs à la fois).</summary>
@@ -385,6 +421,9 @@ namespace EdS.Runtime
 
         /// <summary>Au Seuil (et à son cœur) : la musique du Seuil.</summary>
         Threshold = 32,
+
+        /// <summary>Sous-lot V2.9.2 : au bord du lac (lieu « lac… »), qui reste aussi une campagne.</summary>
+        Lake = 64,
     }
 
     /// <summary>
@@ -508,14 +547,37 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : bêtes paisibles et chat (le chat est reconnu par un mot entier, voir Matches).
             // Demande de Damien du 7 novembre 2026 (19 h 58) : l'élan de WildMesh d'abord (brouter, mort, coup reçu, fuite : toutes ses postures
             // sont animées), puis le cerf élaphe de Suiteofart (sans mort ni broutage), puis le cerf de Quaternius.
-            [StyleSlot.Stag] = (new[] { "elan", "elk", "cerfrouge", "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
-            [StyleSlot.Doe] = (new[] { "faon", "fawn", "deerquaternius", "deer", "doe", "biche", "hind" }, new[] { "stag", "reindeer", "cerf", "behind", "elan" }),
+            // Sous-lot V2.9.2 (3e vague) : le cerf « cel shading » de WildMesh (55 animations, dessin plus franc) après le cerf élaphe, avant celui
+            // de Quaternius ; la biche de WildMesh (attente, marche, trot, course, brouter, coup reçu, mort, couchée, assise) devant le faon.
+            [StyleSlot.Stag] = (new[] { "elan", "elk", "cerfrouge", "cerfcel", "stagquaternius", "stag", "cerf" }, new[] { "stage", "staging" }),
+            [StyleSlot.Doe] = (new[] { "bichewildmesh", "faon", "fawn", "deerquaternius", "deer", "doe", "biche", "hind" },
+                new[] { "stag", "reindeer", "cerf", "behind", "elan" }),
             [StyleSlot.Hare] = (new[] { "lievrebluekiwi", "lievre", "rabbitpneshik", "rabbit", "hare", "bunny" }, new[] { "share", "hardware" }),
             [StyleSlot.Cat] = (new[] { "catstripe", "stripecat", "cat", "chat" }, new string[0]),
             [StyleSlot.Crow] = (new[] { "corbeau", "crow", "raven", "corneille" }, new string[0]),
-            [StyleSlot.Cow] = (new[] { "vache", "cow" }, new[] { "cowl", "scow" }),
-            [StyleSlot.Dog] = (new[] { "chien", "dog" }, new[] { "dogwood" }),
+            // Sous-lot V2.9.2 (3e et 4e vagues) : le meilleur modèle par bête, puis les bêtes animées de Quaternius (« Ultimate Animated
+            // Animals » : marche, galop, manger, attaque, mort), puis celles de la ferme de Quaternius (« Farm Animals ») en dernier repli.
+            [StyleSlot.Cow] = (new[] { "vachenataliekirk", "vache", "cow", "bull" }, new[] { "cowl", "scow", "bulldog", "bullet" }),
+            [StyleSlot.Dog] = (new[] { "chiensharpei", "chien", "husky", "shibainu", "shiba", "dog", "pug" }, new[] { "dogwood", "hotdog" }),
             [StyleSlot.Horse] = (new[] { "cheval", "horse" }, new[] { "horseshoe" }),
+            // Âne, poule, coq, ours : mots entiers seulement (voir Matches : « ane » dans « plane », « hen » dans « kitchen », « ours » dans
+            // « colours »), sauf les noms des fichiers convertis.
+            [StyleSlot.Donkey] = (new[] { "anewildmesh", "ane", "donkey", "ane" }, new string[0]),
+            [StyleSlot.Hen] = (new[] { "poulekill6lucius", "poule", "hen", "chicken" }, new[] { "roasted", "rooster" }),
+            [StyleSlot.Rooster] = (new[] { "coqrukh3d", "coq", "rooster", "cockerel" }, new string[0]),
+            [StyleSlot.Bear] = (new[] { "ourswildmesh", "ours", "bear" }, new[] { "teddy" }),
+        };
+
+        /// <summary>
+        /// Sous-lot V2.9.2 : bêtes reconnues par un mot entier de leur nom (ou le nom exact du fichier converti) : « Ane_WildMesh », « âne »,
+        /// « Donkey » ; « plane », « kitchen », « colours » ou « bearing » n'en sont pas.
+        /// </summary>
+        private static readonly Dictionary<StyleSlot, (string Converted, string[] Words)> WholeWordSlots = new Dictionary<StyleSlot, (string, string[])>
+        {
+            [StyleSlot.Donkey] = ("anewildmesh", new[] { "ane", "donkey", "anes", "donkeys" }),
+            [StyleSlot.Hen] = ("poulekill6lucius", new[] { "poule", "poules", "hen", "hens", "chicken" }),
+            [StyleSlot.Rooster] = ("coqrukh3d", new[] { "coq", "rooster", "cockerel" }),
+            [StyleSlot.Bear] = ("ourswildmesh", new[] { "ours", "bear", "grizzly" }),
         };
 
         /// <summary>Mots des objets de décor (nom du fichier), par ordre de préférence.</summary>
@@ -558,8 +620,10 @@ namespace EdS.Runtime
             [StyleSound.BoarGrumble] = new[] { "sanglier", "grogne", "wildboar" },
             // 2e vague : la petite cloche (un seul coup, BigSoundBank n° 292) sonne le tocsin, frappée vite ; les cloches d'église (dont celle
             // du village français de kevp888) sonnent quand le hameau est défendu.
-            [StyleSound.Tocsin] = new[] { "tocsin", "petitecloche", "clochebsb", "cloche", "handbell" },
-            [StyleSound.ChurchBell] = new[] { "cloche", "eglise", "church", "chapelle" },
+            // Sous-lot V2.9.2 (3e vague) : la grosse cloche de la tour de Falun (Kristoffer_Andersson, n° 760390), frappée de près, sonne le
+            // tocsin d'abord ; la courte volée de TSP-Talk (n° 847110) rejoint les cloches d'église.
+            [StyleSound.Tocsin] = new[] { "fs760390", "tocsin", "petitecloche", "clochebsb", "cloche", "handbell" },
+            [StyleSound.ChurchBell] = new[] { "cloche", "eglise", "church", "chapelle", "fs847110" },
             [StyleSound.Glass] = new[] { "verre", "glassbreak", "glass" },
             [StyleSound.Shatter] = new[] { "miroir", "mirror", "shatter" },
             [StyleSound.RiftHum] = new[] { "faille", "bourdon", "humming", "drone" },
@@ -577,6 +641,10 @@ namespace EdS.Runtime
             [StyleSound.Hens] = new[] { "poules", "chicken", "hens" },
             [StyleSound.Sheep] = new[] { "mouton", "sheep" },
             [StyleSound.Owl] = new[] { "hulotte", "owl" },
+            // Sous-lot V2.9.2 (3e vague, Freesound, reconnus par leur numéro) : sabots sur les pavés, souffle magique des failles, braiment.
+            [StyleSound.Hooves] = new[] { "fs437103", "sabots", "hooves", "horsewalksonpavement" },
+            [StyleSound.RiftSurge] = new[] { "fs522704", "teleportation", "energymagic" },
+            [StyleSound.Bray] = new[] { "braiment", "braie", "bray", "donkey" },
         };
 
         /// <summary>
@@ -585,9 +653,10 @@ namespace EdS.Runtime
         /// </summary>
         private static readonly Dictionary<StyleSound, string[]> SoundAvoid = new Dictionary<StyleSound, string[]>
         {
-            [StyleSound.Tocsin] = new[] { "eglise", "church", "chapelle", "clochevillage" },
-            // La cloche d'église n'est ni le tocsin de la 1re vague (BigSoundBank n° 135) ni la petite cloche (n° 292).
-            [StyleSound.ChurchBell] = new[] { "clochebsb0135", "petitecloche" },
+            [StyleSound.Tocsin] = new[] { "eglise", "church", "chapelle", "clochevillage", "fs847110" },
+            // La cloche d'église n'est ni le tocsin de la 1re vague (BigSoundBank n° 135) ni la petite cloche (n° 292), ni la grosse cloche du
+            // tocsin de la 3e vague (n° 760390).
+            [StyleSound.ChurchBell] = new[] { "clochebsb0135", "petitecloche", "fs760390" },
             // « eds_lievre_herbe » (le lièvre qui détale) n'est pas un pas dans l'herbe ; le cheval qui marche n'est pas un marché.
             [StyleSound.StepGrass] = new[] { "lievre" },
         };
@@ -595,12 +664,17 @@ namespace EdS.Runtime
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
         private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
+            // Sous-lot V2.9.2 : « Night Town » le soir au bourg, « The Old Tower Inn » dans l'auberge (en tête : « town » est aussi un mot du
+            // village).
+            (StyleMusic.VillageNight, new[] { "nighttown", "villagenight", "nuitaubourg" }),
+            (StyleMusic.Inn, new[] { "oldtowerinn", "towerinn", "taverne" }),
             // Sous-lot V2.9 (2e vague) : Scott Buckley : « Into The Wilds » (exploration, passe devant), « Sanctum » (le Seuil),
             // « The Legend of Kvothe » (les scènes de l'histoire).
             (StyleMusic.Exploration, new[] { "wilds", "exploration", "explore", "woodland", "field" }),
             (StyleMusic.Village, new[] { "village", "town", "festival" }),
             (StyleMusic.Combat, new[] { "combat", "battle", "fight" }),
-            (StyleMusic.Boss, new[] { "boss", "heroic", "epic" }),
+            // Sous-lot V2.9.2 (4e vague) : « Determined Pursuit » d'Emma_MA pour les chefs et les attaques, devant « Heroic Demise ».
+            (StyleMusic.Boss, new[] { "determinedpursuit", "pursuit", "boss", "heroic", "epic" }),
             (StyleMusic.Threshold, new[] { "sanctum", "seuil", "threshold" }),
             (StyleMusic.Story, new[] { "kvothe", "legend", "chapitre", "chapter" }),
         };
@@ -611,6 +685,16 @@ namespace EdS.Runtime
         /// </summary>
         private static readonly (StyleAmbience Kind, string[] Words)[] AmbienceWords =
         {
+            // Sous-lot V2.9.2 (3e vague, Freesound, reconnus par leur numéro, en tête : ils passent devant les fichiers déjà déposés du même
+            // genre, voir AmbienceRank) : la pluie sur le jardin et le toit de tôle de newlocknew (n° 836064), la salle de l'auberge à table
+            // (n° 480724), le lac (n° 733274), la forge de thefilmbakery (n° 137836, marteau et enclume, devant le charbon de ldezem), le
+            // ruisseau de tim.kahn (n° 164895), le vent dans la forêt de kevp888 (n° 593439).
+            (StyleAmbience.Rain, new[] { "fs836064" }),
+            (StyleAmbience.Dining, new[] { "fs480724", "dinnerparty", "restaurant" }),
+            (StyleAmbience.Lake, new[] { "fs733274", "lakeside", "bordlac" }),
+            (StyleAmbience.Forge, new[] { "fs137836", "blacksmith" }),
+            (StyleAmbience.River, new[] { "fs164895" }),
+            (StyleAmbience.Wind, new[] { "fs593439", "windyforest" }),
             // Sous-lot V2.2 : la pluie d'abord (« thunderstorm_rain » est une nappe de pluie, qui tourne en boucle), puis le tonnerre seul.
             (StyleAmbience.Rain, new[] { "pluie", "rain", "averse" }),
             (StyleAmbience.Thunder, new[] { "orage", "thunder", "tonnerre" }),
@@ -710,6 +794,11 @@ namespace EdS.Runtime
             if (slot == StyleSlot.Cat)
                 return file.Contains("catstripe") || file.Contains("stripecat")
                     || Words(path).Any(w => w == "cat" || w == "chat" || w == "kitty" || w == "kitten");
+            if (WholeWordSlots.TryGetValue(slot, out (string Converted, string[] Words) whole))
+                return (file.Contains(whole.Converted) || Words(path).Any(w => whole.Words.Contains(w)))
+                    && !Models[slot].Avoid.Any(a => file.Contains(a));
+            // Sous-lot V2.9.2 : le cochon rose de la ferme de Quaternius n'est pas un sanglier.
+            if (slot == StyleSlot.Boar && Segments(path).Contains("farmanimals")) return false;
             (string[] want, string[] avoid) = Models[slot];
             return want.Any(w => file.Contains(w)) && !avoid.Any(a => file.Contains(a));
         }
@@ -1087,7 +1176,8 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 : sons faits de longs enregistrements (joués par passages), gardés compressés en mémoire sur le téléphone.</summary>
         private static readonly StyleSound[] LongSounds =
-            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum };
+            { StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.BoarGrumble, StyleSound.Tocsin, StyleSound.ChurchBell, StyleSound.RiftHum,
+                StyleSound.Hooves };   // sous-lot V2.9.2 : les sabots, joués par passages
 
         /// <summary>
         /// Sous-lot V2.9 : le fichier est-il un long enregistrement (ronronnement, hurlements, brame, grognements, cloches, bourdonnement) ?
@@ -1155,6 +1245,25 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Sous-lot V2.9.2 : rang d'une ambiance parmi celles de son genre : la place de la première ligne de mots qui la reconnaît (les
+        /// fichiers de la 3e vague, nommés en tête, passent devant), puis celle du mot ; <see cref="int.MaxValue"/> si ce n'est pas une ambiance.
+        /// La préparation prend la première, puis l'ordre ordinal.
+        /// </summary>
+        public static int AmbienceRank(string path)
+        {
+            if (!(AmbienceOf(path) is StyleAmbience kind)) return int.MaxValue;
+            string file = Key(FileName(path));
+            for (int i = 0; i < AmbienceWords.Length; i++)
+            {
+                if (AmbienceWords[i].Kind != kind) continue;
+                string[] words = AmbienceWords[i].Words;
+                for (int j = 0; j < words.Length; j++)
+                    if (file.Contains(words[j])) return i * 100 + j;
+            }
+            return int.MaxValue - 1;
+        }
+
+        /// <summary>
         /// Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance d'après les lieux de la zone où se trouve le personnage
         /// (<paramref name="placeIds"/>) et la zone elle-même (<paramref name="zoneId"/> ; l'auberge est une taverne).
         /// </summary>
@@ -1182,6 +1291,7 @@ namespace EdS.Runtime
             if (HasIdWord(placeId, "camp", false) || HasIdWord(placeId, "carriere", true)) places |= AmbiencePlace.Camp;
             if (HasIdWord(placeId, "champ", true) || HasIdWord(placeId, "verger", true) || HasIdWord(placeId, "plaine", true)
                 || HasIdWord(placeId, "pre", false) || HasIdWord(placeId, "lac", false)) places |= AmbiencePlace.Fields;
+            if (HasIdWord(placeId, "lac", false) || HasIdWord(placeId, "etang", false)) places |= AmbiencePlace.Lake;   // sous-lot V2.9.2
             if (HasIdWord(placeId, "foret", true) || HasIdWord(placeId, "bois", false)) places |= AmbiencePlace.Forest;
             if (HasIdWord(placeId, "seuil", false)) places |= AmbiencePlace.Threshold;
             return places;
@@ -1239,8 +1349,24 @@ namespace EdS.Runtime
         /// (<paramref name="story"/>) après le combat, puis celle du Seuil (<paramref name="threshold"/>) avant le village.
         /// </summary>
         public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story) =>
-            bossEngaged ? StyleMusic.Boss : fighting ? StyleMusic.Combat : story ? StyleMusic.Story : threshold ? StyleMusic.Threshold
-                : inVillage ? StyleMusic.Village : StyleMusic.Exploration;
+            MusicFor(bossEngaged, fighting, inVillage, threshold, story, 0, false, false);
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (3e et 4e vagues) : comme <see cref="MusicFor(bool, bool, bool, bool, bool)"/>, et : un combat pendant une attaque du
+        /// monde (<paramref name="assault"/> : pillage ou faille en cours) prend la musique des chefs (« Determined Pursuit ») ; dans l'auberge
+        /// (<paramref name="inn"/>), « The Old Tower Inn » ; au bourg de nuit (<paramref name="night"/> d'au moins 0,5), « Night Town ».
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault) =>
+            bossEngaged || (fighting && assault) ? StyleMusic.Boss : fighting ? StyleMusic.Combat : story ? StyleMusic.Story : inn ? StyleMusic.Inn
+                : threshold ? StyleMusic.Threshold : inVillage ? (night >= 0.5 ? StyleMusic.VillageNight : StyleMusic.Village) : StyleMusic.Exploration;
+
+        /// <summary>
+        /// Sous-lot V2.9.2 : musique de repli quand <paramref name="wanted"/> manque (fichier non déposé) : le Gardien et les attaques prennent
+        /// le combat, le bourg de nuit et l'auberge la musique du village ; null : la suite décide (exploration, ou la musique en cours pour une
+        /// scène).
+        /// </summary>
+        public static StyleMusic? MusicFallback(StyleMusic wanted) =>
+            wanted == StyleMusic.Boss ? StyleMusic.Combat : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn ? StyleMusic.Village : (StyleMusic?)null;
 
         /// <summary>
         /// Sous-lot V2.9 (2e vague) : volume (0 à 1) des ambiances de lieu d'après l'heure du monde (<paramref name="minute"/>), les lieux
@@ -1276,6 +1402,12 @@ namespace EdS.Runtime
                     return !indoors && (places & AmbiencePlace.Fields) != 0 && !town ? 0.6 * calm * (1 - night) * (1 - 0.8 * rain) : 0;
                 case StyleAmbience.Forest:
                     return !indoors && (places & AmbiencePlace.Forest) != 0 ? 0.8 * calm * (1 - 0.5 * night) * (1 - 0.5 * rain) : 0;
+                // Sous-lot V2.9.2 (3e vague) : la salle de l'auberge à table (couverts, conversations) aux heures des repas, plus bas entre deux ;
+                // le bord du lac (clapotis, oiseaux d'eau), plus calme la nuit et sous la pluie.
+                case StyleAmbience.Dining:
+                    return (places & AmbiencePlace.TavernInside) != 0 ? calm * (0.25 + 0.55 * Math.Max(Window(11.5, 14, 0.5), Window(18.5, 22.5, 0.5))) : 0;
+                case StyleAmbience.Lake:
+                    return !indoors && (places & AmbiencePlace.Lake) != 0 ? 0.75 * calm * (1 - 0.5 * night) * (1 - 0.6 * rain) : 0;
                 default:
                     return 0;
             }
@@ -1686,6 +1818,8 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
+            // Sous-lot V2.9.2 (décision de Damien du 8 novembre 2026) : les ours de la forêt des Loups et le vieux Brunot prennent l'ours de WildMesh.
+            if (key.StartsWith("ours", StringComparison.Ordinal) || key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return StyleSlot.Bear;
             return StyleSlot.Character;
         }
 
@@ -1701,8 +1835,28 @@ namespace EdS.Runtime
         }
 
         /// <summary>Sous-lot V2.9 : une bête habillée d'un modèle (loup, sanglier, cerf, biche, lièvre) : centrée sur son corps, voix 3D.</summary>
+        /// <summary>
+        /// Sous-lot V2.9.2 (décision de Damien du 8 novembre 2026) : oursons (décor, jamais des combattants : on ne les tue pas) posés près de
+        /// l'ourse <paramref name="id"/> ; 0 pour une autre bête.
+        /// </summary>
+        public static int Cubs(string id)
+        {
+            string key = Key(id ?? string.Empty);
+            return key.StartsWith("ourse", StringComparison.Ordinal) ? 2 : 0;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (revue Codex de la PR #117, tour 3) : place du <paramref name="n"/>-ième ourson autour de sa mère, posée en
+        /// (<paramref name="x"/>, <paramref name="z"/>) : à 3 m d'elle, chacun de son côté.
+        /// </summary>
+        public static (double X, double Z) CubSpot(double x, double z, int n)
+        {
+            double angle = 2.4 + 1.3 * n;
+            return (x + 3 * Math.Cos(angle), z + 3 * Math.Sin(angle));
+        }
+
         public static bool IsBeast(StyleSlot slot) =>
-            slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare;
+            slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
 
         /// <summary>
         /// Sous-lot V2.9 : rotation (degrés) proposée par la préparation pour un modèle connu qui ne regarde pas devant lui une fois importé :
@@ -1727,6 +1881,11 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : hauteur des modèles des bêtes paisibles (bois ou oreilles compris).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id) == StyleSlot.Stag ? 2.1 : 1.35;   // 2e vague : biches du modèle de faon
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
+            // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
+            if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
+            if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;
+            if (key.StartsWith("ourse", StringComparison.Ordinal)) return 1.45;
+            if (key.StartsWith("ours", StringComparison.Ordinal)) return 1.6;
             return 0.95;
         }
 

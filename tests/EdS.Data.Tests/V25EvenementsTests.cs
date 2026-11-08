@@ -153,7 +153,7 @@ public class V25EvenementsTests
         // V2.6.1 : zones en schéma 12 ; V2.6 : zones en schéma 11 (10 encore lu), sauvegarde v14, Vallons au contenu 0.14.0.
         Assert.Equal((12, 10, 9, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
         Assert.Equal((15, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
-        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
         // Ni le moteur, ni les règles, ni le journal ne changent.
         Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }

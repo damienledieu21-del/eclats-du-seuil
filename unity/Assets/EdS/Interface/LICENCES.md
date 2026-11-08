@@ -63,5 +63,17 @@ Relecture de la PR #114 : `docs/CREDITS.md` renvoie ici pour les auteurs à cite
 | « Red Deer Stag Bellowing » (brame, V2.9) | **naturenotesuk** (Freesound n° 757773) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Small Animal Running on Grass » (lièvre qui détale, V2.9) | **JiggleSticks** (Freesound n° 635012) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « 220718_2057_FR_ChurchBell » (cloche d'église, V2.9) | **kevp888** (Freesound n° 646519) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Realistic Animated Doe », « Realistic Animated Donkey », « Deer Animated Cel Shading », « Realistic Animated Bear » (biche, âne, cerf, ours, V2.9.2) | **WildMesh_3D** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « ANIMAL & FOOD Chicken Model (CS2) » (poules, V2.9.2) | **kill6lucius** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Handpainted Rooster » (coq, V2.9.2) | **rukh3d** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Cow NPC » (vaches, V2.9.2) | **nataliekirk** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Free Shar Pei Animated Dog » (chiens, V2.9.2) | **artsiom** (Sketchfab) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Falun Tower Bell Hit Close » (tocsin, V2.9.2) | **Kristoffer_Andersson** (Freesound n° 760390) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Summer Rain, garden / metal roof » (pluie, V2.9.2) | **newlocknew** (Freesound n° 836064) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « diamond peak stream 02 » (ruisseau, V2.9.2) | **tim.kahn** (Freesound n° 164895) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « FR WindyForest » (vent, V2.9.2) | **kevp888** (Freesound n° 593439) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| « Lakeside Ambience 06 » (bord du lac, V2.9.2) | **Soundrack** (Freesound n° 733274) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Musique « Fantasy Music - Night Town » (le bourg la nuit, V2.9.2) | **Angus Macnaughton** 2014 (OpenGameArt) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Musiques « Determined Pursuit » (**Emma_MA**) et « The Old Tower Inn » (**RandomMind**), corps et animations de **Quaternius** (V2.9.2) | OpenGameArt, quaternius.com | CC0 (cités par courtoisie) |
 
 Les autres ressources de l'essai de style sous CC BY (moulin, arbres et bâtiments de Sketchfab, icônes) sont listées dans `docs/CREDITS.md`.

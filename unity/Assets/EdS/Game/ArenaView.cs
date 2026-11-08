@@ -25,6 +25,15 @@ namespace EdS.Game
 
         private readonly GameObject _root;
         private readonly Dictionary<string, GameObject> _bodies = new Dictionary<string, GameObject>();
+
+        /// <summary>Sous-lot V2.9.2 : oursons (décor) posés près de leur ourse, par ourse ; détruits au prochain Populate.</summary>
+        private readonly Dictionary<string, GameObject> _cubs = new Dictionary<string, GameObject>();
+
+        /// <summary>
+        /// Revue Codex de la PR #117 (tour 3) : ourses habillées dont les oursons attendent la vraie place de leur mère (au moment de
+        /// l'habillage, le corps est encore sur une place provisoire ou à l'origine) : ils sont posés au premier Place où elle est là.
+        /// </summary>
+        private readonly HashSet<string> _cubsPending = new HashSet<string>();
         private readonly Dictionary<string, Renderer> _renderers = new Dictionary<string, Renderer>();
 
         /// <summary>Sous-lot V1.9.8 : matériaux des formes qui brillent (<see cref="Glow"/>), détruits au prochain <see cref="Populate"/>.</summary>
@@ -155,6 +164,9 @@ namespace EdS.Game
         {
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
+            foreach (GameObject den in _cubs.Values) if (den != null) Object.Destroy(den);
+            _cubs.Clear();
+            _cubsPending.Clear();
             _looks.Clear();
             _wild.Clear();
             _voices?.Clear();
@@ -280,6 +292,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : Croc-Gris est un loup bien plus grand que les autres (StyleRules.BeastHeight).
             StyleBody look = StyleLook.Dress(body, slot, id, slot == StyleSlot.Hero || slot == StyleSlot.Character ? 1.8f : (float)StyleRules.BeastHeight(id));
             if (look != null) _looks[id] = look;
+            if (look != null && !player && StyleRules.Cubs(id) > 0 && !_cubs.ContainsKey(id)) _cubsPending.Add(id);
             // Sous-lot V2.4 : un cerf ou un lièvre sans modèle prend sa forme simple (corps, pattes, bois ou oreilles). Revue Codex
             // de la PR #115 : avant l'habit d'écho, pour qu'un gibier sorti du Seuil soit fantôme tout entier (pas seulement sa capsule cachée).
             if (!player && look == null && Wildlife.KindOf(id) is WildlifeKind kind && kind != WildlifeKind.None) _wild[id] = new WildlifeLook(body, kind);
@@ -289,6 +302,46 @@ namespace EdS.Game
                 : EchoLooks.Of(id, _fromSeuil != null && _fromSeuil.Contains(id), _slainBefore != null && _slainBefore(id),
                     _afterDeath != null && _afterDeath(id));
             if (echo != EchoKind.None && !_ghosts.Dress(id, body, echo, look != null ? look.Height : 1.6f)) Echo(body);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.9.2 (décision de Damien du 8 novembre 2026 : « une ourse avec ses oursons, à ne pas déranger ») : deux oursons du
+        /// modèle de l'ours, petits, posés à 3 m de leur mère à son arrivée ; décor seulement (jamais des combattants : on ne les tue pas) ; ils
+        /// jouent leur attente, s'assoient ou se couchent, chacun à son moment. Une seule fois par ourse et par combat affiché.
+        /// </summary>
+        private void Cubs(string id, Vector3 mother)
+        {
+            int count = StyleRules.Cubs(id);
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (count <= 0 || _cubs.ContainsKey(id) || catalog == null || catalog.Bear == null) return;
+            var den = new GameObject("Oursons de " + id);
+            den.transform.SetParent(_root.transform, false);
+            _cubs[id] = den;
+            for (int i = 0; i < count; i++)
+            {
+                GameObject cub = StyleLook.Fit(catalog.Bear, 0.75f + 0.08f * i, 0f, null, false, out float bottom, out GameObject _, true);
+                float k = cub.transform.localScale.y;
+                cub.name = "Ourson " + (i + 1);
+                cub.transform.SetParent(den.transform, false);
+                (double cx, double cz) = StyleRules.CubSpot(mother.x, mother.z, i);
+                var at = new Vector3((float)cx, 0f, (float)cz);
+                cub.transform.position = new Vector3(at.x, StyleWorld.StandHeight(at.x, at.z) - bottom * k, at.z);
+                cub.transform.rotation = Quaternion.Euler(0f, 40f + 150f * i, 0f);
+                Animation animation = cub.GetComponentInChildren<Animation>();
+                if (animation == null) continue;
+                string pose = null;
+                foreach (AnimationState state in animation)
+                {
+                    int bar = state.name.LastIndexOf('|');
+                    string tail = StyleRules.Key(bar >= 0 ? state.name.Substring(bar + 1) : state.name);
+                    state.wrapMode = WrapMode.Loop;
+                    if (tail == (i == 0 ? "sit" : "idle2") || (pose == null && tail == "idle")) pose = state.name;
+                }
+                if (pose == null) continue;
+                animation.Play(pose);
+                AnimationState playing = animation[pose];
+                if (playing != null) playing.time = playing.length * (0.3f + 0.4f * i);
+            }
         }
 
         /// <summary>
@@ -599,6 +652,12 @@ namespace EdS.Game
                     shown[v.Id] = place - Vector3.up;
                 }
                 body.transform.position = place;
+                // Revue Codex de la PR #117 (tour 3) : les oursons, une fois la vraie place de leur mère connue (et elle là).
+                if (_cubsPending.Count > 0 && _cubsPending.Contains(v.Id) && present.TryGetValue(v.Id, out bool mother) && mother)
+                {
+                    _cubsPending.Remove(v.Id);
+                    Cubs(v.Id, shown[v.Id]);
+                }
                 if (v.Facing is GroundVector f)
                     body.transform.rotation = Quaternion.Slerp(body.transform.rotation, Quaternion.Euler(0f, Yaw(f), 0f), snap ? 1f : 0.3f);
             }
@@ -610,6 +669,8 @@ namespace EdS.Game
                 if (visible && meShown && enemies.Contains(v.Id))
                     visible = CombatDisplay.InSightAt(Raw(eye.x), Raw(eye.z), Raw(at.x), Raw(at.z), _obstacles);
                 body.SetActive(visible);
+                // Les oursons ne sont là qu'avec leur mère (l'ourse n'est là que le jour).
+                if (_cubs.TryGetValue(v.Id, out GameObject den) && den != null) den.SetActive(here);
             }
         }
 

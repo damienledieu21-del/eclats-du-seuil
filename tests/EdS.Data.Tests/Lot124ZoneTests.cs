@@ -94,7 +94,7 @@ public class Lot124ZoneTests
             "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
             z.Places.Select(p => p.Id));   // Vallons agrandis : dix lieux de plus ; V1.9.5 : le cœur du Seuil (Gardien au niveau 23 au moins)
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
-        Assert.Equal(63, z.Populations.Count);   // V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
+        Assert.Equal(66, z.Populations.Count);   // V2.9.2 : l'ours (crépuscule et nuit), l'ourse, le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
             z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
@@ -113,13 +113,13 @@ public class Lot124ZoneTests
         Assert.Equal("$.data.safePoints[1].id", FirstError(Zone(z => Data(z)["safePoints"]![1]!["id"] = "place_du_village")));
         Assert.Equal("$.data.places[0].max", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(-30, 4))));
         Assert.Equal("$.data.places[0]", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(150, 4))));
-        Assert.Equal("$.data.populations[0].creature", FirstError(Zone(z => Population(z, "loup1")["creature"] = "ours")));
+        Assert.Equal("$.data.populations[0].creature", FirstError(Zone(z => Population(z, "loup1")["creature"] = "ours_inconnu")));
         Assert.Equal("$.data.populations[1].creature", FirstError(Zone(z => Population(z, "loup2")["creature"] = "loup1")));
         Assert.Equal("$.data.populations[0].respawnMs", FirstError(Zone(z => Population(z, "loup1")["respawnMs"] = 1025)));
         Assert.Equal("$.data.populations[0].respawnMs", FirstError(Zone(z => Population(z, "loup1")["respawnMs"] = 500)));
         Assert.Equal("$.data.populations[0].leashRange", FirstError(Zone(z => Population(z, "loup1")["leashRange"] = 0)));
         Assert.Equal("$.data.populations[0].leashRange", FirstError(Zone(z => Population(z, "loup1")["leashRange"] = 101)));
-        Assert.Equal("$.data.populations[0].loot", FirstError(Zone(z => Population(z, "loup1")["loot"] = "loot.ours")));
+        Assert.Equal("$.data.populations[0].loot", FirstError(Zone(z => Population(z, "loup1")["loot"] = "loot.ours_inconnu")));
         Assert.Equal("$.data.passages[0].obstacle", FirstError(Zone(z => Data(z)["passages"]![0]!["obstacle"] = "porte_inconnue")));
         Assert.Equal("$.data.id", FirstError(Zone(z => Data(z)["id"] = "vallons")));
         // Le scénario d'une zone est une simulation de zone ; une créature peuplée est mortelle.
@@ -141,7 +141,7 @@ public class Lot124ZoneTests
         // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début ; sans passage ouvert, l'espace est celui du scénario.
         CombatSetup unchanged = ZoneSetups.For(z, new[] { "zone.vallons/1/death/loup1" });
         Assert.Same(z.Setup.Space, unchanged.Space);
-        Assert.Equal(z.Setup.Combatants.Where(c => c.Id != "loup_blanc"), unchanged.Combatants);
+        Assert.Equal(z.Setup.Combatants.Where(c => c.Id != "loup_blanc" && c.Id != "vieux_brunot"), unchanged.Combatants);   // V2.9.2 : le vieux Brunot aussi
 
         var session = new WorldSession(NewGame(), z, ShippedData, Progression, Items);
         Assert.Contains(session.Zone.Setup.Space!.Obstacles, o => o.Id == "porte_moulin");
@@ -259,14 +259,15 @@ public class Lot124ZoneTests
         // gardée à la seconde forme de chacun (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
         int max = ShippedData.Rules.Combat.MaxCombatants;
         int creatures = z.Setup.Combatants.Count;
-        Assert.Equal(63, creatures);   // V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos (absents le jour) ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
+        Assert.Equal(66, creatures);   // V2.9.2 : deux ours et le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos (absents le jour) ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
         Assert.Equal(max - 3, session.Zone.Engine.CombatantIds.Count);   // V1.9.6 : trois secondes formes gardées (Croc-Gris)
         // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début : une vie suivante de plus avant le plafond.
         // Sous-lot V1.9.6 : Croc-Gris, un troisième chef à deux formes (sa première arrivée, une place gardée à la seconde) : 7 au lieu de 5.
         // Sous-lot V2.1 : les onze créatures de la nuit (loups de la nuit, échos) ne sont pas là le jour : onze vies suivantes de plus.
         // Sous-lot V2.4 : au jour 0 à 8 h (temps clair), les cinq bêtes de la brume et les quatre lièvres (crépuscule et nuit) ne sont pas là :
         // neuf vies suivantes de plus ; les six cerfs (aube et jour, par temps clair) sont là d'emblée.
-        Assert.Equal(max - (creatures - 1 - 11 - 9) - 7, population.Count(e => e.Kind == PopulationEventKind.Respawned));
+        // Sous-lot V2.9.2 : l'ours de la nuit et le vieux Brunot (créature rare de la nuit) ne sont pas là à 8 h : deux vies suivantes de plus.
+        Assert.Equal(max - (creatures - 1 - 11 - 9 - 2) - 7, population.Count(e => e.Kind == PopulationEventKind.Respawned));
         Assert.Single(population, e => e.Kind == PopulationEventKind.Exhausted);
         for (int i = 0; i < 200; i++) Assert.Empty(session.Step().Population);
     }

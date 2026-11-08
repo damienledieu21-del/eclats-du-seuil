@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 4,
   "kind": "merchants",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "values": [
       {
@@ -376,6 +376,18 @@
       {
         "item": "item.poussiere_d_echo",
         "value": 30
+      },
+      {
+        "item": "item.peau_d_ours",
+        "value": 70
+      },
+      {
+        "item": "item.griffe_d_ours",
+        "value": 120
+      },
+      {
+        "item": "item.cape_du_vieux_brunot",
+        "value": 7600
       }
     ],
     "merchants": [

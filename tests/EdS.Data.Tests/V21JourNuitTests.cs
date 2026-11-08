@@ -139,8 +139,9 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal(7, v7.Zone!.SchemaVersion);
         Assert.All(v7.Zone.Populations, p => Assert.Null(p.Hours));
         Assert.Empty(v7.Zone.NightSpots);
-        // Une zone de schéma 7 : toutes ses créatures sont là d'emblée, de jour comme de nuit (sauf la créature rare de la nuit).
-        Assert.Equal(v7.Zone.Setup.Combatants.Count - 1, ZoneSetups.For(v7.Zone, Array.Empty<string>(), DayPhase.Night).Combatants.Count);
+        // Une zone de schéma 7 : toutes ses créatures sont là d'emblée, de jour comme de nuit (sauf les créatures rares de la nuit : le loup
+        // blanc et, depuis V2.9.2, le vieux Brunot).
+        Assert.Equal(v7.Zone.Setup.Combatants.Count - 2, ZoneSetups.For(v7.Zone, Array.Empty<string>(), DayPhase.Night).Combatants.Count);
         // Les intérieurs livrés restent au schéma 7.
         Assert.All(V16TestData.Interiors, z => Assert.Equal(ZoneValidator.OldestSchemaVersion, z.SchemaVersion));
 
@@ -273,9 +274,9 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.All(NightWolves, id => Assert.False(Present(w, id)));
         List<PopulationEvent> events = Until(w, DayPhase.Night, 5);
         // Signes : un seul hurlement et une seule annonce des échos, à 22 h.
-        // (Le loup blanc garde ses nuits rares, tirées à part.)
-        PopulationEvent[] signs = events.Where(e => e.Kind == PopulationEventKind.Sign && e.Population != "loup_blanc").ToArray();
-        Assert.Equal(new[] { ("loup_nuit1", "text.zone.loups_nuit.signe"), ("loup_echo1", "text.zone.echos.signe") },
+        // (Le loup blanc et le vieux Brunot gardent leurs nuits rares, tirées à part.) V2.9.2 : l'ours de la nuit a son signe.
+        PopulationEvent[] signs = events.Where(e => e.Kind == PopulationEventKind.Sign && e.Population != "loup_blanc" && e.Population != "vieux_brunot").ToArray();
+        Assert.Equal(new[] { ("ours", "text.zone.ours.signe"), ("loup_nuit1", "text.zone.loups_nuit.signe"), ("loup_echo1", "text.zone.echos.signe") },
             signs.Select(e => (e.Population, e.Creature)).OrderBy(x => x.Item1, StringComparer.Ordinal).Reverse().ToArray());
         // Tous arrivent, sous une vie suivante (les identités ne sont jamais réutilisées).
         foreach (string id in NightWolves.Concat(Echoes))

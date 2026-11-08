@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 12,
   "kind": "story",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -4499,6 +4499,33 @@
             "node": "v261_froid"
           },
           {
+            "conditions": [
+              {
+                "if": "questAt",
+                "id": "quest.le_vieux_brunot",
+                "step": "retour"
+              }
+            ],
+            "node": "v292_brunot_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questNotStarted",
+                "id": "quest.le_vieux_brunot"
+              },
+              {
+                "if": "levelAtLeast",
+                "value": 14
+              },
+              {
+                "if": "fact",
+                "id": "fact.croc_gris.vaincu"
+              }
+            ],
+            "node": "v292_brunot"
+          },
+          {
             "conditions": [],
             "node": "garde"
           }
@@ -7185,6 +7212,243 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              }
+            ]
+          },
+          {
+            "id": "v292_brunot",
+            "text": "text.v292.gaspard.brunot",
+            "choices": [
+              {
+                "text": "text.v292.gaspard.brunot.accepter",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_vieux_brunot"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v292.gaspard.brunot.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v27.gaspard.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.gaspard.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.piste_des_rodeurs"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "rangers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_gaspard_offre"
+              }
+            ]
+          },
+          {
+            "id": "v292_brunot_retour",
+            "text": "text.v292.gaspard.brunot_retour",
+            "choices": [
+              {
+                "text": "text.v292.gaspard.brunot_retour.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v27.gaspard.encore",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.v27.gaspard.plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.v27.piste_des_rodeurs"
+                  },
+                  {
+                    "if": "standingAtLeast",
+                    "id": "rangers",
+                    "step": "liked"
+                  }
+                ],
+                "effects": [],
+                "next": "v27_gaspard_offre"
               }
             ]
           }
@@ -22240,6 +22504,76 @@
             "value": 50
           }
         ]
+      },
+      {
+        "id": "quest.le_vieux_brunot",
+        "name": "text.v292.quest.brunot.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "levelAtLeast",
+            "value": 14
+          },
+          {
+            "if": "fact",
+            "id": "fact.croc_gris.vaincu"
+          }
+        ],
+        "steps": [
+          {
+            "id": "traces",
+            "text": "text.v292.quest.brunot.traces",
+            "objective": {
+              "kind": "reach",
+              "id": "foret_des_loups"
+            },
+            "effects": [
+              {
+                "do": "discover",
+                "id": "discovery.v292.griffes_de_brunot"
+              }
+            ]
+          },
+          {
+            "id": "brunot",
+            "text": "text.v292.quest.brunot.brunot",
+            "objective": {
+              "kind": "defeat",
+              "id": "vieux_brunot",
+              "value": 1
+            },
+            "effects": []
+          },
+          {
+            "id": "retour",
+            "text": "text.v292.quest.brunot.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.gaspard"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 900
+          },
+          {
+            "do": "giveMoney",
+            "value": 600
+          },
+          {
+            "do": "trust",
+            "id": "npc.gaspard",
+            "value": 1
+          },
+          {
+            "do": "giveItem",
+            "id": "item.cape_du_vieux_brunot",
+            "value": 1
+          }
+        ]
       }
     ],
     "discoveries": [
@@ -22346,6 +22680,10 @@
       {
         "id": "discovery.ch1.rond_de_sorciere",
         "text": "text.ch1.discovery.rond_de_sorciere"
+      },
+      {
+        "id": "discovery.v292.griffes_de_brunot",
+        "text": "text.v292.discovery.griffes_de_brunot"
       }
     ],
     "scenes": [

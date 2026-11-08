@@ -79,8 +79,13 @@ namespace EdS.Game.Editor
             string cow = StyleRules.Candidates(models, StyleSlot.Cow).FirstOrDefault();
             string dog = StyleRules.Candidates(models, StyleSlot.Dog).FirstOrDefault();
             string horse = StyleRules.Candidates(models, StyleSlot.Horse).FirstOrDefault();
-            foreach (string animated in new[] { stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null)) Legacy(animated, false);
-            var animals = new HashSet<string>(new[] { wolf, boar, stag, doe, hare, cat, crow, cow, dog, horse }.Where(p => p != null));
+            // Sous-lot V2.9.2 (3e vague) : âne, poule, coq (basse-cour) et ours (prêt pour une créature « ours… »), convertis par Claude.
+            string donkey = StyleRules.Candidates(models, StyleSlot.Donkey).FirstOrDefault();
+            string hen = StyleRules.Candidates(models, StyleSlot.Hen).FirstOrDefault();
+            string rooster = StyleRules.Candidates(models, StyleSlot.Rooster).FirstOrDefault();
+            string bear = StyleRules.Candidates(models, StyleSlot.Bear).FirstOrDefault();
+            foreach (string animated in new[] { stag, doe, hare, cat, crow, cow, dog, horse, donkey, hen, rooster, bear }.Where(p => p != null)) Legacy(animated, false);
+            var animals = new HashSet<string>(new[] { wolf, boar, stag, doe, hare, cat, crow, cow, dog, horse, donkey, hen, rooster, bear }.Where(p => p != null));
             foreach (string animal in animals) AnimalMaterial(animal, notes);
 
             // Matériaux réalistes des modèles de Poly Haven (couleur, relief, transparence de l'herbe). Les personnages de Mixamo ont les leurs
@@ -115,7 +120,9 @@ namespace EdS.Game.Editor
             }
             // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
-            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && Untextured(p))) AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
+            // Sous-lot V2.9.2 : pas les corps humains ni leurs bibliothèques d'animations (matériaux sans texture voulus : refaits par EdsHumans).
+            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && !HumanFile(p) && Untextured(p)))
+                AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
             string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
@@ -139,6 +146,10 @@ namespace EdS.Game.Editor
             catalog.Cow = Load(cow);
             catalog.Dog = Load(dog);
             catalog.Horse = Load(horse);
+            catalog.Donkey = Load(donkey);
+            catalog.Hen = Load(hen);
+            catalog.Rooster = Load(rooster);
+            catalog.Bear = Load(bear);
             // Sous-lot V2.9 : la rotation proposée pour un modèle connu (le sanglier de Hanabi_Map regarde de travers dans son fichier),
             // mise une seule fois : un réglage fait ensuite à la main est gardé.
             if (catalog.AnimalVersion < StyleCatalog.AnimalDefaults)
@@ -234,7 +245,7 @@ namespace EdS.Game.Editor
                 .Select(kind => new MusicLook { Kind = kind, Clip = sounds.Where(p => StyleRules.MusicOf(p) == kind).OrderBy(StyleRules.MusicRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(m => m.Clip != null).ToArray();
             catalog.Ambiences = System.Enum.GetValues(typeof(StyleAmbience)).Cast<StyleAmbience>()
-                .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
+                .Select(kind => new AmbienceLook { Kind = kind, Clip = sounds.Where(p => StyleRules.AmbienceOf(p) == kind).OrderBy(StyleRules.AmbienceRank).ThenBy(p => p, System.StringComparer.Ordinal).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
                 .Where(a => a.Clip != null).ToArray();
 
             // Essai réaliste 8 (demande de Damien du 28 octobre 2026) : bâtiments de Sketchfab rangés par genre, mesurés une fois ici ;
@@ -298,6 +309,8 @@ namespace EdS.Game.Editor
                 notes.Add("Lumière des intérieurs remise aux réglages de l'essai (version " + StyleCatalog.IndoorDefaults + ", V1.10 : plus claire).");
             }
             catalog.Terrain = TerrainMaterial();
+            // Sous-lot V2.9.2 (4e vague) : corps humains (Universal Base Characters, Universal Animation Library).
+            string humans = EdsHumans.Prepare(models, textures, catalog, notes);
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
@@ -310,12 +323,15 @@ namespace EdS.Game.Editor
             int voices = new[] { StyleSound.Meow, StyleSound.Purr, StyleSound.Howl, StyleSound.Bellow, StyleSound.HareDash, StyleSound.BoarGrumble, StyleSound.Tocsin,
                 StyleSound.ChurchBell, StyleSound.Glass, StyleSound.Shatter, StyleSound.RiftHum }.Count(k => catalog.Sound(k, 0) != null);
             int world = new[] { StyleSound.Portal, StyleSound.StepGrass, StyleSound.StepGravel, StyleSound.StepLeaves, StyleSound.StepWood, StyleSound.Caw,
-                StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl }.Count(k => catalog.Sound(k, 0) != null);
+                StyleSound.Moo, StyleSound.Bark, StyleSound.Neigh, StyleSound.Rooster, StyleSound.Hens, StyleSound.Sheep, StyleSound.Owl, StyleSound.Hooves,
+                StyleSound.RiftSurge }.Count(k => catalog.Sound(k, 0) != null);
             string report = "Héros : " + Name(hero) + " (" + catalog.HeroClips.Length + " animations à part)\nLoup : " + Name(wolf) + "\nSanglier : " + Name(boar)
                 + "\nCerf : " + Name(stag) + ", biche : " + Name(doe) + ", lièvre : " + Name(hare) + ", chat : " + Name(cat)
                 + "\nFerme : corbeau " + Name(crow) + ", vache " + Name(cow) + ", chien " + Name(dog) + ", cheval " + Name(horse)
+                + "\nBasse-cour : âne " + Name(donkey) + ", poule " + Name(hen) + ", coq " + Name(rooster) + " ; ours : " + Name(bear)
+                + "\n" + humans
                 + "\nVoix des bêtes, cloches et failles : " + voices + " sur 11 (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
-                + "\nPortail, pas et cris de la ferme : " + world + " sur 13"
+                + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur 15"
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
                 + "\nPersonnages : " + (catalog.Characters.Length == 0 ? "aucun" : string.Join(", ", catalog.Characters.Select(c => c.Id + " (" + c.Clips.Length + " animations)")))
                 + "\nBâtiments : " + catalog.Surfaces.Length + " matières sur 6, arbustes des haies : " + catalog.Shrubs.Length
@@ -323,7 +339,7 @@ namespace EdS.Game.Editor
                 + "\nEau : " + (catalog.SampleWater != null ? "eau du sample (ordinateur)" : catalog.Water != null ? "vraie eau" : "eau simple") + ", herbe en brins : " + (catalog.Grass != null ? "oui" : "non")
                 + ", rendu du téléphone : " + (catalog.PhonePipeline != null ? "oui" : "non")
                 + "\nSons : " + found + " sur 7, bruitages variés : " + catalog.SoundSets.Length + " sur " + System.Enum.GetValues(typeof(StyleSound)).Length
-                + ", musiques : " + catalog.Music.Length + " sur 6, ambiances : " + catalog.Ambiences.Length + " sur 12"
+                + ", musiques : " + catalog.Music.Length + " sur 8, ambiances : " + catalog.Ambiences.Length + " sur 14"
                 + "\nCiel : " + (catalog.Sky != null ? "oui" : "non") + ", sols : " + grounds + " sur 3"
                 + (notes.Count > 0 ? "\n\n" + string.Join("\n", notes) : "")
                 + "\n\n" + models.Count + " modèles, " + textures.Count + " textures et " + sounds.Count + " sons trouvés dans Assets/Style. Appuie sur Play."
@@ -332,6 +348,12 @@ namespace EdS.Game.Editor
             if (showReport) EditorUtility.DisplayDialog("Essai de style", report, "OK");
             return true;
         }
+
+        /// <summary>Sous-lot V2.9.2 : un fichier des corps humains (corps, coiffure, bibliothèque d'animations, mannequin de Quaternius).</summary>
+        private static bool HumanFile(string path) =>
+            HumanLooks.BodyOf(path) != null || HumanLooks.HairOf(path) != null || HumanLooks.IsAnimationLibrary(path)
+            || StyleRules.Key(Path.GetFileNameWithoutExtension(path)).StartsWith("ual", System.StringComparison.Ordinal)
+            || StyleRules.Key(Path.GetFileNameWithoutExtension(path)).StartsWith("mannequin", System.StringComparison.Ordinal);
 
         /// <summary>
         /// Animations « Legacy » (lues par le composant Animation), attente, marche et course en boucle. <paramref name="rename"/> : les

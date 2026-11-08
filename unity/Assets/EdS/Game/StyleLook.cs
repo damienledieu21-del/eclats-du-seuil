@@ -12,7 +12,10 @@ namespace EdS.Game
     /// </summary>
     public sealed class StyleBody
     {
-        private readonly Animation _animation;
+        // Sous-lot V2.9.2 : les animations passent par un lecteur : le composant Animation (« Legacy ») des modèles des packs et de Mixamo,
+        // ou le graphe Humanoid des corps humains (HumanMotion).
+        private readonly IClipPlayer _animation;
+        private readonly HumanOutfit? _outfit;
         private readonly Transform _look;
         private readonly List<string> _clips = new List<string>();
 
@@ -35,7 +38,7 @@ namespace EdS.Game
         // Sous-lot V2.9 : une bête (loup, sanglier, cerf, biche, lièvre) règle la cadence de sa marche et de son galop sur sa vitesse ; un
         // modèle sans squelette (le sanglier de Hanabi_Map) est animé par le code (BeastCalls.StaticGait).
         private bool _beast;
-        private AnimationState _playingState;
+        private string _playingState;
         private StyleMotion _playingMotion;
         private bool _procedural;
         private Vector3 _basePosition;
@@ -55,21 +58,24 @@ namespace EdS.Game
         public float Height { get; }
 
         internal StyleBody(Transform look, Animation animation, float height)
+            : this(look, animation != null ? new LegacyClips(animation) : null, height, null)
+        {
+        }
+
+        /// <summary>Sous-lot V2.9.2 : un corps animé par <paramref name="player"/> ; <paramref name="outfit"/> : la tenue d'un corps humain (son travail).</summary>
+        internal StyleBody(Transform look, IClipPlayer player, float height, HumanOutfit? outfit)
         {
             _look = look;
-            _animation = animation;
+            _animation = player;
+            _outfit = outfit;
             Height = height;
-            foreach (Renderer r in look.GetComponentsInChildren<Renderer>())
-                foreach (Material m in r.materials)
-                {
-                    _materials.Add(m);
-                    _colors.Add(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
-                }
-            if (animation == null) return;
-            foreach (AnimationState state in animation)
+            // Relecture de la PR #117 : les matériaux ne sont copiés qu'à la première teinte (mort, étourdi), et ces copies sont détruites
+            // avec le corps (MaterialCopies) : les corps humains gardent leurs matériaux partagés (instanciation, mémoire).
+            if (player == null) return;
+            foreach (string name in player.Names)
             {
-                _clips.Add(state.name);
-                state.wrapMode = StyleRules.Loops(state.name) ? WrapMode.Loop : WrapMode.ClampForever;
+                _clips.Add(name);
+                player.SetLoop(name, StyleRules.Loops(name));
             }
         }
 
@@ -94,14 +100,15 @@ namespace EdS.Game
         public string Loop(VillagerActivity activity, int variant)
         {
             if (_animation == null) return null;
-            string clip = TownModels.VillagerClip(_clips, activity, variant);
+            // Sous-lot V2.9.2 : un corps humain qui « cueille » fait le travail de son métier (la forge frappe, les paysans récoltent).
+            string clip = (activity == VillagerActivity.Gather && _outfit is HumanOutfit outfit ? HumanLooks.WorkClip(_clips, outfit, variant) : null)
+                ?? TownModels.VillagerClip(_clips, activity, variant);
             if (clip == null) return null;
             if (clip == _playing) return clip;
-            AnimationState state = _animation[clip];
-            if (state != null)
+            if (_animation.Has(clip))
             {
-                state.wrapMode = WrapMode.Loop;
-                state.time = state.length * (Mathf.Abs(variant) % 10) / 10f;
+                _animation.SetLoop(clip, true);
+                _animation.SetTime(clip, _animation.Length(clip) * (Mathf.Abs(variant) % 10) / 10f);
             }
             _animation.CrossFade(clip, 0.25f);
             _playing = clip;
@@ -115,8 +122,27 @@ namespace EdS.Game
         public void Tint(bool dead, bool stunned)
         {
             if (!dead && !stunned && !_tinted) return;
+            if (!_copied) CopyMaterials();
             for (int i = 0; i < _materials.Count; i++) ArenaView.ApplyColor(_materials[i], ArenaView.Shade(_colors[i], dead, stunned));
             _tinted = dead || stunned;
+        }
+
+        private bool _copied;
+
+        /// <summary>Copies propres à ce corps de ses matériaux, et leur couleur d'origine (pour la teinte) ; détruites avec lui.</summary>
+        private void CopyMaterials()
+        {
+            _copied = true;
+            if (_look == null) return;
+            MaterialCopies owner = _look.gameObject.GetComponent<MaterialCopies>();
+            if (owner == null) owner = _look.gameObject.AddComponent<MaterialCopies>();   // pas « ?? » : le null de Unity n'est pas celui de C#
+            foreach (Renderer r in _look.GetComponentsInChildren<Renderer>())
+                foreach (Material m in r.materials)
+                {
+                    _materials.Add(m);
+                    owner.Copies.Add(m);
+                    _colors.Add(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white);
+                }
         }
 
         /// <summary>
@@ -178,13 +204,13 @@ namespace EdS.Game
                 return;
             }
             if (clip == null) return;
-            AnimationState state = _animation[clip];
-            _actionUntil = Time.time + (state != null ? Mathf.Clamp(state.length, shortest, longest) : shortest);
+            bool known = _animation.Has(clip);
+            _actionUntil = Time.time + (known ? Mathf.Clamp(_animation.Length(clip), shortest, longest) : shortest);
             _actionMotion = motion;
             _actionClip = clip;
             // Deux coups de suite : le geste recommence. Relecture de l'essai 7 : toujours depuis le début, même redemandé pendant son fondu
             // de sortie (il ne repart pas de sa dernière image).
-            if (state != null) state.time = 0f;
+            if (known) _animation.SetTime(clip, 0f);
         }
 
         /// <summary>Animation pour cette demande (<see cref="StyleRules.Clip(IEnumerable{string}, StyleMotion, string, int)"/>), retenue.</summary>
@@ -239,7 +265,7 @@ namespace EdS.Game
             {
                 _playing = clip;
                 _playingMotion = motion;
-                _playingState = _beast ? _animation[clip] : null;
+                _playingState = _beast ? clip : null;
                 _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
             }
             if (_beast) Overlay(dead);
@@ -248,7 +274,7 @@ namespace EdS.Game
             {
                 float stride = Mathf.Sqrt(Mathf.Max(0.2f, Height));
                 float reference = _playingMotion == StyleMotion.Walk ? 1.2f * stride : _playingMotion == StyleMotion.Run ? 5.5f * stride : 0f;
-                _playingState.speed = reference > 0f ? Mathf.Clamp(_speed / reference, 0.6f, 1.7f) : 1f;
+                _animation.SetSpeed(_playingState, reference > 0f ? Mathf.Clamp(_speed / reference, 0.6f, 1.7f) : 1f);
             }
         }
 
@@ -305,14 +331,46 @@ namespace EdS.Game
         /// Habille <paramref name="body"/> (capsule de 2 m de haut à l'échelle 1, centrée à 1 m du sol) du modèle de <paramref name="slot"/>,
         /// à la hauteur <paramref name="height"/> ; rend null (rien ne change) sans catalogue ou sans modèle.
         /// </summary>
-        public static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height)
+        /// <param name="lookId">
+        /// Sous-lot V2.9.2 : identifiant qui décide de l'aspect d'un corps humain (le villageois « bourg/bavard1 », le PNJ « npc.odile ») ;
+        /// sans lui, <paramref name="id"/>.
+        /// </param>
+        public static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId = null) =>
+            Dress(body, slot, id, height, lookId, true);
+
+        private static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId, bool humans)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            GameObject prefab = catalog != null ? catalog.Model(slot, id) : null;
+            if (catalog == null) return null;
+            // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
+            // modèle du catalogue, comme avant.
+            HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
+            GameObject prefab = human is HumanLook wanted ? (wanted.Female ? catalog.Humans.Female : catalog.Humans.Male) : catalog.Model(slot, id);
             if (prefab == null) return null;
-            if (slot == StyleSlot.Character && catalog.Character(id) is CharacterLook character && character.Height > 0f) height = character.Height;
+            if (human is HumanLook sized) height = (float)sized.Height;
+            else if (slot == StyleSlot.Character && catalog.Character(id) is CharacterLook character && character.Height > 0f) height = character.Height;
             bool beast = StyleRules.IsBeast(slot);
             GameObject look = Fit(prefab, height, 0f, null, false, out float bottom, out GameObject model, beast);
+            if (human is HumanLook person)
+            {
+                IClipPlayer player = HumanBodies.Dress(model, catalog.Humans, person);
+                // Relecture de la PR #117 : sans animations (graphe impossible), pas de corps figé en pose en T : le modèle d'avant (ou la
+                // forme simple).
+                if (player == null)
+                {
+                    Object.Destroy(look);
+                    return Dress(body, slot, id, height, lookId, false);
+                }
+                Vector3 hs = body.transform.localScale;
+                look.transform.SetParent(body.transform, false);
+                float hk = look.transform.localScale.y;
+                look.transform.localScale = new Vector3(hk / hs.x, hk / hs.y, hk / hs.z);
+                look.transform.localPosition = new Vector3(0f, -1f - bottom * hk / hs.y, 0f);
+                look.transform.localRotation = Quaternion.identity;
+                Renderer capsule = body.GetComponent<Renderer>();
+                if (capsule != null) capsule.enabled = false;
+                return new StyleBody(look.transform, player, height, person.Outfit);
+            }
             Vector3 s = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
             float k = look.transform.localScale.y;

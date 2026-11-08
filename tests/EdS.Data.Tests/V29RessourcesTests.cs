@@ -338,7 +338,7 @@ public sealed class V29RessourcesTests
         Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("presbytere"));
         Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("boiserie"));
         Assert.Equal(AmbiencePlace.None, StyleRules.PlaceAmbience("campanile"));
-        Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("lac"));
+        Assert.Equal(AmbiencePlace.Fields | AmbiencePlace.Lake, StyleRules.PlaceAmbience("lac"));   // sous-lot V2.9.2 : le bord du lac a son ambiance
         Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("Pre_Nord"));
         Assert.Equal(AmbiencePlace.Fields, StyleRules.PlaceAmbience("plaine_est"));
         Assert.Equal(AmbiencePlace.Town, StyleRules.PlaceAmbience("Place du village"));

@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1645,7 +1645,19 @@
       "text.ui.trade.shunned": "« Je ne vends rien à ceux de ton espèce. » Le marchand te tourne le dos.",
       "text.ui.shunned": "{0} te tourne le dos : la garde ne te parle plus.",
       "text.ui.curfew": "La garde te chasse du bourg pour la nuit. Te voilà reconduit : {0}.",
-      "text.ui.shunned.story": "{0}, froidement : « Je fais ça pour le bourg, pas pour toi. »"
+      "text.ui.shunned.story": "{0}, froidement : « Je fais ça pour le bourg, pas pour toi. »",
+      "text.zone.ours.signe": "La nuit tombe sur la forêt des Loups. Quelque chose de lourd casse des branches, loin, puis plus près.",
+      "text.zone.vieux_brunot.signe": "Un grondement roule sous les arbres du nord, si grave qu'on le sent dans les dents. Le vieux Brunot est sorti.",
+      "text.v292.discovery.griffes_de_brunot": "Des griffures à hauteur de cheval, sur un chêne mort. Quatre sillons, et un cinquième plus court : une patte qui a perdu une griffe.",
+      "text.v292.quest.brunot.name": "Le vieux Brunot",
+      "text.v292.quest.brunot.traces": "Chercher les traces du vieux Brunot dans la forêt des Loups.",
+      "text.v292.quest.brunot.brunot": "Abattre le vieux Brunot, au fond des bois, au nord.",
+      "text.v292.quest.brunot.retour": "Revenir voir Gaspard.",
+      "text.v292.gaspard.brunot": "Tu as vu les arbres griffés, au nord de la forêt ? C'est le vieux Brunot. Un ours gros comme une charrette. Je lui ai laissé une balafre en travers du museau il y a vingt ans ; il m'a laissé ces trois-là sur le bras. Les rôdeurs disent qu'il est sorti de sa tanière pour de bon. Moi, je suis trop vieux. Toi, non.",
+      "text.v292.gaspard.brunot.accepter": "Je vais le chercher.",
+      "text.v292.gaspard.brunot.plus_tard": "Pas encore, Gaspard.",
+      "text.v292.gaspard.brunot_retour": "Brunot est tombé ? Alors la forêt dormira mieux. Moi aussi. Garde sa peau sur tes épaules : lui n'en a plus besoin, et toi, l'hiver vient.",
+      "text.v292.gaspard.brunot_retour.partir": "Repose-toi, Gaspard."
     }
   }
 }

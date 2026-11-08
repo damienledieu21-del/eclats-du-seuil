@@ -277,3 +277,29 @@ Avant l'essai : menu **Éclats du Seuil → Préparer l'essai de style** (rien �
 | 17.8 | Combat contre trois échos à la fois, de jour puis de nuit | On voit toujours bien les annonces au sol et la cible ; de nuit, les échos brillent plus (fondu de quatre secondes à la tombée de la nuit) | [ ] | |
 | 17.9 | Sur le Note8 | Image fluide avec trois échos et une faille ; pas de distorsion du décor sur le téléphone (la déchirure seule), moitié moins de lueurs | [ ] | |
 | 17.10 | Ton avis : transparence, force du contour, durée des braises, taille des failles (couleurs déjà validées le 7 novembre) | — | [ ] | |
+
+## 18. Vraies animations, vrais corps, 3e et 4e vagues (V2.9.2)
+
+Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Animaux3/` ([UNITY.md](UNITY.md#essai-v292--vraies-animations-vrais-corps-3e-et-4e-vagues)), puis menu **Éclats du Seuil → Préparer l'essai de style**. Note ici ce que dit sa fenêtre (« Corps humains : … », « Basse-cour : … »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 18.1 | Fenêtre de la préparation | « Corps humains : prêts (52 tenues, … animations, 5 coiffures, barbe) » ; « Basse-cour : âne Ane_WildMesh.fbx, poule Poule_kill6lucius.fbx, coq Coq_rukh3d.fbx ; ours : Ours_WildMesh.fbx » ; vache Vache_nataliekirk, chien Chien_SharPei_artsiom ; aucune erreur rouge dans la console | [ ] | |
+| 18.2 | Le bourg, « 12 h 15, midi » | Les villageois sont de **vrais corps** : hommes et femmes, peaux claires et sombres, coiffures et barbes variées, tuniques de couleurs différentes avec ceinture, chausses, bottes ; ils parlent avec les mains, croisent les bras, marchent ; **personne en pose en T**, personne d'invisible | [ ] | |
+| 18.3 | Les gardes du bourg | Tabard **bleu** (gardes) ou **rouge** (sentinelles) ; ils regardent autour d'eux, bras croisés | [ ] | |
+| 18.4 | Parler à Odile, Sœur Albe, Maëlle, Renart, Gaspard | Odile, Albe et Maëlle sont des **femmes** ; Albe en **robe claire**, Maëlle en **tablier de cuir**, Renart en **prune** ; Gaspard un homme ; chacun toujours le même d'une partie à l'autre | [ ] | |
+| 18.5 | La forge de Maëlle et les champs | Les paysans qui travaillent **récoltent, sèment ou arrosent** ; près de la forge on entend **le marteau sur l'enclume** | [ ] | |
+| 18.6 | « 19 h 45, la taverne », entrer dans l'auberge | **The Old Tower Inn** joue ; on entend la salle **à table** (couverts) en plus des rires ; l'aubergiste et les clients sont de vrais corps | [ ] | |
+| 18.7 | « minuit », marcher dans le bourg | **Night Town** joue (le bourg la nuit) | [ ] | |
+| 18.8 | Un combat contre des bandits ou des rôdeurs (s'ils n'ont pas leur personnage de Mixamo) | Ils frappent (**coups d'épée variés**), parent (**bouclier levé**), encaissent (**recul**), meurent (**chute**) ; aucun ne glisse au sol | [ ] | |
+| 18.9 | « l'attaque du hameau maintenant » | Le **tocsin** : sept coups lents d'une grosse cloche ; pendant le combat, **Determined Pursuit** ; hameau défendu : les cloches d'église | [ ] | |
+| 18.10 | « ouvrir une faille du Seuil » | À l'ouverture et à chaque vague, un **souffle magique** en plus du verre | [ ] | |
+| 18.11 | Le hameau, de jour | **Un âne** qui erre, broute, hennit (plus grave) ; **cinq poules** qui picorent et trottinent ; **le coq** (picore, chante à l'aube) ; un cheval ou l'âne qui marche près de toi fait **claquer ses sabots** | [ ] | |
+| 18.12 | Les champs, le chien du bourg | Les vaches (**nataliekirk**) bougent la tête et la queue, marchent en balançant les pattes ; le **Shar Pei** marche, s'assoit | [ ] | |
+| 18.13 | La harde | Les biches sont celles de **WildMesh** (broutent, fuient, tombent à leur mort, couchées au repos) ; les cerfs à bois inchangés (l'élan) | [ ] | |
+| 18.14 | Bord du lac, sous la pluie, près de la rivière | Clapotis du **lac** ; **pluie** sur le jardin et le toit ; le **ruisseau** ; le **vent** dans la forêt | [ ] | |
+| 18.15 | Sur le Note8 | Image fluide au bourg à midi (un tiers des villageois), textures nettes de loin ; aucune bête ou personne figée en pose en T | [ ] | |
+| 18.16 | Forêt des Loups, le jour, à l'ouest | **L'ourse** et **deux oursons** (petits, assis ou couchés) ; à moins de 9 m d'elle, elle charge ; les oursons ne se combattent pas | [ ] | |
+| 18.17 | « minuit », au nord-est de la forêt | **L'ours** rôde (signe : des branches cassées) ; griffe, charge annoncée, il se dresse et retombe (cercle annoncé) ; certaines nuits, **le vieux Brunot** (grondement), énorme, qui **rugit** | [ ] | |
+| 18.18 | Après Croc-Gris, niveau 14 : parler à Gaspard | Il propose « Le vieux Brunot » (sa balafre, ses cicatrices) ; griffures dans la forêt, Brunot abattu, retour : la **cape du vieux Brunot** | [ ] | |
+| 18.19 | Ton avis : les visages, la force des ours, la quête de Brunot | — | [ ] | |

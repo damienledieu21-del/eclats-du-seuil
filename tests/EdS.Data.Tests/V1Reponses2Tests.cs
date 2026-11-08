@@ -246,9 +246,9 @@ public class V1Reponses2Tests
         // Il est dans le scénario de zone (son modèle), mais pas au début d'une session : il vient plus tard, après son signe.
         Assert.Contains(z.Setup.Combatants, c => c.Id == WhiteWolf);
         Assert.DoesNotContain(ZoneSetups.For(z, Array.Empty<string>()).Combatants, c => c.Id == WhiteWolf);
-        Assert.Equal(z.Setup.Combatants.Count - 1, ZoneSetups.For(z, Array.Empty<string>()).Combatants.Count);
-        // Seul le loup blanc est une créature de la nuit.
-        Assert.Equal(new[] { WhiteWolf }, z.Populations.Where(p => p.Night != null).Select(p => p.Creature));
+        Assert.Equal(z.Setup.Combatants.Count - 2, ZoneSetups.For(z, Array.Empty<string>()).Combatants.Count);   // V2.9.2 : et le vieux Brunot
+        // Le loup blanc et, depuis V2.9.2, le vieux Brunot sont les créatures rares de la nuit.
+        Assert.Equal(new[] { WhiteWolf, "vieux_brunot" }, z.Populations.Where(p => p.Night != null).Select(p => p.Creature));
     }
 
     [Fact]

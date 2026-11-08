@@ -2,7 +2,7 @@
   "$schema": "../../schemas/guild.schema.json",
   "schemaVersion": 2,
   "kind": "guild",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "npc": "npc.maitresse_guilde",
     "maxActive": 3,
@@ -429,6 +429,10 @@
         {
           "creature": "le_borgne",
           "points": 20
+        },
+        {
+          "creature": "vieux_brunot",
+          "points": 45
         }
       ],
       "facts": [

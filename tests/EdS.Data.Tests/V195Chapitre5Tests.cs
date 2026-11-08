@@ -26,7 +26,8 @@ namespace EdS.Data.Tests;
 public class V195Chapitre5Tests
 {
     private const string Ch1 = "quest.traces_sous_le_moulin", Bourg = "quest.bourg_d_aube", Hameau = "quest.champs_et_hameau", Tour = "quest.tour_et_camp",
-        Main = "quest.le_seuil", Loup = "quest.le_loup_blanc", Pierres = "quest.pierres_gravees", Bete = "quest.bete_blanche", Herbes = "quest.herbes_pour_la_chapelle";
+        Main = "quest.le_seuil", Loup = "quest.le_loup_blanc", Pierres = "quest.pierres_gravees", Bete = "quest.bete_blanche", Herbes = "quest.herbes_pour_la_chapelle",
+        Brunot = "quest.le_vieux_brunot";   // sous-lot V2.9.2 : faite, pour que Gaspard ne la propose pas à la place de « garde »
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle) : dans les Vallons, puis dans les intérieurs.
     private static readonly (double X, double Z) Odile = (-9, 2), Moulin = (-8, 5), Forge = (-19, -5), Pre = (-10, 30), Gaspard = (26, -13),
@@ -609,7 +610,7 @@ public class V195Chapitre5Tests
         Say(Open(Gaspard, Hero(21, null)), "npc.gaspard", "ch5_pierres");
         LeadsTo(Open(Gaspard, Hero(21, null)), "npc.gaspard", "ch5_pierres", "text.ch5.gaspard.vers_loup", null);
         Say(Open(Gaspard, Hero(21, Done(new[] { "fact.traces.recit" }, Pierres))), "npc.gaspard", "ch5_loup_anselme");
-        Say(Open(Gaspard, Hero(20, Done(new[] { "fact.traces.recit" }, Bete))), "npc.gaspard", "garde");
+        Say(Open(Gaspard, Hero(20, Done(new[] { "fact.traces.recit" }, Bete, Brunot))), "npc.gaspard", "garde");
         WorldSession w = Open(Gaspard, Hero(21, Done(new[] { "fact.traces.recit" }, Bete)));
         Say(w, "npc.gaspard", "ch5_loup");
         Assert.Contains($"QuestStarted {Loup}/traces", Choose(w, 0));
@@ -700,7 +701,7 @@ public class V195Chapitre5Tests
         LeadsTo(Open(Gaspard, Hero(21, rodeur)), "npc.gaspard", "rodeur", "text.ch5.gaspard.vers_loup", "ch5_loup");
         LeadsTo(Open(Gaspard, Hero(21, rodeur)), "npc.gaspard", "rodeur", "text.ch5.gaspard.vers_pierres", "ch5_pierres");
         // Toutes les quêtes de Gaspard finies : ses conseils.
-        Say(Open(Gaspard, Hero(25, Done(facts, Bete, Loup, Pierres))), "npc.gaspard", "garde");
+        Say(Open(Gaspard, Hero(25, Done(facts, Bete, Loup, Pierres, Brunot))), "npc.gaspard", "garde");
         // Chez Odile, au retour du chapitre 5 : son aveu garde les réponses vers la ferrure et le pont.
         var retour = new SavedStory(facts, new Dictionary<string, QuestProgress> { [Main] = new("retour") }, new Dictionary<string, int> { ["npc.odile"] = 1 });
         WorldSession odile = Open(Odile, Hero(21, retour));
