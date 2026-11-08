@@ -309,6 +309,23 @@ public class V27ReponsesTests
         Assert.Equal(TravelRefusal.None, told.CanTravel(vallons, "planque_des_contrebandiers"));
     }
 
+    [Fact]
+    public void Pas_de_halte_ni_de_retour_a_la_planque_avant_le_sentier()
+    {
+        // Remarque de Codex (tour 3) : à côté de la planque sans le fait, aucune halte (sinon « se reposer » rouvrirait la partie au point
+        // sûr précédent) ; avec le fait, la planque est un point sûr comme un autre. Même filtre : carte, voyage, retour (IsSecret).
+        var near = new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.FromInt(85), EdS.Domain.Numerics.Fixed.FromInt(59));
+        WorldSession blind = Open(84, 52, Hero());
+        Assert.True(blind.IsSecret("planque_des_contrebandiers"));
+        Assert.Null(blind.RestPointNear(near, EdS.Runtime.AdventureSession.RestRange));
+        Assert.Equal(TravelRefusal.NotDiscovered, blind.CanTravel(Zone(), "planque_des_contrebandiers"));
+        WorldSession told = Open(84, 52, With(Hero(), new Dictionary<string, int>(), new[] { "fact.v27.sentier_revele" }));
+        Assert.False(told.IsSecret("planque_des_contrebandiers"));
+        Assert.Equal("planque_des_contrebandiers", told.RestPointNear(near, EdS.Runtime.AdventureSession.RestRange)!.Id);
+        // Les autres points sûrs ne changent pas (le point d'entrée du test est à la place du village, déplacée à 84, 52).
+        Assert.Equal("place_du_village", blind.RestPointNear(new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.FromInt(84), EdS.Domain.Numerics.Fixed.FromInt(52)), EdS.Runtime.AdventureSession.RestRange)!.Id);
+    }
+
     // --- Validation des nouvelles règles ------------------------------------------------------------------------------------
 
     [Theory]

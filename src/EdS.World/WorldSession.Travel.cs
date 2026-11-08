@@ -65,6 +65,23 @@ namespace EdS.World
         public bool IsSecret(string safePoint) => SecretFact(safePoint) is string fact && !Narrative!.Knows(fact);
 
         /// <summary>
+        /// Sous-lot V2.7 (remarque de Codex sur la PR #116, tour 3) : le premier point sûr de la zone de la partie, dans l'ordre de la zone, à
+        /// <paramref name="range"/> de <paramref name="position"/> (écart entre les centres) et pas secret : celui d'une halte et du retour ;
+        /// null s'il n'y en a pas.
+        /// </summary>
+        public SafePoint? RestPointNear(GroundVector position, Fixed range)
+        {
+            if (Definition is null) return null;
+            long limit = checked(range.Raw * range.Raw);
+            foreach (SafePoint s in Definition.SafePoints)
+            {
+                long dx = checked(s.Position.X.Raw - position.X.Raw), dz = checked(s.Position.Z.Raw - position.Z.Raw);
+                if (checked(dx * dx + dz * dz) <= limit && !IsSecret(s.Id)) return s;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : le couvre-feu tombe : la faction du couvre-feu hait le personnage, il est
         /// dans son lieu à l'un de ses moments, présent, vivant et hors combat ; le point sûr où il est reconduit, sinon null.
         /// </summary>

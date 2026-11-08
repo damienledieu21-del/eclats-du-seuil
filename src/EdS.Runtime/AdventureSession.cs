@@ -1693,7 +1693,7 @@ namespace EdS.Runtime
 
         private void TrackSafePoint()
         {
-            if (Me is GroundVector p && _zone.SafePoints.FirstOrDefault(s => Within(p, s.Position, RestRange) && !World.IsSecret(s.Id)) is SafePoint near) _lastSafePoint = near.Id;
+            if (Me is GroundVector p && World.RestPointNear(p, RestRange) is SafePoint near) _lastSafePoint = near.Id;
         }
 
         /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon l'entrée).</summary>
@@ -1703,7 +1703,7 @@ namespace EdS.Runtime
         /// Halte possible : personnage vivant à <see cref="RestRange"/> d'un point sûr, aucun ennemi vivant à moins de
         /// <see cref="RestSafety"/>, aucun dialogue ouvert.
         /// </summary>
-        public bool CanRest => !World.IsDefeated && Me is GroundVector p && _zone.SafePoints.Any(s => Within(p, s.Position, RestRange))
+        public bool CanRest => !World.IsDefeated && Me is GroundVector p && World.RestPointNear(p, RestRange) != null   // V2.7 : jamais la planque secrète avant le sentier
             && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() && Dialogue is null;
 
         /// <summary>
