@@ -345,8 +345,8 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Pose une pièce : son seul maillage (<see cref="WardrobeLook.PartIndex"/> dans le fichier, relecture de la PR #119) prend les os du
-        /// corps par leur nom ; chaque matériau d'étoffe prend l'étoffe préparée de même nom (<see cref="HumanWardrobe.FabricStem"/> : une pièce
+        /// Pose une pièce : son maillage (<see cref="WardrobeLook.PartIndex"/> dans le fichier, relecture de la PR #119) et ceux qui
+        /// l'accompagnent (<see cref="WardrobeLook.Companions"/> : ceintures, brassards) prennent les os du corps par leur nom ; chaque matériau d'étoffe prend l'étoffe préparée de même nom (<see cref="HumanWardrobe.FabricStem"/> : une pièce
         /// à plusieurs matériaux garde chacun le sien), teinte et usée ; la peau des mains celle du corps. Faux si un os manque (rien n'est posé).
         /// </summary>
         private static bool Wear(GameObject model, WardrobeLook piece, Dictionary<string, Transform> bones, HumanCatalog humans, HumanLook look, Material skin,
@@ -356,43 +356,57 @@ namespace EdS.Game
             GameObject copy = Object.Instantiate(piece.Model, model.transform, false);
             SkinnedMeshRenderer[] all = copy.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             int index = piece.PartIndex < 0 ? 0 : piece.PartIndex;
-            SkinnedMeshRenderer s = index < all.Length ? all[index] : null;
-            if (s == null || s.sharedMesh == null || (!string.IsNullOrEmpty(piece.Part) && s.gameObject.name != piece.Part) || s.bones == null || s.bones.Length == 0)
+            SkinnedMeshRenderer main = index < all.Length ? all[index] : null;
+            if (main == null || main.sharedMesh == null || (!string.IsNullOrEmpty(piece.Part) && main.gameObject.name != piece.Part) || !Bind(main, bones, out Transform[] mainBones))
             {
                 Object.Destroy(copy);
                 return false;
             }
+            // La pièce et ses maillages d'accompagnement (ceintures, brassards) ; un accompagnement qui ne s'attache pas est laissé.
+            var worn = new List<(SkinnedMeshRenderer Skin, Transform[] Bones)> { (main, mainBones) };
+            if (piece.Companions != null)
+                foreach (int c in piece.Companions)
+                    if (c >= 0 && c < all.Length && c != index && all[c] != null && all[c].sharedMesh != null && Bind(all[c], bones, out Transform[] extra))
+                        worn.Add((all[c], extra));
+            int gender = look.Female ? 2 : 1;
+            foreach ((SkinnedMeshRenderer s, Transform[] mapped) in worn)
+            {
+                s.bones = mapped;
+                if (s.rootBone != null && bones.TryGetValue(s.rootBone.name, out Transform root)) s.rootBone = root;
+                s.updateWhenOffscreen = false;
+                Material[] materials = s.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    if (materials[i] == null) continue;
+                    if (HumanWardrobe.IsSkinMaterial(materials[i].name))
+                    {
+                        materials[i] = skin != null ? skin : look.DarkSkin ? Darkened(materials[i]) : materials[i];
+                        continue;
+                    }
+                    Material fabric = humans.Fabric(HumanWardrobe.FabricStem(materials[i].name), gender, plan.Fabric);
+                    materials[i] = Worn1(fabric != null ? fabric : materials[i], plan.Tint, plan.Wear);
+                }
+                s.sharedMaterials = materials;
+                s.transform.SetParent(model.transform, false);
+                placed.Add(s.gameObject);
+            }
+            Object.Destroy(copy);
+            return true;
+        }
+
+        /// <summary>Les os du corps pour ceux du maillage <paramref name="s"/>, par leur nom ; faux s'il en manque un.</summary>
+        private static bool Bind(SkinnedMeshRenderer s, Dictionary<string, Transform> bones, out Transform[] mapped)
+        {
+            mapped = null;
             Transform[] old = s.bones;
+            if (old == null || old.Length == 0) return false;
             var now = new Transform[old.Length];
             for (int i = 0; i < old.Length; i++)
             {
-                if (old[i] == null || !bones.TryGetValue(old[i].name, out Transform b))
-                {
-                    Object.Destroy(copy);
-                    return false;
-                }
+                if (old[i] == null || !bones.TryGetValue(old[i].name, out Transform b)) return false;
                 now[i] = b;
             }
-            s.bones = now;
-            if (s.rootBone != null && bones.TryGetValue(s.rootBone.name, out Transform root)) s.rootBone = root;
-            s.updateWhenOffscreen = false;
-            Material[] materials = s.sharedMaterials;
-            int gender = look.Female ? 2 : 1;
-            for (int i = 0; i < materials.Length; i++)
-            {
-                if (materials[i] == null) continue;
-                if (HumanWardrobe.IsSkinMaterial(materials[i].name))
-                {
-                    materials[i] = skin != null ? skin : look.DarkSkin ? Darkened(materials[i]) : materials[i];
-                    continue;
-                }
-                Material fabric = humans.Fabric(HumanWardrobe.FabricStem(materials[i].name), gender, plan.Fabric);
-                materials[i] = Worn1(fabric != null ? fabric : materials[i], plan.Tint, plan.Wear);
-            }
-            s.sharedMaterials = materials;
-            s.transform.SetParent(model.transform, false);
-            placed.Add(s.gameObject);
-            Object.Destroy(copy);
+            mapped = now;
             return true;
         }
 

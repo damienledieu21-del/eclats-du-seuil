@@ -127,6 +127,8 @@ namespace EdS.Game
         public string Part;
         [Tooltip("Rang du maillage dans le fichier (-1 : son seul maillage).")]
         public int PartIndex = -1;
+        [Tooltip("Maillages posés avec la pièce (ceintures, brassards), par leur rang dans le fichier.")]
+        public int[] Companions = new int[0];
         public WardrobeFamily Family;
         public WardrobeSlot Slot;
         public string Kind;

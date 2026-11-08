@@ -292,12 +292,135 @@ public sealed class V294VetementsTests
             string id = "bourg/garde" + i;
             HumanLook look = Look(id, "garde");
             WardrobePlan phone = HumanWardrobe.Plan(id, "garde", look, WardrobeSeason.Winter, true, false, HumanWardrobe.MaxOptional(true));
-            Assert.True(phone.Requests.Count(q => !q.Required) <= 1);
             Assert.Equal(4, phone.Requests.Count(q => q.Required));
-            Assert.NotNull(HumanWardrobe.Resolve(phone, items, look.Female));
+            int[] p = HumanWardrobe.Resolve(phone, items, look.Female)!;
+            Assert.True(Enumerable.Range(0, p.Length).Count(r => p[r] >= 0 && !phone.Requests[r].Required) <= 1);
             WardrobePlan pc = HumanWardrobe.Plan(id, "garde", look, WardrobeSeason.Winter, true, false, HumanWardrobe.MaxOptional(false));
+            int[] q2 = HumanWardrobe.Resolve(pc, items, look.Female)!;
             // La coiffe passe d'abord sur téléphone.
-            if (pc.Requests.Any(q => q.Slot == WardrobeSlot.Head)) Assert.Contains(phone.Requests, q => q.Slot == WardrobeSlot.Head);
+            int head = Enumerable.Range(0, q2.Length).FirstOrDefault(r => q2[r] >= 0 && pc.Requests[r].Slot == WardrobeSlot.Head, -1);
+            if (head >= 0) Assert.Contains(Enumerable.Range(0, p.Length), r => p[r] >= 0 && phone.Requests[r].Slot == WardrobeSlot.Head);
         }
+    }
+
+    // ---- Le pack gratuit réel, déposé par Damien le 8 novembre 2026 (noms des fichiers et de leurs maillages lus dans les FBX). ----
+
+    private const string P = "Assets/Style/Quaternius/Outfits/Exports/FBX (Unity)/";
+
+    private static readonly (string Path, string[] Meshes)[] Free =
+        new[] { "Male", "Female" }.SelectMany(g => new (string, string[])[]
+        {
+            (P + "Modular Parts/" + g + "_Peasant_Arms.fbx", new[] { g + "_Peasant_Arms" }),
+            (P + "Modular Parts/" + g + "_Peasant_Body.fbx", new[] { g + "_Peasant_Body" }),
+            (P + "Modular Parts/" + g + "_Peasant_Feet.fbx", new[] { g + "_Peasant_Feet" }),
+            (P + "Modular Parts/" + g + "_Peasant_Legs.fbx", new[] { g + "_Peasant_Legs" }),
+            (P + "Modular Parts/" + g + (g == "Male" ? "_Ranger_Acc_Pauldron.fbx" : "_Ranger_Acc_Pauldrons.fbx"), new[] { g + (g == "Male" ? "_Ranger_Acc_Pauldron" : "_Ranger_Acc_Pauldrons") }),
+            (P + "Modular Parts/" + g + "_Ranger_Arms.fbx", new[] { g + "_Ranger_Arms", g + "_Ranger_Arms_Bracer" }),
+            (P + "Modular Parts/" + g + "_Ranger_Body.fbx", new[] { g + "_Ranger_Body", g + "_Ranger_Body_Belt_1", g + "_Ranger_Body_Belt_2" }),
+            (P + "Modular Parts/" + g + (g == "Male" ? "_Ranger_Feet_Boots.fbx" : "_Ranger_Feet.fbx"), new[] { g + (g == "Male" ? "_Ranger_Feet_Boots" : "_Ranger_Feet") }),
+            (P + "Modular Parts/" + g + "_Ranger_Head_Hood.fbx", new[] { g + "_Ranger_Head_Hood" }),
+            (P + "Modular Parts/" + g + "_Ranger_Legs.fbx", new[] { g + "_Ranger_Legs" }),
+            (P + "Outfits/" + g + "_Peasant.fbx", new[] { g + "_Peasant_Arms", g + "_Peasant_Body", g + "_Peasant_Feet", g + "_Peasant_Legs" }),
+            (P + "Outfits/" + g + "_Ranger.fbx", new[]
+            {
+                g + (g == "Male" ? "_Ranger_Acc_Pauldron" : "_Ranger_Acc_Pauldrons"), g + "_Ranger_Arms", g + "_Ranger_Arms_Bracer", g + "_Ranger_Body",
+                g + "_Ranger_Body_Belt_1", g + "_Ranger_Body_Belt_2", g + (g == "Male" ? "_Ranger_Feet_Boots" : "_Ranger_Feet"), g + "_Ranger_Head_Hood", g + "_Ranger_Legs",
+            }),
+        }).ToArray();
+
+    private static readonly string[] FreeTextures =
+    {
+        "Assets/Style/Quaternius/Outfits/Textures/Base/T_Regular_Female_Dark_BaseColor.png", "Assets/Style/Quaternius/Outfits/Textures/Base/T_Regular_Female_Normal.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Base/T_Regular_Female_Roughness.png", "Assets/Style/Quaternius/Outfits/Textures/Base/T_Regular_Male_Dark_BaseColor.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Peasant/T_Peasant_2_BaseColor.png", "Assets/Style/Quaternius/Outfits/Textures/Peasant/T_Peasant_BaseColor.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Peasant/T_Peasant_Normal.png", "Assets/Style/Quaternius/Outfits/Textures/Peasant/T_Peasant_ORM.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Ranger/Base Chars/T_Regular_Male_Dark_BaseColor.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Ranger/T_Ranger_3_BaseColor.png", "Assets/Style/Quaternius/Outfits/Textures/Ranger/T_Ranger_BaseColor.png",
+        "Assets/Style/Quaternius/Outfits/Textures/Ranger/T_Ranger_Normal.png", "Assets/Style/Quaternius/Outfits/Textures/Ranger/T_Ranger_ORM.png",
+    };
+
+    [Fact]
+    public void Pack_gratuit_reel_les_pieces_une_fois_avec_ceintures_et_brassards()
+    {
+        IReadOnlyList<WardrobePart> parts = HumanWardrobe.Pieces(Free);
+        // Par corps : paysan haut, bras, bas, pieds ; rôdeur haut, bras, bas, pieds, capuche, épaulières = 10 ; 20 en tout, aucune en double.
+        Assert.Equal(20, parts.Count);
+        Assert.All(parts, x => Assert.Contains("Modular Parts", Free[x.File].Path));   // pas la tenue entière, qui porte les mêmes maillages
+        foreach (int g in new[] { 1, 2 })
+        {
+            var mine = parts.Where(x => x.Item.Gender == g).ToList();
+            foreach (WardrobeFamily f in new[] { WardrobeFamily.Peasant, WardrobeFamily.Ranger })
+                foreach (WardrobeSlot slot in new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet })
+                    Assert.Single(mine, x => x.Item.Family == f && x.Item.Slot == slot);
+            Assert.Single(mine, x => x.Item.Slot == WardrobeSlot.Head && x.Item.Kind == "hood");
+            Assert.Single(mine, x => x.Item.Slot == WardrobeSlot.Shoulders);
+        }
+        // Le brassard suit les bras, les deux ceintures suivent le haut ; ils ne sont pas des pièces.
+        WardrobePart arms = parts.First(x => x.Item.Gender == 1 && x.Item.Family == WardrobeFamily.Ranger && x.Item.Slot == WardrobeSlot.Arms);
+        Assert.Equal(new[] { 1 }, arms.Companions);
+        WardrobePart body = parts.First(x => x.Item.Gender == 2 && x.Item.Family == WardrobeFamily.Ranger && x.Item.Slot == WardrobeSlot.Body);
+        Assert.Equal(new[] { 1, 2 }, body.Companions);
+        Assert.DoesNotContain(parts, x => x.Item.Slot == WardrobeSlot.Waist);
+        // Sans « Modular Parts », la tenue entière donne les mêmes pièces.
+        Assert.Equal(20, HumanWardrobe.Pieces(Free.Where(f => f.Path.Contains("/Outfits/")).ToArray()).Count);
+    }
+
+    [Fact]
+    public void Pack_gratuit_reel_etoffes_et_peau()
+    {
+        Assert.Equal(new[] { "T_Peasant_2_BaseColor.png", "T_Peasant_BaseColor.png" },
+            HumanWardrobe.FabricTextures(FreeTextures, WardrobeFamily.Peasant, 0).Select(t => t.Substring(t.LastIndexOf('/') + 1)));
+        Assert.Equal(2, HumanWardrobe.FabricTextures(FreeTextures, WardrobeFamily.Ranger, 1).Count);
+        Assert.Equal("peasant", HumanWardrobe.FabricStem("MI_Peasant"));
+        Assert.All(FreeTextures.Where(HumanWardrobe.IsColorMap), t => Assert.Contains(HumanWardrobe.FabricStem(t), new[] { "peasant", "ranger" }));
+        Assert.DoesNotContain(FreeTextures, t => t.Contains("ORM") && HumanWardrobe.IsColorMap(t));
+        Assert.True(HumanWardrobe.IsSkinMaterial("MI_Regular_Male") && HumanWardrobe.IsSkinMaterial("MI_Regular_Female"));
+        Assert.False(HumanWardrobe.IsSkinMaterial("MI_Peasant") || HumanWardrobe.IsSkinMaterial("MI_Ranger"));
+        // Seule la peau sombre des mains est livrée : la claire sera tirée d'elle.
+        Assert.EndsWith("Base/T_Regular_Male_Dark_BaseColor.png", HumanWardrobe.SkinTexture(FreeTextures, false, true));
+        Assert.Null(HumanWardrobe.SkinTexture(FreeTextures, false, false));
+        (double r, double g, double b) k = HumanWardrobe.SkinRatio((200, 160, 140), (100, 80, 70));
+        Assert.Equal((2.0, 2.0, 2.0), k);
+        Assert.Equal((3.0, 0.5, 1.0), HumanWardrobe.SkinRatio((255, 10, 0), (20, 100, 0)));
+    }
+
+    [Fact]
+    public void Pack_gratuit_reel_chaque_metier_est_habille_et_se_distingue()
+    {
+        IReadOnlyList<WardrobePart> parts = HumanWardrobe.Pieces(Free);
+        var items = parts.Select(x => x.Item).ToList();
+        var seen = new Dictionary<string, string>();
+        (string id, string role)[] who =
+        {
+            ("hameau/paysan1", "paysan"), ("npc.maelle", "npc.maelle"), ("npc.boulanger", "npc.boulanger"), ("npc.renart", "npc.renart"),
+            ("bourg/garde1", "garde"), ("tour/sentinelle1", "sentinelle"), ("npc.albe", "npc.albe"), ("foret/rodeur1", "rodeur"),
+            ("camp/bandit1", "bandit"), ("heros", "heros"), ("npc.capitaine", "npc.capitaine"),
+        };
+        foreach ((string id, string role) in who)
+            foreach (bool phone in new[] { false, true })
+                foreach (WardrobeSeason season in Enum.GetValues(typeof(WardrobeSeason)))
+                {
+                    HumanLook look = Look(id, role);
+                    WardrobePlan plan = HumanWardrobe.Plan(id, role, look, season, false, false, HumanWardrobe.MaxOptional(phone));
+                    int[]? picks = HumanWardrobe.Resolve(plan, items, look.Female);
+                    Assert.NotNull(picks);
+                    var worn = picks!.Where(x => x >= 0).Select(x => items[x]).ToList();
+                    Assert.Equal(4, worn.Count(w => w.Slot <= WardrobeSlot.Feet));
+                    Assert.All(worn, w => Assert.Equal(look.Female ? 2 : 1, w.Gender));
+                    if (!phone && season == WardrobeSeason.Spring)
+                        seen[id] = string.Join(",", worn.Select(w => w.Family + ":" + w.Slot + w.Kind)) + "|" + plan.Tint + "|" + plan.Wear;
+                }
+        // Gardes : armure de chevalier absente → rôdeur, avec épaulières et le bleu ; sentinelles : rôdeur rouge ; forge : bras et bottes de rôdeur.
+        Assert.True(seen["bourg/garde1"].Contains("Ranger:Body"), string.Join(" ; ", seen.Select(kv => kv.Key + "=" + kv.Value)));
+        Assert.Contains("Ranger:Shoulderspauldrons", seen["bourg/garde1"]);
+        Assert.EndsWith("|5|1", seen["bourg/garde1"]);
+        Assert.Contains("|6|", seen["tour/sentinelle1"]);
+        Assert.Contains("Peasant:Body", seen["npc.maelle"]);
+        Assert.Contains("Ranger:Arms", seen["npc.maelle"]);
+        Assert.Contains("Peasant:Body", seen["npc.albe"]);   // robe de magicien absente : le paysan, en laine claire
+        Assert.Contains("|7|", seen["npc.albe"]);
+        Assert.EndsWith("|2", seen["camp/bandit1"]);
+        // Tous les métiers ne se ressemblent pas : au moins 8 tenues différentes sur 11.
+        Assert.True(seen.Values.Distinct().Count() >= 8, string.Join(" ; ", seen.Values));
     }
 }

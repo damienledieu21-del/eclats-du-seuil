@@ -85,6 +85,23 @@ namespace EdS.Runtime
         public string Key { get; }
     }
 
+    /// <summary>Sous-lot V2.9.4 : une pièce trouvée dans un fichier : son rang, ses maillages d'accompagnement (ceinture, brassard), ce qu'elle est.</summary>
+    public readonly struct WardrobePart
+    {
+        public WardrobePart(int file, int mesh, int[] companions, WardrobeItem item)
+        {
+            File = file;
+            Mesh = mesh;
+            Companions = companions ?? Array.Empty<int>();
+            Item = item;
+        }
+
+        public int File { get; }
+        public int Mesh { get; }
+        public int[] Companions { get; }
+        public WardrobeItem Item { get; }
+    }
+
     /// <summary>Sous-lot V2.9.4 : une place à habiller : les familles voulues dans l'ordre, les genres de pièce acceptés, obligatoire ou non.</summary>
     public readonly struct WardrobeRequest
     {
@@ -124,8 +141,10 @@ namespace EdS.Runtime
     /// </summary>
     public sealed class WardrobePlan
     {
-        public WardrobePlan(HumanOutfit outfit, IReadOnlyList<WardrobeRequest> requests, int fabric, int tint, int wear, WardrobeSeason season, bool festive, bool rain)
+        public WardrobePlan(HumanOutfit outfit, IReadOnlyList<WardrobeRequest> requests, int fabric, int tint, int wear, WardrobeSeason season, bool festive, bool rain,
+            int maxOptional = int.MaxValue)
         {
+            MaxOptional = maxOptional;
             Outfit = outfit;
             Requests = requests;
             Fabric = fabric;
@@ -144,6 +163,9 @@ namespace EdS.Runtime
         public WardrobeSeason Season { get; }
         public bool Festive { get; }
         public bool Rain { get; }
+
+        /// <summary>Pièces facultatives posées au plus (téléphone : une), dans l'ordre des demandes ; une demande sans pièce ne compte pas.</summary>
+        public int MaxOptional { get; }
     }
 
     /// <summary>
@@ -171,17 +193,20 @@ namespace EdS.Runtime
         /// <summary>Teintes de fête (indices de <see cref="Tints"/>).</summary>
         private static readonly int[] FestiveTints = { 12, 13, 14, 15 };
 
-        /// <summary>Teintes ordinaires par tenue.</summary>
+        /// <summary>
+        /// Teintes ordinaires par tenue. Le pack gratuit n'a que deux familles (paysan, rôdeur) : la teinte du métier est sa marque (une seule
+        /// pour la garde, les sentinelles, le clergé, la forge, les rôdeurs).
+        /// </summary>
         private static int[] TintsOf(HumanOutfit outfit)
         {
             switch (outfit)
             {
                 case HumanOutfit.Guard: return new[] { 5 };
                 case HumanOutfit.Sentinel: return new[] { 6 };
-                case HumanOutfit.Clergy: return new[] { 7, 0 };
-                case HumanOutfit.Smith: return new[] { 8, 0 };
-                case HumanOutfit.Merchant: return new[] { 9, 0, 1 };
-                case HumanOutfit.Ranger: return new[] { 10, 0 };
+                case HumanOutfit.Clergy: return new[] { 7 };
+                case HumanOutfit.Smith: return new[] { 8 };
+                case HumanOutfit.Merchant: return new[] { 9, 1 };
+                case HumanOutfit.Ranger: return new[] { 10 };
                 case HumanOutfit.Bandit: return new[] { 11, 8 };
                 case HumanOutfit.Hero: return new[] { 0 };
                 default: return new[] { 0, 1, 2, 3, 4 };
@@ -308,6 +333,54 @@ namespace EdS.Runtime
             return null;
         }
 
+        /// <summary>
+        /// Sous-lot V2.9.4, d'après le pack déposé par Damien (8 novembre 2026) : les pièces de fichiers <paramref name="files"/> (chemin et
+        /// noms de leurs maillages, dans l'ordre du fichier). Un maillage dont le nom prolonge celui d'un autre du même fichier
+        /// (« Male_Ranger_Arms_Bracer », « Male_Ranger_Body_Belt_1 ») l'accompagne : il est posé avec lui, il n'est pas une pièce. Chaque pièce
+        /// n'est prise qu'une fois, dans le fichier qui a le moins de maillages (« Modular Parts/Male_Peasant_Body » avant la tenue entière
+        /// « Outfits/Male_Peasant », qui porte les mêmes maillages). Dans un fichier de plusieurs pièces, la place est lue sur le seul nom du
+        /// maillage (<see cref="Classify(string, string, bool)"/>).
+        /// </summary>
+        public static IReadOnlyList<WardrobePart> Pieces(IReadOnlyList<(string Path, string[] Meshes)> files)
+        {
+            var parts = new List<WardrobePart>();
+            var taken = new HashSet<string>(StringComparer.Ordinal);
+            var order = Enumerable.Range(0, files?.Count ?? 0).OrderBy(i => files![i].Meshes?.Length ?? 0).ThenBy(i => files![i].Path, StringComparer.Ordinal);
+            foreach (int f in order)
+            {
+                string[] meshes = files![f].Meshes ?? Array.Empty<string>();
+                var main = new int[meshes.Length];
+                for (int m = 0; m < meshes.Length; m++)
+                {
+                    main[m] = -1;
+                    for (int o = 0; o < meshes.Length; o++)
+                        if (o != m && meshes[o] != null && meshes[m] != null && meshes[m].StartsWith(meshes[o] + "_", StringComparison.Ordinal)
+                            && (main[m] < 0 || meshes[o].Length > meshes[main[m]].Length)) main[m] = o;
+                }
+                int heads = meshes.Count(n => n != null) - main.Count(x => x >= 0);
+                for (int m = 0; m < meshes.Length; m++)
+                {
+                    if (meshes[m] == null || main[m] >= 0) continue;
+                    WardrobeItem? found = Classify(files[f].Path, meshes[m], heads > 1);
+                    if (!(found is WardrobeItem item)) continue;
+                    if (!taken.Add(StyleRules.Key(meshes[m]))) continue;
+                    int[] companions = Enumerable.Range(0, meshes.Length).Where(k => main[k] == m).ToArray();
+                    parts.Add(new WardrobePart(f, m, companions, item));
+                }
+            }
+            return parts;
+        }
+
+        /// <summary>
+        /// Rapport (par canal, 0,5 à 3) pour éclaircir la peau sombre des mains du pack (seule livrée : « T_Regular_Male_Dark_BaseColor ») en
+        /// peau claire : couleur moyenne de la peau claire des corps (<paramref name="light"/>) sur celle de leur peau sombre (<paramref name="dark"/>).
+        /// </summary>
+        public static (double R, double G, double B) SkinRatio((double R, double G, double B) light, (double R, double G, double B) dark)
+        {
+            static double K(double l, double d) => Math.Max(0.5, Math.Min(3.0, d <= 0.001 ? 1.0 : l / d));
+            return (K(light.R, dark.R), K(light.G, dark.G), K(light.B, dark.B));
+        }
+
         /// <summary>Nom réduit sans accents (comme <see cref="HumanLooks.KnownGender"/>).</summary>
         private static string Who(string id) => StyleRules.CharacterOf(id ?? string.Empty);
 
@@ -343,6 +416,7 @@ namespace EdS.Runtime
                 ["knight"] = new[] { WardrobeFamily.Knight, WardrobeFamily.Ranger, WardrobeFamily.Peasant },
                 ["noble"] = new[] { WardrobeFamily.Noble, WardrobeFamily.Peasant, WardrobeFamily.Ranger },
                 ["wizard"] = new[] { WardrobeFamily.Wizard, WardrobeFamily.Noble, WardrobeFamily.Peasant },
+                ["clergy"] = new[] { WardrobeFamily.Wizard, WardrobeFamily.Noble, WardrobeFamily.Ranger, WardrobeFamily.Peasant },
                 ["cloak"] = new[] { WardrobeFamily.Ranger, WardrobeFamily.Noble, WardrobeFamily.Knight, WardrobeFamily.Wizard, WardrobeFamily.Peasant },
             };
             string body, arms, legs, feet;
@@ -387,7 +461,10 @@ namespace EdS.Runtime
                     if (Roll("capuche", 100) < 85 || rain) { Add(WardrobeSlot.Head, "ranger", new[] { "hood" }, "capuche"); head = true; }
                     break;
                 case HumanOutfit.Clergy:
-                    if (who == "doyen" || part == "doyen" || festive) { Add(WardrobeSlot.Head, "wizard", new[] { "hat", "hood" }, "chapeau"); head = true; }
+                    // Le doyen et les jours de fête : le chapeau (sinon la capuche) ; les autres, la capuche du moine une fois sur deux
+                    // (pack gratuit : la capuche du rôdeur, en laine claire).
+                    if (who == "doyen" || part == "doyen" || festive) { Add(WardrobeSlot.Head, "clergy", new[] { "hat", "hood" }, "chapeau"); head = true; }
+                    else if (Roll("capuche", 100) < 50 || rain) { Add(WardrobeSlot.Head, "clergy", new[] { "hood" }, "capuche"); head = true; }
                     break;
                 case HumanOutfit.Merchant:
                     if (festive && (who == "maitresse" || who == "intendant")) { Add(WardrobeSlot.Head, "noble", new[] { "circlet", "hat" }, "cercle"); head = true; }
@@ -408,7 +485,7 @@ namespace EdS.Runtime
             // Épaulières : la garde, le héros, les sentinelles ; le capitaine les plus belles (lion) ; les bandits, piquées.
             if (outfit == HumanOutfit.Hero || who == "capitaine" || part == "capitaine")
                 Add(WardrobeSlot.Shoulders, "knight", new[] { "pauldrons" }, "epaules", new[] { "lion", "noble", "golden" }, new[] { "spike", "spiked" });
-            else if (outfit == HumanOutfit.Guard && Roll("epaules", 100) < 50)
+            else if (outfit == HumanOutfit.Guard)   // toujours : avec le pack gratuit, c'est la marque de la garde (avec le bleu)
                 Add(WardrobeSlot.Shoulders, "knight", new[] { "pauldrons" }, "epaules", null, new[] { "spike", "spiked", "lion" });
             else if (outfit == HumanOutfit.Sentinel || (outfit == HumanOutfit.Ranger && Roll("epaules", 100) < 50))
                 Add(WardrobeSlot.Shoulders, "ranger", new[] { "pauldrons" }, "epaules", null, new[] { "lion" });
@@ -439,9 +516,10 @@ namespace EdS.Runtime
             int tint = tints[Roll("teinte", tints.Length)];
             // Plafond des pièces facultatives (téléphone) : les obligatoires d'abord, puis la coiffe, la cape, les épaulières, le col, le tablier.
             WardrobeSlot[] order = { WardrobeSlot.Head, WardrobeSlot.Back, WardrobeSlot.Shoulders, WardrobeSlot.Neck, WardrobeSlot.Waist };
+            // Le plafond est appliqué au choix des pièces (Resolve) : une coiffe absente du pack ne prend pas la place des épaulières.
             var kept = requests.Where(q => q.Required).ToList();
-            kept.AddRange(requests.Where(q => !q.Required).OrderBy(q => Array.IndexOf(order, q.Slot)).Take(Math.Max(0, maxOptional)));
-            return new WardrobePlan(outfit, kept, Roll("etoffe", 3), tint, wear, season, festive, rain);
+            kept.AddRange(requests.Where(q => !q.Required).OrderBy(q => Array.IndexOf(order, q.Slot)));
+            return new WardrobePlan(outfit, kept, Roll("etoffe", 3), tint, wear, season, festive, rain, Math.Max(0, maxOptional));
         }
 
         /// <summary>
@@ -456,10 +534,12 @@ namespace EdS.Runtime
             if (plan == null || items == null) return null;
             int want = female ? 2 : 1;
             var picks = new int[plan.Requests.Count];
+            int optional = 0;
             for (int r = 0; r < plan.Requests.Count; r++)
             {
                 WardrobeRequest q = plan.Requests[r];
                 picks[r] = -1;
+                if (!q.Required && optional >= plan.MaxOptional) continue;
                 IEnumerable<WardrobeFamily> families = q.Families;
                 if (q.Required) families = families.Concat(Enum.GetValues(typeof(WardrobeFamily)).Cast<WardrobeFamily>().Where(f => !q.Families.Contains(f)));
                 foreach (WardrobeFamily family in families)
@@ -494,6 +574,7 @@ namespace EdS.Runtime
                     break;
                 }
                 if (picks[r] < 0 && q.Required) return null;
+                if (picks[r] >= 0 && !q.Required) optional++;
             }
             return picks;
         }
