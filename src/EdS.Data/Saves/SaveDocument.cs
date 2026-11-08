@@ -148,6 +148,9 @@ namespace EdS.Data.Saves
 
         /// <summary>Sous-lot V1.7 (version 10, relecture de la PR #79) : créatures rares déjà vaincues, ou null (absent).</summary>
         public List<string?>? Hunted { get; set; }
+
+        /// <summary>Sous-lot V2.7 (version 15) : réputation auprès des factions, ou null (absente).</summary>
+        public List<KeyValuePair<string, int?>>? Reputation { get; set; }
     }
 
     /// <summary>Sous-lot V1.7 : carte d'aventurier lue, avant validation.</summary>

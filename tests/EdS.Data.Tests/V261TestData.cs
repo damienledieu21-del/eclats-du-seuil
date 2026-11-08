@@ -15,6 +15,7 @@ internal static class V261TestData
 
     public static void WithoutSuites(JsonObject root)
     {
+        V27TestData.WithoutReputation(root);   // sous-lot V2.7 : la réputation demande la version 12
         JsonObject data = root["data"]!.AsObject();
         JsonArray quests = data["quests"]!.AsArray();
         foreach (JsonNode? q in quests.Where(q => (string?)q!["id"] == Quest).ToList()) quests.Remove(q);

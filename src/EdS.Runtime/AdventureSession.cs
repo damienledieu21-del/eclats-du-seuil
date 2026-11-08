@@ -389,6 +389,7 @@ namespace EdS.Runtime
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
+            if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             if (boons && steps > 0) _dirty = true;
             _sinceSave += seconds;
             // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
@@ -574,6 +575,9 @@ namespace EdS.Runtime
                 case StoryEventKind.GuildReputation:
                     GuildMessage(e);
                     break;
+                case StoryEventKind.StandingChanged:   // sous-lot V2.7 : un nouveau palier de réputation
+                    ReputationMessage(e);
+                    break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
                     break;
@@ -659,6 +663,7 @@ namespace EdS.Runtime
                     if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
                     if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                     if (shop == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");   // sous-lot V1.7 : la réserve de la guilde
+                    if (shop == TradeRefusal.Shunned) Say("text.ui.trade.shunned");   // sous-lot V2.7 : haï de sa faction
                 }
                 // Sous-lot V1.7 : parler à la maîtresse de guilde ouvre son tableau (inscription, contrats, épreuve).
                 if (IsGuildmistress(npc.Id)) return OpenGuild();
@@ -667,6 +672,8 @@ namespace EdS.Runtime
                 // rempli s'annonce (au tick suivant), pas « rien à dire ».
                 if (refusal == DialogueRefusal.NothingToSay && World.Narrative?.LastTalkFilled > 0) return true;
                 if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(npc.Name));
+                if (refusal == DialogueRefusal.Shunned) Say("text.ui.shunned", Text(npc.Name));   // sous-lot V2.7 : la garde ne lui parle plus
+                if (refusal == DialogueRefusal.None && World.Narrative?.LastTalkCold == true) Say("text.ui.shunned.story", Text(npc.Name));   // mais l'histoire continue
                 return refusal == DialogueRefusal.None;
             }
             if (NodeInReach is GatheringNode node)
@@ -799,7 +806,7 @@ namespace EdS.Runtime
             }
             _zone = target;
             // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
-            _lastSafePoint = target.SafePoints.OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
+            _lastSafePoint = target.SafePoints.Where(sp => !World.IsSecret(sp.Id)).OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
             Commit(next);
             // Sous-lot V1.9.6 : entrer dans une scène ou en sortir ne s'annonce pas comme une porte.
             if (_story.SceneIn(target.Id) is null && _story.SceneIn(from) is null) Say("text.ui.door_entered", target.Name);
@@ -1392,7 +1399,7 @@ namespace EdS.Runtime
             ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList()
             : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
-        public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();
+        public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Where(s => !World.IsSecret(s.Id)).Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();   // V2.7 : la planque secrète reste cachée
 
         /// <summary>
         /// Essai du 12.9 (Damien, 25 octobre 2026) : ateliers où l'on fabrique (lieux des recettes, la forge de Maëlle), au centre de leur lieu,
@@ -1686,7 +1693,7 @@ namespace EdS.Runtime
 
         private void TrackSafePoint()
         {
-            if (Me is GroundVector p && _zone.SafePoints.FirstOrDefault(s => Within(p, s.Position, RestRange)) is SafePoint near) _lastSafePoint = near.Id;
+            if (Me is GroundVector p && World.RestPointNear(p, RestRange) is SafePoint near) _lastSafePoint = near.Id;
         }
 
         /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon l'entrée).</summary>
@@ -1696,7 +1703,7 @@ namespace EdS.Runtime
         /// Halte possible : personnage vivant à <see cref="RestRange"/> d'un point sûr, aucun ennemi vivant à moins de
         /// <see cref="RestSafety"/>, aucun dialogue ouvert.
         /// </summary>
-        public bool CanRest => !World.IsDefeated && Me is GroundVector p && _zone.SafePoints.Any(s => Within(p, s.Position, RestRange))
+        public bool CanRest => !World.IsDefeated && Me is GroundVector p && World.RestPointNear(p, RestRange) != null   // V2.7 : jamais la planque secrète avant le sentier
             && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() && Dialogue is null;
 
         /// <summary>

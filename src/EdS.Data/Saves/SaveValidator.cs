@@ -181,10 +181,18 @@ namespace EdS.Data.Saves
         /// <summary>Créatures rares gardées au plus.</summary>
         public const int MaxHunted = 256;
 
+        /// <summary>
+        /// Sous-lot V2.7 (version 15) : réputation auprès de chaque faction (« villagers », « guard », « rangers », « bandits »), non nulle,
+        /// de <see cref="EdS.Data.Story.Reputations.Min"/> à <see cref="EdS.Data.Story.Reputations.Max"/> ; ordre ordinal. Vide : neutre partout.
+        /// </summary>
+        public IReadOnlyDictionary<string, int> Reputation { get; }
+
         public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
             IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null, SavedGuildCard? guild = null,
-            IEnumerable<string>? hunted = null)
+            IEnumerable<string>? hunted = null, IReadOnlyDictionary<string, int>? reputation = null)
         {
+            Reputation = Frozen.Dictionary((reputation ?? new Dictionary<string, int>()).Where(t => t.Value != 0).OrderBy(t => t.Key, StringComparer.Ordinal)
+                .ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal), nameof(reputation));
             Tracked = tracked;
             Guild = guild;
             Hunted = Frozen.List((hunted ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).OrderBy(h => h, StringComparer.Ordinal), nameof(hunted));
@@ -495,7 +503,14 @@ namespace EdS.Data.Saves
         /// restées ouvertes (une liste éventuellement vide, rangée par identifiant ; chaque ligne <c>{ "id", "stage", "since", "born" }</c> ; voir
         /// <see cref="SavedScar"/>). Une sauvegarde de version 13 ou antérieure est lue telle quelle (aucune cicatrice) et mise à jour ; elle n'a
         /// pas de <c>scars</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 14;
+        /// <remarks>Version 15 (sous-lot V2.7, <see cref="ReputationSince"/>) : <c>reputation</c> obligatoire dans l'histoire : la réputation
+        /// auprès de chaque faction (objet « faction : valeur », éventuellement vide ; factions de <see cref="EdS.Data.Story.Reputations.Factions"/>,
+        /// valeurs non nulles de −1000 à 1000, ordre ordinal). Une sauvegarde de version 14 ou antérieure est lue telle quelle (neutre partout)
+        /// et mise à jour ; elle n'a pas de <c>reputation</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 15;
+
+        /// <summary>Sous-lot V2.7 : version où la réputation (<c>story.reputation</c>) entre dans la sauvegarde.</summary>
+        public const int ReputationSince = 15;
 
         /// <summary>Sous-lot V2.6 : version où les cicatrices (<c>scars</c>) entrent dans la sauvegarde.</summary>
         public const int ScarsSince = 14;
@@ -1050,6 +1065,24 @@ namespace EdS.Data.Saves
                     else if (v == 0 || v < -MaxTrust || v > MaxTrust) report.Add(p, ValidationCode.OutOfRange, $"confiance hors de [−{MaxTrust}, {MaxTrust}] ou nulle (une confiance nulle n'est pas écrite).");
                     else if (i > 0 && string.CompareOrdinal(st.Trust[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "confiance hors de l'ordre ordinal ou en double.");
                 }
+            // Sous-lot V2.7 (version 15) : réputation auprès des factions.
+            if (version < ReputationSince)
+            {
+                if (st.Reputation != null) report.Add(path + ".reputation", ValidationCode.UnknownField, $"champ inconnu en version {version} (réputation : version {ReputationSince}).");
+            }
+            else if (st.Reputation is null) Missing(report, path + ".reputation", "réputation auprès des factions, éventuellement vide");
+            else
+                for (int i = 0; i < st.Reputation.Count; i++)
+                {
+                    var t = st.Reputation[i];
+                    string p = $"{path}.reputation.{t.Key}";
+                    if (!EdS.Data.Story.Reputations.IsFaction(t.Key))
+                        report.Add(p, ValidationCode.UnknownReference, $"faction inconnue ; possibles : {string.Join(", ", EdS.Data.Story.Reputations.Factions)}.");
+                    else if (t.Value is not int v) Missing(report, p, "entier");
+                    else if (v == 0 || v < EdS.Data.Story.Reputations.Min || v > EdS.Data.Story.Reputations.Max)
+                        report.Add(p, ValidationCode.OutOfRange, $"réputation hors de [{EdS.Data.Story.Reputations.Min}, {EdS.Data.Story.Reputations.Max}] ou nulle (une réputation nulle n'est pas écrite).");
+                    else if (i > 0 && string.CompareOrdinal(st.Reputation[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "réputation hors de l'ordre ordinal ou en double.");
+                }
             // Sous-lot V1.6 (version 8, après la version 7 du sous-lot V1.2) : quête suivie, en cours (ni finie ni absente), ou null.
             if (version < 8)
             {
@@ -1096,7 +1129,7 @@ namespace EdS.Data.Saves
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
                 st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked, guild,
-                st.Hunted?.Select(h => h!));
+                st.Hunted?.Select(h => h!), st.Reputation?.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal));
         }
 
         private static readonly Regex TitleId = new Regex(@"^title(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);

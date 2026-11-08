@@ -158,7 +158,7 @@ public class V196OuvertureTests
     {
         StoryBook book = Book(Zone());
         // Sous-lot V1.9.7 : l'histoire passe au schéma 7 (effet skipQuest) ; ce qui est livré ici ne change pas.
-        Assert.Equal((11, 11), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.6.1 : schéma 11 (32 répliques, purify) ; V2.3.1 : schéma 10 (zone d'un créneau)   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9 (emplois du temps)
+        Assert.Equal((12, 12), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.7 : schéma 12 (réputation) ;   // V2.6.1 : schéma 11 (32 répliques, purify) ; V2.3.1 : schéma 10 (zone d'un créneau)   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9 (emplois du temps)
         Scene scene = Assert.Single(book.Scenes);
         Assert.Equal((Scene, "zone.souvenir_rupture", "fact.ch1.souvenir.a_revivre", "fact.ch1.souvenir.vecu", "text.ch1.discovery.souvenir"),
             (scene.Id, scene.Zone, scene.Start, scene.End, scene.Text));
@@ -169,8 +169,8 @@ public class V196OuvertureTests
         Assert.Equal(new[] { "odile", "frapper", "garder", "parer", "boire", "retour" }, opening.Steps.Select(s => s.Id));
         Assert.Equal(new[] { ("strike", 3L), ("guard", 2L), ("parry", 1L), ("drink", 1L) },
             opening.Steps.Where(s => s.Objective.Kind == ObjectiveKind.Practice).Select(s => (s.Objective.Id, s.Objective.Value)));
-        // Ajoutée à la fin : les chemins d'avant restent (sous-lot V1.9.7 : cinq quêtes du village la suivent ; V2.6.1 : la quête des cicatrices).
-        Assert.Equal(book.Quests.Count - 8, book.Quests.ToList().FindIndex(q => q.Id == Opening));   // V2.9.2 : le vieux Brunot ajouté à la fin
+        // Ajoutée à la fin : les chemins d'avant restent (sous-lot V1.9.7 : cinq quêtes du village la suivent ; V2.6.1 : la quête des cicatrices ; V2.7 : les six quêtes de faction).
+        Assert.Equal(book.Quests.Count - 14, book.Quests.ToList().FindIndex(q => q.Id == Opening));
         // Le texte de chaque étape nomme les touches du PC et les gestes au doigt.
         foreach ((string step, string pc, string touch) in new[] { ("odile", "Z Q S D", "pouce"), ("frapper", "touches 1 à 4", "boutons 1 à 4"),
                      ("garder", "clic droit ou Maj", "Garde"), ("parer", "Espace", "Parade"), ("boire", "(P", "Potion") })

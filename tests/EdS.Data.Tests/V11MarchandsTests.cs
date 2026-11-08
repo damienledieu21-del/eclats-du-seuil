@@ -41,12 +41,14 @@ public class V11MarchandsTests : IDisposable
         MerchantBook book = loaded.Book!;
         Assert.Equal(MerchantValidator.CurrentSchemaVersion, book.SchemaVersion);
         // Sous-lot V1.7 : et la réserve de la guilde, tenue par l'intendant dans la Maison de la Guilde.
-        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
-        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart" }, book.Merchants.Select(m => m.Npc));
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart", "merchant.receleur" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
+        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart", "npc.receleur" }, book.Merchants.Select(m => m.Npc));
         // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
-        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
+        // V2.7 : sauf le receleur des bandits, au hameau, près de la cachette de Colin.
+        Assert.Contains(zone.PlacesAt(story.Npc(book.Merchant("merchant.receleur").Npc).Position), p => p.Id == "hameau");
+        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null && m.Id != "merchant.receleur"), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
         Assert.Equal("zone.guilde", story.Npc(book.Merchant("merchant.guilde").Npc).Zone);
         // L'herboriste vend toujours des potions de soin.
         Assert.Contains(book.Merchant("merchant.herboriste").Offers, o => o.Item == "item.potion_de_soin" && o.Always);

@@ -65,7 +65,8 @@ public class V16QuetesTests
     private static List<string> Steps(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation (quêtes finies, créatures vaincues, contrats) a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -88,7 +89,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(20, book.NpcsIn(null).Count());   // V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(21, book.NpcsIn(null).Count());   // V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -292,7 +293,7 @@ public class V16QuetesTests
         Assert.Equal(DialogueRefusal.Locked, w.ChooseReward("quest.inconnue", 0, out _));
         Assert.Empty(none);
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Peaux, 1, out IReadOnlyList<StoryEvent> events));
-        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Peaux}" }, events.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Peaux}", "ReputationChanged villagers/questSide 10" }, events.Select(e => e.ToString()));
         Assert.Equal(1, w.Inventory.Count("item.remede_de_l_aube"));
         Assert.True(w.Narrative.IsDone(Peaux));
         Assert.Null(w.Narrative.Tracked);   // finie : plus suivie
@@ -455,7 +456,7 @@ public class V16QuetesTests
         // passent en version 8.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 2, Peaux)));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);   // V1.3   /* V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
+        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   // V1.3   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,

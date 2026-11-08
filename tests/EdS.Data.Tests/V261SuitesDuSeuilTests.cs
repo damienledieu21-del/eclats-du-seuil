@@ -124,13 +124,13 @@ public class V261SuitesDuSeuilTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
-        Assert.Equal((11, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
-        Assert.Equal((11, "0.21.1-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.21.1-provisoire", Texts.ContentVersion);
+        Assert.Equal((12, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
+        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
+        Assert.Equal((12, "0.23.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.23.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.15.0-provisoire", ItemsCatalog.ContentVersion);
-        // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14).
-        Assert.Equal(14, SaveValidator.CurrentSchemaVersion);
+        // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
+        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
         Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -222,8 +222,8 @@ public class V261SuitesDuSeuilTests
     public void Histoire_en_schema_11_et_schema_10_encore_lu_avec_seize_repliques()
     {
         StoryBook book = Book(Vallons);
-        Assert.Equal((19, 24, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
-        // Version 10 : 16 répliques au plus ; Gaspard en a 24 (V2.9.2 : le vieux Brunot) : refusé au chemin précis du dialogue.
+        Assert.Equal((19, 26, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        // Version 10 : 16 répliques au plus ; Gaspard en a 26 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot) : refusé au chemin précis du dialogue.
         JsonObject ten = StoryJson();
         ten["schemaVersion"] = 10;
         int gaspard = ten["data"]!["dialogues"]!.AsArray().Select((d, k) => ((string?)d!["id"], k)).Single(x => x.Item1 == "dialogue.gaspard").k;

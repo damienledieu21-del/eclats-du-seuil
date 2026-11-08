@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "merchants",
-  "contentVersion": "0.7.1-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "values": [
       {
@@ -491,7 +491,8 @@
             "price": 840,
             "always": false
           }
-        ]
+        ],
+        "faction": "guard"
       },
       {
         "id": "merchant.herboriste",
@@ -526,7 +527,8 @@
             "price": 320,
             "always": true
           }
-        ]
+        ],
+        "faction": "villagers"
       },
       {
         "id": "merchant.epicier",
@@ -558,7 +560,8 @@
             "price": 320,
             "always": true
           }
-        ]
+        ],
+        "faction": "villagers"
       },
       {
         "id": "merchant.guilde",
@@ -615,7 +618,8 @@
             "always": false,
             "rank": "e"
           }
-        ]
+        ],
+        "faction": "villagers"
       },
       {
         "id": "merchant.renart",
@@ -656,6 +660,49 @@
           {
             "item": "item.chevaliere_du_bourg",
             "price": 5600,
+            "always": false
+          }
+        ],
+        "faction": "villagers"
+      },
+      {
+        "id": "merchant.receleur",
+        "npc": "npc.receleur",
+        "greeting": "text.v27.receleur.boutique",
+        "sellPercent": 40,
+        "closed": [],
+        "daily": 2,
+        "faction": "bandits",
+        "standing": "liked",
+        "offers": [
+          {
+            "item": "item.potion_de_soin",
+            "price": 55,
+            "always": true
+          },
+          {
+            "item": "item.huile_d_eclat",
+            "price": 460,
+            "always": true
+          },
+          {
+            "item": "item.anneau_de_fer",
+            "price": 820,
+            "always": true
+          },
+          {
+            "item": "item.eclat_de_seuil",
+            "price": 380,
+            "always": false
+          },
+          {
+            "item": "item.cape_de_voyageur",
+            "price": 2900,
+            "always": false
+          },
+          {
+            "item": "item.remede_de_l_aube",
+            "price": 180,
             "always": false
           }
         ]

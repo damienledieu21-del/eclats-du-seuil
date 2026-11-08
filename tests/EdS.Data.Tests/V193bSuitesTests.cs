@@ -66,7 +66,7 @@ public class V193bSuitesTests
     public void Histoire_en_schema_5_l_apprentie_finit_par_une_epee_de_qualite_superieure()
     {
         StoryBook book = Story.Value;
-        Assert.Equal((11, 11), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
+        Assert.Equal((12, 12), (StoryValidator.CurrentSchemaVersion, book.SchemaVersion));   // V2.7 : schéma 12 (réputation) ; V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.3 : schéma 9 ; V1.9.6 : schéma 6 (practice, scènes) ; V1.9.7 : 7 (skipQuest) ; craftQuality inchangé
         Assert.Equal(new[] { "colombe", "minerai", "forger", "montrer", "epee" }, book.Quest(Apprentie).Steps.Select(s => s.Id));
         Objective o = book.Quest(Apprentie).Steps[^1].Objective;
         Assert.Equal((ObjectiveKind.CraftQuality, "item.epee_de_garde", ItemQuality.Superior, 1L), (o.Kind, o.Id, o.Quality, o.Value));
@@ -119,7 +119,7 @@ public class V193bSuitesTests
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(4, read.Story!.SchemaVersion);
         // Plus ancien ou plus récent : refusé.
-        foreach (int version in new[] { 3, 12 })   // V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
+        foreach (int version in new[] { 3, 13 })   // V2.7 : la version 12 ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
         {
             root["schemaVersion"] = version;
             Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
@@ -184,7 +184,7 @@ public class V193bSuitesTests
     [Fact]
     public void Marchands_en_schema_3_l_etal_de_Renart_demande_l_aveu()
     {
-        Assert.Equal((3, 3), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));
+        Assert.Equal((4, 4), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));   // V2.7 : schéma 4 (faction, palier) ; formes du schéma 3 inchangées
         Assert.Equal(Aveu, ShippedMerchants.Merchant("merchant.renart").Fact);
         Assert.All(ShippedMerchants.Merchants.Where(m => m.Id != "merchant.renart"), m => Assert.Null(m.Fact));
         // Le fait vient de l'aveu (une réponse du dialogue de Renart), et c'est l'objectif de la dernière étape du chapitre 2.
@@ -209,6 +209,10 @@ public class V193bSuitesTests
     {
         (JsonObject root, JsonObject renart, string path) = RenartJson();
         root["schemaVersion"] = 2;
+        // V2.7 : sans faction ni palier (schéma 4), ni le marché noir des bandits.
+        JsonArray all = root["data"]!["merchants"]!.AsArray();
+        foreach (JsonNode? m in all.Where(m => (string?)m!["id"] == "merchant.receleur").ToList()) all.Remove(m);
+        foreach (JsonNode? m in all) m!.AsObject().Remove("faction");
         MerchantsLoadResult refused = ReadMerchants(root);
         Assert.Contains(refused.Report.Errors, e => e.Path == path + ".fact" && e.Code == ValidationCode.InvalidValue);
         renart.Remove("fact");
@@ -263,7 +267,8 @@ public class V193bSuitesTests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -326,7 +331,7 @@ public class V193bSuitesTests
         Assert.True(w.Inventory.CountAtLeast("item.epee_de_garde", ItemQuality.Superior) >= 1);
         Assert.Equal((xp + 220, money + 150), (w.Character.Xp, w.Money));
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Apprentie, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.gantelets_de_fer 1", $"QuestCompleted {Apprentie}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.gantelets_de_fer 1", $"QuestCompleted {Apprentie}", "ReputationChanged villagers/questSide 10" }, chosen.Select(e => e.ToString()));
         Say(w, "npc.maelle", "ch2_apprentie_apres");
     }
 

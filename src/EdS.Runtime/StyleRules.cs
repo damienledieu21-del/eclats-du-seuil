@@ -1845,6 +1845,16 @@ namespace EdS.Runtime
             return key.StartsWith("ourse", StringComparison.Ordinal) ? 2 : 0;
         }
 
+        /// <summary>
+        /// Sous-lot V2.9.2 (revue Codex de la PR #117, tour 3) : place du <paramref name="n"/>-ième ourson autour de sa mère, posée en
+        /// (<paramref name="x"/>, <paramref name="z"/>) : à 3 m d'elle, chacun de son côté.
+        /// </summary>
+        public static (double X, double Z) CubSpot(double x, double z, int n)
+        {
+            double angle = 2.4 + 1.3 * n;
+            return (x + 3 * Math.Cos(angle), z + 3 * Math.Sin(angle));
+        }
+
         public static bool IsBeast(StyleSlot slot) =>
             slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
 

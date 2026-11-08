@@ -76,10 +76,10 @@ public class V26SeuilGranditTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((12, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
-        Assert.Equal((14, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
-        Assert.Equal((12, "0.16.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
-        Assert.Equal("0.21.1-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
-        Assert.Equal("0.21.1-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
+        Assert.Equal((15, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
+        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal("0.23.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
+        Assert.Equal("0.23.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios ne changent (ceux de V2.4.1).
         Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -181,7 +181,7 @@ public class V26SeuilGranditTests
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Equal(json, SaveJsonReader.Write(r.Save!));
         Assert.Equal(new[] { Lake, Ruins }, r.Save!.Character!.Scars.Select(s => s.Id));
-        Assert.Contains("\"schemaVersion\": 14", json);
+        Assert.Contains(SaveVersion.Current, json);   // V2.7 : 15 (réputation)
         Assert.Contains("{\"id\": \"zone.vallons/faille_du_seuil/ruines\", \"stage\": 3, \"since\": 12, \"born\": 7}", json);
         Assert.Contains("\"scars\": []", SaveJsonReader.Write(Saved()));
     }
@@ -192,10 +192,11 @@ public class V26SeuilGranditTests
         JsonObject root = SaveJson(Saved());
         root["schemaVersion"] = 13;
         root["data"]!["character"]!.AsObject().Remove("scars");
+        root["data"]!["character"]!["story"]!.AsObject().Remove("reputation");   // V2.7 (version 15)
         SaveLoadResult r = SaveJsonReader.Read(root.ToJsonString());
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Empty(r.Save!.Character!.Scars);
-        Assert.Contains("\"schemaVersion\": 14", SaveJsonReader.Write(r.Save));
+        Assert.Contains(SaveVersion.Current, SaveJsonReader.Write(r.Save));   // V2.7 : 15
         JsonObject v13 = SaveJson(Saved());
         v13["schemaVersion"] = 13;
         Assert.Contains(SaveJsonReader.Read(v13.ToJsonString()).Report.Errors, e => e.Path == "$.data.character.scars" && e.Code == ValidationCode.UnknownField);

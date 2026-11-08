@@ -572,7 +572,8 @@ public class V1Reponses2GuildeTests
     private static List<string> Steps(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -779,7 +780,7 @@ public class V1Reponses2GuildeTests
         late.Narrative!.Defeated("loup1", "loup");
         late.Step();
         late.Narrative.Defeated("loup2", "loup");
-        Assert.Equal(new[] { $"ContractExpired {rush.Id}" }, late.Step().Story.Select(e => e.ToString()));
+        Assert.Equal(new[] { $"ContractExpired {rush.Id}" }, late.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
     }
 
     [Fact]

@@ -391,12 +391,19 @@ public sealed class V292AnimationsTests
         Assert.Equal("vieux_brunot", (string)quest["steps"]![1]!["objective"]!["id"]!);
         Assert.Contains(quest["effects"]!.AsArray(), e => (string)e!["do"]! == "giveItem" && (string)e["id"]! == "item.cape_du_vieux_brunot");
         var gaspard = story["data"]!["dialogues"]!.AsArray().Single(d => (string)d!["id"]! == "dialogue.gaspard")!;
-        Assert.True(gaspard["entries"]!.AsArray().Count <= 32 && gaspard["nodes"]!.AsArray().Count <= 32);
+        Assert.True(gaspard["entries"]!.AsArray().Count <= 32);   // 32 répliques au plus (schéma 11 et suivants)
+        // Après la fusion de V2.7 : la reprise de l'offre de Gaspard remise à plus tard reste proposée depuis les répliques du vieux Brunot.
+        Assert.All(gaspard["nodes"]!.AsArray().Where(n => ((string)n!["id"]!).StartsWith("v292_")),
+            n => Assert.Contains(n!["choices"]!.AsArray(), c => (string)c!["text"]! == "text.v27.gaspard.encore"));
         Assert.Equal("garde", (string)gaspard["entries"]!.AsArray()[^1]!["node"]!);   // la réplique de toujours reste la dernière
         // Affichage : l'ours de WildMesh, à leur taille ; deux oursons près de l'ourse.
         foreach (string id in new[] { "ours", "ourse", "vieux_brunot" }) Assert.Equal(StyleSlot.Bear, StyleRules.ForCombatant(id, false));
         Assert.Equal((1.6, 1.45, 2.2), (StyleRules.BeastHeight("ours"), StyleRules.BeastHeight("ourse"), StyleRules.BeastHeight("vieux_brunot")));
         Assert.Equal((0, 2, 0), (StyleRules.Cubs("ours"), StyleRules.Cubs("ourse"), StyleRules.Cubs("vieux_brunot")));
+        // Revue Codex (tour 3) : les oursons autour de la vraie place de l'ourse (-82, 72), pas de l'origine ; deux places distinctes.
+        (double X, double Z) c0 = StyleRules.CubSpot(-82, 72, 0), c1 = StyleRules.CubSpot(-82, 72, 1);
+        foreach ((double x, double z) in new[] { c0, c1 }) Assert.Equal(3, Math.Sqrt((x + 82) * (x + 82) + (z - 72) * (z - 72)), 9);
+        Assert.True(Math.Abs(c0.X - c1.X) + Math.Abs(c0.Z - c1.Z) > 1);
         Assert.Equal((StyleMotion.Cast, (string?)null), (StyleRules.AttackAnimation("rugissement").Motion, StyleRules.AttackAnimation("rugissement").Prefer));
     }
 

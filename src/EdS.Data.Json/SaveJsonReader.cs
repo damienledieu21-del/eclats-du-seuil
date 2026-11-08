@@ -187,6 +187,7 @@ namespace EdS.Data.Json
                     st.Tracked = input.NullableText(v, p);
                 },
                 ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
+                ["reputation"] = (v, p) => st.Reputation = ScenarioJsonReader.ReadIntegerMap(input, v, p),   // sous-lot V2.7 (version 15)
                 ["hunted"] = (v, p) => st.Hunted = input.ReadLimitedList(v, p, SavedStory.MaxHunted,   // relecture de la PR #79 (version 10)
                     n => $"{n} créatures, au plus {SavedStory.MaxHunted}.", (e, ip) => input.Text(e, ip)),
                 ["guild"] = (v, p) =>   // sous-lot V1.7 (version 10) : carte d'aventurier
@@ -424,13 +425,16 @@ namespace EdS.Data.Json
             if (st.Facts.Concat(st.Discoveries).Concat(st.Quests.Keys).Concat(st.Trust.Keys).Any(id => !SaveValidator.IsStoryId(id))
                 || (st.Tracked != null && !SaveValidator.IsStoryId(st.Tracked))
                 || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
-                || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust))
+                || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust)
+                || st.Reputation.Any(r => !EdS.Data.Story.Reputations.IsFaction(r.Key) || r.Value < EdS.Data.Story.Reputations.Min || r.Value > EdS.Data.Story.Reputations.Max))
                 throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
             b.Append("      \"story\": {\n");
             b.Append("        \"facts\": ").Append(List(st.Facts)).Append(",\n");
             b.Append("        \"quests\": {").Append(string.Join(", ", st.Quests.Select(q => Quoted(q.Key) + ": {\"step\": " + Quoted(q.Value.Step)
                 + ", \"progress\": " + q.Value.Progress.ToString(CultureInfo.InvariantCulture) + "}"))).Append("},\n");
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            // Sous-lot V2.7 (version 15) : réputation auprès des factions, sur une ligne, dans l'ordre ordinal.
+            b.Append("        \"reputation\": {").Append(string.Join(", ", st.Reputation.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
             // Sous-lot V1.6 (version 8) : quête suivie, ou null.
             b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append(st.Guild is null && st.Hunted.Count == 0 ? "\n" : ",\n");

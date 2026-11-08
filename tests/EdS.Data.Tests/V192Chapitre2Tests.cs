@@ -90,7 +90,8 @@ public class V192Chapitre2Tests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -472,7 +473,7 @@ public class V192Chapitre2Tests
         Assert.Contains($"RewardToChoose {Apprentie}", end);
         Assert.Equal((xp + 220, money + 150), (w.Character.Xp, w.Money));
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Apprentie, 0, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.casque_de_fer 1", $"QuestCompleted {Apprentie}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.casque_de_fer 1", $"QuestCompleted {Apprentie}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.maelle", "ch2_apprentie_apres");
         w = Go(w, Colombe);
         Say(w, "npc.apprentie", "ch2_apres");
@@ -501,7 +502,7 @@ public class V192Chapitre2Tests
         Assert.Equal((xp + 130, money + 100), (w.Character.Xp, w.Money));
         Say(w, "npc.albe", "ch2_herbes_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Herbes, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Herbes}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.remede_de_l_aube 1", $"QuestCompleted {Herbes}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.albe", "ch2_apres");
     }
 

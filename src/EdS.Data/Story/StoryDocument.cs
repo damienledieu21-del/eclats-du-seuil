@@ -39,6 +39,63 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V1.9.6 (schéma 6) : scènes jouées, facultatives.</summary>
         public List<SceneData?>? Scenes { get; set; }
+
+        /// <summary>Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives.</summary>
+        public ReputationData? Reputation { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.7 (schéma 12) : section <c>reputation</c> de l'histoire (voir <see cref="ReputationRules"/>), avant validation.</summary>
+    public sealed class ReputationData
+    {
+        /// <summary>Faction d'origine : faction liée et part en pour cent.</summary>
+        public List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>? Links { get; set; }
+
+        /// <summary>Geste du monde : faction et changement.</summary>
+        public List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>? Acts { get; set; }
+
+        /// <summary>Population ou famille : faction et changement.</summary>
+        public List<KeyValuePair<string, List<KeyValuePair<string, int?>>?>>? Defeated { get; set; }
+
+        /// <summary>Événement du monde : changements à la réussite et à l'échec.</summary>
+        public List<KeyValuePair<string, ReputationEventData?>>? Events { get; set; }
+
+        /// <summary>Palier des villageois : prix d'achat en pour cent.</summary>
+        public List<KeyValuePair<string, int?>>? Prices { get; set; }
+
+        /// <summary>Palier de la faction du marchand : prix de vente (ce qu'il paie) en pour cent.</summary>
+        public List<KeyValuePair<string, int?>>? SellPrices { get; set; }
+
+        /// <summary>Factions dont les PNJ ne parlent plus à qui elles haïssent.</summary>
+        public List<string?>? Shun { get; set; }
+
+        /// <summary>Couvre-feu : une faction qui hait le personnage le chasse d'un lieu à certains moments.</summary>
+        public ReputationCurfewData? Curfew { get; set; }
+
+        /// <summary>Points sûrs secrets : ni découverts en passant ni proposés au voyage avant un fait de l'histoire.</summary>
+        public List<ReputationHiddenData?>? Hidden { get; set; }
+    }
+
+    public sealed class ReputationCurfewData
+    {
+        public string? Faction { get; set; }
+        public string? Place { get; set; }
+        public List<string?>? Phases { get; set; }
+        public string? SafePoint { get; set; }
+    }
+
+    public sealed class ReputationHiddenData
+    {
+        public string? SafePoint { get; set; }
+        public string? Fact { get; set; }
+    }
+
+    public sealed class ReputationEventData
+    {
+        public List<KeyValuePair<string, int?>>? Won { get; set; }
+        public List<KeyValuePair<string, int?>>? Lost { get; set; }
+
+        /// <summary>Échec pendant l'absence (réponse de Damien du 7 novembre 2026 : plus faible qu'une défaite sur place) ; absent : comme <see cref="Lost"/>.</summary>
+        public List<KeyValuePair<string, int?>>? Missed { get; set; }
     }
 
     /// <summary>Sous-lot V1.9.6 (schéma 6) : scène jouée (voir <see cref="Scene"/>).</summary>
@@ -68,6 +125,9 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V2.3 (schéma 9) : emploi du temps ; facultatif (absent : le PNJ reste à sa place).</summary>
         public List<ScheduleSlotData?>? Schedule { get; set; }
+
+        /// <summary>Sous-lot V2.7 (schéma 12) : faction du PNJ (un garde ne parle plus à qui la garde hait) ; facultative.</summary>
+        public string? Faction { get; set; }
     }
 
     /// <summary>Sous-lot V2.3 (schéma 9) : un créneau de l'emploi du temps (voir <see cref="ScheduleSlot"/>).</summary>

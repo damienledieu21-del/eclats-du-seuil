@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Data.Story;
 using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -51,6 +52,50 @@ namespace EdS.World
         public static readonly Fixed CombatRange = Fixed.FromInt(12);
 
         /// <summary>Le point sûr <paramref name="safePoint"/> de <paramref name="zone"/> est découvert (clé au registre du monde).</summary>
+        /// <summary>Sous-lot V2.7 : fait qui révèle le point sûr secret <paramref name="safePoint"/> de la zone de l'histoire, ou null.</summary>
+        private string? SecretFact(string safePoint)
+        {
+            if (Narrative is null || !InStoryZone) return null;
+            foreach ((string id, string fact) in Narrative.Book.Reputation.Hidden)
+                if (id == safePoint) return fact;
+            return null;
+        }
+
+        /// <summary>Sous-lot V2.7 : le point sûr <paramref name="safePoint"/> est secret et pas encore révélé (ni carte, ni repos, ni retour).</summary>
+        public bool IsSecret(string safePoint) => SecretFact(safePoint) is string fact && !Narrative!.Knows(fact);
+
+        /// <summary>
+        /// Sous-lot V2.7 (remarque de Codex sur la PR #116, tour 3) : le premier point sûr de la zone de la partie, dans l'ordre de la zone, à
+        /// <paramref name="range"/> de <paramref name="position"/> (écart entre les centres) et pas secret : celui d'une halte et du retour ;
+        /// null s'il n'y en a pas.
+        /// </summary>
+        public SafePoint? RestPointNear(GroundVector position, Fixed range)
+        {
+            if (Definition is null) return null;
+            long limit = checked(range.Raw * range.Raw);
+            foreach (SafePoint s in Definition.SafePoints)
+            {
+                long dx = checked(s.Position.X.Raw - position.X.Raw), dz = checked(s.Position.Z.Raw - position.Z.Raw);
+                if (checked(dx * dx + dz * dz) <= limit && !IsSecret(s.Id)) return s;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.7 (réponse de Damien du 7 novembre 2026) : le couvre-feu tombe : la faction du couvre-feu hait le personnage, il est
+        /// dans son lieu à l'un de ses moments, présent, vivant et hors combat ; le point sûr où il est reconduit, sinon null.
+        /// </summary>
+        public string? CurfewSafePoint
+        {
+            get
+            {
+                if (!(Narrative is Narrative n) || !(n.Book.Reputation.Curfew is ReputationCurfew c) || !InStoryZone || _defeated) return null;
+                if (n.StandingIndex(c.Faction) != 0 || !c.Phases.Contains(Narrative.PhaseId(Zone.Time.Phase))) return null;
+                if (!((INarrativeWorld)this).InPlace(c.Place) || InCombat) return null;
+                return c.SafePoint;
+            }
+        }
+
         public bool IsDiscovered(ZoneDefinition zone, string safePoint) =>
             Zone.IsConsumed((zone ?? throw new ArgumentNullException(nameof(zone))).SafePointKey(safePoint ?? throw new ArgumentNullException(nameof(safePoint))));
 
@@ -73,8 +118,16 @@ namespace EdS.World
             CombatantView me = Zone.Engine.View(_character.Id);
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return;
             foreach (SafePoint s in Definition.SafePoints)
+            {
+                // Sous-lot V2.7 : un point sûr secret (le passage des bandits) ne se découvre qu'avec le fait qui le révèle, où que l'on soit.
+                if (SecretFact(s.Id) is string fact)
+                {
+                    if (Narrative != null && Narrative.Knows(fact) && Discover(s.Id)) events.Add(new StoryEvent(StoryEventKind.SafePointDiscovered, s.Id));
+                    continue;
+                }
                 if (!ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, DiscoverRange) && Discover(s.Id))
                     events.Add(new StoryEvent(StoryEventKind.SafePointDiscovered, s.Id));
+            }
         }
 
         /// <summary>

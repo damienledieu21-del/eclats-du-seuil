@@ -83,7 +83,8 @@ public class V194Chapitre4Tests
     private static List<string> Ticks(WorldSession w, int ticks = 3)
     {
         var events = new List<string>();
-        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        // Sous-lot V2.7 : la réputation a ses propres tests (V27ReputationTests).
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         return events;
     }
 
@@ -387,7 +388,7 @@ public class V194Chapitre4Tests
         Assert.Equal((xp + 450, money + 400), (w.Character.Xp, w.Money));
         Say(w, "npc.capitaine", "ch4_tour_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Tour, 1, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.lame_de_la_tour 1", $"QuestCompleted {Tour}" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.lame_de_la_tour 1", $"QuestCompleted {Tour}" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.capitaine", "ch1_contrat");   // V1.9.7 : l'offre du premier contrat passe avant le mot d'après
     }
 
@@ -419,7 +420,8 @@ public class V194Chapitre4Tests
         Say(w, "npc.herboriste_hameau", "ch3_potions");
         var facts = AfterChapter3.Append(aider ? "fact.ch4.deserteur.aide" : "fact.ch4.deserteur.livre");
         Say(Open(Aubine, Hero(15, Done(facts, Bourg, Hameau, Deserteur, Potions))), "npc.herboriste_hameau", aider ? "ch4_deserteur_apres_aide" : "ch4_deserteur_apres_livre");
-        Say(Go(w, Colin), "npc.deserteur", aider ? "ch4_colin_apres_aide" : "ch4_colin_apres_livre");
+        // V2.7 : après son aide, Colin propose le mot de passe du camp (les bandits sont au moins neutres).
+        Say(Go(w, Colin), "npc.deserteur", aider ? "v27_deserteur_offre" : "ch4_colin_apres_livre");
     }
 
     [Fact]
@@ -455,7 +457,7 @@ public class V194Chapitre4Tests
         Assert.Equal((xp + 500, money + 300), (w.Character.Xp, w.Money));
         Say(w, "npc.maitresse_guilde", "ch4_prime_recompense");
         Assert.Equal(DialogueRefusal.None, w.ChooseReward(Prime, 0, out IReadOnlyList<StoryEvent> chosen));
-        Assert.Equal(new[] { "ItemGiven item.gantelets_de_la_tour 1", $"QuestCompleted {Prime}", $"GuildPoints {Prime} 20" }, chosen.Select(e => e.ToString()));
+        Assert.Equal(new[] { "ItemGiven item.gantelets_de_la_tour 1", $"QuestCompleted {Prime}", $"GuildPoints {Prime} 20" }, chosen.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
         Say(w, "npc.maitresse_guilde", "membre");
     }
 
