@@ -173,6 +173,15 @@ public class V210MarchandsFetesTests
         Assert.Throws<ArgumentOutOfRangeException>(() => WorldCalendar.SeasonOf(-1));
     }
 
+    [Fact]
+    public void Les_saisons_du_calendrier_et_celles_des_tenues_vont_ensemble()
+    {
+        // HumanBodies.GameSeason (V2.9.4) reçoit (WardrobeSeason)WorldCalendar.SeasonIndexOf(jour) : les deux suites ont le même ordre.
+        Assert.Equal(new[] { "spring", "summer", "autumn", "winter" }, WorldCalendar.Seasons);
+        Assert.Equal(new[] { EdS.Runtime.WardrobeSeason.Spring, EdS.Runtime.WardrobeSeason.Summer, EdS.Runtime.WardrobeSeason.Autumn, EdS.Runtime.WardrobeSeason.Winter },
+            new long[] { 0, 28, 56, 84 }.Select(d => (EdS.Runtime.WardrobeSeason)WorldCalendar.SeasonIndexOf(d)));
+    }
+
     [Theory]
     [InlineData(5, 7 * 60, "festival.marche")]
     [InlineData(5, 13 * 60, null)]

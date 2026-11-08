@@ -1581,6 +1581,15 @@ namespace EdS.Runtime
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();
 
+        /// <summary>
+        /// Sous-lot V2.10 (demande du 8 novembre 2026) : saison des tenues des villageois, celle du calendrier du jeu (affichage seulement ;
+        /// le cœur reste maître du temps du monde).
+        /// </summary>
+        public WardrobeSeason WardrobeSeason => (WardrobeSeason)EdS.Data.Story.WorldCalendar.SeasonIndexOf(World.Zone.Time.Day);
+
+        /// <summary>Sous-lot V2.10 : une fête bat son plein (les villageois sortent leurs beaux habits).</summary>
+        public bool Festive => World.Festival != null;
+
         /// <summary>Sous-lot V2.10 : saison et jour de la saison (« automne, jour 8 de la saison »).</summary>
         public string CalendarText => string.Format(CultureInfo.InvariantCulture, Text("text.ui.calendar"), Text("text.ui.season." + World.Season),
             EdS.Data.Story.WorldCalendar.DayOfSeason(World.Zone.Time.Day) + 1);
