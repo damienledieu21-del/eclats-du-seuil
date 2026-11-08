@@ -303,3 +303,21 @@ Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Ani
 | 18.17 | « minuit », au nord-est de la forêt | **L'ours** rôde (signe : des branches cassées) ; griffe, charge annoncée, il se dresse et retombe (cercle annoncé) ; certaines nuits, **le vieux Brunot** (grondement), énorme, qui **rugit** | [ ] | |
 | 18.18 | Après Croc-Gris, niveau 14 : parler à Gaspard | Il propose « Le vieux Brunot » (sa balafre, ses cicatrices) ; griffures dans la forêt, Brunot abattu, retour : la **cape du vieux Brunot** | [ ] | |
 | 18.19 | Ton avis : les visages, la force des ours, la quête de Brunot | — | [ ] | |
+
+## 19. Marchands vivants et fêtes du bourg (V2.10)
+
+Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des fêtes** avancent la partie (hors du mode Jeu) au prochain jour de marché (8 h), à la foire de printemps (9 h), à la fête des moissons (10 h 30), à la veillée de l'Aube (19 h), ou au lendemain à 9 h (le stock se regagne). Valeurs provisoires : [MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 19.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
+| 19.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
+| 19.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
+| 19.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
+| 19.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
+| 19.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
+| 19.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
+| 19.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
+| 19.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
+| 19.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
+| 19.11 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |

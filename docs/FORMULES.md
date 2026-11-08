@@ -137,6 +137,20 @@ Décision de Damien : effet **immédiat** des bonus. Le bonus d'équipement du c
 
 **Loup blanc** : **35 % par nuit** (gardé). Une nuit revient toutes les 3 heures de jeu (journée de 3 heures, sujet 32) : le loup blanc apparaît en moyenne une fois toutes les 8 à 9 heures de jeu, rare sur les plus de 5 heures des Vallons ; une quête, l'épreuve E ou un contrat en cours le font venir à coup sûr.
 
+## Économie vivante (sous-lot V2.10)
+
+Valeurs provisoires ([MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210)). Tout est en entiers, vérifié (`checked`), recalculé du jour du monde `d` et de la ligne de stock sauvegardée (`bought`, `resold`, `day`).
+
+- **Regain par jour** d'un stock de `n` unités au rythme `r` % : `g(n) = max(1, ⌈n × r / 100⌉)`.
+- **Ce qui manque encore** au jour `d` : `max(0, bought − g(plein) × min(d − day, 999))` ; **vitrine** : `max(0, resold − g(resold) × min(d − day, 999))`.
+- **Stock plein du jour** : `⌊plein × s / 100⌋`, `s` le plus petit `stockPercent` des contrecoups en cours (100 sans contrecoup).
+- **En vente** : `max(0, plein du jour − manque) + vitrine` ; un achat prend d'abord dans la vitrine.
+- **Pour cent du marché** : produit des règles de saison et de temps qui touchent l'objet et des `pricePercent` des contrecoups en cours (chaque étape arrondie vers le bas, au moins 1), borné à [50, 300].
+- **Prix d'achat** : `max(valeur, R(R(prix, marché), réputation))`, `R(p, x) = max(1, ⌊(p × x + 50) / 100⌋)` (arrondi au plus proche, celui de V2.7) ; un objet revendu sans offre part de `max(valeur, ⌊valeur × resale / 100⌋)`.
+- **Prix de vente** : inchangé (V2.7 : jamais au-dessus de la valeur). D'où : acheter puis revendre ne rapporte jamais rien.
+
+Exemples (testés) : potion de soin de l'herboriste (60, valeur 40) : 66 l'hiver, 78 après le pillage du hameau (stock 9 sur 30), 54 le lendemain d'un hameau défendu ; herbe de l'Aube (22, valeur 15) : 18 l'été, 24 l'automne.
+
 ## Exemple vérifiable (test `Exemple_1_coup_critique_physique_detaille`)
 
 Bastion Force 50 + arme +40, compétence ×1,2, bonus compétence +20 %, talent +10 % −5 %, altération +10 %, coup critique, cible armure 500 :

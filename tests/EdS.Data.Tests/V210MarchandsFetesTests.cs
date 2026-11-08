@@ -188,6 +188,16 @@ public class V210MarchandsFetesTests
         Assert.Equal(festival, Story.Value.FestivalAt(day, minute)?.Id);
 
     [Fact]
+    public void L_essai_des_fetes_avance_jusqu_au_bon_jour()
+    {
+        var clock = new WorldClock(50);
+        long? tick = EdS.Runtime.DayTrial.NextDayAt(clock, TickAt(1, 9 * 60), EdS.Runtime.DayTrial.SeasonDay(2, 7), 10 * 60 + 30);
+        Assert.Equal(new WorldTime(63, 10 * 60 + 30), clock.At(tick!.Value));
+        Assert.Equal(new WorldTime(12, 8 * 60), clock.At(EdS.Runtime.DayTrial.NextDayAt(clock, TickAt(5, 9 * 60), EdS.Runtime.DayTrial.Weekday(5), 8 * 60)!.Value));
+        Assert.Null(EdS.Runtime.DayTrial.NextDayAt(clock, 0, _ => false, 0));
+    }
+
+    [Fact]
     public void Le_colporteur_ne_vient_qu_aux_fetes()
     {
         Npc anseau = Story.Value.Npc("npc.colporteur");
