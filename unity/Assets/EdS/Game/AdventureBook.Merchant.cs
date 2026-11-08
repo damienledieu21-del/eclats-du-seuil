@@ -157,8 +157,8 @@ namespace EdS.Game
                 row.Name.Color = RarityColor(item.Rarity);
                 // Sous-lot V1.7 : une offre de la réserve de la guilde réservée à un rang plus haut le dit à la place du prix.
                 bool rank = o.Refusal == TradeRefusal.RankTooLow && o.Rank != null;
-                row.Price.Value = rank ? string.Format(a.Text("text.ui.shop.rank"), o.Rank) : o.PriceText;
-                row.Price.Color = o.Refusal == TradeRefusal.NotEnoughMoney || rank ? UiKit.Danger : UiKit.Dawn;
+                row.Price.Value = rank ? string.Format(a.Text("text.ui.shop.rank"), o.Rank) : o.StockText != null ? o.PriceText + " · " + o.StockText : o.PriceText;   // sous-lot V2.10 : stock restant
+                row.Price.Color = o.Refusal == TradeRefusal.NotEnoughMoney || o.Refusal == TradeRefusal.OutOfStock || rank ? UiKit.Danger : UiKit.Dawn;
                 row.Buy.Text.Value = a.Text("text.ui.shop.buy");
                 row.Buy.Enable(o.Refusal == TradeRefusal.None);
             }

@@ -424,6 +424,9 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9.2 : au bord du lac (lieu « lac… »), qui reste aussi une campagne.</summary>
         Lake = 64,
+
+        /// <summary>Sous-lot V2.10 : une fête du bourg bat son plein (la rumeur, le marché et la taverne montent dehors).</summary>
+        Festival = 128,
     }
 
     /// <summary>
@@ -1384,6 +1387,14 @@ namespace EdS.Runtime
             rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
             bool town = (places & AmbiencePlace.Town) != 0;
             double Window(double from, double to, double fade) => Math.Max(0, Math.Min(1, Math.Min((h - from) / fade, (to - h) / fade)));
+            // Sous-lot V2.10 : jour de fête au bourg : la foule du marché, la rumeur et les chants de la taverne s'entendent toute la fête.
+            if (town && !indoors && (places & AmbiencePlace.Festival) != 0)
+                switch (ambience)
+                {
+                    case StyleAmbience.Market: return calm * (1 - 0.4 * rain);
+                    case StyleAmbience.Village: return 0.8 * calm * (1 - 0.3 * rain);
+                    case StyleAmbience.Tavern: return 0.5 * calm;
+                }
             switch (ambience)
             {
                 case StyleAmbience.Tavern:

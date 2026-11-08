@@ -1581,6 +1581,25 @@ namespace EdS.Runtime
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();
 
+        /// <summary>Sous-lot V2.10 : saison et jour de la saison (« automne, jour 8 de la saison »).</summary>
+        public string CalendarText => string.Format(CultureInfo.InvariantCulture, Text("text.ui.calendar"), Text("text.ui.season." + World.Season),
+            EdS.Data.Story.WorldCalendar.DayOfSeason(World.Zone.Time.Day) + 1);
+
+        /// <summary>
+        /// Sous-lot V2.10 : la fête pour l'affichage : en cours (« Fête au bourg : la fête des moissons. »), sinon celle du jour et ses heures,
+        /// sinon null.
+        /// </summary>
+        public string? FestivalText
+        {
+            get
+            {
+                if (World.Festival is EdS.Data.Story.Festival now) return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.now"), Text(now.Name));
+                if (!(World.FestivalToday is EdS.Data.Story.Festival today) || World.Zone.Time.Minute >= today.To) return null;
+                string Hour(int m) => $"{m / 60:00} h {m % 60:00}";
+                return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.today"), Text(today.Name), Hour(today.From), Hour(today.To));
+            }
+        }
+
         /// <summary>Essai réaliste 7 : portée où le Gardien vivant donne sa musique (mètres).</summary>
         public static readonly Fixed BossMusicRange = Fixed.FromInt(25);
 
@@ -1646,6 +1665,7 @@ namespace EdS.Runtime
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
             double minute = WorldMinute();
+            if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
             return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
                 places, minute, forge);
         }

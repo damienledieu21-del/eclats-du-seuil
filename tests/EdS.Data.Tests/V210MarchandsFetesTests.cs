@@ -390,6 +390,18 @@ public class V210MarchandsFetesTests
         Assert.True(done > 300, done.ToString());
     }
 
+    [Fact]
+    public void Jour_de_fete_la_foule_du_marche_s_entend_toute_la_fete()
+    {
+        // 20 h : le marché s'est tu d'ordinaire ; un jour de fête, la foule, la rumeur et la taverne s'entendent sur la place.
+        double Volume(EdS.Runtime.StyleAmbience a, EdS.Runtime.AmbiencePlace p) => EdS.Runtime.StyleRules.PlaceVolume(a, p, 20 * 60, double.PositiveInfinity, false, false, 0, 0);
+        EdS.Runtime.AmbiencePlace town = EdS.Runtime.AmbiencePlace.Town, fete = town | EdS.Runtime.AmbiencePlace.Festival;
+        Assert.Equal(0, Volume(EdS.Runtime.StyleAmbience.Market, town));
+        Assert.Equal((1.0, 0.8, 0.5), (Volume(EdS.Runtime.StyleAmbience.Market, fete), Volume(EdS.Runtime.StyleAmbience.Village, fete), Volume(EdS.Runtime.StyleAmbience.Tavern, fete)));
+        // Hors du bourg, rien.
+        Assert.Equal(0, Volume(EdS.Runtime.StyleAmbience.Market, EdS.Runtime.AmbiencePlace.Festival));
+    }
+
     // --- Sauvegarde v16 --------------------------------------------------------------------------------------------------
 
     [Fact]
