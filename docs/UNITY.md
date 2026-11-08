@@ -811,7 +811,7 @@ Conversion des huit GLB (Claude, Blender 5.2 en ligne de commande, même méthod
 |---|---|
 | Cerf à bois | élan de WildMesh → cerf élaphe de Suiteofart → **cerf « cel shading » de WildMesh** (dessin plus franc, 55 animations) → Stag de Quaternius |
 | Biche | **biche de WildMesh** (attente, marche, trot, course, brouter, coup reçu, mort, couchée) → faon d'Assets_Animated → Deer de Quaternius |
-| Vache | **vache de nataliekirk** → vache de rukh3d → Cow (puis Bull) de Quaternius (animés) → vache de la ferme de Quaternius |
+| Vache | **vache de nataliekirk** → vache de rukh3d → Cow de Quaternius (animée) → vache de la ferme de Quaternius → Bull de Quaternius (ordre réel de la préparation, relevé par le test du vérificateur V2.9.3) |
 | Chien | **Shar Pei d'artsiom** (attente, assis, marche) → chien de quander → Husky, Shiba Inu de Quaternius → Pug de la ferme |
 | Cheval | cheval de henry_7 → Horse de Quaternius → cheval de la ferme |
 | **Âne** (nouveau) | âne de WildMesh (117 animations, 11 gardées) → Donkey de Quaternius |
@@ -832,8 +832,25 @@ Le cochon rose de la ferme n'est jamais pris pour un sanglier. **Basse-cour** (d
 
 Limites : rien n'a été vu dans Unity (compilation contre les bouchons de l'API seulement) ; les FBX ont été relus sous Blender, pas dans Unity ; **la reconnaissance Humanoid du squelette des Universal Base Characters par Unity n'est pas vérifiée** (noms d'os du mannequin d'Unreal, que Unity reconnaît d'ordinaire ; sinon la fenêtre le dit) ; les vêtements sont peints sur un corps musclé de super-héros : de près, ils font **collants** (pas de plis, pas de jupe qui flotte) ; **décision de Damien du 8 novembre 2026** : un pack de vrais vêtements libres sera cherché plus tard (pas dans ce sous-lot) ; les gardes n'ont ni casque ni arme en main ; le coq ne marche pas avec ses pattes ; aucun braiment d'âne n'est déposé. Proportions des villageois (environ une femme sur deux chez les paysans, une peau sombre sur cinq) **gardées par Damien le 8 novembre 2026**.
 
+### Vérifier l'essai (sous-lot V2.9.3)
+
+But : savoir **en un clic** si tout est prêt. Menu **Éclats du Seuil → Vérifier l'essai** (aussi lancé tout seul au début de **Préparer et lancer l'essai**, puis refait après la préparation). Il ne change rien au projet : il regarde et écrit un rapport, dans une fenêtre (« Vérification de l'essai », boutons « Relancer la vérification » et « Ouvrir le fichier du rapport »), dans la Console et dans `unity/Assets/EdS/VERIFICATION_ESSAI.md` (non suivi par git).
+
+**Ce qu'il regarde** :
+
+- **Unity et rendu** : la version de Unity (comparée à `ProjectSettings/ProjectVersion.txt`, même série attendue), le rendu URP actif, l'image opaque de la scène (distorsion des failles, eau), les shaders du jeu (`EdS/Echo`, `EdS/Faille`, `EdS/Eau`, `EdS/Herbe`, `EdS/Feuillage`, `EdS/Particule`, `EdS/Annonce` : trouvés et pris en charge), les ressources de TextMeshPro ;
+- **projet** : la compilation des scripts, le paquet `com.eclats.core` et ses sept assemblées, la scène de démarrage et sa place en tête des réglages de build, les **données JSON** (chargées par le jeu lui-même, `AdventureSession.Load`, son validateur, sans lire ni écrire de sauvegarde), le dossier `Assets/Style` et le catalogue de l'essai ;
+- **chaque ressource attendue** : le meilleur modèle par bête et ses replis (le héros, les quinze bêtes des tableaux ci-dessus), avec le contrôle de l'import (animations « Legacy » réglées par la préparation, animations présentes, taille plausible) ; les corps humains (deux corps, deux bibliothèques d'animations, import Humanoid et **avatar valable**, animations renommées, quatre peaux, cinq coiffures et la barbe) ; les 40 bruitages, 8 musiques et 15 ambiances ; le ciel, les sols, les chemins, les champs et les matières des bâtiments.
+
+**Le résumé** (en haut de la fenêtre et du fichier) : **✅ prêt** ; **⚠️ prêt avec replis** (l'essai se lance ; la liste dit ce qui prend un repli : formes simples, son fait par le code, fichier pas encore préparé…) ; **❌ bloquant** (une phrase simple par problème : quoi faire). Chaque ligne orange donne **le nom du fichier et le dossier exact** où le déposer (le meilleur d'abord) ; un fichier rangé dans un autre sous-dossier de `Assets/Style` compte quand même (seul son nom est comparé). Dans la fenêtre, les symboles deviennent « OK », « REPLI », « BLOQUANT » en couleur. **Bloquant** : rendu URP absent, scripts en erreur, paquet introuvable ou non compilé, données refusées, dossier `Assets/Style` absent ; tout le reste a un repli. Si la vérification du lancement trouve un problème bloquant, Unity demande « Lancer quand même ? ».
+
+**Une seule liste** : les ressources attendues sont dans `src/EdS.Runtime/EssaiCheck.cs` (`EssaiManifest`), reconnues par les mêmes règles que la préparation (`StyleRules.Candidates`, `PickSound`, `MusicFiles`, `AmbienceFiles`, `HumanLooks`) ; la préparation y lit ses listes de sons et les noms des corps. Le test `V293VerificationTests` lit les scripts : chaque case cherchée par `EdsStyle`, chaque shader cherché par le jeu, chaque coiffure prise par `EdsHumans` doit être dans la liste, et les fichiers de chaque bête doivent sortir dans l'ordre où la préparation les choisit.
+
+Limites : rien n'a été vu dans Unity (compilation contre les bouchons de l'API seulement) ; la taille d'un modèle est lue sur ses maillages sans le poser dans la scène (approximative : seule une échelle cassée, nulle ou de plus de 50 m, est signalée) ; le vérificateur ne compile pas les shaders lui-même (il dit seulement si Unity les trouve et les prend en charge) ; les personnages de Mixamo des PNJ (dossiers par personnage) ne sont pas listés un à un ; les noms exacts des sons ne sont pas imposés (le rapport donne le mot que le nom doit contenir).
+
 ## 8. En cas de problème
 
+- **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
 - **Objets roses** : le rendu URP n'est pas configuré. Menu **Éclats du Seuil → Configurer le rendu URP**, puis relancer Play.
 - **Cadre rouge « Impossible de charger le jeu »** : le dossier `unity` a été déplacé hors du dépôt. Il doit rester à côté de `data/` et `scenarios/`.
 - **Erreurs rouges dans la Console** : faire une capture de la Console et l'envoyer à Claude.
