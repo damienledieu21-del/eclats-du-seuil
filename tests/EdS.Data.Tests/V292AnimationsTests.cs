@@ -182,7 +182,7 @@ public sealed class V292AnimationsTests
         Assert.Null(HumanLooks.WorkClip(clips, HumanOutfit.Guard, 0));
         // Boucles : attentes, marches, travaux ; pas les gestes.
         foreach ((string name, bool loop) in named)
-            Assert.Equal(loop, name.StartsWith("Idle") || name.StartsWith("Walk") || name.StartsWith("Talk") || name.StartsWith("Look") || name.StartsWith("Gather")
+            Assert.Equal(loop, name.StartsWith("Idle") || name.StartsWith("Walk") || name.StartsWith("Talk") || name.StartsWith("Look") || name.StartsWith("Lean") || name.StartsWith("Gather")
                 || name.StartsWith("Work") || name.StartsWith("Seated") || name == "Run" || name == "Sprint" || name == "Ready_Sword" || name == "Block_Shield");
     }
 

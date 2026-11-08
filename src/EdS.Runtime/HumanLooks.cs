@@ -76,10 +76,13 @@ namespace EdS.Runtime
     /// </summary>
     public static class HumanLooks
     {
-        /// <summary>Couleurs des cheveux (multipliées par la texture grise des coiffures) : noir, brun, châtain, roux, blond, gris.</summary>
+        /// <summary>
+        /// Couleurs des cheveux, multipliées par la texture grise des coiffures (gris moyen 0,56 : d'où des teintes claires) : noir, brun,
+        /// châtain, roux, blond, gris.
+        /// </summary>
         public static readonly (byte R, byte G, byte B)[] HairTones =
         {
-            (38, 30, 26), (82, 56, 38), (128, 88, 54), (160, 74, 34), (206, 170, 110), (176, 172, 166),
+            (48, 38, 32), (120, 82, 56), (176, 122, 78), (220, 104, 52), (255, 226, 150), (236, 232, 226),
         };
 
         /// <summary>
@@ -334,7 +337,7 @@ namespace EdS.Runtime
             ["treechoppingloop"] = ("Work_Chop", true),
             ["walkcarryloop"] = ("Walk_Carry", true),
             ["idlefoldarmsloop"] = ("Look_FoldArms", true),
-            ["idlerailloop"] = ("Look_Rail", true),
+            ["idlerailloop"] = ("Lean_Rail", true),   // accoudé à une rambarde : pas pris pour « regarder » (pas de rambarde)
             ["idlerailcall"] = ("Wave_Call", false),
             ["idlelanternloop"] = ("Idle_Lantern", true),
             ["idlenoloop"] = ("Talk_No", true),

@@ -377,21 +377,22 @@ namespace EdS.Game.Editor
                         float lum = (0.3f * src.r + 0.59f * src.g + 0.11f * src.b) / 255f;
                         Part part = _part[i];
                         float h = _height[i];
-                        // La tunique descend jusqu'à mi-cuisse ; les bottes montent au mollet ; la ceinture à la taille.
-                        if (part == Part.Legs && h > 0.40f) part = Part.Tunic;
-                        if (part == Part.Legs && h < 0.17f) part = Part.Boots;
+                        // La tunique descend jusqu'à mi-cuisse ; les bottes montent au mollet ; la ceinture à la taille (hauteurs mesurées sous
+                        // Blender sur les deux corps : bassin 0,53, taille 0,59, genou 0,30, cheville 0,05 de la hauteur).
+                        if (part == Part.Legs && h > 0.42f) part = Part.Tunic;
+                        if (part == Part.Legs && h < 0.18f) part = Part.Boots;
                         (byte R, byte G, byte B) cloth;
                         switch (part)
                         {
-                            case Part.Tunic: cloth = h > 0.515f && h < 0.545f && palette.Outfit != HumanOutfit.Clergy ? ((byte)52, (byte)38, (byte)28) : palette.Tunic; break;
+                            case Part.Tunic: cloth = h > 0.575f && h < 0.605f && palette.Outfit != HumanOutfit.Clergy ? ((byte)52, (byte)38, (byte)28) : palette.Tunic; break;
                             case Part.Legs: cloth = palette.Trousers; break;
                             case Part.Boots: cloth = palette.Boots; break;
                             default:
-                                pixels[i] = dark ? new Color32((byte)(src.r * 0.52f), (byte)(src.g * 0.44f), (byte)(src.b * 0.40f), 255) : new Color32(src.r, src.g, src.b, 255);
+                                pixels[i] = dark ? new Color32((byte)(src.r * 0.62f), (byte)(src.g * 0.50f), (byte)(src.b * 0.44f), 255) : new Color32(src.r, src.g, src.b, 255);
                                 continue;
                         }
                         // Ombre douce d'après le corps peint (plis, creux), grain de tissu stable.
-                        float shade = Mathf.Clamp(0.55f + 0.75f * lum, 0.72f, 1.12f);
+                        float shade = Mathf.Clamp(0.78f + 0.4f * lum, 0.86f, 1.06f);
                         float grain = 0.96f + 0.08f * (((x * 73856093) ^ (y * 19349663)) & 255) / 255f;
                         float k = shade * grain;
                         pixels[i] = new Color32((byte)Mathf.Clamp(cloth.R * k, 0, 255), (byte)Mathf.Clamp(cloth.G * k, 0, 255), (byte)Mathf.Clamp(cloth.B * k, 0, 255), 255);
