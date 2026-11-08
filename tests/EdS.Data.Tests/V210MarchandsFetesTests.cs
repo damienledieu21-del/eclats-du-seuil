@@ -516,6 +516,55 @@ public class V210MarchandsFetesTests
         Assert.Equal(EdS.Runtime.StyleMusic.Village, EdS.Runtime.StyleRules.MusicFallback(EdS.Runtime.StyleMusic.Dance));
     }
 
+    // --- Revue Codex de la PR #120 (tour 2) ------------------------------------------------------------------------------
+
+    [Fact]
+    public void Trente_deux_regles_a_300_pour_cent_ne_debordent_jamais()
+    {
+        JsonObject root = MerchantsJson();
+        var rules = new JsonArray();
+        for (int i = 0; i < MerchantValidator.MaxRules; i++)
+            rules.Add(new JsonObject { ["season"] = "spring", ["items"] = new JsonArray(Potion), ["percent"] = MerchantValidator.MaxPercent });
+        root["data"]!["prices"] = rules;
+        MerchantsLoadResult read = ReadMerchants(root);
+        Assert.True(read.IsValid, read.Report.ToString());
+        WorldSession w = Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, read.Book);
+        Assert.Equal(MerchantValidator.MaxPercent, w.MarketPercent(Herboriste, Potion));
+        Assert.Equal(180L, w.Stock(Herboriste).Single(o => o.Item == Potion).Price);   // 60 × 300 %
+        Assert.Equal(TradeRefusal.None, w.Buy(Herboriste, Potion));
+    }
+
+    [Fact]
+    public void Un_identifiant_de_marchand_trop_long_pour_la_sauvegarde_est_refuse()
+    {
+        JsonObject root = MerchantsJson();
+        string id = "merchant." + new string('a', 120);   // valide pour un marchand (200 caractères au plus), trop long pour « marchand/objet »
+        Assert.True(MerchantValidator.IsMerchantId(id));
+        root["data"]!["merchants"]![1]!["id"] = id;
+        Assert.Contains(ReadMerchants(root).Report.Errors, e => e.Path == "$.data.merchants[1].id" && e.Code == ValidationCode.InvalidValue);
+        // Le plus long identifiant permis tient avec chaque objet valué.
+        Assert.All(ShippedMerchants.Merchants, m => Assert.All(ShippedMerchants.Values.Keys, item => Assert.True(SavedStock.IsKey(SavedStock.KeyOf(m.Id, item)))));
+    }
+
+    [Fact]
+    public void Un_objet_revendu_garde_le_rang_de_guilde_de_son_offre()
+    {
+        // L'herboriste réserve ses éclats de Seuil au rang F (offre tirée) : revendus en vitrine un jour où ils ne sont pas tirés, ils le restent.
+        JsonObject root = MerchantsJson();
+        JsonArray offers = root["data"]!["merchants"]![1]!["offers"]!.AsArray();
+        offers.Single(o => (string?)o!["item"] == "item.eclat_de_seuil")!["rank"] = "f";
+        MerchantBook book = ReadMerchants(root).Book!;
+        var market = new Market(book);
+        long day = Enumerable.Range(1, 30).First(d => market.Stock(Herboriste, d).All(o => o.Item != "item.eclat_de_seuil"));
+        WorldSession w = Open(-65.2, -6.4, Hero(100_000, new ItemStack("item.eclat_de_seuil", 2)), day, 9 * 60, book);
+        Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, "item.eclat_de_seuil", 2));
+        MerchantOffer resold = w.Stock(Herboriste).Single(o => o.Item == "item.eclat_de_seuil");
+        Assert.Equal((true, "f"), (resold.Resold, resold.Rank));
+        string before = Snapshot(w);
+        Assert.Equal(TradeRefusal.RankTooLow, w.Buy(Herboriste, "item.eclat_de_seuil"));
+        Assert.Equal(before, Snapshot(w));
+    }
+
     // --- Sauvegarde v16 --------------------------------------------------------------------------------------------------
 
     [Fact]

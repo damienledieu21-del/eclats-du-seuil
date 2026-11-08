@@ -170,7 +170,7 @@ namespace EdS.Data.Merchants
         public MerchantOffer WithLeft(int? left) => left == Left ? this : new MerchantOffer(Item, Price, Always, Rank, Stock, left, Resold);
 
         /// <summary>Sous-lot V2.10 : offre d'un objet revendu par le joueur (prix de revente, <paramref name="left"/> unités).</summary>
-        public static MerchantOffer ResoldOffer(string item, long price, int left) => new MerchantOffer(item, price, false, null, null, left, true);
+        public static MerchantOffer ResoldOffer(string item, long price, int left, string? rank = null) => new MerchantOffer(item, price, false, rank, null, left, true);
     }
 
     /// <summary>
@@ -604,6 +604,13 @@ namespace EdS.Data.Merchants
             if (m.Id is null) { Missing(r, p + ".id", "identifiant « merchant.… »"); ok = false; }
             else if (!IsMerchantId(m.Id)) { r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {m.Id} » mal formé : « merchant.… »."); ok = false; }
             else if (!merchantIds.Add(m.Id)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"marchand « {m.Id} » déjà décrit."); ok = false; }
+            // Revue Codex de la PR #120 : la ligne de stock « marchand/objet » (sauvegarde v16) doit tenir pour chaque objet valué.
+            else if (values.Keys.Any(item => !EdS.Data.Saves.SavedStock.IsKey(EdS.Data.Saves.SavedStock.KeyOf(m.Id, item))))
+            {
+                r.Add(p + ".id", ValidationCode.InvalidValue,
+                    $"identifiant « {m.Id} » trop long : « {m.Id}/item.… » dépasserait {EdS.Data.Saves.SavedStock.MaxKeyLength} caractères dans une sauvegarde.");
+                ok = false;
+            }
             if (m.Npc is null) { Missing(r, p + ".npc", "PNJ de l'histoire"); ok = false; }
             else if (!story.HasNpc(m.Npc)) { r.Add(p + ".npc", ValidationCode.UnknownReference, $"PNJ inconnu « {m.Npc} »."); ok = false; }
             else if (!npcs.Add(m.Npc)) { r.Add(p + ".npc", ValidationCode.DuplicateId, $"PNJ « {m.Npc} » tient déjà une autre boutique."); ok = false; }

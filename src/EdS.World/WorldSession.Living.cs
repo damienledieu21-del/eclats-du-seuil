@@ -79,16 +79,23 @@ namespace EdS.World
         {
             MerchantBook book = NeedMarket().Book;
             if (book.Prices.Count == 0 && book.Shocks.Count == 0) return 100;
+            // Revue Codex de la PR #120 : chaque étape est bornée (au plus MaxStep, très au-dessus du plafond final) : 32 règles à 300 % ne
+            // dépassent jamais la capacité d'un long, et le résultat reste borné à [MinPercent, MaxPercent] comme avant.
             long percent = 100;
             string season = Season;
             WeatherState weather = Weather;
             foreach (PriceRule rule in book.Prices)
                 if (rule.Touches(merchant, item) && (rule.Season is null || rule.Season == season) && (rule.Weather is null || WorldWeather.Matches(weather.Kind, rule.Weather)))
-                    percent = Math.Max(1, checked(percent * rule.Percent) / 100);
+                    percent = Step(percent, rule.Percent);
             foreach (MarketShock shock in book.Shocks)
-                if (shock.Touches(merchant, item) && ShockActive(shock)) percent = Math.Max(1, checked(percent * shock.PricePercent) / 100);
+                if (shock.Touches(merchant, item) && ShockActive(shock)) percent = Step(percent, shock.PricePercent);
             return (int)Math.Max(MerchantValidator.MinPercent, Math.Min(MerchantValidator.MaxPercent, percent));
         }
+
+        /// <summary>Borne d'une étape du produit des pour cent (10⁹ × 300 tient dans un long).</summary>
+        private const long MaxStep = 1_000_000_000;
+
+        private static long Step(long percent, int by) => Math.Min(MaxStep, Math.Max(1, checked(percent * by) / 100));
 
         /// <summary>
         /// Prix d'achat d'une unité : prix de l'offre, puis la saison, le temps et les contrecoups (<see cref="MarketPercent"/>), puis la
@@ -134,7 +141,8 @@ namespace EdS.World
                 (_, int resold) = LineToday(line, offer?.Stock ?? 0, m.Restock);
                 if (resold <= 0 || !_items.TryGetItem(line.Item, out _)) continue;
                 long price = offer?.Price ?? Math.Max(value, checked(value * m.Resale) / 100);
-                list.Add(MerchantOffer.ResoldOffer(line.Item, BuyPrice(merchant, line.Item, price), resold));
+                // Revue Codex de la PR #120 : un objet revendu garde le rang de guilde de l'offre d'origine (la réserve de la guilde).
+                list.Add(MerchantOffer.ResoldOffer(line.Item, BuyPrice(merchant, line.Item, price), resold, offer?.Rank));
             }
             return list.AsReadOnly();
         }
@@ -146,6 +154,7 @@ namespace EdS.World
         private bool SetStockLine(string merchant, string item, int missing, int resold)
         {
             string key = SavedStock.KeyOf(merchant, item);
+            if (!SavedStock.IsKey(key)) return false;   // revue Codex de la PR #120 : une clé hors format n'est jamais écrite (refusé, rien ne change)
             bool exists = _character.Stock.Any(x => x.Id == key);
             var rest = _character.Stock.Where(x => x.Id != key);
             if (missing == 0 && resold == 0)
@@ -185,6 +194,8 @@ namespace EdS.World
             if (!(Left(merchant, item) is int left)) return true;
             if (left < count) return false;
             string key = SavedStock.KeyOf(merchant, item);
+            // Revue Codex de la PR #120 : la ligne doit pouvoir s'écrire (clé au format des sauvegardes), vérifié avant toute mutation.
+            if (!SavedStock.IsKey(key)) return false;
             return _character.Stock.Any(x => x.Id == key) || _character.Stock.Count < SavedStock.MaxEntries;
         }
 
