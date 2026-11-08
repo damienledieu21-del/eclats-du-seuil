@@ -276,10 +276,72 @@ public class V27ReponsesTests
         WorldSession idle = Play(Zone(-2, -9.5), With(Hero(), hated));
         Assert.Equal(DialogueRefusal.Shunned, idle.Talk("npc.capitaine", out _));
         Assert.False(idle.Narrative!.LastTalkCold);
-        // Chaque PNJ qui donne une étape de quête principale a une entrée qui la nomme (sinon la règle ne le laisserait pas parler).
-        foreach (Quest q in Story.Value.Quests.Where(q => q.Category == QuestCategory.Main))
-            foreach (QuestStep s in q.Steps.Where(s => s.Objective.Kind is ObjectiveKind.Talk or ObjectiveKind.Deliver))
-                Assert.NotNull(s.Objective.Kind == ObjectiveKind.Talk ? s.Objective.Id : s.Objective.Npc);
+    }
+
+    /// <summary>Où se tenir, à 8 h, près de chaque PNJ de la garde (à 1,5 m de sa place, hors de tout obstacle).</summary>
+    private static readonly IReadOnlyDictionary<string, (double X, double Z)> GuardSpots = new Dictionary<string, (double X, double Z)>
+    {
+        ["npc.capitaine"] = (-2, -9.5), ["npc.archer_garde"] = (1, -1.5), ["npc.thibaut"] = (118, 54.5),
+    };
+
+    /// <summary>
+    /// Remarque de Codex (tour 4) : chaque étape de quête principale qui passe par un PNJ d'une faction qui ne parle plus (la garde) : parler
+    /// à lui, lui livrer, ou une entrée de son dialogue à cette étape (un choix à faire). Tirées des données, pas de la règle testée.
+    /// </summary>
+    public static IEnumerable<object[]> MainStepsWithShunningNpcs()
+    {
+        StoryBook book = Book(Zone());
+        foreach (Quest q in book.Quests.Where(q => q.Category == QuestCategory.Main))
+            foreach (QuestStep s in q.Steps)
+                foreach (Npc n in book.Npcs.Where(n => n.Faction != null && book.Reputation.Shun.Contains(n.Faction)))
+                {
+                    Objective o = s.Objective;
+                    bool direct = (o.Kind == ObjectiveKind.Talk && o.Id == n.Id) || (o.Kind == ObjectiveKind.Deliver && o.Npc == n.Id);
+                    bool entry = book.Dialogue(n.Dialogue).Entries.Any(e => e.Conditions.Any(c => c.Kind == ConditionKind.QuestAt && c.Id == q.Id && c.Step == s.Id));
+                    if (direct || entry) yield return new object[] { q.Id, s.Id, n.Id };
+                }
+    }
+
+    [Fact]
+    public void Les_etapes_principales_passent_par_la_garde()
+    {
+        // Le chapitre 4 passe par Thibaut (le choix du sort de Mâchefer, la lettre de Rosalie) : la règle a bien des cas à couvrir.
+        List<object[]> cases = MainStepsWithShunningNpcs().ToList();
+        Assert.Contains(cases, c => (string)c[0] == "quest.tour_et_camp" && (string)c[1] == "choix" && (string)c[2] == "npc.thibaut");
+        Assert.Contains(cases, c => (string)c[0] == "quest.tour_et_camp" && (string)c[1] == "lettre" && (string)c[2] == "npc.thibaut");
+    }
+
+    [Theory]
+    [MemberData(nameof(MainStepsWithShunningNpcs))]
+    public void Haie_la_garde_la_quete_principale_avance_quand_meme(string quest, string step, string npc)
+    {
+        StoryBook book = Story.Value;
+        QuestStep s = book.Quest(quest).Steps.Single(x => x.Id == step);
+        Objective o = s.Objective;
+        // La garde hait le personnage ; les objets à livrer sont dans le sac.
+        var items = o.Kind == ObjectiveKind.Deliver ? new[] { new ItemStack(o.Id, (int)o.Value) } : Array.Empty<ItemStack>();
+        SavedCharacter hero = Hero(0, items).WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { [quest] = new QuestProgress(step) },
+            reputation: new Dictionary<string, int> { ["guard"] = Reputations.Min }));
+        (double x, double z) = GuardSpots[npc];
+        WorldSession w = Open(x, z, hero);
+        Assert.Equal("hated", w.Narrative!.Standing("guard"));
+        // Il parle (froidement) : le dialogue s'ouvre.
+        Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? view));
+        Assert.True(w.Narrative.LastTalkCold);
+        // Et la quête avance : livrer, parler, ou faire le choix qui remplit l'objectif.
+        if (o.Kind == ObjectiveKind.Deliver)
+        {
+            DialogueOption delivery = Assert.Single(view!.Options, d => d.Item == o.Id);
+            Assert.Equal(DialogueRefusal.None, w.Choose(delivery.Index, out _, out _));
+        }
+        else if (o.Kind == ObjectiveKind.Fact)
+        {
+            DialogueOption choice = view!.Options.First(d => d.Item is null
+                && w.Narrative.Book.Dialogue(w.Narrative.Book.Npc(npc).Dialogue).Node(view.Node).Choices.Any(c => c.Text == d.Text && c.Effects.Any(e => e.Kind == EffectKind.SetFact && e.Id == o.Id)));
+            Assert.Equal(DialogueRefusal.None, w.Choose(choice.Index, out _, out _));
+        }
+        for (int i = 0; i < 3; i++) w.Step();
+        Assert.NotEqual(step, w.Narrative.CurrentStep(quest)?.Id);
     }
 
     // --- Côté bandits : quêtes en plus et passage secret ---------------------------------------------------------------------
