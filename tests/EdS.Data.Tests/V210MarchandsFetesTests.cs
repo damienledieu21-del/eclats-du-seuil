@@ -505,8 +505,13 @@ public class V210MarchandsFetesTests
         Assert.Equal(EdS.Runtime.StyleMusic.Combat, Music(fete, fighting: true));
         Assert.Equal(EdS.Runtime.StyleMusic.Village, Music(EdS.Runtime.AmbiencePlace.Town));
         Assert.True(EdS.Runtime.StyleRules.IsFeast("festival.moissons") && EdS.Runtime.StyleRules.IsFeast("festival.foire") && !EdS.Runtime.StyleRules.IsFeast("festival.marche"));
-        foreach ((string path, EdS.Runtime.StyleMusic kind) in EdS.Runtime.StyleRules.MusicFiles)
-            Assert.Equal(kind, EdS.Runtime.StyleRules.MusicOf("Assets/" + path));
+        // Les fichiers déposés par Damien sont reconnus, et la vérification de l'essai les attend (EssaiManifest.Music).
+        Assert.Equal(new[] { "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_KingsFeast.ogg" },
+            EdS.Runtime.StyleRules.MusicFiles(new[] { "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_KingsFeast.ogg", "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_MinstrelDance.ogg" }, EdS.Runtime.StyleMusic.Feast));
+        Assert.Equal(new[] { "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_MinstrelDance.ogg" },
+            EdS.Runtime.StyleRules.MusicFiles(new[] { "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_KingsFeast.ogg", "Assets/Style/Music/OGA/eds_musique_OGA_RandomMind_MinstrelDance.ogg" }, EdS.Runtime.StyleMusic.Dance));
+        Assert.Contains(EdS.Runtime.EssaiManifest.Music, a => a.Music == EdS.Runtime.StyleMusic.Feast);
+        Assert.Contains(EdS.Runtime.EssaiManifest.Music, a => a.Music == EdS.Runtime.StyleMusic.Dance);
         Assert.Equal(EdS.Runtime.StyleMusic.Village, EdS.Runtime.StyleRules.MusicFallback(EdS.Runtime.StyleMusic.Feast));
         Assert.Equal(EdS.Runtime.StyleMusic.Village, EdS.Runtime.StyleRules.MusicFallback(EdS.Runtime.StyleMusic.Dance));
     }

@@ -1408,16 +1408,6 @@ namespace EdS.Runtime
             : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Feast || wanted == StyleMusic.Dance ? StyleMusic.Village   // sous-lot V2.10 : sans la musique de fête, celle du village
             : (StyleMusic?)null;
 
-        /// <summary>
-        /// Sous-lot V2.10 : musiques attendues (déposées à la main, CC0, OpenGameArt) : chemin sous <c>Assets</c> et genre ; liste partagée avec
-        /// la vérification de l'essai. Absentes : la musique du village (<see cref="MusicFallback"/>).
-        /// </summary>
-        public static IReadOnlyList<(string Path, StyleMusic Kind)> MusicFiles { get; } = new System.Collections.ObjectModel.ReadOnlyCollection<(string, StyleMusic)>(new[]
-        {
-            ("Style/Music/OGA/eds_musique_OGA_RandomMind_KingsFeast.ogg", StyleMusic.Feast),
-            ("Style/Music/OGA/eds_musique_OGA_RandomMind_MinstrelDance.ogg", StyleMusic.Dance),
-        });
-
         /// <summary>Sous-lot V2.10 : la fête est une grande fête (« King's Feast ») : la foire et les moissons ; les autres dansent (« Minstrel Dance »).</summary>
         public static bool IsFeast(string? festival) => festival == "festival.foire" || festival == "festival.moissons";
 

@@ -199,6 +199,9 @@ namespace EdS.Runtime
             new EssaiAudio("scènes de l'histoire (The Legend of Kvothe)", Root + "/Music/ScottBuckley", "musique du lieu", music: StyleMusic.Story),
             new EssaiAudio("bourg la nuit (Night Town)", Root + "/Music/OGA", "musique du village", music: StyleMusic.VillageNight),
             new EssaiAudio("auberge (The Old Tower Inn)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Inn),
+            // Sous-lot V2.10 : les musiques de fête de RandomMind (CC0), déposées par Damien dans Music/OGA.
+            new EssaiAudio("grandes fêtes, foire et moissons (King's Feast)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Feast),
+            new EssaiAudio("jour de marché et veillée (Minstrel Dance)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Dance),
         };
 
         /// <summary>Ambiances attendues (une par valeur de <see cref="StyleAmbience"/>).</summary>
