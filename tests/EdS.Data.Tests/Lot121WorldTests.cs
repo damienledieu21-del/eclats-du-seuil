@@ -69,7 +69,7 @@ public class Lot121WorldTests
             "loup_nuit1", "loup_nuit2", "loup_nuit3", "loup_nuit4", "loup_nuit5", "loup_nuit6", "loup_nuit7", "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4",
             // Sous-lot V2.4 : loups gris et échos de la brume, cerfs (aube et jour), lièvres (crépuscule et nuit).
             "loup_brume1", "loup_brume2", "loup_brume3", "loup_echo5", "loup_echo6", "cerf1", "cerf2", "cerf3", "cerf4", "cerf5", "cerf6",
-            "lievre1", "lievre2", "lievre3", "lievre4" },
+            "lievre1", "lievre2", "lievre3", "lievre4", "ours", "ourse", "vieux_brunot" },   // V2.9.2 : les ours
             setup.Combatants.Select(c => c.Id));   // sous-lot V1.6 : bandits et loup blanc ; V1.9.3 : bandits du hameau, du lac et des vergers ; V1.9.4 : le Grand Borgne
         // Sous-lot V2.4 : quatre équipes de créatures (la meute, les échos, le gibier, les bandits), en trêve sauf la meute et le gibier ;
         // aucune équipe de joueurs : ils entrent ensuite.

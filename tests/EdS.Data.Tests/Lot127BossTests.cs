@@ -170,7 +170,8 @@ public class Lot127BossTests
         // le Grand Borgne ; le plafond de l'essai passe de 36 à 38 pour garder la zone dedans ; sous-lot V2.1 : 48 créatures avec les bêtes de
         // la nuit, le plafond de l'essai passe à 49 ; sous-lot V2.4 : 63 créatures avec les bêtes de la brume, les cerfs et les lièvres, le
         // plafond de l'essai passe à 64).
-        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 64"), directory =>
+        // Sous-lot V2.9.2 : 66 créatures avec les deux ours et le vieux Brunot, le plafond de l'essai passe à 67.
+        CaM01Data.WithDirectory(CaM01Data.RulesWith("\"maxCombatants\": 128", "\"maxCombatants\": 67"), directory =>
         {
             ZoneLoadResult r = Load(data: GameDataLoader.Load(directory).Data!);
             Assert.Equal("$.data.boss.forms", First(r));

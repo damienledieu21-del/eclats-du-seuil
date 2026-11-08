@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1693,6 +1693,36 @@
           "maxHealth": 40
         },
         "named": true
+      },
+      {
+        "id": "item.peau_d_ours",
+        "name": "Peau d'ours",
+        "icon": "peau_de_loup",
+        "type": "material",
+        "rarity": "common",
+        "stack": 10
+      },
+      {
+        "id": "item.griffe_d_ours",
+        "name": "Griffe d'ours",
+        "icon": "defense_de_sanglier",
+        "type": "material",
+        "rarity": "rare",
+        "stack": 10
+      },
+      {
+        "id": "item.cape_du_vieux_brunot",
+        "name": "Cape du vieux Brunot",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "very_rare",
+        "slot": "cloak",
+        "requiredLevel": 14,
+        "bonus": {
+          "maxHealth": 90,
+          "armor": 50
+        },
+        "named": true
       }
     ],
     "loot": [
@@ -1853,6 +1883,36 @@
             "item": "item.talisman_du_seuil",
             "count": 1,
             "chancePercent": 10
+          }
+        ]
+      },
+      {
+        "id": "loot.ours",
+        "drops": [
+          {
+            "item": "item.peau_d_ours",
+            "count": 1,
+            "chancePercent": 80
+          },
+          {
+            "item": "item.griffe_d_ours",
+            "count": 1,
+            "chancePercent": 30
+          }
+        ]
+      },
+      {
+        "id": "loot.vieux_brunot",
+        "drops": [
+          {
+            "item": "item.peau_d_ours",
+            "count": 2,
+            "chancePercent": 100
+          },
+          {
+            "item": "item.griffe_d_ours",
+            "count": 2,
+            "chancePercent": 100
           }
         ]
       }

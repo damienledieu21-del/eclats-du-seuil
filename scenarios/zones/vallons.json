@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 17,
   "kind": "scenario",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -4556,6 +4556,214 @@
               3500
             ]
           }
+        }
+      },
+      {
+        "id": "ours",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 520,
+        "armor": 20,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 22,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          },
+          {
+            "id": "ecrasement",
+            "rawDamage": 36,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1500,
+            "radius": 3,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -16,
+          97
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false,
+          "wander": {
+            "style": "patrol",
+            "radius": 6,
+            "pace": 0.3,
+            "legMs": 9000,
+            "pauseMs": [
+              2000,
+              5000
+            ]
+          }
+        }
+      },
+      {
+        "id": "ourse",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 460,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -82,
+          72
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "vieux_brunot",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 1300,
+        "armor": 30,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 40,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2.5
+          },
+          {
+            "id": "ecrasement",
+            "rawDamage": 48,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1500,
+            "radius": 3.5,
+            "holdPosition": true
+          },
+          {
+            "id": "rugissement",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1800,
+            "radius": 5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -4,
+          96
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 1.3,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1.2,
+          "aggroRange": 10,
+          "pack": false
         }
       }
     ],

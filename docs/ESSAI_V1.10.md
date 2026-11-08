@@ -299,4 +299,7 @@ Avant l'essai : déposer les huit FBX convertis dans `Assets/Style/Sketchfab/Ani
 | 18.13 | La harde | Les biches sont celles de **WildMesh** (broutent, fuient, tombent à leur mort, couchées au repos) ; les cerfs à bois inchangés (l'élan) | [ ] | |
 | 18.14 | Bord du lac, sous la pluie, près de la rivière | Clapotis du **lac** ; **pluie** sur le jardin et le toit ; le **ruisseau** ; le **vent** dans la forêt | [ ] | |
 | 18.15 | Sur le Note8 | Image fluide au bourg à midi (un tiers des villageois), textures nettes de loin ; aucune bête ou personne figée en pose en T | [ ] | |
-| 18.16 | Ton avis : les tenues peintes (font-elles « collants » ?), les visages, le nombre de femmes et de peaux sombres, la place d'un ours dans les Vallons | — | [ ] | |
+| 18.16 | Forêt des Loups, le jour, à l'ouest | **L'ourse** et **deux oursons** (petits, assis ou couchés) ; à moins de 9 m d'elle, elle charge ; les oursons ne se combattent pas | [ ] | |
+| 18.17 | « minuit », au nord-est de la forêt | **L'ours** rôde (signe : des branches cassées) ; griffe, charge annoncée, il se dresse et retombe (cercle annoncé) ; certaines nuits, **le vieux Brunot** (grondement), énorme, qui **rugit** | [ ] | |
+| 18.18 | Après Croc-Gris, niveau 14 : parler à Gaspard | Il propose « Le vieux Brunot » (sa balafre, ses cicatrices) ; griffures dans la forêt, Brunot abattu, retour : la **cape du vieux Brunot** | [ ] | |
+| 18.19 | Ton avis : les visages, la force des ours, la quête de Brunot | — | [ ] | |

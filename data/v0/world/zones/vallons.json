@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 12,
   "kind": "zone",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -946,6 +946,45 @@
             "dusk",
             "night"
           ]
+        }
+      },
+      {
+        "creature": "ours",
+        "respawnMs": 600000,
+        "leashRange": 24,
+        "loot": "loot.ours",
+        "family": "ours",
+        "hours": {
+          "phases": [
+            "night"
+          ],
+          "sign": "text.zone.ours.signe"
+        }
+      },
+      {
+        "creature": "ourse",
+        "respawnMs": 900000,
+        "leashRange": 12,
+        "loot": "loot.ours",
+        "family": "ours",
+        "hours": {
+          "phases": [
+            "dawn",
+            "day",
+            "dusk"
+          ]
+        }
+      },
+      {
+        "creature": "vieux_brunot",
+        "level": 16,
+        "respawnMs": 3600000,
+        "leashRange": 16,
+        "loot": "loot.vieux_brunot",
+        "night": {
+          "chancePercent": 30,
+          "signMs": 20000,
+          "sign": "text.zone.vieux_brunot.signe"
         }
       }
     ],

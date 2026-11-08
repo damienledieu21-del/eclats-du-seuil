@@ -1818,8 +1818,8 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : cerfs (cerf à bois ou biche) et lièvres ont leur modèle ; sans lui, leurs formes simples (WildlifeLook).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id);
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return StyleSlot.Hare;
-            // Sous-lot V2.9.2 : un ours (aucun dans les Vallons pour l'instant) prendra l'ours de WildMesh.
-            if (key.StartsWith("ours", StringComparison.Ordinal)) return StyleSlot.Bear;
+            // Sous-lot V2.9.2 (décision de Damien du 8 novembre 2026) : les ours de la forêt des Loups et le vieux Brunot prennent l'ours de WildMesh.
+            if (key.StartsWith("ours", StringComparison.Ordinal) || key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return StyleSlot.Bear;
             return StyleSlot.Character;
         }
 
@@ -1835,6 +1835,16 @@ namespace EdS.Runtime
         }
 
         /// <summary>Sous-lot V2.9 : une bête habillée d'un modèle (loup, sanglier, cerf, biche, lièvre) : centrée sur son corps, voix 3D.</summary>
+        /// <summary>
+        /// Sous-lot V2.9.2 (décision de Damien du 8 novembre 2026) : oursons (décor, jamais des combattants : on ne les tue pas) posés près de
+        /// l'ourse <paramref name="id"/> ; 0 pour une autre bête.
+        /// </summary>
+        public static int Cubs(string id)
+        {
+            string key = Key(id ?? string.Empty);
+            return key.StartsWith("ourse", StringComparison.Ordinal) ? 2 : 0;
+        }
+
         public static bool IsBeast(StyleSlot slot) =>
             slot == StyleSlot.Wolf || slot == StyleSlot.Boar || slot == StyleSlot.Stag || slot == StyleSlot.Doe || slot == StyleSlot.Hare || slot == StyleSlot.Bear;
 
@@ -1861,7 +1871,11 @@ namespace EdS.Runtime
             // Sous-lot V2.9 : hauteur des modèles des bêtes paisibles (bois ou oreilles compris).
             if (key.StartsWith("cerf", StringComparison.Ordinal)) return DeerSlot(id) == StyleSlot.Stag ? 2.1 : 1.35;   // 2e vague : biches du modèle de faon
             if (key.StartsWith("lievre", StringComparison.Ordinal)) return 0.5;
-            if (key.StartsWith("ours", StringComparison.Ordinal)) return 1.6;   // sous-lot V2.9.2 : l'ours de WildMesh, tête comprise
+            // Sous-lot V2.9.2 : l'ours de WildMesh, tête comprise ; l'ourse un peu plus petite, le vieux Brunot « gros comme une charrette ».
+            if (key.StartsWith("vieuxbrunot", StringComparison.Ordinal)) return 2.2;
+            if (key.StartsWith("ourson", StringComparison.Ordinal)) return 0.75;
+            if (key.StartsWith("ourse", StringComparison.Ordinal)) return 1.45;
+            if (key.StartsWith("ours", StringComparison.Ordinal)) return 1.6;
             return 0.95;
         }
 

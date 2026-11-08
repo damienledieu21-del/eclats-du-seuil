@@ -360,4 +360,43 @@ public sealed class V292AnimationsTests
         Assert.True(HumanLooks.For("npc.herboriste_hameau", "paysan").Female); // Aubine
         Assert.True(HumanLooks.For("npc.epiciere", "paysan").Female);          // Bertille
     }
+
+    [Fact]
+    public void Les_ours_de_la_foret_des_Loups_et_le_vieux_Brunot()
+    {
+        // Décision de Damien du 8 novembre 2026 : l'ours rôde la nuit (le jour, il dort dans sa tanière), l'ourse et ses oursons (décor) le
+        // jour, le vieux Brunot (créature rare de la nuit, ou quand sa quête le demande) ; la quête de Gaspard, sa cape en récompense.
+        string root = Lot93UnityPackageTests.Root;
+        var zone = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "data", "v0", "world", "zones", "vallons.json")))!;
+        var populations = zone["data"]!["populations"]!.AsArray().ToDictionary(p => (string)p!["creature"]!, p => p!);
+        Assert.Equal("night", Assert.Single(populations["ours"]["hours"]!["phases"]!.AsArray())!.GetValue<string>());
+        Assert.Equal(new[] { "dawn", "day", "dusk" }, populations["ourse"]["hours"]!["phases"]!.AsArray().Select(x => x!.GetValue<string>()));
+        Assert.Equal(30, populations["vieux_brunot"]["night"]!["chancePercent"]!.GetValue<int>());
+        Assert.Equal(16, populations["vieux_brunot"]["level"]!.GetValue<int>());
+        var scenario = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "scenarios", "zones", "vallons.json")))!;
+        var bears = scenario["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("ours") || (string)c!["id"]! == "vieux_brunot")
+            .ToDictionary(c => (string)c!["id"]!, c => c!);
+        Assert.Equal(3, bears.Count);
+        Assert.All(bears.Values, b => Assert.Equal("meute", (string)b["team"]!));
+        Assert.True((int)bears["vieux_brunot"]["health"]! > 2 * (int)bears["ours"]["health"]!);   // légendaire
+        // Au fond des bois, au nord-est : loin de toutes les autres créatures (30 m au moins), pour ne pas changer leurs combats.
+        foreach (var other in scenario["data"]!["combatants"]!.AsArray().Where(c => !bears.ContainsKey((string)c!["id"]!)))
+            foreach (string id in new[] { "ours", "vieux_brunot" })
+            {
+                double dx = (double)bears[id]["position"]![0]! - (double)other!["position"]![0]!, dz = (double)bears[id]["position"]![1]! - (double)other["position"]![1]!;
+                Assert.True(Math.Sqrt(dx * dx + dz * dz) >= 29, id + " / " + (string)other["id"]!);
+            }
+        var story = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "data", "v0", "world", "story.json")))!;
+        var quest = story["data"]!["quests"]!.AsArray().Single(q => (string)q!["id"]! == "quest.le_vieux_brunot")!;
+        Assert.Equal("vieux_brunot", (string)quest["steps"]![1]!["objective"]!["id"]!);
+        Assert.Contains(quest["effects"]!.AsArray(), e => (string)e!["do"]! == "giveItem" && (string)e["id"]! == "item.cape_du_vieux_brunot");
+        var gaspard = story["data"]!["dialogues"]!.AsArray().Single(d => (string)d!["id"]! == "dialogue.gaspard")!;
+        Assert.True(gaspard["entries"]!.AsArray().Count <= 32 && gaspard["nodes"]!.AsArray().Count <= 32);
+        Assert.Equal("garde", (string)gaspard["entries"]!.AsArray()[^1]!["node"]!);   // la réplique de toujours reste la dernière
+        // Affichage : l'ours de WildMesh, à leur taille ; deux oursons près de l'ourse.
+        foreach (string id in new[] { "ours", "ourse", "vieux_brunot" }) Assert.Equal(StyleSlot.Bear, StyleRules.ForCombatant(id, false));
+        Assert.Equal((1.6, 1.45, 2.2), (StyleRules.BeastHeight("ours"), StyleRules.BeastHeight("ourse"), StyleRules.BeastHeight("vieux_brunot")));
+        Assert.Equal((0, 2, 0), (StyleRules.Cubs("ours"), StyleRules.Cubs("ourse"), StyleRules.Cubs("vieux_brunot")));
+        Assert.Equal((StyleMotion.Cast, (string?)null), (StyleRules.AttackAnimation("rugissement").Motion, StyleRules.AttackAnimation("rugissement").Prefer));
+    }
 }
