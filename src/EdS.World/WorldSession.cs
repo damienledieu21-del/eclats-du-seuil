@@ -725,10 +725,12 @@ namespace EdS.World
         string? INarrativeWorld.NpcZone(Npc npc) => NpcZone(npc);
 
         /// <summary>Sous-lot V2.3.1 : zone du créneau en cours, sans tenir compte d'un dialogue ouvert.</summary>
-        private string? ZoneNow(Npc npc) => npc.ZoneAt(Zone.Time.Minute);
+        /// <remarks>Sous-lot V2.10 : pendant une fête, un invité est sur la place (la zone de l'histoire).</remarks>
+        private string? ZoneNow(Npc npc) => GuestNow(npc) != null ? null : npc.ZoneAt(Zone.Time.Minute);
 
         /// <summary>Sous-lot V2.3.1 : le PNJ se tient dans la zone ouverte (celle du personnage).</summary>
-        public bool NpcHere(Npc npc) => (NpcZone(npc) ?? _storyZone) == (Definition?.Id ?? _storyZone);
+        /// <remarks>Sous-lot V2.10 : un PNJ de passage hors de sa fête n'est nulle part (<see cref="NpcAway"/>).</remarks>
+        public bool NpcHere(Npc npc) => (NpcZone(npc) ?? _storyZone) == (Definition?.Id ?? _storyZone) && !NpcAway(npc);
 
         /// <summary>
         /// Sous-lot V2.3 : activité et place du PNJ <paramref name="npc"/> d'après son emploi du temps, à l'heure du monde ; sous une vraie
@@ -738,7 +740,8 @@ namespace EdS.World
         public (string Activity, GroundVector Position)? NpcSlot(Npc npc)
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
-            if (npc.Schedule.Count == 0) return null;
+            // Sous-lot V2.10 : un invité d'une fête a une place de fête, même sans emploi du temps.
+            if (npc.Schedule.Count == 0 && GuestNow(npc) is null && !(HeldBy(npc) is { Slot: { } })) return null;
             // Sous-lot V2.5 : pendant une attaque, au refuge (activité « refuge »), quel que soit le créneau.
             if (RefugeOf(npc.Id) is GroundVector refuge && (NpcZone(npc) ?? _storyZone) == Definition?.Id) return (RefugeActivity, refuge);
             // Sous-lot V2.3.1 : pendant un dialogue ouvert avec lui, la place et l'activité d'alors.
@@ -749,6 +752,8 @@ namespace EdS.World
         /// <summary>Sous-lot V2.3 : créneau en cours (ou son abri sous une vraie pluie), sans refuge ni dialogue ouvert.</summary>
         private (string Activity, GroundVector Position)? SlotNow(Npc npc)
         {
+            // Sous-lot V2.10 : pendant une fête, l'invité est à sa place de fête (par tous les temps : on danse sous la pluie).
+            if (GuestNow(npc) is FestivalGuest guest) return (guest.Activity, guest.Position);
             if (!(npc.SlotAt(Zone.Time.Minute) is ScheduleSlot slot)) return null;
             if (slot.Rain is SchedulePlace shelter && Shelters(Weather.Kind)) return (shelter.Activity, shelter.Position);
             return (slot.Activity, slot.Position);
@@ -1158,9 +1163,11 @@ namespace EdS.World
             if (Narrative != null) character = character.WithStory(Narrative.ToSaved());
             else if (_pendingFacts.Count > 0)
                 character = character.WithStory(new SavedStory(character.Story.Facts.Concat(_pendingFacts), character.Story.Quests, character.Story.Trust,
-                    character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted, character.Story.Reputation));
+                    character.Story.Discoveries, character.Story.Tracked, character.Story.Guild, character.Story.Hunted, character.Story.Reputation,
+                    character.Story.Festivals));
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
+            if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
         }
     }

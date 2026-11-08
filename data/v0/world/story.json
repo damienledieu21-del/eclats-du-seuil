@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "kind": "story",
-  "contentVersion": "0.23.0-provisoire",
+  "contentVersion": "0.24.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -1434,6 +1434,22 @@
         ],
         "dialogue": "dialogue.receleur",
         "faction": "bandits"
+      },
+      {
+        "id": "npc.colporteur",
+        "name": "text.v210.npc.colporteur.name",
+        "position": [
+          -57,
+          3
+        ],
+        "dialogue": "dialogue.colporteur",
+        "faction": "villagers",
+        "festivals": [
+          "festival.moissons",
+          "festival.veillee",
+          "festival.foire",
+          "festival.marche"
+        ]
       }
     ],
     "dialogues": [
@@ -1749,6 +1765,19 @@
               }
             ],
             "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.odile"
+                  }
+                ],
+                "text": "text.v210.odile.moissons"
+              },
               {
                 "conditions": [
                   {
@@ -9116,6 +9145,15 @@
           {
             "conditions": [
               {
+                "if": "festival",
+                "id": "festival.veillee"
+              }
+            ],
+            "node": "v210_veillee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "weather",
                 "id": "storm"
               },
@@ -9479,6 +9517,111 @@
               },
               {
                 "text": "text.pretre.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_veillee",
+            "text": "text.v210.anselme.veillee",
+            "choices": [
+              {
+                "text": "text.v210.anselme.conter_moulin",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.veillee"
+                  },
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "contest",
+                    "id": "festival.veillee"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 12
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.remede_de_l_aube",
+                    "value": 1
+                  }
+                ],
+                "next": "v210_conte_moulin"
+              },
+              {
+                "text": "text.v210.anselme.conter",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.veillee"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "contest",
+                    "id": "festival.veillee"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 5
+                  }
+                ],
+                "next": "v210_conte"
+              },
+              {
+                "text": "text.v210.anselme.ecouter",
+                "conditions": [],
+                "effects": [],
+                "next": "v210_ecouter"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_conte_moulin",
+            "text": "text.v210.anselme.conte_moulin",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_conte",
+            "text": "text.v210.anselme.conte",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_ecouter",
+            "text": "text.v210.anselme.ecoute",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -10672,6 +10815,24 @@
               }
             ],
             "node": "accueil"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.moissons"
+              }
+            ],
+            "node": "v210_moissons"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.foire"
+              }
+            ],
+            "node": "v210_foire"
           },
           {
             "conditions": [
@@ -12233,6 +12394,332 @@
                 "next": "ch1_aldric_moque"
               }
             ]
+          },
+          {
+            "id": "v210_moissons",
+            "text": "text.v210.boulanger.moissons",
+            "choices": [
+              {
+                "text": "text.v210.boulanger.tourte",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 4
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.miche_du_matin",
+                    "value": 2
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 15
+                  }
+                ],
+                "next": "v210_tourte"
+              },
+              {
+                "text": "text.v210.boulanger.galette",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.potion_de_soin",
+                    "value": 1
+                  },
+                  {
+                    "if": "hasItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 2
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeItem",
+                    "id": "item.potion_de_soin",
+                    "value": 1
+                  },
+                  {
+                    "do": "takeItem",
+                    "id": "item.herbe_de_l_aube",
+                    "value": 2
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 60
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 8
+                  }
+                ],
+                "next": "v210_galette"
+              },
+              {
+                "text": "text.v210.boulanger.recette",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  }
+                ],
+                "effects": [],
+                "next": "v210_recette"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.boulanger.croc_mort.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "quest.chat_de_rosalie",
+                    "if": "questDone"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.chat",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre",
+                "text": "text.ch1.boulanger.chat_rentre.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.secret",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.moque",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_tourte",
+            "text": "text.v210.boulanger.tourte.gagne",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_galette",
+            "text": "text.v210.boulanger.galette.prix",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_recette",
+            "text": "text.v210.boulanger.recette.reponse",
+            "choices": [
+              {
+                "text": "text.v210.boulanger.compris",
+                "conditions": [],
+                "effects": [],
+                "next": "v210_moissons"
+              }
+            ]
+          },
+          {
+            "id": "v210_foire",
+            "text": "text.v210.boulanger.foire",
+            "choices": [
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.boulanger.croc_mort.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "quest.chat_de_rosalie",
+                    "if": "questDone"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.chat",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre",
+                "text": "text.ch1.boulanger.chat_rentre.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.secret",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.moque",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
           }
         ]
       },
@@ -12339,6 +12826,24 @@
               }
             ],
             "node": "ch1_garde"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.foire"
+              }
+            ],
+            "node": "v210_foire"
+          },
+          {
+            "conditions": [
+              {
+                "if": "festival",
+                "id": "festival.moissons"
+              }
+            ],
+            "node": "v210_moissons"
           },
           {
             "conditions": [
@@ -13192,6 +13697,157 @@
                   }
                 ],
                 "next": "ch1_croc_mort"
+              }
+            ]
+          },
+          {
+            "id": "v210_foire",
+            "text": "text.v210.aldric.foire",
+            "choices": [
+              {
+                "text": "text.v210.aldric.tir_coeur",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire"
+                  },
+                  {
+                    "if": "levelAtLeast",
+                    "value": 4
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 20
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.foire"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "guard",
+                    "value": 10
+                  }
+                ],
+                "next": "v210_tir_gagne"
+              },
+              {
+                "text": "text.v210.aldric.tir",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "takeMoney",
+                    "value": 20
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.foire"
+                  },
+                  {
+                    "do": "giveItem",
+                    "id": "item.potion_de_soin",
+                    "value": 1
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "guard",
+                    "value": 3
+                  }
+                ],
+                "next": "v210_tir_rate"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.archer_garde.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.archer_garde.croc_mort.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_tir_gagne",
+            "text": "text.v210.aldric.tir_gagne",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_tir_rate",
+            "text": "text.v210.aldric.tir_rate",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v210_moissons",
+            "text": "text.v210.aldric.moissons",
+            "choices": [
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.archer_garde.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.archer_garde.croc_mort.dire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
               }
             ]
           }
@@ -14806,6 +15462,19 @@
               {
                 "conditions": [
                   {
+                    "if": "festival",
+                    "id": "any"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.renart"
+                  }
+                ],
+                "text": "text.v210.renart.fete"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "activity",
                     "id": "npc.renart",
                     "step": "commerages"
@@ -15238,6 +15907,58 @@
             "text": "text.ch2.lison.accueil",
             "choices": [],
             "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.marche"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
+                  }
+                ],
+                "text": "text.v210.lison.marche"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
+                  }
+                ],
+                "text": "text.v210.lison.moissons"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.veillee"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
+                  }
+                ],
+                "text": "text.v210.lison.veillee"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.foire"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.lison"
+                  }
+                ],
+                "text": "text.v210.lison.foire"
+              },
               {
                 "conditions": [
                   {
@@ -19368,6 +20089,157 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.colporteur",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v210.colporteur.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.colporteur"
+                  }
+                ],
+                "text": "text.v210.colporteur.moissons"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.veillee"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.colporteur"
+                  }
+                ],
+                "text": "text.v210.colporteur.veillee"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "festival",
+                    "id": "festival.foire"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.colporteur"
+                  }
+                ],
+                "text": "text.v210.colporteur.foire"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.colporteur"
+                  }
+                ],
+                "text": "text.v210.colporteur.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.colporteur.d_ou",
+                "conditions": [],
+                "effects": [],
+                "next": "loin"
+              },
+              {
+                "text": "text.v210.colporteur.route",
+                "conditions": [
+                  {
+                    "if": "notFact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  }
+                ],
+                "effects": [],
+                "next": "route"
+              },
+              {
+                "text": "text.v210.colporteur.route_libre",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.v210.colporteur.merci"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v210.colporteur.merci"
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 10
+                  }
+                ],
+                "next": "merci"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "loin",
+            "text": "text.v210.colporteur.loin",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "route",
+            "text": "text.v210.colporteur.route.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "merci",
+            "text": "text.v210.colporteur.merci",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -22808,6 +23680,159 @@
           "fact": "fact.v27.sentier_revele"
         }
       ]
-    }
+    },
+    "festivals": [
+      {
+        "id": "festival.moissons",
+        "name": "text.v210.festival.moissons",
+        "season": "autumn",
+        "day": 7,
+        "from": "10:00",
+        "to": "22:00",
+        "guests": [
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -55,
+              1.5
+            ],
+            "activity": "fete_concours"
+          },
+          {
+            "npc": "npc.odile",
+            "position": [
+              -53.5,
+              -1
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -57.5,
+              -6
+            ],
+            "activity": "fete"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -58.5,
+              2.2
+            ],
+            "activity": "bal"
+          },
+          {
+            "npc": "npc.aubergiste",
+            "position": [
+              -60,
+              2
+            ],
+            "activity": "tonneau"
+          }
+        ]
+      },
+      {
+        "id": "festival.veillee",
+        "name": "text.v210.festival.veillee",
+        "season": "winter",
+        "day": 21,
+        "from": "18:00",
+        "to": "23:59",
+        "guests": [
+          {
+            "npc": "npc.pretre",
+            "position": [
+              -71,
+              -4.5
+            ],
+            "activity": "conte"
+          },
+          {
+            "npc": "npc.albe",
+            "position": [
+              -69,
+              -4
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -70.5,
+              -2.5
+            ],
+            "activity": "veillee"
+          },
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -68,
+              -5.5
+            ],
+            "activity": "veillee"
+          }
+        ]
+      },
+      {
+        "id": "festival.foire",
+        "name": "text.v210.festival.foire",
+        "season": "spring",
+        "day": 14,
+        "from": "08:00",
+        "to": "20:00",
+        "guests": [
+          {
+            "npc": "npc.archer_garde",
+            "position": [
+              -58,
+              -9
+            ],
+            "activity": "cible"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -57,
+              0.5
+            ],
+            "activity": "foire"
+          },
+          {
+            "npc": "npc.boulanger",
+            "position": [
+              -54.5,
+              0
+            ],
+            "activity": "foire"
+          }
+        ]
+      },
+      {
+        "id": "festival.marche",
+        "name": "text.v210.festival.marche",
+        "weekday": 5,
+        "from": "07:00",
+        "to": "13:00",
+        "guests": [
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -55,
+              -2.5
+            ],
+            "activity": "marche"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -57.5,
+              1.5
+            ],
+            "activity": "colporteur"
+          }
+        ]
+      }
+    ]
   }
 }

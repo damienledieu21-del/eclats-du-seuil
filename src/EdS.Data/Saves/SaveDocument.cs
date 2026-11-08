@@ -80,6 +80,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes.</summary>
         public List<SavedScarData?>? Scars { get; set; }
 
+        /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (facultatif : absent quand tout est plein).</summary>
+        public List<SavedStockData?>? Stock { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -151,6 +154,9 @@ namespace EdS.Data.Saves
 
         /// <summary>Sous-lot V2.7 (version 15) : réputation auprès des factions, ou null (absente).</summary>
         public List<KeyValuePair<string, int?>>? Reputation { get; set; }
+
+        /// <summary>Sous-lot V2.10 (version 16) : dernier jour du monde où le personnage a concouru à chaque fête (facultatif).</summary>
+        public List<KeyValuePair<string, int?>>? Festivals { get; set; }
     }
 
     /// <summary>Sous-lot V1.7 : carte d'aventurier lue, avant validation.</summary>
