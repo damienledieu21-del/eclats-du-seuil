@@ -506,6 +506,9 @@ unity/Packages/packages-lock.json
 unity/ProjectSettings/*
 !unity/ProjectSettings/ProjectVersion.txt
 unity/Assets/EdS/Settings/
+# Sous-lot V2.9.3 : rapport du menu « Vérifier l'essai » (EdsVerification), refait à chaque vérification.
+unity/Assets/EdS/VERIFICATION_ESSAI.md
+unity/Assets/EdS/VERIFICATION_ESSAI.md.meta
 # Sous-lot 11.8 : données copiées dans le jeu construit (EdsBuildData), retirées après la construction.
 unity/Assets/StreamingAssets/
 # Correctif du sous-lot 11.8 : matériau modèle créé le temps d'une construction (EdsBuildShaders), et scène d'essai enregistrée à la

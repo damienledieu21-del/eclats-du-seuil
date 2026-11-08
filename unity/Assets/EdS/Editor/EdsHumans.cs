@@ -33,9 +33,10 @@ namespace EdS.Game.Editor
             string female = models.FirstOrDefault(p => HumanLooks.BodyOf(p) == true);
             List<string> libraries = models.Where(HumanLooks.IsAnimationLibrary).OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             var missing = new List<string>();
-            if (male == null) missing.Add("Superhero_Male_FullBody.fbx");
-            if (female == null) missing.Add("Superhero_Female_FullBody.fbx");
-            if (libraries.Count == 0) missing.Add("UAL1_Standard.fbx / UAL2_Standard.fbx");
+            // Sous-lot V2.9.3 : noms des fichiers attendus partagés avec le vérificateur d'essai (EssaiManifest).
+            if (male == null) missing.Add(EssaiManifest.FileName(EssaiManifest.MaleBody));
+            if (female == null) missing.Add(EssaiManifest.FileName(EssaiManifest.FemaleBody));
+            if (libraries.Count == 0) missing.Add(string.Join(" / ", EssaiManifest.AnimationLibraries.Select(EssaiManifest.FileName)));
             string skinMale = HumanLooks.SkinTexture(textures, false, false), skinFemale = HumanLooks.SkinTexture(textures, true, false);
             if (skinMale == null || skinFemale == null) missing.Add("textures des corps (T_Superhero_…)");
             if (missing.Count > 0)
@@ -158,7 +159,7 @@ namespace EdS.Game.Editor
             List<string> files = models.Where(HumanWardrobe.IsWardrobePath).Where(p => p.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase))
                 .OrderBy(p => p, System.StringComparer.Ordinal).ToList();
             if (files.Count == 0)
-                return "vrais vêtements : non (aucune pièce dans Assets/Style/Quaternius/Outfits : tenues peintes)";
+                return "vrais vêtements : non (aucune pièce dans " + EssaiManifest.OutfitFolder + " : tenues peintes)";
             // Pièces d'après les noms de leurs maillages (HumanWardrobe.Pieces : ceintures et brassards posés avec leur pièce, chaque pièce
             // prise une fois, dans « Modular Parts » plutôt que dans la tenue entière « Outfits » qui porte les mêmes maillages).
             var prefabs = new List<GameObject>();
@@ -264,7 +265,8 @@ namespace EdS.Game.Editor
                 if (mine.Count == 0) continue;
                 lines.Add(family + " " + mine.Count);
             }
-            bool basic = new[] { WardrobeSlot.Body, WardrobeSlot.Arms, WardrobeSlot.Legs, WardrobeSlot.Feet }.All(slot => pieces.Any(p => p.Slot == slot));
+            // Sous-lot V2.9.3 : règle partagée avec le vérificateur d'essai (EssaiManifest.OutfitReady).
+            bool basic = EssaiManifest.OutfitReady(pieces.Select(p => p.Slot));
             if (!basic)
                 return "vrais vêtements : non (" + pieces.Count + " pièces, mais il manque un haut, des bras, un bas ou des pieds : tenues peintes)";
             int heads = pieces.Count(p => p.Slot == WardrobeSlot.Head), cloaks = pieces.Count(p => p.Slot == WardrobeSlot.Back);
