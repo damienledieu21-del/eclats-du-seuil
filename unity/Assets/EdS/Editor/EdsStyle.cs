@@ -470,12 +470,15 @@ namespace EdS.Game.Editor
         /// <summary>
         /// Sous-lot V2.9.3 (partagé avec le vérificateur d'essai, sans rien modifier) : prefab de pack que la préparation regarde pour
         /// <paramref name="slot"/> (seulement ceux qui se dessinent avec URP, <see cref="Renders"/>) et le modèle animé derrière lui
-        /// (<paramref name="model"/>, null s'il n'y en a pas : le prefab n'est alors pas pris). Null sans prefab.
+        /// (<paramref name="animated"/>, null s'il n'y en a pas : le prefab n'est alors pas pris). Null sans prefab.
         /// </summary>
-        internal static string PackAnimalCandidate(List<string> prefabs, StyleSlot slot, out string model)
+        internal static string PackAnimalCandidate(List<string> prefabs, StyleSlot slot, out string animated)
         {
+            animated = null;
             string path = StyleRules.PackAnimal(prefabs.Where(Renders), slot);
-            model = path != null ? AnimatedModel(Load(path)) : null;
+            if (path == null) return null;
+            string model = AnimatedModel(Load(path));
+            animated = model;
             return path;
         }
 
