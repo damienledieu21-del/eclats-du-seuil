@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using EdS.Data.Json;
+using EdS.Data.Crafting;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -756,5 +757,52 @@ public class V214BoutiquesMarcheTests
         {
             if (Directory.Exists(folder)) Directory.Delete(folder, true);
         }
+    }
+
+    [Fact]
+    public void A_la_porte_seulement_les_offres_prevues_par_toutes_les_entrees()
+    {
+        // Revue Codex de la PR #135 : servi à la porte (Garin un dimanche, avec quelqu'un à la porte pour l'essai), on n'achète que les
+        // offres « door » ; vente (par objet ou par place du sac), rachat et réparation sont refusés, sans rien changer.
+        JsonObject root = MerchantsJson();
+        JsonObject garin = Merchant(root, "merchant.armurier");
+        garin["shop"]!["door"] = "patron";
+        garin["offers"]!.AsArray().Single(o => (string?)o!["item"] == "item.gambison")!["door"] = true;
+        MerchantBook book = Valid(root);
+        (double x, double z) = Near("merchant.armurier");
+        ZoneDefinition zone = Zone(x, z);
+        CraftingBook crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, ItemsCatalog).Book!;
+        var market = new Market(book);
+        WorldSession At(long day, SavedCharacter hero)
+        {
+            var w = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 10 * 60) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
+                Progression, ItemsCatalog, Book(zone), crafting: crafting, market: market);
+            w.Step();
+            return w;
+        }
+        const string Peau = "item.peau_de_loup";
+        // Samedi : ouvert ; on lui vend une peau (lot rachetable).
+        WorldSession saturday = At(5, Hero(10_000, new ItemStack(Peau, 3)));
+        Assert.Equal(TradeRefusal.None, saturday.Sell("merchant.armurier", Peau, 1));
+        Assert.Single(market.Buyback);
+        // Dimanche : à la porte.
+        WorldSession sunday = At(6, saturday.Save().Character!);
+        Assert.Equal(ShopState.AtDoor, sunday.ShopStateOf("merchant.armurier"));
+        Assert.Equal(TradeRefusal.None, sunday.CanTrade("merchant.armurier"));
+        Assert.Equal(TradeRefusal.Closed, sunday.FullTrade("merchant.armurier"));
+        string before = Snapshot(sunday);
+        Assert.Equal(TradeRefusal.NotForSale, sunday.Buy("merchant.armurier", "item.epee_du_milicien"));
+        Assert.Equal(TradeRefusal.Closed, sunday.Sell("merchant.armurier", Peau, 1));
+        int place = sunday.Inventory.Stacks.ToList().FindIndex(st => st.Item == Peau);
+        Assert.Equal(TradeRefusal.Closed, sunday.SellPlace("merchant.armurier", place, 1));
+        Assert.Equal(TradeRefusal.Closed, sunday.BuyBack("merchant.armurier", 0));
+        Assert.Equal(RepairRefusal.Closed, sunday.CanRepairHere("merchant.armurier"));
+        Assert.Equal(before, Snapshot(sunday));   // refus atomiques : ni bourse, ni sac, ni stock
+        Assert.Single(market.Buyback);
+        Assert.Equal(TradeRefusal.None, sunday.Buy("merchant.armurier", "item.gambison"));   // l'offre prévue pour la porte
+        // Lundi : rouvert, tout repasse.
+        WorldSession monday = At(7, sunday.Save().Character!);
+        Assert.Equal(TradeRefusal.None, monday.FullTrade("merchant.armurier"));
+        Assert.Equal(RepairRefusal.None, monday.CanRepairHere("merchant.armurier"));
     }
 }

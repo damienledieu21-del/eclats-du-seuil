@@ -245,7 +245,7 @@ namespace EdS.World
             if (merchant != null)
             {
                 if (!rules.Merchants.Contains(merchant) || Market is null || Market.Book.Merchants.All(m => m.Id != merchant)) return RepairRefusal.Closed;
-                TradeRefusal open = CanTrade(merchant);
+                TradeRefusal open = FullTrade(merchant);   // revue Codex de la PR #135 : pas de réparation à la porte
                 return open == TradeRefusal.None ? RepairRefusal.None : open == TradeRefusal.Closed ? RepairRefusal.Closed : RepairRefusal.NotHere;
             }
             return rules.Places.Any(p => ((INarrativeWorld)this).InPlace(p)) ? RepairRefusal.None : RepairRefusal.NotHere;

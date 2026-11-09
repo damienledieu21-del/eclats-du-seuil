@@ -157,6 +157,18 @@ namespace EdS.World
         public bool HasRank(string? rank) => rank is null || (Narrative != null && Narrative.GuildRankIndex >= GuildRanks.IndexOf(rank));
 
         /// <summary>
+        /// Revue Codex de la PR #135 : la boutique est ouverte pour tout le commerce (vente du joueur, rachat, réparation) : comme
+        /// <see cref="CanTrade"/>, mais fermée (<see cref="TradeRefusal.Closed"/>) quand on n'y est servi qu'à la porte. L'achat, lui, passe
+        /// par <see cref="CanTrade"/> et l'offre du moment (à la porte : seulement les offres « door »).
+        /// </summary>
+        public TradeRefusal FullTrade(string merchant)
+        {
+            TradeRefusal open = CanTrade(merchant);
+            if (open != TradeRefusal.None) return open;
+            return AtDoor(merchant) ? TradeRefusal.Closed : TradeRefusal.None;
+        }
+
+        /// <summary>
         /// Achète <paramref name="count"/> <paramref name="item"/> à <paramref name="merchant"/>, au prix du jour : boutique ouverte, objet du
         /// catalogue en vente aujourd'hui, bourse suffisante, place dans l'inventaire ; tout ou rien.
         /// </summary>
@@ -194,9 +206,8 @@ namespace EdS.World
         public TradeRefusal Sell(string merchant, IReadOnlyList<(string Item, int Count)> lots)
         {
             if (lots is null) throw new ArgumentNullException(nameof(lots));
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // sous-lot V2.14 : à la porte, on n'achète rien au joueur
             if (open != TradeRefusal.None) return open;
-            if (AtDoor(merchant)) return TradeRefusal.Closed;   // sous-lot V2.14 : à la porte, on n'achète rien au joueur
             Market market = NeedMarket();
             if (lots.Count < 1 || lots.Count > Market.MaxSellLots) return TradeRefusal.InvalidCount;
             var totals = new SortedDictionary<string, long>(StringComparer.Ordinal);
@@ -254,7 +265,7 @@ namespace EdS.World
         {
             if (place < 0 || place >= Inventory.Stacks.Count) return TradeRefusal.NotEnough;
             ItemStack stack = Inventory.Stacks[place];
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // revue Codex de la PR #135 : à la porte, pas de vente non plus par une place du sac
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
             if (count < 1 || count > Market.MaxCount || (stack.IsUnique && count != 1)) return TradeRefusal.InvalidCount;
@@ -292,7 +303,7 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public TradeRefusal BuyBack(string merchant, int index)
         {
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // revue Codex de la PR #135 : à la porte, seulement les offres prévues (pas de rachat)
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
             if (index < 0 || index >= market.Buyback.Count) return TradeRefusal.NothingToBuyBack;
