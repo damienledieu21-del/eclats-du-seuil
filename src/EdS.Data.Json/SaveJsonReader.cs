@@ -168,6 +168,22 @@ namespace EdS.Data.Json
                         return sok ? sc : null;
                     });
                 },
+                ["stock"] = (v, p) =>   // sous-lot V2.10 (version 16) : stock des marchands, facultatif
+                {
+                    c.Present.Add("stock");
+                    c.Stock = input.ReadLimitedList(v, p, SavedStock.MaxEntries, n => $"{n} lignes de stock, au plus {SavedStock.MaxEntries}.", (e, ip) =>
+                    {
+                        var sk = new SavedStockData();
+                        bool kok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                        {
+                            ["id"] = (ev2, ep) => sk.Id = input.Text(ev2, ep),
+                            ["bought"] = (ev2, ep) => sk.Bought = input.Int32(ev2, ep),
+                            ["resold"] = (ev2, ep) => sk.Resold = input.Int32(ev2, ep),
+                            ["day"] = (ev2, ep) => sk.Day = input.Int64(ev2, ep),
+                        });
+                        return kok ? sk : null;
+                    });
+                },
             });
             return ok ? c : null;
         }
@@ -188,6 +204,7 @@ namespace EdS.Data.Json
                 },
                 ["trust"] = (v, p) => st.Trust = ScenarioJsonReader.ReadIntegerMap(input, v, p),
                 ["reputation"] = (v, p) => st.Reputation = ScenarioJsonReader.ReadIntegerMap(input, v, p),   // sous-lot V2.7 (version 15)
+                ["festivals"] = (v, p) => st.Festivals = ScenarioJsonReader.ReadIntegerMap(input, v, p),   // sous-lot V2.10 (version 16)
                 ["hunted"] = (v, p) => st.Hunted = input.ReadLimitedList(v, p, SavedStory.MaxHunted,   // relecture de la PR #79 (version 10)
                     n => $"{n} créatures, au plus {SavedStory.MaxHunted}.", (e, ip) => input.Text(e, ip)),
                 ["guild"] = (v, p) =>   // sous-lot V1.7 (version 10) : carte d'aventurier
@@ -426,7 +443,8 @@ namespace EdS.Data.Json
                 || (st.Tracked != null && !SaveValidator.IsStoryId(st.Tracked))
                 || st.Quests.Values.Any(q => !SaveValidator.IsDataId(q.Step) || q.Progress < 0 || q.Progress > SaveValidator.MaxProgress)
                 || st.Trust.Values.Any(t => t < -SaveValidator.MaxTrust || t > SaveValidator.MaxTrust)
-                || st.Reputation.Any(r => !EdS.Data.Story.Reputations.IsFaction(r.Key) || r.Value < EdS.Data.Story.Reputations.Min || r.Value > EdS.Data.Story.Reputations.Max))
+                || st.Reputation.Any(r => !EdS.Data.Story.Reputations.IsFaction(r.Key) || r.Value < EdS.Data.Story.Reputations.Min || r.Value > EdS.Data.Story.Reputations.Max)
+                || st.Festivals.Count > SavedStory.MaxFestivals)
                 throw new ArgumentException("Histoire hors du format des sauvegardes.", nameof(c));
             b.Append("      \"story\": {\n");
             b.Append("        \"facts\": ").Append(List(st.Facts)).Append(",\n");
@@ -435,6 +453,9 @@ namespace EdS.Data.Json
             b.Append("        \"trust\": {").Append(string.Join(", ", st.Trust.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             // Sous-lot V2.7 (version 15) : réputation auprès des factions, sur une ligne, dans l'ordre ordinal.
             b.Append("        \"reputation\": {").Append(string.Join(", ", st.Reputation.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
+            // Sous-lot V2.10 (version 16) : concours des fêtes, sur une ligne, absent s'il n'y en a aucun.
+            if (st.Festivals.Count > 0)
+                b.Append("        \"festivals\": {").Append(string.Join(", ", st.Festivals.Select(t => Quoted(t.Key) + ": " + t.Value.ToString(CultureInfo.InvariantCulture)))).Append("},\n");
             b.Append("        \"discoveries\": ").Append(List(st.Discoveries)).Append(",\n");
             // Sous-lot V1.6 (version 8) : quête suivie, ou null.
             b.Append("        \"tracked\": ").Append(st.Tracked is null ? "null" : Quoted(st.Tracked)).Append(st.Guild is null && st.Hunted.Count == 0 ? "\n" : ",\n");
@@ -480,7 +501,8 @@ namespace EdS.Data.Json
                 b.Append("      ],\n");
             }
             // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.
-            if (c.Scars.Count == 0) b.Append("      \"scars\": []\n");
+            string afterScars = c.Stock.Count == 0 ? "\n" : ",\n";
+            if (c.Scars.Count == 0) b.Append("      \"scars\": []").Append(afterScars);
             else
             {
                 b.Append("      \"scars\": [\n");
@@ -491,6 +513,20 @@ namespace EdS.Data.Json
                     b.Append("        {\"id\": \"").Append(x.Id).Append("\", \"stage\": ").Append(x.Stage.ToString(CultureInfo.InvariantCulture))
                         .Append(", \"since\": ").Append(x.Since.ToString(CultureInfo.InvariantCulture)).Append(", \"born\": ").Append(x.Born.ToString(CultureInfo.InvariantCulture))
                         .Append(i + 1 < c.Scars.Count ? "},\n" : "}\n");
+                }
+                b.Append("      ]").Append(afterScars);
+            }
+            // Sous-lot V2.10 (version 16) : stock des marchands, une ligne par objet, rangé par identifiant ; absent quand tout est plein.
+            if (c.Stock.Count > 0)
+            {
+                b.Append("      \"stock\": [\n");
+                for (int i = 0; i < c.Stock.Count; i++)
+                {
+                    SavedStock x = c.Stock[i];
+                    if (!SavedStock.IsKey(x.Id)) throw new ArgumentException($"Ligne de stock « {x.Id} » hors du format des sauvegardes.", nameof(c));
+                    b.Append("        {\"id\": \"").Append(x.Id).Append("\", \"bought\": ").Append(x.Bought.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"resold\": ").Append(x.Resold.ToString(CultureInfo.InvariantCulture)).Append(", \"day\": ").Append(x.Day.ToString(CultureInfo.InvariantCulture))
+                        .Append(i + 1 < c.Stock.Count ? "},\n" : "}\n");
                 }
                 b.Append("      ]\n");
             }

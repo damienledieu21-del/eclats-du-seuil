@@ -489,6 +489,42 @@ namespace EdS.Runtime
             return $"Partie avancée au {clock.At(tick)} (tick {tick}). Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }
 
+        /// <summary>
+        /// Sous-lot V2.10 (essai des fêtes) : premier tick, à partir de <paramref name="fromTick"/>, où il est <paramref name="minute"/> un
+        /// jour du monde qui convient à <paramref name="day"/> (cherché sur deux années au plus) ; null s'il n'y en a pas.
+        /// </summary>
+        public static long? NextDayAt(WorldClock clock, long fromTick, System.Func<long, bool> day, int minute)
+        {
+            if (day is null) throw new System.ArgumentNullException(nameof(day));
+            long tick = NextTickAt(clock, fromTick, minute);
+            for (int i = 0; i <= 2 * EdS.Data.Story.WorldCalendar.DaysPerYear; i++)
+            {
+                if (day(clock.At(tick).Day)) return tick;
+                tick = NextTickAt(clock, checked(tick + clock.TicksPerDay / 2), minute);   // le même moment, le jour suivant
+            }
+            return null;
+        }
+
+        /// <summary>Sous-lot V2.10 : les jours de la semaine <paramref name="weekday"/> (0 à 6) du calendrier du monde.</summary>
+        public static System.Func<long, bool> Weekday(int weekday) => d => EdS.Data.Story.WorldCalendar.WeekdayOf(d) == weekday;
+
+        /// <summary>Sous-lot V2.10 : le jour <paramref name="day"/> (0 à 27) de la saison <paramref name="season"/> (0 : printemps … 3 : hiver).</summary>
+        public static System.Func<long, bool> SeasonDay(int season, int day) =>
+            d => EdS.Data.Story.WorldCalendar.SeasonIndexOf(d) == season && EdS.Data.Story.WorldCalendar.DayOfSeason(d) == day;
+
+        /// <summary>Sous-lot V2.10 : avance la sauvegarde jusqu'au prochain jour qui convient à <paramref name="day"/>, à <paramref name="minute"/>.</summary>
+        public static string MoveSaveToDay(string path, System.Func<long, bool> day, int minute, long tickMilliseconds = 50, string? stamp = null)
+        {
+            if (!System.IO.File.Exists(path)) return "Aucune sauvegarde : lance d'abord l'aventure une fois.";
+            SaveReadResult read = SaveStore.Read(path);
+            if (!(read.Save is WorldSave save)) return "Sauvegarde illisible : " + (read.Problem ?? "?");
+            var clock = new WorldClock(tickMilliseconds);
+            if (!(NextDayAt(clock, save.WorldTick, day, minute) is long tick)) return "Aucun jour qui convient dans les deux années à venir.";
+            string copy = KeepCopy(path, stamp);
+            SaveStore.Write(path, Advanced(save, tick));
+            return $"Partie avancée au {clock.At(tick)} (tick {tick}). Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
+        }
+
         /// <summary>Relecture de la PR #101 : la même sauvegarde, au tick <paramref name="tick"/> (drapeau de migration compris).</summary>
         public static WorldSave Advanced(WorldSave save, long tick) =>
             new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character, save.Migrated);

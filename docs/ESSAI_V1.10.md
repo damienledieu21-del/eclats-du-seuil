@@ -351,26 +351,46 @@ Avant l'essai : les dossiers de la 5e vague déposés tels quels sous `Assets/St
 | 20.20 | Le pont des Vallons (décision du 9 novembre) | Le **pont de pierre** de JooL en travers de la rivière, à la place du pont cintré, sur ordinateur ; on le traverse à la même hauteur qu'avant ; sans le modèle, et sur téléphone, le pont cintré | [ ] | Échelle et hauteur estimées : régler Scale dans le catalogue |
 | 20.21 | Les ruines, sur ordinateur | Les **tours en ruine** de taz83 à la taille du lieu ; sur téléphone, les ruines comme avant | [ ] | |
 
-## 21. Les packs de l'Asset Store (V2.12)
+## 21. Marchands vivants et fêtes du bourg (V2.10)
+
+Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des fêtes** avancent la partie (hors du mode Jeu) au prochain jour de marché (8 h), à la foire de printemps (9 h), à la fête des moissons (10 h 30), à la veillée de l'Aube (19 h), ou au lendemain à 9 h (le stock se regagne). Valeurs provisoires : [MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 21.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
+| 21.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
+| 21.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
+| 21.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
+| 21.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
+| 21.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
+| 21.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
+| 21.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
+| 21.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
+| 21.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
+| 21.11 | « jour de marché, 8 h », trois semaines de suite | Une semaine la tourte de Firmin (la première fois : le **tablier de maître**), la suivante le tir d'Aldric (l'**arc de concours**), puis les contes de frère Anselme (le **livre de contes**) ; ensuite des bourses ordinaires | [ ] | |
+| 21.12 | Une fête au bourg, en automne puis en hiver | **King's Feast** aux moissons et à la foire, **Minstrel Dance** au marché et à la veillée ; les villageois en tenues de la saison, beaux habits pendant la fête | [ ] | |
+| 21.13 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |
+
+## 22. Les packs de l'Asset Store (V2.12)
 
 Avant l'essai : les packs importés tels quels **à la racine de `Assets`** (Package Manager → My Assets → Import) : `Baked Bread and Pastry`, `RPG FOOD PROPS` (seul le dossier `UNIVERSAL RENDER PIPELINE` sert), `MyDreamGameStudio/Medieval Village Pack Vol.1`, `Advance Studios/Medieval Castle`, `DungeonModularPack`, `Medieval Props Pack 01`, `Multiple Solutions/Basic RPG Sounds`, `Fantasy Wooden GUI  Free` (deux espaces), `SopaDopa/URP_Medieval_Fantasy`, `Fantasy RPG Icons Pack`. Rien de tout cela ne va dans GitHub (GitHub Desktop ne doit montrer aucun de ces dossiers). Puis **Éclats du Seuil → Préparer l'essai de style**, puis **Vérifier l'essai**.
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 21.1 | Fenêtre de la préparation | En plus de la ligne de la 5e vague : « Asset Store : N ressources branchées sur 23, M prêtes pour plus tard (P prefabs au catalogue) ; interface : Stone ; icônes de CraftPix : X objets reliés sur 117 » | [ ] | Noter X |
-| 21.2 | Vérifier l'essai | Sections « Packs de l'Asset Store » et « … prêts pour plus tard » : ✅, ou ⚠️ avec le pack à importer ; « Sons de Basic RPG Sounds : K gardés sur 202 » ; « Objets reliés à une icône de CraftPix » | [ ] | |
-| 21.3 | GitHub Desktop après la préparation | **Aucun** fichier des packs ni `LICENCES_ASSET_STORE.md` dans les changements | [ ] | Sinon : ne rien valider, prévenir Claude |
-| 21.4 | Le fournil de Firmin | Dans la vitrine, le **pain et la galette photoscannés** (LUMI) en tête des pains, le **croissant** de LUMI en tête des viennoiseries (une place sur trois) ; aucune pièce sautée ; aucune ne flotte ni ne s'enfonce | [ ] | Taille : environ 30 cm chacun |
-| 21.5 | L'étal de Bertille | Une **table d'étal** garnie (pains, fromages, viandes, saucisse, bouteilles, pomme), deux **caisses garnies** au pied ; ni tomate, ni orange, ni pastèque, ni citrouille | [ ] | Si les victuailles flottent ou sont sur un auvent : catalogue → Offset des victuailles |
-| 21.6 | Catalogue : **Human Festival** coché, le bourg | Un **étal sous tente** garni sur la place (ordinateur), en plus des guirlandes | [ ] | |
-| 21.7 | La forge | **Enclume**, **établi**, **présentoir d'armes**, bac et tonneau autour de l'atelier, sans gêner l'enclume du jeu | [ ] | Place à juger |
-| 21.8 | Le moulin, côté rivière | Une **roue à eau** sur la rive, jamais dans le moulin de Tim0 (ordinateur ; pas posée s'il n'y a pas de place libre) | [ ] | Position estimée : Offset et Yaw dans le catalogue |
-| 21.9 | Le hameau, le village, le bourg | **Abri à bêtes** et **rouet** au hameau ; tonneaux, seaux, caisses, échelle, charrette à bras, souche au village et au bourg ; jamais dans un mur | [ ] | Trop ou pas assez ? |
-| 21.10 | Le camp des rôdeurs | Deux **tentes** et une caisse | [ ] | |
-| 21.11 | L'auberge, une maison, la chapelle | Les meubles de Poly Haven restent ; les objets des packs ne viennent que pour ce qui manquait (pots, vases, chopes…) | [ ] | |
-| 21.12 | Ouvrir le livre : sac, boutique, dialogue, forge, voyage, réglages | Le fond de ces grandes fenêtres en **pierre** sculptée (décision du 9 novembre) ; infobulles, avis, aide et quête gardent la dalle du jeu ; textes lisibles ; bords nets | [ ] | Bords flous ou trop larges : régler Gui Border Fraction ; le parchemin reste possible (Gui Board Kind = Parchment) |
-| 21.13 | Un combat, une potion, un butin | Les sons déjà choisis restent ; Basic RPG Sounds seulement pour un son qui manquait, **jamais un son arcade** | [ ] | Un son déplacé : envoyer son nom |
-| 21.14 | Sac et boutiques | Icônes de CraftPix **sans fond** ; les pièces d'armure sans icône à leur nom prennent une icône d'armure | [ ] | Liste des objets mal reliés |
-| 21.15 | Sur le Note8 | Image fluide ; ni tente d'étal, ni roue à eau, ni abri à bêtes, ni bâtiments lointains ; l'étal de Bertille et la vitrine restent ; Console de la construction : « N ressources réservées à l'ordinateur retirées » | [ ] | APK plus léger qu'avec la V2.11 |
-| 21.16 | Le dossier `Assets/Style/Generated` | `LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris) | [ ] | |
-| 21.17 | Depuis le hameau, le village, le bourg et les champs, regarder vers le bord du monde (ordinateur) | Quelques **maisons**, la **taverne** et le **moulin** du pack de village **au loin**, hors de l'aire de jeu, tournés vers elle ; tes maisons de Sketchfab et le moulin de Tim0 à leurs places | [ ] | Dans les arbres ou trop loin : Offset au catalogue |
+| 22.1 | Fenêtre de la préparation | En plus de la ligne de la 5e vague : « Asset Store : N ressources branchées sur 24, M prêtes pour plus tard (P prefabs au catalogue) ; interface : Stone ; icônes de CraftPix : X objets reliés sur 117 » | [ ] | Noter X |
+| 22.2 | Vérifier l'essai | Sections « Packs de l'Asset Store » et « … prêts pour plus tard » : ✅, ou ⚠️ avec le pack à importer ; « Sons de Basic RPG Sounds : K gardés sur 202 » ; « Objets reliés à une icône de CraftPix » | [ ] | |
+| 22.3 | GitHub Desktop après la préparation | **Aucun** fichier des packs ni `LICENCES_ASSET_STORE.md` dans les changements | [ ] | Sinon : ne rien valider, prévenir Claude |
+| 22.4 | Le fournil de Firmin | Dans la vitrine, le **pain et la galette photoscannés** (LUMI) en tête des pains, le **croissant** de LUMI en tête des viennoiseries (une place sur trois) ; aucune pièce sautée ; aucune ne flotte ni ne s'enfonce | [ ] | Taille : environ 30 cm chacun |
+| 22.5 | L'étal de Bertille | Une **table d'étal** garnie (pains, fromages, viandes, saucisse, bouteilles, pomme), deux **caisses garnies** au pied ; ni tomate, ni orange, ni pastèque, ni citrouille | [ ] | Si les victuailles flottent ou sont sur un auvent : catalogue → Offset des victuailles |
+| 22.6 | Un jour de fête (jour de marché, 6e jour de la semaine, 7 h – 13 h ; ou catalogue : **Human Festival** coché) | Au bourg : un **étal sous tente** garni (ordinateur), un étal garni près de **Lison**, et chez **Maître Anseau, le colporteur**, l'**étal exotique** (oranges, tomates, pastèques, citrouilles : fruits rares venus de loin) ; guirlande et bannières ; tout disparaît après la fête | [ ] | Sur téléphone : tables garnies sans tente |
+| 22.7 | La forge | **Enclume**, **établi**, **présentoir d'armes**, bac et tonneau autour de l'atelier, sans gêner l'enclume du jeu | [ ] | Place à juger |
+| 22.8 | Le moulin, côté rivière | Une **roue à eau** sur la rive, jamais dans le moulin de Tim0 (ordinateur ; pas posée s'il n'y a pas de place libre) | [ ] | Position estimée : Offset et Yaw dans le catalogue |
+| 22.9 | Le hameau, le village, le bourg | **Abri à bêtes** et **rouet** au hameau ; tonneaux, seaux, caisses, échelle, charrette à bras, souche au village et au bourg ; jamais dans un mur | [ ] | Trop ou pas assez ? |
+| 22.10 | Le camp des rôdeurs | Deux **tentes** et une caisse | [ ] | |
+| 22.11 | L'auberge, une maison, la chapelle | Les meubles de Poly Haven restent ; les objets des packs ne viennent que pour ce qui manquait (pots, vases, chopes…) | [ ] | |
+| 22.12 | Ouvrir le livre : sac, boutique, dialogue, forge, voyage, réglages | Le fond de ces grandes fenêtres en **pierre** sculptée (décision du 9 novembre) ; infobulles, avis, aide et quête gardent la dalle du jeu ; textes lisibles ; bords nets | [ ] | Bords flous ou trop larges : régler Gui Border Fraction ; le parchemin reste possible (Gui Board Kind = Parchment) |
+| 22.13 | Un combat, une potion, un butin | Les sons déjà choisis restent ; Basic RPG Sounds seulement pour un son qui manquait, **jamais un son arcade** | [ ] | Un son déplacé : envoyer son nom |
+| 22.14 | Sac et boutiques | Icônes de CraftPix **sans fond** ; les pièces d'armure sans icône à leur nom prennent une icône d'armure | [ ] | Liste des objets mal reliés |
+| 22.15 | Sur le Note8 | Image fluide ; ni tente d'étal, ni roue à eau, ni abri à bêtes, ni bâtiments lointains ; l'étal de Bertille et la vitrine restent ; Console de la construction : « N ressources réservées à l'ordinateur retirées » | [ ] | APK plus léger qu'avec la V2.11 |
+| 22.16 | Le dossier `Assets/Style/Generated` | `LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris) | [ ] | |
+| 22.17 | Depuis le hameau, le village, le bourg et les champs, regarder vers le bord du monde (ordinateur) | Quelques **maisons**, la **taverne** et le **moulin** du pack de village **au loin**, hors de l'aire de jeu, tournés vers elle ; tes maisons de Sketchfab et le moulin de Tim0 à leurs places | [ ] | Dans les arbres ou trop loin : Offset au catalogue |

@@ -79,7 +79,7 @@ public sealed class V1910DejaRencontreTests
         w.Narrative!.Close();
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains("fact.met.renart", text, StringComparison.Ordinal);
-        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal(16, SaveValidator.CurrentSchemaVersion);   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         WorldSave back = SaveJsonReader.Read(text).Save!;
 
         WorldSession again = Near("renart", back);
@@ -150,7 +150,7 @@ public sealed class V1910DejaRencontreTests
     [Fact]
     public void Le_fait_est_lisible_par_les_conditions_mais_jamais_pose_par_un_effet()
     {
-        Assert.Equal(12, StoryValidator.CurrentSchemaVersion);   // V2.7 : 12 (réputation)   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau) ; V2.6.1 : 11
+        Assert.Equal(13, StoryValidator.CurrentSchemaVersion);   // V2.10 : 13 (fêtes) ; V2.7 : 12 (réputation)   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau) ; V2.6.1 : 11
         Assert.Equal("fact.met.renart", StoryValidator.MetFact("npc.renart"));
         Assert.True(Read(StoryJson()).IsValid);
 

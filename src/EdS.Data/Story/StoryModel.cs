@@ -80,6 +80,24 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V2.7 (schéma 12) : la faction <c>id</c> est au moins au palier <c>step</c>.</summary>
         StandingAtLeast = 22,
+
+        /// <summary>
+        /// Sous-lot V2.10 (histoire en schéma 13) : circonstance temporaire : la fête <c>id</c> (ou n'importe laquelle, « any ») bat son plein
+        /// (<see cref="Festival.At"/>).
+        /// </summary>
+        Festival = 23,
+
+        /// <summary>
+        /// Sous-lot V2.10 (schéma 13) : le concours de la fête <c>id</c> est ouvert : la fête bat son plein et le personnage n'y a pas encore
+        /// concouru ce jour-là (effet <c>contest</c>).
+        /// </summary>
+        ContestOpen = 24,
+
+        /// <summary>
+        /// Sous-lot V2.10 (décision de Damien du 8 novembre 2026) : la fête <c>id</c> bat son plein et c'est le tour <c>value</c> de sa rotation
+        /// des concours (<see cref="Festival.RoundOn"/>).
+        /// </summary>
+        ContestRound = 25,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -134,6 +152,12 @@ namespace EdS.Data.Story
         /// liées (<see cref="ReputationRules.Links"/>) en reçoivent leur part. Jamais refusé.
         /// </summary>
         Reputation = 12,
+
+        /// <summary>
+        /// Sous-lot V2.10 (schéma 13) : le personnage concourt à la fête <c>id</c> ce jour (gardé dans <c>story.festivals</c>, sauvegarde v16) :
+        /// le concours se referme jusqu'à la prochaine fois. Seulement dans une réponse qui demande <c>contestOpen</c> de la même fête.
+        /// </summary>
+        Contest = 13,
     }
 
     public enum ObjectiveKind
@@ -293,6 +317,18 @@ namespace EdS.Data.Story
         internal Npc WithFaction(string? faction)
         {
             Faction = faction;
+            return this;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.10 (schéma 13) : fêtes où ce PNJ de passage vient (un colporteur, un montreur) ; vide : il est toujours là. Hors de ses
+        /// fêtes, il n'est pas dans le monde (on ne lui parle pas, l'affichage le cache).
+        /// </summary>
+        public IReadOnlyList<string> Festivals { get; private set; } = Array.Empty<string>();
+
+        internal Npc WithFestivals(IEnumerable<string>? festivals)
+        {
+            Festivals = Frozen.List(festivals ?? Array.Empty<string>(), nameof(festivals));
             return this;
         }
 
@@ -617,9 +653,15 @@ namespace EdS.Data.Story
         /// <summary>Sous-lot V2.7 (schéma 12) : règles de réputation (<see cref="ReputationRules.None"/> sans section <c>reputation</c>).</summary>
         public ReputationRules Reputation { get; }
 
+        /// <summary>Sous-lot V2.10 (schéma 13) : fêtes du bourg, dans l'ordre du fichier (la première qui a lieu l'emporte).</summary>
+        public IReadOnlyList<Festival> Festivals { get; }
+
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
-            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null)
+            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null,
+            IEnumerable<string>? learnable = null)
         {
+            _learnable = new HashSet<string>(learnable ?? Array.Empty<string>(), StringComparer.Ordinal);
+            Festivals = Frozen.List(festivals ?? Array.Empty<Festival>(), nameof(festivals));
             Reputation = reputation ?? ReputationRules.None;
             Scenes = Frozen.List(scenes ?? Array.Empty<Scene>(), nameof(scenes));
             SchemaVersion = schemaVersion;
@@ -643,7 +685,38 @@ namespace EdS.Data.Story
         /// Sous-lot V2.3.1 : PNJ qui peuvent se tenir dans la zone <paramref name="zone"/> à un moment de la journée (ceux qui y vivent et ceux
         /// dont un créneau y mène ; null : la zone de l'histoire), dans l'ordre de l'histoire.
         /// </summary>
-        public IEnumerable<Npc> VisitorsOf(string? zone) => Npcs.Where(n => n.Zones.Contains(zone));
+        /// <remarks>Revue Codex de la PR #120 (tour 6) : les invités d'une fête se tiennent sur la place (la zone de l'histoire) pendant la
+        /// fête : ils en sont visiteurs même si aucun créneau habituel ne les y mène (un PNJ d'intérieur invité reste trouvable, avec ses
+        /// quêtes et ses livraisons).</remarks>
+        public IEnumerable<Npc> VisitorsOf(string? zone) => Npcs.Where(n => n.Zones.Contains(zone) || (zone is null && IsGuest(n.Id)));
+
+        /// <summary>Sous-lot V2.10 : <paramref name="npc"/> est invité à au moins une fête.</summary>
+        public bool IsGuest(string npc) => Festivals.Any(f => f.Guest(npc) != null);
+
+        /// <summary>Sous-lot V2.10 : première invitation de <paramref name="npc"/> dans l'ordre des fêtes, ou null.</summary>
+        public FestivalGuest? FirstInvitation(string npc) => Festivals.Select(f => f.Guest(npc)).FirstOrDefault(g => g != null);
+
+        /// <summary>
+        /// Sous-lot V2.10 : la fête qui bat son plein au jour <paramref name="day"/>, à la minute <paramref name="minute"/> (la première du
+        /// fichier si deux tombent ensemble), ou null.
+        /// </summary>
+        public Festival? FestivalAt(long day, int minute) => Festivals.FirstOrDefault(f => f.At(day, minute));
+
+        /// <summary>Sous-lot V2.10 : la fête du jour <paramref name="day"/> (la première du fichier), à n'importe quelle heure, ou null.</summary>
+        public Festival? FestivalOn(long day) => Festivals.FirstOrDefault(f => f.OnDay(day));
+
+        public bool HasFestival(string id) => Festivals.Any(f => f.Id == id);
+
+        private readonly HashSet<string> _learnable;
+
+        /// <summary>
+        /// Revue Codex de la PR #120 (tour 5) : le fait <paramref name="fact"/> peut-il être appris en jeu (effet <c>setFact</c>, victoire sur un
+        /// chef, rencontre d'un PNJ, issue ou cicatrice d'un événement du monde) ? Le même ensemble que le validateur de l'histoire.
+        /// </summary>
+        public bool CanLearn(string? fact) => fact != null && _learnable.Contains(fact);
+
+        /// <exception cref="ArgumentException">Fête inconnue.</exception>
+        public Festival Festival(string id) => Festivals.FirstOrDefault(f => f.Id == id) ?? throw new ArgumentException($"Fête « {id} » inconnue.", nameof(id));
 
         /// <summary>Sous-lot V1.9.6 : scène jouée dans la zone <paramref name="zone"/>, ou null.</summary>
         public Scene? SceneIn(string? zone) => Scenes.FirstOrDefault(s => s.Zone == zone);

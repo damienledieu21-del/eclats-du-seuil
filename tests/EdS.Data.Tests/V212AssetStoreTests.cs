@@ -125,6 +125,12 @@ public sealed class V212AssetStoreTests
         Assert.DoesNotContain(AssetStore.Entries.Where(e => e != exotic).SelectMany(e => e.Files),
             f => f.Contains("Tomato") || f.Contains("Orange") || f.Contains("Watermelon") || f.Contains("Pumpkin"));
         Assert.Contains("public static GameObject ExoticStall(", Script("Game", "WorldMarkers.cs"));
+        Assert.Equal(Wave5Use.Live, exotic.Use);
+        // Fusion avec la V2.10 : l'étal exotique est celui de Maître Anseau, le colporteur venu de loin ; le décor de fête suit les fêtes du jeu.
+        string world = Script("Game", "WorldMarkers.cs");
+        Assert.Contains("Npc(\"colporteur\")", world);
+        Assert.Contains("_festiveForced || adventure.Festive", world);
+        Assert.Contains("ce qui vient de loin coûte cher", Doc("data", "v0", "world", "texts", "fr.json").ToLowerInvariant());
         // Les pains de LUMI d'abord dans la vitrine, avant ceux de la V2.11.
         string markers = Script("Game", "WorldMarkers.cs");
         Assert.True(markers.IndexOf("catalog.Looks(Wave5Role.StoreBread)", StringComparison.Ordinal) < markers.IndexOf("catalog.Looks(Wave5Role.Bread)", StringComparison.Ordinal));

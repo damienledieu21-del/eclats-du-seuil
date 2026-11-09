@@ -120,6 +120,10 @@ namespace EdS.Runtime
                 V("House_1", "House_2", "House_3", "House_4", "House_5", "House_6", "House_7", "House_8", "House_9", "House_10")),
             E(Wave5Role.Tavern, "Taverne lointaine (hors de l'aire de jeu)", Live, "rien au loin (et jamais sur téléphone)", Big, 0, Village, V("Tavern")),
             E(Wave5Role.VillageWindmill, "Moulin lointain du pack (le moulin de Tim0 reste)", Live, "rien au loin (et jamais sur téléphone)", Big, 0, Village, V("WindMill")),
+            // Décision de Damien du 9 novembre 2026 : tomate, orange, pastèque et citrouille chez un marchand venu de loin (fruits rares et chers) :
+            // Maître Anseau, le colporteur de la V2.10 (« ce qui vient de loin coûte cher »), les jours de fête (WorldMarkers.ExoticStall).
+            E(Wave5Role.ExoticFruit, "Fruits rares de Maître Anseau, le colporteur venu de loin (étal exotique, jours de fête)", Live, "pas d'étal exotique", Wave5Fix.None, 0, Food,
+                "WoodenBox1 Orange", "WoodenBox2 Pumpkin", "WoodenBox1 Tomato", "WoodenBox2 Watermelon", "Orange", "Pumpkin", "Tomato", "Watermelon"),
 
             // Prêtes : bâtiments (les maisons de Sketchfab et le moulin de Tim0 sont des choix de Damien : pas remplacés), château, donjon, armures.
             E(Wave5Role.Smithy, "Bâtiment de la forge (alternative)", Ready, Later, Big, 0, Village, V("Blacksmith", "Blacksmith_Logo")),
@@ -137,10 +141,6 @@ namespace EdS.Runtime
             E(Wave5Role.DungeonTorch, "Torches de crypte", Ready, Later, Wave5Fix.None, 0, Dungeon, "Torch_A", "Torch_B"),
             E(Wave5Role.DungeonRail, "Rambardes de crypte", Ready, Later, Wave5Fix.None, 0, Dungeon, "Handrail_A", "Handrail_B"),
             E(Wave5Role.ArmoredMan, "Garde ou chevalier en armure modulaire (homme)", Ready, Later, Big, 1.8, Armor, "Constructor_URP"),
-            // Décision de Damien du 9 novembre 2026 : tomate, orange, pastèque et citrouille chez un marchand venu de loin (fruits rares et chers) ;
-            // ce marchand n'existe pas encore (les marchands changent dans la PR #120) : étal exotique prêt (WorldMarkers.ExoticStall).
-            E(Wave5Role.ExoticFruit, "Fruits rares d'un marchand venu de loin (étal exotique)", Ready, Later, Wave5Fix.None, 0, Food,
-                "WoodenBox1 Orange", "WoodenBox2 Pumpkin", "WoodenBox1 Tomato", "WoodenBox2 Watermelon", "Orange", "Pumpkin", "Tomato", "Watermelon"),
             E(Wave5Role.ArmoredWoman, "Garde ou chevalière en armure modulaire (femme)", Ready, Later, Big, 1.7, Armor, "Constructor_fem_1"),
 
             // Intérieurs : en repli seulement (une sorte d'objet que les intérieurs de Poly Haven ou de Sketchfab n'ont pas).
@@ -158,7 +158,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Écartés des étals ordinaires (anachronismes pour un monde inspiré du Moyen Âge européen : tomate, orange, pastèque, citrouille venues
-        /// plus tard) ; réservés à l'étal du marchand venu de loin (<see cref="Wave5Role.ExoticFruit"/>, décision de Damien du 9 novembre 2026).
+        /// plus tard) ; réservés à l'étal de Maître Anseau, le colporteur venu de loin (<see cref="Wave5Role.ExoticFruit"/>, décision de Damien du 9 novembre 2026).
         /// </summary>
         public static readonly IReadOnlyList<string> Avoided = new[]
         {

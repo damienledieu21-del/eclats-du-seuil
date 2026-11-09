@@ -1366,10 +1366,12 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.3.1 : place de jour du PNJ <paramref name="npc"/> dans la zone en cours : sa place de l'histoire s'il y vit, sinon celle
-        /// de son premier créneau ici (un visiteur : Firmin dans la salle de l'auberge).
+        /// de son premier créneau ici (un visiteur : Firmin dans la salle de l'auberge) ; revue Codex de la PR #120 (tour 6) : un invité de fête
+        /// qu'aucun créneau ne mène ici, sa place de sa première fête.
         /// </summary>
         private GroundVector DayPlace(Npc npc) =>
-            npc.Zone == HereKey ? npc.Position : npc.Schedule.FirstOrDefault(s => s.Zone == HereKey)?.Position ?? npc.Position;
+            npc.Zone == HereKey ? npc.Position : npc.Schedule.FirstOrDefault(s => s.Zone == HereKey)?.Position
+                ?? (HereKey is null ? _story.FirstInvitation(npc.Id)?.Position : null) ?? npc.Position;
 
         /// <summary>
         /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : tous les PNJ qui passent dans la zone en cours à un moment de la journée (ceux qui y
@@ -1581,6 +1583,34 @@ namespace EdS.Runtime
         /// <summary>Heure du monde (« jour 1, 08 h 30 »).</summary>
         public string TimeOfDay => World.Zone.Time.ToString();
 
+        /// <summary>
+        /// Sous-lot V2.10 (demande du 8 novembre 2026) : saison des tenues des villageois, celle du calendrier du jeu (affichage seulement ;
+        /// le cœur reste maître du temps du monde).
+        /// </summary>
+        public WardrobeSeason WardrobeSeason => (WardrobeSeason)EdS.Data.Story.WorldCalendar.SeasonIndexOf(World.Zone.Time.Day);
+
+        /// <summary>Sous-lot V2.10 : une fête bat son plein (les villageois sortent leurs beaux habits).</summary>
+        public bool Festive => World.Festival != null;
+
+        /// <summary>Sous-lot V2.10 : saison et jour de la saison (« automne, jour 8 de la saison »).</summary>
+        public string CalendarText => string.Format(CultureInfo.InvariantCulture, Text("text.ui.calendar"), Text("text.ui.season." + World.Season),
+            EdS.Data.Story.WorldCalendar.DayOfSeason(World.Zone.Time.Day) + 1);
+
+        /// <summary>
+        /// Sous-lot V2.10 : la fête pour l'affichage : en cours (« Fête au bourg : la fête des moissons. »), sinon celle du jour et ses heures,
+        /// sinon null.
+        /// </summary>
+        public string? FestivalText
+        {
+            get
+            {
+                if (World.Festival is EdS.Data.Story.Festival now) return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.now"), Text(now.Name));
+                if (!(World.FestivalToday is EdS.Data.Story.Festival today) || World.Zone.Time.Minute >= today.To) return null;
+                string Hour(int m) => $"{m / 60:00} h {m % 60:00}";
+                return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.today"), Text(today.Name), Hour(today.From), Hour(today.To));
+            }
+        }
+
         /// <summary>Essai réaliste 7 : portée où le Gardien vivant donne sa musique (mètres).</summary>
         public static readonly Fixed BossMusicRange = Fixed.FromInt(25);
 
@@ -1646,6 +1676,8 @@ namespace EdS.Runtime
                 river = double.IsNaN(river) ? d : Math.Min(river, d);
             }
             double minute = WorldMinute();
+            if (World.Festival != null) places |= AmbiencePlace.Festival;   // sous-lot V2.10 : la fête s'entend
+            if (StyleRules.IsFeast(World.Festival?.Id)) places |= AmbiencePlace.Feast;
             return new AdventureMood(village, fighting, boss, river, _zone.Indoor, DayCycle.NightShare(minute), Weather().Rain / (double)WorldWeather.Scale,
                 places, minute, forge);
         }

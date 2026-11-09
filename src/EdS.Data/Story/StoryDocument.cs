@@ -42,6 +42,9 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V2.7 (schéma 12) : règles de réputation, facultatives.</summary>
         public ReputationData? Reputation { get; set; }
+
+        /// <summary>Sous-lot V2.10 (schéma 13) : fêtes du bourg, facultatives.</summary>
+        public List<FestivalData?>? Festivals { get; set; }
     }
 
     /// <summary>Sous-lot V2.7 (schéma 12) : section <c>reputation</c> de l'histoire (voir <see cref="ReputationRules"/>), avant validation.</summary>
@@ -128,6 +131,9 @@ namespace EdS.Data.Story
 
         /// <summary>Sous-lot V2.7 (schéma 12) : faction du PNJ (un garde ne parle plus à qui la garde hait) ; facultative.</summary>
         public string? Faction { get; set; }
+
+        /// <summary>Sous-lot V2.10 (schéma 13) : fêtes où vient ce PNJ de passage ; facultatives (absentes : toujours là).</summary>
+        public List<string?>? Festivals { get; set; }
     }
 
     /// <summary>Sous-lot V2.3 (schéma 9) : un créneau de l'emploi du temps (voir <see cref="ScheduleSlot"/>).</summary>

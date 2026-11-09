@@ -97,6 +97,7 @@ namespace EdS.Data.Json
                     ["discoveries"] = (v, p) => d.Discoveries = List(input, v, p, StoryValidator.MaxDiscoveries, ReadDiscovery),
                     ["scenes"] = (v, p) => d.Scenes = List(input, v, p, StoryValidator.MaxScenes, ReadScene),   // sous-lot V1.9.6 (schéma 6)
                     ["reputation"] = (v, p) => d.Reputation = ReadReputation(input, v, p),   // sous-lot V2.7 (schéma 12)
+                    ["festivals"] = (v, p) => d.Festivals = List(input, v, p, StoryValidator.MaxFestivals, ReadFestival),   // sous-lot V2.10 (schéma 13)
                 });
                 document.Data = ok ? d : null;
             });
@@ -121,7 +122,38 @@ namespace EdS.Data.Json
                 ["zone"] = (v, p) => n.Zone = input.Text(v, p),   // sous-lot V1.6 (schéma 3)
                 ["faction"] = (v, p) => n.Faction = input.Text(v, p),   // sous-lot V2.7 (schéma 12)
                 ["schedule"] = (v, p) => n.Schedule = List(input, v, p, StoryValidator.MaxScheduleSlots, ReadSlot),   // sous-lot V2.3 (schéma 9)
+                ["festivals"] = (v, p) => n.Festivals = input.ReadLimitedList(v, p, StoryValidator.MaxFestivals,   // sous-lot V2.10 (schéma 13)
+                    c => $"{c} fêtes, au plus {StoryValidator.MaxFestivals}.", (e, ip) => input.Text(e, ip)),
             }) ? n : null;
+        }
+
+        /// <summary>Sous-lot V2.10 (schéma 13) : une fête du bourg.</summary>
+        private static FestivalData? ReadFestival(JsonInput input, JsonElement element, string path)
+        {
+            var f = new FestivalData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => f.Id = input.Text(v, p),
+                ["name"] = (v, p) => f.Name = input.Text(v, p),
+                ["weekday"] = (v, p) => f.Weekday = input.Int32(v, p),
+                ["season"] = (v, p) => f.Season = input.Text(v, p),
+                ["day"] = (v, p) => f.Day = input.Int32(v, p),
+                ["from"] = (v, p) => f.From = input.Text(v, p),
+                ["to"] = (v, p) => f.To = input.Text(v, p),
+                ["rounds"] = (v, p) => f.Rounds = input.Int32(v, p),
+                ["guests"] = (v, p) => f.Guests = List(input, v, p, StoryValidator.MaxFestivalGuests, ReadGuest),
+            }) ? f : null;
+        }
+
+        private static FestivalGuestData? ReadGuest(JsonInput input, JsonElement element, string path)
+        {
+            var g = new FestivalGuestData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["npc"] = (v, p) => g.Npc = input.Text(v, p),
+                ["position"] = (v, p) => g.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["activity"] = (v, p) => g.Activity = input.Text(v, p),
+            }) ? g : null;
         }
 
         /// <summary>Sous-lot V2.3 (schéma 9) : un créneau de l'emploi du temps d'un PNJ.</summary>

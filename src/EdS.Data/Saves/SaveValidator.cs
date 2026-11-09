@@ -187,10 +187,29 @@ namespace EdS.Data.Saves
         /// </summary>
         public IReadOnlyDictionary<string, int> Reputation { get; }
 
+        /// <summary>
+        /// Sous-lot V2.10 (version 16) : pour chaque fête (« festival.… »), le dernier jour du monde où le personnage a concouru (son concours
+        /// est fermé ce jour-là) ; ordre ordinal. Vide : jamais concouru.
+        /// </summary>
+        public IReadOnlyDictionary<string, long> Festivals { get; }
+
+        /// <summary>Sous-lot V2.10 : fêtes gardées au plus.</summary>
+        public const int MaxFestivals = 16;
+
+        internal static readonly Regex FestivalKey = new Regex(@"^festival(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Sous-lot V2.10 : même histoire avec d'autres concours (le reste inchangé).</summary>
+        public SavedStory WithFestivals(IReadOnlyDictionary<string, long> festivals) =>
+            new SavedStory(Facts, Quests, Trust, Discoveries, Tracked, Guild, Hunted, Reputation, festivals);
+
         public SavedStory(IEnumerable<string>? facts = null, IReadOnlyDictionary<string, QuestProgress>? quests = null,
             IReadOnlyDictionary<string, int>? trust = null, IEnumerable<string>? discoveries = null, string? tracked = null, SavedGuildCard? guild = null,
-            IEnumerable<string>? hunted = null, IReadOnlyDictionary<string, int>? reputation = null)
+            IEnumerable<string>? hunted = null, IReadOnlyDictionary<string, int>? reputation = null, IReadOnlyDictionary<string, long>? festivals = null)
         {
+            var contests = (festivals ?? new Dictionary<string, long>()).OrderBy(t => t.Key, StringComparer.Ordinal).ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal);
+            if (contests.Count > MaxFestivals || contests.Any(t => !FestivalKey.IsMatch(t.Key ?? string.Empty) || t.Value < 0 || t.Value > SavedEvent.MaxDay))
+                throw new ArgumentException("Concours des fêtes hors du format des sauvegardes.", nameof(festivals));
+            Festivals = Frozen.Dictionary(contests, nameof(festivals));
             Reputation = Frozen.Dictionary((reputation ?? new Dictionary<string, int>()).Where(t => t.Value != 0).OrderBy(t => t.Key, StringComparer.Ordinal)
                 .ToDictionary(t => t.Key, t => t.Value, StringComparer.Ordinal), nameof(reputation));
             Tracked = tracked;
@@ -271,7 +290,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 : même personnage avec un autre registre des événements.</summary>
         public SavedCharacter WithEvents(IEnumerable<SavedEvent> events) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars);
+                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock);
 
         /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.</summary>
         public IReadOnlyList<SavedScar> Scars { get; }
@@ -279,12 +298,20 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.6 : même personnage avec d'autres cicatrices.</summary>
         public SavedCharacter WithScars(IEnumerable<SavedScar> scars) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)));
+                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock);
+
+        /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (lignes non vides, rangées par identifiant).</summary>
+        public IReadOnlyList<SavedStock> Stock { get; }
+
+        /// <summary>Sous-lot V2.10 : même personnage avec un autre stock des marchands.</summary>
+        public SavedCharacter WithStock(IEnumerable<SavedStock> stock) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)));
 
         /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
         public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars);
+                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock);
 
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
@@ -298,8 +325,9 @@ namespace EdS.Data.Saves
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
             long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null,
             IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null,
-            IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null)
+            IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null, IEnumerable<SavedStock>? stock = null)
         {
+            Stock = SavedStock.Canonical(stock);
             Events = SavedEvent.Canonical(events);
             Scars = SavedScar.Canonical(scars);
             Boons = SavedBoon.Canonical(boons);
@@ -346,7 +374,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -355,7 +383,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts, Boons, Events, Scars);
+                null, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -364,15 +392,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts, Boons, Events, Scars);
+                null, worn, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -380,15 +408,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -396,7 +424,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock);
     }
 
     /// <summary>
@@ -507,7 +535,15 @@ namespace EdS.Data.Saves
         /// auprès de chaque faction (objet « faction : valeur », éventuellement vide ; factions de <see cref="EdS.Data.Story.Reputations.Factions"/>,
         /// valeurs non nulles de −1000 à 1000, ordre ordinal). Une sauvegarde de version 14 ou antérieure est lue telle quelle (neutre partout)
         /// et mise à jour ; elle n'a pas de <c>reputation</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 15;
+        /// <remarks>Version 16 (sous-lot V2.10, <see cref="StockSince"/>, marchands vivants et fêtes) : <c>stock</c> facultatif dans le
+        /// personnage (absent quand tous les marchands sont pleins ; lignes <c>{ "id", "bought", "resold", "day" }</c> rangées par identifiant,
+        /// voir <see cref="SavedStock"/>) et <c>festivals</c> facultatif dans l'histoire (objet « fête : jour du dernier concours », ordre
+        /// ordinal). Une sauvegarde de version 15 ou antérieure est lue telle quelle (stocks pleins, aucun concours) et mise à jour ; elle n'a
+        /// ni <c>stock</c> ni <c>festivals</c> (refusés, champs inconnus).</remarks>
+        public const int CurrentSchemaVersion = 16;
+
+        /// <summary>Sous-lot V2.10 : version où le stock des marchands et les concours des fêtes entrent dans la sauvegarde.</summary>
+        public const int StockSince = 16;
 
         /// <summary>Sous-lot V2.7 : version où la réputation (<c>story.reputation</c>) entre dans la sauvegarde.</summary>
         public const int ReputationSince = 15;
@@ -884,6 +920,13 @@ namespace EdS.Data.Saves
             }
             else if (c.Scars is null) Missing(report, path + ".scars", "cicatrices des failles restées ouvertes, éventuellement aucune");
             else CheckScars(c.Scars, path + ".scars", report);
+            // Sous-lot V2.10 (version 16) : stock des marchands, facultatif ; une sauvegarde antérieure n'en a aucun (tout est plein).
+            if (version < StockSince)
+            {
+                if (c.Present.Contains("stock") || c.Stock != null)
+                    report.Add(path + ".stock", ValidationCode.UnknownField, $"champ inconnu en version {version} (stock des marchands : version {StockSince}).");
+            }
+            else if (c.Stock != null) CheckStock(c.Stock, path + ".stock", report);
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -897,7 +940,42 @@ namespace EdS.Data.Saves
                 version < BoonsSince ? null : c.Boons!.Select(b => new SavedBoon(BoonKindOf(b!.Kind!), b.Item!, b.Ticks!.Value)),
                 version < EventsSince ? null : c.Events!.Select(e => new SavedEvent(e!.Id!, e.Won!.Value, e.Lost!.Value, e.Last!.Value,
                     (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false)),
-                version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)));
+                version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)),
+                c.Stock?.Select(x => new SavedStock(x!.Id!, x.Bought!.Value, x.Resold!.Value, x.Day!.Value)));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.10 (version 16) : forme du stock des marchands : de 1 à <see cref="SavedStock.MaxEntries"/> lignes (absent quand il n'y
+        /// en a aucune) rangées par identifiant « merchant.…/item.… », sans doublon ; unités achetées et revendues de 0 à
+        /// <see cref="SavedStock.MaxUnits"/>, pas toutes deux nulles ; jour de 0 à <see cref="SavedEvent.MaxDay"/>. L'accord avec les marchands
+        /// (marchand et objet connus) est vu quand la partie reprend : une ligne d'un marchand ou d'un objet disparu est oubliée.
+        /// </summary>
+        private static void CheckStock(List<SavedStockData?> lines, string path, ValidationReport report)
+        {
+            if (lines.Count < 1 || lines.Count > SavedStock.MaxEntries)
+            {
+                report.Add(path, lines.Count < 1 ? ValidationCode.OutOfRange : ValidationCode.LimitExceeded,
+                    $"de 1 à {SavedStock.MaxEntries} lignes (absent quand tous les marchands sont pleins).");
+                return;
+            }
+            string? previous = null;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string p = $"{path}[{i}]";
+                if (lines[i] is not SavedStockData x) { Missing(report, p, "ligne de stock"); continue; }
+                if (x.Id is null) Missing(report, p + ".id", "« merchant.…/item.… »");
+                else if (!SavedStock.IsKey(x.Id)) report.Add(p + ".id", ValidationCode.InvalidValue, $"ligne « {x.Id} » mal formée : « merchant.<nom>/item.<nom> » attendu.");
+                else if (previous != null && string.CompareOrdinal(previous, x.Id) >= 0)
+                    report.Add(p + ".id", ValidationCode.InvalidValue, "lignes rangées par identifiant, une seule par objet d'un marchand (forme canonique).");
+                else previous = x.Id;
+                if (x.Bought is null) Missing(report, p + ".bought", "unités manquantes au stock plein");
+                else if (x.Bought < 0 || x.Bought > SavedStock.MaxUnits) report.Add(p + ".bought", ValidationCode.OutOfRange, $"hors de [0, {SavedStock.MaxUnits}].");
+                if (x.Resold is null) Missing(report, p + ".resold", "unités revendues gardées par le marchand");
+                else if (x.Resold < 0 || x.Resold > SavedStock.MaxUnits) report.Add(p + ".resold", ValidationCode.OutOfRange, $"hors de [0, {SavedStock.MaxUnits}].");
+                else if (x.Bought == 0 && x.Resold == 0) report.Add(p, ValidationCode.InvalidValue, "ligne vide : elle n'est pas écrite (forme canonique).");
+                if (x.Day is null) Missing(report, p + ".day", "jour du monde de l'état");
+                else if (x.Day < 0 || x.Day > SavedEvent.MaxDay) report.Add(p + ".day", ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
+            }
         }
 
         /// <summary>
@@ -1126,10 +1204,31 @@ namespace EdS.Data.Saves
                             report.Add(p, ValidationCode.InvalidValue, "liste hors de l'ordre ordinal ou avec doublon (forme canonique).");
                     }
             }
+            // Sous-lot V2.10 (version 16) : concours des fêtes, facultatif (absent : jamais concouru).
+            if (version < StockSince)
+            {
+                if (st.Festivals != null) report.Add(path + ".festivals", ValidationCode.UnknownField, $"champ inconnu en version {version} (concours des fêtes : version {StockSince}).");
+            }
+            else if (st.Festivals != null)
+            {
+                if (st.Festivals.Count < 1 || st.Festivals.Count > SavedStory.MaxFestivals)
+                    report.Add(path + ".festivals", ValidationCode.OutOfRange, $"de 1 à {SavedStory.MaxFestivals} fêtes (absent quand il n'y en a aucune).");
+                else
+                    for (int i = 0; i < st.Festivals.Count; i++)
+                    {
+                        var t = st.Festivals[i];
+                        string p = $"{path}.festivals.{t.Key}";
+                        if (t.Key is null || t.Key.Length > 200 || !SavedStory.FestivalKey.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "fête mal formée : « festival.… ».");
+                        else if (t.Value is not int v) Missing(report, p, "jour du monde");
+                        else if (v < 0 || v > SavedEvent.MaxDay) report.Add(p, ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
+                        else if (i > 0 && string.CompareOrdinal(st.Festivals[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "fêtes hors de l'ordre ordinal ou en double.");
+                    }
+            }
             if (!report.IsValid) return null;
             return new SavedStory(st.Facts!.Select(f => f!), st.Quests!.ToDictionary(q => q.Id, q => new QuestProgress(q.Value!.Step!, q.Value.Progress!.Value), StringComparer.Ordinal),
                 st.Trust!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal), st.Discoveries!.Select(d => d!), version < 8 ? null : st.Tracked, guild,
-                st.Hunted?.Select(h => h!), st.Reputation?.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal));
+                st.Hunted?.Select(h => h!), st.Reputation?.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
+                st.Festivals?.ToDictionary(t => t.Key, t => (long)t.Value!.Value, StringComparer.Ordinal));
         }
 
         private static readonly Regex TitleId = new Regex(@"^title(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);

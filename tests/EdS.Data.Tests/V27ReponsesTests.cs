@@ -46,15 +46,16 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((4, 3, "0.9.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((5, 3, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
-            ("merchant.renart", "villagers"), ("merchant.receleur", "bandits") }, ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
+            ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers") }, ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
         Assert.Equal("liked", ShippedMerchants.Merchant("merchant.receleur").Standing);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Version 3 : sans faction ni palier, encore lue ; la faction y est un champ inconnu.
         JsonObject three = MerchantsJson();
         three["schemaVersion"] = 3;
+        V210TestData.MerchantsWithoutLiving(three);   // V2.10 : sans stock vivant ni étal ambulant (schéma 5)
         Assert.Contains(ReadMerchants(three).Report.Errors, e => e.Path == "$.data.merchants[0].faction" && e.Code == ValidationCode.InvalidValue);
         JsonArray list = three["data"]!["merchants"]!.AsArray();
         list.RemoveAt(list.Count - 1);

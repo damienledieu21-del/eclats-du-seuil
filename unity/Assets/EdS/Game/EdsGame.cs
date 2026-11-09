@@ -576,6 +576,8 @@ namespace EdS.Game
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
+            HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
+            HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).

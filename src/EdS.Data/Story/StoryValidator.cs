@@ -137,7 +137,25 @@ namespace EdS.Data.Story
         /// (<c>id</c> une faction, <c>value</c> non nulle, au plus <see cref="Reputations.MaxEffect"/> en valeur absolue) ; section facultative
         /// <c>reputation</c> (<see cref="ReputationRules"/> : <c>links</c>, <c>acts</c>, <c>defeated</c>, <c>events</c>, <c>prices</c>). Les
         /// versions 4 à 11 restent lues telles quelles (elles ne connaissent rien de cela).</remarks>
-        public const int CurrentSchemaVersion = 12;
+        /// <remarks>Version 13 (sous-lot V2.10, marchands vivants et fêtes du bourg) : section facultative <c>festivals</c> (fêtes du bourg :
+        /// <c>id</c> « festival.… », <c>name</c>, soit <c>weekday</c> de 0 à 6, soit <c>season</c> et <c>day</c> de 0 à 27, <c>from</c> et
+        /// <c>to</c> « HH:MM » croissantes, <c>guests</c> : <c>npc</c>, <c>position</c>, <c>activity</c>) ; <c>festivals</c> facultatives d'un PNJ
+        /// (PNJ de passage, là seulement pendant ces fêtes) ; conditions <c>festival</c> (<c>id</c> une fête ou « any ») et <c>contestOpen</c>
+        /// (<c>id</c> une fête) ; effet <c>contest</c> (<c>id</c> une fête, dans une réponse qui demande <c>contestOpen</c> de cette fête). Les
+        /// versions 4 à 12 restent lues telles quelles.</remarks>
+        public const int CurrentSchemaVersion = 13;
+
+        /// <summary>Sous-lot V2.10 : version 12, encore lue (sans fêtes).</summary>
+        public const int Schema12 = 12;
+
+        /// <summary>Sous-lot V2.10 : fêtes au plus, invités d'une fête au plus.</summary>
+        public const int MaxFestivals = 16, MaxFestivalGuests = 16;
+
+        /// <summary>Sous-lot V2.10 : tours d'une rotation des concours au plus.</summary>
+        public const int MaxRounds = 8;
+
+        /// <summary>Sous-lot V2.10 : identifiant d'une condition <c>festival</c> vraie pendant n'importe quelle fête.</summary>
+        public const string AnyFestival = "any";
 
         /// <summary>Sous-lot V2.7 : version 11, encore lue (sans réputation).</summary>
         public const int Schema11 = 11;
@@ -211,6 +229,8 @@ namespace EdS.Data.Story
             ["scarsAtLeast"] = ConditionKind.ScarsAtLeast, ["scarsBelow"] = ConditionKind.ScarsBelow,   // sous-lot V2.6.1 (schéma 11)
             ["reputationAtLeast"] = ConditionKind.ReputationAtLeast, ["reputationBelow"] = ConditionKind.ReputationBelow,   // sous-lot V2.7 (schéma 12)
             ["standing"] = ConditionKind.Standing, ["standingAtLeast"] = ConditionKind.StandingAtLeast,
+            ["festival"] = ConditionKind.Festival, ["contestOpen"] = ConditionKind.ContestOpen,   // sous-lot V2.10 (schéma 13)
+            ["contestRound"] = ConditionKind.ContestRound,
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -221,6 +241,7 @@ namespace EdS.Data.Story
             ["giveGuildPoints"] = EffectKind.GiveGuildPoints,   // sous-lot V1.7
             ["skipQuest"] = EffectKind.SkipQuest,   // sous-lot V1.9.7 (schéma 7)
             ["reputation"] = EffectKind.Reputation,   // sous-lot V2.7 (schéma 12)
+            ["contest"] = EffectKind.Contest,   // sous-lot V2.10 (schéma 13)
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -250,6 +271,7 @@ namespace EdS.Data.Story
 
         private static Regex Id(string prefix) => new Regex($@"^{prefix}(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
+        private static readonly Regex FestivalId = Id("festival");
         private static readonly Regex NpcId = Id("npc"), DialogueId = Id("dialogue"), QuestId = Id("quest"), FactId = Id("fact"), DiscoveryId = Id("discovery"), SceneId = Id("scene");
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
@@ -281,6 +303,7 @@ namespace EdS.Data.Story
                 || document.SchemaVersion == Schema7 || document.SchemaVersion == Schema8 || document.SchemaVersion == Schema9
                 || document.SchemaVersion == Schema10   // sous-lot V2.6.1
                 || document.SchemaVersion == Schema11   // sous-lot V2.7
+                || document.SchemaVersion == Schema12   // sous-lot V2.10
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -307,6 +330,9 @@ namespace EdS.Data.Story
             /// <summary>Sous-lot V1.9.7 : quêtes marquées <c>skippable</c> (les seules qu'un effet <c>skipQuest</c> peut viser).</summary>
             private readonly HashSet<string> _skippable = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _discoveries = new HashSet<string>(StringComparer.Ordinal);
+
+            /// <summary>Sous-lot V2.10 : fêtes déclarées (conditions <c>festival</c>, <c>contestOpen</c>, effet <c>contest</c>, PNJ de passage).</summary>
+            private readonly HashSet<string> _festivals = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
@@ -346,6 +372,9 @@ namespace EdS.Data.Story
                             if (q.Skippable == true) _skippable.Add(id);
                         }
                 Declare(_d.Discoveries, "$.data.discoveries", MaxDiscoveries, x => x?.Id, DiscoveryId, _discoveries);
+                // Sous-lot V2.10 (schéma 13) : les fêtes.
+                if (_d.Festivals != null && Since13("festivals", "$.data.festivals"))
+                    Declare(_d.Festivals, "$.data.festivals", MaxFestivals, x => x?.Id, FestivalId, _festivals);
                 // Relecture de la PR #81 : le signe d'une créature rare de la nuit (zones en schéma 6) est un texte du jeu : il doit exister,
                 // comme les autres clés de texte. La zone est validée sans les textes ; l'histoire, qui les a, vérifie ses signes (chemin dans
                 // le fichier de la zone, précédé de son identifiant).
@@ -406,11 +435,14 @@ namespace EdS.Data.Story
                         // Sous-lot V2.7 (schéma 12) : faction du PNJ.
                         if (n.Faction != null && (!Since12("faction", path + ".faction") || !Reputations.IsFaction(n.Faction)))
                         {
-                            if (_schema >= CurrentSchemaVersion)
+                            if (_schema >= Schema12)
                                 _r.Add(path + ".faction", ValidationCode.UnknownReference, $"faction inconnue « {n.Faction} » ; possibles : {string.Join(", ", Reputations.Factions)}.");
                             ok = false;
                         }
-                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule).WithFaction(n.Faction));
+                        // Sous-lot V2.10 (schéma 13) : un PNJ de passage, là seulement pendant ses fêtes (dans la zone de l'histoire, sans emploi du temps).
+                        List<string>? visits = NpcFestivals(n, path + ".festivals");
+                        if (visits is null) ok = false;
+                        if (ok && n.Id != null) npcs.Add(new Npc(n.Id, n.Name!, Point(n.Position!), n.Dialogue!, n.Zone, schedule).WithFaction(n.Faction).WithFestivals(visits));
                     }
 
                 // Sous-lot V2.1 (zones en schéma 8) : un PNJ qui rentre chez lui la nuit existe et vit dans la zone de sa place de nuit.
@@ -459,8 +491,10 @@ namespace EdS.Data.Story
                 foreach (var (fact, path) in _factsNeeded)
                     if (!_factsSet.Contains(fact))
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
+                // Sous-lot V2.10 (schéma 13) : les fêtes et leurs invités (PNJ connus).
+                List<Festival> festivals = CheckFestivals(npcs);
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet);
             }
 
             /// <summary>
@@ -740,7 +774,16 @@ namespace EdS.Data.Story
                             if (n.Choices[k] is not DialogueChoiceData ch) { TextsValidator.Missing(_r, cp, "réponse"); nodeOk = false; continue; }
                             bool chOk = Text(ch.Text, cp + ".text");
                             List<StoryCondition>? conditions = ConditionsOf(ch.Conditions, cp + ".conditions");
-                            List<StoryEffect>? effects = EffectsOf(ch.Effects, cp + ".effects", skip: true);
+                            List<StoryEffect>? effects = EffectsOf(ch.Effects, cp + ".effects", skip: true, contest: true);
+                            // Sous-lot V2.10 : concourir ferme le concours : la réponse demande qu'il soit ouvert (sinon il se rejouerait sans fin).
+                            if (effects != null && conditions != null)
+                                for (int e = 0; e < effects.Count; e++)
+                                    if (effects[e].Kind == EffectKind.Contest && !conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.Id == effects[e].Id))
+                                    {
+                                        _r.Add($"{cp}.effects[{e}].id", ValidationCode.InvalidValue,
+                                            $"concours « {effects[e].Id} » : la réponse doit demander « contestOpen » de la même fête.");
+                                        chOk = false;
+                                    }
                             if (!ch.HasNext) { TextsValidator.Missing(_r, cp + ".next", "nœud suivant, ou null pour finir"); chOk = false; }
                             else if (ch.Next != null && !nodeIds.Contains(ch.Next)) { _r.Add(cp + ".next", ValidationCode.UnknownReference, $"nœud inconnu « {ch.Next} »."); chOk = false; }
                             if (chOk && conditions != null && effects != null) choices.Add(new DialogueChoice(ch.Text!, conditions, effects, ch.Next));
@@ -884,6 +927,11 @@ namespace EdS.Data.Story
                             Since12(t.Kind, p + ".if") && FactionRef(t, p) && Value(t, p, Reputations.Min, Reputations.Max) && NoStep(t, p),
                         ConditionKind.Standing or ConditionKind.StandingAtLeast =>
                             Since12(t.Kind, p + ".if") && FactionRef(t, p) && TierRef(t, p) && NoValue(t, p),
+                        ConditionKind.Festival =>   // sous-lot V2.10 (schéma 13)
+                            Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoStep(t, p)
+                            && Value(t, p, 0, (_d.Festivals?.FirstOrDefault(f => f?.Id == t.Id)?.Rounds ?? 1) - 1),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
@@ -902,7 +950,8 @@ namespace EdS.Data.Story
 
             /// <param name="skip">Sous-lot V1.9.7 : l'effet <c>skipQuest</c> est permis (réponses de dialogue seulement : dans une quête, il se
             /// mêlerait à l'avancement de l'étape qui l'applique).</param>
-            private List<StoryEffect>? EffectsOf(List<TermData?>? terms, string path, bool skip = false)
+            /// <param name="contest">Sous-lot V2.10 : l'effet <c>contest</c> est permis (réponses de dialogue seulement).</param>
+            private List<StoryEffect>? EffectsOf(List<TermData?>? terms, string path, bool skip = false, bool contest = false)
             {
                 if (terms is null) { TextsValidator.Missing(_r, path, "effets, éventuellement vide"); return null; }
                 if (terms.Count > MaxTerms) { _r.Add(path, ValidationCode.LimitExceeded, $"au plus {MaxTerms} effets."); return null; }
@@ -924,6 +973,12 @@ namespace EdS.Data.Story
                         continue;
                     }
                     if (kind == EffectKind.Reputation && !Since12("reputation", p + ".do")) continue;   // sous-lot V2.7
+                    if (kind == EffectKind.Contest && !Since13("contest", p + ".do")) continue;   // sous-lot V2.10
+                    if (kind == EffectKind.Contest && !contest)
+                    {
+                        _r.Add(p + ".do", ValidationCode.InvalidValue, "effet « contest » permis seulement dans une réponse de dialogue.");
+                        continue;
+                    }
                     if (kind == EffectKind.SkipQuest && !skip)
                     {
                         _r.Add(p + ".do", ValidationCode.InvalidValue, "effet « skipQuest » permis seulement dans une réponse de dialogue.");
@@ -941,6 +996,7 @@ namespace EdS.Data.Story
                         EffectKind.GiveGuildPoints => NoId(t, p) && Value(t, p, 1, GuildRanks.MaxAward),   // sous-lot V1.7
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         EffectKind.Reputation => FactionRef(t, p) && Value(t, p, -Reputations.MaxEffect, Reputations.MaxEffect) && NonZero(t, p),   // sous-lot V2.7
+                        EffectKind.Contest => Ref(t, p, _festivals, "fête") && NoValue(t, p),   // sous-lot V2.10
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
@@ -1140,10 +1196,130 @@ namespace EdS.Data.Story
             }
 
             /// <summary>Sous-lot V2.7 : <paramref name="what"/> (réputation) demande la version 12.</summary>
-            private bool Since12(string what, string p)
+            /// <summary>Sous-lot V2.10 : <paramref name="what"/> demande la version 13 (fêtes).</summary>
+            private bool Since13(string what, string p)
             {
                 if (_schema >= CurrentSchemaVersion) return true;
                 _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                return false;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.10 (schéma 13) : fêtes d'un PNJ de passage : des fêtes connues, une fois chacune ; le PNJ vit dans la zone de
+            /// l'histoire, sans emploi du temps (il vient pour la fête et repart). Absentes : liste vide. Null : erreur au rapport.
+            /// </summary>
+            private List<string>? NpcFestivals(NpcData n, string path)
+            {
+                var list = new List<string>();
+                if (n.Festivals is null) return list;
+                if (!Since13("festivals", path)) return null;
+                bool ok = true;
+                if (n.Festivals.Count < 1) { _r.Add(path, ValidationCode.OutOfRange, $"de 1 à {MaxFestivals} fêtes (absentes : toujours là)."); ok = false; }
+                if (n.Zone != null) { _r.Add(path, ValidationCode.InvalidValue, "un PNJ de passage vient sur la place : pas dans un intérieur."); ok = false; }
+                if (n.Schedule != null) { _r.Add(path, ValidationCode.InvalidValue, "un PNJ de passage n'a pas d'emploi du temps : il est à son étal pendant la fête."); ok = false; }
+                for (int i = 0; i < n.Festivals.Count; i++)
+                {
+                    string p = $"{path}[{i}]";
+                    string? id = n.Festivals[i];
+                    if (id is null || !_festivals.Contains(id)) { _r.Add(p, ValidationCode.UnknownReference, $"fête inconnue « {id} »."); ok = false; }
+                    else if (list.Contains(id)) { _r.Add(p, ValidationCode.DuplicateId, $"fête « {id} » déjà donnée."); ok = false; }
+                    else list.Add(id);
+                }
+                return ok ? list : null;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.10 (schéma 13) : chaque fête (déclarée au premier passage) a son nom, soit un jour de la semaine (<c>weekday</c>, de 0
+            /// à 6), soit une saison et un jour de la saison (<c>season</c>, <c>day</c> de 0 à 27), des heures <c>from</c> &lt; <c>to</c>
+            /// « HH:MM » (la fête ne passe pas minuit), et ses invités : des PNJ connus (pas de passage), une fois chacun, à une place
+            /// praticable de la zone de l'histoire (ceux d'un intérieur sortent pour la fête), avec une activité qui a son texte.
+            /// </summary>
+            private List<Festival> CheckFestivals(List<Npc> npcs)
+            {
+                var festivals = new List<Festival>();
+                if (_d.Festivals is null || _schema < CurrentSchemaVersion) return festivals;
+                for (int i = 0; i < _d.Festivals.Count; i++)
+                {
+                    string path = $"$.data.festivals[{i}]";
+                    if (_d.Festivals[i] is not FestivalData f) { TextsValidator.Missing(_r, path, "fête"); continue; }
+                    bool ok = f.Id != null && _festivals.Contains(f.Id) && _d.Festivals.Take(i).All(x => x?.Id != f.Id);
+                    ok &= Text(f.Name, path + ".name");
+                    int? season = null;
+                    if (f.Weekday != null)
+                    {
+                        if (f.Season != null || f.Day != null)
+                        { _r.Add(path + ".weekday", ValidationCode.InvalidValue, "soit « weekday » (chaque semaine), soit « season » et « day » (chaque année), pas les deux."); ok = false; }
+                        else if (f.Weekday < 0 || f.Weekday >= WorldCalendar.DaysPerWeek)
+                        { _r.Add(path + ".weekday", ValidationCode.OutOfRange, $"jour de la semaine hors de [0, {WorldCalendar.DaysPerWeek - 1}]."); ok = false; }
+                    }
+                    else
+                    {
+                        if (f.Season is null) { TextsValidator.Missing(_r, path + ".season", "saison (ou « weekday »)"); ok = false; }
+                        else if (WorldCalendar.SeasonIndex(f.Season) < 0)
+                        { _r.Add(path + ".season", ValidationCode.UnknownReference, $"saison inconnue « {f.Season} » ; possibles : {string.Join(", ", WorldCalendar.Seasons)}."); ok = false; }
+                        else season = WorldCalendar.SeasonIndex(f.Season);
+                        if (f.Day is null) { TextsValidator.Missing(_r, path + ".day", "jour de la saison"); ok = false; }
+                        else if (f.Day < 0 || f.Day >= WorldCalendar.DaysPerSeason)
+                        { _r.Add(path + ".day", ValidationCode.OutOfRange, $"jour de la saison hors de [0, {WorldCalendar.DaysPerSeason - 1}]."); ok = false; }
+                    }
+                    int from = -1, to = -1;
+                    if (f.From is null) { TextsValidator.Missing(_r, path + ".from", "heure de début « HH:MM »"); ok = false; }
+                    else if (!(MinuteOf(f.From) is int a)) { _r.Add(path + ".from", ValidationCode.InvalidValue, $"heure « {f.From} » mal formée : « HH:MM »."); ok = false; }
+                    else from = a;
+                    if (f.To is null) { TextsValidator.Missing(_r, path + ".to", "heure de fin « HH:MM »"); ok = false; }
+                    else if (!(MinuteOf(f.To) is int b)) { _r.Add(path + ".to", ValidationCode.InvalidValue, $"heure « {f.To} » mal formée : « HH:MM »."); ok = false; }
+                    else if (from >= 0 && b <= from) { _r.Add(path + ".to", ValidationCode.InvalidValue, "fin après le début attendue (une fête ne passe pas minuit)."); ok = false; }
+                    else to = b;
+                    var guests = new List<FestivalGuest>();
+                    if (f.Guests is null) { TextsValidator.Missing(_r, path + ".guests", "invités, éventuellement aucun"); ok = false; }
+                    else
+                        for (int k = 0; k < f.Guests.Count; k++)
+                        {
+                            string gp = $"{path}.guests[{k}]";
+                            if (f.Guests[k] is not FestivalGuestData g) { TextsValidator.Missing(_r, gp, "invité"); ok = false; continue; }
+                            bool gOk = true;
+                            Npc? who = g.Npc is null ? null : npcs.FirstOrDefault(x => x.Id == g.Npc);
+                            if (g.Npc is null) { TextsValidator.Missing(_r, gp + ".npc", "PNJ invité"); gOk = false; }
+                            else if (!_npcs.Contains(g.Npc)) { _r.Add(gp + ".npc", ValidationCode.UnknownReference, $"PNJ inconnu « {g.Npc} »."); gOk = false; }
+                            else if (f.Guests.Take(k).Any(x => x?.Npc == g.Npc)) { _r.Add(gp + ".npc", ValidationCode.DuplicateId, $"« {g.Npc} » déjà invité."); gOk = false; }
+                            else if (who != null && who.Festivals.Count > 0)
+                            { _r.Add(gp + ".npc", ValidationCode.InvalidValue, $"« {g.Npc} » est un PNJ de passage : il est déjà à son étal."); gOk = false; }
+                            gOk &= Activity(g.Activity, gp + ".activity");
+                            gOk &= Spot(g.Position, gp + ".position", _zone);
+                            if (gOk) guests.Add(new FestivalGuest(g.Npc!, Point(g.Position!), g.Activity!));
+                            else ok = false;
+                        }
+                    if (!ok) continue;
+                    if (f.Rounds != null && (f.Rounds < 1 || f.Rounds > MaxRounds))
+                    { _r.Add(path + ".rounds", ValidationCode.OutOfRange, $"tours de la rotation des concours hors de [1, {MaxRounds}]."); continue; }
+                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests).WithRounds(f.Rounds ?? 1);
+                    // Relecture de la PR #120 : deux fêtes ne se chevauchent jamais (même jour possible et heures croisées) : une seule fête à la fois.
+                    if (festivals.FirstOrDefault(other => SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)
+                    {
+                        _r.Add(path + ".from", ValidationCode.InvalidValue,
+                            $"« {festival.Id} » chevauche « {clash.Id} » (même jour possible, de {clash.From / 60:00}:{clash.From % 60:00} à {clash.To / 60:00}:{clash.To % 60:00}) : une seule fête à la fois.");
+                        continue;
+                    }
+                    festivals.Add(festival);
+                }
+                return festivals;
+            }
+
+            /// <summary>
+            /// Sous-lot V2.10 : deux fêtes peuvent tomber le même jour. Une année compte 16 semaines exactement (112 jours) et une saison 4 :
+            /// le jour de la semaine d'une fête annuelle est toujours <c>day % 7</c>.
+            /// </summary>
+            private static bool SameDay(Festival a, Festival b)
+            {
+                int WeekdayOf(Festival f) => f.Weekday ?? f.Day!.Value % WorldCalendar.DaysPerWeek;
+                if (a.Weekday != null || b.Weekday != null) return WeekdayOf(a) == WeekdayOf(b);
+                return a.Season == b.Season && a.Day == b.Day;
+            }
+
+            private bool Since12(string what, string p)
+            {
+                if (_schema >= Schema12) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {Schema12} demandée.");
                 return false;
             }
 

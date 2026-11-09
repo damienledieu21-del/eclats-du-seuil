@@ -45,6 +45,10 @@ namespace EdS.Data.Json
                         n => $"{n} valeurs, au plus {MerchantValidator.MaxValues}.", (e, ip) => ReadValue(input, e, ip)),
                     ["merchants"] = (v, p) => d.Merchants = input.ReadLimitedList(v, p, MerchantValidator.MaxMerchants,
                         n => $"{n} marchands, au plus {MerchantValidator.MaxMerchants}.", (e, ip) => ReadMerchant(input, e, ip)),
+                    ["prices"] = (v, p) => d.Prices = input.ReadLimitedList(v, p, MerchantValidator.MaxRules,   // sous-lot V2.10 (schéma 5)
+                        n => $"{n} règles, au plus {MerchantValidator.MaxRules}.", (e, ip) => ReadPrice(input, e, ip)),
+                    ["shocks"] = (v, p) => d.Shocks = input.ReadLimitedList(v, p, MerchantValidator.MaxRules,
+                        n => $"{n} contrecoups, au plus {MerchantValidator.MaxRules}.", (e, ip) => ReadShock(input, e, ip)),
                 });
                 document.Data = ok ? d : null;
             });
@@ -79,6 +83,9 @@ namespace EdS.Data.Json
                 ["fact"] = (v, p) => x.Fact = input.Text(v, p),   // sous-lot V1.9.3b (schéma 3)
                 ["faction"] = (v, p) => x.Faction = input.Text(v, p),   // sous-lot V2.7 (schéma 4)
                 ["standing"] = (v, p) => x.Standing = input.Text(v, p),
+                ["restock"] = (v, p) => x.Restock = input.Int32(v, p),   // sous-lot V2.10 (schéma 5)
+                ["resale"] = (v, p) => x.Resale = input.Int32(v, p),
+                ["festivals"] = (v, p) => x.Festivals = Names(input, v, p),
                 ["offers"] = (v, p) => x.Offers = input.ReadLimitedList(v, p, MerchantValidator.MaxOffers,
                     n => $"{n} offres, au plus {MerchantValidator.MaxOffers}.", (e, ip) => ReadOffer(input, e, ip)),
             }) ? x : null;
@@ -93,6 +100,41 @@ namespace EdS.Data.Json
                 ["price"] = (v, p) => x.Price = input.Int64(v, p),
                 ["always"] = (v, p) => x.Always = input.Boolean(v, p),
                 ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
+                ["stock"] = (v, p) => x.Stock = input.Int32(v, p),   // sous-lot V2.10 (schéma 5)
+            }) ? x : null;
+        }
+
+        private static List<string?>? Names(JsonInput input, JsonElement element, string path) =>
+            input.ReadLimitedList(element, path, MerchantValidator.MaxNamed, n => $"{n} noms, au plus {MerchantValidator.MaxNamed}.", (e, ip) => input.Text(e, ip));
+
+        private static PriceRuleData? ReadPrice(JsonInput input, JsonElement element, string path)
+        {
+            var x = new PriceRuleData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["season"] = (v, p) => x.Season = input.Text(v, p),
+                ["weather"] = (v, p) => x.Weather = input.Text(v, p),
+                ["items"] = (v, p) => x.Items = Names(input, v, p),
+                ["merchants"] = (v, p) => x.Merchants = Names(input, v, p),
+                ["percent"] = (v, p) => x.Percent = input.Int32(v, p),
+            }) ? x : null;
+        }
+
+        private static ShockData? ReadShock(JsonInput input, JsonElement element, string path)
+        {
+            var x = new ShockData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => x.Id = input.Text(v, p),
+                ["event"] = (v, p) => x.Event = input.Text(v, p),
+                ["outcome"] = (v, p) => x.Outcome = input.Text(v, p),
+                ["days"] = (v, p) => x.Days = input.Int32(v, p),
+                ["fact"] = (v, p) => x.Fact = input.Text(v, p),
+                ["notFact"] = (v, p) => x.NotFact = input.Text(v, p),
+                ["items"] = (v, p) => x.Items = Names(input, v, p),
+                ["merchants"] = (v, p) => x.Merchants = Names(input, v, p),
+                ["stockPercent"] = (v, p) => x.StockPercent = input.Int32(v, p),
+                ["pricePercent"] = (v, p) => x.PricePercent = input.Int32(v, p),
             }) ? x : null;
         }
     }

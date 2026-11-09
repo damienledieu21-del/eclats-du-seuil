@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "merchants",
-  "contentVersion": "0.9.0-provisoire",
+  "contentVersion": "0.10.0-provisoire",
   "data": {
     "values": [
       {
@@ -388,6 +388,18 @@
       {
         "item": "item.cape_du_vieux_brunot",
         "value": 7600
+      },
+      {
+        "item": "item.tablier_de_maitre",
+        "value": 400
+      },
+      {
+        "item": "item.arc_de_concours",
+        "value": 450
+      },
+      {
+        "item": "item.livre_de_contes",
+        "value": 400
       }
     ],
     "merchants": [
@@ -404,95 +416,115 @@
           {
             "item": "item.epee_du_milicien",
             "price": 400,
-            "always": true
+            "always": true,
+            "stock": 4
           },
           {
             "item": "item.ecu_de_chene",
             "price": 350,
-            "always": true
+            "always": true,
+            "stock": 4
           },
           {
             "item": "item.gambison",
             "price": 450,
-            "always": true
+            "always": true,
+            "stock": 4
           },
           {
             "item": "item.epee_de_garde",
             "price": 1600,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.rondache_cerclee",
             "price": 1800,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.pavois_du_moulin",
             "price": 1900,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.cotte_de_mailles",
             "price": 2600,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.marteau_du_carrier",
             "price": 3200,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.targe_d_osier",
             "price": 460,
-            "always": true
+            "always": true,
+            "stock": 3
           },
           {
             "item": "item.coiffe_de_cuir",
             "price": 320,
-            "always": true
+            "always": true,
+            "stock": 4
           },
           {
             "item": "item.bottes_de_cuir",
             "price": 320,
-            "always": true
+            "always": true,
+            "stock": 4
           },
           {
             "item": "item.cape_de_laine",
             "price": 320,
-            "always": true
+            "always": true,
+            "stock": 5
           },
           {
             "item": "item.ecu_du_garde",
             "price": 2400,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.casque_de_fer",
             "price": 2730,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.jambieres_de_mailles",
             "price": 3060,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.cape_de_voyageur",
             "price": 3060,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.gantelets_de_fer",
             "price": 3060,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.anneau_de_fer",
             "price": 840,
-            "always": false
+            "always": false,
+            "stock": 1
           }
         ],
-        "faction": "guard"
+        "faction": "guard",
+        "restock": 25,
+        "resale": 140
       },
       {
         "id": "merchant.herboriste",
@@ -505,30 +537,37 @@
           {
             "item": "item.potion_de_soin",
             "price": 60,
-            "always": true
+            "always": true,
+            "stock": 30
           },
           {
             "item": "item.herbe_de_l_aube",
             "price": 22,
-            "always": true
+            "always": true,
+            "stock": 60
           },
           {
             "item": "item.remede_de_l_aube",
             "price": 220,
-            "always": false
+            "always": false,
+            "stock": 8
           },
           {
             "item": "item.eclat_de_seuil",
             "price": 450,
-            "always": false
+            "always": false,
+            "stock": 3
           },
           {
             "item": "item.faucille_de_l_herboriste",
             "price": 320,
-            "always": true
+            "always": true,
+            "stock": 2
           }
         ],
-        "faction": "villagers"
+        "faction": "villagers",
+        "restock": 50,
+        "resale": 130
       },
       {
         "id": "merchant.epicier",
@@ -543,25 +582,31 @@
           {
             "item": "item.potion_de_soin",
             "price": 70,
-            "always": true
+            "always": true,
+            "stock": 25
           },
           {
             "item": "item.herbe_de_l_aube",
             "price": 25,
-            "always": false
+            "always": false,
+            "stock": 40
           },
           {
             "item": "item.eclat_de_seuil",
             "price": 480,
-            "always": false
+            "always": false,
+            "stock": 3
           },
           {
             "item": "item.pioche_du_carrier",
             "price": 320,
-            "always": true
+            "always": true,
+            "stock": 2
           }
         ],
-        "faction": "villagers"
+        "faction": "villagers",
+        "restock": 50,
+        "resale": 125
       },
       {
         "id": "merchant.guilde",
@@ -575,51 +620,61 @@
           {
             "item": "item.potion_de_soin",
             "price": 50,
-            "always": true
+            "always": true,
+            "stock": 40
           },
           {
             "item": "item.remede_de_l_aube",
             "price": 190,
-            "always": true
+            "always": true,
+            "stock": 15
           },
           {
             "item": "item.heaume_du_guetteur",
             "price": 2420,
             "always": true,
-            "rank": "f"
+            "rank": "f",
+            "stock": 2
           },
           {
             "item": "item.anneau_du_guetteur",
             "price": 3280,
             "always": true,
-            "rank": "f"
+            "rank": "f",
+            "stock": 2
           },
           {
             "item": "item.spalieres_du_veneur",
             "price": 3280,
             "always": false,
-            "rank": "f"
+            "rank": "f",
+            "stock": 1
           },
           {
             "item": "item.jambieres_du_veneur",
             "price": 2700,
             "always": false,
-            "rank": "f"
+            "rank": "f",
+            "stock": 1
           },
           {
             "item": "item.cuirasse_du_veneur",
             "price": 3850,
             "always": true,
-            "rank": "e"
+            "rank": "e",
+            "stock": 2
           },
           {
             "item": "item.dent_de_loup",
             "price": 3570,
             "always": false,
-            "rank": "e"
+            "rank": "e",
+            "stock": 1
           }
         ],
-        "faction": "villagers"
+        "faction": "villagers",
+        "restock": 34,
+        "resale": 120
       },
       {
         "id": "merchant.renart",
@@ -635,35 +690,43 @@
           {
             "item": "item.potion_de_soin",
             "price": 80,
-            "always": true
+            "always": true,
+            "stock": 20
           },
           {
             "item": "item.huile_d_eclat",
             "price": 520,
-            "always": true
+            "always": true,
+            "stock": 5
           },
           {
             "item": "item.anneau_de_fer",
             "price": 980,
-            "always": true
+            "always": true,
+            "stock": 3
           },
           {
             "item": "item.eclat_de_seuil",
             "price": 560,
-            "always": false
+            "always": false,
+            "stock": 2
           },
           {
             "item": "item.cape_de_voyageur",
             "price": 3500,
-            "always": false
+            "always": false,
+            "stock": 1
           },
           {
             "item": "item.chevaliere_du_bourg",
             "price": 5600,
-            "always": false
+            "always": false,
+            "stock": 1
           }
         ],
-        "faction": "villagers"
+        "faction": "villagers",
+        "restock": 34,
+        "resale": 160
       },
       {
         "id": "merchant.receleur",
@@ -678,34 +741,228 @@
           {
             "item": "item.potion_de_soin",
             "price": 55,
-            "always": true
+            "always": true,
+            "stock": 99
           },
           {
             "item": "item.huile_d_eclat",
             "price": 460,
-            "always": true
+            "always": true,
+            "stock": 10
           },
           {
             "item": "item.anneau_de_fer",
             "price": 820,
-            "always": true
+            "always": true,
+            "stock": 5
           },
           {
             "item": "item.eclat_de_seuil",
             "price": 380,
-            "always": false
+            "always": false,
+            "stock": 4
           },
           {
             "item": "item.cape_de_voyageur",
             "price": 2900,
-            "always": false
+            "always": false,
+            "stock": 2
           },
           {
             "item": "item.remede_de_l_aube",
             "price": 180,
-            "always": false
+            "always": false,
+            "stock": 6
+          }
+        ],
+        "restock": 100,
+        "resale": 150
+      },
+      {
+        "id": "merchant.colporteur",
+        "npc": "npc.colporteur",
+        "greeting": "text.v210.colporteur.boutique",
+        "sellPercent": 50,
+        "closed": [],
+        "daily": 3,
+        "faction": "villagers",
+        "restock": 100,
+        "resale": 150,
+        "festivals": [
+          "festival.moissons",
+          "festival.veillee",
+          "festival.foire",
+          "festival.marche"
+        ],
+        "offers": [
+          {
+            "item": "item.pierre_a_aiguiser",
+            "price": 60,
+            "always": true,
+            "stock": 6
+          },
+          {
+            "item": "item.elixir_de_vigueur",
+            "price": 90,
+            "always": true,
+            "stock": 4
+          },
+          {
+            "item": "item.chapeau_de_lune",
+            "price": 40,
+            "always": false,
+            "stock": 5
+          },
+          {
+            "item": "item.elixir_de_garde",
+            "price": 210,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.anneau_de_cuivre",
+            "price": 480,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.amulette_de_l_aube",
+            "price": 1400,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.bottes_du_renard",
+            "price": 2900,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.pendentif_du_lac",
+            "price": 5600,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.elixir_du_seuil",
+            "price": 1250,
+            "always": false,
+            "stock": 1
           }
         ]
+      }
+    ],
+    "prices": [
+      {
+        "season": "winter",
+        "items": [
+          "item.peau_de_loup",
+          "item.peau_d_ours",
+          "item.cape_de_laine",
+          "item.cape_de_voyageur",
+          "item.griffe_d_ours"
+        ],
+        "percent": 125
+      },
+      {
+        "season": "winter",
+        "items": [
+          "item.potion_de_soin",
+          "item.remede_de_l_aube"
+        ],
+        "percent": 110
+      },
+      {
+        "season": "summer",
+        "items": [
+          "item.herbe_de_l_aube"
+        ],
+        "percent": 80
+      },
+      {
+        "season": "autumn",
+        "items": [
+          "item.herbe_de_l_aube",
+          "item.remede_de_l_aube"
+        ],
+        "percent": 110
+      },
+      {
+        "weather": "rain",
+        "items": [
+          "item.cape_de_laine",
+          "item.cape_de_voyageur"
+        ],
+        "percent": 110
+      },
+      {
+        "season": "winter",
+        "weather": "storm",
+        "items": [
+          "item.peau_de_loup",
+          "item.peau_d_ours"
+        ],
+        "percent": 120
+      }
+    ],
+    "shocks": [
+      {
+        "id": "attaque_perdue",
+        "event": "zone.vallons/attaque_hameau",
+        "outcome": "lost",
+        "days": 3,
+        "items": [
+          "item.potion_de_soin",
+          "item.remede_de_l_aube",
+          "item.herbe_de_l_aube"
+        ],
+        "stockPercent": 30,
+        "pricePercent": 130
+      },
+      {
+        "id": "attaque_repoussee",
+        "event": "zone.vallons/attaque_hameau",
+        "outcome": "won",
+        "days": 2,
+        "items": [
+          "item.potion_de_soin",
+          "item.remede_de_l_aube"
+        ],
+        "merchants": [
+          "merchant.herboriste",
+          "merchant.epicier"
+        ],
+        "stockPercent": 100,
+        "pricePercent": 90
+      },
+      {
+        "id": "faille_ouverte",
+        "event": "zone.vallons/faille_du_seuil",
+        "outcome": "lost",
+        "days": 3,
+        "items": [
+          "item.eclat_de_seuil",
+          "item.huile_d_eclat"
+        ],
+        "stockPercent": 0,
+        "pricePercent": 150
+      },
+      {
+        "id": "route_coupee",
+        "notFact": "fact.chef_des_bandits.vaincu",
+        "items": [
+          "item.cape_de_voyageur",
+          "item.chevaliere_du_bourg",
+          "item.pendentif_du_lac",
+          "item.bottes_du_renard"
+        ],
+        "merchants": [
+          "merchant.armurier",
+          "merchant.renart",
+          "merchant.colporteur"
+        ],
+        "stockPercent": 0,
+        "pricePercent": 100
       }
     ]
   }

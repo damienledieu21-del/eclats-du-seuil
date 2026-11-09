@@ -45,18 +45,13 @@ namespace EdS.World
         /// <summary>Marchand tenu par le PNJ <paramref name="npc"/>, ou null (ou sans commerce).</summary>
         public Merchant? MerchantOf(string npc) => Market?.Book.OfNpc(npc);
 
-        /// <summary>Offres du marchand ce jour du monde (<see cref="Market.Stock"/>).</summary>
+        /// <summary>
+        /// Offres du marchand ce jour du monde (<see cref="Market.Stock"/>). Sous-lot V2.10 : au prix du jour (saison, temps, contrecoups, puis
+        /// réputation ; jamais sous la valeur de base), avec ce qui en reste (<see cref="MerchantOffer.Left"/>), puis les objets revendus par le
+        /// joueur que le marchand garde en vitrine (<see cref="MerchantOffer.Resold"/>).
+        /// </summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
-        public IReadOnlyList<MerchantOffer> Stock(string merchant)
-        {
-            Market market = NeedMarket();
-            IReadOnlyList<MerchantOffer> stock = market.Stock(merchant, Zone.Time.Day);
-            int percent = PricePercentOf(merchant);
-            if (percent == 100) return stock;
-            // Jamais sous la valeur de base de l'objet : acheter puis revendre ne fait toujours pas gagner d'argent.
-            return stock.Select(o => o.WithPrice(market.Book.TryGetValue(o.Item, out long value)
-                ? Math.Max(value, ReputationPrice(o.Price, percent)) : ReputationPrice(o.Price, percent))).ToList().AsReadOnly();
-        }
+        public IReadOnlyList<MerchantOffer> Stock(string merchant) => LivingStock(merchant);
 
         /// <summary>
         /// Sous-lot V2.7 : prix d'achat chez les marchands des villageois, en pour cent du prix du jour (<see cref="PricePercentOf"/>).
@@ -128,6 +123,8 @@ namespace EdS.World
         public TradeRefusal TradeStatus(string merchant)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
+            // Sous-lot V2.10 : un étal ambulant n'ouvre que pendant ses fêtes.
+            if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id))) return TradeRefusal.NotFestival;
             if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             if (m.Fact != null && !(Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
@@ -158,12 +155,15 @@ namespace EdS.World
             if (item is null || !_items.TryGetItem(item, out _)) return TradeRefusal.UnknownItem;
             if (!(Stock(merchant).FirstOrDefault(o => o.Item == item) is MerchantOffer offer)) return TradeRefusal.NotForSale;
             if (!HasRank(offer.Rank)) return TradeRefusal.RankTooLow;   // sous-lot V1.7 : offre de la boutique de la guilde réservée à un rang
+            // Sous-lot V2.10 : stock vivant ; revue Codex de la PR #120 (tour 4) : les lignes après la prise sont calculées avant toute mutation.
+            if (!TryTake(merchant, offer, count, out IReadOnlyList<SavedStock>? stock)) return TradeRefusal.OutOfStock;
             long price = checked(offer.Price * count);   // au plus 10^8 × 999
             if (!Coins.TryAdd(Money, -price, out long left)) return TradeRefusal.NotEnoughMoney;
             Inventory trial = Inventory.Clone();
             if (trial.Add(item, count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             Inventory.CopyFrom(trial);
             _character = _character.WithMoney(left);
+            if (stock != null) _character = _character.WithStock(stock);
             if (NeedMarket().Book.Merchant(merchant).Faction == "bandits") Narrative?.Fenced(count);   // sous-lot V2.7 : le recel
             return TradeRefusal.None;
         }
@@ -212,11 +212,16 @@ namespace EdS.World
                 gain = checked(gain + paid[i]);
             }
             if (!Coins.TryAdd(Money, gain, out long after)) return TradeRefusal.PurseFull;
+            // Sous-lot V2.10 : en vitrine, revendu plus cher ; revue Codex de la PR #120 (tour 4) : lignes calculées avant toute mutation.
+            IReadOnlyList<SavedStock> kept = _character.Stock;
+            for (int i = 0; i < lots.Count; i++) kept = Kept(kept, merchant, lots[i].Item, lots[i].Count);
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(after);
+            _character = _character.WithMoney(after).WithStock(kept);
             // Sous-lot V1.3 : un lot qui emporte des instances aux propriétés tirées les garde pour le rachat.
             for (int i = 0; i < lots.Count; i++)
-                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsUnique) ? removed[i] : null));
+            {
+                market.Record(new SoldLot(lots[i].Item, lots[i].Count, paid[i], removed[i].Any(x => x.IsUnique) ? removed[i] : null, merchant));
+            }
             return TradeRefusal.None;
         }
 
@@ -245,9 +250,10 @@ namespace EdS.World
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();
             if (trial.RemoveAt(place, count, out ItemStack? removed) != InventoryRefusal.None || removed is null) return TradeRefusal.NotEnough;
+            IReadOnlyList<SavedStock> kept = Kept(_character.Stock, merchant, stack.Item, count);   // sous-lot V2.10 : en vitrine, revendu plus cher
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(after);
-            market.Record(new SoldLot(stack.Item, count, paid, removed.IsUnique ? new[] { removed } : null));
+            _character = _character.WithMoney(after).WithStock(kept);
+            market.Record(new SoldLot(stack.Item, count, paid, removed.IsUnique ? new[] { removed } : null, merchant));
             return TradeRefusal.None;
         }
 
@@ -285,8 +291,10 @@ namespace EdS.World
                     if (trial.Add(stack) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
             }
             else if (trial.Add(lot.Item, lot.Count) != InventoryRefusal.None) return TradeRefusal.InventoryFull;
+            IReadOnlyList<SavedStock> stock = lot.Merchant != null && market.Book.TryGetMerchant(lot.Merchant, out _)
+                ? Unkept(_character.Stock, lot.Merchant, lot.Item, lot.Count) : _character.Stock;   // sous-lot V2.10
             Inventory.CopyFrom(trial);
-            _character = _character.WithMoney(left);
+            _character = _character.WithMoney(left).WithStock(stock);
             market.Forget(index);
             return TradeRefusal.None;
         }

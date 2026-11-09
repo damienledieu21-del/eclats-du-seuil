@@ -45,6 +45,10 @@ namespace EdS.Runtime
             ["item.poussiere_d_echo"] = new[] { "dust", "powder", "sand", "crystal" },
             ["item.talisman_du_seuil"] = new[] { "talisman", "amulet", "necklace" },
             ["item.potion_de_soin"] = new[] { "healthpotion", "redpotion", "potion" },
+            // Fusion de V2.10 (récompenses uniques des concours du marché) avec V2.11.
+            ["item.tablier_de_maitre"] = new[] { "apron", "belt" },
+            ["item.arc_de_concours"] = new[] { "longbow", "bow" },
+            ["item.livre_de_contes"] = new[] { "storybook", "book", "tome" },
             ["item.remede_de_l_aube"] = new[] { "elixir", "potion", "flask" },
             ["item.herbe_de_l_aube"] = new[] { "herb", "flower", "plant", "leaf" },
             ["item.minerai_de_fer"] = new[] { "ironore", "ore", "iron", "stone" },

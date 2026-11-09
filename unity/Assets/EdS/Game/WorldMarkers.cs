@@ -77,6 +77,9 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.1 : repères des PNJ, pour les mener à leur place de l'heure (devant leur porte la nuit).</summary>
         private readonly Dictionary<string, Marker> _npcs = new Dictionary<string, Marker>();
+        /// <summary>Sous-lot V2.12 (fusion avec la V2.10) : décor des jours de fête (guirlande, bannières, étals), montré seulement pendant une fête.</summary>
+        private readonly List<GameObject> _festive = new List<GameObject>();
+        private bool _festiveForced;
 
         /// <summary>Sous-lot V2.1 : temps (s) depuis la dernière relecture des places des PNJ.</summary>
         private float _npcAge;
@@ -225,14 +228,26 @@ namespace EdS.Game
             }
             if (Place("hameau") is MapPlace hamlet)
                 Wave5View.PlaceNear(root, Wave5Role.Cart, "charrette", hamlet.CenterX, hamlet.CenterZ, 250, 5, 2.2, obstacles, 70);
-            // Les fêtes : réglage « Human Festival » du catalogue (tenues de fête) ; la PR des fêtes du jeu (#120) pourra l'allumer aussi.
-            if (catalog.HumanFestival && Place("bourg") is MapPlace town)
+            // Les fêtes : décor posé une fois, montré pendant une fête du jeu (V2.10 : marché, foire, moissons, veillée) ou si le réglage « Human
+            // Festival » du catalogue est coché (essai), caché sinon (Sync).
+            _festiveForced = catalog.HumanFestival;
+            if (Place("bourg") is MapPlace town)
             {
+                int before = root.childCount;
                 // Sous-lot V2.12 : un étal sous tente au bourg les jours de fête (ordinateur seulement ; la table garnie seule sur téléphone).
                 MarketStall(root, town.CenterX, town.CenterZ, 180f, obstacles, true, "étal de fête");
+                // Lison devant son étal (jour de marché de la V2.10) : un étal garni à côté d'elle.
+                if (Npc("lison") is WorldMarker lison) MarketStall(root, lison.X, lison.Z, Yaw(lison), obstacles, false, "étal de Lison");
+                // Décision de Damien du 9 novembre 2026 : Maître Anseau, le colporteur venu de loin (V2.10, PNJ de passage les jours de fête),
+                // a l'étal exotique des fruits rares et chers (tomates, oranges, pastèques, citrouilles).
+                WorldMarker peddler = Npc("colporteur") ?? (_npcs.TryGetValue("npc.colporteur", out Marker pm) ? pm.Data : null);
+                if (peddler != null) ExoticStall(root, peddler.X, peddler.Z, Yaw(peddler), obstacles, "étal du colporteur");
                 Wave5View.PlaceNear(root, Wave5Role.Bunting, "guirlande", town.CenterX, town.CenterZ, 0, 3, 1.6, obstacles, 90);
                 Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 1", town.CenterX, town.CenterZ, 90, 6, 0.6, obstacles, 270);
                 Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 2", town.CenterX, town.CenterZ, 270, 6, 0.6, obstacles, 90);
+                for (int i = before; i < root.childCount; i++) _festive.Add(root.GetChild(i).gameObject);
+                bool shown = _festiveForced || adventure.Festive;
+                foreach (GameObject g in _festive) g.SetActive(shown);
             }
             // Le cœur du Seuil : le grand cristal, une couronne de cristaux lumineux et le feu follet qui flotte.
             if (Place("coeur_du_seuil") is MapPlace heart)
@@ -355,8 +370,8 @@ namespace EdS.Game
 
         /// <summary>
         /// Décision de Damien du 9 novembre 2026 (PR #122) : l'étal d'un marchand venu de loin, aux fruits rares et chers (tomates, oranges,
-        /// pastèques, citrouilles : <see cref="Wave5Role.ExoticFruit"/>), sous tente si elle est là. Prêt : ce marchand n'existe pas encore (les
-        /// marchands changent dans la PR #120) ; à appeler à sa place quand il sera ajouté (et l'entrée passera en « branchée »). Null sinon.
+        /// pastèques, citrouilles : <see cref="Wave5Role.ExoticFruit"/>), sous tente si elle est là : celui de Maître Anseau, le colporteur de la
+        /// V2.10, les jours de fête (décor de fête, Sync). Affichage seulement : ses offres restent celles des données des marchands. Null sinon.
         /// </summary>
         public static GameObject ExoticStall(Transform root, double x, double z, float face, List<IReadOnlyList<(double X, double Z)>> obstacles, string id)
         {
@@ -706,6 +721,10 @@ namespace EdS.Game
         /// <summary>Nœuds récoltés cachés jusqu'à leur repousse.</summary>
         public void Sync(AdventureSession adventure)
         {
+            // Sous-lot V2.12 : le décor de fête suit les fêtes de la V2.10.
+            bool festive = _festiveForced || adventure.Festive;
+            foreach (GameObject g in _festive)
+                if (g != null && g.activeSelf != festive) g.SetActive(festive);
             foreach (WorldMarker node in adventure.Nodes())
                 if (_nodes.TryGetValue(node.Id, out Marker m))
                 {

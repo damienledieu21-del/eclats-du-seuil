@@ -356,6 +356,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.11 (5e vague) : dans une crypte ou un donjon (« The Long Dark » de Scott Buckley) ; aucun lieu ne l'a encore.</summary>
         Crypt = 9,
+
+        /// <summary>Sous-lot V2.10 : les grandes fêtes du bourg, foire et moissons (« Medieval: King's Feast » de RandomMind).</summary>
+        Feast = 10,
+
+        /// <summary>Sous-lot V2.10 : le jour de marché et la veillée (« Medieval: Minstrel Dance » de RandomMind).</summary>
+        Dance = 11,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -451,6 +457,9 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.11 : le bourg est en fête (réglage « Human Festival » du catalogue, ou une fête du jeu).</summary>
         Festival = 512,
+
+        /// <summary>Sous-lot V2.10 : la fête du jeu est une grande fête (foire, moissons : « King's Feast » ; les autres : « Minstrel Dance »).</summary>
+        Feast = 1024,
     }
 
     /// <summary>
@@ -697,6 +706,9 @@ namespace EdS.Runtime
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
         private static readonly (StyleMusic Kind, string[] Words)[] MusicWords =
         {
+            // Sous-lot V2.10 : les musiques de fête de RandomMind (en tête : « festival » est aussi un mot du village).
+            (StyleMusic.Feast, new[] { "kingsfeast", "feast", "banquet" }),
+            (StyleMusic.Dance, new[] { "minstreldance", "minstrel", "dance" }),
             // Sous-lot V2.9.2 : « Night Town » le soir au bourg, « The Old Tower Inn » dans l'auberge (en tête : « town » est aussi un mot du
             // village).
             (StyleMusic.VillageNight, new[] { "nighttown", "villagenight", "nuitaubourg" }),
@@ -1441,7 +1453,9 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleMusic? MusicFallback(StyleMusic wanted) =>
             wanted == StyleMusic.Boss ? StyleMusic.Combat
-            : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Forge ? StyleMusic.Village : (StyleMusic?)null;
+            : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Forge || wanted == StyleMusic.Feast || wanted == StyleMusic.Dance
+                ? StyleMusic.Village   // sous-lot V2.10 : sans la musique de fête, celle du village
+            : (StyleMusic?)null;
 
         /// <summary>Sous-lot V2.11 : distance (m) à la forge en deçà de laquelle « Song of the Forge » remplace la musique du village, le jour.</summary>
         public const double ForgeMusicRange = 14;
@@ -1461,6 +1475,29 @@ namespace EdS.Runtime
             return music;
         }
 
+        /// <summary>Sous-lot V2.10 : la fête est une grande fête (« King's Feast ») : la foire et les moissons ; les autres dansent (« Minstrel Dance »).</summary>
+        public static bool IsFeast(string? festival) => festival == "festival.foire" || festival == "festival.moissons";
+
+        /// <summary>
+        /// Sous-lot V2.10 : comme <see cref="MusicFor(bool, bool, bool, bool, bool, double, bool, bool)"/>, et, au bourg pendant une fête
+        /// (<paramref name="places"/> : <see cref="AmbiencePlace.Festival"/>, dehors, hors combat et hors scène), la musique de la fête, de
+        /// jour comme de nuit (la veillée).
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault, AmbiencePlace places) =>
+            MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault, double.PositiveInfinity, false, places);
+
+        /// <summary>
+        /// Fusion de V2.10 et V2.11 : la version à dix paramètres (crypte, forge), puis la musique de la fête du jeu (<paramref name="places"/> :
+        /// <see cref="AmbiencePlace.Festival"/>) à la place de celle du village, du bourg de nuit ou de la forge.
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault,
+            double forgeDistance, bool crypt, AmbiencePlace places)
+        {
+            StyleMusic music = MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault, forgeDistance, crypt);
+            if ((places & AmbiencePlace.Festival) == 0 || (music != StyleMusic.Village && music != StyleMusic.VillageNight && music != StyleMusic.Forge)) return music;
+            return (places & AmbiencePlace.Feast) != 0 ? StyleMusic.Feast : StyleMusic.Dance;
+        }
+
         /// <summary>
         /// Sous-lot V2.9 (2e vague) : volume (0 à 1) des ambiances de lieu d'après l'heure du monde (<paramref name="minute"/>), les lieux
         /// (<paramref name="places"/>), la distance à la forge (<paramref name="forgeDistance"/>, m ; +∞ sans forge), la nuit et la pluie :
@@ -1477,6 +1514,14 @@ namespace EdS.Runtime
             rain = double.IsNaN(rain) ? 0 : Math.Max(0, Math.Min(1, rain));
             bool town = (places & AmbiencePlace.Town) != 0;
             double Window(double from, double to, double fade) => Math.Max(0, Math.Min(1, Math.Min((h - from) / fade, (to - h) / fade)));
+            // Sous-lot V2.10 : jour de fête au bourg : la foule du marché, la rumeur et les chants de la taverne s'entendent toute la fête.
+            if (town && !indoors && (places & AmbiencePlace.Festival) != 0)
+                switch (ambience)
+                {
+                    case StyleAmbience.Market: return calm * (1 - 0.4 * rain);
+                    case StyleAmbience.Village: return 0.8 * calm * (1 - 0.3 * rain);
+                    case StyleAmbience.Tavern: return 0.5 * calm;
+                }
             switch (ambience)
             {
                 case StyleAmbience.Tavern:
