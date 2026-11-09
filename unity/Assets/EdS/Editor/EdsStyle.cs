@@ -335,7 +335,18 @@ namespace EdS.Game.Editor
             string wave5 = EdsWave5.Prepare(models, textures, catalog, notes);
             // Sous-lot V2.12.7 (essai du 9 novembre 2026 : four et comptoir blancs, objets roses) : matières hors URP converties, matières
             // blanches texturées ou colorées, pour tout ce que le catalogue pose (EdsMaterialRepair).
+            // V2.12.8 (essai de Claude du 9 novembre 2026, après-midi) : la réparation libère la mémoire tous les BreatheEvery modèles
+            // (UnloadUnusedAssetsImmediate), ce qui décharge aussi le catalogue tenu ici (MissingReferenceException à SetDirty). Le catalogue est
+            // donc enregistré avant, puis rechargé depuis le disque après.
+            EditorUtility.SetDirty(catalog);
+            AssetDatabase.SaveAssets();
             string repaired = EdsMaterialRepair.Repair(catalog, notes);
+            catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(CatalogPath);
+            if (catalog == null)
+            {
+                Debug.LogWarning("Essai de style : le catalogue " + CatalogPath + " est introuvable après la réparation des matières.");
+                return false;
+            }
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
