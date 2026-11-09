@@ -198,7 +198,7 @@ namespace EdS.Runtime
         }
 
         /// <summary>Graine d'affichage tirée d'un identifiant (FNV-1a) : deux PNJ n'ont pas la même ; la même à chaque partie.</summary>
-        public static uint Seed(string id)
+        public static uint Seed(string? id)
         {
             uint hash = 2166136261;
             foreach (char c in id ?? string.Empty)
@@ -299,6 +299,43 @@ namespace EdS.Runtime
 
         /// <summary>Descente du bassin (m, négative ou nulle) : assez pour que le pied le plus bas touche son sol, jambes jamais tendues à l'excès.</summary>
         public static double HipDrop(double liftLeft, double liftRight) => Math.Min(0.0, Math.Min(liftLeft, liftRight));
+
+        /// <summary>
+        /// Os de la tête d'un squelette (« Head », « mixamorig:Head », « Armature|Head_1 ») ; pas son bout (« HeadTop_End »), ni la mâchoire, les
+        /// yeux ou les oreilles.
+        /// </summary>
+        public static bool IsHeadBone(string? name) => BoneIs(name, "head");
+
+        /// <summary>Os du cou (« Neck », « neck_01 », « mixamorig:Neck »).</summary>
+        public static bool IsNeckBone(string? name) => BoneIs(name, "neck");
+
+        private static bool BoneIs(string? name, string word)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            string n = name.ToLowerInvariant();
+            int cut = Math.Max(n.LastIndexOf(':'), n.LastIndexOf('|'));
+            if (cut >= 0) n = n.Substring(cut + 1);
+            foreach (string bad in new[] { "end", "top", "nub", "jaw", "eye", "ear", "mesh", "geo" })
+                if (n.Contains(bad)) return false;
+            n = n.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '.', ' ', '-');
+            return n.EndsWith(word, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Animation qui peut varier l'attente (respirer, regarder autour, changer d'appui, renifler, bras croisés) : ni geste d'un métier ni
+        /// objet tenu (torche, lanterne, arme), ni assis, couché ou mort.
+        /// </summary>
+        public static bool IsIdleVariant(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            string n = name.ToLowerInvariant();
+            foreach (string bad in new[] { "torch", "lantern", "sword", "shield", "seat", "sit", "rail", "talk", "sleep", "lie", "lay", "rest",
+                "attack", "death", "die", "hit", "hurt", "walk", "run", "trot", "gallop", "sprint", "eat", "graze", "work", "gather" })
+                if (n.Contains(bad)) return false;
+            foreach (string good in new[] { "idle", "look", "breath", "sniff", "stand", "fold", "shift" })
+                if (n.Contains(good)) return true;
+            return false;
+        }
 
         /// <summary>Angle ramené dans ]−180, 180].</summary>
         public static double Wrap(double angle)

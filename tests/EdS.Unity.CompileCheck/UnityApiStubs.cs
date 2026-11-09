@@ -9,7 +9,9 @@ namespace UnityEngine
     public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; }
     public class Behaviour : Component { }
     public class MonoBehaviour : Behaviour { }
-    public class Animator : Behaviour { public bool enabled { get; set; } public Avatar avatar { get; set; } public bool applyRootMotion { get; set; } public AnimatorCullingMode cullingMode { get; set; } public RuntimeAnimatorController runtimeAnimatorController { get; set; } }
+    public class Animator : Behaviour { public bool enabled { get; set; } public Avatar avatar { get; set; } public bool applyRootMotion { get; set; } public AnimatorCullingMode cullingMode { get; set; } public RuntimeAnimatorController runtimeAnimatorController { get; set; } public Vector3 GetIKPosition(AvatarIKGoal goal) => default; public void SetIKPosition(AvatarIKGoal goal, Vector3 position) { } public void SetIKPositionWeight(AvatarIKGoal goal, float value) { } public Vector3 bodyPosition { get; set; } public Transform GetBoneTransform(HumanBodyBones bone) => null; public bool isHuman => false; }
+    public enum AvatarIKGoal { LeftFoot = 0, RightFoot = 1, LeftHand = 2, RightHand = 3 }
+    public enum HumanBodyBones { Hips = 0, LeftFoot = 5, RightFoot = 6, Spine = 7, Chest = 8, Neck = 9, Head = 10 }
     public enum AnimatorCullingMode { AlwaysAnimate, CullUpdateTransforms, CullCompletely }
     public class RuntimeAnimatorController : Object { }
     public sealed class Avatar : Object { public bool isValid => false; public bool isHuman => false; }
@@ -35,7 +37,7 @@ namespace UnityEngine
     public struct Bounds { public Bounds(Vector3 center, Vector3 size) { } public Vector3 min => default; public Vector3 max => default; public Vector3 size => default; public Vector3 center => default; public Vector3 extents => default; public void Encapsulate(Bounds b) { } }
     public enum WrapMode { Default = 0, Once = 1, Loop = 2, PingPong = 4, ClampForever = 8 }
     public sealed class AnimationState { public string name { get; set; } public WrapMode wrapMode { get; set; } public float length => 0; public float time { get; set; } public float speed { get; set; } }
-    public sealed class AnimationClip : Object { public float length => 0; }
+    public sealed class AnimationClip : Object { public float length => 0; public Vector3 averageSpeed => default; }
     public sealed class Animation : Behaviour, System.Collections.IEnumerable { public System.Collections.IEnumerator GetEnumerator() => null; public void AddClip(AnimationClip clip, string newName) { } public AnimationClip GetClip(string name) => null; public AnimationState this[string name] => null; public void Rewind(string name) { } public void CrossFade(string animation, float fadeLength) { } public bool IsPlaying(string name) => false; public AnimationState CrossFadeQueued(string animation, float fadeLength) => null; public bool Play(string animation) => false; public bool Play() => false; public void Stop() { } }
     public enum AudioClipLoadType { DecompressOnLoad = 0, CompressedInMemory = 1, Streaming = 2 }
     public sealed class AudioClip : Object { public float length => 0; public static AudioClip Create(string name, int lengthSamples, int channels, int frequency, bool stream) => null; public bool SetData(float[] data, int offsetSamples) => false; }
@@ -157,7 +159,7 @@ namespace UnityEngine.Playables
 namespace UnityEngine.Animations
 {
     public struct AnimationMixerPlayable : UnityEngine.Playables.IPlayable { public static AnimationMixerPlayable Create(UnityEngine.Playables.PlayableGraph graph, int inputCount) => default; public void SetInputWeight(int inputIndex, float weight) { } }
-    public struct AnimationClipPlayable : UnityEngine.Playables.IPlayable { public static AnimationClipPlayable Create(UnityEngine.Playables.PlayableGraph graph, UnityEngine.AnimationClip clip) => default; public void SetApplyFootIK(bool value) { } public void SetTime(double time) { } public void SetSpeed(double speed) { } public void Play() { } public void Pause() { } public UnityEngine.Playables.PlayState GetPlayState() => default; }
+    public struct AnimationClipPlayable : UnityEngine.Playables.IPlayable { public static AnimationClipPlayable Create(UnityEngine.Playables.PlayableGraph graph, UnityEngine.AnimationClip clip) => default; public void SetApplyFootIK(bool value) { } public void SetApplyPlayableIK(bool value) { } public double GetTime() => 0; public void SetTime(double time) { } public void SetSpeed(double speed) { } public void Play() { } public void Pause() { } public UnityEngine.Playables.PlayState GetPlayState() => default; }
     public struct AnimationPlayableOutput { public static AnimationPlayableOutput Create(UnityEngine.Playables.PlayableGraph graph, string name, UnityEngine.Animator target) => default; public void SetSourcePlayable<V>(V value) where V : struct, UnityEngine.Playables.IPlayable { } }
 }
 namespace UnityEngine.EventSystems

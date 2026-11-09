@@ -175,4 +175,22 @@ public sealed class V215DemarcheTests
         Assert.Equal(-170.0, Locomotion.Wrap(190.0), 9);
         Assert.Equal(180.0, Locomotion.Wrap(-180.0), 9);
     }
+
+    [Fact]
+    public void Os_de_la_tete_et_attentes_variees_reconnus()
+    {
+        Assert.True(Locomotion.IsHeadBone("Head"));
+        Assert.True(Locomotion.IsHeadBone("mixamorig:Head"));
+        Assert.True(Locomotion.IsHeadBone("Armature|Head_1"));
+        Assert.False(Locomotion.IsHeadBone("mixamorig:HeadTop_End"));
+        Assert.False(Locomotion.IsHeadBone("Head_Jaw"));
+        Assert.False(Locomotion.IsHeadBone(null));
+        Assert.True(Locomotion.IsNeckBone("neck_01"));
+        Assert.False(Locomotion.IsNeckBone("Necklace"));
+        Assert.True(Locomotion.IsIdleVariant("Look_FoldArms"));
+        Assert.True(Locomotion.IsIdleVariant("Idle2"));
+        Assert.False(Locomotion.IsIdleVariant("Idle_Torch"));
+        Assert.False(Locomotion.IsIdleVariant("Seated_Rest"));
+        Assert.False(Locomotion.IsIdleVariant("Walk"));
+    }
 }
