@@ -37,7 +37,8 @@ namespace EdS.Game.Editor
                 {
                     if (entry.Has(Wave5Fix.CutClips)) Cut(path);
                     else if (entry.Has(Wave5Fix.Animated)) EdsStyle.Legacy(path, false);
-                    EdsStyle.Breathe(ref breathe);   // V2.12.2 : mémoire libérée en chemin (première préparation)
+                    if (entry.Has(Wave5Fix.CutClips) || entry.Has(Wave5Fix.Animated) || entry.Has(Wave5Fix.ScannedMaterial))
+                        EdsStyle.Breathe(ref breathe);   // V2.12.2 : mémoire libérée en chemin, après les pièces lourdes (première préparation)
                     // Relecture de la PR #122 : une ressource prête (sans lieu) n'entre pas au catalogue (qui est dans Resources : tout ce qu'il
                     // nomme part dans le jeu construit, téléphone compris) ; elle y entrera quand elle sera posée.
                     if (entry.Use == Wave5Use.Ready) continue;
