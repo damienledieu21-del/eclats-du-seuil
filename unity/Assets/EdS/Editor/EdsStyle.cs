@@ -124,7 +124,7 @@ namespace EdS.Game.Editor
                 }
                 MixamoMaterials(model, notes);
                 characters.Add((folder.Key, model, folder.Value.SelectMany(Clips).ToList()));
-                Breathe(ref prepared);
+                // V2.12.3 : pas de Breathe ici, la liste garde des animations chargées (elles seraient détruites).
             }
             // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
@@ -134,8 +134,7 @@ namespace EdS.Game.Editor
                 && !p.StartsWith(Wave5.MegascansFolder, System.StringComparison.Ordinal) && Untextured(p)))
             {
                 AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
-                Breathe(ref prepared);
-            }
+            }   // V2.12.3 : pas de Breathe ici, la liste des personnages garde des animations chargées
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
             string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
@@ -148,6 +147,10 @@ namespace EdS.Game.Editor
                 catalog = ScriptableObject.CreateInstance<StyleCatalog>();
                 AssetDatabase.CreateAsset(catalog, CatalogPath);
             }
+            // V2.12.3 (essai de Damien du 9 novembre 2026) : le catalogue en cours de remplissage est marqué modifié tout de suite. Sinon un
+            // déchargement des ressources inutilisées (Breathe) le détruisait avant SetDirty (MissingReferenceException, préparation
+            // interrompue). Breathe n'est donc appelé qu'avant le chargement du catalogue.
+            EditorUtility.SetDirty(catalog);
             catalog.Hero = Load(hero);
             catalog.Wolf = Load(wolf);
             catalog.Boar = Load(boar);
