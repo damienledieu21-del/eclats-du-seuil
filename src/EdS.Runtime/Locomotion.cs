@@ -197,6 +197,22 @@ namespace EdS.Runtime
             return gait;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #133 : allure dont le cycle existe, la plus proche de <paramref name="wanted"/> (à égalité, la plus lente) ;
+        /// <see cref="LocomotionGait.Stand"/> si le modèle n'a aucun cycle.
+        /// </summary>
+        public static LocomotionGait ClosestGait(LocomotionGait wanted, bool hasWalk, bool hasTrot, bool hasGallop)
+        {
+            bool Has(int g) => g == 1 ? hasWalk : g == 2 ? hasTrot : g == 3 && hasGallop;
+            int w = Math.Max(1, Math.Min(3, (int)wanted));
+            for (int d = 0; d <= 2; d++)
+            {
+                if (Has(w - d)) return (LocomotionGait)(w - d);
+                if (Has(w + d)) return (LocomotionGait)(w + d);
+            }
+            return LocomotionGait.Stand;
+        }
+
         /// <summary>Graine d'affichage tirée d'un identifiant (FNV-1a) : deux PNJ n'ont pas la même ; la même à chaque partie.</summary>
         public static uint Seed(string? id)
         {

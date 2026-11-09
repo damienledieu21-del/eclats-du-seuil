@@ -193,4 +193,20 @@ public sealed class V215DemarcheTests
         Assert.False(Locomotion.IsIdleVariant("Seated_Rest"));
         Assert.False(Locomotion.IsIdleVariant("Walk"));
     }
+
+    [Fact]
+    public void Allure_sans_clip_prend_le_cycle_present_le_plus_proche()
+    {
+        // Un modèle qui n'a que l'attente, le galop et la mort (repli de StyleRulesTests.Animations_avec_repli) : il galope au ralenti.
+        Assert.Equal(LocomotionGait.Gallop, Locomotion.ClosestGait(LocomotionGait.Walk, false, false, true));
+        Assert.Equal(LocomotionGait.Gallop, Locomotion.ClosestGait(LocomotionGait.Trot, false, false, true));
+        Assert.Equal(LocomotionGait.Walk, Locomotion.ClosestGait(LocomotionGait.Gallop, true, false, false));
+        Assert.Equal(LocomotionGait.Walk, Locomotion.ClosestGait(LocomotionGait.Trot, true, false, true));   // à égalité, la plus lente
+        Assert.Equal(LocomotionGait.Trot, Locomotion.ClosestGait(LocomotionGait.Walk, false, true, true));
+        Assert.Equal(LocomotionGait.Walk, Locomotion.ClosestGait(LocomotionGait.Stand, true, true, true));
+        Assert.Equal(LocomotionGait.Stand, Locomotion.ClosestGait(LocomotionGait.Walk, false, false, false));
+        // Au ralenti : la cadence du galop à 1 m/s reste dans les bornes (la moitié au moins).
+        double gallop = Locomotion.NaturalSpeed(LocomotionGait.Gallop, 1.0, true);
+        Assert.Equal(0.5, Locomotion.PlaybackRate(1.0, gallop));
+    }
 }

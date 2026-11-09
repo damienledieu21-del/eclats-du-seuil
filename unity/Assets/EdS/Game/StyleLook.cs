@@ -257,6 +257,12 @@ namespace EdS.Game
         /// <param name="wander">Sous-lot V2.4.1 : ce que fait une bête qui erre (<c>CombatantView.Wander</c>) : arrêtée, elle broute ou fouille.</param>
         public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false, string wander = null)
         {
+            // Revue Codex de la PR #133 : un mort ne regarde plus rien, même couché sans animation de mort (retours anticipés plus bas).
+            if (dead && _head != null)
+            {
+                _head.Glance = 0f;
+                _head.HasTarget = false;
+            }
             // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
             if (dead && (_animation == null || Pick(StyleMotion.Death) == null))
             {
@@ -355,8 +361,10 @@ namespace EdS.Game
                 _playingMotion = t < 0.5 ? StyleMotion.Walk : StyleMotion.Run;
                 return;
             }
-            string clip = _gait == LocomotionGait.Gallop ? _gallopClip ?? _trotClip ?? _walkClip
-                : _gait == LocomotionGait.Trot ? _trotClip ?? _walkClip : _walkClip ?? _trotClip;
+            // Revue Codex de la PR #133 : l'allure voulue sans clip prend le cycle présent le plus proche (un modèle qui n'a que le galop
+            // galope au ralenti à faible vitesse), à la cadence de sa vitesse naturelle.
+            LocomotionGait shown = Locomotion.ClosestGait(_gait, _walkClip != null, _trotClip != null, _gallopClip != null);
+            string clip = shown == LocomotionGait.Gallop ? _gallopClip : shown == LocomotionGait.Trot ? _trotClip : _walkClip;
             if (clip == null) return;
             double natural = clip == _gallopClip ? _gallopNatural : clip == _trotClip ? _trotNatural : _walkNatural;
             Play(clip, _gait == LocomotionGait.Walk ? StyleMotion.Walk : StyleMotion.Run, 0.25f);
