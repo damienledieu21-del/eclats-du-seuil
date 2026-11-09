@@ -142,7 +142,8 @@ namespace UnityEngine
     public static class GUILayout { public static void BeginHorizontal() { } public static void EndHorizontal() { } public static bool Button(string text) => false; public static void Label(string text, GUIStyle style) { } public static void Space(float pixels) { } }
     public static class GUIUtility { public static int keyboardControl { get; set; } }
     public static class Screen { public static int width => 0; public static int height => 0; public static int sleepTimeout { get; set; } public static bool autorotateToPortrait { get; set; } public static bool autorotateToPortraitUpsideDown { get; set; } public static bool autorotateToLandscapeLeft { get; set; } public static bool autorotateToLandscapeRight { get; set; } public static ScreenOrientation orientation { get; set; } }
-    public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } public static ShadowQuality shadows { get; set; } public static int antiAliasing { get; set; } }
+    public static class SystemInfo { public static int graphicsMemorySize => 0; public static int systemMemorySize => 0; public static string graphicsDeviceName => ""; }
+    public static class QualitySettings { public static UnityEngine.Rendering.RenderPipelineAsset renderPipeline { get; set; } public static ShadowQuality shadows { get; set; } public static int antiAliasing { get; set; } public static int globalTextureMipmapLimit { get; set; } }
 }
 namespace UnityEngine.Playables
 {

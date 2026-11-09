@@ -420,7 +420,7 @@ namespace EdS.Game
         // --- Réglages (essai réaliste 9) -----------------------------------------------------------------------------------------
 
         private RectTransform _settings;
-        private UiButton _mouseMode, _invertY;
+        private UiButton _mouseMode, _invertY, _textures;
         private UiText _sensitivity;
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
@@ -444,12 +444,13 @@ namespace EdS.Game
             _mouseMode.Text.Value = clickLook ? "Caméra : clic gauche maintenu" : "Caméra : souris libre (sans clic)";
             _invertY.Text.Value = invertY ? "Haut-bas : inversé" : "Haut-bas : normal";
             _sensitivity.Value = "Sensibilité " + sensitivity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+            _textures.Text.Value = DeviceQuality.Label;   // sous-lot V2.12.4
         }
 
         private void BuildSettings()
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 500f, 560f, 250f, 0.5f, 0.5f);
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 500f, 560f, 304f, 0.5f, 0.5f);
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
@@ -465,6 +466,9 @@ namespace EdS.Game
             At(_sensitivity.Rect, 280f, 196f, 240f, 40f, 0.5f, 0.5f);
             UiButton faster = UiKit.Button(_settings, "Plus sensible", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => _stepSensitivity?.Invoke(0.25f));
             At(faster.Rect, 440f, 196f, 52f, 44f, 0.5f, 0.5f);
+            // Sous-lot V2.12.4 : qualité des textures (auto, pleine, moitié, quart), sauvegardée et appliquée tout de suite.
+            _textures = UiKit.Button(_settings, "Textures", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, DeviceQuality.Cycle);
+            At(_textures.Rect, 280f, 250f, 440f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 

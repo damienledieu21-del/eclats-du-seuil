@@ -703,9 +703,12 @@ namespace EdS.Game
             return null;
         }
 
-        /// <summary>Relecture de la PR #121 : la ressource se montre-t-elle ici ? (un rôle hors de la liste, comme le corbeau : oui)</summary>
+        /// <summary>
+        /// Relecture de la PR #121 : la ressource se montre-t-elle ici ? (un rôle hors de la liste, comme le corbeau : oui). Sous-lot V2.12.4 :
+        /// un PC modeste écarte les ressources « jamais sur téléphone » comme le téléphone (<see cref="DeviceQuality.Light"/>).
+        /// </summary>
         private static bool Shown(Wave5Role role) =>
-            !(EdS.Runtime.Wave5.EntryOrNull(role) is Wave5Entry entry) || EdS.Runtime.Wave5.Shown(entry, Application.isMobilePlatform);
+            !(EdS.Runtime.Wave5.EntryOrNull(role) is Wave5Entry entry) || EdS.Runtime.Wave5.Shown(entry, DeviceQuality.Light);
 
         /// <summary>Le grand loup pour Croc-Gris et le loup blanc, sur ordinateur seulement (35 k triangles : le Note8 garde le loup des meutes).</summary>
         private bool UseDireWolf(string id) => DireWolf != null && EdS.Runtime.Wave5.IsDireWolf(id) && Shown(Wave5Role.DireWolf);

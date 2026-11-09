@@ -919,6 +919,16 @@ Liste partagée : `src/EdS.Runtime/AssetStore.cs` (même forme que la 5e vague :
 - **Réglages** : positions et tailles estimées sans Unity ; chaque objet se règle dans le catalogue (5e vague → Scale, Yaw, **Offset**, gardés d'une préparation à l'autre).
 - **Hors dépôt** : le manifeste `Assets/Style/Generated/LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris).
 
+### PC modeste (sous-lot V2.12.4)
+
+Essai de Damien du 9 novembre 2026 : « System out of memory » (MemoryLabel Texture, `d3d11 failed to create 2D texture` 2048, erreur 8007000e, ALLOC_GFX ~1,9 Go) sur son PC (4 Go de RAM, GTX 470 à 1224 Mo, Direct3D 11) : les textures 2K/4K (Poly Haven, Megascans, packs de l'Asset Store) dépassent sa mémoire vidéo.
+
+- **Règle partagée** `src/EdS.Runtime/GraphicsTier.cs` (testée : `V2124PcModesteTests`) : téléphone → `Phone` ; sinon **PC modeste** si mémoire vidéo < 3072 Mo ou mémoire < 6144 Mo, sinon `Full` (une mémoire inconnue, 0, ne compte pas). Limite de mipmaps automatique : 0 sur téléphone (inchangé) et sur PC complet ; sur PC modeste 2 (quart) si mémoire vidéo ≤ 1536 Mo ou mémoire ≤ 4096 Mo, sinon 1 (moitié).
+- **Jeu** `unity/Assets/EdS/Game/DeviceQuality.cs` : au démarrage (`EdsGame.Start`), `QualitySettings.globalTextureMipmapLimit` selon le choix du joueur ; réglage de la pause « Qualité des textures : auto / pleine / moitié / quart » (Auto par défaut, `PlayerPrefs` `eds.textures`, appliqué tout de suite).
+- **Ressources lourdes** : sur PC modeste, celles « jamais sur téléphone » (`Wave5Fix.NotOnPhone`, 5e vague et Asset Store) ne se montrent pas, comme sur téléphone (`StyleCatalog.Shown` teste `DeviceQuality.Light`) ; l'ancien rendu reste. Le calcul hors champ des corps animés est coupé aussi.
+- **Vérifier l'essai** : ligne « Machine et textures » (classe, mémoires, limite appliquée).
+- **Limite** : les modèles écartés restent référencés par le catalogue (seule la construction pour téléphone les retire, `EdsPhoneBuild`) ; leurs textures peuvent donc encore être chargées ; la limite de mipmaps réduit toutes les textures, elle. Dans l'éditeur, la vue Scène garde ses propres textures.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

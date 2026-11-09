@@ -226,7 +226,7 @@ namespace EdS.Runtime
         public static (EssaiLevel Level, string Detail, string Fix) Describe(Wave5Entry entry, IReadOnlyList<string> found, bool phone)
         {
             string state = entry.Use == Wave5Use.Ready ? " (prêt : pas encore de lieu)" : entry.Use == Wave5Use.Interior ? " (intérieurs, en repli)" : "";
-            string cost = entry.Has(Wave5Fix.NotOnPhone) ? " ; jamais sur téléphone (Note8)" : "";
+            string cost = entry.Has(Wave5Fix.NotOnPhone) ? " ; jamais sur téléphone (Note8) ni sur PC modeste" : "";
             AssetStorePack pack = PackOf(entry);
             int count = found?.Count ?? 0;
             if (count == entry.Files.Count) return (EssaiLevel.Ok, "trouvé : " + count + " prefab" + (count > 1 ? "s" : "") + state + cost, "");

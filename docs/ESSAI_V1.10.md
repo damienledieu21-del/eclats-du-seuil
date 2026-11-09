@@ -394,3 +394,14 @@ Avant l'essai : les packs importés tels quels **à la racine de `Assets`** (Pac
 | 22.15 | Sur le Note8 | Image fluide ; ni tente d'étal, ni roue à eau, ni abri à bêtes, ni bâtiments lointains ; l'étal de Bertille et la vitrine restent ; Console de la construction : « N ressources réservées à l'ordinateur retirées » | [ ] | APK plus léger qu'avec la V2.11 |
 | 22.16 | Le dossier `Assets/Style/Generated` | `LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris) | [ ] | |
 | 22.17 | Depuis le hameau, le village, le bourg et les champs, regarder vers le bord du monde (ordinateur) | Quelques **maisons**, la **taverne** et le **moulin** du pack de village **au loin**, hors de l'aire de jeu, tournés vers elle ; tes maisons de Sketchfab et le moulin de Tim0 à leurs places | [ ] | Dans les arbres ou trop loin : Offset au catalogue |
+
+## 23. PC modeste : textures réduites (V2.12.4)
+
+Ton essai du 9 novembre 2026 : « System out of memory » (textures, `d3d11 failed to create 2D texture`) en sortant d'une maison vers le village. Ton PC (4 Go de RAM, GTX 470 à 1224 Mo de mémoire vidéo) est un **PC modeste** : le jeu y réduit les textures au **quart** et y écarte, comme sur le Note8, les ressources « jamais sur téléphone » (grand loup, pont de pierre, tours en ruine, araignée, rat, demi-cape, gambison, étals du marché, guirlande, tente d'étal, roue à eau, abri à bêtes, bâtiments et décor lointain, château, armures…) : à leur place, l'ancien rendu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 23.1 | Vérifier l'essai | Section « Unity et rendu », ligne « Machine et textures » : « PC modeste (mémoire vidéo 1224 Mo, mémoire 4096 Mo environ) ; textures : quart (limite de mipmaps 2) ; ressources lourdes … écartées » | [ ] | Recopier la ligne si elle dit autre chose |
+| 23.2 | Jouer, entrer dans une maison puis sortir vers le village (plusieurs fois) | Plus de « System out of memory » ; textures un peu moins nettes de près | [ ] | Si ça plante encore : envoyer le message complet |
+| 23.3 | Pause → Réglages | Bouton « Qualité des textures : auto (quart) » ; un clic : pleine, moitié, quart, puis auto ; le changement se voit tout de suite et reste à la partie suivante | [ ] | « pleine » sur ton PC risque de replanter |
+| 23.4 | Le village, le pont, les ruines | Le pont cintré du jeu, ni tours en ruine, ni tente, ni roue à eau, ni bâtiments au loin (comme sur le Note8) | [ ] | |
