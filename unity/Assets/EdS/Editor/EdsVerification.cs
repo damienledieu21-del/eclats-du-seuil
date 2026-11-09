@@ -31,6 +31,9 @@ namespace EdS.Game.Editor
         private const string Tunes = "Musiques";
         private const string Places = "Ambiances";
         private const string Images = "Textures (ciel, sols, bâtiments)";
+        private const string Wave = "5e vague (V2.11 : monstres, armes, Seuil, fournil, fêtes)";
+        private const string Later = "5e vague prête pour plus tard (crypte, créatures)";
+        private const string Icons = "Icônes et licences hors dépôt (V2.11)";
         private const string Prepare = "Lance le menu Éclats du Seuil → Préparer l'essai de style.";
 
         /// <summary>Assemblées du paquet <c>com.eclats.core</c> (dossier <c>src/</c>) dont le jeu a besoin.</summary>
@@ -259,8 +262,48 @@ namespace EdS.Game.Editor
             foreach (EssaiAudio audio in EssaiManifest.Music) AddAudio(report, Tunes, audio, StyleRules.MusicFiles(sounds, audio.Music.Value));
             foreach (EssaiAudio audio in EssaiManifest.Ambiences) AddAudio(report, Places, audio, StyleRules.AmbienceFiles(sounds, audio.Ambience.Value));
 
+            Step("5e vague", 0.9f);
+            CheckWave5(report, models);
+
             Step("Textures", 0.95f);
             CheckTextures(report, textures);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.11 : les ressources de la 5e vague (liste partagée <see cref="Wave5"/>, mêmes choix que <c>EdsWave5</c>), les gestes de
+        /// métier de Mixamo, le pack d'icônes de CraftPix et le manifeste des licences hors dépôt.
+        /// </summary>
+        private static void CheckWave5(EssaiReport report, List<string> models)
+        {
+            foreach (Wave5Entry entry in Wave5.Entries)
+            {
+                string found = Wave5.Pick(entry, models, out int rank);
+                (EssaiLevel level, string detail, string fix) = Wave5.Describe(entry, found, rank);
+                if (found != null && entry.Has(Wave5Fix.NotOnPhone)) detail += " ; jamais sur téléphone (Note8)";
+                else if (found != null && entry.Has(Wave5Fix.Heavy)) detail += " ; lourd pour le Note8 (plus de 20 000 triangles)";
+                if (found != null && entry.Has(Wave5Fix.Animated) && AssetImporter.GetAtPath(found) is ModelImporter importer
+                    && importer.animationType != ModelImporterAnimationType.Legacy)
+                {
+                    level = EssaiLevel.Warning;
+                    detail += " ; pas encore préparé (animations « " + importer.animationType + " »)";
+                    fix = Prepare;
+                }
+                report.Add(entry.Use == Wave5Use.Ready ? Later : Wave, level, entry.Label, detail, fix);
+            }
+            foreach ((string word, string clip, string use) in Wave5.TradeClips)
+            {
+                string file = Wave5.TradeClip(word, models);
+                if (file != null) report.Add(Wave, EssaiLevel.Ok, "Geste de métier : " + use, EssaiManifest.FileName(file));
+                else report.Add(Wave, EssaiLevel.Warning, "Geste de métier : " + use, "absent : les gestes de Quaternius",
+                    "Dépose dans " + Wave5.TradeFolder + " un FBX de Mixamo dont le nom contient « " + word + " » (FBX for Unity, Without Skin).");
+            }
+            List<string> icons = Find("t:Texture2D", "Assets").Where(ItemIcons.IsIcon).ToList();
+            if (icons.Count > 0) report.Add(Icons, EssaiLevel.Ok, "Icônes de CraftPix", icons.Count + " images du pack trouvées (objets reliés par la préparation)");
+            else report.Add(Icons, EssaiLevel.Warning, "Icônes de CraftPix", "pack introuvable : les icônes du jeu restent",
+                "Importe « 6200 Fantasy RPG Icons Pack » (Package Manager → My Assets), dans un dossier dont le nom contient « Fantasy RPG Icons » ou « CraftPix ».");
+            string manifest = Path.Combine(ProjectRoot, ItemIcons.LicenseManifest);
+            if (File.Exists(manifest)) report.Add(Icons, EssaiLevel.Ok, "Manifeste des licences (Asset Store, Fab)", ItemIcons.LicenseManifest + " (hors dépôt)");
+            else report.Add(Icons, EssaiLevel.Warning, "Manifeste des licences (Asset Store, Fab)", "pas encore écrit", Prepare);
         }
 
         /// <summary>

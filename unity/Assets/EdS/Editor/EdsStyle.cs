@@ -121,7 +121,9 @@ namespace EdS.Game.Editor
             // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
             // Sous-lot V2.9.2 : pas les corps humains ni leurs bibliothèques d'animations (matériaux sans texture voulus : refaits par EdsHumans).
-            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && !HumanFile(p) && Untextured(p)))
+            // Sous-lot V2.11 : ni les scans de Fab (matériau fait par EdsWave5), ni les gestes de métier de Mixamo.
+            foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && !HumanFile(p) && !Wave5.IsTradeClip(p)
+                && !p.StartsWith(Wave5.MegascansFolder, System.StringComparison.Ordinal) && Untextured(p)))
                 AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
@@ -311,6 +313,8 @@ namespace EdS.Game.Editor
             catalog.Terrain = TerrainMaterial();
             // Sous-lot V2.9.2 (4e vague) : corps humains (Universal Base Characters, Universal Animation Library).
             string humans = EdsHumans.Prepare(models, textures, catalog, notes);
+            // Sous-lot V2.11 (5e vague) : grand loup, Galeran, armes, Seuil, fournil, fêtes, gestes de métier, icônes de CraftPix.
+            string wave5 = EdsWave5.Prepare(models, textures, catalog, notes);
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
@@ -328,6 +332,7 @@ namespace EdS.Game.Editor
                 + "\nFerme : corbeau " + Name(crow) + ", vache " + Name(cow) + ", chien " + Name(dog) + ", cheval " + Name(horse)
                 + "\nBasse-cour : âne " + Name(donkey) + ", poule " + Name(hen) + ", coq " + Name(rooster) + " ; ours : " + Name(bear)
                 + "\n" + humans
+                + "\n" + wave5
                 + "\nVoix des bêtes, cloches et failles : " + voices + " sur " + EssaiManifest.Voices.Count + " (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
                 + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur " + EssaiManifest.WorldSounds.Count
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
@@ -358,7 +363,7 @@ namespace EdS.Game.Editor
         /// Animations « Legacy » (lues par le composant Animation), attente, marche et course en boucle. <paramref name="rename"/> : les
         /// animations prennent le nom du fichier (Mixamo les appelle toutes « mixamo.com »).
         /// </summary>
-        private static void Legacy(string path, bool rename)
+        internal static void Legacy(string path, bool rename)
         {
             if (!(AssetImporter.GetAtPath(path) is ModelImporter importer)) return;
             if (importer.animationType != ModelImporterAnimationType.Legacy || !importer.importAnimation)

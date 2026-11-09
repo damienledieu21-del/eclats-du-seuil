@@ -323,22 +323,50 @@ Avant l'essai : *Modular Character Outfits - Fantasy* [Standard] de Quaternius d
 | 19.10 | Sur le Note8 | Image toujours fluide au bourg à midi | [ ] | |
 | 19.11 | Ton avis : les tenues par métier, les couleurs, faut-il la version *Source* (15 $, décision après cet essai) pour avoir tout le pack ? | — | [ ] | |
 
-## 20. Marchands vivants et fêtes du bourg (V2.10)
+## 20. La 5e vague branchée (V2.11)
+
+Avant l'essai : les dossiers de la 5e vague déposés tels quels sous `Assets/Style` (`Sketchfab/{Creatures,Personnages,Armes,Seuil,Village,Boulangerie,Fete,Donjon,Interieurs}` en **FBX**, `PolyHaven/{Armes,Nourriture,Objets,Interieurs2,Cuisine,Donjon,Decoration,Nature}`, `Fab/Megascans_Pains`, `Mixamo/Metiers`, `Sounds/{Boulangerie,Fete,Donjon,Monstres,Armes,Sorts,FantasySFX_LittleRobot,CC0_rubberduck}`, `Music/{ScottBuckley2,OGA2}`), le pack *6200 Fantasy RPG Icons* de CraftPix importé n'importe où dans `Assets`, puis **Éclats du Seuil → Préparer l'essai de style**, puis **Vérifier l'essai** ([UNITY.md](UNITY.md#essai-v211--la-5e-vague-branchée)).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 20.1 | Fenêtre de la préparation | Une ligne « 5e vague : N ressources branchées trouvées sur 25, M prêtes pour plus tard, grand loup de Croc-Gris, 9 pains scannés ; gestes de métier : 5 sur 5 ; icônes de CraftPix : X objets sur 117 » | [ ] | |
+| 20.2 | Vérifier l'essai | Sections « 5e vague », « 5e vague prête pour plus tard » et « Icônes et licences hors dépôt » : ✅ ou ⚠️ avec le fichier à déposer ; « Manifeste des licences » ✅ (`Assets/Style/Generated/LICENCES_ASSET_STORE.md`) | [ ] | |
+| 20.3 | Croc-Gris (pré du nord), puis le loup blanc (nuit, quête de Gaspard), sur ordinateur | Le **grand loup animé** (marche, course, attaque, rugissement, coup reçu, mort), plus massif que les autres loups ; les autres loups gardent leur modèle ; sur téléphone, le loup des meutes (plus grand) | [ ] | Le loup blanc garde le pelage gris du modèle texturé (teinte impossible sur une texture) : à juger |
+| 20.4 | Les corbeaux des champs et des ruines, puis s'approcher | Ils **regardent autour d'eux** posés, puis **décollent et volent** trois secondes ; plumes nettes (pas de carrés noirs autour) | [ ] | |
+| 20.5 | Le souvenir de la Rupture | Galeran est le **chevalier en armure à la lance** (le roi en armure s'il manque) ; il se balance quand il avance ; sans les deux : lance et armure en formes simples **avec le heaume** | [ ] | Le chevalier n'a qu'une attente : glisse-t-il trop ? |
+| 20.6 | Équiper la masse du bourg, la hachette, une épée (héros sans paladin), une cape | La **vraie masse**, la **vraie hache**, la vraie épée **dans la main**, tête en haut (épée : garde en bas) ; la **demi-cape** dans le dos (sur ordinateur ; sur téléphone, la cape simple) | [ ] | Si une arme est à l'envers : catalogue → 5e vague → Grip Sign = −Grip Sign |
+| 20.7 | Les pierres du Seuil, la nuit | Les **menhirs** aux runes qui **luisent** (halo du Bloom) à la place des rochers | [ ] | |
+| 20.8 | Le cœur du Seuil | Grand cristal, quatre touffes de **cristaux lumineux**, le **feu follet** qui flotte, une lueur bleue | [ ] | |
+| 20.9 | Une faille ouverte (événement « faille du Seuil ») | Un **cadre de portail** lumineux autour de la déchirure, toujours de face, et des cristaux à ses pieds | [ ] | |
+| 20.10 | Le bourg : Firmin devant sa maison | Le **four à pain de briques** à sa droite (jamais dans un mur), deux sacs de farine, une table avec **pains scannés** (Megascans) et viennoiseries à sa gauche ; tout près du four, **les braises crépitent** | [ ] | Place à juger (le four fait 3,3 m) |
+| 20.11 | Bertille, les champs, le hameau | Caisse de poires à l'étal, **épouvantail** et bottes de **foin** (brins nets) aux champs, **charrette** au hameau | [ ] | |
+| 20.12 | Catalogue : **Human Festival** coché, le bourg de 9 h à 23 h | Guirlande et bannières sur la place (guirlande : ordinateur seulement), **foule de fête** en fond | [ ] | |
+| 20.13 | Le moulin d'Odile, le jour | La **meule** qui tourne en fond | [ ] | |
+| 20.14 | Près de la forge de Maëlle, le jour | La musique « **Song of the Forge** » remplace celle du village (à moins de 14 m) | [ ] | |
+| 20.15 | Un combat : coups, parade, blocage, sort, rugissement du Gardien | Les sons déjà choisis restent ; les nouveaux ne viennent qu'à défaut | [ ] | |
+| 20.16 | L'auberge, une maison, la chapelle | Nouveaux meubles de Poly Haven (tables, chaises, lits, armoires, lampes), casseroles et chopes, coffre, chaudron | [ ] | |
+| 20.17 | Les villageois au travail | Gestes de métier de Mixamo : au **comptoir** (marchands), **porter** et **la pause** (paysans), **s'agenouiller** (forge, prière à la chapelle) ; sans les fichiers, comme avant | [ ] | |
+| 20.18 | Sac et boutiques | Les objets ont les **icônes peintes de CraftPix** (six épées différentes) ; ceux sans correspondance gardent leur icône | [ ] | Liste des objets mal reliés à envoyer à Claude |
+| 20.19 | Sur le Note8 | Image fluide au bourg et au Seuil ; ni guirlande, ni demi-cape, ni tours en ruine, ni grand loup ; le pont cintré de bois à la place du pont de pierre | [ ] | |
+| 20.20 | Le pont des Vallons (décision du 9 novembre) | Le **pont de pierre** de JooL en travers de la rivière, à la place du pont cintré, sur ordinateur ; on le traverse à la même hauteur qu'avant ; sans le modèle, et sur téléphone, le pont cintré | [ ] | Échelle et hauteur estimées : régler Scale dans le catalogue |
+| 20.21 | Les ruines, sur ordinateur | Les **tours en ruine** de taz83 à la taille du lieu ; sur téléphone, les ruines comme avant | [ ] | |
+
+## 21. Marchands vivants et fêtes du bourg (V2.10)
 
 Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des fêtes** avancent la partie (hors du mode Jeu) au prochain jour de marché (8 h), à la foire de printemps (9 h), à la fête des moissons (10 h 30), à la veillée de l'Aube (19 h), ou au lendemain à 9 h (le stock se regagne). Valeurs provisoires : [MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210).
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 20.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
-| 20.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
-| 20.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
-| 20.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
-| 20.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
-| 20.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
-| 20.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
-| 20.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
-| 20.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
-| 20.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
-| 20.11 | « jour de marché, 8 h », trois semaines de suite | Une semaine la tourte de Firmin (la première fois : le **tablier de maître**), la suivante le tir d'Aldric (l'**arc de concours**), puis les contes de frère Anselme (le **livre de contes**) ; ensuite des bourses ordinaires | [ ] | |
-| 20.12 | Une fête au bourg, en automne puis en hiver | **King's Feast** aux moissons et à la foire, **Minstrel Dance** au marché et à la veillée ; les villageois en tenues de la saison, beaux habits pendant la fête | [ ] | |
-| 20.13 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |
+| 21.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
+| 21.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
+| 21.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
+| 21.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
+| 21.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
+| 21.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
+| 21.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
+| 21.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
+| 21.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
+| 21.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
+| 21.11 | « jour de marché, 8 h », trois semaines de suite | Une semaine la tourte de Firmin (la première fois : le **tablier de maître**), la suivante le tir d'Aldric (l'**arc de concours**), puis les contes de frère Anselme (le **livre de contes**) ; ensuite des bourses ordinaires | [ ] | |
+| 21.12 | Une fête au bourg, en automne puis en hiver | **King's Feast** aux moissons et à la foire, **Minstrel Dance** au marché et à la veillée ; les villageois en tenues de la saison, beaux habits pendant la fête | [ ] | |
+| 21.13 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |

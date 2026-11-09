@@ -471,6 +471,7 @@ namespace EdS.Game
             model = Object.Instantiate(prefab, look.transform, false);
             foreach (Collider c in look.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             foreach (SkinnedMeshRenderer skin in look.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
+            Wave5View.Fix(look, prefab.name, null);   // sous-lot V2.11 : plumes du corbeau animé, réglages de la 5e vague
             Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
             bool lot = false;
             if (part != null && renderers.Length > 1)

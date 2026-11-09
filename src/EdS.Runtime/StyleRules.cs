@@ -351,11 +351,17 @@ namespace EdS.Runtime
         /// <summary>Sous-lot V2.9.2 (3e vague) : dans l'auberge (« The Old Tower Inn » de RandomMind).</summary>
         Inn = 7,
 
+        /// <summary>Sous-lot V2.11 (5e vague) : près de la forge de Maëlle, le jour (« Song of the Forge » de Scott Buckley).</summary>
+        Forge = 8,
+
+        /// <summary>Sous-lot V2.11 (5e vague) : dans une crypte ou un donjon (« The Long Dark » de Scott Buckley) ; aucun lieu ne l'a encore.</summary>
+        Crypt = 9,
+
         /// <summary>Sous-lot V2.10 : les grandes fêtes du bourg, foire et moissons (« Medieval: King's Feast » de RandomMind).</summary>
-        Feast = 8,
+        Feast = 10,
 
         /// <summary>Sous-lot V2.10 : le jour de marché et la veillée (« Medieval: Minstrel Dance » de RandomMind).</summary>
-        Dance = 9,
+        Dance = 11,
     }
 
     /// <summary>Essai réaliste 7 : nappes d'ambiance (en boucle, mêlées).</summary>
@@ -402,6 +408,18 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9.2 (3e vague) : bord du lac (Freesound n° 733274, clapotis et oiseaux d'eau).</summary>
         Lake = 14,
+
+        /// <summary>Sous-lot V2.11 (5e vague) : le feu du four de Firmin (Freesound n° 484338), joué en 3D près du four, pas en nappe.</summary>
+        Bakery = 15,
+
+        /// <summary>Sous-lot V2.11 : la meule du moulin d'Odile (Freesound n° 70201), le jour près du moulin.</summary>
+        Mill = 16,
+
+        /// <summary>Sous-lot V2.11 : la foule d'une fête au bourg (Freesound n° 40133), quand le bourg est en fête.</summary>
+        Festival = 17,
+
+        /// <summary>Sous-lot V2.11 : l'air d'une crypte ou d'un donjon (Freesound n° 530161) ; aucun lieu ne l'a encore.</summary>
+        Crypt = 18,
     }
 
     /// <summary>Sous-lot V2.9 (2e vague) : lieux qui ont leur ambiance, autour du personnage (plusieurs à la fois).</summary>
@@ -431,11 +449,17 @@ namespace EdS.Runtime
         /// <summary>Sous-lot V2.9.2 : au bord du lac (lieu « lac… »), qui reste aussi une campagne.</summary>
         Lake = 64,
 
-        /// <summary>Sous-lot V2.10 : une fête du bourg bat son plein (la rumeur, le marché et la taverne montent dehors).</summary>
-        Festival = 128,
+        /// <summary>Sous-lot V2.11 : au moulin (lieu « moulin… »).</summary>
+        Mill = 128,
 
-        /// <summary>Sous-lot V2.10 : la fête est une grande fête (foire, moissons : « King's Feast » ; les autres : « Minstrel Dance »).</summary>
-        Feast = 256,
+        /// <summary>Sous-lot V2.11 : dans une crypte ou un donjon (lieu « crypte… », « donjon… », « caveau… », « catacombe… »).</summary>
+        Crypt = 256,
+
+        /// <summary>Sous-lot V2.11 : le bourg est en fête (réglage « Human Festival » du catalogue, ou une fête du jeu).</summary>
+        Festival = 512,
+
+        /// <summary>Sous-lot V2.10 : la fête du jeu est une grande fête (foire, moissons : « King's Feast » ; les autres : « Minstrel Dance »).</summary>
+        Feast = 1024,
     }
 
     /// <summary>
@@ -537,19 +561,21 @@ namespace EdS.Runtime
         {
             // Le paladin de Mixamo d'abord, sinon le chevalier des packs. Les fichiers d'animation de Mixamo (« Sword And Shield Idle »)
             // ne sont pas des héros.
-            [StyleSlot.Hero] = (new[] { "paladin", "knight" }, new[] { "weapon", "sword", "shield" }),
+            [StyleSlot.Hero] = (new[] { "paladin", "knight" }, new[] { "weapon", "sword", "shield", "armoredguard" }),
             // Sous-lot V2.9 : le loup de Quaternius (« Wolf_Quaternius », animé : marche, galop, attaque, mort, manger) passe devant le loup
             // du premier pack (attente et marche seulement) ; le loup réaliste de l'Asset Store (PackAnimal) reste devant les deux.
             // 2e vague : le loup réaliste de roo3d (Sketchfab, converti) passe devant celui de Quaternius ; celui de rhcreations (une seule
             // animation, couché de travers dans son fichier) n'est pas pris.
-            [StyleSlot.Wolf] = (new[] { "louproo3d", "wolfquaternius", "wolf", "loup" }, new[] { "rhcreations", "loupe" }),
+            // Sous-lot V2.11 (5e vague) : le grand loup d'emptypen2477 (35 k triangles) est réservé à Croc-Gris et au loup blanc (Wave5) ; le
+            // loup-garou n'est pas un loup.
+            [StyleSlot.Wolf] = (new[] { "louproo3d", "wolfquaternius", "wolf", "loup" }, new[] { "rhcreations", "loupe", "werewolf", "animatedwolf", "wolfgar" }),
             // 2e vague : le sanglier animé de Dakta.Grower.Nzl (73 animations) passe devant celui de Hanabi_Map (sans squelette).
             [StyleSlot.Boar] = (new[] { "sanglierdakta", "sanglier", "boar", "pig" }, new string[0]),
             // Essai réaliste 4 (27 octobre 2026) : les arbres de Sketchfab d'evolveduk s'appellent « oak », « Pine », « Spruce », « birch ».
             [StyleSlot.Tree] = (new[] { "firtree", "pine", "commontree", "tree", "birch", "maple", "oak", "spruce", "beech", "fir" },
-                new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch", "fire" }),
+                new[] { "dead", "stump", "log", "leaves", "leaf", "trunk", "root", "bark", "branch", "fire", "street", "lich" }),   // V2.11 : « street_rat », « Lich_Spinnee »
             // « stone_fire_pit » est le foyer de la forge, pas un rocher ; la pervenche est l'herbe de l'Aube, pas une plante du décor.
-            [StyleSlot.Rock] = (new[] { "rock", "boulder", "stone" }, new[] { "path", "pebble", "small", "tiny", "fire", "pit" }),
+            [StyleSlot.Rock] = (new[] { "rock", "boulder", "stone" }, new[] { "path", "pebble", "small", "tiny", "fire", "pit", "altar", "tomb" }),
             [StyleSlot.Plant] = (new[] { "bush", "fern", "grass", "flower", "plant", "clover", "shrub", "moss", "nettle", "celandine", "dandelion", "weed" },
                 new[] { "big", "tall", "tree", "rock", "periwinkle" }),
             [StyleSlot.Debris] = (new[] { "stump", "log", "trunk", "root", "branch" }, new[] { "quiver" }),
@@ -566,12 +592,14 @@ namespace EdS.Runtime
                 new[] { "stag", "reindeer", "cerf", "behind", "elan" }),
             [StyleSlot.Hare] = (new[] { "lievrebluekiwi", "lievre", "rabbitpneshik", "rabbit", "hare", "bunny" }, new[] { "share", "hardware" }),
             [StyleSlot.Cat] = (new[] { "catstripe", "stripecat", "cat", "chat" }, new string[0]),
-            [StyleSlot.Crow] = (new[] { "corbeau", "crow", "raven", "corneille" }, new string[0]),
+            // Sous-lot V2.11 (5e vague) : le corbeau animé d'emptypen2477 (14 animations, dont l'envol et le vol) passe devant celui à une seule
+            // animation ; l'épouvantail n'est pas un corbeau.
+            [StyleSlot.Crow] = (new[] { "animatedcrow", "corbeau", "crow", "raven", "corneille" }, new[] { "scarecrow" }),
             // Sous-lot V2.9.2 (3e et 4e vagues) : le meilleur modèle par bête, puis les bêtes animées de Quaternius (« Ultimate Animated
             // Animals » : marche, galop, manger, attaque, mort), puis celles de la ferme de Quaternius (« Farm Animals ») en dernier repli.
-            [StyleSlot.Cow] = (new[] { "vachenataliekirk", "vache", "cow", "bull" }, new[] { "cowl", "scow", "bulldog", "bullet" }),
+            [StyleSlot.Cow] = (new[] { "vachenataliekirk", "vache", "cow", "bull" }, new[] { "cowl", "scow", "bulldog", "bullet", "head" }),   // V2.11 : « bull_head »
             [StyleSlot.Dog] = (new[] { "chiensharpei", "chien", "husky", "shibainu", "shiba", "dog", "pug" }, new[] { "dogwood", "hotdog" }),
-            [StyleSlot.Horse] = (new[] { "cheval", "horse" }, new[] { "horseshoe" }),
+            [StyleSlot.Horse] = (new[] { "cheval", "horse" }, new[] { "horseshoe", "head" }),   // V2.11 : « horse_head » (Poly Haven) est une sculpture
             // Âne, poule, coq, ours : mots entiers seulement (voir Matches : « ane » dans « plane », « hen » dans « kitchen », « ours » dans
             // « colours »), sauf les noms des fichiers convertis.
             [StyleSlot.Donkey] = (new[] { "anewildmesh", "ane", "donkey", "ane" }, new string[0]),
@@ -597,10 +625,10 @@ namespace EdS.Runtime
         {
             [StyleProp.FirePit] = (new[] { "firepit", "fireplace", "brazier", "hearth" }, new string[0]),
             [StyleProp.Hammer] = (new[] { "hammer" }, new string[0]),
-            [StyleProp.Crate] = (new[] { "crate" }, new string[0]),
+            [StyleProp.Crate] = (new[] { "crate" }, new[] { "pears" }),   // V2.11 : la caisse de poires va à l'étal de Bertille
             [StyleProp.Barrel] = (new[] { "barrel" }, new string[0]),
             [StyleProp.Anvil] = (new[] { "anvil" }, new string[0]),
-            [StyleProp.Bridge] = (new[] { "pier", "bridge" }, new string[0]),
+            [StyleProp.Bridge] = (new[] { "pier", "bridge" }, new[] { "medievalbridge", "pierudolfs" }),   // V2.11 : le pont de pierre est posé par Wave5 (pas un ponton)
             [StyleProp.Herb] = (new[] { "periwinkle", "herb" }, new string[0]),
             [StyleProp.Mill] = (new[] { "windmill", "mill" }, new string[0]),
         };
@@ -608,20 +636,20 @@ namespace EdS.Runtime
         /// <summary>Mots cherchés dans les noms des sons, par ordre de préférence (noms des packs gratuits de Kenney d'abord).</summary>
         private static readonly Dictionary<StyleSound, string[]> Sounds = new Dictionary<StyleSound, string[]>
         {
-            [StyleSound.Hit] = new[] { "impactpunchmedium", "impactpunch", "punch", "hit" },
-            [StyleSound.Block] = new[] { "impactplate", "impactmetal", "shield", "block" },
-            [StyleSound.Parry] = new[] { "impactbell", "metalclick", "parry", "clang" },
+            [StyleSound.Hit] = new[] { "impactpunchmedium", "impactpunch", "punch", "hit", "fs733887", "fs420675" },   // V2.11 : épée (Freesound)
+            [StyleSound.Block] = new[] { "impactplate", "impactmetal", "shield", "block", "fs812518", "fs523760" },
+            [StyleSound.Parry] = new[] { "impactbell", "metalclick", "parry", "clang", "fs361485", "fs180828" },
             [StyleSound.Death] = new[] { "impactsoftheavy", "impactwoodheavy", "death", "fall" },
             [StyleSound.Potion] = new[] { "bottle", "drink", "potion", "liquid", "handlesmallleather", "cloth" },
             [StyleSound.Gather] = new[] { "impactmining", "chop", "dig", "gather" },
             [StyleSound.Craft] = new[] { "anvil", "forge", "impactmetalheavy", "metalpot", "enclume" },
             // Essai réaliste 7 : packs CC0 d'OpenGameArt (artisticdude, rubberduck) et de Kenney.
             [StyleSound.Swing] = new[] { "swish", "swing", "whoosh" },
-            [StyleSound.Cast] = new[] { "spell", "magic", "cast" },
+            [StyleSound.Cast] = new[] { "spell", "magic", "cast", "virixmisc", "fs876169" },   // V2.11 : sorts de la 5e vague en dernier recours
             [StyleSound.Growl] = new[] { "growl", "howl", "wolf", "barking" },
             [StyleSound.Grunt] = new[] { "grunt", "boar", "pig", "oink" },
-            [StyleSound.Roar] = new[] { "roar", "troll", "monster" },
-            [StyleSound.Coin] = new[] { "coin" },
+            [StyleSound.Roar] = new[] { "roar", "troll", "monster", "fs444444", "dragongrowl" },
+            [StyleSound.Coin] = new[] { "coin", "pickupgold" },
             // Sous-lot V2.2.1 : le chat qui suit (fichiers CC0 déposés par Damien, facultatifs).
             [StyleSound.Meow] = new[] { "miaou", "meow", "miaul" },
             [StyleSound.Purr] = new[] { "ronron", "purr" },
@@ -642,7 +670,7 @@ namespace EdS.Runtime
             // 2e vague (sons déposés dans « Sounds/Monde ») : portail des failles, pas selon le sol, bêtes de la ferme et des champs.
             [StyleSound.Portal] = new[] { "portail", "portal" },
             [StyleSound.StepGrass] = new[] { "pasherbe", "footstepsongrass", "grassstep" },
-            [StyleSound.StepGravel] = new[] { "pasgravier", "gravelstep", "gravel", "gravier" },
+            [StyleSound.StepGravel] = new[] { "pasgravier", "gravelstep", "gravel", "gravier", "footstepdirt" },
             [StyleSound.StepLeaves] = new[] { "pasfeuilles", "leavesstep", "leaves" },
             [StyleSound.StepWood] = new[] { "pasparquet", "parquet", "woodstep" },
             [StyleSound.Caw] = new[] { "corbeaux", "corneille", "crow", "caw" },
@@ -671,6 +699,8 @@ namespace EdS.Runtime
             [StyleSound.ChurchBell] = new[] { "clochebsb0135", "petitecloche", "fs760390" },
             // « eds_lievre_herbe » (le lièvre qui détale) n'est pas un pas dans l'herbe ; le cheval qui marche n'est pas un marché.
             [StyleSound.StepGrass] = new[] { "lievre" },
+            // Sous-lot V2.11 : le grognement du dragon (Little Robot Sound Factory) n'est pas celui d'un loup.
+            [StyleSound.Growl] = new[] { "dragon" },
         };
 
         /// <summary>Essai réaliste 7 : mots des musiques (rangées dans un dossier « Music »), par ordre de préférence.</summary>
@@ -682,16 +712,20 @@ namespace EdS.Runtime
             // Sous-lot V2.9.2 : « Night Town » le soir au bourg, « The Old Tower Inn » dans l'auberge (en tête : « town » est aussi un mot du
             // village).
             (StyleMusic.VillageNight, new[] { "nighttown", "villagenight", "nuitaubourg" }),
-            (StyleMusic.Inn, new[] { "oldtowerinn", "towerinn", "taverne" }),
+            (StyleMusic.Inn, new[] { "oldtowerinn", "towerinn", "taverne", "threesheetstothewind", "wenchesaleandloot", "nevergofullbard", "tavern" }),
+            // Sous-lot V2.11 (5e vague) : « Song of the Forge » près de la forge le jour ; la crypte (« The Long Dark », « The Graveyard »,
+            // « Dungeon Ambience »), prête pour un lieu « crypte… » ou « donjon… ».
+            (StyleMusic.Forge, new[] { "songoftheforge", "forgetheme" }),
+            (StyleMusic.Crypt, new[] { "thelongdark", "graveyard", "dungeon002", "crypte" }),
             // Sous-lot V2.9 (2e vague) : Scott Buckley : « Into The Wilds » (exploration, passe devant), « Sanctum » (le Seuil),
             // « The Legend of Kvothe » (les scènes de l'histoire).
-            (StyleMusic.Exploration, new[] { "wilds", "exploration", "explore", "woodland", "field" }),
-            (StyleMusic.Village, new[] { "village", "town", "festival" }),
+            (StyleMusic.Exploration, new[] { "wilds", "exploration", "explore", "woodland", "field", "paththroughthemountains" }),
+            (StyleMusic.Village, new[] { "village", "town", "festival", "homewasyou", "marketday" }),
             (StyleMusic.Combat, new[] { "combat", "battle", "fight" }),
             // Sous-lot V2.9.2 (4e vague) : « Determined Pursuit » d'Emma_MA pour les chefs et les attaques, devant « Heroic Demise ».
-            (StyleMusic.Boss, new[] { "determinedpursuit", "pursuit", "boss", "heroic", "epic" }),
-            (StyleMusic.Threshold, new[] { "sanctum", "seuil", "threshold" }),
-            (StyleMusic.Story, new[] { "kvothe", "legend", "chapitre", "chapter" }),
+            (StyleMusic.Boss, new[] { "determinedpursuit", "pursuit", "boss", "heroic", "epic", "goliath" }),
+            (StyleMusic.Threshold, new[] { "sanctum", "seuil", "threshold", "penumbra", "eviltemple" }),
+            (StyleMusic.Story, new[] { "kvothe", "legend", "chapitre", "chapter", "lament" }),
         };
 
         /// <summary>
@@ -710,6 +744,12 @@ namespace EdS.Runtime
             (StyleAmbience.Forge, new[] { "fs137836", "blacksmith" }),
             (StyleAmbience.River, new[] { "fs164895" }),
             (StyleAmbience.Wind, new[] { "fs593439", "windyforest" }),
+            // Sous-lot V2.11 (5e vague, dossiers « Boulangerie », « Fete », « Donjon ») : le feu du four de Firmin (joué près du four), la
+            // meule du moulin d'Odile, la foule des fêtes, l'air de la crypte.
+            (StyleAmbience.Bakery, new[] { "fs727387", "fs484338", "fournil", "bakery" }),   // les braises du four (Sacha.Julien, choisi par Damien) d'abord
+            (StyleAmbience.Mill, new[] { "fs70201", "gristmill", "meule" }),
+            (StyleAmbience.Festival, new[] { "fs40133", "fs856541", "fetemedievale", "festivalcrowd" }),
+            (StyleAmbience.Crypt, new[] { "fs530161", "fs516566", "fs166187", "dungeonair" }),
             // Sous-lot V2.2 : la pluie d'abord (« thunderstorm_rain » est une nappe de pluie, qui tourne en boucle), puis le tonnerre seul.
             (StyleAmbience.Rain, new[] { "pluie", "rain", "averse" }),
             (StyleAmbience.Thunder, new[] { "orage", "thunder", "tonnerre" }),
@@ -1249,7 +1289,8 @@ namespace EdS.Runtime
         {
             // Sous-lot V2.9 (2e vague) : les ambiances du dossier « Sounds/Monde » (marché, taverne, forge…) comptent aussi ; les autres sons
             // de ce dossier (pas, cris des bêtes, cloches) restent des bruitages.
-            if (!InAmbienceFolder(path) && !InWorldFolder(path)) return null;
+            // Sous-lot V2.11 : et ceux des dossiers de la 5e vague (« Boulangerie », « Fete », « Donjon »).
+            if (!InAmbienceFolder(path) && !InWorldFolder(path) && !InWave5AmbienceFolder(path)) return null;
             string file = Key(FileName(path));
             foreach ((StyleAmbience kind, string[] words) in AmbienceWords)
                 if (words.Any(w => file.Contains(w))) return kind;
@@ -1267,6 +1308,9 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.9 (2e vague) : le fichier est-il rangé dans un dossier « Monde » (ambiances et bruitages du monde) ?</summary>
         public static bool InWorldFolder(string path) => Segments(path).Any(s => s == "monde" || s == "world");
+
+        /// <summary>Sous-lot V2.11 : dossiers de sons de la 5e vague dont certains fichiers sont des nappes (four, meule, foule, crypte).</summary>
+        public static bool InWave5AmbienceFolder(string path) => Segments(path).Any(s => s == "boulangerie" || s == "fete" || s == "donjon");
 
         /// <summary>
         /// Sous-lot V2.9 (2e vague) : rang d'une musique parmi celles de son genre (le premier mot trouvé : « Into The Wilds » passe devant
@@ -1332,6 +1376,10 @@ namespace EdS.Runtime
             if (HasIdWord(placeId, "lac", false) || HasIdWord(placeId, "etang", false)) places |= AmbiencePlace.Lake;   // sous-lot V2.9.2
             if (HasIdWord(placeId, "foret", true) || HasIdWord(placeId, "bois", false)) places |= AmbiencePlace.Forest;
             if (HasIdWord(placeId, "seuil", false)) places |= AmbiencePlace.Threshold;
+            // Sous-lot V2.11 : le moulin (sa meule), et une crypte ou un donjon (aucun dans les Vallons : prêt pour eux).
+            if (HasIdWord(placeId, "moulin", false)) places |= AmbiencePlace.Mill;
+            if (HasIdWord(placeId, "crypte", true) || HasIdWord(placeId, "donjon", true) || HasIdWord(placeId, "caveau", true)
+                || HasIdWord(placeId, "catacombe", true)) places |= AmbiencePlace.Crypt;
             return places;
         }
 
@@ -1405,8 +1453,27 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleMusic? MusicFallback(StyleMusic wanted) =>
             wanted == StyleMusic.Boss ? StyleMusic.Combat
-            : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Feast || wanted == StyleMusic.Dance ? StyleMusic.Village   // sous-lot V2.10 : sans la musique de fête, celle du village
+            : wanted == StyleMusic.VillageNight || wanted == StyleMusic.Inn || wanted == StyleMusic.Forge || wanted == StyleMusic.Feast || wanted == StyleMusic.Dance
+                ? StyleMusic.Village   // sous-lot V2.10 : sans la musique de fête, celle du village
             : (StyleMusic?)null;
+
+        /// <summary>Sous-lot V2.11 : distance (m) à la forge en deçà de laquelle « Song of the Forge » remplace la musique du village, le jour.</summary>
+        public const double ForgeMusicRange = 14;
+
+        /// <summary>
+        /// Sous-lot V2.11 (5e vague) : comme la version à huit paramètres, et : dans une crypte ou un donjon (<paramref name="crypt"/>), sa
+        /// musique (après le combat, l'histoire et avant tout lieu) ; au village, le jour (<paramref name="night"/> sous 0,5), à moins de
+        /// <see cref="ForgeMusicRange"/> m de la forge (<paramref name="forgeDistance"/>), « Song of the Forge ».
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault,
+            double forgeDistance, bool crypt)
+        {
+            StyleMusic music = MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault);
+            if (music == StyleMusic.Boss || music == StyleMusic.Combat || music == StyleMusic.Story) return music;
+            if (crypt) return StyleMusic.Crypt;
+            if (music == StyleMusic.Village && !double.IsNaN(forgeDistance) && forgeDistance >= 0 && forgeDistance < ForgeMusicRange) return StyleMusic.Forge;
+            return music;
+        }
 
         /// <summary>Sous-lot V2.10 : la fête est une grande fête (« King's Feast ») : la foire et les moissons ; les autres dansent (« Minstrel Dance »).</summary>
         public static bool IsFeast(string? festival) => festival == "festival.foire" || festival == "festival.moissons";
@@ -1416,10 +1483,18 @@ namespace EdS.Runtime
         /// (<paramref name="places"/> : <see cref="AmbiencePlace.Festival"/>, dehors, hors combat et hors scène), la musique de la fête, de
         /// jour comme de nuit (la veillée).
         /// </summary>
-        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault, AmbiencePlace places)
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault, AmbiencePlace places) =>
+            MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault, double.PositiveInfinity, false, places);
+
+        /// <summary>
+        /// Fusion de V2.10 et V2.11 : la version à dix paramètres (crypte, forge), puis la musique de la fête du jeu (<paramref name="places"/> :
+        /// <see cref="AmbiencePlace.Festival"/>) à la place de celle du village, du bourg de nuit ou de la forge.
+        /// </summary>
+        public static StyleMusic MusicFor(bool bossEngaged, bool fighting, bool inVillage, bool threshold, bool story, double night, bool inn, bool assault,
+            double forgeDistance, bool crypt, AmbiencePlace places)
         {
-            StyleMusic music = MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault);
-            if ((places & AmbiencePlace.Festival) == 0 || (music != StyleMusic.Village && music != StyleMusic.VillageNight)) return music;
+            StyleMusic music = MusicFor(bossEngaged, fighting, inVillage, threshold, story, night, inn, assault, forgeDistance, crypt);
+            if ((places & AmbiencePlace.Festival) == 0 || (music != StyleMusic.Village && music != StyleMusic.VillageNight && music != StyleMusic.Forge)) return music;
             return (places & AmbiencePlace.Feast) != 0 ? StyleMusic.Feast : StyleMusic.Dance;
         }
 
@@ -1471,6 +1546,14 @@ namespace EdS.Runtime
                     return (places & AmbiencePlace.TavernInside) != 0 ? calm * (0.25 + 0.55 * Math.Max(Window(11.5, 14, 0.5), Window(18.5, 22.5, 0.5))) : 0;
                 case StyleAmbience.Lake:
                     return !indoors && (places & AmbiencePlace.Lake) != 0 ? 0.75 * calm * (1 - 0.5 * night) * (1 - 0.6 * rain) : 0;
+                // Sous-lot V2.11 (5e vague) : la meule du moulin d'Odile le jour ; la foule d'une fête au bourg, de 9 h à 23 h ; l'air de la
+                // crypte (dedans compris). Le four de Firmin est un son posé sur le four (0 ici).
+                case StyleAmbience.Mill:
+                    return !indoors && (places & AmbiencePlace.Mill) != 0 ? 0.6 * calm * Window(6, 20, 0.5) : 0;
+                case StyleAmbience.Festival:
+                    return !indoors && town && (places & AmbiencePlace.Festival) != 0 ? 0.7 * calm * (1 - 0.6 * rain) * Window(9, 23, 0.5) : 0;
+                case StyleAmbience.Crypt:
+                    return (places & AmbiencePlace.Crypt) != 0 ? 0.85 * calm : 0;
                 default:
                     return 0;
             }
@@ -1981,7 +2064,8 @@ namespace EdS.Runtime
                 string[] parts = path.Replace('\\', '/').Split('/');
                 if (parts.Length < 3 || Key(parts[parts.Length - 3]) != "mixamo") continue;
                 string name = Key(parts[parts.Length - 2]);
-                if (name.Length == 0 || name == "textures") continue;
+                // Sous-lot V2.11 : « Mixamo/Metiers » range des animations de métiers (Wave5.TradeClips), pas un personnage.
+                if (name.Length == 0 || name == "textures" || name == "metiers") continue;
                 if (!found.TryGetValue(name, out List<string>? list)) found[name] = list = new List<string>();
                 list.Add(path);
             }

@@ -151,7 +151,7 @@ namespace EdS.Game
                 if (!used) continue;
                 ShopOffer o = _offers[index];
                 ItemDefinition item = a.Item(o.Item);
-                row.Icon.sprite = UiKit.Icon(item.Icon);
+                row.Icon.sprite = UiKit.ItemIcon(item.Id, item.Icon);
                 UiKit.Show(row.Icon, row.Icon.sprite != null);
                 row.Name.Value = o.Name;
                 row.Name.Color = RarityColor(item.Rarity);
@@ -172,7 +172,7 @@ namespace EdS.Game
                 UiKit.Show(cell.Rect, i < size);
                 bool used = i < stacks.Count;
                 ItemDefinition item = used ? a.Item(stacks[i].Item) : null;
-                cell.Icon.sprite = item != null ? UiKit.Icon(item.Icon) : null;
+                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, item.Icon) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = used && stacks[i].Count > 1 ? stacks[i].Count.ToString() : "";
                 bool sells = item != null && a.SellPrice(item.Id) > 0;
@@ -191,7 +191,7 @@ namespace EdS.Game
                 if (!used) continue;
                 ShopLot lot = _lots[i];
                 ItemDefinition item = a.Item(lot.Item);
-                cell.Icon.sprite = UiKit.Icon(item.Icon);
+                cell.Icon.sprite = UiKit.ItemIcon(item.Id, item.Icon);
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = lot.Count > 1 ? lot.Count.ToString() : "";
                 cell.Edge.color = a.Money >= lot.Paid ? RarityColor(item.Rarity) : UiKit.Danger;

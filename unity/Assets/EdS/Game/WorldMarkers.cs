@@ -159,6 +159,135 @@ namespace EdS.Game
                 sill.SetColor("_EmissionColor", new Color(0.9f, 0.55f, 0.18f));
                 m.Body.GetComponent<Renderer>().sharedMaterial = sill;
             }
+            // Sous-lot V2.11 (5e vague) : le fournil de Firmin, l'étal de Bertille, les champs, le hameau, les fêtes et le cœur du Seuil.
+            if (!adventure.Indoors && catalog != null) Wave5Decor(adventure, byDay, catalog);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.11 (5e vague) : décor posé près des PNJ et des lieux, à une place libre (jamais dans un mur) : le four à pain de Firmin
+        /// (avec ses sacs de farine, sa table de pains scannés et de viennoiseries, et le son des braises tout près), la caisse de poires de
+        /// Bertille, l'épouvantail et le foin des champs, la charrette du hameau, guirlande et bannières quand le bourg est en fête, cristaux et
+        /// feu follet au cœur du Seuil. Chaque objet absent du catalogue n'est simplement pas posé.
+        /// </summary>
+        private void Wave5Decor(AdventureSession adventure, Dictionary<string, WorldMarker> byDay, StyleCatalog catalog)
+        {
+            AdventureMap map = adventure.Map;
+            if (map == null) return;
+            List<IReadOnlyList<(double X, double Z)>> obstacles = Wave5View.Polygons(map.Obstacles);
+            Transform root = _root.transform;
+            WorldMarker Npc(string word) => byDay.Values.FirstOrDefault(n => StyleRules.Key(n.Id) == "npc" + word);
+            MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
+            float Yaw(WorldMarker n) => _npcs.TryGetValue(n.Id, out Marker m) ? m.RestYaw : 0f;
+
+            // Le fournil : le four à la droite de Firmin, la table à sa gauche.
+            if (Npc("boulanger") is WorldMarker baker)
+            {
+                float face = Yaw(baker);
+                GameObject oven = Wave5View.PlaceNear(root, Wave5Role.BreadOven, "four de Firmin", baker.X, baker.Z, face + 90, 3.2, 1.9, obstacles, face + 180);
+                if (oven != null)
+                {
+                    Vector3 o = oven.transform.position;
+                    Wave5View.PlaceNear(root, Wave5Role.FlourSack, "farine 1", o.x, o.z, face + 180, 2.2, 0.5, obstacles, StyleRules.Variant("farine1", 360));
+                    Wave5View.PlaceNear(root, Wave5Role.FlourSack, "farine 2", o.x, o.z, face + 200, 2.9, 0.5, obstacles, StyleRules.Variant("farine2", 360));
+                    OvenSound(oven, catalog);
+                }
+                GameObject table = Wave5View.PlaceNear(root, Wave5Role.BakeryTable, "table du fournil", baker.X, baker.Z, face - 90, 2.4, 1.1, obstacles, face);
+                if (table != null) Showcase(root, table, catalog, face);
+            }
+            if (Npc("epiciere") is WorldMarker grocer)
+                Wave5View.PlaceNear(root, Wave5Role.PearCrate, "poires de Bertille", grocer.X, grocer.Z, Yaw(grocer) + 60, 1.4, 0.45, obstacles, Yaw(grocer));
+            if (Place("champs") is MapPlace fields)
+            {
+                Wave5View.PlaceNear(root, Wave5Role.Scarecrow, "épouvantail", fields.CenterX, fields.CenterZ, 30, 3, 0.8, obstacles, 200);
+                Wave5View.PlaceNear(root, Wave5Role.HayBales, "foin 1", fields.CenterX, fields.CenterZ, 140, 7, 0.8, obstacles, 20);
+                Wave5View.PlaceNear(root, Wave5Role.HayBales, "foin 2", fields.CenterX, fields.CenterZ, 160, 8.5, 0.8, obstacles, 75);
+            }
+            // Décision de Damien du 9 novembre 2026 : les tours en ruine aux ruines, sur ordinateur seulement (Wave5 : jamais sur téléphone, où
+            // les ruines restent en formes simples), à la taille du lieu, le long de son plus grand côté.
+            if (Place("ruines") is MapPlace ruins && Wave5View.Has(Wave5Role.RuinedTowers))
+            {
+                bool alongX = ruins.MaxX - ruins.MinX >= ruins.MaxZ - ruins.MinZ;
+                GameObject towers = Wave5View.Place(root, Wave5Role.RuinedTowers, "tours en ruine", new Vector3((float)ruins.CenterX, 0f, (float)ruins.CenterZ), alongX ? 90f : 0f);
+                if (towers != null && StyleLook.VisibleBounds(towers, out Bounds tb))
+                {
+                    float side = (float)System.Math.Max(ruins.MaxX - ruins.MinX, ruins.MaxZ - ruins.MinZ) * 0.8f;
+                    float longest = Mathf.Max(tb.size.x, tb.size.z);
+                    if (longest > side) towers.transform.localScale *= side / longest;
+                    StyleLook.Ground(towers, 0f);
+                }
+            }
+            if (Place("hameau") is MapPlace hamlet)
+                Wave5View.PlaceNear(root, Wave5Role.Cart, "charrette", hamlet.CenterX, hamlet.CenterZ, 250, 5, 2.2, obstacles, 70);
+            // Les fêtes : réglage « Human Festival » du catalogue (tenues de fête) ; la PR des fêtes du jeu (#120) pourra l'allumer aussi.
+            if (catalog.HumanFestival && Place("bourg") is MapPlace town)
+            {
+                Wave5View.PlaceNear(root, Wave5Role.Bunting, "guirlande", town.CenterX, town.CenterZ, 0, 3, 1.6, obstacles, 90);
+                Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 1", town.CenterX, town.CenterZ, 90, 6, 0.6, obstacles, 270);
+                Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 2", town.CenterX, town.CenterZ, 270, 6, 0.6, obstacles, 90);
+            }
+            // Le cœur du Seuil : le grand cristal, une couronne de cristaux lumineux et le feu follet qui flotte.
+            if (Place("coeur_du_seuil") is MapPlace heart)
+            {
+                GameObject big = Wave5View.PlaceNear(root, Wave5Role.StrangeCrystal, "grand cristal", heart.CenterX, heart.CenterZ, 0, 3, 1.0, obstacles, 0);
+                for (int i = 0; i < 4; i++)
+                    Wave5View.PlaceNear(root, Wave5Role.Crystals, "cristaux " + i, heart.CenterX, heart.CenterZ, 45 + 90 * i, 7, 0.8, obstacles, 90 * i + 20);
+                GameObject wisp = Wave5View.PlaceNear(root, Wave5Role.Wisp, "feu follet", heart.CenterX, heart.CenterZ, 180, 2.5, 0.5, obstacles, 0);
+                if (wisp != null) wisp.transform.position += Vector3.up * 1.6f;
+                if (big != null || wisp != null)
+                {
+                    var light = new GameObject("Lueur du cœur du Seuil (V2.11)").AddComponent<Light>();
+                    light.transform.SetParent(root, false);
+                    light.transform.position = new Vector3((float)heart.CenterX, 2.2f, (float)heart.CenterZ);
+                    light.type = LightType.Point;
+                    light.color = new Color(0.55f, 0.65f, 1f);
+                    light.range = 9f;
+                    light.intensity = 1.6f;
+                }
+            }
+        }
+
+        /// <summary>Pains (scans de Megascans d'abord) et viennoiseries en vitrine sur la table du fournil, chacun à sa place, sans se toucher.</summary>
+        private static void Showcase(Transform root, GameObject table, StyleCatalog catalog, float face)
+        {
+            if (!StyleLook.VisibleBounds(table, out Bounds top)) return;
+            List<Wave5Look> breads = catalog.Looks(Wave5Role.Bread), pastries = catalog.Looks(Wave5Role.Pastry);
+            int count = Mathf.Min(6, breads.Count + pastries.Count);
+            for (int i = 0; i < count; i++)
+            {
+                Wave5Look look = i < breads.Count && (i % 3 != 2 || pastries.Count == 0) ? breads[i % breads.Count] : pastries.Count > 0 ? pastries[i % pastries.Count] : breads[i % breads.Count];
+                float u = (i % 3 - 1) * 0.3f, v = (i / 3 - 0.5f) * 0.32f;
+                Vector3 at = top.center + Quaternion.Euler(0f, face, 0f) * new Vector3(u * top.size.x / 1.2f, 0f, v);
+                at.y = top.max.y;
+                var holder = new GameObject("vitrine " + i + " (V2.11)");
+                GameObject model = Object.Instantiate(look.Model, holder.transform, false);
+                foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                Wave5View.Fix(holder, look.Model.name, look.Material);
+                holder.transform.SetParent(root, false);
+                // Un pain d'environ 30 cm (les scans et les modèles n'ont pas tous la même unité).
+                if (StyleLook.VisibleBounds(holder, out Bounds b) && Mathf.Max(b.size.x, b.size.z) > 0.001f)
+                    holder.transform.localScale = Vector3.one * (0.3f / Mathf.Max(b.size.x, b.size.z)) * (look.Scale > 0f ? look.Scale : 1f);
+                holder.transform.rotation = Quaternion.Euler(0f, face + StyleRules.Variant("vitrine" + i, 60) - 30 + look.Yaw, 0f);
+                holder.transform.position = at;
+                StyleLook.Ground(holder, at.y);
+            }
+        }
+
+        /// <summary>Les braises du four (Sacha.Julien), entendues tout près du four seulement (son 3D en boucle).</summary>
+        private static void OvenSound(GameObject oven, StyleCatalog catalog)
+        {
+            AudioClip clip = catalog.AmbienceClip(StyleAmbience.Bakery);
+            if (clip == null) return;
+            AudioSource source = oven.AddComponent<AudioSource>();
+            source.clip = clip;
+            source.loop = true;
+            source.playOnAwake = false;
+            source.spatialBlend = 1f;
+            source.rolloffMode = AudioRolloffMode.Linear;
+            source.minDistance = 2f;
+            source.maxDistance = 14f;
+            source.volume = catalog.AmbienceVolume * 1.4f;
+            source.time = clip.length * StyleRules.Variant("four", 100) / 100f;
+            source.Play();
         }
 
         /// <summary>Intérieurs : distance (m) d'où se lit le nom d'une porte.</summary>

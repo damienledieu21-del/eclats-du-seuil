@@ -51,6 +51,7 @@ namespace EdS.Game
             public Material Material;
             public Light Light;
             public float Pull;
+            public Transform Portal;   // sous-lot V2.11 : le cadre de portail de nickbroad, tourné avec la déchirure
         }
 
         private readonly Dictionary<string, Tear> _tears = new Dictionary<string, Tear>();
@@ -423,6 +424,19 @@ namespace EdS.Game
                 _tears[id] = new Tear { Quad = quad, Material = material, Light = light };
             }
             else _tears[id] = new Tear { Light = light };
+            // Sous-lot V2.11 (5e vague) : un cadre de portail lumineux autour de la déchirure, et deux touffes de cristaux à ses pieds.
+            GameObject portal = Wave5View.Place(anchor.transform, Wave5Role.Portal, "Portail " + id, anchor.transform.position, 0f);
+            if (portal != null)
+            {
+                portal.transform.SetParent(anchor.transform, true);
+                _tears[id].Portal = portal.transform;
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                Vector3 side = anchor.transform.position + new Vector3(i == 0 ? -2.2f : 2.1f, 0f, i == 0 ? 0.6f : -0.5f);
+                GameObject crystals = Wave5View.Place(anchor.transform, Wave5Role.Crystals, "Cristaux " + id + i, side, StyleRules.Variant(id + i, 360), 0.9f);
+                if (crystals != null) crystals.transform.SetParent(anchor.transform, true);
+            }
             return pieces;
         }
 
@@ -455,6 +469,7 @@ namespace EdS.Game
                 Vector3 to = camera.transform.position - tear.Quad.position;
                 to.y = 0f;
                 if (to.sqrMagnitude > 0.01f) tear.Quad.rotation = Quaternion.LookRotation(Vector3.zero - to);   // le quad de Unity se voit de face depuis -z
+                if (to.sqrMagnitude > 0.01f && tear.Portal != null) tear.Portal.rotation = Quaternion.LookRotation(to);   // V2.11 : le portail, de face
             }
             if (Effects == null || deltaTime <= 0f || opening <= 0f) return;
             tear.Pull += deltaTime * (float)pullRate * opening;

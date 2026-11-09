@@ -50,6 +50,8 @@ namespace EdS.Game
             {
                 // Sous-lot V2.2 : le tonnerre n'est pas une nappe : il est joué une fois après chaque éclair (StyleWeather).
                 if (kind == StyleAmbience.Thunder) continue;
+                // Sous-lot V2.11 : les braises du four sont un son posé sur le four de Firmin (WorldMarkers), pas une nappe.
+                if (kind == StyleAmbience.Bakery) continue;
                 AudioClip clip = catalog.AmbienceClip(kind);
                 if (clip == null) continue;
                 AudioSource source = Source(_root, "Ambiance " + kind);
@@ -107,8 +109,12 @@ namespace EdS.Game
             bool fighting = now - _lastFight < CombatLinger;
             // Sous-lot V2.9 (2e vague) : la musique du Seuil (« Sanctum ») au Seuil, celle des scènes de l'histoire pendant une scène.
             // Sous-lot V2.9.2 : l'auberge (« The Old Tower Inn »), le bourg la nuit (« Night Town »), les attaques (« Determined Pursuit »).
-            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (mood.Places & AmbiencePlace.Threshold) != 0, Story,
-                mood.Night, (mood.Places & AmbiencePlace.TavernInside) != 0, Assault, mood.Places));   // sous-lot V2.10 : la musique des fêtes
+            // Sous-lot V2.11 (5e vague) : « Song of the Forge » près de la forge le jour, la musique de la crypte dans une crypte ; le bourg en
+            // fête (réglage « Human Festival ») a sa foule. Sous-lot V2.10 : la musique des fêtes du jeu (mood.Places, sans le réglage).
+            AmbiencePlace places = mood.Places | (_catalog.HumanFestival ? AmbiencePlace.Festival : AmbiencePlace.None);
+            StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (places & AmbiencePlace.Threshold) != 0, Story,
+                mood.Night, (places & AmbiencePlace.TavernInside) != 0, Assault, mood.Indoors ? double.PositiveInfinity : mood.ForgeDistance,
+                (places & AmbiencePlace.Crypt) != 0, mood.Places));
             if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
                 Switch(wanted);
             else if (wanted != _playing)
@@ -141,7 +147,7 @@ namespace EdS.Game
                 if (!layer.Value.isPlaying) layer.Value.Play();
                 // Sous-lot V2.9 (2e vague) : marché, taverne, forge, feu de camp, campagne et forêt suivent le lieu et l'heure du monde.
                 float target = ambience * (float)(StyleRules.IsPlaceAmbience(layer.Key)
-                    ? StyleRules.PlaceVolume(layer.Key, mood.Places, mood.Minute, mood.ForgeDistance, fighting, mood.Indoors, mood.Night, mood.Rain)
+                    ? StyleRules.PlaceVolume(layer.Key, places, mood.Minute, mood.ForgeDistance, fighting, mood.Indoors, mood.Night, mood.Rain)
                     : StyleRules.AmbienceVolume(layer.Key, mood.RiverDistance, mood.InVillage, fighting, mood.Indoors, mood.Night,
                         mood.Rain));   // sous-lot V2.2 : la nappe de pluie suit la pluie
                 layer.Value.volume = Mathf.MoveTowards(layer.Value.volume, target, deltaTime * 0.5f);
