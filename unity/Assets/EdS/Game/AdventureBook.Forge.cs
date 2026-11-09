@@ -31,7 +31,7 @@ namespace EdS.Game
 
             _forge = UiKit.Node(page, "Petit jeu de forge");
             UiKit.Place(_forge, new Vector2(200f, 260f), new Vector2(1100f, 360f), Vector2.zero);
-            UiKit.Fill(UiKit.Image(_forge, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
+            UiKit.Fill(UiKit.Image(_forge, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _forgeTitle = Text(_forge, UiFace.Title, 30f, Color.white, TextAnchor.MiddleLeft, 60f, 50f, 980f, 40f, 0f, 0.5f, 2f);
             _forgeTitle.Gold();
             _forgeHint = Text(_forge, UiFace.Body, 18f, UiKit.Ink, TextAnchor.MiddleLeft, 60f, 92f, 980f, 26f, 0f, 0.5f);

@@ -450,7 +450,7 @@ namespace EdS.Game
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
             _settings = At(UiKit.Node(_center, "Réglages"), 450f, 500f, 560f, 250f, 0.5f, 0.5f);
-            UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
+            UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
             title.Gold();

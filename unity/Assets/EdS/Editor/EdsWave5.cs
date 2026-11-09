@@ -37,6 +37,9 @@ namespace EdS.Game.Editor
                 {
                     if (entry.Has(Wave5Fix.CutClips)) Cut(path);
                     else if (entry.Has(Wave5Fix.Animated)) EdsStyle.Legacy(path, false);
+                    // Relecture de la PR #122 : une ressource prête (sans lieu) n'entre pas au catalogue (qui est dans Resources : tout ce qu'il
+                    // nomme part dans le jeu construit, téléphone compris) ; elle y entrera quand elle sera posée.
+                    if (entry.Use == Wave5Use.Ready) continue;
                     GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     if (model == null) continue;
                     Wave5Look before = old.FirstOrDefault(o => o != null && o.Role == entry.Role && o.Model == model);
@@ -89,6 +92,7 @@ namespace EdS.Game.Editor
                 List<string> found = AssetStore.Found(entry, prefabs).Take(AssetStore.Variants(entry.Role)).ToList();
                 if (found.Count > 0 && entry.Use == Wave5Use.Live) liveFound++;
                 if (found.Count > 0 && entry.Use == Wave5Use.Ready) ready++;
+                if (entry.Use == Wave5Use.Ready) continue;   // relecture de la PR #122 : hors du catalogue tant qu'elle n'est pas posée
                 foreach (string path in found)
                 {
                     GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -102,7 +106,7 @@ namespace EdS.Game.Editor
                     count++;
                 }
             }
-            return "Asset Store : " + liveFound + " ressources branchées sur " + live + ", " + ready + " prêtes pour plus tard (" + count + " prefabs)";
+            return "Asset Store : " + liveFound + " ressources branchées sur " + live + ", " + ready + " prêtes pour plus tard (" + count + " prefabs au catalogue)";
         }
 
         /// <summary>

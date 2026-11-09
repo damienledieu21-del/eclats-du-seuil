@@ -293,12 +293,15 @@ namespace EdS.Game
                 Wave5View.PlaceNear(root, Wave5Role.VillageBarrel, "tonneau " + w.Id, w.X, w.Z, 270, 3.2, 0.5, obstacles, 0);
             }
             // La roue à eau : sur la rive de la rivière la plus proche du moulin (le moulin de Tim0 reste ; position estimée, à régler par Offset).
+            // Relecture de la PR #122 : à une place libre (FreeSpot, à 2,5 m de tout obstacle, moulin de Tim0 compris), sinon pas posée.
             if (Place("moulin") is MapPlace mill && Place("riviere") is MapPlace river && Wave5View.Has(Wave5Role.WaterWheel))
             {
-                float bx = Mathf.Clamp((float)mill.CenterX, (float)river.MinX, (float)river.MaxX), bz = Mathf.Clamp((float)mill.CenterZ, (float)river.MinZ, (float)river.MaxZ);
-                float yaw = Mathf.Atan2(bx - (float)mill.CenterX, bz - (float)mill.CenterZ) * Mathf.Rad2Deg;
-                Wave5View.Place(root, Wave5Role.WaterWheel, "roue à eau", new Vector3(bx, 0f, bz), yaw + 90f);
+                double bx = System.Math.Max(river.MinX, System.Math.Min(river.MaxX, mill.CenterX)), bz = System.Math.Max(river.MinZ, System.Math.Min(river.MaxZ, mill.CenterZ));
+                double yaw = System.Math.Atan2(bx - mill.CenterX, bz - mill.CenterZ) * 180.0 / System.Math.PI;
+                if (Wave5.FreeSpot(new[] { (bx, bz) }.Concat(Wave5.Around(bx, bz, yaw + 180, 2.5)), obstacles, 2.5) is (double X, double Z) spot)
+                    Wave5View.Place(root, Wave5Role.WaterWheel, "roue à eau", new Vector3((float)spot.X, 0f, (float)spot.Z), (float)yaw + 90f);
             }
+            DistantDecor(map, root, catalog);
             (Wave5Role Role, double Yaw, double Distance, double Clearance)[] village =
             {
                 (Wave5Role.VillageBarrel, 20, 6, 0.5), (Wave5Role.VillageBarrel, 35, 6.6, 0.5), (Wave5Role.VillageBucket, 60, 5.5, 0.3),
@@ -327,18 +330,61 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Décision de Damien du 9 novembre 2026 (PR #122) : quelques maisons, la taverne et le moulin du pack de village en décor lointain, au-delà
+        /// du bord de l'aire de jeu (la moitié de la marge de forêt du terrain, 8 m au moins), tournés vers elle, sur ordinateur seulement
+        /// (Heavy|NotOnPhone) ; les maisons de Sketchfab et le moulin de Tim0 restent à leurs places. Places estimées : Offset au catalogue.
+        /// </summary>
+        private static void DistantDecor(AdventureMap map, Transform root, StyleCatalog catalog)
+        {
+            if (!Wave5View.Has(Wave5Role.VillageHouse) && !Wave5View.Has(Wave5Role.Tavern) && !Wave5View.Has(Wave5Role.VillageWindmill)) return;
+            double outside = System.Math.Max(8.0, catalog.ForestMargin * 0.5);
+            MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
+            void Row(string placeId, Wave5Role role, int count, double spacing, int first)
+            {
+                if (!(Place(placeId) is MapPlace p) || !Wave5View.Has(role)) return;
+                IReadOnlyList<(double X, double Z, double Yaw)> spots = AssetStore.DistantSpots(map.MinX, map.MinZ, map.MaxX, map.MaxZ, p.CenterX, p.CenterZ, outside, count, spacing);
+                for (int i = 0; i < spots.Count; i++)
+                    Wave5View.Place(root, role, "au loin " + placeId + " " + i, new Vector3((float)spots[i].X, 0f, (float)spots[i].Z),
+                        (float)spots[i].Yaw + StyleRules.Variant(placeId + i, 30) - 15, 0f, first + i);
+            }
+            Row("hameau", Wave5Role.VillageHouse, 3, 16, 0);
+            Row("village", Wave5Role.VillageHouse, 2, 18, 3);
+            Row("bourg", Wave5Role.Tavern, 1, 0, 0);
+            Row("champs", Wave5Role.VillageWindmill, 1, 0, 0);
+        }
+
+        /// <summary>
+        /// Décision de Damien du 9 novembre 2026 (PR #122) : l'étal d'un marchand venu de loin, aux fruits rares et chers (tomates, oranges,
+        /// pastèques, citrouilles : <see cref="Wave5Role.ExoticFruit"/>), sous tente si elle est là. Prêt : ce marchand n'existe pas encore (les
+        /// marchands changent dans la PR #120) ; à appeler à sa place quand il sera ajouté (et l'entrée passera en « branchée »). Null sinon.
+        /// </summary>
+        public static GameObject ExoticStall(Transform root, double x, double z, float face, List<IReadOnlyList<(double X, double Z)>> obstacles, string id)
+        {
+            GameObject stall = Wave5View.PlaceNear(root, Wave5Role.TraderTent, id + " (tente)", x, z, face, 2.6, 1.8, obstacles, face + 180f);
+            if (stall == null) stall = Wave5View.PlaceNear(root, Wave5Role.TraderTable, id, x, z, face, 1.9, 1.1, obstacles, face + 180f);
+            if (stall == null) return null;
+            Wave5View.Spread(root, stall, Wave5Role.ExoticFruit, 6, face + 180f, 0.32f, id + " fruits rares");
+            return stall;
+        }
+
+        /// <summary>
         /// Pains en vitrine sur la table du fournil, chacun à sa place, sans se toucher : ceux de LUMI (V2.12) d'abord, puis les scans de
         /// Megascans, puis les autres ; viennoiseries de Poly Haven entre eux.
         /// </summary>
         private static void Showcase(Transform root, GameObject table, StyleCatalog catalog, float face)
         {
             if (!StyleLook.VisibleBounds(table, out Bounds top)) return;
-            List<Wave5Look> breads = catalog.Looks(Wave5Role.StoreBread), pastries = catalog.Looks(Wave5Role.Pastry);
+            // Relecture de la PR #122 : le croissant de LUMI va avec les viennoiseries (en tête), le pain et la galette de LUMI en tête des pains ;
+            // chaque pièce trouvée est posée une fois avant qu'une autre ne se répète (Wave5.ShowcaseOrder).
+            List<Wave5Look> lumi = catalog.Looks(Wave5Role.StoreBread);
+            var breads = lumi.Where(l => !AssetStore.IsPastry(l.Model.name)).ToList();
+            var pastries = lumi.Where(l => AssetStore.IsPastry(l.Model.name)).ToList();
             breads.AddRange(catalog.Looks(Wave5Role.Bread));
-            int count = Mathf.Min(6, breads.Count + pastries.Count);
-            for (int i = 0; i < count; i++)
+            pastries.AddRange(catalog.Looks(Wave5Role.Pastry));
+            IReadOnlyList<(bool Pastry, int Index)> order = Wave5.ShowcaseOrder(breads.Count, pastries.Count, 6);
+            for (int i = 0; i < order.Count; i++)
             {
-                Wave5Look look = i < breads.Count && (i % 3 != 2 || pastries.Count == 0) ? breads[i % breads.Count] : pastries.Count > 0 ? pastries[i % pastries.Count] : breads[i % breads.Count];
+                Wave5Look look = order[i].Pastry ? pastries[order[i].Index] : breads[order[i].Index];
                 float u = (i % 3 - 1) * 0.3f, v = (i / 3 - 0.5f) * 0.32f;
                 Vector3 at = top.center + Quaternion.Euler(0f, face, 0f) * new Vector3(u * top.size.x / 1.2f, 0f, v);
                 at.y = top.max.y;

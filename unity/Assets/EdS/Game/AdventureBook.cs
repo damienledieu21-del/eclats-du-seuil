@@ -126,7 +126,7 @@ namespace EdS.Game
             _panel.pivot = new Vector2(0.5f, 0.5f);
             _panel.sizeDelta = new Vector2(PanelWidth, PanelHeight);
             _panel.anchoredPosition = new Vector2(0f, -10f);
-            UiKit.Fill(UiKit.Image(_panel, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
+            UiKit.Fill(UiKit.Image(_panel, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _title = Text(_panel, UiFace.Title, 40f, Color.white, TextAnchor.MiddleLeft, 60f, 62f, 600f, 50f, 0f, 0.5f, 3f);
             _title.Gold();
             _subtitle = Text(_panel, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 62f, 104f, 900f, 22f, 0f, 0.5f, 12f, true);
@@ -164,7 +164,7 @@ namespace EdS.Game
             _dialogue.pivot = new Vector2(0.5f, 0f);
             _dialogue.sizeDelta = new Vector2(1300f, 300f);
             _dialogue.anchoredPosition = new Vector2(0f, 28f);
-            UiKit.Fill(UiKit.Image(_dialogue, "Dalle", UiKit.Sprite("dalle", 40f), Color.white, Image.Type.Sliced).rectTransform);
+            UiKit.Fill(UiKit.Image(_dialogue, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _npc = Text(_dialogue, UiFace.Title, 28f, Color.white, TextAnchor.MiddleLeft, 40f, 44f, 900f, 36f, 0f, 0.5f, 2f);
             _npc.Gold();
             _speech = Text(_dialogue, UiFace.Body, 21f, UiKit.Ink, TextAnchor.UpperLeft, 40f, 70f, 1220f, 80f, 0f, 0f);

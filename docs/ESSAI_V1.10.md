@@ -357,19 +357,20 @@ Avant l'essai : les packs importés tels quels **à la racine de `Assets`** (Pac
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 21.1 | Fenêtre de la préparation | En plus de la ligne de la 5e vague : « Asset Store : N ressources branchées sur 20, M prêtes pour plus tard (P prefabs) ; interface : Stone ; icônes de CraftPix : X objets reliés sur 117 » | [ ] | Noter X |
+| 21.1 | Fenêtre de la préparation | En plus de la ligne de la 5e vague : « Asset Store : N ressources branchées sur 23, M prêtes pour plus tard (P prefabs au catalogue) ; interface : Stone ; icônes de CraftPix : X objets reliés sur 117 » | [ ] | Noter X |
 | 21.2 | Vérifier l'essai | Sections « Packs de l'Asset Store » et « … prêts pour plus tard » : ✅, ou ⚠️ avec le pack à importer ; « Sons de Basic RPG Sounds : K gardés sur 202 » ; « Objets reliés à une icône de CraftPix » | [ ] | |
 | 21.3 | GitHub Desktop après la préparation | **Aucun** fichier des packs ni `LICENCES_ASSET_STORE.md` dans les changements | [ ] | Sinon : ne rien valider, prévenir Claude |
-| 21.4 | Le fournil de Firmin | Dans la vitrine, d'abord le **pain, le croissant et la galette photoscannés** (LUMI), puis les autres pains ; aucun ne flotte ni ne s'enfonce | [ ] | Taille : environ 30 cm chacun |
+| 21.4 | Le fournil de Firmin | Dans la vitrine, le **pain et la galette photoscannés** (LUMI) en tête des pains, le **croissant** de LUMI en tête des viennoiseries (une place sur trois) ; aucune pièce sautée ; aucune ne flotte ni ne s'enfonce | [ ] | Taille : environ 30 cm chacun |
 | 21.5 | L'étal de Bertille | Une **table d'étal** garnie (pains, fromages, viandes, saucisse, bouteilles, pomme), deux **caisses garnies** au pied ; ni tomate, ni orange, ni pastèque, ni citrouille | [ ] | Si les victuailles flottent ou sont sur un auvent : catalogue → Offset des victuailles |
 | 21.6 | Catalogue : **Human Festival** coché, le bourg | Un **étal sous tente** garni sur la place (ordinateur), en plus des guirlandes | [ ] | |
 | 21.7 | La forge | **Enclume**, **établi**, **présentoir d'armes**, bac et tonneau autour de l'atelier, sans gêner l'enclume du jeu | [ ] | Place à juger |
-| 21.8 | Le moulin, côté rivière | Une **roue à eau** sur la rive (ordinateur) ; le moulin de Tim0 reste | [ ] | Position estimée : Offset et Yaw dans le catalogue |
+| 21.8 | Le moulin, côté rivière | Une **roue à eau** sur la rive, jamais dans le moulin de Tim0 (ordinateur ; pas posée s'il n'y a pas de place libre) | [ ] | Position estimée : Offset et Yaw dans le catalogue |
 | 21.9 | Le hameau, le village, le bourg | **Abri à bêtes** et **rouet** au hameau ; tonneaux, seaux, caisses, échelle, charrette à bras, souche au village et au bourg ; jamais dans un mur | [ ] | Trop ou pas assez ? |
 | 21.10 | Le camp des rôdeurs | Deux **tentes** et une caisse | [ ] | |
 | 21.11 | L'auberge, une maison, la chapelle | Les meubles de Poly Haven restent ; les objets des packs ne viennent que pour ce qui manquait (pots, vases, chopes…) | [ ] | |
-| 21.12 | Ouvrir le livre : sac, boutique, forge, compétences | Le fond des fenêtres en **pierre** sculptée ; textes lisibles ; bords nets (pas étirés) | [ ] | Bords flous : régler Gui Border ; essayer Gui Board Kind = Parchment et dire lequel garder |
+| 21.12 | Ouvrir le livre : sac, boutique, dialogue, forge, voyage, réglages | Le fond de ces grandes fenêtres en **pierre** sculptée (décision du 9 novembre) ; infobulles, avis, aide et quête gardent la dalle du jeu ; textes lisibles ; bords nets | [ ] | Bords flous ou trop larges : régler Gui Border Fraction ; le parchemin reste possible (Gui Board Kind = Parchment) |
 | 21.13 | Un combat, une potion, un butin | Les sons déjà choisis restent ; Basic RPG Sounds seulement pour un son qui manquait, **jamais un son arcade** | [ ] | Un son déplacé : envoyer son nom |
 | 21.14 | Sac et boutiques | Icônes de CraftPix **sans fond** ; les pièces d'armure sans icône à leur nom prennent une icône d'armure | [ ] | Liste des objets mal reliés |
-| 21.15 | Sur le Note8 | Image fluide ; ni tente d'étal, ni roue à eau, ni abri à bêtes ; l'étal de Bertille et la vitrine restent | [ ] | |
+| 21.15 | Sur le Note8 | Image fluide ; ni tente d'étal, ni roue à eau, ni abri à bêtes, ni bâtiments lointains ; l'étal de Bertille et la vitrine restent ; Console de la construction : « N ressources réservées à l'ordinateur retirées » | [ ] | APK plus léger qu'avec la V2.11 |
 | 21.16 | Le dossier `Assets/Style/Generated` | `LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris) | [ ] | |
+| 21.17 | Depuis le hameau, le village, le bourg et les champs, regarder vers le bord du monde (ordinateur) | Quelques **maisons**, la **taverne** et le **moulin** du pack de village **au loin**, hors de l'aire de jeu, tournés vers elle ; tes maisons de Sketchfab et le moulin de Tim0 à leurs places | [ ] | Dans les arbres ou trop loin : Offset au catalogue |

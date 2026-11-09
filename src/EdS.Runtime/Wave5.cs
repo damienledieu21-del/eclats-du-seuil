@@ -142,6 +142,8 @@ namespace EdS.Runtime
         ArmoredMan,
         ArmoredWoman,
         StoreFurniture,
+        /// <summary>Sous-lot V2.12 (décision de Damien du 9 novembre 2026) : fruits rares d'un marchand venu de loin (prêt).</summary>
+        ExoticFruit,
     }
 
     /// <summary>Sous-lot V2.11 : où en est une ressource dans le jeu.</summary>
@@ -563,6 +565,28 @@ namespace EdS.Runtime
         public static int Variants(Wave5Role role) =>
             AssetStore.EntryOrNull(role) != null ? AssetStore.Variants(role)
             : role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
+
+        /// <summary>
+        /// Relecture de la PR #122 : ordre de la vitrine du fournil sur <paramref name="slots"/> places au plus (bornées par le nombre de pièces) :
+        /// une place sur trois (la troisième de chaque rangée) prend une viennoiserie s'il en reste, les autres un pain s'il en reste ; chaque pain
+        /// et chaque viennoiserie trouvés sont posés une fois avant qu'un autre ne se répète (aucun n'est sauté). Rend (viennoiserie ?, rang).
+        /// </summary>
+        public static IReadOnlyList<(bool Pastry, int Index)> ShowcaseOrder(int breads, int pastries, int slots)
+        {
+            breads = Math.Max(0, breads);
+            pastries = Math.Max(0, pastries);
+            int count = Math.Min(Math.Max(0, slots), breads + pastries);
+            var order = new List<(bool, int)>();
+            int b = 0, p = 0;
+            for (int i = 0; i < count; i++)
+            {
+                bool wantPastry = i % 3 == 2;
+                bool pastry = wantPastry ? p < pastries : b >= breads;
+                if (pastry) order.Add((true, p++));
+                else order.Add((false, b++));
+            }
+            return order;
+        }
 
         /// <summary>Ressource de l'arme tenue en main pour la forme <paramref name="look"/> (le marteau prend celui de la forge) ; null sinon.</summary>
         public static Wave5Role? WeaponRole(WeaponLook look) =>

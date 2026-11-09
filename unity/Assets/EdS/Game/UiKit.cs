@@ -64,17 +64,6 @@ namespace EdS.Game
         /// </summary>
         public static Sprite Sprite(string name, float border = 0f)
         {
-            // Sous-lot V2.12 : la dalle des fenêtres prend la planche de Fantasy Wooden GUI choisie au catalogue (pierre par défaut), sinon la sienne.
-            if (name == "dalle" && StyleCatalog.Loaded != null && StyleCatalog.Loaded.GuiBoard() is Texture2D board && board != null)
-            {
-                string boardKey = "board|" + board.name + "|" + StyleCatalog.Loaded.GuiBorder;
-                if (Sprites.TryGetValue(boardKey, out Sprite made) && made != null) return made;
-                float b = Mathf.Clamp(StyleCatalog.Loaded.GuiBorder, 0f, Mathf.Min(board.width, board.height) / 2f - 1f);
-                Sprite plank = UnityEngine.Sprite.Create(board, new Rect(0f, 0f, board.width, board.height), new Vector2(0.5f, 0.5f), SpritePixelsPerUnit, 0u,
-                    SpriteMeshType.FullRect, new Vector4(b, b, b, b));
-                Sprites[boardKey] = plank;
-                return plank;
-            }
             string key = name + "|" + border;
             if (Sprites.TryGetValue(key, out Sprite known)) return known;
             Texture2D texture = Texture("EdsInterface/Hud/" + name);
@@ -82,6 +71,25 @@ namespace EdS.Game
                 SpritePixelsPerUnit, 0u, SpriteMeshType.FullRect, new Vector4(border, border, border, border) * 2f);
             Sprites[key] = sprite;
             return sprite;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12 (décision de Damien du 9 novembre 2026 : la pierre) : fond d'une grande fenêtre (livre : sac, boutique, dialogue ; forge,
+        /// voyage, réglages) : la planche de Fantasy Wooden GUI choisie au catalogue, bords gardés entiers en proportion de l'image
+        /// (<see cref="StyleCatalog.GuiBorderFraction"/>) ; sinon la dalle du jeu. Les petits cadres (infobulle, avis, aide, quête) gardent la dalle.
+        /// </summary>
+        public static Sprite WindowSprite()
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            Texture2D board = catalog != null ? catalog.GuiBoard() : null;
+            if (board == null) return Sprite("dalle", 40f);
+            string key = "board|" + board.name + "|" + catalog.GuiBorderFraction;
+            if (Sprites.TryGetValue(key, out Sprite made) && made != null) return made;
+            float b = Mathf.Clamp(catalog.GuiBorderFraction, 0f, 0.45f) * Mathf.Min(board.width, board.height);
+            Sprite plank = UnityEngine.Sprite.Create(board, new Rect(0f, 0f, board.width, board.height), new Vector2(0.5f, 0.5f), SpritePixelsPerUnit, 0u,
+                SpriteMeshType.FullRect, new Vector4(b, b, b, b));
+            Sprites[key] = plank;
+            return plank;
         }
 
         /// <summary>Icône peinte (<c>Resources/EdsInterface/Peintes/name</c>) ; null si elle manque.</summary>

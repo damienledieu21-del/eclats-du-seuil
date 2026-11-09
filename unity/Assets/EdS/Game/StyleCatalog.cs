@@ -371,9 +371,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.12 : planches de pierre et de parchemin trouvées (null sans le pack : la dalle du jeu reste).</summary>
         public Texture2D GuiStone;
         public Texture2D GuiParchment;
-        /// <summary>Sous-lot V2.12 : bords gardés entiers (pixels de l'image) quand la planche est étirée (estimé : à régler à l'essai).</summary>
-        [Tooltip("Bords gardés entiers (pixels de l'image) quand la planche est étirée.")]
-        public float GuiBorder = 64f;
+        /// <summary>Relecture de la PR #122 : bords gardés entiers quand la planche est étirée, en part de son plus petit côté (estimé : à régler à l'essai).</summary>
+        [Tooltip("Bords gardés entiers quand la planche est étirée, en part de son plus petit côté (0,12 : 12 %).")]
+        [Range(0f, 0.45f)] public float GuiBorderFraction = 0.12f;
         /// <summary>Sous-lot V2.11 : animations de métiers de Mixamo (<c>Assets/Style/Mixamo/Metiers</c>), prêtes pour les villageois.</summary>
         public AnimationClip[] TradeClips = new AnimationClip[0];
         [Header("Sous-lot V2.9.2 : corps humains (Universal Base Characters et Universal Animation Library, remplis par le menu)")]

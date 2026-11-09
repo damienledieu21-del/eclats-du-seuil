@@ -263,6 +263,8 @@ namespace UnityEditor
     public class EditorWindow : UnityEngine.ScriptableObject { public static T GetWindow<T>(string title) where T : EditorWindow => default; public static bool HasOpenInstances<T>() where T : EditorWindow => false; public UnityEngine.Vector2 minSize { get; set; } public void Show() { } public void Repaint() { } }
     public static class EditorGUILayout { public static UnityEngine.Vector2 BeginScrollView(UnityEngine.Vector2 scroll) => scroll; public static void EndScrollView() { } }
     public static class EditorStyles { public static UnityEngine.GUIStyle boldLabel => null; public static UnityEngine.GUIStyle miniLabel => null; public static UnityEngine.GUIStyle wordWrappedLabel => null; public static UnityEngine.GUIStyle wordWrappedMiniLabel => null; }
+    public enum BuildTarget { iOS = 9, Android = 13, StandaloneWindows64 = 19 }
+    public static class EditorUserBuildSettings { public static BuildTarget activeBuildTarget => BuildTarget.StandaloneWindows64; }
     public static class SessionState { public static bool GetBool(string key, bool defaultValue) => defaultValue; public static void SetBool(string key, bool value) { } }
     public static class EditorApplication { public delegate void CallbackFunction(); public static CallbackFunction delayCall; public static bool isPlayingOrWillChangePlaymode => false; public static bool isPlaying { get; set; } }
     public sealed class SceneAsset : UnityEngine.Object { }

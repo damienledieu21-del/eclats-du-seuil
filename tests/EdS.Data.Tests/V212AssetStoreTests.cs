@@ -105,15 +105,26 @@ public sealed class V212AssetStoreTests
     [Fact]
     public void Choix_de_Damien_gardes_et_anachronismes_ecartes()
     {
-        // Les maisons de Sketchfab et le moulin de Tim0 (choix de Damien) ne sont pas remplacés : ceux du pack sont prêts seulement.
-        foreach (Wave5Role r in new[] { Wave5Role.VillageHouse, Wave5Role.Tavern, Wave5Role.Smithy, Wave5Role.VillageWindmill })
-            Assert.Equal(Wave5Use.Ready, AssetStore.EntryOrNull(r)!.Use);
+        // Décision de Damien du 9 novembre 2026 : maisons, taverne et moulin du pack en décor lointain, ordinateur seulement ; les maisons de
+        // Sketchfab et le moulin de Tim0 restent (le bâtiment de forge du pack reste prêt).
+        foreach (Wave5Role r in new[] { Wave5Role.VillageHouse, Wave5Role.Tavern, Wave5Role.VillageWindmill })
+        {
+            Assert.Equal(Wave5Use.Live, AssetStore.EntryOrNull(r)!.Use);
+            Assert.True(AssetStore.EntryOrNull(r)!.Has(Wave5Fix.NotOnPhone));
+        }
+        Assert.Equal(Wave5Use.Ready, AssetStore.EntryOrNull(Wave5Role.Smithy)!.Use);
         // Château et donjon : pas de lieu, rien de posé.
         Assert.All(AssetStore.Entries.Where(e => e.Role.ToString().StartsWith("Castle") || e.Role.ToString().StartsWith("Dungeon")), e => Assert.Equal(Wave5Use.Ready, e.Use));
-        // Tomate, orange, pastèque, citrouille : jamais sur les étals.
+        // Tomate, orange, pastèque, citrouille : jamais sur les étals ordinaires, seulement chez le marchand venu de loin (décision de Damien).
+        Wave5Entry exotic = AssetStore.EntryOrNull(Wave5Role.ExoticFruit)!;
         foreach (string avoided in AssetStore.Avoided)
-            Assert.DoesNotContain(AllFiles, f => EssaiManifest.FileName(f).Equals(avoided + ".prefab", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(AllFiles, f => f.Contains("Tomato") || f.Contains("Orange") || f.Contains("Watermelon") || f.Contains("Pumpkin"));
+        {
+            Assert.Contains(exotic.Files, f => EssaiManifest.FileName(f).Equals(avoided + ".prefab", StringComparison.Ordinal));
+            Assert.DoesNotContain(AssetStore.Entries.Where(e => e != exotic).SelectMany(e => e.Files), f => EssaiManifest.FileName(f).Equals(avoided + ".prefab", StringComparison.OrdinalIgnoreCase));
+        }
+        Assert.DoesNotContain(AssetStore.Entries.Where(e => e != exotic).SelectMany(e => e.Files),
+            f => f.Contains("Tomato") || f.Contains("Orange") || f.Contains("Watermelon") || f.Contains("Pumpkin"));
+        Assert.Contains("public static GameObject ExoticStall(", Script("Game", "WorldMarkers.cs"));
         // Les pains de LUMI d'abord dans la vitrine, avant ceux de la V2.11.
         string markers = Script("Game", "WorldMarkers.cs");
         Assert.True(markers.IndexOf("catalog.Looks(Wave5Role.StoreBread)", StringComparison.Ordinal) < markers.IndexOf("catalog.Looks(Wave5Role.Bread)", StringComparison.Ordinal));
@@ -149,6 +160,13 @@ public sealed class V212AssetStoreTests
         foreach (string modern in new[] { "Bumper", "D Pad Item", "Pistol Revolver", "Explosion 2", "Laser Shot", "Power Up", "Retro Coin", "Menu Click" })
             Assert.False(AssetStore.IsMedievalSound(Rpg(modern)), modern);
         Assert.False(AssetStore.IsMedievalSound(Rpg("Whatever")));   // aucun mot médiéval : écarté
+        // Relecture de la PR #122 : mot à mot, jamais en sous-chaîne.
+        Assert.True(AssetStore.IsMedievalSound(Rpg("Wooden Cart Wheel")));    // « cart » n'est pas « car »
+        Assert.False(AssetStore.IsMedievalSound(Rpg("Rocket Launch")));       // « rocket » n'est pas « rock »
+        Assert.False(AssetStore.IsMedievalSound(Rpg("White Noise")));         // « white » n'est pas « hit »
+        Assert.True(AssetStore.IsMedievalSound(Rpg("SwordHit2")));            // majuscules et chiffres coupent les mots
+        Assert.True(AssetStore.IsMedievalSound(Rpg("Footsteps Grass")));      // pluriel
+        Assert.Contains("dpad", AssetStore.SoundWords(Rpg("D Pad Item")));    // paires de mots voisins
         Assert.True(AssetStore.IsStoreSound(Rpg("Sword Hit 01")));
         Assert.False(AssetStore.IsStoreSound("Assets/Style/Sounds/sword_hit.wav"));
         string[] store = { Rpg("Sword Hit 01"), Rpg("Pistol Hit"), Rpg("Coin Pickup") };
@@ -175,9 +193,16 @@ public sealed class V212AssetStoreTests
         Assert.Null(AssetStore.Board(gui, AssetStore.GuiBoard.Off));
         Assert.Null(AssetStore.Board(new[] { gui[3] }, AssetStore.GuiBoard.Stone));      // sans planche : la dalle du jeu
         Assert.Null(AssetStore.Board(null!, AssetStore.GuiBoard.Stone));
+        // Relecture de la PR #122 : seules les grandes fenêtres prennent la planche (bords en proportion de l'image) ; les petits cadres gardent la dalle.
         string kit = Script("Game", "UiKit.cs");
         Assert.Contains("GuiBoard()", kit);
-        Assert.Contains("name == \"dalle\"", kit);
+        Assert.Contains("GuiBorderFraction", kit);
+        Assert.DoesNotContain("name == \"dalle\"", kit);
+        Assert.Contains("UiKit.WindowSprite()", Script("Game", "AdventureBook.cs"));
+        Assert.Contains("UiKit.WindowSprite()", Script("Game", "AdventureBook.Forge.cs"));
+        string hud = Script("Game", "HudView.cs");
+        Assert.Contains("UiKit.Image(_notice, \"Dalle\", UiKit.Sprite(\"dalle\", 40f)", hud);
+        Assert.Contains("UiKit.Image(_help, \"Dalle\", UiKit.Sprite(\"dalle\", 40f)", hud);
     }
 
     [Fact]
@@ -242,10 +267,58 @@ public sealed class V212AssetStoreTests
         }
         // Pas de copie de matériau perdue : les réglages passent par Wave5View.Fix (copies gardées par MaterialCopies).
         Assert.Contains("Fix(holder, look.Model.name, look.Material);", view);
+        // Relecture de la PR #122 : les ressources prêtes n'entrent pas au catalogue ; les « jamais sur téléphone » sont retirées de sa construction.
+        Assert.Contains("if (entry.Use == Wave5Use.Ready) continue;", wave5);
+        string phone = Script("Editor", "EdsPhoneBuild.cs");
+        Assert.Contains("Wave5.Shown(e, true)", phone);
+        Assert.Contains("OnPostprocessBuild", phone);
         Assert.Contains("V2.12", Doc("docs", "ESSAI_V1.10.md"));
         // Le nombre de ressources branchées annoncé dans l'essai suit la liste.
         Assert.Contains("branchées sur " + AssetStore.Entries.Count(e => e.Use == Wave5Use.Live) + ",", Doc("docs", "ESSAI_V1.10.md"));
         Assert.Contains("V2.12", Doc("docs", "UNITY.md"));
         Assert.Contains("V2.12", Doc("docs", "FEUILLE_DE_ROUTE.md"));
+    }
+
+    [Fact]
+    public void Vitrine_chaque_pain_et_viennoiserie_poses_avant_de_se_repeter()
+    {
+        // Relecture de la PR #122 : la galette (3e pain de LUMI) n'est plus sautée ; le croissant de LUMI compte comme viennoiserie.
+        Assert.True(AssetStore.IsPastry("SM_Croissant_02a"));
+        Assert.False(AssetStore.IsPastry("SM_Flatbread_01a (Clone)"));
+        Assert.False(AssetStore.IsPastry("SM_Bread_03"));
+        IReadOnlyList<(bool Pastry, int Index)> order = Wave5.ShowcaseOrder(3, 2, 6);
+        Assert.Equal(5, order.Count);
+        Assert.Equal(new[] { 0, 1, 2 }, order.Where(o => !o.Pastry).Select(o => o.Index));
+        Assert.Equal(new[] { 0, 1 }, order.Where(o => o.Pastry).Select(o => o.Index));
+        Assert.True(order[2].Pastry);
+        for (int b = 0; b <= 8; b++)
+            for (int p = 0; p <= 8; p++)
+            {
+                IReadOnlyList<(bool Pastry, int Index)> o = Wave5.ShowcaseOrder(b, p, 6);
+                Assert.Equal(Math.Min(6, b + p), o.Count);
+                Assert.Equal(o.Count, o.Distinct().Count());
+                Assert.All(o, x => Assert.True(x.Index < (x.Pastry ? p : b)));
+            }
+        Assert.Empty(Wave5.ShowcaseOrder(-1, -1, 6));
+        Assert.Contains("Wave5.ShowcaseOrder(", Script("Game", "WorldMarkers.cs"));
+    }
+
+    [Fact]
+    public void Decor_lointain_hors_de_l_aire_de_jeu_tourne_vers_elle()
+    {
+        IReadOnlyList<(double X, double Z, double Yaw)> west = AssetStore.DistantSpots(0, 0, 200, 100, 10, 50, 12, 3, 16);
+        Assert.Equal(3, west.Count);
+        Assert.All(west, s => Assert.Equal(-12, s.X));
+        Assert.All(west, s => Assert.Equal(90, s.Yaw));
+        Assert.Equal(new[] { 50.0, 34, 66 }, west.Select(s => s.Z));
+        IReadOnlyList<(double X, double Z, double Yaw)> north = AssetStore.DistantSpots(0, 0, 200, 100, 100, 95, 12, 2, 400);
+        Assert.All(north, s => Assert.True(s.Z > 100 && s.X >= 0 && s.X <= 200));
+        // Jamais dans l'aire, quel que soit le point.
+        for (int x = 0; x <= 200; x += 25)
+            for (int z = 0; z <= 100; z += 25)
+                Assert.All(AssetStore.DistantSpots(0, 0, 200, 100, x, z, 8, 4, 20), s => Assert.True(s.X < 0 || s.X > 200 || s.Z < 0 || s.Z > 100));
+        Assert.Empty(AssetStore.DistantSpots(0, 0, 0, 0, 0, 0, 8, 3, 10));
+        // La roue à eau passe par une place libre (moulin de Tim0 compris).
+        Assert.Contains("Wave5.FreeSpot(new[] { (bx, bz) }", Script("Game", "WorldMarkers.cs"));
     }
 }

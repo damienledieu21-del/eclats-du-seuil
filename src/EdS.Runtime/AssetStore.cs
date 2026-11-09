@@ -114,13 +114,15 @@ namespace EdS.Runtime
             E(Wave5Role.Ladder, "Échelle contre un mur", Live, "pas d'échelle", Wave5Fix.None, 0, Props, "Folding_Ladder"),
             E(Wave5Role.Handcart, "Charrette à bras du village", Live, "pas de charrette à bras", Wave5Fix.None, 0, Props, "Handcart"),
             E(Wave5Role.CampTent, "Tentes du camp des rôdeurs", Live, "pas de tentes", Wave5Fix.None, 0, Props, "Tent"),
+            // Décision de Damien du 9 novembre 2026 (PR #122) : quelques maisons, la taverne et le moulin du pack en décor lointain, hors de l'aire
+            // de jeu, sur ordinateur seulement ; les maisons de Sketchfab et le moulin de Tim0 restent à leurs places.
+            E(Wave5Role.VillageHouse, "Maisons lointaines du pack de village (hors de l'aire de jeu)", Live, "rien au loin (et jamais sur téléphone)", Big, 0, Village,
+                V("House_1", "House_2", "House_3", "House_4", "House_5", "House_6", "House_7", "House_8", "House_9", "House_10")),
+            E(Wave5Role.Tavern, "Taverne lointaine (hors de l'aire de jeu)", Live, "rien au loin (et jamais sur téléphone)", Big, 0, Village, V("Tavern")),
+            E(Wave5Role.VillageWindmill, "Moulin lointain du pack (le moulin de Tim0 reste)", Live, "rien au loin (et jamais sur téléphone)", Big, 0, Village, V("WindMill")),
 
             // Prêtes : bâtiments (les maisons de Sketchfab et le moulin de Tim0 sont des choix de Damien : pas remplacés), château, donjon, armures.
-            E(Wave5Role.VillageHouse, "Maisons du pack de village (alternative aux maisons de Sketchfab)", Ready, Later, Big, 0, Village,
-                V("House_1", "House_2", "House_3", "House_4", "House_5", "House_6", "House_7", "House_8", "House_9", "House_10")),
-            E(Wave5Role.Tavern, "Taverne (alternative)", Ready, Later, Big, 0, Village, V("Tavern")),
             E(Wave5Role.Smithy, "Bâtiment de la forge (alternative)", Ready, Later, Big, 0, Village, V("Blacksmith", "Blacksmith_Logo")),
-            E(Wave5Role.VillageWindmill, "Moulin à vent du pack (le moulin de Tim0 reste, choix de Damien)", Ready, Later, Big, 0, Village, V("WindMill")),
             E(Wave5Role.SmithWeapons, "Armes posées de la forge (marteau, épée, lance, bouclier)", Ready, Later, Wave5Fix.None, 0, Village,
                 V("Hammer", "Sword", "Spear", "Shield")),
             E(Wave5Role.CastleKeep, "Château (bloc entier)", Ready, Later, Big, 0, Castle, "Castle"),
@@ -135,6 +137,10 @@ namespace EdS.Runtime
             E(Wave5Role.DungeonTorch, "Torches de crypte", Ready, Later, Wave5Fix.None, 0, Dungeon, "Torch_A", "Torch_B"),
             E(Wave5Role.DungeonRail, "Rambardes de crypte", Ready, Later, Wave5Fix.None, 0, Dungeon, "Handrail_A", "Handrail_B"),
             E(Wave5Role.ArmoredMan, "Garde ou chevalier en armure modulaire (homme)", Ready, Later, Big, 1.8, Armor, "Constructor_URP"),
+            // Décision de Damien du 9 novembre 2026 : tomate, orange, pastèque et citrouille chez un marchand venu de loin (fruits rares et chers) ;
+            // ce marchand n'existe pas encore (les marchands changent dans la PR #120) : étal exotique prêt (WorldMarkers.ExoticStall).
+            E(Wave5Role.ExoticFruit, "Fruits rares d'un marchand venu de loin (étal exotique)", Ready, Later, Wave5Fix.None, 0, Food,
+                "WoodenBox1 Orange", "WoodenBox2 Pumpkin", "WoodenBox1 Tomato", "WoodenBox2 Watermelon", "Orange", "Pumpkin", "Tomato", "Watermelon"),
             E(Wave5Role.ArmoredWoman, "Garde ou chevalière en armure modulaire (femme)", Ready, Later, Big, 1.7, Armor, "Constructor_fem_1"),
 
             // Intérieurs : en repli seulement (une sorte d'objet que les intérieurs de Poly Haven ou de Sketchfab n'ont pas).
@@ -151,8 +157,8 @@ namespace EdS.Runtime
         };
 
         /// <summary>
-        /// Écartés des étals (anachronismes pour un monde inspiré du Moyen Âge européen : tomate, orange, pastèque, citrouille venues plus tard) ;
-        /// gardés hors de la liste, à réserver à un usage justifié (marchand venu de loin) sur décision de Damien.
+        /// Écartés des étals ordinaires (anachronismes pour un monde inspiré du Moyen Âge européen : tomate, orange, pastèque, citrouille venues
+        /// plus tard) ; réservés à l'étal du marchand venu de loin (<see cref="Wave5Role.ExoticFruit"/>, décision de Damien du 9 novembre 2026).
         /// </summary>
         public static readonly IReadOnlyList<string> Avoided = new[]
         {
@@ -229,6 +235,40 @@ namespace EdS.Runtime
             return (entry.Use == Wave5Use.Live ? EssaiLevel.Warning : EssaiLevel.Ok, "absent : " + entry.Without, import);
         }
 
+        /// <summary>Relecture de la PR #122 : le prefab est-il une viennoiserie (le croissant de LUMI va avec les viennoiseries, pas avec les pains) ?</summary>
+        public static bool IsPastry(string nameOrPath)
+        {
+            string key = StyleRules.Key(EssaiManifest.FileName(nameOrPath ?? string.Empty).Replace(".prefab", "").Replace("(Clone)", ""));
+            return key.Contains("croissant") || key.Contains("brioche") || key.Contains("pastry") || key.Contains("cake") || key.Contains("pie");
+        }
+
+        /// <summary>
+        /// Décision de Damien du 9 novembre 2026 (PR #122) : places du décor lointain, <paramref name="outside"/> m au-delà du bord de l'aire de
+        /// jeu (<paramref name="minX"/>..<paramref name="maxZ"/>) le plus proche de (<paramref name="x"/>, <paramref name="z"/>), espacées de
+        /// <paramref name="spacing"/> m le long de ce bord (de part et d'autre du point), tournées vers l'aire. Jamais dans l'aire : le héros
+        /// n'y entre pas (le cœur ne connaît pas ces bâtiments).
+        /// </summary>
+        public static IReadOnlyList<(double X, double Z, double Yaw)> DistantSpots(double minX, double minZ, double maxX, double maxZ, double x, double z,
+            double outside, int count, double spacing)
+        {
+            var spots = new List<(double, double, double)>();
+            if (count <= 0 || maxX <= minX || maxZ <= minZ) return spots;
+            outside = Math.Max(1, outside);
+            double west = x - minX, east = maxX - x, south = z - minZ, north = maxZ - z;
+            double best = Math.Min(Math.Min(west, east), Math.Min(south, north));
+            for (int i = 0; i < count; i++)
+            {
+                double along = (i % 2 == 0 ? 1 : -1) * ((i + 1) / 2) * spacing;
+                if (best == west) spots.Add((minX - outside, Clamp(z + along, minZ, maxZ), 90));
+                else if (best == east) spots.Add((maxX + outside, Clamp(z + along, minZ, maxZ), 270));
+                else if (best == south) spots.Add((Clamp(x + along, minX, maxX), minZ - outside, 0));
+                else spots.Add((Clamp(x + along, minX, maxX), maxZ + outside, 180));
+            }
+            return spots;
+        }
+
+        private static double Clamp(double v, double lo, double hi) => v < lo ? lo : v > hi ? hi : v;
+
         // --- Intérieurs -----------------------------------------------------------------------------------------------------------------------
 
         /// <summary>Sorte d'objet d'intérieur d'un prefab de l'Asset Store (vases et pots de terre : pot de terre ; chopes : gobelets).</summary>
@@ -265,14 +305,14 @@ namespace EdS.Runtime
         {
             "bumper", "dpad", "pistol", "revolver", "gun", "rifle", "shotgun", "explosion", "explode", "bomb", "laser", "blaster", "arcade", "retro", "8bit",
             "chiptune", "synth", "beep", "blip", "bleep", "powerup", "levelup", "jump", "boing", "robot", "scifi", "electric", "zap", "car", "engine", "phone",
-            "alarm", "siren", "glitch", "menu", "click", "select", "cursor", "pop", "bubble", "spring", "cartoon", "toy", "coin8", "pinball", "game over", "gameover", "keyboard", "typing", "computer", "notification",
+            "alarm", "siren", "glitch", "menu", "click", "select", "cursor", "pop", "bubble", "spring", "cartoon", "toy", "coin8", "pinball", "game over", "gameover", "keyboard", "typing", "computer", "notification", "rocket", "bit", "motor", "truck", "horn honk",
         };
 
         /// <summary>Mots d'un son médiéval réaliste (au moins un) : lames, armures, bois, pièces, potions, pas, portes, magie sobre.</summary>
         public static readonly IReadOnlyList<string> MedievalWords = new[]
         {
             "sword", "blade", "slash", "stab", "swing", "swish", "whoosh", "metal", "armor", "armour", "shield", "block", "parry", "clang", "punch", "hit", "impact",
-            "wood", "door", "chest", "coin", "gold", "pickup", "bag", "leather", "cloth", "footstep", "step", "potion", "bottle", "drink", "liquid", "heal",
+            "wood", "wooden", "door", "chest", "coin", "gold", "pickup", "bag", "leather", "cloth", "footstep", "step", "potion", "bottle", "drink", "liquid", "heal",
             "spell", "magic", "cast", "fire", "bow", "arrow", "axe", "hammer", "anvil", "forge", "chain", "lock", "key", "book", "page", "paper", "eat", "bite",
             "growl", "roar", "grunt", "death", "die", "hurt", "pain", "dig", "chop", "mine", "rock", "stone",
         };
@@ -280,12 +320,28 @@ namespace EdS.Runtime
         /// <summary>Un son de Basic RPG Sounds est-il gardé ? (un mot médiéval, aucun mot arcade ou moderne)</summary>
         public static bool IsMedievalSound(string path)
         {
+            IReadOnlyList<string> words = SoundWords(path);
+            if (words.Count == 0) return false;
+            if (ModernWords.Any(w => words.Any(x => ItemIcons.Matches(x, StyleRules.Key(w))))) return false;
+            return MedievalWords.Any(w => words.Any(x => ItemIcons.Matches(x, w)));
+        }
+
+        /// <summary>
+        /// Relecture de la PR #122 : mots du nom d'un son (coupés aux espaces, signes, chiffres et majuscules ; plus chaque paire de mots voisins,
+        /// pour « D Pad » ou « Power Up ») : comparés mot à mot, jamais en sous-chaîne (« cart » n'est pas « car », « rocket » pas « rock »,
+        /// « white » pas « hit »).
+        /// </summary>
+        public static IReadOnlyList<string> SoundWords(string path)
+        {
             string name = EssaiManifest.FileName(path ?? string.Empty);
             int dot = name.LastIndexOf('.');
-            string key = StyleRules.Key(dot > 0 ? name.Substring(0, dot) : name);
-            if (key.Length == 0) return false;
-            if (ModernWords.Any(w => key.Contains(StyleRules.Key(w)))) return false;
-            return MedievalWords.Any(w => key.Contains(w));
+            if (dot > 0) name = name.Substring(0, dot);
+            List<string> parts = ItemIcons.PathWords(name).ToList();
+            string whole = StyleRules.Key(name);
+            List<string> single = parts.Where(p => p != whole || parts.Count == 1).ToList();
+            var words = new List<string>(single);
+            for (int i = 0; i + 1 < single.Count; i++) words.Add(single[i] + single[i + 1]);
+            return words.Distinct().ToList();
         }
 
         /// <summary>Sons gardés de Basic RPG Sounds parmi <paramref name="paths"/>, dans l'ordre ordinal.</summary>
