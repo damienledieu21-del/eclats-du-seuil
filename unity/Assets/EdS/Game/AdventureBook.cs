@@ -335,7 +335,7 @@ namespace EdS.Game
                 cell.Label.Value = a.Text("text.ui.slot." + entry.Key);
                 bool worn = w.Inventory.Equipped.TryGetValue(entry.Key, out string id);
                 ItemDefinition item = worn ? a.Item(id) : null;
-                cell.Icon.sprite = item != null ? UiKit.Icon(item.Icon) : null;
+                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, item.Icon) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Name.Value = item != null ? item.Name : a.Text("text.ui.empty_slot");
                 cell.Name.Color = item != null ? RarityColor(item.Rarity) : UiKit.Muted;
@@ -358,7 +358,7 @@ namespace EdS.Game
                 bool used = i >= 0 && i < stacks.Count && i < w.Inventory.Catalog.InventorySize;
                 UiKit.Show(cell.Rect, c < w.Inventory.Catalog.InventorySize);
                 ItemDefinition item = used ? a.Item(stacks[i].Item) : null;
-                cell.Icon.sprite = item != null ? UiKit.Icon(item.Icon) : null;
+                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, item.Icon) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = used && stacks[i].Count > 1 ? stacks[i].Count.ToString() : "";
                 bool wearable = item != null && item.Type == ItemType.Equipment;
@@ -474,7 +474,7 @@ namespace EdS.Game
             ItemDefinition item = a.Item(_tipItem);
             UiKit.Show(_tip, true);
             _tip.SetAsLastSibling();
-            _tipIcon.sprite = UiKit.Icon(item.Icon);
+            _tipIcon.sprite = UiKit.ItemIcon(item.Id, item.Icon);
             _tipName.Value = item.Name;
             _tipName.Color = RarityColor(item.Rarity);
             string kind = item.Type == ItemType.Equipment ? a.Text("text.ui.slot." + item.Slot) : item.Heal > 0 ? "Soin"

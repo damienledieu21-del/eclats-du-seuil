@@ -110,6 +110,14 @@ namespace EdS.Game
         private GameObject _galeran, _pendant;
         private Transform _galeranOwner, _pendantOwner;
 
+        // Sous-lot V2.11 (5e vague) : Galeran en vrai chevalier (le corps du joueur est caché le temps du souvenir).
+        private readonly List<Renderer> _hiddenForGaleran = new List<Renderer>();
+        private Animation _galeranAnimation;
+        private Transform _galeranModel;
+        private Vector3 _galeranLast;
+        private float _galeranStep;
+        private float _galeranBaseY;   // relecture : la hauteur calée à la pose (pieds au sol), gardée sous le balancement
+
         // Les Vallons.
         private GameObject _vallons;
         private Material _glyphs;
@@ -385,11 +393,92 @@ namespace EdS.Game
                 if (_galeran != null) Object.Destroy(_galeran);
                 _galeran = null;
                 _galeranOwner = null;
+                ShowPlayerAgain();
             }
             if (galeran && _galeran == null)
             {
                 _galeran = Holder(player, "Galeran (V1.9.8)");
                 _galeranOwner = player;
+                if (!KnightGaleran(player)) PlainGaleran();
+            }
+            if (_galeran != null) AnimateGaleran(player);
+
+            bool worn = !a.InScene && player != null && Wears(a, CollarItem);
+            if (!worn || _pendantOwner != player)
+            {
+                if (_pendant != null) Object.Destroy(_pendant);
+                _pendant = null;
+                _pendantOwner = null;
+            }
+            if (worn && _pendant == null) Pendant(player);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.11 (5e vague) : Galeran est le chevalier en armure à la lance (ou le roi en armure) ; le corps du joueur est caché le temps
+        /// du souvenir. Faux sans le modèle : les formes simples restent.
+        /// </summary>
+        private bool KnightGaleran(Transform player)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            Wave5Look knight = catalog != null ? catalog.Look(Wave5Role.Galeran) : null;
+            if (knight == null) return false;
+            // Le support est au centre de la capsule (1 m au-dessus du sol) : les pieds du chevalier à -1 m.
+            GameObject model = Wave5View.Place(_galeran.transform, Wave5Role.Galeran, "Galeran", player.position + Vector3.down * 1f, player.eulerAngles.y);
+            if (model == null) return false;
+            model.transform.SetParent(_galeran.transform, true);
+            _galeranModel = model.transform;
+            _galeranBaseY = model.transform.localPosition.y;
+            _galeranAnimation = model.GetComponentInChildren<Animation>();
+            _galeranLast = player.position;
+            foreach (Renderer r in player.GetComponentsInChildren<Renderer>())
+            {
+                if (r.transform.IsChildOf(_galeran.transform) || !r.enabled) continue;
+                r.enabled = false;
+                _hiddenForGaleran.Add(r);
+            }
+            return true;
+        }
+
+        /// <summary>Sous-lot V2.11 : le chevalier marche (s'il en a l'animation) ou se balance un peu quand le joueur avance, sinon il attend.</summary>
+        private void AnimateGaleran(Transform player)
+        {
+            if (_galeranModel == null) return;
+            float dt = Mathf.Max(0.0001f, Time.deltaTime);
+            Vector3 d = player.position - _galeranLast;
+            d.y = 0f;
+            _galeranLast = player.position;
+            bool moving = d.magnitude / dt > 0.4f;
+            string wanted = moving ? "Walk" : "Idle";
+            if (_galeranAnimation != null)
+            {
+                string clip = StyleRules.Clip(ClipNames(_galeranAnimation), moving ? StyleMotion.Walk : StyleMotion.Idle);
+                if (clip != null && !_galeranAnimation.IsPlaying(clip)) _galeranAnimation.CrossFade(clip, 0.25f);
+                if (clip != null && StyleRules.Key(clip).Contains(StyleRules.Key(wanted))) moving = false;   // vraie marche : pas de balancement
+            }
+            _galeranStep = moving ? _galeranStep + dt * 9f : 0f;
+            Vector3 p = _galeranModel.localPosition;
+            _galeranModel.localPosition = new Vector3(p.x, _galeranBaseY + (moving ? 0.035f * Mathf.Abs(Mathf.Sin(_galeranStep)) : 0f), p.z);
+        }
+
+        private static List<string> ClipNames(Animation animation)
+        {
+            var names = new List<string>();
+            foreach (AnimationState state in animation) names.Add(state.name);
+            return names;
+        }
+
+        private void ShowPlayerAgain()
+        {
+            foreach (Renderer r in _hiddenForGaleran) if (r != null) r.enabled = true;
+            _hiddenForGaleran.Clear();
+            _galeranModel = null;
+            _galeranAnimation = null;
+        }
+
+        /// <summary>Galeran en formes simples (sans le chevalier) : la lance trop lourde, l'armure neuve, et le heaume de la 5e vague s'il est là.</summary>
+        private void PlainGaleran()
+        {
+            {
                 Material wood = Owned(ArenaView.MakeMaterial(new Color(0.42f, 0.3f, 0.18f)));
                 Material steel = Owned(Shiny(new Color(0.82f, 0.85f, 0.9f)));
                 Transform t = _galeran.transform;
@@ -402,16 +491,14 @@ namespace EdS.Game
                 Part(t, "Épaulière gauche", PrimitiveType.Sphere, new Vector3(-0.27f, 0.48f, 0f), new Vector3(0.3f, 0.18f, 0.32f), steel);
                 Part(t, "Épaulière droite", PrimitiveType.Sphere, new Vector3(0.27f, 0.48f, 0f), new Vector3(0.3f, 0.18f, 0.32f), steel);
                 Part(t, "Plastron", PrimitiveType.Cube, new Vector3(0f, 0.3f, 0.17f), new Vector3(0.42f, 0.4f, 0.06f), steel);
+                // Sous-lot V2.11 : le heaume de bingiz sur la tête (sans lui, tête nue comme avant).
+                GameObject helmet = Wave5View.Place(t, Wave5Role.Helmet, "Heaume de Galeran", t.position + new Vector3(0f, 0.62f, 0f), t.eulerAngles.y);
+                if (helmet != null) helmet.transform.SetParent(t, true);
             }
+        }
 
-            bool worn = !a.InScene && player != null && Wears(a, CollarItem);
-            if (!worn || _pendantOwner != player)
-            {
-                if (_pendant != null) Object.Destroy(_pendant);
-                _pendant = null;
-                _pendantOwner = null;
-            }
-            if (worn && _pendant == null)
+        private void Pendant(Transform player)
+        {
             {
                 // Le collier de Croc-Gris : un croc d'ivoire au bout d'un lacet de cuir, sur la poitrine.
                 _pendant = Holder(player, "Collier de Croc-Gris (V1.9.8)");
@@ -438,6 +525,7 @@ namespace EdS.Game
 
         private void DestroyGear()
         {
+            ShowPlayerAgain();
             if (_galeran != null) Object.Destroy(_galeran);
             if (_pendant != null) Object.Destroy(_pendant);
             _galeran = _pendant = null;

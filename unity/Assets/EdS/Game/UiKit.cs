@@ -74,6 +74,22 @@ namespace EdS.Game
         }
 
         /// <summary>Icône peinte (<c>Resources/EdsInterface/Peintes/name</c>) ; null si elle manque.</summary>
+        /// <summary>
+        /// Sous-lot V2.11 : icône d'un objet de l'inventaire ou d'une boutique : celle du pack de CraftPix choisie par la préparation
+        /// (<see cref="StyleCatalog.ItemIcon"/>), sinon l'icône peinte du jeu (<paramref name="fallback"/>).
+        /// </summary>
+        public static Sprite ItemIcon(string itemId, string fallback)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            Texture2D pack = catalog != null ? catalog.ItemIcon(itemId) : null;
+            if (pack == null) return Icon(fallback);
+            string key = "pack|" + itemId;
+            if (Sprites.TryGetValue(key, out Sprite known) && known != null) return known;
+            Sprite sprite = UnityEngine.Sprite.Create(pack, new Rect(0f, 0f, pack.width, pack.height), new Vector2(0.5f, 0.5f), 100f);
+            Sprites[key] = sprite;
+            return sprite;
+        }
+
         public static Sprite Icon(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;

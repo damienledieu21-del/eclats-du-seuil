@@ -305,6 +305,8 @@ Décidé par Damien le 25 octobre 2026 : voir les Vallons avec des modèles et d
 
 ## Décisions validées
 
+**Décisions de Damien du 9 novembre 2026 (questions de la PR #121, sous-lot V2.11)** : le **pont de pierre** « Medieval Bridge » de JooL **remplace le pont cintré de bois** fait par le code (choix du 27 octobre 2026, essai réaliste 5), qui reste le repli sans le modèle ; les **tours en ruine** de taz83 sont posées **aux ruines, sur ordinateur seulement** (formes simples sur téléphone) ; **crypte** : rien tant que le lieu n'existe pas. Affichage seulement : le moteur, les emprises et le passage du pont ne changent pas.
+
 **A1 à A12** : pas de soin pour le Gardien au lot 8 (boucliers, protections, transferts, provocations) ; trois talents intermédiaires de cinq rangs par arbre (noms de travail) ; Fureur contenue dépend de la Résonance détenue ; Charges conservées (Rempart) ou dépensées (Contrecoup) selon le build ; une ultime commune, Bastion absolu ; les boucliers absorbent les DOT ; un bouclier par source, FIFO ; dégâts transférés jamais retransférés ni déclencheurs de réactions, garde du protecteur seulement dans le cadre de Serment ; provocation sur un personnage refusée `notApplicable` et journalisée ; attributs identiques pour les builds de comparaison ; deux PR de gameplay 8a puis 8b ; builds de référence livrés en données.
 
 Aussi : aucun soin, aucune deuxième classe, aucun système de positions, aucune interface Unity avant la fin du lot 8 ; pas de déclencheurs d'équipement avant le chantier des objets.
