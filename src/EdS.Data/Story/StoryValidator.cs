@@ -494,7 +494,7 @@ namespace EdS.Data.Story
                 // Sous-lot V2.10 (schéma 13) : les fêtes et leurs invités (PNJ connus).
                 List<Festival> festivals = CheckFestivals(npcs);
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet);
             }
 
             /// <summary>

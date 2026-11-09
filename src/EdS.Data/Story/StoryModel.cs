@@ -657,8 +657,10 @@ namespace EdS.Data.Story
         public IReadOnlyList<Festival> Festivals { get; }
 
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
-            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null)
+            IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null,
+            IEnumerable<string>? learnable = null)
         {
+            _learnable = new HashSet<string>(learnable ?? Array.Empty<string>(), StringComparer.Ordinal);
             Festivals = Frozen.List(festivals ?? Array.Empty<Festival>(), nameof(festivals));
             Reputation = reputation ?? ReputationRules.None;
             Scenes = Frozen.List(scenes ?? Array.Empty<Scene>(), nameof(scenes));
@@ -695,6 +697,14 @@ namespace EdS.Data.Story
         public Festival? FestivalOn(long day) => Festivals.FirstOrDefault(f => f.OnDay(day));
 
         public bool HasFestival(string id) => Festivals.Any(f => f.Id == id);
+
+        private readonly HashSet<string> _learnable;
+
+        /// <summary>
+        /// Revue Codex de la PR #120 (tour 5) : le fait <paramref name="fact"/> peut-il être appris en jeu (effet <c>setFact</c>, victoire sur un
+        /// chef, rencontre d'un PNJ, issue ou cicatrice d'un événement du monde) ? Le même ensemble que le validateur de l'histoire.
+        /// </summary>
+        public bool CanLearn(string? fact) => fact != null && _learnable.Contains(fact);
 
         /// <exception cref="ArgumentException">Fête inconnue.</exception>
         public Festival Festival(string id) => Festivals.FirstOrDefault(f => f.Id == id) ?? throw new ArgumentException($"Fête « {id} » inconnue.", nameof(id));

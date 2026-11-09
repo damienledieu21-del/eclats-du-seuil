@@ -486,7 +486,7 @@ namespace EdS.Data.Merchants
 
             // Sous-lot V2.10 (schéma 5) : prix qui bougent et contrecoups des événements.
             List<PriceRule> prices = CheckPrices(d.Prices, "$.data.prices", items, merchantIds, r, schema);
-            List<MarketShock> shocks = CheckShocks(d.Shocks, "$.data.shocks", items, merchantIds, r, schema);
+            List<MarketShock> shocks = CheckShocks(d.Shocks, "$.data.shocks", items, story, merchantIds, r, schema);
             if (!r.IsValid || document.ContentVersion is null) return new MerchantsLoadResult(r, null);
             return new MerchantsLoadResult(r, new MerchantBook(document.SchemaVersion!.Value, document.ContentVersion, values, merchants).WithLiving(prices, shocks));
         }
@@ -555,7 +555,7 @@ namespace EdS.Data.Merchants
         /// « zone.…/événement », issue de <see cref="Outcomes"/>, durée de 1 à <see cref="MaxShockDays"/> jours), soit un fait (« fact.… ») ;
         /// objets et marchands connus (absents : tous) ; stock plein de 0 à 100 %, prix de <see cref="MinPercent"/> à <see cref="MaxPercent"/> %.
         /// </summary>
-        private static List<MarketShock> CheckShocks(List<ShockData?>? data, string path, ItemCatalog items, HashSet<string> merchants, ValidationReport r, int schema)
+        private static List<MarketShock> CheckShocks(List<ShockData?>? data, string path, ItemCatalog items, StoryBook story, HashSet<string> merchants, ValidationReport r, int schema)
         {
             var shocks = new List<MarketShock>();
             if (data is null || !Since5("shocks", path, r, schema)) return shocks;
@@ -584,6 +584,13 @@ namespace EdS.Data.Merchants
                 {
                     string factField = x.Fact != null ? "fact" : "notFact";
                     if (!StoryValidator.IsFactId(x.Fact ?? x.NotFact)) { r.Add(p + "." + factField, ValidationCode.InvalidValue, $"fait « {x.Fact ?? x.NotFact} » mal formé : « fact.… »."); ok = false; }
+                    // Revue Codex de la PR #120 (tour 5) : un fait que le jeu n'apprend jamais rendrait le contrecoup sans effet (fact) ou permanent (notFact).
+                    else if (!story.CanLearn(x.Fact ?? x.NotFact))
+                    {
+                        r.Add(p + "." + factField, ValidationCode.UnknownReference, $"fait « {x.Fact ?? x.NotFact} » jamais appris en jeu : le contrecoup serait "
+                            + (x.Fact != null ? "toujours sans effet." : "permanent."));
+                        ok = false;
+                    }
                     foreach ((string field, object? value) in new (string, object?)[] { ("outcome", x.Outcome), ("days", x.Days) })
                         if (value != null) { r.Add(p + "." + field, ValidationCode.InvalidValue, $"« {field} » ne va qu'avec un événement."); ok = false; }
                 }

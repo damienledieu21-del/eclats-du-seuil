@@ -160,6 +160,8 @@ public class V210MarchandsFetesTests
     [InlineData("$.data.shocks[0].days", "29", ValidationCode.OutOfRange)]
     [InlineData("$.data.shocks[0].stockPercent", "101", ValidationCode.OutOfRange)]
     [InlineData("$.data.shocks[0].outcome", "\"draw\"", ValidationCode.InvalidValue)]
+    // Revue Codex de la PR #120 (tour 5) : un fait jamais appris en jeu (faute de frappe) rendrait la route coupée pour toujours.
+    [InlineData("$.data.shocks[3].notFact", "\"fact.chef_des_bandit.vaincu\"", ValidationCode.UnknownReference)]
     public void Stock_prix_et_contrecoups_refuses_au_chemin_precis(string path, string json, ValidationCode code)
     {
         JsonObject root = MerchantsJson();
