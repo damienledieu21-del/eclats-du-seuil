@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Json.Text;
 using EdS.Data.Merchants;
@@ -49,6 +50,7 @@ namespace EdS.Data.Json
                         n => $"{n} règles, au plus {MerchantValidator.MaxRules}.", (e, ip) => ReadPrice(input, e, ip)),
                     ["shocks"] = (v, p) => d.Shocks = input.ReadLimitedList(v, p, MerchantValidator.MaxRules,
                         n => $"{n} contrecoups, au plus {MerchantValidator.MaxRules}.", (e, ip) => ReadShock(input, e, ip)),
+                    ["market"] = (v, p) => d.Market = ReadMarket(input, v, p),   // sous-lot V2.14 (schéma 6)
                 });
                 document.Data = ok ? d : null;
             });
@@ -86,6 +88,10 @@ namespace EdS.Data.Json
                 ["restock"] = (v, p) => x.Restock = input.Int32(v, p),   // sous-lot V2.10 (schéma 5)
                 ["resale"] = (v, p) => x.Resale = input.Int32(v, p),
                 ["festivals"] = (v, p) => x.Festivals = Names(input, v, p),
+                ["shop"] = (v, p) => x.Shop = ReadShop(input, v, p),   // sous-lot V2.14 (schéma 6)
+                ["bakes"] = (v, p) => x.Bakes = input.ReadLimitedList(v, p, MerchantValidator.MaxBakes,
+                    n => $"{n} fournées, au plus {MerchantValidator.MaxBakes}.", (e, ip) => ReadBake(input, e, ip)),
+                ["soldOut"] = (v, p) => x.SoldOut = input.Text(v, p),
                 ["offers"] = (v, p) => x.Offers = input.ReadLimitedList(v, p, MerchantValidator.MaxOffers,
                     n => $"{n} offres, au plus {MerchantValidator.MaxOffers}.", (e, ip) => ReadOffer(input, e, ip)),
             }) ? x : null;
@@ -101,6 +107,85 @@ namespace EdS.Data.Json
                 ["always"] = (v, p) => x.Always = input.Boolean(v, p),
                 ["rank"] = (v, p) => x.Rank = input.Text(v, p),   // sous-lot V1.7 (schéma 2)
                 ["stock"] = (v, p) => x.Stock = input.Int32(v, p),   // sous-lot V2.10 (schéma 5)
+                ["fresh"] = (v, p) => x.Fresh = input.Boolean(v, p),   // sous-lot V2.14 (schéma 6)
+                ["door"] = (v, p) => x.Door = input.Boolean(v, p),
+            }) ? x : null;
+        }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : la boutique d'un marchand.</summary>
+        private static ShopData? ReadShop(JsonInput input, JsonElement element, string path)
+        {
+            var x = new ShopData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["kind"] = (v, p) => x.Kind = input.Text(v, p),
+                ["sign"] = (v, p) => x.Sign = input.Text(v, p),
+                ["building"] = (v, p) => x.Building = input.Text(v, p),
+                ["open"] = (v, p) => x.Open = input.Text(v, p),
+                ["close"] = (v, p) => x.Close = input.Text(v, p),
+                ["rest"] = (v, p) => x.Rest = Days(input, v, p),
+                ["door"] = (v, p) => x.Door = input.Text(v, p),
+                ["clerk"] = (v, p) => x.Clerk = input.Text(v, p),
+            }) ? x : null;
+        }
+
+        /// <summary>Jours de la semaine (entiers), au plus 7 ; un jour mal typé est lu null (signalé par le validateur et le lecteur).</summary>
+        private static List<int?>? Days(JsonInput input, JsonElement element, string path)
+        {
+            List<object?>? boxed = input.ReadLimitedList(element, path, 7, n => $"{n} jours, au plus 7.", (e, ip) => input.Int32(e, ip) is int n ? (object)n : null);
+            return boxed?.Select(b => b is int n ? n : (int?)null).ToList();
+        }
+
+        private static BakeData? ReadBake(JsonInput input, JsonElement element, string path)
+        {
+            var x = new BakeData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["at"] = (v, p) => x.At = input.Text(v, p),
+                ["percent"] = (v, p) => x.Percent = input.Int32(v, p),
+            }) ? x : null;
+        }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : le grand jour de marché.</summary>
+        private static MarketDayData? ReadMarket(JsonInput input, JsonElement element, string path)
+        {
+            var x = new MarketDayData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["festivals"] = (v, p) => x.Festivals = Names(input, v, p),
+                ["setup"] = (v, p) => x.Setup = input.Text(v, p),
+                ["teardown"] = (v, p) => x.Teardown = input.Text(v, p),
+                ["crowd"] = (v, p) => x.Crowd = input.Int32(v, p),
+                ["cries"] = (v, p) => x.Cries = input.ReadLimitedList(v, p, MerchantValidator.MaxCries,
+                    n => $"{n} criées, au plus {MerchantValidator.MaxCries}.", (e, ip) => input.Text(e, ip)),
+                ["stalls"] = (v, p) => x.Stalls = input.ReadLimitedList(v, p, MerchantValidator.MaxStalls,
+                    n => $"{n} étals, au plus {MerchantValidator.MaxStalls}.", (e, ip) => ReadStall(input, e, ip)),
+                ["haggle"] = (v, p) => x.Haggle = ReadHaggle(input, v, p),
+            }) ? x : null;
+        }
+
+        private static StallData? ReadStall(JsonInput input, JsonElement element, string path)
+        {
+            var x = new StallData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => x.Id = input.Text(v, p),
+                ["merchant"] = (v, p) => x.Merchant = input.Text(v, p),
+                ["kind"] = (v, p) => x.Kind = input.Text(v, p),
+                ["position"] = (v, p) => x.Position = ScenarioJsonReader.ReadPoint(input, v, p),
+                ["sign"] = (v, p) => x.Sign = input.Text(v, p),
+            }) ? x : null;
+        }
+
+        private static HaggleData? ReadHaggle(JsonInput input, JsonElement element, string path)
+        {
+            var x = new HaggleData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["standing"] = (v, p) => x.Standing = input.Text(v, p),
+                ["percent"] = (v, p) => x.Percent = input.Int32(v, p),
+                ["chance"] = (v, p) => x.Chance = input.Int32(v, p),
+                ["bonus"] = (v, p) => x.Bonus = input.Int32(v, p),
             }) ? x : null;
         }
 
@@ -117,6 +202,7 @@ namespace EdS.Data.Json
                 ["items"] = (v, p) => x.Items = Names(input, v, p),
                 ["merchants"] = (v, p) => x.Merchants = Names(input, v, p),
                 ["percent"] = (v, p) => x.Percent = input.Int32(v, p),
+                ["market"] = (v, p) => x.Market = input.Boolean(v, p),   // sous-lot V2.14 (schéma 6)
             }) ? x : null;
         }
 

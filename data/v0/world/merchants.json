@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "kind": "merchants",
   "contentVersion": "0.10.0-provisoire",
   "data": {

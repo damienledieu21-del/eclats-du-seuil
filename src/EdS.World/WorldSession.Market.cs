@@ -125,7 +125,14 @@ namespace EdS.World
             Merchant m = NeedMarket().Book.Merchant(merchant);
             // Sous-lot V2.10 : un étal ambulant n'ouvre que pendant ses fêtes.
             if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id))) return TradeRefusal.NotFestival;
-            if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
+            // Sous-lot V2.14 : une vraie boutique suit ses horaires et son jour de repos ; fermée, quelqu'un répond à la porte (ouverte alors,
+            // mais seulement pour les offres « door » : Stock) ou personne.
+            if (m.Shop != null)
+            {
+                ShopState state = ShopStateOf(m.Id);
+                if (state == ShopState.ClosedHours || state == ShopState.RestDay) return TradeRefusal.Closed;
+            }
+            else if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             if (m.Fact != null && !(Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
             // Sous-lot V2.7 (réponses de Damien du 7 novembre 2026) : haï de sa faction, le marchand refuse ; le marché noir des bandits ne s'ouvre
@@ -182,6 +189,7 @@ namespace EdS.World
             if (lots is null) throw new ArgumentNullException(nameof(lots));
             TradeRefusal open = CanTrade(merchant);
             if (open != TradeRefusal.None) return open;
+            if (AtDoor(merchant)) return TradeRefusal.Closed;   // sous-lot V2.14 : à la porte, on n'achète rien au joueur
             Market market = NeedMarket();
             if (lots.Count < 1 || lots.Count > Market.MaxSellLots) return TradeRefusal.InvalidCount;
             var totals = new SortedDictionary<string, long>(StringComparer.Ordinal);

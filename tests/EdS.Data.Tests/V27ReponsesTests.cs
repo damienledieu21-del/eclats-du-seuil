@@ -46,7 +46,7 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((5, 3, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((6, 3, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
             ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers") }, ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
         Assert.Equal("liked", ShippedMerchants.Merchant("merchant.receleur").Standing);

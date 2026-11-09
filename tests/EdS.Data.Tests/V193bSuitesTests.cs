@@ -184,7 +184,7 @@ public class V193bSuitesTests
     [Fact]
     public void Marchands_en_schema_3_l_etal_de_Renart_demande_l_aveu()
     {
-        Assert.Equal((5, 5), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));   // V2.7 : schéma 4 (faction, palier) ; formes du schéma 3 inchangées
+        Assert.Equal((6, 6), (MerchantValidator.CurrentSchemaVersion, ShippedMerchants.SchemaVersion));   // V2.14 : schéma 6   // V2.7 : schéma 4 (faction, palier) ; formes du schéma 3 inchangées
         Assert.Equal(Aveu, ShippedMerchants.Merchant("merchant.renart").Fact);
         Assert.All(ShippedMerchants.Merchants.Where(m => m.Id != "merchant.renart"), m => Assert.Null(m.Fact));
         // Le fait vient de l'aveu (une réponse du dialogue de Renart), et c'est l'objectif de la dernière étape du chapitre 2.

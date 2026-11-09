@@ -236,6 +236,112 @@ namespace EdS.Runtime
             return refusal == DialogueRefusal.None;
         }
 
+        // --- Sous-lot V2.14 : vraies boutiques et grand jour de marché ----------------------------------------------------
+
+        /// <summary>Heure du monde en mots (« 6 h », « 19 h 30 »).</summary>
+        public static string HourText(int minute) =>
+            minute % 60 == 0 ? string.Format(CultureInfo.InvariantCulture, "{0} h", minute / 60)
+                : string.Format(CultureInfo.InvariantCulture, "{0} h {1:00}", minute / 60, minute % 60);
+
+        /// <summary>Nom du jour de la semaine <paramref name="weekday"/> (0 : lundi … 6 : dimanche).</summary>
+        public string WeekdayName(int weekday) => Text("text.v214.weekday." + weekday.ToString(CultureInfo.InvariantCulture));
+
+        /// <summary>
+        /// Sous-lot V2.14 : enseigne et horaires d'une boutique (« Boulangerie de Firmin · ouverte de 5 h 30 à 19 h 30 · fermée le lundi ») ;
+        /// null pour un étal sans horaires.
+        /// </summary>
+        public string? ShopHoursText(string merchant)
+        {
+            if (!(_market.Book.Merchant(merchant).Shop is EdS.Data.Merchants.Shop shop)) return null;
+            string text = Text(shop.Sign) + " · " + string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.hours"), HourText(shop.Open), HourText(shop.Close));
+            if (shop.Rest.Count > 0)
+                text += " · " + string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.rest"), string.Join(", ", shop.Rest.Select(WeekdayName)));
+            return text;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 : pourquoi la boutique de <paramref name="merchant"/> est fermée et quand elle rouvre (« Fermée : jour de repos.
+        /// Réouverture mardi à 5 h 30. ») ; null si elle est ouverte ou sans horaires.
+        /// </summary>
+        public string? ClosedText(string merchant)
+        {
+            ShopState state = World.ShopStateOf(merchant);
+            if (state == ShopState.Open || state == ShopState.AtDoor || _market.Book.Merchant(merchant).Shop is null) return null;
+            string text = Text(state == ShopState.RestDay ? "text.v214.shop.closed_rest" : "text.v214.shop.closed_hours");
+            if (World.NextOpening(merchant) is (long day, int minute))
+                text += " " + string.Format(CultureInfo.InvariantCulture, Text(day == World.Zone.Time.Day ? "text.v214.shop.reopens_today" : "text.v214.shop.reopens"),
+                    WeekdayName(EdS.Data.Story.WorldCalendar.WeekdayOf(day)), HourText(minute));
+            return text;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 : bandeau de la boutique ouverte : enseigne et horaires, puis l'instant (à la porte, pains chauds, prochaine
+        /// fournée, rupture du soir, marchandage accepté) ; null sans boutique.
+        /// </summary>
+        public string? ShopNotice
+        {
+            get
+            {
+                if (!(OpenMerchant is Merchant m)) return null;
+                var parts = new List<string>();
+                if (ShopHoursText(m.Id) is string hours) parts.Add(hours);
+                if (World.AtDoor(m.Id) && m.Shop is EdS.Data.Merchants.Shop shop)
+                    parts.Add(shop.Door == DoorService.Clerk
+                        ? string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.door_clerk"), Text(shop.Clerk!))
+                        : string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.door_patron"), Text(_story.Npc(m.Npc).Name)));
+                if (m.Bakes.Count > 0)
+                {
+                    int minute = World.Zone.Time.Minute;
+                    if (World.WarmBread(m.Id)) parts.Add(Text("text.v214.bakery.warm"));
+                    else if (minute < m.Bakes[0].At) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.first"), HourText(m.Bakes[0].At)));
+                    else if (minute >= m.SoldOut) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.soldout"), HourText(m.Bakes[0].At)));
+                    else if (World.NextBake(m.Id) is int next) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.next"), HourText(next)));
+                }
+                if (World.HagglePercent(m.Id) is int percent && percent != 100)
+                    parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.haggle.done"), 100 - percent));
+                else if (World.HaggleChance(m.Id) > 0) parts.Add(Text("text.v214.haggle.can"));
+                return parts.Count == 0 ? null : string.Join(" · ", parts);
+            }
+        }
+
+        /// <summary>Sous-lot V2.14 : on peut marchander avec la boutique ouverte (étal du marché, marché ouvert, réputation suffisante, pas encore fait).</summary>
+        public bool CanHaggle => Shop is string id && World.HaggleChance(id) > 0 && World.HagglePercent(id) == 100;
+
+        /// <summary>Sous-lot V2.14 : marchande avec la boutique ouverte ; un message dit la réponse.</summary>
+        public HaggleRefusal Haggle()
+        {
+            if (!(Shop is string id)) return HaggleRefusal.Closed;
+            HaggleRefusal answer = World.Haggle(id);
+            if (answer == HaggleRefusal.None) Say("text.v214.haggle.accepted", Text(_story.Npc(_market.Book.Merchant(id).Npc).Name), 100 - World.HagglePercent(id));
+            else Say("text.v214.haggle." + answer.ToString().ToLowerInvariant());
+            return answer;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 : où en est la grande place (« Jour de marché : les étals s'installent », « Grand marché sur la place jusqu'à
+        /// 17 h », « On démonte les étals ») ; hors marché, le prochain jour de marché ; null sans marché.
+        /// </summary>
+        public string? MarketNotice
+        {
+            get
+            {
+                if (!(World.MarketDay is MarketDay md)) return null;
+                EdS.Data.Story.Festival? today = World.MarketFestivalToday;
+                switch (World.MarketPhase)
+                {
+                    case MarketPhase.Setup: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.setup"), HourText(today!.From));
+                    case MarketPhase.Open: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.open"), HourText(Math.Min(today!.To, 1439)));
+                    case MarketPhase.Teardown: return Text("text.v214.market.teardown");
+                }
+                if (World.NextMarketDay() is (long day, EdS.Data.Story.Festival f) && day > World.Zone.Time.Day)
+                    return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.next"), WeekdayName(EdS.Data.Story.WorldCalendar.WeekdayOf(day)), HourText(f.From));
+                return null;
+            }
+        }
+
+        /// <summary>Sous-lot V2.14 : criée du moment sur la place (traduite), ou null.</summary>
+        public string? MarketCry => World.MarketCry is string key ? Text(key) : null;
+
         private TradeRefusal Refused(TradeRefusal refusal)
         {
             Say("text.ui.trade." + refusal.ToString().ToLowerInvariant());

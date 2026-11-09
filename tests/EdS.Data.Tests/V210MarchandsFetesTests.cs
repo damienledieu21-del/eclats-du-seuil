@@ -64,7 +64,7 @@ public class V210MarchandsFetesTests
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
         Assert.Equal((13, 12, 13), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));
-        Assert.Equal((5, 4, 5, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.SchemaVersion, ShippedMerchants.ContentVersion));
+        Assert.Equal((6, 4, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
         Assert.Equal((16, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche" }, Story.Value.Festivals.Select(f => f.Id));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))

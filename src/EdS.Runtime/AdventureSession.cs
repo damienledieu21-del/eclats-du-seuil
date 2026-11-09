@@ -661,7 +661,9 @@ namespace EdS.Runtime
                 {
                     TradeRefusal shop = World.CanTrade(merchant.Id);
                     if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
-                    if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
+                    // Sous-lot V2.14 : une vraie boutique dit pourquoi elle est fermée et quand elle rouvre.
+                    if (shop == TradeRefusal.Closed && ClosedText(merchant.Id) is string closed) Say("text.v214.shop.closed", closed);
+                    else if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                     if (shop == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");   // sous-lot V1.7 : la réserve de la guilde
                     if (shop == TradeRefusal.Shunned) Say("text.ui.trade.shunned");   // sous-lot V2.7 : haï de sa faction
                 }
