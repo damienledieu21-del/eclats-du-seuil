@@ -455,17 +455,17 @@ namespace EdS.Game
         [Range(0f, 4f)] public float IndoorLights = DefaultIndoorLights;
 
         /// <summary>
-        /// V1.10 (essai 10 de Damien : « intérieur trop sombre ») : version des réglages par défaut de la lumière des intérieurs. Le menu
+        /// V1.10 (essai 10 de Damien : « intérieur trop sombre » ; version 2 en V2.13 : « le jeu est trop sombre ») : version des réglages par défaut de la lumière des intérieurs. Le menu
         /// « Préparer l'essai de style » remet une fois les nouveaux (ambiance plus claire, exposition et lumières plus fortes) ; les
-        /// retouches faites ensuite par Damien sont gardées. Les réglages du dehors (<see cref="AmbienceVersion"/>) ne bougent pas.
+        /// retouches faites ensuite par Damien sont gardées. Les réglages du dehors ont leur propre version (<see cref="AmbienceVersion"/>, remise à 3 en V2.13 avec celle-ci).
         /// </summary>
-        public const int IndoorDefaults = 1;
+        public const int IndoorDefaults = 2;
 
         [HideInInspector] public int IndoorVersion;
 
-        private static readonly Color DefaultIndoorAmbient = new Color(0.38f, 0.31f, 0.25f);
-        private const float DefaultIndoorExposure = 0.3f;
-        private const float DefaultIndoorLights = 1.6f;
+        private static readonly Color DefaultIndoorAmbient = new Color(0.55f, 0.47f, 0.39f);
+        private const float DefaultIndoorExposure = 0.6f;
+        private const float DefaultIndoorLights = 2f;
 
         /// <summary>Remet la lumière des intérieurs aux réglages de l'essai (clic droit sur le catalogue dans l'inspecteur).</summary>
         [ContextMenu("Remettre la lumière des intérieurs par défaut")]
@@ -521,27 +521,28 @@ namespace EdS.Game
         /// <summary>
         /// Version des réglages par défaut de la lumière et des couleurs. Quand Claude change ces réglages (essai de Damien du 26 octobre
         /// 2026 : image trop claire et jaune), le menu « Préparer l'essai de style » remet une fois les nouveaux ; les retouches faites
-        /// ensuite par Damien sont gardées.
+        /// ensuite par Damien sont gardées. Version 3 (V2.13, essai du 9 novembre 2026 : « le jeu est trop sombre ») : soleil, ambiance et
+        /// exposition plus forts, brume plus lointaine, bords moins sombres.
         /// </summary>
-        public const int AmbienceDefaults = 2;
+        public const int AmbienceDefaults = 3;
 
         [HideInInspector] public int AmbienceVersion;
 
         private static readonly Color DefaultSunColor = new Color(1f, 0.95f, 0.87f);
-        private const float DefaultSunIntensity = 1.25f;
+        private const float DefaultSunIntensity = 1.5f;
         private const float DefaultSunHeight = 45f;
         private const float DefaultSunTurn = -35f;
-        private static readonly Color DefaultAmbientSky = new Color(0.5f, 0.6f, 0.76f);
-        private static readonly Color DefaultAmbientHorizon = new Color(0.52f, 0.53f, 0.5f);
-        private static readonly Color DefaultAmbientGround = new Color(0.26f, 0.24f, 0.2f);
-        private static readonly Color DefaultFogColor = new Color(0.7f, 0.78f, 0.87f);
-        private const float DefaultFogStart = 40f;
-        private const float DefaultFogEnd = 170f;
-        private const float DefaultExposure = -0.1f;
+        private static readonly Color DefaultAmbientSky = new Color(0.62f, 0.72f, 0.88f);
+        private static readonly Color DefaultAmbientHorizon = new Color(0.66f, 0.67f, 0.64f);
+        private static readonly Color DefaultAmbientGround = new Color(0.36f, 0.33f, 0.28f);
+        private static readonly Color DefaultFogColor = new Color(0.76f, 0.83f, 0.91f);
+        private const float DefaultFogStart = 70f;
+        private const float DefaultFogEnd = 260f;
+        private const float DefaultExposure = 0.25f;
         private const float DefaultContrast = 15f;
-        private const float DefaultSaturation = 12f;
+        private const float DefaultSaturation = 14f;
         private const float DefaultBloom = 0.25f;
-        private const float DefaultVignette = 0.2f;
+        private const float DefaultVignette = 0.12f;
 
         /// <summary>Remet la lumière et les couleurs aux réglages de l'essai (clic droit sur le catalogue dans l'inspecteur).</summary>
         [ContextMenu("Remettre la lumière et les couleurs par défaut")]
