@@ -902,6 +902,19 @@ Liste partagée : `src/EdS.Runtime/Wave5.cs` (préparation `EdsWave5`, jeu `Wave
 - **Non branché** : interfaces de Kenney et de Lamoot (style plat, loin des « Fragments du Seuil »).
 - **Hors dépôt** : CraftPix (Asset Store) et Megascans (Fab) ; manifeste écrit par la préparation dans `Assets/Style/Generated/LICENCES_ASSET_STORE.md`.
 
+### Essai V2.12 : les packs de l'Asset Store
+
+Liste partagée : `src/EdS.Runtime/AssetStore.cs` (même forme que la 5e vague : rôles ajoutés à la fin de `Wave5Role`, préparation `EdsWave5`, jeu `Wave5View` et `WorldMarkers`, vérificateur : sections « Packs de l'Asset Store »). Les packs sont importés par Damien **à la racine de `Assets`** (pas dans `Assets/Style`) et ne vont **jamais** dans le dépôt (licence standard de l'Asset Store) : seuls leurs chemins sont ici. Un prefab est reconnu par la **fin de son chemin** (dossier du pack et nom), pour que des noms courts (« Wall », « Tent », « Bread1 ») ne soient jamais pris ailleurs ; le dossier HDRP de RPG Food Props n'est jamais lu.
+
+- **Branché** : vitrine du fournil (LUMI d'abord, puis Megascans, Sketchfab, Poly Haven ; l'étal de RPG Food Props sert de table s'il manque celle de Poly Haven) ; étal de Bertille (table garnie, caisses garnies) ; étal sous tente au bourg les jours de fête (ordinateur seulement) ; `WorldMarkers.MarketStall` est public pour le marché et les fêtes de la V2.10 (PR #120) ; forge (enclume, établi, présentoir d'armes, bac, tonneau) à chaque atelier ; roue à eau sur la rive la plus proche du moulin (ordinateur seulement) ; abri à bêtes (ordinateur seulement), rouet, seau et souche au hameau ; tonneaux, seau, caisses, échelle, charrette à bras et souche au village et au bourg, charrette au bourg ; deux tentes et une caisse au camp des rôdeurs.
+- **Intérieurs** : tonneau, seau, pots, vases, chopes, bols, tables des packs, **en repli seulement** (une sorte que les intérieurs de Poly Haven ou de Sketchfab n'ont pas).
+- **Interface** : la « dalle » des fenêtres du livre (sac, boutique, forge, compétences, voyage) prend la **planche de pierre** de Fantasy Wooden GUI. Choix : la pierre, sombre, garde lisibles le texte clair et les filets d'or des « Fragments du Seuil » ; le parchemin, clair, demanderait une encre sombre partout (réglage `Gui Board Kind` = Parchment pour le juger) ; les boutons en bois, plus cartoon, ne sont pas pris. `Gui Board Kind` = Off rend la dalle du jeu ; `Gui Border` règle les bords gardés entiers.
+- **Sons** : Basic RPG Sounds seulement **en repli** d'un bruitage qui n'a aucun fichier chez Damien, et seulement les sons au nom médiéval (lames, armures, bois, pièces, potions, pas…) sans mot arcade ou moderne (`AssetStore.ModernWords` : bumper, d-pad, pistolet, explosion, laser…).
+- **Icônes de CraftPix** : chemin réel `Assets/Fantasy RPG Icons Pack/Asset/<Catégorie> Icons/{Background,No Background}/` ; la version **sans fond** d'abord ; une pièce d'armure sans icône à son nom prend la catégorie « Armor Icons ». La préparation et le vérificateur disent combien d'objets sont reliés.
+- **Prêt** : maisons, taverne, forge et moulin du pack de village (alternatives : les maisons de Sketchfab et le moulin de Tim0 sont des choix de Damien), armes posées, château modulaire (tours, murs, ponts, portes, maisons), donjon modulaire (murs, dalles, arches, torches, rambardes), armures modulaires de SopaDopa (homme, femme ; 1,3 Go : ordinateur seulement).
+- **Réglages** : positions et tailles estimées sans Unity ; chaque objet se règle dans le catalogue (5e vague → Scale, Yaw, **Offset**, gardés d'une préparation à l'autre).
+- **Hors dépôt** : le manifeste `Assets/Style/Generated/LICENCES_ASSET_STORE.md` a une ligne par pack (dossier, usage, fichiers pris).
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
