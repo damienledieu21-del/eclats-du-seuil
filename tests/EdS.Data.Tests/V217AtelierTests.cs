@@ -64,4 +64,71 @@ public class V217AtelierTests : IDisposable
         Assert.Equal(usable, TownModels.Usable(fit));
         if (usable) Assert.True(fit.Fits);
     }
+
+    /// <summary>Pied du modèle livré le 9 novembre 2026 (Blender : x −7,46 à 7,50, y −6,45 à 5,19).</summary>
+    [Fact]
+    public void Le_modele_livre_tient_sur_maison2()
+    {
+        ModelFit fit = TownModels.Fit(14.5, 11, (0, -1), 14.96, 11.64, TownModels.Overflow(StyleBuilding.House));
+        Assert.True(fit.Fits);
+        Assert.InRange(fit.ScaleX, 0.95, 1.1);
+        Assert.InRange(fit.ScaleZ, 0.95, 1.1);
+    }
+
+    [Theory]
+    [InlineData("boulangerie_firmin", true)]
+    [InlineData("Boulangerie_Firmin", true)]
+    [InlineData("Olosta1", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void La_cheminee_n_est_connue_que_des_modeles_de_l_atelier(string? model, bool known) =>
+        Assert.Equal(known, TownModels.OwnChimney(model).HasValue);
+
+    [Fact]
+    public void Le_point_du_modele_suit_la_pose_de_la_vue()
+    {
+        // Échelle 1, façade vers +z : seul le décalage du pied compte.
+        ModelFit straight = TownModels.Fit(10, 10, (0, 1), 10.6, 10.6, 1.06);
+        var p = TownModels.OwnPoint(100, 50, (0, 1), straight, 0.5, -0.2, 1, 5, 7.6, -2);
+        Assert.Equal(104.5, p.X, 6);
+        Assert.Equal(7.8, p.Y, 6);
+        Assert.Equal(47, p.Z, 6);
+        // Façade vers −z (porte au sud) : demi-tour, x et z changent de signe.
+        ModelFit south = TownModels.Fit(10, 10, (0, -1), 10.6, 10.6, 1.06);
+        var q = TownModels.OwnPoint(100, 50, (0, -1), south, 0, 0, 0, 5, 7.6, -2);
+        Assert.Equal(95, q.X, 6);
+        Assert.Equal(52, q.Z, 6);
+        // Façade vers +x : le +z du modèle va vers +x, son +x vers −z (Quaternion.Euler(0, 90, 0)).
+        ModelFit east = TownModels.Fit(10, 10, (1, 0), 10.6, 10.6, 1.06);
+        var r = TownModels.OwnPoint(100, 50, (1, 0), east, 0, 0, 0, 5, 0, -2);
+        Assert.Equal(98, r.X, 6);
+        Assert.Equal(45, r.Z, 6);
+    }
+
+    [Fact]
+    public void La_lumiere_de_porte_est_a_droite_de_la_porte_devant_la_facade()
+    {
+        // Porte au sud (façade vers −z), porte en x = 3 : vue de dehors (on regarde vers +z), la droite est +x.
+        NightLamp south = TownModels.OwnDoorLantern("maison2", -7.25, -5.5, 7.25, 5.5, (0, -1), 3, -5.5);
+        Assert.Equal(3.4, south.X, 6);
+        Assert.Equal(-5.9, south.Z, 6);
+        Assert.Equal(NightLamps.DoorLanternHeight, south.Y, 6);
+        Assert.Equal("maison2/lanterne", south.Id);
+        // Façade vers +x sans porte connue : milieu de la façade, la droite (on regarde vers −x) est +z.
+        NightLamp east = TownModels.OwnDoorLantern("b", 0, 0, 10, 6, (1, 0), null, null);
+        Assert.Equal(10.4, east.X, 6);
+        Assert.Equal(3.4, east.Z, 6);
+    }
+
+    [Fact]
+    public void L_enseigne_et_la_cheminee_de_la_boulangerie_disent_leur_maison()
+    {
+        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
+        a.Advance(0.05);
+        Assert.Equal("maison2", a.ShopBuildingOf("enseigne/merchant.boulangerie"));
+        Assert.Equal("maison2", a.ShopBuildingOf("cheminee/merchant.boulangerie"));
+        Assert.Contains(a.ShopSigns(), s => a.ShopBuildingOf(s.Id) == "maison2");
+        Assert.Null(a.ShopBuildingOf("enseigne/inconnu"));
+        Assert.Null(a.ShopBuildingOf(null));
+    }
 }

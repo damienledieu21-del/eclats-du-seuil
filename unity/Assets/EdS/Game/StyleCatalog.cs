@@ -214,6 +214,8 @@ namespace EdS.Game
         public Vector2 Size;
         [Tooltip("V2.17 : obstacle auquel ce modèle de l'atelier est dédié (« maison2 ») ; vide : choisi par genre.")]
         public string Building;
+        [Tooltip("V2.17 : centre (x, z) et bas (y) du pied du modèle, à l'échelle 1 (mesurés par le menu) : sert à placer la fumée de sa cheminée.")]
+        public Vector3 Offset;
     }
 
     /// <summary>

@@ -498,13 +498,13 @@ namespace EdS.Game.Editor
                 }
                 OwnMaterial(path, notes);
                 GameObject model = Load(path);
-                Vector2 size = Foot(model);
+                Vector2 size = Foot(model, out Vector3 offset);
                 if (model == null || size.x <= 0.01f || size.y <= 0.01f)
                 {
                     notes.Add("Atelier : " + Path.GetFileName(path) + " sans maillage mesurable, ignoré.");
                     continue;
                 }
-                result.Add(new BuildingLook { Kind = StyleBuilding.House, Model = model, Size = size, Building = id });
+                result.Add(new BuildingLook { Kind = StyleBuilding.House, Model = model, Size = size, Building = id, Offset = offset });
             }
             if (result.Count > 0) notes.Add("Bâtiments de l'atelier : " + string.Join(", ", result.Select(b => b.Building + " (" + b.Model.name + ", "
                 + b.Size.x.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " × "
@@ -593,8 +593,12 @@ namespace EdS.Game.Editor
         /// <summary>
         /// Essai réaliste 8 : pied d'un modèle de bâtiment (m, le long de x et de z) à l'échelle 1 : une copie posée le temps de la mesurer.
         /// </summary>
-        private static Vector2 Foot(GameObject model)
+        private static Vector2 Foot(GameObject model) => Foot(model, out _);
+
+        /// <summary>Sous-lot V2.17 : pied et, dans <paramref name="offset"/>, centre (x, z) et bas (y) des contours du modèle à l'échelle 1.</summary>
+        private static Vector2 Foot(GameObject model, out Vector3 offset)
         {
+            offset = Vector3.zero;
             if (model == null) return Vector2.zero;
             var copy = (GameObject)Object.Instantiate(model);
             try
@@ -603,6 +607,7 @@ namespace EdS.Game.Editor
                 if (renderers.Length == 0) return Vector2.zero;
                 Bounds b = renderers[0].bounds;
                 foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
+                offset = new Vector3(b.center.x, b.min.y, b.center.z);
                 return new Vector2(b.size.x, b.size.z);
             }
             finally

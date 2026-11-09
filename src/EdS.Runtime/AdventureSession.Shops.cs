@@ -144,6 +144,20 @@ namespace EdS.Runtime
             return signs;
         }
 
+        /// <summary>
+        /// Sous-lot V2.17 : obstacle de la maison de la boutique d'une enseigne (« enseigne/&lt;marchand&gt; ») ou d'une cheminée
+        /// (« cheminee/&lt;marchand&gt; ») ; null sinon.
+        /// </summary>
+        public string? ShopBuildingOf(string? markerId)
+        {
+            if (string.IsNullOrEmpty(markerId) || !(World.Market is EdS.World.Market market)) return null;
+            int slash = markerId!.IndexOf('/');
+            string merchant = slash >= 0 ? markerId.Substring(slash + 1) : markerId;
+            foreach (Merchant m in market.Book.Merchants)
+                if (m.Id == merchant && m.Shop is Shop shop) return shop.Building;
+            return null;
+        }
+
         private static EdS.Domain.Numerics.Fixed ToFixed(double v) => EdS.Domain.Numerics.Fixed.FromRaw((long)Math.Round(v * 10000.0));
 
         /// <summary>Sous-lot V2.14 : état d'une boutique en mots (« ouverte », « fermée », « fermée : jour de repos », « à la porte »).</summary>

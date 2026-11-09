@@ -421,9 +421,10 @@ namespace EdS.Game
             // Intérieurs : un bâtiment qui a une porte tourne sa façade vers elle (on la voit où l'on entre) ; sinon vers la route.
             bool hasDoor = _doors.Any(d => d.Building == id);
             (int, int) facing = TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors);
-            DoorLantern(kind, id, x0, z0, x1, z1, facing);   // sous-lot V2.1 : sa lanterne de porte, allumée la nuit
-            // V2.17 : le modèle de l'atelier fait pour ce bâtiment, s'il y en a un et qu'il tient sur son emprise.
-            if (OwnBuilding(kind, id, x0, z0, x1, z1, facing)) return;
+            // V2.17 : le modèle de l'atelier fait pour ce bâtiment, s'il y en a un et qu'il tient sur son emprise ; il a sa propre lanterne.
+            bool own = OwnBuilding(kind, id, x0, z0, x1, z1, facing);
+            DoorLantern(kind, id, x0, z0, x1, z1, facing, own);   // sous-lot V2.1 : sa lanterne de porte, allumée la nuit
+            if (own) return;
             // Essai réaliste 8 : le vrai bâtiment de Sketchfab s'il y en a un de ce genre dans le catalogue.
             if (ModelBuilding(kind, id, x0, z0, x1, z1, facing, hasDoor)) return;
             Material plaster = Built(StyleSurface.Plaster, new Color(0.86f, 0.82f, 0.74f), out float plasterTile);

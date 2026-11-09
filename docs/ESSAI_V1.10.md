@@ -537,5 +537,5 @@ Ta décision du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ». Avan
 | 31.6 | Faire le tour du bâtiment, caméra basse et haute | **Pas de trou** (mur ou toit manquant, faces invisibles de dos), pas de bâtiment qui flotte ou s'enfonce ; on ne bute pas contre un mur invisible à plus d'un pas du mur ; le bâtiment s'efface quand il cache le héros | [ ] | |
 | 31.7 | Regarder de près, de jour puis de nuit | Couleurs et relief (pierres, tuiles, bois) nets, pas de matière rose ou blanche | [ ] | |
 | 31.8 | Sur ton PC modeste (qualité des textures « auto ») | Le jeu tient : pas de « out of memory », images par seconde comme avant au bourg | [ ] | Noter les images par seconde |
-| 31.9 | L'ancienne enseigne de bois (30.1), la lanterne et la fumée du fournil (30.2) | Dire si elles tombent juste sur le nouveau modèle ou flottent à côté | [ ] | Placées par le code d'après l'emprise |
+| 31.9 | L'enseigne et la lanterne, de nuit ; la fumée du fournil (« mardi, 5 h », 30.2) | Plus d'enseigne de bois ni de lanterne faites par le code (celles du modèle seulement) ; la nuit, la lanterne du modèle **éclaire** à droite de la porte ; la fumée sort **de la cheminée du modèle** | [ ] | Écart en mètres : le dire |
 | 31.10 | Ton avis : proportions, style, couleurs, ce qu'il faut pour le bâtiment suivant | — | [ ] | |
