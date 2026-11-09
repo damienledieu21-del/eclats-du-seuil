@@ -56,8 +56,12 @@ namespace EdS.Game.Editor
         /// <summary>Seulement la suite (scène, catalogue, ressources), après les lignes de <paramref name="basis"/> (une base déjà faite).</summary>
         internal static EssaiReport RunAfter(EssaiReport basis) => Run(basis, true);
 
+        /// <summary>V2.12.9 : compteur partagé de libération de la mémoire (<see cref="EdsStyle.Breathe"/>) pendant une vérification.</summary>
+        private static int _breathed;
+
         private static EssaiReport Run(EssaiReport basis, bool after)
         {
+            _breathed = 0;
             var report = new EssaiReport();
             try
             {
@@ -253,13 +257,16 @@ namespace EdS.Game.Editor
                 }
                 else if (pick.Path != null) detail = "loup ou sanglier réaliste de l'Asset Store : " + EssaiManifest.FileName(pick.Path);
                 report.Add(Beasts, level, model.Label, detail, fix);
+                EdsStyle.Breathe(ref _breathed);
             }
 
             Step("Corps humains", 0.75f);
             CheckHumans(report, models, textures);
+            EdsStyle.Breathe(ref _breathed);
 
             Step("Vrais vêtements", 0.8f);
             CheckOutfits(report, models, textures);
+            EdsStyle.Breathe(ref _breathed);
 
             Step("Sons et musiques", 0.85f);
             // Comme la préparation : les fichiers dans l'ordre, le premier qui se charge comme un son.
@@ -330,7 +337,8 @@ namespace EdS.Game.Editor
                 report.Add(section, EssaiLevel.Warning, "Matières des objets", "catalogue de style absent : rien à vérifier", Prepare);
                 return;
             }
-            List<EdsMaterialRepair.Problem> problems = EdsMaterialRepair.Problems(catalog);
+            List<EdsMaterialRepair.Problem> problems = EdsMaterialRepair.Problems(catalog, ref _breathed);
+            catalog = null;   // V2.12.9 : plus utilisé (Breathe a pu le décharger)
             if (problems.Count == 0)
             {
                 report.Add(section, EssaiLevel.Ok, "Matières des objets", "aucun objet blanc ni rose parmi ceux que le jeu pose");
