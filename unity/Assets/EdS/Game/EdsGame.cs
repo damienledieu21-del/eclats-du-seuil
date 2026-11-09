@@ -160,6 +160,7 @@ namespace EdS.Game
             try
             {
                 ApplyMobileSettings();
+                DeviceQuality.Apply();   // sous-lot V2.12.4 : textures réduites sur un PC modeste (ou selon le choix du joueur)
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
                 _hud = HudView.Create();

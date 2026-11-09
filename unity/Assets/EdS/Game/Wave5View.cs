@@ -34,8 +34,8 @@ namespace EdS.Game
             var holder = new GameObject(id + (AssetStore.IsStoreRole(role) ? " (V2.12)" : " (V2.11)"));
             GameObject model = Object.Instantiate(look.Model, holder.transform, false);
             foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-            // Relecture de la PR #121 : calcul hors champ sur ordinateur seulement (le Note8 n'a pas de quoi le payer).
-            if (!Application.isMobilePlatform)
+            // Relecture de la PR #121 : calcul hors champ sur ordinateur seulement (le Note8 n'a pas de quoi le payer) ; V2.12.4 : ni sur un PC modeste.
+            if (!DeviceQuality.Light)
                 foreach (SkinnedMeshRenderer skin in holder.GetComponentsInChildren<SkinnedMeshRenderer>()) skin.updateWhenOffscreen = true;
             Fix(holder, look.Model.name, look.Material);
             holder.transform.SetParent(parent, false);

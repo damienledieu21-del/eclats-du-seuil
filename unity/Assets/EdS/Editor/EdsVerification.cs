@@ -97,6 +97,9 @@ namespace EdS.Game.Editor
             string versionFile = Path.Combine(ProjectRoot, "ProjectSettings", "ProjectVersion.txt");
             string expected = File.Exists(versionFile) ? EssaiManifest.ExpectedVersion(File.ReadAllText(versionFile)) : null;
             string problem = EssaiManifest.VersionProblem(Application.unityVersion, expected);
+            // Sous-lot V2.12.4 : classe de la machine (mémoire vidéo, mémoire) et limite des textures que le jeu appliquera (choix du joueur compris).
+            report.Add(Unity, EssaiLevel.Ok, "Machine et textures",
+                GraphicsTier.Describe(DeviceQuality.Vram, DeviceQuality.Ram, Application.isMobilePlatform, DeviceQuality.Limit));
             if (problem == null) report.Add(Unity, EssaiLevel.Ok, "Version de Unity", Application.unityVersion);
             else report.Add(Unity, EssaiLevel.Warning, "Version de Unity", problem, "Ouvre le projet avec Unity " + expected + " (Unity Hub → Installs).");
 
@@ -286,7 +289,7 @@ namespace EdS.Game.Editor
             {
                 string found = Wave5.Pick(entry, models, out int rank);
                 (EssaiLevel level, string detail, string fix) = Wave5.Describe(entry, found, rank);
-                if (found != null && entry.Has(Wave5Fix.NotOnPhone)) detail += " ; jamais sur téléphone (Note8)";
+                if (found != null && entry.Has(Wave5Fix.NotOnPhone)) detail += " ; jamais sur téléphone (Note8) ni sur PC modeste";
                 else if (found != null && entry.Has(Wave5Fix.Heavy)) detail += " ; lourd pour le Note8 (plus de 20 000 triangles)";
                 if (found != null && entry.Has(Wave5Fix.Animated) && AssetImporter.GetAtPath(found) is ModelImporter importer
                     && importer.animationType != ModelImporterAnimationType.Legacy)
