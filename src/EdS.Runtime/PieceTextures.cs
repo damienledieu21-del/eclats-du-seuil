@@ -117,9 +117,15 @@ namespace EdS.Runtime
             if (key.Length == 0) return null;
             foreach (string p in pieces)
                 if (key == p || key == modelKey + p) return p;
+            // Relecture de la PR #128 : le repli « finit par » veut une pièce d'au moins 3 caractères, ou une séparation juste avant elle
+            // dans le nom d'origine (« Tonneau_A » → « a ») ; « Gamma » ne prend pas la pièce « a ».
+            string raw = (material ?? string.Empty).ToLowerInvariant();
             string? best = null;
             foreach (string p in pieces)
-                if (key.EndsWith(p, StringComparison.Ordinal) && (best == null || p.Length > best.Length)) best = p;
+            {
+                if (!key.EndsWith(p, StringComparison.Ordinal) || best != null && p.Length <= best.Length) continue;
+                if (p.Length >= 3 || Regex.IsMatch(raw, "[_\\- .]" + Regex.Escape(p) + @"(\.[0-9]{3})?$")) best = p;
+            }
             return best;
         }
 

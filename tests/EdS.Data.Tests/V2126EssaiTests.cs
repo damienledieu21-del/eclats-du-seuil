@@ -64,6 +64,17 @@ public sealed class V2126EssaiTests
     }
 
     [Fact]
+    public void Repli_par_fin_de_nom_une_piece_courte_veut_une_separation()
+    {
+        string[] pieces = { "a", "b", "lid" };
+        Assert.Null(PieceTextures.Match("crate01", "Gamma", pieces));
+        Assert.Equal("a", PieceTextures.Match("crate01", "Caisse_A", pieces));
+        Assert.Equal("a", PieceTextures.Match("crate01", "Caisse-A.001", pieces));
+        Assert.Equal("lid", PieceTextures.Match("crate01", "CaisseLid", pieces));
+        Assert.Equal("b", PieceTextures.Match("crate01", "b", pieces));
+    }
+
+    [Fact]
     public void Matieres_sans_nom_parlant_prises_dans_l_ordre_si_autant_que_de_pieces()
     {
         IReadOnlyDictionary<string, StylePieceMaps> links = PieceTextures.Link(Barrels, new[] { "Material.002", "Material", "Material.001" }, BarrelMaps);
@@ -147,6 +158,26 @@ public sealed class V2126EssaiTests
     }
 
     [Fact]
+    public void Dos_au_mur_dans_la_marge_la_boite_compte_encore()
+    {
+        // Relecture de la PR #128 : à 0,1 m du mur (dans la marge du rayon, hors de la maison), la caméra vers le mur ne le traverse pas.
+        Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (0, 0, 1), new[] { House }));
+        Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.9), CameraRules.Offset(180, 22, 1), new[] { House }));
+        // Même place, caméra à l'opposé ou le long du mur : rien ne gêne.
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (0, 0, -1), new[] { House }));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (1, 0, 0), new[] { House }));
+        // Dans la maison même (intérieur) : ignorée.
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 4.5), (0, 0, -1), new[] { House }));
+    }
+
+    [Fact]
+    public void Direction_ou_point_infini_rien_ne_change()
+    {
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 0), (0, 0, double.PositiveInfinity), new[] { House }));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((double.NegativeInfinity, 1.6, 0), (0, 0, 1), new[] { House }));
+    }
+
+    [Fact]
     public void Rapprochee_tout_de_suite_revenue_en_douceur()
     {
         Assert.Equal(3.0, CameraRules.SettleClear(24, 3, 0.016));
@@ -189,6 +220,21 @@ public sealed class V2126EssaiTests
         Assert.True(l.Shown(b));
         Assert.True(l.Shown(c));
         Assert.False(l.Shown(d));
+    }
+
+    [Fact]
+    public void Deux_PNJ_de_meme_nom_gardent_leurs_etiquettes_sauf_au_meme_endroit()
+    {
+        var l = new LabelLayout();
+        int a = l.Add("villageois.1", "Villageois", 100, 100, 100, 20, 3000, 0, 0);
+        int b = l.Add("villageois.2", "Villageois", 500, 100, 100, 20, 2999, 10, 0);
+        int c = l.Add("villageois.3", "Villageois", 900, 100, 100, 20, 2998, 10.5, 1.5);   // à 1,6 m de b
+        int d = l.Add("villageois.4", "Villageois", 900, 500, 100, 20, 2997);             // position inconnue
+        l.Solve(20);
+        Assert.True(l.Shown(a));
+        Assert.True(l.Shown(b));
+        Assert.False(l.Shown(c));
+        Assert.True(l.Shown(d));
     }
 
     [Fact]

@@ -768,7 +768,9 @@ namespace EdS.Game
                 }
                 float hx = pointer.x - p.x, hy = pointer.y - p.y;
                 bool hovered = hx * hx + hy * hy <= MapHoverRadius * MapHoverRadius;   // NaN (pas de souris) : jamais
-                MapName(p, m.Name, 15f, UiKit.Ink, 18f, hovered ? 10.0 : m.Kind == MapMarkerKind.Npc ? 1.0 : 1.5, m.Kind + ":" + m.Name);
+                // Relecture de la PR #128 : deux repères de même nom à des endroits différents gardent chacun leur nom.
+                MapName(p, m.Name, 15f, UiKit.Ink, 18f, hovered ? 10.0 : m.Kind == MapMarkerKind.Npc ? 1.0 : 1.5, m.Kind + ":" + m.Name + "@" + m.X + "," + m.Z,
+                    m.X, m.Z);
             }
             _mapLayout.Solve(-12.0, 1);
             for (int i = 0; i < _mapNames.Count; i++)
@@ -808,10 +810,11 @@ namespace EdS.Game
         private readonly List<(Vector2 At, string Text, float Size, Color Color, float Dy)> _mapNames = new List<(Vector2, string, float, Color, float)>();
 
         /// <summary>Sous-lot V2.12.6 : un nom de la carte à poser (rectangle centré sur sa place, décalage compris), avec sa priorité.</summary>
-        private void MapName(Vector2 p, string text, float size, Color color, float dy, double priority, string key)
+        private void MapName(Vector2 p, string text, float size, Color color, float dy, double priority, string key, double worldX = double.NaN,
+            double worldZ = double.NaN)
         {
             _mapNames.Add((p, text, size, color, dy));
-            _mapLayout.Add(key, text, p.x, p.y + dy, LabelLayout.TextWidth(text, size), size + 4f, priority);
+            _mapLayout.Add(key, text, p.x, p.y + dy, LabelLayout.TextWidth(text, size), size + 4f, priority, worldX, worldZ);
         }
 
         private void Name(Vector2 p, string text, float size, Color color, float dy)

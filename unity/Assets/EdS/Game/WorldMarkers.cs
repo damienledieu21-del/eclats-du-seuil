@@ -772,7 +772,7 @@ namespace EdS.Game
                 Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
                 if (screen.z <= 0f) continue;
                 string text = m.Label ?? m.Data.Name;   // sous-lot V2.3 : et son activité
-                _layout.Add(m.Data.Id, text, screen.x, screen.y, LabelLayout.TextWidth(text, HudView.LabelFont) / k, h, m.Rank * 1000.0 - Mathf.Sqrt(d2));
+                _layout.Add(m.Data.Id, text, screen.x, screen.y, LabelLayout.TextWidth(text, HudView.LabelFont) / k, h, m.Rank * 1000.0 - Mathf.Sqrt(d2), at.x, at.z);
                 _shown.Add(m);
                 _screens.Add(screen);
             }

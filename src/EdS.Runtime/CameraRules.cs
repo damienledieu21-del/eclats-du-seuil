@@ -117,20 +117,34 @@ namespace EdS.Runtime
         public static double ClearDistance((double X, double Y, double Z) target, (double X, double Y, double Z) direction, IReadOnlyList<CameraBox>? boxes)
         {
             double best = MaxDistance;
-            if (boxes == null || double.IsNaN(target.X + target.Y + target.Z + direction.X + direction.Y + direction.Z)) return best;
+            if (boxes == null || !Finite(target.X) || !Finite(target.Y) || !Finite(target.Z) || !Finite(direction.X) || !Finite(direction.Y)
+                || !Finite(direction.Z)) return best;
             double r = CollisionRadius;
             for (int i = 0; i < boxes.Count; i++)
             {
                 CameraBox b = boxes[i];
+                // Relecture de la PR #128 : seul un point visé dans la boîte réelle (on est dans la maison) l'ignore ; dos au mur, dans la
+                // seule marge du rayon, la boîte compte (la caméra reste au plus près, sans traverser le mur).
+                if (target.X >= b.MinX && target.X <= b.MaxX && target.Y >= b.MinY && target.Y <= b.MaxY && target.Z >= b.MinZ && target.Z <= b.MaxZ) continue;
                 double x0 = b.MinX - r, y0 = b.MinY - r, z0 = b.MinZ - r, x1 = b.MaxX + r, y1 = b.MaxY + r, z1 = b.MaxZ + r;
-                if (target.X >= x0 && target.X <= x1 && target.Y >= y0 && target.Y <= y1 && target.Z >= z0 && target.Z <= z1) continue;
                 double t0 = 0, t1 = best;
+                if (target.X >= x0 && target.X <= x1 && target.Y >= y0 && target.Y <= y1 && target.Z >= z0 && target.Z <= z1)
+                {
+                    // Dans la marge : seul un rayon qui va vers le mur compte (le long du mur ou à l'opposé, rien ne gêne).
+                    double u0 = 0, u1 = MaxDistance;
+                    if (Slab(target.X, direction.X, b.MinX, b.MaxX, ref u0, ref u1) && Slab(target.Y, direction.Y, b.MinY, b.MaxY, ref u0, ref u1)
+                        && Slab(target.Z, direction.Z, b.MinZ, b.MaxZ, ref u0, ref u1))
+                        best = Math.Min(best, Math.Max(0, u0 - r));
+                    continue;
+                }
                 if (!Slab(target.X, direction.X, x0, x1, ref t0, ref t1) || !Slab(target.Y, direction.Y, y0, y1, ref t0, ref t1)
                     || !Slab(target.Z, direction.Z, z0, z1, ref t0, ref t1)) continue;
                 if (t0 < best) best = t0;
             }
             return Math.Max(CollisionMinDistance, best);
         }
+
+        private static bool Finite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);
 
         private static bool Slab(double start, double delta, double lo, double hi, ref double t0, ref double t1)
         {

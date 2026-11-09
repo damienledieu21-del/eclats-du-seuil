@@ -16,7 +16,7 @@ namespace EdS.Runtime
         private struct Item
         {
             public string? Key, Text;
-            public double X, Y, W, H, Priority, Dy;
+            public double X, Y, W, H, Priority, Dy, WorldX, WorldZ;
             public bool Shown;
         }
 
@@ -34,7 +34,12 @@ namespace EdS.Runtime
         /// <paramref name="height"/> ; rend son numéro. <paramref name="key"/> (l'identifiant d'un PNJ) ou, à défaut, le texte la rend
         /// unique.
         /// </summary>
-        public int Add(string? key, string? text, double x, double y, double width, double height, double priority)
+        /// <remarks>
+        /// Relecture de la PR #128 : deux clés différentes de même texte (deux « Villageois ») restent deux étiquettes, sauf à moins de
+        /// <see cref="SameSpot"/> m l'une de l'autre dans le monde (<paramref name="worldX"/>, <paramref name="worldZ"/> ; NaN : inconnu).
+        /// </remarks>
+        public int Add(string? key, string? text, double x, double y, double width, double height, double priority, double worldX = double.NaN,
+            double worldZ = double.NaN)
         {
             if (_count == _items.Length)
             {
@@ -44,7 +49,7 @@ namespace EdS.Runtime
             _items[_count] = new Item
             {
                 Key = key, Text = text, X = x, Y = y, W = Math.Max(0, width), H = Math.Max(0, height),
-                Priority = double.IsNaN(priority) ? double.MinValue : priority,
+                Priority = double.IsNaN(priority) ? double.MinValue : priority, WorldX = worldX, WorldZ = worldZ,
             };
             return _count++;
         }
@@ -99,13 +104,21 @@ namespace EdS.Runtime
             {
                 ref Item other = ref _items[_order[m]];
                 if (string.IsNullOrEmpty(other.Text)) continue;
-                if (it.Key != null && other.Key != null ? string.Equals(it.Key, other.Key, StringComparison.Ordinal)
-                        : string.Equals(it.Text, other.Text, StringComparison.Ordinal))
-                    return true;
+                if (it.Key != null && other.Key != null)
+                {
+                    if (string.Equals(it.Key, other.Key, StringComparison.Ordinal)) return true;
+                    if (!string.Equals(it.Text, other.Text, StringComparison.Ordinal)) continue;
+                    double dx = it.WorldX - other.WorldX, dz = it.WorldZ - other.WorldZ;
+                    if (dx * dx + dz * dz < SameSpot * SameSpot) return true;   // NaN : faux, deux étiquettes
+                    continue;
+                }
                 if (string.Equals(it.Text, other.Text, StringComparison.Ordinal)) return true;
             }
             return false;
         }
+
+        /// <summary>Distance (m) sous laquelle deux étiquettes de même texte et de clés différentes ne font qu'une.</summary>
+        public const double SameSpot = 2.0;
 
         private bool Overlaps(int n, double x, double y, double w, double h)
         {
