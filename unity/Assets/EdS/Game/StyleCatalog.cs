@@ -19,6 +19,24 @@ namespace EdS.Game
     }
 
     /// <summary>
+    /// Sous-lot V2.16 : un personnage fait par Damien dans MakeHuman (<c>Assets/Style/MakeHuman/&lt;nom&gt;/</c>), prêt comme prefab Humanoid
+    /// (rempli par le menu « Éclats du Seuil → Importer les personnages MakeHuman »).
+    /// </summary>
+    [Serializable]
+    public sealed class MadeHumanLook
+    {
+        [Tooltip("Nom du dossier, réduit (« gaspard »).")]
+        public string Name;
+        [Tooltip("Nom du dossier tel qu'il est écrit (affiché dans le créateur de personnage).")]
+        public string Folder;
+        public GameObject Model;
+        [Tooltip("Hauteur du personnage (m).")]
+        public float Height = 1.75f;
+        [Tooltip("Rotation ajoutée (degrés) si le modèle regarde de travers.")]
+        public float Yaw;
+    }
+
+    /// <summary>
     /// Sous-lot V2.9.2 (4e vague) : les corps humains des Universal Base Characters de Quaternius, préparés par le menu : corps d'homme et de
     /// femme (Humanoid), matériaux des tenues peintes (un par corps, peau et tenue : <see cref="HumanLooks.Palettes"/>), coiffures, barbe,
     /// sourcils, yeux, et les animations Humanoid des Universal Animation Library renommées (<see cref="HumanLooks.CanonicalClip"/>).
@@ -382,6 +400,76 @@ namespace EdS.Game
         public bool HumanVillagers = true;
         [Tooltip("Le héros prend un corps humain (tenue d'acier bleuté) quand le paladin de Mixamo manque.")]
         public bool HumanHero = true;
+        [Header("Sous-lot V2.16 : personnages faits dans MakeHuman (remplis par le menu « Importer les personnages MakeHuman »)")]
+        public MadeHumanLook[] MadeLooks = new MadeHumanLook[0];
+        [Tooltip("Copie du fichier Assets/Style/MakeHuman/PNJ.txt (« gaspard = Gaspard.fbx » : qui porte quel personnage), refaite à chaque import.")]
+        [TextArea(2, 8)] public string MadeMappingText = "";
+        [Tooltip("Les PNJ et le héros portent les personnages de MakeHuman qui leur sont destinés (décoché : ils gardent leurs corps d'avant).")]
+        public bool UseMadeHumans = true;
+
+        [NonSerialized] private string _mappingText;
+        [NonSerialized] private MadeHumanMapping _mapping;
+        [NonSerialized] private MadeHumanLook[] _modelsFor;
+        [NonSerialized] private System.Collections.Generic.IReadOnlyList<MadeHumanModel> _models;
+
+        /// <summary>Le fichier de correspondance lu (<see cref="EdS.Runtime.MadeHumans.ParseMapping"/>), gardé tant que son texte ne change pas.</summary>
+        public MadeHumanMapping Mapping
+        {
+            get
+            {
+                if (_mapping == null || _mappingText != MadeMappingText)
+                {
+                    _mappingText = MadeMappingText;
+                    _mapping = global::EdS.Runtime.MadeHumans.ParseMapping(MadeMappingText);
+                }
+                return _mapping;
+            }
+        }
+
+        /// <summary>Les personnages de MakeHuman prêts (avec modèle), sous la forme des règles (<see cref="EdS.Runtime.MadeHumans.ModelFor"/>).</summary>
+        public System.Collections.Generic.IReadOnlyList<MadeHumanModel> MadeModels
+        {
+            get
+            {
+                if (_models == null || !ReferenceEquals(_modelsFor, MadeLooks) || _models.Count != Ready(MadeLooks))
+                {
+                    _modelsFor = MadeLooks;
+                    var list = new System.Collections.Generic.List<MadeHumanModel>();
+                    if (MadeLooks != null)
+                        foreach (MadeHumanLook m in MadeLooks)
+                            if (m != null && m.Model != null && !string.IsNullOrEmpty(m.Name)) list.Add(new MadeHumanModel(m.Name, string.IsNullOrEmpty(m.Folder) ? m.Name : m.Folder, m.Name));
+                    list.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
+                    _models = list;
+                }
+                return _models;
+            }
+        }
+
+        private static int Ready(MadeHumanLook[] all)
+        {
+            int n = 0;
+            if (all != null)
+                foreach (MadeHumanLook m in all)
+                    if (m != null && m.Model != null && !string.IsNullOrEmpty(m.Name)) n++;
+            return n;
+        }
+
+        /// <summary>Le personnage de MakeHuman prêt de ce nom réduit, ou null.</summary>
+        public MadeHumanLook MadeByName(string name)
+        {
+            if (MadeLooks == null || string.IsNullOrEmpty(name)) return null;
+            foreach (MadeHumanLook m in MadeLooks)
+                if (m != null && m.Model != null && m.Name == name) return m;
+            return null;
+        }
+
+        /// <summary>Le personnage de MakeHuman que porte <paramref name="id"/> (PNJ.txt, puis dossier au nom du PNJ), ou null.</summary>
+        public MadeHumanLook MadeFor(string id)
+        {
+            if (!UseMadeHumans || MadeLooks == null || MadeLooks.Length == 0) return null;
+            MadeHumanModel found = global::EdS.Runtime.MadeHumans.ModelFor(Mapping, MadeModels, id);
+            return found != null ? MadeByName(found.Name) : null;
+        }
 
         /// <summary>Sous-lot V2.9.2 : version des tenues peintes par la préparation (repeintes si elle change).</summary>
         [HideInInspector] public int HumanBake;

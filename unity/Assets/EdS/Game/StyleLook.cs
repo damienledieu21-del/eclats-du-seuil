@@ -328,6 +328,33 @@ namespace EdS.Game
     public static class StyleLook
     {
         /// <summary>
+        /// Sous-lot V2.16 : habille <paramref name="body"/> d'un personnage fait dans MakeHuman : prefab Humanoid à sa taille, animé par les
+        /// animations Humanoid des bibliothèques (retargeting : les mêmes que les corps de Quaternius). Null (le corps ne change pas) si
+        /// l'avatar n'est pas Humanoid ou s'il n'y a aucune animation.
+        /// </summary>
+        private static StyleBody DressMade(GameObject body, MadeHumanLook made, StyleCatalog catalog)
+        {
+            if (catalog.Humans == null || catalog.Humans.Clips == null || catalog.Humans.Clips.Length == 0) return null;
+            float height = made.Height > 0.5f ? made.Height : 1.75f;
+            GameObject look = Fit(made.Model, height, 0f, null, false, out float bottom, out GameObject model, false);
+            IClipPlayer player = HumanMotion.Create(model.GetComponentInChildren<Animator>(), catalog.Humans.Clips);
+            if (player == null)
+            {
+                Object.Destroy(look);
+                return null;
+            }
+            Vector3 hs = body.transform.localScale;
+            look.transform.SetParent(body.transform, false);
+            float hk = look.transform.localScale.y;
+            look.transform.localScale = new Vector3(hk / hs.x, hk / hs.y, hk / hs.z);
+            look.transform.localPosition = new Vector3(0f, -1f - bottom * hk / hs.y, 0f);
+            look.transform.localRotation = Quaternion.Euler(0f, made.Yaw, 0f);
+            Renderer capsule = body.GetComponent<Renderer>();
+            if (capsule != null) capsule.enabled = false;
+            return new StyleBody(look.transform, player, height, HumanOutfit.Peasant);
+        }
+
+        /// <summary>
         /// Habille <paramref name="body"/> (capsule de 2 m de haut à l'échelle 1, centrée à 1 m du sol) du modèle de <paramref name="slot"/>,
         /// à la hauteur <paramref name="height"/> ; rend null (rien ne change) sans catalogue ou sans modèle.
         /// </summary>
@@ -336,12 +363,20 @@ namespace EdS.Game
         /// sans lui, <paramref name="id"/>.
         /// </param>
         public static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId = null) =>
-            Dress(body, slot, id, height, lookId, true);
+            Dress(body, slot, id, height, lookId, true, true);
 
-        private static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId, bool humans)
+        private static StyleBody Dress(GameObject body, StyleSlot slot, string id, float height, string lookId, bool humans, bool made)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null) return null;
+            // Sous-lot V2.16 : un personnage fait dans MakeHuman (PNJ.txt, dossier au nom du PNJ, ou choix du joueur pour le héros) passe devant
+            // les corps de Quaternius et les personnages de Mixamo ; sans animations Humanoid ou sans avatar valable, il laisse la place.
+            if (made && humans && HumanBodies.MadeWanted(catalog, slot, id, lookId) is MadeHumanLook madeLook)
+            {
+                StyleBody madeBody = DressMade(body, madeLook, catalog);
+                if (madeBody != null) return madeBody;
+                return Dress(body, slot, id, height, lookId, humans, false);
+            }
             // Sous-lot V2.9.2 : un corps humain (villageois, gardes, PNJ, bandits sans personnage de Mixamo, le héros sans paladin) ; sinon le
             // modèle du catalogue, comme avant.
             HumanLook? human = humans ? HumanBodies.Wanted(catalog, slot, id, lookId) : null;
@@ -360,7 +395,7 @@ namespace EdS.Game
                 if (player == null)
                 {
                     Object.Destroy(look);
-                    return Dress(body, slot, id, height, lookId, false);
+                    return Dress(body, slot, id, height, lookId, false, false);
                 }
                 Vector3 hs = body.transform.localScale;
                 look.transform.SetParent(body.transform, false);
