@@ -421,7 +421,7 @@ namespace EdS.Game
 
         private RectTransform _settings;
         private UiButton _mouseMode, _invertY, _textures;
-        private UiText _sensitivity;
+        private UiText _sensitivity, _brightness;
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
 
@@ -445,12 +445,13 @@ namespace EdS.Game
             _invertY.Text.Value = invertY ? "Haut-bas : inversé" : "Haut-bas : normal";
             _sensitivity.Value = "Sensibilité " + sensitivity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
             _textures.Text.Value = DeviceQuality.Label;   // sous-lot V2.12.4
+            _brightness.Value = BrightnessSetting.Label;   // sous-lot V2.13
         }
 
         private void BuildSettings()
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 500f, 560f, 304f, 0.5f, 0.5f);
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 520f, 560f, 364f, 0.5f, 0.5f);
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
@@ -469,6 +470,13 @@ namespace EdS.Game
             // Sous-lot V2.12.4 : qualité des textures (auto, pleine, moitié, quart), sauvegardée et appliquée tout de suite.
             _textures = UiKit.Button(_settings, "Textures", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, DeviceQuality.Cycle);
             At(_textures.Rect, 280f, 250f, 440f, 44f, 0.5f, 0.5f);
+            // Sous-lot V2.13 (« le jeu est trop sombre ») : luminosité de 50 % à 200 %, par pas de 10, sauvegardée et appliquée en direct.
+            UiButton darker = UiKit.Button(_settings, "Moins lumineux", "bouton_sobre", "−", UiFace.Title, 24f, UiKit.Ink, () => BrightnessSetting.Step(-1));
+            At(darker.Rect, 120f, 304f, 52f, 44f, 0.5f, 0.5f);
+            _brightness = UiText.Create(_settings, "Luminosité", UiFace.Bold, 18f, UiKit.Dawn, TextAnchor.MiddleCenter, 6f, true);
+            At(_brightness.Rect, 280f, 304f, 240f, 40f, 0.5f, 0.5f);
+            UiButton brighter = UiKit.Button(_settings, "Plus lumineux", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => BrightnessSetting.Step(1));
+            At(brighter.Rect, 440f, 304f, 52f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 

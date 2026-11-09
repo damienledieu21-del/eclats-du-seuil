@@ -25,6 +25,9 @@ namespace EdS.Runtime
     /// <summary>Suite de « Préparer et lancer l'essai » après la scène de démarrage.</summary>
     public enum LaunchStep { Continue, StopSilently, StopWithMessage }
 
+    /// <summary>Décision de « Lancer l'essai (déjà préparé) » (V2.12.9).</summary>
+    public enum PreparedLaunchStep { Play, AlreadyPlaying, NeedsPreparation, StopSilently, StopWithMessage }
+
     /// <summary>Résultat d'une sauvegarde : issue, fichier final ou brouillon laissé, nombre d'entrées, message pour l'utilisateur.</summary>
     public sealed class BackupResult
     {
@@ -115,6 +118,26 @@ namespace EdS.Runtime
             if (state == StartupSceneState.Cancelled) return LaunchStep.StopSilently;
             return state == StartupSceneState.Ready && sceneAssetExists ? LaunchStep.Continue : LaunchStep.StopWithMessage;
         }
+
+        /// <summary>
+        /// V2.12.9 : décision du lancement sans préparation, dans l'ordre : jeu déjà lancé (message), catalogue de style absent (faire d'abord
+        /// la préparation), puis la scène de démarrage comme <see cref="AfterStartupScene"/> (annulée = arrêt sans message, échec ou absente =
+        /// arrêt avec message) ; sinon on peut lancer.
+        /// </summary>
+        public static PreparedLaunchStep PreparedLaunch(bool playingOrWillChange, bool catalogExists, StartupSceneState state, bool sceneAssetExists)
+        {
+            if (playingOrWillChange) return PreparedLaunchStep.AlreadyPlaying;
+            if (!catalogExists) return PreparedLaunchStep.NeedsPreparation;
+            switch (AfterStartupScene(state, sceneAssetExists))
+            {
+                case LaunchStep.StopSilently: return PreparedLaunchStep.StopSilently;
+                case LaunchStep.StopWithMessage: return PreparedLaunchStep.StopWithMessage;
+                default: return PreparedLaunchStep.Play;
+            }
+        }
+
+        /// <summary>V2.12.9 : après la question d'enregistrement de la scène ouverte, annuler arrête tout sans rien faire de plus.</summary>
+        public static LaunchStep AfterSceneSave(bool userAccepted) => userAccepted ? LaunchStep.Continue : LaunchStep.StopSilently;
 
         /// <summary>
         /// Faut-il ouvrir la scène de démarrage seule (avec la question d'enregistrement) avant de lancer le jeu ? Oui sauf si elle est déjà

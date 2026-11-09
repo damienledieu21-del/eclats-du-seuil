@@ -437,24 +437,70 @@ Suite de ton essai du 9 novembre 2026 (PC modeste) : four et comptoir blancs, pe
 | 25.8 | Même chose en mode « PC modeste » | Des flaques plus petites en nombre, mates, mais pas noires | [ ] | |
 | 24.7 (à refaire) | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison | [ ] | Pas revu à cet essai : s'il semble encore dans une maison, laquelle et à quelle heure |
 
-## 26. Vraies boutiques et grand jour de marché (V2.14)
+## 26. Mémoire au lancement et « Lancer l'essai (déjà préparé) » (V2.12.9)
+
+Suite de ton essai du 9 novembre 2026 (PC de 4 Go, mode « PC modeste ») : après la préparation et la vérification, le passage en mode Jeu s'arrêtait sur « System out of memory » (texture). La mémoire est maintenant libérée avant le mode Jeu et pendant la vérification des objets blancs ou roses. **Sur PC modeste : prépare une fois** (« Éclats du Seuil → Préparer l'essai de style »), **ferme les autres applications, rouvre Unity**, puis utilise **« Éclats du Seuil → Lancer l'essai (déjà préparé) »** : ni préparation ni vérification complète, il ouvre la scène de démarrage et lance le mode Jeu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 26.1 | « Préparer et lancer l'essai » | Le jeu démarre, plus de « System out of memory » | [ ] | Sinon : capture de la Console |
+| 26.2 | Unity rouvert, « Lancer l'essai (déjà préparé) » | La scène de démarrage s'ouvre et le jeu démarre, sans préparation | [ ] | |
+| 26.3 | Même menu sur un projet jamais préparé | Un message demande de faire d'abord « Préparer l'essai de style » | [ ] | |
+
+## 27. Jeu plus lumineux et curseur de luminosité (V2.13)
+
+Suite de ton retour du 9 novembre 2026 (« le jeu est trop sombre »). **Refaire « Préparer l'essai de style »** (il remet la lumière du dehors en version 3 et celle des intérieurs en version 2 ; le compte rendu le dit), puis lancer le jeu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 27.1 | Village, en plein jour (12 h) | Image **nettement plus claire** qu'avant, couleurs vives mais pas délavées, ombres encore lisibles | [ ] | Trop clair, trop terne ? Le dire |
+| 27.2 | Le même endroit au loin | Brume plus lointaine : on voit plus loin avant qu'elle ne gagne | [ ] | |
+| 27.3 | Entrer dans une maison, une boutique, la taverne | Pièce **claire**, on distingue meubles et murs sans lanterne proche ; feux et bougies chauds | [ ] | |
+| 27.4 | Dehors à minuit (ou aperçu de l'heure dans l'éditeur) | Nuit **bleue mais lisible** : chemins, maisons et créatures se voient, pas de noir total | [ ] | Trop sombre ou plus assez « nuit » ? Le dire |
+| 27.5 | Aube et crépuscule (6 h, 20 h 30) | Transitions douces, pas plus sombres que le plein jour au point de gêner | [ ] | |
+| 27.6 | Échap, « Pause et réglages » | Une ligne « Luminosité : 100 % » avec « − » et « + » sous le bouton des textures | [ ] | |
+| 27.7 | Appuyer sur « + » plusieurs fois, jusqu'à 200 % | L'image s'éclaircit **en direct**, par pas de 10 %, et s'arrête à 200 % | [ ] | Délavé à 200 % ? Normal : réglage d'appoint |
+| 27.8 | Appuyer sur « − » jusqu'à 50 % | L'image s'assombrit en direct, s'arrête à 50 % | [ ] | |
+| 27.9 | Régler 130 %, entrer dans une maison, ressortir | Le réglage tient dehors comme dedans | [ ] | |
+| 27.10 | Quitter le jeu et le relancer | La luminosité choisie est **retrouvée** dans les réglages | [ ] | |
+| 27.11 | En mode « PC modeste » | Même rendu ; aucune lenteur nouvelle | [ ] | Images par seconde plus basses qu'avant ? Le dire |
+
+## 28. Démarche réaliste (V2.15)
+
+Suite de ton retour du 9 novembre 2026 : « la façon de marcher des personnages et des animaux manque de réalisme ». Direction décidée le même jour : réaliste, adaptée au PC (y compris « PC modeste »). Tout est de l'affichage : le combat et les places du moteur ne changent pas. Pas besoin de refaire la préparation. Regarde surtout les **pieds** (glissent-ils ?) et les **demi-tours**.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 28.1 | Le héros marche lentement, puis court, au bourg | Les pieds **ne glissent plus** : la cadence des pas suit la vitesse ; entre marche et course, le pas s'allonge peu à peu (corps humain : marche et course mêlées, pieds ensemble) | [ ] | Paladin (Mixamo) : passage marche → course net, mais cadence réglée |
+| 28.2 | Lâcher la touche en pleine course | Il s'arrête en un court instant, **sans patiner sur place** ; il ne repart pas en piétinant | [ ] | |
+| 28.3 | Faire demi-tour (touche arrière ou cible derrière soi) | Il **tourne** (environ une demi-seconde), plus de volte-face instantanée ; à l'arrêt, il pivote à **petits pas** | [ ] | Trop lent pour jouer ? Le dire (on règle la vitesse de rotation) |
+| 28.4 | Courir en décrivant un grand virage | Le corps **penche** légèrement vers l'intérieur du virage (quelques degrés), se redresse en ligne droite | [ ] | |
+| 28.5 | Monter sur le pont cintré, à l'arrêt puis en marchant | Les pieds **posés sur le tablier**, le bassin descend un peu côté pente (pas sur PC modeste : les pieds restent à plat, le corps à la bonne hauteur) | [ ] | Seulement les corps humains (Quaternius) |
+| 28.6 | Regarder 30 s un groupe de villageois qui attendent | Ils ne respirent **pas ensemble** ; de temps en temps l'un croise les bras ou regarde autour, chacun à son moment ; la tête bouge un peu | [ ] | |
+| 28.7 | Passer à moins de 9 m d'un PNJ ou d'un garde | Sa **tête suit** le héros (sans se tordre le cou ; s'il est derrière, il ne le suit plus) | [ ] | |
+| 28.8 | Suivre un passant jusqu'au bout de son allée, et un villageois qui va au puits | Il **ralentit** avant d'arriver, se retourne à petits pas, **repart en accélérant** | [ ] | |
+| 28.9 | Ferme : un cheval, un âne, une vache qui se promènent | Ils partent au pas en accélérant, **tournent en marchant** (jamais sur place), ralentissent avant de s'arrêter ; sabots et pattes sans glisser ; leur tête suit le héros proche, sinon regarde autour | [ ] | |
+| 28.10 | Bêtes de la forêt (loup, sanglier, cerf, biche, ours) : les approcher pour les faire fuir ou charger | **Pas, trot, galop** selon la vitesse si le modèle en a les clips, sinon cadence réglée ; à l'arrêt elles broutent ou reniflent ; elles ne pivotent plus sur place | [ ] | Dire quelle bête n'a qu'un seul cycle (on cherchera le clip) |
+| 28.11 | Cerf ou lièvre en formes simples (sans modèle) | Les pattes battent plus lentement quand il ralentit | [ ] | |
+| 28.12 | Même tour en mode « PC modeste » | Tout pareil sauf les pieds sur le relief (28.5) ; pas de saccade en plus | [ ] | Images par seconde avant/après, si possible |
+## 29. Vraies boutiques et grand jour de marché (V2.14)
 
 Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des boutiques** avancent la partie (hors du mode Jeu) au prochain mercredi de marché (6 h 30, 9 h, 18 h), au jeudi (10 h), au mardi (5 h, 6 h, 19 h 15), au lundi (10 h) ou au dimanche (10 h). Le calendrier : le jour 0 est un lundi ; marché le **mercredi** et le **samedi**.
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 26.1 | Au bourg, regarder les maisons des boutiques | Une **enseigne** de bois pendue à côté de la porte de la boulangerie, de l'épicerie, de l'herboristerie, de la mercerie et de l'auberge ; l'étiquette dit son nom et « ouverte », « fermée », « fermée, on répond à la porte » ou « fermée : jour de repos » | [ ] | |
-| 26.2 | « mardi, 5 h » : la cheminée du fournil, puis entrer dans la boulangerie (porte au sud de la grande maison, à droite de Firmin) | De la **fumée** sort de la cheminée (Firmin pétrit depuis 2 h) ; dedans : le **four voûté** dont la bouche rougeoie, le **pétrin** et sa pâte, les étagères de pains, Colin au comptoir ; la boutique dit « Fermé : Colin, le commis vous répond à la porte » et « Première fournée à 5 h 30 » ; rien en stock | [ ] | |
-| 26.3 | « mardi, 6 h », au comptoir | « Pains chauds, tout juste sortis du four ! » ; pain de campagne, miche de seigle, croissants, brioches en stock (un peu moins chaque heure : le bourg achète aussi) | [ ] | |
-| 26.4 | « mardi, 19 h 15 » | « Tout est parti : prochaine fournée demain à 5 h 30 » ; les offres fraîches en rupture (rouge) | [ ] | |
-| 26.5 | « lundi, 10 h », boulangerie | Jour de repos : Colin répond à la porte, **seulement le pain de campagne** ; la boutique dit la réouverture mardi à 5 h 30 ; pas de fumée | [ ] | |
-| 26.6 | « dimanche, 10 h », chez Garin puis chez Bertille | « Boutique fermée : jour de repos. Réouverture lundi à 5 h. » ; leur dialogue s'ouvre quand même ; Sauge, elle, reste ouverte (jour et nuit, comme décidé le 30 octobre) | [ ] | |
-| 26.7 | Entrer dans l'épicerie, l'herboristerie, la mercerie | Un comptoir, des étagères garnies (rouleaux de toile à la mercerie, rouet), un commis derrière le comptoir (Margot à la mercerie) ; F au comptoir ouvre la boutique (fermée, elle le dit) | [ ] | |
-| 26.8 | « mercredi, 6 h 30 », place du bourg | Les **étals s'installent** (tables, tentes, sans marchandises) ; Gisèle la fromagère et Ilario, marchand d'épices, sont là mais ne vendent pas encore ; le bandeau dit « Jour de marché : les étals s'installent » | [ ] | |
-| 26.9 | « mercredi, 9 h » | Marchandises sur les huit étals, **foule** plus dense, **criées** dans le bandeau quand tu es sur la place ; fromages et miel chez Gisèle, épices et fruits du Sud chez Ilario, Anseau le colporteur ; potions et herbes à 90 % chez Sauge et Bertille | [ ] | |
-| 26.10 | Chez Gisèle, avec une réputation « appréciée » auprès des villageois | Le bouton **Marchander** : accepté (15 % de moins pour la journée) ou refusé (« c'est mon dernier prix ») ; redemander ne change rien ce jour-là ; « honoré » ou « héros » : plus de chances ; neutre : pas de bouton | [ ] | |
-| 26.11 | « mercredi, 18 h » puis 20 h | On démonte : tables sans marchandises, plus de foule ; à 20 h la place est vide, Gisèle et Ilario repartis | [ ] | |
-| 26.12 | « jeudi, 10 h » | Place calme ; le bandeau de la boutique ou du lieu annonce le prochain marché (samedi) | [ ] | |
-| 26.13 | La forge de Maëlle | Un **atelier couvert** (poteaux et toit d'appentis) au-dessus de l'enclume et de l'établi | [ ] | |
-| 26.14 | Une quête en cours (Firmin, Sauge, Bertille) un jour de repos ou la nuit | La quête n'est jamais bloquée : le PNJ parle ; ce qu'une quête demande d'acheter se trouve toujours (Sauge jour et nuit, ou à la porte) | [ ] | |
-| 26.15 | Ton avis : horaires, jours de repos, fournées, prix du pain, jours et heures du marché, marchandage, enseignes, fumée, foule | — | [ ] | |
+| 29.1 | Au bourg, regarder les maisons des boutiques | Une **enseigne** de bois pendue à côté de la porte de la boulangerie, de l'épicerie, de l'herboristerie, de la mercerie et de l'auberge ; l'étiquette dit son nom et « ouverte », « fermée », « fermée, on répond à la porte » ou « fermée : jour de repos » | [ ] | |
+| 29.2 | « mardi, 5 h » : la cheminée du fournil, puis entrer dans la boulangerie (porte au sud de la grande maison, à droite de Firmin) | De la **fumée** sort de la cheminée (Firmin pétrit depuis 2 h) ; dedans : le **four voûté** dont la bouche rougeoie, le **pétrin** et sa pâte, les étagères de pains, Colin au comptoir ; la boutique dit « Fermé : Colin, le commis vous répond à la porte » et « Première fournée à 5 h 30 » ; rien en stock | [ ] | |
+| 29.3 | « mardi, 6 h », au comptoir | « Pains chauds, tout juste sortis du four ! » ; pain de campagne, miche de seigle, croissants, brioches en stock (un peu moins chaque heure : le bourg achète aussi) | [ ] | |
+| 29.4 | « mardi, 19 h 15 » | « Tout est parti : prochaine fournée demain à 5 h 30 » ; les offres fraîches en rupture (rouge) | [ ] | |
+| 29.5 | « lundi, 10 h », boulangerie | Jour de repos : Colin répond à la porte, **seulement le pain de campagne** ; la boutique dit la réouverture mardi à 5 h 30 ; pas de fumée | [ ] | |
+| 29.6 | « dimanche, 10 h », chez Garin puis chez Bertille | « Boutique fermée : jour de repos. Réouverture lundi à 5 h. » ; leur dialogue s'ouvre quand même ; Sauge, elle, reste ouverte (jour et nuit, comme décidé le 30 octobre) | [ ] | |
+| 29.7 | Entrer dans l'épicerie, l'herboristerie, la mercerie | Un comptoir, des étagères garnies (rouleaux de toile à la mercerie, rouet), un commis derrière le comptoir (Margot à la mercerie) ; F au comptoir ouvre la boutique (fermée, elle le dit) | [ ] | |
+| 29.8 | « mercredi, 6 h 30 », place du bourg | Les **étals s'installent** (tables, tentes, sans marchandises) ; Gisèle la fromagère et Ilario, marchand d'épices, sont là mais ne vendent pas encore ; le bandeau dit « Jour de marché : les étals s'installent » | [ ] | |
+| 29.9 | « mercredi, 9 h » | Marchandises sur les huit étals, **foule** plus dense, **criées** dans le bandeau quand tu es sur la place ; fromages et miel chez Gisèle, épices et fruits du Sud chez Ilario, Anseau le colporteur ; potions et herbes à 90 % chez Sauge et Bertille | [ ] | |
+| 29.10 | Chez Gisèle, avec une réputation « appréciée » auprès des villageois | Le bouton **Marchander** : accepté (15 % de moins pour la journée) ou refusé (« c'est mon dernier prix ») ; redemander ne change rien ce jour-là ; « honoré » ou « héros » : plus de chances ; neutre : pas de bouton | [ ] | |
+| 29.11 | « mercredi, 18 h » puis 20 h | On démonte : tables sans marchandises, plus de foule ; à 20 h la place est vide, Gisèle et Ilario repartis | [ ] | |
+| 29.12 | « jeudi, 10 h » | Place calme ; le bandeau de la boutique ou du lieu annonce le prochain marché (samedi) | [ ] | |
+| 29.13 | La forge de Maëlle | Un **atelier couvert** (poteaux et toit d'appentis) au-dessus de l'enclume et de l'établi | [ ] | |
+| 29.14 | Une quête en cours (Firmin, Sauge, Bertille) un jour de repos ou la nuit | La quête n'est jamais bloquée : le PNJ parle ; ce qu'une quête demande d'acheter se trouve toujours (Sauge jour et nuit, ou à la porte) | [ ] | |
+| 29.15 | Ton avis : horaires, jours de repos, fournées, prix du pain, jours et heures du marché, marchandage, enseignes, fumée, foule | — | [ ] | |

@@ -39,6 +39,12 @@ namespace EdS.Game
             public float Lift;
             public float Yaw;
             public bool Moving;
+
+            /// <summary>Sous-lot V2.15 : allure du moment (m/s) : elle part au pas en accélérant, ralentit avant de s'arrêter, tourne en marchant.</summary>
+            public float Pace;
+
+            /// <summary>Sous-lot V2.15 : sa tête, qui suit le héros proche ou regarde autour (null sans os de tête).</summary>
+            public HeadTurn Head;
             public Vector3 Target;
             public float RestUntil;
             public int Wander;
@@ -201,6 +207,9 @@ namespace EdS.Game
                         if (idle != null) idle.time = idle.length * Next();
                     }
                 }
+                // Sous-lot V2.15 : sa tête suit le héros proche ou regarde autour (graine : son nom et sa place).
+                if (slot != StyleSlot.Crow)
+                    beast.Head = HeadTurn.Attach(look.transform, look.transform, Locomotion.Seed(look.name) ^ (uint)Mathf.RoundToInt(at.x * 100f + at.z * 7f), true);
                 _beasts.Add(beast);
             }
         }
@@ -220,6 +229,13 @@ namespace EdS.Game
                 Beast b = _beasts[i];
                 // Revue Codex de la PR #114 (tour 2) : une bête sans composant Animation erre quand même (marche faite par le code).
                 if (b.Root == null) continue;
+                if (b.Head != null)
+                {
+                    // Sous-lot V2.15 : à moins de 8 m, la tête suit le héros ; sinon elle regarde autour (moins en marchant).
+                    b.Head.HasTarget = (b.Root.position - player).sqrMagnitude < 64f;
+                    b.Head.Target = player;
+                    b.Head.Glance = b.Moving ? 0.3f : 1f;
+                }
                 if (b.Slot == StyleSlot.Crow)
                 {
                     Crow(b, player);
@@ -315,16 +331,30 @@ namespace EdS.Game
                 Settle(b, index);
                 return;
             }
-            (double x, double z, double yaw, bool reached) = BeastCalls.Step(at.x, at.z, wx, wz, b.Speed, deltaTime);
+            // Sous-lot V2.15 : allure lissée (départ au pas qui accélère, ralenti avant le but), presque à l'arrêt tant qu'elle n'est pas
+            // tournée vers où elle va (une bête ne pivote pas sur place, elle tourne en marchant), virage borné et lissé.
+            float aim = (wx - at.x) * (wx - at.x) + (wz - at.z) * (wz - at.z) > 1e-8 ? (float)StyleRules.FaceYaw(at.x, at.z, wx, wz) : b.Yaw;
+            double factor = Locomotion.TurnSpeedFactor(aim - b.Yaw);
+            float left = Mathf.Sqrt((b.Target.x - at.x) * (b.Target.x - at.x) + (b.Target.z - at.z) * (b.Target.z - at.z));
+            double wanted = System.Math.Max(Locomotion.ArriveSpeed(b.Speed * factor * factor, left, 0.8), System.Math.Min(0.1, b.Speed));
+            b.Pace = (float)Locomotion.Accelerate(b.Pace, wanted, 0.7, 1.2, deltaTime);
+            (double x, double z, double _, bool reached) = BeastCalls.Step(at.x, at.z, wx, wz, b.Pace, deltaTime);
             bool arrived = reached && Mathf.Abs((float)wx - b.Target.x) < 0.06f && Mathf.Abs((float)wz - b.Target.z) < 0.06f;
             float moved = Mathf.Sqrt(((float)x - at.x) * ((float)x - at.x) + ((float)z - at.z) * ((float)z - at.z));
-            b.Yaw = Mathf.MoveTowardsAngle(b.Yaw, (float)yaw, 160f * deltaTime);
+            b.Yaw = (float)Locomotion.TurnStep(b.Yaw, aim, Locomotion.MaxTurnRate(b.Pace, true), 0.2, deltaTime);
+            // Sous-lot V2.15 : la cadence du clip de marche suit l'allure (plus de sabots qui glissent).
+            if (b.Walk != null && b.Animation != null && b.Slot != StyleSlot.Crow)
+            {
+                AnimationState walking = b.Animation[b.Walk];
+                if (walking != null)
+                    walking.speed = (float)Locomotion.PlaybackRate(b.Pace, Locomotion.NaturalSpeed(LocomotionGait.Walk, b.Height, true), 0.35, 1.6);
+            }
             float px = (float)x, pz = (float)z, bob = 0f, pitch = 0f, roll = 0f, sway = 0f;
             if (b.Slot == StyleSlot.Crow) bob = 0.12f * Mathf.Abs(Mathf.Sin(_beastClock * 9f));   // le corbeau sautille
             else if (b.Walk == null)
             {
                 // Pas de clip de marche (vache, chien) : le corps se balance au pas, comme le sanglier sans squelette.
-                (double gb, double gp, double gr, double gy) = BeastCalls.StaticGait(b.Speed, _beastClock, null);
+                (double gb, double gp, double gr, double gy) = BeastCalls.StaticGait(b.Pace, _beastClock, null);
                 bob = (float)gb * b.Height;
                 pitch = (float)gp;
                 roll = (float)gr;
@@ -382,6 +412,7 @@ namespace EdS.Game
         private void Settle(Beast b, int index)
         {
             b.Moving = false;
+            b.Pace = 0f;
             if (b.Stepping)
             {
                 for (int l = 0; l < b.Legs.Length; l++)
