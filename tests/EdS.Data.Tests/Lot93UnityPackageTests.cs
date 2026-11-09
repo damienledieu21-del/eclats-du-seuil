@@ -174,7 +174,12 @@ public class Lot93UnityPackageTests
         string wave5 = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsWave5.cs"));
         Assert.Contains("EditorUtility.UnloadUnusedAssetsImmediate();", style, StringComparison.Ordinal);
         Assert.Contains("Breathe(ref prepared);", style, StringComparison.Ordinal);
-        Assert.Contains("EdsStyle.Breathe(ref breathe);", wave5, StringComparison.Ordinal);
+        // V2.12.3 : Breathe détruisait le catalogue en cours de remplissage (MissingReferenceException) : jamais après son chargement.
+        Assert.DoesNotContain("Breathe(", wave5, StringComparison.Ordinal);
+        int load = style.IndexOf("AssetDatabase.LoadAssetAtPath<StyleCatalog>(CatalogPath)", StringComparison.Ordinal);
+        Assert.True(load > 0 && style.LastIndexOf("Breathe(ref prepared);", StringComparison.Ordinal) < load);
+        Assert.True(style.IndexOf("EditorUtility.SetDirty(catalog);", load, StringComparison.Ordinal) is int dirty && dirty > load
+            && dirty < style.IndexOf("catalog.Hero = Load(hero);", load, StringComparison.Ordinal));
     }
 
     [Fact]
