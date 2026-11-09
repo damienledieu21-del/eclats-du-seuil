@@ -436,3 +436,23 @@ Suite de ton essai du 9 novembre 2026 (PC modeste) : four et comptoir blancs, pe
 | 25.7 | Pluie (touche météo de l'essai), puis regarder les chemins | Des flaques **transparentes**, bord fondu, qui reprennent la couleur du ciel, plus de disques noirs ; à l'arrêt de la pluie elles rétrécissent puis disparaissent | [ ] | Trop claires ou trop sombres ? Le dire |
 | 25.8 | Même chose en mode « PC modeste » | Des flaques plus petites en nombre, mates, mais pas noires | [ ] | |
 | 24.7 (à refaire) | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison | [ ] | Pas revu à cet essai : s'il semble encore dans une maison, laquelle et à quelle heure |
+
+
+## 27. Jeu plus lumineux et curseur de luminosité (V2.13)
+
+Suite de ton retour du 9 novembre 2026 (« le jeu est trop sombre »). **Refaire « Préparer l'essai de style »** (il remet la lumière du dehors en version 3 et celle des intérieurs en version 2 ; le compte rendu le dit), puis lancer le jeu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 27.1 | Village, en plein jour (12 h) | Image **nettement plus claire** qu'avant, couleurs vives mais pas délavées, ombres encore lisibles | [ ] | Trop clair, trop terne ? Le dire |
+| 27.2 | Le même endroit au loin | Brume plus lointaine : on voit plus loin avant qu'elle ne gagne | [ ] | |
+| 27.3 | Entrer dans une maison, une boutique, la taverne | Pièce **claire**, on distingue meubles et murs sans lanterne proche ; feux et bougies chauds | [ ] | |
+| 27.4 | Dehors à minuit (ou aperçu de l'heure dans l'éditeur) | Nuit **bleue mais lisible** : chemins, maisons et créatures se voient, pas de noir total | [ ] | Trop sombre ou plus assez « nuit » ? Le dire |
+| 27.5 | Aube et crépuscule (6 h, 20 h 30) | Transitions douces, pas plus sombres que le plein jour au point de gêner | [ ] | |
+| 27.6 | Échap, « Pause et réglages » | Une ligne « Luminosité : 100 % » avec « − » et « + » sous le bouton des textures | [ ] | |
+| 27.7 | Appuyer sur « + » plusieurs fois, jusqu'à 200 % | L'image s'éclaircit **en direct**, par pas de 10 %, et s'arrête à 200 % | [ ] | Délavé à 200 % ? Normal : réglage d'appoint |
+| 27.8 | Appuyer sur « − » jusqu'à 50 % | L'image s'assombrit en direct, s'arrête à 50 % | [ ] | |
+| 27.9 | Régler 130 %, entrer dans une maison, ressortir | Le réglage tient dehors comme dedans | [ ] | |
+| 27.10 | Quitter le jeu et le relancer | La luminosité choisie est **retrouvée** dans les réglages | [ ] | |
+| 27.11 | En mode « PC modeste » | Même rendu ; aucune lenteur nouvelle | [ ] | Images par seconde plus basses qu'avant ? Le dire |
+
