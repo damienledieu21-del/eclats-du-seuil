@@ -326,7 +326,7 @@ namespace EdS.Game.Editor
             if (catalog.IndoorVersion < StyleCatalog.IndoorDefaults)
             {
                 catalog.ResetIndoor();
-                notes.Add("Lumière des intérieurs remise aux réglages de l'essai (version " + StyleCatalog.IndoorDefaults + ", V1.10 : plus claire).");
+                notes.Add("Lumière des intérieurs remise aux réglages de l'essai (version " + StyleCatalog.IndoorDefaults + ", V1.10 puis V2.13 : plus claire).");
             }
             catalog.Terrain = TerrainMaterial();
             // Sous-lot V2.9.2 (4e vague) : corps humains (Universal Base Characters, Universal Animation Library).

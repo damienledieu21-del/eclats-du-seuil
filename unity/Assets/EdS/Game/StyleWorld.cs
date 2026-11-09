@@ -146,7 +146,7 @@ namespace EdS.Game
             }
             if (_colors != null)
             {
-                _colors.postExposure.value = catalog.Exposure + (float)light.Exposure + (float)weather.Exposure;
+                _colors.postExposure.value = catalog.Exposure + (float)light.Exposure + (float)weather.Exposure + BrightnessSetting.ExposureOffset;   // V2.13 : curseur de luminosité
                 _colors.contrast.value = catalog.Contrast;
                 _colors.saturation.value = catalog.Saturation + (float)light.Saturation + (float)weather.Saturation - 70f * _scarFade;   // sous-lot V2.6 : couleurs fanées
                 _vignette.intensity.value = catalog.Vignette;
@@ -258,7 +258,7 @@ namespace EdS.Game
             if (_colors != null)
             {
                 float exposure = catalog != null ? catalog.Exposure + catalog.IndoorExposure : 0f;
-                _colors.postExposure.value = exposure + 0.35f;
+                _colors.postExposure.value = exposure + 0.35f + BrightnessSetting.ExposureOffset;
                 _colors.contrast.value = (catalog != null ? catalog.Contrast : 0f) + 12f;
                 _colors.saturation.value = -45f;
                 if (_colors.colorFilter != null) _colors.colorFilter.value = new Color(0.86f, 0.93f, 1.08f);
@@ -351,7 +351,7 @@ namespace EdS.Game
             }
             if (_colors != null && catalog != null)
             {
-                _colors.postExposure.value = catalog.Exposure + catalog.IndoorExposure;
+                _colors.postExposure.value = catalog.Exposure + catalog.IndoorExposure + BrightnessSetting.ExposureOffset;
                 _colors.contrast.value = catalog.Contrast;
                 _colors.saturation.value = catalog.Saturation;
                 _vignette.intensity.value = Mathf.Min(0.5f, catalog.Vignette + 0.12f);

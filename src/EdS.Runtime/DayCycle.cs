@@ -151,11 +151,11 @@ namespace EdS.Runtime
         /// Ambiance la plus faible de la nuit, en part de celle du catalogue : la nuit reste lisible (on voit les chemins, les loups, les
         /// maisons). Provisoire, réglable.
         /// </summary>
-        public const double NightAmbient = 0.55;
+        public const double NightAmbient = 0.7;
 
         private static readonly StyleTint MoonTint = new StyleTint(0.62, 0.74, 1.0);
         private static readonly StyleTint NightBlue = new StyleTint(0.52, 0.62, 1.0);
-        private static readonly StyleTint NightFog = new StyleTint(0.2, 0.26, 0.48);
+        private static readonly StyleTint NightFog = new StyleTint(0.3, 0.38, 0.58);
         private static readonly StyleTint DawnTint = new StyleTint(1.0, 0.78, 0.66);
         private static readonly StyleTint DawnAmbient = new StyleTint(0.95, 0.82, 0.86);
         private static readonly StyleTint DawnFog = new StyleTint(0.95, 0.78, 0.78);
@@ -170,16 +170,16 @@ namespace EdS.Runtime
         /// </summary>
         private static readonly Key[] Keys =
         {
-            new Key(0, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
-            new Key(255, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
-            new Key(MoonSets, 0, MoonTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.35, -0.3, -12),
-            new Key(360, 0.55, DawnTint, LowSun, 0, 0.75, DawnAmbient, DawnFog, 0.62, -0.15, -4),
+            new Key(0, 0.55, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.32, -0.15, -12),
+            new Key(255, 0.55, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.32, -0.15, -12),
+            new Key(MoonSets, 0, MoonTint, LowSun, 0, 0.74, NightBlue, NightFog, 0.4, -0.2, -9),
+            new Key(360, 0.55, DawnTint, LowSun, 0, 0.82, DawnAmbient, DawnFog, 0.68, -0.08, -3),
             new Key(450, 1, StyleTint.White, LowSun, 1, 1, StyleTint.White, StyleTint.White, 1, 0, 0),
             new Key(1110, 1, StyleTint.White, LowSun, 1, 1, StyleTint.White, StyleTint.White, 1, 0, 0),
-            new Key(1230, 0.6, DuskTint, LowSun, 0, 0.78, DuskAmbient, DuskFog, 0.6, -0.12, 4),
-            new Key(MoonRises, 0, DuskTint, LowSun, 0, 0.62, NightBlue, NightFog, 0.32, -0.28, -10),
-            new Key(1350, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
-            new Key(1440, 0.42, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.22, -0.35, -18),
+            new Key(1230, 0.6, DuskTint, LowSun, 0, 0.85, DuskAmbient, DuskFog, 0.66, -0.06, 4),
+            new Key(MoonRises, 0, DuskTint, LowSun, 0, 0.74, NightBlue, NightFog, 0.38, -0.18, -8),
+            new Key(1350, 0.55, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.32, -0.15, -12),
+            new Key(1440, 0.55, MoonTint, MoonHeight, 0, NightAmbient, NightBlue, NightFog, 0.32, -0.15, -12),
         };
 
         /// <summary>Lumière du monde à la minute <paramref name="minute"/> du jour (ramenée dans [0, 1440[).</summary>
