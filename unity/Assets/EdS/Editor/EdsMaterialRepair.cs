@@ -187,29 +187,31 @@ namespace EdS.Game.Editor
                     }
                     // Où la copie sera posée : dans le slot d'un prefab ; pour un fichier de modèle, par remappage d'import de la matière
                     // interne (le fichier) ou externe (celle que la table des matières externes nomme). Sinon rien n'est réparé (ni compté).
-                    AssetImporter.SourceAssetIdentifier key = default;
+                    // Plusieurs identifiants sources peuvent pointer vers la même matière externe : tous sont remappés.
+                    var keys = new List<AssetImporter.SourceAssetIdentifier>();
                     bool remap = false;
                     if (!isPrefab)
                     {
                         if (m == null) continue;
                         if (AssetDatabase.GetAssetPath(m) == path)
                         {
-                            key = new AssetImporter.SourceAssetIdentifier(m);
+                            keys.Add(new AssetImporter.SourceAssetIdentifier(m));
                             remap = true;
                         }
                         else
                             foreach (KeyValuePair<AssetImporter.SourceAssetIdentifier, Object> pair in importer.GetExternalObjectMap() ?? new Dictionary<AssetImporter.SourceAssetIdentifier, Object>())
                                 if (pair.Value == m)
                                 {
-                                    key = pair.Key;
+                                    keys.Add(pair.Key);
                                     remap = true;
-                                    break;
                                 }
                         if (!remap) continue;
                     }
                     string name = m != null ? m.name : modelName + " " + i;
                     // Jamais le fichier d'origine : une copie dans Generated/Reparees.
-                    string copy = Folder + "/" + Clean(modelName + " " + name) + ".mat";
+                    // Unique par matière source : l'empreinte du chemin du modèle, de celui de la matière et de son nom (deux dossiers, mêmes noms).
+                    string copy = Folder + "/" + Clean(modelName + " " + name) + " "
+                        + MaterialRepairRules.ShortHash(path + "|" + (m != null ? AssetDatabase.GetAssetPath(m) : "") + "|" + name) + ".mat";
                     Material target = AssetDatabase.LoadAssetAtPath<Material>(copy);
                     if (target == null)
                     {
@@ -222,7 +224,7 @@ namespace EdS.Game.Editor
                     if (m != null) replaced[m] = target;
                     if (remap)
                     {
-                        importer.AddRemap(key, target);
+                        foreach (AssetImporter.SourceAssetIdentifier key in keys) importer.AddRemap(key, target);
                         remapped = true;
                     }
                     else

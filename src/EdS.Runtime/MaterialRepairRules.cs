@@ -60,6 +60,14 @@ namespace EdS.Runtime
             return 0;
         }
 
+        /// <summary>Empreinte stable de 8 caractères hexadécimaux (FNV-1a) : rend unique le nom de la copie d'une matière source (chemins complets).</summary>
+        public static string ShortHash(string? text)
+        {
+            uint hash = 2166136261;
+            foreach (char c in text ?? string.Empty) hash = unchecked((hash ^ c) * 16777619);
+            return hash.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         /// <summary>Matière blanche par défaut : aucune texture et une couleur blanche (ou sans réglage).</summary>
         public static bool IsPlainWhite(double r, double g, double b, bool hasTexture) =>
             !hasTexture && r >= WhiteFrom && g >= WhiteFrom && b >= WhiteFrom;

@@ -38,6 +38,15 @@ public sealed class V2127MatieresTests
         Assert.Equal(mode, MaterialRepairRules.LegacyMode(shader));
 
     [Fact]
+    public void L_empreinte_des_copies_est_stable_et_distingue_les_dossiers()
+    {
+        string a = MaterialRepairRules.ShortHash("Assets/A/Table.fbx|Assets/A/Wood.mat|Wood");
+        Assert.Equal(a, MaterialRepairRules.ShortHash("Assets/A/Table.fbx|Assets/A/Wood.mat|Wood"));
+        Assert.NotEqual(a, MaterialRepairRules.ShortHash("Assets/B/Table.fbx|Assets/B/Wood.mat|Wood"));
+        Assert.Equal(8, a.Length);
+    }
+
+    [Fact]
     public void Le_defaut_distingue_rose_blanc_et_correct()
     {
         Assert.Equal(MaterialFault.Pink, MaterialRepairRules.Fault("Hidden/InternalErrorShader", 0.5, 0.5, 0.5, true));
