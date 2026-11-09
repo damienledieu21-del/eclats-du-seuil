@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 16
+      "const": 17
     },
     "kind": {
       "const": "save"
@@ -681,6 +681,20 @@
                     }
                   },
                   "description": "Sous-lot V2.10 (version 16) : stock des marchands (merchant.herboriste/item.potion_de_soin…), rangé par identifiant : au jour day, unités qui manquaient au stock plein (achetées) et unités revendues par le personnage que le marchand gardait ; absent quand tous les marchands sont pleins."
+                },
+                "look": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [ "body", "hair", "beard", "dark", "hairTone", "palette" ],
+                  "properties": {
+                    "body": { "type": "string", "pattern": "^(male|female|made\\.[a-z0-9]{1,40})$", "maxLength": 48 },
+                    "hair": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "beard": { "type": "boolean" },
+                    "dark": { "type": "boolean" },
+                    "hairTone": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "palette": { "type": "integer", "minimum": 0, "maximum": 12 }
+                  },
+                  "description": "Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur de personnage (corps male, female ou made.<nom> d'un personnage de MakeHuman ; coiffure, couleur des cheveux et tenue en indices). Absent tant que le joueur n'a rien choisi."
                 }
               }
             }

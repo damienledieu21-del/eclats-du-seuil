@@ -83,6 +83,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (facultatif : absent quand tout est plein).</summary>
         public List<SavedStockData?>? Stock { get; set; }
 
+        /// <summary>Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur (facultatif).</summary>
+        public SavedLookData? Look { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

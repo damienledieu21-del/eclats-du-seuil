@@ -184,6 +184,21 @@ namespace EdS.Data.Json
                         return kok ? sk : null;
                     });
                 },
+                ["look"] = (v, p) =>   // sous-lot V2.16 (version 17) : aspect du héros, facultatif
+                {
+                    c.Present.Add("look");
+                    var lk = new SavedLookData();
+                    bool lok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["body"] = (ev2, ep) => lk.Body = input.Text(ev2, ep),
+                        ["hair"] = (ev2, ep) => lk.Hair = input.Int32(ev2, ep),
+                        ["beard"] = (ev2, ep) => lk.Beard = input.Boolean(ev2, ep),
+                        ["dark"] = (ev2, ep) => lk.Dark = input.Boolean(ev2, ep),
+                        ["hairTone"] = (ev2, ep) => lk.HairTone = input.Int32(ev2, ep),
+                        ["palette"] = (ev2, ep) => lk.Palette = input.Int32(ev2, ep),
+                    });
+                    if (lok) c.Look = lk;
+                },
             });
             return ok ? c : null;
         }
@@ -501,7 +516,7 @@ namespace EdS.Data.Json
                 b.Append("      ],\n");
             }
             // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.
-            string afterScars = c.Stock.Count == 0 ? "\n" : ",\n";
+            string afterScars = c.Stock.Count == 0 && c.Look == null ? "\n" : ",\n";
             if (c.Scars.Count == 0) b.Append("      \"scars\": []").Append(afterScars);
             else
             {
@@ -528,7 +543,16 @@ namespace EdS.Data.Json
                         .Append(", \"resold\": ").Append(x.Resold.ToString(CultureInfo.InvariantCulture)).Append(", \"day\": ").Append(x.Day.ToString(CultureInfo.InvariantCulture))
                         .Append(i + 1 < c.Stock.Count ? "},\n" : "}\n");
                 }
-                b.Append("      ]\n");
+                b.Append("      ]").Append(c.Look == null ? "\n" : ",\n");
+            }
+            // Sous-lot V2.16 (version 17) : aspect du héros, absent tant que le joueur n'a rien choisi.
+            if (c.Look != null)
+            {
+                SavedLook l = c.Look;
+                b.Append("      \"look\": {\"body\": \"").Append(l.Body).Append("\", \"hair\": ").Append(l.Hair.ToString(CultureInfo.InvariantCulture))
+                    .Append(", \"beard\": ").Append(l.Beard ? "true" : "false").Append(", \"dark\": ").Append(l.DarkSkin ? "true" : "false")
+                    .Append(", \"hairTone\": ").Append(l.HairTone.ToString(CultureInfo.InvariantCulture)).Append(", \"palette\": ").Append(l.Palette.ToString(CultureInfo.InvariantCulture))
+                    .Append("}\n");
             }
             b.Append("    },\n");
         }
