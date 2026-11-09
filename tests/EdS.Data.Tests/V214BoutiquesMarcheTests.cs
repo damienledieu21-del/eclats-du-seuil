@@ -707,4 +707,54 @@ public class V214BoutiquesMarcheTests
             Assert.DoesNotContain(layout.Villagers, v => v.Id == "commis");
         }
     }
+
+    [Fact]
+    public void F_devant_l_employe_ouvre_la_boutique()
+    {
+        // Revue Codex de la PR #135 : devant le comptoir, l'employé (Bastien, Lucie, Tiphaine, Jeannot) ouvre la boutique, à son nom ;
+        // « Parler » lui parle.
+        string folder = Path.Combine(Path.GetTempPath(), "eds-v214-staff-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string data = Path.Combine(folder, "data", "v0"), scenarios = Path.Combine(folder, "scenarios");
+            foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
+                foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(to, Path.GetRelativePath(from, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target, true);
+                }
+            var cases = new (string Zone, double X, double Z, string Npc, string Merchant)[]
+            {
+                ("zone.boulangerie", -0.25, -0.2, "npc.commis", Boulangerie),
+                ("zone.epicerie", 0.3, -0.2, "npc.commis_epicerie", "merchant.epicier"),
+                ("zone.herboristerie", 0.3, -0.2, "npc.commis_herboristerie", Herboriste),
+                ("zone.mercerie", -1.0, -0.2, "npc.commis_mercerie", "merchant.mercerie"),
+            };
+            foreach (var c in cases)
+            {
+                string zone = ZoneJsonReader.PathIn(data, c.Zone);
+                JsonObject root = JsonNode.Parse(File.ReadAllText(zone))!.AsObject();
+                root["data"]!["safePoints"]![0]!["position"] = new JsonArray(c.X, c.Z);
+                File.WriteAllText(zone, root.ToJsonString());
+            }
+            foreach (var c in cases)
+            {
+                string save = Path.Combine(folder, c.Zone + ".json");
+                SaveStore.Write(save, new WorldSave(c.Zone, TickAt(2, 9 * 60) - 1, 0, Array.Empty<string>(), Hero(1000)));   // mercredi, 9 h : tout est ouvert
+                AdventureSession a = V11TestData.Adventure(save, data, scenarios);
+                a.DrainMessages();
+                Assert.Equal(c.Npc, a.NpcInReach!.Id);
+                Assert.True(a.Interact(), c.Zone);
+                Assert.Equal(c.Merchant, a.Shop);
+                Assert.Equal(Texts.Get(Story.Value.Npc(c.Npc).Name), a.ShopName);
+                Assert.True(a.TalkToShopkeeper(), c.Zone);
+                Assert.Equal(Texts.Get(Story.Value.Npc(c.Npc).Name), a.DialogueNpc);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
 }

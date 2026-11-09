@@ -657,6 +657,14 @@ namespace EdS.Runtime
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
                 // fermée (heure de fermeture), le marchand le dit et reste un PNJ comme les autres (son dialogue de l'histoire).
+                // Revue Codex de la PR #135 : un employé d'une boutique (Lucie, Tiphaine, Jeannot) sert au comptoir comme le marchand.
+                Merchant? staffShop = World.MerchantOf(npc.Id) is null ? ShopOfStaff(npc) : null;
+                if (staffShop != null && World.CanTrade(staffShop.Id) == TradeRefusal.None)
+                {
+                    bool opened = OpenShop(staffShop.Id);
+                    if (opened) _shopStaff = npc.Id;
+                    return opened;
+                }
                 if (World.MerchantOf(npc.Id) is Merchant merchant)
                 {
                     TradeRefusal shop = World.CanTrade(merchant.Id);
@@ -716,6 +724,18 @@ namespace EdS.Runtime
             Say("text.ui.nothing_here");
             return false;
         }
+
+        /// <summary>
+        /// Revue Codex de la PR #135 : boutique dont <paramref name="npc"/> est un employé : un PNJ qui ne tient pas de boutique lui-même et
+        /// vit dans l'intérieur d'une boutique (Lucie à l'épicerie, Tiphaine à l'herboristerie, Jeannot à la mercerie) ; null sinon.
+        /// </summary>
+        public Merchant? ShopOfStaff(Npc npc) =>
+            npc?.Zone is string zone && World.Market is EdS.World.Market market && World.MerchantOf(npc.Id) is null
+                ? market.Book.Merchants.FirstOrDefault(m => m.Shop?.Zone == zone)
+                : null;
+
+        /// <summary>Revue Codex de la PR #135 : employé qui a ouvert la boutique (le bouton « Parler » lui parle), ou null.</summary>
+        private string? _shopStaff;
 
         /// <summary>Sous-lot V2.14 : boutique dont le comptoir (dans cet intérieur) est à portée, ou null.</summary>
         public Merchant? CounterInReach => Me is GroundVector p && World.Market is EdS.World.Market market

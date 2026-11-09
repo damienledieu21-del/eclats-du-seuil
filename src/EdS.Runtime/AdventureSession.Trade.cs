@@ -116,6 +116,7 @@ namespace EdS.Runtime
                 return false;
             }
             CloseDialogue();
+            _shopStaff = null;   // revue Codex de la PR #135 : remis par Interact quand un employé ouvre la boutique
             Shop = merchant;
             return true;
         }
@@ -125,7 +126,7 @@ namespace EdS.Runtime
         private Merchant? OpenMerchant => Shop is string id ? _market.Book.Merchant(id) : null;
 
         /// <summary>Nom du marchand de la boutique ouverte (traduit), ou null.</summary>
-        public string? ShopName => OpenMerchant is Merchant m ? Text(_story.Npc(m.Npc).Name) : null;
+        public string? ShopName => OpenMerchant is Merchant m ? Text(_story.Npc(_shopStaff ?? m.Npc).Name) : null;   // PR #135 : l'employé qui sert
 
         /// <summary>Accueil de la boutique ouverte (traduit), ou null.</summary>
         public string? ShopGreeting => OpenMerchant is Merchant m ? Text(m.Greeting) : null;
@@ -230,8 +231,10 @@ namespace EdS.Runtime
         {
             if (!(OpenMerchant is Merchant m)) return false;
             Shop = null;
-            DialogueRefusal refusal = World.Talk(m.Npc, out _);
-            if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(_story.Npc(m.Npc).Name));
+            string who = _shopStaff ?? m.Npc;   // revue Codex de la PR #135 : l'employé qui sert
+            _shopStaff = null;
+            DialogueRefusal refusal = World.Talk(who, out _);
+            if (refusal == DialogueRefusal.NothingToSay) Say("text.ui.nothing_to_say", Text(_story.Npc(who).Name));
             else if (refusal == DialogueRefusal.TooFar) Say("text.ui.too_far");
             return refusal == DialogueRefusal.None;
         }
