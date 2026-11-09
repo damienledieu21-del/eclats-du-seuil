@@ -1117,7 +1117,20 @@ namespace EdS.Runtime
                 .OrderBy(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
                 .ThenBy(p => IsRealistic(p) ? 0 : 1)
                 .ThenBy(Rank)
+                .ThenBy(p => IsPropLot(p, want) ? 1 : 0)
                 .ThenBy(p => p, StringComparer.Ordinal).ToList();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12.6 (essai du 9 novembre 2026 : le tonneau de la forge était « wooden_barrels_01 », un lot de deux tonneaux, de
+        /// douelles et de cercles, à plusieurs matières) : un fichier qui nomme un lot (le mot cherché au pluriel, « pieces », « set »,
+        /// « pack », « kit », « collection ») passe après un objet seul (« barrel_03 ») ; il reste choisi s'il est le seul.
+        /// </summary>
+        public static bool IsPropLot(string path, IReadOnlyList<string> want)
+        {
+            IEnumerable<string> words = Words(path);
+            return words.Any(w => w == "pieces" || w == "set" || w == "pack" || w == "kit" || w == "collection" || w == "lot"
+                || want.Any(x => w == x + "s" || w == x + "es"));
         }
 
         private static int WantRank(string path, StyleSlot slot)

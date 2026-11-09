@@ -740,7 +740,16 @@ namespace EdS.Game
                 (double u, double v) = map.ToMap(x, z);
                 return new Vector2(x0 + (float)u * w, y0 + (float)v * h);
             }
-            foreach (MapPlace place in map.Places) Name(At(place.CenterX, place.CenterZ), place.Name, 18f, UiKit.Alpha(Color.white, 0.7f), 0f);
+            // Sous-lot V2.12.6 (essai du 9 novembre 2026 : les noms du bourg se chevauchaient au point d'être illisibles) : les noms passent
+            // par LabelLayout (testé dans le cœur) : l'objectif, puis les lieux, puis les repères ; un nom qui en recouvre un autre est
+            // caché, sauf celui du repère sous la souris, montré en premier.
+            _mapNames.Clear();
+            _mapLayout.Clear();
+            Vector2 pointer = new Vector2(float.NaN, float.NaN);
+            if (Input.touchCount == 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_mapMarkers,
+                new Vector2(Input.mousePosition.x, Input.mousePosition.y), null, out Vector2 local))
+                pointer = new Vector2(local.x, -local.y);
+            foreach (MapPlace place in map.Places) MapName(At(place.CenterX, place.CenterZ), place.Name, 18f, UiKit.Alpha(Color.white, 0.7f), 0f, 2.0, null);
             foreach (MapEnemy e in enemies)
                 Marker("repere_ennemi", At(e.X, e.Z), e.Boss ? 20f : 14f, e.Boss ? new Color(0.78f, 0.45f, 1f) : Color.white);
             MapMarker me = null;
@@ -755,10 +764,21 @@ namespace EdS.Game
                     case MapMarkerKind.Workshop: Marker("repere_rond", p, 15f, UiKit.Dawn); break;
                     case MapMarkerKind.Node: Marker("repere_rond", p, 9f, new Color(0.65f, 0.95f, 0.55f)); continue;
                     case MapMarkerKind.Door: Marker("repere_rond", p, 13f, new Color(0.95f, 0.66f, 0.28f)); break;   // intérieurs : une porte
-                    case MapMarkerKind.Objective: Marker("repere_objectif", p, 30f, Color.white); Name(p, m.Name, 16f, UiKit.Dawn, -26f); continue;
+                    case MapMarkerKind.Objective: Marker("repere_objectif", p, 30f, Color.white); MapName(p, m.Name, 16f, UiKit.Dawn, -26f, 5.0, null); continue;
                 }
-                Name(p, m.Name, 15f, UiKit.Ink, 18f);
+                float hx = pointer.x - p.x, hy = pointer.y - p.y;
+                bool hovered = hx * hx + hy * hy <= MapHoverRadius * MapHoverRadius;   // NaN (pas de souris) : jamais
+                // Relecture de la PR #128 : deux repères de même nom à des endroits différents gardent chacun leur nom.
+                MapName(p, m.Name, 15f, UiKit.Ink, 18f, hovered ? 10.0 : m.Kind == MapMarkerKind.Npc ? 1.0 : 1.5, m.Kind + ":" + m.Name + "@" + m.X + "," + m.Z,
+                    m.X, m.Z);
             }
+            _mapLayout.Solve(-12.0, 1);
+            for (int i = 0; i < _mapNames.Count; i++)
+                if (_mapLayout.Shown(i))
+                {
+                    (Vector2 at, string text, float size, Color color, float dy) = _mapNames[i];
+                    Name(new Vector2(at.x, at.y + (float)_mapLayout.OffsetY(i)), text, size, color, dy);
+                }
             for (int i = _markerCount; i < _markerPool.Count; i++) UiKit.Show(_markerPool[i], false);
             for (int i = _nameCount; i < _namePool.Count; i++) _namePool[i].Show(false);
             UiKit.Show(_mapYou, me != null);
@@ -781,6 +801,20 @@ namespace EdS.Game
             marker.sprite = UiKit.Sprite(sprite);
             marker.color = color;
             UiKit.Place(marker.rectTransform, p, new Vector2(size, size), new Vector2(0.5f, 0.5f));
+        }
+
+        /// <summary>Sous-lot V2.12.6 : rayon (unités de la carte) autour d'un repère où la souris montre son nom.</summary>
+        private const float MapHoverRadius = 14f;
+
+        private readonly LabelLayout _mapLayout = new LabelLayout();
+        private readonly List<(Vector2 At, string Text, float Size, Color Color, float Dy)> _mapNames = new List<(Vector2, string, float, Color, float)>();
+
+        /// <summary>Sous-lot V2.12.6 : un nom de la carte à poser (rectangle centré sur sa place, décalage compris), avec sa priorité.</summary>
+        private void MapName(Vector2 p, string text, float size, Color color, float dy, double priority, string key, double worldX = double.NaN,
+            double worldZ = double.NaN)
+        {
+            _mapNames.Add((p, text, size, color, dy));
+            _mapLayout.Add(key, text, p.x, p.y + dy, LabelLayout.TextWidth(text, size), size + 4f, priority, worldX, worldZ);
         }
 
         private void Name(Vector2 p, string text, float size, Color color, float dy)

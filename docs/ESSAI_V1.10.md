@@ -405,3 +405,18 @@ Ton essai du 9 novembre 2026 : « System out of memory » (textures, `d3d11 fail
 | 23.2 | Jouer, entrer dans une maison puis sortir vers le village (plusieurs fois) | Plus de « System out of memory » ; textures un peu moins nettes de près | [ ] | Si ça plante encore : envoyer le message complet |
 | 23.3 | Pause → Réglages | Bouton « Qualité des textures : auto (quart) » ; un clic : pleine, moitié, quart, puis auto ; le changement se voit tout de suite et reste à la partie suivante | [ ] | « pleine » sur ton PC risque de replanter |
 | 23.4 | Le village, le pont, les ruines | Le pont cintré du jeu, ni tours en ruine, ni tente, ni roue à eau, ni bâtiments au loin (comme sur le Note8) | [ ] | |
+
+## 24. Tonneaux, caméra et étiquettes (V2.12.6)
+
+Ton essai du 9 novembre 2026 (PC modeste) : objets blancs à la forge de Maëlle, caméra dans les murs du bourg, étiquettes empilées, Garin dans une maison, disque bleu en double sur la place. **Refaire « Préparer l'essai de style »** avant de jouer (les matières des modèles à pièces sont refaites).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 24.1 | Aller à la forge de Maëlle | Le tonneau est un **tonneau seul** (bois et cercles), plus d'objets blancs | [ ] | Si un objet reste blanc : son nom, et les lignes « sans pièce à son nom » des notes de la préparation |
+| 24.2 | Regarder les autres objets de la 5e vague (cuisine, décoration, nourriture, donjon, armes) | Aucun objet blanc | [ ] | Noter ceux qui le sont |
+| 24.3 | Marcher dans le bourg, caméra loin (molette), tourner la vue vers les maisons | La caméra **se rapproche** devant le mur au lieu d'y entrer, puis recule en douceur une fois passée ; plus de mur sombre plein écran | [ ] | Un à-coup gênant ? Le dire |
+| 24.4 | Se coller dos à un mur, caméra basse | La caméra reste au-dessus du sol, près de la tête, sans traverser | [ ] | |
+| 24.5 | Devant la forge | **Un seul** « Maëlle… », les noms ne se recouvrent plus (un nom gêné monte d'un cran ou se cache ; en s'approchant, celui du plus proche gagne) | [ ] | |
+| 24.6 | Carte (L) sur le bourg | Les noms des lieux lisibles ; les noms des PNJ qui se gêneraient sont cachés, **la souris sur un rond** montre son nom | [ ] | |
+| 24.7 | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison (trajets vérifiés par un test du cœur) | [ ] | S'il semble encore dans une maison : laquelle, à quelle heure (c'est alors le modèle de la maison qui déborde) |
+| 24.8 | Place du village (« Entrée : faire halte ») | Un seul disque bleu clair, mince, au-dessus des pavés | [ ] | |

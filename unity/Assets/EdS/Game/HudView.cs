@@ -806,20 +806,26 @@ namespace EdS.Game
             f.Rect.localScale = new Vector3(pop, pop, 1f);
         }
 
+        /// <summary>Sous-lot V2.12.6 : taille de police et hauteur (unités de l'interface) d'une étiquette de repère.</summary>
+        public const float LabelFont = 19f, LabelHeight = 26f;
+
+        /// <summary>Sous-lot V2.12.6 : unités de l'interface par pixel de l'écran.</summary>
+        public static float LabelScale => UiKit.ReferenceHeight / Mathf.Max(1, Screen.height);
+
         /// <summary>Nom d'un PNJ, d'un point sûr ou d'un nœud de récolte au-dessus de lui (position à l'écran en pixels réels).</summary>
         public void Label(Vector3 screen, string text, Color color)
         {
             if (screen.z <= 0f) return;
             if (_labelCount == _labelPool.Count)
             {
-                UiText t = UiText.Create(_plates, "Nom", UiFace.Bold, 19f, Color.white, TextAnchor.MiddleCenter, 8f, true);
+                UiText t = UiText.Create(_plates, "Nom", UiFace.Bold, LabelFont, Color.white, TextAnchor.MiddleCenter, 8f, true);
                 t.Outline(new Color(0.02f, 0.03f, 0.04f, 0.9f), 0.18f);
                 _labelPool.Add(t);
             }
             UiText label = _labelPool[_labelCount++];
             label.Show(true);
             float k = UiKit.ReferenceHeight / Mathf.Max(1, Screen.height);
-            At(label.Rect, screen.x * k, (Screen.height - screen.y) * k - 16f, 400f, 26f, 0.5f, 0.5f);
+            At(label.Rect, screen.x * k, (Screen.height - screen.y) * k - 16f, 400f, LabelHeight, 0.5f, 0.5f);
             label.Value = text;
             label.Color = color;
         }

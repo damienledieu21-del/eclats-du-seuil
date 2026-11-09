@@ -95,6 +95,14 @@ namespace EdS.Game
 
         private bool _blocked;
 
+        /// <summary>
+        /// Sous-lot V2.12.6 (essai du 9 novembre 2026 : la caméra entrait dans les maisons du bourg) : boîtes des bâtiments de l'espace
+        /// affiché (null : aucune) ; la caméra se rapproche quand l'une d'elles s'interpose (<see cref="CameraRules.ClearDistance"/>).
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<CameraBox> Blockers { get; set; }
+
+        private float _clear = (float)CameraRules.MaxDistance;
+
         private CameraRig(Camera camera)
         {
             _camera = camera;
@@ -237,6 +245,13 @@ namespace EdS.Game
             _target = Vector3.Lerp(_target, aim, 1f - Mathf.Exp(-14f * deltaTime));
             _shownDistance = Mathf.Lerp(_shownDistance, Wanted, 1f - Mathf.Exp(-10f * deltaTime));
             float held = (float)CameraRules.GroundSafeDistance(_shownDistance, _pitch, _target.y);
+            // Sous-lot V2.12.6 : devant le premier mur d'un bâtiment entre le personnage et la caméra (un rayon par image, sans physique :
+            // les décors n'ont plus de collisions), rapprochée tout de suite, revenue en douceur ; plus près du point visé, elle reste
+            // au-dessus du sol.
+            (double dx, double dy, double dz) = CameraRules.Offset(_yaw, _pitch, 1.0);
+            double clear = CameraRules.ClearDistance((_target.x, _target.y, _target.z), (dx, dy, dz), Blockers);
+            _clear = (float)CameraRules.SettleClear(_clear, clear, deltaTime);
+            held = Mathf.Min(held, _clear);
             (double ox, double oy, double oz) = CameraRules.Offset(_yaw, _pitch, held);
             Vector3 position = _target + new Vector3((float)ox, (float)oy, (float)oz);
             Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);

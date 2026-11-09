@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace EdS.Runtime
 {
@@ -99,6 +100,90 @@ namespace EdS.Runtime
         /// </summary>
         public static double Behind(double pitch) => Clamp((70.0 - pitch) / 55.0, 0, 1);
 
+        /// <summary>
+        /// Sous-lot V2.12.6 (essai du 9 novembre 2026 : « la caméra traverse les maisons du bourg ») : rayon de la caméra contre les murs (son
+        /// plan proche est à 0,1 m, champ de 50°), plancher technique de la distance (5 cm ; revue Codex de la PR #128 : la distance libre
+        /// prime, un mur réel plus proche le fait passer dessous) et vitesse de retour (par seconde) une fois le mur passé.
+        /// </summary>
+        public const double CollisionRadius = 0.3, CollisionMinDistance = 0.05, CollisionReturnSpeed = 4.0;
+
+        /// <summary>
+        /// Revue Codex de la PR #128 : la caméra reste devant le mur réel le plus proche sur son rayon, à au moins un dixième de sa distance
+        /// et au plus <see cref="WallGap"/> m de lui (jamais dans un bâtiment).
+        /// </summary>
+        public const double WallGap = 0.1;
+
+        /// <summary>
+        /// Sous-lot V2.12.6 : distance libre derrière le point visé <paramref name="target"/>, dans la direction <paramref name="direction"/>
+        /// (celle de <see cref="Offset"/> pour une distance de 1), contre les boîtes des bâtiments <paramref name="boxes"/> élargies du rayon
+        /// de la caméra : la caméra se tient devant le premier mur qu'elle rencontrerait, au moins à <see cref="CollisionMinDistance"/> mais
+        /// toujours devant le mur réel (<see cref="WallGap"/> ; jamais dans un bâtiment). <see cref="MaxDistance"/> si rien
+        /// ne gêne. Une boîte qui contient déjà le point visé ne compte
+        /// pas (le fondu du décor s'en charge). Un seul rayon par image, sans allocation ni moteur physique.
+        /// </summary>
+        public static double ClearDistance((double X, double Y, double Z) target, (double X, double Y, double Z) direction, IReadOnlyList<CameraBox>? boxes)
+        {
+            double best = MaxDistance;
+            if (boxes == null || !Finite(target.X) || !Finite(target.Y) || !Finite(target.Z) || !Finite(direction.X) || !Finite(direction.Y)
+                || !Finite(direction.Z)) return best;
+            double r = CollisionRadius, wall = double.MaxValue;
+            for (int i = 0; i < boxes.Count; i++)
+            {
+                CameraBox b = boxes[i];
+                // Relecture de la PR #128 : seul un point visé dans la boîte réelle (on est dans la maison) l'ignore ; dos au mur, dans la
+                // seule marge du rayon, la boîte compte (la caméra reste au plus près, sans traverser le mur).
+                if (target.X >= b.MinX && target.X <= b.MaxX && target.Y >= b.MinY && target.Y <= b.MaxY && target.Z >= b.MinZ && target.Z <= b.MaxZ) continue;
+                double x0 = b.MinX - r, y0 = b.MinY - r, z0 = b.MinZ - r, x1 = b.MaxX + r, y1 = b.MaxY + r, z1 = b.MaxZ + r;
+                double t0 = 0, t1 = best;
+                if (target.X >= x0 && target.X <= x1 && target.Y >= y0 && target.Y <= y1 && target.Z >= z0 && target.Z <= z1)
+                {
+                    // Dans la marge : seul un rayon qui va vers le mur compte (le long du mur ou à l'opposé, rien ne gêne).
+                    double u0 = 0, u1 = MaxDistance;
+                    if (Slab(target.X, direction.X, b.MinX, b.MaxX, ref u0, ref u1) && Slab(target.Y, direction.Y, b.MinY, b.MaxY, ref u0, ref u1)
+                        && Slab(target.Z, direction.Z, b.MinZ, b.MaxZ, ref u0, ref u1))
+                    {
+                        best = Math.Min(best, Math.Max(0, u0 - r));
+                        wall = Math.Min(wall, u0);
+                    }
+                    continue;
+                }
+                if (!Slab(target.X, direction.X, x0, x1, ref t0, ref t1) || !Slab(target.Y, direction.Y, y0, y1, ref t0, ref t1)
+                    || !Slab(target.Z, direction.Z, z0, z1, ref t0, ref t1)) continue;
+                if (t0 < best) best = t0;
+                // Entrée dans la boîte réelle (le rayon touche la marge, pas forcément le mur : alors rien de plus).
+                double w0 = 0, w1 = MaxDistance;
+                if (Slab(target.X, direction.X, b.MinX, b.MaxX, ref w0, ref w1) && Slab(target.Y, direction.Y, b.MinY, b.MaxY, ref w0, ref w1)
+                    && Slab(target.Z, direction.Z, b.MinZ, b.MaxZ, ref w0, ref w1))
+                    wall = Math.Min(wall, w0);
+            }
+            // Revue Codex de la PR #128 : le plancher technique ne pousse jamais la caméra jusqu'au mur réel.
+            return Math.Min(Math.Max(CollisionMinDistance, best), wall - Math.Min(WallGap, wall * 0.1));
+        }
+
+        private static bool Finite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);
+
+        private static bool Slab(double start, double delta, double lo, double hi, ref double t0, ref double t1)
+        {
+            if (Math.Abs(delta) < 1e-9) return start >= lo && start <= hi;
+            double u = (lo - start) / delta, v = (hi - start) / delta;
+            if (u > v) (u, v) = (v, u);
+            if (u > t0) t0 = u;
+            if (v < t1) t1 = v;
+            return t0 <= t1;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12.6 : distance libre affichée. Un mur qui se rapproche la ramène tout de suite (on ne voit jamais l'intérieur d'un
+        /// mur) ; un mur qui s'éloigne la laisse revenir en douceur (<see cref="CollisionReturnSpeed"/>), sans à-coup.
+        /// </summary>
+        public static double SettleClear(double shown, double clear, double deltaTime)
+        {
+            if (double.IsNaN(clear)) return double.IsNaN(shown) ? MaxDistance : shown;
+            if (double.IsNaN(shown) || clear <= shown) return clear;
+            double dt = double.IsNaN(deltaTime) || deltaTime < 0 ? 0 : deltaTime;
+            return shown + (clear - shown) * (1.0 - Math.Exp(-CollisionReturnSpeed * dt));
+        }
+
         /// <summary>Angle ramené dans [0, 360[.</summary>
         public static double Wrap(double degrees)
         {
@@ -108,5 +193,26 @@ namespace EdS.Runtime
         }
 
         private static double Clamp(double v, double min, double max) => v < min ? min : v > max ? max : v;
+    }
+
+    /// <summary>Sous-lot V2.12.6 : boîte alignée d'un bâtiment (mètres, y vers le haut) contre laquelle la caméra s'arrête.</summary>
+    public readonly struct CameraBox
+    {
+        public CameraBox(double minX, double minY, double minZ, double maxX, double maxY, double maxZ)
+        {
+            MinX = Math.Min(minX, maxX);
+            MinY = Math.Min(minY, maxY);
+            MinZ = Math.Min(minZ, maxZ);
+            MaxX = Math.Max(minX, maxX);
+            MaxY = Math.Max(minY, maxY);
+            MaxZ = Math.Max(minZ, maxZ);
+        }
+
+        public double MinX { get; }
+        public double MinY { get; }
+        public double MinZ { get; }
+        public double MaxX { get; }
+        public double MaxY { get; }
+        public double MaxZ { get; }
     }
 }

@@ -580,6 +580,7 @@ namespace EdS.Game
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
+            _camera.Blockers = _arena.CameraBlockers;   // sous-lot V2.12.6 : les murs des maisons arrêtent la caméra
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).
             if (_companions == null) _companions = new CompanionsView();
@@ -920,6 +921,7 @@ namespace EdS.Game
 
             player = _combat.Player();
             _arena.Sync(_combat, player, null);
+            _camera.Blockers = _arena.CameraBlockers;   // sous-lot V2.12.6 : les murs des maisons arrêtent la caméra
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             SyncGestures();
@@ -1222,6 +1224,7 @@ namespace EdS.Game
 
             player = _combat.Player();
             _arena.Sync(_combat, player, combat?.AllyId);
+            _camera.Blockers = _arena.CameraBlockers;   // sous-lot V2.12.6 : les murs des maisons arrêtent la caméra
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             SyncGestures();

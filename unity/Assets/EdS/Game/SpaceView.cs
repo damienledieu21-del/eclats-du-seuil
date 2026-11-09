@@ -57,6 +57,11 @@ namespace EdS.Game
 
         private readonly GameObject _root;
         private readonly List<Occluder> _occluders = new List<Occluder>();
+
+        /// <summary>Sous-lot V2.12.6 : boîtes des bâtiments (maisons, auberge, chapelle, grange…) contre lesquelles la caméra s'arrête.</summary>
+        private readonly List<CameraBox> _cameraBoxes = new List<CameraBox>();
+
+        public IReadOnlyList<CameraBox> CameraBlockers => _cameraBoxes;
         private readonly List<ZoneView> _zones = new List<ZoneView>();
         private readonly Dictionary<string, long> _firstSeen = new Dictionary<string, long>();
         private readonly Material _fill;
@@ -438,7 +443,14 @@ namespace EdS.Game
             foreach ((StyleMesh mesh, Material material, string name) in parts)
                 if (mesh.Triangles.Count > 0) Shape(id + " (" + name + ")", mesh, material, go.transform);
             _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, (float)shapes.Top, z1) });
+            if (Blocks(kind)) _cameraBoxes.Add(new CameraBox(x0, 0, z0, x1, shapes.Top, z1));
         }
+
+        /// <summary>
+        /// Sous-lot V2.12.6 : bâtiments qui arrêtent la caméra (on ne voit pas à travers leurs murs) ; les étals, tentes et puits, bas ou
+        /// ouverts, restent traversés (leur fondu suffit).
+        /// </summary>
+        private static bool Blocks(StyleBuilding kind) => kind != StyleBuilding.Stall && kind != StyleBuilding.Tent && kind != StyleBuilding.Well;
 
         /// <summary>
         /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : de vrais bâtiments en 3D) : un modèle de Sketchfab du genre
@@ -472,8 +484,14 @@ namespace EdS.Game
             // Le pied du modèle au centre de l'emprise, le bas au sol.
             if (StyleLook.VisibleBounds(model, out Bounds b))
                 model.transform.position += new Vector3(center.x - b.center.x, -b.min.y, center.z - b.center.z);
-            float top = StyleLook.VisibleBounds(go, out Bounds all) ? all.max.y : 8f;
+            bool seen = StyleLook.VisibleBounds(go, out Bounds all);
+            float top = seen ? all.max.y : 8f;
             _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+            // Sous-lot V2.12.6 : la caméra s'arrête au mur du modèle tel qu'on le voit (il déborde un peu de son emprise), sans aller au-delà
+            // de l'emprise d'un quart de mètre (un auvent, une enseigne ne la repoussent pas loin du joueur).
+            if (Blocks(kind))
+                _cameraBoxes.Add(new CameraBox(seen ? Mathf.Max(all.min.x, x0 - 0.25f) : x0, 0, seen ? Mathf.Max(all.min.z, z0 - 0.25f) : z0,
+                    seen ? Mathf.Min(all.max.x, x1 + 0.25f) : x1, top, seen ? Mathf.Min(all.max.z, z1 + 0.25f) : z1));
             return true;
         }
 
