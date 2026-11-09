@@ -48,6 +48,18 @@ namespace EdS.Runtime
                 || n.StartsWith("Specular", StringComparison.Ordinal) || n.StartsWith("Bumped", StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// Mode d'un ancien shader sans propriété « _Mode » (déduit de son nom) : 1 découpé (« Transparent/Cutout », « Alpha Test », feuilles
+        /// d'arbre), 2 transparent (« Transparent/… », « Alpha Blended », « Fade »), 0 opaque. Même code que le « _Mode » du Standard.
+        /// </summary>
+        public static int LegacyMode(string? shaderName)
+        {
+            string n = (shaderName ?? string.Empty).ToLowerInvariant();
+            if (n.Contains("cutout") || n.Contains("alphatest") || n.Contains("alpha test") || n.Contains("treeleaf") || n.Contains("tree leaf")) return 1;
+            if (n.Contains("transparent") || n.Contains("alpha blended") || n.Contains("alphablended") || n.Contains("fade") || n.Contains("alpha/")) return 2;
+            return 0;
+        }
+
         /// <summary>Matière blanche par défaut : aucune texture et une couleur blanche (ou sans réglage).</summary>
         public static bool IsPlainWhite(double r, double g, double b, bool hasTexture) =>
             !hasTexture && r >= WhiteFrom && g >= WhiteFrom && b >= WhiteFrom;

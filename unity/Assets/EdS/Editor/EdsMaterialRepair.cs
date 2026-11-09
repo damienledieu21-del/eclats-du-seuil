@@ -43,6 +43,10 @@ namespace EdS.Game.Editor
             public float Metallic;
             public float Mode;
             public float Cutoff = 0.5f;
+            public Vector2 Scale = new Vector2(1f, 1f);
+            public Vector2 Offset = Vector2.zero;
+            public Vector2 BumpScale = new Vector2(1f, 1f);
+            public Vector2 BumpOffset = Vector2.zero;
         }
 
         /// <summary>Chemins des modèles et prefabs que le jeu pose (sans ceux d'un scan, ni les lumineux, ni les personnages du catalogue).</summary>
@@ -76,6 +80,7 @@ namespace EdS.Game.Editor
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder(EdsStyle.Generated, "Reparees");
             int pink = 0, white = 0, files = 0;
             var textureCache = new Dictionary<string, List<string>>();
+            int breathed = 0;
             foreach (string path in Targets(catalog))
             {
                 int p = 0, w = 0;
@@ -83,8 +88,7 @@ namespace EdS.Game.Editor
                 if (p + w > 0) files++;
                 pink += p;
                 white += w;
-                int count = 0;
-                EdsStyle.Breathe(ref count);
+                EdsStyle.Breathe(ref breathed);   // compteur gardé d'un modèle à l'autre : libération tous les BreatheEvery modèles
             }
             AssetDatabase.SaveAssets();
             return "matières réparées : " + pink + " roses ou en erreur converties en URP, " + white + " blanches texturées ou colorées (" + files + " fichiers)";
@@ -256,7 +260,20 @@ namespace EdS.Game.Editor
             if (m.HasProperty("_Glossiness")) s.Smoothness = m.GetFloat("_Glossiness");
             else if (m.HasProperty("_Smoothness")) s.Smoothness = m.GetFloat("_Smoothness");
             if (m.HasProperty("_Metallic")) s.Metallic = m.GetFloat("_Metallic");
-            if (m.HasProperty("_Mode")) s.Mode = m.GetFloat("_Mode");
+            // Standard : « _Mode » ; anciens shaders sans lui (Legacy Shaders/Transparent/…) : le mode se déduit du nom du shader.
+            s.Mode = m.HasProperty("_Mode") ? m.GetFloat("_Mode") : MaterialRepairRules.LegacyMode(m.shader != null ? m.shader.name : null);
+            // Échelle et décalage de la texture (répétition d'un carrelage, d'un bardage).
+            string tiled = m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null ? "_MainTex" : "_BaseMap";
+            if (m.HasProperty(tiled))
+            {
+                s.Scale = m.GetTextureScale(tiled);
+                s.Offset = m.GetTextureOffset(tiled);
+            }
+            if (m.HasProperty("_BumpMap"))
+            {
+                s.BumpScale = m.GetTextureScale("_BumpMap");
+                s.BumpOffset = m.GetTextureOffset("_BumpMap");
+            }
             if (m.HasProperty("_Cutoff")) s.Cutoff = m.GetFloat("_Cutoff");
             return s;
         }
@@ -300,6 +317,12 @@ namespace EdS.Game.Editor
             }
             target.SetTexture("_BaseMap", main);
             target.SetTexture("_MainTex", main);
+            if (before.Main != null)   // une texture trouvée par le nom garde l'échelle d'URP (1, 1)
+                foreach (string property in new[] { "_BaseMap", "_MainTex" })
+                {
+                    target.SetTextureScale(property, before.Scale);
+                    target.SetTextureOffset(property, before.Offset);
+                }
             target.SetColor("_BaseColor", color);
             target.SetColor("_Color", color);
             target.SetFloat("_Smoothness", Mathf.Clamp01(before.Smoothness));
@@ -308,6 +331,8 @@ namespace EdS.Game.Editor
             {
                 target.SetTexture("_BumpMap", before.Bump);
                 target.EnableKeyword("_NORMALMAP");
+                target.SetTextureScale("_BumpMap", before.BumpScale);
+                target.SetTextureOffset("_BumpMap", before.BumpOffset);
             }
             // Opaque d'abord (une copie déjà réparée peut avoir gardé un autre mode), puis le mode de l'ancien Standard : 1 découpé, 2 et 3 transparent.
             target.SetFloat("_Surface", 0f);

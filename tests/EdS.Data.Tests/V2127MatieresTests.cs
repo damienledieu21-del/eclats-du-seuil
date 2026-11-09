@@ -27,6 +27,16 @@ public sealed class V2127MatieresTests
     public void Un_shader_hors_URP_sortirait_rose(string? shader, bool pink) =>
         Assert.Equal(pink, MaterialRepairRules.NeedsUrp(shader));
 
+    [Theory]
+    [InlineData("Legacy Shaders/Transparent/Diffuse", 2)]
+    [InlineData("Legacy Shaders/Transparent/Cutout/Diffuse", 1)]
+    [InlineData("Legacy Shaders/Transparent/Cutout/Bumped Specular", 1)]
+    [InlineData("Legacy Shaders/Diffuse", 0)]
+    [InlineData("Mobile/Diffuse", 0)]
+    [InlineData(null, 0)]
+    public void Le_mode_d_un_ancien_shader_se_deduit_de_son_nom(string? shader, int mode) =>
+        Assert.Equal(mode, MaterialRepairRules.LegacyMode(shader));
+
     [Fact]
     public void Le_defaut_distingue_rose_blanc_et_correct()
     {
