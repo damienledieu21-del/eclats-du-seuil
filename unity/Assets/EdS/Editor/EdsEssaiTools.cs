@@ -133,7 +133,7 @@ namespace EdS.Game.Editor
             // 3. Ouvre la bonne scène ; une scène modifiée déclenche la question de Unity (annuler arrête tout, rien n'est perdu).
             if (EssaiTools.ShouldOpenStartupSceneAlone(SceneManager.GetActiveScene().path, SceneManager.sceneCount, EdsStartupScene.ScenePath))
             {
-                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                if (EssaiTools.AfterSceneSave(EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) == LaunchStep.StopSilently)
                 {
                     Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée)." + (prepared ? " La préparation, elle, est faite." : " Rien d'autre n'a été fait."));
                     return;
@@ -148,18 +148,30 @@ namespace EdS.Game.Editor
         [MenuItem("Éclats du Seuil/Lancer l'essai (déjà préparé)")]
         private static void PlayPrepared()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            // V2.12.9 : ni préparation ni vérification complète (PC modeste). La décision est dans EssaiTools.PreparedLaunch (testée) ; la scène
+            // de démarrage n'est préparée (effet de bord) qu'une fois le jeu à l'arrêt et le catalogue de style présent.
+            bool catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath) != null;
+            PreparedLaunchStep step = EssaiTools.PreparedLaunch(EditorApplication.isPlayingOrWillChangePlaymode, catalog, StartupSceneState.Ready, true);
+            if (step == PreparedLaunchStep.Play)
             {
-                EditorUtility.DisplayDialog("Essai", "Le jeu tourne déjà (ou démarre). Arrête-le avec le bouton Play, puis relance ce menu.", "OK");
-                return;
+                StartupSceneState state = EdsStartupScene.Ensure(false);
+                step = EssaiTools.PreparedLaunch(false, true, state, AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) != null);
             }
-            // V2.12.9 : ni préparation ni vérification complète (PC modeste) ; seul le catalogue de style doit exister.
-            if (AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath) == null)
+            switch (step)
             {
-                EditorUtility.DisplayDialog("Essai", "L'essai n'a pas encore été préparé (catalogue de style absent) : fais d'abord « Éclats du Seuil → Préparer l'essai de style ».", "OK");
-                return;
+                case PreparedLaunchStep.AlreadyPlaying:
+                    EditorUtility.DisplayDialog("Essai", "Le jeu tourne déjà (ou démarre). Arrête-le avec le bouton Play, puis relance ce menu.", "OK");
+                    return;
+                case PreparedLaunchStep.NeedsPreparation:
+                    EditorUtility.DisplayDialog("Essai", "L'essai n'a pas encore été préparé (catalogue de style absent) : fais d'abord « Éclats du Seuil → Préparer l'essai de style ».", "OK");
+                    return;
+                case PreparedLaunchStep.StopSilently:
+                    Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée). Rien d'autre n'a été fait.");
+                    return;
+                case PreparedLaunchStep.StopWithMessage:
+                    EditorUtility.DisplayDialog("Essai", "La scène de démarrage (" + EdsStartupScene.ScenePath + ") n'a pas pu être préparée : regarde la Console, puis relance.", "OK");
+                    return;
             }
-            if (!EnsureStartupScene()) return;
             ReleaseMemory();
             OpenSceneAndPlay(false);
         }
