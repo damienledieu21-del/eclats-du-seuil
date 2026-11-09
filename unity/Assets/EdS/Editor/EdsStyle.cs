@@ -134,8 +134,7 @@ namespace EdS.Game.Editor
                 && !p.StartsWith(Wave5.MegascansFolder, System.StringComparison.Ordinal) && Untextured(p)))
             {
                 AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
-                Breathe(ref prepared);
-            }
+            }   // V2.12.3 : pas de Breathe ici, la liste des personnages garde des animations chargées
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
             string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
