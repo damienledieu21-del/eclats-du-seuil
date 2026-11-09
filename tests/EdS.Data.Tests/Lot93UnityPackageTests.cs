@@ -144,6 +144,12 @@ public class Lot93UnityPackageTests
             game["references"]!.AsArray().Select(r => r!.GetValue<string>()).OrderBy(r => r, StringComparer.Ordinal));
         JsonObject editor = Json(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdS.Editor.asmdef"));
         Assert.Equal(new[] { "Editor" }, editor["includePlatforms"]!.AsArray().Select(p => p!.GetValue<string>()));
+        // V2.12.1 (essai de Damien du 9 novembre 2026) : Unity refusait les menus d'essai (EdsWeatherTrial, EdsVillageTrial) faute de
+        // référence à EdS.World (WeatherKind dans les surcharges de WeatherTrial.MoveSave). CompileCheck compile tout ensemble et ne voit
+        // pas les références d'assemblage : les scripts de l'éditeur référencent donc tous les projets portables, comme le jeu.
+        Assert.Equal(Portable.Concat(new[] { "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime", "EdS.Game" })
+                .OrderBy(n => n, StringComparer.Ordinal),
+            editor["references"]!.AsArray().Select(r => r!.GetValue<string>()).OrderBy(r => r, StringComparer.Ordinal));
         // Scénarios proposés par le prototype : tous présents dans le dépôt.
         string gameScript = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
         foreach (string scenario in new[] { "vallons_demo.json", "meute_a_vaincre.json", "entrainement_garde_parade.json", "mesures/s1_mannequin.json", "mesures/s2_duel.json", "mesures/s3_meute.json", "mesures/s4_protection.json", "mesures/s5_briseur.json" })
