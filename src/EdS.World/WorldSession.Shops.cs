@@ -58,7 +58,8 @@ namespace EdS.World
             bool open = shop.IsOpen(WeekdayNow, minute) && !phaseClosed;
             if (open) return ShopState.Open;
             if (shop.Door != DoorService.None) return ShopState.AtDoor;
-            return shop.Rest.Contains(WeekdayNow) ? ShopState.RestDay : ShopState.ClosedHours;
+            // Relecture indépendante de la PR #135 : après minuit, une ouverture de la veille au soir appartient à la veille (son jour de repos).
+            return shop.Rest.Contains(shop.OpeningWeekday(WeekdayNow, minute)) ? ShopState.RestDay : ShopState.ClosedHours;
         }
 
         /// <summary>
@@ -99,6 +100,8 @@ namespace EdS.World
         private int ShelfNow(Merchant m, MerchantOffer? offer, int full)
         {
             if (offer is null || !offer.Fresh || m.Bakes.Count == 0) return full;
+            // Relecture indépendante de la PR #135 : le jour de repos, le four est éteint : rien de frais (seulement ce qui se garde).
+            if (m.Shop is Shop shop && shop.Rest.Contains(WeekdayNow)) return 0;
             return ShopRules.OnShelf(m.Bakes, m.SoldOut, full, Zone.Time.Minute);
         }
 
@@ -106,13 +109,14 @@ namespace EdS.World
         public bool WarmBread(string merchant)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
-            return m.Bakes.Count > 0 && ShopRules.Warm(m.Bakes, Zone.Time.Minute);
+            return m.Bakes.Count > 0 && !(m.Shop is Shop shop && shop.Rest.Contains(WeekdayNow)) && ShopRules.Warm(m.Bakes, Zone.Time.Minute);
         }
 
         /// <summary>Sous-lot V2.14 : minute de la prochaine fournée de <paramref name="merchant"/> aujourd'hui, ou null.</summary>
         public int? NextBake(string merchant)
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
+            if (m.Shop is Shop shop && shop.Rest.Contains(WeekdayNow)) return null;   // jour de repos : pas de fournée
             return m.Bakes.Count > 0 ? ShopRules.NextBake(m.Bakes, Zone.Time.Minute) : null;
         }
 

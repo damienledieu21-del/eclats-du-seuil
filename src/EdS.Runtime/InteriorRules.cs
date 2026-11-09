@@ -11,7 +11,10 @@ namespace EdS.Runtime
         Tavern = 1,
         Chapel = 2,
 
-        /// <summary>Sous-lot V2.14 : une boutique (boulangerie, épicerie, herboristerie, mercerie) : comptoir, étagères garnies, commis.</summary>
+        /// <summary>
+        /// Sous-lot V2.14 : une boutique (boulangerie, épicerie, herboristerie, mercerie) : comptoir, étagères garnies ; ses employés nommés
+        /// (PNJ de l'histoire, réponse de Damien du 9 novembre 2026) remplacent le commis de décor.
+        /// </summary>
         Shop = 3,
     }
 
@@ -729,16 +732,6 @@ namespace EdS.Runtime
             {
                 switch (b.Kind)
                 {
-                    case InteriorFurniture.Counter when style == InteriorStyle.Shop:
-                    {
-                        // Sous-lot V2.14 : le commis (ou le patron) derrière le comptoir, côté mur ; s'il y a déjà un PNJ qui parle, il est là.
-                        bool alongX = b.AlongX;
-                        int toWall = alongX ? (map.MaxZ - b.MaxZ < b.MinZ - map.MinZ ? 1 : -1) : (map.MaxX - b.MaxX < b.MinX - map.MinX ? 1 : -1);
-                        double bx = alongX ? b.CX : b.CX + toWall * (b.Short / 2 + 0.55), bz = alongX ? b.CZ + toWall * (b.Short / 2 + 0.55) : b.CZ;
-                        if (map.Speakers.All(s => (s.X - bx) * (s.X - bx) + (s.Z - bz) * (s.Z - bz) > 1.5 * 1.5))
-                            Add("commis", "paysan", VillagerActivity.Talk, bx, bz, alongX ? (toWall > 0 ? 180 : 0) : (toWall > 0 ? 270 : 90));
-                        break;
-                    }
                     case InteriorFurniture.Counter when style == InteriorStyle.Tavern:
                     {
                         // Côté du comptoir tourné vers le mur : l'aubergiste ; côté salle : deux clients accoudés.

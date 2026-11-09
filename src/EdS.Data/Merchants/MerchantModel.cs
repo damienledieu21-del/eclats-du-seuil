@@ -815,7 +815,7 @@ namespace EdS.Data.Merchants
         /// Sous-lot V2.14 (décision de Damien : les quêtes ne sont jamais bloquées par des horaires) : un objet dont l'histoire a besoin (tenu
         /// pour une condition, livré, ramassé) vendu par une boutique à horaires reste toujours trouvable : en vente permanente chez un
         /// marchand toujours ouvert (sans horaires ni jour de repos, ni moment de fermeture, sans condition d'ouverture), ou à la porte d'une
-        /// boutique (<c>door</c>) ; sinon, chaque offre de boutique qui le vend sans la porte est refusée.
+        /// boutique (<c>door</c>, sans limite de stock et pas fraîche) ; sinon, chaque offre de boutique qui le vend sans la porte est refusée.
         /// </summary>
         private static void CheckDoors(List<MerchantData?>? data, List<Merchant> merchants, StoryBook story, ValidationReport r)
         {
@@ -829,18 +829,21 @@ namespace EdS.Data.Merchants
             bool AlwaysOpen(Merchant m) => m.Closed.Count == 0 && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null
                 && (m.Shop is null || (m.Shop.AllDay && m.Shop.Rest.Count == 0));
             // Toujours trouvable : en vente permanente chez un marchand toujours ouvert, ou à la porte d'une boutique (quelqu'un y répond toujours).
+            // Relecture indépendante de la PR #135 : à la porte, seulement une offre sans limite et pas fraîche (une offre fraîche est à zéro
+            // avant la première fournée, après la rupture et le jour de repos ; un stock fini peut s'épuiser).
             needed.RemoveWhere(item => merchants.Any(m => m.Offers.Any(o => o.Item == item && o.Always
-                && (AlwaysOpen(m) || (o.Door && m.Shop?.Door is DoorService d && d != DoorService.None && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null)))));
+                && (AlwaysOpen(m) || (o.Door && !o.Fresh && o.Stock is null && m.Shop?.Door is DoorService d && d != DoorService.None
+                    && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null)))));
             for (int i = 0; i < data.Count; i++)
             {
                 if (!(data[i] is MerchantData md) || merchants.FirstOrDefault(m => m.Id == md.Id) is not Merchant m || m.Shop is null) continue;
                 for (int k = 0; k < m.Offers.Count; k++)
                 {
                     MerchantOffer o = m.Offers[k];
-                    if (!needed.Contains(o.Item) || o.Door) continue;
+                    if (!needed.Contains(o.Item) || (o.Door && !o.Fresh && o.Stock is null)) continue;
                     int index = md.Offers?.FindIndex(x => x?.Item == o.Item) ?? k;
                     r.Add($"$.data.merchants[{i}].offers[{index}].door", ValidationCode.InvalidValue,
-                        $"objet « {o.Item} » utile à l'histoire, vendu dans une boutique à horaires : à vendre aussi à la porte (« door »: true, et « shop.door »).");
+                        $"objet « {o.Item} » utile à l'histoire, vendu dans une boutique à horaires : à vendre aussi à la porte (« door »: true, et « shop.door »), sans limite de stock et pas frais.");
                 }
             }
         }

@@ -1460,7 +1460,25 @@
           1.85
         ],
         "dialogue": "dialogue.commis",
-        "zone": "zone.boulangerie"
+        "zone": "zone.boulangerie",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "comptoir",
+            "position": [
+              -0.25,
+              1.85
+            ]
+          },
+          {
+            "at": "19:45",
+            "activity": "rangement",
+            "position": [
+              -0.25,
+              1.85
+            ]
+          }
+        ]
       },
       {
         "id": "npc.couturiere",
@@ -1498,6 +1516,90 @@
         "festivals": [
           "festival.marche",
           "festival.marche_mercredi"
+        ]
+      },
+      {
+        "id": "npc.commis_epicerie",
+        "name": "text.v214.npc.commis_epicerie.name",
+        "position": [
+          0.6,
+          1.85
+        ],
+        "dialogue": "dialogue.commis_epicerie",
+        "zone": "zone.epicerie",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "comptoir",
+            "position": [
+              0.6,
+              1.85
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "rangement",
+            "position": [
+              0.6,
+              1.85
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.commis_herboristerie",
+        "name": "text.v214.npc.commis_herboristerie.name",
+        "position": [
+          0.6,
+          1.85
+        ],
+        "dialogue": "dialogue.commis_herboristerie",
+        "zone": "zone.herboristerie",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "comptoir",
+            "position": [
+              0.6,
+              1.85
+            ]
+          },
+          {
+            "at": "21:00",
+            "activity": "rangement",
+            "position": [
+              0.6,
+              1.85
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.commis_mercerie",
+        "name": "text.v214.npc.commis_mercerie.name",
+        "position": [
+          -2.1,
+          -0.3
+        ],
+        "dialogue": "dialogue.commis_mercerie",
+        "zone": "zone.mercerie",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "couture",
+            "position": [
+              -2.1,
+              -0.3
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "rangement",
+            "position": [
+              -2.1,
+              -0.3
+            ]
+          }
         ]
       }
     ],
@@ -21026,6 +21128,162 @@
           {
             "id": "reponse",
             "text": "text.v214.epices.sud_reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_epicerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_epicerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_epicerie"
+                  }
+                ],
+                "text": "text.v214.commis_epicerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_epicerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_epicerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_herboristerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_herboristerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_herboristerie"
+                  }
+                ],
+                "text": "text.v214.commis_herboristerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_herboristerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_herboristerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_mercerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_mercerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_mercerie"
+                  }
+                ],
+                "text": "text.v214.commis_mercerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_mercerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_mercerie.reponse",
             "choices": [
               {
                 "text": "text.v210.au_revoir",

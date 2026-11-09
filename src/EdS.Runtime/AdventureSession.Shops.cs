@@ -184,19 +184,53 @@ namespace EdS.Runtime
         /// Sous-lot V2.14 : ligne de l'affichage pour le marché (installation, marché et criée du moment si le joueur est sur la place du
         /// bourg, démontage) ; null hors des jours de marché.
         /// </summary>
+        /// <remarks>Relecture indépendante de la PR #135 : lue à chaque image par l'affichage ; refaite seulement quand la minute du monde, la
+        /// zone ou la présence sur la place changent (aucune allocation par image sinon).</remarks>
         public string? MarketLine
         {
             get
             {
-                if (MarketPhaseNow == MarketPhase.Calm) return null;
-                string? line = MarketNotice;
-                if (MarketPhaseNow == MarketPhase.Open && OnMarketSquare && MarketCry is string cry) line += " " + cry;
+                bool square = OnMarketSquare;
+                long day = World.Zone.Time.Day;
+                int minute = World.Zone.Time.Minute;
+                if (_marketLineCached && _marketLineDay == day && _marketLineMinute == minute && _marketLineSquare == square && _marketLineZone == _zone)
+                    return _marketLine;
+                string? line = null;
+                if (MarketPhaseNow != MarketPhase.Calm)
+                {
+                    line = MarketNotice;
+                    if (MarketPhaseNow == MarketPhase.Open && square && MarketCry is string cry) line += " " + cry;
+                }
+                (_marketLine, _marketLineDay, _marketLineMinute, _marketLineSquare, _marketLineZone, _marketLineCached) = (line, day, minute, square, _zone, true);
                 return line;
             }
         }
 
+        private string? _marketLine;
+        private long _marketLineDay;
+        private int _marketLineMinute;
+        private bool _marketLineSquare, _marketLineCached;
+        private ZoneDefinition? _marketLineZone;
+
         /// <summary>Sous-lot V2.14 : le joueur est sur la place du bourg (le lieu « bourg » de la carte), dehors.</summary>
-        public bool OnMarketSquare => InTown && Me is GroundVector p && Map.Places.FirstOrDefault(pl => pl.Id == "bourg") is MapPlace town
-            && p.X.Raw / 10000.0 >= town.MinX && p.X.Raw / 10000.0 <= town.MaxX && p.Z.Raw / 10000.0 >= town.MinZ && p.Z.Raw / 10000.0 <= town.MaxZ;
+        public bool OnMarketSquare
+        {
+            get
+            {
+                if (!InTown || !(Me is GroundVector p)) return false;
+                AdventureMap map = Map;
+                if (!ReferenceEquals(map, _squareMap))
+                {
+                    _squareMap = map;
+                    _square = map.Places.FirstOrDefault(pl => pl.Id == "bourg");
+                }
+                if (!(_square is MapPlace town)) return false;
+                double x = p.X.Raw / 10000.0, z = p.Z.Raw / 10000.0;
+                return x >= town.MinX && x <= town.MaxX && z >= town.MinZ && z <= town.MaxZ;
+            }
+        }
+
+        private AdventureMap? _squareMap;
+        private MapPlace? _square;
     }
 }

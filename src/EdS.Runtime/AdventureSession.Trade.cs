@@ -293,7 +293,9 @@ namespace EdS.Runtime
                 if (m.Bakes.Count > 0)
                 {
                     int minute = World.Zone.Time.Minute;
-                    if (World.WarmBread(m.Id)) parts.Add(Text("text.v214.bakery.warm"));
+                    bool rest = m.Shop is EdS.Data.Merchants.Shop sh && sh.Rest.Contains(EdS.Data.Story.WorldCalendar.WeekdayOf(World.Zone.Time.Day));
+                    if (rest) parts.Add(Text("text.v214.bakery.rest"));   // relecture de la PR #135 : le four est éteint
+                    else if (World.WarmBread(m.Id)) parts.Add(Text("text.v214.bakery.warm"));
                     else if (minute < m.Bakes[0].At) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.first"), HourText(m.Bakes[0].At)));
                     else if (minute >= m.SoldOut) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.soldout"), HourText(m.Bakes[0].At)));
                     else if (World.NextBake(m.Id) is int next) parts.Add(string.Format(CultureInfo.InvariantCulture, Text("text.v214.bakery.next"), HourText(next)));

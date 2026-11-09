@@ -1831,7 +1831,25 @@
       "text.v214.commis.retrouvailles": "Ah, vous revoilà ! Maître Firmin m'a dit de vous garder le croûton le plus doré. Il est pour vous, s'il en reste.",
       "text.v214.couturiere.retrouvailles": "Revoilà ma pratique ! Votre cape tient toujours ? Montrez-moi l'ourlet, je n'aime pas les fils qui pendent.",
       "text.v214.fromagere.retrouvailles": "Je vous reconnais ! Vous aviez goûté la tomme. Cette semaine, j'ai un bleu qui vous fera pleurer de joie.",
-      "text.v214.marchand_epices.retrouvailles": "Mon ami du bourg ! Pour vous, je garde le safran du fond de la caisse, celui que je ne montre pas aux autres."
+      "text.v214.marchand_epices.retrouvailles": "Mon ami du bourg ! Pour vous, je garde le safran du fond de la caisse, celui que je ne montre pas aux autres.",
+      "text.v214.npc.commis_epicerie.name": "Lucie, la nièce de Bertille",
+      "text.v214.commis_epicerie.accueil": "Tante Bertille est à son étal sur la place ; moi, je tiens la boutique. Farine, sel, chandelles, tout ce qu'il faut pour la maison.",
+      "text.v214.commis_epicerie.question": "Vous aidez souvent votre tante ?",
+      "text.v214.commis_epicerie.reponse": "Depuis que j'ai douze ans. Elle dit que je compte plus vite qu'elle. C'est vrai, mais ne le lui répétez pas.",
+      "text.v214.commis_epicerie.retrouvailles": "Re-bonjour ! Je vous ai mis de côté la dernière chandelle de cire, celle qui ne coule pas. Ne dites rien à ma tante.",
+      "text.v214.npc.commis_herboristerie.name": "Tiphaine, l'apprentie de Sauge",
+      "text.v214.commis_herboristerie.accueil": "Je trie les herbes pendant que Sauge court les prés. Si c'est pour une potion, je sais où tout se trouve, même la nuit.",
+      "text.v214.commis_herboristerie.question": "Qu'est-ce que vous apprenez ici ?",
+      "text.v214.commis_herboristerie.reponse": "À reconnaître une herbe à l'odeur, à la sécher sans la brûler, et à ne jamais goûter ce que Sauge range sur l'étagère du haut.",
+      "text.v214.commis_herboristerie.retrouvailles": "Vous revoilà ! Les herbes de l'Aube de ce matin sont encore humides de rosée. Prenez-les vite, elles ne restent jamais longtemps.",
+      "text.v214.npc.commis_mercerie.name": "Jeannot, l'apprenti de Margot",
+      "text.v214.commis_mercerie.accueil": "Je coupe, Margot coud. Enfin, quand elle me laisse les ciseaux. Elle dit que ma ligne n'est pas encore droite.",
+      "text.v214.commis_mercerie.question": "Vous voulez devenir tailleur ?",
+      "text.v214.commis_mercerie.reponse": "Tailleur des capes de la garde, même ! Pour l'instant je fais des ourlets. Beaucoup d'ourlets.",
+      "text.v214.commis_mercerie.retrouvailles": "Ah, c'est vous ! Margot a parlé de votre cape toute la semaine. Elle dit que vous la traitez mal. Moi je trouve qu'elle a du caractère.",
+      "text.activity.rangement": "range la boutique",
+      "text.activity.couture": "à la table de coupe",
+      "text.v214.bakery.rest": "Jour de repos : le four est éteint, rien de frais aujourd'hui (le pain d'épices se garde)."
     }
   }
 }

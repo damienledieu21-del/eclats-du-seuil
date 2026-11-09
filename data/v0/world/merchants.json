@@ -1033,7 +1033,8 @@
             "item": "item.pain_d_epices",
             "price": 60,
             "always": false,
-            "stock": 8
+            "stock": 8,
+            "door": true
           }
         ]
       },

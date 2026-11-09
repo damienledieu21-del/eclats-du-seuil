@@ -26,6 +26,7 @@ namespace EdS.Game
             public string Id;
             public Vector3 Top;
             public GameObject Pack;
+            public bool Lit;
             public readonly List<Puff> Puffs = new List<Puff>();
         }
 
@@ -36,6 +37,7 @@ namespace EdS.Game
         private readonly List<Material> _owned = new List<Material>();
         private MarketPhase _shown = (MarketPhase)(-1);
         private Material _smoke;
+        private int _chimneyMinute = -1;
 
         /// <summary>Hauteur (m) d'une cheminée de maison du bourg (estimée : le modèle de la maison varie).</summary>
         private const float ChimneyHeight = 7.2f;
@@ -197,11 +199,21 @@ namespace EdS.Game
                 foreach (GameObject g in _goods) if (g != null) g.SetActive(phase == MarketPhase.Open);
             }
             if (_chimneys.Count == 0) return;
-            IReadOnlyList<ShopChimney> now = adventure.Chimneys();
+            // Relecture indépendante de la PR #135 : l'état des fours se relit une fois par minute du monde (pas à chaque image).
+            int minute = adventure.World.Zone.Time.Minute;
+            if (minute != _chimneyMinute)
+            {
+                _chimneyMinute = minute;
+                IReadOnlyList<ShopChimney> now = adventure.Chimneys();
+                foreach (Chimney c in _chimneys)
+                {
+                    c.Lit = false;
+                    foreach (ShopChimney s in now) if (s.Id == c.Id) c.Lit = s.Lit;
+                }
+            }
             foreach (Chimney c in _chimneys)
             {
-                bool lit = false;
-                foreach (ShopChimney s in now) if (s.Id == c.Id) lit = s.Lit;
+                bool lit = c.Lit;
                 if (c.Pack != null)
                 {
                     if (c.Pack.activeSelf != lit) c.Pack.SetActive(lit);

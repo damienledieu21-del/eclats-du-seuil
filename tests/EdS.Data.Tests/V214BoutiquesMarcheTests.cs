@@ -67,6 +67,9 @@ public class V214BoutiquesMarcheTests
         m["shop"] = JsonNode.Parse("{\"kind\":\"herbalist\",\"sign\":\"text.merchant.herboriste.greeting\",\"building\":\"maison7\",\"open\":\"08:00\",\"close\":\"15:00\",\"rest\":[6],\"door\":\"patron\"}");
         m["offers"]![0]!["door"] = true;
         m["offers"]![1]!["door"] = true;   // l'herbe de l'Aube sert à une quête : toujours à la porte
+        // Relecture de la PR #135 : à la porte, sans limite de stock (un stock fini peut s'épuiser), pour rester toujours trouvables.
+        m["offers"]![0]!.AsObject().Remove("stock");
+        m["offers"]![1]!.AsObject().Remove("stock");
         return root;
     }
 
@@ -266,7 +269,7 @@ public class V214BoutiquesMarcheTests
         int index = root["data"]!["merchants"]!.AsArray().ToList().FindIndex(m => (string?)m!["id"] == Herboriste);
         string p = $"$.data.merchants[{index}]";
         JsonObject m = Merchant(root, Herboriste);
-        m["offers"]![1]!["fresh"] = true;
+        m["offers"]![2]!["fresh"] = true;   // le remède (stock fini) : l'herbe, à la porte, reste sans limite
         m["soldOut"] = "19:00";
         m["bakes"] = JsonNode.Parse("[{\"at\":\"06:00\",\"percent\":60},{\"at\":\"06:00\",\"percent\":40}]");
         Assert.Contains(Errors(ReadMerchants(root)), e => e.Path == p + ".bakes[1].at" && e.Code == ValidationCode.InvalidValue);
@@ -360,7 +363,7 @@ public class V214BoutiquesMarcheTests
 
     // --- Contenu livré ------------------------------------------------------------------------------------------------
 
-    private const string Boulangerie = "merchant.boulangerie", Pain = "item.pain_de_campagne", Croissant = "item.croissant_au_beurre";
+    private const string Boulangerie = "merchant.boulangerie", Pain = "item.pain_de_campagne", Croissant = "item.croissant_au_beurre", Epices = "item.pain_d_epices";
     private const string Fromagere = "merchant.fromagere", Fromage = "item.fromage_des_hautes_pierres";
 
     private static readonly Lazy<StoryBook> Story = new(() => Book(Zone()));
@@ -429,7 +432,7 @@ public class V214BoutiquesMarcheTests
         // Mardi (jour 1), 5 h : pas encore ouvert ; Bastien répond à la porte, mais rien n'est encore cuit.
         WorldSession early = AtBakery(1, 5 * 60);
         Assert.Equal(ShopState.AtDoor, early.ShopStateOf(Boulangerie));
-        Assert.Equal(new[] { Pain }, early.Stock(Boulangerie).Select(o => o.Item));
+        Assert.Equal(new[] { Pain, Epices }, early.Stock(Boulangerie).Select(o => o.Item));   // à la porte : le pain et ce qui se garde
         Assert.Equal(0, early.Left(Boulangerie, Pain));
         Assert.Equal(TradeRefusal.OutOfStock, early.Buy(Boulangerie, Pain));
         Assert.Equal(330, early.NextBake(Boulangerie));
@@ -450,17 +453,23 @@ public class V214BoutiquesMarcheTests
         Assert.Equal(0, evening.Left(Boulangerie, Croissant));
         Assert.Equal(TradeRefusal.OutOfStock, evening.Buy(Boulangerie, Croissant));
         Assert.Equal(ShopState.AtDoor, AtBakery(1, 20 * 60).ShopStateOf(Boulangerie));
-        // Lundi (jour 7) : jour de repos ; Bastien répond à la porte (le pain de campagne seulement) ; réouverture mardi à 5 h 30.
+        // Lundi (jour 7) : jour de repos ; Bastien répond à la porte ; réouverture mardi à 5 h 30. Relecture de la PR #135 : le four est
+        // éteint, rien de frais (pas de pain qui « sort » à la porte), seulement le pain d'épices qui se garde.
         WorldSession monday = AtBakery(7, 10 * 60);
         Assert.Equal(ShopState.AtDoor, monday.ShopStateOf(Boulangerie));
-        Assert.Equal(new[] { Pain }, monday.Stock(Boulangerie).Select(o => o.Item));
+        Assert.Equal(new[] { Pain, Epices }, monday.Stock(Boulangerie).Select(o => o.Item));
+        Assert.Equal(0, monday.Left(Boulangerie, Pain));
+        Assert.False(monday.WarmBread(Boulangerie));
+        Assert.Null(monday.NextBake(Boulangerie));
+        Assert.Equal(TradeRefusal.OutOfStock, monday.Buy(Boulangerie, Pain));
         Assert.Equal((8L, 330), monday.NextOpening(Boulangerie));
-        Assert.Equal(TradeRefusal.None, monday.Buy(Boulangerie, Pain));
+        Assert.Equal(TradeRefusal.None, monday.Buy(Boulangerie, Epices));
         string before = Snapshot(monday);
         Assert.Equal(TradeRefusal.NotForSale, monday.Buy(Boulangerie, Croissant));
         Assert.Equal(before, Snapshot(monday));
         // Le lendemain, tout est revenu (stock plein regagné chaque jour).
         Assert.Equal(first, AtBakery(8, 6 * 60, monday.Save().Character!).Left(Boulangerie, Pain));
+        Assert.Equal(first, AtBakery(15, 6 * 60).Left(Boulangerie, Pain));   // le mardi d'après, après un autre lundi de repos : la fournée normale
     }
 
     [Fact]
@@ -618,5 +627,84 @@ public class V214BoutiquesMarcheTests
         Assert.Equal("Boulangerie de Firmin · ouverte de 5 h 30 à 19 h 30 · fermée le lundi", calm.ShopHoursText(Boulangerie));
         Assert.Equal("Herboristerie de Sauge · ouverte jour et nuit", calm.ShopHoursText(Herboriste));
         Assert.Equal("Boutique fermée : jour de repos. Réouverture lundi à 5 h.", Adventure(6, 10 * 60).ClosedText("merchant.epicier"));
+    }
+
+    // --- Relecture indépendante de la PR #135 et réponses de Damien du 9 novembre 2026 (17 h 58) ----------------------
+
+    [Fact]
+    public void Une_offre_fraiche_ou_a_stock_fini_a_la_porte_ne_suffit_pas_a_une_quete()
+    {
+        // L'herbe de l'Aube (utile à une quête) vendue seulement à la porte d'une boutique, mais fraîche ou à stock fini : refusée.
+        StoryBook story = Book(Zone());
+        JsonObject root = WithHerbShop();
+        V214TestData.WithoutShops(root);   // seule l'herboristerie a une boutique
+        root["schemaVersion"] = 6;
+        JsonObject herb = Merchant(root, Herboriste);
+        herb["shop"] = JsonNode.Parse("{\"kind\":\"herbalist\",\"sign\":\"text.merchant.herboriste.greeting\",\"open\":\"08:00\",\"close\":\"15:00\",\"door\":\"patron\"}");
+        foreach (JsonNode? m in root["data"]!["merchants"]!.AsArray())
+            if ((string?)m!["id"] != Herboriste)
+                foreach (JsonNode? o in m!["offers"]!.AsArray().Where(o => (string?)o!["item"] == Herbe || (string?)o!["item"] == Potion).ToList()) m["offers"]!.AsArray().Remove(o);
+        int index = root["data"]!["merchants"]!.AsArray().ToList().FindIndex(m => (string?)m!["id"] == Herboriste);
+        foreach (int k in new[] { 0, 1 })
+        {
+            herb["offers"]![k]!["door"] = true;
+            herb["offers"]![k]!.AsObject().Remove("stock");
+        }
+        Assert.True(ReadMerchants(root).IsValid, ReadMerchants(root).Report.ToString());   // sans limite, pas fraîche : toujours trouvable
+        herb["offers"]![1]!["stock"] = 60;   // stock fini : peut s'épuiser
+        Assert.Contains(Errors(ReadMerchants(root)), e => e.Path == $"$.data.merchants[{index}].offers[1].door" && e.Code == ValidationCode.InvalidValue);
+        herb["offers"]![1]!["fresh"] = true;   // fraîche (avec des fournées) : à zéro avant la première et après la rupture
+        herb["bakes"] = JsonNode.Parse("[{\"at\":\"06:00\",\"percent\":100}]");
+        herb["soldOut"] = "19:00";
+        Assert.Contains(Errors(ReadMerchants(root)), e => e.Path == $"$.data.merchants[{index}].offers[1].door" && e.Code == ValidationCode.InvalidValue);
+        _ = story;
+    }
+
+    [Fact]
+    public void Apres_minuit_le_jour_de_repos_de_la_veille_compte()
+    {
+        // L'auberge (6 h à 1 h) fermée le lundi, sans personne à la porte : le mardi à 0 h 30, c'est encore le lundi soir : jour de repos.
+        JsonObject root = MerchantsJson();
+        JsonObject inn = Merchant(root, "merchant.auberge");
+        inn["shop"]!["rest"] = new JsonArray(0);
+        inn["shop"]!.AsObject().Remove("door");
+        foreach (JsonNode? o in inn["offers"]!.AsArray()) o!.AsObject().Remove("door");
+        MerchantBook book = Valid(root);
+        WorldSession tuesday = Open(-65.2, -6.4, Hero(), 1, 30, book);
+        Assert.Equal(ShopState.RestDay, tuesday.ShopStateOf("merchant.auberge"));
+        Assert.Equal((1L, 360), tuesday.NextOpening("merchant.auberge"));
+        // Le dimanche soir à 0 h 30 (lundi), l'auberge du dimanche est encore ouverte.
+        Assert.Equal(ShopState.Open, Open(-65.2, -6.4, Hero(), 7, 30, book).ShopStateOf("merchant.auberge"));
+        // Le mardi à 2 h (après la fermeture de 1 h) : simplement fermée.
+        Assert.Equal(ShopState.ClosedHours, Open(-65.2, -6.4, Hero(), 1, 120, book).ShopStateOf("merchant.auberge"));
+    }
+
+    [Fact]
+    public void Chaque_boutique_a_ses_employes_nommes_avec_leurs_horaires()
+    {
+        StoryBook story = Story.Value;
+        var staff = new Dictionary<string, (string Zone, string Work, int From, int To)>
+        {
+            ["npc.commis"] = ("zone.boulangerie", "comptoir", 300, 1185),
+            ["npc.commis_epicerie"] = ("zone.epicerie", "comptoir", 300, 1320),
+            ["npc.commis_herboristerie"] = ("zone.herboristerie", "comptoir", 420, 1260),
+            ["npc.commis_mercerie"] = ("zone.mercerie", "couture", 480, 1110),
+        };
+        foreach ((string id, (string zone, string work, int from, int to)) in staff)
+        {
+            Npc npc = story.Npc(id);
+            Assert.Equal(zone, npc.Zone);
+            Assert.True(Texts.Has(npc.Name));
+            Assert.Equal(work, npc.SlotAt(from)!.Activity);
+            Assert.Equal(work, npc.SlotAt(to - 1)!.Activity);
+            Assert.Equal("rangement", npc.SlotAt(to)!.Activity);
+            Assert.Equal("rangement", npc.SlotAt(from - 1)!.Activity);
+        }
+        // Plus de commis de décor anonyme : dans chaque boutique, les corps sont ceux des PNJ qui parlent.
+        foreach (string zone in new[] { "zone.boulangerie", "zone.epicerie", "zone.herboristerie", "zone.mercerie" })
+        {
+            InteriorLayout layout = InteriorRules.Layout(InterieursTests.MapOf(V231TestData.Interior(zone, 0, -1.4)));
+            Assert.DoesNotContain(layout.Villagers, v => v.Id == "commis");
+        }
     }
 }

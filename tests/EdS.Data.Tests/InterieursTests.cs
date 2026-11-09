@@ -462,7 +462,7 @@ public class InterieursTests : IDisposable
     // --- Aménagement (rendu) ----------------------------------------------------------------------------------------------
 
     /// <summary>Carte d'un intérieur comme la session la donne : lieux, portes, places dégagées (points sûrs et portes).</summary>
-    private static AdventureMap MapOf(ZoneDefinition zone)
+    internal static AdventureMap MapOf(ZoneDefinition zone)
     {
         static double M(Fixed f) => f.Raw / 10000.0;
         return new AdventureMap(zone.Setup.Space!,
@@ -491,13 +491,13 @@ public class InterieursTests : IDisposable
             // Sous-lot V1.9.6 : la salle du souvenir de la Rupture (aménagement provisoire en maison : la porte de lumière en autel, les
             // Seuillards en statues ; son vrai décor est pour la PR B, voir MONDE.md), la reine Ysolde.
             ["zone.souvenir_rupture"] = (InteriorStyle.House, new[] { InteriorProp.Statue, InteriorProp.Door }, 1),
-            // Sous-lot V2.14 : les boutiques ; à la boulangerie, le four, le pétrin (farine, jarre), les pains ; Bastien au comptoir (Margot à la
-            // mercerie), sinon un commis de décor.
+            // Sous-lot V2.14 : les boutiques ; à la boulangerie, le four, le pétrin (farine, jarre), les pains. Réponse de Damien du 9 novembre
+            // 2026 : plus de commis de décor ; les employés nommés (Bastien, Lucie, Tiphaine, Jeannot) et Margot sont des PNJ, posés par le jeu.
             ["zone.boulangerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Bread, InteriorProp.Broom, InteriorProp.Basket, InteriorProp.ClayPot, InteriorProp.Crate,
-                InteriorProp.Barrel, InteriorProp.Door }, 1),
-            ["zone.epicerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Shelves, InteriorProp.Barrel, InteriorProp.Crate, InteriorProp.Door }, 1),
-            ["zone.herboristerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Table, InteriorProp.Barrel, InteriorProp.Door }, 1),
-            ["zone.mercerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Cloth, InteriorProp.SpinningWheel, InteriorProp.Table, InteriorProp.Chest, InteriorProp.Door }, 1),
+                InteriorProp.Barrel, InteriorProp.Door }, 0),
+            ["zone.epicerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Shelves, InteriorProp.Barrel, InteriorProp.Crate, InteriorProp.Door }, 0),
+            ["zone.herboristerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Table, InteriorProp.Barrel, InteriorProp.Door }, 0),
+            ["zone.mercerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Cloth, InteriorProp.SpinningWheel, InteriorProp.Table, InteriorProp.Chest, InteriorProp.Door }, 0),
         };
         List<ZoneDefinition> insides = Linked().Zones.Where(z => z.Indoor).ToList();
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), insides.Select(z => z.Id).OrderBy(k => k, StringComparer.Ordinal));

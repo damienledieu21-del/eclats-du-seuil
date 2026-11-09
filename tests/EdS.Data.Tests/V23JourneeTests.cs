@@ -103,6 +103,8 @@ public sealed class V23JourneeTests : IDisposable
             // Réponse de Damien (question 6) : on en rajoute, dehors et dans les intérieurs (chacun dans sa zone).
             "npc.ysarn", "npc.deserteur", "npc.thibaut", "npc.aubergiste", "npc.pretre", "npc.albe", "npc.habitant", "npc.maitresse_guilde",
             "npc.intendant_guilde", "npc.archiviste",
+            // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
+            "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
         };
         Assert.Equal(scheduled.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Schedule.Count > 0).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // Chaque activité a son texte (sous le nom du PNJ, et pour la boutique).
