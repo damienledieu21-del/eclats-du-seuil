@@ -30,6 +30,9 @@ namespace EdS.Game
         private IReadOnlyList<ShopLot> _lots = new ShopLot[0];
         private UiText _shopPurse, _shopBagTitle, _shopBuybackEmpty, _shopNote;
         private UiButton _shopTalk;
+
+        /// <summary>Sous-lot V2.14 : marchander (étal du grand jour de marché, si la réputation le permet).</summary>
+        private UiButton _shopHaggle;
         private Pager _offerPager;
         private string _offerShop;
         private ShopTip _shopTip;
@@ -96,6 +99,8 @@ namespace EdS.Game
             _shopNote.Wrap();
             _shopTalk = UiKit.Button(page, "Parler", "bouton_sobre", "", UiFace.Bold, 16f, UiKit.Ink, () => _session?.TalkToShopkeeper());
             UiKit.Place(_shopTalk.Rect, new Vector2(1440f, 834f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
+            _shopHaggle = UiKit.Button(page, "Marchander", "bouton_sobre", "", UiFace.Bold, 16f, UiKit.Ink, () => _session?.Haggle());
+            UiKit.Place(_shopHaggle.Rect, new Vector2(1225f, 834f), new Vector2(200f, 44f), new Vector2(1f, 0.5f));
             BuildShopRepair(page);   // sous-lot V1.4 : réparer chez l'armurier (AdventureBook.Forge.cs)
         }
 
@@ -199,8 +204,12 @@ namespace EdS.Game
             }
 
             _shopPurse.Value = a.Purse;
-            _shopNote.Value = a.Text("text.ui.shop.bag_hint");
+            // Sous-lot V2.14 : enseigne et horaires, à la porte, pains chauds ou rupture, marchandage ; puis l'aide du sac.
+            string notice = a.ShopNotice;
+            _shopNote.Value = notice != null ? notice + "\n" + a.Text("text.ui.shop.bag_hint") : a.Text("text.ui.shop.bag_hint");
             _shopTalk.Text.Value = a.Text("text.ui.shop.talk");
+            _shopHaggle.Text.Value = a.Text("text.v214.haggle.button");
+            UiKit.Show(_shopHaggle.Rect, a.CanHaggle);
             RefreshRepairButton(a, _shopRepair, true);
             RefreshShopTip(a);
         }

@@ -693,6 +693,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.3 : la minute du monde, pour les allers-retours des villageois du décor.</summary>
         public void Village(int minute) => _space?.Village(minute);
 
+        /// <summary>Sous-lot V2.14 : la foule du grand jour de marché (montrée pendant le marché seulement).</summary>
+        public void MarketCrowd(System.Collections.Generic.IReadOnlyList<StyleVillager> spots, bool shown) => _space?.MarketCrowd(spots, shown);
+
         /// <summary>Revue Codex de la PR #103 : le corps visible d'un PNJ d'une pièce suit son repère (emploi du temps).</summary>
         public bool MoveSpeaker(string id, float x, float z, float deltaTime) => _space != null && _space.MoveSpeaker(id, x, z, deltaTime);
 

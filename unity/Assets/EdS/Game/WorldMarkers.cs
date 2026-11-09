@@ -84,6 +84,12 @@ namespace EdS.Game
         private readonly List<GameObject> _festive = new List<GameObject>();
         private bool _festiveForced;
 
+        /// <summary>Sous-lot V2.14 : boutiques et marché (enseignes, fumée, étals), et les repères des enseignes (leur étiquette suit l'état).</summary>
+        private ShopsView _shops;
+        private readonly Dictionary<string, Marker> _signs = new Dictionary<string, Marker>();
+        private int _signMinute = -1;
+        private const float SignLabelRange = 14f;
+
         /// <summary>Sous-lot V2.1 : temps (s) depuis la dernière relecture des places des PNJ.</summary>
         private float _npcAge;
 
@@ -183,6 +189,20 @@ namespace EdS.Game
             }
             // Sous-lot V2.11 (5e vague) : le fournil de Firmin, l'étal de Bertille, les champs, le hameau, les fêtes et le cœur du Seuil.
             if (!adventure.Indoors && catalog != null) Wave5Decor(adventure, byDay, catalog);
+            // Sous-lot V2.14 : enseignes des boutiques (leur nom et leur état en étiquette), fumée du fournil, étals du grand jour de marché,
+            // atelier couvert de la forge.
+            if (!adventure.Indoors && adventure.Map != null)
+            {
+                _shops = new ShopsView(_root.transform, adventure, Wave5View.Polygons(adventure.Map.Obstacles));
+                foreach (WorldMarker sign in adventure.ShopSigns())
+                {
+                    Marker m = Add(sign, PrimitiveType.Cube, new Vector3(0.05f, 0.05f, 0.05f), 2.55f, new Color(0.95f, 0.85f, 0.55f), 3.3f, SignLabelRange);
+                    m.Rank = 2;
+                    m.Body.GetComponent<Renderer>().enabled = false;   // la planche est dessinée par ShopsView ; le repère ne porte que l'étiquette
+                    _signs[sign.Id] = m;
+                }
+                _shops.Workshops(adventure.Workshops());
+            }
         }
 
         /// <summary>
@@ -755,6 +775,14 @@ namespace EdS.Game
             bool festive = _festiveForced || adventure.Festive;
             foreach (GameObject g in _festive)
                 if (g != null && g.activeSelf != festive) g.SetActive(festive);
+            // Sous-lot V2.14 : étals selon la phase du marché, fumée du fournil ; l'étiquette des enseignes une fois par minute du monde.
+            _shops?.Sync(adventure, Time.deltaTime);
+            if (_signs.Count > 0 && adventure.World.Zone.Time.Minute != _signMinute)
+            {
+                _signMinute = adventure.World.Zone.Time.Minute;
+                foreach (WorldMarker sign in adventure.ShopSigns())
+                    if (_signs.TryGetValue(sign.Id, out Marker m)) m.Label = sign.Name;
+            }
             foreach (WorldMarker node in adventure.Nodes())
                 if (_nodes.TryGetValue(node.Id, out Marker m))
                 {
@@ -808,6 +836,7 @@ namespace EdS.Game
 
         public void Destroy()
         {
+            _shops?.Destroy();
             Object.Destroy(_root);
             foreach (Material material in _owned)
                 if (material != null) Object.Destroy(material);
