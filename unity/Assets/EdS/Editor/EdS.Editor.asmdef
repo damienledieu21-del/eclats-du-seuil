@@ -4,7 +4,13 @@
     "references": [
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
+        "EdS.Domain",
+        "EdS.Simulation",
+        "EdS.Data",
+        "EdS.Data.Json",
         "EdS.Runtime",
+        "EdS.Net",
+        "EdS.World",
         "EdS.Game"
     ],
     "includePlatforms": [
