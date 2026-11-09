@@ -80,6 +80,20 @@ public sealed class V2127MatieresTests
         Assert.Equal(wood, MaterialRepairRules.LooksLikeWood(r, g, b, textured));
 
     [Fact]
+    public void Un_tonneau_est_de_bois_si_aucune_matiere_n_est_bleue_et_la_moitie_est_brune()
+    {
+        var planks = (0.45, 0.31, 0.19, false);
+        var hoops = (0.3, 0.3, 0.32, false);
+        var blue = (0.2, 0.3, 0.9, false);
+        Assert.True(MaterialRepairRules.BarrelIsWood(new[] { planks, hoops }));          // planches et cercles de fer
+        Assert.True(MaterialRepairRules.BarrelIsWood(new[] { (1.0, 1.0, 1.0, true) })); // texture seule
+        Assert.False(MaterialRepairRules.BarrelIsWood(new[] { planks, planks, blue }));  // un pan bleu suffit à refuser
+        Assert.False(MaterialRepairRules.BarrelIsWood(new[] { planks, hoops, hoops }));  // un seul pan brun sur trois
+        Assert.False(MaterialRepairRules.BarrelIsWood(new[] { blue }));
+        Assert.False(MaterialRepairRules.BarrelIsWood(new (double, double, double, bool)[0]));
+    }
+
+    [Fact]
     public void Les_flaques_sont_transparentes_et_plus_legeres_sur_PC_modeste()
     {
         PuddleLook full = PuddleLook.For(false), light = PuddleLook.For(true);

@@ -641,7 +641,8 @@ namespace EdS.Game
                     GameObject barrel = BarrelLook.Make(holder.transform, piece.Id, Vector3.zero, 0f);
                     barrel.transform.localPosition = Vector3.zero;
                     barrel.transform.localRotation = Quaternion.identity;
-                    barrel.transform.localScale = Vector3.one * (fit / 0.7f);
+                    // Même encombrement que l'ancien cylindre : diamètre fit, hauteur 1,2 × fit (BarrelLook.Make : 0,7 m de large, 0,95 m de haut).
+                    barrel.transform.localScale = new Vector3(fit / 0.7f, 1.2f * fit / 0.95f, fit / 0.7f);
                     break;
                 }
                 case InteriorProp.Shelves:

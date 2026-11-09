@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -14,20 +15,20 @@ namespace EdS.Game
         private const float Height = 0.95f;
         private const float Width = 0.7f;
 
-        /// <summary>Le modèle a-t-il l'air d'un tonneau de bois (une matière brune ou à texture, aucune bleue) ?</summary>
+        /// <summary>Le modèle a-t-il l'air d'un tonneau de bois (<see cref="MaterialRepairRules.BarrelIsWood"/> : aucune matière bleue, au moins la moitié brunes ou texturées) ?</summary>
         internal static bool LooksWooden(GameObject barrel)
         {
             if (barrel == null) return false;
-            bool any = false;
+            var materials = new List<(double, double, double, bool)>();
             foreach (Renderer r in barrel.GetComponentsInChildren<Renderer>())
                 foreach (Material m in r.sharedMaterials ?? new Material[0])
                 {
                     if (m == null) return false;   // matière absente : sortirait rose
                     Color c = StyleLook.BaseColor(m);
                     bool textured = (m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null) || (m.HasProperty("_MainTex") && m.GetTexture("_MainTex") != null);
-                    if (MaterialRepairRules.LooksLikeWood(c.r, c.g, c.b, textured)) any = true;
+                    materials.Add((c.r, c.g, c.b, textured));
                 }
-            return any;
+            return MaterialRepairRules.BarrelIsWood(materials);
         }
 
         /// <summary>
@@ -52,10 +53,8 @@ namespace EdS.Game
             holder.transform.SetParent(parent, false);
             holder.transform.position = at;
             holder.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-            Material wood = ArenaView.MakeMaterial(new Color(0.42f, 0.28f, 0.16f));
-            if (wood.HasProperty("_Smoothness")) wood.SetFloat("_Smoothness", 0.2f);
-            Material iron = ArenaView.MakeMaterial(new Color(0.13f, 0.13f, 0.14f));
-            if (iron.HasProperty("_Metallic")) iron.SetFloat("_Metallic", 0.6f);
+            Material wood = Shared(0), iron = Shared(1), lid = Shared(2);
+            holder.AddComponent<Owner>();   // libère les matières partagées quand le dernier tonneau disparaît
             // Fût : trois tranches de planches, celle du milieu plus large (le ventre du tonneau).
             Part(holder.transform, "Fût bas", 0.2f, 0.42f, Width * 0.9f, wood);
             Part(holder.transform, "Fût milieu", 0.475f, 0.5f, Width, wood);
@@ -64,9 +63,42 @@ namespace EdS.Game
             foreach (float y in new[] { 0.1f, 0.475f, 0.85f })
                 Part(holder.transform, "Cercle", y, 0.05f, Width * (y == 0.475f ? 1.05f : 0.95f), iron);
             // Fond du dessus : planches plus sombres.
-            Material lid = ArenaView.MakeMaterial(new Color(0.3f, 0.2f, 0.12f));
             Part(holder.transform, "Dessus", Height - 0.02f, 0.03f, Width * 0.84f, lid);
             return holder;
+        }
+
+        // Matières partagées par tous les tonneaux (bois, fer, dessus), comptées par tonneau vivant (Owner) et détruites avec le dernier.
+        private static readonly Material[] _shared = new Material[3];
+        private static int _owners;
+
+        private static Material Shared(int kind)
+        {
+            if (_shared[kind] == null)
+            {
+                Color color = kind == 0 ? new Color(0.42f, 0.28f, 0.16f) : kind == 1 ? new Color(0.13f, 0.13f, 0.14f) : new Color(0.3f, 0.2f, 0.12f);
+                Material m = ArenaView.MakeMaterial(color);
+                if (kind == 0 && m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.2f);
+                if (kind == 1 && m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.6f);
+                _shared[kind] = m;
+            }
+            return _shared[kind];
+        }
+
+        /// <summary>Un tonneau vivant : à sa destruction, le dernier libère les matières partagées.</summary>
+        private sealed class Owner : MonoBehaviour
+        {
+            private void Awake() => _owners++;
+
+            private void OnDestroy()
+            {
+                if (--_owners > 0) return;
+                _owners = 0;
+                for (int i = 0; i < _shared.Length; i++)
+                {
+                    if (_shared[i] != null) Object.Destroy(_shared[i]);
+                    _shared[i] = null;
+                }
+            }
         }
 
         private static void Part(Transform parent, string name, float y, float height, float width, Material material)

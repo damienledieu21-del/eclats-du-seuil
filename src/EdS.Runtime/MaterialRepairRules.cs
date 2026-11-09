@@ -169,17 +169,28 @@ namespace EdS.Runtime
             return words.ToArray();
         }
 
+        /// <summary>Teinte franchement bleue (le tonneau uni de l'essai du 9 novembre 2026).</summary>
+        public static bool IsBlue(double r, double g, double b) => b > r + 0.08 && b >= g;
+
         /// <summary>
-        /// Un tonneau a-t-il l'air d'un tonneau de bois d'après la couleur de sa matière ? Une matière à texture passe, sauf si sa teinte est
-        /// franchement bleue ; sans texture, la couleur doit être brune ou sombre, ni bleue ni blanche (essai du 9 novembre 2026 : tonneau
-        /// bleu uni à la forge).
+        /// Une matière a-t-elle l'air de bois ? Sans texture : brune ou sombre, ni bleue ni blanche ; avec texture : sa teinte n'est pas bleue.
         /// </summary>
         public static bool LooksLikeWood(double r, double g, double b, bool hasTexture)
         {
-            bool blue = b > r + 0.08 && b >= g;
-            if (hasTexture) return !blue;
-            if (blue || IsPlainWhite(r, g, b, false)) return false;
-            return r >= b;
+            if (IsBlue(r, g, b)) return false;
+            if (hasTexture) return true;
+            return !IsPlainWhite(r, g, b, false) && r >= b;
+        }
+
+        /// <summary>
+        /// Un tonneau (ses matières : couleur et présence d'une texture) est de bois : aucune matière bleue, et au moins la moitié des matières
+        /// ont l'air de bois (les cercles de fer, gris, ne l'emportent pas sur les planches ; un seul pan brun ne suffit plus). Sans matière : non.
+        /// </summary>
+        public static bool BarrelIsWood(IEnumerable<(double R, double G, double B, bool Textured)> materials)
+        {
+            List<(double R, double G, double B, bool Textured)> all = (materials ?? Array.Empty<(double, double, double, bool)>()).ToList();
+            if (all.Count == 0 || all.Any(m => IsBlue(m.R, m.G, m.B))) return false;
+            return all.Count(m => LooksLikeWood(m.R, m.G, m.B, m.Textured)) * 2 >= all.Count;
         }
     }
 }

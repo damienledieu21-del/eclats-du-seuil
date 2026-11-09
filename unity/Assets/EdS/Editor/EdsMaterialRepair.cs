@@ -16,9 +16,10 @@ namespace EdS.Game.Editor
     /// (a) convertit toute matière hors URP en « Universal Render Pipeline/Lit » en reprenant sa texture, sa couleur, son relief et son mode ;
     /// (b) donne à une matière blanche sans texture la texture de même nom (ou du nom du modèle), sinon une couleur de repli d'après le genre
     /// d'objet (bois, brique, pierre, argile, métal, pain…), jamais du blanc pur ;
-    /// (c) remplit une matière absente d'un prefab. Une matière d'un fichier de modèle (en lecture seule) est remplacée par une copie dans
-    /// <c>Generated/Reparees</c> (remappage d'import) ; une matière d'un fichier « .mat » est réparée sur place. Relançable : une matière
-    /// réparée n'est plus un défaut. <see cref="Problems"/> sert à la vérification de l'essai. Le comportement est le même en mode PC modeste.
+    /// (c) remplit une matière absente d'un prefab. Jamais de modification d'un fichier d'origine d'un pack : la matière réparée est toujours une
+    /// copie dans <c>Generated/Reparees</c>, posée dans le slot du prefab, ou par remappage d'import (<c>AddRemap</c>) pour un fichier de modèle
+    /// (matière interne ou externe). Le blanc ne compte que pour une matière créée à l'import d'un modèle (jamais pour un « .mat » d'URP voulu
+    /// blanc). Relançable : une matière réparée n'est plus un défaut. <see cref="Problems"/> sert à la vérification de l'essai. Le comportement est le même en mode PC modeste.
     /// </summary>
     internal static class EdsMaterialRepair
     {
@@ -128,14 +129,25 @@ namespace EdS.Game.Editor
         private static Color TintOf(Material m) =>
             m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
 
-        /// <summary>Le défaut d'une matière : rose (shader hors URP, absent ou en erreur) ou blanche (ni texture, ni couleur). Les peaux ne comptent pas pour le blanc (yeux, dents).</summary>
+        /// <summary>
+        /// Le défaut d'une matière : rose (shader hors URP, absent ou en erreur) ou blanche (ni texture, ni couleur). Le blanc ne compte que pour
+        /// une matière créée à l'import d'un modèle (celle d'un fichier « .mat » d'URP peut être voulue blanche) et pas pour une peau (yeux, dents).
+        /// </summary>
         private static MaterialFault Check(Material m, bool skinned)
         {
             if (m == null) return MaterialFault.Pink;
             string shader = m.shader != null ? m.shader.name : null;
             Color c = TintOf(m);
             MaterialFault fault = MaterialRepairRules.Fault(shader, c.r, c.g, c.b, MainTexture(m) != null);
-            return skinned && fault == MaterialFault.White ? MaterialFault.None : fault;
+            if (fault == MaterialFault.White && (skinned || !FromModelImport(m))) return MaterialFault.None;
+            return fault;
+        }
+
+        /// <summary>La matière vient-elle de l'import d'un fichier de modèle (et non d'un « .mat » du projet) ?</summary>
+        private static bool FromModelImport(Material m)
+        {
+            string owner = AssetDatabase.GetAssetPath(m);
+            return !string.IsNullOrEmpty(owner) && AssetImporter.GetAtPath(owner) is ModelImporter;
         }
 
         private static void RepairModel(string path, Shader lit, Dictionary<string, List<string>> textureCache, List<string> notes, ref int pink, ref int white)
@@ -144,9 +156,11 @@ namespace EdS.Game.Editor
             if (root == null) return;
             string modelName = Path.GetFileNameWithoutExtension(path);
             string folder = Path.GetDirectoryName(path).Replace('\\', '/');
-            var imports = new HashSet<ModelImporter>();
+            bool isPrefab = path.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase);
+            ModelImporter importer = isPrefab ? null : AssetImporter.GetAtPath(path) as ModelImporter;
+            if (!isPrefab && importer == null) return;
             var replaced = new Dictionary<Material, Material>();
-            bool changedPrefab = false;
+            bool remapped = false, changedPrefab = false;
             foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
             {
                 if (renderer is ParticleSystemRenderer) continue;
@@ -160,51 +174,60 @@ namespace EdS.Game.Editor
                     if (fault == MaterialFault.None) continue;
                     if (m != null && replaced.TryGetValue(m, out Material done))
                     {
-                        if (done != m)
+                        if (isPrefab)
                         {
                             shared[i] = done;
                             slotsChanged = true;
                         }
                         continue;
                     }
-                    string owner = m != null ? AssetDatabase.GetAssetPath(m) : "";
-                    var importer = !string.IsNullOrEmpty(owner) && !owner.EndsWith(".mat", System.StringComparison.OrdinalIgnoreCase)
-                        ? AssetImporter.GetAtPath(owner) as ModelImporter : null;
-                    string name = m != null ? m.name : modelName + " " + i;
-                    Material target;
-                    if (m != null && importer == null && owner.EndsWith(".mat", System.StringComparison.OrdinalIgnoreCase)
-                        && !owner.StartsWith("Packages/", System.StringComparison.Ordinal)) target = m;   // fichier « .mat » du projet : réparé sur place
-                    else
+                    // Où la copie sera posée : dans le slot d'un prefab ; pour un fichier de modèle, par remappage d'import de la matière
+                    // interne (le fichier) ou externe (celle que la table des matières externes nomme). Sinon rien n'est réparé (ni compté).
+                    AssetImporter.SourceAssetIdentifier key = default;
+                    bool remap = false;
+                    if (!isPrefab)
                     {
-                        // Matière d'un fichier de modèle (lecture seule), d'un paquet ou absente : copie dans Generated/Reparees.
-                        string copy = Folder + "/" + Clean(modelName + " " + name) + ".mat";
-                        target = AssetDatabase.LoadAssetAtPath<Material>(copy);
-                        if (target == null)
+                        if (m == null) continue;
+                        if (AssetDatabase.GetAssetPath(m) == path)
                         {
-                            target = new Material(lit);
-                            AssetDatabase.CreateAsset(target, copy);
+                            key = new AssetImporter.SourceAssetIdentifier(m);
+                            remap = true;
                         }
+                        else
+                            foreach (KeyValuePair<AssetImporter.SourceAssetIdentifier, Object> pair in importer.GetExternalObjectMap() ?? new Dictionary<AssetImporter.SourceAssetIdentifier, Object>())
+                                if (pair.Value == m)
+                                {
+                                    key = pair.Key;
+                                    remap = true;
+                                    break;
+                                }
+                        if (!remap) continue;
                     }
-                    Snapshot before = Snap(m);
-                    ConvertAndFill(target, m, before, lit, modelName, name, folder, path, textureCache, fault == MaterialFault.Pink, notes);
+                    string name = m != null ? m.name : modelName + " " + i;
+                    // Jamais le fichier d'origine : une copie dans Generated/Reparees.
+                    string copy = Folder + "/" + Clean(modelName + " " + name) + ".mat";
+                    Material target = AssetDatabase.LoadAssetAtPath<Material>(copy);
+                    if (target == null)
+                    {
+                        target = new Material(lit);
+                        AssetDatabase.CreateAsset(target, copy);
+                    }
+                    ConvertAndFill(target, Snap(m), lit, modelName, name, folder, path, textureCache, notes);
                     if (fault == MaterialFault.Pink) pink++;
                     else white++;
                     if (m != null) replaced[m] = target;
-                    if (target != m)
+                    if (remap)
                     {
-                        if (importer != null)
-                        {
-                            importer.AddRemap(new AssetImporter.SourceAssetIdentifier(m), target);
-                            imports.Add(importer);
-                        }
-                        else
-                        {
-                            shared[i] = target;
-                            slotsChanged = true;
-                        }
+                        importer.AddRemap(key, target);
+                        remapped = true;
+                    }
+                    else
+                    {
+                        shared[i] = target;
+                        slotsChanged = true;
                     }
                 }
-                if (slotsChanged && path.EndsWith(".prefab", System.StringComparison.OrdinalIgnoreCase))
+                if (slotsChanged && isPrefab)
                 {
                     renderer.sharedMaterials = shared;
                     EditorUtility.SetDirty(renderer);
@@ -212,7 +235,7 @@ namespace EdS.Game.Editor
                 }
             }
             if (changedPrefab) EditorUtility.SetDirty(root);
-            foreach (ModelImporter importer in imports) importer.SaveAndReimport();
+            if (remapped) importer.SaveAndReimport();
             if (pink + white > 0) notes.Add(Path.GetFileName(path) + " : matières réparées (" + pink + " roses, " + white + " blanches).");
         }
 
@@ -239,23 +262,23 @@ namespace EdS.Game.Editor
         }
 
         /// <summary>
-        /// Met <paramref name="target"/> sur URP Lit avec ce que <paramref name="before"/> savait de <paramref name="source"/> ; sans texture
-        /// ni couleur, la texture de même nom (<see cref="MaterialRepairRules.BestTexture"/>) ou la couleur de repli du genre d'objet.
+        /// Met <paramref name="target"/> (une copie neuve ou déjà réparée, jamais un fichier d'un pack) sur URP Lit avec ce que
+        /// <paramref name="before"/> savait de la matière d'origine ; sans texture ni couleur, la texture de même nom
+        /// (<see cref="MaterialRepairRules.BestTexture"/>) ou la couleur de repli du genre d'objet (l'opacité d'origine est gardée).
         /// </summary>
-        private static void ConvertAndFill(Material target, Material source, Snapshot before, Shader lit, string modelName, string name, string folder,
-            string path, Dictionary<string, List<string>> textureCache, bool pink, List<string> notes)
+        private static void ConvertAndFill(Material target, Snapshot before, Shader lit, string modelName, string name, string folder,
+            string path, Dictionary<string, List<string>> textureCache, List<string> notes)
         {
             if (target.shader != lit) target.shader = lit;
             target.shaderKeywords = new string[0];
             target.renderQueue = -1;
             Texture main = before.Main;
             Color color = before.Color;
-            string chosen = null;
             if (main == null && color.r >= (float)MaterialRepairRules.WhiteFrom && color.g >= (float)MaterialRepairRules.WhiteFrom
                 && color.b >= (float)MaterialRepairRules.WhiteFrom)
             {
                 List<string> maps = TexturesAround(folder, textureCache);
-                chosen = MaterialRepairRules.BestTexture(name, modelName, maps);
+                string chosen = MaterialRepairRules.BestTexture(name, modelName, maps);
                 if (chosen != null)
                 {
                     main = AssetDatabase.LoadAssetAtPath<Texture2D>(chosen);
@@ -266,7 +289,7 @@ namespace EdS.Game.Editor
                 if (main == null)
                 {
                     (double r, double g, double b) = MaterialRepairRules.FallbackColor(name, modelName, Path.GetFileName(folder));
-                    color = new Color((float)r, (float)g, (float)b, 1f);
+                    color = new Color((float)r, (float)g, (float)b, before.Color.a);   // l'opacité d'origine (verre, voile) est gardée
                     if ((r, g, b) == MaterialRepairRules.MetalColor)
                     {
                         before.Metallic = 0.7f;
@@ -286,25 +309,40 @@ namespace EdS.Game.Editor
                 target.SetTexture("_BumpMap", before.Bump);
                 target.EnableKeyword("_NORMALMAP");
             }
-            // Mode de l'ancien Standard : 1 découpé (feuillage, grilles), 2 et 3 transparent.
+            // Opaque d'abord (une copie déjà réparée peut avoir gardé un autre mode), puis le mode de l'ancien Standard : 1 découpé, 2 et 3 transparent.
+            target.SetFloat("_Surface", 0f);
+            target.SetFloat("_Blend", 0f);
+            target.SetFloat("_SrcBlend", 1f);
+            target.SetFloat("_DstBlend", 0f);
+            target.SetFloat("_SrcBlendAlpha", 1f);
+            target.SetFloat("_DstBlendAlpha", 0f);
+            target.SetFloat("_ZWrite", 1f);
+            target.SetFloat("_AlphaClip", 0f);
+            target.SetFloat("_AlphaToMask", 0f);
+            target.SetFloat("_Cull", 2f);
             if (before.Mode > 0.5f && before.Mode < 1.5f)
             {
                 target.SetFloat("_AlphaClip", 1f);
                 target.SetFloat("_Cutoff", before.Cutoff);
+                target.SetFloat("_AlphaToMask", 1f);
                 target.EnableKeyword("_ALPHATEST_ON");
                 target.SetFloat("_Cull", 0f);
                 target.renderQueue = 2450;
             }
             else if (before.Mode > 1.5f)
             {
-                target.SetFloat("_Surface", 1f);
-                target.SetFloat("_Blend", 0f);
-                target.SetFloat("_SrcBlend", 5f);
-                target.SetFloat("_DstBlend", 10f);
+                // Les mêmes réglages que SpaceView.Transparent (mélange alpha d'URP, sans écriture de profondeur).
+                ParticleBlend blend = ParticleRules.Transparent(0);
+                target.SetFloat("_Surface", blend.Surface);
+                target.SetFloat("_Blend", blend.Blend);
+                target.SetFloat("_SrcBlend", blend.Src);
+                target.SetFloat("_DstBlend", blend.Dst);
+                target.SetFloat("_SrcBlendAlpha", blend.SrcAlpha);
+                target.SetFloat("_DstBlendAlpha", blend.DstAlpha);
                 target.SetFloat("_ZWrite", 0f);
                 target.SetOverrideTag("RenderType", "Transparent");
                 target.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                target.renderQueue = 3000;
+                target.renderQueue = blend.Queue;
             }
             EditorUtility.SetDirty(target);
         }
