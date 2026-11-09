@@ -90,29 +90,52 @@ namespace EdS.Game.Editor
                 return;
             }
             // 1. La scène de démarrage existe et est dans la liste de construction (sans effet si c'est déjà fait).
-            StartupSceneState state = EdsStartupScene.Ensure(false);
-            LaunchStep step = EssaiTools.AfterStartupScene(state, AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) != null);
-            if (step == LaunchStep.StopSilently)
-            {
-                Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée). Rien d'autre n'a été fait.");
-                return;
-            }
-            if (step == LaunchStep.StopWithMessage)
-            {
-                EditorUtility.DisplayDialog("Essai", "La scène de démarrage (" + EdsStartupScene.ScenePath + ") n'a pas pu être préparée : regarde la Console, puis relance.", "OK");
-                return;
-            }
+            if (!EnsureStartupScene()) return;
             // 2. Préparation de l'essai de style (relançable, rapport dans la Console).
             if (!EdsStyle.Prepare(false)) return;
             AssetDatabase.SaveAssets();
             // La suite du rapport (scène, catalogue, ressources) une fois la préparation faite, en reprenant la base : pas de seconde passe complète.
             EdsVerificationWindow.ShowIfNeeded(EdsVerification.RunAfter(check));
+            check = null;   // V2.12.9 : seules des chaînes sont gardées, mais rien ne reste en main pendant le mode Jeu
+            // V2.12.9 : libère la mémoire avant le mode Jeu (PC modeste : la préparation et la vérification ont chargé beaucoup de modèles).
+            ReleaseMemory();
+            OpenSceneAndPlay(true);
+        }
+
+        /// <summary>V2.12.9 : libère les ressources inutilisées avant le mode Jeu (« System out of memory » sur un PC de 4 Go).</summary>
+        private static void ReleaseMemory()
+        {
+            EditorUtility.UnloadUnusedAssetsImmediate();
+            System.GC.Collect();
+        }
+
+        /// <summary>Étape 1 : la scène de démarrage existe (false : arrêt, message déjà donné).</summary>
+        private static bool EnsureStartupScene()
+        {
+            StartupSceneState state = EdsStartupScene.Ensure(false);
+            LaunchStep step = EssaiTools.AfterStartupScene(state, AssetDatabase.LoadAssetAtPath<SceneAsset>(EdsStartupScene.ScenePath) != null);
+            if (step == LaunchStep.StopSilently)
+            {
+                Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée). Rien d'autre n'a été fait.");
+                return false;
+            }
+            if (step == LaunchStep.StopWithMessage)
+            {
+                EditorUtility.DisplayDialog("Essai", "La scène de démarrage (" + EdsStartupScene.ScenePath + ") n'a pas pu être préparée : regarde la Console, puis relance.", "OK");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>Étapes 3 et 4 : ouvre la scène de démarrage puis lance le mode Jeu.</summary>
+        private static void OpenSceneAndPlay(bool prepared)
+        {
             // 3. Ouvre la bonne scène ; une scène modifiée déclenche la question de Unity (annuler arrête tout, rien n'est perdu).
             if (EssaiTools.ShouldOpenStartupSceneAlone(SceneManager.GetActiveScene().path, SceneManager.sceneCount, EdsStartupScene.ScenePath))
             {
                 if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
                 {
-                    Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée). La préparation, elle, est faite.");
+                    Debug.Log("Éclats du Seuil : lancement annulé (la scène ouverte est gardée)." + (prepared ? " La préparation, elle, est faite." : " Rien d'autre n'a été fait."));
                     return;
                 }
                 EditorSceneManager.OpenScene(EdsStartupScene.ScenePath);
@@ -120,6 +143,25 @@ namespace EdS.Game.Editor
             // 4. Mode Jeu. Le drapeau survit à un rechargement de domaine (la préparation peut recompiler) : au chargement, il relance le mode Jeu une fois.
             SessionState.SetBool(PlayFlag, true);
             StartPlayIfAsked();
+        }
+
+        [MenuItem("Éclats du Seuil/Lancer l'essai (déjà préparé)")]
+        private static void PlayPrepared()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog("Essai", "Le jeu tourne déjà (ou démarre). Arrête-le avec le bouton Play, puis relance ce menu.", "OK");
+                return;
+            }
+            // V2.12.9 : ni préparation ni vérification complète (PC modeste) ; seul le catalogue de style doit exister.
+            if (AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath) == null)
+            {
+                EditorUtility.DisplayDialog("Essai", "L'essai n'a pas encore été préparé (catalogue de style absent) : fais d'abord « Éclats du Seuil → Préparer l'essai de style ».", "OK");
+                return;
+            }
+            if (!EnsureStartupScene()) return;
+            ReleaseMemory();
+            OpenSceneAndPlay(false);
         }
     }
 }
