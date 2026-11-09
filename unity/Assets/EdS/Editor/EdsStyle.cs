@@ -535,12 +535,12 @@ namespace EdS.Game.Editor
                 notes.Add("Rendu URP absent : matière de " + name + " laissée telle quelle.");
                 return;
             }
-            string materialPath = Generated + "/" + name + ".mat";
-            Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            string ownPath = Generated + "/" + name + ".mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(ownPath);
             if (material == null)
             {
                 material = new Material(lit);
-                AssetDatabase.CreateAsset(material, materialPath);
+                AssetDatabase.CreateAsset(material, ownPath);
             }
             Configure(material, lit, null, 0f, Texture2DAt(color), Texture2DAt(normal), false);
             // Matières encore dans le FBX (première préparation) ; celles déjà remappées n'y sont plus, et leur remap reste en place.
