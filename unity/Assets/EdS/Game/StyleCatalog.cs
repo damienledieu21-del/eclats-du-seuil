@@ -30,6 +30,8 @@ namespace EdS.Game
         [Tooltip("Nom du dossier tel qu'il est écrit (affiché dans le créateur de personnage).")]
         public string Folder;
         public GameObject Model;
+        [Tooltip("Chemin du FBX d'origine (« Assets/Style/MakeHuman/Grand Gaspard/Gaspard_v2.fbx ») : PNJ.txt peut le viser par son nom de fichier.")]
+        public string File;
         [Tooltip("Hauteur du personnage (m).")]
         public float Height = 1.75f;
         [Tooltip("Rotation ajoutée (degrés) si le modèle regarde de travers.")]
@@ -437,7 +439,7 @@ namespace EdS.Game
                     var list = new System.Collections.Generic.List<MadeHumanModel>();
                     if (MadeLooks != null)
                         foreach (MadeHumanLook m in MadeLooks)
-                            if (m != null && m.Model != null && !string.IsNullOrEmpty(m.Name)) list.Add(new MadeHumanModel(m.Name, string.IsNullOrEmpty(m.Folder) ? m.Name : m.Folder, m.Name));
+                            if (m != null && m.Model != null && !string.IsNullOrEmpty(m.Name)) list.Add(new MadeHumanModel(m.Name, string.IsNullOrEmpty(m.Folder) ? m.Name : m.Folder, string.IsNullOrEmpty(m.File) ? m.Name : m.File));
                     list.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
                     _models = list;
                 }

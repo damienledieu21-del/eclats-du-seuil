@@ -336,7 +336,7 @@ namespace EdS.Game
             _shownSession = _adventure.Opened;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;
-            _paused = false;
+            _paused = _creator != null && _creator.Open;   // V2.16 : jamais de reprise du jeu sous le créateur de personnage
             _floating.Clear();
             _playerYaw = 0f;
         }

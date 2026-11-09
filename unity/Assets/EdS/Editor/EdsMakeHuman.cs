@@ -152,6 +152,7 @@ namespace EdS.Game.Editor
             {
                 Name = model.Name,
                 Folder = model.Folder,
+                File = model.Path,
                 Model = prefab,
                 Height = previous != null && previous.Height > 0.5f ? previous.Height : 1.75f,   // réglage à la main gardé d'un import à l'autre
                 Yaw = previous != null ? previous.Yaw : 0f,

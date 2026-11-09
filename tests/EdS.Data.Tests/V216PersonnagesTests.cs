@@ -144,6 +144,20 @@ public sealed class V216PersonnagesTests
         Assert.Equal("grandgaspard", MadeHumans.ModelFor(MadeHumans.ParseMapping("renart = Grand Gaspard/Gaspard_v2.fbx"), m, "npc.renart")!.Name);
     }
 
+    [Fact]
+    public void Modele_vise_par_son_fichier_quand_le_catalogue_garde_le_chemin_du_FBX()
+    {
+        // Comme le catalogue du jeu : clé du dossier + chemin d'origine du FBX (champ File), qui ne porte pas le nom du dossier.
+        var m = new[] { new MadeHumanModel("grandgaspard", "Grand Gaspard", Root + "Grand Gaspard/Gaspard_v2.fbx") };
+        MadeHumanMapping map = MadeHumans.ParseMapping("renart = Gaspard_v2.fbx\nodile = grand gaspard");
+        Assert.Equal("grandgaspard", MadeHumans.ModelFor(map, m, "npc.renart")!.Name);
+        Assert.Equal("grandgaspard", MadeHumans.ModelFor(map, m, "npc.odile")!.Name);
+        Assert.Empty(MadeHumans.Missing(map, m));
+        // Sans chemin gardé (ancien catalogue : le nom du dossier tient lieu de chemin), le dossier se vise encore.
+        var old = new[] { new MadeHumanModel("grandgaspard", "Grand Gaspard", "grandgaspard") };
+        Assert.Equal("grandgaspard", MadeHumans.ModelFor(MadeHumans.ParseMapping("odile = Grand Gaspard"), old, "npc.odile")!.Name);
+    }
+
     // --- Budgets pour un PC modeste ------------------------------------------------------------------------------------
 
     [Fact]
