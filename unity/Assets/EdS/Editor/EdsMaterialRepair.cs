@@ -113,6 +113,7 @@ namespace EdS.Game.Editor
                     if (fault != MaterialFault.None && seen.Add(name + "|" + fault))
                         found.Add(new Problem { File = Path.GetFileName(path), Material = name, Fault = fault });
                 }
+                EdsStyle.Breathe(ref breathed);   // seules des chaînes sont gardées d'une itération à l'autre
             }
             return found;
         }
