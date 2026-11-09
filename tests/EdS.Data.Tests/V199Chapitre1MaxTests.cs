@@ -117,7 +117,7 @@ public class V199Chapitre1MaxTests
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(old.Save())).Save!;
-        Assert.Equal(16, SaveValidator.CurrentSchemaVersion);   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; sinon inchangée
+        Assert.Equal(17, SaveValidator.CurrentSchemaVersion);   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; sinon inchangée
         Assert.Equal(3, Open(Gaspard, saved.Character!).Inventory.Count("item.peau_de_loup"));
     }
 

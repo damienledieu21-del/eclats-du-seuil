@@ -201,3 +201,10 @@ Ressources déposées par Damien dans `unity/Assets/Style` (non suivies par git)
 **Hors dépôt, licences commerciales** (jamais dans git ; manifeste écrit par la préparation dans `Assets/Style/Generated/LICENCES_ASSET_STORE.md`, chez Damien) : le pack **6200 Fantasy RPG Icons Pack** de CraftPix (licence standard de l'Asset Store : icônes de l'inventaire et des boutiques) et neuf pains scannés de **Quixel Megascans** (licence standard Fab : vitrine du fournil). Sous-lot V2.12 : *Baked Bread and Pastry* (LUMI), *RPG Food Props*, *Free Medieval Village Pack Vol.1* (MyDreamGameStudio), *Medieval Castle* (Advance Studios), *Dungeon Modular Pack*, *Medieval Props Pack 01*, *Basic RPG Sounds* (Multiple Solutions), *Fantasy Wooden GUI Free* et *Character Constructor* (SopaDopa), tous sous licence standard de l'Asset Store, listés au même manifeste. Aucun crédit n'est exigé ; ils sont cités ici par courtoisie.
 
 Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fichier, `unity/Assets/EdS/Interface/LICENCES.md`, et l'écran des crédits du jeu quand il existera.
+
+## Personnages faits par Damien (sous-lot V2.16)
+
+| Source | Ce qui sert | Licence |
+| --- | --- | --- |
+| [MakeHuman](https://static.makehumancommunity.org/) (outil) | personnages que Damien fabrique, dans `Assets/Style/MakeHuman/<nom>/` (non suivi par git) | modèles exportés **CC0** ([FAQ](https://static.makehumancommunity.org/oldsite/faq/can_i_sell_models_created_with_makehuman.html)) ; éléments de base CC0 ([licence](https://static.makehumancommunity.org/about/license.html)) ; le programme est AGPL, sans effet sur les sorties |
+| Vêtements et cheveux de la bibliothèque de MakeHuman | seulement **CC0 ou CC BY** (jamais NC, ND, SA) | chaque personnage a son `MANIFESTE.md` ; un élément CC BY est cité ici avec son auteur |

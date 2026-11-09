@@ -102,7 +102,7 @@ public class Essai9CameraTests
         // Réglages montrés pendant la pause, reliés à la caméra.
         Assert.Contains("_hud.OnSettings(() => _camera.SetClickLook(!_camera.ClickLook), () => _camera.SetInvertY(!_camera.InvertY),", game, StringComparison.Ordinal);
         // Relecture : pas de réglages par-dessus une annonce (défaite, fin de session) ni sur l'écran de fin d'un combat d'entraînement.
-        Assert.Contains("_hud.Settings(_paused && open && notice == null, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
         Assert.Contains("_hud.Settings(_paused && !_combat.IsFinished, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);", game, StringComparison.Ordinal);
         Assert.Contains("_camera.Indoors = a.Indoors;", game, StringComparison.Ordinal);
         // Reculer à reculons quand la caméra est derrière le personnage (comme avant en vue 2).

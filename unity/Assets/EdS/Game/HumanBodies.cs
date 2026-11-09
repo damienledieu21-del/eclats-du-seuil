@@ -291,13 +291,44 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Sous-lot V2.16 : aspect du héros choisi dans le créateur de personnage (posé par le jeu à la reprise et au « Valider » du créateur), ou
+        /// null : l'aspect par défaut. Affichage seulement.
+        /// </summary>
+        public static EdS.Data.Saves.SavedLook HeroLook { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.16 : le personnage de MakeHuman voulu pour ce corps, ou null. Le héros : celui que le joueur a choisi dans le créateur
+        /// (« made.… »), ou la ligne « heros = … » de PNJ.txt ; un PNJ : sa ligne de PNJ.txt, ou le dossier à son prénom. Jamais pour un
+        /// ennemi, une bête ni le Gardien.
+        /// </summary>
+        internal static MadeHumanLook MadeWanted(StyleCatalog catalog, StyleSlot slot, string id, string lookId)
+        {
+            if (catalog == null || !catalog.UseMadeHumans || catalog.MadeLooks == null || catalog.MadeLooks.Length == 0) return null;
+            if (slot == StyleSlot.Hero)
+            {
+                if (HeroLook != null && HeroLooks.IsMade(HeroLook.Body)) return catalog.MadeByName(HeroLook.Body.Substring(HeroLooks.MadePrefix.Length));
+                return HeroLook == null ? catalog.MadeFor(MadeHumans.HeroKey) : null;   // un choix de Quaternius l'emporte sur PNJ.txt
+            }
+            if (slot != StyleSlot.Character) return null;
+            string who = lookId ?? id;
+            string key = StyleRules.CharacterOf(who);
+            if (key.Length == 0 || key == "gardien") return null;
+            return catalog.MadeFor(who);
+        }
+
+        /// <summary>
         /// L'aspect humain voulu pour ce corps (<see cref="HumanLooks.PreferHuman"/>), ou null : il garde le modèle du catalogue.
         /// <paramref name="lookId"/> : l'identifiant qui décide de l'aspect (sinon <paramref name="id"/>).
         /// </summary>
         public static HumanLook? Wanted(StyleCatalog catalog, StyleSlot slot, string id, string lookId)
         {
             if (slot == StyleSlot.Hero)
-                return catalog.Hero == null && catalog.HumanHero && Usable(catalog) ? HumanLooks.For("heros", "heros") : (HumanLook?)null;
+            {
+                if (!Usable(catalog)) return null;
+                // Sous-lot V2.16 : un corps de Quaternius choisi par le joueur l'emporte sur le paladin de Mixamo.
+                if (HeroLook != null && !HeroLooks.IsMade(HeroLook.Body)) return HeroLooks.ToHumanLook(HeroLook);
+                return catalog.Hero == null && catalog.HumanHero ? HumanLooks.For("heros", "heros") : (HumanLook?)null;
+            }
             if (slot != StyleSlot.Character) return null;
             bool mixamo = catalog.Character(id) != null;
             string role = lookId != null && lookId.StartsWith("npc.", System.StringComparison.Ordinal) ? lookId : id;
@@ -339,8 +370,14 @@ namespace EdS.Game
                 return null;
             string who = slot == StyleSlot.Hero ? "heros" : lookId ?? id;
             string role = slot == StyleSlot.Hero ? "heros" : id;
-            return HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), catalog.HumanFestival || Festival,
+            bool festive = catalog.HumanFestival || Festival;
+            WardrobePlan plan = HumanWardrobe.Plan(who, role, look, Season(catalog), HumanWardrobe.IsRain(StyleWorld.Weather.Kind), festive,
                 HumanWardrobe.MaxOptional(Application.isMobilePlatform));
+            // Sous-lot V2.16 : la couleur de tenue choisie dans le créateur teinte les vrais vêtements du héros (sauf un jour de fête).
+            if (slot == StyleSlot.Hero && HeroLook != null && !festive)
+                return new WardrobePlan(plan.Outfit, plan.Requests, plan.Fabric, HeroLooks.ClothesTint(HeroLook.Palette), plan.Wear, plan.Season, plan.Festive, plan.Rain,
+                    plan.MaxOptional);
+            return plan;
         }
 
         /// <summary>Sous-lot V2.9.4 : jour de fête au bourg (posé par les fêtes à venir) : les villageois qui apparaissent sortent leurs beaux habits.</summary>

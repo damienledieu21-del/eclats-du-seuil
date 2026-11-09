@@ -6,6 +6,7 @@ using System.Linq;
 using EdS.Data;
 using EdS.Data.Builds;
 using EdS.Data.Json;
+using EdS.Data.Saves;
 using EdS.Data.Scenarios;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
@@ -164,6 +165,8 @@ namespace EdS.Game
                 _camera = CameraRig.Create();
                 _arena = new ArenaView();
                 _hud = HudView.Create();
+                _creator = new HeroCreatorView(_hud.CenterFrame);   // sous-lot V2.16 : créateur de personnage
+                _hud.OnCreator(OpenCreator);
                 // Essai réaliste 9 : réglages de la caméra dans la pause (souris libre ou clic maintenu, haut-bas inversé, sensibilité).
                 _hud.OnSettings(() => _camera.SetClickLook(!_camera.ClickLook), () => _camera.SetInvertY(!_camera.InvertY),
                     step => _camera.SetSensitivity(_camera.Sensitivity + step));
@@ -257,6 +260,7 @@ namespace EdS.Game
                 Say("Aventure indisponible : " + e.Message);
                 return;
             }
+            HumanBodies.HeroLook = _adventure.HeroLook;   // sous-lot V2.16 : l'aspect choisi du héros, repris avec la sauvegarde
             _markers = new WorldMarkers(_adventure);
             _shownZone = _adventure.CurrentZone;
             _adventureHelp = null;
@@ -273,7 +277,40 @@ namespace EdS.Game
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
             _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
+            if (_adventure.IsNewGame) OpenCreator();   // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
+        }
+
+        private HeroCreatorView _creator;
+
+        /// <summary>Sous-lot V2.16 : ouvre le créateur de personnage (le jeu est en pause tant qu'il est ouvert).</summary>
+        private void OpenCreator()
+        {
+            if (_adventure == null || _creator == null) return;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            _paused = true;
+            _creator.Show(_adventure.HeroLook, catalog != null ? catalog.MadeModels : null, ApplyLook);
+        }
+
+        /// <summary>Sous-lot V2.16 : garde l'aspect choisi (sauvegarde) et redessine le héros.</summary>
+        private void ApplyLook(SavedLook look)
+        {
+            if (_adventure == null) return;
+            try
+            {
+                _adventure.ChooseLook(look);
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
+            {
+                // Sauvegarde impossible : l'aspect n'est pas appliqué (l'ancien reste), le joueur peut réessayer.
+                Debug.LogException(e);
+                Say("Aspect non sauvegardé : " + e.Message);
+                _paused = false;
+                return;
+            }
+            HumanBodies.HeroLook = look;
+            _arena.Populate(_combat, _adventure.Map);   // le héros reprend son corps avec le nouvel aspect
+            _paused = false;
         }
 
         /// <summary>Affiche la session de zone en cours (au départ, après une halte ou une reprise).</summary>
@@ -302,7 +339,7 @@ namespace EdS.Game
             _shownSession = _adventure.Opened;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;
-            _paused = false;
+            _paused = _creator != null && _creator.Open;   // V2.16 : jamais de reprise du jeu sous le créateur de personnage
             _floating.Clear();
             _playerYaw = 0f;
         }
@@ -458,7 +495,10 @@ namespace EdS.Game
         private void UpdateAdventure()
         {
             AdventureSession a = _adventure;
-            if (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed)
+            // Relecture Codex de la PR #134 : tant que le créateur de personnage est ouvert, aucune commande d'aventure ne passe (halte, marche,
+            // raccourcis, écrans) ; seuls Échap (annuler) et ses boutons répondent.
+            bool creating = _creator != null && _creator.Open;
+            if (!creating && (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed))
             {
                 LeaveAdventure();
                 Load(0, null);
@@ -477,6 +517,10 @@ namespace EdS.Game
                 // Essai réaliste 6, étape 2 : T ou Échap ferme l'arbre sans garder les points.
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();
             }
+            else if (_creator != null && _creator.Open)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape)) _creator.Close();   // sous-lot V2.16 : Échap annule le créateur, le jeu reste en pause
+            }
             else if (_screens.Open != AdventureScreens.Panel.None)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _screens.Close();
@@ -485,7 +529,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
             bool calm = !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None;   // un dialogue reste possible
             _stage?.ReadInput(a, calm && !talking, calm);
-            if (!TalentsOpen)
+            if (!TalentsOpen && !creating)
             {
                 if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
                 if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
@@ -497,8 +541,8 @@ namespace EdS.Game
                 // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
                 if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
             }
-            if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
+            if (!creating && Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
+            if (!creating && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed))
             {
                 // La halte et la reprise sauvegardent : un disque plein ou inaccessible s'affiche, la partie reste où elle en est.
                 try
@@ -521,7 +565,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking;   // sous-lot V1.9.8 : le réveil
+            frozen = frozen || _stage != null && _stage.Blocking || creating;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -530,7 +574,7 @@ namespace EdS.Game
                 StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
                 if (_arena.Feet(_combat.PlayerId) is Vector3 feet) _effects?.Healed(feet);   // essai réaliste 7 : éclats verts
             }
-            if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
+            if (!creating && (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed)) _camera.Toggle(_playerYaw);
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();
@@ -1509,7 +1553,7 @@ namespace EdS.Game
                 string notice = !a.MustContinue ? null
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
-                _hud.Settings(_paused && open && notice == null, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
+                _hud.Settings(_paused && open && notice == null && !(_creator != null && _creator.Open), _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);
                 _hud.Clock(a.EventBanner ?? a.ScarLabel);   // V2.5 : « En cours : … » ; V2.6 : « Cicatrice du Seuil · palier 2 sur 4 »
                 if (_adventureHelp == null) _adventureHelp = HelpKeys.Adventure(a.Text("text.ui.help"));
                 _hud.Help(_help && open, a.PlaceName, "Aventure · " + a.TimeOfDay + " · " + _camera.Describe(), _adventureHelp);

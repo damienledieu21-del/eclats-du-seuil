@@ -249,6 +249,9 @@ namespace EdS.Runtime
         /// <summary>La sauvegarde trouvée était illisible (ainsi que sa copie) : nouvelle partie, motif dans <see cref="SaveProblem"/>.</summary>
         public string? SaveProblem { get; }
 
+        /// <summary>Sous-lot V2.16 : vrai pour une vraie nouvelle partie (aucune sauvegarde lue) : le jeu propose alors le créateur de personnage.</summary>
+        public bool IsNewGame { get; }
+
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath)
         {
@@ -265,6 +268,7 @@ namespace EdS.Runtime
             SavePath = savePath;
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
+            IsNewGame = read.Save is null;   // sous-lot V2.16 : le créateur de personnage s'ouvre à la création du héros
             // Sous-lot V1.2 : un nouveau personnage porte son équipement de départ (l'Éclat du Seuil ; pour le Bastion, l'épée et l'écu).
             // Sous-lot V1.9.6 : il commence l'ouverture (le réveil, tutoriel), avec deux potions de soin pour son étape « boire » (emportées dès
             // la première session) ; une partie déjà commencée n'y est jamais renvoyée. Relecture indépendante de la PR #94 : seulement pour
