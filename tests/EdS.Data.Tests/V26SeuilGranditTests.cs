@@ -76,7 +76,7 @@ public class V26SeuilGranditTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((12, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
-        Assert.Equal((16, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
+        Assert.Equal((17, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
         Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
         Assert.Equal("0.25.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         Assert.Equal("0.25.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());

@@ -1029,7 +1029,7 @@ Sous-lot V2.10 du [plan de l'alpha](PLAN_ALPHA.md) (chantier n° 20, « fêtes e
 
 **Relecture indépendante de la PR #135 (corrigée)** : le jour de repos, le four est éteint : rien de frais (ni à l'étal ni à la porte), seul ce qui se garde (pain d'épices, vendu aussi à la porte) ; après minuit, une ouverture de la veille au soir compte pour la veille (jour de repos) ; une offre à la porte ne rend un objet utile à l'histoire « toujours trouvable » que sans limite de stock et pas fraîche ; l'affichage relit l'état des fours et la ligne du marché une fois par minute du monde (aucune allocation par image).
 
-**Affichage** : enseignes de bois aux portes (étiquette : nom et état), fumée du fournil, étals montés selon la phase, foule du marché, criées et ligne du marché dans le bandeau, bandeau de la boutique (enseigne, horaires, porte, pains chauds, prochaine fournée, rupture, marchandage) et bouton « Marchander ». Essai : [ESSAI_V1.10.md](ESSAI_V1.10.md) § 29.
+**Affichage** : enseignes de bois aux portes (étiquette : nom et état), fumée du fournil, étals montés selon la phase, foule du marché, criées et ligne du marché dans le bandeau, bandeau de la boutique (enseigne, horaires, porte, pains chauds, prochaine fournée, rupture, marchandage) et bouton « Marchander ». Essai : [ESSAI_V1.10.md](ESSAI_V1.10.md) § 30.
 
 ## Sauvegarde
 

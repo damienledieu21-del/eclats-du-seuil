@@ -424,6 +424,13 @@ namespace EdS.Game
         private UiText _sensitivity, _brightness;
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
+        private System.Action _openCreator;
+
+        /// <summary>Sous-lot V2.16 : cadre du centre de l'écran, où le créateur de personnage pose sa fenêtre.</summary>
+        public RectTransform CenterFrame => _center;
+
+        /// <summary>Sous-lot V2.16 : action du bouton « Mon personnage » des réglages (ouvre le créateur de personnage).</summary>
+        public void OnCreator(System.Action openCreator) => _openCreator = openCreator;
 
         /// <summary>Actions des boutons des réglages : souris libre ou clic maintenu, haut-bas inversé, sensibilité (pas de ±0,25).</summary>
         public void OnSettings(System.Action toggleClickLook, System.Action toggleInvert, System.Action<float> stepSensitivity)
@@ -451,7 +458,7 @@ namespace EdS.Game
         private void BuildSettings()
         {
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
-            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 520f, 560f, 364f, 0.5f, 0.5f);
+            _settings = At(UiKit.Node(_center, "Réglages"), 450f, 540f, 560f, 420f, 0.5f, 0.5f);   // V2.13 : luminosité ; V2.16 : Mon personnage
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
             At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
@@ -477,6 +484,9 @@ namespace EdS.Game
             At(_brightness.Rect, 280f, 304f, 240f, 40f, 0.5f, 0.5f);
             UiButton brighter = UiKit.Button(_settings, "Plus lumineux", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => BrightnessSetting.Step(1));
             At(brighter.Rect, 440f, 304f, 52f, 44f, 0.5f, 0.5f);
+            // Sous-lot V2.16 : le créateur de personnage (corps, coiffure, couleurs).
+            UiButton creator = UiKit.Button(_settings, "Mon personnage", "bouton_sobre", "Mon personnage…", UiFace.Bold, 18f, UiKit.Ink, () => _openCreator?.Invoke());
+            At(creator.Rect, 280f, 358f, 440f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 

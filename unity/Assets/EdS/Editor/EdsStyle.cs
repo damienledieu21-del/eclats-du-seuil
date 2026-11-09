@@ -49,10 +49,11 @@ namespace EdS.Game.Editor
             // Essai réaliste 4 (choix de Damien du 27 octobre 2026) : un fichier de Poly Haven présent en plusieurs résolutions (1k de l'essai
             // 3, 2k ou 8k de l'essai 4) ne compte qu'une fois, dans sa plus haute résolution.
             List<string> textures = StyleRules.Highest(AssetDatabase.FindAssets("t:Texture2D", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath)
-                .Where(p => !p.StartsWith(Generated + "/")).Distinct()).ToList();
+                .Where(p => !p.StartsWith(Generated + "/") && !MadeHumans.IsUnderFolder(p)).Distinct()).ToList();   // V2.16 : MakeHuman a son propre import
             foreach (string path in textures) Texture(path);
 
-            List<string> models = StyleRules.Highest(AssetDatabase.FindAssets("t:Model", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct()).ToList();
+            List<string> models = StyleRules.Highest(AssetDatabase.FindAssets("t:Model", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => !MadeHumans.IsUnderFolder(p)).Distinct()).ToList();   // V2.16 : les personnages de MakeHuman ne sont pas des décors (EdsMakeHuman)
             List<string> sounds = AssetDatabase.FindAssets("t:AudioClip", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
 
             string hero = StyleRules.Candidates(models, StyleSlot.Hero).FirstOrDefault();
@@ -333,6 +334,8 @@ namespace EdS.Game.Editor
             string humans = EdsHumans.Prepare(models, textures, catalog, notes);
             // Sous-lot V2.11 (5e vague) : grand loup, Galeran, armes, Seuil, fournil, fêtes, gestes de métier, icônes de CraftPix.
             string wave5 = EdsWave5.Prepare(models, textures, catalog, notes);
+            // Sous-lot V2.16 : personnages faits dans MakeHuman (Assets/Style/MakeHuman), s'il y en a.
+            string made = EdsMakeHuman.Prepare(catalog, notes);
             // Sous-lot V2.12.7 (essai du 9 novembre 2026 : four et comptoir blancs, objets roses) : matières hors URP converties, matières
             // blanches texturées ou colorées, pour tout ce que le catalogue pose (EdsMaterialRepair).
             // V2.12.8 (essai de Claude du 9 novembre 2026, après-midi) : la réparation libère la mémoire tous les BreatheEvery modèles
@@ -365,6 +368,7 @@ namespace EdS.Game.Editor
                 + "\nBasse-cour : âne " + Name(donkey) + ", poule " + Name(hen) + ", coq " + Name(rooster) + " ; ours : " + Name(bear)
                 + "\n" + humans
                 + "\n" + wave5
+                + "\n" + made
                 + "\n" + repaired
                 + "\nVoix des bêtes, cloches et failles : " + voices + " sur " + EssaiManifest.Voices.Count + " (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
                 + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur " + EssaiManifest.WorldSounds.Count
