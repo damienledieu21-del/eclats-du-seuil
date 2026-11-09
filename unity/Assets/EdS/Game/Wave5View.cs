@@ -19,13 +19,19 @@ namespace EdS.Game
         /// (<paramref name="size"/> m de haut si positif, sinon celle de la liste, sinon sa taille réelle) multipliée par l'échelle du catalogue.
         /// <paramref name="variant"/> : pour un rôle à plusieurs fichiers posés ensemble (les pains), le rang voulu parmi ceux trouvés.
         /// </summary>
-        public static GameObject Place(Transform parent, Wave5Role role, string id, Vector3 at, float yaw, float size = 0f)
+        public static GameObject Place(Transform parent, Wave5Role role, string id, Vector3 at, float yaw, float size = 0f, int variant = 0)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            Wave5Look look = catalog != null ? catalog.Look(role) : null;
+            Wave5Look look = null;
+            if (catalog != null)
+            {
+                // Sous-lot V2.12 : un rôle à plusieurs fichiers (caisses, victuailles) prend le rang voulu parmi ceux trouvés.
+                List<Wave5Look> all = catalog.Looks(role);
+                look = all.Count > 0 ? all[((variant % all.Count) + all.Count) % all.Count] : null;
+            }
             if (look == null) return null;
             Wave5Entry entry = Wave5.Entry(role);
-            var holder = new GameObject(id + " (V2.11)");
+            var holder = new GameObject(id + (AssetStore.IsStoreRole(role) ? " (V2.12)" : " (V2.11)"));
             GameObject model = Object.Instantiate(look.Model, holder.transform, false);
             foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             // Relecture de la PR #121 : calcul hors champ sur ordinateur seulement (le Note8 n'a pas de quoi le payer).
@@ -38,8 +44,8 @@ namespace EdS.Game
             if (height > 0f && StyleLook.VisibleBounds(holder, out Bounds b) && b.size.y > 0.01f) k = height / b.size.y;
             holder.transform.localScale = Vector3.one * k * (look.Scale > 0f ? look.Scale : 1f);
             holder.transform.rotation = Quaternion.Euler(0f, yaw + look.Yaw, 0f);
-            holder.transform.position = at;
-            if (!entry.Has(Wave5Fix.Floats)) StyleLook.Ground(holder, at.y);
+            holder.transform.position = at + look.Offset;
+            if (!entry.Has(Wave5Fix.Floats)) StyleLook.Ground(holder, at.y + look.Offset.y);
             Loop(holder);
             return holder;
         }
@@ -148,11 +154,49 @@ namespace EdS.Game
         /// première place libre (à <paramref name="clearance"/> m des obstacles) ; null s'il n'y en a pas ou sans modèle.
         /// </summary>
         public static GameObject PlaceNear(Transform parent, Wave5Role role, string id, double x, double z, double yaw, double distance, double clearance,
-            List<IReadOnlyList<(double X, double Z)>> obstacles, float facing, float size = 0f)
+            List<IReadOnlyList<(double X, double Z)>> obstacles, float facing, float size = 0f, int variant = 0)
         {
             if (!Has(role)) return null;
             if (!(Wave5.FreeSpot(Wave5.Around(x, z, yaw, distance), obstacles, clearance) is (double X, double Z) spot)) return null;
-            return Place(parent, role, id, new Vector3((float)spot.X, 0f, (float)spot.Z), facing, size);
+            return Place(parent, role, id, new Vector3((float)spot.X, 0f, (float)spot.Z), facing, size, variant);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12 : pose <paramref name="count"/> objets de <paramref name="role"/> (fichiers différents à tour de rôle) sur le dessus de
+        /// <paramref name="table"/>, en rangées, chacun ramené à <paramref name="size"/> m de long au plus (les packs n'ont pas tous la même unité).
+        /// Rien sans le modèle ou sans dessus visible.
+        /// </summary>
+        public static int Spread(Transform parent, GameObject table, Wave5Role role, int count, float face, float size, string id)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog == null || table == null || !StyleLook.VisibleBounds(table, out Bounds top)) return 0;
+            List<Wave5Look> looks = catalog.Looks(role);
+            if (looks.Count == 0) return 0;
+            int placed = 0, perRow = Mathf.Max(1, (count + 1) / 2);
+            for (int i = 0; i < count; i++)
+            {
+                Wave5Look look = looks[i % looks.Count];
+                float u = perRow > 1 ? (i % perRow / (float)(perRow - 1) - 0.5f) * 0.75f : 0f, v = (i / perRow - 0.5f) * 0.4f;
+                Vector3 at = top.center + Quaternion.Euler(0f, face, 0f) * new Vector3(u * top.size.x, 0f, v * top.size.z * 0.6f);
+                // Un étal à auvent : le dessus de la boîte est le toit ; la planche est prise à 1 m au plus (réglable par Offset).
+                at.y = Mathf.Min(top.max.y, top.min.y + 1f);
+                var holder = new GameObject(id + " " + i + " (V2.12)");
+                Object.Instantiate(look.Model, holder.transform, false);
+                foreach (Collider c in holder.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                Fix(holder, look.Model.name, look.Material);
+                holder.transform.SetParent(parent, false);
+                if (StyleLook.VisibleBounds(holder, out Bounds b) && Mathf.Max(b.size.x, b.size.z) > 0.001f)
+                {
+                    float longest = Mathf.Max(b.size.x, b.size.z);
+                    if (longest > size) holder.transform.localScale = Vector3.one * (size / longest);
+                }
+                holder.transform.localScale *= look.Scale > 0f ? look.Scale : 1f;
+                holder.transform.rotation = Quaternion.Euler(0f, face + StyleRules.Variant(id + i, 50) - 25 + look.Yaw, 0f);
+                holder.transform.position = at + look.Offset;
+                StyleLook.Ground(holder, at.y + look.Offset.y);
+                placed++;
+            }
+            return placed;
         }
     }
 }

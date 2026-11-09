@@ -101,6 +101,47 @@ namespace EdS.Runtime
         Cauldron,
         Chest,
         Tankard,
+
+        // --- Sous-lot V2.12 : packs de l'Asset Store (liste AssetStore.Entries ; ajoutés à la fin : les valeurs sérialisées ne bougent pas) ---
+        StoreBread,
+        StoreFood,
+        StoreCrate,
+        TraderTable,
+        TraderTent,
+        Anvil,
+        SmithTable,
+        WeaponStand,
+        QuenchTub,
+        WaterWheel,
+        AnimalShed,
+        VillageBarrel,
+        VillageBucket,
+        SpinningWheel,
+        VillageCart,
+        Stump,
+        PropCrate,
+        Ladder,
+        Handcart,
+        CampTent,
+        VillageHouse,
+        Tavern,
+        Smithy,
+        VillageWindmill,
+        SmithWeapons,
+        CastleKeep,
+        CastleTower,
+        CastleWall,
+        CastleBridge,
+        CastleGate,
+        CastleHouse,
+        DungeonWall,
+        DungeonFloor,
+        DungeonArch,
+        DungeonTorch,
+        DungeonRail,
+        ArmoredMan,
+        ArmoredWoman,
+        StoreFurniture,
     }
 
     /// <summary>Sous-lot V2.11 : où en est une ressource dans le jeu.</summary>
@@ -441,7 +482,7 @@ namespace EdS.Runtime
         public static Wave5Entry Entry(Wave5Role role) => EntryOrNull(role) ?? throw new ArgumentException("Rôle hors de la liste : " + role, nameof(role));
 
         /// <summary>Relecture de la PR #121 : la ressource du rôle, ou null pour un rôle hors de <see cref="Entries"/> (le corbeau).</summary>
-        public static Wave5Entry? EntryOrNull(Wave5Role role) => Entries.FirstOrDefault(e => e.Role == role);
+        public static Wave5Entry? EntryOrNull(Wave5Role role) => Entries.FirstOrDefault(e => e.Role == role) ?? AssetStore.EntryOrNull(role);
 
         /// <summary>
         /// Fichier que la préparation prend pour <paramref name="entry"/> parmi <paramref name="models"/> : le premier de ses fichiers (du meilleur
@@ -519,7 +560,9 @@ namespace EdS.Runtime
         }
 
         /// <summary>Relecture de la PR #121 : nombre de fichiers différents posés pour un rôle (vitrine du fournil, haches) ; 1 pour les autres.</summary>
-        public static int Variants(Wave5Role role) => role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
+        public static int Variants(Wave5Role role) =>
+            AssetStore.EntryOrNull(role) != null ? AssetStore.Variants(role)
+            : role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
 
         /// <summary>Ressource de l'arme tenue en main pour la forme <paramref name="look"/> (le marteau prend celui de la forge) ; null sinon.</summary>
         public static Wave5Role? WeaponRole(WeaponLook look) =>

@@ -64,6 +64,17 @@ namespace EdS.Game
         /// </summary>
         public static Sprite Sprite(string name, float border = 0f)
         {
+            // Sous-lot V2.12 : la dalle des fenêtres prend la planche de Fantasy Wooden GUI choisie au catalogue (pierre par défaut), sinon la sienne.
+            if (name == "dalle" && StyleCatalog.Loaded != null && StyleCatalog.Loaded.GuiBoard() is Texture2D board && board != null)
+            {
+                string boardKey = "board|" + board.name + "|" + StyleCatalog.Loaded.GuiBorder;
+                if (Sprites.TryGetValue(boardKey, out Sprite made) && made != null) return made;
+                float b = Mathf.Clamp(StyleCatalog.Loaded.GuiBorder, 0f, Mathf.Min(board.width, board.height) / 2f - 1f);
+                Sprite plank = UnityEngine.Sprite.Create(board, new Rect(0f, 0f, board.width, board.height), new Vector2(0.5f, 0.5f), SpritePixelsPerUnit, 0u,
+                    SpriteMeshType.FullRect, new Vector4(b, b, b, b));
+                Sprites[boardKey] = plank;
+                return plank;
+            }
             string key = name + "|" + border;
             if (Sprites.TryGetValue(key, out Sprite known)) return known;
             Texture2D texture = Texture("EdsInterface/Hud/" + name);

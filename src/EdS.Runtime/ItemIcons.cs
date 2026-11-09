@@ -137,7 +137,9 @@ namespace EdS.Runtime
         /// </summary>
         public static string? Pick(string itemId, IEnumerable<string> icons)
         {
-            List<string> pack = (icons ?? Array.Empty<string>()).Where(p => p != null && IsIcon(p)).Distinct().OrderBy(p => p, StringComparer.Ordinal).ToList();
+            // Sous-lot V2.12 : le vrai chemin du pack est « Assets/Fantasy RPG Icons Pack/Asset/<Catégorie> Icons/{Background,No Background}/… » :
+            // la version sans fond d'abord (une même image n'est jamais comptée deux fois).
+            List<string> pack = AssetStore.PreferNoBackground((icons ?? Array.Empty<string>()).Where(p => p != null && IsIcon(p))).ToList();
             if (pack.Count == 0) return null;
             var words = pack.Select(p => (Path: p, File: PathWords(EssaiManifest.FileName(p)), All: PathWords(p))).ToList();
             foreach (string wanted in Keywords(itemId))
@@ -146,7 +148,28 @@ namespace EdS.Runtime
                 List<string> found = inName.Count > 0 ? inName : words.Where(w => w.All.Any(x => Matches(x, wanted))).Select(w => w.Path).ToList();
                 if (found.Count > 0) return found[StyleRules.Variant(itemId, found.Count)];
             }
+            // Sous-lot V2.12 : sinon la catégorie du pack (« Armor Icons ») pour une pièce d'armure, dans le dossier seulement.
+            foreach (string category in CategoryWords(itemId))
+            {
+                List<string> found = words.Where(w => w.All.Any(x => Matches(x, category))).Select(w => w.Path).ToList();
+                if (found.Count > 0) return found[StyleRules.Variant(itemId, found.Count)];
+            }
             return null;
+        }
+
+        /// <summary>Débuts de mots français d'une pièce d'armure (repli sur la catégorie « Armor Icons » du pack).</summary>
+        private static readonly string[] ArmorWords =
+        {
+            "casque", "heaume", "coiffe", "epaulieres", "spalieres", "mantelet", "gambison", "cotte", "brigandine", "cuirasse", "plastron", "brassards",
+            "gantelets", "gants", "jambieres", "cuissards", "bottes", "solerets", "braies",
+        };
+
+        /// <summary>Sous-lot V2.12 : catégories du pack (mots de dossier) essayées en dernier pour <paramref name="itemId"/> ; vide sinon.</summary>
+        public static IReadOnlyList<string> CategoryWords(string itemId)
+        {
+            string id = (itemId ?? string.Empty).StartsWith("item.", StringComparison.Ordinal) ? itemId!.Substring(5) : itemId ?? string.Empty;
+            string first = id.Split('_', '.', '-').FirstOrDefault() ?? string.Empty;
+            return ArmorWords.Any(w => first.StartsWith(w, StringComparison.Ordinal)) ? new[] { "armor", "armour" } : Array.Empty<string>();
         }
 
         /// <summary>
@@ -160,7 +183,7 @@ namespace EdS.Runtime
         /// <summary>Correspondance de tous les objets <paramref name="itemIds"/> (ceux qui ont une icône du pack seulement), dans l'ordre donné.</summary>
         public static IReadOnlyList<(string Item, string Icon)> Map(IEnumerable<string> itemIds, IEnumerable<string> icons)
         {
-            List<string> pack = (icons ?? Array.Empty<string>()).Where(p => p != null && IsIcon(p)).ToList();
+            List<string> pack = AssetStore.PreferNoBackground((icons ?? Array.Empty<string>()).Where(p => p != null && IsIcon(p))).ToList();
             var map = new List<(string, string)>();
             foreach (string id in itemIds ?? Array.Empty<string>())
                 if (Pick(id, pack) is string icon) map.Add((id, icon));

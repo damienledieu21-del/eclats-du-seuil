@@ -262,6 +262,9 @@ namespace EdS.Game
         public GameObject Model;
         public float Scale = 1f;
         public float Yaw;
+        /// <summary>Sous-lot V2.12 : décalage (m) ajouté à la place choisie par le jeu (positions estimées sans Unity : réglables ici, gardées).</summary>
+        [Tooltip("Décalage (m) ajouté à la place choisie par le jeu.")]
+        public Vector3 Offset;
         /// <summary>Matériau URP Lit fait depuis les textures d'un scan (Megascans), posé sur tout le modèle ; null sinon.</summary>
         public Material Material;
         /// <summary>Arme : grand axe du modèle (0 : x, 1 : y, 2 : z).</summary>
@@ -362,6 +365,15 @@ namespace EdS.Game
         public Wave5Look[] Wave5 = new Wave5Look[0];
         /// <summary>Sous-lot V2.11 : icônes de CraftPix des objets (vide sans le pack : les icônes du jeu restent).</summary>
         public ItemIconLook[] ItemIcons = new ItemIconLook[0];
+        /// <summary>Sous-lot V2.12 : fond des fenêtres du livre pris dans Fantasy Wooden GUI (pierre par défaut ; Off : la dalle du jeu).</summary>
+        [Tooltip("Fond des fenêtres : Stone (pierre, garde le texte clair lisible), Parchment (clair : à juger), Off (dalle du jeu).")]
+        public AssetStore.GuiBoard GuiBoardKind = AssetStore.GuiBoard.Stone;
+        /// <summary>Sous-lot V2.12 : planches de pierre et de parchemin trouvées (null sans le pack : la dalle du jeu reste).</summary>
+        public Texture2D GuiStone;
+        public Texture2D GuiParchment;
+        /// <summary>Sous-lot V2.12 : bords gardés entiers (pixels de l'image) quand la planche est étirée (estimé : à régler à l'essai).</summary>
+        [Tooltip("Bords gardés entiers (pixels de l'image) quand la planche est étirée.")]
+        public float GuiBorder = 64f;
         /// <summary>Sous-lot V2.11 : animations de métiers de Mixamo (<c>Assets/Style/Mixamo/Metiers</c>), prêtes pour les villageois.</summary>
         public AnimationClip[] TradeClips = new AnimationClip[0];
         [Header("Sous-lot V2.9.2 : corps humains (Universal Base Characters et Universal Animation Library, remplis par le menu)")]
@@ -706,6 +718,14 @@ namespace EdS.Game
             foreach (Wave5Look w in Wave5)
                 if (w != null && w.Role == role && w.Model != null) list.Add(w);
             return list;
+        }
+
+        /// <summary>Sous-lot V2.12 : la planche de Fantasy Wooden GUI à poser en fond de fenêtre, ou null (la dalle du jeu reste).</summary>
+        public Texture2D GuiBoard()
+        {
+            if (GuiBoardKind == AssetStore.GuiBoard.Stone) return GuiStone;
+            if (GuiBoardKind == AssetStore.GuiBoard.Parchment) return GuiParchment;
+            return null;
         }
 
         /// <summary>Sous-lot V2.11 : l'icône de CraftPix de l'objet <paramref name="item"/>, ou null (l'icône du jeu reste).</summary>

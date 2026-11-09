@@ -271,7 +271,7 @@ namespace UnityEditor
     public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes { get; set; } }
     public class AssetImporter : UnityEngine.Object { public struct SourceAssetIdentifier { public SourceAssetIdentifier(UnityEngine.Object asset) { } } public static AssetImporter GetAtPath(string p) => null; public void SaveAndReimport() { } public void AddRemap(SourceAssetIdentifier identifier, UnityEngine.Object externalObject) { } public bool RemoveRemap(SourceAssetIdentifier identifier) => false; public System.Collections.Generic.Dictionary<SourceAssetIdentifier, UnityEngine.Object> GetExternalObjectMap() => null; }
     [System.Flags] public enum ImportAssetOptions { Default = 0, ForceUpdate = 1 }
-    public enum TextureImporterType { Default = 0, NormalMap = 1 }
+    public enum TextureImporterType { Default = 0, NormalMap = 1, Sprite = 8 }
     public enum TextureImporterNPOTScale { None = 0, ToNearest = 1, ToLarger = 2, ToSmaller = 3 }
     public enum TextureImporterCompression { Uncompressed = 0, Compressed = 1, CompressedHQ = 2, CompressedLQ = 3 }
     public class AssetPostprocessor { public string assetPath => ""; public AssetImporter assetImporter => null; public virtual uint GetVersion() => 0; }

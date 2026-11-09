@@ -24,7 +24,8 @@ public sealed class V211Wave5Tests
     [Fact]
     public void Chaque_role_a_une_seule_ressource_sous_Assets_Style_avec_son_credit()
     {
-        var roles = Enum.GetValues<Wave5Role>().Where(r => r != Wave5Role.Crow).ToList();
+        // Sous-lot V2.12 : les rôles des packs de l'Asset Store sont dans leur propre liste (AssetStore.Entries, V212AssetStoreTests).
+        var roles = Enum.GetValues<Wave5Role>().Where(r => r != Wave5Role.Crow && !AssetStore.IsStoreRole(r)).ToList();
         Assert.Equal(roles.OrderBy(r => r), Wave5.Entries.Select(e => e.Role).OrderBy(r => r));
         foreach (Wave5Entry e in Wave5.Entries.Concat(new[] { Wave5.Crow }))
         {

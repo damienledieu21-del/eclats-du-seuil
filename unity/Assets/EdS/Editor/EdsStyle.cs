@@ -221,27 +221,29 @@ namespace EdS.Game.Editor
                         Normal = Texture2DAt(StyleRules.SurfaceTexture(textures, kind, true)), Tile = old != null && old.Tile > 0.1f ? old.Tile : 2.5f,
                     };
                 }).Where(l => l.Color != null).ToArray();
-            catalog.Hit = Sound(sounds, StyleSound.Hit);
-            catalog.Block = Sound(sounds, StyleSound.Block);
-            catalog.Parry = Sound(sounds, StyleSound.Parry);
-            catalog.Death = Sound(sounds, StyleSound.Death);
-            catalog.Potion = Sound(sounds, StyleSound.Potion);
-            catalog.Gather = Sound(sounds, StyleSound.Gather);
-            catalog.Craft = Sound(sounds, StyleSound.Craft);
+            // Sous-lot V2.12 : les sons médiévaux de Basic RPG Sounds (Asset Store, à la racine de Assets) en repli des sons choisis.
+            List<string> storeSounds = AssetStore.MedievalSounds(AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets" }).Select(AssetDatabase.GUIDToAssetPath)).ToList();
+            catalog.Hit = Sound(sounds, storeSounds, StyleSound.Hit);
+            catalog.Block = Sound(sounds, storeSounds, StyleSound.Block);
+            catalog.Parry = Sound(sounds, storeSounds, StyleSound.Parry);
+            catalog.Death = Sound(sounds, storeSounds, StyleSound.Death);
+            catalog.Potion = Sound(sounds, storeSounds, StyleSound.Potion);
+            catalog.Gather = Sound(sounds, storeSounds, StyleSound.Gather);
+            catalog.Craft = Sound(sounds, storeSounds, StyleSound.Craft);
             // Essai réaliste 7 : variantes des bruitages, musiques (dossier « Music ») et ambiances (dossier « Ambience »), importées pour
             // le téléphone (musique lue en continu depuis le disque, ambiances compressées en mémoire, bruitages décompressés).
             // Relecture de l'essai 7 : un seul passage d'import pour tous les sons (pas un par fichier).
             AssetDatabase.StartAssetEditing();
             try
             {
-                foreach (string path in sounds) AudioImport(path);
+                foreach (string path in sounds.Concat(storeSounds)) AudioImport(path);
             }
             finally
             {
                 AssetDatabase.StopAssetEditing();
             }
             catalog.SoundSets = System.Enum.GetValues(typeof(StyleSound)).Cast<StyleSound>()
-                .Select(kind => new SoundSet { Kind = kind, Clips = StyleRules.PickSounds(sounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
+                .Select(kind => new SoundSet { Kind = kind, Clips = AssetStore.PickSounds(sounds, storeSounds, kind, 6).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).Where(c => c != null).ToArray() })
                 .Where(s => s.Clips.Length > 0).ToArray();
             catalog.Music = System.Enum.GetValues(typeof(StyleMusic)).Cast<StyleMusic>()
                 .Select(kind => new MusicLook { Kind = kind, Clip = StyleRules.MusicFiles(sounds, kind).Select(p => AssetDatabase.LoadAssetAtPath<AudioClip>(p)).FirstOrDefault(c => c != null) })
@@ -270,6 +272,8 @@ namespace EdS.Game.Editor
                         Scale = old != null && old.Scale > 0f ? old.Scale : 1f,
                     };
                 }).Where(f => f.Model != null).ToArray();
+            // Sous-lot V2.12 : objets d'intérieur de l'Asset Store, en repli seulement (les sortes que les intérieurs de Damien n'ont pas).
+            catalog.Furniture = EdsWave5.StoreFurniture(catalog.Furniture, oldFurniture, allPrefabs);
             if (catalog.Furniture.Length > 0) notes.Add("Intérieurs : " + catalog.Furniture.Length + " meubles et objets (" + string.Join(", ",
                 catalog.Furniture.GroupBy(f => f.Kind).Select(g => g.Key + (g.Count() > 1 ? " ×" + g.Count() : ""))) + ").");
             // Essai réaliste 8 : effets de combat des packs de l'Asset Store importés à la racine de Assets (Matthew Guz, Hovl Studio,
@@ -1321,8 +1325,8 @@ namespace EdS.Game.Editor
             importer.SaveAndReimport();
         }
 
-        private static AudioClip Sound(List<string> sounds, StyleSound sound) =>
-            StyleRules.PickSound(sounds, sound) is string path ? AssetDatabase.LoadAssetAtPath<AudioClip>(path) : null;
+        private static AudioClip Sound(List<string> sounds, List<string> store, StyleSound sound) =>
+            AssetStore.PickSound(sounds, store, sound) is string path ? AssetDatabase.LoadAssetAtPath<AudioClip>(path) : null;
 
         private static string Name(string path) => path != null ? System.IO.Path.GetFileName(path) : "aucun (forme simple)";
     }

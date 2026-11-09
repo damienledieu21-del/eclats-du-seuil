@@ -192,10 +192,17 @@ namespace EdS.Game
                     OvenSound(oven, catalog);
                 }
                 GameObject table = Wave5View.PlaceNear(root, Wave5Role.BakeryTable, "table du fournil", baker.X, baker.Z, face - 90, 2.4, 1.1, obstacles, face);
+                // Sous-lot V2.12 : sans la table de Poly Haven, l'étal marchand de RPG Food Props sert de vitrine.
+                if (table == null) table = Wave5View.PlaceNear(root, Wave5Role.TraderTable, "étal du fournil", baker.X, baker.Z, face - 90, 2.4, 1.2, obstacles, face);
                 if (table != null) Showcase(root, table, catalog, face);
             }
             if (Npc("epiciere") is WorldMarker grocer)
+            {
                 Wave5View.PlaceNear(root, Wave5Role.PearCrate, "poires de Bertille", grocer.X, grocer.Z, Yaw(grocer) + 60, 1.4, 0.45, obstacles, Yaw(grocer));
+                // Sous-lot V2.12 : l'étal de Bertille (table garnie de victuailles, caisses au pied), devant elle.
+                MarketStall(root, grocer.X, grocer.Z, Yaw(grocer), obstacles, false, "étal de Bertille");
+            }
+            StoreDecor(adventure, root, obstacles, catalog);
             if (Place("champs") is MapPlace fields)
             {
                 Wave5View.PlaceNear(root, Wave5Role.Scarecrow, "épouvantail", fields.CenterX, fields.CenterZ, 30, 3, 0.8, obstacles, 200);
@@ -221,6 +228,8 @@ namespace EdS.Game
             // Les fêtes : réglage « Human Festival » du catalogue (tenues de fête) ; la PR des fêtes du jeu (#120) pourra l'allumer aussi.
             if (catalog.HumanFestival && Place("bourg") is MapPlace town)
             {
+                // Sous-lot V2.12 : un étal sous tente au bourg les jours de fête (ordinateur seulement ; la table garnie seule sur téléphone).
+                MarketStall(root, town.CenterX, town.CenterZ, 180f, obstacles, true, "étal de fête");
                 Wave5View.PlaceNear(root, Wave5Role.Bunting, "guirlande", town.CenterX, town.CenterZ, 0, 3, 1.6, obstacles, 90);
                 Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 1", town.CenterX, town.CenterZ, 90, 6, 0.6, obstacles, 270);
                 Wave5View.PlaceNear(root, Wave5Role.Banner, "bannière 2", town.CenterX, town.CenterZ, 270, 6, 0.6, obstacles, 90);
@@ -246,11 +255,86 @@ namespace EdS.Game
             }
         }
 
-        /// <summary>Pains (scans de Megascans d'abord) et viennoiseries en vitrine sur la table du fournil, chacun à sa place, sans se toucher.</summary>
+        /// <summary>
+        /// Sous-lot V2.12 : un étal marchand (RPG Food Props) près de (<paramref name="x"/>, <paramref name="z"/>), face à <paramref name="face"/> :
+        /// la table garnie de victuailles (jamais tomate, orange, pastèque ni citrouille : <see cref="AssetStore.Avoided"/>), deux caisses garnies
+        /// au pied et, si <paramref name="tent"/>, la tente (ordinateur seulement). Public : le marché et les fêtes de la V2.10 (PR #120) pourront
+        /// le poser à leurs places. Null sans la table (rien n'est posé).
+        /// </summary>
+        public static GameObject MarketStall(Transform root, double x, double z, float face, List<IReadOnlyList<(double X, double Z)>> obstacles, bool tent, string id)
+        {
+            GameObject stall = null;
+            if (tent) stall = Wave5View.PlaceNear(root, Wave5Role.TraderTent, id + " (tente)", x, z, face, 2.6, 1.8, obstacles, face + 180f);
+            if (stall == null) stall = Wave5View.PlaceNear(root, Wave5Role.TraderTable, id, x, z, face, 1.9, 1.1, obstacles, face + 180f);
+            if (stall == null) return null;
+            Wave5View.Spread(root, stall, Wave5Role.StoreFood, 8, face + 180f, 0.28f, id + " victuailles");
+            Vector3 at = stall.transform.position;
+            Wave5View.PlaceNear(root, Wave5Role.StoreCrate, id + " caisse 1", at.x, at.z, face + 100f, 1.3, 0.35, obstacles, face + 15f, 0f, StyleRules.Variant(id + "1", 6));
+            Wave5View.PlaceNear(root, Wave5Role.StoreCrate, id + " caisse 2", at.x, at.z, face - 100f, 1.3, 0.35, obstacles, face - 20f, 0f, StyleRules.Variant(id + "2", 6));
+            return stall;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12 : décor des packs de l'Asset Store, à des places libres (jamais dans un mur), réglables au catalogue (échelle, rotation,
+        /// décalage) : la forge (enclume, établi, présentoir d'armes, bac), la roue à eau entre le moulin et la rivière, l'abri à bêtes et le rouet du
+        /// hameau, tonneaux, seaux, caisses, échelle, charrettes et souche au village et au bourg, tentes au camp des rôdeurs. Les bâtiments choisis
+        /// par Damien (maisons de Sketchfab, moulin de Tim0) ne sont pas remplacés. Rien n'est posé sans le pack.
+        /// </summary>
+        private void StoreDecor(AdventureSession adventure, Transform root, List<IReadOnlyList<(double X, double Z)>> obstacles, StyleCatalog catalog)
+        {
+            AdventureMap map = adventure.Map;
+            MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
+            foreach (WorldMarker w in adventure.Workshops())
+            {
+                Wave5View.PlaceNear(root, Wave5Role.Anvil, "enclume " + w.Id, w.X, w.Z, 40, 1.7, 0.6, obstacles, 90);
+                Wave5View.PlaceNear(root, Wave5Role.SmithTable, "établi " + w.Id, w.X, w.Z, 140, 2.6, 0.9, obstacles, 320);
+                Wave5View.PlaceNear(root, Wave5Role.WeaponStand, "présentoir " + w.Id, w.X, w.Z, 230, 2.6, 0.7, obstacles, 50);
+                Wave5View.PlaceNear(root, Wave5Role.QuenchTub, "bac " + w.Id, w.X, w.Z, 320, 2.0, 0.6, obstacles, 0);
+                Wave5View.PlaceNear(root, Wave5Role.VillageBarrel, "tonneau " + w.Id, w.X, w.Z, 270, 3.2, 0.5, obstacles, 0);
+            }
+            // La roue à eau : sur la rive de la rivière la plus proche du moulin (le moulin de Tim0 reste ; position estimée, à régler par Offset).
+            if (Place("moulin") is MapPlace mill && Place("riviere") is MapPlace river && Wave5View.Has(Wave5Role.WaterWheel))
+            {
+                float bx = Mathf.Clamp((float)mill.CenterX, (float)river.MinX, (float)river.MaxX), bz = Mathf.Clamp((float)mill.CenterZ, (float)river.MinZ, (float)river.MaxZ);
+                float yaw = Mathf.Atan2(bx - (float)mill.CenterX, bz - (float)mill.CenterZ) * Mathf.Rad2Deg;
+                Wave5View.Place(root, Wave5Role.WaterWheel, "roue à eau", new Vector3(bx, 0f, bz), yaw + 90f);
+            }
+            (Wave5Role Role, double Yaw, double Distance, double Clearance)[] village =
+            {
+                (Wave5Role.VillageBarrel, 20, 6, 0.5), (Wave5Role.VillageBarrel, 35, 6.6, 0.5), (Wave5Role.VillageBucket, 60, 5.5, 0.3),
+                (Wave5Role.PropCrate, 110, 7, 0.6), (Wave5Role.PropCrate, 125, 7.4, 0.6), (Wave5Role.Ladder, 160, 8, 0.6), (Wave5Role.Handcart, 210, 7, 1.2),
+                (Wave5Role.Stump, 300, 6, 0.5),
+            };
+            foreach (string placeId in new[] { "village", "bourg" })
+                if (Place(placeId) is MapPlace p)
+                    for (int i = 0; i < village.Length; i++)
+                        Wave5View.PlaceNear(root, village[i].Role, placeId + " décor " + i, p.CenterX, p.CenterZ, village[i].Yaw + (placeId == "bourg" ? 15 : 0),
+                            village[i].Distance, village[i].Clearance, obstacles, StyleRules.Variant(placeId + i, 360), 0f, i);
+            if (Place("bourg") is MapPlace town) Wave5View.PlaceNear(root, Wave5Role.VillageCart, "charrette du bourg", town.CenterX, town.CenterZ, 320, 8, 2, obstacles, 40);
+            if (Place("hameau") is MapPlace hamlet)
+            {
+                Wave5View.PlaceNear(root, Wave5Role.AnimalShed, "abri à bêtes", hamlet.CenterX, hamlet.CenterZ, 120, 9, 3.2, obstacles, 300);
+                Wave5View.PlaceNear(root, Wave5Role.SpinningWheel, "rouet", hamlet.CenterX, hamlet.CenterZ, 30, 4, 0.6, obstacles, 210);
+                Wave5View.PlaceNear(root, Wave5Role.VillageBucket, "seau du hameau", hamlet.CenterX, hamlet.CenterZ, 60, 4.5, 0.3, obstacles, 0);
+                Wave5View.PlaceNear(root, Wave5Role.Stump, "souche du hameau", hamlet.CenterX, hamlet.CenterZ, 200, 5, 0.5, obstacles, 0);
+            }
+            if (Place("camp_des_rodeurs") is MapPlace camp)
+            {
+                Wave5View.PlaceNear(root, Wave5Role.CampTent, "tente 1", camp.CenterX, camp.CenterZ, 0, 4, 1.6, obstacles, 180);
+                Wave5View.PlaceNear(root, Wave5Role.CampTent, "tente 2", camp.CenterX, camp.CenterZ, 120, 4.5, 1.6, obstacles, 300);
+                Wave5View.PlaceNear(root, Wave5Role.PropCrate, "caisse du camp", camp.CenterX, camp.CenterZ, 240, 3, 0.5, obstacles, 60, 0f, 2);
+            }
+        }
+
+        /// <summary>
+        /// Pains en vitrine sur la table du fournil, chacun à sa place, sans se toucher : ceux de LUMI (V2.12) d'abord, puis les scans de
+        /// Megascans, puis les autres ; viennoiseries de Poly Haven entre eux.
+        /// </summary>
         private static void Showcase(Transform root, GameObject table, StyleCatalog catalog, float face)
         {
             if (!StyleLook.VisibleBounds(table, out Bounds top)) return;
-            List<Wave5Look> breads = catalog.Looks(Wave5Role.Bread), pastries = catalog.Looks(Wave5Role.Pastry);
+            List<Wave5Look> breads = catalog.Looks(Wave5Role.StoreBread), pastries = catalog.Looks(Wave5Role.Pastry);
+            breads.AddRange(catalog.Looks(Wave5Role.Bread));
             int count = Mathf.Min(6, breads.Count + pastries.Count);
             for (int i = 0; i < count; i++)
             {
@@ -267,8 +351,8 @@ namespace EdS.Game
                 if (StyleLook.VisibleBounds(holder, out Bounds b) && Mathf.Max(b.size.x, b.size.z) > 0.001f)
                     holder.transform.localScale = Vector3.one * (0.3f / Mathf.Max(b.size.x, b.size.z)) * (look.Scale > 0f ? look.Scale : 1f);
                 holder.transform.rotation = Quaternion.Euler(0f, face + StyleRules.Variant("vitrine" + i, 60) - 30 + look.Yaw, 0f);
-                holder.transform.position = at;
-                StyleLook.Ground(holder, at.y);
+                holder.transform.position = at + look.Offset;
+                StyleLook.Ground(holder, at.y + look.Offset.y);
             }
         }
 
