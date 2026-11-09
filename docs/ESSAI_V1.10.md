@@ -465,19 +465,19 @@ Suite de ton retour du 9 novembre 2026 (« le jeu est trop sombre »). **Refaire
 | 27.10 | Quitter le jeu et le relancer | La luminosité choisie est **retrouvée** dans les réglages | [ ] | |
 | 27.11 | En mode « PC modeste » | Même rendu ; aucune lenteur nouvelle | [ ] | Images par seconde plus basses qu'avant ? Le dire |
 
-## 28. Créer tes personnages : MakeHuman et créateur de héros (V2.16)
+## 29. Créer tes personnages : MakeHuman et créateur de héros (V2.16)
 
-Ton souhait du 9 novembre 2026 : « designer des choses nous-mêmes ». Guide complet : [CREER_PERSONNAGES.md](CREER_PERSONNAGES.md). **À essayer** (les points 28.1 à 28.5 demande MakeHuman ; sans lui, commence au 28.6).
+Ton souhait du 9 novembre 2026 : « designer des choses nous-mêmes ». Guide complet : [CREER_PERSONNAGES.md](CREER_PERSONNAGES.md). **À essayer** (les points 29.1 à 29.5 demande MakeHuman ; sans lui, commence au 29.6).
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 28.1 | Dans MakeHuman : un humain, squelette « Game engine », export FBX en mètres dans `Assets/Style/MakeHuman/Gaspard/` | Un `.fbx` et un dossier de textures | [ ] | |
-| 28.2 | Unity : « Préparer l'essai de style » puis « Importer les personnages MakeHuman » | Une fenêtre de rapport : Gaspard « prêt » (ou la raison du refus), triangles et textures signalés | [ ] | Noter le rapport en entier |
-| 28.3 | Ouvrir `Assets/Style/MakeHuman/PNJ.txt` (créé par le menu), écrire `gaspard = Gaspard.fbx`, relancer le menu | Plus de ligne en erreur dans le rapport | [ ] | |
-| 28.4 | Jouer, aller voir Gaspard | Il a **ton** personnage, qui marche, attend et travaille (animations de Quaternius) | [ ] | Pose en T, sol, taille, regard de travers : le dire |
-| 28.5 | Mettre une licence NC dans son `MANIFESTE.md`, relancer le menu | Le rapport la refuse (CC0 et CC BY seulement) | [ ] | |
-| 28.6 | Nouvelle partie | La fenêtre « Ton personnage » s'ouvre, jeu en pause | [ ] | |
-| 28.7 | Changer coiffure, barbe, peau, cheveux, tenue, puis Valider | Le héros change à l'écran | [ ] | Pas d'aperçu en direct : voulu |
-| 28.8 | Quitter, relancer, continuer la partie | Le héros garde son aspect (sauvegarde v17) | [ ] | |
-| 28.9 | Échap, Réglages, « Mon personnage… », Annuler | Rien ne change | [ ] | |
-| 28.10 | Choisir le corps « Gaspard » dans le créateur | Ton héros prend le personnage MakeHuman ; les autres choix sont grisés | [ ] | |
+| 29.1 | Dans MakeHuman : un humain, squelette « Game engine », export FBX en mètres dans `Assets/Style/MakeHuman/Gaspard/` | Un `.fbx` et un dossier de textures | [ ] | |
+| 29.2 | Unity : « Préparer l'essai de style » puis « Importer les personnages MakeHuman » | Une fenêtre de rapport : Gaspard « prêt » (ou la raison du refus), triangles et textures signalés | [ ] | Noter le rapport en entier |
+| 29.3 | Ouvrir `Assets/Style/MakeHuman/PNJ.txt` (créé par le menu), écrire `gaspard = Gaspard.fbx`, relancer le menu | Plus de ligne en erreur dans le rapport | [ ] | |
+| 29.4 | Jouer, aller voir Gaspard | Il a **ton** personnage, qui marche, attend et travaille (animations de Quaternius) | [ ] | Pose en T, sol, taille, regard de travers : le dire |
+| 29.5 | Mettre une licence NC dans son `MANIFESTE.md`, relancer le menu | Le rapport la refuse (CC0 et CC BY seulement) | [ ] | |
+| 29.6 | Nouvelle partie | La fenêtre « Ton personnage » s'ouvre, jeu en pause | [ ] | |
+| 29.7 | Changer coiffure, barbe, peau, cheveux, tenue, puis Valider | Le héros change à l'écran | [ ] | Pas d'aperçu en direct : voulu |
+| 29.8 | Quitter, relancer, continuer la partie | Le héros garde son aspect (sauvegarde v17) | [ ] | |
+| 29.9 | Échap, Réglages, « Mon personnage… », Annuler | Rien ne change | [ ] | |
+| 29.10 | Choisir le corps « Gaspard » dans le créateur | Ton héros prend le personnage MakeHuman ; les autres choix sont grisés | [ ] | |

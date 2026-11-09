@@ -132,30 +132,72 @@ namespace EdS.Runtime
         public static bool IsUnderFolder(string? path) =>
             path != null && path.Replace('\\', '/').Split('/').Any(p => StyleRules.Key(p) == "makehuman");
 
+        /// <summary>Longueur au plus de la clé d'un personnage (la borne de <c>SavedLook</c> : « made.&lt;clé&gt; »).</summary>
+        public const int MaxKeyLength = 40;
+
+        /// <summary>
+        /// Clé ASCII bornée d'un nom : minuscules, lettres accentuées du français ramenées à leur lettre (é → e, ç → c, œ → oe, æ → ae), tout ce qui
+        /// n'est ni lettre ASCII ni chiffre retiré, tronquée à <see cref="MaxKeyLength"/>. Vide si rien ne reste (« 日本 »). C'est la forme
+        /// attendue par la sauvegarde (<c>made.&lt;clé&gt;</c>).
+        /// </summary>
+        public static string AsciiKey(string? name)
+        {
+            const string accented = "àâäáãåéèêëíìîïóòôöõúùûüýÿçñ", plain = "aaaaaaeeeeiiiiooooouuuuyycn";
+            var b = new System.Text.StringBuilder();
+            foreach (char c0 in (name ?? string.Empty).ToLowerInvariant())
+            {
+                char c = c0;
+                int at = accented.IndexOf(c);
+                if (at >= 0) c = plain[at];
+                if (c == 'œ') b.Append("oe");
+                else if (c == 'æ') b.Append("ae");
+                else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) b.Append(c);
+            }
+            return b.Length > MaxKeyLength ? b.ToString(0, MaxKeyLength) : b.ToString();
+        }
+
         /// <summary>
         /// Les personnages trouvés parmi <paramref name="paths"/>, un par dossier, dans l'ordre alphabétique des noms. Si un dossier a
-        /// plusieurs FBX, on prend celui qui porte le nom du dossier, sinon le premier dans l'ordre ordinal.
+        /// plusieurs FBX, on prend celui qui porte le nom du dossier, sinon le premier dans l'ordre ordinal. Un dossier dont le nom n'a aucune
+        /// lettre ni chiffre ASCII, ou dont la clé (<see cref="AsciiKey"/>) est celle d'un dossier précédent, est ignoré.
         /// </summary>
-        public static IReadOnlyList<MadeHumanModel> Models(IEnumerable<string>? paths)
+        public static IReadOnlyList<MadeHumanModel> Models(IEnumerable<string>? paths) => Models(paths, out _);
+
+        /// <summary>Comme <see cref="Models(IEnumerable{string}?)"/>, avec en plus les dossiers ignorés et leur raison (pour le rapport d'import).</summary>
+        public static IReadOnlyList<MadeHumanModel> Models(IEnumerable<string>? paths, out IReadOnlyList<string> skipped)
         {
             var byFolder = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
-            var written = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (string path in paths ?? Array.Empty<string>())
             {
                 if (!IsMadeHumanFile(path)) continue;
                 string[] parts = path.Replace('\\', '/').Split('/');
-                string key = StyleRules.Key(parts[parts.Length - 2]);
-                if (!byFolder.TryGetValue(key, out List<string>? list)) byFolder[key] = list = new List<string>();
+                string folder = parts[parts.Length - 2];
+                if (!byFolder.TryGetValue(folder, out List<string>? list)) byFolder[folder] = list = new List<string>();
                 list.Add(path);
-                if (!written.ContainsKey(key)) written[key] = parts[parts.Length - 2];
             }
             var result = new List<MadeHumanModel>();
-            foreach (KeyValuePair<string, List<string>> folder in byFolder)
+            var problems = new List<string>();
+            var taken = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, List<string>> entry in byFolder)
             {
-                List<string> files = folder.Value.OrderBy(p => p, StringComparer.Ordinal).ToList();
-                string pick = files.FirstOrDefault(f => StyleRules.Key(Stem(f)) == folder.Key) ?? files[0];
-                result.Add(new MadeHumanModel(folder.Key, written[folder.Key], pick));
+                string key = AsciiKey(entry.Key);
+                if (key.Length == 0)
+                {
+                    problems.Add("Dossier « " + entry.Key + " » ignoré : son nom n'a ni lettre ni chiffre (a-z, 0-9). Renomme-le, par exemple « Gaspard ».");
+                    continue;
+                }
+                if (taken.TryGetValue(key, out string? other))
+                {
+                    problems.Add("Dossier « " + entry.Key + " » ignoré : son nom donne la même clé « " + key + " » que « " + other + " ». Renomme l'un des deux.");
+                    continue;
+                }
+                taken[key] = entry.Key;
+                List<string> files = entry.Value.OrderBy(p => p, StringComparer.Ordinal).ToList();
+                string pick = files.FirstOrDefault(f => AsciiKey(Stem(f)) == key) ?? files[0];
+                result.Add(new MadeHumanModel(key, entry.Key, pick));
             }
+            result.Sort((x, y) => string.CompareOrdinal(x.Name, y.Name));
+            skipped = problems;
             return result;
         }
 
@@ -172,7 +214,7 @@ namespace EdS.Runtime
         {
             string text = (id ?? string.Empty).Trim();
             if (text.StartsWith("npc.", StringComparison.OrdinalIgnoreCase) || text.StartsWith("pnj.", StringComparison.OrdinalIgnoreCase)) text = text.Substring(4);
-            return StyleRules.Key(text);
+            return AsciiKey(text);
         }
 
         /// <summary>Nom de modèle réduit d'un côté droit : « Gaspard/Gaspard.fbx », « Gaspard.fbx » ou « Gaspard » → gaspard.</summary>
@@ -181,7 +223,7 @@ namespace EdS.Runtime
             string t = (text ?? string.Empty).Trim().Trim('"', '\'').Replace('\\', '/');
             t = t.Substring(t.LastIndexOf('/') + 1);
             if (t.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) t = t.Substring(0, t.Length - 4);
-            return StyleRules.Key(t);
+            return AsciiKey(t);
         }
 
         /// <summary>
@@ -217,12 +259,26 @@ namespace EdS.Runtime
         public static MadeHumanModel? ModelFor(MadeHumanMapping? mapping, IReadOnlyList<MadeHumanModel>? models, string? id)
         {
             if (models == null || models.Count == 0) return null;
-            string full = NpcKey(id), first = StyleRules.CharacterOf(id ?? string.Empty);
+            string full = NpcKey(id), first = FirstWord(id);
             if (mapping != null)
                 foreach (string key in new[] { full, first })
                     if (key.Length > 0 && mapping.Entries.TryGetValue(key, out string? wanted) && Find(models, wanted) is MadeHumanModel found) return found;
             // Dossier au nom du PNJ : pas besoin de ligne dans PNJ.txt.
             return first.Length > 0 ? models.FirstOrDefault(m => m.Name == first) : null;
+        }
+
+        /// <summary>Premier mot de lettres d'un identifiant, sans « npc » ni chiffres, en clé ASCII (« npc.Élodie_2 » → elodie) : le prénom du PNJ.</summary>
+        private static string FirstWord(string? id)
+        {
+            var word = new System.Text.StringBuilder();
+            foreach (char c in (id ?? string.Empty) + " ")
+            {
+                if (char.IsLetter(c)) { word.Append(c); continue; }
+                string key = AsciiKey(word.ToString());
+                word.Clear();
+                if (key.Length > 0 && key != "npc" && key != "pnj") return key;
+            }
+            return string.Empty;
         }
 
         private static MadeHumanModel? Find(IReadOnlyList<MadeHumanModel> models, string key) =>

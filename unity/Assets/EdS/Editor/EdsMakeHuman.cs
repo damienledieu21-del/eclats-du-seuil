@@ -69,9 +69,10 @@ namespace EdS.Game.Editor
             }
             EnsureTemplate();
             List<string> paths = AssetDatabase.FindAssets("t:Model", new[] { Root }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
-            IReadOnlyList<MadeHumanModel> models = MadeHumans.Models(paths);
+            IReadOnlyList<MadeHumanModel> models = MadeHumans.Models(paths, out IReadOnlyList<string> skipped);
             var done = new List<MadeHumanLook>();
             var lines = new List<string>();
+            foreach (string s in skipped) lines.Add("  ! " + s);
             bool modest = true;   // choix de Damien du 9 novembre 2026 : PC modeste (4 Go, GTX 470) ; un PC plus fort peut passer MadeHumans.StandardTextureCap
             foreach (MadeHumanModel model in models)
             {

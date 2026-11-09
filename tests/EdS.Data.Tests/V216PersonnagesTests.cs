@@ -52,6 +52,49 @@ public sealed class V216PersonnagesTests
         Assert.Empty(MadeHumans.Models(null));
     }
 
+    [Theory]
+    [InlineData("Élodie", "elodie")]
+    [InlineData("Maëlle la Forgeronne", "maellelaforgeronne")]
+    [InlineData("Françoise_2", "francoise2")]
+    [InlineData("Cœur d'Æther", "coeurdaether")]
+    [InlineData("日本", "")]
+    [InlineData("", "")]
+    [InlineData(null, "")]
+    public void Cle_ascii_sans_accent(string? name, string key) => Assert.Equal(key, MadeHumans.AsciiKey(name));
+
+    [Fact]
+    public void Cle_bornee_a_40_caracteres_et_acceptee_par_la_sauvegarde()
+    {
+        string longName = new string('a', 41);
+        Assert.Equal(40, MadeHumans.AsciiKey(longName).Length);
+        IReadOnlyList<MadeHumanModel> m = Made(Root + "Élodie/Elodie.fbx", Root + longName + "/x.fbx");
+        Assert.Equal(new[] { new string('a', 40), "elodie" }, m.Select(x => x.Name));
+        foreach (MadeHumanModel model in m)
+        {
+            Assert.True(SavedLook.IsBody(MadeHumans.BodyKey(model)));
+            // Le créateur ne lève plus d'exception avec ces corps.
+            SavedLook look = new SavedLook("male", 1, false, false, 0, 0);
+            for (int i = 0; i < 4; i++) look = HeroLooks.Cycle(look, HeroPart.Body, 1, m);
+            Assert.Equal("Élodie", HeroLooks.BodyName("made.elodie", m));
+        }
+        // Un personnage accentué se retrouve par PNJ.txt, avec ou sans accent.
+        Assert.Equal("elodie", MadeHumans.ModelFor(MadeHumans.ParseMapping("npc.Élodie = Élodie.fbx"), m, "npc.elodie")!.Name);
+        Assert.Equal("elodie", MadeHumans.ModelFor(null, m, "npc.Élodie")!.Name);
+    }
+
+    [Fact]
+    public void Dossier_sans_cle_ou_en_collision_ignore_et_signale()
+    {
+        IReadOnlyList<MadeHumanModel> m = MadeHumans.Models(new[] { Root + "Élodie/a.fbx", Root + "Elodie/b.fbx", Root + "日本/c.fbx", Root + "Marc/d.fbx" }, out IReadOnlyList<string> skipped);
+        Assert.Equal(new[] { "elodie", "marc" }, m.Select(x => x.Name));
+        Assert.Equal("Elodie", m[0].Folder);   // le premier dans l'ordre ordinal garde la clé
+        Assert.Equal(2, skipped.Count);
+        Assert.Contains(skipped, x => x.Contains("日本", StringComparison.Ordinal) && x.Contains("ni lettre ni chiffre", StringComparison.Ordinal));
+        Assert.Contains(skipped, x => x.Contains("Élodie", StringComparison.Ordinal) && x.Contains("même clé", StringComparison.Ordinal));
+        MadeHumans.Models(new[] { Root + "Marc/d.fbx" }, out IReadOnlyList<string> none);
+        Assert.Empty(none);
+    }
+
     // --- Fichier de correspondance -----------------------------------------------------------------------------------
 
     [Fact]
