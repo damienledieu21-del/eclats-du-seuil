@@ -2545,7 +2545,7 @@ namespace EdS.Runtime
             return null;
         }
 
-        private static string FileName(string path)
+        internal static string FileName(string path)
         {
             string p = (path ?? string.Empty).Replace('\\', '/');
             int slash = p.LastIndexOf('/');

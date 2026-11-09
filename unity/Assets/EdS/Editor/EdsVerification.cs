@@ -271,6 +271,7 @@ namespace EdS.Game.Editor
 
             Step("5e vague", 0.9f);
             CheckWave5(report, models);
+            CheckMaterials(report);
 
             Step("Packs de l'Asset Store", 0.92f);
             CheckAssetStore(report, storeSounds);
@@ -314,6 +315,32 @@ namespace EdS.Game.Editor
             string manifest = Path.Combine(ProjectRoot, ItemIcons.LicenseManifest);
             if (File.Exists(manifest)) report.Add(Icons, EssaiLevel.Ok, "Manifeste des licences (Asset Store, Fab)", ItemIcons.LicenseManifest + " (hors dépôt)");
             else report.Add(Icons, EssaiLevel.Warning, "Manifeste des licences (Asset Store, Fab)", "pas encore écrit", Prepare);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12.7 (essai du 9 novembre 2026 : four et comptoir blancs, petits objets roses) : chaque objet posé par le jeu dont une
+        /// matière est restée blanche (ni texture, ni couleur) ou rose (shader hors URP, absent ou en erreur) est signalé avec son nom de fichier.
+        /// </summary>
+        private static void CheckMaterials(EssaiReport report)
+        {
+            const string section = "Objets blancs ou roses (V2.12.7)";
+            StyleCatalog catalog = AssetDatabase.LoadAssetAtPath<StyleCatalog>(EdsStyle.CatalogPath);
+            if (catalog == null)
+            {
+                report.Add(section, EssaiLevel.Warning, "Matières des objets", "catalogue de style absent : rien à vérifier", Prepare);
+                return;
+            }
+            List<EdsMaterialRepair.Problem> problems = EdsMaterialRepair.Problems(catalog);
+            if (problems.Count == 0)
+            {
+                report.Add(section, EssaiLevel.Ok, "Matières des objets", "aucun objet blanc ni rose parmi ceux que le jeu pose");
+                return;
+            }
+            foreach (EdsMaterialRepair.Problem problem in problems)
+                report.Add(section, EssaiLevel.Warning, problem.File + " : " + problem.Material,
+                    problem.Fault == MaterialFault.Pink ? "ROSE (shader hors URP, absent ou en erreur)" : "BLANC (ni texture, ni couleur)",
+                    "Relance Éclats du Seuil → Préparer l'essai de style (il convertit en URP et colore ces matières) ; s'il reste dans la liste, dépose la texture "
+                    + "du modèle à côté de lui ou envoie ce nom de fichier à Claude.");
         }
 
         /// <summary>

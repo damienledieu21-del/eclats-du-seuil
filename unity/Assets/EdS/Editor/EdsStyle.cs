@@ -333,6 +333,9 @@ namespace EdS.Game.Editor
             string humans = EdsHumans.Prepare(models, textures, catalog, notes);
             // Sous-lot V2.11 (5e vague) : grand loup, Galeran, armes, Seuil, fournil, fêtes, gestes de métier, icônes de CraftPix.
             string wave5 = EdsWave5.Prepare(models, textures, catalog, notes);
+            // Sous-lot V2.12.7 (essai du 9 novembre 2026 : four et comptoir blancs, objets roses) : matières hors URP converties, matières
+            // blanches texturées ou colorées, pour tout ce que le catalogue pose (EdsMaterialRepair).
+            string repaired = EdsMaterialRepair.Repair(catalog, notes);
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             PostProcessing(notes);
@@ -351,6 +354,7 @@ namespace EdS.Game.Editor
                 + "\nBasse-cour : âne " + Name(donkey) + ", poule " + Name(hen) + ", coq " + Name(rooster) + " ; ours : " + Name(bear)
                 + "\n" + humans
                 + "\n" + wave5
+                + "\n" + repaired
                 + "\nVoix des bêtes, cloches et failles : " + voices + " sur " + EssaiManifest.Voices.Count + " (miaulement, ronron, hurlement, brame, lièvre, sanglier, tocsin, église, verre, miroir, bourdon)"
                 + "\nPortail, pas, cris de la ferme, sabots et souffle des failles : " + world + " sur " + EssaiManifest.WorldSounds.Count
                 + "\nArbres : " + catalog.Trees.Length + ", rochers : " + catalog.Rocks.Length + ", plantes : " + catalog.Plants.Length + ", bois mort : " + catalog.Debris.Length
