@@ -637,13 +637,12 @@ namespace EdS.Game
                     break;
                 case InteriorProp.Barrel:
                 {
-                    GameObject barrel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                    Object.Destroy(barrel.GetComponent<Collider>());
-                    barrel.name = piece.Id;
-                    barrel.transform.SetParent(holder.transform, false);
-                    barrel.transform.localPosition = new Vector3(0f, fit * 0.6f, 0f);
-                    barrel.transform.localScale = new Vector3(fit, fit * 0.6f, fit);
-                    barrel.GetComponent<Renderer>().sharedMaterial = dark;
+                    // Sous-lot V2.12.7 (essai du 9 novembre 2026 : tonneau bleu uni) : fût de bois à cercles sombres (BarrelLook), plus un cylindre uni.
+                    GameObject barrel = BarrelLook.Make(holder.transform, piece.Id, Vector3.zero, 0f);
+                    barrel.transform.localPosition = Vector3.zero;
+                    barrel.transform.localRotation = Quaternion.identity;
+                    // Même encombrement que l'ancien cylindre : diamètre fit, hauteur 1,2 × fit (BarrelLook.Make : 0,7 m de large, 0,95 m de haut).
+                    barrel.transform.localScale = new Vector3(fit / 0.7f, 1.2f * fit / 0.95f, fit / 0.7f);
                     break;
                 }
                 case InteriorProp.Shelves:

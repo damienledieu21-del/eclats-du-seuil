@@ -420,3 +420,19 @@ Ton essai du 9 novembre 2026 (PC modeste) : objets blancs à la forge de Maëlle
 | 24.6 | Carte (L) sur le bourg | Les noms des lieux lisibles ; les noms des PNJ qui se gêneraient sont cachés, **la souris sur un rond** montre son nom | [ ] | |
 | 24.7 | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison (trajets vérifiés par un test du cœur) | [ ] | S'il semble encore dans une maison : laquelle, à quelle heure (c'est alors le modèle de la maison qui déborde) |
 | 24.8 | Place du village (« Entrée : faire halte ») | Un seul disque bleu clair, mince, au-dessus des pavés | [ ] | |
+
+## 25. Objets blancs ou roses, tonneau et flaques (V2.12.7)
+
+Suite de ton essai du 9 novembre 2026 (PC modeste) : four et comptoir blancs, petits objets roses près de la maison « Herbe de l'Aube », tonneau bleu uni à la forge, flaques noires comme des trous. **Refaire « Préparer l'essai de style »** (il répare les matières ; le compte rendu dit « matières réparées »), puis **« Vérification de l'essai »**.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 25.1 | Vérification de l'essai, section « Objets blancs ou roses (V2.12.7) » | Une ligne verte « aucun objet blanc ni rose » ; sinon une ligne par matière avec le **nom du fichier** | [ ] | Envoyer les noms de fichier restants |
+| 25.2 | Village, près de la maison « Herbe de l'Aube », le four en dôme | Un four **de brique** (texturé, ou brun rouge), plus blanc | [ ] | |
+| 25.3 | Le comptoir ou plan de travail à côté | Du **bois** (texturé ou brun), plus blanc | [ ] | |
+| 25.4 | Les petits objets de la table voisine | De vraies couleurs (pain, fromage, bouteilles…), **plus rose magenta** | [ ] | S'il en reste un : son nom (la liste du 25.1 le donne) |
+| 25.5 | Forge de Maëlle | Un **tonneau de bois** brun avec des cercles de fer sombres, plus de cylindre bleu | [ ] | |
+| 25.6 | Les autres tonneaux du village et du bourg | Du bois aussi | [ ] | |
+| 25.7 | Pluie (touche météo de l'essai), puis regarder les chemins | Des flaques **transparentes**, bord fondu, qui reprennent la couleur du ciel, plus de disques noirs ; à l'arrêt de la pluie elles rétrécissent puis disparaissent | [ ] | Trop claires ou trop sombres ? Le dire |
+| 25.8 | Même chose en mode « PC modeste » | Des flaques plus petites en nombre, mates, mais pas noires | [ ] | |
+| 24.7 (à refaire) | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison | [ ] | Pas revu à cet essai : s'il semble encore dans une maison, laquelle et à quelle heure |
