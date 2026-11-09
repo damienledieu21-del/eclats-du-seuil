@@ -94,8 +94,12 @@ namespace EdS.Game.Editor
             return "matières réparées : " + pink + " roses ou en erreur converties en URP, " + white + " blanches texturées ou colorées (" + files + " fichiers)";
         }
 
-        /// <summary>Les défauts qui restent (pour « Vérification de l'essai ») : un par matière rose ou blanche, avec son nom de fichier.</summary>
-        internal static List<Problem> Problems(StyleCatalog catalog)
+        /// <summary>
+        /// Les défauts qui restent (pour « Vérification de l'essai ») : un par matière rose ou blanche, avec son nom de fichier. V2.12.9 : la
+        /// mémoire est libérée au fil de l'eau (<see cref="EdsStyle.Breathe"/>, compteur partagé) ; <paramref name="catalog"/> n'est lu qu'au
+        /// début (liste des chemins), jamais après un déchargement, et seules des chaînes sont gardées.
+        /// </summary>
+        internal static List<Problem> Problems(StyleCatalog catalog, ref int breathed)
         {
             var found = new List<Problem>();
             if (catalog == null) return found;
@@ -109,6 +113,7 @@ namespace EdS.Game.Editor
                     if (fault != MaterialFault.None && seen.Add(name + "|" + fault))
                         found.Add(new Problem { File = Path.GetFileName(path), Material = name, Fault = fault });
                 }
+                EdsStyle.Breathe(ref breathed);   // seules des chaînes sont gardées d'une itération à l'autre
             }
             return found;
         }

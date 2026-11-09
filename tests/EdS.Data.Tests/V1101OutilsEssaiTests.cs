@@ -146,4 +146,22 @@ public sealed class V1101OutilsEssaiTests : IDisposable
     [InlineData(StartupSceneState.Ready, true, LaunchStep.Continue)]
     public void Suite_apres_la_scene_de_demarrage(StartupSceneState state, bool exists, LaunchStep expected)
         => Assert.Equal(expected, EssaiTools.AfterStartupScene(state, exists));
+
+    [Theory]
+    [InlineData(true, true, StartupSceneState.Ready, true, PreparedLaunchStep.AlreadyPlaying)]
+    [InlineData(true, false, StartupSceneState.Cancelled, false, PreparedLaunchStep.AlreadyPlaying)]   // le jeu lancé passe avant tout
+    [InlineData(false, false, StartupSceneState.Ready, true, PreparedLaunchStep.NeedsPreparation)]
+    [InlineData(false, false, StartupSceneState.Failed, false, PreparedLaunchStep.NeedsPreparation)]
+    [InlineData(false, true, StartupSceneState.Cancelled, true, PreparedLaunchStep.StopSilently)]
+    [InlineData(false, true, StartupSceneState.Failed, true, PreparedLaunchStep.StopWithMessage)]
+    [InlineData(false, true, StartupSceneState.Ready, false, PreparedLaunchStep.StopWithMessage)]
+    [InlineData(false, true, StartupSceneState.Ready, true, PreparedLaunchStep.Play)]
+    public void Lancement_deja_prepare(bool playing, bool catalog, StartupSceneState state, bool exists, PreparedLaunchStep expected)
+        => Assert.Equal(expected, EssaiTools.PreparedLaunch(playing, catalog, state, exists));
+
+    [Theory]
+    [InlineData(true, LaunchStep.Continue)]
+    [InlineData(false, LaunchStep.StopSilently)]   // annuler la question d'enregistrement arrête tout
+    public void Suite_apres_la_question_denregistrement(bool accepted, LaunchStep expected)
+        => Assert.Equal(expected, EssaiTools.AfterSceneSave(accepted));
 }

@@ -436,3 +436,13 @@ Suite de ton essai du 9 novembre 2026 (PC modeste) : four et comptoir blancs, pe
 | 25.7 | Pluie (touche météo de l'essai), puis regarder les chemins | Des flaques **transparentes**, bord fondu, qui reprennent la couleur du ciel, plus de disques noirs ; à l'arrêt de la pluie elles rétrécissent puis disparaissent | [ ] | Trop claires ou trop sombres ? Le dire |
 | 25.8 | Même chose en mode « PC modeste » | Des flaques plus petites en nombre, mates, mais pas noires | [ ] | |
 | 24.7 (à refaire) | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison | [ ] | Pas revu à cet essai : s'il semble encore dans une maison, laquelle et à quelle heure |
+
+## 26. Mémoire au lancement et « Lancer l'essai (déjà préparé) » (V2.12.9)
+
+Suite de ton essai du 9 novembre 2026 (PC de 4 Go, mode « PC modeste ») : après la préparation et la vérification, le passage en mode Jeu s'arrêtait sur « System out of memory » (texture). La mémoire est maintenant libérée avant le mode Jeu et pendant la vérification des objets blancs ou roses. **Sur PC modeste : prépare une fois** (« Éclats du Seuil → Préparer l'essai de style »), **ferme les autres applications, rouvre Unity**, puis utilise **« Éclats du Seuil → Lancer l'essai (déjà préparé) »** : ni préparation ni vérification complète, il ouvre la scène de démarrage et lance le mode Jeu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 26.1 | « Préparer et lancer l'essai » | Le jeu démarre, plus de « System out of memory » | [ ] | Sinon : capture de la Console |
+| 26.2 | Unity rouvert, « Lancer l'essai (déjà préparé) » | La scène de démarrage s'ouvre et le jeu démarre, sans préparation | [ ] | |
+| 26.3 | Même menu sur un projet jamais préparé | Un message demande de faire d'abord « Préparer l'essai de style » | [ ] | |
