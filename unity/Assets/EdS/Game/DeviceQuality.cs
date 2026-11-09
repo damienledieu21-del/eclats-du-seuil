@@ -5,7 +5,7 @@ namespace EdS.Game
 {
     /// <summary>
     /// Sous-lot V2.12.4 (essai de Damien du 9 novembre 2026 : « System out of memory » sur sa GTX 470 à 1224 Mo) : classe de la machine
-    /// (<see cref="GraphicsTier"/>) d'après la mémoire vidéo et la mémoire système, et limite des textures (mipmaps) appliquée au démarrage
+    /// (<see cref="MachineTier"/>) d'après la mémoire vidéo et la mémoire système, et limite des textures (mipmaps) appliquée au démarrage
     /// selon le choix du joueur (réglages de la pause, sauvegardé ; Auto par défaut). Sur un PC modeste, les ressources « jamais sur
     /// téléphone » sont écartées comme sur téléphone (<see cref="Light"/>). Affichage seulement.
     /// </summary>
@@ -28,7 +28,7 @@ namespace EdS.Game
             {
                 if (!_known)
                 {
-                    _tier = GraphicsTier.Detect(Vram, Ram, Application.isMobilePlatform);
+                    _tier = MachineTier.Detect(Vram, Ram, Application.isMobilePlatform);
                     _known = true;
                 }
                 return _tier;
@@ -36,13 +36,13 @@ namespace EdS.Game
         }
 
         /// <summary>Téléphone ou PC modeste : les ressources « jamais sur téléphone » ne se montrent pas.</summary>
-        public static bool Light => GraphicsTier.Light(Tier);
+        public static bool Light => MachineTier.Light(Tier);
 
         /// <summary>Choix du joueur (préférences ; Auto par défaut).</summary>
-        public static TextureChoice Choice => GraphicsTier.Choice(PlayerPrefs.GetInt(ChoiceKey, 0));
+        public static TextureChoice Choice => MachineTier.Choice(PlayerPrefs.GetInt(ChoiceKey, 0));
 
         /// <summary>Limite de mipmaps qui correspond au choix du joueur sur cette machine.</summary>
-        public static int Limit => GraphicsTier.MipLimit(Choice, Vram, Ram, Application.isMobilePlatform);
+        public static int Limit => MachineTier.MipLimit(Choice, Vram, Ram, Application.isMobilePlatform);
 
         /// <summary>Applique la limite des textures (au démarrage et à chaque changement de réglage).</summary>
         public static void Apply() => QualitySettings.globalTextureMipmapLimit = Limit;
@@ -50,12 +50,12 @@ namespace EdS.Game
         /// <summary>Passe au choix suivant (auto, pleine, moitié, quart), le sauvegarde et l'applique.</summary>
         public static void Cycle()
         {
-            PlayerPrefs.SetInt(ChoiceKey, (int)GraphicsTier.Next(Choice));
+            PlayerPrefs.SetInt(ChoiceKey, (int)MachineTier.Next(Choice));
             PlayerPrefs.Save();
             Apply();
         }
 
         /// <summary>Texte du bouton des réglages.</summary>
-        public static string Label => GraphicsTier.Label(Choice, Limit);
+        public static string Label => MachineTier.Label(Choice, Limit);
     }
 }

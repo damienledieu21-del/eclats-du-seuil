@@ -99,7 +99,7 @@ namespace EdS.Game.Editor
             string problem = EssaiManifest.VersionProblem(Application.unityVersion, expected);
             // Sous-lot V2.12.4 : classe de la machine (mémoire vidéo, mémoire) et limite des textures que le jeu appliquera (choix du joueur compris).
             report.Add(Unity, EssaiLevel.Ok, "Machine et textures",
-                GraphicsTier.Describe(DeviceQuality.Vram, DeviceQuality.Ram, Application.isMobilePlatform, DeviceQuality.Limit));
+                MachineTier.Describe(DeviceQuality.Vram, DeviceQuality.Ram, Application.isMobilePlatform, DeviceQuality.Limit));
             if (problem == null) report.Add(Unity, EssaiLevel.Ok, "Version de Unity", Application.unityVersion);
             else report.Add(Unity, EssaiLevel.Warning, "Version de Unity", problem, "Ouvre le projet avec Unity " + expected + " (Unity Hub → Installs).");
 
