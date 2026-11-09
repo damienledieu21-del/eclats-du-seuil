@@ -147,7 +147,7 @@ Le menu, pour chaque dossier de `Assets/Style/MakeHuman/` :
 - fait des **matières URP** à partir des textures (couleur, relief) ; les cheveux, sourcils et cils sont **découpés** (transparence propre) ;
 - **plafonne les textures** à 1024 pixels (512 sur téléphone) ;
 - compte les **triangles** et te dit si c'est trop lourd ;
-- crée un **prefab** par personnage dans `Assets/Style/Generated/MakeHuman/` ;
+- crée un **prefab** par personnage dans `Assets/Style/Generated/MakeHuman/<nom>/` (un sous-dossier par personnage) ;
 - inscrit le personnage au **catalogue** du jeu (`Assets/Style/Resources/StyleCatalog`, liste « Made Looks »).
 
 À la fin, une fenêtre donne le **rapport** : une ligne par personnage (« prêt », « refusé » avec la raison), les lignes de `PNJ.txt` qui visent un personnage absent, et ce qu'il faut corriger. Tu peux **relancer le menu autant que tu veux** : il refait ce qui a changé.

@@ -22,6 +22,12 @@ namespace EdS.Game.Editor
         public const string MappingPath = Root + "/" + MadeHumans.MappingFile;
         private const string PrefabFolder = EdsStyle.Generated + "/" + MadeHumans.Folder;
 
+        /// <summary>
+        /// Dossier des fichiers générés d'un personnage : un sous-dossier par clé ASCII (relecture Codex de la PR #134 : deux personnages dont les
+        /// FBX et les matières portent le même nom ne s'écrasent plus).
+        /// </summary>
+        private static string FolderOf(MadeHumanModel model) => PrefabFolder + "/" + model.Name;
+
         /// <summary>Modèle de PNJ.txt écrit au premier import (rien n'est écrasé ensuite).</summary>
         private const string MappingTemplate =
             "# Qui porte quel personnage fait dans MakeHuman ?\n"
@@ -138,7 +144,7 @@ namespace EdS.Game.Editor
                 if (MadeHumans.TooHeavy(triangles)) { problem = triangles + " triangles : trop lourd"; return null; }
                 problem = triangles + " triangles : au-dessus du budget";
             }
-            Materials(path, folder, notes);
+            Materials(path, folder, model, notes);
             GameObject prefab = MakePrefab(model, path);
             if (prefab == null) { problem = "prefab non créé"; return null; }
             MadeHumanLook previous = catalog.MadeLooks != null ? catalog.MadeLooks.FirstOrDefault(m => m != null && m.Name == model.Name) : null;
@@ -211,7 +217,7 @@ namespace EdS.Game.Editor
         /// Matières URP Lit du fichier : la texture de couleur (la sienne, ou celle qui porte son nom), le relief s'il y en a, et la découpe
         /// pour les cheveux, sourcils, cils et barbe (<see cref="MadeHumans.IsCutoutMaterial"/>). Rangées dans <c>Generated/MakeHuman</c>.
         /// </summary>
-        private static void Materials(string modelPath, string folder, List<string> notes)
+        private static void Materials(string modelPath, string folder, MadeHumanModel model, List<string> notes)
         {
             if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
             Shader lit = Shader.Find("Universal Render Pipeline/Lit");
@@ -220,7 +226,8 @@ namespace EdS.Game.Editor
                 notes.Add("Rendu URP absent : matières de MakeHuman laissées telles quelles.");
                 return;
             }
-            Folder(PrefabFolder);
+            string generated = FolderOf(model);
+            Folder(generated);
             List<string> textures = AssetDatabase.FindAssets("t:Texture2D", new[] { folder }).Select(AssetDatabase.GUIDToAssetPath).Distinct().ToList();
             string stem = Path.GetFileNameWithoutExtension(modelPath);
             bool changed = false;
@@ -231,7 +238,7 @@ namespace EdS.Game.Editor
                 if (color == null) continue;
                 Texture2D normal = OwnTexture(embedded, "_BumpMap");
                 if (normal == null && StyleRules.MaterialTexture(embedded.name, textures, true) is string namedNormal) normal = Load(namedNormal);
-                string path = PrefabFolder + "/" + stem + " " + embedded.name + ".mat";
+                string path = generated + "/" + stem + " " + embedded.name + ".mat";
                 Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (material == null)
                 {
@@ -265,8 +272,8 @@ namespace EdS.Game.Editor
         {
             GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
             if (source == null) return null;
-            Folder(PrefabFolder);
-            string path = PrefabFolder + "/" + model.Name + ".prefab";
+            Folder(FolderOf(model));
+            string path = FolderOf(model) + "/" + model.Name + ".prefab";
             GameObject instance = PrefabUtility.InstantiatePrefab(source) as GameObject;
             if (instance == null) return null;
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, path);

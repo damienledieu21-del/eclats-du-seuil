@@ -25,6 +25,7 @@ namespace EdS.Game
         private bool _seen;
         private float _time;
         private float _speed;
+        private float _stride;
 
         public WildlifeLook(GameObject body, WildlifeKind kind)
         {
@@ -111,12 +112,16 @@ namespace EdS.Game
                 Vector3 step = position - _last;
                 step.y = 0f;
                 // Vitesse lissée : les places glissent entre deux ticks du moteur.
-                _speed = Mathf.Lerp(_speed, step.magnitude / deltaTime, 0.2f);
+                // Sous-lot V2.15 : départ en douceur, arrêt vif, quelle que soit la cadence d'images.
+                _speed = (float)Locomotion.Ease(_speed, step.magnitude / deltaTime, 0.15, 0.06, deltaTime);
             }
             _last = position;
             _seen = true;
             _time += deltaTime;
-            (double bob, double[] legs) = Wildlife.Gait(_kind, _speed, _time);
+            // Sous-lot V2.15 : l'horloge des foulées avance avec la vitesse (cadence de la course à pleine vitesse, plus lente en dessous) :
+            // les pattes ne battent plus l'air au même rythme quand la bête ralentit.
+            _stride += deltaTime * (float)Locomotion.PlaybackRate(_speed, _kind == WildlifeKind.Deer ? 6.0 : 7.0, 0.35, 1.3);
+            (double bob, double[] legs) = Wildlife.Gait(_kind, _speed, _stride);
             // Sous-lot V2.4.1 : posture lissée (la tête descend vers l'herbe, se relève pour guetter).
             (double pitch, double crouch) = Wildlife.Pose(_kind, wander, _time);
             float ease = 1f - Mathf.Exp(-6f * deltaTime);

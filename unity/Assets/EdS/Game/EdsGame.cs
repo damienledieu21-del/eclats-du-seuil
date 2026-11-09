@@ -492,7 +492,10 @@ namespace EdS.Game
         private void UpdateAdventure()
         {
             AdventureSession a = _adventure;
-            if (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed)
+            // Relecture Codex de la PR #134 : tant que le créateur de personnage est ouvert, aucune commande d'aventure ne passe (halte, marche,
+            // raccourcis, écrans) ; seuls Échap (annuler) et ses boutons répondent.
+            bool creating = _creator != null && _creator.Open;
+            if (!creating && (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed))
             {
                 LeaveAdventure();
                 Load(0, null);
@@ -523,7 +526,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : passer le réveil, revivre (V) ou passer (X) le souvenir.
             bool calm = !TalentsOpen && !_paused && _screens.Open == AdventureScreens.Panel.None;   // un dialogue reste possible
             _stage?.ReadInput(a, calm && !talking, calm);
-            if (!TalentsOpen)
+            if (!TalentsOpen && !creating)
             {
                 if (Input.GetKeyDown(KeyCode.I) || _touch.BagPressed) _screens.Toggle(AdventureScreens.Panel.Inventory);
                 if (Input.GetKeyDown(KeyCode.J) || _touch.JournalPressed) _screens.Toggle(AdventureScreens.Panel.Journal);
@@ -535,8 +538,8 @@ namespace EdS.Game
                 // T ouvre l'arbre des Éclats sur les talents du personnage à son niveau ; ils se gardent hors combat, effet à la halte.
                 if (!talking && !a.MustContinue && (Input.GetKeyDown(KeyCode.T) || _touch.TalentsPressed)) OpenAdventureTalents(a);
             }
-            if (Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed)
+            if (!creating && Input.GetKeyDown(KeyCode.F6)) SaveAdventure(true);
+            if (!creating && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || _touch.RestartPressed))
             {
                 // La halte et la reprise sauvegardent : un disque plein ou inaccessible s'affiche, la partie reste où elle en est.
                 try
@@ -559,7 +562,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking;   // sous-lot V1.9.8 : le réveil
+            frozen = frozen || _stage != null && _stage.Blocking || creating;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -568,7 +571,7 @@ namespace EdS.Game
                 StyleLook.Play(Audio, StyleSound.Potion);   // essai de style : son
                 if (_arena.Feet(_combat.PlayerId) is Vector3 feet) _effects?.Healed(feet);   // essai réaliste 7 : éclats verts
             }
-            if (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed) _camera.Toggle(_playerYaw);
+            if (!creating && (Input.GetKeyDown(KeyCode.C) || _touch.ViewPressed)) _camera.Toggle(_playerYaw);
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();

@@ -501,6 +501,9 @@ namespace EdS.Game
             public StyleVillager Data;
             public Transform Body;
             public StyleBody Look;
+
+            /// <summary>Sous-lot V2.15 : allure du moment (m/s) : il accélère au départ, ralentit pour arriver ou se retourner.</summary>
+            public float Pace;
             public float Along;
             public bool Back;
             public float Yaw;
@@ -561,15 +564,18 @@ namespace EdS.Game
             if (moving)
             {
                 v.Body.position = target;
-                v.Yaw = (float)StyleRules.Turn(v.Yaw, (float)StyleRules.FaceYaw(0, 0, way.x, way.z), 400f * Mathf.Max(deltaTime, 0.0001f));
+                // Sous-lot V2.15 : virage lissé et borné (la place, elle, reste celle du repère).
+                v.Yaw = (float)Locomotion.TurnStep(v.Yaw, StyleRules.FaceYaw(0, 0, way.x, way.z), 300.0, 0.12, Mathf.Max(deltaTime, 0.0001f));
                 v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
             }
+            if (deltaTime > 0f) v.Pace = (float)Locomotion.Ease(v.Pace, way.magnitude / deltaTime, 0.15, 0.06, deltaTime);
             VillagerActivity play = moving ? VillagerActivity.Walk : v.Data.Activity;
             if (play != v.Playing && v.Look != null)
             {
                 v.Playing = play;
                 v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
             }
+            if (moving && v.Look != null) v.Look.Pace(v.Pace);   // V2.15 : la cadence du pas suit la vitesse
             return true;
         }
 
@@ -669,17 +675,33 @@ namespace EdS.Game
                 float dx = (float)(v.Data.ToX - v.Data.X), dz = (float)(v.Data.ToZ - v.Data.Z);
                 float length = Mathf.Sqrt(dx * dx + dz * dz);
                 if (length < 0.1f) continue;
-                v.Along += (v.Back ? -1f : 1f) * WalkSpeed * deltaTime / length;
+                float target = (float)StyleRules.FaceYaw(0, 0, v.Back ? -dx : dx, v.Back ? -dz : dz);
+                // Sous-lot V2.15 : il ralentit au bout de son allée, se retourne à petits pas, puis repart en accélérant.
+                v.Pace = Stride(v.Pace, WalkSpeed, (v.Back ? v.Along : 1f - v.Along) * length, target - v.Yaw, deltaTime);
+                v.Along += (v.Back ? -1f : 1f) * v.Pace * deltaTime / length;
                 if (v.Along >= 1f || v.Along <= 0f)
                 {
                     v.Along = Mathf.Clamp01(v.Along);
                     v.Back = !v.Back;
                 }
-                float target = (float)StyleRules.FaceYaw(0, 0, v.Back ? -dx : dx, v.Back ? -dz : dz);
-                v.Yaw = (float)StyleRules.Turn(v.Yaw, target, 200f * deltaTime);
+                v.Yaw = (float)Locomotion.TurnStep(v.Yaw, target, 200.0, 0.12, deltaTime);
+                if (v.Look != null) v.Look.Pace(v.Pace);
                 v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, v.Height, (float)v.Data.Z + dz * v.Along);
                 v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.15 : allure d'un passant : <paramref name="cruise"/> au plus, moins pendant un virage de <paramref name="turn"/> degrés
+        /// (au carré : presque sur place pour un demi-tour, jamais de pas de côté), ralentie pour s'arrêter à <paramref name="left"/> m ;
+        /// accélération de 1 m/s², freinage de 1,6 m/s².
+        /// </summary>
+        private static float Stride(float pace, float cruise, float left, float turn, float deltaTime)
+        {
+            double factor = Locomotion.TurnSpeedFactor(turn);
+            double wanted = Locomotion.ArriveSpeed(cruise * factor * factor, left, 1.2);
+            if (left > 0.02f) wanted = System.Math.Max(wanted, System.Math.Min(0.12, cruise));   // il finit toujours par arriver
+            return (float)Locomotion.Accelerate(pace, wanted, 1.0, 1.6, deltaTime);
         }
 
         /// <summary>Sous-lot V2.3 : un villageois du décor va vers la place de sa course (ou revient à son poste), au pas.</summary>
@@ -696,16 +718,20 @@ namespace EdS.Game
             // Sous-lot V2.8 : il suit son trajet, qui contourne les maisons (le but lui-même si la ligne droite est libre).
             (double ax, double az) = v.Route.Next(Paths, at.x, at.z, goal.X, goal.Z);
             var target = new Vector3((float)ax, v.Height, (float)az);
-            Vector3 step = Vector3.MoveTowards(at, target, WalkSpeed * deltaTime);
+            // Sous-lot V2.15 : départ en accélérant, virage avant d'avancer franchement, ralenti pour s'arrêter sur la place.
+            Vector3 way = target - at;
+            way.y = 0f;
+            float aim = way.sqrMagnitude > 1e-6f ? (float)StyleRules.FaceYaw(0, 0, way.x, way.z) : v.Yaw;
+            float left = Mathf.Sqrt((at.x - (float)goal.X) * (at.x - (float)goal.X) + (at.z - (float)goal.Z) * (at.z - (float)goal.Z));
+            v.Pace = way.sqrMagnitude > 1e-8f ? Stride(v.Pace, WalkSpeed, left, aim - v.Yaw, deltaTime) : 0f;
+            Vector3 step = Vector3.MoveTowards(at, target, v.Pace * deltaTime);
             bool moving = (step - at).sqrMagnitude > 1e-8f;
             if (moving)
             {
                 v.Body.position = step;
-                Vector3 way = target - at;
-                float aim = (float)StyleRules.FaceYaw(0, 0, way.x, way.z);
-                v.Yaw = (float)StyleRules.Turn(v.Yaw, aim, 200f * deltaTime);
+                v.Yaw = (float)Locomotion.TurnStep(v.Yaw, aim, 200.0, 0.12, deltaTime);
             }
-            else v.Yaw = (float)StyleRules.Turn(v.Yaw, goal.Yaw, 120f * deltaTime);
+            else v.Yaw = (float)Locomotion.TurnStep(v.Yaw, goal.Yaw, 120.0, 0.2, deltaTime);
             v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
             VillagerActivity play = moving ? VillagerActivity.Walk : goal.Activity;
             if (play != v.Playing && v.Look != null)
@@ -713,6 +739,7 @@ namespace EdS.Game
                 v.Playing = play;
                 v.Look.Loop(play, StyleRules.Variant(v.Data.Id, 97));
             }
+            if (moving && v.Look != null) v.Look.Pace(v.Pace);   // V2.15 : la cadence du pas suit la vitesse
             bool away = goal.Indoors && !moving;
             if (away != v.Away)
             {

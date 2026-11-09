@@ -27,6 +27,9 @@ namespace EdS.Game
         private bool _fallen;
         private string _playing;
 
+        /// <summary>Sous-lot V2.15 (relecture de la PR #133) : le clip joué est-il une marche ? Calculé quand il change, lu par <see cref="Pace"/>.</summary>
+        private bool _playingIsWalk;
+
         /// <summary>Matériaux du modèle (copies propres à ce corps) et leur couleur d'origine, pour la teinte.</summary>
         private readonly List<Material> _materials = new List<Material>();
         private readonly List<Color> _colors = new List<Color>();
@@ -38,7 +41,6 @@ namespace EdS.Game
         // Sous-lot V2.9 : une bête (loup, sanglier, cerf, biche, lièvre) règle la cadence de sa marche et de son galop sur sa vitesse ; un
         // modèle sans squelette (le sanglier de Hanabi_Map) est animé par le code (BeastCalls.StaticGait).
         private bool _beast;
-        private string _playingState;
         private StyleMotion _playingMotion;
         private bool _procedural;
         private Vector3 _basePosition;
@@ -48,6 +50,26 @@ namespace EdS.Game
         private float _overlayUntil;
         private StyleMotion _overlayMotion;
         private bool _overlaid;
+
+        // Sous-lot V2.15 (démarche réaliste) : allure, virages, attentes, regard.
+        private uint _seed;
+        private bool _moving;
+        private float _still;
+        private float _turnHold;
+        private LocomotionGait _gait;
+        private float _yawLast;
+        private bool _yawKnown;
+        private float _yawRate;
+        private float _lean;
+        private readonly Quaternion _leanBase;
+        private bool _gaitsKnown;
+        private string _walkClip, _trotClip, _gallopClip;
+        private double _walkNatural, _trotNatural, _gallopNatural;
+        private List<string> _idles;
+        private int _idleVariant;
+        private float _idleUntil = -1f;
+        private float _life;
+        private HeadTurn _head;
 
         // Essai réaliste 7 : geste en cours (attaque, sort, coup reçu) et sa fin.
         private float _actionUntil;
@@ -69,6 +91,7 @@ namespace EdS.Game
             _animation = player;
             _outfit = outfit;
             Height = height;
+            _leanBase = look != null ? look.localRotation : Quaternion.identity;
             // Relecture de la PR #117 : les matériaux ne sont copiés qu'à la première teinte (mort, étourdi), et ces copies sont détruites
             // avec le corps (MaterialCopies) : les corps humains gardent leurs matériaux partagés (instanciation, mémoire).
             if (player == null) return;
@@ -112,6 +135,7 @@ namespace EdS.Game
             }
             _animation.CrossFade(clip, 0.25f);
             _playing = clip;
+            _playingIsWalk = StyleRules.Key(clip).Contains("walk");   // V2.15 : une fois par changement de clip, pas à chaque image
             return clip;
         }
 
@@ -233,6 +257,12 @@ namespace EdS.Game
         /// <param name="wander">Sous-lot V2.4.1 : ce que fait une bête qui erre (<c>CombatantView.Wander</c>) : arrêtée, elle broute ou fouille.</param>
         public void Update(Vector3 position, bool dead, float deltaTime, bool guarding = false, string wander = null)
         {
+            // Revue Codex de la PR #133 : un mort ne regarde plus rien, même couché sans animation de mort (retours anticipés plus bas).
+            if (dead && _head != null)
+            {
+                _head.Glance = 0f;
+                _head.HasTarget = false;
+            }
             // Un modèle sans animation de mort (le loup et le cochon des packs) se couche sur le flanc, immobile.
             if (dead && (_animation == null || Pick(StyleMotion.Death) == null))
             {
@@ -247,11 +277,13 @@ namespace EdS.Game
             {
                 Vector3 d = position - _last;
                 d.y = 0f;
-                // Vitesse lissée : le corps glisse d'une place du moteur à la suivante, par à-coups d'un tick.
-                _speed = Mathf.Lerp(_speed, d.magnitude / deltaTime, 1f - Mathf.Exp(-8f * deltaTime));
+                // Vitesse lissée : le corps glisse d'une place du moteur à la suivante, par à-coups d'un tick. Sous-lot V2.15 : départ en
+                // douceur, arrêt vif (le cycle ne continue pas pendant que le corps est déjà arrêté).
+                _speed = (float)Locomotion.Ease(_speed, d.magnitude / deltaTime, 0.15, 0.06, deltaTime);
             }
             _last = position;
             _started = true;
+            Gauge(deltaTime);
             if (_procedural)
             {
                 Procedural(dead, deltaTime, wander);
@@ -259,23 +291,199 @@ namespace EdS.Game
             }
             // Essai réaliste 7 : un geste en cours (attaque, sort, coup reçu) l'emporte sur l'allure, pas sur la mort.
             bool acting = !dead && Time.time < _actionUntil && _actionClip != null;
-            StyleMotion motion = acting ? _actionMotion : StyleRules.Motion(_speed, dead, false, guarding, wander);
-            string clip = acting ? _actionClip : Pick(motion);
-            if (clip != null && clip != _playing)
+            if (_head != null) _head.Glance = acting || dead ? 0f : _moving ? 0.35f : 1f;
+            if (acting) Play(_actionClip, _actionMotion, _actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f);
+            else if (dead) Play(Pick(StyleMotion.Death), StyleMotion.Death, 0.18f);
+            else if (_moving) Locomote();
+            else if (_turnHold > 0f && Gaits() && _walkClip != null)
             {
-                _playing = clip;
-                _playingMotion = motion;
-                _playingState = _beast ? clip : null;
-                _animation.CrossFade(clip, acting ? (_actionMotion == StyleMotion.Hurt || _actionMotion == StyleMotion.GuardHit ? 0.06f : 0.1f) : 0.18f);
+                // Sous-lot V2.15 : il pivote à l'arrêt : petits pas lents, jamais une rotation de statue sur place.
+                Play(_walkClip, StyleMotion.Walk, 0.2f);
+                _animation.SetSpeed(_walkClip, 0.6f);
+            }
+            else
+            {
+                StyleMotion motion = StyleRules.Motion(0.0, false, false, guarding, wander);
+                Play(motion == StyleMotion.Idle ? IdleClip() : Pick(motion), motion, 0.3f);
             }
             if (_beast) Overlay(dead);
-            // Sous-lot V2.9 : la cadence de la marche et du galop suit la vitesse (moins de pattes qui glissent), d'après la taille de la bête.
-            if (_playingState != null)
+            else if (!dead) Lean(deltaTime);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.15 : en marche ou à l'arrêt (hystérésis, <see cref="Locomotion.Moving"/>), vitesse de rotation du corps (lacet de son
+        /// parent, lissé) et pas sur place quand il pivote sans avancer.
+        /// </summary>
+        private void Gauge(float deltaTime)
+        {
+            if (deltaTime <= 0f) return;
+            _life += deltaTime;
+            float yaw = _look != null && _look.parent != null ? _look.parent.eulerAngles.y : 0f;
+            if (_yawKnown) _yawRate = (float)Locomotion.Ease(_yawRate, Locomotion.Wrap(yaw - _yawLast) / deltaTime, 0.1, 0.1, deltaTime);
+            _yawLast = yaw;
+            _yawKnown = true;
+            _still = _speed < Locomotion.StopSpeed ? _still + deltaTime : 0f;
+            _moving = Locomotion.Moving(_moving, _speed, _still);
+            if (!_moving && Locomotion.TurningInPlace(_speed, _yawRate)) _turnHold = 0.3f;
+            else _turnHold -= deltaTime;
+            if (!_moving) _gait = LocomotionGait.Stand;
+        }
+
+        /// <summary>Joue <paramref name="clip"/> (fondu de <paramref name="fade"/> s) s'il ne joue pas déjà ; rien sans clip.</summary>
+        private void Play(string clip, StyleMotion motion, float fade)
+        {
+            if (clip == null || clip == _playing) return;
+            _playing = clip;
+            _playingIsWalk = StyleRules.Key(clip).Contains("walk");   // V2.15 : une fois par changement de clip, pas à chaque image
+            _playingMotion = motion;
+            _animation.CrossFade(clip, fade);
+            // Sous-lot V2.15 : chaque attente à sa propre cadence (deux voisins ne respirent pas ensemble).
+            if (motion == StyleMotion.Idle) _animation.SetSpeed(clip, (float)Locomotion.IdleRate(_seed));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.15 : allure en marche : pas, trot ou course, galop ou sprint (<see cref="Locomotion.ChooseGait"/>), chacun à la cadence
+        /// de la vitesse réelle ; un corps humain mêle marche et course selon la vitesse, pas synchronisés (<see cref="HumanMotion.Blend"/>).
+        /// </summary>
+        private void Locomote()
+        {
+            if (!Gaits()) return;
+            _gait = Locomotion.ChooseGait(_gait == LocomotionGait.Stand ? LocomotionGait.Walk : _gait, _speed, Height, _beast, _trotClip != null,
+                _gallopClip != null);
+            if (_animation is HumanMotion human && _walkClip != null && _trotClip != null && _gait != LocomotionGait.Gallop)
             {
-                float stride = Mathf.Sqrt(Mathf.Max(0.2f, Height));
-                float reference = _playingMotion == StyleMotion.Walk ? 1.2f * stride : _playingMotion == StyleMotion.Run ? 5.5f * stride : 0f;
-                _animation.SetSpeed(_playingState, reference > 0f ? Mathf.Clamp(_speed / reference, 0.6f, 1.7f) : 1f);
+                double t = Locomotion.RunBlend(_speed, _walkNatural, _trotNatural);
+                (double rw, double rr) = Locomotion.BlendRates(_animation.Length(_walkClip), _animation.Length(_trotClip), t, _speed, _walkNatural,
+                    _trotNatural);
+                human.Blend(_walkClip, _trotClip, (float)t, (float)rw, (float)rr, 0.2f);
+                _playing = Blended;
+                _playingIsWalk = false;
+                _playingMotion = t < 0.5 ? StyleMotion.Walk : StyleMotion.Run;
+                return;
             }
+            // Revue Codex de la PR #133 : l'allure voulue sans clip prend le cycle présent le plus proche (un modèle qui n'a que le galop
+            // galope au ralenti à faible vitesse), à la cadence de sa vitesse naturelle.
+            LocomotionGait shown = Locomotion.ClosestGait(_gait, _walkClip != null, _trotClip != null, _gallopClip != null);
+            string clip = shown == LocomotionGait.Gallop ? _gallopClip : shown == LocomotionGait.Trot ? _trotClip : _walkClip;
+            if (clip == null) return;
+            double natural = clip == _gallopClip ? _gallopNatural : clip == _trotClip ? _trotNatural : _walkNatural;
+            Play(clip, _gait == LocomotionGait.Walk ? StyleMotion.Walk : StyleMotion.Run, 0.25f);
+            _animation.SetSpeed(clip, (float)Locomotion.PlaybackRate(_speed, natural));
+        }
+
+        /// <summary>Marqueur du mélange marche ↔ course en cours (pas un nom d'animation).</summary>
+        private const string Blended = "\u0001mélange";
+
+        /// <summary>
+        /// Sous-lot V2.15 : cycles du pas, du trot (ou de la course) et du galop (ou du sprint) du modèle, et leur vitesse naturelle (mesurée
+        /// dans l'animation, sinon d'après la taille : <see cref="Locomotion.NaturalSpeed"/>), cherchés une fois. Faux sans aucun cycle.
+        /// </summary>
+        private bool Gaits()
+        {
+            if (!_gaitsKnown)
+            {
+                _gaitsKnown = true;
+                _walkClip = Pick(StyleMotion.Walk);
+                if (_walkClip != null && !StyleRules.Key(_walkClip).Contains("walk")) _walkClip = null;   // le repli d'une marche absente
+                foreach (string name in _clips)
+                {
+                    string key = StyleRules.Key(name);
+                    if (_gallopClip == null && (key.Contains("gallop") || key.Contains("sprint"))) _gallopClip = name;
+                    if (_trotClip == null && (key.Contains("trot") || key.Contains("jog"))) _trotClip = name;
+                }
+                if (_trotClip == null)
+                {
+                    string run = Pick(StyleMotion.Run);
+                    if (run != null && run != _gallopClip && run != _walkClip && !StyleRules.Key(run).Contains("walk")) _trotClip = run;
+                }
+                if (_walkClip == null && _trotClip == null && _gallopClip == null) _walkClip = Pick(StyleMotion.Walk);
+                float scale = _look != null ? Mathf.Max(0.0001f, _look.lossyScale.y) : 1f;
+                _walkNatural = Natural(LocomotionGait.Walk, _walkClip, scale);
+                _trotNatural = Natural(LocomotionGait.Trot, _trotClip, scale);
+                _gallopNatural = Natural(LocomotionGait.Gallop, _gallopClip, scale);
+            }
+            return _walkClip != null || _trotClip != null || _gallopClip != null;
+        }
+
+        private double Natural(LocomotionGait gait, string clip, float scale)
+        {
+            // Une animation Humanoid mesure son déplacement à l'échelle du bassin (environ la moitié de la taille) ; une autre, dans les unités du modèle.
+            double measured = clip == null ? 0.0 : _animation.Travel(clip) * (_animation is HumanMotion ? 0.53 * Height : scale);
+            return Locomotion.NaturalSpeed(gait, Height, _beast, measured);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.15 : attente du moment : l'ordinaire le plus souvent, parfois une autre (regarder autour, bras croisés, renifler) si le
+        /// modèle en a (<see cref="Locomotion.IsIdleVariant"/>), à des moments propres à chacun (<see cref="Locomotion.IdleVariant"/>).
+        /// </summary>
+        private string IdleClip()
+        {
+            if (_idles == null)
+            {
+                _idles = new List<string>();
+                string main = Pick(StyleMotion.Idle);
+                if (main != null) _idles.Add(main);
+                foreach (string name in _clips)
+                    if (_idles.Count < 4 && name != main && Locomotion.IsIdleVariant(name)) _idles.Add(name);
+            }
+            if (_idles.Count == 0) return null;
+            if (_life >= _idleUntil)
+            {
+                (int variant, double until) = Locomotion.IdleVariant(_seed, _life, _idles.Count);
+                _idleVariant = variant;
+                _idleUntil = (float)until;
+            }
+            return _idles[Mathf.Clamp(_idleVariant, 0, _idles.Count - 1)];
+        }
+
+        /// <summary>Sous-lot V2.15 : penché dans les virages (l'équilibre d'un coureur), lissé ; droit à l'arrêt.</summary>
+        private void Lean(float deltaTime)
+        {
+            if (_look == null || _fallen || deltaTime <= 0f) return;
+            float target = _moving ? -(float)Locomotion.Lean(_yawRate, _speed, 7.0) : 0f;
+            _lean = (float)Locomotion.Ease(_lean, target, 0.15, 0.15, deltaTime);
+            _look.localRotation = _leanBase * Quaternion.Euler(0f, 0f, _lean);
+        }
+
+        /// <summary>Sous-lot V2.15 : vitesse affichée (m/s, lissée).</summary>
+        public float Speed => _speed;
+
+        /// <summary>Sous-lot V2.15 : une bête (allures, virages plus lents).</summary>
+        public bool IsBeast => _beast;
+
+        /// <summary>
+        /// Sous-lot V2.15 : graine d'affichage de ce corps (son identifiant) : départ et cadence de son attente, moments de ses variantes, regard
+        /// qui erre ; pose aussi le suivi de la tête (si le squelette en a une).
+        /// </summary>
+        public void Seed(string id)
+        {
+            _seed = Locomotion.Seed(id);
+            if (_animation != null)
+            {
+                string idle = Pick(StyleMotion.Idle);
+                if (idle != null && _animation.Has(idle)) _animation.SetTime(idle, _animation.Length(idle) * (float)Locomotion.IdlePhase(_seed));
+            }
+            if (_head == null && _look != null) _head = HeadTurn.Attach(_look, _look.parent, _seed, _beast);
+            if (_head != null) _head.Seed = _seed;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.15 : un villageois qui marche (<see cref="Loop"/>) règle la cadence de son pas sur sa vitesse <paramref name="speed"/>
+        /// (m/s) : plus de pieds qui glissent quand il ralentit pour arriver.
+        /// </summary>
+        public void Pace(float speed)
+        {
+            if (_animation == null || _playing == null || !_playingIsWalk) return;
+            Gaits();
+            _animation.SetSpeed(_playing, (float)Locomotion.PlaybackRate(speed, _walkNatural, 0.35, 1.6));
+        }
+
+        /// <summary>Sous-lot V2.15 : point que la tête suit (null : aucun, le regard erre).</summary>
+        public void Watch(Vector3? point)
+        {
+            if (_head == null) return;
+            _head.HasTarget = point.HasValue && !_fallen;
+            if (point.HasValue) _head.Target = point.Value;
         }
 
         /// <summary>Sous-lot V2.9 (2e vague) : charge (groin ou museau en avant) ou sursaut d'une bête animée sans le clip voulu ; puis sa place d'origine.</summary>
@@ -405,7 +613,9 @@ namespace EdS.Game
                 look.transform.localRotation = Quaternion.identity;
                 Renderer capsule = body.GetComponent<Renderer>();
                 if (capsule != null) capsule.enabled = false;
-                return new StyleBody(look.transform, player, height, person.Outfit);
+                var dressed = new StyleBody(look.transform, player, height, person.Outfit);
+                dressed.Seed(lookId ?? id);   // sous-lot V2.15 : attente et regard propres à chacun
+                return dressed;
             }
             Vector3 s = body.transform.localScale;
             look.transform.SetParent(body.transform, false);
@@ -454,6 +664,7 @@ namespace EdS.Game
             }
             var styled = new StyleBody(look.transform, animation, height);
             if (beast) styled.Beast(look.transform.localPosition, look.transform.localRotation, 1f / Mathf.Max(0.01f, s.y));
+            styled.Seed(lookId ?? id);   // sous-lot V2.15
             return styled;
         }
 
