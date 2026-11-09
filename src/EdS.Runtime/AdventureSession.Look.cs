@@ -9,13 +9,23 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.16 : enregistre l'aspect choisi pour le héros ; il part avec la prochaine sauvegarde (écriture immédiate : le choix ne doit
-        /// pas se perdre si le jeu s'arrête). Sans effet si l'aspect ne change pas.
+        /// pas se perdre si le jeu s'arrête). Sans effet si l'aspect ne change pas. Atomique : si l'écriture échoue (disque plein, accès refusé :
+        /// voir <see cref="Save"/>), l'ancien aspect est remis et l'exception remonte ; une nouvelle tentative avec le même aspect écrit alors bien.
         /// </summary>
         public void ChooseLook(SavedLook? look)
         {
             if (Equals(World.Look, look)) return;
+            SavedLook? before = World.Look;
             World.SetLook(look);
-            Save();
+            try
+            {
+                Save();
+            }
+            catch
+            {
+                World.SetLook(before);
+                throw;
+            }
         }
     }
 }

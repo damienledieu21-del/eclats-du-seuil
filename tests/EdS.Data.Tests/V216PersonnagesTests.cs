@@ -392,4 +392,34 @@ public sealed class V216PersonnagesTests
         Assert.Equal(look, c.WithXp(500).WithMoney(12).WithBoons(Array.Empty<SavedBoon>()).WithEvents(Array.Empty<SavedEvent>()).WithScars(Array.Empty<SavedScar>()).Look);
         Assert.Null(c.WithLook(null).Look);
     }
+
+    [Fact]
+    public void Ecriture_qui_echoue_laisse_l_ancien_aspect_et_permet_de_reessayer()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "eds_v216_" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(folder, "un fichier à la place du dossier : l'écriture de la sauvegarde échoue");
+        try
+        {
+            AdventureSession a = AdventureSession.Load(ScenarioTestData.DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"),
+                Path.Combine(folder, "sauvegarde.json"));
+            var look = new SavedLook("female", 4, false, true, 2, 7);
+            Assert.Null(a.HeroLook);
+            Assert.ThrowsAny<IOException>(() => a.ChooseLook(look));
+            Assert.Null(a.HeroLook);   // pas d'aspect appliqué sans sauvegarde
+            // Le disque redevient utilisable : la même demande est de nouveau tentée (pas de « rien n'a changé »).
+            File.Delete(folder);
+            a.ChooseLook(look);
+            Assert.Equal(look, a.HeroLook);
+            AdventureSession again = AdventureSession.Load(ScenarioTestData.DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"),
+                Path.Combine(folder, "sauvegarde.json"));
+            Assert.Equal(look, again.HeroLook);
+            Assert.False(again.IsNewGame);
+            a.ChooseLook(look);   // inchangé : rien à écrire
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            else if (File.Exists(folder)) File.Delete(folder);
+        }
+    }
 }

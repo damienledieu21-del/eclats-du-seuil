@@ -300,10 +300,13 @@ namespace EdS.Game
             {
                 _adventure.ChooseLook(look);
             }
-            catch (IOException e)
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is NotSupportedException)
             {
+                // Sauvegarde impossible : l'aspect n'est pas appliqué (l'ancien reste), le joueur peut réessayer.
                 Debug.LogException(e);
                 Say("Aspect non sauvegardé : " + e.Message);
+                _paused = false;
+                return;
             }
             HumanBodies.HeroLook = look;
             _arena.Populate(_combat, _adventure.Map);   // le héros reprend son corps avec le nouvel aspect
