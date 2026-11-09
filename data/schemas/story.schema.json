@@ -25,9 +25,10 @@
         9,
         10,
         11,
-        12
+        12,
+        13
       ],
-      "description": "Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
+      "description": "Version 13 (sous-lot V2.10) : fêtes du bourg (section festivals ; festivals d'un PNJ de passage ; conditions festival et contestOpen ; effet contest). Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
     },
     "kind": {
       "const": "story"
@@ -85,6 +86,14 @@
               "faction": {
                 "enum": ["villagers", "guard", "rangers", "bandits"],
                 "description": "Sous-lot V2.7 (schéma 12) : faction du PNJ (une faction qui ne parle plus à qui elle hait) ; facultative."
+              },
+              "festivals": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^festival(\\.[a-z0-9_]+)+$" },
+                "description": "Sous-lot V2.10 (schéma 13) : PNJ de passage (un colporteur), là seulement pendant ces fêtes ; facultatives (absentes : toujours là)."
               },
               "schedule": {
                 "type": "array",
@@ -438,6 +447,40 @@
               "properties": { "hated": { "type": "integer", "minimum": 50, "maximum": 200 }, "hostile": { "type": "integer", "minimum": 50, "maximum": 200 }, "wary": { "type": "integer", "minimum": 50, "maximum": 200 }, "neutral": { "type": "integer", "minimum": 50, "maximum": 200 }, "liked": { "type": "integer", "minimum": 50, "maximum": 200 }, "honored": { "type": "integer", "minimum": 50, "maximum": 200 }, "hero": { "type": "integer", "minimum": 50, "maximum": 200 } } }
           }
         },
+        "festivals": {
+          "type": "array",
+          "maxItems": 16,
+          "description": "Sous-lot V2.10 (schéma 13) : fêtes du bourg, chaque semaine (weekday, 0 à 6) ou chaque année (season, day de 0 à 27), de from à to (« HH:MM », sans passer minuit), avec leurs invités (PNJ à leur place de fête, activité).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "from", "to", "guests"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^festival(\\.[a-z0-9_]+)+$", "maxLength": 200 },
+              "name": { "type": "string", "pattern": "^text(\\.[a-z0-9_]+)+$" },
+              "weekday": { "type": "integer", "minimum": 0, "maximum": 6 },
+              "season": { "enum": ["spring", "summer", "autumn", "winter"] },
+              "day": { "type": "integer", "minimum": 0, "maximum": 27 },
+              "from": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+              "to": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+              "rounds": { "type": "integer", "minimum": 1, "maximum": 8, "description": "Tours de la rotation des concours (le tour d'une occurrence : son rang modulo ce nombre ; condition contestRound)." },
+              "guests": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["npc", "position", "activity"],
+                  "properties": {
+                    "npc": { "type": "string", "pattern": "^npc(\\.[a-z0-9_]+)+$" },
+                    "position": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+                    "activity": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 32 }
+                  }
+                }
+              }
+            }
+          }
+        },
         "scenes": {
           "type": "array",
           "maxItems": 16,
@@ -517,7 +560,10 @@
             "reputationAtLeast",
             "reputationBelow",
             "standing",
-            "standingAtLeast"
+            "standingAtLeast",
+            "festival",
+            "contestOpen",
+            "contestRound"
           ]
         },
         "id": {
@@ -559,7 +605,8 @@
             "openPassage",
             "discover",
             "skipQuest",
-            "reputation"
+            "reputation",
+            "contest"
           ]
         },
         "id": {

@@ -203,6 +203,9 @@ namespace EdS.Runtime
             new EssaiAudio("auberge (The Old Tower Inn)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Inn),
             new EssaiAudio("forge (Song of the Forge, V2.11)", Root + "/Music/ScottBuckley2", "musique du village", music: StyleMusic.Forge),
             new EssaiAudio("crypte (The Long Dark, V2.11 : aucun lieu encore)", Root + "/Music/ScottBuckley2", "musique d'exploration", music: StyleMusic.Crypt),
+            // Sous-lot V2.10 : les musiques de fête de RandomMind (CC0), déposées par Damien dans Music/OGA.
+            new EssaiAudio("grandes fêtes, foire et moissons (King's Feast)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Feast),
+            new EssaiAudio("jour de marché et veillée (Minstrel Dance)", Root + "/Music/OGA", "musique du village", music: StyleMusic.Dance),
         };
 
         /// <summary>Ambiances attendues (une par valeur de <see cref="StyleAmbience"/>).</summary>

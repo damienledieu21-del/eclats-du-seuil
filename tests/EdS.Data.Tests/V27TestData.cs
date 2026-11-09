@@ -12,6 +12,7 @@ internal static class V27TestData
 {
     public static void WithoutReputation(JsonObject root)
     {
+        V210TestData.WithoutFestivals(root);   // sous-lot V2.10 : les fêtes demandent la version 13
         JsonObject data = root["data"]!.AsObject();
         data.Remove("reputation");
         foreach (JsonNode? n in data["npcs"]!.AsArray()) n!.AsObject().Remove("faction");

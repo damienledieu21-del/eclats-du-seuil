@@ -101,7 +101,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     public void Histoire_livree_en_schema_10_avec_les_PNJ_qui_changent_de_lieu()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((12, 12, 9, "0.23.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
+        Assert.Equal((13, 13, 9, "0.24.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine" },
@@ -204,7 +204,8 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
             long tick = TickAt(DryDay(minute), minute);
             var sessions = new List<WorldSession> { Outside(tick, -18, -12) };
             sessions.AddRange(V16TestData.Interiors.Where(z => z.Id != "zone.souvenir_rupture").Select(z => Inside(z.Id, tick, z.Entry.Position.X.Raw / 10000.0, z.Entry.Position.Z.Raw / 10000.0)));
-            foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Zone != "zone.souvenir_rupture"))
+            // Sous-lot V2.10 : un PNJ de passage (le colporteur) n'est dans le monde que pendant ses fêtes.
+            foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Zone != "zone.souvenir_rupture" && n.Festivals.Count == 0))
             {
                 var here = sessions.Where(w => w.NpcHere(w.Narrative!.Book.Npc(npc.Id))).ToList();
                 Assert.True(here.Count == 1, $"{npc.Id} à {minute / 60} h {minute % 60} : {here.Count} endroits");
@@ -408,7 +409,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         foreach (Npc npc in Shipped.Value.Npcs)
             Assert.Equal((a.NpcZone(npc), a.NpcPosition(npc), a.NpcActivity(npc)), (b.NpcZone(npc), b.NpcPosition(npc), b.NpcActivity(npc)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
+        Assert.Equal(16, SaveValidator.CurrentSchemaVersion);   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
         Assert.DoesNotContain("zone.auberge", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Shipped.Value, market: new Market(ShippedMerchants));
         back.Step();

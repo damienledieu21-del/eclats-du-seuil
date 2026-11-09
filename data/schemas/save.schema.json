@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 15
+      "const": 16
     },
     "kind": {
       "const": "save"
@@ -361,6 +361,13 @@
                         "maxLength": 200
                       }
                     },
+                    "festivals": {
+                      "type": "object",
+                      "description": "Sous-lot V2.10 (version 16) : dernier jour du monde où le personnage a concouru à chaque fête (son concours est fermé ce jour-là) ; absent quand il n'a jamais concouru.",
+                      "maxProperties": 16,
+                      "propertyNames": { "pattern": "^festival(\\.[a-z0-9_]+)+$", "maxLength": 200 },
+                      "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 100000000 }
+                    },
                     "reputation": {
                       "type": "object",
                       "description": "Sous-lot V2.7 (version 15) : réputation auprès des factions (villageois, garde, rôdeurs, bandits), non nulle, de -1000 à 1000 ; une réputation nulle (neutre) n'est pas écrite.",
@@ -657,6 +664,23 @@
                     }
                   },
                   "description": "Sous-lot V2.6 (version 14) : cicatrices des failles du Seuil restées ouvertes (zone.vallons/faille_du_seuil/ruines…), rangées par identifiant : palier au jour du monde since (il gagne un palier tous les growDays jours de la zone, jusqu'au maximum), jour de naissance born (au plus since). Liste vide pour une sauvegarde antérieure."
+                },
+                "stock": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 256,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [ "id", "bought", "resold", "day" ],
+                    "properties": {
+                      "id": { "type": "string", "pattern": "^merchant(\\.[a-z0-9_]+)+/item(\\.[a-z0-9_]+)+$", "maxLength": 128 },
+                      "bought": { "type": "integer", "minimum": 0, "maximum": 999 },
+                      "resold": { "type": "integer", "minimum": 0, "maximum": 999 },
+                      "day": { "type": "integer", "minimum": 0, "maximum": 100000000 }
+                    }
+                  },
+                  "description": "Sous-lot V2.10 (version 16) : stock des marchands (merchant.herboriste/item.potion_de_soin…), rangé par identifiant : au jour day, unités qui manquaient au stock plein (achetées) et unités revendues par le personnage que le marchand gardait ; absent quand tous les marchands sont pleins."
                 }
               }
             }

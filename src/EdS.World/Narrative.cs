@@ -113,6 +113,9 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.7 : la faction a changé de palier (identifiant : la faction ; étape : le nouveau palier ; valeur : +1 en montant, −1 en descendant).</summary>
         StandingChanged = 30,
+
+        /// <summary>Sous-lot V2.10 : le personnage a concouru à une fête (identifiant : la fête ; valeur : le jour du monde).</summary>
+        ContestEntered = 31,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -289,6 +292,12 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.6.1 : cicatrices gardées de la faille <paramref name="eventId"/> de la zone de l'histoire (conditions de cicatrices).</summary>
         int ScarCount(string eventId);
+
+        /// <summary>Sous-lot V2.10 : la fête qui bat son plein maintenant (conditions <c>festival</c>, <c>contestOpen</c>), ou null.</summary>
+        string? Festival { get; }
+
+        /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
+        bool NpcAway(Npc npc);
     }
 
     /// <summary>
@@ -310,6 +319,12 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.7 : réputation auprès des factions (absente : 0, neutre).</summary>
         private readonly SortedDictionary<string, int> _reputation;
+
+        /// <summary>Sous-lot V2.10 : dernier jour du monde où le personnage a concouru à chaque fête (sauvegarde v16).</summary>
+        private readonly SortedDictionary<string, long> _contests;
+
+        /// <summary>Sous-lot V2.10 : dernier jour du monde où le personnage a concouru à la fête <paramref name="festival"/>, ou -1.</summary>
+        public long ContestDay(string festival) => festival != null && _contests.TryGetValue(festival, out long day) ? day : -1;
         private readonly SortedSet<string> _discoveries;
         private readonly HashSet<string> _blocked = new HashSet<string>(StringComparer.Ordinal);
         /// <summary>Dialogue ouvert ; réponses du 31 octobre 2026 : nœud null quand le PNJ n'a rien à dire mais qu'on peut lui livrer.</summary>
@@ -389,6 +404,8 @@ namespace EdS.World
             _reputation = new SortedDictionary<string, int>(saved.Reputation.Where(r => Reputations.IsFaction(r.Key))
                 .ToDictionary(r => r.Key, r => Reputations.Clamp(r.Value)), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
+            // Sous-lot V2.10 : une fête disparue des données est oubliée.
+            _contests = new SortedDictionary<string, long>(saved.Festivals.Where(f => book.HasFestival(f.Key)).ToDictionary(f => f.Key, f => f.Value), StringComparer.Ordinal);
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
                 Quest quest = book.Quest(q.Key);
@@ -585,7 +602,7 @@ namespace EdS.World
             _quests.ToDictionary(q => q.Key, q => new QuestProgress(q.Value.Step < 0 ? QuestProgress.Done
                     : q.Value.Step == _book.Quest(q.Key).Steps.Count ? QuestProgress.Reward : _book.Quest(q.Key).Steps[q.Value.Step].Id, q.Value.Progress),
                 StringComparer.Ordinal),
-            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted, _reputation);
+            _trust, _discoveries, _tracked, _card?.ToSaved() ?? _keptCard, _hunted, _reputation, _contests);
 
         // --- Dialogues ---------------------------------------------------------------------------
 
@@ -775,7 +792,7 @@ namespace EdS.World
             }
         }
 
-        private bool InRange(Npc n) =>
+        private bool InRange(Npc n) => !_world.NpcAway(n) &&   // sous-lot V2.10 : un PNJ de passage hors de sa fête n'est pas là
             _world.PlayerPositionIn(_world.NpcZone(n)) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, _world.NpcPosition(n), EdS.Domain.Numerics.Fixed.Zero, TalkRange);
 
         /// <summary>
@@ -1331,6 +1348,9 @@ namespace EdS.World
             ConditionKind.ReputationBelow => Reputation(c.Id) < c.Value,
             ConditionKind.Standing => StandingIndex(c.Id) == Reputations.TierIndex(c.Step!),
             ConditionKind.StandingAtLeast => StandingIndex(c.Id) >= Reputations.TierIndex(c.Step!),
+            ConditionKind.Festival => c.Id == StoryValidator.AnyFestival ? _world.Festival != null : _world.Festival == c.Id,   // sous-lot V2.10
+            ConditionKind.ContestOpen => _world.Festival == c.Id && ContestDay(c.Id) != _world.Day,
+            ConditionKind.ContestRound => _world.Festival == c.Id && _book.Festival(c.Id).RoundOn(_world.Day) == c.Value,   // sous-lot V2.10 : la rotation des concours
             _ => _world.IsPassageOpen(c.Id),
         };
 
@@ -1452,6 +1472,10 @@ namespace EdS.World
                         break;
                     case EffectKind.Reputation:   // sous-lot V2.7 : jamais refusé (bornée), factions liées comprises
                         ReputationEffect(e.Id, e.Value, events);
+                        break;
+                    case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
+                        _contests[e.Id] = Math.Min(SavedEvent.MaxDay, _world.Day);
+                        events.Add(new StoryEvent(StoryEventKind.ContestEntered, e.Id, null, _world.Day));
                         break;
                     default:
                         if (_discoveries.Add(e.Id))

@@ -41,8 +41,8 @@ public class V11MarchandsTests : IDisposable
         MerchantBook book = loaded.Book!;
         Assert.Equal(MerchantValidator.CurrentSchemaVersion, book.SchemaVersion);
         // Sous-lot V1.7 : et la réserve de la guilde, tenue par l'intendant dans la Maison de la Guilde.
-        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart", "merchant.receleur" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
-        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart", "npc.receleur" }, book.Merchants.Select(m => m.Npc));
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart", "merchant.receleur", "merchant.colporteur" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
+        Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart", "npc.receleur", "npc.colporteur" }, book.Merchants.Select(m => m.Npc));
         // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
@@ -368,10 +368,12 @@ public class V11MarchandsTests : IDisposable
             switch (random.NextBounded(3))
             {
                 case 0:
+                    // Sous-lot V2.10 : le prix se lit avant l'achat (un objet revendu, racheté en entier, quitte la vitrine).
+                    long? offered = w.Stock(m).SingleOrDefault(o => o.Item == item)?.Price;
                     r = w.Buy(m, item, count);
                     if (r == TradeRefusal.None)
                     {
-                        long price = w.Stock(m).Single(o => o.Item == item).Price;
+                        long price = offered!.Value;
                         Assert.Equal(money - price * count, w.Money);
                         Assert.Equal(had + count, w.Inventory.Count(item));
                     }

@@ -110,11 +110,11 @@ namespace EdS.Game
             // Sous-lot V2.9 (2e vague) : la musique du Seuil (« Sanctum ») au Seuil, celle des scènes de l'histoire pendant une scène.
             // Sous-lot V2.9.2 : l'auberge (« The Old Tower Inn »), le bourg la nuit (« Night Town »), les attaques (« Determined Pursuit »).
             // Sous-lot V2.11 (5e vague) : « Song of the Forge » près de la forge le jour, la musique de la crypte dans une crypte ; le bourg en
-            // fête (réglage « Human Festival ») a sa foule.
+            // fête (réglage « Human Festival ») a sa foule. Sous-lot V2.10 : la musique des fêtes du jeu (mood.Places, sans le réglage).
             AmbiencePlace places = mood.Places | (_catalog.HumanFestival ? AmbiencePlace.Festival : AmbiencePlace.None);
             StyleMusic wanted = Available(StyleRules.MusicFor(mood.BossEngaged, fighting, mood.InVillage, (places & AmbiencePlace.Threshold) != 0, Story,
                 mood.Night, (places & AmbiencePlace.TavernInside) != 0, Assault, mood.Indoors ? double.PositiveInfinity : mood.ForgeDistance,
-                (places & AmbiencePlace.Crypt) != 0));
+                (places & AmbiencePlace.Crypt) != 0, mood.Places));
             if (_playing is null || wanted == StyleMusic.Combat || wanted == StyleMusic.Boss || _playing == StyleMusic.Combat || _playing == StyleMusic.Boss)
                 Switch(wanted);
             else if (wanted != _playing)

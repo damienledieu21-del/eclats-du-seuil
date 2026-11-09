@@ -74,7 +74,7 @@ Relecture de la PR #114 : `docs/CREDITS.md` renvoie ici pour les auteurs à cite
 | « FR WindyForest » (vent, V2.9.2) | **kevp888** (Freesound n° 593439) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | « Lakeside Ambience 06 » (bord du lac, V2.9.2) | **Soundrack** (Freesound n° 733274) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Musique « Fantasy Music - Night Town » (le bourg la nuit, V2.9.2) | **Angus Macnaughton** 2014 (OpenGameArt) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Musiques « Determined Pursuit » (**Emma_MA**) et « The Old Tower Inn » (**RandomMind**), corps et animations de **Quaternius** (V2.9.2), vêtements *Modular Character Outfits - Fantasy* de **Quaternius** (V2.9.4) | OpenGameArt, quaternius.com | CC0 (cités par courtoisie) |
+| Musiques « Determined Pursuit » (**Emma_MA**) et « The Old Tower Inn », « King's Feast » et « Minstrel Dance » (**RandomMind**, V2.9.2 et V2.10), corps et animations de **Quaternius** (V2.9.2), vêtements *Modular Character Outfits - Fantasy* de **Quaternius** (V2.9.4) | OpenGameArt, quaternius.com | CC0 (cités par courtoisie) |
 
 ### 5e vague (V2.11)
 

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
@@ -25,8 +26,16 @@ namespace EdS.Runtime
         /// <summary>Sous-lot V1.7 : rang de la guilde que demande l'offre, traduit (« Rang F »), ou null.</summary>
         public string? Rank { get; }
 
-        internal ShopOffer(string item, string name, long price, string priceText, TradeRefusal refusal, string? rank = null)
+        /// <summary>Sous-lot V2.10 : unités en vente aujourd'hui (null : sans limite).</summary>
+        public int? Left { get; }
+
+        /// <summary>Sous-lot V2.10 : ce qu'en dit la boutique (« 3 en stock », « revendu par toi »), ou null.</summary>
+        public string? StockText { get; }
+
+        internal ShopOffer(string item, string name, long price, string priceText, TradeRefusal refusal, string? rank = null, int? left = null, string? stockText = null)
         {
+            Left = left;
+            StockText = stockText;
             Item = item;
             Name = name;
             Price = price;
@@ -134,9 +143,12 @@ namespace EdS.Runtime
             {
                 TradeRefusal refusal = shop != TradeRefusal.None ? shop
                     : !World.HasRank(o.Rank) ? TradeRefusal.RankTooLow   // sous-lot V1.7 : offre réservée à un rang de la guilde
+                    : o.Left is int none && none < 1 ? TradeRefusal.OutOfStock   // sous-lot V2.10 : rupture
                     : World.Money < o.Price ? TradeRefusal.NotEnoughMoney
                     : !World.Inventory.CanAdd(o.Item, 1) ? TradeRefusal.InventoryFull : TradeRefusal.None;
-                list.Add(new ShopOffer(o.Item, ItemName(o.Item), o.Price, MoneyText(o.Price), refusal, o.Rank is null ? null : RankName(o.Rank)));
+                string? stock = o.Left is int left ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.trade.left"), left) : null;
+                if (o.Resold) stock = (stock is null ? "" : stock + " · ") + Text("text.ui.trade.resold");
+                list.Add(new ShopOffer(o.Item, ItemName(o.Item), o.Price, MoneyText(o.Price), refusal, o.Rank is null ? null : RankName(o.Rank), o.Left, stock));
             }
             return list;
         }

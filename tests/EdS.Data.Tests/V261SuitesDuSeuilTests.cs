@@ -124,13 +124,13 @@ public class V261SuitesDuSeuilTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
-        Assert.Equal((12, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
+        Assert.Equal((13, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
-        Assert.Equal((12, "0.23.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.23.0-provisoire", Texts.ContentVersion);
-        Assert.Equal("0.15.0-provisoire", ItemsCatalog.ContentVersion);
+        Assert.Equal((13, "0.24.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.24.0-provisoire", Texts.ContentVersion);
+        Assert.Equal("0.16.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
-        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(16, SaveValidator.CurrentSchemaVersion);
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
         Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }

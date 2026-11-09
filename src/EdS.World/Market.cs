@@ -64,6 +64,12 @@ namespace EdS.World
         /// PNJ parle alors comme un autre).
         /// </summary>
         Shunned = 16,
+
+        /// <summary>Sous-lot V2.10 (stock vivant) : le marchand n'en a plus assez aujourd'hui (rupture, ou moins que la quantité demandée).</summary>
+        OutOfStock = 17,
+
+        /// <summary>Sous-lot V2.10 : étal ambulant : il n'est ouvert que pendant ses fêtes (le marchand de passage n'est pas là).</summary>
+        NotFestival = 18,
     }
 
     /// <summary>Un lot vendu, rachetable au même prix pendant la session de jeu : objet, quantité, pièces reçues (cuivre).</summary>
@@ -75,14 +81,18 @@ namespace EdS.World
         /// <summary>Pièces reçues pour ce lot (cuivre) : le prix de son rachat.</summary>
         public long Paid { get; }
 
+        /// <summary>Sous-lot V2.10 : marchand qui l'a acheté (le rachat le reprend de ce qu'il garde en vitrine), ou null.</summary>
+        public string? Merchant { get; }
+
         /// <summary>
         /// Sous-lot V1.3 : instances vendues, avec leurs propriétés tirées, rendues telles quelles au rachat ; vide pour un lot d'objets de base
         /// (le rachat rend alors <see cref="Count"/> <see cref="Item"/>).
         /// </summary>
         public IReadOnlyList<ItemStack> Stacks { get; }
 
-        internal SoldLot(string item, int count, long paid, IEnumerable<ItemStack>? stacks = null)
+        internal SoldLot(string item, int count, long paid, IEnumerable<ItemStack>? stacks = null, string? merchant = null)
         {
+            Merchant = merchant;
             Item = item;
             Count = count;
             Paid = paid;

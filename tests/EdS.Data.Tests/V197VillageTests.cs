@@ -139,7 +139,7 @@ public class V197VillageTests
     [Fact]
     public void Histoire_en_schema_7_avec_skipQuest()
     {
-        Assert.Equal((12, 12), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.7 : schéma 12 (réputation) ;   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
+        Assert.Equal((13, 13), (StoryValidator.CurrentSchemaVersion, Story.Value.SchemaVersion));   // V2.7 : schéma 12 (réputation) ;   // V2.6.1 : schéma 11 ; V2.3.1 : schéma 10   // V2.2 : schéma 8 (weather) ; V2.3 : schéma 9
         Assert.Equal(EffectKind.SkipQuest, StoryValidator.Effects["skipQuest"]);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -181,7 +181,7 @@ public class V197VillageTests
         StoryLoadResult read = Read(root);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(6, read.Story!.SchemaVersion);
-        root["schemaVersion"] = 13;   // V2.7 : la version 12 est la version courante ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
+        root["schemaVersion"] = 14;   // V2.10 : la version 13 est la version courante ; V2.7 : la version 12 ; V2.2 : la version 8 est la version courante ; V2.3 : la version 9 ; V2.3.1 : la version 10 ; V2.6.1 : la version 11
         Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.schemaVersion" && e.Code == ValidationCode.UnsupportedSchemaVersion);
     }
 
@@ -365,7 +365,7 @@ public class V197VillageTests
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
-        Assert.Equal(29, book.Npcs.Count);   // V2.7 : Gaut le receleur
+        Assert.Equal(30, book.Npcs.Count);   // V2.10 : le colporteur ; V2.7 : Gaut le receleur
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
         Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }

@@ -19,7 +19,8 @@
       "enum": [
         2,
         3,
-        4
+        4,
+        5
       ]
     },
     "kind": {
@@ -129,11 +130,24 @@
                 "description": "Sous-lot V1.7 (schéma 2) : rang de la Guilde des aventuriers demandé pour ouvrir la boutique (la boutique de la guilde) ; facultatif."
               },
               "faction": {
-                "enum": ["villagers", "guard", "rangers", "bandits"],
+                "enum": [
+                  "villagers",
+                  "guard",
+                  "rangers",
+                  "bandits"
+                ],
                 "description": "Sous-lot V2.7 (schéma 4) : faction dont la réputation règle les prix et l'accueil (absente : villagers)."
               },
               "standing": {
-                "enum": ["hated", "hostile", "wary", "neutral", "liked", "honored", "hero"],
+                "enum": [
+                  "hated",
+                  "hostile",
+                  "wary",
+                  "neutral",
+                  "liked",
+                  "honored",
+                  "hero"
+                ],
                 "description": "Sous-lot V2.7 (schéma 4) : palier de la faction demandé pour ouvrir la boutique (le marché noir des bandits) ; facultatif."
               },
               "fact": {
@@ -190,9 +204,171 @@
                     "always": {
                       "type": "boolean",
                       "description": "Toujours en vente ; sinon, tirée certains jours."
+                    },
+                    "stock": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 999,
+                      "description": "Sous-lot V2.10 (schéma 5) : unités au stock plein (le stock s'épuise à l'achat et se regagne chaque jour) ; facultatif (sans limite)."
                     }
                   }
                 }
+              },
+              "restock": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Sous-lot V2.10 (schéma 5) : part du stock plein regagnée chaque jour du monde (pour cent, arrondie au-dessus, au moins 1 unité) ; facultative (50)."
+              },
+              "resale": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 300,
+                "description": "Sous-lot V2.10 (schéma 5) : prix d'un objet revendu par le joueur qu'il ne vend pas d'ordinaire, en pour cent de sa valeur ; facultatif (125)."
+              },
+              "festivals": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^festival(\\.[a-z0-9_]+)+$"
+                },
+                "description": "Sous-lot V2.10 (schéma 5) : étal ambulant, ouvert seulement pendant ces fêtes de l'histoire ; facultatif."
+              }
+            }
+          }
+        },
+        "prices": {
+          "type": "array",
+          "maxItems": 32,
+          "description": "Sous-lot V2.10 (schéma 5) : prix qui bougent avec la saison et le temps (pour cent du prix, jamais sous la valeur de base).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "percent"
+            ],
+            "properties": {
+              "season": {
+                "enum": [
+                  "spring",
+                  "summer",
+                  "autumn",
+                  "winter"
+                ]
+              },
+              "weather": {
+                "enum": [
+                  "clear",
+                  "cloudy",
+                  "mist",
+                  "drizzle",
+                  "shower",
+                  "storm",
+                  "rain"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^item(\\.[a-z0-9_]+)+$"
+                }
+              },
+              "merchants": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^merchant(\\.[a-z0-9_]+)+$"
+                }
+              },
+              "percent": {
+                "type": "integer",
+                "minimum": 50,
+                "maximum": 300
+              }
+            }
+          }
+        },
+        "shocks": {
+          "type": "array",
+          "maxItems": 32,
+          "description": "Sous-lot V2.10 (schéma 5) : contrecoups des événements du monde (stock plein et prix des objets touchés), le temps d'un événement réglé, ou tant qu'un fait est connu (fact) ou pas encore appris (notFact).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "stockPercent",
+              "pricePercent"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "event": {
+                "type": "string",
+                "pattern": "^zone(\\.[a-z0-9_]+)+/[a-z0-9_]+$"
+              },
+              "outcome": {
+                "enum": [
+                  "won",
+                  "lost",
+                  "any"
+                ]
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 28
+              },
+              "fact": {
+                "type": "string",
+                "pattern": "^fact(\\.[a-z0-9_]+)+$"
+              },
+              "notFact": {
+                "type": "string",
+                "pattern": "^fact(\\.[a-z0-9_]+)+$"
+              },
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^item(\\.[a-z0-9_]+)+$"
+                }
+              },
+              "merchants": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^merchant(\\.[a-z0-9_]+)+$"
+                }
+              },
+              "stockPercent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "pricePercent": {
+                "type": "integer",
+                "minimum": 50,
+                "maximum": 300
               }
             }
           }

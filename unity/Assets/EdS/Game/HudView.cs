@@ -877,7 +877,8 @@ namespace EdS.Game
             for (int i = _markerCount; i < _markerPool.Count; i++) UiKit.Show(_markerPool[i], false);
             _you.rectTransform.SetAsLastSibling();
             _place.Value = a.PlaceLabel;   // sous-lot V1.8 : niveau des créatures du lieu (zones en mélange)
-            _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay;
+            string festival = a.FestivalText;   // sous-lot V2.10 : la fête du bourg, en cours ou du jour
+            _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay + (festival != null ? " · " + festival : "");
             _mapHint.Value = a.Text("text.ui.map.hint");
 
             // Sous-lot V1.6 : la quête suivie (choisie dans le journal), sinon la première principale en cours.

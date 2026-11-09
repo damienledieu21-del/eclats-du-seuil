@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1723,6 +1723,42 @@
           "armor": 50
         },
         "named": true
+      },
+      {
+        "id": "item.tablier_de_maitre",
+        "name": "Tablier de maître",
+        "icon": "gambison",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "belt",
+        "requiredLevel": 1,
+        "bonus": {
+          "maxHealth": 20
+        }
+      },
+      {
+        "id": "item.arc_de_concours",
+        "name": "Arc de concours",
+        "icon": "eclat_de_seuil",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "relic",
+        "requiredLevel": 3,
+        "bonus": {
+          "physicalPower": 5
+        }
+      },
+      {
+        "id": "item.livre_de_contes",
+        "name": "Livre de contes de la veillée",
+        "icon": "quete",
+        "type": "equipment",
+        "rarity": "rare",
+        "slot": "relic",
+        "requiredLevel": 1,
+        "bonus": {
+          "statusResistance": 8
+        }
       }
     ],
     "loot": [
@@ -2145,7 +2181,14 @@
       "max": 100,
       "perFullHealth": 3,
       "levelResistPercent": 1,
-      "rarityResistPercent": [0, 20, 40, 60, 80, 100]
+      "rarityResistPercent": [
+        0,
+        20,
+        40,
+        60,
+        80,
+        100
+      ]
     },
     "boons": {
       "normalMinutes": 30,

@@ -104,7 +104,7 @@ public class V18cBonusTests : IDisposable
     public void Catalogue_en_version_7_objets_de_bonus_livres()
     {
         ItemCatalog items = ItemsCatalog;
-        Assert.Equal((7, 7, "0.15.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
+        Assert.Equal((7, 7, "0.16.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal(new[] { 30, 45, 60 }, items.BoonMinutes);
         // La qualité décide de la durée : 30, 45, 60 minutes de jeu, en ticks logiques de 50 ms.
         Assert.Equal((36_000, 54_000, 72_000), (items.BoonTicks(items.Item(Vigueur)), items.BoonTicks(items.Item(Garde)), items.BoonTicks(items.Item(Seuil))));
@@ -567,7 +567,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((15, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal((16, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
         Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",

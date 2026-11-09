@@ -350,3 +350,23 @@ Avant l'essai : les dossiers de la 5e vague déposés tels quels sous `Assets/St
 | 20.19 | Sur le Note8 | Image fluide au bourg et au Seuil ; ni guirlande, ni demi-cape, ni tours en ruine, ni grand loup ; le pont cintré de bois à la place du pont de pierre | [ ] | |
 | 20.20 | Le pont des Vallons (décision du 9 novembre) | Le **pont de pierre** de JooL en travers de la rivière, à la place du pont cintré, sur ordinateur ; on le traverse à la même hauteur qu'avant ; sans le modèle, et sur téléphone, le pont cintré | [ ] | Échelle et hauteur estimées : régler Scale dans le catalogue |
 | 20.21 | Les ruines, sur ordinateur | Les **tours en ruine** de taz83 à la taille du lieu ; sur téléphone, les ruines comme avant | [ ] | |
+
+## 21. Marchands vivants et fêtes du bourg (V2.10)
+
+Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des fêtes** avancent la partie (hors du mode Jeu) au prochain jour de marché (8 h), à la foire de printemps (9 h), à la fête des moissons (10 h 30), à la veillée de l'Aube (19 h), ou au lendemain à 9 h (le stock se regagne). Valeurs provisoires : [MONDE.md](MONDE.md#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 21.1 | Chez Sauge, acheter des potions de soin | Chaque offre dit son stock (« 30 en stock ») ; au-delà, « Plus en stock : le marchand en recevra demain. », la ligne en rouge | [ ] | |
+| 21.2 | « le lendemain, 9 h », revenir chez Sauge | La moitié du stock est revenue (15 potions de plus, jusqu'au plein) | [ ] | |
+| 21.3 | Vendre des peaux de loup à Sauge | Elles apparaissent dans sa boutique, « revendu par toi », plus chères qu'elle ne les a payées ; le lendemain, il en reste moins | [ ] | |
+| 21.4 | Laisser piller le hameau (attaque manquée), puis aller au bourg | Potions et remèdes rares (un tiers du stock) et plus chers pendant trois jours ; la faille restée ouverte : plus d'éclats de Seuil | [ ] | |
+| 21.5 | « jour de marché, 8 h » | Le bandeau du lieu dit « Fête au bourg : le jour de marché » ; **Maître Anseau** est sur la place (un autre jour, il n'est pas là) ; Lison devant son étal ; trois objets rares qui changent d'une semaine à l'autre ; tant que Mâchefer tient le camp, pas de bottes ni de pendentif | [ ] | |
+| 21.6 | « fête des moissons, 10 h 30 » | Firmin à la table du concours, Mathurin au tonneau de cidre, Lison au bal, Odile et Aldric à la fête ; la foule du marché et la taverne s'entendent toute la journée | [ ] | |
+| 21.7 | Avec 4 herbes de l'Aube, parler à Firmin | « [Concours] Présenter une tourte… » : 150 cuivre, deux miches, villageois +15 ; le concours se referme jusqu'à l'an prochain | [ ] | |
+| 21.8 | « foire de printemps, 9 h », parler à Aldric au pas de tir | Concours de tir (20 cuivre) : au niveau 4, viser le cœur (150 cuivre, garde +10) ; sinon un prix de consolation | [ ] | |
+| 21.9 | « veillée de l'Aube, 19 h », devant la chapelle | Frère Anselme, Sœur Albe, Lison et Rosalie à la veillée ; raconter les traces sous le moulin (villageois +12, un remède) | [ ] | |
+| 21.10 | Pendant une fête, une quête en cours chez Firmin ou Aldric | La quête passe avant la fête : rien n'est bloqué | [ ] | |
+| 21.11 | « jour de marché, 8 h », trois semaines de suite | Une semaine la tourte de Firmin (la première fois : le **tablier de maître**), la suivante le tir d'Aldric (l'**arc de concours**), puis les contes de frère Anselme (le **livre de contes**) ; ensuite des bourses ordinaires | [ ] | |
+| 21.12 | Une fête au bourg, en automne puis en hiver | **King's Feast** aux moissons et à la foire, **Minstrel Dance** au marché et à la veillée ; les villageois en tenues de la saison, beaux habits pendant la fête | [ ] | |
+| 21.13 | Ton avis : le rythme du stock, les prix d'hiver, les dates des fêtes, les concours, le colporteur | — | [ ] | |

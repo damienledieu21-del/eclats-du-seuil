@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((12, 12, "0.23.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((13, 13, "0.24.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -111,12 +111,14 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 60, 160);   // V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
+        Assert.InRange(lines.Count, 60, 180);   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
         Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)
             // V2.7 : ou un palier de réputation, ou les retrouvailles d'un PNJ nouveau (Gaut le receleur).
             || l.Text == "text.v27.receleur.retrouvailles"
+            // V2.10 : ou une fête (répliques de fête), ou les retrouvailles du colporteur.
+            || l.Text == "text.v210.colporteur.retrouvailles" || l.Conditions.Any(c => c.Kind == ConditionKind.Festival)
             || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -392,7 +394,7 @@ public sealed class V23JourneeTests : IDisposable
         WorldSession a = At(tick), b = At(tick);
         foreach (Npc npc in a.Narrative!.Book.Npcs) Assert.Equal(a.NpcPosition(npc), b.NpcPosition(b.Narrative!.Book.Npc(npc.Id)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(15, SaveValidator.CurrentSchemaVersion);   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // rien de l'emploi du temps n'est sauvegardé
+        Assert.Equal(16, SaveValidator.CurrentSchemaVersion);   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // rien de l'emploi du temps n'est sauvegardé
         Assert.DoesNotContain("schedule", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
         back.Step();
