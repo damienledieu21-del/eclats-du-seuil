@@ -437,21 +437,31 @@ Suite de ton essai du 9 novembre 2026 (PC modeste) : four et comptoir blancs, pe
 | 25.8 | Même chose en mode « PC modeste » | Des flaques plus petites en nombre, mates, mais pas noires | [ ] | |
 | 24.7 (à refaire) | Garin, de 12 h à 13 h puis à 22 h | Il ne traverse aucune maison | [ ] | Pas revu à cet essai : s'il semble encore dans une maison, laquelle et à quelle heure |
 
-## 26. Démarche réaliste (V2.15)
+## 26. Mémoire au lancement et « Lancer l'essai (déjà préparé) » (V2.12.9)
+
+Suite de ton essai du 9 novembre 2026 (PC de 4 Go, mode « PC modeste ») : après la préparation et la vérification, le passage en mode Jeu s'arrêtait sur « System out of memory » (texture). La mémoire est maintenant libérée avant le mode Jeu et pendant la vérification des objets blancs ou roses. **Sur PC modeste : prépare une fois** (« Éclats du Seuil → Préparer l'essai de style »), **ferme les autres applications, rouvre Unity**, puis utilise **« Éclats du Seuil → Lancer l'essai (déjà préparé) »** : ni préparation ni vérification complète, il ouvre la scène de démarrage et lance le mode Jeu.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 26.1 | « Préparer et lancer l'essai » | Le jeu démarre, plus de « System out of memory » | [ ] | Sinon : capture de la Console |
+| 26.2 | Unity rouvert, « Lancer l'essai (déjà préparé) » | La scène de démarrage s'ouvre et le jeu démarre, sans préparation | [ ] | |
+| 26.3 | Même menu sur un projet jamais préparé | Un message demande de faire d'abord « Préparer l'essai de style » | [ ] | |
+
+## 28. Démarche réaliste (V2.15)
 
 Suite de ton retour du 9 novembre 2026 : « la façon de marcher des personnages et des animaux manque de réalisme ». Direction décidée le même jour : réaliste, adaptée au PC (y compris « PC modeste »). Tout est de l'affichage : le combat et les places du moteur ne changent pas. Pas besoin de refaire la préparation. Regarde surtout les **pieds** (glissent-ils ?) et les **demi-tours**.
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 26.1 | Le héros marche lentement, puis court, au bourg | Les pieds **ne glissent plus** : la cadence des pas suit la vitesse ; entre marche et course, le pas s'allonge peu à peu (corps humain : marche et course mêlées, pieds ensemble) | [ ] | Paladin (Mixamo) : passage marche → course net, mais cadence réglée |
-| 26.2 | Lâcher la touche en pleine course | Il s'arrête en un court instant, **sans patiner sur place** ; il ne repart pas en piétinant | [ ] | |
-| 26.3 | Faire demi-tour (touche arrière ou cible derrière soi) | Il **tourne** (environ une demi-seconde), plus de volte-face instantanée ; à l'arrêt, il pivote à **petits pas** | [ ] | Trop lent pour jouer ? Le dire (on règle la vitesse de rotation) |
-| 26.4 | Courir en décrivant un grand virage | Le corps **penche** légèrement vers l'intérieur du virage (quelques degrés), se redresse en ligne droite | [ ] | |
-| 26.5 | Monter sur le pont cintré, à l'arrêt puis en marchant | Les pieds **posés sur le tablier**, le bassin descend un peu côté pente (pas sur PC modeste : les pieds restent à plat, le corps à la bonne hauteur) | [ ] | Seulement les corps humains (Quaternius) |
-| 26.6 | Regarder 30 s un groupe de villageois qui attendent | Ils ne respirent **pas ensemble** ; de temps en temps l'un croise les bras ou regarde autour, chacun à son moment ; la tête bouge un peu | [ ] | |
-| 26.7 | Passer à moins de 9 m d'un PNJ ou d'un garde | Sa **tête suit** le héros (sans se tordre le cou ; s'il est derrière, il ne le suit plus) | [ ] | |
-| 26.8 | Suivre un passant jusqu'au bout de son allée, et un villageois qui va au puits | Il **ralentit** avant d'arriver, se retourne à petits pas, **repart en accélérant** | [ ] | |
-| 26.9 | Ferme : un cheval, un âne, une vache qui se promènent | Ils partent au pas en accélérant, **tournent en marchant** (jamais sur place), ralentissent avant de s'arrêter ; sabots et pattes sans glisser ; leur tête suit le héros proche, sinon regarde autour | [ ] | |
-| 26.10 | Bêtes de la forêt (loup, sanglier, cerf, biche, ours) : les approcher pour les faire fuir ou charger | **Pas, trot, galop** selon la vitesse si le modèle en a les clips, sinon cadence réglée ; à l'arrêt elles broutent ou reniflent ; elles ne pivotent plus sur place | [ ] | Dire quelle bête n'a qu'un seul cycle (on cherchera le clip) |
-| 26.11 | Cerf ou lièvre en formes simples (sans modèle) | Les pattes battent plus lentement quand il ralentit | [ ] | |
-| 26.12 | Même tour en mode « PC modeste » | Tout pareil sauf les pieds sur le relief (26.5) ; pas de saccade en plus | [ ] | Images par seconde avant/après, si possible |
+| 28.1 | Le héros marche lentement, puis court, au bourg | Les pieds **ne glissent plus** : la cadence des pas suit la vitesse ; entre marche et course, le pas s'allonge peu à peu (corps humain : marche et course mêlées, pieds ensemble) | [ ] | Paladin (Mixamo) : passage marche → course net, mais cadence réglée |
+| 28.2 | Lâcher la touche en pleine course | Il s'arrête en un court instant, **sans patiner sur place** ; il ne repart pas en piétinant | [ ] | |
+| 28.3 | Faire demi-tour (touche arrière ou cible derrière soi) | Il **tourne** (environ une demi-seconde), plus de volte-face instantanée ; à l'arrêt, il pivote à **petits pas** | [ ] | Trop lent pour jouer ? Le dire (on règle la vitesse de rotation) |
+| 28.4 | Courir en décrivant un grand virage | Le corps **penche** légèrement vers l'intérieur du virage (quelques degrés), se redresse en ligne droite | [ ] | |
+| 28.5 | Monter sur le pont cintré, à l'arrêt puis en marchant | Les pieds **posés sur le tablier**, le bassin descend un peu côté pente (pas sur PC modeste : les pieds restent à plat, le corps à la bonne hauteur) | [ ] | Seulement les corps humains (Quaternius) |
+| 28.6 | Regarder 30 s un groupe de villageois qui attendent | Ils ne respirent **pas ensemble** ; de temps en temps l'un croise les bras ou regarde autour, chacun à son moment ; la tête bouge un peu | [ ] | |
+| 28.7 | Passer à moins de 9 m d'un PNJ ou d'un garde | Sa **tête suit** le héros (sans se tordre le cou ; s'il est derrière, il ne le suit plus) | [ ] | |
+| 28.8 | Suivre un passant jusqu'au bout de son allée, et un villageois qui va au puits | Il **ralentit** avant d'arriver, se retourne à petits pas, **repart en accélérant** | [ ] | |
+| 28.9 | Ferme : un cheval, un âne, une vache qui se promènent | Ils partent au pas en accélérant, **tournent en marchant** (jamais sur place), ralentissent avant de s'arrêter ; sabots et pattes sans glisser ; leur tête suit le héros proche, sinon regarde autour | [ ] | |
+| 28.10 | Bêtes de la forêt (loup, sanglier, cerf, biche, ours) : les approcher pour les faire fuir ou charger | **Pas, trot, galop** selon la vitesse si le modèle en a les clips, sinon cadence réglée ; à l'arrêt elles broutent ou reniflent ; elles ne pivotent plus sur place | [ ] | Dire quelle bête n'a qu'un seul cycle (on cherchera le clip) |
+| 28.11 | Cerf ou lièvre en formes simples (sans modèle) | Les pattes battent plus lentement quand il ralentit | [ ] | |
+| 28.12 | Même tour en mode « PC modeste » | Tout pareil sauf les pieds sur le relief (28.5) ; pas de saccade en plus | [ ] | Images par seconde avant/après, si possible |
