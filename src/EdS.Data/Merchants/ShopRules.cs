@@ -106,7 +106,7 @@ namespace EdS.Data.Merchants
         public IReadOnlyList<int> Rest { get; }
         public DoorService Door { get; }
 
-        /// <summary>Clé du texte du commis (« Colin, le commis »), si <see cref="Door"/> vaut <see cref="DoorService.Clerk"/>.</summary>
+        /// <summary>Clé du texte du commis (« Bastien, le commis »), si <see cref="Door"/> vaut <see cref="DoorService.Clerk"/>.</summary>
         public string? Clerk { get; }
 
         /// <summary>Boutique déjà validée (le validateur <see cref="MerchantValidator"/> en donne le détail) ; contrôles de forme seulement.</summary>

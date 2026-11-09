@@ -120,7 +120,7 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.14 : enseignes des boutiques de cette zone, à côté de la porte de leur maison (le long de la façade) : « Boulangerie de
-        /// Firmin · ouverte », « … · fermée (Colin répond à la porte) », « … · fermée : jour de repos ».
+        /// Firmin · ouverte », « … · fermée (Bastien répond à la porte) », « … · fermée : jour de repos ».
         /// </summary>
         public IReadOnlyList<WorldMarker> ShopSigns()
         {

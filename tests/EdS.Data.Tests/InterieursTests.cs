@@ -491,7 +491,7 @@ public class InterieursTests : IDisposable
             // Sous-lot V1.9.6 : la salle du souvenir de la Rupture (aménagement provisoire en maison : la porte de lumière en autel, les
             // Seuillards en statues ; son vrai décor est pour la PR B, voir MONDE.md), la reine Ysolde.
             ["zone.souvenir_rupture"] = (InteriorStyle.House, new[] { InteriorProp.Statue, InteriorProp.Door }, 1),
-            // Sous-lot V2.14 : les boutiques ; à la boulangerie, le four, le pétrin (farine, jarre), les pains ; Colin au comptoir (Margot à la
+            // Sous-lot V2.14 : les boutiques ; à la boulangerie, le four, le pétrin (farine, jarre), les pains ; Bastien au comptoir (Margot à la
             // mercerie), sinon un commis de décor.
             ["zone.boulangerie"] = (InteriorStyle.Shop, new[] { InteriorProp.Bread, InteriorProp.Broom, InteriorProp.Basket, InteriorProp.ClayPot, InteriorProp.Crate,
                 InteriorProp.Barrel, InteriorProp.Door }, 1),

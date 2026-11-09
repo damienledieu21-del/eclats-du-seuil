@@ -365,7 +365,7 @@ public class V214BoutiquesMarcheTests
 
     private static readonly Lazy<StoryBook> Story = new(() => Book(Zone()));
 
-    /// <summary>Au comptoir de la boulangerie (Colin, le commis), le jour <paramref name="day"/> à <paramref name="minute"/>.</summary>
+    /// <summary>Au comptoir de la boulangerie (Bastien, le commis), le jour <paramref name="day"/> à <paramref name="minute"/>.</summary>
     private static WorldSession AtBakery(long day, int minute, SavedCharacter? hero = null) =>
         V231TestData.Inside("zone.boulangerie", TickAt(day, minute) - 1, -0.25, -0.2, Story.Value, hero ?? Hero(10_000));
 
@@ -426,7 +426,7 @@ public class V214BoutiquesMarcheTests
     [Fact]
     public void Le_fournil_de_Firmin_au_fil_de_la_journee()
     {
-        // Mardi (jour 1), 5 h : pas encore ouvert ; Colin répond à la porte, mais rien n'est encore cuit.
+        // Mardi (jour 1), 5 h : pas encore ouvert ; Bastien répond à la porte, mais rien n'est encore cuit.
         WorldSession early = AtBakery(1, 5 * 60);
         Assert.Equal(ShopState.AtDoor, early.ShopStateOf(Boulangerie));
         Assert.Equal(new[] { Pain }, early.Stock(Boulangerie).Select(o => o.Item));
@@ -450,7 +450,7 @@ public class V214BoutiquesMarcheTests
         Assert.Equal(0, evening.Left(Boulangerie, Croissant));
         Assert.Equal(TradeRefusal.OutOfStock, evening.Buy(Boulangerie, Croissant));
         Assert.Equal(ShopState.AtDoor, AtBakery(1, 20 * 60).ShopStateOf(Boulangerie));
-        // Lundi (jour 7) : jour de repos ; Colin répond à la porte (le pain de campagne seulement) ; réouverture mardi à 5 h 30.
+        // Lundi (jour 7) : jour de repos ; Bastien répond à la porte (le pain de campagne seulement) ; réouverture mardi à 5 h 30.
         WorldSession monday = AtBakery(7, 10 * 60);
         Assert.Equal(ShopState.AtDoor, monday.ShopStateOf(Boulangerie));
         Assert.Equal(new[] { Pain }, monday.Stock(Boulangerie).Select(o => o.Item));

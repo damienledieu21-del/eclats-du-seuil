@@ -1453,13 +1453,13 @@
         ]
       },
       {
-        "id": "npc.colin",
-        "name": "text.v214.npc.colin.name",
+        "id": "npc.commis",
+        "name": "text.v214.npc.commis.name",
         "position": [
           -0.25,
           1.85
         ],
-        "dialogue": "dialogue.colin",
+        "dialogue": "dialogue.commis",
         "zone": "zone.boulangerie"
       },
       {
@@ -20817,7 +20817,7 @@
         ]
       },
       {
-        "id": "dialogue.colin",
+        "id": "dialogue.commis",
         "entries": [
           {
             "conditions": [],
@@ -20827,7 +20827,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v214.colin.accueil",
+            "text": "text.v214.commis.accueil",
             "lines": [
               {
                 "conditions": [
@@ -20837,24 +20837,24 @@
                   },
                   {
                     "if": "fact",
-                    "id": "fact.met.colin"
+                    "id": "fact.met.commis"
                   }
                 ],
-                "text": "text.v214.colin.soir"
+                "text": "text.v214.commis.soir"
               },
               {
                 "conditions": [
                   {
                     "if": "fact",
-                    "id": "fact.met.colin"
+                    "id": "fact.met.commis"
                   }
                 ],
-                "text": "text.v214.colin.retrouvailles"
+                "text": "text.v214.commis.retrouvailles"
               }
             ],
             "choices": [
               {
-                "text": "text.v214.colin.four",
+                "text": "text.v214.commis.four",
                 "conditions": [],
                 "effects": [],
                 "next": "reponse"
@@ -20869,7 +20869,7 @@
           },
           {
             "id": "reponse",
-            "text": "text.v214.colin.four_reponse",
+            "text": "text.v214.commis.four_reponse",
             "choices": [
               {
                 "text": "text.v210.au_revoir",

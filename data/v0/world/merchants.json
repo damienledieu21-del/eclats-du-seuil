@@ -952,7 +952,7 @@
       },
       {
         "id": "merchant.boulangerie",
-        "npc": "npc.colin",
+        "npc": "npc.commis",
         "greeting": "text.v214.boulangerie.accueil",
         "sellPercent": 25,
         "closed": [],
@@ -975,7 +975,7 @@
             0
           ],
           "door": "clerk",
-          "clerk": "text.v214.commis.colin"
+          "clerk": "text.v214.commis_nom"
         },
         "bakes": [
           {
