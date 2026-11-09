@@ -391,6 +391,58 @@ public class V210MarchandsFetesTests
         Assert.NotEqual("v210_marche", view!.Node);
     }
 
+    [Fact]
+    public void Un_invite_d_interieur_reste_trouvable_pendant_la_fete()
+    {
+        // Revue Codex de la PR #120 (tour 6) : l'archiviste ne quitte jamais les archives ; invité à la veillée, il est sur la place pendant la
+        // fête (trouvable, à portée de dialogue, dans l'affichage), puis rentre : absent de la place, montré à la porte. Rien n'est sauvegardé.
+        string folder = Path.Combine(Path.GetTempPath(), "eds-v210-invite-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string data = Path.Combine(folder, "data", "v0"), scenarios = Path.Combine(folder, "scenarios");
+            foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
+                foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+                {
+                    string target = Path.Combine(to, Path.GetRelativePath(from, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target, true);
+                }
+            void Edit(string path, Action<JsonObject> change)
+            {
+                JsonObject root = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+                change(root);
+                File.WriteAllText(path, root.ToJsonString());
+            }
+            Edit(ZoneJsonReader.PathIn(data, "zone.vallons"), root => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-66.0, -6.5));
+            Edit(StoryJsonReader.StoryPathIn(data), root => root["data"]!["festivals"]!.AsArray()
+                .Single(f => (string?)f!["id"] == "festival.veillee")!["guests"]!.AsArray()
+                .Add(new JsonObject { ["npc"] = "npc.archiviste", ["position"] = new JsonArray(-66.0, -7.0), ["activity"] = "veillee" }));
+            StoryBook book = StoryJsonReader.ReadStory(File.ReadAllText(StoryJsonReader.StoryPathIn(data)), Texts, Zone(), ItemsCatalog, V16TestData.Interiors).Story!;
+            Assert.Contains(book.VisitorsOf(null), n => n.Id == "npc.archiviste");
+            Assert.Contains(book.VisitorsOf("zone.archives"), n => n.Id == "npc.archiviste");
+            EdS.Runtime.AdventureSession Session(long day, int minute)
+            {
+                string save = Path.Combine(folder, $"sauvegarde-{day}-{minute}.json");
+                SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(day, minute), 0, Array.Empty<string>(), Hero()));
+                return Adventure(save, data, scenarios);
+            }
+            EdS.Runtime.AdventureSession veillee = Session(105, 19 * 60);
+            Assert.Equal("npc.archiviste", veillee.NpcInReach?.Id);
+            Assert.Contains(veillee.Npcs(), m => m.Id == "npc.archiviste");
+            Assert.Contains(veillee.NpcStage(), m => m.Id == "npc.archiviste" && m.Present);
+            Assert.Contains(veillee.NpcsByDay(), m => m.Id == "npc.archiviste");
+            // Le lendemain à la même heure : rentré aux archives (absent de la place, jamais à deux endroits).
+            EdS.Runtime.AdventureSession apres = Session(106, 19 * 60);
+            Assert.NotEqual("npc.archiviste", apres.NpcInReach?.Id);
+            Assert.DoesNotContain(apres.Npcs(), m => m.Id == "npc.archiviste");
+            Assert.Contains(apres.NpcStage(), m => m.Id == "npc.archiviste" && !m.Present);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
     // --- Stock vivant ----------------------------------------------------------------------------------------------------
 
     [Fact]

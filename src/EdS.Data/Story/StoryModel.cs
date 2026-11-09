@@ -685,7 +685,16 @@ namespace EdS.Data.Story
         /// Sous-lot V2.3.1 : PNJ qui peuvent se tenir dans la zone <paramref name="zone"/> à un moment de la journée (ceux qui y vivent et ceux
         /// dont un créneau y mène ; null : la zone de l'histoire), dans l'ordre de l'histoire.
         /// </summary>
-        public IEnumerable<Npc> VisitorsOf(string? zone) => Npcs.Where(n => n.Zones.Contains(zone));
+        /// <remarks>Revue Codex de la PR #120 (tour 6) : les invités d'une fête se tiennent sur la place (la zone de l'histoire) pendant la
+        /// fête : ils en sont visiteurs même si aucun créneau habituel ne les y mène (un PNJ d'intérieur invité reste trouvable, avec ses
+        /// quêtes et ses livraisons).</remarks>
+        public IEnumerable<Npc> VisitorsOf(string? zone) => Npcs.Where(n => n.Zones.Contains(zone) || (zone is null && IsGuest(n.Id)));
+
+        /// <summary>Sous-lot V2.10 : <paramref name="npc"/> est invité à au moins une fête.</summary>
+        public bool IsGuest(string npc) => Festivals.Any(f => f.Guest(npc) != null);
+
+        /// <summary>Sous-lot V2.10 : première invitation de <paramref name="npc"/> dans l'ordre des fêtes, ou null.</summary>
+        public FestivalGuest? FirstInvitation(string npc) => Festivals.Select(f => f.Guest(npc)).FirstOrDefault(g => g != null);
 
         /// <summary>
         /// Sous-lot V2.10 : la fête qui bat son plein au jour <paramref name="day"/>, à la minute <paramref name="minute"/> (la première du

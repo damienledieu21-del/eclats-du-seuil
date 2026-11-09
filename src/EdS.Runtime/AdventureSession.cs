@@ -1366,10 +1366,12 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.3.1 : place de jour du PNJ <paramref name="npc"/> dans la zone en cours : sa place de l'histoire s'il y vit, sinon celle
-        /// de son premier créneau ici (un visiteur : Firmin dans la salle de l'auberge).
+        /// de son premier créneau ici (un visiteur : Firmin dans la salle de l'auberge) ; revue Codex de la PR #120 (tour 6) : un invité de fête
+        /// qu'aucun créneau ne mène ici, sa place de sa première fête.
         /// </summary>
         private GroundVector DayPlace(Npc npc) =>
-            npc.Zone == HereKey ? npc.Position : npc.Schedule.FirstOrDefault(s => s.Zone == HereKey)?.Position ?? npc.Position;
+            npc.Zone == HereKey ? npc.Position : npc.Schedule.FirstOrDefault(s => s.Zone == HereKey)?.Position
+                ?? (HereKey is null ? _story.FirstInvitation(npc.Id)?.Position : null) ?? npc.Position;
 
         /// <summary>
         /// Sous-lot V2.3.1 (PNJ qui changent de lieu) : tous les PNJ qui passent dans la zone en cours à un moment de la journée (ceux qui y
