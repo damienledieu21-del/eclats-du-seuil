@@ -31,6 +31,9 @@ namespace EdS.Game
             public float Range;
             public Color Color;
 
+            /// <summary>Sous-lot V2.12.6 : rang de son étiquette quand plusieurs se recouvrent (PNJ 3, atelier et porte 2, point sûr 1, récolte 0).</summary>
+            public int Rank;
+
             /// <summary>Personnage habillé (PNJ) : il se tourne vers le joueur.</summary>
             public bool Faces;
 
@@ -105,6 +108,7 @@ namespace EdS.Game
             {
                 WorldMarker day = byDay.TryGetValue(npc.Id, out WorldMarker d0) ? d0 : npc;
                 Marker m = Add(npc, PrimitiveType.Capsule, new Vector3(0.8f, 1f, 0.8f), 1f, new Color(0.95f, 0.78f, 0.3f), 2.3f, NpcLabelRange);
+                m.Rank = 3;
                 m.Present = npc.Present;
                 m.Shown = npc.Present;
                 _npcs[npc.Id] = m;
@@ -149,14 +153,29 @@ namespace EdS.Game
                 _nodes[node.Id] = m;
             }
             foreach (WorldMarker safe in adventure.SafePoints())
-                Add(safe, PrimitiveType.Cylinder, new Vector3(3f, 0.02f, 3f), 0.02f, new Color(0.3f, 0.55f, 1f), 0.6f, SafeLabelRange);
+            {
+                // Sous-lot V2.12.6 (essai du 9 novembre 2026 : « un disque bleu sombre en double » sous le cercle de la place) : le disque
+                // (cylindre de 4 cm, qui affleurait dans les pavés de la place et y faisait un second bord sombre) devient un disque mince
+                // posé au-dessus des pavés, lumineux, sans ombre portée.
+                Marker disc = Add(safe, PrimitiveType.Cylinder, new Vector3(3f, 0.004f, 3f), 0.07f, new Color(0.3f, 0.55f, 1f), 0.6f, SafeLabelRange);
+                disc.Rank = 1;
+                Renderer r = disc.Body.GetComponent<Renderer>();
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.sharedMaterial.EnableKeyword("_EMISSION");
+                r.sharedMaterial.SetColor("_EmissionColor", new Color(0.12f, 0.24f, 0.45f));
+            }
             // Essai du 12.9 : la forge (enclume sombre au centre de l'atelier), où l'on fabrique.
             foreach (WorldMarker workshop in adventure.Workshops())
-                Forge(Add(workshop, PrimitiveType.Cube, new Vector3(1.2f, 0.8f, 0.7f), 0.4f, new Color(0.3f, 0.3f, 0.34f), 1.6f, NpcLabelRange));
+            {
+                Marker w = Add(workshop, PrimitiveType.Cube, new Vector3(1.2f, 0.8f, 0.7f), 0.4f, new Color(0.3f, 0.3f, 0.34f), 1.6f, NpcLabelRange);
+                w.Rank = 2;
+                Forge(w);
+            }
             // Intérieurs : chaque porte, un seuil doré au sol et le nom de ce qu'il y a derrière (« Auberge de l'Aube », « Bourg d'Aube »).
             foreach (WorldMarker door in adventure.Doors())
             {
                 Marker m = Add(door, PrimitiveType.Cylinder, new Vector3(1.3f, 0.015f, 1.3f), 0.015f, new Color(0.95f, 0.72f, 0.32f), 2.6f, DoorLabelRange);
+                m.Rank = 2;
                 Material sill = Made(new Color(0.35f, 0.22f, 0.08f));
                 sill.EnableKeyword("_EMISSION");
                 sill.SetColor("_EmissionColor", new Color(0.9f, 0.55f, 0.18f));
@@ -736,16 +755,37 @@ namespace EdS.Game
         /// <summary>Noms des repères proches du joueur (essai réaliste 6 : dans l'interface uGUI, à chaque image).</summary>
         public void Labels(Camera camera, Vector3 player, HudView hud)
         {
+            // Sous-lot V2.12.6 (essai du 9 novembre 2026 : étiquettes empilées et illisibles à la forge) : une étiquette par PNJ, les plus
+            // importantes et les plus proches d'abord, une gênée montée d'un cran ou cachée (LabelLayout, testé dans le cœur).
+            _layout.Clear();
+            _shown.Clear();
+            _screens.Clear();
+            float k = HudView.LabelScale;
+            float h = HudView.LabelHeight / k;
             foreach (Marker m in _markers)
             {
                 if (!m.Body.activeSelf) continue;
                 Vector3 at = m.Body.transform.position;
                 float dx = at.x - player.x, dz = at.z - player.z;
-                if (dx * dx + dz * dz > m.Range * m.Range) continue;
+                float d2 = dx * dx + dz * dz;
+                if (d2 > m.Range * m.Range) continue;
                 Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
-                hud.Label(screen, m.Label ?? m.Data.Name, Color.Lerp(m.Color, Color.white, 0.5f));   // sous-lot V2.3 : et son activité   // essai réaliste 6 : interface uGUI
+                if (screen.z <= 0f) continue;
+                string text = m.Label ?? m.Data.Name;   // sous-lot V2.3 : et son activité
+                _layout.Add(m.Data.Id, text, screen.x, screen.y, LabelLayout.TextWidth(text, HudView.LabelFont) / k, h, m.Rank * 1000.0 - Mathf.Sqrt(d2));
+                _shown.Add(m);
+                _screens.Add(screen);
             }
+            _layout.Solve(h, 1);
+            for (int i = 0; i < _shown.Count; i++)
+                if (_layout.Shown(i))
+                    hud.Label(_screens[i] + new Vector3(0f, (float)_layout.OffsetY(i), 0f), _shown[i].Label ?? _shown[i].Data.Name,
+                        Color.Lerp(_shown[i].Color, Color.white, 0.5f));   // essai réaliste 6 : interface uGUI
         }
+
+        private readonly LabelLayout _layout = new LabelLayout();
+        private readonly List<Marker> _shown = new List<Marker>();
+        private readonly List<Vector3> _screens = new List<Vector3>();
 
         /// <summary>Matériau fait pour les repères, détruit avec eux (relecture : les repères sont refaits à chaque porte).</summary>
         private Material Made(Color color)
