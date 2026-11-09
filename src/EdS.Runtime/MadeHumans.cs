@@ -245,7 +245,7 @@ namespace EdS.Runtime
         public static bool IsCutoutMaterial(string? name)
         {
             string k = StyleRules.Key(name ?? string.Empty);
-            if (k.Contains("eyebrow") || k.Contains("eyelash") || k.Contains("lash") || k.Contains("brow")) return true;
+            if (k.Contains("eyebrow") || k.Contains("eyelash") || k.Contains("lash")) return true;
             foreach (string hair in new[] { "hair", "short", "long", "bob", "ponytail", "braid", "afro", "fringe", "bun", "beard", "mustache", "moustache", "goatee", "stubble" })
                 if (k.Contains(hair)) return true;
             return false;

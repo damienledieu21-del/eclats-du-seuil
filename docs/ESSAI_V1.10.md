@@ -443,9 +443,9 @@ Suite de ton essai du 9 novembre 2026 (PC de 4 Go, mode « PC modeste ») : apr�
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 28.1 | « Préparer et lancer l'essai » | Le jeu démarre, plus de « System out of memory » | [ ] | Sinon : capture de la Console |
-| 28.2 | Unity rouvert, « Lancer l'essai (déjà préparé) » | La scène de démarrage s'ouvre et le jeu démarre, sans préparation | [ ] | |
-| 28.3 | Même menu sur un projet jamais préparé | Un message demande de faire d'abord « Préparer l'essai de style » | [ ] | |
+| 26.1 | « Préparer et lancer l'essai » | Le jeu démarre, plus de « System out of memory » | [ ] | Sinon : capture de la Console |
+| 26.2 | Unity rouvert, « Lancer l'essai (déjà préparé) » | La scène de démarrage s'ouvre et le jeu démarre, sans préparation | [ ] | |
+| 26.3 | Même menu sur un projet jamais préparé | Un message demande de faire d'abord « Préparer l'essai de style » | [ ] | |
 
 ## 27. Jeu plus lumineux et curseur de luminosité (V2.13)
 
