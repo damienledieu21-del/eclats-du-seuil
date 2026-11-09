@@ -765,10 +765,15 @@ namespace EdS.Game.Editor
                 // Revue Codex de la PR #58 (2e tour) : la carte de transparence du modèle (toiles du moulin) découpe aussi les matières qui
                 // prennent sa texture de couleur ; couleur et alpha réunis une seule fois pour toutes.
                 Texture2D cutout = null;
+                // Sous-lot V2.12.6 (essai du 9 novembre 2026 : tonneaux tout blancs à la forge) : un modèle de Poly Haven à pièces
+                // (« wooden_barrels_01_barrel01_diff_1k ») relie à chaque matière les cartes de la pièce à son nom (PieceTextures).
+                IReadOnlyDictionary<string, StylePieceMaps> pieces = PieceTextures.Link(modelPath, embeddedMaterials.Select(m => m.name), maps);
                 foreach (Material embedded in embeddedMaterials)
                 {
-                    string own = StyleRules.MaterialTexture(embedded.name, maps, false) ?? color;
-                    string ownNormal = StyleRules.MaterialTexture(embedded.name, maps, true) ?? (own == color ? normal : null);
+                    pieces.TryGetValue(embedded.name, out StylePieceMaps piece);
+                    string own = piece?.Color ?? StyleRules.MaterialTexture(embedded.name, maps, false) ?? color;
+                    string ownNormal = piece?.Normal ?? StyleRules.MaterialTexture(embedded.name, maps, true) ?? (own == color ? normal : null);
+                    if (pieces.Count > 0 && piece == null) notes.Add(name + " : matière « " + embedded.name + " » sans pièce à son nom (couleur du modèle).");
                     // Transparence de même racine (feuilles), sinon celle du modèle pour les matières qui prennent sa couleur (toiles du moulin).
                     string ownAlpha = StyleRules.AlphaFor(own, maps) ?? (own == color ? alpha : null);
                     string path = Generated + "/" + name + " " + embedded.name + ".mat";
@@ -788,7 +793,8 @@ namespace EdS.Game.Editor
                     }
                     else partMap = WithAlpha(own, ownAlpha, Generated + "/" + name + " " + embedded.name + "_couleur_alpha.png", notes);
                     Configure(part, lit, leaves, wind, partMap, Texture2DAt(ownNormal), ownAlpha != null);
-                    if (InteriorRules.IsInterior(modelPath)) Metal(part, Texture2DAt(StyleRules.MetalFor(own, maps)));
+                    if (piece?.Metal != null) Metal(part, Texture2DAt(piece.Metal));
+                    else if (InteriorRules.IsInterior(modelPath)) Metal(part, Texture2DAt(StyleRules.MetalFor(own, maps)));
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), part);
                 }
                 importer.SaveAndReimport();
@@ -800,11 +806,24 @@ namespace EdS.Game.Editor
                 .Where(m => m != null).ToList();
             if (embeddedMaterials.Count == 0 && parts.Count > 1)
             {
+                // Sous-lot V2.12.6 : les matières d'un modèle à pièces déjà reliées avant la V2.12.6 (restées blanches) reprennent les cartes
+                // de leur pièce (nom du matériau : « <modèle> <matière> »).
+                IReadOnlyDictionary<string, StylePieceMaps> linked = PieceTextures.Link(modelPath,
+                    parts.Select(m => Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(m)).Substring(name.Length + 1)), maps);
                 foreach (Material part in parts)
                 {
                     Texture2D partMap = part.GetTexture("_BaseMap") as Texture2D;
-                    Configure(part, lit, leaves, wind, partMap, part.GetTexture("_BumpMap") as Texture2D, part.GetFloat("_Cutoff") > 0f && partMap != null
-                        && AssetDatabase.GetAssetPath(partMap).StartsWith(Generated + "/", System.StringComparison.Ordinal));
+                    Texture2D partNormal = part.GetTexture("_BumpMap") as Texture2D;
+                    bool cut = part.GetFloat("_Cutoff") > 0f && partMap != null
+                        && AssetDatabase.GetAssetPath(partMap).StartsWith(Generated + "/", System.StringComparison.Ordinal);
+                    if (linked.TryGetValue(Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(part)).Substring(name.Length + 1), out StylePieceMaps piece)
+                        && !cut && piece.Color != null)
+                    {
+                        partMap = Texture2DAt(piece.Color) ?? partMap;
+                        partNormal = Texture2DAt(piece.Normal) ?? partNormal;
+                    }
+                    Configure(part, lit, leaves, wind, partMap, partNormal, cut);
+                    if (piece?.Metal != null) Metal(part, Texture2DAt(piece.Metal));
                 }
                 return;
             }
