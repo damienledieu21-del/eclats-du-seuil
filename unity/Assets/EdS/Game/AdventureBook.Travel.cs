@@ -26,7 +26,7 @@ namespace EdS.Game
         {
             _travelPanel = UiKit.Node(page, "Voyage rapide");
             UiKit.Place(_travelPanel, new Vector2(50f, 166f), new Vector2(236f, 620f), Vector2.zero);
-            UiKit.Fill(UiKit.Image(_travelPanel, "Dalle", UiKit.Sprite("dalle", 40f), new Color(1f, 1f, 1f, 0.92f), Image.Type.Sliced).rectTransform);
+            UiKit.Fill(UiKit.Image(_travelPanel, "Dalle", UiKit.WindowSprite(), new Color(1f, 1f, 1f, 0.92f), Image.Type.Sliced).rectTransform);
             _travelTitle = Text(_travelPanel, UiFace.Title, 20f, Color.white, TextAnchor.MiddleLeft, 18f, 30f, 210f, 26f, 0f, 0.5f, 2f);
             _travelTitle.Gold();
             _travelHint = Text(_travelPanel, UiFace.Body, 14f, UiKit.Muted, TextAnchor.UpperLeft, 18f, 50f, 204f, 40f, 0f, 0f);

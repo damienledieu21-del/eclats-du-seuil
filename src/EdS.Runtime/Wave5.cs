@@ -101,6 +101,49 @@ namespace EdS.Runtime
         Cauldron,
         Chest,
         Tankard,
+
+        // --- Sous-lot V2.12 : packs de l'Asset Store (liste AssetStore.Entries ; ajoutés à la fin : les valeurs sérialisées ne bougent pas) ---
+        StoreBread,
+        StoreFood,
+        StoreCrate,
+        TraderTable,
+        TraderTent,
+        Anvil,
+        SmithTable,
+        WeaponStand,
+        QuenchTub,
+        WaterWheel,
+        AnimalShed,
+        VillageBarrel,
+        VillageBucket,
+        SpinningWheel,
+        VillageCart,
+        Stump,
+        PropCrate,
+        Ladder,
+        Handcart,
+        CampTent,
+        VillageHouse,
+        Tavern,
+        Smithy,
+        VillageWindmill,
+        SmithWeapons,
+        CastleKeep,
+        CastleTower,
+        CastleWall,
+        CastleBridge,
+        CastleGate,
+        CastleHouse,
+        DungeonWall,
+        DungeonFloor,
+        DungeonArch,
+        DungeonTorch,
+        DungeonRail,
+        ArmoredMan,
+        ArmoredWoman,
+        StoreFurniture,
+        /// <summary>Sous-lot V2.12 (décision de Damien du 9 novembre 2026) : fruits rares d'un marchand venu de loin (prêt).</summary>
+        ExoticFruit,
     }
 
     /// <summary>Sous-lot V2.11 : où en est une ressource dans le jeu.</summary>
@@ -441,7 +484,7 @@ namespace EdS.Runtime
         public static Wave5Entry Entry(Wave5Role role) => EntryOrNull(role) ?? throw new ArgumentException("Rôle hors de la liste : " + role, nameof(role));
 
         /// <summary>Relecture de la PR #121 : la ressource du rôle, ou null pour un rôle hors de <see cref="Entries"/> (le corbeau).</summary>
-        public static Wave5Entry? EntryOrNull(Wave5Role role) => Entries.FirstOrDefault(e => e.Role == role);
+        public static Wave5Entry? EntryOrNull(Wave5Role role) => Entries.FirstOrDefault(e => e.Role == role) ?? AssetStore.EntryOrNull(role);
 
         /// <summary>
         /// Fichier que la préparation prend pour <paramref name="entry"/> parmi <paramref name="models"/> : le premier de ses fichiers (du meilleur
@@ -519,7 +562,31 @@ namespace EdS.Runtime
         }
 
         /// <summary>Relecture de la PR #121 : nombre de fichiers différents posés pour un rôle (vitrine du fournil, haches) ; 1 pour les autres.</summary>
-        public static int Variants(Wave5Role role) => role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
+        public static int Variants(Wave5Role role) =>
+            AssetStore.EntryOrNull(role) != null ? AssetStore.Variants(role)
+            : role == Wave5Role.Bread ? 6 : role == Wave5Role.Pastry ? 4 : role == Wave5Role.Axe ? 2 : 1;
+
+        /// <summary>
+        /// Relecture de la PR #122 : ordre de la vitrine du fournil sur <paramref name="slots"/> places au plus (bornées par le nombre de pièces) :
+        /// une place sur trois (la troisième de chaque rangée) prend une viennoiserie s'il en reste, les autres un pain s'il en reste ; chaque pain
+        /// et chaque viennoiserie trouvés sont posés une fois avant qu'un autre ne se répète (aucun n'est sauté). Rend (viennoiserie ?, rang).
+        /// </summary>
+        public static IReadOnlyList<(bool Pastry, int Index)> ShowcaseOrder(int breads, int pastries, int slots)
+        {
+            breads = Math.Max(0, breads);
+            pastries = Math.Max(0, pastries);
+            int count = Math.Min(Math.Max(0, slots), breads + pastries);
+            var order = new List<(bool, int)>();
+            int b = 0, p = 0;
+            for (int i = 0; i < count; i++)
+            {
+                bool wantPastry = i % 3 == 2;
+                bool pastry = wantPastry ? p < pastries : b >= breads;
+                if (pastry) order.Add((true, p++));
+                else order.Add((false, b++));
+            }
+            return order;
+        }
 
         /// <summary>Ressource de l'arme tenue en main pour la forme <paramref name="look"/> (le marteau prend celui de la forge) ; null sinon.</summary>
         public static Wave5Role? WeaponRole(WeaponLook look) =>

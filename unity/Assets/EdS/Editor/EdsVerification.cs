@@ -34,6 +34,8 @@ namespace EdS.Game.Editor
         private const string Wave = "5e vague (V2.11 : monstres, armes, Seuil, fournil, fêtes)";
         private const string Later = "5e vague prête pour plus tard (crypte, créatures)";
         private const string Icons = "Icônes et licences hors dépôt (V2.11)";
+        private const string Store = "Packs de l'Asset Store (V2.12 : fournil, étals, forge, village, interface, sons)";
+        private const string StoreLater = "Packs de l'Asset Store prêts pour plus tard (château, crypte, armures, bâtiments)";
         private const string Prepare = "Lance le menu Éclats du Seuil → Préparer l'essai de style.";
 
         /// <summary>Assemblées du paquet <c>com.eclats.core</c> (dossier <c>src/</c>) dont le jeu a besoin.</summary>
@@ -258,12 +260,17 @@ namespace EdS.Game.Editor
 
             Step("Sons et musiques", 0.85f);
             // Comme la préparation : les fichiers dans l'ordre, le premier qui se charge comme un son.
-            foreach (EssaiAudio audio in EssaiManifest.Sounds) AddAudio(report, Noises, audio, StyleRules.PickSounds(sounds, audio.Sound.Value, 6));
+            // Sous-lot V2.12 : comme la préparation, les sons médiévaux de Basic RPG Sounds en repli.
+            List<string> storeSounds = AssetStore.MedievalSounds(Find("t:AudioClip", "Assets")).ToList();
+            foreach (EssaiAudio audio in EssaiManifest.Sounds) AddAudio(report, Noises, audio, AssetStore.PickSounds(sounds, storeSounds, audio.Sound.Value, 6));
             foreach (EssaiAudio audio in EssaiManifest.Music) AddAudio(report, Tunes, audio, StyleRules.MusicFiles(sounds, audio.Music.Value));
             foreach (EssaiAudio audio in EssaiManifest.Ambiences) AddAudio(report, Places, audio, StyleRules.AmbienceFiles(sounds, audio.Ambience.Value));
 
             Step("5e vague", 0.9f);
             CheckWave5(report, models);
+
+            Step("Packs de l'Asset Store", 0.92f);
+            CheckAssetStore(report, storeSounds);
 
             Step("Textures", 0.95f);
             CheckTextures(report, textures);
@@ -304,6 +311,40 @@ namespace EdS.Game.Editor
             string manifest = Path.Combine(ProjectRoot, ItemIcons.LicenseManifest);
             if (File.Exists(manifest)) report.Add(Icons, EssaiLevel.Ok, "Manifeste des licences (Asset Store, Fab)", ItemIcons.LicenseManifest + " (hors dépôt)");
             else report.Add(Icons, EssaiLevel.Warning, "Manifeste des licences (Asset Store, Fab)", "pas encore écrit", Prepare);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.12 : les packs de l'Asset Store (liste partagée <see cref="AssetStore"/>, mêmes choix que <c>EdsWave5</c>) : prefabs
+        /// reconnus par la fin de leur chemin, sons médiévaux gardés, planches d'interface, icônes sans fond.
+        /// </summary>
+        private static void CheckAssetStore(EssaiReport report, List<string> storeSounds)
+        {
+            List<string> prefabs = Find("t:Prefab", "Assets").ToList();
+            foreach (Wave5Entry entry in AssetStore.Entries)
+            {
+                IReadOnlyList<string> found = AssetStore.Found(entry, prefabs);
+                (EssaiLevel level, string detail, string fix) = AssetStore.Describe(entry, found, false);
+                report.Add(entry.Use == Wave5Use.Ready ? StoreLater : Store, level, entry.Label, detail, fix);
+            }
+            List<string> all = Find("t:AudioClip", "Assets").Where(AssetStore.IsStoreSound).ToList();
+            if (all.Count > 0) report.Add(Store, EssaiLevel.Ok, "Sons de Basic RPG Sounds", storeSounds.Count + " gardés sur " + all.Count + " (arcade et modernes écartés), en repli des sons choisis");
+            else report.Add(Store, EssaiLevel.Ok, "Sons de Basic RPG Sounds", "absent : les sons choisis restent");
+            List<string> gui = Find("t:Texture2D", "Assets").Where(AssetStore.IsGuiPath).ToList();
+            string stone = AssetStore.Board(gui, AssetStore.GuiBoard.Stone);
+            report.Add(Store, stone != null || gui.Count == 0 ? EssaiLevel.Ok : EssaiLevel.Warning, "Interface en bois (fond des fenêtres)",
+                stone != null ? "planche de pierre : " + EssaiManifest.FileName(stone) : gui.Count == 0 ? "absent : la dalle du jeu reste" : "planche « UI board … stone » introuvable : la dalle du jeu reste",
+                stone != null || gui.Count == 0 ? "" : "Vérifie le dossier " + AssetStore.Gui.Folder + ".");
+            List<string> icons = AssetStore.PreferNoBackground(Find("t:Texture2D", "Assets").Where(ItemIcons.IsIcon)).ToList();
+            if (icons.Count > 0)
+            {
+                string items = Path.Combine(ProjectRoot, "..", "data", "v0", "world", "items.json");
+                List<string> ids = File.Exists(items)
+                    ? System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(items), "\"id\"\\s*:\\s*\"(item\\.[a-z0-9_]+)\"").Cast<System.Text.RegularExpressions.Match>()
+                        .Select(m => m.Groups[1].Value).Distinct().ToList()
+                    : new List<string>();
+                int mapped = ItemIcons.Map(ids, icons).Count;
+                report.Add(Icons, EssaiLevel.Ok, "Objets reliés à une icône de CraftPix", mapped + " sur " + ids.Count + " (" + icons.Count + " images, version sans fond d'abord)");
+            }
         }
 
         /// <summary>
