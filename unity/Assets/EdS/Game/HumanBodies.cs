@@ -20,6 +20,9 @@ namespace EdS.Game
         void SetSpeed(string name, float speed);
         void SetLoop(string name, bool loop);
         void Stop();
+
+        /// <summary>Sous-lot V2.15 : vitesse de déplacement (m/s, à l'échelle du modèle) mesurée dans l'animation ; 0 si elle fait du sur-place.</summary>
+        float Travel(string name);
     }
 
     /// <summary>Sous-lot V2.9.2 : le composant Animation derrière <see cref="IClipPlayer"/> (comportement d'avant inchangé).</summary>
@@ -58,6 +61,14 @@ namespace EdS.Game
         }
 
         public void Stop() => _animation.Stop();
+
+        public float Travel(string name)
+        {
+            AnimationClip clip = _animation.GetClip(name);
+            if (clip == null) return 0f;
+            Vector3 v = clip.averageSpeed;
+            return Mathf.Sqrt(v.x * v.x + v.z * v.z);
+        }
     }
 
     /// <summary>
@@ -76,6 +87,7 @@ namespace EdS.Game
         private float[] _weight;
         private float[] _target;
         private float[] _length;
+        private float[] _travel;
         private float _rate = 4f;
         private int _current = -1;
 
@@ -113,20 +125,28 @@ namespace EdS.Game
             motion._weight = new float[usable.Count];
             motion._target = new float[usable.Count];
             motion._length = new float[usable.Count];
+            motion._travel = new float[usable.Count];
+            // Sous-lot V2.15 : pieds posés sur le relief (OnAnimatorIK de HumanMotionDriver), sauf sur un PC modeste ou un téléphone.
+            bool feet = !DeviceQuality.Light;
             motion._preset = new bool[usable.Count];
             for (int i = 0; i < usable.Count; i++)
             {
                 AnimationClipPlayable playable = AnimationClipPlayable.Create(motion._graph, usable[i]);
                 playable.SetApplyFootIK(true);
+                if (feet) playable.SetApplyPlayableIK(true);
                 motion._graph.Connect(playable, 0, motion._mixer, i);
                 motion._mixer.SetInputWeight(i, 0f);
                 playable.Pause();
                 motion._playables.Add(playable);
                 motion._length[i] = usable[i].length;
+                Vector3 v = usable[i].averageSpeed;
+                motion._travel[i] = Mathf.Sqrt(v.x * v.x + v.z * v.z);
             }
             motion._graph.Play();
             HumanMotionDriver driver = animator.gameObject.AddComponent<HumanMotionDriver>();
             driver.Motion = motion;
+            driver.Animator = animator;
+            driver.Feet = feet;
             // L'attente d'abord, sans fondu : jamais de pose en T à l'apparition.
             if (motion._index.ContainsKey("Idle")) motion.CrossFade("Idle", 0f);
             motion.Tick(0f);
@@ -167,6 +187,47 @@ namespace EdS.Game
             if (Has(name)) _playables[_index[name]].SetSpeed(speed);
         }
 
+        public float Travel(string name) => Has(name) ? _travel[_index[name]] : 0f;
+
+        /// <summary>
+        /// Sous-lot V2.15 : mélange de deux cycles (marche et course) : <paramref name="b"/> pèse <paramref name="t"/>, <paramref name="a"/> le
+        /// reste, les autres s'éteignent en fondu ; chacun à sa cadence. Le cycle qui entre part à la même phase que l'autre (pieds ensemble).
+        /// </summary>
+        public void Blend(string a, string b, float t, float rateA, float rateB, float fade)
+        {
+            if (!Has(a) || !Has(b) || a == b)
+            {
+                CrossFade(a, fade);
+                SetSpeed(a, rateA);
+                return;
+            }
+            int ia = _index[a], ib = _index[b];
+            t = Mathf.Clamp01(t);
+            _current = -2;   // un fondu suivant (attente, geste) part toujours
+            _rate = fade > 0.01f ? 1f / fade : 1000f;
+            foreach (int k in _active) _target[k] = 0f;
+            Enter(ia, ib);
+            Enter(ib, ia);
+            _target[ia] = 1f - t;
+            _target[ib] = t;
+            _playables[ia].SetSpeed(rateA);
+            _playables[ib].SetSpeed(rateB);
+            _settled = false;
+        }
+
+        /// <summary>Allume l'entrée <paramref name="i"/> ; éteinte, elle reprend la phase de <paramref name="other"/>.</summary>
+        private void Enter(int i, int other)
+        {
+            if (!_active.Contains(i)) _active.Add(i);
+            if (_weight[i] <= 0f && _weight[other] > 0f && _length[other] > 0f)
+            {
+                double phase = _playables[other].GetTime() / _length[other];
+                _playables[i].SetTime((phase - System.Math.Floor(phase)) * _length[i]);
+            }
+            else if (_weight[i] <= 0f) _playables[i].SetTime(0.0);
+            _playables[i].Play();
+        }
+
         /// <summary>Les boucles sont réglées à l'import des Universal Animation Library (préparation) : rien à faire ici.</summary>
         public void SetLoop(string name, bool loop)
         {
@@ -194,7 +255,7 @@ namespace EdS.Game
             for (int a = _active.Count - 1; a >= 0; a--)
             {
                 int i = _active[a];
-                float w = sum > 0.0001f ? _weight[i] / sum : (i == _current ? 1f : 0f);
+                float w = sum > 0.0001f ? _weight[i] / sum : _target[i];   // V2.15 : la cible (le mélange n'a pas d'entrée « courante »)
                 _mixer.SetInputWeight(i, w);
                 if (_weight[i] <= 0f && _target[i] <= 0f)
                 {

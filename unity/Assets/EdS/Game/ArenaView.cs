@@ -659,7 +659,20 @@ namespace EdS.Game
                     Cubs(v.Id, shown[v.Id]);
                 }
                 if (v.Facing is GroundVector f)
-                    body.transform.rotation = Quaternion.Slerp(body.transform.rotation, Quaternion.Euler(0f, Yaw(f), 0f), snap ? 1f : 0.3f);
+                {
+                    // Sous-lot V2.15 : le corps tourne à vitesse angulaire bornée (selon son allure, une bête plus lentement), lissé, quelle que
+                    // soit la cadence d'images : plus de demi-tour instantané. Le joueur tourne une fois et demie plus vite (réponse aux commandes).
+                    float aim = Yaw(f);
+                    if (snap) body.transform.rotation = Quaternion.Euler(0f, aim, 0f);
+                    else
+                    {
+                        bool styled = _looks.TryGetValue(v.Id, out StyleBody gait);
+                        bool quadruped = (styled && gait.IsBeast) || _wild.ContainsKey(v.Id);
+                        double rate = Locomotion.MaxTurnRate(styled ? gait.Speed : 1f, quadruped) * (v.Id == combat.PlayerId ? 1.5 : 1.0);
+                        float yaw = (float)Locomotion.TurnStep(body.transform.eulerAngles.y, aim, rate, 0.06, Time.deltaTime);
+                        body.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    }
+                }
             }
             bool meShown = shown.TryGetValue(combat.PlayerId, out Vector3 eye);
             foreach (CombatantView v in views)
@@ -763,7 +776,13 @@ namespace EdS.Game
             foreach (OtherState other in combat.Others())
             {
                 if (_looks.TryGetValue(other.Id, out StyleBody look) && _bodies.TryGetValue(other.Id, out GameObject shown) && shown.activeSelf)
+                {
                     look.Update(shown.transform.position, other.View.IsDead, Time.deltaTime, false, other.View.Wander);   // V2.4.1 : broute, fouille
+                    // Sous-lot V2.15 : à moins de 9 m, la tête suit celle du héros (dans la limite du cou) ; sinon le regard erre.
+                    Vector3 hero = _player.transform.position + Vector3.up * 0.6f;
+                    bool near = me.IsPresent && !other.View.IsDead && (hero - shown.transform.position).sqrMagnitude < 81f;
+                    look.Watch(near ? hero : (Vector3?)null);
+                }
                 // Sous-lot V2.4 : les bêtes paisibles galopent ou bondissent quand elles fuient. V2.4.1 : elles broutent, guettent, se tapissent.
                 if (_wild.TryGetValue(other.Id, out WildlifeLook wild) && _bodies.TryGetValue(other.Id, out GameObject animal) && animal.activeSelf)
                     wild.Update(animal.transform.position, other.View.IsDead, Time.deltaTime, other.View.Wander);
@@ -838,7 +857,10 @@ namespace EdS.Game
             Vector3 flat = new Vector3(p.x, 0f, p.z);
             if (flat.magnitude > Radius - 1f) flat = flat.normalized * (Radius - 1f);
             _player.transform.position = new Vector3(flat.x, p.y, flat.z);
-            _player.transform.rotation = Quaternion.Slerp(_player.transform.rotation, Quaternion.Euler(0f, yaw, 0f), 0.25f);
+            // Sous-lot V2.15 : virage borné et lissé, indépendant de la cadence d'images.
+            float turned = (float)Locomotion.TurnStep(_player.transform.eulerAngles.y, yaw, 1.5 * Locomotion.MaxTurnRate(delta.magnitude / Mathf.Max(0.0001f, Time.deltaTime), false),
+                0.06, Time.deltaTime);
+            _player.transform.rotation = Quaternion.Euler(0f, turned, 0f);
         }
     }
 }
