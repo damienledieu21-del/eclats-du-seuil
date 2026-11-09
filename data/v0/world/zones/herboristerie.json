@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.herboristerie",
+    "name": "Herboristerie de Sauge",
+    "scenario": "zones/herboristerie",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Comptoir",
+        "position": [
+          0,
+          -1.4
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "herboristerie",
+        "name": "Herboristerie de Sauge",
+        "min": [
+          -4,
+          -3
+        ],
+        "max": [
+          4,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_herboristerie"
+      }
+    ]
+  }
+}

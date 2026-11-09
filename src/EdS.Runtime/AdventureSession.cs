@@ -661,11 +661,21 @@ namespace EdS.Runtime
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
                 // fermée (heure de fermeture), le marchand le dit et reste un PNJ comme les autres (son dialogue de l'histoire).
+                // Revue Codex de la PR #135 : un employé d'une boutique (Lucie, Tiphaine, Jeannot) sert au comptoir comme le marchand.
+                Merchant? staffShop = World.MerchantOf(npc.Id) is null ? ShopOfStaff(npc) : null;
+                if (staffShop != null && World.CanTrade(staffShop.Id) == TradeRefusal.None)
+                {
+                    bool opened = OpenShop(staffShop.Id);
+                    if (opened) _shopStaff = npc.Id;
+                    return opened;
+                }
                 if (World.MerchantOf(npc.Id) is Merchant merchant)
                 {
                     TradeRefusal shop = World.CanTrade(merchant.Id);
                     if (shop == TradeRefusal.None) return OpenShop(merchant.Id);
-                    if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
+                    // Sous-lot V2.14 : une vraie boutique dit pourquoi elle est fermée et quand elle rouvre.
+                    if (shop == TradeRefusal.Closed && ClosedText(merchant.Id) is string closed) Say("text.v214.shop.closed", closed);
+                    else if (shop == TradeRefusal.Closed) Say("text.ui.trade.closed");
                     if (shop == TradeRefusal.RankTooLow) Say("text.ui.trade.ranktoolow");   // sous-lot V1.7 : la réserve de la guilde
                     if (shop == TradeRefusal.Shunned) Say("text.ui.trade.shunned");   // sous-lot V2.7 : haï de sa faction
                 }
@@ -686,6 +696,15 @@ namespace EdS.Runtime
                 if (done != null) Crafted(done);
                 else Refused(refusal);
                 return refusal == CraftRefusal.None;
+            }
+            // Sous-lot V2.14 : au comptoir d'une boutique (son intérieur), le patron ou le commis sert ; fermée, la boutique dit pourquoi.
+            if (CounterInReach is Merchant counter)
+            {
+                TradeRefusal shop = World.CanTrade(counter.Id);
+                if (shop == TradeRefusal.None) return OpenShop(counter.Id);
+                if (shop == TradeRefusal.Closed && ClosedText(counter.Id) is string closed) Say("text.v214.shop.closed", closed);
+                else Refused(shop);
+                return false;
             }
             if (DoorInReach != null) return UseDoor();
             // Revue Codex de la PR #99 : la nuit, à l'étal d'un marchand fermé qui est rentré devant sa porte (hors de portée), la boutique dit
@@ -709,6 +728,24 @@ namespace EdS.Runtime
             Say("text.ui.nothing_here");
             return false;
         }
+
+        /// <summary>
+        /// Revue Codex de la PR #135 : boutique dont <paramref name="npc"/> est un employé : un PNJ qui ne tient pas de boutique lui-même et
+        /// vit dans l'intérieur d'une boutique (Lucie à l'épicerie, Tiphaine à l'herboristerie, Jeannot à la mercerie) ; null sinon.
+        /// </summary>
+        public Merchant? ShopOfStaff(Npc npc) =>
+            npc?.Zone is string zone && World.Market is EdS.World.Market market && World.MerchantOf(npc.Id) is null
+                ? market.Book.Merchants.FirstOrDefault(m => m.Shop?.Zone == zone)
+                : null;
+
+        /// <summary>Revue Codex de la PR #135 : employé qui a ouvert la boutique (le bouton « Parler » lui parle), ou null.</summary>
+        private string? _shopStaff;
+
+        /// <summary>Sous-lot V2.14 : boutique dont le comptoir (dans cet intérieur) est à portée, ou null.</summary>
+        public Merchant? CounterInReach => Me is GroundVector p && World.Market is EdS.World.Market market
+            ? market.Book.Merchants.Where(m => m.Shop?.Zone == _zone.Id && Within(p, m.Shop!.Counter, Narrative.TalkRange))
+                .OrderBy(m => Distance2(p, m.Shop!.Counter)).FirstOrDefault()
+            : null;
 
         /// <summary>
         /// Sous-lot V2.1 (revue Codex de la PR #99) : marchand dont l'étal (sa place de l'histoire) est à portée alors que lui n'y est pas (la

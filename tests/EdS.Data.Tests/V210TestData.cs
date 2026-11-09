@@ -36,6 +36,7 @@ internal static class V210TestData
 
     public static void MerchantsWithoutLiving(JsonObject root)
     {
+        V214TestData.MerchantsWithoutShops(root);   // sous-lot V2.14 : d'abord ce qui demande la version 6
         JsonObject data = root["data"]!.AsObject();
         data.Remove("prices");
         data.Remove("shocks");

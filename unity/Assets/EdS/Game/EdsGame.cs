@@ -98,6 +98,9 @@ namespace EdS.Game
         private AdventureSession _adventure;
         private readonly AdventureScreens _screens = new AdventureScreens();
         private WorldMarkers _markers;
+
+        /// <summary>Sous-lot V2.14 : la foule du marché a déjà été demandée dans cet espace (ses places calculées une fois).</summary>
+        private bool _crowdAsked;
         private int _shownSession;
 
         /// <summary>Distance au-delà de laquelle une créature de l'aventure n'a pas de barre au-dessus d'elle.</summary>
@@ -262,6 +265,7 @@ namespace EdS.Game
             }
             HumanBodies.HeroLook = _adventure.HeroLook;   // sous-lot V2.16 : l'aspect choisi du héros, repris avec la sauvegarde
             _markers = new WorldMarkers(_adventure);
+            _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
             _shownZone = _adventure.CurrentZone;
             _adventureHelp = null;
             _shownLevel = 0;
@@ -321,6 +325,7 @@ namespace EdS.Game
             {
                 _markers.Destroy();
                 _markers = new WorldMarkers(_adventure);
+                _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
                 PaintedMap.Forget();
                 if (_shownZone != null) _fade = 1f;
             }
@@ -624,6 +629,10 @@ namespace EdS.Game
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)
+            // Sous-lot V2.14 : la foule du grand jour de marché ; ses places ne sont calculées qu'une fois montrée (le premier jour de marché vu).
+            bool crowd = a.MarketCrowdShown;
+            if (crowd || _crowdAsked) _arena.MarketCrowd(crowd && !_crowdAsked ? a.MarketCrowd() : null, crowd);
+            _crowdAsked |= crowd;
             _camera.Blockers = _arena.CameraBlockers;   // sous-lot V2.12.6 : les murs des maisons arrêtent la caméra
             if (_arena.Player != null) _camera.Follow(_arena.Player.position, _playerYaw, _moving, Time.deltaTime, _freeLook);
             // Sous-lot V2.2.1 : le compagnon d'affichage (Pain-d'Épice suit tant qu'il est dans le sac ; ni combat, ni sauvegarde).

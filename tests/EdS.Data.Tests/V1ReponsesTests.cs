@@ -668,7 +668,8 @@ public class V1ReponsesTests : IDisposable
         }
         Assert.Null(a.Shop);
         Assert.NotNull(a.Dialogue);
-        Assert.Equal("Boutique fermée à cette heure.", a.DrainMessages().First());
+        // Sous-lot V2.14 : la boutique dit aussi quand elle rouvre (« Réouverture … à 5 h. »).
+        Assert.StartsWith("Boutique fermée à cette heure. Réouverture ", a.DrainMessages().First(), StringComparison.Ordinal);
         a.CloseDialogue();
         Assert.False(a.OpenShop(merchant));
     }

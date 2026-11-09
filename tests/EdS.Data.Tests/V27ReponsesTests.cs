@@ -46,9 +46,11 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((5, 3, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((6, 3, "0.11.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
-            ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers") }, ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
+            ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers"), ("merchant.boulangerie", "villagers"),   // V2.14 : boutiques et marché
+            ("merchant.auberge", "villagers"), ("merchant.mercerie", "villagers"), ("merchant.fromagere", "villagers"), ("merchant.marchand_epices", "villagers") },
+            ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
         Assert.Equal("liked", ShippedMerchants.Merchant("merchant.receleur").Standing);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));

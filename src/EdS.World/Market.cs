@@ -180,5 +180,19 @@ namespace EdS.World
         }
 
         internal void Forget(int index) => _buyback.RemoveAt(index);
+
+        // Sous-lot V2.14 : marchandages acceptés (marchand : jour et prix en pour cent). Gardés pendant la session comme les lots rachetables,
+        // non sauvegardés : le tirage du jour étant fixe, redemander après un rechargement redonne la même réponse.
+        private readonly SortedDictionary<string, (long Day, int Percent)> _haggles = new SortedDictionary<string, (long, int)>(StringComparer.Ordinal);
+
+        /// <summary>Sous-lot V2.14 : prix marchandé de <paramref name="merchant"/> le jour <paramref name="day"/> (pour cent), ou null.</summary>
+        public int? Haggled(string merchant, long day) =>
+            _haggles.TryGetValue(merchant ?? throw new ArgumentNullException(nameof(merchant)), out (long Day, int Percent) h) && h.Day == day ? h.Percent : (int?)null;
+
+        internal void RecordHaggle(string merchant, long day, int percent)
+        {
+            if (!Book.TryGetMerchant(merchant, out _)) throw new ArgumentException($"Marchand « {merchant} » inconnu.", nameof(merchant));
+            _haggles[merchant] = (day, percent);
+        }
     }
 }

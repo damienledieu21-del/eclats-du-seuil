@@ -7,6 +7,7 @@ using EdS.Data.Items;
 using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Domain.Collections;
+using EdS.Domain.Space;
 
 namespace EdS.Data.Merchants
 {
@@ -33,6 +34,9 @@ namespace EdS.Data.Merchants
 
         /// <summary>Sous-lot V2.10 (schéma 5) : contrecoups des événements du monde sur le stock et les prix, facultatifs.</summary>
         public List<ShockData?>? Shocks { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : le grand jour de marché sur la place du bourg, facultatif.</summary>
+        public MarketDayData? Market { get; set; }
     }
 
     /// <summary>Sous-lot V2.10 (schéma 5) : une règle de prix, avant validation.</summary>
@@ -43,6 +47,9 @@ namespace EdS.Data.Merchants
         public List<string?>? Items { get; set; }
         public List<string?>? Merchants { get; set; }
         public int? Percent { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : la règle ne vaut que pendant le grand jour de marché.</summary>
+        public bool? Market { get; set; }
     }
 
     /// <summary>Sous-lot V2.10 (schéma 5) : un contrecoup, avant validation.</summary>
@@ -108,6 +115,15 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V2.10 (schéma 5) : étal ambulant : fêtes où il est ouvert (absentes : toujours, à ses heures).</summary>
         public List<string?>? Festivals { get; set; }
 
+        /// <summary>Sous-lot V2.14 (schéma 6) : vraie boutique (genre, enseigne, bâtiment, horaires, jours de repos, porte), facultative.</summary>
+        public ShopData? Shop { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : fournées du jour (heures et parts), facultatives.</summary>
+        public List<BakeData?>? Bakes { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : heure de la rupture du soir (tout le frais est parti), avec <see cref="Bakes"/>.</summary>
+        public string? SoldOut { get; set; }
+
         public List<OfferData?>? Offers { get; set; }
     }
 
@@ -126,6 +142,12 @@ namespace EdS.Data.Merchants
 
         /// <summary>Sous-lot V2.10 (schéma 5) : unités au stock plein (absent : sans limite).</summary>
         public int? Stock { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : offre fraîche, qui suit les fournées du marchand.</summary>
+        public bool? Fresh { get; set; }
+
+        /// <summary>Sous-lot V2.14 (schéma 6) : vendue aussi à la porte quand la boutique est fermée (jamais de quête bloquée par un horaire).</summary>
+        public bool? Door { get; set; }
     }
 
     // --- Modèle validé ---------------------------------------------------------------------------------
@@ -152,6 +174,26 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V2.10 : objet revendu par le joueur que le marchand ne vend pas d'ordinaire (prix de revente du marchand).</summary>
         public bool Resold { get; }
 
+        /// <summary>Sous-lot V2.14 : offre fraîche (pains, viennoiseries) : elle suit les fournées du marchand.</summary>
+        public bool Fresh { get; private set; }
+
+        /// <summary>Sous-lot V2.14 : vendue aussi à la porte quand la boutique est fermée.</summary>
+        public bool Door { get; private set; }
+
+        internal MerchantOffer WithShop(bool fresh, bool door)
+        {
+            Fresh = fresh;
+            Door = door;
+            return this;
+        }
+
+        private MerchantOffer Same(MerchantOffer copy)
+        {
+            copy.Fresh = Fresh;
+            copy.Door = Door;
+            return copy;
+        }
+
         internal MerchantOffer(string item, long price, bool always, string? rank = null, int? stock = null, int? left = null, bool resold = false)
         {
             Item = item;
@@ -164,10 +206,10 @@ namespace EdS.Data.Merchants
         }
 
         /// <summary>Sous-lot V2.7 : la même offre à un autre prix (réputation auprès des villageois).</summary>
-        public MerchantOffer WithPrice(long price) => price == Price ? this : new MerchantOffer(Item, price, Always, Rank, Stock, Left, Resold);
+        public MerchantOffer WithPrice(long price) => price == Price ? this : Same(new MerchantOffer(Item, price, Always, Rank, Stock, Left, Resold));
 
         /// <summary>Sous-lot V2.10 : la même offre avec ce qui en reste aujourd'hui.</summary>
-        public MerchantOffer WithLeft(int? left) => left == Left ? this : new MerchantOffer(Item, Price, Always, Rank, Stock, left, Resold);
+        public MerchantOffer WithLeft(int? left) => left == Left ? this : Same(new MerchantOffer(Item, Price, Always, Rank, Stock, left, Resold));
 
         /// <summary>Sous-lot V2.10 : offre d'un objet revendu par le joueur (prix de revente, <paramref name="left"/> unités).</summary>
         public static MerchantOffer ResoldOffer(string item, long price, int left, string? rank = null) => new MerchantOffer(item, price, false, rank, null, left, true);
@@ -211,6 +253,23 @@ namespace EdS.Data.Merchants
 
         /// <summary>Sous-lot V2.10 : étal ambulant ouvert seulement pendant ces fêtes ; vide : toujours (à ses heures).</summary>
         public IReadOnlyList<string> Festivals { get; private set; } = Array.Empty<string>();
+
+        /// <summary>Sous-lot V2.14 : vraie boutique (horaires, enseigne, porte), ou null (étal sans horaires : seulement <see cref="Closed"/>).</summary>
+        public Shop? Shop { get; private set; }
+
+        /// <summary>Sous-lot V2.14 : fournées du jour, dans l'ordre des heures (vide : rien de frais).</summary>
+        public IReadOnlyList<Bake> Bakes { get; private set; } = Array.Empty<Bake>();
+
+        /// <summary>Sous-lot V2.14 : minute de la rupture du soir des offres fraîches (avec <see cref="Bakes"/>).</summary>
+        public int SoldOut { get; private set; }
+
+        internal Merchant WithShop(Shop? shop, IEnumerable<Bake> bakes, int soldOut)
+        {
+            Shop = shop;
+            Bakes = Frozen.List(bakes, nameof(bakes));
+            SoldOut = soldOut;
+            return this;
+        }
 
         internal Merchant WithLiving(int restock, int resale, IEnumerable<string> festivals)
         {
@@ -260,6 +319,15 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V2.10 (schéma 5) : contrecoups des événements du monde.</summary>
         public IReadOnlyList<MarketShock> Shocks { get; private set; } = Array.Empty<MarketShock>();
 
+        /// <summary>Sous-lot V2.14 (schéma 6) : le grand jour de marché, ou null.</summary>
+        public MarketDay? Market { get; private set; }
+
+        internal MerchantBook WithMarket(MarketDay? market)
+        {
+            Market = market;
+            return this;
+        }
+
         internal MerchantBook WithLiving(IEnumerable<PriceRule> prices, IEnumerable<MarketShock> shocks)
         {
             Prices = Frozen.List(prices, nameof(prices));
@@ -304,8 +372,12 @@ namespace EdS.Data.Merchants
         public IReadOnlyList<string> Merchants { get; }
         public int Percent { get; }
 
-        internal PriceRule(string? season, string? weather, IEnumerable<string> items, IEnumerable<string> merchants, int percent)
+        /// <summary>Sous-lot V2.14 : la règle ne vaut que pendant le grand jour de marché (marché ouvert).</summary>
+        public bool Market { get; }
+
+        internal PriceRule(string? season, string? weather, IEnumerable<string> items, IEnumerable<string> merchants, int percent, bool market = false)
         {
+            Market = market;
             Season = season;
             Weather = weather;
             Items = Frozen.List(items, nameof(items));
@@ -400,8 +472,28 @@ namespace EdS.Data.Merchants
         /// (prix d'un objet revendu, de 100 à <see cref="MaxPercent"/> % de sa valeur, 125 par défaut) et <c>festivals</c> (étal ambulant :
         /// fêtes de l'histoire où il est ouvert) facultatifs d'un marchand ; sections facultatives <c>prices</c> (saison, temps, objets,
         /// marchands, pour cent) et <c>shocks</c> (événement du monde et issue sur quelques jours, ou fait connu : stock et prix des objets
-        /// touchés). Les versions 2 à 4 restent lues.</remarks>
-        public const int CurrentSchemaVersion = 5;
+        /// touchés). Les versions 2 à 4 restent lues.
+        /// Version 6 (sous-lot V2.14, vraies boutiques et grand jour de marché) : <c>shop</c> facultatif d'un marchand (genre de
+        /// <see cref="ShopRules.Kinds"/>, enseigne, bâtiment, horaires <c>open</c>/<c>close</c> « HH:MM », jours de repos <c>rest</c>, porte
+        /// <c>door</c> « patron » ou « clerk » et son commis <c>clerk</c>) ; <c>bakes</c> (fournées : heure et part, croissantes, 100 % en
+        /// tout) et <c>soldOut</c> (rupture du soir) facultatifs ; <c>fresh</c> (suit les fournées) et <c>door</c> (vendue à la porte) facultatifs
+        /// d'une offre ; <c>market</c> facultatif d'une règle de prix (seulement pendant le marché) ; section facultative <c>market</c> (fêtes
+        /// hebdomadaires du marché, installation et démontage, foule, criées, étals, marchandage). Les versions 2 à 5 restent lues. Un objet
+        /// dont l'histoire a besoin (objet tenu, livré ou ramassé) vendu par une boutique à horaires se vend aussi à la porte.</remarks>
+        public const int CurrentSchemaVersion = 6;
+
+        /// <summary>Sous-lot V2.14 : version 5, encore lue (sans boutiques ni marché).</summary>
+        public const int Schema5 = 5;
+
+        /// <summary>Sous-lot V2.14 : fournées au plus ; étals, criées au plus ; foule au plus ; jours de marché par semaine au plus (décision de Damien : 1 ou 2).</summary>
+        public const int MaxBakes = 6, MaxStalls = 24, MaxCries = 16, MaxCrowd = 64, MaxMarketDays = 2;
+
+        /// <summary>Sous-lot V2.14 : coordonnée d'un étal au plus (mètres, en valeur absolue).</summary>
+        public const int MaxStallCoordinate = 1000;
+
+        private static readonly Regex StallId = new Regex(@"^stall(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ZoneId = new Regex(@"^zone(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex BuildingId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Sous-lot V2.10 : version 4, encore lue (sans stock vivant ni fêtes).</summary>
         public const int Schema4 = 4;
@@ -443,7 +535,7 @@ namespace EdS.Data.Merchants
             ValidationReport r = report ?? new ValidationReport();
             // Sous-lot V1.9.3b : la version 2 est encore lue (sous-ensemble de la version 3).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema3 || document.SchemaVersion == Schema4
-                ? document.SchemaVersion.Value : CurrentSchemaVersion;
+                || document.SchemaVersion == Schema5 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new MerchantsLoadResult(r, null);
             // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
@@ -487,15 +579,273 @@ namespace EdS.Data.Merchants
             // Sous-lot V2.10 (schéma 5) : prix qui bougent et contrecoups des événements.
             List<PriceRule> prices = CheckPrices(d.Prices, "$.data.prices", items, merchantIds, r, schema);
             List<MarketShock> shocks = CheckShocks(d.Shocks, "$.data.shocks", items, story, merchantIds, r, schema);
+            // Sous-lot V2.14 (schéma 6) : le grand jour de marché ; aucun objet dont l'histoire a besoin bloqué par un horaire.
+            MarketDay? market = CheckMarket(d.Market, "$.data.market", texts, story, merchants, merchantIds, r, schema);
+            CheckDoors(d.Merchants, merchants, story, r);
             if (!r.IsValid || document.ContentVersion is null) return new MerchantsLoadResult(r, null);
-            return new MerchantsLoadResult(r, new MerchantBook(document.SchemaVersion!.Value, document.ContentVersion, values, merchants).WithLiving(prices, shocks));
+            return new MerchantsLoadResult(r, new MerchantBook(document.SchemaVersion!.Value, document.ContentVersion, values, merchants).WithLiving(prices, shocks)
+                .WithMarket(market));
         }
 
-        private static bool Since5(string field, string path, ValidationReport r, int schema)
+        private static bool Since5(string field, string path, ValidationReport r, int schema) => Since(Schema5, field, path, r, schema);
+
+        private static bool Since6(string field, string path, ValidationReport r, int schema) => Since(CurrentSchemaVersion, field, path, r, schema);
+
+        private static bool Since(int version, string field, string path, ValidationReport r, int schema)
         {
-            if (schema >= CurrentSchemaVersion) return true;
-            r.Add(path, ValidationCode.InvalidValue, $"champ « {field} » inconnu en version {schema} du format : version {CurrentSchemaVersion} demandée.");
+            if (schema >= version) return true;
+            r.Add(path, ValidationCode.InvalidValue, $"champ « {field} » inconnu en version {schema} du format : version {version} demandée.");
             return false;
+        }
+
+        /// <summary>Sous-lot V2.14 : minute d'une heure « HH:MM » obligatoire, ou null (erreur au chemin).</summary>
+        private static int? Clock(string? at, string path, string what, ValidationReport r)
+        {
+            if (at is null) { Missing(r, path, what + " « HH:MM »"); return null; }
+            int? minute = ShopRules.MinuteOf(at);
+            if (minute is null) r.Add(path, ValidationCode.InvalidValue, $"heure « {at} » mal formée : « HH:MM » de 00:00 à 23:59.");
+            return minute;
+        }
+
+        private static bool Text(string? key, string path, string what, TextCatalog texts, ValidationReport r)
+        {
+            if (key is null) { Missing(r, path, what); return false; }
+            if (texts.Has(key)) return true;
+            r.Add(path, ValidationCode.UnknownReference, $"texte « {key} » absent des textes ({texts.Language}).");
+            return false;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 (schéma 6) : la boutique d'un marchand : genre connu, enseigne (texte), bâtiment bien formé (facultatif), horaires
+        /// d'ouverture d'une fenêtre non vide, jours de repos (de 0 à 6, une fois chacun, au plus 6 : au moins un jour ouvert), porte
+        /// (« patron » ou « clerk », avec le texte du commis pour « clerk »). Avec les moments de fermeture <c>closed</c>, au moins une minute
+        /// ouverte dans la semaine.
+        /// </summary>
+        private static Shop? CheckShop(ShopData x, string p, IReadOnlyList<string> closed, TextCatalog texts, ValidationReport r)
+        {
+            bool ok = true;
+            if (x.Kind is null) { Missing(r, p + ".kind", string.Join(", ", ShopRules.Kinds)); ok = false; }
+            else if (!ShopRules.Kinds.Contains(x.Kind)) { r.Add(p + ".kind", ValidationCode.UnknownReference, $"genre de boutique inconnu « {x.Kind} » ; possibles : {string.Join(", ", ShopRules.Kinds)}."); ok = false; }
+            ok &= Text(x.Sign, p + ".sign", "enseigne (clé de texte)", texts, r);
+            if (x.Building != null && (x.Building.Length > 64 || !BuildingId.IsMatch(x.Building)))
+            { r.Add(p + ".building", ValidationCode.InvalidValue, $"bâtiment « {x.Building} » mal formé : minuscules, chiffres et « _ »."); ok = false; }
+            // L'intérieur et son comptoir vont ensemble ; l'intérieur existe et relie au monde (vérifié avec les zones : ZoneValidator, tests).
+            if ((x.Zone is null) != (x.Counter is null)) { r.Add(p + (x.Zone is null ? ".zone" : ".counter"), ValidationCode.MissingField, "intérieur (« zone ») et comptoir (« counter ») vont ensemble."); ok = false; }
+            else if (x.Zone != null && (x.Zone.Length > 64 || !ZoneId.IsMatch(x.Zone))) { r.Add(p + ".zone", ValidationCode.InvalidValue, $"zone « {x.Zone} » mal formée : « zone.… »."); ok = false; }
+            else if (x.Counter != null && (x.Counter.X is null || x.Counter.Z is null || Math.Abs(x.Counter.X.Value.Raw) > MaxStallCoordinate * EdS.Domain.Numerics.Fixed.Scale
+                || Math.Abs(x.Counter.Z.Value.Raw) > MaxStallCoordinate * EdS.Domain.Numerics.Fixed.Scale))
+            { r.Add(p + ".counter", ValidationCode.OutOfRange, $"comptoir hors de [-{MaxStallCoordinate}, {MaxStallCoordinate}] m."); ok = false; }
+            // Horaires facultatifs, ensemble : absents, la boutique est ouverte jour et nuit (Sauge, décision de Damien du 30 octobre 2026).
+            int? open = 0, close = ShopRules.MinutesPerDay;
+            if (x.Open != null || x.Close != null)
+            {
+                open = Clock(x.Open, p + ".open", "ouverture", r);
+                close = Clock(x.Close, p + ".close", "fermeture", r);
+            }
+            if (open is null || close is null) ok = false;
+            else if (open == close) { r.Add(p + ".close", ValidationCode.InvalidValue, "fermeture à l'heure de l'ouverture : boutique jamais ouverte."); ok = false; }
+            var rest = new List<int>();
+            if (x.Rest != null)
+            {
+                if (x.Rest.Count < 1 || x.Rest.Count >= WorldCalendar.DaysPerWeek)
+                { r.Add(p + ".rest", ValidationCode.OutOfRange, $"de 1 à {WorldCalendar.DaysPerWeek - 1} jours de repos (absent : aucun)."); ok = false; }
+                else
+                    for (int i = 0; i < x.Rest.Count; i++)
+                    {
+                        int? d = x.Rest[i];
+                        if (d is null || d < 0 || d >= WorldCalendar.DaysPerWeek) { r.Add($"{p}.rest[{i}]", ValidationCode.OutOfRange, $"jour de la semaine hors de [0, {WorldCalendar.DaysPerWeek - 1}]."); ok = false; }
+                        else if (rest.Contains(d.Value)) { r.Add($"{p}.rest[{i}]", ValidationCode.DuplicateId, $"jour {d} déjà donné."); ok = false; }
+                        else rest.Add(d.Value);
+                    }
+            }
+            DoorService door = DoorService.None;
+            if (x.Door != null)
+            {
+                if (x.Door == "patron") door = DoorService.Patron;
+                else if (x.Door == "clerk") door = DoorService.Clerk;
+                else { r.Add(p + ".door", ValidationCode.InvalidValue, $"porte « {x.Door} » inconnue ; possibles : patron, clerk."); ok = false; }
+            }
+            if (door == DoorService.Clerk) ok &= Text(x.Clerk, p + ".clerk", "commis (clé de texte)", texts, r);
+            else if (x.Clerk != null) { r.Add(p + ".clerk", ValidationCode.InvalidValue, "un commis ne va qu'avec « door »: « clerk »."); ok = false; }
+            if (!ok) return null;
+            var shop = new Shop(x.Kind!, x.Sign!, x.Building, open!.Value, close!.Value, rest, door, x.Clerk)
+                .WithInterior(x.Zone, x.Counter is null ? default : new GroundVector(x.Counter.X!.Value, x.Counter.Z!.Value));
+            // Au moins une minute ouverte dans la semaine, avec les moments de fermeture.
+            bool any = false;
+            for (int day = 0; day < WorldCalendar.DaysPerWeek && !any; day++)
+                for (int m = 0; m < ShopRules.MinutesPerDay && !any; m += 1)
+                    any = shop.IsOpen(day, m) && !closed.Contains(StoryValidator.Phases[PhaseIndex(m)]);
+            if (!any) { r.Add(p, ValidationCode.InvalidValue, "boutique jamais ouverte : horaires, jours de repos et moments de fermeture ne laissent aucune minute."); return null; }
+            return shop;
+        }
+
+        /// <summary>Rang dans <see cref="StoryValidator.Phases"/> du moment de la journée à la minute <paramref name="minute"/>.</summary>
+        private static int PhaseIndex(int minute)
+        {
+            string phase = minute < 5 * 60 ? "night" : minute < 7 * 60 ? "dawn" : minute < 19 * 60 ? "day" : minute < 22 * 60 ? "dusk" : "night";
+            return StoryValidator.Phases.ToList().IndexOf(phase);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 (schéma 6) : fournées : de 1 à <see cref="MaxBakes"/>, heures strictement croissantes, parts de 1 à 100 % qui font
+        /// 100 % en tout ; rupture du soir après la dernière fournée (même jour).
+        /// </summary>
+        private static List<Bake>? CheckBakes(List<BakeData?> data, string? soldOut, string p, ValidationReport r, out int soldOutMinute)
+        {
+            soldOutMinute = 0;
+            var bakes = new List<Bake>();
+            if (data.Count < 1 || data.Count > MaxBakes) { r.Add(p + ".bakes", ValidationCode.OutOfRange, $"de 1 à {MaxBakes} fournées."); return null; }
+            bool ok = true;
+            int sum = 0, last = -1;
+            for (int i = 0; i < data.Count; i++)
+            {
+                string bp = $"{p}.bakes[{i}]";
+                if (data[i] is not BakeData b) { Missing(r, bp, "fournée"); ok = false; continue; }
+                int? at = Clock(b.At, bp + ".at", "heure de la fournée", r);
+                bool good = at != null & Percent(b.Percent, bp + ".percent", 1, 100, "part de la fournée", r);
+                if (at != null && at <= last) { r.Add(bp + ".at", ValidationCode.InvalidValue, "fournées dans l'ordre des heures, deux à la même heure interdites."); good = false; }
+                if (!good) { ok = false; continue; }
+                last = at!.Value;
+                sum += b.Percent!.Value;
+                bakes.Add(new Bake(at.Value, b.Percent.Value));
+            }
+            if (ok && sum != 100) { r.Add(p + ".bakes", ValidationCode.InvalidValue, $"parts des fournées : {sum} % en tout, 100 % demandés."); ok = false; }
+            int? end = Clock(soldOut, p + ".soldOut", "rupture du soir", r);
+            if (end is null) return null;
+            if (ok && end <= last) { r.Add(p + ".soldOut", ValidationCode.InvalidValue, "rupture du soir avant la dernière fournée."); ok = false; }
+            soldOutMinute = end.Value;
+            return ok ? bakes : null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 (schéma 6) : le grand jour de marché : de 1 à <see cref="MaxMarketDays"/> fêtes hebdomadaires de l'histoire, sur des
+        /// jours différents, chacune pendant les heures du marché ; installation, ouverture, fermeture et fin du démontage dans l'ordre ; foule de 0 à <see cref="MaxCrowd"/> ; criées
+        /// (textes) ; étals d'identifiants uniques, de genre connu, chacun tenu par un marchand différent (facultatif), ouvert pendant ces
+        /// fêtes ; marchandage (palier connu, prix de 50 à 99 %, chance et bonus).
+        /// </summary>
+        private static MarketDay? CheckMarket(MarketDayData? x, string p, TextCatalog texts, StoryBook story, List<Merchant> merchants, HashSet<string> merchantIds,
+            ValidationReport r, int schema)
+        {
+            if (x is null || !Since6("market", p, r, schema)) return null;
+            bool ok = true;
+            var festivals = new List<Festival>();
+            if (x.Festivals is null) { Missing(r, p + ".festivals", "fêtes hebdomadaires du marché"); ok = false; }
+            else if (x.Festivals.Count < 1 || x.Festivals.Count > MaxMarketDays)
+            { r.Add(p + ".festivals", ValidationCode.OutOfRange, $"de 1 à {MaxMarketDays} jours de marché par semaine."); ok = false; }
+            else
+                for (int i = 0; i < x.Festivals.Count; i++)
+                {
+                    string fp = $"{p}.festivals[{i}]";
+                    Festival? f = story.Festivals.FirstOrDefault(y => y.Id == x.Festivals[i]);
+                    if (f is null) { r.Add(fp, ValidationCode.UnknownReference, $"fête inconnue « {x.Festivals[i]} »."); ok = false; }
+                    else if (f.Weekday is null) { r.Add(fp, ValidationCode.InvalidValue, $"fête « {f.Id} » annuelle : le marché se tient chaque semaine (« weekday »)."); ok = false; }
+                    else if (festivals.Any(g => g.Weekday == f.Weekday)) { r.Add(fp, ValidationCode.DuplicateId, $"jour de la semaine {f.Weekday} déjà jour de marché."); ok = false; }
+                    else festivals.Add(f);
+                }
+            int? setup = Clock(x.Setup, p + ".setup", "installation des étals", r), open = Clock(x.Open, p + ".open", "ouverture du marché", r),
+                close = Clock(x.Close, p + ".close", "fermeture du marché", r), teardown = Clock(x.Teardown, p + ".teardown", "fin du démontage", r);
+            if (setup is null || open is null || close is null || teardown is null) ok = false;
+            else if (!(setup < open && open < close && close < teardown))
+            { r.Add(p, ValidationCode.InvalidValue, "heures dans l'ordre demandées : installation, ouverture, fermeture, fin du démontage (même jour)."); ok = false; }
+            else
+                foreach (Festival f in festivals)
+                    if (f.From < open || f.To > close)
+                    { r.Add(p + ".festivals", ValidationCode.InvalidValue, $"fête « {f.Id} » hors des heures du marché ({x.Open} à {x.Close}) : elle se tient pendant le marché."); ok = false; }
+            int crowd = x.Crowd ?? 0;
+            if (crowd < 0 || crowd > MaxCrowd) { r.Add(p + ".crowd", ValidationCode.OutOfRange, $"foule hors de [0, {MaxCrowd}]."); ok = false; }
+            var cries = new List<string>();
+            if (x.Cries != null)
+            {
+                if (x.Cries.Count > MaxCries) { r.Add(p + ".cries", ValidationCode.LimitExceeded, $"au plus {MaxCries} criées."); ok = false; }
+                else
+                    for (int i = 0; i < x.Cries.Count; i++)
+                    {
+                        if (!Text(x.Cries[i], $"{p}.cries[{i}]", "criée (clé de texte)", texts, r)) ok = false;
+                        else if (cries.Contains(x.Cries[i]!)) { r.Add($"{p}.cries[{i}]", ValidationCode.DuplicateId, "criée déjà donnée."); ok = false; }
+                        else cries.Add(x.Cries[i]!);
+                    }
+            }
+            var stalls = new List<MarketStall>();
+            if (x.Stalls is null) { Missing(r, p + ".stalls", "étals du marché"); ok = false; }
+            else if (x.Stalls.Count < 1 || x.Stalls.Count > MaxStalls) { r.Add(p + ".stalls", ValidationCode.OutOfRange, $"de 1 à {MaxStalls} étals."); ok = false; }
+            else
+                for (int i = 0; i < x.Stalls.Count; i++)
+                {
+                    string sp = $"{p}.stalls[{i}]";
+                    if (x.Stalls[i] is not StallData s) { Missing(r, sp, "étal"); ok = false; continue; }
+                    bool good = true;
+                    if (s.Id is null) { Missing(r, sp + ".id", "identifiant « stall.… »"); good = false; }
+                    else if (s.Id.Length > 64 || !StallId.IsMatch(s.Id)) { r.Add(sp + ".id", ValidationCode.InvalidValue, $"identifiant « {s.Id} » mal formé : « stall.… »."); good = false; }
+                    else if (stalls.Any(o => o.Id == s.Id) || x.Stalls.Take(i).Any(o => o?.Id == s.Id)) { r.Add(sp + ".id", ValidationCode.DuplicateId, $"étal « {s.Id} » déjà décrit."); good = false; }
+                    if (s.Kind is null) { Missing(r, sp + ".kind", string.Join(", ", ShopRules.StallKinds)); good = false; }
+                    else if (!ShopRules.StallKinds.Contains(s.Kind)) { r.Add(sp + ".kind", ValidationCode.UnknownReference, $"genre d'étal inconnu « {s.Kind} » ; possibles : {string.Join(", ", ShopRules.StallKinds)}."); good = false; }
+                    if (s.Position?.X is null || s.Position.Z is null) { Missing(r, sp + ".position", "place [x, z] sur la place du bourg"); good = false; }
+                    else if (Math.Abs(s.Position.X.Value.Raw) > MaxStallCoordinate * (long)EdS.Domain.Numerics.Fixed.Scale
+                        || Math.Abs(s.Position.Z.Value.Raw) > MaxStallCoordinate * (long)EdS.Domain.Numerics.Fixed.Scale)
+                    { r.Add(sp + ".position", ValidationCode.OutOfRange, $"place hors de [-{MaxStallCoordinate}, {MaxStallCoordinate}] m."); good = false; }
+                    if (s.Sign != null) good &= Text(s.Sign, sp + ".sign", "enseigne (clé de texte)", texts, r);
+                    if (s.Merchant != null)
+                    {
+                        Merchant? m = merchants.FirstOrDefault(y => y.Id == s.Merchant);
+                        if (!merchantIds.Contains(s.Merchant)) { r.Add(sp + ".merchant", ValidationCode.UnknownReference, $"marchand inconnu « {s.Merchant} »."); good = false; }
+                        else if (x.Stalls.Take(i).Any(o => o?.Merchant == s.Merchant)) { r.Add(sp + ".merchant", ValidationCode.DuplicateId, $"marchand « {s.Merchant} » tient déjà un étal."); good = false; }
+                        else if (m != null && m.Festivals.Count > 0 && !festivals.All(f => m.Festivals.Contains(f.Id)))
+                        { r.Add(sp + ".merchant", ValidationCode.InvalidValue, $"marchand « {s.Merchant} » pas ouvert tous les jours de marché (ses fêtes)."); good = false; }
+                    }
+                    if (good) stalls.Add(new MarketStall(s.Id!, s.Merchant, s.Kind!, new GroundVector(s.Position!.X!.Value, s.Position.Z!.Value), s.Sign));
+                    else ok = false;
+                }
+            HaggleRule? haggle = null;
+            if (x.Haggle is HaggleData h)
+            {
+                string hp = p + ".haggle";
+                bool good = true;
+                if (h.Standing is null) { Missing(r, hp + ".standing", "palier demandé"); good = false; }
+                else if (Reputations.TierIndex(h.Standing) < 0) { r.Add(hp + ".standing", ValidationCode.UnknownReference, $"palier inconnu « {h.Standing} » ; possibles : {string.Join(", ", Reputations.Tiers)}."); good = false; }
+                good &= Percent(h.Percent, hp + ".percent", MinPercent, 99, "prix marchandé", r);
+                good &= Percent(h.Chance, hp + ".chance", 1, 100, "chance de réussite", r);
+                if (h.Bonus != null) good &= Percent(h.Bonus, hp + ".bonus", 0, 100, "chance de plus par palier", r);
+                if (good) haggle = new HaggleRule(h.Standing!, h.Percent!.Value, h.Chance!.Value, h.Bonus ?? 0);
+                else ok = false;
+            }
+            return ok ? new MarketDay(festivals.Select(f => f.Id), setup!.Value, open!.Value, close!.Value, teardown!.Value, crowd, cries, stalls, haggle) : null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 (décision de Damien : les quêtes ne sont jamais bloquées par des horaires) : un objet dont l'histoire a besoin (tenu
+        /// pour une condition, livré, ramassé) vendu par une boutique à horaires reste toujours trouvable : en vente permanente chez un
+        /// marchand toujours ouvert (sans horaires ni jour de repos, ni moment de fermeture, sans condition d'ouverture), ou à la porte d'une
+        /// boutique (<c>door</c>, sans limite de stock et pas fraîche) ; sinon, chaque offre de boutique qui le vend sans la porte est refusée.
+        /// </summary>
+        private static void CheckDoors(List<MerchantData?>? data, List<Merchant> merchants, StoryBook story, ValidationReport r)
+        {
+            if (data is null) return;
+            IEnumerable<StoryCondition> conditions = story.Dialogues.SelectMany(d => d.Entries.SelectMany(e => e.Conditions)
+                    .Concat(d.Nodes.SelectMany(n => n.Choices.SelectMany(c => c.Conditions).Concat(n.Lines.SelectMany(l => l.Conditions)))))
+                .Concat(story.Quests.SelectMany(q => q.Requires));
+            var needed = new HashSet<string>(conditions.Where(c => c.Kind == ConditionKind.HasItem).Select(c => c.Id), StringComparer.Ordinal);
+            foreach (Objective o in story.Quests.SelectMany(q => q.Steps).Select(s => s.Objective))
+                if (o.Kind == ObjectiveKind.Deliver || o.Kind == ObjectiveKind.Collect) needed.Add(o.Id);
+            bool AlwaysOpen(Merchant m) => m.Closed.Count == 0 && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null
+                && (m.Shop is null || (m.Shop.AllDay && m.Shop.Rest.Count == 0));
+            // Toujours trouvable : en vente permanente chez un marchand toujours ouvert, ou à la porte d'une boutique (quelqu'un y répond toujours).
+            // Relecture indépendante de la PR #135 : à la porte, seulement une offre sans limite et pas fraîche (une offre fraîche est à zéro
+            // avant la première fournée, après la rupture et le jour de repos ; un stock fini peut s'épuiser).
+            needed.RemoveWhere(item => merchants.Any(m => m.Offers.Any(o => o.Item == item && o.Always
+                && (AlwaysOpen(m) || (o.Door && !o.Fresh && o.Stock is null && m.Shop?.Door is DoorService d && d != DoorService.None
+                    && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null)))));
+            for (int i = 0; i < data.Count; i++)
+            {
+                if (!(data[i] is MerchantData md) || merchants.FirstOrDefault(m => m.Id == md.Id) is not Merchant m || m.Shop is null) continue;
+                for (int k = 0; k < m.Offers.Count; k++)
+                {
+                    MerchantOffer o = m.Offers[k];
+                    if (!needed.Contains(o.Item) || (o.Door && !o.Fresh && o.Stock is null)) continue;
+                    int index = md.Offers?.FindIndex(x => x?.Item == o.Item) ?? k;
+                    r.Add($"$.data.merchants[{i}].offers[{index}].door", ValidationCode.InvalidValue,
+                        $"objet « {o.Item} » utile à l'histoire, vendu dans une boutique à horaires : à vendre aussi à la porte (« door »: true, et « shop.door »), sans limite de stock et pas frais.");
+                }
+            }
         }
 
         private static bool Percent(int? value, string path, int min, int max, string what, ValidationReport r)
@@ -537,7 +887,10 @@ namespace EdS.Data.Merchants
                 string p = $"{path}[{i}]";
                 if (data[i] is not PriceRuleData x) { Missing(r, p, "règle de prix"); continue; }
                 bool ok = true;
-                if (x.Season is null && x.Weather is null) { r.Add(p, ValidationCode.MissingField, "une saison (« season ») ou un temps (« weather »), ou les deux."); ok = false; }
+                bool market = x.Market == true;
+                if (x.Market != null && !Since6("market", p + ".market", r, schema)) ok = false;
+                if (x.Season is null && x.Weather is null && !market)
+                { r.Add(p, ValidationCode.MissingField, "une saison (« season »), un temps (« weather ») ou le jour de marché (« market »), ou plusieurs."); ok = false; }
                 if (x.Season != null && WorldCalendar.SeasonIndex(x.Season) < 0)
                 { r.Add(p + ".season", ValidationCode.UnknownReference, $"saison inconnue « {x.Season} » ; possibles : {string.Join(", ", WorldCalendar.Seasons)}."); ok = false; }
                 if (x.Weather != null && !StoryValidator.Weathers.Contains(x.Weather))
@@ -545,7 +898,7 @@ namespace EdS.Data.Merchants
                 List<string>? named = Named(x.Items, p + ".items", id => items.TryGetItem(id, out _), "objet", r);
                 List<string>? who = Named(x.Merchants, p + ".merchants", merchants.Contains, "marchand", r);
                 ok &= Percent(x.Percent, p + ".percent", MinPercent, MaxPercent, "pour cent du prix", r);
-                if (ok && named != null && who != null) rules.Add(new PriceRule(x.Season, x.Weather, named, who, x.Percent!.Value));
+                if (ok && named != null && who != null) rules.Add(new PriceRule(x.Season, x.Weather, named, who, x.Percent!.Value, market));
             }
             return rules;
         }
@@ -676,7 +1029,14 @@ namespace EdS.Data.Merchants
                         if (!Since5("stock", op + ".stock", r, schema)) offerOk = false;
                         else if (o.Stock < 1 || o.Stock > MaxStock) { r.Add(op + ".stock", ValidationCode.OutOfRange, $"stock hors de [1, {MaxStock}] (absent : sans limite)."); offerOk = false; }
                     }
-                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value, o.Rank, o.Stock));
+                    // Sous-lot V2.14 (schéma 6) : offre fraîche (fournées, stock fini) et vendue à la porte (boutique avec quelqu'un à la porte).
+                    if (o.Fresh != null && !Since6("fresh", op + ".fresh", r, schema)) offerOk = false;
+                    else if (o.Fresh == true && (m.Bakes is null || o.Stock is null))
+                    { r.Add(op + ".fresh", ValidationCode.InvalidValue, "une offre fraîche demande des fournées (« bakes ») et un stock (« stock »)."); offerOk = false; }
+                    if (o.Door != null && !Since6("door", op + ".door", r, schema)) offerOk = false;
+                    else if (o.Door == true && (m.Shop?.Door is null))
+                    { r.Add(op + ".door", ValidationCode.InvalidValue, "une offre à la porte demande une boutique avec quelqu'un à la porte (« shop.door »)."); offerOk = false; }
+                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value, o.Rank, o.Stock).WithShop(o.Fresh == true, o.Door == true));
                     else ok = false;
                 }
 
@@ -714,8 +1074,27 @@ namespace EdS.Data.Merchants
                 else if (Named(m.Festivals, p + ".festivals", story.HasFestival, "fête", r) is List<string> f) festivals = f;
                 else ok = false;
             }
+            // Sous-lot V2.14 (schéma 6) : vraie boutique et fournées.
+            Shop? shop = null;
+            if (m.Shop != null)
+            {
+                if (!Since6("shop", p + ".shop", r, schema)) ok = false;
+                else if (festivals.Count > 0) { r.Add(p + ".shop", ValidationCode.InvalidValue, "un étal ambulant (« festivals ») n'a pas de boutique."); ok = false; }
+                else if ((shop = CheckShop(m.Shop, p + ".shop", closed, texts, r)) is null) ok = false;
+            }
+            List<Bake>? bakes = new List<Bake>();
+            int soldOut = 0;
+            if (m.Bakes != null)
+            {
+                if (!Since6("bakes", p + ".bakes", r, schema)) ok = false;
+                else if (m.Offers?.Any(o => o?.Fresh == true) != true) { r.Add(p + ".bakes", ValidationCode.InvalidValue, "des fournées sans offre fraîche (« fresh »)."); ok = false; }
+                else if ((bakes = CheckBakes(m.Bakes, m.SoldOut, p, r, out soldOut)) is null) ok = false;
+            }
+            else if (m.SoldOut != null) { r.Add(p + ".soldOut", ValidationCode.InvalidValue, "« soldOut » ne va qu'avec des fournées (« bakes »)."); ok = false; }
+            if (shop != null && shop.Door != DoorService.None && !offers.Any(o => o.Door))
+            { r.Add(p + ".shop.door", ValidationCode.InvalidValue, "quelqu'un à la porte, mais aucune offre à la porte (« door »: true)."); ok = false; }
             return ok ? new Merchant(m.Id!, m.Npc!, m.Greeting!, m.SellPercent!.Value, closed, m.Daily!.Value, offers, m.Rank, m.Fact, m.Faction ?? "villagers", m.Standing)
-                .WithLiving(m.Restock ?? DefaultRestock, m.Resale ?? DefaultResale, festivals) : null;
+                .WithLiving(m.Restock ?? DefaultRestock, m.Resale ?? DefaultResale, festivals).WithShop(shop, bakes ?? new List<Bake>(), soldOut) : null;
         }
 
         /// <summary>Sous-lot V1.9.3b : faits posés par l'histoire (effets <c>setFact</c> des réponses, des étapes et des quêtes).</summary>

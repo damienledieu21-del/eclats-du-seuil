@@ -604,6 +604,33 @@ namespace EdS.Game
         /// </summary>
         public void Village(int minute) => _villageMinute = minute;
 
+        /// <summary>Sous-lot V2.14 : la foule du grand jour de marché (habillée une fois, à la première demande), et si elle est sur la place.</summary>
+        private readonly List<Villager> _marketCrowd = new List<Villager>();
+        private bool _marketCrowdBuilt;
+
+        /// <summary>
+        /// Sous-lot V2.14 : montre ou cache la foule du marché <paramref name="spots"/> (AdventureSession.MarketCrowd) ; elle est habillée
+        /// une fois (comme les villageois du bourg), puis seulement montrée pendant le marché.
+        /// </summary>
+        public void MarketCrowd(IReadOnlyList<StyleVillager> spots, bool shown)
+        {
+            if (!_marketCrowdBuilt)
+            {
+                if (!shown || spots == null || spots.Count == 0) return;   // habillée seulement le premier jour de marché vu
+                _marketCrowdBuilt = true;
+                int before = _villagers.Count;
+                Villagers(spots);
+                for (int i = before; i < _villagers.Count; i++) _marketCrowd.Add(_villagers[i]);
+            }
+            // Hors du marché, la foule est « partie » (Away) : la nuit et la pluie gardent ensuite leurs règles (VillageDay.Shown).
+            foreach (Villager v in _marketCrowd)
+            {
+                if (v.Body == null || v.Away == !shown) continue;
+                v.Away = !shown;
+                v.Body.gameObject.SetActive(Shown(v));
+            }
+        }
+
         private readonly List<Villager> _villagers = new List<Villager>();
 
         /// <summary>Allure (m/s) des passants.</summary>
@@ -653,7 +680,9 @@ namespace EdS.Game
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
                 // Revue Codex de la PR #109 : le corps d'un PNJ qui parle ne fait pas de courses (le cœur le place).
                 bool speaker = v.Id != null && v.Id.StartsWith("npc.", System.StringComparison.Ordinal);
-                VillagerPlan plan = VillageDay.Plan(v, speaker ? null : _errands);   // relecture de la PR #103 : une fois, au placement
+                // Sous-lot V2.14 : la foule du marché reste devant les étals (pas de courses).
+                bool market = v.Id != null && v.Id.StartsWith("marche/", System.StringComparison.Ordinal);
+                VillagerPlan plan = market ? VillageDay.Plan(v, null) : VillageDay.Plan(v, speaker ? null : _errands);   // relecture de la PR #103 : une fois, au placement
                 var placed = new Villager { Data = v, Body = body.transform, Look = look, Yaw = (float)v.Yaw, Height = size, Playing = v.Activity,
                     Plan = plan, Goal = plan.Post, Speaker = speaker };
                 _villagers.Add(placed);

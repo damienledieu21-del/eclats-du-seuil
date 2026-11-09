@@ -126,6 +126,8 @@ namespace EdS.Game
                     case InteriorFurniture.Altar: Altar(o.Id, x0, z0, x1, z1, stone, stoneTile); break;
                     case InteriorFurniture.Pew: Pew(o.Id, x0, z0, x1, z1, map, darkWood, woodTile); break;
                     case InteriorFurniture.Candelabra: Candelabra(o.Id, x0, z0, x1, z1); break;
+                    case InteriorFurniture.Oven: Oven(o.Id, x0, z0, x1, z1, map, height, stone, stoneTile, darkWood, woodTile); break;   // sous-lot V2.14
+                    case InteriorFurniture.Kneader: Kneader(o.Id, x0, z0, x1, z1, wood, darkWood, woodTile); break;
                     case InteriorFurniture.Statue: Box(o.Id + " (socle)", new Vector3((x0 + x1) / 2f, 0.225f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.45f, z1 - z0), stone, stoneTile); break;
                 }
             }
@@ -388,6 +390,72 @@ namespace EdS.Game
                 Vector3 at = alongX ? new Vector3(x0 + s, (h - 0.06f) / 2f, c.z) : new Vector3(c.x, (h - 0.06f) / 2f, z0 + s);
                 Part(t, id + " (montant)", at, alongX ? new Vector3(0.1f, h - 0.06f, z1 - z0 - 0.02f) : new Vector3(x1 - x0 - 0.02f, h - 0.06f, 0.1f), wood, woodTile);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.14 (décision de Damien du 9 novembre 2026, boulanger de métier) : le four à pain du fournil : socle de pierre, voûte de
+        /// briques en dôme, bouche voûtée qui rougeoie (braises et feu du pack), sole à hauteur de travail, conduit jusqu'au plafond ; deux
+        /// pains qui cuisent à la bouche.
+        /// </summary>
+        private void Oven(string id, float x0, float z0, float x1, float z1, AdventureMap map, float height, Material stone, float stoneTile, Material darkWood, float woodTile)
+        {
+            Transform t = Furniture(id, x0, z0, x1, z1, height);
+            (int X, int Z) f = Inward(map, x0, z0, x1, z1);
+            var inward = new Vector3(f.X, 0f, f.Z);
+            var c = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            float w = x1 - x0, d = z1 - z0, floor = (float)InteriorRules.OvenFloor;
+            Material brick = Tinted(stone, new Color(0.72f, 0.42f, 0.3f), "brique du four");
+            Material soot = Tinted(stone, new Color(0.22f, 0.2f, 0.19f), "suie du four");
+            // Socle, sole, dôme de briques (une sphère aplatie), conduit.
+            Part(t, id + " (socle)", c + Vector3.up * (floor / 2f), new Vector3(w, floor, d), stone, stoneTile);
+            GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dome.name = id + " (voûte)";
+            Object.Destroy(dome.GetComponent<Collider>());
+            dome.transform.SetParent(t, true);
+            dome.transform.position = c + Vector3.up * floor;
+            dome.transform.localScale = new Vector3(w * 0.95f, 1.5f, d * 0.95f);
+            dome.GetComponent<Renderer>().sharedMaterial = brick;
+            Part(t, id + " (conduit)", c - inward * (Mathf.Min(w, d) * 0.25f) + Vector3.up * ((floor + 0.6f + height) / 2f), new Vector3(0.45f, height - floor - 0.6f, 0.45f), brick, stoneTile);
+            // La bouche, côté pièce : arc de pierre noirci, braises qui rougeoient, feu du pack, deux miches qui dorent.
+            float reach = (f.X != 0 ? w : d) / 2f;
+            Vector3 mouth = c + inward * (reach - 0.02f) + Vector3.up * (floor + 0.28f);
+            Part(t, id + " (bouche)", mouth, f.X != 0 ? new Vector3(0.06f, 0.5f, 0.62f) : new Vector3(0.62f, 0.5f, 0.06f), soot, stoneTile);
+            GameObject embers = Block(id + " (braises)", mouth - inward * 0.02f + Vector3.down * 0.18f, f.X != 0 ? new Vector3(0.05f, 0.08f, 0.5f) : new Vector3(0.5f, 0.08f, 0.05f),
+                Glow(new Color(1f, 0.42f, 0.1f), EmberGlow));
+            embers.transform.SetParent(t, true);
+            Effects.Ambient(StyleVfx.ForgeFire, t, mouth - inward * 0.15f);
+            Material crust = Plain(new Color(0.62f, 0.38f, 0.16f));
+            for (int i = -1; i <= 1; i += 2)
+            {
+                GameObject loaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                loaf.name = id + " (miche qui cuit)";
+                Object.Destroy(loaf.GetComponent<Collider>());
+                loaf.transform.SetParent(t, true);
+                loaf.transform.position = mouth + inward * 0.18f + (f.X != 0 ? Vector3.forward : Vector3.right) * (i * 0.16f) + Vector3.down * 0.16f;
+                loaf.transform.localScale = new Vector3(0.24f, 0.12f, 0.2f);
+                loaf.GetComponent<Renderer>().sharedMaterial = crust;
+            }
+            // La pelle à enfourner (InteriorRules : « /pelle ») est posée contre le four par l'aménagement.
+            _ = darkWood;
+            _ = woodTile;
+        }
+
+        /// <summary>Sous-lot V2.14 : le pétrin : coffre de bois sur pieds, couvercle relevé, la pâte qui lève dedans (farine sur le rebord).</summary>
+        private void Kneader(string id, float x0, float z0, float x1, float z1, Material wood, Material darkWood, float woodTile)
+        {
+            Transform t = Furniture(id, x0, z0, x1, z1, 0.95f);
+            var c = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            float w = x1 - x0, d = z1 - z0;
+            Part(t, id + " (cuve)", c + Vector3.up * 0.68f, new Vector3(w, 0.36f, d), wood, woodTile);
+            foreach ((float sx, float sz) in new[] { (1f, 1f), (1f, -1f), (-1f, 1f), (-1f, -1f) })
+                Part(t, id + " (pied)", c + new Vector3(sx * (w / 2f - 0.08f), 0.25f, sz * (d / 2f - 0.08f)), new Vector3(0.08f, 0.5f, 0.08f), darkWood, woodTile);
+            GameObject dough = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dough.name = id + " (pâte qui lève)";
+            Object.Destroy(dough.GetComponent<Collider>());
+            dough.transform.SetParent(t, true);
+            dough.transform.position = c + Vector3.up * 0.86f;
+            dough.transform.localScale = new Vector3(w * 0.8f, 0.14f, d * 0.75f);
+            dough.GetComponent<Renderer>().sharedMaterial = Plain(new Color(0.93f, 0.88f, 0.76f));
         }
 
         /// <summary>
@@ -674,6 +742,23 @@ namespace EdS.Game
                 case InteriorProp.Door:
                     Add(new Vector3(0f, h / 2f, 0f), new Vector3(DoorWidth - 0.1f, h, 0.08f), dark);
                     break;
+                case InteriorProp.Bread:
+                {
+                    // Sous-lot V2.14 : une miche dorée et un pain long (sans modèle), croûte rayée de farine.
+                    Material crust = Plain(new Color(0.7f, 0.45f, 0.2f));
+                    Add(new Vector3(-fit * 0.18f, fit * 0.14f, 0f), new Vector3(fit * 0.42f, fit * 0.26f, fit * 0.36f), crust);
+                    Add(new Vector3(fit * 0.22f, fit * 0.1f, 0f), new Vector3(fit * 0.5f, fit * 0.18f, fit * 0.16f), Plain(new Color(0.78f, 0.55f, 0.27f)));
+                    Add(new Vector3(-fit * 0.18f, fit * 0.28f, 0f), new Vector3(fit * 0.3f, 0.01f, 0.02f), Plain(new Color(0.95f, 0.92f, 0.85f)));
+                    break;
+                }
+                case InteriorProp.Cloth:
+                {
+                    // Sous-lot V2.14 : trois rouleaux de toile de couleurs (mercerie).
+                    Color[] dyes = { new Color(0.55f, 0.18f, 0.16f), new Color(0.2f, 0.32f, 0.52f), new Color(0.82f, 0.76f, 0.6f) };
+                    for (int i = 0; i < 3; i++)
+                        Add(new Vector3((i - 1) * fit * 0.3f, fit * 0.12f, 0f), new Vector3(fit * 0.26f, fit * 0.24f, fit * 0.6f), Plain(dyes[(i + StyleRules.Variant(piece.Id, 3)) % 3]));
+                    break;
+                }
                 default:
                     Object.Destroy(holder);
                     return null;

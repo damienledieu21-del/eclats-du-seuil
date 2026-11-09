@@ -906,7 +906,8 @@ namespace EdS.Game
             _you.rectTransform.SetAsLastSibling();
             _place.Value = a.PlaceLabel;   // sous-lot V1.8 : niveau des créatures du lieu (zones en mélange)
             string festival = a.FestivalText;   // sous-lot V2.10 : la fête du bourg, en cours ou du jour
-            _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay + (festival != null ? " · " + festival : "");
+            string market = a.MarketLine;   // sous-lot V2.14 : le grand jour de marché (installation, marché et criée sur la place, démontage)
+            _placeSub.Value = a.ZoneName + " · " + a.TimeOfDay + (festival != null ? " · " + festival : "") + (market != null ? " · " + market : "");
             _mapHint.Value = a.Text("text.ui.map.hint");
 
             // Sous-lot V1.6 : la quête suivie (choisie dans le journal), sinon la première principale en cours.

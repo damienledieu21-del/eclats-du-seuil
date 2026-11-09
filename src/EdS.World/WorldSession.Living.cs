@@ -78,7 +78,7 @@ namespace EdS.World
         public int MarketPercent(string merchant, string item)
         {
             MerchantBook book = NeedMarket().Book;
-            if (book.Prices.Count == 0 && book.Shocks.Count == 0) return 100;
+            if (book.Prices.Count == 0 && book.Shocks.Count == 0 && HagglePercent(merchant) == 100) return 100;
             // Revue Codex de la PR #120 (tour 4) : produit exact de tous les facteurs (entier sans borne : au plus 64 facteurs de 300, aucun
             // débordement possible), arrondi vers le bas une seule fois, puis borné à [MinPercent, MaxPercent] : une réduction qui suit des
             // majorations n'est jamais faussée par un plafond intermédiaire (16 × 300 % puis 24 × 50 % : 256 %), et l'ordre des règles est sans effet.
@@ -87,7 +87,8 @@ namespace EdS.World
             string season = Season;
             WeatherState weather = Weather;
             foreach (PriceRule rule in book.Prices)
-                if (rule.Touches(merchant, item) && (rule.Season is null || rule.Season == season) && (rule.Weather is null || WorldWeather.Matches(weather.Kind, rule.Weather)))
+                if (rule.Touches(merchant, item) && (rule.Season is null || rule.Season == season) && (rule.Weather is null || WorldWeather.Matches(weather.Kind, rule.Weather))
+                    && (!rule.Market || MarketPhase == MarketPhase.Open))   // sous-lot V2.14 : règle du jour de marché
                 {
                     product *= rule.Percent;
                     factors++;
@@ -98,6 +99,13 @@ namespace EdS.World
                     product *= shock.PricePercent;
                     factors++;
                 }
+            // Sous-lot V2.14 : marchandage accepté du jour, facteur de plus (toujours borné ensuite, jamais sous la valeur de base : BuyPrice).
+            int haggle = HagglePercent(merchant);
+            if (haggle != 100)
+            {
+                product *= haggle;
+                factors++;
+            }
             BigInteger percent = BigInteger.Divide(product, BigInteger.Pow(100, factors));
             if (percent < MerchantValidator.MinPercent) return MerchantValidator.MinPercent;
             return percent > MerchantValidator.MaxPercent ? MerchantValidator.MaxPercent : (int)percent;
@@ -128,7 +136,8 @@ namespace EdS.World
             if (offer != null && offer.Stock is null) return null;
             int full = offer?.Stock ?? 0;
             (int missing, int resold) = LineToday(StockLine(merchant, item), full, m.Restock);
-            return checked(Math.Max(0, FullToday(merchant, item, full) - missing) + resold);
+            // Sous-lot V2.14 : une offre fraîche suit les fournées (rien avant la première, rupture le soir).
+            return checked(Math.Max(0, ShelfNow(m, offer, FullToday(merchant, item, full)) - missing) + resold);
         }
 
         /// <summary>Offres du jour : celles du tirage, à leur prix du jour et avec ce qui en reste, puis les objets revendus en vitrine.</summary>
@@ -137,8 +146,14 @@ namespace EdS.World
             Market market = NeedMarket();
             Merchant m = market.Book.Merchant(merchant);
             var list = new List<MerchantOffer>();
+            // Sous-lot V2.14 : boutique fermée, à la porte : seulement les offres prévues pour la porte, ni vitrine ni tirage du jour.
+            bool door = m.Shop != null && AtDoor(merchant);
             foreach (MerchantOffer o in market.Stock(merchant, Zone.Time.Day))
-                list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
+                if (!door || o.Door) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
+            if (door)
+                foreach (MerchantOffer o in m.Offers)
+                    if (o.Door && list.All(x => x.Item != o.Item)) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
+            if (door) return list.AsReadOnly();
             // Ce que le joueur a revendu et qui n'est pas dans le tirage du jour : au prix de l'offre s'il en a une, sinon à son prix de revente.
             foreach (SavedStock line in _character.Stock)
             {

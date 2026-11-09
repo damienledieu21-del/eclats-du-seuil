@@ -500,3 +500,25 @@ Ton souhait du 9 novembre 2026 : « designer des choses nous-mêmes ». Guide co
 | 29.8 | Quitter, relancer, continuer la partie | Le héros garde son aspect (sauvegarde v17) | [ ] | |
 | 29.9 | Échap, Réglages, « Mon personnage… », Annuler | Rien ne change | [ ] | |
 | 29.10 | Choisir le corps « Gaspard » dans le créateur | Ton héros prend le personnage MakeHuman ; les autres choix sont grisés | [ ] | |
+
+## 30. Vraies boutiques et grand jour de marché (V2.14)
+
+Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil → Essai des boutiques** avancent la partie (hors du mode Jeu) au prochain mercredi de marché (6 h 30, 9 h, 18 h), au jeudi (10 h), au mardi (5 h, 6 h, 19 h 15), au lundi (10 h) ou au dimanche (10 h). Le calendrier : le jour 0 est un lundi ; marché le **mercredi** et le **samedi**.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 30.1 | Au bourg, regarder les maisons des boutiques | Une **enseigne** de bois pendue à côté de la porte de la boulangerie, de l'épicerie, de l'herboristerie, de la mercerie et de l'auberge ; l'étiquette dit son nom et « ouverte », « fermée », « fermée, on répond à la porte » ou « fermée : jour de repos » | [ ] | |
+| 30.2 | « mardi, 5 h » : la cheminée du fournil, puis entrer dans la boulangerie (porte au sud de la grande maison, à droite de Firmin) | De la **fumée** sort de la cheminée (Firmin pétrit depuis 2 h) ; dedans : le **four voûté** dont la bouche rougeoie, le **pétrin** et sa pâte, les étagères de pains, Bastien au comptoir ; la boutique dit « Fermé : Bastien, le commis vous répond à la porte » et « Première fournée à 5 h 30 » ; rien en stock | [ ] | |
+| 30.3 | « mardi, 6 h », au comptoir | « Pains chauds, tout juste sortis du four ! » ; pain de campagne, miche de seigle, croissants, brioches en stock (un peu moins chaque heure : le bourg achète aussi) | [ ] | |
+| 30.4 | « mardi, 19 h 15 » | « Tout est parti : prochaine fournée demain à 5 h 30 » ; les offres fraîches en rupture (rouge) | [ ] | |
+| 30.5 | « lundi, 10 h », boulangerie | Jour de repos : Bastien répond à la porte ; le four est éteint, **rien de frais** (le pain de campagne en rupture), seulement le **pain d'épices** qui se garde ; la boutique dit la réouverture mardi à 5 h 30 ; pas de fumée | [ ] | |
+| 30.6 | « dimanche, 10 h », chez Garin puis chez Bertille | « Boutique fermée : jour de repos. Réouverture lundi à 5 h. » ; leur dialogue s'ouvre quand même ; Sauge, elle, reste ouverte (jour et nuit, comme décidé le 30 octobre) | [ ] | |
+| 30.7 | Entrer dans l'épicerie, l'herboristerie, la mercerie | Un comptoir, des étagères garnies (rouleaux de toile à la mercerie, rouet) ; les employés nommés : Lucie (épicerie), Tiphaine (herboristerie), Margot et Jeannot à la table de coupe (mercerie), chacun avec sa réplique et « range la boutique » hors de ses heures ; F au comptoir ouvre la boutique (fermée, elle le dit) | [ ] | |
+| 30.8 | « mercredi, 6 h 30 », place du bourg | Les **étals s'installent** (tables, tentes, sans marchandises) ; Gisèle la fromagère et Ilario, marchand d'épices, sont là mais ne vendent pas encore ; le bandeau dit « Jour de marché : les étals s'installent » | [ ] | |
+| 30.9 | « mercredi, 9 h » | Marchandises sur les huit étals, **foule** plus dense, **criées** dans le bandeau quand tu es sur la place ; fromages et miel chez Gisèle, épices et fruits du Sud chez Ilario, Anseau le colporteur ; potions et herbes à 90 % chez Sauge et Bertille | [ ] | |
+| 30.10 | Chez Gisèle, avec une réputation « appréciée » auprès des villageois | Le bouton **Marchander** : accepté (15 % de moins pour la journée) ou refusé (« c'est mon dernier prix ») ; redemander ne change rien ce jour-là ; « honoré » ou « héros » : plus de chances ; neutre : pas de bouton | [ ] | |
+| 30.11 | « mercredi, 18 h » puis 20 h | On démonte : tables sans marchandises, plus de foule ; à 20 h la place est vide, Gisèle et Ilario repartis | [ ] | |
+| 30.12 | « jeudi, 10 h » | Place calme ; le bandeau de la boutique ou du lieu annonce le prochain marché (samedi) | [ ] | |
+| 30.13 | La forge de Maëlle | Un **atelier couvert** (poteaux et toit d'appentis) au-dessus de l'enclume et de l'établi | [ ] | |
+| 30.14 | Une quête en cours (Firmin, Sauge, Bertille) un jour de repos ou la nuit | La quête n'est jamais bloquée : le PNJ parle ; ce qu'une quête demande d'acheter se trouve toujours (Sauge jour et nuit, ou à la porte) | [ ] | |
+| 30.15 | Ton avis : horaires, jours de repos, fournées, prix du pain, jours et heures du marché, marchandage, enseignes, fumée, foule | — | [ ] | |

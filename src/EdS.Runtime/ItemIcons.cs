@@ -80,7 +80,13 @@ namespace EdS.Runtime
             ("pierre", new[] { "stone", "rock", "gem" }), ("eclat", new[] { "shard", "crystal" }), ("peau", new[] { "hide", "fur", "leather", "skin" }),
             ("fleche", new[] { "arrow" }), ("minerai", new[] { "ore" }), ("herbe", new[] { "herb", "plant" }), ("ferrure", new[] { "iron", "metal", "nail" }),
             ("potion", new[] { "potion" }), ("elixir", new[] { "elixir", "potion" }), ("remede", new[] { "remedy", "potion" }), ("huile", new[] { "oil", "flask" }),
-            ("miche", new[] { "bread" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
+            ("miche", new[] { "bread" }),
+            // Sous-lot V2.14 : boutiques et marché.
+            ("pain", new[] { "bread", "loaf" }), ("croissant", new[] { "croissant", "bread" }), ("brioche", new[] { "brioche", "bread" }),
+            ("chausson", new[] { "pastry", "pie", "bread" }), ("ragout", new[] { "stew", "soup", "food" }), ("cidre", new[] { "cider", "drink", "bottle" }),
+            ("fromage", new[] { "cheese" }), ("miel", new[] { "honey", "jar" }), ("orange", new[] { "orange", "fruit" }), ("tomate", new[] { "tomato", "vegetable" }),
+            ("pasteque", new[] { "watermelon", "melon", "fruit" }), ("citrouille", new[] { "pumpkin", "vegetable" }), ("epices", new[] { "spice", "herb", "powder" }),
+            ("bobine", new[] { "thread", "spool", "yarn" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
             ("carnet", new[] { "notebook", "book" }), ("sac", new[] { "bag", "sack" }), ("bourse", new[] { "pouch", "purse", "bag" }), ("corde", new[] { "rope" }),
             ("seau", new[] { "bucket" }), ("cor", new[] { "horn" }), ("poussiere", new[] { "dust", "powder" }),
         };

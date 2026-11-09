@@ -109,9 +109,15 @@ namespace EdS.World
             GroundVector? atStall = ((INarrativeWorld)this).PlayerPositionIn(npc.Zone);
             bool nearNpc = atNpc is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
             bool nearStall = atStall is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
+            // Sous-lot V2.14 : dans la boutique (son intérieur), au comptoir, on est servi (par le patron ou le commis) comme auprès du marchand.
+            bool atCounter = m.Shop?.Zone is string inside && ((INarrativeWorld)this).PlayerPositionIn(inside) is GroundVector c
+                && !ZonePopulations.Beyond(c, Fixed.Zero, m.Shop.Counter, Fixed.Zero, Narrative.TalkRange);
+            if (atCounter) return TradeStatus(merchant);
             if (!nearNpc && !nearStall) return TradeRefusal.TooFar;
             TradeRefusal status = TradeStatus(merchant);
             if (status == TradeRefusal.Closed) return TradeRefusal.Closed;
+            // Sous-lot V2.14 : fermée, quelqu'un répond à la porte, mais pas à l'étal : devant l'étal, la boutique dit qu'elle est fermée.
+            if (!nearNpc && m.Shop != null && ShopStateOf(m.Id) == ShopState.AtDoor) return TradeRefusal.Closed;
             if (!nearNpc) return TradeRefusal.TooFar;
             return status;
         }
@@ -124,8 +130,16 @@ namespace EdS.World
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             // Sous-lot V2.10 : un étal ambulant n'ouvre que pendant ses fêtes.
-            if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id))) return TradeRefusal.NotFestival;
-            if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
+            // Sous-lot V2.14 : un jour de marché, ses marchands de passage vendent pendant toutes les heures du marché.
+            if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id)) && !AtMarket(m.Festivals, true)) return TradeRefusal.NotFestival;
+            // Sous-lot V2.14 : une vraie boutique suit ses horaires et son jour de repos ; fermée, quelqu'un répond à la porte (ouverte alors,
+            // mais seulement pour les offres « door » : Stock) ou personne.
+            if (m.Shop != null)
+            {
+                ShopState state = ShopStateOf(m.Id);
+                if (state == ShopState.ClosedHours || state == ShopState.RestDay) return TradeRefusal.Closed;
+            }
+            else if (m.Closed.Contains(Narrative.PhaseId(Zone.Time.Phase))) return TradeRefusal.Closed;
             if (!HasRank(m.Rank)) return TradeRefusal.RankTooLow;
             if (m.Fact != null && !(Narrative ?? throw new InvalidOperationException("Commerce sans histoire.")).Knows(m.Fact)) return TradeRefusal.NotYetOpen;   // sous-lot V1.9.3b : l'étal de Renart, après son aveu
             // Sous-lot V2.7 (réponses de Damien du 7 novembre 2026) : haï de sa faction, le marchand refuse ; le marché noir des bandits ne s'ouvre
@@ -141,6 +155,18 @@ namespace EdS.World
 
         /// <summary>Sous-lot V1.7 : le personnage a au moins le rang de la guilde <paramref name="rank"/> (null : aucun rang demandé).</summary>
         public bool HasRank(string? rank) => rank is null || (Narrative != null && Narrative.GuildRankIndex >= GuildRanks.IndexOf(rank));
+
+        /// <summary>
+        /// Revue Codex de la PR #135 : la boutique est ouverte pour tout le commerce (vente du joueur, rachat, réparation) : comme
+        /// <see cref="CanTrade"/>, mais fermée (<see cref="TradeRefusal.Closed"/>) quand on n'y est servi qu'à la porte. L'achat, lui, passe
+        /// par <see cref="CanTrade"/> et l'offre du moment (à la porte : seulement les offres « door »).
+        /// </summary>
+        public TradeRefusal FullTrade(string merchant)
+        {
+            TradeRefusal open = CanTrade(merchant);
+            if (open != TradeRefusal.None) return open;
+            return AtDoor(merchant) ? TradeRefusal.Closed : TradeRefusal.None;
+        }
 
         /// <summary>
         /// Achète <paramref name="count"/> <paramref name="item"/> à <paramref name="merchant"/>, au prix du jour : boutique ouverte, objet du
@@ -180,7 +206,7 @@ namespace EdS.World
         public TradeRefusal Sell(string merchant, IReadOnlyList<(string Item, int Count)> lots)
         {
             if (lots is null) throw new ArgumentNullException(nameof(lots));
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // sous-lot V2.14 : à la porte, on n'achète rien au joueur
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
             if (lots.Count < 1 || lots.Count > Market.MaxSellLots) return TradeRefusal.InvalidCount;
@@ -239,7 +265,7 @@ namespace EdS.World
         {
             if (place < 0 || place >= Inventory.Stacks.Count) return TradeRefusal.NotEnough;
             ItemStack stack = Inventory.Stacks[place];
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // revue Codex de la PR #135 : à la porte, pas de vente non plus par une place du sac
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
             if (count < 1 || count > Market.MaxCount || (stack.IsUnique && count != 1)) return TradeRefusal.InvalidCount;
@@ -277,7 +303,7 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
         public TradeRefusal BuyBack(string merchant, int index)
         {
-            TradeRefusal open = CanTrade(merchant);
+            TradeRefusal open = FullTrade(merchant);   // revue Codex de la PR #135 : à la porte, seulement les offres prévues (pas de rachat)
             if (open != TradeRefusal.None) return open;
             Market market = NeedMarket();
             if (index < 0 || index >= market.Buyback.Count) return TradeRefusal.NothingToBuyBack;

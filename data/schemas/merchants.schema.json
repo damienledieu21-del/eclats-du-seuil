@@ -20,7 +20,8 @@
         2,
         3,
         4,
-        5
+        5,
+        6
       ]
     },
     "kind": {
@@ -210,6 +211,14 @@
                       "minimum": 1,
                       "maximum": 999,
                       "description": "Sous-lot V2.10 (schéma 5) : unités au stock plein (le stock s'épuise à l'achat et se regagne chaque jour) ; facultatif (sans limite)."
+                    },
+                    "fresh": {
+                      "type": "boolean",
+                      "description": "Sous-lot V2.14 (schéma 6) : offre fraîche qui suit les fournées (stock demandé)."
+                    },
+                    "door": {
+                      "type": "boolean",
+                      "description": "Sous-lot V2.14 (schéma 6) : vendue aussi à la porte quand la boutique est fermée (obligatoire pour un objet utile à l'histoire)."
                     }
                   }
                 }
@@ -236,6 +245,112 @@
                   "pattern": "^festival(\\.[a-z0-9_]+)+$"
                 },
                 "description": "Sous-lot V2.10 (schéma 5) : étal ambulant, ouvert seulement pendant ces fêtes de l'histoire ; facultatif."
+              },
+              "shop": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "sign"
+                ],
+                "description": "Sous-lot V2.14 (schéma 6) : vraie boutique dans une vraie maison : genre, enseigne, bâtiment du bourg, horaires (une fermeture avant l'ouverture passe minuit), jours de repos (0 : lundi … 6 : dimanche), qui répond à la porte quand elle est fermée. Horaires facultatifs, ensemble : absents, ouverte jour et nuit.",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "bakery",
+                      "forge",
+                      "inn",
+                      "tailor",
+                      "herbalist",
+                      "grocer",
+                      "armorer",
+                      "guild",
+                      "stall"
+                    ]
+                  },
+                  "sign": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$"
+                  },
+                  "building": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*$",
+                    "maxLength": 64
+                  },
+                  "open": {
+                    "type": "string",
+                    "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                  },
+                  "close": {
+                    "type": "string",
+                    "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                  },
+                  "rest": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 6
+                    }
+                  },
+                  "door": {
+                    "enum": [
+                      "patron",
+                      "clerk"
+                    ]
+                  },
+                  "clerk": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$"
+                  },
+                  "zone": {
+                    "type": "string",
+                    "pattern": "^zone(\\.[a-z0-9_]+)+$",
+                    "description": "Intérieur de la boutique (on y achète au comptoir), avec counter."
+                  },
+                  "counter": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "Place [x, z] du comptoir dans l'intérieur."
+                  }
+                }
+              },
+              "bakes": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "description": "Sous-lot V2.14 (schéma 6) : fournées du jour (heures croissantes, parts qui font 100 %). Les offres « fresh » suivent : rien avant la première, ce que les villageois achètent jusqu'à la rupture du soir (soldOut).",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "at",
+                    "percent"
+                  ],
+                  "properties": {
+                    "at": {
+                      "type": "string",
+                      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100
+                    }
+                  }
+                }
+              },
+              "soldOut": {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                "description": "Sous-lot V2.14 (schéma 6) : rupture du soir des offres fraîches, après la dernière fournée."
               }
             }
           }
@@ -294,6 +409,10 @@
                 "type": "integer",
                 "minimum": 50,
                 "maximum": 300
+              },
+              "market": {
+                "type": "boolean",
+                "description": "Sous-lot V2.14 (schéma 6) : la règle ne vaut que pendant le grand jour de marché."
               }
             }
           }
@@ -370,6 +489,153 @@
                 "minimum": 50,
                 "maximum": 300
               }
+            }
+          }
+        },
+        "market": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "festivals",
+            "setup",
+            "open",
+            "close",
+            "teardown",
+            "stalls"
+          ],
+          "description": "Sous-lot V2.14 (schéma 6) : grand jour de marché sur la place du bourg, les jours de fêtes hebdomadaires de l'histoire (1 ou 2 par semaine) : installation (setup), marché (open à close, la fête se tient dedans), démontage (jusqu'à teardown). Les marchands de passage du marché sont là de l'installation au démontage et vendent pendant le marché.",
+          "properties": {
+            "festivals": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^festival(\\.[a-z0-9_]+)+$"
+              }
+            },
+            "setup": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+            },
+            "teardown": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+            },
+            "crowd": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64
+            },
+            "cries": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$"
+              }
+            },
+            "stalls": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 24,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "position"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^stall(\\.[a-z0-9_]+)+$",
+                    "maxLength": 64
+                  },
+                  "merchant": {
+                    "type": "string",
+                    "pattern": "^merchant(\\.[a-z0-9_]+)+$"
+                  },
+                  "kind": {
+                    "enum": [
+                      "produce",
+                      "cheese",
+                      "cloth",
+                      "spices",
+                      "pottery",
+                      "fish",
+                      "meat",
+                      "flowers",
+                      "toys",
+                      "exotic",
+                      "honey",
+                      "wine",
+                      "bread",
+                      "tools"
+                    ]
+                  },
+                  "position": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "sign": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$"
+                  }
+                }
+              }
+            },
+            "haggle": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "standing",
+                "percent",
+                "chance"
+              ],
+              "properties": {
+                "standing": {
+                  "enum": [
+                    "hated",
+                    "hostile",
+                    "wary",
+                    "neutral",
+                    "liked",
+                    "honored",
+                    "hero"
+                  ]
+                },
+                "percent": {
+                  "type": "integer",
+                  "minimum": 50,
+                  "maximum": 99
+                },
+                "chance": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "bonus": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
+            },
+            "open": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+            },
+            "close": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
             }
           }
         }

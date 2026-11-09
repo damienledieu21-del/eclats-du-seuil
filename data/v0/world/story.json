@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 13,
   "kind": "story",
-  "contentVersion": "0.24.0-provisoire",
+  "contentVersion": "0.25.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -1448,7 +1448,158 @@
           "festival.moissons",
           "festival.veillee",
           "festival.foire",
-          "festival.marche"
+          "festival.marche",
+          "festival.marche_mercredi"
+        ]
+      },
+      {
+        "id": "npc.commis",
+        "name": "text.v214.npc.commis.name",
+        "position": [
+          -0.25,
+          1.85
+        ],
+        "dialogue": "dialogue.commis",
+        "zone": "zone.boulangerie",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "comptoir",
+            "position": [
+              -0.25,
+              1.85
+            ]
+          },
+          {
+            "at": "19:45",
+            "activity": "rangement",
+            "position": [
+              -0.25,
+              1.85
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.couturiere",
+        "name": "text.v214.npc.couturiere.name",
+        "position": [
+          0.0,
+          1.85
+        ],
+        "dialogue": "dialogue.couturiere",
+        "zone": "zone.mercerie"
+      },
+      {
+        "id": "npc.fromagere",
+        "name": "text.v214.npc.fromagere.name",
+        "position": [
+          -50.5,
+          -5.6
+        ],
+        "dialogue": "dialogue.fromagere",
+        "faction": "villagers",
+        "festivals": [
+          "festival.marche",
+          "festival.marche_mercredi"
+        ]
+      },
+      {
+        "id": "npc.marchand_epices",
+        "name": "text.v214.npc.epices.name",
+        "position": [
+          -61.0,
+          4.2
+        ],
+        "dialogue": "dialogue.marchand_epices",
+        "faction": "villagers",
+        "festivals": [
+          "festival.marche",
+          "festival.marche_mercredi"
+        ]
+      },
+      {
+        "id": "npc.commis_epicerie",
+        "name": "text.v214.npc.commis_epicerie.name",
+        "position": [
+          0.6,
+          1.85
+        ],
+        "dialogue": "dialogue.commis_epicerie",
+        "zone": "zone.epicerie",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "comptoir",
+            "position": [
+              0.6,
+              1.85
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "rangement",
+            "position": [
+              0.6,
+              1.85
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.commis_herboristerie",
+        "name": "text.v214.npc.commis_herboristerie.name",
+        "position": [
+          0.6,
+          1.85
+        ],
+        "dialogue": "dialogue.commis_herboristerie",
+        "zone": "zone.herboristerie",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "comptoir",
+            "position": [
+              0.6,
+              1.85
+            ]
+          },
+          {
+            "at": "21:00",
+            "activity": "rangement",
+            "position": [
+              0.6,
+              1.85
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.commis_mercerie",
+        "name": "text.v214.npc.commis_mercerie.name",
+        "position": [
+          -2.1,
+          -0.3
+        ],
+        "dialogue": "dialogue.commis_mercerie",
+        "zone": "zone.mercerie",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "couture",
+            "position": [
+              -2.1,
+              -0.3
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "rangement",
+            "position": [
+              -2.1,
+              -0.3
+            ]
+          }
         ]
       }
     ],
@@ -20766,6 +20917,383 @@
             ]
           }
         ]
+      },
+      {
+        "id": "dialogue.commis",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "phase",
+                    "id": "dusk"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis"
+                  }
+                ],
+                "text": "text.v214.commis.soir"
+              },
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis"
+                  }
+                ],
+                "text": "text.v214.commis.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis.four",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis.four_reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.couturiere",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.couturiere.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.couturiere"
+                  }
+                ],
+                "text": "text.v214.couturiere.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.couturiere.laine",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.couturiere.laine_reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.fromagere",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.fromagere.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.fromagere"
+                  }
+                ],
+                "text": "text.v214.fromagere.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.fromagere.route",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.fromagere.route_reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.marchand_epices",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.epices.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.marchand_epices"
+                  }
+                ],
+                "text": "text.v214.marchand_epices.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.epices.sud",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.epices.sud_reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_epicerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_epicerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_epicerie"
+                  }
+                ],
+                "text": "text.v214.commis_epicerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_epicerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_epicerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_herboristerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_herboristerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_herboristerie"
+                  }
+                ],
+                "text": "text.v214.commis_herboristerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_herboristerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_herboristerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.commis_mercerie",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v214.commis_mercerie.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.commis_mercerie"
+                  }
+                ],
+                "text": "text.v214.commis_mercerie.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v214.commis_mercerie.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.v214.commis_mercerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
       }
     ],
     "quests": [
@@ -24383,6 +24911,31 @@
           }
         ],
         "rounds": 3
+      },
+      {
+        "id": "festival.marche_mercredi",
+        "name": "text.v214.festival.marche_mercredi",
+        "weekday": 2,
+        "from": "08:00",
+        "to": "12:00",
+        "guests": [
+          {
+            "npc": "npc.habitant",
+            "position": [
+              -55,
+              -2.5
+            ],
+            "activity": "marche"
+          },
+          {
+            "npc": "npc.lison",
+            "position": [
+              -57.5,
+              1.5
+            ],
+            "activity": "colporteur"
+          }
+        ]
       }
     ]
   }
