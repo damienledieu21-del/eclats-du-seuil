@@ -73,12 +73,36 @@ namespace EdS.Game
             float ease = 1f - Mathf.Exp(-4f * dt);
             _yaw = Mathf.Lerp(_yaw, (float)yaw, ease);
             _pitch = Mathf.Lerp(_pitch, (float)pitch, ease);
+            // Un os que l'animation n'a pas réécrit depuis l'image d'avant (marche faite par le code, clip qui ne touche pas la tête) garde
+            // encore notre rotation : elle est retirée avant d'en poser une nouvelle (jamais de tête qui tourne sans fin).
+            Restore(Head, ref _headSet, _headBefore, _headAfter);
+            if (Neck != null) Restore(Neck, ref _neckSet, _neckBefore, _neckAfter);
             if (Mathf.Abs(_yaw) < 0.05f && Mathf.Abs(_pitch) < 0.05f) return;
             Vector3 right = Body.right;
             // Le cou prend la moitié du mouvement, la tête le reste (jamais une tête qui tourne seule sur un cou figé).
             float share = Neck != null ? 0.5f : 1f;
-            if (Neck != null) Neck.rotation = Quaternion.AngleAxis(_yaw * share, Vector3.up) * Quaternion.AngleAxis(_pitch * share, right) * Neck.rotation;
-            Head.rotation = Quaternion.AngleAxis(_yaw * share, Vector3.up) * Quaternion.AngleAxis(_pitch * share, right) * Head.rotation;
+            Quaternion turn = Quaternion.AngleAxis(_yaw * share, Vector3.up) * Quaternion.AngleAxis(_pitch * share, right);
+            if (Neck != null)
+            {
+                _neckBefore = Neck.localRotation;
+                Neck.rotation = turn * Neck.rotation;
+                _neckAfter = Neck.localRotation;
+                _neckSet = true;
+            }
+            _headBefore = Head.localRotation;
+            Head.rotation = turn * Head.rotation;
+            _headAfter = Head.localRotation;
+            _headSet = true;
+        }
+
+        private bool _headSet, _neckSet;
+        private Quaternion _headBefore, _headAfter, _neckBefore, _neckAfter;
+
+        private static void Restore(Transform bone, ref bool set, Quaternion before, Quaternion after)
+        {
+            if (!set) return;
+            set = false;
+            if (Mathf.Abs(Quaternion.Dot(bone.localRotation, after)) > 0.999999f) bone.localRotation = before;
         }
     }
 }
