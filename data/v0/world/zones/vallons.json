@@ -1361,6 +1361,50 @@
         ],
         "to": "zone.souvenir_rupture",
         "toDoor": "reveil"
+      },
+      {
+        "id": "porte_boulangerie",
+        "name": "Boulangerie de Firmin",
+        "position": [
+          -41.25,
+          5
+        ],
+        "to": "zone.boulangerie",
+        "toDoor": "sortie",
+        "building": "maison2"
+      },
+      {
+        "id": "porte_epicerie",
+        "name": "Épicerie de Bertille",
+        "position": [
+          -43,
+          -7
+        ],
+        "to": "zone.epicerie",
+        "toDoor": "sortie",
+        "building": "maison4"
+      },
+      {
+        "id": "porte_herboristerie",
+        "name": "Herboristerie de Sauge",
+        "position": [
+          -59,
+          -20.75
+        ],
+        "to": "zone.herboristerie",
+        "toDoor": "sortie",
+        "building": "maison7"
+      },
+      {
+        "id": "porte_mercerie",
+        "name": "Mercerie de Margot",
+        "position": [
+          -28.5,
+          3
+        ],
+        "to": "zone.mercerie",
+        "toDoor": "sortie",
+        "building": "maison1"
       }
     ],
     "chiefs": [
@@ -1588,7 +1632,10 @@
                 ]
               }
             ],
-            "spreadTo": ["lac", "pre"],
+            "spreadTo": [
+              "lac",
+              "pre"
+            ],
             "haunts": [
               {
                 "like": "loup_echo1",
@@ -1643,7 +1690,9 @@
                 ]
               }
             ],
-            "spreadTo": ["ruines"],
+            "spreadTo": [
+              "ruines"
+            ],
             "haunts": [
               {
                 "like": "loup_echo1",
@@ -1698,7 +1747,9 @@
                 ]
               }
             ],
-            "spreadTo": ["ruines"],
+            "spreadTo": [
+              "ruines"
+            ],
             "haunts": [
               {
                 "like": "loup_echo1",

@@ -12,7 +12,25 @@ namespace EdS.Data.Tests;
 internal static class V214TestData
 {
     /// <summary>Marchands ajoutés en V2.14 (boutiques et étals du marché).</summary>
-    public static readonly string[] Added = Array.Empty<string>();
+    public static readonly string[] Added =
+        { "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices" };
+
+    /// <summary>
+    /// Les marchands sans leurs boutiques (horaires, porte, fournées, offres fraîches et à la porte), en gardant le reste : pour les essais
+    /// d'avant la V2.14 qui ferment un marchand à certains moments (étals sans horaires).
+    /// </summary>
+    public static void WithoutShops(JsonObject root)
+    {
+        foreach (JsonNode? m in root["data"]!["merchants"]!.AsArray())
+        {
+            foreach (string field in new[] { "shop", "bakes", "soldOut" }) m!.AsObject().Remove(field);
+            foreach (JsonNode? o in m!["offers"]!.AsArray())
+            {
+                o!.AsObject().Remove("fresh");
+                o.AsObject().Remove("door");
+            }
+        }
+    }
 
     public static void MerchantsWithoutShops(JsonObject root)
     {

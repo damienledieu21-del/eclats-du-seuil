@@ -253,7 +253,8 @@ namespace EdS.Runtime
         public string? ShopHoursText(string merchant)
         {
             if (!(_market.Book.Merchant(merchant).Shop is EdS.Data.Merchants.Shop shop)) return null;
-            string text = Text(shop.Sign) + " · " + string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.hours"), HourText(shop.Open), HourText(shop.Close));
+            string text = Text(shop.Sign) + " · " + (shop.AllDay ? Text("text.v214.shop.allday")
+                : string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.hours"), HourText(shop.Open), HourText(shop.Close % 1440)));
             if (shop.Rest.Count > 0)
                 text += " · " + string.Format(CultureInfo.InvariantCulture, Text("text.v214.shop.rest"), string.Join(", ", shop.Rest.Select(WeekdayName)));
             return text;
@@ -326,15 +327,14 @@ namespace EdS.Runtime
             get
             {
                 if (!(World.MarketDay is MarketDay md)) return null;
-                EdS.Data.Story.Festival? today = World.MarketFestivalToday;
                 switch (World.MarketPhase)
                 {
-                    case MarketPhase.Setup: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.setup"), HourText(today!.From));
-                    case MarketPhase.Open: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.open"), HourText(Math.Min(today!.To, 1439)));
+                    case MarketPhase.Setup: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.setup"), HourText(md.Open));
+                    case MarketPhase.Open: return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.open"), HourText(md.Close));
                     case MarketPhase.Teardown: return Text("text.v214.market.teardown");
                 }
-                if (World.NextMarketDay() is (long day, EdS.Data.Story.Festival f) && day > World.Zone.Time.Day)
-                    return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.next"), WeekdayName(EdS.Data.Story.WorldCalendar.WeekdayOf(day)), HourText(f.From));
+                if (World.NextMarketDay() is (long day, EdS.Data.Story.Festival _) && day > World.Zone.Time.Day)
+                    return string.Format(CultureInfo.InvariantCulture, Text("text.v214.market.next"), WeekdayName(EdS.Data.Story.WorldCalendar.WeekdayOf(day)), HourText(md.Open));
                 return null;
             }
         }

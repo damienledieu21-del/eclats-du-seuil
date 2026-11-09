@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "values": [
       {
@@ -400,6 +400,70 @@
       {
         "item": "item.livre_de_contes",
         "value": 400
+      },
+      {
+        "item": "item.pain_de_campagne",
+        "value": 10
+      },
+      {
+        "item": "item.miche_de_seigle",
+        "value": 12
+      },
+      {
+        "item": "item.croissant_au_beurre",
+        "value": 8
+      },
+      {
+        "item": "item.brioche_doree",
+        "value": 18
+      },
+      {
+        "item": "item.chausson_aux_pommes",
+        "value": 12
+      },
+      {
+        "item": "item.pain_d_epices",
+        "value": 40
+      },
+      {
+        "item": "item.ragout_de_l_auberge",
+        "value": 45
+      },
+      {
+        "item": "item.cidre_du_verger",
+        "value": 6
+      },
+      {
+        "item": "item.fromage_des_hautes_pierres",
+        "value": 25
+      },
+      {
+        "item": "item.miel_de_bruyere",
+        "value": 60
+      },
+      {
+        "item": "item.orange_du_sud",
+        "value": 35
+      },
+      {
+        "item": "item.tomate_du_sud",
+        "value": 20
+      },
+      {
+        "item": "item.pasteque_du_sud",
+        "value": 80
+      },
+      {
+        "item": "item.citrouille_du_sud",
+        "value": 45
+      },
+      {
+        "item": "item.epices_du_sud",
+        "value": 70
+      },
+      {
+        "item": "item.bobine_de_fil",
+        "value": 12
       }
     ],
     "merchants": [
@@ -524,7 +588,16 @@
         ],
         "faction": "guard",
         "restock": 25,
-        "resale": 140
+        "resale": 140,
+        "shop": {
+          "kind": "armorer",
+          "sign": "text.v214.enseigne.armurerie",
+          "open": "05:00",
+          "close": "22:00",
+          "rest": [
+            6
+          ]
+        }
       },
       {
         "id": "merchant.herboriste",
@@ -567,7 +640,17 @@
         ],
         "faction": "villagers",
         "restock": 50,
-        "resale": 130
+        "resale": 130,
+        "shop": {
+          "kind": "herbalist",
+          "sign": "text.v214.enseigne.herboristerie",
+          "building": "maison7",
+          "zone": "zone.herboristerie",
+          "counter": [
+            0,
+            1.85
+          ]
+        }
       },
       {
         "id": "merchant.epicier",
@@ -606,7 +689,22 @@
         ],
         "faction": "villagers",
         "restock": 50,
-        "resale": 125
+        "resale": 125,
+        "shop": {
+          "kind": "grocer",
+          "sign": "text.v214.enseigne.epicerie",
+          "building": "maison4",
+          "zone": "zone.epicerie",
+          "counter": [
+            0,
+            1.85
+          ],
+          "open": "05:00",
+          "close": "22:00",
+          "rest": [
+            6
+          ]
+        }
       },
       {
         "id": "merchant.guilde",
@@ -792,7 +890,8 @@
           "festival.moissons",
           "festival.veillee",
           "festival.foire",
-          "festival.marche"
+          "festival.marche",
+          "festival.marche_mercredi"
         ],
         "offers": [
           {
@@ -850,6 +949,278 @@
             "stock": 1
           }
         ]
+      },
+      {
+        "id": "merchant.boulangerie",
+        "npc": "npc.colin",
+        "greeting": "text.v214.boulangerie.accueil",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 100,
+        "resale": 110,
+        "shop": {
+          "kind": "bakery",
+          "sign": "text.v214.enseigne.boulangerie",
+          "building": "maison2",
+          "zone": "zone.boulangerie",
+          "counter": [
+            -0.25,
+            1.85
+          ],
+          "open": "05:30",
+          "close": "19:30",
+          "rest": [
+            0
+          ],
+          "door": "clerk",
+          "clerk": "text.v214.commis.colin"
+        },
+        "bakes": [
+          {
+            "at": "05:30",
+            "percent": 60
+          },
+          {
+            "at": "11:00",
+            "percent": 25
+          },
+          {
+            "at": "16:30",
+            "percent": 15
+          }
+        ],
+        "soldOut": "19:00",
+        "offers": [
+          {
+            "item": "item.pain_de_campagne",
+            "price": 15,
+            "always": true,
+            "stock": 40,
+            "fresh": true,
+            "door": true
+          },
+          {
+            "item": "item.miche_de_seigle",
+            "price": 18,
+            "always": true,
+            "stock": 20,
+            "fresh": true
+          },
+          {
+            "item": "item.croissant_au_beurre",
+            "price": 12,
+            "always": true,
+            "stock": 30,
+            "fresh": true
+          },
+          {
+            "item": "item.brioche_doree",
+            "price": 25,
+            "always": true,
+            "stock": 12,
+            "fresh": true
+          },
+          {
+            "item": "item.chausson_aux_pommes",
+            "price": 18,
+            "always": false,
+            "stock": 16,
+            "fresh": true
+          },
+          {
+            "item": "item.pain_d_epices",
+            "price": 60,
+            "always": false,
+            "stock": 8
+          }
+        ]
+      },
+      {
+        "id": "merchant.auberge",
+        "npc": "npc.aubergiste",
+        "greeting": "text.v214.auberge.accueil",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 100,
+        "shop": {
+          "kind": "inn",
+          "sign": "text.v214.enseigne.auberge",
+          "building": "auberge",
+          "open": "06:00",
+          "close": "01:00",
+          "door": "patron"
+        },
+        "offers": [
+          {
+            "item": "item.ragout_de_l_auberge",
+            "price": 70,
+            "always": true,
+            "stock": 10,
+            "door": true
+          },
+          {
+            "item": "item.cidre_du_verger",
+            "price": 9,
+            "always": true,
+            "stock": 30,
+            "door": true
+          },
+          {
+            "item": "item.pain_de_campagne",
+            "price": 18,
+            "always": false,
+            "stock": 10
+          },
+          {
+            "item": "item.fromage_des_hautes_pierres",
+            "price": 40,
+            "always": false,
+            "stock": 6
+          }
+        ]
+      },
+      {
+        "id": "merchant.mercerie",
+        "npc": "npc.couturiere",
+        "greeting": "text.v214.mercerie.accueil",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "tailor",
+          "sign": "text.v214.enseigne.mercerie",
+          "building": "maison1",
+          "zone": "zone.mercerie",
+          "counter": [
+            0,
+            1.85
+          ],
+          "open": "08:00",
+          "close": "18:30",
+          "rest": [
+            0
+          ],
+          "door": "patron"
+        },
+        "offers": [
+          {
+            "item": "item.cape_de_laine",
+            "price": 310,
+            "always": true,
+            "stock": 4,
+            "door": true
+          },
+          {
+            "item": "item.gants_de_cuir",
+            "price": 310,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.braies_de_toile",
+            "price": 310,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.bobine_de_fil",
+            "price": 18,
+            "always": true,
+            "stock": 20
+          },
+          {
+            "item": "item.cape_de_voyageur",
+            "price": 3000,
+            "always": false,
+            "stock": 1
+          }
+        ]
+      },
+      {
+        "id": "merchant.fromagere",
+        "npc": "npc.fromagere",
+        "greeting": "text.v214.fromagere.boutique",
+        "sellPercent": 30,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 100,
+        "festivals": [
+          "festival.marche",
+          "festival.marche_mercredi"
+        ],
+        "offers": [
+          {
+            "item": "item.fromage_des_hautes_pierres",
+            "price": 38,
+            "always": true,
+            "stock": 12
+          },
+          {
+            "item": "item.miel_de_bruyere",
+            "price": 95,
+            "always": false,
+            "stock": 4
+          },
+          {
+            "item": "item.cidre_du_verger",
+            "price": 11,
+            "always": false,
+            "stock": 10
+          }
+        ]
+      },
+      {
+        "id": "merchant.marchand_epices",
+        "npc": "npc.marchand_epices",
+        "greeting": "text.v214.epices.boutique",
+        "sellPercent": 30,
+        "closed": [],
+        "daily": 2,
+        "faction": "villagers",
+        "restock": 100,
+        "festivals": [
+          "festival.marche",
+          "festival.marche_mercredi"
+        ],
+        "offers": [
+          {
+            "item": "item.epices_du_sud",
+            "price": 120,
+            "always": true,
+            "stock": 6
+          },
+          {
+            "item": "item.orange_du_sud",
+            "price": 60,
+            "always": true,
+            "stock": 8
+          },
+          {
+            "item": "item.tomate_du_sud",
+            "price": 35,
+            "always": false,
+            "stock": 8
+          },
+          {
+            "item": "item.pasteque_du_sud",
+            "price": 140,
+            "always": false,
+            "stock": 2
+          },
+          {
+            "item": "item.citrouille_du_sud",
+            "price": 80,
+            "always": false,
+            "stock": 3
+          }
+        ]
       }
     ],
     "prices": [
@@ -903,6 +1274,18 @@
           "item.peau_d_ours"
         ],
         "percent": 120
+      },
+      {
+        "market": true,
+        "items": [
+          "item.potion_de_soin",
+          "item.herbe_de_l_aube"
+        ],
+        "merchants": [
+          "merchant.epicier",
+          "merchant.herboriste"
+        ],
+        "percent": 90
       }
     ],
     "shocks": [
@@ -964,6 +1347,109 @@
         "stockPercent": 0,
         "pricePercent": 100
       }
-    ]
+    ],
+    "market": {
+      "festivals": [
+        "festival.marche",
+        "festival.marche_mercredi"
+      ],
+      "setup": "06:00",
+      "open": "07:00",
+      "close": "17:00",
+      "teardown": "19:00",
+      "crowd": 14,
+      "cries": [
+        "text.v214.criee.1",
+        "text.v214.criee.2",
+        "text.v214.criee.3",
+        "text.v214.criee.4",
+        "text.v214.criee.5",
+        "text.v214.criee.6",
+        "text.v214.criee.7"
+      ],
+      "stalls": [
+        {
+          "id": "stall.fromages",
+          "merchant": "merchant.fromagere",
+          "kind": "cheese",
+          "position": [
+            -50.5,
+            -4.3
+          ],
+          "sign": "text.v214.enseigne.fromages"
+        },
+        {
+          "id": "stall.epices",
+          "merchant": "merchant.marchand_epices",
+          "kind": "spices",
+          "position": [
+            -61.0,
+            3.0
+          ],
+          "sign": "text.v214.enseigne.epices"
+        },
+        {
+          "id": "stall.colporteur",
+          "merchant": "merchant.colporteur",
+          "kind": "exotic",
+          "position": [
+            -57.0,
+            1.8
+          ],
+          "sign": "text.v214.enseigne.colporteur"
+        },
+        {
+          "id": "stall.poteries",
+          "kind": "pottery",
+          "position": [
+            -63.5,
+            -3.0
+          ],
+          "sign": "text.v214.enseigne.poteries"
+        },
+        {
+          "id": "stall.fleurs",
+          "kind": "flowers",
+          "position": [
+            -53.0,
+            2.5
+          ],
+          "sign": "text.v214.enseigne.fleurs"
+        },
+        {
+          "id": "stall.volailles",
+          "kind": "meat",
+          "position": [
+            -66.0,
+            1.5
+          ],
+          "sign": "text.v214.enseigne.volailles"
+        },
+        {
+          "id": "stall.miel",
+          "kind": "honey",
+          "position": [
+            -49.0,
+            0.5
+          ],
+          "sign": "text.v214.enseigne.miel"
+        },
+        {
+          "id": "stall.toiles",
+          "kind": "cloth",
+          "position": [
+            -62.5,
+            -5.5
+          ],
+          "sign": "text.v214.enseigne.toiles"
+        }
+      ],
+      "haggle": {
+        "standing": "liked",
+        "percent": 85,
+        "chance": 35,
+        "bonus": 20
+      }
+    }
   }
 }

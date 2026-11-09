@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.16.0-provisoire",
+  "contentVersion": "0.17.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1759,6 +1759,162 @@
         "bonus": {
           "statusResistance": 8
         }
+      },
+      {
+        "id": "item.pain_de_campagne",
+        "name": "Pain de campagne",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 90,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.miche_de_seigle",
+        "name": "Miche de seigle",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 110,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.croissant_au_beurre",
+        "name": "Croissant au beurre",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 60,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.brioche_doree",
+        "name": "Brioche dorée",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 140,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.chausson_aux_pommes",
+        "name": "Chausson aux pommes",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 100,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.pain_d_epices",
+        "name": "Pain d'épices de Firmin",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 5,
+        "heal": 80,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.ragout_de_l_auberge",
+        "name": "Ragoût de l'auberge",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 5,
+        "heal": 200,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.cidre_du_verger",
+        "name": "Cidre du verger",
+        "icon": "potion_de_soin",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 10,
+        "heal": 50,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.fromage_des_hautes_pierres",
+        "name": "Fromage des Hautes-Pierres",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 5,
+        "heal": 120,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.miel_de_bruyere",
+        "name": "Miel de bruyère",
+        "icon": "remede_de_l_aube",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 5,
+        "heal": 100,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.orange_du_sud",
+        "name": "Orange du Sud",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 5,
+        "heal": 70,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.tomate_du_sud",
+        "name": "Tomate du Sud",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 5,
+        "heal": 40,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.pasteque_du_sud",
+        "name": "Pastèque du Sud",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 2,
+        "heal": 160,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.citrouille_du_sud",
+        "name": "Citrouille du Sud",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 2,
+        "heal": 130,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.epices_du_sud",
+        "name": "Épices du Sud",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "rare",
+        "stack": 20
+      },
+      {
+        "id": "item.bobine_de_fil",
+        "name": "Bobine de fil de lin",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
       }
     ],
     "loot": [

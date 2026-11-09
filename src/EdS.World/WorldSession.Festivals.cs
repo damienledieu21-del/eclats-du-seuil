@@ -48,7 +48,8 @@ namespace EdS.World
         public bool NpcAway(Npc npc)
         {
             if (npc is null) throw new ArgumentNullException(nameof(npc));
-            return npc.Festivals.Count > 0 && !(Festival is Festival f && npc.Festivals.Contains(f.Id));
+            // Sous-lot V2.14 : les marchands de passage du grand jour de marché sont sur la place de l'installation au démontage.
+            return npc.Festivals.Count > 0 && !(Festival is Festival f && npc.Festivals.Contains(f.Id)) && !AtMarket(npc.Festivals, false);
         }
 
         bool INarrativeWorld.NpcAway(Npc npc) => NpcAway(npc);

@@ -7,6 +7,8 @@ using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Simulation.Randomness;
 using EdS.World;
+using EdS.Runtime;
+using EdS.Domain.Space;
 using static EdS.Data.Tests.ScenarioTestData;
 using static EdS.Data.Tests.V11TestData;
 
@@ -344,7 +346,8 @@ public class V214BoutiquesMarcheTests
         // Sans personne à la porte : fermée pour de bon (jour de repos, ou hors des heures).
         JsonObject nobody = WithHerbShop();
         Merchant(nobody, Herboriste)["shop"]!.AsObject().Remove("door");
-        // Sans les potions ni l'herbe de l'Aube (utiles à des quêtes, elles demanderaient la porte).
+        // Sans les potions ni l'herbe de l'Aube (utiles à des quêtes, elles demanderaient la porte), ni l'épicerie à horaires qui en vend aussi.
+        Merchant(nobody, "merchant.epicier").Remove("shop");
         Merchant(nobody, Herboriste)["offers"]!.AsArray().RemoveAt(1);
         Merchant(nobody, Herboriste)["offers"]!.AsArray().RemoveAt(0);
         MerchantBook closedBook = Valid(nobody);
@@ -353,5 +356,267 @@ public class V214BoutiquesMarcheTests
         Assert.Equal(ShopState.ClosedHours, shut.ShopStateOf(Herboriste));
         Assert.Equal(TradeRefusal.Closed, shut.CanTrade(Herboriste));
         Assert.Equal(TradeRefusal.Closed, shut.Buy(Herboriste, Faucille));
+    }
+
+    // --- Contenu livré ------------------------------------------------------------------------------------------------
+
+    private const string Boulangerie = "merchant.boulangerie", Pain = "item.pain_de_campagne", Croissant = "item.croissant_au_beurre";
+    private const string Fromagere = "merchant.fromagere", Fromage = "item.fromage_des_hautes_pierres";
+
+    private static readonly Lazy<StoryBook> Story = new(() => Book(Zone()));
+
+    /// <summary>Au comptoir de la boulangerie (Colin, le commis), le jour <paramref name="day"/> à <paramref name="minute"/>.</summary>
+    private static WorldSession AtBakery(long day, int minute, SavedCharacter? hero = null) =>
+        V231TestData.Inside("zone.boulangerie", TickAt(day, minute) - 1, -0.25, -0.2, Story.Value, hero ?? Hero(10_000));
+
+    private static WorldSession AtMarket(long day, int minute, SavedCharacter? hero = null) => Open(-50.5, -3.0, hero ?? Hero(10_000), day, minute);
+
+    private static SavedCharacter Liked(int reputation, long money = 10_000) =>
+        Hero(money).WithStory(new SavedStory(reputation: new Dictionary<string, int> { ["villagers"] = reputation }));
+
+    [Fact]
+    public void Boutiques_et_marche_livres()
+    {
+        MerchantBook book = ShippedMerchants;
+        Assert.Equal((6, "0.11.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
+            .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
+        // Les vraies boutiques : genre, maison du bourg, intérieur, horaires et jour de repos (0 : lundi … 6 : dimanche).
+        var shops = book.Merchants.Where(m => m.Shop != null).ToDictionary(m => m.Id, m => m.Shop!);
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", Boulangerie, "merchant.auberge", "merchant.mercerie" }, shops.Keys);
+        Assert.Equal(("bakery", "maison2", "zone.boulangerie", 330, 1170, DoorService.Clerk), (shops[Boulangerie].Kind, shops[Boulangerie].Building, shops[Boulangerie].Zone,
+            shops[Boulangerie].Open, shops[Boulangerie].Close, shops[Boulangerie].Door));
+        Assert.Equal(new[] { 0 }, shops[Boulangerie].Rest);
+        // Décisions de Damien du 30 octobre 2026 gardées : Garin et Bertille ouvrent de 5 h à 22 h, Sauge jour et nuit (sans jour de repos).
+        Assert.Equal((300, 1320), (shops["merchant.armurier"].Open, shops["merchant.armurier"].Close));
+        Assert.Equal((300, 1320), (shops["merchant.epicier"].Open, shops["merchant.epicier"].Close));
+        Assert.True(shops["merchant.herboriste"].AllDay);
+        Assert.Empty(shops["merchant.herboriste"].Rest);
+        // L'auberge ferme après minuit (1 h).
+        Assert.Equal((360, 60), (shops["merchant.auberge"].Open, shops["merchant.auberge"].Close));
+        // Les fournées de Firmin : 5 h 30 (60 %), 11 h (25 %), 16 h 30 (15 %) ; rupture à 19 h.
+        Merchant bakery = book.Merchant(Boulangerie);
+        Assert.Equal(new[] { (330, 60), (660, 25), (990, 15) }, bakery.Bakes.Select(b => (b.At, b.Percent)));
+        Assert.Equal(1140, bakery.SoldOut);
+        Assert.All(bakery.Offers.Where(o => o.Item != "item.pain_d_epices"), o => Assert.True(o.Fresh, o.Item));
+        // Le grand jour de marché : mercredi et samedi, de 7 h à 17 h, installation dès 6 h, démontage jusqu'à 19 h.
+        MarketDay market = book.Market!;
+        Assert.Equal(new[] { "festival.marche", "festival.marche_mercredi" }, market.Festivals);
+        Assert.Equal((360, 420, 1020, 1140, 14), (market.Setup, market.Open, market.Close, market.Teardown, market.Crowd));
+        Assert.Equal(new[] { 5, 2 }, market.Festivals.Select(f => Story.Value.Festivals.Single(x => x.Id == f).Weekday!.Value));
+        Assert.Equal(8, market.Stalls.Count);
+        Assert.Equal(new[] { Fromagere, "merchant.marchand_epices", "merchant.colporteur" }, market.Stalls.Where(x => x.Merchant != null).Select(x => x.Merchant));
+        Assert.Equal(("liked", 85, 35, 20), (market.Haggle!.Standing, market.Haggle.Percent, market.Haggle.Chance, market.Haggle.Bonus));
+        Assert.All(market.Cries, c => Assert.True(Texts.Has(c), c));
+        // Chaque boutique avec un intérieur : la zone existe, son comptoir est dans la pièce, hors des meubles.
+        foreach ((string id, Shop shop) in shops.Where(x => x.Value.Zone != null))
+        {
+            ZoneDefinition inside = V231TestData.Interior(shop.Zone!, 0, -1.4);
+            Assert.True(inside.Indoor, id);
+            double cx = shop.Counter.X.Raw / 10000.0, cz = shop.Counter.Z.Raw / 10000.0;
+            var space = inside.Setup.Space!;
+            Assert.InRange(cx, space.Min.X.Raw / 10000.0, space.Max.X.Raw / 10000.0);
+            Assert.InRange(cz, space.Min.Z.Raw / 10000.0, space.Max.Z.Raw / 10000.0);
+            foreach (var o in space.Obstacles)
+                Assert.False(cx > o.Points.Min(p => p.X.Raw) / 10000.0 && cx < o.Points.Max(p => p.X.Raw) / 10000.0
+                    && cz > o.Points.Min(p => p.Z.Raw) / 10000.0 && cz < o.Points.Max(p => p.Z.Raw) / 10000.0, id + " : " + o.Id);
+        }
+    }
+
+    [Fact]
+    public void Le_fournil_de_Firmin_au_fil_de_la_journee()
+    {
+        // Mardi (jour 1), 5 h : pas encore ouvert ; Colin répond à la porte, mais rien n'est encore cuit.
+        WorldSession early = AtBakery(1, 5 * 60);
+        Assert.Equal(ShopState.AtDoor, early.ShopStateOf(Boulangerie));
+        Assert.Equal(new[] { Pain }, early.Stock(Boulangerie).Select(o => o.Item));
+        Assert.Equal(0, early.Left(Boulangerie, Pain));
+        Assert.Equal(TradeRefusal.OutOfStock, early.Buy(Boulangerie, Pain));
+        Assert.Equal(330, early.NextBake(Boulangerie));
+        // 6 h : ouvert, la première fournée est chaude ; on achète au comptoir.
+        WorldSession morning = AtBakery(1, 6 * 60);
+        Assert.Equal(ShopState.Open, morning.ShopStateOf(Boulangerie));
+        Assert.Equal(TradeRefusal.None, morning.CanTrade(Boulangerie));
+        Assert.True(morning.WarmBread(Boulangerie));
+        int first = morning.Left(Boulangerie, Pain)!.Value;
+        Assert.Equal(ShopRules.OnShelf(ShippedMerchants.Merchant(Boulangerie).Bakes, 1140, 40, 360), first);
+        Assert.InRange(first, 20, 24);
+        Assert.Equal(TradeRefusal.None, morning.Buy(Boulangerie, Pain, 3));
+        Assert.Equal(first - 3, morning.Left(Boulangerie, Pain));
+        // 11 h 05 : la deuxième fournée ; 15 h : plus chaude ; 19 h 15 : rupture du soir ; 20 h : fermé, rien à la porte.
+        Assert.True(AtBakery(1, 11 * 60 + 5).WarmBread(Boulangerie));
+        Assert.False(AtBakery(1, 15 * 60).WarmBread(Boulangerie));
+        WorldSession evening = AtBakery(1, 19 * 60 + 15);
+        Assert.Equal(0, evening.Left(Boulangerie, Croissant));
+        Assert.Equal(TradeRefusal.OutOfStock, evening.Buy(Boulangerie, Croissant));
+        Assert.Equal(ShopState.AtDoor, AtBakery(1, 20 * 60).ShopStateOf(Boulangerie));
+        // Lundi (jour 7) : jour de repos ; Colin répond à la porte (le pain de campagne seulement) ; réouverture mardi à 5 h 30.
+        WorldSession monday = AtBakery(7, 10 * 60);
+        Assert.Equal(ShopState.AtDoor, monday.ShopStateOf(Boulangerie));
+        Assert.Equal(new[] { Pain }, monday.Stock(Boulangerie).Select(o => o.Item));
+        Assert.Equal((8L, 330), monday.NextOpening(Boulangerie));
+        Assert.Equal(TradeRefusal.None, monday.Buy(Boulangerie, Pain));
+        string before = Snapshot(monday);
+        Assert.Equal(TradeRefusal.NotForSale, monday.Buy(Boulangerie, Croissant));
+        Assert.Equal(before, Snapshot(monday));
+        // Le lendemain, tout est revenu (stock plein regagné chaque jour).
+        Assert.Equal(first, AtBakery(8, 6 * 60, monday.Save().Character!).Left(Boulangerie, Pain));
+    }
+
+    [Fact]
+    public void Garin_et_Bertille_ferment_le_dimanche()
+    {
+        foreach (string merchant in new[] { "merchant.armurier", "merchant.epicier" })
+        {
+            (double x, double z) = Near(merchant);
+            WorldSession sunday = Open(x, z, Hero(1000), 6, 10 * 60);
+            Assert.Equal(ShopState.RestDay, sunday.ShopStateOf(merchant));
+            Assert.Equal(TradeRefusal.Closed, sunday.CanTrade(merchant));
+            Assert.Equal((7L, 300), sunday.NextOpening(merchant));
+            Assert.Equal(TradeRefusal.None, Open(x, z, Hero(1000), 5, 10 * 60).CanTrade(merchant));
+        }
+        // Sauge, ouverte jour et nuit, tous les jours.
+        Assert.Equal(ShopState.Open, Open(-65.2, -6.4, Hero(1000), 6, 10 * 60).ShopStateOf(Herboriste));
+    }
+
+    [Fact]
+    public void Le_grand_jour_de_marche_s_installe_puis_se_demonte()
+    {
+        Npc gisele = Story.Value.Npc("npc.fromagere");
+        // Mercredi (jour 2) : installation à 6 h 30 ; la fromagère est là, mais ne vend pas encore.
+        WorldSession setup = AtMarket(2, 6 * 60 + 30);
+        Assert.Equal(MarketPhase.Setup, setup.MarketPhase);
+        Assert.False(setup.NpcAway(gisele));
+        Assert.Equal(TradeRefusal.NotFestival, setup.TradeStatus(Fromagere));
+        Assert.Null(setup.MarketCry);
+        // 9 h : le marché bat son plein, criées et étals ouverts ; 15 h (après la fête du matin) : encore ouvert.
+        WorldSession open = AtMarket(2, 9 * 60);
+        Assert.Equal(MarketPhase.Open, open.MarketPhase);
+        Assert.Equal(TradeRefusal.None, open.CanTrade(Fromagere));
+        Assert.NotNull(open.MarketCry);
+        Assert.Equal(TradeRefusal.None, open.Buy(Fromagere, Fromage));
+        Assert.Equal(TradeRefusal.None, AtMarket(2, 15 * 60).CanTrade(Fromagere));
+        Assert.Null(AtMarket(2, 15 * 60).Festival);   // la fête (animation) est finie, le marché continue
+        // 18 h : on démonte ; 20 h : la place est calme, la fromagère repartie.
+        WorldSession teardown = AtMarket(2, 18 * 60);
+        Assert.Equal(MarketPhase.Teardown, teardown.MarketPhase);
+        Assert.False(teardown.NpcAway(gisele));
+        Assert.Equal(TradeRefusal.NotFestival, teardown.CanTrade(Fromagere));
+        WorldSession night = AtMarket(2, 20 * 60);
+        Assert.Equal(MarketPhase.Calm, night.MarketPhase);
+        Assert.True(night.NpcAway(gisele));
+        // Jeudi : calme ; prochain marché samedi (jour 5), où l'on vend aussi l'après-midi.
+        WorldSession thursday = AtMarket(3, 10 * 60);
+        Assert.Equal(MarketPhase.Calm, thursday.MarketPhase);
+        Assert.True(thursday.NpcAway(gisele));
+        Assert.Equal(5L, thursday.NextMarketDay()!.Value.Day);
+        Assert.Equal(TradeRefusal.None, AtMarket(5, 14 * 60).CanTrade(Fromagere));
+        // Le jour de marché, l'épicerie et l'herboristerie baissent leurs potions (90 %), jamais sous la valeur.
+        Assert.Equal(90, open.MarketPercent("merchant.herboriste", Potion));
+        Assert.Equal(100, thursday.MarketPercent("merchant.herboriste", Potion));
+    }
+
+    [Fact]
+    public void Marchander_selon_la_reputation_avec_un_tirage_fixe_du_jour()
+    {
+        long[] marketDays = Enumerable.Range(0, 400).Select(d => (long)d).Where(d => d % 7 == 2 || d % 7 == 5).ToArray();
+        long lucky = marketDays.First(d => ShopRules.HaggleRoll(Fromagere, d) < 35);
+        long hard = marketDays.First(d => ShopRules.HaggleRoll(Fromagere, d) >= 35 && ShopRules.HaggleRoll(Fromagere, d) < 55);
+        // Neutre : on ne marchande pas ; rien ne change.
+        WorldSession neutral = AtMarket(lucky, 9 * 60);
+        Assert.Equal(0, neutral.HaggleChance(Fromagere));
+        string before = Snapshot(neutral);
+        Assert.Equal(HaggleRefusal.StandingTooLow, neutral.Haggle(Fromagere));
+        Assert.Equal(before, Snapshot(neutral));
+        // Apprécié (35 %) : accepté le jour chanceux, 85 % du prix pour la journée ; une seule fois.
+        WorldSession liked = AtMarket(lucky, 9 * 60, Liked(150));
+        long full = liked.Stock(Fromagere).Single(o => o.Item == Fromage).Price;
+        Assert.Equal(35, liked.HaggleChance(Fromagere));
+        Assert.Equal(HaggleRefusal.None, liked.Haggle(Fromagere));
+        Assert.Equal(85, liked.HagglePercent(Fromagere));
+        long haggled = Math.Max(ShippedMerchants.Values[Fromage], WorldSession.ReputationPrice(WorldSession.ReputationPrice(38, 85), liked.PricePercentOf(Fromagere)));
+        Assert.Equal(haggled, liked.Stock(Fromagere).Single(o => o.Item == Fromage).Price);   // marchandé, puis la réputation
+        Assert.True(haggled < full);
+        Assert.Equal(HaggleRefusal.AlreadyDone, liked.Haggle(Fromagere));
+        // Le jour difficile : refusé à « apprécié », accepté à « honoré » (55 %) ; redemander ne change rien.
+        WorldSession refused = AtMarket(hard, 9 * 60, Liked(150));
+        Assert.Equal(HaggleRefusal.Refused, refused.Haggle(Fromagere));
+        Assert.Equal(HaggleRefusal.Refused, refused.Haggle(Fromagere));
+        Assert.Equal(100, refused.HagglePercent(Fromagere));
+        Assert.Equal(HaggleRefusal.None, AtMarket(hard, 9 * 60, Liked(350)).Haggle(Fromagere));
+        // Hors du marché, et pour une boutique : pas de marchandage.
+        Assert.Equal(HaggleRefusal.NoMarket, AtMarket(lucky, 20 * 60, Liked(700)).Haggle(Fromagere));
+        Assert.Equal(HaggleRefusal.NotAStall, Open(-65.2, -6.4, Liked(700), lucky, 9 * 60).Haggle("merchant.herboriste"));
+    }
+
+    [Fact]
+    public void Proprietes_de_la_place_sur_deux_semaines()
+    {
+        // Chaque heure de deux semaines : un marché seulement le mercredi et le samedi, dans l'ordre installation, marché, démontage ; ses
+        // marchands de passage vendent seulement pendant le marché ; une boutique à la porte ne vend que ses offres « door ».
+        var seen = new Dictionary<long, List<MarketPhase>>();
+        for (long day = 1; day < 15; day++)
+            for (int hour = 0; hour < 24; hour += 1)
+            {
+                WorldSession w = AtMarket(day, hour * 60 + 30);
+                MarketPhase phase = w.MarketPhase;
+                if (day % 7 != 2 && day % 7 != 5) Assert.Equal(MarketPhase.Calm, phase);
+                if (!seen.TryGetValue(day, out List<MarketPhase>? list)) seen[day] = list = new List<MarketPhase>();
+                if (list.Count == 0 || list[^1] != phase) list.Add(phase);
+                Assert.Equal(phase == MarketPhase.Open, w.TradeStatus(Fromagere) == TradeRefusal.None);
+            }
+        foreach (long day in new long[] { 2, 5, 9, 12 })
+            Assert.Equal(new[] { MarketPhase.Calm, MarketPhase.Setup, MarketPhase.Open, MarketPhase.Teardown, MarketPhase.Calm }, seen[day]);
+    }
+
+    // --- Affichage (AdventureSession) ---------------------------------------------------------------------------------
+
+    private static AdventureSession Adventure(long day, int minute)
+    {
+        string save = Path.Combine(Path.GetTempPath(), "eds-v214-" + Guid.NewGuid().ToString("N") + ".json");
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(day, minute) - 1, 0, Array.Empty<string>(), Hero(1000)));
+        try
+        {
+            return V11TestData.Adventure(save);
+        }
+        finally
+        {
+            File.Delete(save);
+        }
+    }
+
+    [Fact]
+    public void Affichage_des_enseignes_de_la_fumee_et_du_marche()
+    {
+        AdventureSession a = Adventure(2, 9 * 60);   // mercredi, 9 h : jour de marché
+        Assert.Equal(MarketPhase.Open, a.MarketPhaseNow);
+        IReadOnlyList<MarketStallView> stalls = a.MarketStalls();
+        Assert.Equal(8, stalls.Count);
+        Assert.All(stalls, x => Assert.InRange(x.Face, -180.0, 360.0));
+        IReadOnlyList<EdS.Runtime.StyleVillager> crowd = a.MarketCrowd();
+        Assert.InRange(crowd.Count, 1, 14);
+        Assert.Equal(crowd.Select(v => (v.Id, v.X, v.Z)), a.MarketCrowd().Select(v => (v.Id, v.X, v.Z)));   // même foule
+        Assert.True(a.MarketCrowdShown);
+        Assert.NotNull(a.MarketLine);
+        // Les enseignes : cinq maisons du bourg (l'armurerie reste un étal couvert), à 2 m au plus de leur porte.
+        IReadOnlyList<WorldMarker> signs = a.ShopSigns();
+        Assert.Equal(new[] { "enseigne/merchant.herboriste", "enseigne/merchant.epicier", "enseigne/merchant.boulangerie", "enseigne/merchant.auberge",
+            "enseigne/merchant.mercerie" }, signs.Select(x => x.Id));
+        Assert.Contains(signs, x => x.Name == "Boulangerie de Firmin · ouverte");
+        foreach (WorldMarker sign in signs)
+            Assert.Contains(a.Doors(), d => Math.Sqrt((d.X - sign.X) * (d.X - sign.X) + (d.Z - sign.Z) * (d.Z - sign.Z)) < 2.0);
+        // La cheminée du fournil fume (le four chauffe de 2 h à 17 h 30), pas à 20 h, ni le lundi (jour de repos).
+        Assert.True(Assert.Single(a.Chimneys()).Lit);
+        Assert.False(Assert.Single(Adventure(2, 20 * 60).Chimneys()).Lit);
+        Assert.False(Assert.Single(Adventure(7, 9 * 60).Chimneys()).Lit);
+        // Jeudi : la place est calme.
+        AdventureSession calm = Adventure(3, 10 * 60);
+        Assert.Equal(MarketPhase.Calm, calm.MarketPhaseNow);
+        Assert.False(calm.MarketCrowdShown);
+        Assert.Null(calm.MarketLine);
+        Assert.StartsWith("Prochain jour de marché : samedi", calm.MarketNotice, StringComparison.Ordinal);
+        Assert.Equal("Boulangerie de Firmin · ouverte de 5 h 30 à 19 h 30 · fermée le lundi", calm.ShopHoursText(Boulangerie));
+        Assert.Equal("Herboristerie de Sauge · ouverte jour et nuit", calm.ShopHoursText(Herboriste));
+        Assert.Equal("Boutique fermée : jour de repos. Réouverture lundi à 5 h.", Adventure(6, 10 * 60).ClosedText("merchant.epicier"));
     }
 }

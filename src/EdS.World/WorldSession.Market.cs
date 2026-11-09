@@ -109,9 +109,15 @@ namespace EdS.World
             GroundVector? atStall = ((INarrativeWorld)this).PlayerPositionIn(npc.Zone);
             bool nearNpc = atNpc is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, NpcPosition(npc), Fixed.Zero, Narrative.TalkRange);
             bool nearStall = atStall is GroundVector q && !ZonePopulations.Beyond(q, Fixed.Zero, npc.Position, Fixed.Zero, Narrative.TalkRange);
+            // Sous-lot V2.14 : dans la boutique (son intérieur), au comptoir, on est servi (par le patron ou le commis) comme auprès du marchand.
+            bool atCounter = m.Shop?.Zone is string inside && ((INarrativeWorld)this).PlayerPositionIn(inside) is GroundVector c
+                && !ZonePopulations.Beyond(c, Fixed.Zero, m.Shop.Counter, Fixed.Zero, Narrative.TalkRange);
+            if (atCounter) return TradeStatus(merchant);
             if (!nearNpc && !nearStall) return TradeRefusal.TooFar;
             TradeRefusal status = TradeStatus(merchant);
             if (status == TradeRefusal.Closed) return TradeRefusal.Closed;
+            // Sous-lot V2.14 : fermée, quelqu'un répond à la porte, mais pas à l'étal : devant l'étal, la boutique dit qu'elle est fermée.
+            if (!nearNpc && m.Shop != null && ShopStateOf(m.Id) == ShopState.AtDoor) return TradeRefusal.Closed;
             if (!nearNpc) return TradeRefusal.TooFar;
             return status;
         }
@@ -124,7 +130,8 @@ namespace EdS.World
         {
             Merchant m = NeedMarket().Book.Merchant(merchant);
             // Sous-lot V2.10 : un étal ambulant n'ouvre que pendant ses fêtes.
-            if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id))) return TradeRefusal.NotFestival;
+            // Sous-lot V2.14 : un jour de marché, ses marchands de passage vendent pendant toutes les heures du marché.
+            if (m.Festivals.Count > 0 && !(Festival is Festival f && m.Festivals.Contains(f.Id)) && !AtMarket(m.Festivals, true)) return TradeRefusal.NotFestival;
             // Sous-lot V2.14 : une vraie boutique suit ses horaires et son jour de repos ; fermée, quelqu'un répond à la porte (ouverte alors,
             // mais seulement pour les offres « door » : Stock) ou personne.
             if (m.Shop != null)

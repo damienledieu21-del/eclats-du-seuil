@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((13, 13, "0.24.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((13, 13, "0.25.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -119,6 +119,8 @@ public sealed class V23JourneeTests : IDisposable
             || l.Text == "text.v27.receleur.retrouvailles"
             // V2.10 : ou une fête (répliques de fête), ou les retrouvailles du colporteur.
             || l.Text == "text.v210.colporteur.retrouvailles" || l.Conditions.Any(c => c.Kind == ConditionKind.Festival)
+            // V2.14 : ou les retrouvailles des PNJ des boutiques et du marché, ou un moment de la journée (Colin, le soir : tout est vendu).
+            || (l.Text.StartsWith("text.v214.", StringComparison.Ordinal) && (l.Text.EndsWith(".retrouvailles", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Phase)))
             || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));

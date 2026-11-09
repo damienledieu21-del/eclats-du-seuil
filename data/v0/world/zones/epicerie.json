@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.epicerie",
+    "name": "Épicerie de Bertille",
+    "scenario": "zones/epicerie",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Comptoir",
+        "position": [
+          0,
+          -1.4
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "epicerie",
+        "name": "Épicerie de Bertille",
+        "min": [
+          -4,
+          -3
+        ],
+        "max": [
+          4,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_epicerie"
+      }
+    ]
+  }
+}

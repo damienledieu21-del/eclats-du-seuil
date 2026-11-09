@@ -492,6 +492,7 @@ namespace EdS.Data.Merchants
         public const int MaxStallCoordinate = 1000;
 
         private static readonly Regex StallId = new Regex(@"^stall(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ZoneId = new Regex(@"^zone(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
         private static readonly Regex BuildingId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Sous-lot V2.10 : version 4, encore lue (sans stock vivant ni fêtes).</summary>
@@ -628,7 +629,19 @@ namespace EdS.Data.Merchants
             ok &= Text(x.Sign, p + ".sign", "enseigne (clé de texte)", texts, r);
             if (x.Building != null && (x.Building.Length > 64 || !BuildingId.IsMatch(x.Building)))
             { r.Add(p + ".building", ValidationCode.InvalidValue, $"bâtiment « {x.Building} » mal formé : minuscules, chiffres et « _ »."); ok = false; }
-            int? open = Clock(x.Open, p + ".open", "ouverture", r), close = Clock(x.Close, p + ".close", "fermeture", r);
+            // L'intérieur et son comptoir vont ensemble ; l'intérieur existe et relie au monde (vérifié avec les zones : ZoneValidator, tests).
+            if ((x.Zone is null) != (x.Counter is null)) { r.Add(p + (x.Zone is null ? ".zone" : ".counter"), ValidationCode.MissingField, "intérieur (« zone ») et comptoir (« counter ») vont ensemble."); ok = false; }
+            else if (x.Zone != null && (x.Zone.Length > 64 || !ZoneId.IsMatch(x.Zone))) { r.Add(p + ".zone", ValidationCode.InvalidValue, $"zone « {x.Zone} » mal formée : « zone.… »."); ok = false; }
+            else if (x.Counter != null && (x.Counter.X is null || x.Counter.Z is null || Math.Abs(x.Counter.X.Value.Raw) > MaxStallCoordinate * EdS.Domain.Numerics.Fixed.Scale
+                || Math.Abs(x.Counter.Z.Value.Raw) > MaxStallCoordinate * EdS.Domain.Numerics.Fixed.Scale))
+            { r.Add(p + ".counter", ValidationCode.OutOfRange, $"comptoir hors de [-{MaxStallCoordinate}, {MaxStallCoordinate}] m."); ok = false; }
+            // Horaires facultatifs, ensemble : absents, la boutique est ouverte jour et nuit (Sauge, décision de Damien du 30 octobre 2026).
+            int? open = 0, close = ShopRules.MinutesPerDay;
+            if (x.Open != null || x.Close != null)
+            {
+                open = Clock(x.Open, p + ".open", "ouverture", r);
+                close = Clock(x.Close, p + ".close", "fermeture", r);
+            }
             if (open is null || close is null) ok = false;
             else if (open == close) { r.Add(p + ".close", ValidationCode.InvalidValue, "fermeture à l'heure de l'ouverture : boutique jamais ouverte."); ok = false; }
             var rest = new List<int>();
@@ -655,7 +668,8 @@ namespace EdS.Data.Merchants
             if (door == DoorService.Clerk) ok &= Text(x.Clerk, p + ".clerk", "commis (clé de texte)", texts, r);
             else if (x.Clerk != null) { r.Add(p + ".clerk", ValidationCode.InvalidValue, "un commis ne va qu'avec « door »: « clerk »."); ok = false; }
             if (!ok) return null;
-            var shop = new Shop(x.Kind!, x.Sign!, x.Building, open!.Value, close!.Value, rest, door, x.Clerk);
+            var shop = new Shop(x.Kind!, x.Sign!, x.Building, open!.Value, close!.Value, rest, door, x.Clerk)
+                .WithInterior(x.Zone, x.Counter is null ? default : new GroundVector(x.Counter.X!.Value, x.Counter.Z!.Value));
             // Au moins une minute ouverte dans la semaine, avec les moments de fermeture.
             bool any = false;
             for (int day = 0; day < WorldCalendar.DaysPerWeek && !any; day++)
@@ -705,7 +719,7 @@ namespace EdS.Data.Merchants
 
         /// <summary>
         /// Sous-lot V2.14 (schéma 6) : le grand jour de marché : de 1 à <see cref="MaxMarketDays"/> fêtes hebdomadaires de l'histoire, sur des
-        /// jours différents ; installation avant le début de chacune, démontage après sa fin ; foule de 0 à <see cref="MaxCrowd"/> ; criées
+        /// jours différents, chacune pendant les heures du marché ; installation, ouverture, fermeture et fin du démontage dans l'ordre ; foule de 0 à <see cref="MaxCrowd"/> ; criées
         /// (textes) ; étals d'identifiants uniques, de genre connu, chacun tenu par un marchand différent (facultatif), ouvert pendant ces
         /// fêtes ; marchandage (palier connu, prix de 50 à 99 %, chance et bonus).
         /// </summary>
@@ -728,15 +742,15 @@ namespace EdS.Data.Merchants
                     else if (festivals.Any(g => g.Weekday == f.Weekday)) { r.Add(fp, ValidationCode.DuplicateId, $"jour de la semaine {f.Weekday} déjà jour de marché."); ok = false; }
                     else festivals.Add(f);
                 }
-            int? setup = Clock(x.Setup, p + ".setup", "installation des étals", r), teardown = Clock(x.Teardown, p + ".teardown", "fin du démontage", r);
-            if (setup is null || teardown is null) ok = false;
+            int? setup = Clock(x.Setup, p + ".setup", "installation des étals", r), open = Clock(x.Open, p + ".open", "ouverture du marché", r),
+                close = Clock(x.Close, p + ".close", "fermeture du marché", r), teardown = Clock(x.Teardown, p + ".teardown", "fin du démontage", r);
+            if (setup is null || open is null || close is null || teardown is null) ok = false;
+            else if (!(setup < open && open < close && close < teardown))
+            { r.Add(p, ValidationCode.InvalidValue, "heures dans l'ordre demandées : installation, ouverture, fermeture, fin du démontage (même jour)."); ok = false; }
             else
                 foreach (Festival f in festivals)
-                {
-                    if (setup >= f.From) { r.Add(p + ".setup", ValidationCode.InvalidValue, $"installation à {x.Setup}, pas avant l'ouverture de « {f.Id} » ({ShopRules.Clock(f.From)})."); ok = false; }
-                    if (teardown <= f.To && f.To < ShopRules.MinutesPerDay)
-                    { r.Add(p + ".teardown", ValidationCode.InvalidValue, $"démontage fini à {x.Teardown}, pas après la fin de « {f.Id} » ({ShopRules.Clock(Math.Min(f.To, ShopRules.MinutesPerDay - 1))})."); ok = false; }
-                }
+                    if (f.From < open || f.To > close)
+                    { r.Add(p + ".festivals", ValidationCode.InvalidValue, $"fête « {f.Id} » hors des heures du marché ({x.Open} à {x.Close}) : elle se tient pendant le marché."); ok = false; }
             int crowd = x.Crowd ?? 0;
             if (crowd < 0 || crowd > MaxCrowd) { r.Add(p + ".crowd", ValidationCode.OutOfRange, $"foule hors de [0, {MaxCrowd}]."); ok = false; }
             var cries = new List<string>();
@@ -794,13 +808,14 @@ namespace EdS.Data.Merchants
                 if (good) haggle = new HaggleRule(h.Standing!, h.Percent!.Value, h.Chance!.Value, h.Bonus ?? 0);
                 else ok = false;
             }
-            return ok ? new MarketDay(festivals.Select(f => f.Id), setup!.Value, teardown!.Value, crowd, cries, stalls, haggle) : null;
+            return ok ? new MarketDay(festivals.Select(f => f.Id), setup!.Value, open!.Value, close!.Value, teardown!.Value, crowd, cries, stalls, haggle) : null;
         }
 
         /// <summary>
         /// Sous-lot V2.14 (décision de Damien : les quêtes ne sont jamais bloquées par des horaires) : un objet dont l'histoire a besoin (tenu
-        /// pour une condition, livré, ramassé) vendu par une boutique à horaires se vend aussi à la porte (<c>door</c>), et la boutique a
-        /// quelqu'un pour répondre.
+        /// pour une condition, livré, ramassé) vendu par une boutique à horaires reste toujours trouvable : en vente permanente chez un
+        /// marchand toujours ouvert (sans horaires ni jour de repos, ni moment de fermeture, sans condition d'ouverture), ou à la porte d'une
+        /// boutique (<c>door</c>) ; sinon, chaque offre de boutique qui le vend sans la porte est refusée.
         /// </summary>
         private static void CheckDoors(List<MerchantData?>? data, List<Merchant> merchants, StoryBook story, ValidationReport r)
         {
@@ -811,6 +826,11 @@ namespace EdS.Data.Merchants
             var needed = new HashSet<string>(conditions.Where(c => c.Kind == ConditionKind.HasItem).Select(c => c.Id), StringComparer.Ordinal);
             foreach (Objective o in story.Quests.SelectMany(q => q.Steps).Select(s => s.Objective))
                 if (o.Kind == ObjectiveKind.Deliver || o.Kind == ObjectiveKind.Collect) needed.Add(o.Id);
+            bool AlwaysOpen(Merchant m) => m.Closed.Count == 0 && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null
+                && (m.Shop is null || (m.Shop.AllDay && m.Shop.Rest.Count == 0));
+            // Toujours trouvable : en vente permanente chez un marchand toujours ouvert, ou à la porte d'une boutique (quelqu'un y répond toujours).
+            needed.RemoveWhere(item => merchants.Any(m => m.Offers.Any(o => o.Item == item && o.Always
+                && (AlwaysOpen(m) || (o.Door && m.Shop?.Door is DoorService d && d != DoorService.None && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null)))));
             for (int i = 0; i < data.Count; i++)
             {
                 if (!(data[i] is MerchantData md) || merchants.FirstOrDefault(m => m.Id == md.Id) is not Merchant m || m.Shop is null) continue;

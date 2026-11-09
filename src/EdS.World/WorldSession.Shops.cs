@@ -124,6 +124,14 @@ namespace EdS.World
         /// <summary>Sous-lot V2.14 : la fête du marché d'aujourd'hui (un jour de marché), ou null.</summary>
         public Festival? MarketFestivalToday => MarketDay is MarketDay md && FestivalToday is Festival f && md.Festivals.Contains(f.Id) ? f : null;
 
+        /// <summary>
+        /// Sous-lot V2.14 : le marchand de passage (ses fêtes) vient au marché d'aujourd'hui et le marché est là (installation, marché ou
+        /// démontage) : il est sur la place ; il vend pendant le marché.
+        /// </summary>
+        private bool AtMarket(IReadOnlyList<string> festivals, bool selling) =>
+            festivals.Count > 0 && MarketFestivalToday is Festival f && festivals.Contains(f.Id)
+            && (selling ? MarketPhase == MarketPhase.Open : MarketPhase != MarketPhase.Calm);
+
         /// <summary>Sous-lot V2.14 : où en est la grande place à cet instant (calme les autres jours).</summary>
         public MarketPhase MarketPhase => MarketDay is MarketDay md ? ShopRules.PhaseOf(md, MarketFestivalToday, Zone.Time.Minute) : MarketPhase.Calm;
 

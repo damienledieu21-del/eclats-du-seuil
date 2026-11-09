@@ -685,6 +685,15 @@ namespace EdS.Runtime
                 else Refused(refusal);
                 return refusal == CraftRefusal.None;
             }
+            // Sous-lot V2.14 : au comptoir d'une boutique (son intérieur), le patron ou le commis sert ; fermée, la boutique dit pourquoi.
+            if (CounterInReach is Merchant counter)
+            {
+                TradeRefusal shop = World.CanTrade(counter.Id);
+                if (shop == TradeRefusal.None) return OpenShop(counter.Id);
+                if (shop == TradeRefusal.Closed && ClosedText(counter.Id) is string closed) Say("text.v214.shop.closed", closed);
+                else Refused(shop);
+                return false;
+            }
             if (DoorInReach != null) return UseDoor();
             // Revue Codex de la PR #99 : la nuit, à l'étal d'un marchand fermé qui est rentré devant sa porte (hors de portée), la boutique dit
             // qu'elle est fermée et où il est, au lieu de « rien ici ».
@@ -707,6 +716,12 @@ namespace EdS.Runtime
             Say("text.ui.nothing_here");
             return false;
         }
+
+        /// <summary>Sous-lot V2.14 : boutique dont le comptoir (dans cet intérieur) est à portée, ou null.</summary>
+        public Merchant? CounterInReach => Me is GroundVector p && World.Market is EdS.World.Market market
+            ? market.Book.Merchants.Where(m => m.Shop?.Zone == _zone.Id && Within(p, m.Shop!.Counter, Narrative.TalkRange))
+                .OrderBy(m => Distance2(p, m.Shop!.Counter)).FirstOrDefault()
+            : null;
 
         /// <summary>
         /// Sous-lot V2.1 (revue Codex de la PR #99) : marchand dont l'étal (sa place de l'histoire) est à portée alors que lui n'y est pas (la

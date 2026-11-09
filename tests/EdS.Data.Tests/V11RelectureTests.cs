@@ -100,7 +100,11 @@ public class V11RelectureTests : IDisposable
     [Fact]
     public void Boutique_fermee_le_marchand_parle_quand_meme()
     {
-        (string data, string scenarios) = DataCopy((-65.2, -6.4), merchants: root => Merchant(root, "merchant.herboriste")["closed"] = new JsonArray("day"));
+        (string data, string scenarios) = DataCopy((-65.2, -6.4), merchants: root =>
+        {
+            V214TestData.WithoutShops(root);   // sous-lot V2.14 : l'étal d'avant les boutiques
+            Merchant(root, "merchant.herboriste")["closed"] = new JsonArray("day");
+        });
         SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(500)));
         AdventureSession a = Adventure(SavePath, data, scenarios);
         a.DrainMessages();
@@ -110,7 +114,7 @@ public class V11RelectureTests : IDisposable
         Assert.True(a.Interact());
         Assert.Null(a.Shop);
         Assert.Equal("Sauge, l'herboriste", a.DialogueNpc);
-        Assert.Equal("Boutique fermée à cette heure.", a.DrainMessages().First());
+        Assert.StartsWith("Boutique fermée à cette heure.", a.DrainMessages().First(), StringComparison.Ordinal);   // V2.14 : et sa réouverture
         a.CloseDialogue();
         Assert.False(a.OpenShop("merchant.herboriste"));
         Assert.Null(a.Shop);

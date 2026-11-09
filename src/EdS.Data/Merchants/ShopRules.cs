@@ -17,6 +17,8 @@ namespace EdS.Data.Merchants
         public string? Kind { get; set; }
         public string? Sign { get; set; }
         public string? Building { get; set; }
+        public string? Zone { get; set; }
+        public PointData? Counter { get; set; }
         public string? Open { get; set; }
         public string? Close { get; set; }
         public List<int?>? Rest { get; set; }
@@ -36,6 +38,8 @@ namespace EdS.Data.Merchants
     {
         public List<string?>? Festivals { get; set; }
         public string? Setup { get; set; }
+        public string? Open { get; set; }
+        public string? Close { get; set; }
         public string? Teardown { get; set; }
         public int? Crowd { get; set; }
         public List<string?>? Cries { get; set; }
@@ -83,6 +87,20 @@ namespace EdS.Data.Merchants
         public string Kind { get; }
         public string Sign { get; }
         public string? Building { get; }
+
+        /// <summary>Intérieur de la boutique (« zone.boulangerie »), où l'on achète au comptoir ; null : on achète au marchand seulement.</summary>
+        public string? Zone { get; private set; }
+
+        /// <summary>Place du comptoir dans <see cref="Zone"/> (servi par le patron ou le commis).</summary>
+        public GroundVector Counter { get; private set; }
+
+        internal Shop WithInterior(string? zone, GroundVector counter)
+        {
+            Zone = zone;
+            Counter = counter;
+            return this;
+        }
+
         public int Open { get; }
         public int Close { get; }
         public IReadOnlyList<int> Rest { get; }
@@ -96,7 +114,9 @@ namespace EdS.Data.Merchants
         public Shop(string kind, string sign, string? building, int open, int close, IEnumerable<int> rest, DoorService door, string? clerk)
         {
             if (open < 0 || open >= ShopRules.MinutesPerDay) throw new ArgumentOutOfRangeException(nameof(open));
-            if (close < 0 || close >= ShopRules.MinutesPerDay || close == open) throw new ArgumentOutOfRangeException(nameof(close));
+            // Ouverte jour et nuit : de 0 à MinutesPerDay (horaires absents du fichier).
+            if (close < 0 || close > ShopRules.MinutesPerDay || close == open || (close == ShopRules.MinutesPerDay && open != 0))
+                throw new ArgumentOutOfRangeException(nameof(close));
             if (rest is null || rest.Any(d => d < 0 || d >= WorldCalendar.DaysPerWeek)) throw new ArgumentOutOfRangeException(nameof(rest));
             Kind = kind;
             Sign = sign;
@@ -107,6 +127,9 @@ namespace EdS.Data.Merchants
             Door = door;
             Clerk = clerk;
         }
+
+        /// <summary>Sans horaires : ouverte jour et nuit (hors jours de repos et moments de fermeture).</summary>
+        public bool AllDay => Open == 0 && Close == ShopRules.MinutesPerDay;
 
         /// <summary>Ouverte à la minute <paramref name="minute"/> d'un jour ordinaire (hors jour de repos).</summary>
         public bool InHours(int minute) => ShopRules.InWindow(Open, Close, minute);
@@ -188,13 +211,17 @@ namespace EdS.Data.Merchants
 
     /// <summary>
     /// Sous-lot V2.14 (décision de Damien du 9 novembre 2026) : le grand jour de marché sur la grande place du bourg, les jours des fêtes
-    /// hebdomadaires <see cref="Festivals"/> (une ou deux par semaine) : les étals s'installent à <see cref="Setup"/>, le marché tient pendant
-    /// la fête (de son début à sa fin), puis on démonte jusqu'à <see cref="Teardown"/>. Le reste de la semaine, la place est calme.
+    /// hebdomadaires <see cref="Festivals"/> (une ou deux par semaine) : les étals s'installent à <see cref="Setup"/>, le marché tient de
+    /// <see cref="Open"/> à <see cref="Close"/> (la fête, son animation, se tient dedans), puis on démonte jusqu'à <see cref="Teardown"/>. Les
+    /// marchands de passage du marché sont là de l'installation au démontage et vendent pendant le marché. Le reste de la semaine, la place
+    /// est calme.
     /// </summary>
     public sealed class MarketDay
     {
         public IReadOnlyList<string> Festivals { get; }
         public int Setup { get; }
+        public int Open { get; }
+        public int Close { get; }
         public int Teardown { get; }
 
         /// <summary>Villageois de plus sur la place pendant le marché (affichage).</summary>
@@ -206,10 +233,12 @@ namespace EdS.Data.Merchants
         public IReadOnlyList<MarketStall> Stalls { get; }
         public HaggleRule? Haggle { get; }
 
-        internal MarketDay(IEnumerable<string> festivals, int setup, int teardown, int crowd, IEnumerable<string> cries, IEnumerable<MarketStall> stalls, HaggleRule? haggle)
+        internal MarketDay(IEnumerable<string> festivals, int setup, int open, int close, int teardown, int crowd, IEnumerable<string> cries, IEnumerable<MarketStall> stalls, HaggleRule? haggle)
         {
             Festivals = Frozen.List(festivals, nameof(festivals));
             Setup = setup;
+            Open = open;
+            Close = close;
             Teardown = teardown;
             Crowd = crowd;
             Cries = Frozen.List(cries, nameof(cries));
@@ -384,9 +413,9 @@ namespace EdS.Data.Merchants
             if (market is null) throw new ArgumentNullException(nameof(market));
             if (minute < 0 || minute >= MinutesPerDay) throw new ArgumentOutOfRangeException(nameof(minute));
             if (festival is null || !market.Festivals.Contains(festival.Id)) return MarketPhase.Calm;
-            if (minute >= market.Setup && minute < festival.From) return MarketPhase.Setup;
-            if (minute >= festival.From && minute < festival.To) return MarketPhase.Open;
-            if (minute >= festival.To && minute < market.Teardown) return MarketPhase.Teardown;
+            if (minute >= market.Setup && minute < market.Open) return MarketPhase.Setup;
+            if (minute >= market.Open && minute < market.Close) return MarketPhase.Open;
+            if (minute >= market.Close && minute < market.Teardown) return MarketPhase.Teardown;
             return MarketPhase.Calm;
         }
 

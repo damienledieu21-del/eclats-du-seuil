@@ -1,0 +1,132 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 17,
+  "kind": "scenario",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "seed": 231,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -4,
+          -3
+        ],
+        "max": [
+          4,
+          3
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "comptoir",
+          "points": [
+            [
+              -2.0,
+              0.6
+            ],
+            [
+              2.0,
+              0.6
+            ],
+            [
+              2.0,
+              1.2
+            ],
+            [
+              -2.0,
+              1.2
+            ]
+          ]
+        },
+        {
+          "id": "etagere_ouest",
+          "points": [
+            [
+              -3.9,
+              -1.2
+            ],
+            [
+              -3.4,
+              -1.2
+            ],
+            [
+              -3.4,
+              2.2
+            ],
+            [
+              -3.9,
+              2.2
+            ]
+          ]
+        },
+        {
+          "id": "etagere_fond",
+          "points": [
+            [
+              -1.8,
+              2.5
+            ],
+            [
+              1.8,
+              2.5
+            ],
+            [
+              1.8,
+              2.9
+            ],
+            [
+              -1.8,
+              2.9
+            ]
+          ]
+        },
+        {
+          "id": "tonneau",
+          "points": [
+            [
+              3.1,
+              1.9
+            ],
+            [
+              3.9,
+              1.9
+            ],
+            [
+              3.9,
+              2.7
+            ],
+            [
+              3.1,
+              2.7
+            ]
+          ]
+        },
+        {
+          "id": "caisse",
+          "points": [
+            [
+              3.0,
+              -2.9
+            ],
+            [
+              3.9,
+              -2.9
+            ],
+            [
+              3.9,
+              -2.0
+            ],
+            [
+              3.0,
+              -2.0
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

@@ -64,9 +64,9 @@ public class V210MarchandsFetesTests
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
         Assert.Equal((13, 12, 13), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));
-        Assert.Equal((6, 4, "0.10.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
+        Assert.Equal((6, 4, "0.11.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
         Assert.Equal((16, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
-        Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche" }, Story.Value.Festivals.Select(f => f.Id));
+        Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
@@ -147,7 +147,7 @@ public class V210MarchandsFetesTests
         JsonArray npcs = visit["data"]!["npcs"]!.AsArray();
         int c = npcs.ToList().FindIndex(x => (string?)x!["id"] == "npc.colporteur");
         npcs[c]!["festivals"]!.AsArray().Add("festival.marche");
-        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[4]" && e.Code == ValidationCode.DuplicateId);
+        Assert.Contains(ReadStory(visit).Report.Errors, e => e.Path == $"$.data.npcs[{c}].festivals[5]" && e.Code == ValidationCode.DuplicateId);   // V2.14 : et le marché du mercredi
     }
 
     [Theory]
@@ -240,7 +240,7 @@ public class V210MarchandsFetesTests
         Assert.Equal(DialogueRefusal.TooFar, ordinary.Talk("npc.colporteur", out _));
         Assert.Equal(TradeRefusal.NotFestival, ordinary.TradeStatus(Colporteur));
         Assert.Equal(TradeRefusal.NotFestival, ordinary.Buy(Colporteur, "item.pierre_a_aiguiser"));
-        Assert.Equal(("festival.marche", 5L), (ordinary.NextFestival()!.Value.Festival.Id, ordinary.NextFestival()!.Value.Day));
+        Assert.Equal(("festival.marche_mercredi", 2L), (ordinary.NextFestival()!.Value.Festival.Id, ordinary.NextFestival()!.Value.Day));   // V2.14 : le marché du mercredi
         // Jour de marché : il est là, sa boutique est ouverte, ses objets rares tournent.
         WorldSession market = Open(-57, 4.6, Hero(100_000), 5, 8 * 60);
         Assert.Equal("festival.marche", market.Festival?.Id);
@@ -500,7 +500,8 @@ public class V210MarchandsFetesTests
     {
         long Price(long day, string item) => AtHerboriste(Hero(), day).Stock(Herboriste).Single(o => o.Item == item).Price;
         Assert.Equal((60L, 22L), (Price(1, Potion), Price(1, Herbe)));   // printemps : prix du fichier
-        Assert.Equal(18L, Price(30, Herbe));   // été : les herbes abondent (80 %), jamais sous leur valeur (15)
+        Assert.Equal(18L, Price(31, Herbe));   // été : les herbes abondent (80 %), jamais sous leur valeur (15) ; V2.14 : le jour 30 est un mercredi de marché (90 %)
+        Assert.Equal(16L, Price(30, Herbe));   // V2.14 : jour de marché, la concurrence fait encore baisser (80 % × 90 %), jamais sous la valeur
         Assert.Equal(24L, Price(63 - 7, Herbe));   // automne (110 %)
         Assert.Equal(66L, Price(90, Potion));   // hiver : les potions (110 %)
         // Les fourrures, plus chères l'hiver (125 %, 150 % sous l'orage) ; au printemps, au prix du fichier.
@@ -513,7 +514,7 @@ public class V210MarchandsFetesTests
     public void L_attaque_perdue_vide_les_etals_et_fait_monter_les_remedes()
     {
         SavedCharacter lost = Hero(100_000).WithEvents(new[] { new SavedEvent("zone.vallons/attaque_hameau", 0, 1, 1, EventOutcome.Lost) });
-        WorldSession w = AtHerboriste(lost, 2);
+        WorldSession w = AtHerboriste(lost, 3);   // V2.14 : le jour 2 est un mercredi de marché (prix à 90 %)
         Assert.Contains(w.ActiveShocks, s => s.Id == "attaque_perdue");
         MerchantOffer potion = w.Stock(Herboriste).Single(o => o.Item == Potion);
         Assert.Equal((9, 78L), (potion.Left, potion.Price));   // 30 % du stock, 130 % du prix
@@ -524,7 +525,7 @@ public class V210MarchandsFetesTests
         Assert.Equal((30, 60L), (later.Left(Herboriste, Potion), later.Stock(Herboriste).Single(o => o.Item == Potion).Price));
         // Le hameau défendu : un geste des herbières (90 %), jamais sous la valeur.
         SavedCharacter won = Hero().WithEvents(new[] { new SavedEvent("zone.vallons/attaque_hameau", 1, 0, 1, EventOutcome.Won) });
-        Assert.Equal(54L, AtHerboriste(won, 2).Stock(Herboriste).Single(o => o.Item == Potion).Price);
+        Assert.Equal(54L, AtHerboriste(won, 1).Stock(Herboriste).Single(o => o.Item == Potion).Price);   // V2.14 : le jour 2 est un jour de marché
         // La faille restée ouverte : plus un éclat de Seuil sur les étals.
         SavedCharacter rift = Hero().WithEvents(new[] { new SavedEvent("zone.vallons/faille_du_seuil", 0, 1, 1, EventOutcome.Lost) });
         Assert.Equal(0, AtHerboriste(rift, 2).Left(Herboriste, "item.eclat_de_seuil"));

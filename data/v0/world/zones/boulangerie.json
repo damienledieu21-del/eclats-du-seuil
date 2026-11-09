@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.boulangerie",
+    "name": "Boulangerie de Firmin",
+    "scenario": "zones/boulangerie",
+    "indoor": true,
+    "entry": "entree",
+    "safePoints": [
+      {
+        "id": "entree",
+        "name": "Fournil",
+        "position": [
+          0,
+          -1.4
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "boulangerie",
+        "name": "Boulangerie de Firmin",
+        "min": [
+          -4,
+          -3
+        ],
+        "max": [
+          4,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Bourg d'Aube",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_boulangerie"
+      }
+    ]
+  }
+}

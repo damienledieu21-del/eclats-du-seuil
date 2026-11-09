@@ -121,6 +121,8 @@ namespace EdS.Data.Json
                 ["kind"] = (v, p) => x.Kind = input.Text(v, p),
                 ["sign"] = (v, p) => x.Sign = input.Text(v, p),
                 ["building"] = (v, p) => x.Building = input.Text(v, p),
+                ["zone"] = (v, p) => x.Zone = input.Text(v, p),
+                ["counter"] = (v, p) => x.Counter = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["open"] = (v, p) => x.Open = input.Text(v, p),
                 ["close"] = (v, p) => x.Close = input.Text(v, p),
                 ["rest"] = (v, p) => x.Rest = Days(input, v, p),
@@ -154,6 +156,8 @@ namespace EdS.Data.Json
             {
                 ["festivals"] = (v, p) => x.Festivals = Names(input, v, p),
                 ["setup"] = (v, p) => x.Setup = input.Text(v, p),
+                ["open"] = (v, p) => x.Open = input.Text(v, p),
+                ["close"] = (v, p) => x.Close = input.Text(v, p),
                 ["teardown"] = (v, p) => x.Teardown = input.Text(v, p),
                 ["crowd"] = (v, p) => x.Crowd = input.Int32(v, p),
                 ["cries"] = (v, p) => x.Cries = input.ReadLimitedList(v, p, MerchantValidator.MaxCries,

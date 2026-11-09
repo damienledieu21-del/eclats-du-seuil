@@ -365,7 +365,7 @@ public class V197VillageTests
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
-        Assert.Equal(30, book.Npcs.Count);   // V2.10 : le colporteur ; V2.7 : Gaut le receleur
+        Assert.Equal(34, book.Npcs.Count);   // V2.14 : Colin, Margot, Gisèle et Ilario ; V2.10 : le colporteur ; V2.7 : Gaut le receleur
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
         Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }

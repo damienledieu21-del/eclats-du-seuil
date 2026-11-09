@@ -440,7 +440,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Equal("npc.armurier", b.NpcInReach!.Id);
         Assert.True(b.Interact());
         Assert.NotNull(b.Dialogue);
-        Assert.Equal("Boutique fermée à cette heure.", b.DrainMessages().First());
+        Assert.StartsWith("Boutique fermée à cette heure.", b.DrainMessages().First(), StringComparison.Ordinal);   // V2.14 : et sa réouverture
     }
 
     [Theory]

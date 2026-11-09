@@ -10,6 +10,9 @@ namespace EdS.Runtime
         House = 0,
         Tavern = 1,
         Chapel = 2,
+
+        /// <summary>Sous-lot V2.14 : une boutique (boulangerie, épicerie, herboristerie, mercerie) : comptoir, étagères garnies, commis.</summary>
+        Shop = 3,
     }
 
     /// <summary>Intérieurs : ce que représente un obstacle d'un intérieur, d'après le début de son identifiant.</summary>
@@ -31,6 +34,12 @@ namespace EdS.Runtime
         Cabinet = 13,
         SpinningWheel = 14,
         Statue = 15,
+
+        /// <summary>Sous-lot V2.14 : four à pain voûté (« four… »), sa bouche rougeoyante.</summary>
+        Oven = 16,
+
+        /// <summary>Sous-lot V2.14 : pétrin de bois (« petrin… »), la pâte qui lève dedans.</summary>
+        Kneader = 17,
     }
 
     /// <summary>
@@ -45,6 +54,12 @@ namespace EdS.Runtime
         Lantern, HangingLantern, Chandelier, Candlestick, Candelabra,
         Bowl, Plate, Goblets, Pot, Bottles, ClayPot, Basket, CuttingBoard, Spoon, Apple, Onion,
         Shield, Sword, WarHammer, Axe, Hatchet, Broom, Painting, SpinningWheel, Door, Statue,
+
+        /// <summary>Sous-lot V2.14 : pains, miches et viennoiseries (étagères et comptoir de la boulangerie).</summary>
+        Bread,
+
+        /// <summary>Sous-lot V2.14 : rouleaux de toile (mercerie).</summary>
+        Cloth,
     }
 
     /// <summary>Intérieurs : sorte d'une lumière (feu de cheminée, bougie, lanterne, jour d'une fenêtre).</summary>
@@ -212,8 +227,20 @@ namespace EdS.Runtime
             string key = string.Concat((map?.Places ?? Array.Empty<MapPlace>()).Select(p => StyleRules.Key(p.Id)));
             if (key.Contains("auberge") || key.Contains("taverne")) return InteriorStyle.Tavern;
             if (key.Contains("chapelle") || key.Contains("eglise")) return InteriorStyle.Chapel;
+            if (ShopWords.Any(w => key.Contains(w))) return InteriorStyle.Shop;   // sous-lot V2.14
             return InteriorStyle.House;
         }
+
+        /// <summary>Sous-lot V2.14 : mots d'un lieu qui en font une boutique.</summary>
+        private static readonly string[] ShopWords = { "boulangerie", "epicerie", "herboristerie", "mercerie", "boutique" };
+
+        /// <summary>Sous-lot V2.14 : la pièce est une boulangerie (pains sur les étagères et le comptoir).</summary>
+        public static bool IsBakery(AdventureMap map) =>
+            string.Concat((map?.Places ?? Array.Empty<MapPlace>()).Select(p => StyleRules.Key(p.Id))).Contains("boulangerie");
+
+        /// <summary>Sous-lot V2.14 : la pièce est une mercerie (rouleaux de toile sur les étagères).</summary>
+        public static bool IsTailor(AdventureMap map) =>
+            string.Concat((map?.Places ?? Array.Empty<MapPlace>()).Select(p => StyleRules.Key(p.Id))).Contains("mercerie");
 
         private static readonly (string Prefix, InteriorFurniture Kind)[] FurnitureWords =
         {
@@ -222,6 +249,7 @@ namespace EdS.Runtime
             ("banc", InteriorFurniture.Pew), ("chandelier", InteriorFurniture.Candelabra), ("lit", InteriorFurniture.Bed),
             ("coffre", InteriorFurniture.Chest), ("etagere", InteriorFurniture.Shelf), ("caisse", InteriorFurniture.Crates),
             ("armoire", InteriorFurniture.Cabinet), ("rouet", InteriorFurniture.SpinningWheel), ("statue", InteriorFurniture.Statue),
+            ("four", InteriorFurniture.Oven), ("petrin", InteriorFurniture.Kneader),   // sous-lot V2.14 : la boulangerie
         };
 
         /// <summary>Meuble que représente l'obstacle <paramref name="id"/> d'un intérieur (début de son identifiant), ou <see cref="InteriorFurniture.None"/>.</summary>
@@ -281,7 +309,11 @@ namespace EdS.Runtime
         public static double DefaultYaw(InteriorProp prop) => 0;
 
         /// <summary>Hauteur des murs (m) d'une pièce de ce genre.</summary>
-        public static double WallHeight(InteriorStyle style) => style == InteriorStyle.Chapel ? 6.5 : style == InteriorStyle.Tavern ? 3.6 : 3.0;
+        public static double WallHeight(InteriorStyle style) =>
+            style == InteriorStyle.Chapel ? 6.5 : style == InteriorStyle.Tavern ? 3.6 : style == InteriorStyle.Shop ? 3.2 : 3.0;
+
+        /// <summary>Sous-lot V2.14 : hauteur (m) de la sole du four à pain (où l'on enfourne).</summary>
+        public const double OvenFloor = 0.85;
 
         private sealed class Box
         {
@@ -306,6 +338,7 @@ namespace EdS.Runtime
             if (map is null) throw new ArgumentNullException(nameof(map));
             InteriorStyle style = StyleOf(map);
             double height = WallHeight(style);
+            bool bakery = IsBakery(map), tailor = IsTailor(map);   // sous-lot V2.14
             var boxes = map.Obstacles.Select(o => new Box
             {
                 Id = o.Id, Kind = FurnitureFor(o.Id),
@@ -350,6 +383,16 @@ namespace EdS.Runtime
                 double end = b.Long / 2 + 0.25;
                 Add(new InteriorPiece(b.Id + "/hachette", InteriorProp.Hatchet, b.CX + along.X * end + f.X * 0.2, b.CZ + along.Z * end + f.Z * 0.2,
                     Yaw(f) + 20, 0, height: 0.32, y: 0.0));
+            }
+
+            // Sous-lot V2.14 : la bouche du four à pain rougeoie (lumière principale de la boulangerie) ; une pelle à enfourner contre lui.
+            foreach (Box b in boxes.Where(b => b.Kind == InteriorFurniture.Oven))
+            {
+                (int X, int Z) f = Back(b);
+                Light(InteriorLightKind.Fire, b.CX + f.X * (b.Short / 2 + 0.3), OvenFloor + 0.2, b.CZ + f.Z * (b.Short / 2 + 0.3), 7, 3.0);
+                (int X, int Z) along = (f.Z, f.X);
+                Add(new InteriorPiece(b.Id + "/pelle", InteriorProp.Broom, b.CX + along.X * (b.Long / 2 + 0.2) + f.X * 0.3, b.CZ + along.Z * (b.Long / 2 + 0.2) + f.Z * 0.3,
+                    Yaw(f), 0, height: 1.6));
             }
 
             // Au plafond : lanternes suspendues (auberge, maison), lustres (chapelle), le long du milieu de la pièce. Leurs lumières passent
@@ -428,15 +471,27 @@ namespace EdS.Runtime
                         Add(new InteriorPiece(b.Id + "/planche", InteriorProp.CuttingBoard, b.CX + lx * half * 0.5, b.CZ + lz * half * 0.5, AxisYaw(b) + 10, 0.42, y: y));
                         Add(new InteriorPiece(b.Id + "/oignon", InteriorProp.Onion, b.CX + lx * half * 0.55, b.CZ + lz * half * 0.55, 0, 0.08, y: y + 0.03));
                         Add(new InteriorPiece(b.Id + "/panier", InteriorProp.Basket, b.CX + lx * half * 0.82, b.CZ + lz * half * 0.82, 15, 0.36, y: y));
+                        // Sous-lot V2.14 : à la boulangerie, des pains et des viennoiseries sur le comptoir.
+                        if (bakery)
+                            for (int k = 0; k < 3; k++)
+                                Add(new InteriorPiece($"{b.Id}/pain{k}", InteriorProp.Bread, b.CX + lx * half * (0.05 + 0.18 * k) - lx * half * 0.6,
+                                    b.CZ + lz * half * (0.05 + 0.18 * k) - lz * half * 0.6, (v + 40 * k) % 360, 0.3, y: y));
                         break;
                     }
+                    case InteriorFurniture.Oven:
+                        break;   // fait par le code (SpaceView) : voûte de briques, bouche, cheminée ; la lumière plus haut
+                    case InteriorFurniture.Kneader:
+                        // Le pétrin (fait par le code) ; un sac de farine et une jarre d'eau à côté.
+                        Add(new InteriorPiece(b.Id + "/farine", InteriorProp.Basket, b.CX + f.X * (b.Short / 2 + 0.3), b.CZ + f.Z * (b.Short / 2 + 0.3), 0, 0.4));
+                        Add(new InteriorPiece(b.Id + "/jarre", InteriorProp.ClayPot, b.CX + f.X * (b.Short / 2 + 0.3) + 0.45, b.CZ + f.Z * (b.Short / 2 + 0.3), 0, 0.3));
+                        break;
                     case InteriorFurniture.Shelf:
                     {
                         // Étagères et commodes le long du mur, garnies de bouteilles, de jarres et de paniers.
                         (double lx, double lz) = b.AlongX ? (1.0, 0.0) : (0.0, 1.0);
                         int count = Math.Max(1, (int)Math.Round(b.Long / 1.3));
                         double step = b.Long / count;
-                        InteriorProp[] kinds = style == InteriorStyle.House
+                        InteriorProp[] kinds = style == InteriorStyle.House || style == InteriorStyle.Shop
                             ? new[] { InteriorProp.Shelves, InteriorProp.Commode }
                             : new[] { InteriorProp.Drawers, InteriorProp.Shelves, InteriorProp.Cabinet, InteriorProp.Shelves };
                         for (int i = 0; i < count; i++)
@@ -444,7 +499,8 @@ namespace EdS.Runtime
                             double t = -b.Long / 2 + step * (i + 0.5);
                             InteriorProp kind = kinds[(i + v) % kinds.Length];
                             int shelf = Add(new InteriorPiece($"{b.Id}/{i}", kind, b.CX + lx * t, b.CZ + lz * t, Yaw(f), step * 0.96));
-                            InteriorProp top = (i + v) % 3 == 0 ? InteriorProp.Bottles : (i + v) % 3 == 1 ? InteriorProp.ClayPot : InteriorProp.Basket;
+                            InteriorProp top = bakery ? InteriorProp.Bread : tailor ? InteriorProp.Cloth   // sous-lot V2.14
+                                : (i + v) % 3 == 0 ? InteriorProp.Bottles : (i + v) % 3 == 1 ? InteriorProp.ClayPot : InteriorProp.Basket;
                             Add(new InteriorPiece($"{b.Id}/{i}/dessus", top, b.CX + lx * t, b.CZ + lz * t, Yaw(f), top == InteriorProp.Bottles ? 0.34 : 0.3,
                                 parent: shelf));
                         }
@@ -673,6 +729,16 @@ namespace EdS.Runtime
             {
                 switch (b.Kind)
                 {
+                    case InteriorFurniture.Counter when style == InteriorStyle.Shop:
+                    {
+                        // Sous-lot V2.14 : le commis (ou le patron) derrière le comptoir, côté mur ; s'il y a déjà un PNJ qui parle, il est là.
+                        bool alongX = b.AlongX;
+                        int toWall = alongX ? (map.MaxZ - b.MaxZ < b.MinZ - map.MinZ ? 1 : -1) : (map.MaxX - b.MaxX < b.MinX - map.MinX ? 1 : -1);
+                        double bx = alongX ? b.CX : b.CX + toWall * (b.Short / 2 + 0.55), bz = alongX ? b.CZ + toWall * (b.Short / 2 + 0.55) : b.CZ;
+                        if (map.Speakers.All(s => (s.X - bx) * (s.X - bx) + (s.Z - bz) * (s.Z - bz) > 1.5 * 1.5))
+                            Add("commis", "paysan", VillagerActivity.Talk, bx, bz, alongX ? (toWall > 0 ? 180 : 0) : (toWall > 0 ? 270 : 90));
+                        break;
+                    }
                     case InteriorFurniture.Counter when style == InteriorStyle.Tavern:
                     {
                         // Côté du comptoir tourné vers le mur : l'aubergiste ; côté salle : deux clients accoudés.

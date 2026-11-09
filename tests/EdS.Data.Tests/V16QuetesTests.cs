@@ -89,7 +89,7 @@ public class V16QuetesTests
         // Les PNJ des intérieurs : chacun dans sa pièce ; ceux du dehors sans zone.
         Assert.Equal(new[] { ("npc.aubergiste", "zone.auberge"), ("npc.pretre", "zone.chapelle"), ("npc.habitant", "zone.maison") },
             book.Npcs.Where(n => n.Zone != null).Select(n => (n.Id, n.Zone!)).Take(3));   // sous-lot V1.7 : puis ceux de la guilde
-        Assert.Equal(22, book.NpcsIn(null).Count());   // V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
+        Assert.Equal(24, book.NpcsIn(null).Count());   // V2.14 : la fromagère et le marchand d'épices (jours de marché) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur ; V1.9.5 : Ysarn ; V1.9.4 : Thibaut, le capitaine, Colin ; V1.9.1 : le boulanger et l'archer de la garde ; V1.9.2 : Renart, Lison, Colombe ; V1.9.3 : cinq PNJ du chapitre 3
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
     }
@@ -103,7 +103,7 @@ public class V16QuetesTests
         // Sans les intérieurs, leurs PNJ vivent dans une zone inconnue.
         StoryLoadResult alone = Read(StoryJson(), Array.Empty<ZoneDefinition>());
         Assert.Equal(new[] { "$.data.npcs[6].zone", "$.data.npcs[7].zone", "$.data.npcs[8].zone", "$.data.npcs[9].zone", "$.data.npcs[10].zone", "$.data.npcs[11].zone", "$.data.npcs[14].zone",
-                "$.data.npcs[27].zone", "$.data.scenes[0].zone" },   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
+                "$.data.npcs[27].zone", "$.data.npcs[30].zone", "$.data.npcs[31].zone", "$.data.scenes[0].zone" },   // V2.14 : Colin et Margot dans leur boutique ;   // sous-lot V1.9.6 : la reine Ysolde et la scène du souvenir
             alone.Report.Errors.Where(e => !e.Path.Contains(".schedule[", StringComparison.Ordinal)).Select(e => e.Path));   // sous-lot V1.7 : la maîtresse et l'intendant de la guilde, l'archiviste
         // Sous-lot V2.3.1 : les créneaux qui mènent dans un intérieur (la salle de l'auberge) visent aussi une zone inconnue.
         Assert.All(alone.Report.Errors.Where(e => e.Path.Contains(".schedule[", StringComparison.Ordinal)),
