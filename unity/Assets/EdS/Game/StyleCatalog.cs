@@ -212,6 +212,8 @@ namespace EdS.Game
         public GameObject Model;
         [Tooltip("Pied du modèle (m) le long de x et de z, à l'échelle 1 (mesuré par le menu).")]
         public Vector2 Size;
+        [Tooltip("V2.17 : obstacle auquel ce modèle de l'atelier est dédié (« maison2 ») ; vide : choisi par genre.")]
+        public string Building;
     }
 
     /// <summary>
@@ -756,8 +758,21 @@ namespace EdS.Game
             var list = new System.Collections.Generic.List<BuildingLook>();
             if (Buildings == null) return list;
             foreach (BuildingLook b in Buildings)
-                if (b != null && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
+                if (b != null && string.IsNullOrEmpty(b.Building) && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
             return list;
+        }
+
+        /// <summary>
+        /// V2.17 : le modèle de l'atelier dédié à l'obstacle <paramref name="id"/> (« Assets/EdS/Modeles/Batiments/&lt;id&gt;/ »), mesuré ;
+        /// null sans modèle dédié.
+        /// </summary>
+        public BuildingLook OwnBuilding(string id)
+        {
+            if (Buildings == null || string.IsNullOrEmpty(id)) return null;
+            foreach (BuildingLook b in Buildings)
+                if (b != null && !string.IsNullOrEmpty(b.Building) && string.Equals(b.Building, id, StringComparison.OrdinalIgnoreCase)
+                    && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) return b;
+            return null;
         }
 
         /// <summary>Intérieurs : un modèle de l'objet <paramref name="kind"/>, choisi de façon stable d'après <paramref name="id"/> ; null sans modèle.</summary>

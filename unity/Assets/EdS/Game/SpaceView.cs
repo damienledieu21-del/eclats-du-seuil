@@ -422,6 +422,8 @@ namespace EdS.Game
             bool hasDoor = _doors.Any(d => d.Building == id);
             (int, int) facing = TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors);
             DoorLantern(kind, id, x0, z0, x1, z1, facing);   // sous-lot V2.1 : sa lanterne de porte, allumée la nuit
+            // V2.17 : le modèle de l'atelier fait pour ce bâtiment, s'il y en a un et qu'il tient sur son emprise.
+            if (OwnBuilding(kind, id, x0, z0, x1, z1, facing)) return;
             // Essai réaliste 8 : le vrai bâtiment de Sketchfab s'il y en a un de ce genre dans le catalogue.
             if (ModelBuilding(kind, id, x0, z0, x1, z1, facing, hasDoor)) return;
             Material plaster = Built(StyleSurface.Plaster, new Color(0.86f, 0.82f, 0.74f), out float plasterTile);
@@ -468,18 +470,50 @@ namespace EdS.Game
             (int index, (int X, int Z) face, ModelFit fit) = TownModels.Pick(id, x1 - x0, z1 - z0, facing, feet, TownModels.Overflow(kind), locked);
             // Relecture indépendante de l'essai 8 : une pose de repli trop déformée laisse le bâtiment fait par le code.
             if (index < 0 || !TownModels.Usable(fit)) return false;
+            PlaceModel(kind, id, x0, z0, x1, z1, models[index].Model, face, fit, kind == StyleBuilding.House && TownModels.Mirrored(id));
+            return true;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.17 (décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ») : le modèle de l'atelier dédié à
+        /// l'obstacle <paramref name="id"/> (<see cref="StyleCatalog.OwnBuilding"/>), façade verrouillée vers <paramref name="facing"/> (la
+        /// porte), jamais en miroir (l'enseigne peinte se lirait à l'envers), pied ajusté par <see cref="TownModels.Fit"/>. False sans modèle
+        /// ou si la pose n'est pas utilisable : la suite (Sketchfab, puis le bâtiment fait par le code) reste.
+        /// </summary>
+        private bool OwnBuilding(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            BuildingLook own = catalog != null ? catalog.OwnBuilding(id) : null;
+            if (own == null) return false;
+            ModelFit fit = TownModels.Fit(x1 - x0, z1 - z0, facing, own.Size.x, own.Size.y, TownModels.Overflow(kind));
+            if (!TownModels.Usable(fit))
+            {
+                Debug.LogWarning("Atelier : " + own.Model.name + " ne tient pas sur l'emprise de " + id + " ; bâtiment de repli.");
+                return false;
+            }
+            PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, fit, false);
+            return true;
+        }
+
+        /// <summary>
+        /// Pose d'un modèle de bâtiment (Sketchfab ou atelier) au centre de l'emprise, tourné et mis à l'échelle d'après <paramref name="fit"/>,
+        /// le bas au sol, sans collisionneur ; abaissé comme un mur quand il cache le joueur, et arrêtant la caméra s'il le doit.
+        /// </summary>
+        private void PlaceModel(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, GameObject prefab, (int X, int Z) face,
+            ModelFit fit, bool mirrored)
+        {
             var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
             var go = new GameObject(id + " (bâtiment)");
             go.transform.SetParent(_root.transform, false);
             go.transform.position = center;
-            var turn = new GameObject(models[index].Model.name);
+            var turn = new GameObject(prefab.name);
             turn.transform.SetParent(go.transform, false);
             turn.transform.localRotation = Quaternion.Euler(0f, (float)fit.Yaw, 0f);
             // Échelles dans les axes du modèle : tourné d'un quart de tour, son x suit le z du monde.
             bool across = face.X != 0;
-            float mirror = kind == StyleBuilding.House && TownModels.Mirrored(id) ? -1f : 1f;
+            float mirror = mirrored ? -1f : 1f;
             turn.transform.localScale = new Vector3(mirror * (float)(across ? fit.ScaleZ : fit.ScaleX), (float)fit.ScaleY, (float)(across ? fit.ScaleX : fit.ScaleZ));
-            GameObject model = Object.Instantiate(models[index].Model, turn.transform, false);
+            GameObject model = Object.Instantiate(prefab, turn.transform, false);
             foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             // Le pied du modèle au centre de l'emprise, le bas au sol.
             if (StyleLook.VisibleBounds(model, out Bounds b))
@@ -492,7 +526,6 @@ namespace EdS.Game
             if (Blocks(kind))
                 _cameraBoxes.Add(new CameraBox(seen ? Mathf.Max(all.min.x, x0 - 0.25f) : x0, 0, seen ? Mathf.Max(all.min.z, z0 - 0.25f) : z0,
                     seen ? Mathf.Min(all.max.x, x1 + 0.25f) : x1, top, seen ? Mathf.Min(all.max.z, z1 + 0.25f) : z1));
-            return true;
         }
 
         /// <summary>Essai réaliste 8 : un villageois posé (son corps, son modèle) ; un marcheur garde son allée et son sens.</summary>

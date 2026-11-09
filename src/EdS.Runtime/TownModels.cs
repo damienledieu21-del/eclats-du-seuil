@@ -155,6 +155,24 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.17 (décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ») : identifiant de l'obstacle auquel est
+        /// dédié un modèle de l'atelier rangé dans « …/Modeles/Batiments/&lt;id&gt;/&lt;fichier&gt;.fbx » (casse et « \ » indifférents) ;
+        /// null ailleurs. L'identifiant est rendu en minuscules, tel qu'écrit dans le chemin.
+        /// </summary>
+        public static string? OwnBuildingOf(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            string[] parts = path!.Replace('\\', '/').Split('/');
+            int n = parts.Length;
+            if (n < 4) return null;
+            string file = parts[n - 1], id = parts[n - 2];
+            if (!string.Equals(parts[n - 3], "Batiments", StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(parts[n - 4], "Modeles", StringComparison.OrdinalIgnoreCase)) return null;
+            if (id.Length == 0 || file.Length <= 4 || !file.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) return null;
+            return id.ToLowerInvariant();
+        }
+
+        /// <summary>
         /// Part de l'emprise que le pied d'un modèle peut déborder : les avant-toits des maisons (6 %), les cordes de la tente (60 %) ; le
         /// puits, rond, tient dans son octogone (85 %), la tour carrée aussi (95 %).
         /// </summary>
