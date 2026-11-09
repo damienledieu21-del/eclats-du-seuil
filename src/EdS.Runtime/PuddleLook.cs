@@ -36,10 +36,10 @@ namespace EdS.Runtime
         public static PuddleLook For(bool light) =>
             light ? new PuddleLook(0.4, 32, 0.012, 0.0, 0.5) : new PuddleLook(0.45, 128, 0.01, 0.85, 0.6);
 
-        /// <summary>Teinte de la flaque : mélange du ciel et du sol, jamais plus sombre que 0,2 par canal (pas de trou noir).</summary>
+        /// <summary>Teinte de la flaque : mélange du ciel et du sol, jamais plus sombre que 0,3 par canal (pas de trou noir).</summary>
         public (double R, double G, double B) Tint(double skyR, double skyG, double skyB, double groundR, double groundG, double groundB)
         {
-            double Mix(double sky, double ground) => System.Math.Max(0.2, SkyShare * sky + (1.0 - SkyShare) * ground * 0.8);
+            double Mix(double sky, double ground) => System.Math.Max(0.3, SkyShare * sky + (1.0 - SkyShare) * ground * 0.8);
             return (Mix(skyR, groundR), Mix(skyG, groundG), Mix(skyB, groundB));
         }
 
