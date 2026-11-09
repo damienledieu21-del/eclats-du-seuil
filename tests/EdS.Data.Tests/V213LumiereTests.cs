@@ -73,8 +73,9 @@ public sealed class V213LumiereTests
         Assert.Equal("Luminosité : 200 %", BrightnessRules.Label(999));
     }
 
+    // Garde-fou sur le source (texte des scripts Unity, non exécutables ici) : ce n'est pas un test de comportement.
     [Fact]
-    public void Le_curseur_est_branche_dans_le_jeu()
+    public void Garde_fou_source_le_curseur_est_cite_dans_le_jeu()
     {
         string world = Script("Game", "StyleWorld.cs");
         Assert.Equal(3, world.Split(new[] { "BrightnessSetting.ExposureOffset" }, StringSplitOptions.None).Length - 1);
@@ -85,8 +86,9 @@ public sealed class V213LumiereTests
         Assert.Contains("PlayerPrefs.SetInt(Key", Script("Game", "BrightnessSetting.cs"));
     }
 
+    // Garde-fou sur le source (texte du catalogue) : les versions doivent monter pour que la préparation remette les réglages ; ce n'est pas un test de comportement.
     [Fact]
-    public void Les_reglages_par_defaut_sont_remis_a_la_prochaine_preparation()
+    public void Garde_fou_source_versions_des_reglages_par_defaut()
     {
         string catalog = Script("Game", "StyleCatalog.cs");
         Assert.Contains("AmbienceDefaults = 3;", catalog);

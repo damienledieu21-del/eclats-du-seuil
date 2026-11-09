@@ -457,7 +457,7 @@ namespace EdS.Game
         /// <summary>
         /// V1.10 (essai 10 de Damien : « intérieur trop sombre » ; version 2 en V2.13 : « le jeu est trop sombre ») : version des réglages par défaut de la lumière des intérieurs. Le menu
         /// « Préparer l'essai de style » remet une fois les nouveaux (ambiance plus claire, exposition et lumières plus fortes) ; les
-        /// retouches faites ensuite par Damien sont gardées. Les réglages du dehors (<see cref="AmbienceVersion"/>) ne bougent pas.
+        /// retouches faites ensuite par Damien sont gardées. Les réglages du dehors ont leur propre version (<see cref="AmbienceVersion"/>, remise à 3 en V2.13 avec celle-ci).
         /// </summary>
         public const int IndoorDefaults = 2;
 
