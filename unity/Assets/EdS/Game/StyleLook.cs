@@ -27,6 +27,9 @@ namespace EdS.Game
         private bool _fallen;
         private string _playing;
 
+        /// <summary>Sous-lot V2.15 (relecture de la PR #133) : le clip joué est-il une marche ? Calculé quand il change, lu par <see cref="Pace"/>.</summary>
+        private bool _playingIsWalk;
+
         /// <summary>Matériaux du modèle (copies propres à ce corps) et leur couleur d'origine, pour la teinte.</summary>
         private readonly List<Material> _materials = new List<Material>();
         private readonly List<Color> _colors = new List<Color>();
@@ -132,6 +135,7 @@ namespace EdS.Game
             }
             _animation.CrossFade(clip, 0.25f);
             _playing = clip;
+            _playingIsWalk = StyleRules.Key(clip).Contains("walk");   // V2.15 : une fois par changement de clip, pas à chaque image
             return clip;
         }
 
@@ -324,6 +328,7 @@ namespace EdS.Game
         {
             if (clip == null || clip == _playing) return;
             _playing = clip;
+            _playingIsWalk = StyleRules.Key(clip).Contains("walk");   // V2.15 : une fois par changement de clip, pas à chaque image
             _playingMotion = motion;
             _animation.CrossFade(clip, fade);
             // Sous-lot V2.15 : chaque attente à sa propre cadence (deux voisins ne respirent pas ensemble).
@@ -346,6 +351,7 @@ namespace EdS.Game
                     _trotNatural);
                 human.Blend(_walkClip, _trotClip, (float)t, (float)rw, (float)rr, 0.2f);
                 _playing = Blended;
+                _playingIsWalk = false;
                 _playingMotion = t < 0.5 ? StyleMotion.Walk : StyleMotion.Run;
                 return;
             }
@@ -459,7 +465,7 @@ namespace EdS.Game
         /// </summary>
         public void Pace(float speed)
         {
-            if (_animation == null || _playing == null || _playing == Blended || !StyleRules.Key(_playing).Contains("walk")) return;
+            if (_animation == null || _playing == null || !_playingIsWalk) return;
             Gaits();
             _animation.SetSpeed(_playing, (float)Locomotion.PlaybackRate(speed, _walkNatural, 0.35, 1.6));
         }
