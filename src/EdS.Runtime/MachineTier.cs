@@ -29,7 +29,7 @@ namespace EdS.Runtime
     /// à 1224 Mo) : règle partagée, sans Unity, qui classe la machine et donne la limite de mipmaps des textures
     /// (<c>QualitySettings.globalTextureMipmapLimit</c> : 0 pleine, 1 moitié, 2 quart). Affichage seulement.
     /// </summary>
-    public static class GraphicsTier
+    public static class MachineTier
     {
         /// <summary>En dessous (Mo de mémoire vidéo) : PC modeste.</summary>
         public const int ModestVram = 3072;

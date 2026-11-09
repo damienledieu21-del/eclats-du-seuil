@@ -218,6 +218,8 @@ namespace UnityEngine.Networking
 namespace UnityEngine.Rendering
 {
     public struct ShaderTagId { public ShaderTagId(string name) { } public string name => ""; }
+    // V2.12.5 : présent dans Unity (UnityEngine.Rendering.GraphicsTier) ; le bouchon fait voir à la CI toute ambiguïté avec un type du jeu.
+    public enum GraphicsTier { Tier1 = 0, Tier2 = 1, Tier3 = 2 }
     public enum IndexFormat { UInt16 = 0, UInt32 = 1 }
     public enum AmbientMode { Skybox = 0, Trilight = 1, Flat = 3, Custom = 4 }
     public class VolumeComponent : ScriptableObject { public bool active; }
