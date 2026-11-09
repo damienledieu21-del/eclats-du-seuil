@@ -97,10 +97,17 @@ namespace EdS.Game.Editor
             foreach (string p in StyleRules.ForCatalog(models, StyleSlot.Tree, 8)) wind[p] = 0.25f;
             // Arbres de Sketchfab (fichiers de Tree It, sans matière) : un modèle préparé par arbre, une matière par pièce (TreePrefab).
             var trees = new Dictionary<string, string>();
+            int prepared = 0;
             foreach (string tree in StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Where(IsSketchfab))
+            {
                 if (TreePrefab(tree, notes) is string prefab) trees[tree] = prefab;
+                Breathe(ref prepared);
+            }
             foreach (string model in models.Where(p => !animals.Contains(p)).Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
+            {
                 RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);
+                Breathe(ref prepared);
+            }
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
             if (hero != null && StyleRules.IsRealistic(hero)) MixamoMaterials(hero, notes);
@@ -117,6 +124,7 @@ namespace EdS.Game.Editor
                 }
                 MixamoMaterials(model, notes);
                 characters.Add((folder.Key, model, folder.Value.SelectMany(Clips).ToList()));
+                Breathe(ref prepared);
             }
             // Essai du 26 octobre 2026 : des buissons du MegaKit sortaient blancs (textures manquantes, ajoutées depuis) ; un modèle des packs
             // dont un matériau n'a pas de texture est réimporté, pour retrouver celles qui sont arrivées depuis.
@@ -124,7 +132,10 @@ namespace EdS.Game.Editor
             // Sous-lot V2.11 : ni les scans de Fab (matériau fait par EdsWave5), ni les gestes de métier de Mixamo.
             foreach (string model in models.Where(p => !StyleRules.IsRealistic(p) && !animals.Contains(p) && !HumanFile(p) && !Wave5.IsTradeClip(p)
                 && !p.StartsWith(Wave5.MegascansFolder, System.StringComparison.Ordinal) && Untextured(p)))
+            {
                 AssetDatabase.ImportAsset(model, ImportAssetOptions.ForceUpdate);
+                Breathe(ref prepared);
+            }
 
             // Le moulin de Sketchfab a ses ailes animées : animation « Legacy », jouée en boucle par le jeu.
             string mill = StyleRules.PropCandidates(models, StyleProp.Mill).FirstOrDefault();
@@ -807,6 +818,22 @@ namespace EdS.Game.Editor
             foreach (Material embedded in embeddedMaterials)
                 importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// V2.12.2 (essai de Damien du 9 novembre 2026) : la première préparation après la vague 5 et les packs de l'Asset Store faisait
+        /// tomber Unity à court de mémoire (« System out of memory », dans <see cref="RealisticMaterial"/>) : les textures lues (rendues
+        /// lisibles) et les modèles chargés s'accumulaient. Toutes les <see cref="BreatheEvery"/> pièces préparées, ce qui n'est plus
+        /// référencé est libéré.
+        /// </summary>
+        internal const int BreatheEvery = 12;
+
+        internal static void Breathe(ref int count)
+        {
+            count++;
+            if (count % BreatheEvery != 0) return;
+            EditorUtility.UnloadUnusedAssetsImmediate();
+            System.GC.Collect();
         }
 
         /// <summary>

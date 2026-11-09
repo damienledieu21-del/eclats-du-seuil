@@ -24,7 +24,7 @@ namespace EdS.Game.Editor
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder(EdsStyle.Generated, "Wave5");
             Wave5Look[] old = catalog.Wave5 ?? new Wave5Look[0];
             var looks = new List<Wave5Look>();
-            int live = 0, liveFound = 0, ready = 0;
+            int live = 0, liveFound = 0, ready = 0, breathe = 0;
             foreach (Wave5Entry entry in Wave5.Entries)
             {
                 if (entry.Use == Wave5Use.Interior) continue;   // pris par les intérieurs (EdsStyle, InteriorRules)
@@ -37,6 +37,8 @@ namespace EdS.Game.Editor
                 {
                     if (entry.Has(Wave5Fix.CutClips)) Cut(path);
                     else if (entry.Has(Wave5Fix.Animated)) EdsStyle.Legacy(path, false);
+                    if (entry.Has(Wave5Fix.CutClips) || entry.Has(Wave5Fix.Animated) || entry.Has(Wave5Fix.ScannedMaterial))
+                        EdsStyle.Breathe(ref breathe);   // V2.12.2 : mémoire libérée en chemin, après les pièces lourdes (première préparation)
                     // Relecture de la PR #122 : une ressource prête (sans lieu) n'entre pas au catalogue (qui est dans Resources : tout ce qu'il
                     // nomme part dans le jeu construit, téléphone compris) ; elle y entrera quand elle sera posée.
                     if (entry.Use == Wave5Use.Ready) continue;

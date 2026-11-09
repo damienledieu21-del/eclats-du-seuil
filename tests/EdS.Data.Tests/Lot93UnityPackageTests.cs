@@ -166,6 +166,18 @@ public class Lot93UnityPackageTests
     }
 
     [Fact]
+    public void Preparation_libere_la_memoire_en_chemin()
+    {
+        // V2.12.2 (essai de Damien du 9 novembre 2026) : « System out of memory » pendant « Préparer l'essai de style » (RealisticMaterial),
+        // à la première préparation après la vague 5 et les packs de l'Asset Store. La préparation libère ce qui n'est plus référencé en chemin.
+        string style = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        string wave5 = File.ReadAllText(Path.Combine(Root, "unity", "Assets", "EdS", "Editor", "EdsWave5.cs"));
+        Assert.Contains("EditorUtility.UnloadUnusedAssetsImmediate();", style, StringComparison.Ordinal);
+        Assert.Contains("Breathe(ref prepared);", style, StringComparison.Ordinal);
+        Assert.Contains("EdsStyle.Breathe(ref breathe);", wave5, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Donnees_emportees_dans_le_jeu_construit()
     {
         // Sous-lot 11.8 (revue Codex de la PR #36) : la copie de construction (BundledData.CopyTo, appelée par EdsBuildData avant la
