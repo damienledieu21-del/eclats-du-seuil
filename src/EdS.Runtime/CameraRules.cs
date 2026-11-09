@@ -102,16 +102,23 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot V2.12.6 (essai du 9 novembre 2026 : « la caméra traverse les maisons du bourg ») : rayon de la caméra contre les murs (son
-        /// plan proche est à 0,1 m, champ de 50°), distance la plus proche qu'un mur impose, et vitesse de retour (par seconde) une fois
-        /// le mur passé.
+        /// plan proche est à 0,1 m, champ de 50°), plancher technique de la distance (5 cm ; revue Codex de la PR #128 : la distance libre
+        /// prime, un mur réel plus proche le fait passer dessous) et vitesse de retour (par seconde) une fois le mur passé.
         /// </summary>
-        public const double CollisionRadius = 0.3, CollisionMinDistance = 0.5, CollisionReturnSpeed = 4.0;
+        public const double CollisionRadius = 0.3, CollisionMinDistance = 0.05, CollisionReturnSpeed = 4.0;
+
+        /// <summary>
+        /// Revue Codex de la PR #128 : la caméra reste devant le mur réel le plus proche sur son rayon, à au moins un dixième de sa distance
+        /// et au plus <see cref="WallGap"/> m de lui (jamais dans un bâtiment).
+        /// </summary>
+        public const double WallGap = 0.1;
 
         /// <summary>
         /// Sous-lot V2.12.6 : distance libre derrière le point visé <paramref name="target"/>, dans la direction <paramref name="direction"/>
         /// (celle de <see cref="Offset"/> pour une distance de 1), contre les boîtes des bâtiments <paramref name="boxes"/> élargies du rayon
-        /// de la caméra : la caméra se tient devant le premier mur qu'elle rencontrerait, jamais plus près que
-        /// <see cref="CollisionMinDistance"/>. <see cref="MaxDistance"/> si rien ne gêne. Une boîte qui contient déjà le point visé ne compte
+        /// de la caméra : la caméra se tient devant le premier mur qu'elle rencontrerait, au moins à <see cref="CollisionMinDistance"/> mais
+        /// toujours devant le mur réel (<see cref="WallGap"/> ; jamais dans un bâtiment). <see cref="MaxDistance"/> si rien
+        /// ne gêne. Une boîte qui contient déjà le point visé ne compte
         /// pas (le fondu du décor s'en charge). Un seul rayon par image, sans allocation ni moteur physique.
         /// </summary>
         public static double ClearDistance((double X, double Y, double Z) target, (double X, double Y, double Z) direction, IReadOnlyList<CameraBox>? boxes)
@@ -119,7 +126,7 @@ namespace EdS.Runtime
             double best = MaxDistance;
             if (boxes == null || !Finite(target.X) || !Finite(target.Y) || !Finite(target.Z) || !Finite(direction.X) || !Finite(direction.Y)
                 || !Finite(direction.Z)) return best;
-            double r = CollisionRadius;
+            double r = CollisionRadius, wall = double.MaxValue;
             for (int i = 0; i < boxes.Count; i++)
             {
                 CameraBox b = boxes[i];
@@ -134,14 +141,23 @@ namespace EdS.Runtime
                     double u0 = 0, u1 = MaxDistance;
                     if (Slab(target.X, direction.X, b.MinX, b.MaxX, ref u0, ref u1) && Slab(target.Y, direction.Y, b.MinY, b.MaxY, ref u0, ref u1)
                         && Slab(target.Z, direction.Z, b.MinZ, b.MaxZ, ref u0, ref u1))
+                    {
                         best = Math.Min(best, Math.Max(0, u0 - r));
+                        wall = Math.Min(wall, u0);
+                    }
                     continue;
                 }
                 if (!Slab(target.X, direction.X, x0, x1, ref t0, ref t1) || !Slab(target.Y, direction.Y, y0, y1, ref t0, ref t1)
                     || !Slab(target.Z, direction.Z, z0, z1, ref t0, ref t1)) continue;
                 if (t0 < best) best = t0;
+                // Entrée dans la boîte réelle (le rayon touche la marge, pas forcément le mur : alors rien de plus).
+                double w0 = 0, w1 = MaxDistance;
+                if (Slab(target.X, direction.X, b.MinX, b.MaxX, ref w0, ref w1) && Slab(target.Y, direction.Y, b.MinY, b.MaxY, ref w0, ref w1)
+                    && Slab(target.Z, direction.Z, b.MinZ, b.MaxZ, ref w0, ref w1))
+                    wall = Math.Min(wall, w0);
             }
-            return Math.Max(CollisionMinDistance, best);
+            // Revue Codex de la PR #128 : le plancher technique ne pousse jamais la caméra jusqu'au mur réel.
+            return Math.Min(Math.Max(CollisionMinDistance, best), wall - Math.Min(WallGap, wall * 0.1));
         }
 
         private static bool Finite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);

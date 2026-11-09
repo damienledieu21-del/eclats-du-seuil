@@ -154,7 +154,7 @@ public sealed class V2126EssaiTests
     [Fact]
     public void Mur_colle_au_dos_distance_minimale()
     {
-        Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.65), (0, 0, 1), new[] { House }));
+        Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.65), (0, 0, 1), new[] { House }), 9);
     }
 
     [Fact]
@@ -162,12 +162,41 @@ public sealed class V2126EssaiTests
     {
         // Relecture de la PR #128 : à 0,1 m du mur (dans la marge du rayon, hors de la maison), la caméra vers le mur ne le traverse pas.
         Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (0, 0, 1), new[] { House }));
-        Assert.Equal(CameraRules.CollisionMinDistance, CameraRules.ClearDistance((0, 1.6, 3.9), CameraRules.Offset(180, 22, 1), new[] { House }));
+        Assert.InRange(CameraRules.ClearDistance((0, 1.6, 3.9), CameraRules.Offset(180, 22, 1), new[] { House }), 0.01, CameraRules.CollisionMinDistance);
         // Même place, caméra à l'opposé ou le long du mur : rien ne gêne.
         Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (0, 0, -1), new[] { House }));
         Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 3.9), (1, 0, 0), new[] { House }));
         // Dans la maison même (intérieur) : ignorée.
         Assert.Equal(CameraRules.MaxDistance, CameraRules.ClearDistance((0, 1.6, 4.5), (0, 0, -1), new[] { House }));
+    }
+
+    [Fact]
+    public void Camera_jamais_dans_un_batiment_pres_des_murs()
+    {
+        // Revue Codex de la PR #128 : cible à 3,9 m (mur à 4 m), caméra inclinée vers le mur : elle reste devant lui.
+        (double X, double Y, double Z) dir = CameraRules.Offset(180, 22, 1);
+        double d = CameraRules.ClearDistance((0, 1.6, 3.9), dir, new[] { House });
+        Assert.True(3.9 + dir.Z * d < 4, d.ToString());
+        // Propriété : sur une grille de cibles près des murs (hors des maisons) et d'angles, la caméra n'est jamais dans une boîte.
+        var boxes = new[] { House, new CameraBox(4, 0, -2, 7, 5, 3), new CameraBox(-8, 0, -6, -3.2, 7, -1) };
+        int checkedPoses = 0;
+        for (double tx = -9; tx <= 8; tx += 0.37)
+            for (double tz = -7; tz <= 11; tz += 0.37)
+                foreach (double ty in new[] { 1.2, 1.6, 5.8 })
+                {
+                    if (boxes.Any(b => tx >= b.MinX && tx <= b.MaxX && ty >= b.MinY && ty <= b.MaxY && tz >= b.MinZ && tz <= b.MaxZ)) continue;
+                    for (double yaw = 0; yaw < 360; yaw += 22.5)
+                        foreach (double pitch in new[] { -10.0, 0.0, 22.0, 60.0 })
+                        {
+                            (double X, double Y, double Z) o = CameraRules.Offset(yaw, pitch, 1);
+                            double free = CameraRules.ClearDistance((tx, ty, tz), o, boxes);
+                            double cx = tx + o.X * free, cy = ty + o.Y * free, cz = tz + o.Z * free;
+                            Assert.False(boxes.Any(b => cx > b.MinX && cx < b.MaxX && cy > b.MinY && cy < b.MaxY && cz > b.MinZ && cz < b.MaxZ),
+                                $"cible ({tx:0.00}, {ty}, {tz:0.00}), {yaw}°/{pitch}° : caméra à {free:0.000} m dans un bâtiment");
+                            checkedPoses++;
+                        }
+                }
+        Assert.True(checkedPoses > 50_000, checkedPoses.ToString());
     }
 
     [Fact]
