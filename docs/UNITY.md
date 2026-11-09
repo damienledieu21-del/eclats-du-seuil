@@ -929,6 +929,16 @@ Essai de Damien du 9 novembre 2026 : « System out of memory » (MemoryLabel Tex
 - **Vérifier l'essai** : ligne « Machine et textures » (classe, mémoires, limite appliquée).
 - **Limite** : les modèles écartés restent référencés par le catalogue (seule la construction pour téléphone les retire, `EdsPhoneBuild`) ; leurs textures peuvent donc encore être chargées ; la limite de mipmaps réduit toutes les textures, elle. Dans l'éditeur, la vue Scène garde ses propres textures.
 
+### L'atelier : nos propres bâtiments (sous-lot V2.17)
+
+Décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ». Claude les construit par script Blender ; ils sont au projet (tous droits réservés, comme le dépôt) et **suivis par git**, contrairement à `Assets/Style`.
+
+- **Rangement** : `unity/Assets/EdS/Modeles/Batiments/<obstacle>/<nom>.fbx`, avec `<nom>_couleur` (albédo, `.jpg` ou `.png`, jusqu'à 4096) et `<nom>_normale` (normal map, espace tangent, convention OpenGL comme Blender, `.png` ou `.jpg`). Le dossier dit l'obstacle (`TownModels.OwnBuildingOf`, testé : `V217AtelierTests`). Premier modèle : `maison2/boulangerie_firmin.fbx` (boulangerie de Firmin, Vallons).
+- **Conventions du modèle** : mètre, échelle 1 ; pivot au centre du pied, au sol ; façade (porte) vers **+Z dans Unity** (dans Blender : façade vers −Y, export FBX « Forward −Z, Up Y », transformations appliquées) ; pied d'environ 14 × 10,6 m pour l'emprise de 14,5 × 11 m ; **un seul matériau** (son nom est libre).
+- **Préparation** (« Préparer l'essai de style », `EdsStyle.OwnBuildings`) : pied mesuré comme pour Sketchfab (`Foot`) ; la normale en type *Normal map* ; taille d'import gardée (4096, réglée par fichier ; le mode PC modeste réduit déjà en global) ; matériau URP Lit `Assets/Style/Generated/<nom>.mat` (`_BaseMap`, `_BumpMap`, `_NORMALMAP`, brillant 0,15) ; la matière du FBX remappée vers lui puis réimport. Relançable sans risque ; sans dossier, rien. Note « Bâtiments de l'atelier » dans le rapport. `EdsMaterialRepair` ne touche pas à ces modèles.
+- **Pose** (`SpaceView.OwnBuilding`) : avant Sketchfab, façade verrouillée vers la porte, **jamais en miroir** (l'enseigne peinte se lirait à l'envers), échelle par `TownModels.Fit` ; mêmes occulteurs et boîtes de caméra (`PlaceModel`, commun avec `ModelBuilding`). Une pose non `Usable` laisse la suite (Sketchfab, puis le bâtiment fait par le code), avec un avertissement dans la console.
+- **Les `.meta` ne sont pas suivis** (règle `*.meta` du dépôt) : le remap et le matériau sont refaits par le menu sur chaque poste.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

@@ -522,3 +522,20 @@ Avant l'essai : une partie déjà lancée une fois. Les menus **Éclats du Seuil
 | 30.13 | La forge de Maëlle | Un **atelier couvert** (poteaux et toit d'appentis) au-dessus de l'enclume et de l'établi | [ ] | |
 | 30.14 | Une quête en cours (Firmin, Sauge, Bertille) un jour de repos ou la nuit | La quête n'est jamais bloquée : le PNJ parle ; ce qu'une quête demande d'acheter se trouve toujours (Sauge jour et nuit, ou à la porte) | [ ] | |
 | 30.15 | Ton avis : horaires, jours de repos, fournées, prix du pain, jours et heures du marché, marchandage, enseignes, fumée, foule | — | [ ] | |
+
+## 31. La boulangerie de Firmin, notre premier bâtiment (V2.17)
+
+Ta décision du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ». Avant l'essai : récupérer la branche avec les fichiers de `unity/Assets/EdS/Modeles/Batiments/maison2/` (`boulangerie_firmin.fbx`, `boulangerie_firmin_couleur.jpg`, `boulangerie_firmin_normale.png`). Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 31.1 | Unity : **Éclats du Seuil → Préparer l'essai de style** | Dans le rapport : « Bâtiments de l'atelier : maison2 (boulangerie_firmin, 14,0 × 10,6 m) » (à peu près), aucune ligne « Atelier : … introuvable » | [ ] | Noter la ligne en entier |
+| 31.2 | Relancer le menu une deuxième fois | Même rapport, pas d'erreur ; `Assets/Style/Generated/boulangerie_firmin.mat` existe une seule fois | [ ] | |
+| 31.3 | Jouer, aller au bourg des Vallons, devant la grande maison de Firmin | **Notre boulangerie** à la place de l'ancienne maison2 (plus le modèle de Sketchfab ni la maison faite par le code) | [ ] | |
+| 31.4 | Regarder l'enseigne peinte | Elle se **lit à l'endroit** (pas en miroir) | [ ] | |
+| 31.5 | Regarder la porte | La porte est **face au chemin**, au sud ; la porte d'entrée du jeu (touche pour entrer) tombe bien sur elle | [ ] | Écart en mètres : le dire |
+| 31.6 | Faire le tour du bâtiment, caméra basse et haute | **Pas de trou** (mur ou toit manquant, faces invisibles de dos), pas de bâtiment qui flotte ou s'enfonce ; on ne bute pas contre un mur invisible à plus d'un pas du mur ; le bâtiment s'efface quand il cache le héros | [ ] | |
+| 31.7 | Regarder de près, de jour puis de nuit | Couleurs et relief (pierres, tuiles, bois) nets, pas de matière rose ou blanche | [ ] | |
+| 31.8 | Sur ton PC modeste (qualité des textures « auto ») | Le jeu tient : pas de « out of memory », images par seconde comme avant au bourg | [ ] | Noter les images par seconde |
+| 31.9 | L'ancienne enseigne de bois (30.1), la lanterne et la fumée du fournil (30.2) | Dire si elles tombent juste sur le nouveau modèle ou flottent à côté | [ ] | Placées par le code d'après l'emprise |
+| 31.10 | Ton avis : proportions, style, couleurs, ce qu'il faut pour le bâtiment suivant | — | [ ] | |
