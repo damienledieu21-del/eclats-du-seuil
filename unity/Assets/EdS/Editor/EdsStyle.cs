@@ -99,8 +99,12 @@ namespace EdS.Game.Editor
             var trees = new Dictionary<string, string>();
             foreach (string tree in StyleRules.ForCatalog(models, StyleSlot.Tree, 8).Where(IsSketchfab))
                 if (TreePrefab(tree, notes) is string prefab) trees[tree] = prefab;
+            int prepared = 0;
             foreach (string model in models.Where(p => !animals.Contains(p)).Where(p => StyleRules.IsRealistic(p) && !heroClips.Contains(p) && p != hero && !IsMixamo(p) && !trees.ContainsKey(p)))
+            {
                 RealisticMaterial(model, wind.TryGetValue(model, out float w) ? w : 0f, notes);
+                Breathe(ref prepared);
+            }
             // Essai de Damien du 26 octobre 2026 : le paladin de Mixamo était tout blanc (ses textures restent dans son fichier) ; elles sont
             // sorties à côté de lui, puis chaque matériau reçoit les siennes.
             if (hero != null && StyleRules.IsRealistic(hero)) MixamoMaterials(hero, notes);
@@ -807,6 +811,22 @@ namespace EdS.Game.Editor
             foreach (Material embedded in embeddedMaterials)
                 importer.AddRemap(new AssetImporter.SourceAssetIdentifier(embedded), material);
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// V2.12.2 (essai de Damien du 9 novembre 2026) : la première préparation après la vague 5 et les packs de l'Asset Store faisait
+        /// tomber Unity à court de mémoire (« System out of memory », dans <see cref="RealisticMaterial"/>) : les textures lues (rendues
+        /// lisibles) et les modèles chargés s'accumulaient. Toutes les <see cref="BreatheEvery"/> pièces préparées, ce qui n'est plus
+        /// référencé est libéré.
+        /// </summary>
+        internal const int BreatheEvery = 12;
+
+        internal static void Breathe(ref int count)
+        {
+            count++;
+            if (count % BreatheEvery != 0) return;
+            EditorUtility.UnloadUnusedAssetsImmediate();
+            System.GC.Collect();
         }
 
         /// <summary>
