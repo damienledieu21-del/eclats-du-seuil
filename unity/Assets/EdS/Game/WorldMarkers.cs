@@ -324,7 +324,7 @@ namespace EdS.Game
                 Wave5View.PlaceNear(root, Wave5Role.SmithTable, "établi " + w.Id, w.X, w.Z, 140, 2.6, 0.9, obstacles, 320);
                 Wave5View.PlaceNear(root, Wave5Role.WeaponStand, "présentoir " + w.Id, w.X, w.Z, 230, 2.6, 0.7, obstacles, 50);
                 Wave5View.PlaceNear(root, Wave5Role.QuenchTub, "bac " + w.Id, w.X, w.Z, 320, 2.0, 0.6, obstacles, 0);
-                Wave5View.PlaceNear(root, Wave5Role.VillageBarrel, "tonneau " + w.Id, w.X, w.Z, 270, 3.2, 0.5, obstacles, 0);
+                BarrelLook.Ensure(Wave5View.PlaceNear(root, Wave5Role.VillageBarrel, "tonneau " + w.Id, w.X, w.Z, 270, 3.2, 0.5, obstacles, 0));
             }
             // La roue à eau : sur la rive de la rivière la plus proche du moulin (le moulin de Tim0 reste ; position estimée, à régler par Offset).
             // Relecture de la PR #122 : à une place libre (FreeSpot, à 2,5 m de tout obstacle, moulin de Tim0 compris), sinon pas posée.
@@ -345,8 +345,11 @@ namespace EdS.Game
             foreach (string placeId in new[] { "village", "bourg" })
                 if (Place(placeId) is MapPlace p)
                     for (int i = 0; i < village.Length; i++)
-                        Wave5View.PlaceNear(root, village[i].Role, placeId + " décor " + i, p.CenterX, p.CenterZ, village[i].Yaw + (placeId == "bourg" ? 15 : 0),
+                    {
+                        GameObject piece = Wave5View.PlaceNear(root, village[i].Role, placeId + " décor " + i, p.CenterX, p.CenterZ, village[i].Yaw + (placeId == "bourg" ? 15 : 0),
                             village[i].Distance, village[i].Clearance, obstacles, StyleRules.Variant(placeId + i, 360), 0f, i);
+                        if (village[i].Role == Wave5Role.VillageBarrel) BarrelLook.Ensure(piece);
+                    }
             if (Place("bourg") is MapPlace town) Wave5View.PlaceNear(root, Wave5Role.VillageCart, "charrette du bourg", town.CenterX, town.CenterZ, 320, 8, 2, obstacles, 40);
             if (Place("hameau") is MapPlace hamlet)
             {
@@ -564,7 +567,15 @@ namespace EdS.Game
                 hammer.transform.rotation = Quaternion.Euler(90f, 20f, 0f);
                 StyleLook.Ground(hammer, 0.79f);
             }
-            StyleLook.Prop(holder, StyleProp.Barrel, m.Data.Id + "/tonneau", c + new Vector3(-1.5f, 0f, 0.3f), 35f);
+            // Sous-lot V2.12.7 (essai du 9 novembre 2026 : tonneau bleu uni) : le modèle du catalogue s'il a l'air de bois, sinon un tonneau de
+            // bois à cercles sombres fait par le code (BarrelLook).
+            Vector3 barrelAt = c + new Vector3(-1.5f, 0f, 0.3f);
+            GameObject barrel = StyleLook.Prop(holder, StyleProp.Barrel, m.Data.Id + "/tonneau", barrelAt, 35f);
+            if (barrel == null || !BarrelLook.LooksWooden(barrel))
+            {
+                if (barrel != null) Object.Destroy(barrel);
+                BarrelLook.Make(holder, m.Data.Id + "/tonneau", barrelAt, 35f);
+            }
             StyleLook.Prop(holder, StyleProp.Crate, m.Data.Id + "/caisse", c + new Vector3(-1.7f, 0f, -1.6f), 75f);
             // Braises au fond du foyer et lueur orange (une seule lumière par forge).
             StyleLook.VisibleBounds(pit, out Bounds b);
