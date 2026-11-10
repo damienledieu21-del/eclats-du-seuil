@@ -194,6 +194,11 @@ namespace EdS.Runtime
                 // feu d'âtre pendant les heures d'ouverture (décision de Damien du 10 novembre 2026 au soir). Exportée recentrée sur le
                 // pied des murs (X 0 – 10,80, Y 0 – 9,40) : X − 5,40, Y − 4,70.
                 case "epicerievallons": return (5.40 - 8.90, 11.55, 4.70 - 4.70);
+                // V2.22 : herboristerie de Sauge (fiche : cheminée à X 2,25, Y 4,20, sommet Z 6,05), feu de tisanes permanent (décision de
+                // Damien du 10 novembre 2026 au soir). Exportée recentrée sur le pied des murs (X 0 – 4,50, Y 0 – 5,20) : X − 2,25, Y − 2,60.
+                case "herboristeriesauge": return (2.25 - 2.25, 6.05, 2.60 - 4.20);
+                // V2.22 : la mercerie (cheminée à X 3,20, Y 4,50, sommet 7,00) et la Guilde (deux souches, sommet 12,40) n'ont aucun feu
+                // tenu dans les données (ni fournée, ni cuisine, ni âtre, ni heures pour la Guilde) : pas de cheminée connue, pas de fumée.
                 default: return null;
             }
         }
@@ -218,6 +223,10 @@ namespace EdS.Runtime
                 // V2.21 : lanterne de l'herboristerie de Sauge, à droite de la porte (Prop_Lanterne : X 3,30, Y −0,22, lumière à Z 1,925).
                 // Exportée recentrée sur le pied des murs (X 0 – 4,50, Y 0 – 5,20) : X − 2,25, Y − 2,60.
                 case "herboristeriesauge": return (2.25 - 3.30, 1.925, 2.60 + 0.22);
+                // V2.22 : lanterne murale de la mercerie, entre la porte P1 (centre X 3,20) et la vitrine des rubans (Lumiere_Lanterne :
+                // X 4,00, Y −0,22, Z 1,925). Exportée recentrée sur le pied des murs (X 0 – 6,40, Y 0 – 5,80) : X − 3,20, Y − 2,90.
+                case "mercerievallons": return (3.20 - 4.00, 1.925, 2.90 + 0.22);
+                // V2.22 : la Guilde n'a pas de lanterne (fiche : le blason et les bannières sont ses seuls accessoires) : OwnDoorLantern.
                 default: return null;
             }
         }
@@ -234,6 +243,33 @@ namespace EdS.Runtime
         /// (<c>StyleWorld.Lamps</c> : 0 le jour, 1 la nuit) : 1 pour une lanterne toujours allumée, sinon <paramref name="lamps"/>.
         /// </summary>
         public static double LanternLevel(bool alwaysLit, double lamps) => alwaysLit ? 1.0 : Math.Max(0.0, Math.Min(1.0, lamps));
+
+        /// <summary>
+        /// V2.22 (relecture de la PR #140) : ordre des lanternes qui reçoivent les <paramref name="count"/> lumières de la vue. Tant que
+        /// les lanternes du monde ne sont pas pleinement allumées (<paramref name="lamps"/> &lt; 1 : le jour et au crépuscule), les
+        /// lanternes toujours allumées passent d'abord (la lanterne de Sauge garde sa lumière le jour, même loin de la caméra), puis
+        /// les autres ; à chaque fois de la plus proche à la plus éloignée (<paramref name="distances"/> : carrés des distances à la
+        /// caméra), à égalité dans l'ordre des indices. La nuit, seule la distance compte. Rend les indices retenus.
+        /// </summary>
+        public static IReadOnlyList<int> LampOrder(IReadOnlyList<double> distances, IReadOnlyList<bool> alwaysLit, double lamps, int count)
+        {
+            if (distances.Count != alwaysLit.Count) throw new ArgumentException("autant de distances que de lanternes", nameof(alwaysLit));
+            bool day = lamps < 1.0;
+            return Enumerable.Range(0, distances.Count)
+                .OrderBy(i => day && alwaysLit[i] ? 0 : 1)
+                .ThenBy(i => distances[i])
+                .ThenBy(i => i)
+                .Take(Math.Max(0, count))
+                .ToList();
+        }
+
+        /// <summary>
+        /// V2.22 : force (0 à 1) de la fumée d'un feu (<see cref="ShopChimney"/>, d'après son identifiant) : 0,35 pour le feu de tisanes
+        /// d'une herboristerie (décision de Damien du 10 novembre 2026 au soir : fumée légère), 1 pour les autres (fournils, cuisines,
+        /// âtres).
+        /// </summary>
+        public static double SmokeStrength(string? chimneyId) =>
+            chimneyId != null && chimneyId.StartsWith(AdventureSession.TisanePrefix, StringComparison.Ordinal) ? 0.35 : 1.0;
 
         /// <summary>
         /// V2.17 : place dans le monde d'un point (<paramref name="px"/>, <paramref name="py"/>, <paramref name="pz"/>) du repère d'un modèle

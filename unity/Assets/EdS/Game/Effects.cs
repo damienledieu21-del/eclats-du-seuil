@@ -136,10 +136,12 @@ namespace EdS.Game
         /// pack est une fumée éclairée (« Particles/Standard Surface », passée sur « Particles/Lit » d'URP) : elle ne prend que la lumière qui
         /// la touche, et au-dessus du foyer (à l'ombre du toit, la lueur orange par dessous) elle sortait presque noire. Celle-ci n'est pas
         /// éclairée : gris clair, mélange alpha (shader « EdS/Particule », texture « fumee »), qui monte, grossit et s'efface. Null sans le
-        /// shader ou la texture (pas de fumée).
+        /// shader ou la texture (pas de fumée). V2.22 : <paramref name="strength"/> (0 à 1, 1 par défaut) allège la fumée (moins de
+        /// bouffées, plus petites et plus pâles), pour le feu de tisanes de Sauge.
         /// </summary>
-        public static GameObject Smoke(Transform parent, Vector3 at)
+        public static GameObject Smoke(Transform parent, Vector3 at, float strength = 1f)
         {
+            strength = Mathf.Clamp(strength, 0.1f, 1f);
             Material material = SmokeMaterial();
             if (material == null) return null;
             var go = new GameObject("Fumée de la forge");
@@ -152,16 +154,16 @@ namespace EdS.Game
             main.playOnAwake = false;
             main.duration = 5f;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = Application.isMobilePlatform ? 16 : 40;
+            main.maxParticles = Mathf.Max(4, Mathf.RoundToInt((Application.isMobilePlatform ? 16 : 40) * strength));
             main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 5f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.45f, 0.75f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.45f, 0.75f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.45f * (0.5f + 0.5f * strength), 0.75f * (0.5f + 0.5f * strength));
             main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.78f, 0.76f, 0.74f, 0.42f), new Color(0.88f, 0.86f, 0.84f, 0.3f));
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.78f, 0.76f, 0.74f, 0.42f * (0.5f + 0.5f * strength)), new Color(0.88f, 0.86f, 0.84f, 0.3f * (0.5f + 0.5f * strength)));
             main.gravityModifier = -0.02f;
             ParticleSystem.EmissionModule emission = system.emission;
             emission.enabled = true;
-            emission.rateOverTime = Application.isMobilePlatform ? 3f : 7f;
+            emission.rateOverTime = (Application.isMobilePlatform ? 3f : 7f) * strength;
             ParticleSystem.ShapeModule shape = system.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Cone;
