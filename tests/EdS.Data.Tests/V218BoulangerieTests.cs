@@ -69,9 +69,9 @@ public class V218BoulangerieTests
         Assert.Equal(20 + 4.9, e.Z, 6);
     }
 
-    private static (int W, int H) PngSize(byte[] b) => ((b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23]);
+    internal static (int W, int H) PngSize(byte[] b) => ((b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23]);
 
-    private static (int W, int H) JpegSize(byte[] b)
+    internal static (int W, int H) JpegSize(byte[] b)
     {
         int i = 2;
         while (i + 9 < b.Length)

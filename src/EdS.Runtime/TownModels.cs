@@ -135,6 +135,8 @@ namespace EdS.Runtime
         /// </summary>
         public static StyleBuilding KindOfModel(string path)
         {
+            // V2.19 : un modèle de l'atelier (« …/Modeles/Batiments/auberge/… ») est dédié à son obstacle, pas un genre de Sketchfab.
+            if (OwnBuildingOf(path) != null) return StyleBuilding.None;
             string[] parts = (path ?? string.Empty).Replace('\\', '/').Split('/').Select(StyleRules.Key).ToArray();
             for (int i = 0; i + 2 < parts.Length; i++)
             {
@@ -185,6 +187,9 @@ namespace EdS.Runtime
                 // (Y = 0, regardant −Y dans Blender) vers +z. Unity lit le FBX (droitier) en gaucher en changeant le signe de x : la
                 // droite de la façade vue de dehors (+X de Blender) est −x. Donc x = 7,25 − X, y = Z, z = 5,5 − Y.
                 case "boulangeriefirmin": return (-4.9, 7.45, -2.05);
+                // V2.19 : auberge des Vallons (PLAN_COORDONNEES.md, cheminée C2 de la cuisine, la seule qui fume : centre X 7,40, Y 6,00,
+                // sommet 13,45). Exportée recentrée sur le pied des murs, corps et abri (X 0 – 11,50, Y 0 – 8,00) : X − 5,75, Y − 4,00.
+                case "aubergevallons": return (5.75 - 7.40, 13.45, 4.0 - 6.0);
                 default: return null;
             }
         }
@@ -200,6 +205,9 @@ namespace EdS.Runtime
                 // V2.18 : lanterne de l'entrée à droite de la porte P1 (porte centrée à X = 7,25 ; lanterne à X = 8,55, flamme vers 1,94 m,
                 // 0,40 m devant la façade dans Blender ; mêmes conversions que la cheminée).
                 case "boulangeriefirmin": return (-1.3, 1.94, 5.9);
+                // V2.19 : lanterne de l'auberge au-dessus de la porte P1 (Prop_Lanterne_Porte : X 5,75, console à Z 3,55, corps de la
+                // lanterne vers Z 3,25 et Y −0,55, devant l'étage en encorbellement ; mêmes conversions que la cheminée).
+                case "aubergevallons": return (0.0, 3.25, 4.0 + 0.55);
                 default: return null;
             }
         }

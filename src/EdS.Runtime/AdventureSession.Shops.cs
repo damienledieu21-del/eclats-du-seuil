@@ -195,6 +195,26 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.19 : cheminées de cuisine des auberges (boutiques de genre « inn ») de cette zone, au milieu de leur maison, allumées tant que
+        /// l'auberge est ouverte (<see cref="ShopState.Open"/>). Affichage seulement : la vue n'en fait fumer que la cheminée connue d'un
+        /// modèle de l'atelier (<see cref="TownModels.OwnChimney"/>), jamais une cheminée devinée.
+        /// </summary>
+        public IReadOnlyList<ShopChimney> KitchenChimneys()
+        {
+            if (Indoors || !(World.Market is EdS.World.Market market)) return Array.Empty<ShopChimney>();
+            var list = new List<ShopChimney>();
+            foreach (Merchant m in market.Book.Merchants)
+            {
+                if (!(m.Shop is Shop shop) || shop.Building is null || shop.Kind != "inn") continue;
+                SpaceObstacle? house = Map.Obstacles.FirstOrDefault(o => o.Id == shop.Building);
+                if (house is null) continue;
+                double hx = (house.Points.Min(p => p.X.Raw) + house.Points.Max(p => p.X.Raw)) / 20000.0, hz = (house.Points.Min(p => p.Z.Raw) + house.Points.Max(p => p.Z.Raw)) / 20000.0;
+                list.Add(new ShopChimney("cuisine/" + m.Id, hx, hz, World.ShopStateOf(m.Id) == ShopState.Open));
+            }
+            return list;
+        }
+
+        /// <summary>
         /// Sous-lot V2.14 : ligne de l'affichage pour le marché (installation, marché et criée du moment si le joueur est sur la place du
         /// bourg, démontage) ; null hors des jours de marché.
         /// </summary>
