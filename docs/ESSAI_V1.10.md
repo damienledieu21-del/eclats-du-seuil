@@ -568,3 +568,17 @@ Tes modèles du 10 novembre 2026 remplacent l'auberge et la chapelle des Vallons
 | 33.6 | Auberge ouverte (de 6 h à 1 h) | La fumée sort **de la cheminée de la cuisine** (à droite, sur le pan arrière), pas de l'autre ; aucune fumée sur la chapelle | [ ] | Écart en mètres : le dire |
 | 33.7 | De nuit, devant l'auberge | La lumière est **sur la lanterne, au-dessus de la porte** | [ ] | |
 | 33.8 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
+
+## 34. L'épicerie de Bertille (V2.20)
+
+Le modèle de l'atelier (fiche technique et ta décision du 10 novembre 2026) remplace l'épicerie du bourg (`maison4`). Avant l'essai : récupérer `main` à jour (dossier `unity/Assets/EdS/Modeles/Batiments/maison4/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 34.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `maison4` (epicerie_vallons), aucune ligne « introuvable » | [ ] | Noter la ligne |
+| 34.2 | Aller devant l'épicerie, au bourg | La **nouvelle** épicerie (rez de pierre, étage à colombages, auvent de tuiles), **façade et porte face à la porte du jeu** ; l'enseigne « Épicerie » se lit à l'endroit | [ ] | Écart en mètres : le dire |
+| 34.3 | Passer sous l'auvent jusqu'à la porte | Le **passage central est libre** (aucun poteau, étal ni produit devant la porte) | [ ] | |
+| 34.4 | Regarder les étals | Légumes à gauche ; à droite le comptoir avec **meules de fromage, pots de miel, sacs d'épices**, les **jambons** pendus ; **tresses d'ail et d'oignons** sous l'auvent ; le **tonneau de sel** au bout à droite | [ ] | |
+| 34.5 | Faire le tour, caméra basse | **Posée au sol**, ni flottante ni enfoncée, pas déformée ; l'auvent et les sacs dépassent un peu vers la porte du jeu, c'est voulu | [ ] | |
+| 34.6 | Épicerie ouverte (de 5 h à 22 h) puis la nuit | **Aucune fumée** sur sa cheminée (pas de feu de service) ; la nuit, une lumière près de la porte | [ ] | Veux-tu un feu d'âtre ? Le dire |
+| 34.7 | Ton avis : proportions, couleurs, relief (normales en 1024), produits | — | [ ] | |
