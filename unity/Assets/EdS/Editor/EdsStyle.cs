@@ -274,6 +274,10 @@ namespace EdS.Game.Editor
                 .Where(b => b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f).ToArray();
             if (catalog.Buildings.Length > 0) notes.Add("Bâtiments de Sketchfab : " + catalog.Buildings.Length + " modèles (" + string.Join(", ",
                 catalog.Buildings.GroupBy(b => b.Kind).Select(g => g.Key + " " + g.Count())) + ").");
+            // V2.17 (décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ») : bâtiments de l'atelier, chacun dédié à
+            // son obstacle (« Assets/EdS/Modeles/Batiments/maison2/… »), ajoutés après ceux de Sketchfab.
+            BuildingLook[] own = OwnBuildings(notes);
+            if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
             // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
             InteriorLook[] oldFurniture = catalog.Furniture ?? new InteriorLook[0];
@@ -470,11 +474,136 @@ namespace EdS.Game.Editor
             notes.Add(Path.GetFileName(modelPath) + " : texture " + Path.GetFileName(color) + ".");
         }
 
+        /// <summary>Sous-lot V2.17 : dossier des bâtiments de l'atelier (modèles faits pour le projet par script Blender, suivis par git).</summary>
+        public const string OwnBuildingsFolder = "Assets/EdS/Modeles/Batiments";
+
+        /// <summary>
+        /// Sous-lot V2.17 : bâtiments de l'atelier (<see cref="OwnBuildingsFolder"/>/&lt;obstacle&gt;/&lt;nom&gt;.fbx), chacun dédié à
+        /// l'obstacle de son dossier (<see cref="TownModels.OwnBuildingOf"/>) et mesuré comme ceux de Sketchfab (<see cref="Foot"/>). Leur
+        /// matière est préparée (<see cref="OwnMaterial"/>). Sans dossier : rien, sans erreur. Peut se relancer sans risque.
+        /// </summary>
+        private static BuildingLook[] OwnBuildings(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(OwnBuildingsFolder)) return new BuildingLook[0];
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { OwnBuildingsFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => TownModels.OwnBuildingOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            var result = new List<BuildingLook>();
+            foreach (string path in paths)
+            {
+                string id = TownModels.OwnBuildingOf(path);
+                if (result.Any(b => b.Building == id))
+                {
+                    notes.Add("Atelier : « " + id + " » a plusieurs modèles ; seul " + Path.GetFileName(result.First(b => b.Building == id).Model.name) + " est pris.");
+                    continue;
+                }
+                OwnMaterial(path, notes);
+                GameObject model = Load(path);
+                Vector2 size = Foot(model, out Vector3 offset);
+                if (model == null || size.x <= 0.01f || size.y <= 0.01f)
+                {
+                    notes.Add("Atelier : " + Path.GetFileName(path) + " sans maillage mesurable, ignoré.");
+                    continue;
+                }
+                // Revue Codex de la PR #136 : le pivot est au sol (convention de l'atelier) ; une pièce enterrée (le cul-de-four) ne relève
+                // pas le bâtiment : il est posé à son pivot (SpaceView.PlaceModel), et la hauteur de sa cheminée se compte depuis le pivot.
+                if (offset.y < -0.1f) notes.Add("Atelier : " + model.name + " descend de " + (-offset.y).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                    + " m sous son pivot (partie enterrée, cachée par le sol).");
+                offset.y = 0f;
+                result.Add(new BuildingLook { Kind = StyleBuilding.House, Model = model, Size = size, Building = id, Offset = offset });
+            }
+            if (result.Count > 0) notes.Add("Bâtiments de l'atelier : " + string.Join(", ", result.Select(b => b.Building + " (" + b.Model.name + ", "
+                + b.Size.x.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " × "
+                + b.Size.y.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m)")) + ".");
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.17 : matière d'un bâtiment de l'atelier : la texture « &lt;nom&gt;_normale » en Normal map, un matériau URP Lit
+        /// « Generated/&lt;nom&gt;.mat » (couleur « &lt;nom&gt;_couleur », relief, brillant 0,15), et chaque matière du FBX (une seule
+        /// convenue) remappée vers lui, puis réimport. Relancé, le matériau est mis à jour et le remap déjà en place n'est pas refait.
+        /// </summary>
+        private static void OwnMaterial(string modelPath, List<string> notes)
+        {
+            if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
+            string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
+            string name = Path.GetFileNameWithoutExtension(modelPath);
+            List<string> maps = (AssetDatabase.FindAssets("t:Texture2D", new[] { folder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Distinct().ToList();
+            string color = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_couleur", System.StringComparison.OrdinalIgnoreCase));
+            string normal = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_normale", System.StringComparison.OrdinalIgnoreCase));
+            if (color == null) notes.Add("Atelier : " + name + "_couleur introuvable à côté de " + Path.GetFileName(modelPath) + ".");
+            OwnTexture(color, false);
+            OwnTexture(normal, true);
+            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+            if (lit == null)
+            {
+                notes.Add("Rendu URP absent : matière de " + name + " laissée telle quelle.");
+                return;
+            }
+            string ownPath = Generated + "/" + name + ".mat";
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(ownPath);
+            if (material == null)
+            {
+                material = new Material(lit);
+                AssetDatabase.CreateAsset(material, ownPath);
+            }
+            Configure(material, lit, null, 0f, Texture2DAt(color), Texture2DAt(normal), false);
+            // Matières encore dans le FBX (première préparation) ; celles déjà remappées n'y sont plus, et leur remap reste en place.
+            List<Material> embedded = (AssetDatabase.LoadAllAssetsAtPath(modelPath) ?? new Object[0]).OfType<Material>()
+                .Where(m => AssetDatabase.GetAssetPath(m) == modelPath).ToList();
+            if (embedded.Count > 1) notes.Add("Atelier : " + name + " a " + embedded.Count + " matières (une seule convenue) ; toutes prennent " + name + ".mat.");
+            bool changed = false;
+            foreach (Material m in embedded)
+            {
+                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(m), material);
+                changed = true;
+            }
+            // Relance après un « Generated » vidé : un remap qui pointait vers un matériau disparu est refait vers le nouveau.
+            var map = importer.GetExternalObjectMap();
+            if (map != null)
+                foreach (var pair in map.ToList())
+                    if (pair.Value == null || pair.Value != material && pair.Value is Material)
+                    {
+                        importer.AddRemap(pair.Key, material);
+                        changed = true;
+                    }
+            if (changed) importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Sous-lot V2.17 : import d'une texture de l'atelier (albédo .jpg ou .png en 4096, relief .png en 2048) : la carte de relief en
+        /// Normal map ; taille d'origine gardée (jusqu'à <see cref="OwnTextureSize"/>, réglée par fichier) : le mode « PC modeste » réduit
+        /// déjà les textures en global. Ne réimporte que si un réglage change.
+        /// </summary>
+        private static void OwnTexture(string path, bool normalMap)
+        {
+            if (path == null || !(AssetImporter.GetAtPath(path) is TextureImporter importer)) return;
+            bool changed = false;
+            if (normalMap && importer.textureType != TextureImporterType.NormalMap)
+            {
+                importer.textureType = TextureImporterType.NormalMap;
+                changed = true;
+            }
+            if (importer.maxTextureSize < OwnTextureSize)
+            {
+                importer.maxTextureSize = OwnTextureSize;
+                changed = true;
+            }
+            if (changed) importer.SaveAndReimport();
+        }
+
+        /// <summary>Sous-lot V2.17 : taille d'import des textures de l'atelier (celle de l'albédo, 4096).</summary>
+        public const int OwnTextureSize = 4096;
+
         /// <summary>
         /// Essai réaliste 8 : pied d'un modèle de bâtiment (m, le long de x et de z) à l'échelle 1 : une copie posée le temps de la mesurer.
         /// </summary>
-        private static Vector2 Foot(GameObject model)
+        private static Vector2 Foot(GameObject model) => Foot(model, out _);
+
+        /// <summary>Sous-lot V2.17 : pied et, dans <paramref name="offset"/>, centre (x, z) et bas (y) des contours du modèle à l'échelle 1.</summary>
+        private static Vector2 Foot(GameObject model, out Vector3 offset)
         {
+            offset = Vector3.zero;
             if (model == null) return Vector2.zero;
             var copy = (GameObject)Object.Instantiate(model);
             try
@@ -483,6 +612,7 @@ namespace EdS.Game.Editor
                 if (renderers.Length == 0) return Vector2.zero;
                 Bounds b = renderers[0].bounds;
                 foreach (Renderer r in renderers) b.Encapsulate(r.bounds);
+                offset = new Vector3(b.center.x, b.min.y, b.center.z);
                 return new Vector2(b.size.x, b.size.z);
             }
             finally

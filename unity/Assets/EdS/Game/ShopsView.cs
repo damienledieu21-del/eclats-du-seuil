@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using EdS.Data.Merchants;
 using EdS.Runtime;
 using UnityEngine;
@@ -51,10 +52,18 @@ namespace EdS.Game
             _root = new GameObject("Boutiques et marché (V2.14)");
             _root.transform.SetParent(parent, false);
             if (adventure == null || adventure.Indoors) return;
-            foreach (WorldMarker sign in adventure.ShopSigns()) Signboard(sign);
+            // V2.17 : un bâtiment de l'atelier porte déjà son enseigne et sa cheminée ; la fumée sort de la sienne (rien sans cheminée connue).
+            foreach (WorldMarker sign in adventure.ShopSigns())
+                if (!OwnPose(adventure, adventure.ShopBuildingOf(sign.Id), out _, out _)) Signboard(sign);
             foreach (ShopChimney c in adventure.Chimneys())
             {
-                var chimney = new Chimney { Id = c.Id, Top = new Vector3((float)c.X, ChimneyHeight, (float)c.Z) };
+                var top = new Vector3((float)c.X, ChimneyHeight, (float)c.Z);
+                if (OwnPose(adventure, adventure.ShopBuildingOf(c.Id), out _, out Vector3? ownTop))
+                {
+                    if (ownTop == null) continue;
+                    top = ownTop.Value;
+                }
+                var chimney = new Chimney { Id = c.Id, Top = top };
                 chimney.Pack = Effects.Ambient(StyleVfx.ForgeSmoke, _root.transform, chimney.Top);
                 _chimneys.Add(chimney);
             }
@@ -90,6 +99,34 @@ namespace EdS.Game
                 GameObject cover = Child(holder, "toit de planches", new Vector3(0f, (low + high) / 2f + 0.12f, 0f), new Vector3(width + 0.8f, 0.08f, depth + 0.9f), roof);
                 cover.transform.localRotation = Quaternion.Euler(-slope, 0f, 0f);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.17 : la maison <paramref name="building"/> est-elle montrée par un modèle de l'atelier (même pose que
+        /// <c>SpaceView.OwnBuilding</c> : façade vers la porte, pose <see cref="TownModels.Usable"/>) ? <paramref name="chimney"/> : le haut de
+        /// sa cheminée dans le monde (<see cref="TownModels.OwnChimney"/>), null s'il n'en a pas de connue.
+        /// </summary>
+        private static bool OwnPose(AdventureSession adventure, string building, out BuildingLook own, out Vector3? chimney)
+        {
+            chimney = null;
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            own = catalog != null && building != null ? catalog.OwnBuilding(building) : null;
+            if (own == null || adventure.Map == null) return false;
+            var house = adventure.Map.Obstacles.FirstOrDefault(o => o.Id == building);
+            if (house == null) return false;
+            double x0 = house.Points.Min(p => p.X.Raw) / 10000.0, x1 = house.Points.Max(p => p.X.Raw) / 10000.0;
+            double z0 = house.Points.Min(p => p.Z.Raw) / 10000.0, z1 = house.Points.Max(p => p.Z.Raw) / 10000.0;
+            (int X, int Z) facing = TownRules.FacingOf(building, x0, z0, x1, z1, adventure.Map.Roads, adventure.Map.Doors);
+            ModelFit fit = TownModels.Fit(x1 - x0, z1 - z0, facing, own.Size.x, own.Size.y, TownModels.Overflow(TownRules.BuildingFor(building)));
+            if (!TownModels.Usable(fit)) return false;
+            (double X, double Y, double Z)? local = TownModels.OwnChimney(own.Model.name);
+            if (local.HasValue)
+            {
+                (double wx, double wy, double wz) = TownModels.OwnPoint((x0 + x1) / 2, (z0 + z1) / 2, facing, fit, own.Offset.x, own.Offset.y, own.Offset.z,
+                    local.Value.X, local.Value.Y, local.Value.Z);
+                chimney = new Vector3((float)wx, (float)wy, (float)wz);
+            }
+            return true;
         }
 
         /// <summary>Enseigne : potence de fer et planche de bois peinte, à 2,6 m, le long de la façade.</summary>

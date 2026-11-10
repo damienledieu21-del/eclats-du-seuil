@@ -155,6 +155,82 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// V2.17 (décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ») : identifiant de l'obstacle auquel est
+        /// dédié un modèle de l'atelier rangé dans « …/Modeles/Batiments/&lt;id&gt;/&lt;fichier&gt;.fbx » (casse et « \ » indifférents) ;
+        /// null ailleurs. L'identifiant est rendu en minuscules, tel qu'écrit dans le chemin.
+        /// </summary>
+        public static string? OwnBuildingOf(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            string[] parts = path!.Replace('\\', '/').Split('/');
+            int n = parts.Length;
+            if (n < 4) return null;
+            string file = parts[n - 1], id = parts[n - 2];
+            if (!string.Equals(parts[n - 3], "Batiments", StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(parts[n - 4], "Modeles", StringComparison.OrdinalIgnoreCase)) return null;
+            if (id.Length == 0 || file.Length <= 4 || !file.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) return null;
+            return id.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// V2.17 : haut de la cheminée d'un modèle de l'atelier (m, repère du modèle dans Unity : façade vers +z, origine du FBX), là où
+        /// sort la fumée du fournil ; null si le modèle n'a pas de cheminée connue (alors pas de fumée faite par le code sur lui).
+        /// </summary>
+        public static (double X, double Y, double Z)? OwnChimney(string? model)
+        {
+            switch (StyleRules.Key(model ?? string.Empty))
+            {
+                // Session Blender du 9 novembre 2026 : x 5,0, y 2,0 (Blender), 7,6 m de haut ; façade côté −y de Blender, donc +z dans Unity.
+                case "boulangeriefirmin": return (5.0, 7.6, -2.0);
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// V2.17 : place dans le monde d'un point (<paramref name="px"/>, <paramref name="py"/>, <paramref name="pz"/>) du repère d'un modèle
+        /// posé comme le fait la vue (sans miroir) : le pied du modèle (centre <paramref name="offX"/>, <paramref name="offZ"/>, bas
+        /// <paramref name="offY"/>, mesurés à l'échelle 1) au centre (<paramref name="cx"/>, <paramref name="cz"/>) de l'emprise, au sol,
+        /// mis à l'échelle de <paramref name="fit"/> dans les axes du modèle, puis tourné de <see cref="ModelFit.Yaw"/> comme
+        /// <c>Quaternion.Euler(0, yaw, 0)</c> d'Unity (le +z du modèle va vers <paramref name="facing"/>).
+        /// </summary>
+        public static (double X, double Y, double Z) OwnPoint(double cx, double cz, (int X, int Z) facing, ModelFit fit, double offX, double offY,
+            double offZ, double px, double py, double pz)
+        {
+            bool across = facing.X != 0;
+            double lx = (px - offX) * (across ? fit.ScaleZ : fit.ScaleX), ly = (py - offY) * fit.ScaleY, lz = (pz - offZ) * (across ? fit.ScaleX : fit.ScaleZ);
+            double a = fit.Yaw * Math.PI / 180, cos = Math.Cos(a), sin = Math.Sin(a);
+            return (cx + lx * cos + lz * sin, ly, cz - lx * sin + lz * cos);
+        }
+
+        /// <summary>Écart (m) de la lumière de porte d'un bâtiment de l'atelier : à droite de la porte, devant la façade.</summary>
+        public const double OwnLanternAside = 0.4, OwnLanternAhead = 0.4;
+
+        /// <summary>
+        /// V2.17 : la lumière de la lanterne de porte d'un bâtiment de l'atelier (la lanterne elle-même est dans le modèle) : à
+        /// <see cref="OwnLanternAside"/> m à droite de la porte (vue de dehors), à <see cref="NightLamps.DoorLanternHeight"/> m de haut,
+        /// <see cref="OwnLanternAhead"/> m devant la façade (le bord de l'emprise du côté de <paramref name="facing"/>) ; sans porte, à droite
+        /// du milieu de la façade.
+        /// </summary>
+        public static NightLamp OwnDoorLantern(string id, double x0, double z0, double x1, double z1, (int X, int Z) facing, double? doorX, double? doorZ)
+        {
+            double cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+            double fx = Math.Sign(facing.X), fz = facing.X != 0 ? 0 : Math.Sign(facing.Z == 0 ? 1 : facing.Z);
+            double ax = -fz, az = fx;   // la droite quand on regarde la façade de dehors (comme NightLamps.DoorLantern)
+            double x, z;
+            if (fx != 0)
+            {
+                x = (fx > 0 ? x1 : x0) + fx * OwnLanternAhead;
+                z = (doorZ ?? cz) + az * OwnLanternAside;
+            }
+            else
+            {
+                z = (fz > 0 ? z1 : z0) + fz * OwnLanternAhead;
+                x = (doorX ?? cx) + ax * OwnLanternAside;
+            }
+            return new NightLamp(id + "/lanterne", NightLampKind.DoorLantern, x, NightLamps.DoorLanternHeight, z, StyleRules.FaceYaw(cx, cz, cx + fx, cz + fz));
+        }
+
+        /// <summary>
         /// Part de l'emprise que le pied d'un modèle peut déborder : les avant-toits des maisons (6 %), les cordes de la tente (60 %) ; le
         /// puits, rond, tient dans son octogone (85 %), la tour carrée aussi (95 %).
         /// </summary>

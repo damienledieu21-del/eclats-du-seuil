@@ -68,7 +68,8 @@ namespace EdS.Game.Editor
             }
             foreach (PropLook prop in catalog.Props ?? new PropLook[0]) if (prop != null) Add(prop.Model);
             foreach (InteriorLook furniture in catalog.Furniture ?? new InteriorLook[0]) if (furniture != null) Add(furniture.Model);
-            foreach (BuildingLook building in catalog.Buildings ?? new BuildingLook[0]) if (building != null) Add(building.Model);
+            // V2.17 : les bâtiments de l'atelier ont leur propre matière (EdsStyle.OwnMaterial), jamais « réparée ».
+            foreach (BuildingLook building in catalog.Buildings ?? new BuildingLook[0]) if (building != null && string.IsNullOrEmpty(building.Building)) Add(building.Model);
             return paths;
         }
 

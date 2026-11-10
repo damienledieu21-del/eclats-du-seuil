@@ -68,11 +68,26 @@ namespace EdS.Game
             return material;
         }
 
-        /// <summary>Lanterne de porte d'un bâtiment (posée avec le reste du décor de nuit).</summary>
-        private void DoorLantern(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing)
+        /// <summary>
+        /// Lanterne de porte d'un bâtiment (posée avec le reste du décor de nuit). V2.17 : un bâtiment de l'atelier (<paramref name="own"/>)
+        /// porte sa lanterne dans son modèle : seule sa lumière est ajoutée, à côté de la porte (<see cref="TownModels.OwnDoorLantern"/>).
+        /// </summary>
+        private void DoorLantern(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing, bool own = false)
         {
-            if (NightLamps.HasLantern(kind)) _lampSpots.Add(NightLamps.DoorLantern(id, x0, z0, x1, z1, facing));
+            if (!NightLamps.HasLantern(kind)) return;
+            if (!own)
+            {
+                _lampSpots.Add(NightLamps.DoorLantern(id, x0, z0, x1, z1, facing));
+                return;
+            }
+            MapDoor door = _doors.FirstOrDefault(d => d.Building == id);
+            NightLamp light = TownModels.OwnDoorLantern(id, x0, z0, x1, z1, facing, door != null ? door.X : (double?)null, door != null ? door.Z : (double?)null);
+            _lampSpots.Add(light);
+            _lightOnly.Add(light.Id);
         }
+
+        /// <summary>Sous-lot V2.17 : lanternes dont seule la lumière est posée (la lanterne est dans le modèle de l'atelier).</summary>
+        private readonly HashSet<string> _lightOnly = new HashSet<string>();
 
         /// <summary>Pose les lanternes, réverbères, feux follets et hiboux (dehors seulement), éteints : <see cref="Night"/> les allume.</summary>
         private void NightDecor(CombatSpace space, AdventureMap map)
@@ -98,9 +113,10 @@ namespace EdS.Game
                 holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
                 float top = (float)NightLamps.LanternTop(spot);
                 // Revue Codex de la PR #99 : pièces placées en coordonnées locales au support (chaque lanterne à sa place, tournée avec lui).
-                foreach (LanternPiece p in NightLamps.LanternPieces(spot))
-                    Piece(holder.transform, p.Name, p.Name == "poteau" ? PrimitiveType.Cylinder : PrimitiveType.Cube, new Vector3((float)p.X, (float)p.Y, (float)p.Z),
-                        new Vector3((float)p.ScaleX, (float)p.ScaleY, (float)p.ScaleZ), p.Glass ? _lanternGlow : iron, true);
+                if (!_lightOnly.Contains(spot.Id))
+                    foreach (LanternPiece p in NightLamps.LanternPieces(spot))
+                        Piece(holder.transform, p.Name, p.Name == "poteau" ? PrimitiveType.Cylinder : PrimitiveType.Cube, new Vector3((float)p.X, (float)p.Y, (float)p.Z),
+                            new Vector3((float)p.ScaleX, (float)p.ScaleY, (float)p.ScaleZ), p.Glass ? _lanternGlow : iron, true);
                 _lanterns.Add(new Lamp { Data = spot, Body = holder.transform, Glow = holder.transform.position + new Vector3(0f, top, 0f) });
             }
             // Feux follets : sur l'eau et dans les ruines, là où les échos reviennent.
