@@ -103,7 +103,7 @@ namespace EdS.Game
 
         /// <summary>
         /// Sous-lot V2.17 : la maison <paramref name="building"/> est-elle montrée par un modèle de l'atelier (même pose que
-        /// <c>SpaceView.OwnBuilding</c> : façade vers la porte, pose <see cref="TownModels.Usable"/>) ? <paramref name="chimney"/> : le haut de
+        /// <c>SpaceView.OwnBuilding</c> : façade vers la porte, échelle 1 depuis la V2.18, <see cref="TownModels.OwnFit"/>) ? <paramref name="chimney"/> : le haut de
         /// sa cheminée dans le monde (<see cref="TownModels.OwnChimney"/>), null s'il n'en a pas de connue.
         /// </summary>
         private static bool OwnPose(AdventureSession adventure, string building, out BuildingLook own, out Vector3? chimney)
@@ -117,13 +117,11 @@ namespace EdS.Game
             double x0 = house.Points.Min(p => p.X.Raw) / 10000.0, x1 = house.Points.Max(p => p.X.Raw) / 10000.0;
             double z0 = house.Points.Min(p => p.Z.Raw) / 10000.0, z1 = house.Points.Max(p => p.Z.Raw) / 10000.0;
             (int X, int Z) facing = TownRules.FacingOf(building, x0, z0, x1, z1, adventure.Map.Roads, adventure.Map.Doors);
-            ModelFit fit = TownModels.Fit(x1 - x0, z1 - z0, facing, own.Size.x, own.Size.y, TownModels.Overflow(TownRules.BuildingFor(building)));
-            if (!TownModels.Usable(fit)) return false;
+            // V2.18 : posé à l'échelle 1, pivot au centre de l'emprise (TownModels.OwnFit), comme SpaceView.OwnBuilding.
             (double X, double Y, double Z)? local = TownModels.OwnChimney(own.Model.name);
             if (local.HasValue)
             {
-                (double wx, double wy, double wz) = TownModels.OwnPoint((x0 + x1) / 2, (z0 + z1) / 2, facing, fit, own.Offset.x, own.Offset.y, own.Offset.z,
-                    local.Value.X, local.Value.Y, local.Value.Z);
+                (double wx, double wy, double wz) = TownModels.OwnPlace((x0 + x1) / 2, (z0 + z1) / 2, facing, local.Value.X, local.Value.Y, local.Value.Z);
                 chimney = new Vector3((float)wx, (float)wy, (float)wz);
             }
             return true;

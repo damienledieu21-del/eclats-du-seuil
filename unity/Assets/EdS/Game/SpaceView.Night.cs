@@ -87,9 +87,7 @@ namespace EdS.Game
             (double X, double Y, double Z)? local = look != null ? TownModels.OwnLantern(look.Model.name) : null;
             if (local.HasValue)
             {
-                ModelFit fit = TownModels.Fit(x1 - x0, z1 - z0, facing, look.Size.x, look.Size.y, TownModels.Overflow(kind));
-                (double wx, double wy, double wz) = TownModels.OwnPoint((x0 + x1) / 2, (z0 + z1) / 2, facing, fit, look.Offset.x, look.Offset.y,
-                    look.Offset.z, local.Value.X, local.Value.Y, local.Value.Z);
+                (double wx, double wy, double wz) = TownModels.OwnPlace((x0 + x1) / 2, (z0 + z1) / 2, facing, local.Value.X, local.Value.Y, local.Value.Z);
                 light = new NightLamp(light.Id, light.Kind, wx, wy, wz, light.Yaw);
             }
             _lampSpots.Add(light);

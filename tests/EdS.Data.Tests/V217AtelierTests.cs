@@ -66,17 +66,19 @@ public class V217AtelierTests : IDisposable
     }
 
     /// <summary>
-    /// V2.18 : pied du modèle validé le 10 novembre 2026 (LOD1, Blender : X −0,58 à 15,12 avec les rives, Y −1,42 à 11,52 de la
-    /// potence de l'enseigne à l'appentis du four) : il dépasse l'emprise et la marge de 6 %, la pose le réduit (≈ 0,98 en largeur,
-    /// ≈ 0,90 en profondeur) mais il tient.
+    /// V2.18 (décision technique du 10 novembre 2026) : un modèle de l'atelier est posé à l'échelle 1, seulement tourné vers la porte,
+    /// même si ses débords (pied mesuré 15,70 × 12,94 m) sortent de l'emprise de 14,5 × 11 m.
     /// </summary>
     [Fact]
-    public void Le_modele_livre_tient_sur_maison2()
+    public void Un_modele_de_l_atelier_est_pose_a_l_echelle_1()
     {
-        ModelFit fit = TownModels.Fit(14.5, 11, (0, -1), V218BoulangerieTests.ModelX, V218BoulangerieTests.ModelZ, TownModels.Overflow(StyleBuilding.House));
+        ModelFit fit = TownModels.OwnFit((0, -1));
+        Assert.Equal(180, fit.Yaw, 6);
+        Assert.Equal(1, fit.ScaleX, 9);
+        Assert.Equal(1, fit.ScaleY, 9);
+        Assert.Equal(1, fit.ScaleZ, 9);
         Assert.True(fit.Fits);
-        Assert.InRange(fit.ScaleX, 0.97, 0.99);
-        Assert.InRange(fit.ScaleZ, 0.89, 0.91);
+        Assert.Equal(90, TownModels.OwnFit((1, 0)).Yaw, 6);
     }
 
     [Theory]
@@ -138,14 +140,15 @@ public class V217AtelierTests : IDisposable
 
     /// <summary>
     /// Revue Codex de la PR #136 : le cul-de-four de la boulangerie descend 1,2 m sous le sol ; posé à son point le plus bas, le bâtiment
-    /// flottait. Un modèle de l'atelier est posé à son pivot (au sol par convention), sans miroir.
+    /// flottait. Un modèle de l'atelier est posé à son pivot (au sol par convention), sans miroir ; depuis la V2.18, ce pivot (centre du pied
+    /// des murs) va au centre de l'emprise, à l'échelle 1.
     /// </summary>
     [Fact]
     public void Un_modele_de_l_atelier_est_pose_a_son_pivot_sans_miroir()
     {
         string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
-        Assert.Contains("PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, fit, false, true);", view, StringComparison.Ordinal);
-        Assert.Contains("pivotOnGround ? 0f : -b.min.y", view, StringComparison.Ordinal);
+        Assert.Contains("PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);", view, StringComparison.Ordinal);
+        Assert.Contains("if (!pivotOnGround && StyleLook.VisibleBounds(model, out Bounds b))", view, StringComparison.Ordinal);
         string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
         Assert.Contains("offset.y = 0f;", editor, StringComparison.Ordinal);
     }

@@ -12,9 +12,6 @@ public class V218BoulangerieTests
     /// <summary>Pied mesuré du FBX (m, repère Unity : x −7,87 à 7,83, z −6,02 à 6,92, sol à 0).</summary>
     public const double ModelX = 15.70, ModelZ = 12.943;
 
-    /// <summary>Centre et bas du pied à l'échelle 1, comme les mesure l'éditeur (<c>EdsStyle.Foot</c>).</summary>
-    private const double OffX = -0.02, OffY = 0, OffZ = 0.4485;
-
     private static string Folder => Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Modeles", "Batiments", "maison2");
 
     [Fact]
@@ -41,22 +38,17 @@ public class V218BoulangerieTests
         Assert.InRange(fbx.Length, 10_000, 200_000);   // LOD1 de 619 triangles, sans texture embarquée
     }
 
-    private static ModelFit SouthFit() => TownModels.Fit(14.5, 11, (0, -1), ModelX, ModelZ, TownModels.Overflow(StyleBuilding.House));
-
     [Fact]
     public void La_lanterne_est_a_droite_de_la_porte_devant_la_facade()
     {
         var local = TownModels.OwnLantern("boulangerie_firmin");
         Assert.NotNull(local);
-        ModelFit fit = SouthFit();
-        var w = TownModels.OwnPoint(0, 0, (0, -1), fit, OffX, OffY, OffZ, local!.Value.X, local.Value.Y, local.Value.Z);
-        // Porte au milieu du sud (x = 0) ; vue de dehors (on regarde vers +z), la droite est +x : 1,30 m × 0,979.
-        Assert.Equal(1.253, w.X, 2);
-        // Façade (z = 5,5 dans le modèle) posée à −4,55 ; la lanterne 0,36 m devant, dans l'emprise (−5,5).
-        double facade = TownModels.OwnPoint(0, 0, (0, -1), fit, OffX, OffY, OffZ, 0, 0, 5.5).Z;
-        Assert.Equal(-4.551, facade, 2);
-        Assert.InRange(w.Z, -5.5, facade - 0.3);
-        Assert.InRange(w.Y, 1.7, 2.0);
+        // Emprise −7,25 à 7,25 × −5,5 à 5,5, porte au milieu du sud (x = 0) : échelle 1, la façade est le bord sud (z = −5,5).
+        var w = TownModels.OwnPlace(0, 0, (0, -1), local!.Value.X, local.Value.Y, local.Value.Z);
+        Assert.Equal(1.3, w.X, 6);   // vue de dehors (on regarde vers +z), la droite est +x
+        Assert.Equal(-5.9, w.Z, 6);  // 0,40 m devant la façade
+        Assert.Equal(1.94, w.Y, 6);
+        Assert.Equal(-5.5, TownModels.OwnPlace(0, 0, (0, -1), 0, 0, 5.5).Z, 6);
         Assert.Null(TownModels.OwnLantern("Olosta1"));
         Assert.Null(TownModels.OwnLantern(null));
     }
@@ -66,11 +58,15 @@ public class V218BoulangerieTests
     {
         var local = TownModels.OwnChimney("Boulangerie_Firmin");
         Assert.NotNull(local);
-        var w = TownModels.OwnPoint(0, 0, (0, -1), SouthFit(), OffX, OffY, OffZ, local!.Value.X, local.Value.Y, local.Value.Z);
         // Le fournil est à droite de la boutique vue de la rue (+x quand la façade regarde le sud), la cheminée à l'arrière (+z).
-        Assert.Equal(4.777, w.X, 2);
-        Assert.Equal(2.251, w.Z, 2);
-        Assert.Equal(7.45 * Math.Sqrt(SouthFit().ScaleX * SouthFit().ScaleZ), w.Y, 6);
+        var w = TownModels.OwnPlace(0, 0, (0, -1), local!.Value.X, local.Value.Y, local.Value.Z);
+        Assert.Equal(4.9, w.X, 6);
+        Assert.Equal(2.05, w.Z, 6);
+        Assert.Equal(7.45, w.Y, 6);
+        // Façade vers +x (porte à l'est) : vu de dehors (on regarde vers −x), la droite est +z ; l'arrière est −x.
+        var e = TownModels.OwnPlace(10, 20, (1, 0), local.Value.X, local.Value.Y, local.Value.Z);
+        Assert.Equal(10 - 2.05, e.X, 6);
+        Assert.Equal(20 + 4.9, e.Z, 6);
     }
 
     private static (int W, int H) PngSize(byte[] b) => ((b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23]);

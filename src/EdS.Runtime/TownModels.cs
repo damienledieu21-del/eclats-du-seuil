@@ -220,6 +220,21 @@ namespace EdS.Runtime
             return (cx + lx * cos + lz * sin, ly, cz - lx * sin + lz * cos);
         }
 
+        /// <summary>
+        /// V2.18 (décision technique du 10 novembre 2026, prise pour Damien) : un modèle de l'atelier est dessiné au mètre pour son
+        /// emprise et posé à l'**échelle 1** (une échelle non uniforme déformerait portes et pains) : seulement tourné vers
+        /// <paramref name="facing"/>, son pivot (centre du pied des murs, au sol, fixé à l'export) au centre de l'emprise. Les débords
+        /// (toit, enseigne, appentis du four) peuvent sortir de l'emprise : c'est voulu.
+        /// </summary>
+        public static ModelFit OwnFit((int X, int Z) facing) => new ModelFit(FacingYaw(facing), 1, 1, 1, 1, true);
+
+        /// <summary>
+        /// V2.18 : place dans le monde d'un point du repère d'un modèle de l'atelier (<see cref="OwnChimney"/>, <see cref="OwnLantern"/>)
+        /// posé par <see cref="OwnFit"/> au centre (<paramref name="cx"/>, <paramref name="cz"/>) de l'emprise.
+        /// </summary>
+        public static (double X, double Y, double Z) OwnPlace(double cx, double cz, (int X, int Z) facing, double px, double py, double pz) =>
+            OwnPoint(cx, cz, facing, OwnFit(facing), 0, 0, 0, px, py, pz);
+
         /// <summary>Écart (m) de la lumière de porte d'un bâtiment de l'atelier : à droite de la porte, devant la façade.</summary>
         public const double OwnLanternAside = 0.4, OwnLanternAhead = 0.4;
 
