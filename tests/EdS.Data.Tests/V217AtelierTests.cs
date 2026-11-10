@@ -65,14 +65,18 @@ public class V217AtelierTests : IDisposable
         if (usable) Assert.True(fit.Fits);
     }
 
-    /// <summary>Pied du modèle livré le 9 novembre 2026 (Blender : x −7,46 à 7,50, y −6,45 à 5,19).</summary>
+    /// <summary>
+    /// V2.18 : pied du modèle validé le 10 novembre 2026 (LOD1, Blender : X −0,58 à 15,12 avec les rives, Y −1,42 à 11,52 de la
+    /// potence de l'enseigne à l'appentis du four) : il dépasse l'emprise et la marge de 6 %, la pose le réduit (≈ 0,98 en largeur,
+    /// ≈ 0,90 en profondeur) mais il tient.
+    /// </summary>
     [Fact]
     public void Le_modele_livre_tient_sur_maison2()
     {
-        ModelFit fit = TownModels.Fit(14.5, 11, (0, -1), 14.96, 11.64, TownModels.Overflow(StyleBuilding.House));
+        ModelFit fit = TownModels.Fit(14.5, 11, (0, -1), V218BoulangerieTests.ModelX, V218BoulangerieTests.ModelZ, TownModels.Overflow(StyleBuilding.House));
         Assert.True(fit.Fits);
-        Assert.InRange(fit.ScaleX, 0.95, 1.1);
-        Assert.InRange(fit.ScaleZ, 0.95, 1.1);
+        Assert.InRange(fit.ScaleX, 0.97, 0.99);
+        Assert.InRange(fit.ScaleZ, 0.89, 0.91);
     }
 
     [Theory]
