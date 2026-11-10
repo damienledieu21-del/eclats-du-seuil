@@ -55,7 +55,9 @@ namespace EdS.Game
             // V2.17 : un bâtiment de l'atelier porte déjà son enseigne et sa cheminée ; la fumée sort de la sienne (rien sans cheminée connue).
             foreach (WorldMarker sign in adventure.ShopSigns())
                 if (!OwnPose(adventure, adventure.ShopBuildingOf(sign.Id), out _, out _)) Signboard(sign);
-            foreach (ShopChimney c in adventure.Chimneys())
+            // V2.19 : plus la cheminée de cuisine de l'auberge, seulement si le modèle de l'atelier en a une connue.
+            IReadOnlyList<ShopChimney> kitchens = adventure.KitchenChimneys();
+            foreach (ShopChimney c in adventure.Chimneys().Concat(kitchens))
             {
                 var top = new Vector3((float)c.X, ChimneyHeight, (float)c.Z);
                 if (OwnPose(adventure, adventure.ShopBuildingOf(c.Id), out _, out Vector3? ownTop))
@@ -63,6 +65,7 @@ namespace EdS.Game
                     if (ownTop == null) continue;
                     top = ownTop.Value;
                 }
+                else if (c.Id.StartsWith("cuisine/", System.StringComparison.Ordinal)) continue;   // pas de cheminée devinée pour une auberge
                 var chimney = new Chimney { Id = c.Id, Top = top };
                 chimney.Pack = Effects.Ambient(StyleVfx.ForgeSmoke, _root.transform, chimney.Top);
                 _chimneys.Add(chimney);
@@ -239,7 +242,7 @@ namespace EdS.Game
             if (minute != _chimneyMinute)
             {
                 _chimneyMinute = minute;
-                IReadOnlyList<ShopChimney> now = adventure.Chimneys();
+                List<ShopChimney> now = adventure.Chimneys().Concat(adventure.KitchenChimneys()).ToList();
                 foreach (Chimney c in _chimneys)
                 {
                     c.Lit = false;
