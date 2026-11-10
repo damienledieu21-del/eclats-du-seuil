@@ -553,3 +553,18 @@ Ton modèle validé le 10 novembre 2026 remplace celui de la V2.17. Avant l'essa
 | 32.5 | « Mardi, 5 h » (fournée) | La fumée sort **de la cheminée du fournil** (à droite, vers l'arrière), pas à côté | [ ] | Écart en mètres : le dire |
 | 32.6 | De nuit, devant la porte | La lumière est **sur la lanterne**, à droite de la porte | [ ] | |
 | 32.7 | Ton avis : proportions, débords du toit et de l'appentis sur les alentours, couleurs, relief | — | [ ] | |
+
+## 33. L'auberge et la chapelle de l'atelier (V2.19)
+
+Tes modèles du 10 novembre 2026 remplacent l'auberge et la chapelle des Vallons. Avant l'essai : récupérer `main` à jour (dossiers `unity/Assets/EdS/Modeles/Batiments/auberge/` et `chapelle/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 33.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `auberge` (auberge_vallons) et `chapelle` (chapelle_vallons), aucune ligne « introuvable » | [ ] | Noter la ligne |
+| 33.2 | Aller devant l'auberge, au bourg | La **nouvelle** auberge (trois niveaux, abri à chevaux à droite), **porte face au chemin**, sur la porte du jeu ; le panneau « Auberge » se lit à l'endroit | [ ] | Écart en mètres : le dire |
+| 33.3 | Aller devant la chapelle | La chapelle de pierre, **façade (petit côté) et porte face au chemin**, le muret du parvis ouvert devant la porte | [ ] | |
+| 33.4 | Faire le tour des deux, caméra basse | **Posées au sol**, ni flottantes ni enfoncées, pas déformées ; bancs et muret dépassent un peu vers le chemin, c'est voulu | [ ] | |
+| 33.5 | Regarder la chapelle de loin, depuis la place | La **flèche** et sa croix se voient **au-dessus de l'auberge** | [ ] | |
+| 33.6 | Auberge ouverte (de 6 h à 1 h) | La fumée sort **de la cheminée de la cuisine** (à droite, sur le pan arrière), pas de l'autre ; aucune fumée sur la chapelle | [ ] | Écart en mètres : le dire |
+| 33.7 | De nuit, devant l'auberge | La lumière est **sur la lanterne, au-dessus de la porte** | [ ] | |
+| 33.8 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
