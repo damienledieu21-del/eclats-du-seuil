@@ -70,7 +70,7 @@ namespace EdS.Game
 
         /// <summary>
         /// Lanterne de porte d'un bâtiment (posée avec le reste du décor de nuit). V2.17 : un bâtiment de l'atelier (<paramref name="own"/>)
-        /// porte sa lanterne dans son modèle : seule sa lumière est ajoutée, à côté de la porte (<see cref="TownModels.OwnDoorLantern"/>).
+        /// porte sa lanterne dans son modèle : seule sa lumière est ajoutée : sur la lanterne du modèle si elle est connue (V2.18, <see cref="TownModels.OwnLantern"/>), sinon à côté de la porte (<see cref="TownModels.OwnDoorLantern"/>).
         /// </summary>
         private void DoorLantern(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, (int X, int Z) facing, bool own = false)
         {
@@ -82,6 +82,14 @@ namespace EdS.Game
             }
             MapDoor door = _doors.FirstOrDefault(d => d.Building == id);
             NightLamp light = TownModels.OwnDoorLantern(id, x0, z0, x1, z1, facing, door != null ? door.X : (double?)null, door != null ? door.Z : (double?)null);
+            // V2.18 : la lumière va sur la lanterne du modèle quand elle est connue (TownModels.OwnLantern), posée comme le modèle.
+            BuildingLook look = StyleCatalog.Loaded != null ? StyleCatalog.Loaded.OwnBuilding(id) : null;
+            (double X, double Y, double Z)? local = look != null ? TownModels.OwnLantern(look.Model.name) : null;
+            if (local.HasValue)
+            {
+                (double wx, double wy, double wz) = TownModels.OwnPlace((x0 + x1) / 2, (z0 + z1) / 2, facing, local.Value.X, local.Value.Y, local.Value.Z);
+                light = new NightLamp(light.Id, light.Kind, wx, wy, wz, light.Yaw);
+            }
             _lampSpots.Add(light);
             _lightOnly.Add(light.Id);
         }

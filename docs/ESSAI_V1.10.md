@@ -539,3 +539,17 @@ Ta décision du 9 novembre 2026 : « créer nous-mêmes les modèles 3D ». Avan
 | 31.8 | Sur ton PC modeste (qualité des textures « auto ») | Le jeu tient : pas de « out of memory », images par seconde comme avant au bourg | [ ] | Noter les images par seconde |
 | 31.9 | L'enseigne et la lanterne, de nuit ; la fumée du fournil (« mardi, 5 h », 30.2) | Plus d'enseigne de bois ni de lanterne faites par le code (celles du modèle seulement) ; la nuit, la lanterne du modèle **éclaire** à droite de la porte ; la fumée sort **de la cheminée du modèle** | [ ] | Écart en mètres : le dire |
 | 31.10 | Ton avis : proportions, style, couleurs, ce qu'il faut pour le bâtiment suivant | — | [ ] | |
+
+## 32. La nouvelle boulangerie de Firmin (V2.18)
+
+Ton modèle validé le 10 novembre 2026 remplace celui de la V2.17. Avant l'essai : récupérer `main` à jour (fichiers de `unity/Assets/EdS/Modeles/Batiments/maison2/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 32.1 | Lire le rapport du menu | « Bâtiments de l'atelier : maison2 (boulangerie_firmin, 15,7 × 12,9 m) » (à peu près), aucune ligne « introuvable » ni « descend de … sous son pivot » | [ ] | Noter la ligne |
+| 32.2 | Jouer, aller devant la boulangerie au bourg des Vallons | La **nouvelle** boulangerie (boutique à colombages à gauche, fournil à droite), **façade vers le chemin**, la porte du jeu sur sa porte | [ ] | Écart en mètres : le dire |
+| 32.3 | Regarder l'enseigne | Elle se **lit à l'endroit** (« Boulangerie »), à gauche de la vitrine | [ ] | |
+| 32.4 | Faire le tour, caméra basse | **Posée au sol** : ni flottante ni enfoncée ; le dôme du four, à l'arrière, ne s'enfonce plus sous terre ; pas de trou ; **pas déformée** (échelle 1 : le toit, l'enseigne et l'appentis du four dépassent un peu de l'emprise, c'est voulu), la façade au bord du chemin | [ ] | |
+| 32.5 | « Mardi, 5 h » (fournée) | La fumée sort **de la cheminée du fournil** (à droite, vers l'arrière), pas à côté | [ ] | Écart en mètres : le dire |
+| 32.6 | De nuit, devant la porte | La lumière est **sur la lanterne**, à droite de la porte | [ ] | |
+| 32.7 | Ton avis : proportions, débords du toit et de l'appentis sur les alentours, couleurs, relief | — | [ ] | |

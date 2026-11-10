@@ -180,8 +180,26 @@ namespace EdS.Runtime
         {
             switch (StyleRules.Key(model ?? string.Empty))
             {
-                // Session Blender du 9 novembre 2026 : x 5,0, y 2,0 (Blender), 7,6 m de haut ; façade côté −y de Blender, donc +z dans Unity.
-                case "boulangeriefirmin": return (5.0, 7.6, -2.0);
+                // V2.18, modèle validé par Damien le 10 novembre 2026 (PLAN_COORDONNEES.md, cheminée C1 du fournil : X 11,75 – 12,55,
+                // Y 7,10 – 8,00 dans Blender, mitre à 7,45 m). Exporté recentré sur l'emprise des murs (X − 7,25, Y − 5,5), façade
+                // (Y = 0, regardant −Y dans Blender) vers +z. Unity lit le FBX (droitier) en gaucher en changeant le signe de x : la
+                // droite de la façade vue de dehors (+X de Blender) est −x. Donc x = 7,25 − X, y = Z, z = 5,5 − Y.
+                case "boulangeriefirmin": return (-4.9, 7.45, -2.05);
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// V2.18 : lumière de la lanterne de porte d'un modèle de l'atelier (m, même repère que <see cref="OwnChimney"/>) ; null si le
+        /// modèle n'en a pas de connue (alors <see cref="OwnDoorLantern"/> la place d'après la porte et l'emprise).
+        /// </summary>
+        public static (double X, double Y, double Z)? OwnLantern(string? model)
+        {
+            switch (StyleRules.Key(model ?? string.Empty))
+            {
+                // V2.18 : lanterne de l'entrée à droite de la porte P1 (porte centrée à X = 7,25 ; lanterne à X = 8,55, flamme vers 1,94 m,
+                // 0,40 m devant la façade dans Blender ; mêmes conversions que la cheminée).
+                case "boulangeriefirmin": return (-1.3, 1.94, 5.9);
                 default: return null;
             }
         }
@@ -201,6 +219,21 @@ namespace EdS.Runtime
             double a = fit.Yaw * Math.PI / 180, cos = Math.Cos(a), sin = Math.Sin(a);
             return (cx + lx * cos + lz * sin, ly, cz - lx * sin + lz * cos);
         }
+
+        /// <summary>
+        /// V2.18 (décision technique du 10 novembre 2026, prise pour Damien) : un modèle de l'atelier est dessiné au mètre pour son
+        /// emprise et posé à l'**échelle 1** (une échelle non uniforme déformerait portes et pains) : seulement tourné vers
+        /// <paramref name="facing"/>, son pivot (centre du pied des murs, au sol, fixé à l'export) au centre de l'emprise. Les débords
+        /// (toit, enseigne, appentis du four) peuvent sortir de l'emprise : c'est voulu.
+        /// </summary>
+        public static ModelFit OwnFit((int X, int Z) facing) => new ModelFit(FacingYaw(facing), 1, 1, 1, 1, true);
+
+        /// <summary>
+        /// V2.18 : place dans le monde d'un point du repère d'un modèle de l'atelier (<see cref="OwnChimney"/>, <see cref="OwnLantern"/>)
+        /// posé par <see cref="OwnFit"/> au centre (<paramref name="cx"/>, <paramref name="cz"/>) de l'emprise.
+        /// </summary>
+        public static (double X, double Y, double Z) OwnPlace(double cx, double cz, (int X, int Z) facing, double px, double py, double pz) =>
+            OwnPoint(cx, cz, facing, OwnFit(facing), 0, 0, 0, px, py, pz);
 
         /// <summary>Écart (m) de la lumière de porte d'un bâtiment de l'atelier : à droite de la porte, devant la façade.</summary>
         public const double OwnLanternAside = 0.4, OwnLanternAhead = 0.4;
