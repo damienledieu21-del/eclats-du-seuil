@@ -169,7 +169,7 @@ public class V221HerboristerieTests : IDisposable
 
     /// <summary>
     /// La fumée de l'épicerie sort de son mitron : 3,50 m à droite de la porte vue de dehors, au milieu de la profondeur (sur le faîtage),
-    /// à 11,55 m. L'herboristerie n'a pas de feu tenu (ni fournée, ni cuisine, ni âtre décidé) : pas de cheminée connue, donc pas de fumée.
+    /// à 11,55 m. V2.22 : l'herboristerie a désormais son feu de tisanes (V222MercerieGuildeTests).
     /// </summary>
     [Theory]
     [InlineData(0, -1)]
@@ -184,7 +184,7 @@ public class V221HerboristerieTests : IDisposable
         Assert.Equal(0.0, (w.X - 10) * fx + (w.Z - 20) * fz, 6);
         Assert.Equal(3.50, (w.X - 10) * -fz + (w.Z - 20) * fx, 6);
         Assert.Equal(11.55, w.Y, 6);
-        Assert.Null(TownModels.OwnChimney(Name));
+        Assert.NotNull(TownModels.OwnChimney(Name));   // V2.22 : feu de tisanes permanent (décision de Damien du 10 novembre 2026 au soir)
     }
 
     /// <summary>
@@ -207,8 +207,8 @@ public class V221HerboristerieTests : IDisposable
         Assert.Equal(-43, c.X, 6);
         Assert.Equal(-14.5, c.Z, 6);
         Assert.Equal(lit, c.Lit);
-        // Ni l'herboristerie ni la mercerie n'ont de feu tenu ; les fournils ne changent pas.
-        Assert.Equal(new[] { "atre/merchant.epicier", "cuisine/merchant.auberge" }, a.KitchenChimneys().Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal));
+        // La mercerie n'a pas de feu tenu ; V2.22 : l'herboristerie a son feu de tisanes, permanent ; les fournils ne changent pas.
+        Assert.Equal(new[] { "atre/merchant.epicier", "cuisine/merchant.auberge", "tisane/merchant.herboriste" }, a.KitchenChimneys().Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal));
         Assert.DoesNotContain(a.Chimneys(), x => a.ShopBuildingOf(x.Id) == "maison4" || a.ShopBuildingOf(x.Id) == Id);
     }
 }

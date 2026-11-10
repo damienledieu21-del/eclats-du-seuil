@@ -596,3 +596,17 @@ Le modèle de l'atelier remplace l'herboristerie du bourg (`maison7`) ; l'épice
 | 35.5 | Devant l'épicerie, la nuit | La **lanterne de fer** sous l'auvent, à droite de la porte, **allumée** ; le passage devant la porte reste libre | [ ] | |
 | 35.6 | Épicerie ouverte (de 5 h à 22 h), puis après 22 h | La **cheminée fume** pendant l'ouverture, **plus du tout** après la fermeture et le jour de repos | [ ] | |
 | 35.7 | Ton avis : proportions, couleurs, plantes (cuites dans l'atlas en LOD1) | — | [ ] | |
+
+## 36. La mercerie, la maison de la Guilde et le feu de tisanes de Sauge (V2.22)
+
+Les modèles de l'atelier remplacent la mercerie (`maison1`) et la maison de la Guilde (`maison6`) ; l'herboristerie de Sauge reçoit son feu de tisanes (ta décision du 10 novembre 2026 au soir). Avant l'essai : récupérer `main` à jour (dossiers `unity/Assets/EdS/Modeles/Batiments/maison1/` et `maison6/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 36.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `maison1` (mercerie_vallons) et `maison6` (guilde_vallons), aucune ligne « introuvable » | [ ] | Noter la ligne |
+| 36.2 | Aller devant la mercerie, sur la grand-rue | La **nouvelle** mercerie (vitrines d'étoffes et de rubans, enseigne en ciseaux), **façade et porte face à la porte du jeu** | [ ] | Écart en mètres : le dire |
+| 36.3 | Devant la mercerie, la nuit | La **lanterne murale**, à droite de la porte, **allumée** ; **aucune fumée** sur la cheminée | [ ] | |
+| 36.4 | Aller devant la maison de la Guilde, à l'ouest | La **nouvelle** Guilde (rez de pierre, étage à colombages, blason, deux bannières), **façade face à la porte du jeu** ; le **perron** sort un peu vers la porte, c'est voulu | [ ] | Le perron gêne-t-il l'entrée ? Le dire |
+| 36.5 | Faire le tour des deux, caméra basse | **Posées au sol**, ni flottantes ni enfoncées, pas déformées ; aucune fumée sur les deux cheminées de la Guilde | [ ] | |
+| 36.6 | Devant Sauge, de jour puis la nuit | Une **fumée légère** monte de sa cheminée **à toute heure** ; sa lanterne éclaire jour et nuit, même avec d'autres lanternes plus proches | [ ] | Fumée trop forte ou trop faible : le dire |
+| 36.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |

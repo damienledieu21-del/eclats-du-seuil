@@ -198,7 +198,9 @@ namespace EdS.Runtime
         /// V2.19 : cheminées de cuisine des auberges (boutiques de genre « inn », identifiant « cuisine/… ») de cette zone, au milieu de leur
         /// maison, allumées tant que l'auberge est ouverte (<see cref="ShopState.Open"/>). V2.21 : plus le feu d'âtre des épiceries (genre
         /// « grocer », identifiant « atre/… », décision de Damien du 10 novembre 2026 au soir : la cheminée de l'épicerie fume pendant les
-        /// heures d'ouverture). Affichage seulement : la vue n'en fait fumer que la cheminée connue d'un modèle de l'atelier
+        /// heures d'ouverture). V2.22 : plus le feu de tisanes des herboristeries (genre « herbalist », identifiant « tisane/… », décision
+        /// de Damien du 10 novembre 2026 au soir : une fumée légère et permanente, allumée à toute heure, quel que soit l'état de la
+        /// boutique). Affichage seulement : la vue n'en fait fumer que la cheminée connue d'un modèle de l'atelier
         /// (<see cref="TownModels.OwnChimney"/>), jamais une cheminée devinée.
         /// </summary>
         public IReadOnlyList<ShopChimney> KitchenChimneys()
@@ -211,13 +213,19 @@ namespace EdS.Runtime
                 SpaceObstacle? house = Map.Obstacles.FirstOrDefault(o => o.Id == shop.Building);
                 if (house is null) continue;
                 double hx = (house.Points.Min(p => p.X.Raw) + house.Points.Max(p => p.X.Raw)) / 20000.0, hz = (house.Points.Min(p => p.Z.Raw) + house.Points.Max(p => p.Z.Raw)) / 20000.0;
-                list.Add(new ShopChimney(prefix + m.Id, hx, hz, World.ShopStateOf(m.Id) == ShopState.Open));
+                list.Add(new ShopChimney(prefix + m.Id, hx, hz, prefix == TisanePrefix || World.ShopStateOf(m.Id) == ShopState.Open));
             }
             return list;
         }
 
-        /// <summary>V2.21 : préfixe des feux tenus pendant l'ouverture (cuisine d'auberge, âtre d'épicerie) ; null pour les autres genres.</summary>
-        private static string? HearthPrefix(string kind) => kind == "inn" ? "cuisine/" : kind == "grocer" ? "atre/" : null;
+        /// <summary>
+        /// V2.21 : préfixe des feux tenus pendant l'ouverture (cuisine d'auberge, âtre d'épicerie) ; V2.22 : feu de tisanes d'une
+        /// herboristerie, permanent ; null pour les autres genres.
+        /// </summary>
+        private static string? HearthPrefix(string kind) => kind == "inn" ? "cuisine/" : kind == "grocer" ? "atre/" : kind == "herbalist" ? TisanePrefix : null;
+
+        /// <summary>V2.22 : préfixe du feu de tisanes des herboristeries, allumé à toute heure (fumée légère, <see cref="TownModels.SmokeStrength"/>).</summary>
+        public const string TisanePrefix = "tisane/";
 
         /// <summary>
         /// Sous-lot V2.14 : ligne de l'affichage pour le marché (installation, marché et criée du moment si le joueur est sur la place du

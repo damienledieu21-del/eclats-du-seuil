@@ -241,12 +241,21 @@ namespace EdS.Game
                     if (o.Body.gameObject.activeSelf != open) o.Body.gameObject.SetActive(open);
                 }
             }
-            // Les huit lumières : sur les lanternes allumées les plus proches de la caméra (relues quatre fois par seconde).
+            // Les huit lumières : sur les lanternes allumées les plus proches de la caméra (relues quatre fois par seconde). V2.22 (relecture
+            // de la PR #140) : le jour et au crépuscule, les lanternes toujours allumées passent d'abord (TownModels.LampOrder), pour que
+            // celle de Sauge garde sa lumière même quand huit autres lanternes, éteintes, sont plus proches.
             _lampSort += deltaTime;
             if (_lampSort >= 0.25f)
             {
                 _lampSort = 0f;
-                var nearest = _lanterns.OrderBy(l => (l.Glow - camera).sqrMagnitude).Take(_lampLights.Count).ToList();
+                var distances = new List<double>(_lanterns.Count);
+                var always = new List<bool>(_lanterns.Count);
+                foreach (Lamp l in _lanterns)
+                {
+                    distances.Add((l.Glow - camera).sqrMagnitude);
+                    always.Add(_alwaysLit.Contains(l.Data.Id));
+                }
+                var nearest = TownModels.LampOrder(distances, always, lamps, _lampLights.Count).Select(i => _lanterns[i]).ToList();
                 for (int i = 0; i < _lampLights.Count; i++)
                 {
                     Light light = _lampLights[i];

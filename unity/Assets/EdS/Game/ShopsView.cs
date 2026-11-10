@@ -28,6 +28,8 @@ namespace EdS.Game
             public Vector3 Top;
             public GameObject Pack;
             public bool Lit;
+            /// <summary>V2.22 : force de la fumée (<see cref="TownModels.SmokeStrength"/>) : 1, ou moins pour une fumée légère.</summary>
+            public float Strength = 1f;
             public readonly List<Puff> Puffs = new List<Puff>();
         }
 
@@ -67,8 +69,11 @@ namespace EdS.Game
                 }
                 // Pas de cheminée devinée pour une cuisine d'auberge ni pour l'âtre d'une épicerie (V2.21) : seuls les fournils en ont une.
                 else if (!c.Id.StartsWith("cheminee/", System.StringComparison.Ordinal)) continue;
-                var chimney = new Chimney { Id = c.Id, Top = top };
-                chimney.Pack = Effects.Ambient(StyleVfx.ForgeSmoke, _root.transform, chimney.Top);
+                var chimney = new Chimney { Id = c.Id, Top = top, Strength = (float)TownModels.SmokeStrength(c.Id) };
+                // V2.22 : une fumée légère (le feu de tisanes de Sauge) est celle du jeu, allégée ; les autres, celle du pack.
+                chimney.Pack = chimney.Strength < 1f
+                    ? Effects.Smoke(_root.transform, chimney.Top, chimney.Strength)
+                    : Effects.Ambient(StyleVfx.ForgeSmoke, _root.transform, chimney.Top);
                 _chimneys.Add(chimney);
             }
             foreach (MarketStallView stall in adventure.MarketStalls()) Stall(stall, obstacles);
@@ -265,7 +270,8 @@ namespace EdS.Game
         /// <summary>Fumée faite par le code : des bouffées grises qui montent, grossissent et s'effacent.</summary>
         private void Smoke(Chimney c, bool lit, float deltaTime)
         {
-            if (lit && deltaTime > 0f && c.Puffs.Count < MaxPuffs && (c.Puffs.Count == 0 || c.Puffs[c.Puffs.Count - 1].Age > PuffLife / MaxPuffs))
+            int maxPuffs = Mathf.Max(2, Mathf.RoundToInt(MaxPuffs * c.Strength));
+            if (lit && deltaTime > 0f && c.Puffs.Count < maxPuffs && (c.Puffs.Count == 0 || c.Puffs[c.Puffs.Count - 1].Age > PuffLife / maxPuffs))
             {
                 GameObject body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 body.name = c.Id + " (fumée)";
@@ -288,7 +294,7 @@ namespace EdS.Game
                 }
                 float t = p.Age / PuffLife;
                 p.Body.position = c.Top + new Vector3(0.5f * t, 2.2f * t, 0.3f * Mathf.Sin(t * 3f));
-                p.Body.localScale = Vector3.one * Mathf.Lerp(0.35f, 1.2f, t) * (1f - t * 0.6f);
+                p.Body.localScale = Vector3.one * Mathf.Lerp(0.35f, 1.2f, t) * (1f - t * 0.6f) * (0.5f + 0.5f * c.Strength);
             }
         }
 
