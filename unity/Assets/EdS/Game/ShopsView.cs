@@ -65,7 +65,8 @@ namespace EdS.Game
                     if (ownTop == null) continue;
                     top = ownTop.Value;
                 }
-                else if (c.Id.StartsWith("cuisine/", System.StringComparison.Ordinal)) continue;   // pas de cheminée devinée pour une auberge
+                // Pas de cheminée devinée pour une cuisine d'auberge ni pour l'âtre d'une épicerie (V2.21) : seuls les fournils en ont une.
+                else if (!c.Id.StartsWith("cheminee/", System.StringComparison.Ordinal)) continue;
                 var chimney = new Chimney { Id = c.Id, Top = top };
                 chimney.Pack = Effects.Ambient(StyleVfx.ForgeSmoke, _root.transform, chimney.Top);
                 _chimneys.Add(chimney);

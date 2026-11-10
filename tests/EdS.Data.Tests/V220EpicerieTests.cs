@@ -48,7 +48,7 @@ public class V220EpicerieTests : IDisposable
         Assert.Equal((2048, 2048), V218BoulangerieTests.JpegSize(File.ReadAllBytes(Path.Combine(Folder, Name + "_couleur.jpg"))));
         byte[] fbx = File.ReadAllBytes(Path.Combine(Folder, Name + ".fbx"));
         Assert.StartsWith("Kaydara FBX Binary", System.Text.Encoding.ASCII.GetString(fbx, 0, 18), StringComparison.Ordinal);
-        Assert.InRange(fbx.Length, 10_000, 200_000);   // LOD1 cuit de 1 291 triangles, sans texture embarquée
+        Assert.InRange(fbx.Length, 10_000, 200_000);   // LOD1 cuit de 1 319 triangles (1 291 avant la lanterne de la V2.21), sans texture embarquée
     }
 
     /// <summary>
@@ -85,15 +85,15 @@ public class V220EpicerieTests : IDisposable
     }
 
     [Fact]
-    public void Pas_de_fumee_ni_de_lanterne_connue()
+    public void La_cheminee_et_la_lanterne_du_modele_sont_connues_depuis_la_V221()
     {
-        // L'épicière n'a ni fournée ni cuisine de service : rien dans ses horaires ne justifie un feu (KitchenChimneys est réservé
-        // aux auberges, Chimneys aux fournils). La cheminée du modèle reste froide ; sa lumière de porte est celle d'OwnDoorLantern.
-        Assert.Null(TownModels.OwnChimney(Name));
-        Assert.Null(TownModels.OwnLantern(Name));
+        // V2.21 (décision de Damien du 10 novembre 2026 au soir) : feu d'âtre pendant les heures d'ouverture et lanterne sous l'auvent ;
+        // le détail est vérifié dans V221HerboristerieTests. L'épicerie n'a toujours pas de fournée.
+        Assert.NotNull(TownModels.OwnChimney(Name));
+        Assert.NotNull(TownModels.OwnLantern(Name));
         AdventureSession a = Vallons();
         Assert.DoesNotContain(a.Chimneys(), c => a.ShopBuildingOf(c.Id) == Id);
-        Assert.DoesNotContain(a.KitchenChimneys(), c => a.ShopBuildingOf(c.Id) == Id);
+        Assert.Contains(a.KitchenChimneys(), c => a.ShopBuildingOf(c.Id) == Id);
         Assert.Equal(Id, a.ShopBuildingOf("enseigne/merchant.epicier"));
     }
 }

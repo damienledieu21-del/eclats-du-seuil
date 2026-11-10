@@ -582,3 +582,17 @@ Le modèle de l'atelier (fiche technique et ta décision du 10 novembre 2026) re
 | 34.5 | Faire le tour, caméra basse | **Posée au sol**, ni flottante ni enfoncée, pas déformée ; l'auvent et les sacs dépassent un peu vers la porte du jeu, c'est voulu | [ ] | |
 | 34.6 | Épicerie ouverte (de 5 h à 22 h) puis la nuit | **Aucune fumée** sur sa cheminée (pas de feu de service) ; la nuit, une lumière près de la porte | [ ] | Veux-tu un feu d'âtre ? Le dire |
 | 34.7 | Ton avis : proportions, couleurs, relief (normales en 1024), produits | — | [ ] | |
+
+## 35. L'herboristerie de Sauge et l'épicerie retouchée (V2.21)
+
+Le modèle de l'atelier remplace l'herboristerie du bourg (`maison7`) ; l'épicerie (`maison4`) reçoit sa lanterne et sa fumée (ta décision du 10 novembre 2026 au soir). Avant l'essai : récupérer `main` à jour (dossiers `unity/Assets/EdS/Modeles/Batiments/maison7/` et `maison4/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 35.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `maison7` (herboristerie_sauge) et `maison4` (epicerie_vallons), aucune ligne « introuvable » | [ ] | Noter la ligne |
+| 35.2 | Aller devant l'herboristerie, à l'ouest du bourg | La **nouvelle** herboristerie (plain-pied de pierre, pignon à colombages), **façade et porte face à la porte du jeu** ; l'enseigne « Sauge » se lit à l'endroit | [ ] | Écart en mètres : le dire |
+| 35.3 | Faire le tour, caméra basse | **Posée au sol**, pas déformée ; le **jardin** (plates-bandes) à droite de la maison vue de la porte dépasse un peu de l'emprise, c'est voulu | [ ] | |
+| 35.4 | De jour, puis la nuit, devant Sauge | Sa **lanterne éclaire jour et nuit** ; **aucune fumée** sur sa cheminée | [ ] | Veux-tu un feu pour ses tisanes ? Le dire |
+| 35.5 | Devant l'épicerie, la nuit | La **lanterne de fer** sous l'auvent, à droite de la porte, **allumée** ; le passage devant la porte reste libre | [ ] | |
+| 35.6 | Épicerie ouverte (de 5 h à 22 h), puis après 22 h | La **cheminée fume** pendant l'ouverture, **plus du tout** après la fermeture et le jour de repos | [ ] | |
+| 35.7 | Ton avis : proportions, couleurs, plantes (cuites dans l'atlas en LOD1) | — | [ ] | |
