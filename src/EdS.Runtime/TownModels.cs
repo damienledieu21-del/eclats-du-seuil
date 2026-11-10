@@ -199,6 +199,10 @@ namespace EdS.Runtime
                 case "herboristeriesauge": return (2.25 - 2.25, 6.05, 2.60 - 4.20);
                 // V2.22 : la mercerie (cheminée à X 3,20, Y 4,50, sommet 7,00) et la Guilde (deux souches, sommet 12,40) n'ont aucun feu
                 // tenu dans les données (ni fournée, ni cuisine, ni âtre, ni heures pour la Guilde) : pas de cheminée connue, pas de fumée.
+                // V2.23 : la maison de Rosalie (maison5 ; cheminée à X 3,20, Y 5,80, sommet du mitron 9,90 : x 0, y 9,90, z −1,90 une fois
+                // recentrée sur le pied des murs, X − 3,20, Y − 3,90) et les maisons 3, 8, 9 et 10 n'ont aucun feu tenu dans les données
+                // (aucune boutique, donc ni fournée, ni cuisine, ni âtre) : pas de cheminée connue, pas de fumée, tant que Damien n'a pas
+                // décidé d'un feu de maison.
                 default: return null;
             }
         }
@@ -227,6 +231,7 @@ namespace EdS.Runtime
                 // X 4,00, Y −0,22, Z 1,925). Exportée recentrée sur le pied des murs (X 0 – 6,40, Y 0 – 5,80) : X − 3,20, Y − 2,90.
                 case "mercerievallons": return (3.20 - 4.00, 1.925, 2.90 + 0.22);
                 // V2.22 : la Guilde n'a pas de lanterne (fiche : le blason et les bannières sont ses seuls accessoires) : OwnDoorLantern.
+                // V2.23 : ni la maison de Rosalie ni les maisons 3, 8, 9 et 10 n'ont de lanterne dans leur modèle : OwnDoorLantern.
                 default: return null;
             }
         }
