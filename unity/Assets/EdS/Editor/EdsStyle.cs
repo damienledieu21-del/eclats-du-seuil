@@ -504,6 +504,11 @@ namespace EdS.Game.Editor
                     notes.Add("Atelier : " + Path.GetFileName(path) + " sans maillage mesurable, ignoré.");
                     continue;
                 }
+                // Revue Codex de la PR #136 : le pivot est au sol (convention de l'atelier) ; une pièce enterrée (le cul-de-four) ne relève
+                // pas le bâtiment : il est posé à son pivot (SpaceView.PlaceModel), et la hauteur de sa cheminée se compte depuis le pivot.
+                if (offset.y < -0.1f) notes.Add("Atelier : " + model.name + " descend de " + (-offset.y).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                    + " m sous son pivot (partie enterrée, cachée par le sol).");
+                offset.y = 0f;
                 result.Add(new BuildingLook { Kind = StyleBuilding.House, Model = model, Size = size, Building = id, Offset = offset });
             }
             if (result.Count > 0) notes.Add("Bâtiments de l'atelier : " + string.Join(", ", result.Select(b => b.Building + " (" + b.Model.name + ", "

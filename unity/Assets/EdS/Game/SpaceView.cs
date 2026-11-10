@@ -492,7 +492,7 @@ namespace EdS.Game
                 Debug.LogWarning("Atelier : " + own.Model.name + " ne tient pas sur l'emprise de " + id + " ; bâtiment de repli.");
                 return false;
             }
-            PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, fit, false);
+            PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, fit, false, true);
             return true;
         }
 
@@ -500,8 +500,10 @@ namespace EdS.Game
         /// Pose d'un modèle de bâtiment (Sketchfab ou atelier) au centre de l'emprise, tourné et mis à l'échelle d'après <paramref name="fit"/>,
         /// le bas au sol, sans collisionneur ; abaissé comme un mur quand il cache le joueur, et arrêtant la caméra s'il le doit.
         /// </summary>
+        /// <param name="pivotOnGround">Revue Codex de la PR #136 : un modèle de l'atelier a son pivot au niveau du sol (convention) ; il est
+        /// posé à son pivot, pas à son point le plus bas (le cul-de-four de la boulangerie descend 1,2 m sous terre : la maison flottait).</param>
         private void PlaceModel(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, GameObject prefab, (int X, int Z) face,
-            ModelFit fit, bool mirrored)
+            ModelFit fit, bool mirrored, bool pivotOnGround = false)
         {
             var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
             var go = new GameObject(id + " (bâtiment)");
@@ -516,9 +518,9 @@ namespace EdS.Game
             turn.transform.localScale = new Vector3(mirror * (float)(across ? fit.ScaleZ : fit.ScaleX), (float)fit.ScaleY, (float)(across ? fit.ScaleX : fit.ScaleZ));
             GameObject model = Object.Instantiate(prefab, turn.transform, false);
             foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-            // Le pied du modèle au centre de l'emprise, le bas au sol.
+            // Le pied du modèle au centre de l'emprise, le bas au sol (un modèle de l'atelier : son pivot au sol).
             if (StyleLook.VisibleBounds(model, out Bounds b))
-                model.transform.position += new Vector3(center.x - b.center.x, -b.min.y, center.z - b.center.z);
+                model.transform.position += new Vector3(center.x - b.center.x, pivotOnGround ? 0f : -b.min.y, center.z - b.center.z);
             bool seen = StyleLook.VisibleBounds(go, out Bounds all);
             float top = seen ? all.max.y : 8f;
             _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });

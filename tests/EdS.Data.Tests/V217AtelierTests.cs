@@ -131,4 +131,18 @@ public class V217AtelierTests : IDisposable
         Assert.Null(a.ShopBuildingOf("enseigne/inconnu"));
         Assert.Null(a.ShopBuildingOf(null));
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #136 : le cul-de-four de la boulangerie descend 1,2 m sous le sol ; posé à son point le plus bas, le bâtiment
+    /// flottait. Un modèle de l'atelier est posé à son pivot (au sol par convention), sans miroir.
+    /// </summary>
+    [Fact]
+    public void Un_modele_de_l_atelier_est_pose_a_son_pivot_sans_miroir()
+    {
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, fit, false, true);", view, StringComparison.Ordinal);
+        Assert.Contains("pivotOnGround ? 0f : -b.min.y", view, StringComparison.Ordinal);
+        string editor = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Editor", "EdsStyle.cs"));
+        Assert.Contains("offset.y = 0f;", editor, StringComparison.Ordinal);
+    }
 }
