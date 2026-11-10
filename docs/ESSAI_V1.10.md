@@ -610,3 +610,17 @@ Les modèles de l'atelier remplacent la mercerie (`maison1`) et la maison de la 
 | 36.5 | Faire le tour des deux, caméra basse | **Posées au sol**, ni flottantes ni enfoncées, pas déformées ; aucune fumée sur les deux cheminées de la Guilde | [ ] | |
 | 36.6 | Devant Sauge, de jour puis la nuit | Une **fumée légère** monte de sa cheminée **à toute heure** ; sa lanterne éclaire jour et nuit, même avec d'autres lanternes plus proches | [ ] | Fumée trop forte ou trop faible : le dire |
 | 36.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
+
+## 37. La maison de Rosalie et les maisons 3, 8, 9 et 10 (V2.23)
+
+Les modèles de l'atelier remplacent la maison de Rosalie (`maison5`) et les maisons `maison3`, `maison8`, `maison9` et `maison10`. Avant l'essai : récupérer `main` à jour (dossiers `unity/Assets/EdS/Modeles/Batiments/maison3/`, `maison5/`, `maison8/`, `maison9/`, `maison10/`), puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 37.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `maison3`, `maison5` (maison_rosalie_vallons), `maison8`, `maison9` et `maison10`, aucune ligne « introuvable » | [ ] | Noter la ligne |
+| 37.2 | Aller devant la maison de Rosalie, sur la grand-rue ouest | La **nouvelle** maison (œillets aux fenêtres, colombages), **porte face à la porte du jeu** ; le **potager** et sa clôture à droite (à l'est) ; le **chat roux** couché sur l'appui de la première fenêtre du mur droit | [ ] | Écart en mètres : le dire |
+| 37.3 | Marcher dans le potager de Rosalie | Le potager sort de 1,4 m de l'emprise : on le **traverse** (pas de collision sur la clôture) | [ ] | Gênant ? Le dire |
+| 37.4 | Maisons 3 (grand-rue), 8 (à l'ouest de Rosalie), 10 (chemin de l'est) | Façades vers la rue, **posées au sol**, ni flottantes ni enfoncées, pas déformées | [ ] | |
+| 37.5 | Maison 9, au bout du chemin du lac | Façade vers l'est ; l'**appentis** (fourche, râteau, panier) au sud sort de 1,5 m de l'emprise, à 1,7 m du chemin des champs | [ ] | Trop près du chemin ? Le dire |
+| 37.6 | Les cinq maisons, la nuit | **Aucune fumée** ; une lanterne de porte à droite de la porte (celle du jeu, pas du modèle) | [ ] | |
+| 37.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
