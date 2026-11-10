@@ -190,6 +190,10 @@ namespace EdS.Runtime
                 // V2.19 : auberge des Vallons (PLAN_COORDONNEES.md, cheminée C2 de la cuisine, la seule qui fume : centre X 7,40, Y 6,00,
                 // sommet 13,45). Exportée recentrée sur le pied des murs, corps et abri (X 0 – 11,50, Y 0 – 8,00) : X − 5,75, Y − 4,00.
                 case "aubergevallons": return (5.75 - 7.40, 13.45, 4.0 - 6.0);
+                // V2.21 : épicerie des Vallons (PLAN_COORDONNEES.md, cheminée unique : centre X 8,90, Y 4,70, sommet du mitron 11,55),
+                // feu d'âtre pendant les heures d'ouverture (décision de Damien du 10 novembre 2026 au soir). Exportée recentrée sur le
+                // pied des murs (X 0 – 10,80, Y 0 – 9,40) : X − 5,40, Y − 4,70.
+                case "epicerievallons": return (5.40 - 8.90, 11.55, 4.70 - 4.70);
                 default: return null;
             }
         }
@@ -208,9 +212,28 @@ namespace EdS.Runtime
                 // V2.19 : lanterne de l'auberge au-dessus de la porte P1 (Prop_Lanterne_Porte : X 5,75, console à Z 3,55, corps de la
                 // lanterne vers Z 3,25 et Y −0,55, devant l'étage en encorbellement ; mêmes conversions que la cheminée).
                 case "aubergevallons": return (0.0, 3.25, 4.0 + 0.55);
+                // V2.21 : lanterne de l'épicerie sous l'auvent, à droite de la porte (décision de Damien du 10 novembre 2026 au soir ;
+                // Prop_Lanterne : console à X 6,75, lumière à Z 1,99 et Y −0,30 ; mêmes conversions : X − 5,40, Y − 4,70).
+                case "epicerievallons": return (5.40 - 6.75, 1.99, 4.70 + 0.30);
+                // V2.21 : lanterne de l'herboristerie de Sauge, à droite de la porte (Prop_Lanterne : X 3,30, Y −0,22, lumière à Z 1,925).
+                // Exportée recentrée sur le pied des murs (X 0 – 4,50, Y 0 – 5,20) : X − 2,25, Y − 2,60.
+                case "herboristeriesauge": return (2.25 - 3.30, 1.925, 2.60 + 0.22);
                 default: return null;
             }
         }
+
+        /// <summary>
+        /// V2.21 : vrai si la lanterne connue du modèle (<see cref="OwnLantern"/>) reste allumée jour et nuit (décision de Damien du
+        /// 10 novembre 2026 : Sauge, l'herboriste, reste ouverte jour et nuit et sa lanterne reste allumée) ; les autres s'allument au
+        /// crépuscule et s'éteignent à l'aube.
+        /// </summary>
+        public static bool OwnLanternAlwaysLit(string? model) => StyleRules.Key(model ?? string.Empty) == "herboristeriesauge";
+
+        /// <summary>
+        /// V2.21 : force (0 à 1) de la lumière d'une lanterne quand celle des lanternes du monde est <paramref name="lamps"/>
+        /// (<c>StyleWorld.Lamps</c> : 0 le jour, 1 la nuit) : 1 pour une lanterne toujours allumée, sinon <paramref name="lamps"/>.
+        /// </summary>
+        public static double LanternLevel(bool alwaysLit, double lamps) => alwaysLit ? 1.0 : Math.Max(0.0, Math.Min(1.0, lamps));
 
         /// <summary>
         /// V2.17 : place dans le monde d'un point (<paramref name="px"/>, <paramref name="py"/>, <paramref name="pz"/>) du repère d'un modèle

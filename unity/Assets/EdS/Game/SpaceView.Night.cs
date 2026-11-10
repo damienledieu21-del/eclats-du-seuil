@@ -89,6 +89,8 @@ namespace EdS.Game
             {
                 (double wx, double wy, double wz) = TownModels.OwnPlace((x0 + x1) / 2, (z0 + z1) / 2, facing, local.Value.X, local.Value.Y, local.Value.Z);
                 light = new NightLamp(light.Id, light.Kind, wx, wy, wz, light.Yaw);
+                // V2.21 : la lanterne de Sauge reste allumée jour et nuit (décision de Damien du 10 novembre 2026).
+                if (TownModels.OwnLanternAlwaysLit(look.Model.name)) _alwaysLit.Add(light.Id);
             }
             _lampSpots.Add(light);
             _lightOnly.Add(light.Id);
@@ -96,6 +98,10 @@ namespace EdS.Game
 
         /// <summary>Sous-lot V2.17 : lanternes dont seule la lumière est posée (la lanterne est dans le modèle de l'atelier).</summary>
         private readonly HashSet<string> _lightOnly = new HashSet<string>();
+
+        /// <summary>V2.21 : lanternes toujours allumées (<see cref="TownModels.OwnLanternAlwaysLit"/>), et pour chacune des huit lumières, si elle est sur l'une d'elles.</summary>
+        private readonly HashSet<string> _alwaysLit = new HashSet<string>();
+        private readonly List<bool> _lightAlways = new List<bool>();
 
         /// <summary>Pose les lanternes, réverbères, feux follets et hiboux (dehors seulement), éteints : <see cref="Night"/> les allume.</summary>
         private void NightDecor(CombatSpace space, AdventureMap map)
@@ -162,6 +168,7 @@ namespace EdS.Game
                 light.intensity = 0f;
                 light.shadows = LightShadows.None;
                 _lampLights.Add(light);
+                _lightAlways.Add(false);
             }
             SetNightVisible(0f);
         }
@@ -244,11 +251,16 @@ namespace EdS.Game
                 {
                     Light light = _lampLights[i];
                     if (i < nearest.Count) light.transform.position = nearest[i].Glow + new Vector3(0f, -0.1f, 0f);
-                    light.enabled = lamps > 0.01f && i < nearest.Count;
+                    _lightAlways[i] = i < nearest.Count && _alwaysLit.Contains(nearest[i].Data.Id);
+                    light.enabled = i < nearest.Count && (lamps > 0.01f || _lightAlways[i]);
                 }
             }
-            foreach (Light light in _lampLights)
-                light.intensity = lamps * strength * (0.92f + 0.08f * Mathf.PerlinNoise(Time.time * 2.3f, light.transform.position.x));
+            for (int i = 0; i < _lampLights.Count; i++)
+            {
+                Light light = _lampLights[i];
+                float level = (float)TownModels.LanternLevel(_lightAlways[i], lamps);
+                light.intensity = level * strength * (0.92f + 0.08f * Mathf.PerlinNoise(Time.time * 2.3f, light.transform.position.x));
+            }
             // Villageois du décor : la nuit du monde, ils rentrent chez eux ; les veilleurs restent. Sous-lot V2.2 : sous une vraie pluie aussi
             // (un sur trois reste dehors).
             _worldNight = worldNight;
