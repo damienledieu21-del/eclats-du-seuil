@@ -1,5 +1,6 @@
 using EdS.Runtime;
 using EdS.Data.Merchants;
+using EdS.Data.Saves;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -113,17 +114,29 @@ public class V219AubergeChapelleTests : IDisposable
         Assert.Null(TownModels.OwnChimney("chapelle_vallons"));   // la chapelle n'a pas de cheminée
     }
 
-    [Fact]
-    public void La_cuisine_de_l_auberge_fume_quand_elle_est_ouverte()
+    /// <summary>
+    /// Heure du monde fixée (jour 1) et attente écrite en dur, sans relire l'implémentation : l'auberge ouvre à 06:00 et ferme à 01:00
+    /// (merchants.json, aucun jour de repos) ; sa cuisine fume encore à 00:30, plus à 03:00, de nouveau à 06:00.
+    /// </summary>
+    [Theory]
+    [InlineData(0, 30, true)]
+    [InlineData(3, 0, false)]
+    [InlineData(6, 0, true)]
+    public void La_cuisine_de_l_auberge_fume_quand_elle_est_ouverte(int hour, int minute, bool lit)
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
+        Directory.CreateDirectory(_folder);
+        string save = Path.Combine(_folder, "partie.json");
+        int at = hour * 60 + minute;
+        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(1, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero()));
+        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), save);
         a.Advance(0.05);
+        Assert.Equal(new WorldTime(1, at), a.World.Zone.Time);
         ShopChimney c = Assert.Single(a.KitchenChimneys());
         Assert.Equal("cuisine/merchant.auberge", c.Id);
         Assert.Equal("auberge", a.ShopBuildingOf(c.Id));
         Assert.Equal(-69, c.X, 6);
         Assert.Equal(9.5, c.Z, 6);
-        Assert.Equal(a.World.ShopStateOf("merchant.auberge") == ShopState.Open, c.Lit);
+        Assert.Equal(lit, c.Lit);
         Assert.DoesNotContain(a.Chimneys(), x => x.Id == c.Id);   // les cheminées des fournils ne changent pas
     }
 }
