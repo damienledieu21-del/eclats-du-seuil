@@ -66,28 +66,42 @@ public class V223MaisonsTests : IDisposable
         Assert.InRange(fbx.Length, 10_000, 200_000);   // LOD1 cuits (650 à 836 triangles), sans texture embarquée
     }
 
-    /// <summary>
-    /// Sur les vraies données de la zone, pour chaque maison : emprise, façade (vers la porte du jeu pour Rosalie, vers la route la plus
-    /// proche pour les autres), porte du modèle (au milieu du pied des murs de la façade : à <paramref name="front"/> m devant le centre
-    /// recentré) dans l'axe du centre de l'emprise. Les coins du toit (enveloppe de la fiche, repère de Blender : X <paramref name="x0"/> –
-    /// <paramref name="x1"/>, Y <paramref name="y0"/> – <paramref name="y1"/>, pied des murs centré en <paramref name="wx"/>,
-    /// <paramref name="wy"/>) restent dans l'emprise, sauf du côté et de la longueur attendus (<paramref name="overflow"/>, m).
-    /// </summary>
-    [Theory]
+    // Une ligne par maison : emprise (minX, maxX, minZ, maxZ), façade (fx, fz), centre du pied des murs (wx, wy), enveloppe du toit
+    // (x0, x1, y0, y1), porte du modèle (doorX, doorZ), débord attendu, élément débordant (ex0, ex1, ey0, ey1). Gardé hors des
+    // InlineData : des noms de test trop longs sont tronqués et ne se rapprochent plus des résultats (scripts/test-category.sh).
     // Rosalie : parcelle de 10 × 9 (X −0,30 – 9,70), mais le modèle est recentré sur la maison (X 3,20) : le potager et sa clôture (jusqu'à
     // X 9,637) sortent de 1,437 m à l'est (+x, à droite de la façade vue de dehors). Devant : les pots s'arrêtent à Y −0,525.
-    [InlineData("maison5", -89.5, -79.5, 4.0, 13.0, 0, -1, 3.20, 3.90, -0.30, 9.637, -0.525, 8.10, -84.5, 4.6, 1.437, 7.00, 9.637, 0.40, 7.50)]
-    [InlineData("maison3", -35.0, -25.0, -15.0, -6.0, 0, 1, 4.70, 4.20, -0.30, 9.70, -0.30, 8.70, -30.0, -6.3, 0.0, 0.0, 0.0, 0.0, 0.0)]
-    [InlineData("maison8", -99.0, -93.0, 4.0, 10.5, 0, -1, 2.70, 2.95, -0.30, 5.70, -0.30, 6.20, -96.0, 4.3, 0.0, 0.0, 0.0, 0.0, 0.0)]
     // Maison 9 : façade vers l'est (+x, bout du chemin du lac) ; l'emprise (7 × 6) est posée en long sur x, la maison (7 × 6 en façade)
     // tournée met ses 7 m sur z : l'appentis (X 4,40 – 6,70, à droite de la façade, donc vers +z) sort de 1,50 m au sud ; son coin
     // sud-ouest est à 1,70 m du bord du chemin des champs.
-    [InlineData("maison9", -74.0, -67.0, -52.0, -46.0, 1, 0, 2.20, 2.70, -0.30, 6.70, -0.30, 5.70, -67.8, -49.0, 1.5, 4.40, 6.70, 0.80, 4.90)]
-    [InlineData("maison10", 76.0, 83.0, -32.0, -26.0, 0, -1, 3.20, 2.70, -0.30, 6.70, -0.30, 5.70, 79.5, -31.7, 0.0, 0.0, 0.0, 0.0, 0.0)]
-    public void Chaque_maison_regarde_sa_rue_et_tient_dans_son_emprise(string id, double minX, double maxX, double minZ, double maxZ, int fx, int fz,
-        double wx, double wy, double x0, double x1, double y0, double y1, double doorX, double doorZ, double overflow,
-        double ex0, double ex1, double ey0, double ey1)
+    private static readonly Dictionary<string, double[]> Houses = new Dictionary<string, double[]>
     {
+        ["maison5"] = new[] { -89.5, -79.5, 4.0, 13.0, 0, -1, 3.20, 3.90, -0.30, 9.637, -0.525, 8.10, -84.5, 4.6, 1.437, 7.00, 9.637, 0.40, 7.50 },
+        ["maison3"] = new[] { -35.0, -25.0, -15.0, -6.0, 0, 1, 4.70, 4.20, -0.30, 9.70, -0.30, 8.70, -30.0, -6.3, 0.0, 0.0, 0.0, 0.0, 0.0 },
+        ["maison8"] = new[] { -99.0, -93.0, 4.0, 10.5, 0, -1, 2.70, 2.95, -0.30, 5.70, -0.30, 6.20, -96.0, 4.3, 0.0, 0.0, 0.0, 0.0, 0.0 },
+        ["maison9"] = new[] { -74.0, -67.0, -52.0, -46.0, 1, 0, 2.20, 2.70, -0.30, 6.70, -0.30, 5.70, -67.8, -49.0, 1.5, 4.40, 6.70, 0.80, 4.90 },
+        ["maison10"] = new[] { 76.0, 83.0, -32.0, -26.0, 0, -1, 3.20, 2.70, -0.30, 6.70, -0.30, 5.70, 79.5, -31.7, 0.0, 0.0, 0.0, 0.0, 0.0 },
+    };
+
+    /// <summary>
+    /// Sur les vraies données de la zone, pour chaque maison (<see cref="Houses"/>) : emprise, façade (vers la porte du jeu pour Rosalie,
+    /// vers la route la plus proche pour les autres), porte du modèle (au milieu du pied des murs de la façade) dans l'axe du centre de
+    /// l'emprise. Les coins du toit (enveloppe de la fiche, repère de Blender) restent dans l'emprise, sauf l'élément débordant attendu,
+    /// du côté et de la longueur attendus, sur une place libre.
+    /// </summary>
+    [Theory]
+    [InlineData("maison5")]
+    [InlineData("maison3")]
+    [InlineData("maison8")]
+    [InlineData("maison9")]
+    [InlineData("maison10")]
+    public void Chaque_maison_regarde_sa_rue_et_tient_dans_son_emprise(string id)
+    {
+        double[] h = Houses[id];
+        double minX = h[0], maxX = h[1], minZ = h[2], maxZ = h[3];
+        int fx = (int)h[4], fz = (int)h[5];
+        double wx = h[6], wy = h[7], x0 = h[8], x1 = h[9], y0 = h[10], y1 = h[11], doorX = h[12], doorZ = h[13], overflow = h[14];
+        double ex0 = h[15], ex1 = h[16], ey0 = h[17], ey1 = h[18];
         AdventureMap map = Vallons().Map;
         Assert.Equal((minX, maxX, minZ, maxZ), Box(map.Obstacles.First(o => o.Id == id)));
         (int X, int Z) facing = TownRules.FacingOf(id, minX, minZ, maxX, maxZ, map.Roads, map.Doors);
