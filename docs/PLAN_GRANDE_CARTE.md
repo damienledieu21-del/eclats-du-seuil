@@ -14,7 +14,7 @@ Statuts, comme dans [CADRAGE.md](CADRAGE.md) :
 ## 0. Ce qui est retenu (Damien, 11 novembre 2026)
 
 - **Taille** : Vallons d'Aube agrandis à **4 × 3 km** (12 km²), environ 15 min à pied d'un bout à l'autre, 5 min à cheval ; monde découpé en **cases chargées autour du joueur** ; détail proche, formes simplifiées au loin ; pensé pour le téléphone (Note8) et le PC.
-- **Trois étages** : la surface ; le **dessous** (grottes, mines de la carrière, crypte de l'abbaye, égouts du Bourg, galeries sous les pierres du Seuil) ; l'**Envers** (reflet sombre de toute la région, ouvert par les failles, décidé le 29 octobre 2026, sujet 9).
+- **Trois étages** : la surface ; le **dessous** (grottes, mines de la carrière, crypte de l'abbaye, égouts du Bourg, galeries sous les pierres du Seuil ; s'y ajoute le donjon des **grottes noyées du lac**, décidé au sujet 27, V2.50.1) ; l'**Envers** (reflet sombre de toute la région, ouvert par les failles, décidé le 29 octobre 2026, sujet 9).
 - **Douze grands lieux** : Bourg d'Aube devenu ville fortifiée ; le village actuel au cœur ; la vallée de la rivière jusqu'à une cascade de 30 m avec une grotte derrière ; les coteaux de vignes et un château viticole ; la forêt des Loups et son arbre millénaire ; les hautes collines (bergers, cairns, sommet avec vue sur toute la région) ; l'abbaye en ruine et sa crypte ; les marais du lac avec une île accessible seulement l'hiver sur le lac gelé ; la carrière devenue mine à plusieurs niveaux ; le camp des bandits dans un ancien fort ; les terres corrompues du Seuil ; trois passages vers les régions voisines (col vers les Crêtes de Fer, pont vers la Forêt des Murmures, route d'Havre d'Ambre).
 - **Monde vivant** : journées des villageois, caravanes que les bandits peuvent attaquer, corruption du Seuil qui s'étend vraiment si on ne la repousse pas, lieux reconstruits qui le restent, saisons qui changent la carte (lac gelé, vendanges, neige qui bloque le col).
 - **Horizon** : depuis le sommet, Crêtes de Fer au loin, brume de la Forêt des Murmures, lune fendue la nuit.
@@ -120,7 +120,7 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 - Rappel : la règle du moteur reste **un seul niveau par espace** (L11-D6). Les étages sont des espaces différents ; on change d'étage par un passage. Le vrai relief et les étages superposés dans un même espace restent pour plus tard.
 - **Voyage** : le voyage rapide reste entre points sûrs découverts **de la surface** (Retenu, sujet 7). Points sûrs aussi au dessous (camp de mineurs) et dans l'Envers (autel de l'Aube), découvrables, mais le voyage rapide n'y mène pas (Recommandation).
 - **Plafonds** : 16 portes par zone et 64 zones reliées ne suffiront pas (intérieurs du Bourg, dessous, failles) : à relever au V2.45.
-- **Reprise d'une partie** : aujourd'hui une partie reprend à l'entrée de la zone sauvegardée ; sur une grande carte, elle reprendra au **dernier point sûr** (sauvegarde : secteur et point sûr).
+- **Reprise d'une partie** : aujourd'hui une partie reprend à l'entrée de la zone sauvegardée ; dès le **V2.28** (surface de 4 × 3 km), elle reprendra au **dernier point sûr** (sauvegarde : secteur et point sûr).
 
 ## 4. Le plan de la région
 
@@ -190,7 +190,7 @@ Rectangles approximatifs, en mètres ; altitudes **d'affichage** (le moteur rest
 | 9 | **Route du col vers les Crêtes de Fer** | du fort au bord nord-est | sortie (2 100, 1 220) | jusqu'à 350 m | Lacets, refuge ; la neige ferme le col l'hiver |
 | 10 | **Grande carrière et mine** | [850, 150] à [1 250, 400] | bouche de la mine (1 185, 355) ; hameau des mineurs (1 000, 145) | 80 à 110 m | Gradins de taille, treuil, wagonnets ; **mine à plusieurs niveaux** au dessous |
 | 11 | **Abbaye en ruine et sa crypte** | [1 600, 60] à [1 820, 230] | nef (1 710, 145) | 90 m | Nef sans toit, rosace, cloître, Échos de moines ; escalier vers la **crypte** |
-| 12 | **Lac des Aubes, marais et île d'hiver** | lac [−300, −1 360] à [1 150, −850] ; marais tout autour | île (180, −1 230) | 0 à 3 m | Roselières, pontons, grottes noyées ; l'**île** ne s'atteint qu'à pied sur la glace, l'hiver. L'étang actuel du cœur (`lac`) reste : la rivière en sort et descend au grand lac |
+| 12 | **Lac des Aubes, marais et île d'hiver** | lac [−300, −1 360] à [1 150, −850] ; marais tout autour | île (180, −1 230) | 0 à 3 m | Roselières, pontons, entrée des **grottes noyées** (donjon du sujet 27, V2.50.1) ; l'**île** ne s'atteint qu'à pied sur la glace, l'hiver. L'étang actuel du cœur (`lac`) reste : la rivière en sort et descend au grand lac |
 | 13 | **Terres corrompues du Seuil** | [1 290, −1 350] à [2 188, −110] | pierres levées (1 550, −620) | 40 à 70 m, sol fendu | Herbe grise, arbres morts, failles violettes, éclats ; **galeries sous les pierres** |
 | 14 | **Route d'Havre d'Ambre** | du Bourg au bord ouest | sortie (−1 908, −240) | — | Grande route des caravanes ; poste de péage |
 
@@ -203,8 +203,11 @@ Les « douze grands lieux » de la décision sont les lignes 1 à 5, 7, 8, 10 à
 | Bourg d'Aube fortifié | [été](cartes/plan_bourg_ete.jpg), [hiver](cartes/plan_bourg_hiver.jpg) |
 | Abbaye en ruine | [jour](cartes/plan_abbaye_jour.jpg), [nuit](cartes/plan_abbaye_nuit.jpg) |
 | Château viticole | [été](cartes/plan_chateau_ete.jpg), [vendanges](cartes/plan_chateau_vendanges.jpg) |
+| Marais du lac et île | [été](cartes/plan_marais_ete.jpg), [hiver](cartes/plan_marais_hiver.jpg) |
+| Fort des bandits | [jour](cartes/plan_fort_jour.jpg), [nuit](cartes/plan_fort_nuit.jpg) |
+| Carrière et mine (coupe sur trois niveaux, rivière souterraine, cristaux du Seuil au fond) | [jour](cartes/plan_mine_jour.jpg), [nuit](cartes/plan_mine_nuit.jpg) |
 
-Les sous-lots de ces lieux (V2.30, V2.33, V2.35) partent de ces plans.
+Les sous-lots de ces lieux (V2.30, V2.33, V2.35, V2.36, V2.37, V2.38, V2.47, V2.50.1) partent de ces plans.
 
 ### 4.3 Routes, rivière, relief
 
@@ -229,7 +232,7 @@ But : la même partie se reprend après le déménagement, avec les mêmes quêt
 - **Quêtes** : un test rejoue chaque quête qui passe par le bourg (chapitres 1 à 5, Guilde, boutiques, fêtes, grand jour de marché) d'après les nouvelles positions ; les distances de marche des premières quêtes grandissent (environ 1 km, 3 à 4 min à pied) : premier point sûr de la ville découvert tôt, et un chemin balisé.
 - **Ce qui reste à l'ancien emplacement** (x de −100 à −24) : un hameau de quelques fermes et la route de la ville ; les obstacles libérés laissent de la place au cœur.
 - **Journaux** : contenu de la zone et de son scénario en nouvelle version ; les journaux figés de référence ne changent pas (ils ne viennent pas de cette zone) ; ceux des essais de zone sont figés à nouveau.
-- **Dépendances** : V2.26 (la ville est hors du secteur du cœur), V2.28 (surface) et V2.30 (la ville construite).
+- **Dépendances** : V2.26 (la ville est hors du secteur du cœur), V2.28 (surface, et reprise au dernier point sûr, dont dépendent les sauvegardes ci-dessus) et V2.30 (la ville construite).
 
 ### 4.5 Densité de contenu (Recommandation)
 
@@ -293,7 +296,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | **V2.25** Cases et repère | Format de région (zones en schéma 13 : grille, cases, secteurs), découpage du cœur sans rien changer au jeu, outil `eds carte` (cases, densité, image de contrôle), relèvement des bornes de données (lieux, portes, routes par case) | M | — | aucun |
 | **V2.26** Secteurs de simulation | **Rupture retenue par Damien** (11 novembre 2026) : arrivée avec état (journal 25, moteur 0.31.0), coordonnées ±4 096 m, 256 obstacles, grille de navigation, recyclage des places, territoire des populations, passage de secteur, activation et fermeture, purge du registre (sauvegarde v18), mesures | L | V2.25 | aucun |
 | **V2.27** Chargement par cases dans Unity | Anneaux, construction étalée, recyclage, terrain basse résolution de la région, réglages selon `MachineTier`, mesures sur Note8 et PC modeste | L | V2.25, V2.24 fusionné | arbres de la région en 3 LOD + imposteurs (chêne, hêtre, pin, bouleau, saule, vigne) ; rochers (5 tailles) |
-| **V2.28** Surface de 4 × 3 km | Toute la région praticable : relief d'affichage, rivière jusqu'à la cascade, lac et marais, nappes de forêt, collines, routes, ravins et falaises en obstacles, points sûrs aux carrefours, cheval à 13 m/s ; lieux en emplacements vides | M | V2.26, V2.27 | pont de pierre long, ponton, gué, bornes et panneaux, murets, clôtures, haies |
+| **V2.28** Surface de 4 × 3 km | Toute la région praticable : relief d'affichage, rivière jusqu'à la cascade, lac et marais, nappes de forêt, collines, routes, ravins et falaises en obstacles, points sûrs aux carrefours, cheval à 13 m/s ; **reprise d'une partie au dernier point sûr** (sauvegarde : secteur et point sûr ; section 3) ; lieux en emplacements vides | M | V2.26, V2.27 | pont de pierre long, ponton, gué, bornes et panneaux, murets, clôtures, haies |
 | **V2.29** Horizon | Cartes peintes du ciel, silhouettes lointaines, point de vue du sommet | S | V2.28 | silhouettes basses des Crêtes de Fer ; imposteurs des grands lieux (au fil des lieux) |
 
 ### Étape 2 : les lieux un par un
@@ -301,15 +304,15 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
 | **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |
-| **V2.30.1** | **Déménagement du bourg** (4.4 bis) : boutiques, auberge, Guilde, chapelle et maisons nommées dans la ville ; positions migrées, identifiants gardés, quêtes et sauvegardes vérifiées | M | façades des boutiques adaptées aux rues de la ville si besoin (les modèles de l'atelier sont réutilisés) |
+| **V2.30.1** | **Déménagement du bourg** (4.4 bis ; après V2.26, V2.28 et V2.30) : boutiques, auberge, Guilde, chapelle et maisons nommées dans la ville ; positions migrées, identifiants gardés, quêtes et sauvegardes vérifiées | M | façades des boutiques adaptées aux rues de la ville si besoin (les modèles de l'atelier sont réutilisés) |
 | **V2.31** | Vallée de la rivière et cascade | M | cascade de 30 m (rochers, bassin), moulin à foulon, pont suspendu, cabane de pêcheur |
 | **V2.32** | Forêt des Loups et arbre millénaire | M | arbre millénaire (avec imposteur), tanière, cabane de bûcheron, cercle de druides, souches et troncs couchés |
 | **V2.33** | Coteaux et château viticole | M | château viticole, pressoir, chai, rangs de vigne (3 états : vert, mûr, vendangé), cuves, charrette de vendange |
 | **V2.34** | Hautes collines et sommet | M | bergerie, enclos de pierre, cairns, moutons et chèvres, tour de signal du sommet |
 | **V2.35** | Abbaye en ruine (surface) | M | église éventrée, cloître, dortoir en ruine, jardin envahi, statues brisées |
-| **V2.36** | Marais du lac et île | M | cabanes sur pilotis, pontons, barques, roselières, îlot avec sa ruine, lac gelé (glace, neige) |
-| **V2.37** | Carrière devenue mine (surface) | S | carreau de mine, treuil, wagonnets et rails, village de mineurs |
-| **V2.38** | Fort des bandits | M | fort de rondins sur soubassement de pierre (enceinte, donjon, tours d'angle), tour de guet isolée, tentes, cage |
+| **V2.36** | Marais du lac et île, d'après le [plan des marais](cartes/plan_marais_ete.jpg) (et [hiver](cartes/plan_marais_hiver.jpg)) | M | cabanes sur pilotis, pontons, barques, roselières, îlot avec sa ruine, lac gelé (glace, neige) |
+| **V2.37** | Carrière devenue mine (surface), d'après le [plan de la mine](cartes/plan_mine_jour.jpg) | S | carreau de mine, treuil, wagonnets et rails, village de mineurs |
+| **V2.38** | Fort des bandits, d'après le [plan du fort](cartes/plan_fort_jour.jpg) (et [nuit](cartes/plan_fort_nuit.jpg)) | M | fort de rondins sur soubassement de pierre (enceinte, donjon, tours d'angle), tour de guet isolée, tentes, cage |
 | **V2.39** | Terres corrompues du Seuil | M | grand cercle de pierres, éclats affleurants, arbres morts, sol fendu, autels de purification |
 | **V2.40** | Trois passages, et le tracé fermé de la route de l'Est vers les Ruines d'Ysoria | S | col (arche de pierre, refuge), pont des Murmures, poste de péage de la route d'Havre, pont effondré de la route de l'Est |
 
@@ -326,12 +329,13 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |
 |---|---|---|---|---|
-| **V2.45** | Étages : portes de dessous, zones non intérieures avec créatures, relèvement des portes et zones reliées, reprise au dernier point sûr | M | V2.26 | aucun |
+| **V2.45** | Étages : portes de dessous, zones non intérieures avec créatures, relèvement des portes et zones reliées (la reprise au dernier point sûr est faite au V2.28) | M | V2.26, V2.28 | aucun |
 | **V2.46** | Grotte derrière la cascade | S | V2.31, V2.45 | kit de grotte (parois, stalagmites, rideau d'eau vu de dedans) |
-| **V2.47** | Mines de la carrière, plusieurs niveaux (donjon décidé au sujet 27) | L | V2.37, V2.45 | kit de galerie boisée, ascenseur de mine, effondrements, filons |
+| **V2.47** | Mines de la carrière (donjon décidé au sujet 27), **trois niveaux** d'après la coupe du [plan de la mine](cartes/plan_mine_jour.jpg) (et [nuit](cartes/plan_mine_nuit.jpg)) : galeries boisées, rivière souterraine, cristaux du Seuil au fond | L | V2.37, V2.45 | kit de galerie boisée, ascenseur de mine, effondrements, filons, rivière souterraine, cristaux du Seuil |
 | **V2.48** | Crypte-donjon sous l'abbaye (Retenu) ; petite crypte sous la chapelle du Bourg (secret) | M | V2.35, V2.45 | kit de crypte (voûtes, sarcophages, ossuaire) |
 | **V2.49** | Égouts du Bourg | M | V2.30, V2.45 | kit d'égout (voûtes, canaux, grilles, échelles) |
 | **V2.50** | Galeries sous les pierres du Seuil | M | V2.39, V2.45 | kit de galeries cristallines, éclats géants |
+| **V2.50.1** | **Grottes noyées du lac** (donjon décidé au sujet 27 : marée et plongée), sous les marais, entrée dans les roselières d'après le [plan des marais](cartes/plan_marais_ete.jpg) | M | V2.36, V2.45 | kit de grotte noyée (voûtes basses, bassins, passages sous l'eau, épaves et coffres engloutis) |
 
 ### Étape 5 : l'Envers (au lancement, PERIMETRE.md)
 
