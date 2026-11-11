@@ -27,6 +27,14 @@ namespace EdS.Runtime
         /// <summary>… puis il remonte doucement sur cette distance (m).</summary>
         public double WaterRamp { get; set; } = 30.0;
 
+        /// <summary>
+        /// Un replat ne relève pas la berge : sol à 0 jusqu'à cette distance (m) de l'eau (bouts du pont compris), raccordé sur 1,2 m
+        /// (<see cref="ShoreBlend"/>).
+        /// </summary>
+        public double ShoreFlat { get; set; } = 2.4;
+
+        public double ShoreBlend { get; set; } = 1.2;
+
         /// <summary>Lieux bâtis ou travaillés (identifiants de lieux) où les vallons sont adoucis.</summary>
         public IReadOnlyList<string> CalmPlaces { get; set; } = new[] { "village", "bourg", "hameau", "carriere", "champs" };
 
@@ -196,7 +204,17 @@ namespace EdS.Runtime
                 sum += wi;
                 sumLevel += wi * p.Level;
             }
-            return sum > 0 ? b + w * (sumLevel / sum - b) : b;
+            if (sum <= 0) return b;
+            // Un replat proche de l'eau ne relève ni la berge ni le lit : le sol revient à 0 à moins de ShoreFlat mètres de l'eau.
+            return (b + w * (sumLevel / sum - b)) * Smooth((Water(x, z) - _s.ShoreFlat) / _s.ShoreBlend);
+        }
+
+        /// <summary>Distance (m) à l'eau la plus proche (0 dedans ; très grande sans eau).</summary>
+        public double Water(double x, double z)
+        {
+            double dw = double.MaxValue;
+            foreach ((double X, double Z)[] water in _water) dw = Math.Min(dw, PolygonDistance(water, x, z));
+            return dw;
         }
 
         /// <summary>Pente (m par m) du sol affiché en (x, z), par différences centrées sur ±<paramref name="step"/> m.</summary>
@@ -226,12 +244,7 @@ namespace EdS.Runtime
                 calm = Math.Min(calm, _s.Calm + (1 - _s.Calm) * Smooth((d - plateau) / _s.CalmRamp));
             }
             b += calm * _s.Amplitude * (0.5 + 0.5 * n);
-            if (_water.Count > 0)
-            {
-                double dw = double.MaxValue;
-                foreach ((double X, double Z)[] water in _water) dw = Math.Min(dw, PolygonDistance(water, x, z));
-                b *= Smooth((dw - _s.WaterFlat) / _s.WaterRamp);
-            }
+            if (_water.Count > 0) b *= Smooth((Water(x, z) - _s.WaterFlat) / _s.WaterRamp);
             return b + Edge(x, z);
         }
 
@@ -250,7 +263,10 @@ namespace EdS.Runtime
                 + _s.CliffHeight * Smooth((d - _s.CliffAt) / _s.CliffWidth) * cliffs;
         }
 
-        /// <summary>Replats voisins (le raccord de l'un atteint l'emprise de l'autre) : même groupe, même hauteur (moyenne du sol à leurs centres).</summary>
+        /// <summary>
+        /// Replats voisins (le raccord de l'un atteint l'emprise de l'autre) : même groupe, même hauteur : le sol le plus bas à leurs centres
+        /// (un groupe qui touche l'eau reste au niveau de la berge, le pont et la rue s'y raccordent sans marche).
+        /// </summary>
         private void Group()
         {
             int n = _pads.Count;
@@ -269,18 +285,18 @@ namespace EdS.Runtime
                     double d = Math.Min(a.Points.Min(p => PolygonDistance(b.Points, p.X, p.Z)), b.Points.Min(p => PolygonDistance(a.Points, p.X, p.Z)));
                     if (d < link) parent[Find(i)] = Find(j);
                 }
-            var levels = new Dictionary<int, (double Sum, int Count)>();
+            var levels = new Dictionary<int, double>();
             for (int i = 0; i < n; i++)
             {
                 int g = Find(i);
-                levels.TryGetValue(g, out var acc);
-                levels[g] = (acc.Sum + Base(_pads[i].CenterX, _pads[i].CenterZ), acc.Count + 1);
+                double here = Base(_pads[i].CenterX, _pads[i].CenterZ);
+                levels[g] = levels.TryGetValue(g, out double low) ? Math.Min(low, here) : here;
             }
             for (int i = 0; i < n; i++)
             {
                 int g = Find(i);
                 _pads[i].Group = g;
-                _pads[i].Level = levels[g].Sum / levels[g].Count;
+                _pads[i].Level = levels[g];
             }
         }
 
