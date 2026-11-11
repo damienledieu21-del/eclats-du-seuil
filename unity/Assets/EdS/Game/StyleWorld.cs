@@ -567,6 +567,24 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// V2.25 : eau d'un bief (le moulin de l'atelier) : l'eau simple d'URP Lit (couleur de l'eau du catalogue, petites vagues en relief),
+        /// une copie à chaque appel, que son propriétaire fait défiler le long du courant (<see cref="MillTurn"/>) et détruit.
+        /// </summary>
+        private static Texture2D _streamRipples;
+
+        public static Material Stream()
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            Material stream = ArenaView.MakeMaterial(catalog != null ? catalog.WaterColor : new Color(0.18f, 0.36f, 0.62f));
+            if (_streamRipples == null) _streamRipples = Ripples(128);   // une seule texture partagée (le défilement ne touche que l'offset)
+            stream.SetTexture("_BumpMap", _streamRipples);
+            stream.EnableKeyword("_NORMALMAP");
+            stream.SetFloat("_BumpScale", 0.6f);
+            stream.SetFloat("_Smoothness", 0.9f);
+            return stream;
+        }
+
+        /// <summary>
         /// Fait glisser les vagues de l'eau simple (toutes les cartes d'URP Lit suivent le décalage de la carte de couleur) ; l'eau du
         /// shader « EdS/Eau » avance seule.
         /// </summary>

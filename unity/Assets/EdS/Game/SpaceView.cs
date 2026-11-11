@@ -242,6 +242,9 @@ namespace EdS.Game
                 Prism(id, points, 0.12f, _water, false, 4f);
                 return;
             }
+            // V2.25 : le modèle de l'atelier d'un obstacle qui n'est pas un bâtiment du bourg (le moulin et sa roue, les palissades du camp)
+            // passe avant le moulin de Tim0 et la palissade de rondins faite par le code.
+            if (TownRules.BuildingFor(id) == StyleBuilding.None && OwnPiece(id, points)) return;
             // Essai réaliste (27 octobre 2026) : palissade de rondins pour les murs et la porte, haie d'arbustes pour les haies.
             StyleFence fence = StyleRules.FenceFor(id);
             if (fence == StyleFence.Palisade)
@@ -487,7 +490,80 @@ namespace EdS.Game
             BuildingLook own = catalog != null ? catalog.OwnBuilding(id) : null;
             if (own == null) return false;
             // V2.18 : échelle 1, pivot (centre du pied des murs) au centre de l'emprise, tourné vers la porte ; les débords sortent.
-            PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);
+            // Revue Codex de la PR #145 : les exceptions d'orientation de l'atelier (la grange) valent aussi pour les bâtiments du bourg.
+            facing = TownModels.OwnFacing(id, facing);
+            GameObject model = PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);
+            OwnParts(own, model);
+            return true;
+        }
+
+        /// <summary>
+        /// V2.25 : modèle de l'atelier d'un obstacle qui n'est pas un bâtiment du bourg (<see cref="TownRules.BuildingFor"/> : aucun) : le
+        /// moulin (sa roue qui tourne, l'eau de son bief qui coule) et les palissades du camp, face extérieure hors du camp
+        /// (<see cref="TownModels.OwnFacing"/>). Les palissades n'arrêtent pas la caméra, comme la palissade de rondins faite par le code.
+        /// False sans modèle de l'atelier pour <paramref name="id"/>.
+        /// </summary>
+        private bool OwnPiece(string id, List<Vector3> points)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            BuildingLook own = catalog != null ? catalog.OwnBuilding(id) : null;
+            if (own == null) return false;
+            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+            (int X, int Z) facing = TownModels.OwnFacing(id, TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors));
+            StyleBuilding kind = StyleRules.FenceFor(id) == StyleFence.Palisade ? StyleBuilding.Stall : StyleBuilding.None;
+            GameObject model = PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);
+            OwnParts(own, model);
+            return true;
+        }
+
+        /// <summary>
+        /// V2.25 : pièces animées d'un modèle de l'atelier, posées dans son repère : la roue (<see cref="BuildingLook.Wheel"/>) tourne
+        /// autour de son axe x, passant par le centre de ses rendus (roue symétrique), à <see cref="TownModels.MillWheelDegreesPerSecond"/>,
+        /// aubes basses dans le sens du courant ; l'eau (<see cref="BuildingLook.Water"/>) prend une eau dont la texture défile le long
+        /// de v à <see cref="TownModels.MillWaterSpeed"/> (<see cref="MillTurn"/>).
+        /// </summary>
+        private void OwnParts(BuildingLook own, GameObject model)
+        {
+            if (model == null || (own.Wheel == null && own.Water == null)) return;
+            Transform frame = model.transform.parent;
+            Transform axle = null;
+            if (own.Wheel != null)
+            {
+                GameObject wheel = Object.Instantiate(own.Wheel, frame, false);
+                foreach (Collider c in wheel.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                if (SnapPart(wheel, frame, model, own.Model.name, "roue") && StyleLook.VisibleBounds(wheel, out Bounds b))
+                {
+                    axle = new GameObject(own.Wheel.name + " (axe)").transform;
+                    axle.SetParent(frame, false);
+                    axle.position = b.center;
+                    wheel.transform.SetParent(axle, true);
+                }
+            }
+            Material stream = null;
+            if (own.Water != null)
+            {
+                GameObject water = Object.Instantiate(own.Water, frame, false);
+                SnapPart(water, frame, model, own.Model.name, "eau");
+                foreach (Collider c in water.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                stream = StyleWorld.Stream();
+                foreach (Renderer r in water.GetComponentsInChildren<Renderer>()) r.sharedMaterial = stream;
+            }
+            MillTurn turn = model.AddComponent<MillTurn>();
+            turn.Axle = axle;
+            turn.Water = stream;
+        }
+
+        /// <summary>
+        /// V2.25 : pose une pièce (<paramref name="part"/>) au centre de ses rendus attendu dans le repère du bâtiment
+        /// (<see cref="TownModels.OwnPartCenter"/>, décalé comme le bâtiment), quoi que l'import ait fait de la position de son objet ;
+        /// laissée telle quelle si ce centre n'est pas connu. Vrai si la pièce est posée.
+        /// </summary>
+        private static bool SnapPart(GameObject piece, Transform frame, GameObject model, string building, string part)
+        {
+            (double X, double Y, double Z)? at = TownModels.OwnPartCenter(building, part);
+            if (at == null || !StyleLook.VisibleBounds(piece, out Bounds b)) return false;
+            Vector3 wanted = frame.TransformPoint(model.transform.localPosition + new Vector3((float)at.Value.X, (float)at.Value.Y, (float)at.Value.Z));
+            piece.transform.position += wanted - b.center;
             return true;
         }
 
@@ -498,7 +574,7 @@ namespace EdS.Game
         /// <param name="pivotOnGround">Revue Codex de la PR #136 : un modèle de l'atelier a son pivot au niveau du sol (convention) ; il est
         /// posé à son pivot, pas à son point le plus bas. V2.18 : ce pivot est aussi le centre du pied des murs, posé au centre de l'emprise
         /// (pas le centre de ses contours, que les débords décalent).</param>
-        private void PlaceModel(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, GameObject prefab, (int X, int Z) face,
+        private GameObject PlaceModel(StyleBuilding kind, string id, float x0, float z0, float x1, float z1, GameObject prefab, (int X, int Z) face,
             ModelFit fit, bool mirrored, bool pivotOnGround = false)
         {
             var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
@@ -518,6 +594,12 @@ namespace EdS.Game
             // V2.18 : un modèle de l'atelier reste à son pivot (centre du pied des murs, au sol, fixé à l'export), à l'échelle 1.
             if (!pivotOnGround && StyleLook.VisibleBounds(model, out Bounds b))
                 model.transform.position += new Vector3(center.x - b.center.x, -b.min.y, center.z - b.center.z);
+            // V2.25 : le centre de l'emprise du modèle (TownModels.OwnFootCenter : le moulin, 0,50 m à côté de son pivot) au centre de l'obstacle.
+            if (pivotOnGround)
+            {
+                (double fx, double fz) = TownModels.OwnFootCenter(prefab.name);
+                model.transform.localPosition -= new Vector3((float)fx, 0f, (float)fz);
+            }
             bool seen = StyleLook.VisibleBounds(go, out Bounds all);
             float top = seen ? all.max.y : 8f;
             _occluders.Add(new Occluder { Transform = go.transform, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
@@ -526,6 +608,7 @@ namespace EdS.Game
             if (Blocks(kind))
                 _cameraBoxes.Add(new CameraBox(seen ? Mathf.Max(all.min.x, x0 - 0.25f) : x0, 0, seen ? Mathf.Max(all.min.z, z0 - 0.25f) : z0,
                     seen ? Mathf.Min(all.max.x, x1 + 0.25f) : x1, top, seen ? Mathf.Min(all.max.z, z1 + 0.25f) : z1));
+            return model;
         }
 
         /// <summary>Essai réaliste 8 : un villageois posé (son corps, son modèle) ; un marcheur garde son allée et son sens.</summary>

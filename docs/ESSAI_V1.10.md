@@ -624,3 +624,19 @@ Les modèles de l'atelier remplacent la maison de Rosalie (`maison5`) et les mai
 | 37.5 | Maison 9, au bout du chemin du lac | Façade vers l'est ; l'**appentis** (fourche, râteau, panier) au sud sort de 1,5 m de l'emprise, à 1,7 m du chemin des champs | [ ] | Trop près du chemin ? Le dire |
 | 37.6 | Les cinq maisons, la nuit | **Aucune fumée** ; une lanterne de porte à droite de la porte (celle du jeu, pas du modèle) | [ ] | |
 | 37.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
+
+## 38. Grange, moulin, tour, puits, étals, camp ; LOD1 refaits (V2.25)
+
+Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de l'Asset Store), la tour de guet, le puits, les deux étals, les trois tentes et les deux palissades du camp ; les LOD1 des bâtiments déjà livrés sont refaits (un mur entier y manquait). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 38.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `grange`, `moulin`, `tour`, `puits`, `etal1`, `etal2`, `tente`, `palissade_camp1`, `palissade_camp2` ; « moulin : roue » et « moulin : eau » ; aucune ligne « introuvable » ni « sans bâtiment » | [ ] | Noter la ligne |
+| 38.2 | Faire le tour de l'auberge, de la chapelle, de l'épicerie, de l'herboristerie, de la mercerie, de la Guilde et des maisons 3, 5, 8, 9, 10 | **Aucun mur manquant** (avant : un pan de mur entier absent, on voyait l'intérieur) | [ ] | Le bâtiment et le côté : le dire |
+| 38.3 | Aller au moulin (chemin du moulin) | Façade vers le chemin (ouest) ; la **roue tourne doucement** au sud, aubes basses dans le sens de l'eau du bief, qui **coule vers la rivière** (est) ; ni l'ancien moulin ni l'ancienne roue | [ ] | Sens ou vitesse faux : le dire |
+| 38.4 | Regarder la roue de près | Elle tourne **autour de son axe** (pas de balancement, pas de décalage avec le palier) | [ ] | Si elle tourne de travers : le dire |
+| 38.5 | Grange (ouest, chemin des champs) | Façade et porte charretière **au sud** (côté bourg), pignon vers le chemin | [ ] | Préférer une autre face ? |
+| 38.6 | Tour de guet, puits, étals de la place | Posés au sol, pas déformés ; auvents des étals et toit du puits un peu hors de l'emprise (voulu) | [ ] | |
+| 38.7 | Camp des rôdeurs | Trois tentes identiques tournées vers leur route ; palissade ouest (16 m) et sud (23 m) face rugueuse dehors ; **portail fermé** à x ≈ 100 sur la palissade sud | [ ] | Où mettre le portail, faut-il l'ouvrir ? |
+| 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |
+

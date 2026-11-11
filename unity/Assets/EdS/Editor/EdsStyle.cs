@@ -491,6 +491,7 @@ namespace EdS.Game.Editor
             foreach (string path in paths)
             {
                 string id = TownModels.OwnBuildingOf(path);
+                if (TownModels.OwnPartOf(path) != null) continue;   // V2.25 : roue et eau du moulin, rattachées plus bas
                 if (result.Any(b => b.Building == id))
                 {
                     notes.Add("Atelier : « " + id + " » a plusieurs modèles ; seul " + Path.GetFileName(result.First(b => b.Building == id).Model.name) + " est pris.");
@@ -511,6 +512,23 @@ namespace EdS.Game.Editor
                 offset.y = 0f;
                 result.Add(new BuildingLook { Kind = StyleBuilding.House, Model = model, Size = size, Building = id, Offset = offset });
             }
+            // V2.25 : pièces animées rangées à côté d'un bâtiment (« moulin_roue.fbx », « moulin_eau.fbx ») : la roue prend la matière
+            // du bâtiment (même atlas) ; l'eau garde la sienne, remplacée dans le jeu par une eau qui défile (SpaceView.OwnParts).
+            foreach (string path in paths.Where(p => TownModels.OwnPartOf(p) != null))
+            {
+                string id = TownModels.OwnBuildingOf(path), part = TownModels.OwnPartOf(path);
+                BuildingLook owner = result.FirstOrDefault(b => b.Building == id);
+                if (owner == null)
+                {
+                    notes.Add("Atelier : " + Path.GetFileName(path) + " sans bâtiment dans son dossier, ignoré.");
+                    continue;
+                }
+                if (part == "roue") OwnMaterial(path, notes, owner.Model.name);
+                GameObject piece = Load(path);
+                if (part == "roue") owner.Wheel = piece;
+                else owner.Water = piece;
+                notes.Add("Atelier : " + id + " : " + part + " (" + Path.GetFileName(path) + ").");
+            }
             if (result.Count > 0) notes.Add("Bâtiments de l'atelier : " + string.Join(", ", result.Select(b => b.Building + " (" + b.Model.name + ", "
                 + b.Size.x.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " × "
                 + b.Size.y.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m)")) + ".");
@@ -522,11 +540,12 @@ namespace EdS.Game.Editor
         /// « Generated/&lt;nom&gt;.mat » (couleur « &lt;nom&gt;_couleur », relief, brillant 0,15), et chaque matière du FBX (une seule
         /// convenue) remappée vers lui, puis réimport. Relancé, le matériau est mis à jour et le remap déjà en place n'est pas refait.
         /// </summary>
-        private static void OwnMaterial(string modelPath, List<string> notes)
+        private static void OwnMaterial(string modelPath, List<string> notes, string textures = null)
         {
             if (!(AssetImporter.GetAtPath(modelPath) is ModelImporter importer)) return;
             string folder = Path.GetDirectoryName(modelPath).Replace('\\', '/');
-            string name = Path.GetFileNameWithoutExtension(modelPath);
+            // V2.25 : une pièce (la roue du moulin) prend les textures et le matériau du bâtiment (<paramref name="textures"/>).
+            string name = textures ?? Path.GetFileNameWithoutExtension(modelPath);
             List<string> maps = (AssetDatabase.FindAssets("t:Texture2D", new[] { folder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
                 .Distinct().ToList();
             string color = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_couleur", System.StringComparison.OrdinalIgnoreCase));
