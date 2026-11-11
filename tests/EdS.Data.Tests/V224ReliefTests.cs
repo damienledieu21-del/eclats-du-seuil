@@ -124,10 +124,56 @@ public class V224ReliefTests : IDisposable
             }
         Assert.InRange(worst, 0, 0.25);   // 14° au plus sous les routes
         Assert.NotEmpty(map.Clearings);
+        // Places dégagées à plat ; seules celles dont le replat touche la berge (où le sol redescend à 0 vers l'eau) gardent une pente,
+        // faible. Relecture de la PR #144 : borne resserrée et compte des exceptions.
+        int nearWater = 0;
         foreach ((double x, double z) in map.Clearings)
+        {
+            bool shore = r.Water(x, z) < r.Settings.ShoreFlat + r.Settings.ShoreBlend + r.Settings.ClearingRadius;
+            if (shore) nearWater++;
             foreach ((double dx, double dz) in new[] { (0.0, 0.0), (1.5, 0.0), (0.0, -1.5), (-1.2, 1.2) })
-                Assert.True(r.Slope(x + dx, z + dz) < 1e-6 || r.Water(x, z) < r.Settings.WaterFlat + r.Settings.ClearingRadius + 2,
-                    "place dégagée en pente en " + x + ", " + z);
+                Assert.True(shore ? r.Slope(x + dx, z + dz) <= 0.15 : r.Slope(x + dx, z + dz) < 1e-9, "place dégagée en pente en " + x + ", " + z);
+        }
+        Assert.InRange(nearWater, 0, 3);
+    }
+
+    /// <summary>
+    /// Relecture de la PR #144 : une rue pavée ou un labour drapé (chaque sommet monté de la hauteur du sol sous lui, comme
+    /// <c>SpaceView.Drape</c>) suit le sol entre ses sommets à 5 cm près une fois découpé en morceaux de 1 m ; sans découpe, il s'enterre ou flotte.
+    /// </summary>
+    [Fact]
+    public void Rues_pavees_et_labours_decoupes_suivent_le_relief()
+    {
+        AdventureMap map = Vallons();
+        GroundRelief r = GroundRelief.For(map);
+        double Gap(StyleMesh mesh)
+        {
+            double worst = 0;
+            for (int t = 0; t < mesh.Triangles.Count; t += 3)
+                for (int e = 0; e < 3; e++)
+                {
+                    StyleVector a = mesh.Vertices[mesh.Triangles[t + e]], b = mesh.Vertices[mesh.Triangles[t + (e + 1) % 3]];
+                    double mx = (a.X + b.X) / 2, mz = (a.Z + b.Z) / 2;
+                    worst = Math.Max(worst, Math.Abs((r.Height(a.X, a.Z) + r.Height(b.X, b.Z)) / 2 - r.Height(mx, mz)));
+                }
+            return worst;
+        }
+        // La place du bourg (seule rue pavée) est sur un replat : on la déplace sur une pente pour que le test morde.
+        StyleRoad paved = map.Roads.Single(x => x.Paved);
+        var slope = new StyleRoad("essai", new[] { (30.0, -40.0), (60.0, -30.0), (90.0, 20.0) }, paved.Width, true);
+        Assert.True(Gap(TownShapes.Pavement(slope, 1.5)) > 0.1);   // sans découpe : enterré ou flottant
+        Assert.InRange(Gap(TownShapes.Pavement(slope, 1.5, 24, 1.0)), 0, 0.05);
+        Assert.InRange(Gap(TownShapes.Pavement(paved, 1.5, 24, 1.0)), 0, 0.05);
+        var boxes = map.Obstacles.Select(o => (o.Points.Min(p => p.X.Raw) / 1e4, o.Points.Min(p => p.Z.Raw) / 1e4, o.Points.Max(p => p.X.Raw) / 1e4,
+            o.Points.Max(p => p.Z.Raw) / 1e4)).ToList();
+        var fields = map.Places.Where(p => TownRules.Farmland(p.Id))
+            .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, boxes, map.Roads, map.Clearings, (map.MinX, map.MinZ, map.MaxX, map.MaxZ))).ToList();
+        Assert.NotEmpty(fields);
+        double whole = fields.Max(f => Gap(TownShapes.Furrows(f, 2))), cut = fields.Max(f => Gap(TownShapes.Furrows(f, 2, 1.0)));
+        Assert.True(whole > cut);
+        Assert.InRange(cut, 0, 0.05);
+        // Le découpage ne change pas la surface couverte (mêmes bornes).
+        foreach (StyleField f in fields.Take(3)) Assert.Equal(TownShapes.Furrows(f, 2).Bounds(), TownShapes.Furrows(f, 2, 1.0).Bounds());
     }
 
     /// <summary>L'eau reste dans le creux (0 sur la rivière et le lac, et sur leurs berges) ; le tablier du pont se raccorde au sol.</summary>

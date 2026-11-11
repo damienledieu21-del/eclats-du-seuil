@@ -549,9 +549,10 @@ namespace EdS.Runtime
         /// <summary>
         /// Rue pavée : une bande de la largeur de la route le long de chaque tronçon, et un disque à chaque point (joints arrondis, bouts
         /// en demi-cercle, comme la carte peinte), à <see cref="PavementHeight"/> ; texture en coordonnées du monde (les recouvrements
-        /// tombent sur les mêmes pavés).
+        /// tombent sur les mêmes pavés). Sous-lot V2.24 : <paramref name="step"/> &gt; 0 découpe la bande en carreaux d'au plus
+        /// <paramref name="step"/> mètres (en long et en large) et les disques en anneaux, pour que le maillage drapé suive le relief.
         /// </summary>
-        public static StyleMesh Pavement(StyleRoad road, double tile, int discSides = 24)
+        public static StyleMesh Pavement(StyleRoad road, double tile, int discSides = 24, double step = 0)
         {
             var mesh = new StyleMesh();
             if (road == null) return mesh;
@@ -566,31 +567,50 @@ namespace EdS.Runtime
                 var n = new StyleVector(-dz / len * half, 0, dx / len * half);
                 var pa = new StyleVector(a.X, y, a.Z);
                 var pb = new StyleVector(b.X, y, b.Z);
-                StyleVector p0 = pa - n, p1 = pb - n, p2 = pb + n, p3 = pa + n;
-                mesh.Quad(p0, p1, p2, p3, Uv(p0), Uv(p1), Uv(p2), Uv(p3), StyleVector.Up);
+                int along = Pieces(len, step), across = Pieces(2 * half, step);
+                for (int i0 = 0; i0 < along; i0++)
+                    for (int j0 = 0; j0 < across; j0++)
+                    {
+                        StyleVector At(int i1, int j1) => pa + (pb - pa) * ((double)i1 / along) + n * (2.0 * j1 / across - 1);
+                        StyleVector p0 = At(i0, j0), p1 = At(i0 + 1, j0), p2 = At(i0 + 1, j0 + 1), p3 = At(i0, j0 + 1);
+                        mesh.Quad(p0, p1, p2, p3, Uv(p0), Uv(p1), Uv(p2), Uv(p3), StyleVector.Up);
+                    }
             }
-            int sides = Math.Max(6, discSides);
+            int sides = Math.Max(6, discSides), rings = Pieces(half, step);
             foreach (var p in road.Points)
             {
                 var c = new StyleVector(p.X, y, p.Z);
                 for (int k = 0; k < sides; k++)
                 {
                     double a0 = 2 * Math.PI * k / sides, a1 = 2 * Math.PI * (k + 1) / sides;
-                    StyleVector q0 = c + new StyleVector(Math.Cos(a0) * half, 0, Math.Sin(a0) * half), q1 = c + new StyleVector(Math.Cos(a1) * half, 0, Math.Sin(a1) * half);
-                    mesh.Triangle(c, q0, q1, Uv(c), Uv(q0), Uv(q1), StyleVector.Up);
+                    StyleVector Rim(double angle, int ring) => c + new StyleVector(Math.Cos(angle) * half * ring / rings, 0, Math.Sin(angle) * half * ring / rings);
+                    for (int r = 0; r < rings; r++)
+                    {
+                        StyleVector q0 = Rim(a0, r + 1), q1 = Rim(a1, r + 1);
+                        if (r == 0) mesh.Triangle(c, q0, q1, Uv(c), Uv(q0), Uv(q1), StyleVector.Up);
+                        else
+                        {
+                            StyleVector i0 = Rim(a0, r), i1 = Rim(a1, r);
+                            mesh.Quad(i0, q0, q1, i1, Uv(i0), Uv(q0), Uv(q1), Uv(i1), StyleVector.Up);
+                        }
+                    }
                 }
             }
             return mesh;
         }
+
+        /// <summary>Sous-lot V2.24 : nombre de morceaux d'au plus <paramref name="step"/> mètres sur une longueur (1 sans découpe).</summary>
+        private static int Pieces(double length, double step) => step > 0 ? Math.Max(1, (int)Math.Ceiling(length / step - 1e-9)) : 1;
 
         /// <summary>Écart (m) entre deux sillons d'un champ labouré, et hauteur d'un billon.</summary>
         public const double FurrowSpacing = 0.7, FurrowHeight = 0.16;
 
         /// <summary>
         /// Champ labouré : billons de terre le long des rangs (deux pentes par billon, du creux au sommet), sur tout le champ ; texture de
-        /// terre en coordonnées du monde.
+        /// terre en coordonnées du monde. Sous-lot V2.24 : <paramref name="step"/> &gt; 0 découpe chaque pente de billon en morceaux d'au plus
+        /// <paramref name="step"/> mètres le long du rang, pour que le maillage drapé suive le relief.
         /// </summary>
-        public static StyleMesh Furrows(StyleField field, double tile)
+        public static StyleMesh Furrows(StyleField field, double tile, double step = 0)
         {
             var mesh = new StyleMesh();
             double s = 1 / Math.Max(0.1, tile);
@@ -598,15 +618,20 @@ namespace EdS.Runtime
             double along0 = field.RowsAlongX ? field.MinX : field.MinZ, along1 = field.RowsAlongX ? field.MaxX : field.MaxZ;
             StyleVector P(double along, double across, double y) =>
                 field.RowsAlongX ? new StyleVector(along, y, across) : new StyleVector(across, y, along);
+            int pieces = Pieces(along1 - along0, step);
             for (double c = across0; c + FurrowSpacing <= across1 + 1e-9; c += FurrowSpacing)
             {
                 double mid = c + FurrowSpacing / 2, c1 = c + FurrowSpacing;
                 foreach ((double from, double to) in new[] { (c, mid), (mid, c1) })
                 {
-                    StyleVector a = P(along0, from, from == c || from == c1 ? 0.01 : FurrowHeight), b = P(along1, from, a.Y);
-                    StyleVector d = P(along0, to, to == mid ? FurrowHeight : 0.01), e = P(along1, to, d.Y);
+                    double ya = from == c || from == c1 ? 0.01 : FurrowHeight, yd = to == mid ? FurrowHeight : 0.01;
                     StyleVector slope = field.RowsAlongX ? new StyleVector(0, 0.7, from < mid ? -1 : 1) : new StyleVector(from < mid ? -1 : 1, 0.7, 0);
-                    mesh.Quad(a, b, e, d, (a.X * s, a.Z * s), (b.X * s, b.Z * s), (e.X * s, e.Z * s), (d.X * s, d.Z * s), slope);
+                    for (int k = 0; k < pieces; k++)
+                    {
+                        double l0 = along0 + (along1 - along0) * k / pieces, l1 = along0 + (along1 - along0) * (k + 1) / pieces;
+                        StyleVector a = P(l0, from, ya), b = P(l1, from, ya), d = P(l0, to, yd), e = P(l1, to, yd);
+                        mesh.Quad(a, b, e, d, (a.X * s, a.Z * s), (b.X * s, b.Z * s), (e.X * s, e.Z * s), (d.X * s, d.Z * s), slope);
+                    }
                 }
             }
             return mesh;

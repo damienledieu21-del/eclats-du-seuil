@@ -293,6 +293,9 @@ namespace EdS.Game
         /// Sous-lot V2.24 : maillage fait par le code posé sur le sol affiché : chaque sommet monte de la hauteur du sol sous lui (chemins
         /// pavés, labours, murets de pierres sèches). Rend l'écart (bas, haut) des hauteurs ajoutées.
         /// </summary>
+        /// <summary>Sous-lot V2.24 : longueur (m) des morceaux d'un maillage posé au sol avant drapé (rues pavées, labours).</summary>
+        private const double DrapeStep = 1.0;   // écart au sol de 5 cm au plus entre deux sommets (V224ReliefTests)
+
         private static (float Low, float High) Drape(GameObject go)
         {
             if (go == null || !StyleWorld.HasRelief) return (0f, 0f);
@@ -988,7 +991,7 @@ namespace EdS.Game
             foreach (StyleRoad road in _roads.Where(r => r.Paved))
             {
                 Material cobble = Built(StyleSurface.Cobble, new Color(0.42f, 0.4f, 0.37f), out float tile);
-                Drape(Shape("Rue pavée " + road.Id, TownShapes.Pavement(road, tile), cobble));   // V2.24 : sur le sol affiché
+                Drape(Shape("Rue pavée " + road.Id, TownShapes.Pavement(road, tile, 24, StyleWorld.HasRelief ? DrapeStep : 0), cobble));   // V2.24 : découpé, drapé
             }
         }
 
@@ -1009,7 +1012,7 @@ namespace EdS.Game
                 if (field.Crop == 2)
                 {
                     Material soil = Soil(catalog);
-                    Drape(Shape("Labour", TownShapes.Furrows(field, soilTile), soil));   // V2.24 : sur le sol affiché
+                    Drape(Shape("Labour", TownShapes.Furrows(field, soilTile, StyleWorld.HasRelief ? DrapeStep : 0), soil));   // V2.24 : découpé, drapé
                 }
                 else (field.Crop == 0 ? ripe : green).AddRange(TownShapes.CropSpots(field, step));
             }

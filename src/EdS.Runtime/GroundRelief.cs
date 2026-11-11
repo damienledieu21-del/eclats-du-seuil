@@ -192,7 +192,7 @@ namespace EdS.Runtime
         {
             if (_flat || floor != 0) return 0;
             double b = Base(x, z);
-            double w = 0, sum = 0, sumLevel = 0;
+            double keep = 1, sum = 0, sumLevel = 0;
             foreach (ReliefPad p in _pads)
             {
                 double reach = p.Core + _s.PadBlend;
@@ -200,12 +200,13 @@ namespace EdS.Runtime
                 double d = PolygonDistance(p.Points, x, z) - p.Core;
                 double wi = d <= 0 ? 1 : 1 - Smooth(d / _s.PadBlend);
                 if (wi <= 0) continue;
-                w = Math.Max(w, wi);
+                keep *= 1 - wi;   // poids réunis sans pli (1 dans le cœur d'un replat), pas le plus grand
                 sum += wi;
                 sumLevel += wi * p.Level;
             }
             if (sum <= 0) return b;
             // Un replat proche de l'eau ne relève ni la berge ni le lit : le sol revient à 0 à moins de ShoreFlat mètres de l'eau.
+            double w = 1 - keep;
             return (b + w * (sumLevel / sum - b)) * Smooth((Water(x, z) - _s.ShoreFlat) / _s.ShoreBlend);
         }
 
