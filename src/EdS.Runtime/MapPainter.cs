@@ -248,6 +248,21 @@ namespace EdS.Runtime
                 return h;
             }
 
+            // Sous-lot V2.24 : léger ombrage du relief affiché (lumière du nord-ouest), lu sur une grille d'un mètre calculée une fois.
+            GroundRelief relief = GroundRelief.For(map);
+            int gw = (int)Math.Ceiling(w) + 2, gd = (int)Math.Ceiling(d) + 2;
+            double[,]? ground = relief.IsFlat ? null : new double[gw, gd];
+            if (ground != null)
+                for (int i = 0; i < gw; i++)
+                    for (int j = 0; j < gd; j++) ground[i, j] = relief.Height(x0 + i, z0 + j);
+            double Shade(double x, double z)
+            {
+                if (ground == null) return 1;
+                int i = Math.Max(0, Math.Min(gw - 2, (int)(x - x0))), j = Math.Max(0, Math.Min(gd - 2, (int)(z - z0)));
+                double gx = ground[i + 1, j] - ground[i, j], gz = ground[i, j + 1] - ground[i, j];
+                return Math.Max(0.8, Math.Min(1.2, 1 + 0.6 * (0.7 * gx - 0.7 * gz)));
+            }
+
             var pixels = new byte[checked(width * height * 4)];
             // Vallons agrandis : une ligne par tâche (chaque pixel ne dépend que de sa place : mêmes pixels, quel que soit l'ordre).
             // Relecture : la moitié des cœurs au plus (la carte se peint pendant qu'on joue).
@@ -408,6 +423,8 @@ namespace EdS.Runtime
                         }
                     }
 
+                    double shade = Shade(x, z);   // V2.24
+                    for (int k = 0; k < 3; k++) c[k] *= shade;
                     int at = (row * width + col) * 4;
                     pixels[at] = ToByte(c[0]);
                     pixels[at + 1] = ToByte(c[1]);
