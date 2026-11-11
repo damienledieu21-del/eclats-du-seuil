@@ -813,7 +813,8 @@ namespace EdS.Game
                 float dx = at.x - player.x, dz = at.z - player.z;
                 float d2 = dx * dx + dz * dz;
                 if (d2 > m.Range * m.Range) continue;
-                Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height, at.z));
+                // Revue Codex de la PR #144 : le nom suit le sol affiché sous le repère (PNJ qui marchent compris).
+                Vector3 screen = camera.WorldToScreenPoint(new Vector3(at.x, m.Height + StyleWorld.StandHeight(at.x, at.z), at.z));
                 if (screen.z <= 0f) continue;
                 string text = m.Label ?? m.Data.Name;   // sous-lot V2.3 : et son activité
                 _layout.Add(m.Data.Id, text, screen.x, screen.y, LabelLayout.TextWidth(text, HudView.LabelFont) / k, h, m.Rank * 1000.0 - Mathf.Sqrt(d2), at.x, at.z);

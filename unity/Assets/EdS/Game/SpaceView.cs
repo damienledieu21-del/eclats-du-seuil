@@ -149,6 +149,9 @@ namespace EdS.Game
                 _shapes.Where((o, i) => TownRules.BuildingFor(space.Obstacles[i].Id) == StyleBuilding.Woods).Select(o => (IReadOnlyList<(double X, double Z)>)o.Points).ToList());
             bool terrain = _terrain != null;
             if (!terrain) _rivers.Clear();
+            // Revue Codex de la PR #144 : sans terrain (pas de catalogue ni de texture de sol), le sol de remplacement est un pavé plat à 0 :
+            // pas de relief, sinon personnages, décor et marqueurs flotteraient au-dessus.
+            if (!terrain) StyleWorld.SetRelief(null);
             if (!terrain)
             {
                 GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);

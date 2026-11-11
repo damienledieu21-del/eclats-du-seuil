@@ -223,6 +223,13 @@ public class V224ReliefTests : IDisposable
         Assert.Contains("(_relief.IsFlat ? 0f : (float)_relief.Height(x, z))", world, StringComparison.Ordinal);
         Assert.Contains("TerrainBase - dig + (_relief.IsFlat ? 0 : _relief.Height(x, z))", world, StringComparison.Ordinal);
         Assert.Contains("StyleWorld.SetRelief(map != null ? GroundRelief.For(map) : null);", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #144 : sans terrain (sol de remplacement plat), le relief est retiré avant de poser le décor ; les noms
+        // des repères suivent le sol affiché.
+        int noTerrain = view.IndexOf("if (!terrain) StyleWorld.SetRelief(null);", StringComparison.Ordinal);
+        Assert.True(noTerrain > view.IndexOf("_terrain = StyleWorld.Ground(", StringComparison.Ordinal));
+        Assert.True(noTerrain < view.IndexOf("foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);", StringComparison.Ordinal));
+        Assert.True(noTerrain < view.IndexOf("Border(\"Bord ouest\"", StringComparison.Ordinal));
+        Assert.Contains("new Vector3(at.x, m.Height + StyleWorld.StandHeight(at.x, at.z), at.z)", Game("WorldMarkers.cs"), StringComparison.Ordinal);
         Assert.Contains("Lift(children, occluders, boxes, Ground(cx, cz, 0.4f));", view, StringComparison.Ordinal);
         Assert.Contains("Drape(Shape(\"Rue pavée \"", view, StringComparison.Ordinal);
         Assert.Contains("(StyleWorld.HasRelief || StyleWorld.OnDeck(", view, StringComparison.Ordinal);
