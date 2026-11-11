@@ -60,6 +60,7 @@ Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6
 | Formules | `docs/FORMULES.md` | `grep -rn "Fixed" src/EdS.Domain` |
 | Textes, ton, PNJ | `docs/ECRITURE.md` | `grep -n "Gaspard" docs/ECRITURE.md` |
 | Monde, zones | `docs/MONDE.md`, `docs/ARCHITECTURE_MONDE.md`, `src/EdS.World` | `grep -rn "ZoneValidator" src` |
+| Grande carte (4 × 3 km, cases, étages) | `docs/PLAN_GRANDE_CARTE.md` | `grep -n "V2.26" docs/PLAN_GRANDE_CARTE.md` |
 | Combat dans l'espace | `docs/COMBAT_ESPACE.md` | `grep -n "portée" docs/COMBAT_ESPACE.md` |
 | Réseau, serveur | `docs/RESEAU.md`, `src/EdS.Net`, `src/EdS.Server` | `grep -n "Version" src/EdS.Net/Protocol.cs` |
 | Unity | `docs/UNITY.md`, `tests/EdS.Unity.CompileCheck` | `find src -name "*.asmdef"` |
