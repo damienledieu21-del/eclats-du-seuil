@@ -1,6 +1,6 @@
 # Plan de la grande carte des Vallons (4 × 3 km, trois étages)
 
-Plan technique et de contenu, écrit le 11 novembre 2026 après la **décision de Damien du 11 novembre 2026, 1 h 23** (« parfait ») sur la proposition de Claude. Documentation seulement : aucun code, aucun format ni journal changé par ce document.
+Plan technique et de contenu, écrit le 11 novembre 2026 après la **décision de Damien du 11 novembre 2026, 1 h 23** (« parfait ») sur la proposition de Claude, complété par ses **réponses du même jour, vers 2 h 20** (section 0 bis). Documentation seulement : aucun code, aucun format ni journal changé par ce document.
 
 Statuts, comme dans [CADRAGE.md](CADRAGE.md) :
 
@@ -19,6 +19,14 @@ Statuts, comme dans [CADRAGE.md](CADRAGE.md) :
 - **Monde vivant** : journées des villageois, caravanes que les bandits peuvent attaquer, corruption du Seuil qui s'étend vraiment si on ne la repousse pas, lieux reconstruits qui le restent, saisons qui changent la carte (lac gelé, vendanges, neige qui bloque le col).
 - **Horizon** : depuis le sommet, Crêtes de Fer au loin, brume de la Forêt des Murmures, lune fendue la nuit.
 - **Ordre** : découpage en cases et surface d'abord, puis les lieux un par un, puis le dessous, puis l'Envers. Le relief doux d'affichage est en cours (V2.24, branche `v2.24-relief`, hors de ce plan) ; le vrai relief qui compte en combat reste pour plus tard (L11-D6).
+
+## 0 bis. Réponses de Damien du 11 novembre 2026, vers 2 h 20 (Retenu)
+
+1. **Rupture d'architecture du V2.26** (secteurs, passage d'un secteur à l'autre avec l'état du combat, nouveau format de journal, nouvelle version du moteur, coordonnées ±4 096 m) : « Oui, on le fait ».
+2. **Saisons** : déjà tranché le 29 octobre 2026 (sujet 12) : **saisons du monde comme dans la vraie vie** (l'hiver du jeu pendant le vrai hiver). Le plan suit cette règle (section 5).
+3. **Bourg d'Aube** : les boutiques et leurs quêtes (auberge, Guilde, boulangerie, épicerie, herboristerie, mercerie, chapelle, maisons nommées comme celle de Rosalie) **déménagent dans la ville fortifiée**, 1 km à l'ouest, selon son plan illustré. Le déménagement est un sous-lot à part (V2.30.1), sans casser ni les sauvegardes ni les quêtes.
+4. **Crypte-donjon sous l'abbaye** ; la chapelle garde une petite crypte.
+5. **Corruption** : **jamais les villes** (ni le village du cœur, ni l'intérieur de la palissade du Bourg) ; elle s'arrête aux portes.
 
 ## 1. L'existant et ses plafonds
 
@@ -75,7 +83,7 @@ Le jeu tourne encore **en solo sur le poste** (`AdventureSession`, `EdS.Runtime`
 
 En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même règle d'activation, mêmes passages ; rien ne dépend de Unity.
 
-### 2.4 Secteurs, marge et passage d'un secteur à l'autre (Rupture, à valider)
+### 2.4 Secteurs, marge et passage d'un secteur à l'autre (Rupture, Retenu par Damien le 11 novembre 2026)
 
 - **Espace d'un secteur** : ses 256 m plus une **marge de 32 m** de chaque côté, soit 320 × 320 m. Les obstacles de la marge sont ceux des cases voisines (lus des mêmes données) ; le joueur y voit et s'y cogne comme ailleurs.
 - **Propriété** : chaque entité appartient à **un seul** secteur à la fois. Les populations d'un secteur partent de son intérieur (au moins 8 m du bord, règle du validateur).
@@ -171,8 +179,8 @@ Rectangles approximatifs, en mètres ; altitudes **d'affichage** (le moteur rest
 
 | # | Lieu | Emprise | Repère | Altitude | Contenu proposé |
 |---|---|---|---|---|---|
-| 1 | **Cœur** (village, moulin et pont) | [−100, −70] à [140, 100] | place du village (−18, −12) | 30 m | Inchangé : village, moulin, ruines, vieille carrière, petite zone du Seuil, ancien bourg, champs, étang, tour de guet, camp des rôdeurs |
-| 2 | **Bourg d'Aube, ville fortifiée** | palissade ronde, centre (−1 010, −70), environ 600 m de diamètre | porte de l'Est (−710, −50) | 35 m | Palissade de pieux, tours de bois, trois portes (est, ouest vers Havre d'Ambre, nord vers le pont), église, place du marché, maisons serrées, égouts. L'**ancien bourg** du cœur (x de −100 à −24 : auberge, guilde, boutiques) **ne bouge pas** : il devient le quartier ouest du village, et sa grand-rue la route de la ville |
+| 1 | **Cœur** (village, moulin et pont) | [−100, −70] à [140, 100] | place du village (−18, −12) | 30 m | Inchangé, sauf le bourg qui déménage (ligne 2) : village, moulin, ruines, vieille carrière, petite zone du Seuil, champs, étang, tour de guet, camp des rôdeurs |
+| 2 | **Bourg d'Aube, ville fortifiée** | palissade ronde, centre (−1 010, −70), environ 600 m de diamètre | porte de l'Est (−710, −50) | 35 m | Palissade de pieux, tours de bois, trois portes (est, ouest vers Havre d'Ambre, nord vers le pont), église, place du marché, maisons serrées, égouts. **Retenu (Damien, 11 novembre 2026)** : les boutiques, l'auberge, la Guilde, la chapelle et les maisons nommées du bourg actuel **y déménagent** (V2.30.1), selon le [plan illustré du Bourg](cartes/plan_bourg_ete.jpg) |
 | 3 | **Vallée de la rivière et cascade** | de la cascade (590, 1 080) au cœur (5, 100) | cascade, 30 m de chute | 30 à 140 m | Gorges, gué, pêcheurs ; **grotte derrière la cascade** (entrée du dessous) |
 | 4 | **Coteaux et château viticole** | [−1 700, −1 500] à [−780, −500] | château (−1 330, −680) | 40 à 120 m | Rangs de vignes en terrasses, pressoir, chais, vendangeurs, jardins à la française, cave du château |
 | 5 | **Forêt des Loups et arbre millénaire** | [−1 500, 280] à [−160, 1 280] | arbre (−850, 780) | 40 à 100 m | Clairières, bûcherons, tanière de la meute, ours, cercle autour de l'arbre ; la pointe actuelle ([−100, 41] à [4, 100]) en est l'orée |
@@ -188,9 +196,19 @@ Rectangles approximatifs, en mètres ; altitudes **d'affichage** (le moteur rest
 
 Les « douze grands lieux » de la décision sont les lignes 1 à 5, 7, 8, 10 à 13, plus les trois passages (6, 9, 14). Champs, ferme et grange (vers (60, −450)) et vergers (vers (720, −450)) prolongent le cœur au sud et au sud-est, comme sur la carte. Les passages ont un court chargement (Retenu, sujet 9) ; tant que la région voisine n'existe pas, une barrière expliquée (éboulement, pont gardé, péage).
 
+### 4.2 bis Plans illustrés des lieux (Retenu, validés par Damien le 11 novembre 2026)
+
+| Lieu | Plans (copies réduites ; originaux dans l'AssetLab, `Carte_Vallons/`) |
+|---|---|
+| Bourg d'Aube fortifié | [été](cartes/plan_bourg_ete.jpg), [hiver](cartes/plan_bourg_hiver.jpg) |
+| Abbaye en ruine | [jour](cartes/plan_abbaye_jour.jpg), [nuit](cartes/plan_abbaye_nuit.jpg) |
+| Château viticole | [été](cartes/plan_chateau_ete.jpg), [vendanges](cartes/plan_chateau_vendanges.jpg) |
+
+Les sous-lots de ces lieux (V2.30, V2.33, V2.35) partent de ces plans.
+
 ### 4.3 Routes, rivière, relief
 
-- **Route d'Ambre** (caravanes) : sortie d'Havre d'Ambre à l'ouest → porte ouest du Bourg → porte est → ancien bourg et village (routes actuelles) → vers l'est et la mine → fort des bandits → col des Crêtes de Fer. Les caravanes passent donc **sous le fort** : c'est là que les bandits attaquent.
+- **Route d'Ambre** (caravanes) : sortie d'Havre d'Ambre à l'ouest → porte ouest du Bourg → porte est → route de la ville (l'ancienne grand-rue) → village → vers l'est et la mine → fort des bandits → col des Crêtes de Fer. Les caravanes passent donc **sous le fort** : c'est là que les bandits attaquent.
 - **Route de l'Est** (réservée, voir 4.0 bis) : abbaye → bord est, vers les Ruines d'Ysoria.
 - **Chemins** : du pont des Murmures (porte nord du Bourg → gorge), des vignes (Bourg → château), de la bergerie (village → collines → sommet), de l'abbaye (mine → abbaye), du lac (village → champs → pontons), des pierres (vergers → terres corrompues).
 - **Rivière** : de la cascade (590, 1 080), elle descend vers le sud-ouest jusqu'au cœur (son lit actuel, x de 4 à 7), passe sous le pont du moulin, traverse l'étang puis les champs et se jette dans le grand lac. Elle reste un « obstacle bas » qu'on voit par-dessus (essai du 22 octobre 2026), franchie par des ponts et des gués.
@@ -198,9 +216,20 @@ Les « douze grands lieux » de la décision sont les lignes 1 à 5, 7, 8, 10 à
 
 ### 4.4 Ne rien casser au cœur (Recommandation)
 
-- Mêmes coordonnées, mêmes identifiants de lieux, de points sûrs, de portes, de populations ; les grands lieux ont des **identifiants nouveaux** (`foret_des_loups_profonde`, `ville_du_bourg`, `grand_lac`…) ; `PlacesAt` en rend déjà plusieurs.
+- **Exception retenue : le bourg déménage** (V2.30.1, ci-dessous). Pour le reste : mêmes coordonnées, mêmes identifiants de lieux, de points sûrs, de portes, de populations ; les grands lieux ont des **identifiants nouveaux** (`foret_des_loups_profonde`, `ville_du_bourg`, `grand_lac`…) ; `PlacesAt` en rend déjà plusieurs.
 - **Le chapitre 1 garde sa porte** : aujourd'hui le pré et la forêt ne s'atteignent que par la porte du moulin. La grande carte garde ce verrou par le décor : un **ravin des Ronces** borde la forêt au sud et à l'est, de la gorge jusqu'à la rivière, et la vallée de la rivière est fermée par un éboulement au nord du cœur, jusqu'à la fin du chapitre 1 (la quête l'ouvre, comme la porte du moulin).
 - Les bords actuels du cœur (rivière jusqu'au bord nord, haie jusqu'au bord ouest) deviennent des passages tenus par l'histoire, pas des murs.
+
+### 4.4 bis Le déménagement du bourg (V2.30.1, Recommandation sur le Retenu)
+
+But : la même partie se reprend après le déménagement, avec les mêmes quêtes au même point, les boutiques simplement 1 km plus à l'ouest.
+
+- **Identifiants inchangés** : zones des intérieurs (`zone.auberge`, `zone.guilde`, `zone.boulangerie`, `zone.epicerie`, `zone.herboristerie`, `zone.mercerie`, `zone.chapelle`, `zone.maison`, archives), portes (`porte_auberge`…), point sûr `place_du_bourg`, lieu `bourg`, PNJ, quêtes, objectifs. **Seules leurs positions changent** dans `vallons.json` (portes, obstacles des maisons, point sûr, rectangle du lieu, étals, places et emplois du temps des PNJ, haltes, nœuds, repères de quête). Les intérieurs eux-mêmes ne changent pas.
+- **Sauvegardes** : elles gardent des identifiants (zone, point sûr, registre, quêtes), pas de position dans le bourg ; un point sûr découvert le reste (même clé). Une partie sauvegardée **dans un intérieur** ressort par la même porte, désormais dans la ville. Une partie sauvegardée dans les Vallons reprend au dernier point sûr (section 3) : si c'était la place du bourg, elle reprend sur la nouvelle place. À vérifier au sous-lot : tout champ de sauvegarde qui contiendrait une position (sinon migration versionnée, nouvelle version de sauvegarde, l'ancienne encore lue).
+- **Quêtes** : un test rejoue chaque quête qui passe par le bourg (chapitres 1 à 5, Guilde, boutiques, fêtes, grand jour de marché) d'après les nouvelles positions ; les distances de marche des premières quêtes grandissent (environ 1 km, 3 à 4 min à pied) : premier point sûr de la ville découvert tôt, et un chemin balisé.
+- **Ce qui reste à l'ancien emplacement** (x de −100 à −24) : un hameau de quelques fermes et la route de la ville ; les obstacles libérés laissent de la place au cœur.
+- **Journaux** : contenu de la zone et de son scénario en nouvelle version ; les journaux figés de référence ne changent pas (ils ne viennent pas de cette zone) ; ceux des essais de zone sont figés à nouveau.
+- **Dépendances** : V2.26 (la ville est hors du secteur du cœur), V2.28 (surface) et V2.30 (la ville construite).
 
 ### 4.5 Densité de contenu (Recommandation)
 
@@ -217,9 +246,9 @@ Principe déjà en place (V2.3, V2.5, V2.6) : **ce qui n'est pas vu est calculé
 | Journées des villageois (V2.3) | Rien : la place se calcule de l'heure | PNJ posés à leur place du moment | aucun | négligeable |
 | **Caravanes** | Position = fonction du temps sur le graphe des routes (départ, vitesse, haltes) ; une attaque de bandits est un **événement du calendrier** sur un tronçon (tirage `Pcg32` comme V2.5). Sans joueur sur place, l'issue est tirée (pillée ou passée) | La caravane et ses gardes deviennent des combattants ; les joueurs peuvent la défendre ; elle passe d'un secteur à l'autre (2.4) | issue de chaque passage de caravane (registre) | quelques entiers par caravane |
 | Conséquences des caravanes | Une caravane pillée change les prix du marché (V2.10) et donne une quête de reprise au fort | — | — | — |
-| **Corruption du Seuil** | Un **palier de corruption par case** (0 à 4) qui avance depuis les terres corrompues tous les N jours du monde **si personne ne la repousse** ; elle progresse de case voisine en case voisine (les cicatrices de V2.6 généralisées) | Couleurs fanées, échos rôdeurs, failles plus fréquentes, PNJ qui fuient ; refermer les failles et purifier les autels fait **reculer** le front | 768 paliers et leur date (moins d'un kilo-octet) | négligeable |
+| **Corruption du Seuil** | **Retenu (Damien, 11 novembre 2026)** : jamais les villes, elle s'arrête aux portes (village du cœur, intérieur de la palissade du Bourg). Un **palier de corruption par case** (0 à 4) qui avance depuis les terres corrompues tous les N jours du monde **si personne ne la repousse** ; elle progresse de case voisine en case voisine (les cicatrices de V2.6 généralisées) | Couleurs fanées, échos rôdeurs, failles plus fréquentes, PNJ qui fuient ; refermer les failles et purifier les autels fait **reculer** le front | 768 paliers et leur date (moins d'un kilo-octet) | négligeable |
 | **Lieux reconstruits** | Un lieu a un état (ruine, chantier, reconstruit) ; une reconstruction terminée **reste** (H12 : reconstruction collective) | Le décor et les PNJ suivent l'état | état par lieu | négligeable |
-| **Saisons** | Saison = fonction du temps du monde | Lac gelé (glace praticable, l'île s'ouvre), vendanges (PNJ et récoltes des coteaux), neige au col (le passage se ferme), feuillage, herbes et créatures de saison | aucun | négligeable |
+| **Saisons** | **Retenu (sujet 12)** : comme dans la vraie vie, l'hiver du jeu pendant le vrai hiver. Le cœur n'a pas d'horloge réelle : la **saison est une donnée d'entrée** fournie par le serveur (ou l'hôte local) d'après la date du jour, au début de chaque session, comme le temps (V2.2) ; elle est écrite dans l'en-tête et la sauvegarde, donc rejouable | Lac gelé (glace praticable, l'île s'ouvre), vendanges (PNJ et récoltes des coteaux), neige au col (le passage se ferme), feuillage, herbes et créatures de saison | aucun | négligeable |
 | Populations des secteurs fermés | Rien ne vit : un secteur rouvert repart d'une session neuve (comme aujourd'hui) ; les morts récentes se rappellent par le registre | Réapparitions, laisse, territoire | registre du secteur | — |
 
 - **Où vit l'état** : en solo (aujourd'hui), dans la sauvegarde du personnage, comme les cicatrices (V2.6). Dans le monde partagé (lot 13), dans un **état de région** sur le serveur, commun à tous ; la corruption et les reconstructions deviennent alors des chantiers collectifs (H2, chapitre public d'une région).
@@ -262,7 +291,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |
 |---|---|---|---|---|
 | **V2.25** Cases et repère | Format de région (zones en schéma 13 : grille, cases, secteurs), découpage du cœur sans rien changer au jeu, outil `eds carte` (cases, densité, image de contrôle), relèvement des bornes de données (lieux, portes, routes par case) | M | — | aucun |
-| **V2.26** Secteurs de simulation | **Rupture à valider** : arrivée avec état (journal 25, moteur 0.31.0), coordonnées ±4 096 m, 256 obstacles, grille de navigation, recyclage des places, territoire des populations, passage de secteur, activation et fermeture, purge du registre (sauvegarde v18), mesures | L | V2.25 | aucun |
+| **V2.26** Secteurs de simulation | **Rupture retenue par Damien** (11 novembre 2026) : arrivée avec état (journal 25, moteur 0.31.0), coordonnées ±4 096 m, 256 obstacles, grille de navigation, recyclage des places, territoire des populations, passage de secteur, activation et fermeture, purge du registre (sauvegarde v18), mesures | L | V2.25 | aucun |
 | **V2.27** Chargement par cases dans Unity | Anneaux, construction étalée, recyclage, terrain basse résolution de la région, réglages selon `MachineTier`, mesures sur Note8 et PC modeste | L | V2.25, V2.24 fusionné | arbres de la région en 3 LOD + imposteurs (chêne, hêtre, pin, bouleau, saule, vigne) ; rochers (5 tailles) |
 | **V2.28** Surface de 4 × 3 km | Toute la région praticable : relief d'affichage, rivière jusqu'à la cascade, lac et marais, nappes de forêt, collines, routes, ravins et falaises en obstacles, points sûrs aux carrefours, cheval à 13 m/s ; lieux en emplacements vides | M | V2.26, V2.27 | pont de pierre long, ponton, gué, bornes et panneaux, murets, clôtures, haies |
 | **V2.29** Horizon | Cartes peintes du ciel, silhouettes lointaines, point de vue du sommet | S | V2.28 | silhouettes basses des Crêtes de Fer ; imposteurs des grands lieux (au fil des lieux) |
@@ -271,7 +300,8 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
-| **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village (surface ; les intérieurs viennent ensuite, un à un) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |
+| **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |
+| **V2.30.1** | **Déménagement du bourg** (4.4 bis) : boutiques, auberge, Guilde, chapelle et maisons nommées dans la ville ; positions migrées, identifiants gardés, quêtes et sauvegardes vérifiées | M | façades des boutiques adaptées aux rues de la ville si besoin (les modèles de l'atelier sont réutilisés) |
 | **V2.31** | Vallée de la rivière et cascade | M | cascade de 30 m (rochers, bassin), moulin à foulon, pont suspendu, cabane de pêcheur |
 | **V2.32** | Forêt des Loups et arbre millénaire | M | arbre millénaire (avec imposteur), tanière, cabane de bûcheron, cercle de druides, souches et troncs couchés |
 | **V2.33** | Coteaux et château viticole | M | château viticole, pressoir, chai, rangs de vigne (3 états : vert, mûr, vendangé), cuves, charrette de vendange |
@@ -290,7 +320,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | **V2.41** | Caravanes et attaques des bandits | M | V2.26, V2.28, V2.38 | chariot bâché, attelage, coffres de marchandises |
 | **V2.42** | Corruption qui s'étend et recule | M | V2.39 | variantes corrompues des arbres et rochers, autels purifiés |
 | **V2.43** | Lieux reconstruits | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis |
-| **V2.44** | Saisons (lac gelé, vendanges, neige au col, feuillages) | M | V2.33, V2.36, V2.40 | variantes d'hiver (neige sur les toits, arbres nus), glace |
+| **V2.44** | Saisons comme dans la vraie vie (sujet 12) : saison donnée par le serveur d'après la date, lac gelé, vendanges, neige au col, feuillages | M | V2.33, V2.36, V2.40 | variantes d'hiver (neige sur les toits, arbres nus), glace |
 
 ### Étape 4 : le dessous
 
@@ -299,7 +329,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | **V2.45** | Étages : portes de dessous, zones non intérieures avec créatures, relèvement des portes et zones reliées, reprise au dernier point sûr | M | V2.26 | aucun |
 | **V2.46** | Grotte derrière la cascade | S | V2.31, V2.45 | kit de grotte (parois, stalagmites, rideau d'eau vu de dedans) |
 | **V2.47** | Mines de la carrière, plusieurs niveaux (donjon décidé au sujet 27) | L | V2.37, V2.45 | kit de galerie boisée, ascenseur de mine, effondrements, filons |
-| **V2.48** | Crypte de l'abbaye (voir question 3) | M | V2.35, V2.45 | kit de crypte (voûtes, sarcophages, ossuaire) |
+| **V2.48** | Crypte-donjon sous l'abbaye (Retenu) ; petite crypte sous la chapelle du Bourg (secret) | M | V2.35, V2.45 | kit de crypte (voûtes, sarcophages, ossuaire) |
 | **V2.49** | Égouts du Bourg | M | V2.30, V2.45 | kit d'égout (voûtes, canaux, grilles, échelles) |
 | **V2.50** | Galeries sous les pierres du Seuil | M | V2.39, V2.45 | kit de galeries cristallines, éclats géants |
 
@@ -320,7 +350,4 @@ Chaque sous-lot suit la méthode de CLAUDE.md (branche, tests touchés verts, PR
 
 ## 9. Questions pour Damien
 
-1. **Rupture d'architecture (V2.26)** : valides-tu les secteurs de 256 m avec marge de 32 m, le passage d'un secteur à l'autre avec l'état du combat (journal au format 25, moteur 0.31.0), la borne des coordonnées à ±4 096 m et le recyclage des places de combattants ? Sans cet accord, V2.25 (données) et V2.27 (affichage) peuvent avancer, pas V2.26.
-2. **Durée d'une saison du monde** : il faut que chacun voie le lac gelé et les vendanges. Recommandation : **une semaine réelle par saison** (une année du monde en quatre semaines).
-3. **La crypte** : le sujet 27 avait décidé « crypte sous la chapelle » ; le 11 novembre, c'est « crypte de l'abbaye ». Recommandation : le donjon de la crypte est sous l'**abbaye** ; la chapelle du Bourg garde seulement un caveau (petit secret).
-4. **Jusqu'où va la corruption ?** Recommandation : elle peut prendre les campagnes, l'abbaye et le hameau (PNJ qui fuient, boutiques fermées), mais **jamais le village du cœur ni l'intérieur de la palissade du Bourg**, et ne ferme jamais une quête de l'histoire.
+Les quatre questions de la première version sont tranchées (section 0 bis). Aucune question ouverte pour l'instant ; les suivantes viendront avec chaque sous-lot.
