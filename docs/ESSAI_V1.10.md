@@ -635,7 +635,7 @@ Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de 
 | 38.2 | Faire le tour de l'auberge, de la chapelle, de l'épicerie, de l'herboristerie, de la mercerie, de la Guilde et des maisons 3, 5, 8, 9, 10 | **Aucun mur manquant** (avant : un pan de mur entier absent, on voyait l'intérieur) | [ ] | Le bâtiment et le côté : le dire |
 | 38.3 | Aller au moulin (chemin du moulin) | Façade vers le chemin (ouest) ; la **roue tourne doucement** au sud, aubes basses dans le sens de l'eau du bief, qui **coule vers la rivière** (est) ; ni l'ancien moulin ni l'ancienne roue | [ ] | Sens ou vitesse faux : le dire |
 | 38.4 | Regarder la roue de près | Elle tourne **autour de son axe** (pas de balancement, pas de décalage avec le palier) | [ ] | Si elle tourne de travers : le dire |
-| 38.5 | Grange (ouest, chemin des champs) | Façade et porte charretière **au nord**, pignon vers le chemin | [ ] | Préférer une autre face ? |
+| 38.5 | Grange (ouest, chemin des champs) | Façade et porte charretière **au sud** (côté bourg), pignon vers le chemin | [ ] | Préférer une autre face ? |
 | 38.6 | Tour de guet, puits, étals de la place | Posés au sol, pas déformés ; auvents des étals et toit du puits un peu hors de l'emprise (voulu) | [ ] | |
 | 38.7 | Camp des rôdeurs | Trois tentes identiques tournées vers leur route ; palissade ouest (16 m) et sud (23 m) face rugueuse dehors ; **portail fermé** à x ≈ 100 sur la palissade sud | [ ] | Où mettre le portail, faut-il l'ouvrir ? |
 | 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |

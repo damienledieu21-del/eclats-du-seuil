@@ -344,7 +344,7 @@ namespace EdS.Runtime
                 case "palissadecamp1": return (-1, 0);
                 case "palissadecamp2": return (0, -1);
                 // La grange (12 × 8, porte charretière sur le long côté) : le chemin des champs longe son côté est, mais tournée vers lui
-                // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au nord, vers le bourg, son pignon au chemin.
+                // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au sud (+z), vers le bourg, son pignon au chemin.
                 case "grange": return facing.X != 0 ? (0, 1) : facing;
                 default: return facing;
             }
