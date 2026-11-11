@@ -237,7 +237,12 @@ public class V224ReliefTests : IDisposable
         Assert.Contains("if (map == null || !CanPaintGround)", world, StringComparison.Ordinal);
         // Aucun modèle recalé au sol plat (y = 0) après mise à l'échelle.
         foreach (string file in Directory.GetFiles(Path.Combine(root, "unity", "Assets", "EdS"), "*.cs", SearchOption.AllDirectories))
+        {
             Assert.DoesNotMatch(@"StyleLook\.Ground\([^,]+,\s*0f\)", File.ReadAllText(file));
+            // Revue Codex (3e tour) : le décor lit le sol réellement affiché (StyleWorld), jamais le relief théorique de la carte.
+            if (Path.GetFileName(file) != "StyleWorld.cs")
+                Assert.DoesNotContain("GroundRelief.For(", File.ReadAllText(file), StringComparison.Ordinal);
+        }
         // Revue Codex de la PR #144 : sans terrain (sol de remplacement plat), le relief est retiré avant de poser le décor ; les noms
         // des repères suivent le sol affiché.
         int noTerrain = view.IndexOf("if (!terrain) StyleWorld.SetRelief(null);", StringComparison.Ordinal);

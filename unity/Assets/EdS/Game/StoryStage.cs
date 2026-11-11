@@ -777,7 +777,7 @@ namespace EdS.Game
             _vallons = new GameObject("Chapitre 1 (V1.9.8)");
             // La pierre gravée, au milieu du rond de champignons (près de la porte cachée du souvenir) : trop usée pour être lue.
             var at = new Vector3(-18f, 0f, 24.2f);
-            at.y = (float)GroundRelief.For(a.Map).Height(at.x, at.z);   // V2.24 : sur le sol affiché (replat de la porte du souvenir)
+            at.y = StyleWorld.StandHeight(at.x, at.z);   // V2.24 : sur le sol réellement affiché (plat si le terrain de remplacement est plat)
             Material rock = StyleWorld.Rock(out float _) ?? Owned(ArenaView.MakeMaterial(new Color(0.46f, 0.45f, 0.42f)));
             Part(_vallons.transform, "Pierre gravée du pré", PrimitiveType.Cylinder, at + Vector3.up * 0.09f, new Vector3(1.3f, 0.09f, 0.9f), rock, true);
             _glyphs = Owned(Glow(new Color(0.45f, 0.85f, 0.9f), 1.2f));
