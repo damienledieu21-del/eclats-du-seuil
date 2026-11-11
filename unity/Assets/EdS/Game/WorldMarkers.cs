@@ -265,7 +265,7 @@ namespace EdS.Game
                     float side = (float)System.Math.Max(ruins.MaxX - ruins.MinX, ruins.MaxZ - ruins.MinZ) * 0.8f;
                     float longest = Mathf.Max(tb.size.x, tb.size.z);
                     if (longest > side) towers.transform.localScale *= side / longest;
-                    StyleLook.Ground(towers, 0f);
+                    StyleLook.Ground(towers, StyleWorld.StandHeight((float)ruins.CenterX, (float)ruins.CenterZ));   // revue Codex de la PR #144 : le sol affiché
                 }
             }
             if (Place("hameau") is MapPlace hamlet)

@@ -673,7 +673,40 @@ namespace EdS.Game
         /// Sous-lot V2.24 (décision de Damien du 11 novembre 2026) : relief affiché du décor posé (<see cref="GroundRelief"/>) ; null : sol plat.
         /// Tout ce qui se tient au sol passe par <see cref="StandHeight"/> (personnages, décor, marqueurs, effets) ; le moteur reste plat.
         /// </summary>
-        public static void SetRelief(GroundRelief relief) => _relief = relief ?? GroundRelief.Flat;
+        public static void SetRelief(GroundRelief relief)
+        {
+            _relief = relief ?? GroundRelief.Flat;
+            _reliefKey = null;
+        }
+
+        private static string _reliefKey;
+
+        /// <summary>
+        /// Revue Codex de la PR #144 (2e tour) : pose le relief de la zone de <paramref name="map"/> (plat sans carte, dans une pièce, ou sans
+        /// terrain peint : le sol de remplacement est un pavé plat). Appelé avant de construire les repères d'une zone (qui précèdent le décor
+        /// de <c>SpaceView</c>) et par <c>SpaceView</c> ; la même carte garde le même relief (pas recalculé).
+        /// </summary>
+        public static void UseRelief(AdventureMap map)
+        {
+            if (map == null || !CanPaintGround)
+            {
+                SetRelief(null);
+                return;
+            }
+            if (_reliefKey == map.Signature) return;
+            SetRelief(GroundRelief.For(map));
+            _reliefKey = map.Signature;
+        }
+
+        /// <summary>Revue Codex de la PR #144 : <see cref="Ground"/> peut-il faire un terrain (catalogue et au moins une texture de sol) ?</summary>
+        public static bool CanPaintGround
+        {
+            get
+            {
+                StyleCatalog catalog = StyleCatalog.Loaded;
+                return catalog != null && (catalog.GrassColor != null || catalog.SoilColor != null || catalog.RockColor != null);
+            }
+        }
 
         /// <summary>Sous-lot V2.24 : le sol affiché a-t-il du relief ?</summary>
         public static bool HasRelief => !_relief.IsFlat;

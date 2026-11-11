@@ -128,7 +128,7 @@ namespace EdS.Game
             _root = new GameObject("Décor");
             _root.transform.SetParent(parent, false);
             // Sous-lot V2.24 : relief affiché d'après la carte de la zone (plat dans une pièce ou sans carte) ; le moteur reste plat.
-            StyleWorld.SetRelief(map != null ? GroundRelief.For(map) : null);
+            StyleWorld.UseRelief(map);   // revue Codex de la PR #144 : plat sans terrain peint
             _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));   // annonce sans le shader « EdS/Annonce »
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));

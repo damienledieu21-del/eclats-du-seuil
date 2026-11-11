@@ -222,7 +222,22 @@ public class V224ReliefTests : IDisposable
         string world = Game("StyleWorld.cs"), view = Game("SpaceView.cs");
         Assert.Contains("(_relief.IsFlat ? 0f : (float)_relief.Height(x, z))", world, StringComparison.Ordinal);
         Assert.Contains("TerrainBase - dig + (_relief.IsFlat ? 0 : _relief.Height(x, z))", world, StringComparison.Ordinal);
-        Assert.Contains("StyleWorld.SetRelief(map != null ? GroundRelief.For(map) : null);", view, StringComparison.Ordinal);
+        Assert.Contains("StyleWorld.UseRelief(map);", view, StringComparison.Ordinal);
+        // Revue Codex de la PR #144 (2e tour) : le relief de la zone est posé avant ses repères (construits avant le décor de SpaceView),
+        // à l'ouverture de l'aventure comme au passage d'une porte ; plat sans terrain peint.
+        string game = Game("EdsGame.cs");
+        int start = game.IndexOf("private void StartAdventure()", StringComparison.Ordinal), show = game.IndexOf("private void ShowAdventureSession()", StringComparison.Ordinal);
+        Assert.True(start >= 0 && show > start);
+        foreach (int from in new[] { start, show })
+        {
+            int relief = game.IndexOf("StyleWorld.UseRelief(_adventure.Map);", from, StringComparison.Ordinal);
+            int markers = game.IndexOf("_markers = new WorldMarkers(_adventure);", from, StringComparison.Ordinal);
+            Assert.True(relief > from && relief < markers, "relief après les repères");
+        }
+        Assert.Contains("if (map == null || !CanPaintGround)", world, StringComparison.Ordinal);
+        // Aucun modèle recalé au sol plat (y = 0) après mise à l'échelle.
+        foreach (string file in Directory.GetFiles(Path.Combine(root, "unity", "Assets", "EdS"), "*.cs", SearchOption.AllDirectories))
+            Assert.DoesNotMatch(@"StyleLook\.Ground\([^,]+,\s*0f\)", File.ReadAllText(file));
         // Revue Codex de la PR #144 : sans terrain (sol de remplacement plat), le relief est retiré avant de poser le décor ; les noms
         // des repères suivent le sol affiché.
         int noTerrain = view.IndexOf("if (!terrain) StyleWorld.SetRelief(null);", StringComparison.Ordinal);
