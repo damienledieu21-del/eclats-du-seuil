@@ -124,6 +124,21 @@ Damien a fait dessiner la carte de la région (ChatGPT) et l'a **validée** le 1
 - **Le Seuil** : la carte met les **terres corrompues au sud-est** ; dans les Vallons actuels, la petite zone du Seuil (pierres dressées, de [40, 24] à [60, 40]) est **au nord-est du village**. Conciliation (Recommandation) : la petite zone actuelle **reste où elle est** (chapitre 5, failles, cicatrices : rien ne bouge) ; c'est une **fêlure avancée**, reliée aux terres corrompues du sud-est par une veine souterraine (les galeries sous les pierres du Seuil passent dessous) ; en surface, la corruption qui avance (section 5) part des terres du sud-est et **remonte vers le village**, en suivant les vergers et la rivière, et nourrit la fêlure. Le joueur voit donc une seule histoire : le grand Seuil au sud-est, une fissure déjà ouverte aux portes du village.
 - **Deux autres conciliations** (Recommandation) : la **tour de guet** et le **camp des rôdeurs** du cœur restent ; la tour du dessin, au nord-est, est la **tour des bandits** près de leur fort. La **carrière** actuelle (à l'est du village) est la vieille carrière à ciel ouvert ; la grande carrière et sa **mine** sont 1 km plus au nord-est, avec leur hameau ; le hameau actuel reste.
 
+### 4.0 bis Les Vallons dans Orsédia (Retenu)
+
+Deux cartes du continent, validées par Damien le 11 novembre 2026 : [Orsédia](cartes/carte_orsedia.jpg) et [Orsédia dans l'Envers](cartes/carte_orsedia_envers.jpg) (copies réduites ; originaux dans l'AssetLab, `Carte_Vallons/carte_orsedia.png` et `carte_orsedia_envers.png`). Les Vallons y sont au centre-ouest ; Havre d'Ambre et ses marais à l'ouest (la Côte des Brumes et Port-Brume au-delà, sur la mer) ; la Forêt des Murmures au nord-ouest ; Givre-Lune au nord ; les Crêtes de Fer et Forge-Haute au nord-est ; les Ruines d'Ysoria au centre, **à l'est des Vallons** ; le Plateau des Cendres à l'est ; les Hautes Terres de l'Aube au sud ; les Îles Fendues au sud-est.
+
+Les sorties de la région suivent ce continent (Recommandation) :
+
+| Sortie | Où dans les Vallons | Vers | Quand |
+|---|---|---|---|
+| Route d'Havre d'Ambre | bord ouest (−1 908, −240) | ouest | V2.40 |
+| Pont de pierre sur la gorge | (−1 520, 470), puis le bord ouest **côté nord** (−1 908, 900) | Forêt des Murmures, au nord-ouest | V2.40 |
+| Route du col | bord nord-est (2 100, 1 220) | Crêtes de Fer, au nord-est | V2.40 |
+| **Route de l'Est** (4e sortie, réservée) | de l'abbaye (1 710, 145) au bord est (2 188, 150), entre la mine et les terres corrompues | Ruines d'Ysoria | **plus tard** : le tracé et une barrière expliquée (pont effondré, éboulement gardé par l'Ordre) sont posés dès V2.40 pour que rien ne soit à déplacer ; l'ouverture vient avec la région d'Ysoria |
+
+L'Envers des Vallons (V2.51) reprend les mêmes sorties, vers l'Envers des régions voisines de la seconde carte.
+
 ### 4.1 Carte schématique
 
 Un caractère = 100 m d'est en ouest, une ligne = 200 m du nord au sud. x de −1 900 (gauche) à +2 100 (droite) ; le cœur (`@`) vers x = 0.
@@ -176,6 +191,7 @@ Les « douze grands lieux » de la décision sont les lignes 1 à 5, 7, 8, 10 à
 ### 4.3 Routes, rivière, relief
 
 - **Route d'Ambre** (caravanes) : sortie d'Havre d'Ambre à l'ouest → porte ouest du Bourg → porte est → ancien bourg et village (routes actuelles) → vers l'est et la mine → fort des bandits → col des Crêtes de Fer. Les caravanes passent donc **sous le fort** : c'est là que les bandits attaquent.
+- **Route de l'Est** (réservée, voir 4.0 bis) : abbaye → bord est, vers les Ruines d'Ysoria.
 - **Chemins** : du pont des Murmures (porte nord du Bourg → gorge), des vignes (Bourg → château), de la bergerie (village → collines → sommet), de l'abbaye (mine → abbaye), du lac (village → champs → pontons), des pierres (vergers → terres corrompues).
 - **Rivière** : de la cascade (590, 1 080), elle descend vers le sud-ouest jusqu'au cœur (son lit actuel, x de 4 à 7), passe sous le pont du moulin, traverse l'étang puis les champs et se jette dans le grand lac. Elle reste un « obstacle bas » qu'on voit par-dessus (essai du 22 octobre 2026), franchie par des ponts et des gués.
 - **Relief d'affichage** : le lac au plus bas (0 m) au sud ; le village et le Bourg sur un plateau doux (30 à 35 m) ; les coteaux qui montent au sud-ouest ; la gorge profonde à l'ouest ; les collines au nord, jusqu'à 350 m ; la mine et l'abbaye sur un épaulement à l'est ; les terres corrompues en cuvette fendue au sud-est. Falaises, gorge et ravins infranchissables sont des **obstacles** pour le moteur.
@@ -265,7 +281,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | **V2.37** | Carrière devenue mine (surface) | S | carreau de mine, treuil, wagonnets et rails, village de mineurs |
 | **V2.38** | Fort des bandits | M | fort de rondins sur soubassement de pierre (enceinte, donjon, tours d'angle), tour de guet isolée, tentes, cage |
 | **V2.39** | Terres corrompues du Seuil | M | grand cercle de pierres, éclats affleurants, arbres morts, sol fendu, autels de purification |
-| **V2.40** | Trois passages | S | col (arche de pierre, refuge), pont des Murmures, poste de péage de la route d'Havre |
+| **V2.40** | Trois passages, et le tracé fermé de la route de l'Est vers les Ruines d'Ysoria | S | col (arche de pierre, refuge), pont des Murmures, poste de péage de la route d'Havre, pont effondré de la route de l'Est |
 
 ### Étape 3 : le monde vivant (placé ici par Claude ; chacun peut avancer dès que son lieu existe)
 
