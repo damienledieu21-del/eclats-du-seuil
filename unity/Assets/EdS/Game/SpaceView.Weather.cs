@@ -49,8 +49,9 @@ namespace EdS.Game
                 disc.name = p.Id;
                 Object.Destroy(disc.GetComponent<Collider>());
                 disc.transform.SetParent(_weatherRoot.transform, false);
-                disc.transform.position = new Vector3((float)p.X, (float)(p.Y + _puddleLook.Lift), (float)p.Z);   // revue Codex de la PR #101 : au-dessus des pavés
-                disc.transform.rotation = Quaternion.Euler(90f, (float)p.Yaw, 0f);   // face visible vers le haut
+                // Revue Codex de la PR #101 : au-dessus des pavés. V2.24 : sur le sol affiché, couchée sur sa pente.
+                disc.transform.position = StyleWorld.OnGround(new Vector3((float)p.X, (float)(p.Y + _puddleLook.Lift), (float)p.Z));
+                disc.transform.rotation = StyleWorld.GroundTilt((float)p.X, (float)p.Z) * Quaternion.Euler(90f, (float)p.Yaw, 0f);   // face visible vers le haut
                 Renderer renderer = disc.GetComponent<Renderer>();
                 renderer.sharedMaterial = _puddleMaterial;
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

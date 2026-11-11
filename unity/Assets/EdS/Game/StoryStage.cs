@@ -378,7 +378,7 @@ namespace EdS.Game
             }
             // Sur le corps couché (les jambes), puis à terre, un peu de côté, quand il se lève.
             float onBody = Mathf.Clamp01(lie);
-            _blanket.transform.position = new Vector3(flat.x, 0.04f + 0.36f * onBody, flat.z) + forward * (0.35f * onBody) + Vector3.Cross(Vector3.up, forward) * (0.8f * (1f - onBody));
+            _blanket.transform.position = new Vector3(flat.x, flat.y - ArenaView.FeetOffset + 0.04f + 0.36f * onBody, flat.z) + forward * (0.35f * onBody) + Vector3.Cross(Vector3.up, forward) * (0.8f * (1f - onBody));
             _blanket.transform.rotation = Quaternion.Euler(0f, yaw + 12f * (1f - onBody), 0f);
         }
 
@@ -777,6 +777,7 @@ namespace EdS.Game
             _vallons = new GameObject("Chapitre 1 (V1.9.8)");
             // La pierre gravée, au milieu du rond de champignons (près de la porte cachée du souvenir) : trop usée pour être lue.
             var at = new Vector3(-18f, 0f, 24.2f);
+            at.y = (float)GroundRelief.For(a.Map).Height(at.x, at.z);   // V2.24 : sur le sol affiché (replat de la porte du souvenir)
             Material rock = StyleWorld.Rock(out float _) ?? Owned(ArenaView.MakeMaterial(new Color(0.46f, 0.45f, 0.42f)));
             Part(_vallons.transform, "Pierre gravée du pré", PrimitiveType.Cylinder, at + Vector3.up * 0.09f, new Vector3(1.3f, 0.09f, 0.9f), rock, true);
             _glyphs = Owned(Glow(new Color(0.45f, 0.85f, 0.9f), 1.2f));
@@ -844,7 +845,7 @@ namespace EdS.Game
             if (_silhouette != null) Object.Destroy(_silhouette);
             _silhouette = new GameObject("Silhouette en manteau sombre (V1.9.8)");
             _silhouette.transform.SetParent(_vallons.transform, false);
-            _silhouette.transform.position = new Vector3(x, 0f, (float)meadow.MaxZ + 1.5f);
+            _silhouette.transform.position = StyleWorld.OnGround(new Vector3(x, 0f, (float)meadow.MaxZ + 1.5f));   // V2.24
             _silhouetteBorn = now;
             Material cloak = Owned(ArenaView.MakeMaterial(new Color(0.05f, 0.05f, 0.07f)));
             Material shine = Owned(Glow(new Color(0.55f, 0.95f, 1f), 6f));

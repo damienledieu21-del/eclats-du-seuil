@@ -31,6 +31,9 @@ namespace EdS.Game
             public float Range;
             public Color Color;
 
+            /// <summary>Sous-lot V2.24 : hauteur du corps au-dessus du sol affiché (il suit le relief en marchant).</summary>
+            public float Base;
+
             /// <summary>Sous-lot V2.12.6 : rang de son étiquette quand plusieurs se recouvrent (PNJ 3, atelier et porte 2, point sûr 1, récolte 0).</summary>
             public int Rank;
 
@@ -256,7 +259,7 @@ namespace EdS.Game
             if (Place("ruines") is MapPlace ruins && Wave5View.Has(Wave5Role.RuinedTowers))
             {
                 bool alongX = ruins.MaxX - ruins.MinX >= ruins.MaxZ - ruins.MinZ;
-                GameObject towers = Wave5View.Place(root, Wave5Role.RuinedTowers, "tours en ruine", new Vector3((float)ruins.CenterX, 0f, (float)ruins.CenterZ), alongX ? 90f : 0f);
+                GameObject towers = Wave5View.Place(root, Wave5Role.RuinedTowers, "tours en ruine", StyleWorld.OnGround(new Vector3((float)ruins.CenterX, 0f, (float)ruins.CenterZ)), alongX ? 90f : 0f);
                 if (towers != null && StyleLook.VisibleBounds(towers, out Bounds tb))
                 {
                     float side = (float)System.Math.Max(ruins.MaxX - ruins.MinX, ruins.MaxZ - ruins.MinZ) * 0.8f;
@@ -300,7 +303,7 @@ namespace EdS.Game
                 {
                     var light = new GameObject("Lueur du cœur du Seuil (V2.11)").AddComponent<Light>();
                     light.transform.SetParent(root, false);
-                    light.transform.position = new Vector3((float)heart.CenterX, 2.2f, (float)heart.CenterZ);
+                    light.transform.position = StyleWorld.OnGround(new Vector3((float)heart.CenterX, 2.2f, (float)heart.CenterZ));   // V2.24 : sur la butte
                     light.type = LightType.Point;
                     light.color = new Color(0.55f, 0.65f, 1f);
                     light.range = 9f;
@@ -353,7 +356,7 @@ namespace EdS.Game
                 double bx = System.Math.Max(river.MinX, System.Math.Min(river.MaxX, mill.CenterX)), bz = System.Math.Max(river.MinZ, System.Math.Min(river.MaxZ, mill.CenterZ));
                 double yaw = System.Math.Atan2(bx - mill.CenterX, bz - mill.CenterZ) * 180.0 / System.Math.PI;
                 if (Wave5.FreeSpot(new[] { (bx, bz) }.Concat(Wave5.Around(bx, bz, yaw + 180, 2.5)), obstacles, 2.5) is (double X, double Z) spot)
-                    Wave5View.Place(root, Wave5Role.WaterWheel, "roue à eau", new Vector3((float)spot.X, 0f, (float)spot.Z), (float)yaw + 90f);
+                    Wave5View.Place(root, Wave5Role.WaterWheel, "roue à eau", StyleWorld.OnGround(new Vector3((float)spot.X, 0f, (float)spot.Z)), (float)yaw + 90f);
             }
             DistantDecor(map, root, catalog);
             (Wave5Role Role, double Yaw, double Distance, double Clearance)[] village =
@@ -401,7 +404,7 @@ namespace EdS.Game
                 if (!(Place(placeId) is MapPlace p) || !Wave5View.Has(role)) return;
                 IReadOnlyList<(double X, double Z, double Yaw)> spots = AssetStore.DistantSpots(map.MinX, map.MinZ, map.MaxX, map.MaxZ, p.CenterX, p.CenterZ, outside, count, spacing);
                 for (int i = 0; i < spots.Count; i++)
-                    Wave5View.Place(root, role, "au loin " + placeId + " " + i, new Vector3((float)spots[i].X, 0f, (float)spots[i].Z),
+                    Wave5View.Place(root, role, "au loin " + placeId + " " + i, StyleWorld.OnGround(new Vector3((float)spots[i].X, 0f, (float)spots[i].Z)),
                         (float)spots[i].Yaw + StyleRules.Variant(placeId + i, 30) - 15, 0f, first + i);
             }
             Row("hameau", Wave5Role.VillageHouse, 3, 16, 0);
@@ -486,10 +489,10 @@ namespace EdS.Game
             body.name = data.Id;
             Object.Destroy(body.GetComponent<Collider>());
             body.transform.SetParent(_root.transform, false);
-            body.transform.position = new Vector3((float)data.X, y, (float)data.Z);
+            body.transform.position = StyleWorld.OnGround(new Vector3((float)data.X, y, (float)data.Z));   // V2.24 : sur le sol affiché
             body.transform.localScale = scale;
             body.GetComponent<Renderer>().sharedMaterial = Made(color);
-            var marker = new Marker { Data = data, Body = body, Height = height, Range = range, Color = color };
+            var marker = new Marker { Data = data, Body = body, Height = height, Range = range, Color = color, Base = y };
             _markers.Add(marker);
             return marker;
         }
@@ -504,7 +507,7 @@ namespace EdS.Game
             holder.transform.SetParent(m.Body.transform, false);
             Vector3 s = m.Body.transform.localScale;
             holder.transform.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
-            holder.transform.position = new Vector3(m.Body.transform.position.x, 0f, m.Body.transform.position.z);
+            holder.transform.position = StyleWorld.OnGround(new Vector3(m.Body.transform.position.x, 0f, m.Body.transform.position.z));   // V2.24
             return holder.transform;
         }
 
@@ -585,7 +588,7 @@ namespace EdS.Game
             if (hammer != null)
             {
                 hammer.transform.rotation = Quaternion.Euler(90f, 20f, 0f);
-                StyleLook.Ground(hammer, 0.79f);
+                StyleLook.Ground(hammer, c.y + 0.79f);   // V2.24 : au-dessus du sol affiché
             }
             // Sous-lot V2.12.7 (essai du 9 novembre 2026 : tonneau bleu uni) : le modèle du catalogue s'il a l'air de bois, sinon un tonneau de
             // bois à cercles sombres fait par le code (BarrelLook).
@@ -716,15 +719,17 @@ namespace EdS.Game
             foreach (Marker m in _npcs.Values)
             {
                 Vector3 at = m.Body.transform.position;
-                var target = new Vector3((float)m.Data.X, at.y, (float)m.Data.Z);
+                // V2.24 : le corps suit le sol affiché (sa hauteur au-dessus du sol reste la même).
+                var target = new Vector3((float)m.Data.X, m.Base + StyleWorld.StandHeight((float)m.Data.X, (float)m.Data.Z), (float)m.Data.Z);
                 // Sous-lot V2.8 : il vise le prochain point de passage de son trajet (le but lui-même si la ligne droite est libre).
                 Vector3 aim = target;
                 if (m.Shown)
                 {
                     (double ax, double az) = m.Route.Next(paths, at.x, at.z, target.x, target.z);
-                    aim = new Vector3((float)ax, at.y, (float)az);
+                    aim = new Vector3((float)ax, m.Base + StyleWorld.StandHeight((float)ax, (float)az), (float)az);
                 }
                 Vector3 step = Vector3.MoveTowards(at, aim, NpcWalk * deltaTime);
+                step.y = m.Base + StyleWorld.StandHeight(step.x, step.z);
                 bool moving = (step - at).sqrMagnitude > 1e-8f;
                 // Sous-lot V2.3.1 : parti, arrivé à la porte : il disparaît (un caché ne marche pas, il attend à la porte).
                 if (!m.Present && m.Shown && !moving)

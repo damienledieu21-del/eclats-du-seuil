@@ -158,7 +158,7 @@ namespace EdS.Game
         {
             if (!Has(role)) return null;
             if (!(Wave5.FreeSpot(Wave5.Around(x, z, yaw, distance), obstacles, clearance) is (double X, double Z) spot)) return null;
-            return Place(parent, role, id, new Vector3((float)spot.X, 0f, (float)spot.Z), facing, size, variant);
+            return Place(parent, role, id, StyleWorld.OnGround(new Vector3((float)spot.X, 0f, (float)spot.Z)), facing, size, variant);   // V2.24 : sur le sol affiché
         }
 
         /// <summary>

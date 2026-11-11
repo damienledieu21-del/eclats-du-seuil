@@ -202,8 +202,9 @@ namespace EdS.Game
                     e.rateOverTime = shown * (_phone ? 60f : 220f);
                 }
             }
-            if (_drops != null) _drops.transform.position = new Vector3(camera.x - 2f, _column, camera.z - 2f);   // au-dessus du sol (0)
-            if (_splashes != null) _splashes.transform.position = new Vector3(camera.x, 0.05f, camera.z);
+            // V2.24 : au-dessus du sol affiché sous la caméra (relief).
+            if (_drops != null) _drops.transform.position = StyleWorld.OnGround(new Vector3(camera.x - 2f, _column, camera.z - 2f));
+            if (_splashes != null) _splashes.transform.position = StyleWorld.OnGround(new Vector3(camera.x, 0.05f, camera.z));
 
             // Éclairs : un par minute du monde marquée par le cœur ; en essai forcé, toutes les 12 à 30 secondes.
             float now = Time.time;

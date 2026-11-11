@@ -157,11 +157,14 @@ namespace EdS.Runtime
             Group();
         }
 
-        /// <summary>Relief de la carte d'une zone (plat pour un intérieur), réglages par défaut si <paramref name="settings"/> est null.</summary>
+        /// <summary>
+        /// Relief de la carte d'une zone, réglages par défaut si <paramref name="settings"/> est null. Plat pour un intérieur et pour une zone
+        /// sans route (souvenirs, arènes) : seules les zones de plein air à routes (aujourd'hui les Vallons) ont du relief.
+        /// </summary>
         public static GroundRelief For(AdventureMap map, ReliefSettings? settings = null)
         {
             if (map is null) throw new ArgumentNullException(nameof(map));
-            return map.Indoor ? Flat : new GroundRelief(map, settings ?? new ReliefSettings());
+            return map.Indoor || map.Roads.Count == 0 ? Flat : new GroundRelief(map, settings ?? new ReliefSettings());
         }
 
         /// <summary>
