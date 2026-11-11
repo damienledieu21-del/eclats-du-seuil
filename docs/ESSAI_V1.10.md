@@ -625,19 +625,34 @@ Les modèles de l'atelier remplacent la maison de Rosalie (`maison5`) et les mai
 | 37.6 | Les cinq maisons, la nuit | **Aucune fumée** ; une lanterne de porte à droite de la porte (celle du jeu, pas du modèle) | [ ] | |
 | 37.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
 
-## 38. Le relief des Vallons (V2.24)
+## 38. Grange, moulin, tour, puits, étals, camp ; LOD1 refaits (V2.25)
+
+Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de l'Asset Store), la tour de guet, le puits, les deux étals, les trois tentes et les deux palissades du camp ; les LOD1 des bâtiments déjà livrés sont refaits (un mur entier y manquait). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 38.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `grange`, `moulin`, `tour`, `puits`, `etal1`, `etal2`, `tente`, `palissade_camp1`, `palissade_camp2` ; « moulin : roue » et « moulin : eau » ; aucune ligne « introuvable » ni « sans bâtiment » | [ ] | Noter la ligne |
+| 38.2 | Faire le tour de l'auberge, de la chapelle, de l'épicerie, de l'herboristerie, de la mercerie, de la Guilde et des maisons 3, 5, 8, 9, 10 | **Aucun mur manquant** (avant : un pan de mur entier absent, on voyait l'intérieur) | [ ] | Le bâtiment et le côté : le dire |
+| 38.3 | Aller au moulin (chemin du moulin) | Façade vers le chemin (ouest) ; la **roue tourne doucement** au sud, aubes basses dans le sens de l'eau du bief, qui **coule vers la rivière** (est) ; ni l'ancien moulin ni l'ancienne roue | [ ] | Sens ou vitesse faux : le dire |
+| 38.4 | Regarder la roue de près | Elle tourne **autour de son axe** (pas de balancement, pas de décalage avec le palier) | [ ] | Si elle tourne de travers : le dire |
+| 38.5 | Grange (ouest, chemin des champs) | Façade et porte charretière **au sud** (côté bourg), pignon vers le chemin | [ ] | Préférer une autre face ? |
+| 38.6 | Tour de guet, puits, étals de la place | Posés au sol, pas déformés ; auvents des étals et toit du puits un peu hors de l'emprise (voulu) | [ ] | |
+| 38.7 | Camp des rôdeurs | Trois tentes identiques tournées vers leur route ; palissade ouest (16 m) et sud (23 m) face rugueuse dehors ; **portail fermé** à x ≈ 100 sur la palissade sud | [ ] | Où mettre le portail, faut-il l'ouvrir ? |
+| 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |
+
+## 39. Le relief des Vallons (V2.24)
 
 Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief doux dans l'aire, **affichage seulement** (le combat reste sur un sol plat : un ennemi derrière une butte te voit toujours). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« Relief des Vallons »). Les hauteurs sont provisoires : dis ce qui est trop fort ou trop plat.
 
 | # | À faire | Ce que tu dois voir | OK | Remarque |
 |---|---|---|---|---|
-| 38.1 | Se promener dans les prés et les vergers | Le sol **ondule** doucement (quelques mètres) ; le personnage et le compagnon montent et descendent avec lui, pieds au sol | [ ] | Trop fort, trop plat ? |
-| 38.2 | Bourg, village, hameau | Chaque maison, puits, étal **à plat** sur son replat, ni de travers, ni enterrée, ni flottante ; les PNJ marchent au sol | [ ] | Une maison qui flotte : son nom |
-| 38.3 | Rivière, pont, lac | L'eau dans le creux, à son niveau ; le **pont** se raccorde au sol des deux côtés ; le chemin du lac **descend** vers l'eau | [ ] | |
-| 38.4 | Pierres du Seuil et tour de guet | Elles sont **sur une butte** | [ ] | |
-| 38.5 | Longer le bord de l'aire | Des **collines** et par endroits des **falaises** de roche au-delà, avec la forêt dessus ; le muret du bord suit le sol | [ ] | |
-| 38.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
-| 38.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
-| 38.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
-| 38.9 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
+| 39.1 | Se promener dans les prés et les vergers | Le sol **ondule** doucement (quelques mètres) ; le personnage et le compagnon montent et descendent avec lui, pieds au sol | [ ] | Trop fort, trop plat ? |
+| 39.2 | Bourg, village, hameau | Chaque maison, puits, étal **à plat** sur son replat, ni de travers, ni enterrée, ni flottante ; les PNJ marchent au sol | [ ] | Une maison qui flotte : son nom |
+| 39.3 | Rivière, pont, lac | L'eau dans le creux, à son niveau ; le **pont** se raccorde au sol des deux côtés ; le chemin du lac **descend** vers l'eau | [ ] | |
+| 39.4 | Pierres du Seuil et tour de guet | Elles sont **sur une butte** | [ ] | |
+| 39.5 | Longer le bord de l'aire | Des **collines** et par endroits des **falaises** de roche au-delà, avec la forêt dessus ; le muret du bord suit le sol | [ ] | |
+| 39.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
+| 39.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
+| 39.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
+| 39.9 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
 

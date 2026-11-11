@@ -351,7 +351,9 @@ namespace EdS.Game
             }
             // La roue à eau : sur la rive de la rivière la plus proche du moulin (le moulin de Tim0 reste ; position estimée, à régler par Offset).
             // Relecture de la PR #122 : à une place libre (FreeSpot, à 2,5 m de tout obstacle, moulin de Tim0 compris), sinon pas posée.
-            if (Place("moulin") is MapPlace mill && Place("riviere") is MapPlace river && Wave5View.Has(Wave5Role.WaterWheel))
+            // V2.25 : le moulin de l'atelier a sa propre roue, qui tourne : celle de l'Asset Store n'est plus posée.
+            bool ownMill = catalog != null && catalog.OwnBuilding("moulin") != null;
+            if (!ownMill && Place("moulin") is MapPlace mill && Place("riviere") is MapPlace river && Wave5View.Has(Wave5Role.WaterWheel))
             {
                 double bx = System.Math.Max(river.MinX, System.Math.Min(river.MaxX, mill.CenterX)), bz = System.Math.Max(river.MinZ, System.Math.Min(river.MaxZ, mill.CenterZ));
                 double yaw = System.Math.Atan2(bx - mill.CenterX, bz - mill.CenterZ) * 180.0 / System.Math.PI;
