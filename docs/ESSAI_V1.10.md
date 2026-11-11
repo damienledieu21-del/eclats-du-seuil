@@ -624,3 +624,20 @@ Les modèles de l'atelier remplacent la maison de Rosalie (`maison5`) et les mai
 | 37.5 | Maison 9, au bout du chemin du lac | Façade vers l'est ; l'**appentis** (fourche, râteau, panier) au sud sort de 1,5 m de l'emprise, à 1,7 m du chemin des champs | [ ] | Trop près du chemin ? Le dire |
 | 37.6 | Les cinq maisons, la nuit | **Aucune fumée** ; une lanterne de porte à droite de la porte (celle du jeu, pas du modèle) | [ ] | |
 | 37.7 | Ton avis : proportions, couleurs, relief (normales en 1024) | — | [ ] | |
+
+## 38. Le relief des Vallons (V2.24)
+
+Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief doux dans l'aire, **affichage seulement** (le combat reste sur un sol plat : un ennemi derrière une butte te voit toujours). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« Relief des Vallons »). Les hauteurs sont provisoires : dis ce qui est trop fort ou trop plat.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 38.1 | Se promener dans les prés et les vergers | Le sol **ondule** doucement (quelques mètres) ; le personnage et le compagnon montent et descendent avec lui, pieds au sol | [ ] | Trop fort, trop plat ? |
+| 38.2 | Bourg, village, hameau | Chaque maison, puits, étal **à plat** sur son replat, ni de travers, ni enterrée, ni flottante ; les PNJ marchent au sol | [ ] | Une maison qui flotte : son nom |
+| 38.3 | Rivière, pont, lac | L'eau dans le creux, à son niveau ; le **pont** se raccorde au sol des deux côtés ; le chemin du lac **descend** vers l'eau | [ ] | |
+| 38.4 | Pierres du Seuil et tour de guet | Elles sont **sur une butte** | [ ] | |
+| 38.5 | Longer le bord de l'aire | Des **collines** et par endroits des **falaises** de roche au-delà, avec la forêt dessus ; le muret du bord suit le sol | [ ] | |
+| 38.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
+| 38.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
+| 38.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
+| 38.9 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
+
