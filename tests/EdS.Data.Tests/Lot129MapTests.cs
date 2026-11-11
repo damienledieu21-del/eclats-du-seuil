@@ -67,7 +67,7 @@ public class Lot129MapTests : IDisposable
             "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id));
         // Les routes viennent des données, dans leur ordre.
         Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "passage_des_ruines", "chemin_de_l_est",
-            "chemin_du_nord", "chemin_du_lac" }, map.Roads.Select(r => r.Id));
+            "chemin_du_nord", "chemin_du_lac", "chemin_de_la_grange", "aire_de_la_grange" }, map.Roads.Select(r => r.Id));
         Assert.True(Assert.Single(map.Roads, r => r.Paved).Id == "place_du_bourg");
         Assert.Contains(map.Clearings, p => p == (-18.0, -12.0));   // point sûr de la place du village
     }

@@ -639,4 +639,5 @@ Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de 
 | 38.6 | Tour de guet, puits, étals de la place | Posés au sol, pas déformés ; auvents des étals et toit du puits un peu hors de l'emprise (voulu) | [ ] | |
 | 38.7 | Camp des rôdeurs | Trois tentes identiques tournées vers leur route ; palissade ouest (16 m) et sud (23 m) face rugueuse dehors ; **portail fermé** à x ≈ 100 sur la palissade sud | [ ] | Où mettre le portail, faut-il l'ouvrir ? |
 | 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |
+| 38.9 | (V2.25.1) Depuis le chemin des champs, prendre le chemin de terre vers l'ouest jusqu'à la grange | Un **chemin de terre de 3 m** quitte le chemin des champs, tourne et arrive **droit sur la porte charretière** ; devant la porte, une **aire de terre battue** plus large ; il ne passe dans rien (grange, maison 9, arbres) ; il apparaît sur la **carte** (M) | [ ] | Trop étroit, trop court, ailleurs ? Le dire |
 
