@@ -1059,6 +1059,8 @@ Sous-lot V2.10 du [plan de l'alpha](PLAN_ALPHA.md) (chantier n° 20, « fêtes e
 - **Bornes vérifiées** (`V224ReliefTests`) : dans l'aire, 0 à 5 m, pente au plus 0,45 (24°, le talus au nord du front de taille) ; sous les routes au plus 0,25 (14°) ; places dégagées à plat ; eau à 0 ; hors de l'aire 8 à 30 m.
 - **Valeurs provisoires**, toutes dans `ReliefSettings`, réglables. **Extension prévue** (Vallons de 4 × 3 km en cases, « dessous » et Envers, information du 11 novembre 2026) : aucun réglage propre à l'aire de 240 × 170 m, ondes en coordonnées du monde (continues d'une case à l'autre ; une case devra connaître les replats et l'eau de ses voisines près de ses bords), et un étage (`floor`) : seule la surface (0) a du relief pour l'instant.
 - **Carte peinte** : léger ombrage du relief (lumière du nord-ouest, ± 20 %).
+- **Caméra** : elle se rapproche (sans saut) quand le relief affiché passe entre elle et le personnage, et ne descend jamais sous le sol (`CameraRules.TerrainClearDistance`, détail dans [UNITY.md](UNITY.md)).
+- **Modèles de V2.25** (grange, moulin avec roue et bief, tour, puits, étals, tentes, palissades du camp) : sur leur replat, débords compris.
 
 ## Sauvegarde
 

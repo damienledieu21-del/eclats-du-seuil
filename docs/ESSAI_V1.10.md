@@ -654,5 +654,6 @@ Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief
 | 39.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
 | 39.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
 | 39.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
-| 39.9 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
+| 39.9 | Près du bord de l'aire, caméra au plus loin et basse, tourner autour du personnage | La caméra **se rapproche en douceur** quand une colline passe derrière toi ; jamais sous le sol, jamais de saut | [ ] | Un saut ou une vue sous le sol : où |
+| 39.10 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
 

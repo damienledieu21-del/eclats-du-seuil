@@ -263,4 +263,124 @@ public class V224ReliefTests : IDisposable
         Assert.DoesNotContain("StyleSlot.Plant, \"plante\" + placed, new Vector3(x, 0f, z)", view, StringComparison.Ordinal);
         Assert.DoesNotContain("new Vector3((float)tree.X, 0f, (float)tree.Z)", view, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Fusion de main (V2.25) : les modèles de l'atelier qui ne sont pas des bâtiments du bourg (moulin, palissades du camp) et les nouveaux
+    /// bâtiments (grange, tour, puits, étals, tentes) sont à plat **avec leurs débords** (auvents, toit du puits, roue et bief du moulin) ; la
+    /// roue et l'eau du moulin sont des enfants du repère du modèle, montés avec lui (même hauteur par rapport au bâtiment).
+    /// </summary>
+    [Fact]
+    public void Les_modeles_de_V225_sont_a_plat_avec_leurs_debords()
+    {
+        AdventureMap map = Vallons();
+        GroundRelief r = GroundRelief.For(map);
+        const double overhang = 1.42;   // jusqu'à 1,42 m hors de l'emprise (le replat est horizontal jusqu'à 1,5 m)
+        foreach (string id in new[] { "grange", "moulin", "tour", "puits", "etal1", "etal2", "tente1", "tente2", "tente3", "palissade_camp1", "palissade_camp2" })
+        {
+            SpaceObstacle o = map.Obstacles.Single(x => x.Id == id);
+            Assert.True(GroundRelief.Builds(o), id);
+            var pts = Points(o);
+            double level = r.Pads.Single(p => p.Id == id).Level;
+            double x0 = pts.Min(p => p.X) - overhang, x1 = pts.Max(p => p.X) + overhang, z0 = pts.Min(p => p.Z) - overhang, z1 = pts.Max(p => p.Z) + overhang;
+            for (double x = x0; x <= x1 + 1e-9; x += 0.25)
+                for (double z = z0; z <= z1 + 1e-9; z += 0.25)
+                    if (GroundRelief.PolygonDistance(pts, x, z) <= overhang)   // débord rectangulaire d'1 m, coins compris (1,41 m)
+                        Assert.True(Math.Abs(r.Height(x, z) - level) < 1e-9, id + " : sol pas à plat en " + x + ", " + z);
+        }
+        // Roue (rayon 1,75) et eau du bief (4,8 m de long) du moulin : dans son emprise de 6 × 6 élargie du replat, quelle que soit sa façade.
+        SpaceObstacle mill = map.Obstacles.Single(x => x.Id == "moulin");
+        double half = Math.Min(Points(mill).Max(p => p.X) - Points(mill).Min(p => p.X), Points(mill).Max(p => p.Z) - Points(mill).Min(p => p.Z)) / 2;
+        (double fx, _) = TownModels.OwnFootCenter("moulin_vallons");
+        var wheel = TownModels.OwnPartCenter("moulin_vallons", "roue")!.Value;
+        var water = TownModels.OwnPartCenter("moulin_vallons", "eau")!.Value;
+        Assert.True(Math.Abs(wheel.X - fx) + 0.62 <= half + overhang && TownModels.MillWheelRadius <= half + overhang);
+        Assert.True(Math.Abs(water.X - fx) + 0.45 <= half + overhang && 2.4 <= half + overhang);
+        Assert.InRange(water.Y, 0, wheel.Y - TownModels.MillWheelRadius + 0.3);   // les aubes basses trempent dans le bief
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        int shape = view.IndexOf("private void ObstacleShape(SpaceObstacle obstacle)", StringComparison.Ordinal);
+        Assert.True(view.IndexOf("OwnPiece(id, points)", shape, StringComparison.Ordinal) > shape);   // monté par Obstacle (Lift)
+        Assert.Contains("Transform frame = model.transform.parent;", view, StringComparison.Ordinal);
+        Assert.Contains("Object.Instantiate(own.Wheel, frame, false)", view, StringComparison.Ordinal);
+        Assert.Contains("Object.Instantiate(own.Water, frame, false)", view, StringComparison.Ordinal);
+        Assert.Contains("go.transform.SetParent(_root.transform, false);", view, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #144 (accord de Damien : « Ok pour corriger la caméra ») : près du bord des Vallons, une vue éloignée et basse
+    /// mettait la caméra sous les collines. <see cref="CameraRules.TerrainClearDistance"/> la rapproche contre le sol affiché.
+    /// </summary>
+    [Fact]
+    public void La_camera_ne_passe_jamais_sous_le_relief()
+    {
+        AdventureMap map = Vallons();
+        GroundRelief r = GroundRelief.For(map);
+        Func<double, double, double> ground = (x, z) => r.Height(x, z);
+        // Le cas de la revue : depuis (-99, 70), 24 m vers l'ouest, basse.
+        (double X, double Y, double Z) target = (-99, r.Height(-99, 70) + CameraRules.TargetHeight(CameraRules.MaxDistance), 70);
+        var dir = CameraRules.Offset(90, 5, 1);
+        Assert.True(dir.X < -0.9);   // la caméra est à l'ouest du personnage
+        double far = target.Y + dir.Y * CameraRules.MaxDistance;
+        Assert.True(far < r.Height(target.X + dir.X * CameraRules.MaxDistance, target.Z + dir.Z * CameraRules.MaxDistance), "le cas de la revue n'est plus reproduit");
+        double d = CameraRules.TerrainClearDistance(target, dir, ground);
+        Assert.InRange(d, CameraRules.CollisionMinDistance, CameraRules.MaxDistance - 1);
+        AssertClear(target, dir, d, ground);
+        // Balayage : bords de l'aire, toutes les orientations, inclinaisons basses : la caméra et la vue vers le personnage restent au-dessus du sol.
+        foreach ((double px, double pz) in new[] { (map.MinX + 1, map.MinZ + 30), (map.MinX + 6, 70.0), (map.MaxX - 2, map.MaxZ - 20), (0.0, map.MaxZ - 3), (20.0, map.MinZ + 2) })
+            for (double yaw = 0; yaw < 360; yaw += 30)
+                foreach (double pitch in new[] { -10.0, 0, 8, 22 })
+                {
+                    (double X, double Y, double Z) t = (px, r.Height(px, pz) + 1.2, pz);
+                    var v = CameraRules.Offset(yaw, pitch, 1);
+                    double c = CameraRules.TerrainClearDistance(t, v, ground);
+                    AssertClear(t, v, c, ground);
+                    Assert.True(CameraRules.TerrainClearDistance(t, v, ground, 6) <= 6);
+                }
+        // Sol plat : vue par-dessus, rien ne change ; par en dessous, comme GroundSafeDistance.
+        Func<double, double, double> flat = (x, z) => 0;
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.TerrainClearDistance((0, 1.6, 0), CameraRules.Offset(0, 22, 1), flat));
+        Assert.Equal(8, CameraRules.TerrainClearDistance((0, 1.6, 0), CameraRules.Offset(0, 22, 1), flat, 8));
+        double low = CameraRules.TerrainClearDistance((0, 1.6, 0), CameraRules.Offset(0, -10, 1), flat);
+        Assert.Equal(CameraRules.GroundSafeDistance(CameraRules.MaxDistance, -10, 1.6), low, 1);
+        // Entrées sans sol, non finies, point visé déjà trop bas : rien à protéger.
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.TerrainClearDistance((0, 1.6, 0), dir, null));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.TerrainClearDistance((double.NaN, 1.6, 0), dir, flat));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.TerrainClearDistance((0, 0.1, 0), dir, flat));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.TerrainClearDistance((0, 1.6, 0), dir, (x, z) => double.NaN));
+    }
+
+    private static void AssertClear((double X, double Y, double Z) t, (double X, double Y, double Z) v, double d, Func<double, double, double> ground)
+    {
+        for (double s = 0; s <= d; s += 0.05)
+            Assert.True(t.Y + v.Y * s >= ground(t.X + v.X * s, t.Z + v.Z * s) + CameraRules.GroundClearance - 0.02,
+                "sous le sol à " + s + " m (" + t + ", " + v + ")");
+    }
+
+    /// <summary>Sous-lot V2.24 : la distance contre le relief glisse sans saut (vite en se rapprochant, en douceur en revenant).</summary>
+    [Fact]
+    public void La_camera_se_rapproche_du_relief_sans_saut()
+    {
+        double dt = 1 / 60.0;
+        double near = CameraRules.SettleTerrain(24, 5, dt);
+        Assert.InRange(near, 5.5, 23.9);   // pas de saut d'une image à l'autre
+        double back = CameraRules.SettleTerrain(5, 24, dt);
+        Assert.True(24 - near > back - 5);   // le rapprochement est plus rapide que le retour
+        double shown = 24;
+        for (int i = 0; i < 30; i++) shown = CameraRules.SettleTerrain(shown, 5, dt);
+        Assert.InRange(shown, 5, 5.2);   // une demi-seconde suffit
+        Assert.Equal(7, CameraRules.SettleTerrain(double.NaN, 7, dt));
+        Assert.Equal(7, CameraRules.SettleTerrain(7, double.NaN, dt));
+        Assert.Equal(CameraRules.MaxDistance, CameraRules.SettleTerrain(double.NaN, double.NaN, dt));
+        Assert.Equal(24, CameraRules.SettleTerrain(24, 5, double.NaN));
+        Assert.Equal(3.35, CameraRules.AboveGround(1, 3), 9);
+        Assert.Equal(5, CameraRules.AboveGround(5, 3));
+        Assert.Equal(5, CameraRules.AboveGround(5, double.NaN));
+        // Unity : la caméra passe par le relief affiché, avec un délégué gardé (pas d'allocation par image).
+        string rig = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "CameraRig.cs"));
+        Assert.Contains("private static readonly System.Func<double, double, double> StandHeight = (x, z) => StyleWorld.StandHeight((float)x, (float)z);", rig, StringComparison.Ordinal);
+        Assert.Contains("CameraRules.TerrainClearDistance((_target.x, _target.y, _target.z), (dx, dy, dz), StandHeight, _shownDistance)", rig, StringComparison.Ordinal);
+        Assert.Contains("CameraRules.SettleTerrain(_terrainClear, ground, deltaTime)", rig, StringComparison.Ordinal);
+        Assert.Contains("CameraRules.AboveGround(position.y, StyleWorld.StandHeight(position.x, position.z))", rig, StringComparison.Ordinal);
+        int follow = rig.IndexOf("public void Follow(", StringComparison.Ordinal), end = rig.IndexOf("private static bool OverInterface()", StringComparison.Ordinal);
+        Assert.DoesNotContain("=>", rig.Substring(follow, end - follow), StringComparison.Ordinal);
+    }
 }
