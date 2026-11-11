@@ -1481,6 +1481,17 @@ namespace EdS.Runtime
         /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
         /// Recalculée à chaque nouvelle session.
         /// </summary>
+        /// <summary>
+        /// V2.25.2 : le passage dont <paramref name="obstacle"/> est la porte est-il ouvert pour de bon (registre du monde) ? Vrai dès que
+        /// la quête l'ouvre, avant même que l'obstacle disparaisse (à la session suivante) : la barrière du moulin s'ouvre alors.
+        /// </summary>
+        public bool GateOpen(string obstacle)
+        {
+            foreach (var p in _zone.Passages)
+                if (p.Obstacle == obstacle) return World.IsPassageOpen(p.Id);
+            return false;
+        }
+
         public AdventureMap Map
         {
             get
@@ -1496,7 +1507,9 @@ namespace EdS.Runtime
                         VisibleDoors.Select(d => new MapDoor(d.Id, d.Name, d.Building, Meters(d.Position.X), Meters(d.Position.Z))), _zone.Indoor,
                         // Sous-lot V1.6 : les PNJ qui parlent dans une pièce y ont leur corps (décor des intérieurs).
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
-                        _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null);
+                        _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
+                        // V2.25.2 : la porte du moulin, fermée ou ouverte (sa barrière reste dans le décor).
+                        _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!);
                     _mapSession = Opened;
                 }
                 return _map;

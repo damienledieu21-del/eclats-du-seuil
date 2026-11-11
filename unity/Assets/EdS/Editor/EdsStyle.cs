@@ -278,6 +278,7 @@ namespace EdS.Game.Editor
             // son obstacle (« Assets/EdS/Modeles/Batiments/maison2/… »), ajoutés après ceux de Sketchfab.
             BuildingLook[] own = OwnBuildings(notes);
             if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
+            catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
             // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
             InteriorLook[] oldFurniture = catalog.Furniture ?? new InteriorLook[0];
@@ -535,6 +536,30 @@ namespace EdS.Game.Editor
             return result.ToArray();
         }
 
+        /// <summary>V2.25.2 : dossier des petits décors de l'atelier (un dossier par groupe, un atlas « &lt;groupe&gt;_couleur » par groupe).</summary>
+        public const string OwnDecorFolder = "Assets/EdS/Modeles/Decor";
+
+        /// <summary>
+        /// V2.25.2 : petits décors de l'atelier (<see cref="OwnDecorFolder"/>/&lt;groupe&gt;/&lt;groupe&gt;_&lt;pièce&gt;.fbx), la matière de leur
+        /// groupe préparée (<see cref="OwnMaterial"/>) ; posés par le jeu (cailloux et touffes des pierres du Seuil, accessoires de la
+        /// carrière). Sans dossier : rien, sans erreur.
+        /// </summary>
+        private static GameObject[] OwnDecorPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(OwnDecorFolder)) return new GameObject[0];
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { OwnDecorFolder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => AtelierDecor.OwnDecorOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            var result = new List<GameObject>();
+            foreach (string path in paths)
+            {
+                OwnMaterial(path, notes, AtelierDecor.OwnDecorOf(path));
+                GameObject model = Load(path);
+                if (model != null) result.Add(model);
+            }
+            if (result.Count > 0) notes.Add("Décor de l'atelier : " + string.Join(", ", result.Select(m => m.name)) + ".");
+            return result.ToArray();
+        }
+
         /// <summary>
         /// Sous-lot V2.17 : matière d'un bâtiment de l'atelier : la texture « &lt;nom&gt;_normale » en Normal map, un matériau URP Lit
         /// « Generated/&lt;nom&gt;.mat » (couleur « &lt;nom&gt;_couleur », relief, brillant 0,15), et chaque matière du FBX (une seule
@@ -550,6 +575,8 @@ namespace EdS.Game.Editor
                 .Distinct().ToList();
             string color = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_couleur", System.StringComparison.OrdinalIgnoreCase));
             string normal = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_normale", System.StringComparison.OrdinalIgnoreCase));
+            // V2.25.2 : carte d'émission (fissures et éclats des pierres du Seuil), allumée par le jeu d'après la lumière du monde.
+            string emission = maps.FirstOrDefault(p => string.Equals(Path.GetFileNameWithoutExtension(p), name + "_emission", System.StringComparison.OrdinalIgnoreCase));
             if (color == null) notes.Add("Atelier : " + name + "_couleur introuvable à côté de " + Path.GetFileName(modelPath) + ".");
             OwnTexture(color, false);
             OwnTexture(normal, true);
@@ -567,6 +594,16 @@ namespace EdS.Game.Editor
                 AssetDatabase.CreateAsset(material, ownPath);
             }
             Configure(material, lit, null, 0f, Texture2DAt(color), Texture2DAt(normal), false);
+            if (emission != null)
+            {
+                OwnTexture(emission, false);
+                material.SetTexture("_EmissionMap", Texture2DAt(emission));
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", Color.white * (float)AtelierDecor.SeuilGlowDay);
+                notes.Add(name + " : émission " + Path.GetFileName(emission) + ".");
+            }
+            // V2.25.2 : les brins de la touffe sont en double face.
+            if (AtelierDecor.DoubleSided(name)) material.SetFloat("_Cull", 0f);
             // Matières encore dans le FBX (première préparation) ; celles déjà remappées n'y sont plus, et leur remap reste en place.
             List<Material> embedded = (AssetDatabase.LoadAllAssetsAtPath(modelPath) ?? new Object[0]).OfType<Material>()
                 .Where(m => AssetDatabase.GetAssetPath(m) == modelPath).ToList();

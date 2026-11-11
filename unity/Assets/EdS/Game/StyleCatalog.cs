@@ -529,6 +529,8 @@ namespace EdS.Game
         [Header("Essai réaliste 8 : bâtiments de Sketchfab, chemins et champs (28 octobre 2026)")]
         [Tooltip("Modèles des bâtiments, par genre (remplis par le menu) ; sans modèle d'un genre, le bâtiment fait par le code reste.")]
         public BuildingLook[] Buildings = new BuildingLook[0];
+        [Tooltip("V2.25.2 : petits décors de l'atelier (« Assets/EdS/Modeles/Decor/<groupe>/ ») : cailloux et touffe des pierres du Seuil, accessoires de la carrière (remplis par le menu).")]
+        public GameObject[] OwnDecor = new GameObject[0];
         [Tooltip("Terre battue des chemins (dossier « Ground », nom « chemin… »).")]
         public Texture2D RoadColor;
         public Texture2D RoadNormal;
@@ -766,6 +768,15 @@ namespace EdS.Game
             foreach (BuildingLook b in Buildings)
                 if (b != null && string.IsNullOrEmpty(b.Building) && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
             return list;
+        }
+
+        /// <summary>V2.25.2 : le petit décor de l'atelier « …_&lt;piece&gt; » (<see cref="AtelierDecor.IsPiece"/>) ; null sans lui.</summary>
+        public GameObject OwnDecorPiece(string piece)
+        {
+            if (OwnDecor == null) return null;
+            foreach (GameObject g in OwnDecor)
+                if (g != null && AtelierDecor.IsPiece(g.name, piece)) return g;
+            return null;
         }
 
         /// <summary>

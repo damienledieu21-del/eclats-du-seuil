@@ -346,6 +346,13 @@ namespace EdS.Runtime
                 // La grange (12 × 8, porte charretière sur le long côté) : le chemin des champs longe son côté est, mais tournée vers lui
                 // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au sud (+z), vers le bourg, son pignon au chemin.
                 case "grange": return facing.X != 0 ? (0, 1) : facing;
+                // V2.25.2 : la barrière du moulin a son avant au nord (hors du passage), ses vantaux s'ouvrent vers le moulin (sud) ; le
+                // front de taille (28 × 4) a son côté exploité vers l'ouest, vers le fond de la carrière ; les murs des ruines (1 × 12,5 et
+                // 1 × 13,5) ont leur ancienne face intérieure vers l'est, vers le centre du lieu « ruines » (x 19).
+                case "portemoulin": return (0, 1);
+                case "frontdetaille": return (-1, 0);
+                case "murnord":
+                case "mursud": return (1, 0);
                 default: return facing;
             }
         }

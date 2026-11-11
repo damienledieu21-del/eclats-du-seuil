@@ -253,7 +253,9 @@ namespace EdS.Game
             }
             // Décision de Damien du 9 novembre 2026 : les tours en ruine aux ruines, sur ordinateur seulement (Wave5 : jamais sur téléphone, où
             // les ruines restent en formes simples), à la taille du lieu, le long de son plus grand côté.
-            if (Place("ruines") is MapPlace ruins && Wave5View.Has(Wave5Role.RuinedTowers))
+            // V2.25.2 : les murs en ruine de l'atelier (mur_nord, mur_sud) sont dans ce lieu : les tours de l'Asset Store ne sont plus posées.
+            bool ownRuins = catalog != null && catalog.OwnBuilding("mur_nord") != null;
+            if (!ownRuins && Place("ruines") is MapPlace ruins && Wave5View.Has(Wave5Role.RuinedTowers))
             {
                 bool alongX = ruins.MaxX - ruins.MinX >= ruins.MaxZ - ruins.MinZ;
                 GameObject towers = Wave5View.Place(root, Wave5Role.RuinedTowers, "tours en ruine", new Vector3((float)ruins.CenterX, 0f, (float)ruins.CenterZ), alongX ? 90f : 0f);
