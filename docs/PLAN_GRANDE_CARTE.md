@@ -45,9 +45,9 @@ Le jeu tourne encore **en solo sur le poste** (`AdventureSession`, `EdS.Runtime`
 ### 2.1 Repère de la région (Recommandation)
 
 - **Un seul repère pour toute la région**, en mètres : `x` vers l'est, `z` vers le nord, comme aujourd'hui. **Le cœur garde ses coordonnées actuelles** : aucune quête, aucun point sûr, aucune porte, aucun lieu nommé ne bouge.
-- **Étendue** : x de **−1 908 à +2 188**, z de **−1 358 à +1 714** (4 096 × 3 072 m, soit 12,6 km² : les « 4 × 3 km » arrondis à des puissances de deux).
-- **Case** : carré de **128 m**. 32 colonnes × 24 rangées = **768 cases**. Nom : `c<colonne>_r<rangée>` (colonne 0 à l'ouest, rangée 0 au sud). Bords des cases : `x = −1 908 + 128 k`, `z = −1 358 + 128 k`. Ce décalage est choisi pour que l'aire actuelle ([−100, −70] à [140, 100]) tienne **entière** dans les quatre cases `c14_r10`, `c15_r10`, `c14_r11`, `c15_r11` (de [−116, −78] à [140, 178]).
-- **Secteur de simulation** : 2 × 2 cases, **256 m**. 16 × 12 = **192 secteurs**, nommés `s<col>_<rang>`. Le cœur est le secteur `s07_05` : l'ancienne aire entière, avec un peu de place autour (78 m de plus au nord).
+- **Étendue** : x de **−1 908 à +2 188**, z de **−1 614 à +1 458** (4 096 × 3 072 m, soit 12,6 km² : les « 4 × 3 km » arrondis à des puissances de deux).
+- **Case** : carré de **128 m**. 32 colonnes × 24 rangées = **768 cases**. Nom : `c<colonne>_r<rangée>` (colonne 0 à l'ouest, rangée 0 au sud). Bords des cases : `x = −1 908 + 128 k`, `z = −1 614 + 128 k`. Ce décalage est choisi pour que l'aire actuelle ([−100, −70] à [140, 100]) tienne **entière** dans les quatre cases `c14_r12`, `c15_r12`, `c14_r13`, `c15_r13` (de [−116, −78] à [140, 178]).
+- **Secteur de simulation** : 2 × 2 cases, **256 m**. 16 × 12 = **192 secteurs**, nommés `s<col>_<rang>`. Le cœur est le secteur `s07_06` : l'ancienne aire entière, avec un peu de place autour (78 m de plus au nord).
 - **Pourquoi 128 m et 256 m** : 128 m, c'est ce qu'un téléphone affiche en détail autour du joueur (3 × 3 cases = 384 m) et un fichier de données de taille raisonnable ; 256 m, c'est la plus grande aire que la grille de navigation tient à 0,5 m (512 × 512), à la marge près (2.4). Traversée d'un secteur : environ 50 s à pied (5 m/s), 20 s à cheval (13 m/s, 4 km en 5 min ; `Planar.MaxSpeed` est de 20 m/s).
 
 ### 2.2 Trois façons de simuler une grande région
@@ -116,63 +116,74 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 
 ## 4. Le plan de la région
 
+### 4.0 La carte illustrée de Damien (Retenu)
+
+Damien a fait dessiner la carte de la région (ChatGPT) et l'a **validée** le 11 novembre 2026 : [été](cartes/carte_ete.jpg) et [hiver](cartes/carte_hiver.jpg) (copies réduites à 1 024 px ; originaux de 1 448 px dans l'AssetLab, `Eclats_du_Seuil_AssetLab/Carte_Vallons/carte_ete.png` et `carte_hiver.png`). **C'est elle qui fixe la disposition** ; ce plan la traduit en coordonnées.
+
+- **Lecture** : la carte est en vue cavalière ; les bâtiments y sont grossis. Conversion retenue par Claude : la place du village (vers le pixel 690, 525 de l'original) tombe sur la place actuelle (−18, −12), puis **2,83 m par pixel** (la région de 4 096 m remplit les 1 448 px ; l'échelle dessinée dit environ 3,3 m par pixel : écart accepté, la carte n'est pas un relevé). Les positions ci-dessous sont donc **approximatives**, à ±100 m ; les tailles des lieux sont celles du jeu, pas celles du dessin.
+- **Le Seuil** : la carte met les **terres corrompues au sud-est** ; dans les Vallons actuels, la petite zone du Seuil (pierres dressées, de [40, 24] à [60, 40]) est **au nord-est du village**. Conciliation (Recommandation) : la petite zone actuelle **reste où elle est** (chapitre 5, failles, cicatrices : rien ne bouge) ; c'est une **fêlure avancée**, reliée aux terres corrompues du sud-est par une veine souterraine (les galeries sous les pierres du Seuil passent dessous) ; en surface, la corruption qui avance (section 5) part des terres du sud-est et **remonte vers le village**, en suivant les vergers et la rivière, et nourrit la fêlure. Le joueur voit donc une seule histoire : le grand Seuil au sud-est, une fissure déjà ouverte aux portes du village.
+- **Deux autres conciliations** (Recommandation) : la **tour de guet** et le **camp des rôdeurs** du cœur restent ; la tour du dessin, au nord-est, est la **tour des bandits** près de leur fort. La **carrière** actuelle (à l'est du village) est la vieille carrière à ciel ouvert ; la grande carrière et sa **mine** sont 1 km plus au nord-est, avec leur hameau ; le hameau actuel reste.
+
 ### 4.1 Carte schématique
 
-Un caractère = 100 m d'est en ouest, une ligne = 200 m du nord au sud. Repère : x de −1 900 (gauche) à +2 100 (droite), le cœur vers x = 0.
+Un caractère = 100 m d'est en ouest, une ligne = 200 m du nord au sud. x de −1 900 (gauche) à +2 100 (droite) ; le cœur (`@`) vers x = 0.
 
 ```
-     z      x: -1900            -100 0  +300           +1300        +2100
- +1700 ......................^^^^^^^^X^^^^......
- +1500 FFFFFFFFFFFFFFFFFFF...^^^^^^M:^^^^^......
- +1300 FFFFFFFFFFFFFFFFFFF...^^^^:::^^^^^^......
- +1100 FFFFFFFFFFFFFFFFFFF.W.^^:::^^^^^%%%%%%%%%
-  +900 FFFFFFFFFFTFFFFFFFF.~.:::^^^^^^^%%%%%%%%%
-  +700 P:FFFFFFFFFFFFFFFFF.~::::^^^^^^^%%%%O%%%%
-  +500 F:::FFFFFFFFFFFFFFF.~:..:+...::::%%%%%%%%
-  +300 FFF:::::FFFFFFFFFFF.~:..::::::..%%%%%%%%%
-  +100 FFFFFFF::::::#####@@@mmmmmm.....%%%%%%%%%
-  -100 ............,#####@@@mmmmmm,.............
-  -300 ....VVVVVVVVV######~=mmmmmm:::::.........
-  -500 ....VVVVVVVVV:,,=========,,,...:B::::::::
-  -700 ....VVVVCVVVV,,,====I====,,,.............
-  -900 ....VVVVVVVVV,,,=========,,,.............
- -1100 ....VVVVVVVVV,,,=========,,,.............
- -1300 ............,,,,,,,,,,,,,,,,.............
+     z
+ +1400 |||||............^^^^M^^^^^^^^^^^^^^^^^^^
+ +1200 |||||FFFFFFFFFFFFF^^^^^^^^^^^^^^^^::::::X
+ +1000 |||||FFFFFFFFFFFFFb^^^^^~W^^^^:B:::^^^^^^
+  +800 |||||FFFFFTFFFFFFF:....~~.....:.....t....
+  +600 |||||FFFFFFFFFFFFF:...~~.....::..........
+  +400 ||||P:::FFFFFFFFFF::.~~...::mmmmm........
+  +200 |||||F#######FFFFF@@@~::::::mmmmm:::+....
+    +0 ......#######:::::@@@::..................
+  -200 H:::::#######....."~~"":::::o...%%%%%%%%%
+  -400 ......#######.....""~"".ooo:::::%%%%%%%%%
+  -600 ..VVVVCVVVVV......""~~".ooooo...:::O%%%%%
+  -800 ..VVVVVVVVVV..,,===============,,%%%%%%%%
+ -1000 ..VVVVVVVVVV..,,===============,,%%%%%%%%
+ -1200 ..VVVVVVVVVV..,,=====I=========,,%%%%%%%%
+ -1400 ..VVVVVVVVVV..,,===============,,%%%%%%%%
+ -1600 .........................................
 ```
 
-`@` cœur (aire actuelle) · `#` Bourg d'Aube fortifié · `~` rivière · `W` cascade · `F` forêt des Loups · `T` arbre millénaire · `^` hautes collines · `M` sommet · `X` col vers les Crêtes de Fer · `+` abbaye · `%` terres corrompues · `O` pierres du Seuil · `m` carrière et mine · `B` fort des bandits · `=` lac · `,` marais · `I` île d'hiver · `V` coteaux de vignes · `C` château viticole · `P` pont vers la Forêt des Murmures · `:` routes (la route d'Havre d'Ambre sort à l'est à z ≈ −600) · `.` prés, champs, landes.
+`@` cœur (aire actuelle) · `#` Bourg d'Aube fortifié · `~` rivière · `W` cascade · `F` forêt des Loups · `T` arbre millénaire · `|` gorge de l'ouest · `P` pont vers la Forêt des Murmures · `H` route d'Havre d'Ambre · `V` coteaux de vignes · `C` château viticole · `"` champs, ferme et grange · `o` vergers · `=` lac des Aubes · `,` marais · `I` île d'hiver · `^` hautes collines · `M` sommet · `b` bergerie · `B` fort des bandits · `t` tour des bandits · `X` route du col vers les Crêtes de Fer · `m` grande carrière et mine · `+` abbaye en ruine · `%` terres corrompues du Seuil · `O` pierres levées · `:` routes et chemins · `.` prés et landes.
 
-### 4.2 Les douze lieux en coordonnées (Recommandation ; noms de travail)
+### 4.2 Les douze lieux en coordonnées (Recommandation ; positions tirées de la carte de Damien)
 
 Rectangles approximatifs, en mètres ; altitudes **d'affichage** (le moteur reste plat).
 
 | # | Lieu | Emprise | Repère | Altitude | Contenu proposé |
 |---|---|---|---|---|---|
-| 1 | **Cœur** (village actuel) | [−100, −70] à [140, 100] | place du village (−18, −12) | 20 à 30 m | Inchangé : village, moulin, ruines, carrière haute, petit Seuil, ancien bourg, champs, lac des Aubes, tour de guet, camp des rôdeurs |
-| 2 | **Bourg d'Aube, ville fortifiée** | remparts de [−640, −240] à [−140, 200] | porte de l'Aube (−140, 0) | 25 m | Remparts, quatre portes, château du bailli, marché couvert, quartiers (artisans, temple, port fluvial), égouts. L'ancien bourg (x de −100 à −24) devient le **faubourg de l'Est**, devant la porte de l'Aube : rien n'y bouge |
-| 3 | **Vallée de la rivière et cascade** | [−60, 100] à [260, 1 250] | cascade (120, 1 180), 30 m de chute | 30 à 110 m | Gorges, moulins à foulon, gué, pont suspendu, pêcheurs ; **grotte derrière la cascade** (entrée du dessous) |
-| 4 | **Coteaux et château viticole** | [−1 500, −1 100] à [−750, −350] | château (−1 080, −700) | 40 à 120 m | Rangs de vignes, pressoir, chais, vendangeurs saisonniers, cave du château (petit dessous) |
-| 5 | **Forêt des Loups et arbre millénaire** | [−1 850, 100] à [0, 1 550] | arbre (−950, 950) | 30 à 90 m | Clairières, bûcherons, tanière de la meute, ours (V2.9.2), cercle de druides autour de l'arbre ; la pointe actuelle ([−100, 41] à [4, 100]) est son orée |
-| 6 | **Hautes collines** | [300, 700] à [1 500, 1 714] | sommet (900, 1 450) | 150 à 320 m | Bergeries, troupeaux, cairns sur la crête, **point de vue du sommet** (horizon, section 6.4), col au nord |
-| 7 | **Abbaye en ruine et sa crypte** | [520, 420] à [720, 620] | cloître (620, 520) | 90 m | Église éventrée, cloître, jardins redevenus sauvages, Échos de moines ; escalier vers la **crypte** |
-| 8 | **Marais du lac et île d'hiver** | marais [−700, −1 358] à [800, −150], lac [−300, −1 050] à [500, −250] | île (120, −700) | 0 à 3 m | Roselières, pontons, cabanes sur pilotis, grottes noyées ; l'**île** n'est atteignable qu'à pied sur la glace, l'hiver |
-| 9 | **Carrière devenue mine** | [200, −300] à [650, 60] | bouche de la mine (380, −120) | 30 à 60 m | Carreau, treuils, wagonnets, village de mineurs ; **mine à plusieurs niveaux** au dessous. Le hameau de la carrière actuel reste |
-| 10 | **Fort des bandits** | [1 250, −550] à [1 450, −350] | donjon (1 350, −450) | 70 m | Ancien fort de la frontière tenu par les bandits, au-dessus de la route d'Havre ; le camp des rôdeurs du cœur devient leur avant-poste (chapitre 4 inchangé) |
-| 11 | **Terres corrompues du Seuil** | [1 250, 150] à [2 188, 1 150] | grand cercle de pierres (1 750, 650) | 60 à 90 m, sol fendu | Herbe décolorée, éclats affleurants, failles fréquentes, **galeries sous les pierres** ; la « Traînée » relie le petit Seuil du cœur aux terres corrompues par les hautes pierres |
-| 12 | **Trois passages** | bords de la région | col (1 150, 1 714) ; pont (−1 908, 700) ; route (2 188, −600) | — | Col vers les Crêtes de Fer (fermé par la neige l'hiver), pont des Murmures sur la gorge de l'ouest, route d'Havre d'Ambre ; passages avec court chargement (Retenu, sujet 9). Tant que la région voisine n'existe pas : barrière expliquée (éboulement, pont gardé, péage) |
+| 1 | **Cœur** (village, moulin et pont) | [−100, −70] à [140, 100] | place du village (−18, −12) | 30 m | Inchangé : village, moulin, ruines, vieille carrière, petite zone du Seuil, ancien bourg, champs, étang, tour de guet, camp des rôdeurs |
+| 2 | **Bourg d'Aube, ville fortifiée** | palissade ronde, centre (−1 010, −70), environ 600 m de diamètre | porte de l'Est (−710, −50) | 35 m | Palissade de pieux, tours de bois, trois portes (est, ouest vers Havre d'Ambre, nord vers le pont), église, place du marché, maisons serrées, égouts. L'**ancien bourg** du cœur (x de −100 à −24 : auberge, guilde, boutiques) **ne bouge pas** : il devient le quartier ouest du village, et sa grand-rue la route de la ville |
+| 3 | **Vallée de la rivière et cascade** | de la cascade (590, 1 080) au cœur (5, 100) | cascade, 30 m de chute | 30 à 140 m | Gorges, gué, pêcheurs ; **grotte derrière la cascade** (entrée du dessous) |
+| 4 | **Coteaux et château viticole** | [−1 700, −1 500] à [−780, −500] | château (−1 330, −680) | 40 à 120 m | Rangs de vignes en terrasses, pressoir, chais, vendangeurs, jardins à la française, cave du château |
+| 5 | **Forêt des Loups et arbre millénaire** | [−1 500, 280] à [−160, 1 280] | arbre (−850, 780) | 40 à 100 m | Clairières, bûcherons, tanière de la meute, ours, cercle autour de l'arbre ; la pointe actuelle ([−100, 41] à [4, 100]) en est l'orée |
+| 6 | **Gorge et pont de pierre** (passage vers la Forêt des Murmures) | gorge [−1 908, 280] à [−1 500, 1 300] | pont (−1 520, 470) | gorge de 60 m | Torrent au fond, pont de pierre à une arche ; la route continue vers l'ouest |
+| 7 | **Hautes collines, bergerie, cairns, sommet** | [−200, 900] à [2 188, 1 458] | sommet (180, 1 360) ; bergerie (−130, 1 080) ; cairns (190, 1 220) | 150 à 350 m | Troupeaux, enclos de pierre, cairns sur la crête, **point de vue du sommet** |
+| 8 | **Fort des bandits et sa tour** | fort [1 050, 900] à [1 300, 1 090] | fort (1 170, 990) ; tour (1 740, 820) | 160 à 200 m | Fort de rondins et de pierre sur une butte ; la tour surveille la route du col ; le camp des rôdeurs du cœur est leur avant-poste (chapitre 4 inchangé) |
+| 9 | **Route du col vers les Crêtes de Fer** | du fort au bord nord-est | sortie (2 100, 1 220) | jusqu'à 350 m | Lacets, refuge ; la neige ferme le col l'hiver |
+| 10 | **Grande carrière et mine** | [850, 150] à [1 250, 400] | bouche de la mine (1 185, 355) ; hameau des mineurs (1 000, 145) | 80 à 110 m | Gradins de taille, treuil, wagonnets ; **mine à plusieurs niveaux** au dessous |
+| 11 | **Abbaye en ruine et sa crypte** | [1 600, 60] à [1 820, 230] | nef (1 710, 145) | 90 m | Nef sans toit, rosace, cloître, Échos de moines ; escalier vers la **crypte** |
+| 12 | **Lac des Aubes, marais et île d'hiver** | lac [−300, −1 360] à [1 150, −850] ; marais tout autour | île (180, −1 230) | 0 à 3 m | Roselières, pontons, grottes noyées ; l'**île** ne s'atteint qu'à pied sur la glace, l'hiver. L'étang actuel du cœur (`lac`) reste : la rivière en sort et descend au grand lac |
+| 13 | **Terres corrompues du Seuil** | [1 290, −1 350] à [2 188, −110] | pierres levées (1 550, −620) | 40 à 70 m, sol fendu | Herbe grise, arbres morts, failles violettes, éclats ; **galeries sous les pierres** |
+| 14 | **Route d'Havre d'Ambre** | du Bourg au bord ouest | sortie (−1 908, −240) | — | Grande route des caravanes ; poste de péage |
+
+Les « douze grands lieux » de la décision sont les lignes 1 à 5, 7, 8, 10 à 13, plus les trois passages (6, 9, 14). Champs, ferme et grange (vers (60, −450)) et vergers (vers (720, −450)) prolongent le cœur au sud et au sud-est, comme sur la carte. Les passages ont un court chargement (Retenu, sujet 9) ; tant que la région voisine n'existe pas, une barrière expliquée (éboulement, pont gardé, péage).
 
 ### 4.3 Routes, rivière, relief
 
-- **Route d'Ambre** (grande route des caravanes) : pont des Murmures → lisière sud de la forêt → porte de l'Ouest du Bourg → grand-rue → porte de l'Aube → faubourg et village (routes actuelles) → hameau et mine → pied du fort des bandits → sortie d'Havre d'Ambre.
-- **Route du Nord** : village → vallée de la rivière → embranchement de l'abbaye → lacets des collines → col.
-- **Chemins** : des vignes (porte du Sud → château), du lac (village → pontons), des pierres (hautes pierres → terres corrompues), des bergers (crêtes et cairns).
-- **Rivière** : de la cascade (120, 1 180) vers le sud, par le cœur (son lit actuel, x de 4 à 7), jusqu'au lac ; elle reste un « obstacle bas » qu'on voit par-dessus (essai du 22 octobre 2026), franchie par des ponts et des gués.
-- **Relief d'affichage** : bas au sud (lac à 0 m), le cœur et le Bourg sur un plateau doux (20 à 30 m), les coteaux qui montent vers le sud-ouest, les collines au nord-est jusqu'à 320 m, les terres corrompues sur un plateau fendu à l'est. Les falaises et ravins infranchissables sont des **obstacles** pour le moteur.
+- **Route d'Ambre** (caravanes) : sortie d'Havre d'Ambre à l'ouest → porte ouest du Bourg → porte est → ancien bourg et village (routes actuelles) → vers l'est et la mine → fort des bandits → col des Crêtes de Fer. Les caravanes passent donc **sous le fort** : c'est là que les bandits attaquent.
+- **Chemins** : du pont des Murmures (porte nord du Bourg → gorge), des vignes (Bourg → château), de la bergerie (village → collines → sommet), de l'abbaye (mine → abbaye), du lac (village → champs → pontons), des pierres (vergers → terres corrompues).
+- **Rivière** : de la cascade (590, 1 080), elle descend vers le sud-ouest jusqu'au cœur (son lit actuel, x de 4 à 7), passe sous le pont du moulin, traverse l'étang puis les champs et se jette dans le grand lac. Elle reste un « obstacle bas » qu'on voit par-dessus (essai du 22 octobre 2026), franchie par des ponts et des gués.
+- **Relief d'affichage** : le lac au plus bas (0 m) au sud ; le village et le Bourg sur un plateau doux (30 à 35 m) ; les coteaux qui montent au sud-ouest ; la gorge profonde à l'ouest ; les collines au nord, jusqu'à 350 m ; la mine et l'abbaye sur un épaulement à l'est ; les terres corrompues en cuvette fendue au sud-est. Falaises, gorge et ravins infranchissables sont des **obstacles** pour le moteur.
 
 ### 4.4 Ne rien casser au cœur (Recommandation)
 
-- Mêmes coordonnées, mêmes identifiants de lieux, de points sûrs, de portes, de populations ; les grands lieux ont des **identifiants nouveaux** (`foret_des_loups_profonde`, `ville_du_bourg`…) ; `PlacesAt` en rend déjà plusieurs.
-- **Le chapitre 1 garde sa porte** : aujourd'hui le pré et la forêt ne s'atteignent que par la porte du moulin. La grande carte garde ce verrou par le décor : un **ravin des Ronces** borde la forêt au sud, de l'ouest de la région jusqu'à la rivière, et la vallée de la rivière est fermée par un éboulement au nord du cœur, jusqu'à la fin du chapitre 1 (la quête l'ouvre, comme la porte du moulin).
+- Mêmes coordonnées, mêmes identifiants de lieux, de points sûrs, de portes, de populations ; les grands lieux ont des **identifiants nouveaux** (`foret_des_loups_profonde`, `ville_du_bourg`, `grand_lac`…) ; `PlacesAt` en rend déjà plusieurs.
+- **Le chapitre 1 garde sa porte** : aujourd'hui le pré et la forêt ne s'atteignent que par la porte du moulin. La grande carte garde ce verrou par le décor : un **ravin des Ronces** borde la forêt au sud et à l'est, de la gorge jusqu'à la rivière, et la vallée de la rivière est fermée par un éboulement au nord du cœur, jusqu'à la fin du chapitre 1 (la quête l'ouvre, comme la porte du moulin).
 - Les bords actuels du cœur (rivière jusqu'au bord nord, haie jusqu'au bord ouest) deviennent des passages tenus par l'histoire, pas des murs.
 
 ### 4.5 Densité de contenu (Recommandation)
@@ -204,7 +215,7 @@ Principe déjà en place (V2.3, V2.5, V2.6) : **ce qui n'est pas vu est calculé
 
 - **Anneau 0** (3 × 3 cases autour du joueur, 384 m) : tout le détail : modèles complets, PNJ, animaux, herbe à moins de 40 m, ombres.
 - **Anneau 1** (jusqu'à 7 × 7 cases, environ 900 m) : modèles simplifiés, arbres en **imposteurs** (images d'arbre vues sous plusieurs angles), pas d'herbe, pas de PNJ.
-- **Au-delà** : un **terrain basse résolution de toute la région** (maille de 32 m, environ 25 000 triangles), les forêts en nappes de feuillage, et les **silhouettes des grands lieux** (remparts, abbaye, château, donjon du fort, arbre millénaire, cascade, pierres du Seuil) en imposteurs dédiés : on voit toujours où l'on va.
+- **Au-delà** : un **terrain basse résolution de toute la région** (maille de 32 m, environ 25 000 triangles), les forêts en nappes de feuillage, et les **silhouettes des grands lieux** (palissade du Bourg, abbaye, château, donjon du fort, arbre millénaire, cascade, pierres du Seuil) en imposteurs dédiés : on voit toujours où l'on va.
 - **Construction étalée** : le décor est déjà fait par le code (`SpaceView`, `StyleWorld`). On garde cette façon, case par case, **étalée sur plusieurs images** (au plus 2 ms par image), avec des objets recyclés ; une case quittée est démontée après un délai (pas d'à-coup en faisant demi-tour). Cela règle aussi l'à-coup en sortant d'une maison. Les Addressables de Unity seulement si la mémoire l'exige (gratuits, mais un nouveau paquet).
 - **Relief** : la hauteur d'affichage de V2.24 devient une carte de hauteurs par case (129 × 129 sur PC, 65 × 65 sur téléphone), raccordée aux bords. V2.27 attend la fusion de V2.24.
 
@@ -224,7 +235,7 @@ Principe déjà en place (V2.3, V2.5, V2.6) : **ce qui n'est pas vu est calculé
 
 ### 6.3 Horizon lointain
 
-Trois **cartes peintes** sur le ciel, qui ne se chargent jamais comme des cases : les **Crêtes de Fer** au nord (pics enneigés, fumées des forges), la **brume de la Forêt des Murmures** à l'ouest (cimes géantes dans le brouillard), et la **lune fendue** la nuit (déjà dans le ciel, sujet 32). Le **point de vue du sommet** dissipe le brouillard de toute la région (sujet 30) et fait un tour de caméra.
+Trois **cartes peintes** sur le ciel, qui ne se chargent jamais comme des cases : les **Crêtes de Fer** au nord-est (pics enneigés, fumées des forges), la **brume de la Forêt des Murmures** à l'ouest (cimes géantes dans le brouillard), et la **lune fendue** la nuit (déjà dans le ciel, sujet 32). Le **point de vue du sommet** dissipe le brouillard de toute la région (sujet 30) et fait un tour de caméra.
 
 ## 7. Sous-lots
 
@@ -244,7 +255,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
-| **V2.30** | Bourg d'Aube fortifié (surface ; les intérieurs viennent ensuite, un à un) | L | remparts (pans droits, angles, tours rondes et carrées), quatre portes fortifiées, château du bailli, marché couvert, temple, quai, maisons de ville (3 gabarits × 3 tailles) |
+| **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village (surface ; les intérieurs viennent ensuite, un à un) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |
 | **V2.31** | Vallée de la rivière et cascade | M | cascade de 30 m (rochers, bassin), moulin à foulon, pont suspendu, cabane de pêcheur |
 | **V2.32** | Forêt des Loups et arbre millénaire | M | arbre millénaire (avec imposteur), tanière, cabane de bûcheron, cercle de druides, souches et troncs couchés |
 | **V2.33** | Coteaux et château viticole | M | château viticole, pressoir, chai, rangs de vigne (3 états : vert, mûr, vendangé), cuves, charrette de vendange |
@@ -252,7 +263,7 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 | **V2.35** | Abbaye en ruine (surface) | M | église éventrée, cloître, dortoir en ruine, jardin envahi, statues brisées |
 | **V2.36** | Marais du lac et île | M | cabanes sur pilotis, pontons, barques, roselières, îlot avec sa ruine, lac gelé (glace, neige) |
 | **V2.37** | Carrière devenue mine (surface) | S | carreau de mine, treuil, wagonnets et rails, village de mineurs |
-| **V2.38** | Fort des bandits | M | fort en ruine réparé de bric et de broc (enceinte, donjon, tours), palissades, tentes, cage |
+| **V2.38** | Fort des bandits | M | fort de rondins sur soubassement de pierre (enceinte, donjon, tours d'angle), tour de guet isolée, tentes, cage |
 | **V2.39** | Terres corrompues du Seuil | M | grand cercle de pierres, éclats affleurants, arbres morts, sol fendu, autels de purification |
 | **V2.40** | Trois passages | S | col (arche de pierre, refuge), pont des Murmures, poste de péage de la route d'Havre |
 
@@ -296,4 +307,4 @@ Chaque sous-lot suit la méthode de CLAUDE.md (branche, tests touchés verts, PR
 1. **Rupture d'architecture (V2.26)** : valides-tu les secteurs de 256 m avec marge de 32 m, le passage d'un secteur à l'autre avec l'état du combat (journal au format 25, moteur 0.31.0), la borne des coordonnées à ±4 096 m et le recyclage des places de combattants ? Sans cet accord, V2.25 (données) et V2.27 (affichage) peuvent avancer, pas V2.26.
 2. **Durée d'une saison du monde** : il faut que chacun voie le lac gelé et les vendanges. Recommandation : **une semaine réelle par saison** (une année du monde en quatre semaines).
 3. **La crypte** : le sujet 27 avait décidé « crypte sous la chapelle » ; le 11 novembre, c'est « crypte de l'abbaye ». Recommandation : le donjon de la crypte est sous l'**abbaye** ; la chapelle du Bourg garde seulement un caveau (petit secret).
-4. **Jusqu'où va la corruption ?** Recommandation : elle peut prendre les campagnes, l'abbaye et le hameau (PNJ qui fuient, boutiques fermées), mais **jamais le village du cœur ni l'intérieur des remparts**, et ne ferme jamais une quête de l'histoire.
+4. **Jusqu'où va la corruption ?** Recommandation : elle peut prendre les campagnes, l'abbaye et le hameau (PNJ qui fuient, boutiques fermées), mais **jamais le village du cœur ni l'intérieur de la palissade du Bourg**, et ne ferme jamais une quête de l'histoire.
