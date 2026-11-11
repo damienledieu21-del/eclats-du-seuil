@@ -490,6 +490,8 @@ namespace EdS.Game
             BuildingLook own = catalog != null ? catalog.OwnBuilding(id) : null;
             if (own == null) return false;
             // V2.18 : échelle 1, pivot (centre du pied des murs) au centre de l'emprise, tourné vers la porte ; les débords sortent.
+            // Revue Codex de la PR #145 : les exceptions d'orientation de l'atelier (la grange) valent aussi pour les bâtiments du bourg.
+            facing = TownModels.OwnFacing(id, facing);
             GameObject model = PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);
             OwnParts(own, model);
             return true;

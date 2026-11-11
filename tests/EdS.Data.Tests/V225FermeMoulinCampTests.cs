@@ -259,4 +259,14 @@ public class V225FermeMoulinCampTests : IDisposable
         Assert.Contains("Quaternion.Euler(_angle, 0f, 0f)", turn, StringComparison.Ordinal);
         Assert.Contains("TownModels.MillWaterOffset", turn, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void La_vue_applique_OwnFacing_aux_batiments_de_l_atelier()
+    {
+        string view = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        int own = view.IndexOf("private bool OwnBuilding(", StringComparison.Ordinal);
+        int place = view.IndexOf("PlaceModel(kind, id, x0, z0, x1, z1, own.Model", own, StringComparison.Ordinal);
+        int facing = view.IndexOf("facing = TownModels.OwnFacing(id, facing);", own, StringComparison.Ordinal);
+        Assert.True(own > 0 && facing > own && facing < place, "OwnFacing avant la pose des bâtiments de l'atelier");
+    }
 }
