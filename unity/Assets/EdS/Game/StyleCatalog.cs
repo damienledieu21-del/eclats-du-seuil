@@ -216,6 +216,10 @@ namespace EdS.Game
         public string Building;
         [Tooltip("V2.17 : centre (x, z) du pied du modèle à l'échelle 1, mesuré par le menu ; y : 0, le pivot est au sol : sert à placer la fumée de sa cheminée.")]
         public Vector3 Offset;
+        [Tooltip("V2.25 : roue de l'atelier qui tourne autour de son axe x (« moulin_roue.fbx », à côté du bâtiment) ; vide sans roue.")]
+        public GameObject Wheel;
+        [Tooltip("V2.25 : surface d'eau de l'atelier dont la texture défile (« moulin_eau.fbx », à côté du bâtiment) ; vide sans eau.")]
+        public GameObject Water;
     }
 
     /// <summary>
@@ -771,9 +775,11 @@ namespace EdS.Game
         public BuildingLook OwnBuilding(string id)
         {
             if (Buildings == null || string.IsNullOrEmpty(id)) return null;
+            // V2.25 : les trois tentes du camp partagent le modèle du dossier « tente » (TownModels.OwnModelFolder).
+            string folder = TownModels.OwnModelFolder(id);
             foreach (BuildingLook b in Buildings)
-                if (b != null && !string.IsNullOrEmpty(b.Building) && string.Equals(b.Building, id, StringComparison.OrdinalIgnoreCase)
-                    && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) return b;
+                if (b != null && !string.IsNullOrEmpty(b.Building) && (string.Equals(b.Building, id, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(b.Building, folder, StringComparison.OrdinalIgnoreCase)) && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) return b;
             return null;
         }
 

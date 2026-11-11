@@ -307,6 +307,103 @@ namespace EdS.Runtime
         public static (double X, double Y, double Z) OwnPlace(double cx, double cz, (int X, int Z) facing, double px, double py, double pz) =>
             OwnPoint(cx, cz, facing, OwnFit(facing), 0, 0, 0, px, py, pz);
 
+        /// <summary>
+        /// V2.25 : dossier du modèle de l'atelier d'un obstacle : les trois tentes du camp (« tente1 » à « tente3 ») partagent le modèle
+        /// standard de « …/Batiments/tente/ » (fiche : un modèle à répéter, varié par sa rotation) ; les autres obstacles ont le leur.
+        /// </summary>
+        public static string OwnModelFolder(string? id)
+        {
+            string key = StyleRules.Key(id ?? string.Empty);
+            return key.StartsWith("tente", StringComparison.Ordinal) && key.Length > 5 && key.Skip(5).All(char.IsDigit) ? "tente" : (id ?? string.Empty).ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// V2.25 : pièce animée d'un modèle de l'atelier rangée à côté du bâtiment (« moulin_roue.fbx », « moulin_eau.fbx ») : « roue »,
+        /// « eau », ou null pour le bâtiment lui-même.
+        /// </summary>
+        public static string? OwnPartOf(string? path)
+        {
+            if (OwnBuildingOf(path) == null) return null;
+            string name = path!.Replace('\\', '/').Split('/').Last();
+            name = name.Substring(0, name.Length - 4).ToLowerInvariant();
+            if (name.EndsWith("_roue", StringComparison.Ordinal)) return "roue";
+            if (name.EndsWith("_eau", StringComparison.Ordinal)) return "eau";
+            return null;
+        }
+
+        /// <summary>
+        /// V2.25 : façade d'un modèle de l'atelier quand la porte ou la route ne la décident pas bien : les palissades du camp tournent leur
+        /// face extérieure hors du camp (palissade_camp1, 1 × 16 : vers l'ouest ; palissade_camp2, 23 × 1 : vers le sud), ce qui couche
+        /// aussi leur longueur (le long du x du modèle) le long de l'emprise ; la grange garde sa longueur le long de son emprise. Les
+        /// autres gardent <paramref name="facing"/>.
+        /// </summary>
+        public static (int X, int Z) OwnFacing(string? id, (int X, int Z) facing)
+        {
+            switch (StyleRules.Key(id ?? string.Empty))
+            {
+                case "palissadecamp1": return (-1, 0);
+                case "palissadecamp2": return (0, -1);
+                // La grange (12 × 8, porte charretière sur le long côté) : le chemin des champs longe son côté est, mais tournée vers lui
+                // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au nord, vers le bourg, son pignon au chemin.
+                case "grange": return facing.X != 0 ? (0, 1) : facing;
+                default: return facing;
+            }
+        }
+
+        /// <summary>
+        /// V2.25 : centre de l'emprise dans le repère d'un modèle de l'atelier (m, comme <see cref="OwnChimney"/>), quand il n'est pas son
+        /// pivot : le moulin est recentré sur ses murs (Blender X 2,20, Y 2,70) mais son emprise de 6 × 6 (bief compris) a son centre 0,50
+        /// plus à droite (X 2,70), soit x −0,50 dans Unity (signe de x changé). Le modèle est posé ce point au centre de l'obstacle.
+        /// (0, 0) pour les autres.
+        /// </summary>
+        public static (double X, double Z) OwnFootCenter(string? model) =>
+            StyleRules.Key(model ?? string.Empty) == "moulinvallons" ? (2.20 - 2.70, 0.0) : (0.0, 0.0);
+
+        /// <summary>
+        /// V2.25 : centre des rendus d'une pièce animée d'un modèle de l'atelier (<see cref="OwnPartOf"/>), dans le repère du modèle d'Unity
+        /// (signe de x changé, comme <see cref="OwnChimney"/>), d'après l'export de jeu du moulin : roue X 2,22 – 3,45, Y −1,747 – 1,747,
+        /// Z 0,053 – 3,547 (son axe à Z 1,80, X 3,00) ; eau X 2,552 – 3,448, Y −2,4 – 2,4, Z 0,15. Null si inconnu.
+        /// </summary>
+        public static (double X, double Y, double Z)? OwnPartCenter(string? model, string? part)
+        {
+            if (StyleRules.Key(model ?? string.Empty) != "moulinvallons") return null;
+            switch (part)
+            {
+                case "roue": return (-(2.22 + 3.45) / 2, (0.053 + 3.547) / 2, 0.0);
+                case "eau": return (-(2.552 + 3.448) / 2, 0.15, 0.0);
+                default: return null;
+            }
+        }
+
+        /// <summary>V2.25 : vitesse (m/s) de l'eau du bief du moulin, qui défile le long de son courant.</summary>
+        public const double MillWaterSpeed = 0.7;
+
+        /// <summary>V2.25 : rayon (m) de la roue du moulin (fiche : diamètre 3,50).</summary>
+        public const double MillWheelRadius = 1.75;
+
+        /// <summary>
+        /// V2.25 : vitesse de la roue (degrés par seconde, autour de l'axe x du modèle, positif comme <c>Quaternion.Euler(a, 0, 0)</c>) : ses
+        /// aubes basses vont à la vitesse de l'eau (environ 23°/s, moins de 4 tours par minute).
+        /// </summary>
+        public static double MillWheelDegreesPerSecond => MillWaterSpeed / MillWheelRadius * 180 / Math.PI;
+
+        /// <summary>
+        /// V2.25 : point (<paramref name="y"/>, <paramref name="z"/>) de la roue, relatif à son axe, tourné de <paramref name="degrees"/>
+        /// autour de l'axe x comme <c>Quaternion.Euler(degrees, 0, 0)</c> d'Unity (le haut va vers +z) : avec une vitesse positive, l'aube
+        /// du bas va vers −z du modèle, l'arrière du moulin (Blender +Y), le sens du courant du bief.
+        /// </summary>
+        public static (double Y, double Z) MillWheelTurn(double degrees, double y, double z)
+        {
+            double a = degrees * Math.PI / 180, cos = Math.Cos(a), sin = Math.Sin(a);
+            return (y * cos - z * sin, y * sin + z * cos);
+        }
+
+        /// <summary>
+        /// V2.25 : décalage de la coordonnée v de la texture de l'eau du bief après <paramref name="seconds"/> s (v croît le long du courant,
+        /// 1 unité par mètre) : il décroît pour que l'eau descende le courant, ramené dans ]−1 ; 0].
+        /// </summary>
+        public static double MillWaterOffset(double seconds) => -((MillWaterSpeed * Math.Max(0.0, seconds)) % 1.0);
+
         /// <summary>Écart (m) de la lumière de porte d'un bâtiment de l'atelier : à droite de la porte, devant la façade.</summary>
         public const double OwnLanternAside = 0.4, OwnLanternAhead = 0.4;
 
