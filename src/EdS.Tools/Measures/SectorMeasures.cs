@@ -12,7 +12,7 @@ namespace EdS.Tools.Measures
 {
     /// <summary>
     /// Sous-lot V2.26 (PLAN_GRANDE_CARTE.md § 2.6 : « à mesurer au V2.26, eds mesures secteurs ») : coût du moteur par tick pour un secteur de
-    /// simulation, sur la machine qui lance l'outil. Espace du scénario de référence <c>espace_secteur</c> (320 m, 197 obstacles), un
+    /// simulation, sur la machine qui lance l'outil. Espace du scénario de référence <c>espace_secteur</c> (320 m, 195 obstacles), un
     /// mannequin au centre (cible inépuisable) et 59 loups (60 combattants) : « répartis » (sur tout le secteur, ceux à moins de 30 m
     /// s'engagent), « engagés » (tous engagés d'emblée, ils contournent le décor pour rejoindre la cible : le pire cas), « calme » (aucun
     /// joueur proche). Chaque cas : moyenne, 95e centile et maximum du temps d'un tick (après 100 ticks de mise en route), octets alloués

@@ -104,4 +104,21 @@ public class V226RegistreTests
         }
         Assert.Contains("| engages | 60 | 195 |", SectorMeasures.Format(new[] { new SectorMeasures.Result("engages", 60, 195, 20, 0.5, 0.7, 0.9, 1000) }), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Trop_de_secteurs_une_seule_erreur_de_volume()
+    {
+        // Relecture indépendante de la PR #151 : au-delà de 1 024 secteurs, la lecture échoue (pas de troncature silencieuse).
+        var save = new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), sectors: new[] { new KeyValuePair<string, long>("s00_00", 1) });
+        string text = SaveJsonReader.Write(save);
+        string many = string.Join(",\n", Enumerable.Range(0, SaveValidator.MaxSectors + 1).Select(i => $"      \"s{i / 64:D2}_{i % 64:D2}\": 1"));
+        SaveLoadResult r = SaveJsonReader.Read(text.Replace("      \"s00_00\": 1", many, StringComparison.Ordinal));
+        Assert.False(r.IsValid);
+        ValidationError e = Assert.Single(r.Report.Errors);
+        Assert.Equal(("$.data.sectors", ValidationCode.LimitExceeded), (e.Path, e.Code));
+        string exact = string.Join(",\n", Enumerable.Range(0, SaveValidator.MaxSectors).Select(i => $"      \"s{i / 64:D2}_{i % 64:D2}\": 1"));
+        SaveLoadResult ok = SaveJsonReader.Read(text.Replace("      \"s00_00\": 1", exact, StringComparison.Ordinal));
+        Assert.True(ok.IsValid, ok.Report.ToString());
+        Assert.Equal(SaveValidator.MaxSectors, ok.Save!.Sectors.Count);
+    }
 }

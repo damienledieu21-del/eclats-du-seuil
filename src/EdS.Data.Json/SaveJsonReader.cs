@@ -58,12 +58,17 @@ namespace EdS.Data.Json
                 ["sectors"] = (v, p) =>   // sous-lot V2.26 (version 18)
                 {
                     if (!input.RequireKind(v, JsonValueKind.Object, p, "objet")) return;
+                    // Relecture indépendante de la PR #151 : comme une liste trop longue (ReadLimitedList), un objet de plus de MaxSectors secteurs
+                    // donne une seule erreur de volume, sans analyser ses éléments, et la lecture échoue (jamais de troncature silencieuse).
+                    int count = v.EnumerateObject().Count;
+                    if (count > SaveValidator.MaxSectors)
+                    {
+                        input.Report.Add(p, ValidationCode.LimitExceeded, $"{count} secteurs, au plus {SaveValidator.MaxSectors}.");
+                        return;
+                    }
                     data.Sectors = new List<KeyValuePair<string, long?>>();
                     foreach (JsonProperty property in input.UniqueProperties(v, p))
-                    {
-                        if (data.Sectors.Count >= SaveValidator.MaxSectors) break;
                         data.Sectors.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
-                    }
                 },
                 ["character"] = (v, p) =>   // sous-lot 12.2 (version 2) : null ou le personnage
                 {
