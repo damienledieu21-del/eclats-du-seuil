@@ -400,7 +400,7 @@ public class VallonsAgrandisTests
     public void Routes_livrees_au_schema_3()
     {
         ZoneDefinition zone = Zone();
-        Assert.Equal(12, zone.SchemaVersion);   // V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; intérieurs (28 octobre 2026) : schéma 4, puis 5 (sous-lot V1.6 : chefs, familles), 6 (créature de la nuit), 7 (V1.8 : mélange) ; les routes restent
+        Assert.Equal(13, zone.SchemaVersion);   // V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; intérieurs (28 octobre 2026) : schéma 4, puis 5 (sous-lot V1.6 : chefs, familles), 6 (créature de la nuit), 7 (V1.8 : mélange) ; les routes restent
         Assert.Equal(ZoneValidator.CurrentSchemaVersion, zone.SchemaVersion);
         Road place = zone.Roads.Single(r => r.Kind == RoadKind.Cobble);
         Assert.Equal(("place_du_bourg", 12.0), (place.Id, place.Width.Raw / 10000.0));
@@ -439,6 +439,21 @@ public class VallonsAgrandisTests
         ZoneLoadResult many = WithZone(root =>
         {
             JsonArray roads = Roads(root);
+            for (int i = 0; i < ZoneValidator.MaxRoadsPerCell; i++)   // V2.25.3 : 33 routes au moins dans les cases de la première
+            {
+                JsonObject copy = roads[0]!.DeepClone().AsObject();
+                copy["id"] = "route_copie_" + i;
+                roads.Add(copy);
+            }
+        });
+        // V2.25.3 : les Vallons ont une région (schéma 13) : la borne est par case (32 routes) ; sans région, la borne d'avant (32 au total).
+        Assert.Contains(many.Report.Errors, e => e.Path.StartsWith("$.data.roads[", StringComparison.Ordinal) && e.Code == ValidationCode.LimitExceeded
+            && e.Message.Contains("case c", StringComparison.Ordinal));
+        ZoneLoadResult manyOld = WithZone(root =>
+        {
+            root["schemaVersion"] = 12;
+            root["data"]!.AsObject().Remove("region");
+            JsonArray roads = Roads(root);
             for (int i = roads.Count; i <= ZoneValidator.MaxRoads; i++)
             {
                 JsonObject copy = roads[0]!.DeepClone().AsObject();
@@ -446,10 +461,17 @@ public class VallonsAgrandisTests
                 roads.Add(copy);
             }
         });
-        Assert.Contains(many.Report.Errors, e => e.Path == "$.data.roads" && e.Code == ValidationCode.LimitExceeded);
-        ZoneLoadResult longRoad = WithZone(root => Roads(root)[0]!["points"] = new JsonArray(Enumerable.Range(0, ZoneValidator.MaxRoadPoints + 1)
+        Assert.Contains(manyOld.Report.Errors, e => e.Path == "$.data.roads" && e.Code == ValidationCode.LimitExceeded);
+        ZoneLoadResult longRoad = WithZone(root => Roads(root)[0]!["points"] = new JsonArray(Enumerable.Range(0, ZoneValidator.MaxRegionRoadPoints + 1)
             .Select(i => (JsonNode?)new JsonArray(-90 + i, 0)).ToArray()));
         Assert.Contains(longRoad.Report.Errors, e => e.Path == "$.data.roads[0].points" && e.Code == ValidationCode.LimitExceeded);
+        ZoneLoadResult longOld = WithZone(root =>
+        {
+            root["schemaVersion"] = 12;
+            root["data"]!.AsObject().Remove("region");
+            Roads(root)[0]!["points"] = new JsonArray(Enumerable.Range(0, ZoneValidator.MaxRoadPoints + 1).Select(i => (JsonNode?)new JsonArray(-90 + i, 0)).ToArray());
+        });
+        Assert.Contains(longOld.Report.Errors, e => e.Path == "$.data.roads[0].points" && e.Code == ValidationCode.OutOfRange);
         foreach (string field in new[] { "id", "kind", "width", "points" })
         {
             ZoneLoadResult missing = WithZone(root => Roads(root)[0]!.AsObject().Remove(field));

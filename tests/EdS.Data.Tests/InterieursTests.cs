@@ -190,12 +190,16 @@ public class InterieursTests : IDisposable
 
         JsonObject many = ZoneJson("zone.vallons");
         JsonArray doors = many["data"]!["doors"]!.AsArray();
-        for (int i = doors.Count; i <= ZoneValidator.MaxDoors; i++)
+        for (int i = 0; i < ZoneValidator.MaxDoorsPerCell; i++)   // V2.25.3 : 17 portes au moins dans la case de la première
         {
             JsonObject copy = JsonNode.Parse(doors[0]!.ToJsonString())!.AsObject();
-            copy["id"] = "porte_" + i;
+            copy["id"] = "porte_copie_" + i;
             doors.Add(copy);
         }
+        // V2.25.3 : avec la région des Vallons (schéma 13), la borne est par case (16 portes) ; sans région, celle d'avant (16 au total).
+        Assert.Contains(Read(many).Report.Errors, e => e.Path.StartsWith("$.data.doors[", StringComparison.Ordinal) && e.Code == ValidationCode.LimitExceeded);
+        many["schemaVersion"] = 12;
+        many["data"]!.AsObject().Remove("region");
         Assert.Contains(Read(many).Report.Errors, e => e.Path == "$.data.doors" && e.Code == ValidationCode.LimitExceeded);
 
         JsonObject old = ZoneJson("zone.auberge");

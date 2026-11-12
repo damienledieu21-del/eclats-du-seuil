@@ -69,6 +69,25 @@ namespace EdS.Data.Zones
         /// facultatif.
         /// </summary>
         public List<WorldEventData?>? Events { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.25.3 (schéma 13, grande carte) : repère et grille de la région (cases de 128 m, secteurs de 256 m) ; facultatif.
+        /// Données seulement : rien ne change au jeu.
+        /// </summary>
+        public RegionData? Region { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.25.3 (schéma 13) : grille d'une région, depuis son coin sud-ouest.</summary>
+    public sealed class RegionData
+    {
+        /// <summary>Coin sud-ouest [x, z], en mètres entiers.</summary>
+        public PointData? Origin { get; set; }
+
+        /// <summary>Colonnes de cases (d'ouest en est), nombre pair.</summary>
+        public int? Columns { get; set; }
+
+        /// <summary>Rangées de cases (du sud au nord), nombre pair.</summary>
+        public int? Rows { get; set; }
     }
 
     /// <summary>Sous-lot V2.1 (schéma 8) : place d'un PNJ la nuit, devant sa porte.</summary>

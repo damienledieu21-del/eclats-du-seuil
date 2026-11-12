@@ -34,7 +34,7 @@ public class V18bTests
     public void Zones_en_schema_7_niveaux_minimums_et_reglage()
     {
         ZoneDefinition z = Vallons;
-        Assert.Equal((12, 12), (z.SchemaVersion, ZoneValidator.CurrentSchemaVersion));   // V2.6.1 : schéma 12 (propagation) ; V2.6 : schéma 11 (cicatrices) ; V2.5 : schéma 10 (événements)   // V2.4 : schéma 9 (temps) ; V2.1 : schéma 8 (jour et nuit)
+        Assert.Equal((13, 13), (z.SchemaVersion, ZoneValidator.CurrentSchemaVersion));   // V2.25.3 : schéma 13 (région) ; V2.6.1 : schéma 12 (propagation) ; V2.6 : schéma 11 (cicatrices) ; V2.5 : schéma 10 (événements)   // V2.4 : schéma 9 (temps) ; V2.1 : schéma 8 (jour et nuit)
         ZoneScaling s = z.Scaling!;
         Assert.Equal((1, 5, 12, 30, 2), (s.BaseLevel, s.BossBaseLevel, s.HealthPerLevelPercent, s.DamagePerLevelPercent, s.EaseLevels));
         int Min(string place) => z.Places.Single(p => p.Id == place).MinLevel;
