@@ -187,6 +187,21 @@ public class V2252DecorTests : IDisposable
         Assert.Equal(AtelierDecor.SeuilGlowDay, AtelierDecor.SeuilGlow(double.NaN));
         Assert.True(AtelierDecor.SeuilGlowDay < 0.3 && AtelierDecor.SeuilGlowNight <= 2.0, "discrète le jour, sans halo excessif la nuit");
         for (double l = 0; l < 1; l += 0.05) Assert.True(AtelierDecor.SeuilGlow(l + 0.05) > AtelierDecor.SeuilGlow(l));
+        // Revue Codex de la PR #147 : les copies transparentes d'une pierre en fondu suivent aussi la lueur, sans allocation (boucles sur
+        // les tableaux des occulteurs des pierres), et seulement tant que le fondu existe (ses copies sont détruites par ReleaseFade).
+        string space = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        string seuil = space.Substring(space.IndexOf("private void SeuilGlow(float lamps)", StringComparison.Ordinal));
+        seuil = seuil.Substring(0, seuil.IndexOf("\n        }\n", StringComparison.Ordinal));
+        Assert.Contains("foreach (Occluder o in _seuilOccluders)", seuil, StringComparison.Ordinal);
+        Assert.Contains("if (o.Faded == null || o.Clear == null) continue;", seuil, StringComparison.Ordinal);
+        Assert.Contains("Material m = o.Clear[i][k];", seuil, StringComparison.Ordinal);
+        Assert.DoesNotContain("new ", seuil, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Select(", seuil, StringComparison.Ordinal);
+        string stone = space.Substring(space.IndexOf("private void OwnStone(", StringComparison.Ordinal));
+        stone = stone.Substring(0, stone.IndexOf("\n        }\n", StringComparison.Ordinal));
+        Assert.Contains("_seuilOccluders.Add(_occluders[i]);", stone, StringComparison.Ordinal);
+        int prepare = space.IndexOf("private static void PrepareFade(", StringComparison.Ordinal);
+        Assert.True(prepare > 0 && space.IndexOf("Object.Destroy(m);", space.IndexOf("private static void ReleaseFade(", StringComparison.Ordinal), StringComparison.Ordinal) > 0);
         // Elle suit les lanternes du monde, relue à chaque image dehors, sans lumière ajoutée.
         string night = File.ReadAllText(Path.Combine(Game, "SpaceView.Night.cs"));
         int glow = night.IndexOf("SeuilGlow(StyleWorld.Lamps);", StringComparison.Ordinal);

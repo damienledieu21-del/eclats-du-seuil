@@ -627,6 +627,12 @@ namespace EdS.Game
 
         /// <summary>Matériaux lumineux des pierres du Seuil (copies, détruites avec elles), lueur montrée (−1 : à poser).</summary>
         private readonly List<Material> _seuilGlow = new List<Material>();
+
+        /// <summary>
+        /// Revue Codex de la PR #147 : occulteurs des pierres du Seuil ; leurs copies transparentes (<see cref="PrepareFade"/>, pierre qui
+        /// cache le personnage) suivent aussi la lueur, et restent détruites avec les autres copies (<see cref="ReleaseFade"/>).
+        /// </summary>
+        private readonly List<Occluder> _seuilOccluders = new List<Occluder>();
         private float _shownSeuilGlow = -1f;
         private int _seuilStones;
 
@@ -665,7 +671,9 @@ namespace EdS.Game
                 copies.Copies.Add(glow);
                 _seuilGlow.Add(glow);
             }
+            int firstOccluder = _occluders.Count;
             AddModelOccluders(model);
+            for (int i = firstOccluder; i < _occluders.Count; i++) _seuilOccluders.Add(_occluders[i]);
             _seuilStones++;
         }
 
@@ -677,6 +685,17 @@ namespace EdS.Game
             Color emission = Color.white * (float)AtelierDecor.SeuilGlow(lamps);
             foreach (Material m in _seuilGlow)
                 if (m != null) m.SetColor("_EmissionColor", emission);
+            // Revue Codex de la PR #147 : les copies transparentes d'une pierre en fondu (faites d'une matière lumineuse) aussi.
+            foreach (Occluder o in _seuilOccluders)
+            {
+                if (o.Faded == null || o.Clear == null) continue;   // pas de fondu préparé (ou copies déjà détruites)
+                for (int i = 0; i < o.Clear.Length; i++)
+                    for (int k = 0; k < o.Clear[i].Length; k++)
+                    {
+                        Material m = o.Clear[i][k];
+                        if (m != null && m.HasProperty("_EmissionColor") && m.GetTexture("_EmissionMap") != null) m.SetColor("_EmissionColor", emission);
+                    }
+            }
         }
 
         /// <summary>V2.25.2 : cercle de cailloux et touffes d'herbe pâle, seulement autour des pierres de l'atelier.</summary>
