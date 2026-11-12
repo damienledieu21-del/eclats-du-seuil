@@ -7,14 +7,14 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// V2.25.1 (décision de Damien du 11 novembre 2026 : « faut que la grange ait un chemin pour aller jusqu'à sa porte ») : le chemin de la
-/// grange part du chemin des champs et arrive dans l'axe de la porte charretière (façade sud, +z), sur une aire de terre battue. Deux routes
+/// grange part du chemin des champs et arrive dans l'axe de la porte charretière (façade nord, +z), sur une aire de terre battue. Deux routes
 /// de terre de la zone (<c>data.roads</c>, schéma de zone v12 inchangé) : données d'affichage seulement (carte peinte, sol du décor, flaques,
 /// façades), sans effet sur la simulation ni sur le scénario de référence. Sans Unity.
 /// </summary>
 [Trait("Category", "World")]
 public class V2251CheminGrangeTests
 {
-    // Emprise de l'obstacle « grange » (scenarios/zones/vallons.json) et sa porte charretière : 3 m de large, au milieu de la façade sud.
+    // Emprise de l'obstacle « grange » (scenarios/zones/vallons.json) et sa porte charretière : 3 m de large, au milieu de la façade nord.
     private const double MinX = -92, MaxX = -80, MinZ = -50, MaxZ = -42, DoorX = (MinX + MaxX) / 2, DoorWidth = 3;
 
     private static ZoneDefinition Zone() => ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"), Path.Combine(AppContext.BaseDirectory, "scenarios"),
@@ -67,7 +67,7 @@ public class V2251CheminGrangeTests
     public void La_porte_de_la_grange_fait_face_au_chemin()
     {
         AdventureMap map = Map();
-        // La route la plus proche décide maintenant seule la façade sud (+z) ; l'orientation propre à l'atelier la garde.
+        // La route la plus proche décide maintenant seule la façade nord (+z) ; l'orientation propre à l'atelier la garde.
         (int X, int Z) facing = TownRules.FacingOf("grange", MinX, MinZ, MaxX, MaxZ, map.Roads, map.Doors);
         Assert.Equal((0, 1), facing);
         Assert.Equal((0, 1), TownModels.OwnFacing("grange", facing));
