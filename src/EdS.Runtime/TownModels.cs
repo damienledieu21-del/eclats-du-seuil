@@ -344,7 +344,7 @@ namespace EdS.Runtime
                 case "palissadecamp1": return (-1, 0);
                 case "palissadecamp2": return (0, -1);
                 // La grange (12 × 8, porte charretière sur le long côté) : le chemin des champs longe son côté est, mais tournée vers lui
-                // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au sud (+z), vers le bourg, son pignon au chemin.
+                // elle mettrait ses 12 m sur les 8 m de l'emprise ; sa façade va au nord (+z), vers le bourg, son pignon au chemin.
                 case "grange": return facing.X != 0 ? (0, 1) : facing;
                 // V2.25.2 : la barrière du moulin a son avant au nord (hors du passage), ses vantaux s'ouvrent vers le moulin (sud) ; le
                 // front de taille (28 × 4) a son côté exploité vers l'ouest, vers le fond de la carrière ; les murs des ruines (1 × 12,5 et
