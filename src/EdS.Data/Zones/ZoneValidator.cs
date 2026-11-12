@@ -98,9 +98,17 @@ namespace EdS.Data.Zones
         /// <summary>Sous-lot V2.4 : signe de son arrivée à ses heures ou par son temps (celui des heures d'abord), ou null.</summary>
         public string? TimedSign => Hours?.Sign ?? Weather?.Sign;
 
+        /// <summary>
+        /// Sous-lot V2.26 (schéma 14, PLAN_GRANDE_CARTE.md § 2.5) : territoire, rayon autour de sa place de départ ; une créature engagée qui en
+        /// sort lâche (comme pour la laisse : elle s'en va, ni mort ni butin, une vie calme la remplace chez elle). Null : pas de territoire
+        /// (comme avant). Validé pour tenir dans la marge de son secteur.
+        /// </summary>
+        public Fixed? Territory { get; }
+
         internal Population(string creature, AssailantSetup template, long respawnMs, Fixed leashRange, string? loot, string? family = null, NightSpawn? night = null,
-            int? level = null, PopulationHours? hours = null, PopulationWeather? weather = null)
+            int? level = null, PopulationHours? hours = null, PopulationWeather? weather = null, Fixed? territory = null)
         {
+            Territory = territory;
             Hours = hours;
             Weather = weather;
             Level = level;
@@ -441,7 +449,7 @@ namespace EdS.Data.Zones
             CombatSetup setup = new CombatSetup(Setup.Seed, Setup.DurationMs, Setup.Stats, Setup.Damage, Setup.Progression, Setup.Combat,
                 Setup.Combatants.Select(c => c is AssailantSetup a ? scaled[a.Id] : c).ToList(), Setup.Commands, Setup.Data, Setup.Space, Setup.Zone, Setup.Truces);
             var populations = Populations.Select(p => new Population(p.Creature, scaled.TryGetValue(p.Template.Id, out AssailantSetup t) ? t : One(p.Template, false),
-                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather)).ToList();
+                p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather, p.Territory)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
                 ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region);
@@ -496,8 +504,45 @@ namespace EdS.Data.Zones
         /// <c>scar.spreadDays</c>, <c>scar.spreadFact</c>, <c>groups[g].spreadTo</c>) ; la version 11 est encore lue (sans elle). Version 13
         /// (sous-lot V2.25.3, grande carte : cases et repère) : <c>region</c> facultatif (<c>origin</c>, <c>columns</c>, <c>rows</c> : grille de
         /// cases de 128 m et secteurs de 256 m, voir <see cref="RegionGrid"/>) ; une zone à région a des bornes relevées et des bornes par case
-        /// (<see cref="MaxRegionPlaces"/>) ; la version 12 est encore lue (sans elle).</remarks>
-        public const int CurrentSchemaVersion = 13;
+        /// (<see cref="MaxRegionPlaces"/>) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) :
+        /// <c>territory</c> facultatif sur une population (rayon autour de sa place de départ, voir <see cref="Population.Territory"/>) ; dans une
+        /// zone à région, chaque créature peuplée part d'au moins <see cref="MinSectorInset"/> du bord de son secteur ; la version 13 est encore
+        /// lue (sans eux).</remarks>
+        public const int CurrentSchemaVersion = 14;
+
+        /// <summary>
+        /// Sous-lot V2.26 : distance d'un point au plus proche bord de son secteur qui passe à l'intérieur de l'aire de la zone (au-delà, un
+        /// autre secteur simulé) ; null si aucun bord du secteur n'est intérieur (le secteur tient toute l'aire de ce côté-là, comme le cœur
+        /// des Vallons).
+        /// </summary>
+        public static Fixed? InnerEdgeDistance(RegionGrid region, CombatSpace area, GroundVector p)
+        {
+            if (!region.Contains(p)) return null;
+            RegionCell cell = region.CellOf(p);
+            Fixed minX = Fixed.FromInt(region.OriginX + cell.SectorColumn * RegionGrid.SectorMeters), minZ = Fixed.FromInt(region.OriginZ + cell.SectorRow * RegionGrid.SectorMeters);
+            Fixed maxX = minX + Fixed.FromInt(RegionGrid.SectorMeters), maxZ = minZ + Fixed.FromInt(RegionGrid.SectorMeters);
+            Fixed? best = null;
+            void Edge(bool inner, Fixed d)
+            {
+                if (!inner) return;
+                if (d < Fixed.Zero) d = Fixed.Zero;
+                if (best is not Fixed b || d < b) best = d;
+            }
+            Edge(minX > area.Min.X, p.X - minX);
+            Edge(maxX < area.Max.X, maxX - p.X);
+            Edge(minZ > area.Min.Z, p.Z - minZ);
+            Edge(maxZ < area.Max.Z, maxZ - p.Z);
+            return best;
+        }
+
+        /// <summary>Sous-lot V2.26 : version de la région (cases et repère, V2.25.3), encore lue.</summary>
+        public const int RegionSchemaVersion = 13;
+
+        /// <summary>Sous-lot V2.26 : territoire maximal (secteur entier) et territoire au plus sans région (PLAN_GRANDE_CARTE.md § 2.5).</summary>
+        public static readonly Fixed MaxTerritory = Fixed.FromInt(256), DefaultTerritory = Fixed.FromInt(40);
+
+        /// <summary>Sous-lot V2.26 : marge d'un secteur (32 m) et distance minimale d'une créature peuplée au bord de son secteur (8 m).</summary>
+        public static readonly Fixed SectorMargin = Fixed.FromInt(32), MinSectorInset = Fixed.FromInt(8);
 
         /// <summary>Sous-lot V2.6.1 : version encore lue (sous-ensemble de la version 12, sans propagation des cicatrices).</summary>
         public const int ScarsSchemaVersion = 11;
@@ -572,6 +617,7 @@ namespace EdS.Data.Zones
             int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion
                 || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion || document.SchemaVersion == ScarsSchemaVersion
                 || document.SchemaVersion == SpreadSchemaVersion   // sous-lot V2.25.3 : la version 12 aussi (sans région)
+                || document.SchemaVersion == RegionSchemaVersion   // sous-lot V2.26 : la version 13 aussi (sans territoire)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -580,7 +626,8 @@ namespace EdS.Data.Zones
             bool schema10 = document.SchemaVersion >= EventsSchemaVersion;
             bool schema11 = document.SchemaVersion >= ScarsSchemaVersion;
             bool schema12 = document.SchemaVersion >= SpreadSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
-            bool schema13 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
+            bool schema13 = document.SchemaVersion >= RegionSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
+            bool schema14 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.26 : territoire des populations, secteurs
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -601,7 +648,7 @@ namespace EdS.Data.Zones
             bool regional = d.Region != null;
             if (d.Region != null)
             {
-                if (!schema13) report.Add("$.data.region", ValidationCode.InvalidValue, $"région : schéma {CurrentSchemaVersion} attendu.");
+                if (!schema13) report.Add("$.data.region", ValidationCode.InvalidValue, $"région : schéma {RegionSchemaVersion} attendu.");
                 else region = CheckRegion(d.Region, space, report);
             }
             int maxPlaces = regional ? MaxRegionPlaces : MaxPlaces, maxDoors = regional ? MaxRegionDoors : MaxDoors;
@@ -746,7 +793,31 @@ namespace EdS.Data.Zones
                     int maxPopulationLevel = scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit;
                     if (p.Level is int pl && (pl < 1 || pl > maxPopulationLevel))
                     { report.Add(path + ".level", ValidationCode.OutOfRange, $"niveau propre hors de [1, {maxPopulationLevel}]."); ok = false; }
-                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level, hours, weather));
+                    // Sous-lot V2.26 (schéma 14) : territoire. Sans région, au plus 40 m ; avec une région, la créature part d'au moins 8 m du bord
+                    // de son secteur et son territoire tient dans la marge de 32 m au-delà de ce bord (une créature ne dépasse jamais la marge).
+                    if (p.Territory is Fixed territory)
+                    {
+                        if (!schema14) { report.Add(path + ".territory", ValidationCode.InvalidValue, $"territoire d'une population : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                        else if (territory <= Fixed.Zero || territory > MaxTerritory)
+                        { report.Add(path + ".territory", ValidationCode.OutOfRange, $"territoire hors de ]0, {MaxTerritory}] m."); ok = false; }
+                        else if (region is null && territory > DefaultTerritory)
+                        { report.Add(path + ".territory", ValidationCode.OutOfRange, $"territoire de plus de {DefaultTerritory} m : seulement dans une zone à région, s'il tient dans la marge de son secteur."); ok = false; }
+                        else if (region != null && space != null && template?.Placement is { } start && InnerEdgeDistance(region, space, start.Position) is Fixed edge
+                            && territory > checked(edge + SectorMargin))
+                        {
+                            report.Add(path + ".territory", ValidationCode.OutOfRange,
+                                $"territoire de {territory} m : au plus la distance de sa place au bord de son secteur plus la marge de {SectorMargin} m ({edge + SectorMargin} m).");
+                            ok = false;
+                        }
+                    }
+                    if (schema14 && region != null && space != null && template?.Placement is { } placed && region.Contains(placed.Position)
+                        && InnerEdgeDistance(region, space, placed.Position) is Fixed inset && inset < MinSectorInset)
+                    {
+                        report.Add(path + ".creature", ValidationCode.OutOfRange,
+                            $"créature à moins de {MinSectorInset} m du bord de son secteur ({region.CellOf(placed.Position).SectorName}) : une population part de l'intérieur de son secteur.");
+                        ok = false;
+                    }
+                    if (ok && template != null) populations.Add(new Population(p.Creature!, template, p.RespawnMs!.Value, p.LeashRange!.Value, p.Loot, p.Family, night, p.Level, hours, weather, p.Territory));
                 }
             }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Saves;
+using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
 
@@ -72,6 +73,12 @@ namespace EdS.World
         /// <summary>Identifiant de la zone (« zone.vallons »).</summary>
         public string Id { get; }
 
+        /// <summary>
+        /// Sous-lot V2.26 : secteur de simulation de cette session (« s08_05 ») ; null pour la session d'une zone entière ou du secteur du cœur
+        /// (clés d'avant : « zone.vallons/3/death/loup1 »). Un autre secteur ajoute son nom : « zone.vallons/s08_05/3/death/loup1 ».
+        /// </summary>
+        public string? Sector { get; }
+
         /// <summary>Numéro de cette session de zone (1 pour la première partie, puis à chaque reprise).</summary>
         public long Session { get; }
 
@@ -92,8 +99,11 @@ namespace EdS.World
         /// occupée) ; ils font partie de la simulation de départ, donc de l'en-tête du journal (identité de leur classe comprise).</param>
         /// <exception cref="ArgumentException">Identifiant de zone invalide, session ou temps hors bornes, ou combat fermé au lieu d'une zone.</exception>
         public Zone(string id, CombatSetup setup, long session, long startWorldTick, IEnumerable<string>? consumed = null, ICombatLog? log = null,
-            WorldClock? clock = null, IEnumerable<CharacterSetup>? entering = null)
+            WorldClock? clock = null, IEnumerable<CharacterSetup>? entering = null, string? sector = null)
         {
+            // Sous-lot V2.26 : secteur de simulation (autre que celui du cœur, qui garde ses clés) : son nom entre dans les clés de mort.
+            if (sector != null && !RegionCellNames.IsSectorName(sector)) throw new ArgumentException($"Nom de secteur « {sector} » invalide : « s<col>_<rang> » attendu.", nameof(sector));
+            Sector = sector;
             if (!SaveValidator.IsZoneId(id)) throw new ArgumentException($"Identifiant de zone « {id} » invalide : « zone.<nom> » attendu.", nameof(id));
             if (setup is null) throw new ArgumentNullException(nameof(setup));
             if (entering != null) setup = setup.Completed(entering.Select(c => Arriving(c ?? throw new ArgumentNullException(nameof(entering)), 0)), Array.Empty<CombatCommand>());
@@ -177,7 +187,7 @@ namespace EdS.World
 
         /// <summary>Clé d'un événement de cette session (« zone.vallons/3/death/loup1 »).</summary>
         public string EventKey(ZoneEventKind kind, string combatant) =>
-            $"{Id}/{Session}/{(kind == ZoneEventKind.Death ? "death" : throw new ArgumentOutOfRangeException(nameof(kind)))}/{combatant}";
+            $"{Id}/{(Sector is null ? "" : Sector + "/")}{Session}/{(kind == ZoneEventKind.Death ? "death" : throw new ArgumentOutOfRangeException(nameof(kind)))}/{combatant}";
 
         /// <summary>
         /// Simule un tick de la zone et rend ses événements consommables, dans l'ordre des identifiants ; aucun si la session est terminée.

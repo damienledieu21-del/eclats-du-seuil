@@ -207,6 +207,9 @@ namespace EdS.Data.Zones
         /// <summary>Laisse : écart (entre les bords des emprises) à sa cible au-delà duquel elle lâche, en mètres.</summary>
         public EdS.Domain.Numerics.Fixed? LeashRange { get; set; }
 
+        /// <summary>Sous-lot V2.26 (schéma 14) : territoire, rayon autour de sa place de départ au-delà duquel une créature engagée lâche ; facultatif.</summary>
+        public EdS.Domain.Numerics.Fixed? Territory { get; set; }
+
         /// <summary>Table de butin (catalogue des objets) ; facultative.</summary>
         public string? Loot { get; set; }
 
