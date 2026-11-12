@@ -5,6 +5,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using EdS.Data.Json;
+using EdS.Data.Validation;
+using System.Collections.Generic;
 using EdS.Data.Scenarios;
 using EdS.Domain.Combat;
 using EdS.Simulation.Engine;
@@ -125,5 +127,27 @@ public class V226SecteursReferenceTests
         Assert.False(ReadMutated(root => DataOf(root)["combatants"]![1]!["carried"]!["inconnu"] = 1, scenario: Secteur).IsValid);
         Assert.Contains(ReadMutated(root => DataOf(root)["combatants"]![1]!.AsObject().Remove("arrivalMs"), scenario: Secteur).Report.Errors,
             e => e.Path.Contains("carried", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Recharges_emportees_en_double_ou_sans_duree_refusees_au_chemin(bool missing)
+    {
+        // Revue Codex de la PR #149 : en objets publics, une recharge donnée deux fois (ou sans durée) donne un rapport, pas une exception.
+        var report = new ValidationReport();
+        var document = new ScenarioDocument();
+        JsonHeader header = JsonInput.Parse(JsonInput.Utf8(File.ReadAllText(ScenarioPath(Secteur)), report)!, report,
+            (input, element) => document.Data = ScenarioJsonReader.ReadData(input, element, "$.data", ShippedData.Rules.Combat));
+        (document.SchemaVersion, document.Kind, document.ContentVersion) = (header.SchemaVersion, header.Kind, header.ContentVersion);
+        CombatantData hero = document.Data!.Combatants!.Single(c => c!.Id == "bastion")!;
+        const string skill = "skill.bastion.heurt_de_bouclier";
+        hero.Carried!.Cooldowns = missing
+            ? new List<KeyValuePair<string, int?>> { new(skill, null) }
+            : new List<KeyValuePair<string, int?>> { new(skill, 1000), new(skill, 2000) };
+        ScenarioLoadResult result = ScenarioValidator.Validate(document, ShippedData);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Report.Errors, e => e.Path == "$.data.combatants[1].carried.cooldowns." + skill
+            && e.Code == (missing ? ValidationCode.MissingField : ValidationCode.DuplicateId));
     }
 }

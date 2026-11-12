@@ -319,6 +319,19 @@ namespace EdS.Data.Scenarios
                 else
                     foreach (string field in PlacementFields.Where(c.Present.Contains))
                         _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "champ réservé aux combats positionnés (bloc space).");
+                // Revue Codex de la PR #149 : recharges emportées : chaque compétence une seule fois, avec sa durée (sinon l'état emporté ne
+                // se construit pas) ; les bornes sont jugées ensuite par la validation du combat.
+                if (c.Carried?.Cooldowns is { } cooldowns)
+                {
+                    var seen = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (KeyValuePair<string, int?> cooldown in cooldowns)
+                    {
+                        string cp = $"{path}.carried.cooldowns.{cooldown.Key}";
+                        if (cooldown.Key is null) _report.Add(path + ".carried.cooldowns", ValidationCode.MissingField, "compétence attendue.");
+                        else if (!seen.Add(cooldown.Key)) _report.Add(cp, ValidationCode.DuplicateId, $"recharge de « {cooldown.Key} » donnée deux fois.");
+                        else if (cooldown.Value is null) _report.Add(cp, ValidationCode.MissingField, "recharge restante en ms attendue.");
+                    }
+                }
                 Present(c.Id, path + ".id", "identifiant du combattant");
                 Present(c.Team, path + ".team", "équipe");
                 Present(c.Initiative, path + ".initiative", "entier");

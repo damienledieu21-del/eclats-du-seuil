@@ -161,9 +161,20 @@ namespace EdS.World
         /// tient toute l'aire rend l'aire elle-même.
         /// </summary>
         /// <exception cref="ArgumentException">Secteur inconnu ou hors de l'aire.</exception>
-        public CombatSetup SetupFor(string sector, long session)
+        public CombatSetup SetupFor(string sector, long session) => SetupFor(sector, session, reopened: false);
+
+        /// <param name="reopened">Revue Codex de la PR #150 : le cœur rouvert après une fermeture prend une graine tirée de son nom et de sa
+        /// session, comme un autre secteur (sa première ouverture reste exactement la zone).</param>
+        public CombatSetup SetupFor(string sector, long session, bool reopened)
         {
-            if (sector == HomeSector && HomeHoldsArea) return Area;
+            if (sector == HomeSector && HomeHoldsArea && !reopened)
+                return Area;
+            if (sector == HomeSector && HomeHoldsArea)
+            {
+                CombatSetup a = Area;
+                return new CombatSetup(SeedOf(a.Seed, sector, session), a.DurationMs, a.Stats, a.Damage, a.Progression, a.Combat, a.Combatants, a.Commands,
+                    a.Data, a.Space, a.Zone, a.Truces);
+            }
             var space = Space(sector) ?? throw new ArgumentException($"Secteur « {sector} » hors de l'aire.", nameof(sector));
             CombatSpace area = Area.Space!;
             var obstacles = area.Obstacles.Where(o =>
@@ -174,7 +185,7 @@ namespace EdS.World
             var cut = new CombatSpace(new GroundVector(Fixed.FromRaw(space.MinX), Fixed.FromRaw(space.MinZ)),
                 new GroundVector(Fixed.FromRaw(space.MaxX), Fixed.FromRaw(space.MaxZ)), obstacles);
             var combatants = Area.Combatants.Where(c => Owns(sector, c)).ToList();
-            long seed = sector == HomeSector ? Area.Seed : SeedOf(Area.Seed, sector, session);
+            long seed = sector == HomeSector && !reopened ? Area.Seed : SeedOf(Area.Seed, sector, session);
             return new CombatSetup(seed, Area.DurationMs, Area.Stats, Area.Damage, Area.Progression, Area.Combat, combatants, Area.Commands,
                 Area.Data, cut, true, Area.Truces);
         }
@@ -276,6 +287,10 @@ namespace EdS.World
             public string Combatant = string.Empty;
             public string? PendingTo;
             public GroundVector? PendingMove;
+
+            /// <summary>Revue Codex de la PR #150 : arrivée programmée (secteur de départ et personnage complet), pour la rattraper si elle est refusée.</summary>
+            public string? ArrivingFrom;
+            public CharacterSetup? Arrival;
             public bool PendingBackward;
             public int Passages;
         }
@@ -292,6 +307,7 @@ namespace EdS.World
         private readonly HashSet<string> _consumed;
         private readonly SortedDictionary<string, long> _sectorSessions;
         private readonly long _closeAfterTicks;
+        private bool _homeOpened;
 
         public SectorMap Map => _map;
         public string ZoneId => _zoneId;
@@ -402,14 +418,19 @@ namespace EdS.World
             if (_open.TryGetValue(name, out Open? open)) return open;
             bool home = name == _map.HomeSector;
             long session;
-            if (home) session = _session;
+            bool reopened = false;
+            if (home && !_homeOpened && !_sectorSessions.ContainsKey(name)) session = _session;
             else
             {
+                // Revue Codex de la PR #150 : le cœur rouvert prend aussi une session nouvelle (clés de mort et journal nouveaux, format des
+                // clés du cœur gardé) ; elle part au-delà de la session du monde.
                 _sectorSessions.TryGetValue(name, out long last);
-                session = checked(last + 1);
-                _sectorSessions[name] = session;
+                session = checked(Math.Max(last, home ? _session : 0) + 1);
+                reopened = home;
             }
-            CombatSetup setup = _map.SetupFor(name, session);
+            if (home) _homeOpened = true;
+            if (!home || reopened) _sectorSessions[name] = session;
+            CombatSetup setup = _map.SetupFor(name, session, reopened);
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
             var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.SectorOf(p.Template.Placement.Position) == name
                 && setup.Combatants.Any(c => c.Id == p.Creature)));
@@ -446,12 +467,17 @@ namespace EdS.World
         /// chevaucher une emprise solide présente (règle de contact) ; anneaux de 0,5 m (jusqu'à 8 m), huit directions dans un ordre fixe.
         /// Null s'il n'y en a aucune.
         /// </summary>
+        /// <summary>Place libre la plus proche dans un secteur ouvert (null s'il n'est pas ouvert ou s'il n'y en a pas) ; pour les tests.</summary>
+        internal GroundVector? FreeSpotIn(string sector, GroundVector at, Fixed radius) => _open.TryGetValue(sector, out Open? o) ? FreeSpot(o, at, radius) : null;
+
         private GroundVector? FreeSpot(Open open, GroundVector at, Fixed radius)
         {
             CombatEngine engine = open.Zone.Engine;
             CombatSpace space = open.Zone.Setup.Space!;
             long r = radius.Raw;
-            var others = engine.CombatantIds.Select(engine.View).Where(v => v.IsPresent && !v.IsDead && v.Position != null && v.Radius != null
+            // Revue Codex de la PR #150 : les arrivées déjà programmées à ce tick (réapparitions, autres passages) comptent comme présentes.
+            var others = engine.CombatantIds.Select(engine.View).Where(v => (v.IsPresent || (!v.HasLeft && !v.IsDead && v.ArrivalTick == engine.CurrentTick))
+                && !v.IsDead && v.Position != null && v.Radius != null
                 && open.Zone.Setup.Combat.AreSolid(true, radius, v.Kind == CombatantKind.Character, v.Radius.Value)).ToList();
             bool Free(long x, long z) =>
                 x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
@@ -466,6 +492,40 @@ namespace EdS.World
                     if (Free(x, z)) return new GroundVector(Fixed.FromRaw(x), Fixed.FromRaw(z));
                 }
             return null;
+        }
+
+        /// <summary>
+        /// Fait arriver le joueur dans le secteur <paramref name="sector"/> au tick courant de sa session : place libre la plus proche, place et
+        /// identité disponibles, arrivée admise par le moteur ; faux sans rien changer sinon.
+        /// </summary>
+        private bool Place(Player p, string sector, GroundVector at, Fixed radius, GroundVector? facing, IReadOnlyList<ConsumableSetup>? consumables,
+            CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null)
+        {
+            if (!_open.TryGetValue(sector, out Open? target) || target.Zone.IsOver) return false;
+            CombatEngine engine = target.Zone.Engine;
+            if (engine.FreePlaces == 0 || engine.IdentitiesLeft == 0) return false;
+            if (FreeSpot(target, at, radius) is not GroundVector spot) return false;
+            int passages = p.Passages;
+            string id = IdentityIn(target.Zone, p);
+            long atMs = checked(engine.CurrentTick * engine.TickMilliseconds);
+            CharacterSetup arrival = Arriving(p.Setup, id, new CombatantPlacement(spot, radius, facing), atMs, consumables, carried);
+            try
+            {
+                target.Zone.Enter(arrival);
+            }
+            catch (ArgumentException)
+            {
+                p.Passages = passages;
+                return false;
+            }
+            // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
+            if (move is GroundVector m) engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));
+            events.Add(new SectorEvent(SectorEventKind.Arrived, sector, p.Id, from ?? p.Sector, WorldTick));   // sector == from : retour, passage impossible
+            p.ArrivingFrom = from ?? p.ArrivingFrom;
+            p.Arrival = arrival;
+            p.Sector = sector;
+            p.Combatant = id;
+            return true;
         }
 
         private static CharacterSetup Arriving(CharacterSetup c, string id, CombatantPlacement placement, long atMs, IReadOnlyList<ConsumableSetup>? consumables,
@@ -524,6 +584,22 @@ namespace EdS.World
             }
             WorldTick = checked(WorldTick + 1);
 
+            // 1 bis. Revue Codex de la PR #150 : une arrivée refusée malgré tout (place prise au début du tick) : le joueur repart de son secteur
+            // de départ (ou réessaie au tick suivant), avec le même état : il n'est jamais perdu.
+            foreach (Player p in _players.Values.Where(x => x.Arrival != null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
+            {
+                CombatantView v = _open[p.Sector!].Zone.Engine.View(p.Combatant);
+                if (v.IsPresent || v.IsDead || v.HasLeft || v.ArrivalTick is not long due || due >= _open[p.Sector!].Zone.Engine.CurrentTick)
+                {
+                    if (v.IsPresent || v.IsDead || v.HasLeft) { p.Arrival = null; p.ArrivingFrom = null; }
+                    continue;
+                }
+                CharacterSetup again = p.Arrival!;
+                string back = p.ArrivingFrom != null && _open.ContainsKey(p.ArrivingFrom) ? p.ArrivingFrom : p.Sector!;
+                if (!Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events))
+                    Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events);
+            }
+
             // 2. Passages commencés : départ effectif en fin du tick simulé, arrivée au tick suivant dans le voisin.
             foreach (Player p in _players.Values.Where(x => x.PendingTo != null).OrderBy(x => x.Sector, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
@@ -531,35 +607,22 @@ namespace EdS.World
                 CombatantView left = from.Zone.Engine.View(p.Combatant);
                 string to = p.PendingTo!;
                 p.PendingTo = null;
-                if (!left.HasLeft || left.IsDead)   // mort pendant le tick : le départ est annulé (leaveCancelled)
-                {
-                    p.PendingMove = null;
-                    continue;
-                }
+                GroundVector? move = p.PendingMove;
+                p.PendingMove = null;
+                if (!left.HasLeft || left.IsDead) continue;   // mort pendant le tick : le départ est annulé (leaveCancelled)
                 CarriedState carried = from.Zone.Engine.Carried(p.Combatant);
                 IReadOnlyList<ConsumableSetup> consumables = from.Zone.Engine.CarriedConsumables(p.Combatant);
-                Open target = OpenSector(to, events);
-                Fixed radius = left.Radius!.Value;
-                // Relecture indépendante de la PR #150 : passage atomique. Place et place libre ont été vérifiées avant le départ ; si, entre-temps,
-                // le secteur d'arrivée n'a plus de place ou plus d'endroit libre, le joueur revient dans son secteur de départ (son départ y a
-                // libéré sa place), avec le même état : il n'est jamais perdu.
-                GroundVector? spot = target.Zone.Engine.FreePlaces > 0 ? FreeSpot(target, left.Position!.Value, radius) : null;
-                if (spot is null)
+                OpenSector(to, events);
+                // Relecture indépendante et revue Codex de la PR #150 : passage atomique. Places, identités et endroit libre ont été vérifiés avant
+                // le départ ; si, entre-temps, l'arrivée est devenue impossible, le joueur revient dans son secteur de départ (son départ y a
+                // libéré sa place), avec le même état ; sinon il réessaie au tick suivant.
+                CarriedState? state = carried.IsEmpty ? null : carried;
+                if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name)
+                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name))
                 {
-                    target = from;
-                    to = from.Name;
-                    spot = FreeSpot(from, left.Position!.Value, radius) ?? left.Position!.Value;
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state);
+                    p.ArrivingFrom = from.Name;
                 }
-                GroundVector at = spot.Value;
-                string id = IdentityIn(target.Zone, p);
-                long atMs = checked(target.Zone.Engine.CurrentTick * target.Zone.Engine.TickMilliseconds);
-                target.Zone.Enter(Arriving(p.Setup, id, new CombatantPlacement(at, radius, left.Facing), atMs, consumables, carried.IsEmpty ? null : carried));
-                // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
-                if (p.PendingMove is GroundVector move) target.Zone.Engine.Submit(new CombatCommand(atMs, id, move, p.PendingBackward));
-                p.PendingMove = null;
-                events.Add(new SectorEvent(SectorEventKind.Arrived, to, p.Id, p.Sector, WorldTick));   // to == p.Sector : retour, passage impossible
-                p.Sector = to;
-                p.Combatant = id;
             }
 
             // 3. Ouvertures : chaque secteur à moins de 96 m d'un joueur, pour le tick suivant.
@@ -599,7 +662,8 @@ namespace EdS.World
                 }
                 // Relecture indépendante de la PR #150 : pas de départ sans place libre (places et endroit) dans le secteur d'arrivée ; le joueur
                 // reste où il est (au pire au bout de la marge) et réessaie au tick suivant.
-                if (!_open.TryGetValue(to, out Open? next) || next.Zone.IsOver || next.Zone.Engine.FreePlaces == 0 || FreeSpot(next, pos, v.Radius!.Value) is null) continue;
+                if (!_open.TryGetValue(to, out Open? next) || next.Zone.IsOver || next.Zone.Engine.FreePlaces == 0 || next.Zone.Engine.IdentitiesLeft == 0
+                    || FreeSpot(next, pos, v.Radius!.Value) is null) continue;
                 p.PendingMove = v.MoveDirection;
                 p.PendingBackward = v.MoveBackward;
                 o.Zone.Leave(p.Combatant);
