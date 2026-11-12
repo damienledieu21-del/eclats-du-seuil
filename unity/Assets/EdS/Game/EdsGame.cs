@@ -646,10 +646,10 @@ namespace EdS.Game
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
             _scars.Sync(a, _camera.Camera.transform.position, _paused ? 0f : Time.deltaTime);
+            _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
             _arena.Weather(_weatherLook);   // sous-lot V2.2 : flaques, villageois qui s'abritent (avant la nuit, qui les fait rentrer)
             _arena.Night(_camera.Camera.transform.position, a.IsNight, Time.deltaTime);   // sous-lot V2.1 : lanternes, fenêtres, feux follets
-            _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             UpdateWeatherFx(_paused);   // sous-lot V2.2 : pluie, éclairs, tonnerre
             SyncGestures();
             // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
