@@ -48,6 +48,9 @@ namespace EdS.Domain.Space
 
         private readonly long _minX, _minZ, _maxX, _maxZ;
         private readonly ConvexPolygon[] _obstacles;
+
+        /// <summary>Sous-lot V2.26 : obstacles rangés par cases, partagés par les grilles du navigateur.</summary>
+        private readonly ObstacleIndex _index;
         private readonly Dictionary<long, NavGrid> _grids = new Dictionary<long, NavGrid>();
         private readonly Dictionary<long, (int[] Cells, NavStatus Status)> _cache = new Dictionary<long, (int[] Cells, NavStatus Status)>();
         private readonly NavSearch _search = new NavSearch();
@@ -75,6 +78,7 @@ namespace EdS.Domain.Space
             _maxZ = maxZ;
             _obstacles = new ConvexPolygon[obstacles.Count];
             for (int i = 0; i < _obstacles.Length; i++) _obstacles[i] = obstacles[i];
+            _index = new ObstacleIndex(_obstacles);
             MaxExpanded = maxExpanded;
             CacheSize = cacheSize;
         }
@@ -96,7 +100,7 @@ namespace EdS.Domain.Space
             long cls = RadiusClass(radius);
             if (!_grids.TryGetValue(cls, out NavGrid? grid))
             {
-                grid = new NavGrid(_minX, _minZ, _maxX, _maxZ, _obstacles, cls);
+                grid = new NavGrid(_minX, _minZ, _maxX, _maxZ, _obstacles, cls, _index);
                 _grids[cls] = grid;
             }
             return grid;
@@ -106,9 +110,7 @@ namespace EdS.Domain.Space
         public bool Clear(long ax, long az, long bx, long bz, long radius)
         {
             if (radius <= 0) radius = 1;
-            foreach (ConvexPolygon o in _obstacles)
-                if (o.OverlapsCapsule(ax, az, bx, bz, radius)) return false;
-            return true;
+            return !_index.AnyOverlapsCapsule(ax, az, bx, bz, radius);
         }
 
         /// <summary>
@@ -160,9 +162,7 @@ namespace EdS.Domain.Space
         private bool Standable(long x, long z, long radius)
         {
             long r = Math.Max(1, radius);
-            foreach (ConvexPolygon o in _obstacles)
-                if (o.OverlapsCircle(x, z, r)) return false;
-            return true;
+            return !_index.AnyOverlapsCircle(x, z, r);
         }
 
         /// <summary>

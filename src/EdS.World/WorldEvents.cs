@@ -629,7 +629,9 @@ namespace EdS.World
         /// places déjà réservées par les créatures d'événement qui n'ont pas encore de combattant (<see cref="PendingPlaces"/>).
         /// </summary>
         private bool Reserve(Zone zone, int reserved, int count) =>
-            Fits(zone.Engine.CombatantIds.Count, PendingPlaces, reserved, count, zone.Setup.Combat.MaxCombatants);
+            Fits(zone.Engine.PlacesTaken, PendingPlaces, reserved, count, zone.Setup.Combat.MaxCombatants)
+            // Sous-lot V2.26 : places recyclées, identités bornées par la session.
+            && checked(PendingPlaces + reserved + count) <= zone.Engine.IdentitiesLeft;
 
         /// <summary>Relecture de la PR #107 : la règle de place, en nombres (testée seule).</summary>
         internal static bool Fits(int combatants, int pending, int reserved, int count, int max) =>

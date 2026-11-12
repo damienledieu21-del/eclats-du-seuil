@@ -52,9 +52,7 @@ namespace EdS.Simulation.Engine
         {
             if (!_spatial || ReferenceEquals(a, b)) return true;
             Body ba = a.Body!, bb = b.Body!;
-            foreach (ConvexPolygon obstacle in _sightObstacles)
-                if (obstacle.IntersectsSegment(ba.X, ba.Z, bb.X, bb.Z)) return false;
-            return true;
+            return !_sightIndex.AnyIntersectsSegment(ba.X, ba.Z, bb.X, bb.Z);   // sous-lot V2.26 : décor rangé par cases
         }
 
         /// <summary>Contrôle de portée puis de ligne de vue d'une compétence à cible, au lancement ; null si la cible est atteignable.</summary>

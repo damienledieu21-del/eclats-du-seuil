@@ -43,12 +43,24 @@ namespace EdS.Simulation.Engine
             while (_queue.TryPeek(tick, CombatPhase.Setup, out Scheduled item))
             {
                 Fighter f = ((ArrivalItem)item).Fighter;
-                Fighter? blocker = ArrivalBlocker(f);
+                // Sous-lot V2.26 (recyclage des places) : dans une zone, une arrivée exige une place libre (présents vivants au plus
+                // combat.limits.maxCombatants) ; sinon refus « full ». Jamais atteint par une zone d'avant, qui n'avait pas plus de
+                // combattants que de places.
+                bool full = _setup.Zone && LivingPresent() >= _rules.MaxCombatants;
+                Fighter? blocker = full ? null : ArrivalBlocker(f);
                 AssailantSetup? assailant = blocker is null ? f.Assailant : null;
                 long firstTurn = assailant is null ? 0 : checked(tick + assailant.FirstAttackMs / _tickMs);
                 bool turn = assailant != null && firstTurn < _durationTicks;
-                ReserveAndDequeue(Cost.Op + Cost.Line + Cost.Enqueue.If(turn));
+                // Sous-lot V2.26 : une échéance par recharge emportée (personnage admis), réservée avec l'arrivée.
+                long carriedCooldowns = !full && blocker is null && f.Character != null ? f.Setup.Carried?.Cooldowns.Count ?? 0 : 0;
+                ReserveAndDequeue(Cost.Op + Cost.Line + Cost.Enqueue.If(turn && !full) + carriedCooldowns * Cost.Enqueue);
                 Charge(1);
+                if (full)
+                {
+                    f.Presence = Presence.Refused;
+                    EmitDiagnostic(tick, CombatPhase.Setup, "arrivalRefused", w => w.Field("combatant", f.Id).Field("reason", "full"));
+                    continue;
+                }
                 if (blocker != null)
                 {
                     f.Presence = Presence.Refused;
@@ -59,6 +71,7 @@ namespace EdS.Simulation.Engine
                 f.Presence = Presence.Present;
                 f.ArrivedTick = tick;
                 f.Result.ArrivedTick = tick;
+                ApplyCarried(f, tick);   // sous-lot V2.26 : état emporté d'un autre secteur
                 Emit(tick, CombatPhase.Setup, "combatantJoined", Provenance.NewRoot($"arrival:{f.Id}", f.Id), w => CombatantFields(w, f));
                 AddSubscriptions(f);
                 if (turn)
@@ -68,6 +81,103 @@ namespace EdS.Simulation.Engine
                 }
             }
         }
+
+        /// <summary>
+        /// Sous-lot V2.26 (format 25) : applique l'état emporté (<see cref="CombatantSetup.Carried"/>) d'un combattant admis à ce tick, avant sa
+        /// ligne <c>combatantJoined</c> (qui écrit donc ses PV et ressources d'arrivée) : PV, endurance et reprise de sa régénération (cumul
+        /// remis à zéro, comme après une dépense), Résonance, Charges, recharges (globale, de chaque compétence avec son échéance en file,
+        /// des objets de soin). Validé avec le combat : rien ne dépasse les bornes que le moteur atteint.
+        /// </summary>
+        private void ApplyCarried(Fighter f, long tick)
+        {
+            if (f.Setup.Carried is not { } carried) return;
+            if (carried.Health is long health && f.MaxHealth != null) f.Health = health;   // écart déjà noté (CarriedHealthShift, CreateFighter)
+            if (f.Character is null) return;
+            if (carried.Endurance is long endurance) f.Endurance = endurance;
+            if (f.Endurance < f.MaxEndurance)
+            {
+                f.RegenFromTick = checked(tick + carried.EnduranceRegenMs / _tickMs);
+                f.RegenGranted = 0;
+            }
+            f.Resonance = carried.Resonance;
+            f.RampartCharges = carried.RampartCharges;
+            if (carried.GlobalCooldownMs > 0) f.GlobalCooldownReadyTick = checked(tick + carried.GlobalCooldownMs / _tickMs);
+            foreach (KeyValuePair<string, long> cooldown in carried.Cooldowns)
+            {
+                long ready = checked(tick + cooldown.Value / _tickMs);
+                f.CooldownReadyTick[cooldown.Key] = ready;
+                Schedule(ready, CombatPhase.Expirations, new CooldownExpiry { Fighter = f, Skill = cooldown.Key });
+            }
+            if (carried.ConsumableCooldownMs > 0) f.ConsumableReadyTick = checked(tick + carried.ConsumableCooldownMs / _tickMs);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 : état de combat de <paramref name="id"/> à emporter dans un autre secteur, entre deux ticks : PV, endurance, délai
+        /// restant avant la reprise de la régénération, Résonance, Charges, recharges restantes (comptées à partir du prochain tick, celui de
+        /// l'arrivée de l'autre côté). Un champ plein ou prêt est omis. Les charges restantes des objets de soin : <see cref="CarriedConsumables"/>.
+        /// </summary>
+        /// <exception cref="ArgumentException">Combattant inconnu, mort ou jamais entré.</exception>
+        public CarriedState Carried(string id)
+        {
+            if (id is null || !_byId.TryGetValue(id, out Fighter? f)) throw new ArgumentException($"Combattant inconnu : {id}.", nameof(id));
+            if (f.IsDead || f.Presence == Presence.Pending || f.Presence == Presence.Refused)
+                throw new ArgumentException($"{id} mort ou jamais entré : rien à emporter.", nameof(id));
+            long next = IsFinished ? checked(CurrentTick + 1) : CurrentTick;
+            long Remaining(long ready) => ready > next ? checked((ready - next) * _tickMs) : 0;
+            long? health = f.Health is long hp && f.MaxHealth is long max && hp < max ? hp : (long?)null;
+            if (f.Character is null) return new CarriedState(health);
+            var cooldowns = new List<KeyValuePair<string, long>>();
+            foreach (KeyValuePair<string, long> c in f.CooldownReadyTick.OrderBy(c => c.Key, StringComparer.Ordinal))
+                if (Remaining(c.Value) > 0) cooldowns.Add(new KeyValuePair<string, long>(c.Key, Remaining(c.Value)));
+            bool tired = f.Endurance < f.MaxEndurance;
+            bool hasConsumables = f.ConsumableCharges.Any(c => c.Value > 0);
+            return new CarriedState(health, tired ? f.Endurance : (long?)null,
+                tired && f.RegenFromTick is long regen ? Remaining(regen) : 0, f.Resonance, f.RampartCharges,
+                Remaining(f.GlobalCooldownReadyTick), cooldowns, hasConsumables ? Remaining(f.ConsumableReadyTick) : 0);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 : objets de soin de <paramref name="id"/> (personnage) avec leurs charges restantes, dans l'ordre de son combat ; un
+        /// objet vide n'est plus emporté.
+        /// </summary>
+        public IReadOnlyList<ConsumableSetup> CarriedConsumables(string id)
+        {
+            if (id is null || !_byId.TryGetValue(id, out Fighter? f)) throw new ArgumentException($"Combattant inconnu : {id}.", nameof(id));
+            if (f.Character is null) return Array.Empty<ConsumableSetup>();
+            return f.Character.Consumables.Where(c => f.ConsumableCharges[c.Id] > 0)
+                .Select(c => new ConsumableSetup(c.Id, c.Heal, f.ConsumableCharges[c.Id], c.CooldownMs)).ToArray();
+        }
+
+        /// <summary>Sous-lot V2.26 : combattants présents et vivants (places prises).</summary>
+        private int LivingPresent()
+        {
+            int n = 0;
+            foreach (Fighter f in _fighters)
+                if (!f.Out) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 (recyclage des places) : places prises dans une zone : combattants présents vivants et arrivées encore attendues.
+        /// Un mort ou un parti libère la sienne. Dans un combat fermé : toutes les identités, comme avant.
+        /// </summary>
+        public int PlacesTaken
+        {
+            get
+            {
+                if (!_setup.Zone) return _fighters.Count;
+                int n = 0;
+                foreach (Fighter f in _fighters)
+                    if (f.Presence == Presence.Pending || !f.Out) n++;
+                return n;
+            }
+        }
+
+        /// <summary>Sous-lot V2.26 : places encore libres (au moins 0) ; une arrivée pilotée (<see cref="Join"/>) en exige une.</summary>
+        public int FreePlaces => Math.Max(0, _rules.MaxCombatants - PlacesTaken);
+
+        /// <summary>Sous-lot V2.26 : identités encore possibles dans la session (zone : plafond technique ; combat fermé : places).</summary>
+        public int IdentitiesLeft => Math.Max(0, (_setup.Zone ? CombatRules.MaxSessionCombatants : _rules.MaxCombatants) - _fighters.Count);
 
         /// <summary>
         /// Premier combattant présent et vivant (ordre des identifiants) dont l'emprise, solide pour l'arrivant (règle de contact),
@@ -81,7 +191,7 @@ namespace EdS.Simulation.Engine
             for (int j = 0; j < _fightersById.Count; j++)
             {
                 Fighter other = _fightersById[j];
-                if (j == index || other.Out || !_solid[index, j]) continue;
+                if (j == index || other.Out || !Solid(index, j)) continue;
                 Body o = other.Body!;
                 if (Planar.CirclesOverlap(b.X, b.Z, b.Radius, o.X, o.Z, o.Radius)) return other;
             }
@@ -172,6 +282,9 @@ namespace EdS.Simulation.Engine
             if (_byId.ContainsKey(combatant.Id)) throw new ArgumentException($"Identifiant déjà pris : {combatant.Id}.", nameof(combatant));
             if (combatant.ArrivalMs != checked(CurrentTick * _tickMs))
                 throw new ArgumentException($"Arrivée à {combatant.ArrivalMs?.ToString() ?? "null"} ms : seul le tick courant ({CurrentTick}, {CurrentTick * _tickMs} ms) est admis.", nameof(combatant));
+            // Sous-lot V2.26 : une place libre (présents vivants et arrivées attendues), refus atomique sinon.
+            if (_setup.Zone && FreePlaces == 0)
+                throw new ArgumentException($"Arrivée refusée : plus de place libre ({_rules.MaxCombatants} places prises, combat.limits.maxCombatants).", nameof(combatant));
             CombatSetup completed = _setup.Completed(_joined.Concat(new[] { combatant }), _submitted);
             IReadOnlyList<RuleViolation> violations = completed.Validate();
             if (violations.Count > 0)
@@ -186,7 +299,6 @@ namespace EdS.Simulation.Engine
             _fightersById.Insert(at < 0 ? _fightersById.Count : at, f);
             _fightersByInitiative = _fighters.OrderByDescending(x => x.Setup.Initiative).ThenBy(x => x.Id, StringComparer.Ordinal).ToList();
             f.Triggers = PermanentSlots(f);
-            BuildSolid();
             _joined.Add(combatant);
             _queue.Enqueue(CurrentTick, CombatPhase.Setup, new ArrivalItem { Fighter = f });
             if (_queue.Count > _peakPending) _peakPending = _queue.Count;

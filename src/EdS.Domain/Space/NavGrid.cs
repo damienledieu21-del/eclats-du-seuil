@@ -16,8 +16,12 @@ namespace EdS.Domain.Space
         /// <summary>Taille de case par défaut : 0,5 m.</summary>
         public const long DefaultCell = 5_000;
 
-        /// <summary>Nombre maximal de cases (512 × 512) : au-delà, la case double de taille (une aire de ±1000 m tient en cases de 4 m).</summary>
-        public const int MaxCells = 262_144;
+        /// <summary>
+        /// Nombre maximal de cases : 524 288 depuis V2.26 (262 144, soit 512 × 512, avant) ; un secteur de 256 m et sa marge de 32 m (320 m
+        /// de côté, 409 600 cases) tient en cases de 0,5 m. Au-delà, la case double de taille. Une aire de 256 m de côté au plus garde
+        /// exactement sa grille d'avant.
+        /// </summary>
+        public const int MaxCells = 524_288;
 
         private readonly bool[] _free;
         private readonly int[] _component;
@@ -28,6 +32,9 @@ namespace EdS.Domain.Space
         /// </summary>
         private readonly byte[] _closed;
         private readonly ConvexPolygon[] _obstacles;
+
+        /// <summary>Sous-lot V2.26 : obstacles rangés par cases (tests de gélule sans parcourir tout le décor).</summary>
+        private readonly ObstacleIndex _index;
 
         public long OriginX { get; }
         public long OriginZ { get; }
@@ -45,12 +52,18 @@ namespace EdS.Domain.Space
         public int ComponentCount { get; }
 
         public NavGrid(long minX, long minZ, long maxX, long maxZ, IReadOnlyList<ConvexPolygon> obstacles, long radius)
+            : this(minX, minZ, maxX, maxZ, obstacles, radius, null) { }
+
+        /// <summary>Sous-lot V2.26 : avec l'index des mêmes obstacles (partagé par les grilles d'un navigateur), ou null pour en construire un.</summary>
+        public NavGrid(long minX, long minZ, long maxX, long maxZ, IReadOnlyList<ConvexPolygon> obstacles, long radius, ObstacleIndex? index)
         {
             if (obstacles is null) throw new ArgumentNullException(nameof(obstacles));
             if (minX >= maxX || minZ >= maxZ) throw new ArgumentException("aire vide.", nameof(minX));
             if (radius < 0) throw new ArgumentOutOfRangeException(nameof(radius));
             _obstacles = new ConvexPolygon[obstacles.Count];
             for (int i = 0; i < _obstacles.Length; i++) _obstacles[i] = obstacles[i] ?? throw new ArgumentNullException(nameof(obstacles));
+            if (index != null && index.Count != _obstacles.Length) throw new ArgumentException("index d'autres obstacles.", nameof(index));
+            _index = index ?? new ObstacleIndex(_obstacles);
             long spanX = checked(maxX - minX), spanZ = checked(maxZ - minZ);
             long cell = DefaultCell;
             while (checked(CeilDiv(spanX, cell) * CeilDiv(spanZ, cell)) > MaxCells) cell = checked(cell * 2);
@@ -209,9 +222,7 @@ namespace EdS.Domain.Space
         public bool Clear(long ax, long az, long bx, long bz, long radius)
         {
             if (radius <= 0) radius = 1;
-            foreach (ConvexPolygon o in _obstacles)
-                if (o.OverlapsCapsule(ax, az, bx, bz, radius)) return false;
-            return true;
+            return !_index.AnyOverlapsCapsule(ax, az, bx, bz, radius);
         }
     }
 
@@ -280,7 +291,7 @@ namespace EdS.Domain.Space
         {
             if (grid is null) throw new ArgumentNullException(nameof(grid));
             if (path is null || path.Length == 0) throw new ArgumentException("tampon de chemin vide.", nameof(path));
-            if (maxExpanded < 1) throw new ArgumentOutOfRangeException(nameof(maxExpanded));
+            if (maxExpanded < 1 || maxExpanded > MaxExpandedLimit) throw new ArgumentOutOfRangeException(nameof(maxExpanded));
             length = 0;
             LastExpanded = 0;
             if (!grid.IsFree(start) || !grid.IsFree(goal) || grid.Component(start) != grid.Component(goal)) return NavStatus.None;
@@ -348,10 +359,17 @@ namespace EdS.Domain.Space
             return found && count <= path.Length ? NavStatus.Found : NavStatus.Partial;
         }
 
-        private const long CellMask = (1L << 18) - 1;
+        private const long CellMask = (1L << 20) - 1;
 
-        /// <summary>Clé de tas : f sur 23 bits, h sur 22, case sur 18 (moins de 2¹⁸ cases) ; l'ordre des clés est l'ordre de départage.</summary>
-        private static long Key(int f, int h, int cell) => checked(((long)f << 40) | ((long)h << 18) | (long)cell);
+        /// <summary>
+        /// Clé de tas : f sur 22 bits, h sur 21, case sur 20 (moins de 2²⁰ cases depuis V2.26 ; avant : 23, 22 et 18 bits) ; l'ordre des clés
+        /// est l'ordre de départage (f, puis h, puis case), inchangé. Bornes : une aire de ±4 096 m a au plus 16 384 cases de côté, donc
+        /// h ≤ 14 × 16 384 &lt; 2²¹ ; g ≤ 14 × (<see cref="MaxExpandedLimit"/> + 1), donc f = g + h &lt; 2²².
+        /// </summary>
+        private static long Key(int f, int h, int cell) => checked(((long)f << 41) | ((long)h << 20) | (long)cell);
+
+        /// <summary>Sous-lot V2.26 : plus grand nombre de cases développées admis par recherche (borne de la clé de tas).</summary>
+        public const int MaxExpandedLimit = 131_072;
 
         private void Push(long key)
         {

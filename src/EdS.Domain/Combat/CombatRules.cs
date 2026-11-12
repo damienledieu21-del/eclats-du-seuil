@@ -76,6 +76,14 @@ namespace EdS.Domain.Combat
 
         /// <summary>Plafonds techniques absolus des limites (enveloppes de pré-alpha, pas des capacités mesurées).</summary>
         public const int AbsoluteMinCombatants = 2, AbsoluteMaxCombatants = 256;
+
+        /// <summary>
+        /// Sous-lot V2.26 (recyclage des places, PLAN_GRANDE_CARTE.md § 2.4, point 5) : dans une zone (<see cref="CombatSetup.Zone"/>),
+        /// <see cref="MaxCombatants"/> compte les <b>places</b> (combattants présents vivants et arrivées attendues) et non plus les identités :
+        /// un combattant mort ou parti libère sa place, sans que son identité soit jamais réutilisée. Les identités d'une session de zone sont
+        /// bornées par ce plafond technique (combat complété, en-tête du journal, instantané). Un combat fermé garde la règle d'avant.
+        /// </summary>
+        public const int MaxSessionCombatants = 1024;
         public const int AbsoluteMaxCommands = 1_000_000;
         public const int AbsoluteMaxCommandsPerActorPerTick = 64;
         public const int AbsoluteMaxPendingEvents = 10_000_000;

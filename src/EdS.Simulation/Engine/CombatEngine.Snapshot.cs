@@ -851,7 +851,7 @@ namespace EdS.Simulation.Engine
                 for (int j = i + 1; j < _fightersById.Count; j++)
                 {
                     Fighter a = _fightersById[i], b = _fightersById[j];
-                    if (a.Out || b.Out || a.Body is null || b.Body is null || !_solid[i, j]) continue;
+                    if (a.Out || b.Out || a.Body is null || b.Body is null || !Solid(i, j)) continue;
                     Require(!Planar.CirclesOverlap(a.Body.X, a.Body.Z, a.Body.Radius, b.Body.X, b.Body.Z, b.Body.Radius),
                         $"Emprises de « {a.Id} » et « {b.Id} » qui se chevauchent.");
                 }
@@ -936,8 +936,15 @@ namespace EdS.Simulation.Engine
                 int pastCommands = _setup.Commands.Count(c => c.Actor == f.Id && c.AtMs / _tickMs <= previous);
                 Require(f.Result.SkillsCast <= skillCommands && checked(f.Result.SkillsCast + f.Result.CommandsRejected) <= pastCommands,
                     $"Lancers ou refus de {who} au-delà de ses commandes passées.");
+                // Sous-lot V2.26 : une recharge emportée d'un autre secteur (arrivée avec un état) a pour origine l'arrivée : son échéance est le
+                // tick d'arrivée plus la durée restante emportée.
+                CarriedState? carriedState = f.ArrivedTick != null ? f.Setup.Carried : null;
+                long arrivedAt = f.ArrivedTick ?? 0;
+                bool carriedGcd = carriedState is { GlobalCooldownMs: > 0 } && f.GlobalCooldownReadyTick == checked(arrivedAt + carriedState.GlobalCooldownMs / _tickMs);
+                bool CarriedCooldown(string skill, long ready) => carriedState != null && carriedState.Cooldowns.TryGetValue(skill, out long ms)
+                    && ready == checked(arrivedAt + ms / _tickMs);
                 Require(f.Result.SkillsCast == 0
-                    ? f.GlobalCooldownReadyTick == 0 && f.CooldownReadyTick.Count == 0
+                    ? (f.GlobalCooldownReadyTick == 0 || carriedGcd) && f.CooldownReadyTick.All(c => CarriedCooldown(c.Key, c.Value))
                     : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
                 foreach (var cooldown in f.CooldownReadyTick)
                 {
@@ -947,7 +954,8 @@ namespace EdS.Simulation.Engine
                     Require(cooldownTicks >= 0 && cooldown.Value >= 0 && cooldown.Value <= Math.Max(0, previous + cooldownTicks),
                         $"Recharge de {who} pour une compétence inconnue ou au-delà de sa durée : {cooldown.Key}.");
                     long castAt = cooldown.Value - cooldownTicks;
-                    Require(castAt <= lastCast && casts.Contains((castAt, cooldown.Key)), $"Recharge de {who} ({cooldown.Key}) sans lancer à son origine.");
+                    Require((castAt <= lastCast && casts.Contains((castAt, cooldown.Key))) || CarriedCooldown(cooldown.Key, cooldown.Value),
+                        $"Recharge de {who} ({cooldown.Key}) sans lancer à son origine.");
                     if (cooldown.Value < CurrentTick) continue;
                     int pending = entries.Count(e => e.Item is CooldownExpiry c && c.Fighter == f && c.Skill == cooldown.Key && e.Tick == cooldown.Value);
                     Require(pending == 1, $"Recharge de {who} ({cooldown.Key}) : {pending} échéance(s) en file au tick {cooldown.Value}.");
@@ -994,8 +1002,9 @@ namespace EdS.Simulation.Engine
                 // Sous-lot 12.6 : les soins des objets emportés (Healed) remontent les PV d'autant ; seul un personnage qui en emporte en reçoit.
                 // Sous-lot V1.8d : les bonus modifiés font varier les PV manquants (règle proportionnelle) d'exactement gearHealthShift.
                 if (f.Health is long hp && f.MaxHealth is long maxHp)
-                    Require(f.IsDead ? f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift >= maxHp - hp
-                            : f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift == maxHp - hp,
+                    // Sous-lot V2.26 : plus les PV manquants emportés d'un autre secteur, une fois arrivé.
+                    Require(f.IsDead ? f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift + (f.ArrivedTick != null ? f.CarriedHealthShift : 0) >= maxHp - hp
+                            : f.Result.DamageTaken - f.Result.Healed + f.GearHealthShift + (f.ArrivedTick != null ? f.CarriedHealthShift : 0) == maxHp - hp,
                         $"Dégâts subis de {who} incohérents avec ses points de vie.");
                 // Sous-lot V1.8d : le bonus en vigueur est celui de l'en-tête ou celui d'un bonus modifié de ce personnage déjà passé ; sans un tel
                 // bonus modifié, il n'a fait varier aucun PV manquant. La variation reste sous le plafond des compteurs.
@@ -1012,7 +1021,9 @@ namespace EdS.Simulation.Engine
                         Require(f.ConsumableCharges[c.Id] >= 0 && f.ConsumableCharges[c.Id] <= c.Charges, $"Charges de « {c.Id} » de {who} impossibles.");
                 long consumableSpan = f.Character?.Consumables.Select(c => c.CooldownMs / _tickMs).DefaultIfEmpty(0).Max() ?? 0;
                 bool used = f.Character != null && f.Character.Consumables.Any(c => f.ConsumableCharges[c.Id] < c.Charges);
-                Require(used ? f.ConsumableReadyTick >= 0 && f.ConsumableReadyTick <= CurrentTick - 1 + consumableSpan : f.ConsumableReadyTick == 0,
+                // Sous-lot V2.26 : ou une recharge emportée d'un autre secteur (tick d'arrivée plus la durée restante).
+                bool carriedConsumable = carriedState is { ConsumableCooldownMs: > 0 } && f.ConsumableReadyTick == checked(arrivedAt + carriedState.ConsumableCooldownMs / _tickMs);
+                Require(used || carriedConsumable ? f.ConsumableReadyTick >= 0 && f.ConsumableReadyTick <= CurrentTick - 1 + consumableSpan : f.ConsumableReadyTick == 0,
                     $"Recharge des objets de soin de {who} impossible : {f.ConsumableReadyTick}.");
                 // 11e tour : la cause mortelle est notée quand les PV tombent à 0, et la mort suit en fin du même tick : un vivant n'en a pas.
                 Require(f.IsDead || f.LethalCause is null, $"Cause mortelle de {who} vivant.");

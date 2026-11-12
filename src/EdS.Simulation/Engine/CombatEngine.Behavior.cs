@@ -462,10 +462,9 @@ namespace EdS.Simulation.Engine
         private bool SweepFree(int index, long px, long pz, long cx, long cz, long[] x, long[] z)
         {
             long r = _fightersById[index].Body!.Radius;
-            foreach (ConvexPolygon obstacle in _obstacles)
-                if (obstacle.OverlapsCapsule(px, pz, cx, cz, r)) return false;
+            if (_obstacleIndex.AnyOverlapsCapsule(px, pz, cx, cz, r)) return false;   // sous-lot V2.26 : décor rangé par cases
             for (int j = 0; j < _fightersById.Count; j++)
-                if (j != index && _solid[index, j] && !_fightersById[j].Out
+                if (j != index && Solid(index, j) && !_fightersById[j].Out
                     && Planar.SegmentOverlapsCircle(px, pz, cx, cz, x[j], z[j], checked(r + _fightersById[j].Body!.Radius)))
                     return false;
             return true;
@@ -476,10 +475,9 @@ namespace EdS.Simulation.Engine
         {
             long r = _fightersById[index].Body!.Radius;
             if (cx - r < _minX || cx + r > _maxX || cz - r < _minZ || cz + r > _maxZ) return false;
-            foreach (ConvexPolygon obstacle in _obstacles)
-                if (obstacle.OverlapsCircle(cx, cz, r)) return false;
+            if (_obstacleIndex.AnyOverlapsCircle(cx, cz, r)) return false;   // sous-lot V2.26 : décor rangé par cases
             for (int j = 0; j < _fightersById.Count; j++)
-                if (j != index && _solid[index, j] && !_fightersById[j].Out && Planar.CirclesOverlap(cx, cz, r, x[j], z[j], _fightersById[j].Body!.Radius))
+                if (j != index && Solid(index, j) && !_fightersById[j].Out && Planar.CirclesOverlap(cx, cz, r, x[j], z[j], _fightersById[j].Body!.Radius))
                     return false;
             return true;
         }

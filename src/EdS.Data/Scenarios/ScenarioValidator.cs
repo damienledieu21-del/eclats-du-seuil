@@ -62,18 +62,21 @@ namespace EdS.Data.Scenarios
         /// bornes que celui d'un personnage). Version 16 (sous-lot V2.4, animaux paisibles) : <c>flee</c> facultatif sur un comportement (bête qui
         /// fuit, à <c>minRange</c> de sa cible). Version 17 (sous-lot V2.4.1, bêtes qui se promènent) : <c>wander</c> facultatif sur un comportement
         /// (<c>style</c>, <c>radius</c>, <c>pace</c>, <c>legMs</c>, <c>pauseMs</c> obligatoires ; <c>group</c>, <c>lead</c>, <c>spacing</c>,
-        /// <c>points</c> facultatifs). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// <c>points</c> facultatifs). Version 18 (sous-lot V2.26, secteurs de simulation) : <c>carried</c> facultatif sur un personnage ou un
+        /// assaillant qui arrive en route (état emporté d'un autre secteur) ; coordonnées jusqu'à ±4 096 m et 256 obstacles ; une zone compte ses
+        /// places (combattants présents au départ au plus <c>combat.limits.maxCombatants</c>, identités au plus 1 024). Une version antérieure
+        /// est refusée sans migration : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 17;
+        public const int CurrentSchemaVersion = 18;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment" },
+            ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment", "carried" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
-            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior" },
+            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior", "carried" },
         };
 
         /// <summary>Le champ propre à un type est-il renseigné dans l'objet (indépendamment du lecteur JSON) ? Une cible nulle vaut absente.</summary>
@@ -96,11 +99,17 @@ namespace EdS.Data.Scenarios
             "triggers" => c.Triggers != null,
             "speed" => c.Speed != null,
             "behavior" => c.Behavior != null,
+            "carried" => c.Carried != null,   // sous-lot V2.26 (schéma 18)
             _ => false,
         };
 
         /// <summary>Sous-lot 11.4 : champs de la place de départ, réservés aux combats positionnés (bloc <c>space</c>).</summary>
         private static readonly string[] PlacementFields = { "position", "facing", "radius", "speed" };
+
+        /// <summary>Sous-lot V2.26 (schéma 18) : état emporté du fichier (bornes vérifiées par la validation du combat, avec chemin).</summary>
+        private static CarriedState? Carried(CarriedData? c) => c is null ? null : new CarriedState(c.Health, c.Endurance, c.EnduranceRegenMs ?? 0,
+            c.Resonance ?? 0, c.RampartCharges ?? 0, c.GlobalCooldownMs ?? 0,
+            c.Cooldowns?.Select(k => new KeyValuePair<string, long>(k.Key, k.Value ?? 0)), c.ConsumableCooldownMs ?? 0);
 
         public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null)
         {
@@ -171,7 +180,7 @@ namespace EdS.Data.Scenarios
                     combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs, Gear(c.Gear),
                         c.Consumables?.Select(x => new ConsumableSetup(x!.Id!, x.Heal!.Value, x.Charges!.Value, x.CooldownMs!.Value)),
                         c.Shield is { } shield ? new ShieldGuard(shield.DamageReduction!.Value, shield.CostPerBlock!.Value, shield.ParryWindowMs!.Value) : null,
-                        c.Equipment?.Select(e => Equipment.EquipmentEffectShape.Build(e!))));
+                        c.Equipment?.Select(e => Equipment.EquipmentEffectShape.Build(e!)), Carried(c.Carried)));
                 }
                 else if (c.Type == "assailant")
                 {
@@ -184,7 +193,7 @@ namespace EdS.Data.Scenarios
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
                         c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true, b.Flee ?? false,
-                            b.Wander is { } w ? BuildWander(w) : null) : null));
+                            b.Wander is { } w ? BuildWander(w) : null) : null, Carried(c.Carried)));
                 }
                 else
                 {

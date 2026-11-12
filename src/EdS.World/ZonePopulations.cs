@@ -331,15 +331,23 @@ namespace EdS.World
         {
             CombatEngine engine = zone.Engine;
             AssailantSetup t = life.Population.Template;
-            if (IsAmbient(life.Population) && checked(engine.CombatantIds.Count + reserved + QuestReserve) >= zone.Setup.Combat.MaxCombatants)
+            // Sous-lot V2.26 (recyclage des places) : un mort ou un parti libère sa place. Plus aucune identité possible dans la session
+            // (borne technique) : la population attend la session suivante, comme avant au plafond des combattants. Places toutes prises
+            // (par des vivants) : nouvel essai une seconde plus tard.
+            if (IsAmbient(life.Population) && engine.IdentitiesLeft <= checked(reserved + QuestReserve))
             {
                 life.Exhausted = true;   // relecture de la PR #104 : sans annonce ; la réserve reste aux autres créatures
                 return null;
             }
-            if (checked(engine.CombatantIds.Count + reserved) >= zone.Setup.Combat.MaxCombatants)
+            if (engine.IdentitiesLeft <= reserved)
             {
                 life.Exhausted = true;
                 return new PopulationEvent(PopulationEventKind.Exhausted, t.Id, life.Current, now);
+            }
+            if (checked(engine.PlacesTaken + reserved + (IsAmbient(life.Population) ? QuestReserve : 0)) >= zone.Setup.Combat.MaxCombatants)
+            {
+                life.RespawnAt = checked(now + Math.Max(1, 1000 / tickMs));
+                return null;
             }
             // Place occupée par un combattant présent : nouvel essai une seconde plus tard.
             if (Occupied(engine, t.Placement!))

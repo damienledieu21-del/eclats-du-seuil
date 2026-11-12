@@ -37,8 +37,16 @@ namespace EdS.Domain.Combat
         /// </summary>
         public long? ArrivalMs { get; }
 
-        protected CombatantSetup(string id, string team, int initiative, CombatantPlacement? placement = null, long? arrivalMs = null)
+        /// <summary>
+        /// Sous-lot V2.26 (format 25, schéma 18) : état de combat emporté d'un autre secteur (PV, ressources, recharges), appliqué à
+        /// l'arrivée ; seulement pour un combattant qui arrive en route (<see cref="ArrivalMs"/>). Null : arrivée d'un combattant plein.
+        /// </summary>
+        public CarriedState? Carried { get; }
+
+        protected CombatantSetup(string id, string team, int initiative, CombatantPlacement? placement = null, long? arrivalMs = null,
+            CarriedState? carried = null)
         {
+            Carried = carried;
             Id = id ?? throw new ArgumentNullException(nameof(id));
             Team = team ?? throw new ArgumentNullException(nameof(team));
             Initiative = initiative;
@@ -104,8 +112,8 @@ namespace EdS.Domain.Combat
 
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
             long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null,
-            IEnumerable<EquipmentEffect>? equipment = null)
-            : base(id, team, initiative, placement, arrivalMs)
+            IEnumerable<EquipmentEffect>? equipment = null, CarriedState? carried = null)
+            : base(id, team, initiative, placement, arrivalMs, carried)
         {
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
@@ -545,8 +553,9 @@ namespace EdS.Domain.Combat
 
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
             IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
-            long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null, AssailantBehavior? behavior = null)
-            : base(id, team, initiative, placement, arrivalMs)
+            long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null, AssailantBehavior? behavior = null,
+            CarriedState? carried = null)
+            : base(id, team, initiative, placement, arrivalMs, carried)
         {
             Behavior = behavior;
             Health = health;
@@ -941,10 +950,20 @@ namespace EdS.Domain.Combat
 
             // Lot 7.1 : admission. Un scénario hors limites de volume est refusé sans analyser ses éléments un par un.
             bool oversized = false;
-            if (Combatants.Count > Combat.MaxCombatants)
+            // Sous-lot V2.26 (recyclage des places) : une zone compte ses places, pas ses identités. Au départ, les combattants présents
+            // d'emblée tiennent dans les places ; chaque arrivée trouve une place libre à son tick (sinon arrivalRefused, « full ») ; les
+            // identités de la session sont bornées par le plafond technique. Un combat fermé : comme avant.
+            if (Zone && Combatants.Count > CombatRules.MaxSessionCombatants)
             {
                 errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
-                    $"{Combatants.Count} combattants, au plus {Combat.MaxCombatants} (combat.limits.maxCombatants).", "combatants"));
+                    $"{Combatants.Count} combattants dans la session de zone, au plus {CombatRules.MaxSessionCombatants} (borne technique).", "combatants"));
+                oversized = true;
+            }
+            else if (Zone ? Combatants.Count(c => c.ArrivalMs is null) > Combat.MaxCombatants : Combatants.Count > Combat.MaxCombatants)
+            {
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded,
+                    Zone ? $"{Combatants.Count(c => c.ArrivalMs is null)} combattants présents au départ, au plus {Combat.MaxCombatants} places (combat.limits.maxCombatants)."
+                        : $"{Combatants.Count} combattants, au plus {Combat.MaxCombatants} (combat.limits.maxCombatants).", "combatants"));
                 oversized = true;
             }
             if (Commands.Count > Combat.MaxCommands)
@@ -1018,6 +1037,7 @@ namespace EdS.Domain.Combat
                         if (character.Shield is { } shield) errors.AddRange(shield.Check(Combat, path + ".shield"));
                         // Sous-lot V1.3 : effets de l'équipement dans les bornes des règles (la même fonction que le catalogue des objets).
                         errors.AddRange(EquipmentEffect.CheckList(character.Equipment, Combat, path + ".equipment"));
+                        if (character.Carried is { } carriedState) ValidateCarried(character, carriedState, path, tick, errors);   // sous-lot V2.26
                         break;
                     case DummySetup dummy:
                         Defense(dummy.Armor, "l'armure du mannequin", path + ".armor", errors);
@@ -1027,6 +1047,7 @@ namespace EdS.Domain.Combat
                     case AssailantSetup assailant:
                         ValidateAssailantShape(assailant, path, tick, errors);
                         ValidateBehavior(assailant, path, errors);   // sous-lot 11.5
+                        if (assailant.Carried is { } carriedAssailant) ValidateCarried(assailant, carriedAssailant, path, tick, errors);   // sous-lot V2.26
                         break;
                     default:
                         errors.Add(new RuleViolation($"type de combattant non pris en charge : {c.GetType().Name}.", path));
@@ -1481,7 +1502,9 @@ namespace EdS.Domain.Combat
             long durationTicks = DurationMs / Combat.TickMilliseconds;
             long assailantTurns = Combatants.OfType<AssailantSetup>().LongCount(a => a.ArrivalMs is null && a.FirstAttackMs >= 0 && a.FirstAttackMs / Combat.TickMilliseconds < durationTicks);
             long arrivals = Combatants.LongCount(c => c.ArrivalMs != null);
-            return checked(Commands.Count + assailantTurns + arrivals);
+            // Sous-lot V2.26 : une échéance de recharge en file par recharge emportée (programmée à l'arrivée).
+            long carriedCooldowns = Combatants.Sum(c => (long)(c.Carried?.Cooldowns.Count ?? 0));
+            return checked(Commands.Count + assailantTurns + arrivals + carriedCooldowns);
         }
 
         /// <summary>
@@ -1744,6 +1767,71 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation(
                     $"annonce de {attack.TelegraphMs} ms trop courte pour une zone évitable : au moins {needed} ms (réaction {Combat.TelegraphMinReactionMs} ms, " +
                     $"combat.telegraph.minReactionMs, + {escapeMs} ms pour sortir de la forme au pas de base de {Combat.MovementSpeed} m/s).", path + ".telegraphMs"));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 : état emporté d'un combattant qui arrive en route, dans les bornes que le moteur atteint : PV dans [1, maximum]
+        /// (statistiques calculées par la même fonction que le moteur), endurance dans [0, maximum], délai de régénération dans [0, délai des
+        /// règles], Résonance et Charges dans leurs plafonds (effectifs), recharges positives au plus leur durée (globale, de chaque compétence
+        /// lançable du build, partagée des objets de soin, seulement si l'un d'eux a déjà servi) ; durées multiples du tick. Un assaillant
+        /// n'emporte que ses PV (assaillant mortel).
+        /// </summary>
+        private void ValidateCarried(CombatantSetup c, CarriedState carried, string path, long tick, List<RuleViolation> errors)
+        {
+            string cp = path + ".carried";
+            if (c.ArrivalMs is null) errors.Add(new RuleViolation("seul un combattant qui arrive en route (arrivalMs) emporte un état.", cp));
+            void Duration(long ms, long max, string field)
+            {
+                if (ms < 0 || ms > max) errors.Add(new RuleViolation($"{ms} ms hors de [0, {max}].", cp + "." + field));
+                else if (ms % tick != 0) errors.Add(new RuleViolation($"{ms} ms n'est pas un multiple de la durée du tick ({tick} ms).", cp + "." + field));
+            }
+            switch (c)
+            {
+                case AssailantSetup assailant:
+                    if (carried.Endurance != null || carried.EnduranceRegenMs != 0 || carried.Resonance != 0 || carried.RampartCharges != 0
+                        || carried.GlobalCooldownMs != 0 || carried.Cooldowns.Count != 0 || carried.ConsumableCooldownMs != 0)
+                        errors.Add(new RuleViolation("un assaillant n'emporte que ses points de vie.", cp));
+                    if (carried.Health is long hp && (assailant.Health is not long max || hp < 1 || hp > max))
+                        errors.Add(new RuleViolation($"points de vie {hp} hors de [1, {assailant.Health?.ToString() ?? "infinis"}].", cp + ".health"));
+                    break;
+                case CharacterSetup character:
+                {
+                    if (character.Class.Validate(Progression).Count > 0 || BuildValidator.Validate(character.Build, character.Class, Progression).Count > 0) return;
+                    DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.For(character), character.Gear);
+                    long maxHealth = stats.MaxHealth.RoundToInt(RoundingMode.Floor), maxEndurance = stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                    CombatantRules rules = character.EffectiveRules(Combat);
+                    if (carried.Health is long carriedHp && (carriedHp < 1 || carriedHp > maxHealth))
+                        errors.Add(new RuleViolation($"points de vie {carriedHp} hors de [1, {maxHealth}].", cp + ".health"));
+                    if (carried.Endurance is long endurance && (endurance < 0 || endurance > maxEndurance))
+                        errors.Add(new RuleViolation($"endurance {endurance} hors de [0, {maxEndurance}].", cp + ".endurance"));
+                    Duration(carried.EnduranceRegenMs, Combat.EnduranceRegenDelayMs, "enduranceRegenMs");
+                    if (carried.EnduranceRegenMs != 0 && (carried.Endurance is not long e || e >= maxEndurance))
+                        errors.Add(new RuleViolation("délai de régénération sans endurance entamée.", cp + ".enduranceRegenMs"));
+                    if (carried.Resonance < 0 || carried.Resonance > Combat.ResonanceMax)
+                        errors.Add(new RuleViolation($"Résonance {carried.Resonance} hors de [0, {Combat.ResonanceMax}].", cp + ".resonance"));
+                    if (carried.RampartCharges < 0 || carried.RampartCharges > rules.RampartChargesMax)
+                        errors.Add(new RuleViolation($"Charges {carried.RampartCharges} hors de [0, {rules.RampartChargesMax}].", cp + ".rampartCharges"));
+                    Duration(carried.GlobalCooldownMs, Combat.GlobalCooldownMs, "globalCooldownMs");
+                    if (carried.Cooldowns.Count > CarriedState.MaxCooldowns)
+                        errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{carried.Cooldowns.Count} recharges, au plus {CarriedState.MaxCooldowns}.", cp + ".cooldowns"));
+                    var castable = new HashSet<string>(character.Build.ActiveSkills, StringComparer.Ordinal);
+                    if (character.Build.Ultimate != null) castable.Add(character.Build.Ultimate);
+                    foreach (KeyValuePair<string, long> cooldown in carried.Cooldowns)
+                    {
+                        string kp = cp + ".cooldowns." + cooldown.Key;
+                        if (!castable.Contains(cooldown.Key) || !character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) || skill.Combat is not { } combat)
+                            errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"compétence « {cooldown.Key} » non lançable par ce build.", kp));
+                        else if (cooldown.Value <= 0) errors.Add(new RuleViolation($"recharge {cooldown.Value} ms : strictement positive.", kp));
+                        else Duration(cooldown.Value, rules.CooldownMs(skill, combat), "cooldowns." + cooldown.Key);
+                    }
+                    long consumableSpan = character.Consumables.Select(x => x.CooldownMs).DefaultIfEmpty(0).Max();
+                    Duration(carried.ConsumableCooldownMs, consumableSpan, "consumableCooldownMs");
+                    break;
+                }
+                default:
+                    errors.Add(new RuleViolation("seul un personnage ou un assaillant emporte un état.", cp));
+                    break;
+            }
         }
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)

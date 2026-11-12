@@ -5,13 +5,16 @@ namespace EdS.Domain.Space
 {
     /// <summary>
     /// Sous-lot 11.4 : bornes techniques de l'espace d'un combat. Elles gardent toute la géométrie du moteur dans des entiers 64 bits
-    /// (les produits exacts de distances passent par <see cref="IntMath.CompareProducts"/>) : coordonnées dans ±1000 m, donc écarts
-    /// ≤ 2·10⁷ unités brutes, carrés ≤ 4·10¹⁴, sommes de carrés ≤ 8·10¹⁴. Enveloppes de pré-alpha, pas des valeurs de jeu.
+    /// (les produits exacts de distances passent par <see cref="IntMath.CompareProducts"/>). Sous-lot V2.26 (secteurs de la grande carte,
+    /// moteur 0.31.0) : coordonnées dans ±4 096 m (±1 000 m avant), donc écarts ≤ 8,192·10⁷ unités brutes, carrés ≤ 6,72·10¹⁵, sommes de
+    /// carrés ≤ 1,35·10¹⁶, loin de 2⁶³ ≈ 9,2·10¹⁸. Enveloppes de pré-alpha, pas des valeurs de jeu.
     /// </summary>
     public static class SpaceLimits
     {
-        /// <summary>Coordonnée maximale (en valeur absolue) d'un point de l'espace : 1000 m.</summary>
-        public static readonly Fixed MaxCoordinate = Fixed.FromInt(1000);
+        /// <summary>Coordonnée maximale (en valeur absolue) d'un point de l'espace : 4 096 m depuis V2.26 (1 000 m avant).</summary>
+        public const int MaxCoordinateMeters = 4096;
+
+        public static readonly Fixed MaxCoordinate = Fixed.FromInt(MaxCoordinateMeters);
 
         /// <summary>Rayon d'emprise minimal (0,1 m) et maximal (5 m) d'un combattant.</summary>
         public static readonly Fixed MinRadius = Fixed.FromRatio(1, 10);
@@ -31,8 +34,11 @@ namespace EdS.Domain.Space
         /// <summary>Une portée est-elle dans [<see cref="MinRange"/>, <see cref="MaxRange"/>] ?</summary>
         public static bool IsRange(Fixed range) => range >= MinRange && range <= MaxRange;
 
-        /// <summary>Nombre maximal d'obstacles d'un espace, et de sommets d'un obstacle (au moins 3).</summary>
-        public const int MaxObstacles = 64;
+        /// <summary>
+        /// Nombre maximal d'obstacles d'un espace (256 depuis V2.26, 64 avant ; rangés par cases, <see cref="ObstacleIndex"/>), et de sommets
+        /// d'un obstacle (au moins 3).
+        /// </summary>
+        public const int MaxObstacles = 256;
         public const int MinVertices = 3, MaxVertices = 16;
 
         /// <summary>Le point est-il dans le carré de ±<see cref="MaxCoordinate"/> ?</summary>
@@ -43,16 +49,17 @@ namespace EdS.Domain.Space
     }
 
     /// <summary>
-    /// Sous-lot 11.4 : calcul plan en entiers bruts (unité 0,0001 m), sans flottant. Préconditions : composantes d'au plus 2·10⁷ en valeur
-    /// absolue (écart de deux points de l'espace, voir <see cref="SpaceLimits"/>) ; l'arithmétique est vérifiée (<c>checked</c>).
+    /// Sous-lot 11.4 : calcul plan en entiers bruts (unité 0,0001 m), sans flottant. Préconditions : composantes d'au plus
+    /// <see cref="MaxComponent"/> en valeur absolue (écart de deux points de l'espace, voir <see cref="SpaceLimits"/>) ; l'arithmétique est
+    /// vérifiée (<c>checked</c>).
     /// </summary>
     public static class Planar
     {
         /// <summary>Longueur brute d'un vecteur unitaire (1 m).</summary>
         public const long Unit = Fixed.Scale;
 
-        /// <summary>Plus grande composante admise par les opérations de ce type (écart de deux points à ±1000 m).</summary>
-        public const long MaxComponent = 2 * 1000 * Fixed.Scale;
+        /// <summary>Plus grande composante admise par les opérations de ce type (écart de deux points à ±4 096 m depuis V2.26).</summary>
+        public const long MaxComponent = 2L * SpaceLimits.MaxCoordinateMeters * Fixed.Scale;
 
         public static long Dot(long ax, long az, long bx, long bz) => checked(ax * bx + az * bz);
 
@@ -72,7 +79,9 @@ namespace EdS.Domain.Space
             if (x == 0 && z == 0) return false;
             if (Math.Abs(x) > MaxComponent || Math.Abs(z) > MaxComponent) throw new ArgumentOutOfRangeException(nameof(x), "vecteur hors des bornes de l'espace.");
             long squared = LengthSquared(x, z);
-            long precision = squared <= 92_000_000_000L ? 10_000 : 100;   // squared × precision² < 2⁶³ dans les deux cas
+            // squared × precision² < 2⁶³ dans les trois cas. Sous-lot V2.26 : troisième palier (10) pour les écarts au-delà de ±1 000 m ; les
+            // vecteurs d'avant (somme des carrés ≤ 8·10¹⁴) gardent exactement leur palier, donc leurs résultats.
+            long precision = squared <= 92_000_000_000L ? 10_000 : squared <= 920_000_000_000_000L ? 100 : 10;
             long norm = IntMath.Sqrt(checked(squared * precision * precision));   // |v| × precision, par défaut
             rx = IntMath.MulDiv(x, checked(length * precision), norm, RoundingMode.HalfAwayFromZero);
             rz = IntMath.MulDiv(z, checked(length * precision), norm, RoundingMode.HalfAwayFromZero);

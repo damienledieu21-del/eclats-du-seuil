@@ -128,6 +128,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.4d (schéma 7) : instant d'arrivée en cours de combat, en ms ; absent : présent dès le départ.</summary>
         public long? ArrivalMs { get; set; }
 
+        /// <summary>Sous-lot V2.26 (schéma 18) : état de combat emporté d'un autre secteur, pour un combattant qui arrive en route ; facultatif.</summary>
+        public CarriedData? Carried { get; set; }
+
         /// <summary>Sous-lot 11.5 (schéma 8) : comportement d'un assaillant dans un combat positionné ; facultatif.</summary>
         public BehaviorData? Behavior { get; set; }
 
@@ -266,6 +269,22 @@ namespace EdS.Data.Scenarios
         public Fixed? DamageReduction { get; set; }
         public int? CostPerBlock { get; set; }
         public long? ParryWindowMs { get; set; }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.26 (schéma 18) : état emporté (<c>carried</c>) : <c>health</c>, <c>endurance</c>, <c>enduranceRegenMs</c>, <c>resonance</c>,
+    /// <c>rampartCharges</c>, <c>globalCooldownMs</c>, <c>cooldowns</c> (compétence → ms restantes), <c>consumableCooldownMs</c> ; tous facultatifs.
+    /// </summary>
+    public sealed class CarriedData
+    {
+        public long? Health { get; set; }
+        public long? Endurance { get; set; }
+        public long? EnduranceRegenMs { get; set; }
+        public int? Resonance { get; set; }
+        public int? RampartCharges { get; set; }
+        public long? GlobalCooldownMs { get; set; }
+        public List<KeyValuePair<string, int?>>? Cooldowns { get; set; }
+        public long? ConsumableCooldownMs { get; set; }
     }
 
     /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>

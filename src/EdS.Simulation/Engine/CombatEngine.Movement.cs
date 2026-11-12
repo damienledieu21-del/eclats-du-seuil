@@ -70,13 +70,22 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Sous-lot 11.9 : obstacles qui arrêtent la vue (les obstacles bas en sont exclus ; ils arrêtent la marche).</summary>
         private ConvexPolygon[] _sightObstacles = Array.Empty<ConvexPolygon>();
+
+        /// <summary>
+        /// Sous-lot V2.26 : obstacles rangés par cases (256 au plus) : marche, gélules et ligne de vue ne parcourent que le décor proche, avec
+        /// exactement les mêmes réponses (et le même ordre de dégagement) qu'un parcours de tous les obstacles.
+        /// </summary>
+        private ObstacleIndex _obstacleIndex = new ObstacleIndex(Array.Empty<ConvexPolygon>());
+        private ObstacleIndex _sightIndex = new ObstacleIndex(Array.Empty<ConvexPolygon>());
+
+        /// <summary>Sous-lot V2.26 : tampon des obstacles candidats d'un dégagement (alloué une fois).</summary>
+        private int[] _settleCandidates = Array.Empty<int>();
         private long _minX, _minZ, _maxX, _maxZ;
 
         /// <summary>Pas maximal par tick (vitesse technique maximale) et pas d'essai du garde-fou (vitesse de base des règles).</summary>
         private long _maxStep, _probeStep;
 
-        /// <summary>Solidité de chaque paire de combattants (ordre des identifiants), fixe pendant tout le combat ; un mort n'est solide pour personne.</summary>
-        private bool[,] _solid = new bool[0, 0];
+
 
         private void InitSpace()
         {
@@ -84,6 +93,9 @@ namespace EdS.Simulation.Engine
             _spatial = true;
             _obstacles = space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray();
             _sightObstacles = space.Obstacles.Where(o => !o.Low).Select(o => new ConvexPolygon(o.Points)).ToArray();
+            _obstacleIndex = new ObstacleIndex(_obstacles);
+            _sightIndex = new ObstacleIndex(_sightObstacles);
+            _settleCandidates = new int[_obstacles.Length];
             _minX = space.Min.X.Raw;
             _minZ = space.Min.Z.Raw;
             _maxX = space.Max.X.Raw;
@@ -91,21 +103,15 @@ namespace EdS.Simulation.Engine
             _maxStep = IntMath.MulDiv(SpaceLimits.MaxSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
             _probeStep = IntMath.MulDiv(_rules.MovementSpeed.Raw, _tickMs, 1000, RoundingMode.Floor);
             InitPaths();   // sous-lot V2.8
-            BuildSolid();
         }
 
-        /// <summary>Solidité de chaque paire (ordre des identifiants) ; sous-lot 11.4d : refaite quand un combattant rejoint le combat (<see cref="Join"/>).</summary>
-        private void BuildSolid()
-        {
-            if (!_spatial) return;
-            int n = _fightersById.Count;
-            _solid = new bool[n, n];
-            for (int i = 0; i < n; i++)
-                for (int j = 0; j < n; j++)
-                    if (i != j)
-                        _solid[i, j] = _rules.AreSolid(_fightersById[i].Character != null, _fightersById[i].Setup.Placement!.Radius,
-                            _fightersById[j].Character != null, _fightersById[j].Setup.Placement!.Radius);
-        }
+        /// <summary>
+        /// Solidité de la paire (<paramref name="i"/>, <paramref name="j"/>) (ordre des identifiants ; règle de contact, fixe pendant tout le
+        /// combat ; un mort n'est solide pour personne, ce que vérifient les appelants). Sous-lot V2.26 : calculée à la demande au lieu d'une
+        /// matrice refaite à chaque arrivée (coût quadratique quand une session voit passer des centaines de combattants) ; mêmes réponses.
+        /// </summary>
+        private bool Solid(int i, int j) => i != j && _rules.AreSolid(_fightersById[i].Character != null, _fightersById[i].Setup.Placement!.Radius,
+            _fightersById[j].Character != null, _fightersById[j].Setup.Placement!.Radius);
 
         private Body? CreateBody(CombatantSetup setup)
         {
@@ -330,7 +336,7 @@ namespace EdS.Simulation.Engine
             for (int j = 0; j < _fightersById.Count; j++)
             {
                 Fighter other = _fightersById[j];
-                if (j == index || other.Out || other.Character != null || _solid[index, j]) continue;
+                if (j == index || other.Out || other.Character != null || Solid(index, j)) continue;
                 if (Planar.CirclesOverlap(x[index], z[index], r, x[j], z[j], other.Body!.Radius)) return true;
             }
             return false;
@@ -372,15 +378,30 @@ namespace EdS.Simulation.Engine
                 cx = Math.Min(Math.Max(cx, checked(_minX + r)), checked(_maxX - r));
                 cz = Math.Min(Math.Max(cz, checked(_minZ + r)), checked(_maxZ - r));
                 bool overlapping = false;
-                foreach (ConvexPolygon obstacle in _obstacles)
+                // Sous-lot V2.26 : obstacles dans leur ordre, mais seulement ceux rangés près de la place du moment (les autres ne la
+                // chevauchent pas : leur boîte ne touche pas celle du disque) ; après un dégagement, la place change, les candidats aussi,
+                // et le parcours reprend après le dernier obstacle examiné, exactement comme un parcours de tous.
+                int[] candidates = _settleCandidates;
+                int count = _obstacleIndex.Candidates(checked(cx - r), checked(cz - r), checked(cx + r), checked(cz + r), candidates);
+                int last = -1;
+                for (int k = 0; k < count; k++)
                 {
+                    int i = candidates[k];
+                    if (i <= last) continue;
+                    last = i;
+                    ConvexPolygon obstacle = _obstacles[i];
                     if (!obstacle.OverlapsCircle(cx, cz, r)) continue;
                     overlapping = true;
-                    if (pass < MaxPushes && !PushOutOfPolygon(obstacle, ref cx, ref cz, r)) return false;
+                    if (pass < MaxPushes)
+                    {
+                        if (!PushOutOfPolygon(obstacle, ref cx, ref cz, r)) return false;
+                        count = _obstacleIndex.Candidates(checked(cx - r), checked(cz - r), checked(cx + r), checked(cz + r), candidates);
+                        k = -1;
+                    }
                 }
                 for (int j = 0; j < _fightersById.Count; j++)
                 {
-                    if (j == index || !_solid[index, j] || _fightersById[j].Out) continue;
+                    if (j == index || !Solid(index, j) || _fightersById[j].Out) continue;
                     long rj = _fightersById[j].Body!.Radius;
                     if (!Planar.CirclesOverlap(cx, cz, r, x[j], z[j], rj)) continue;
                     overlapping = true;
@@ -424,7 +445,7 @@ namespace EdS.Simulation.Engine
             for (int j = 0; j < _fightersById.Count; j++)
             {
                 Fighter player = _fightersById[j];
-                if (j == mover || player.Character is null || player.Out || !_solid[mover, j]) continue;
+                if (j == mover || player.Character is null || player.Out || !Solid(mover, j)) continue;
                 long reach = checked(player.Body!.Radius + rm + 2 * _probeStep);
                 if (Planar.LengthSquared(checked(x[j] - nx), checked(z[j] - nz)) >= checked(reach * reach)) continue;
                 if (IsTrapped(j, x, z)) continue;   // déjà sans issue avant ce pas : la créature n'en est pas la cause
