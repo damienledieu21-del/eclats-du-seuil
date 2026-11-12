@@ -160,6 +160,9 @@ namespace EdS.Runtime
             }
             foreach (SpaceObstacle o in map.Obstacles)
                 if (Builds(o)) _pads.Add(new ReliefPad(o.Id, Points(o), _s.PadCore));
+            // V2.25.2 : la porte d'un passage ouvert (son obstacle retiré) garde son replat : la barrière du moulin y reste, ouverte.
+            foreach (SpaceObstacle o in map.Gates)
+                if (Builds(o) && _pads.All(p => p.Id != o.Id)) _pads.Add(new ReliefPad(o.Id, Points(o), _s.PadCore));
             int c = 0;
             foreach ((double x, double z) in map.Clearings) _pads.Add(new ReliefPad("place" + c++, new[] { (x, z) }, _s.ClearingRadius));
             Group();

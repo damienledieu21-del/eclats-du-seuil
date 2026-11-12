@@ -170,6 +170,9 @@ namespace EdS.Game
             Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
+            OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
+            SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
+            QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
             Pavements();
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg
@@ -599,17 +602,217 @@ namespace EdS.Game
         /// (<see cref="TownModels.OwnFacing"/>). Les palissades n'arrêtent pas la caméra, comme la palissade de rondins faite par le code.
         /// False sans modèle de l'atelier pour <paramref name="id"/>.
         /// </summary>
-        private bool OwnPiece(string id, List<Vector3> points)
+        private bool OwnPiece(string id, List<Vector3> points, bool openGate = false)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             BuildingLook own = catalog != null ? catalog.OwnBuilding(id) : null;
             if (own == null) return false;
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
+            // V2.25.2 : une pierre du Seuil tourne sa face gravée vers le centre du triangle des trois pierres (lacet quelconque).
+            if (AtelierDecor.IsSeuilStone(id))
+            {
+                OwnStone(id, x0, z0, x1, z1, own);
+                return true;
+            }
             (int X, int Z) facing = TownModels.OwnFacing(id, TownRules.FacingOf(id, x0, z0, x1, z1, _roads, _doors));
             StyleBuilding kind = StyleRules.FenceFor(id) == StyleFence.Palisade ? StyleBuilding.Stall : StyleBuilding.None;
             GameObject model = PlaceModel(kind, id, x0, z0, x1, z1, own.Model, facing, TownModels.OwnFit(facing), false, true);
             OwnParts(own, model);
+            Gate(id, model, openGate);   // V2.25.2 : vantaux et chaînes de la barrière du moulin
+            if (StyleRules.Key(id) == "frontdetaille") _quarryFront = (x0, z0, x1, z1, facing);
             return true;
+        }
+
+        // --- V2.25.2 : pierres du Seuil, barrière du moulin, carrière (modèles de l'atelier) ------------------------------------------
+
+        /// <summary>Matériaux lumineux des pierres du Seuil (copies, détruites avec elles), lueur montrée (−1 : à poser).</summary>
+        private readonly List<Material> _seuilGlow = new List<Material>();
+
+        /// <summary>
+        /// Revue Codex de la PR #147 : occulteurs des pierres du Seuil ; leurs copies transparentes (<see cref="PrepareFade"/>, pierre qui
+        /// cache le personnage) suivent aussi la lueur, et restent détruites avec les autres copies (<see cref="ReleaseFade"/>).
+        /// </summary>
+        private readonly List<Occluder> _seuilOccluders = new List<Occluder>();
+        private float _shownSeuilGlow = -1f;
+        private int _seuilStones;
+
+        /// <summary>Barrières de l'atelier (obstacle de leur passage) ; relues deux fois par seconde.</summary>
+        private readonly List<(string Id, GateSwing Swing)> _gates = new List<(string, GateSwing)>();
+        private float _gatePoll;
+        private bool _gatesSynced;
+
+        /// <summary>Emprise et face exploitée du front de taille de l'atelier, s'il est posé.</summary>
+        private (float X0, float Z0, float X1, float Z1, (int X, int Z) Facing)? _quarryFront;
+
+        /// <summary>
+        /// V2.25.2 : un menhir de l'atelier au centre de son emprise, sa face gravée tournée vers le centre du triangle des pierres
+        /// (<see cref="AtelierDecor.SeuilStoneYaw"/>). Ses fissures et ses éclats luisent (copie de sa matière, carte d'émission) d'après la
+        /// lumière du monde (<see cref="Night"/>, <see cref="AtelierDecor.SeuilGlow"/>), sans lumière ajoutée : pas de halo.
+        /// </summary>
+        private void OwnStone(string id, float x0, float z0, float x1, float z1, BuildingLook own)
+        {
+            var center = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            (double X, double Z)? heart = AtelierDecor.SeuilCenter(_space.Obstacles);
+            float yaw = heart != null ? (float)AtelierDecor.SeuilStoneYaw(center.x, center.z, heart.Value) : 0f;
+            var go = new GameObject(id + " (pierre du Seuil)");
+            go.transform.SetParent(_root.transform, false);
+            go.transform.position = center;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            GameObject model = Object.Instantiate(own.Model, go.transform, false);
+            foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            MaterialCopies copies = model.AddComponent<MaterialCopies>();
+            foreach (Renderer r in model.GetComponentsInChildren<Renderer>())
+            {
+                Material m = r.sharedMaterial;
+                if (m == null || !m.HasProperty("_EmissionColor") || m.GetTexture("_EmissionMap") == null) continue;
+                var glow = new Material(m) { name = m.name + " (lueur)" };
+                glow.EnableKeyword("_EMISSION");
+                r.sharedMaterial = glow;
+                copies.Copies.Add(glow);
+                _seuilGlow.Add(glow);
+            }
+            int firstOccluder = _occluders.Count;
+            AddModelOccluders(model);
+            for (int i = firstOccluder; i < _occluders.Count; i++) _seuilOccluders.Add(_occluders[i]);
+            _seuilStones++;
+        }
+
+        /// <summary>V2.25.2 : lueur des pierres du Seuil d'après la part d'allumage des lanternes du monde (à chaque image dehors).</summary>
+        private void SeuilGlow(float lamps)
+        {
+            if (_seuilGlow.Count == 0 || Mathf.Abs(lamps - _shownSeuilGlow) <= 0.002f) return;
+            _shownSeuilGlow = lamps;
+            Color emission = Color.white * (float)AtelierDecor.SeuilGlow(lamps);
+            foreach (Material m in _seuilGlow)
+                if (m != null) m.SetColor("_EmissionColor", emission);
+            // Revue Codex de la PR #147 : les copies transparentes d'une pierre en fondu (faites d'une matière lumineuse) aussi.
+            foreach (Occluder o in _seuilOccluders)
+            {
+                if (o.Faded == null || o.Clear == null) continue;   // pas de fondu préparé (ou copies déjà détruites)
+                for (int i = 0; i < o.Clear.Length; i++)
+                    for (int k = 0; k < o.Clear[i].Length; k++)
+                    {
+                        Material m = o.Clear[i][k];
+                        if (m != null && m.HasProperty("_EmissionColor") && m.GetTexture("_EmissionMap") != null) m.SetColor("_EmissionColor", emission);
+                    }
+            }
+        }
+
+        /// <summary>V2.25.2 : cercle de cailloux et touffes d'herbe pâle, seulement autour des pierres de l'atelier.</summary>
+        private void SeuilDecor(CombatSpace space)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (_seuilStones == 0 || catalog == null) return;
+            (double X, double Z)? heart = AtelierDecor.SeuilCenter(space.Obstacles);
+            if (heart == null) return;
+            foreach (DecorSpot spot in AtelierDecor.SeuilPebbles(heart.Value, space.Obstacles, _roads)) DecorPiece(catalog, spot, false);
+            foreach (DecorSpot spot in AtelierDecor.SeuilTufts(space.Obstacles)) DecorPiece(catalog, spot, false);
+        }
+
+        /// <summary>V2.25.2 : chèvre, traîneau, outils et tas d'éclats devant le front de taille de l'atelier.</summary>
+        private void QuarryDecor()
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (_quarryFront == null || catalog == null) return;
+            var f = _quarryFront.Value;
+            foreach (DecorSpot spot in AtelierDecor.QuarryProps(f.X0, f.Z0, f.X1, f.Z1, f.Facing)) DecorPiece(catalog, spot, true);
+        }
+
+        /// <summary>V2.25.2 : un petit décor de l'atelier à sa place (pivot au sol), tourné, à son échelle ; rien sans son modèle.</summary>
+        private void DecorPiece(StyleCatalog catalog, DecorSpot spot, bool occludes)
+        {
+            GameObject prefab = catalog.OwnDecorPiece(spot.Piece);
+            if (prefab == null) return;
+            var holder = new GameObject(prefab.name + " (décor)");
+            holder.transform.SetParent(_root.transform, false);
+            // V2.24 : sur le sol affiché, au plus bas sous son pied (AtelierDecor.Foot) : rien ne flotte.
+            float x = (float)spot.X, z = (float)spot.Z;
+            holder.transform.position = new Vector3(x, Ground(x, z, (float)AtelierDecor.Foot(spot.Piece)), z);
+            holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
+            holder.transform.localScale = Vector3.one * (float)spot.Scale;
+            GameObject piece = Object.Instantiate(prefab, holder.transform, false);
+            foreach (Collider c in piece.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            if (occludes) AddModelOccluders(piece);
+        }
+
+        /// <summary>
+        /// V2.25.2 : vantaux et chaînes d'un modèle de l'atelier qui en a (la barrière du moulin, objets « Vantail_G », « Vantail_D »,
+        /// « Chaine_Fermee », « Chaine_Ouverte ») : chaque vantail est accroché à un axe posé sur sa charnière
+        /// (<see cref="AtelierDecor.GatePivot"/>), la chaîne pendante suit le vantail gauche ; <see cref="GateSwing"/> les anime.
+        /// </summary>
+        private void Gate(string id, GameObject model, bool open)
+        {
+            if (model == null) return;
+            Transform g = null, d = null;
+            GameObject closed = null, opened = null;
+            foreach (Transform t in model.GetComponentsInChildren<Transform>(true))
+                switch (AtelierDecor.GatePart(t.name))
+                {
+                    case "G": if (g == null) g = t; break;
+                    case "D": if (d == null) d = t; break;
+                    case "fermee": if (closed == null) closed = t.gameObject; break;
+                    case "ouverte": if (opened == null) opened = t.gameObject; break;
+                }
+            if (g == null && d == null) return;
+            GateSwing swing = model.AddComponent<GateSwing>();
+            swing.LeafG = Hinge(g, "G", model);
+            swing.LeafD = Hinge(d, "D", model);
+            if (opened != null && swing.LeafG != null) opened.transform.SetParent(swing.LeafG, true);
+            swing.ChainClosed = closed;
+            swing.ChainOpen = opened;
+            swing.Snap(open);
+            _gates.Add((id, swing));
+        }
+
+        private static Transform Hinge(Transform leaf, string side, GameObject model)
+        {
+            (double X, double Z)? at = AtelierDecor.GatePivot(side);
+            if (leaf == null || at == null) return null;
+            Transform frame = model.transform.parent;
+            var hinge = new GameObject(leaf.name + " (axe)").transform;
+            hinge.SetParent(frame, false);
+            hinge.localPosition = model.transform.localPosition + new Vector3((float)at.Value.X, 0f, (float)at.Value.Z);
+            leaf.SetParent(hinge, true);
+            return hinge;
+        }
+
+        /// <summary>V2.25.2 : barrière d'un passage déjà ouvert (son obstacle n'est plus dans l'espace) : posée ouverte.</summary>
+        private void OpenGates(CombatSpace space, AdventureMap map)
+        {
+            if (map == null) return;
+            foreach (SpaceObstacle gate in map.Gates)
+            {
+                if (space.Obstacles.Any(o => o.Id == gate.Id) || TownRules.BuildingFor(gate.Id) != StyleBuilding.None) continue;
+                int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
+                if (!OwnPiece(gate.Id, gate.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList(), true)) continue;
+                // Sur son replat (GroundRelief garde celui des portes des passages), comme un obstacle (Obstacle).
+                if (StyleWorld.HasRelief)
+                    Lift(children, occluders, boxes, Ground(Raw((gate.Points.Min(p => p.X.Raw) + gate.Points.Max(p => p.X.Raw)) / 2),
+                        Raw((gate.Points.Min(p => p.Z.Raw) + gate.Points.Max(p => p.Z.Raw)) / 2), 0.4f));
+            }
+        }
+
+        /// <summary>
+        /// V2.25.2 : la barrière du moulin suit le registre du monde (relu deux fois par seconde) : elle s'ouvre doucement dès que la quête
+        /// ouvre le passage (<see cref="AdventureSession.GateOpen"/>). Relecture de la PR #147 : à la première lecture après la construction
+        /// de la vue, elle est posée d'un coup dans l'état du passage (<see cref="AtelierDecor.GateSnaps"/>) : une vue refaite après
+        /// l'ouverture, l'obstacle encore là, ne rejoue pas l'animation.
+        /// </summary>
+        public void Gates(AdventureSession adventure, float deltaTime)
+        {
+            if (_gates.Count == 0 || adventure == null) return;
+            _gatePoll -= deltaTime;
+            if (_gatePoll > 0f && _gatesSynced) return;
+            _gatePoll = 0.5f;
+            bool snap = AtelierDecor.GateSnaps(_gatesSynced);
+            _gatesSynced = true;
+            foreach ((string id, GateSwing swing) in _gates)
+            {
+                if (swing == null) continue;
+                bool open = adventure.GateOpen(id);
+                if (snap) swing.Snap(open);
+                else swing.Open = open;
+            }
         }
 
         /// <summary>
@@ -1529,6 +1732,9 @@ namespace EdS.Game
         {
             List<SpaceObstacle> pillars = space.Obstacles.Where(o => o.Id.StartsWith("pilier")).ToList();
             if (pillars.Count < 2) return;
+            // V2.25.2 : les piliers de l'atelier sont des piliers en ruine (1,20 à 3,40 m) : plus d'abri sur eux.
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            if (catalog != null && pillars.Any(o => catalog.OwnBuilding(o.Id) != null)) return;
             int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
             var posts = pillars.Select(o => ((double)Raw((o.Points.Min(p => p.X.Raw) + o.Points.Max(p => p.X.Raw)) / 2),
                 (double)Raw((o.Points.Min(p => p.Z.Raw) + o.Points.Max(p => p.Z.Raw)) / 2))).ToList();

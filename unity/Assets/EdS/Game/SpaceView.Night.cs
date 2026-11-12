@@ -208,6 +208,7 @@ namespace EdS.Game
         /// </summary>
         public void Night(Vector3 camera, bool worldNight, float deltaTime)
         {
+            SeuilGlow(StyleWorld.Lamps);   // V2.25.2 : fissures et éclats des pierres du Seuil
             if (_nightRoot == null) return;
             float lamps = StyleWorld.Lamps, night = StyleWorld.NightShare;
             StyleCatalog catalog = StyleCatalog.Loaded;

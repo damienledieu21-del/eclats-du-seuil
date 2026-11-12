@@ -658,3 +658,19 @@ Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief
 | 39.9 | Près du bord de l'aire, caméra au plus loin et basse, tourner autour du personnage | La caméra **se rapproche en douceur** quand une colline passe derrière toi ; jamais sous le sol, jamais de saut | [ ] | Un saut ou une vue sous le sol : où |
 | 39.10 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
 
+## 40. Pierres du Seuil, barrière du moulin, ruines, carrière (V2.25.2)
+
+Les modèles de l'atelier remplacent les menhirs, la porte du moulin, les murs et les piliers des ruines, le front de taille et les six blocs. Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« L'atelier »). Rien de tout cela n'a encore été vu dans Unity.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 40.1 | Lire le rapport du menu | « Bâtiments de l'atelier » cite `pierre_seuil1` à `3`, `porte_moulin`, `mur_nord`, `mur_sud`, `pilier1` à `4`, `front_de_taille`, `bloc1` à `6` ; « Décor de l'atelier » cite cailloux, touffe, chèvre, traîneau, outils, tas d'éclats ; lignes « émission » pour les trois menhirs | [ ] | Noter la ligne |
+| 40.2 | Aller au Seuil (nord-est), de jour | Trois menhirs gravés, **faces gravées tournées vers le milieu** du triangle ; un cercle de cailloux autour ; touffes pâles au pied ; plus les menhirs de DragonJojo | [ ] | Une face tournée de travers : laquelle ? |
+| 40.3 | Même endroit, la nuit | Les fissures et les éclats **luisent** bleu-violet pâle, nettement, sans halo autour | [ ] | Trop fort, trop faible ? |
+| 40.4 | La porte du moulin, quête pas faite | Deux poteaux, deux vantaux **fermés**, chaîne et cadenas | [ ] | |
+| 40.5 | Faire poser la ferrure par Maëlle | Les vantaux **s'ouvrent doucement vers le moulin** (environ 3 s), la chaîne pend, cadenas ouvert ; après la halte, on passe et la barrière reste ouverte | [ ] | S'ouvrent du mauvais côté ? |
+| 40.6 | Les ruines (à l'est de la rivière) | Deux murs en ruine (baie en arc, départ de voûte), débris au pied | [ ] | |
+| 40.7 | Les piliers à l'ouest du moulin | Quatre piliers brisés de hauteurs différentes ; **plus d'abri** sur eux | [ ] | Garder l'abri ailleurs ? |
+| 40.8 | La carrière | Front à gradins face à l'ouest, blocs, chèvre de levage, traîneau, outils et tas d'éclats devant le front, rien sur les chemins ni sur le filon | [ ] | |
+| 40.9 | Ton avis : proportions, couleurs | — | [ ] | |
+

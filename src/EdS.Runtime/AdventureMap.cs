@@ -117,10 +117,17 @@ namespace EdS.Runtime
         /// </summary>
         public IReadOnlyList<(string Id, double X, double Z)> Speakers { get; }
 
+        /// <summary>
+        /// V2.25.2 : obstacles des passages de la zone (la porte du moulin), tels que la zone les définit, même ouverts (absents de
+        /// <see cref="Obstacles"/>) : le décor y pose la barrière, fermée ou ouverte. Vide sans passage.
+        /// </summary>
+        public IReadOnlyList<SpaceObstacle> Gates { get; }
+
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
-            IEnumerable<(string Id, double X, double Z)>? speakers = null)
+            IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null)
         {
+            Gates = (gates ?? Array.Empty<SpaceObstacle>()).ToList();
             Speakers = (speakers ?? Array.Empty<(string, double, double)>()).ToList();
             if (space is null) throw new ArgumentNullException(nameof(space));
             MinX = Meters(space.Min.X.Raw);
