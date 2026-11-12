@@ -205,6 +205,30 @@ namespace EdS.Game
     /// Essai réaliste 8 (demande de Damien du 28 octobre 2026 : de vrais bâtiments en 3D) : un modèle de bâtiment de Sketchfab, rangé par
     /// genre (« Assets/Style/Sketchfab/Batiments/Maison/… »), et son pied (m, x et z, à l'échelle 1, face vers +z) mesuré par le menu.
     /// </summary>
+    /// <summary>
+    /// V2.25.4 : une essence d'arbres de l'atelier : ses modèles (jeune, adulte a à d, vieux : objets « _LOD1 », « _LOD2 », « _LOD3 »
+    /// (quad de l'imposteur), « _collision », « _feuilles_sol »), l'imposteur de chacun (même rang), et l'atlas de feuillage de chaque
+    /// saison (printemps, été, automne, hiver : un seul maillage, la texture change).
+    /// </summary>
+    [Serializable]
+    public sealed class TreeLook
+    {
+        public string Essence;
+        public GameObject[] Models = new GameObject[0];
+        public Texture2D[] Impostors = new Texture2D[0];
+        public Texture2D[] Leaves = new Texture2D[4];
+        public Texture2D[] LeafNormals = new Texture2D[4];
+
+        /// <summary>Rang du modèle « &lt;essence&gt;_&lt;âge&gt; » ; -1 sans lui.</summary>
+        public int IndexOf(string model)
+        {
+            if (Models == null) return -1;
+            for (int i = 0; i < Models.Length; i++)
+                if (Models[i] != null && Models[i].name == model) return i;
+            return -1;
+        }
+    }
+
     [Serializable]
     public sealed class BuildingLook
     {
@@ -531,6 +555,10 @@ namespace EdS.Game
         public BuildingLook[] Buildings = new BuildingLook[0];
         [Tooltip("V2.25.2 : petits décors de l'atelier (« Assets/EdS/Modeles/Decor/<groupe>/ ») : cailloux et touffe des pierres du Seuil, accessoires de la carrière (remplis par le menu).")]
         public GameObject[] OwnDecor = new GameObject[0];
+        [Tooltip("V2.25.4 : arbres de l'atelier (« Assets/EdS/Modeles/Arbres/<essence>/ », remplis par le menu) ; ils remplacent les arbres téléchargés partout où le jeu pose des arbres.")]
+        public TreeLook[] AtelierTrees = new TreeLook[0];
+        [Tooltip("V2.25.4 : l'arbre millénaire de l'atelier, livré mais pas posé (il ira avec la grande carte, V2.32).")]
+        public TreeLook Millenaire;
         [Tooltip("Terre battue des chemins (dossier « Ground », nom « chemin… »).")]
         public Texture2D RoadColor;
         public Texture2D RoadNormal;
@@ -769,6 +797,18 @@ namespace EdS.Game
                 if (b != null && string.IsNullOrEmpty(b.Building) && b.Kind == kind && b.Model != null && b.Size.x > 0.01f && b.Size.y > 0.01f) list.Add(b);
             return list;
         }
+
+        /// <summary>V2.25.4 : les arbres de l'atelier de l'essence <paramref name="essence"/> (« chene ») ; null sans eux.</summary>
+        public TreeLook TreeOf(string essence)
+        {
+            if (AtelierTrees == null) return null;
+            foreach (TreeLook look in AtelierTrees)
+                if (look != null && look.Essence == essence && look.Models != null && look.Models.Length > 0) return look;
+            return null;
+        }
+
+        /// <summary>V2.25.4 : y a-t-il des arbres de l'atelier ? (Ils passent alors devant ceux téléchargés.)</summary>
+        public bool HasAtelierTrees => AtelierTrees != null && AtelierTrees.Length > 0;
 
         /// <summary>V2.25.2 : le petit décor de l'atelier « …_&lt;piece&gt; » (<see cref="AtelierDecor.IsPiece"/>) ; null sans lui.</summary>
         public GameObject OwnDecorPiece(string piece)

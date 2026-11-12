@@ -217,6 +217,8 @@ Réponses de Damien du 31 octobre 2026, 18 h 20 (petit chantier « V1 réponses 
 
 Sous-lot V2.25.3 (grande carte, étape 1 : « cases et repère », [plan](docs/PLAN_GRANDE_CARTE.md#7-sous-lots)) : **zones en schéma 13**, bloc `region` (repère unique de la région, cases de **128 m**, secteurs de **256 m**) ; les Vallons découpés dans le repère du plan (32 × 24 cases de (−1 908, −1 614) à (2 188, 1 458) ; le cœur dans les cases `c14_r12` à `c15_r13`, secteur `s07_06`) **sans rien changer au jeu** (même simulation, mêmes journaux, mêmes sauvegardes ; schéma 12 encore lu) ; bornes relevées pour une zone à région (2 048 lieux, 256 portes, 1 024 routes de 128 points) et bornes par case (64 lieux, 16 portes, 32 routes) ; outil `eds carte` (cases, densité, image de contrôle PNG) ([docs/DONNEES.md](docs/DONNEES.md#cases-et-repère-de-la-région-sous-lot-v2253)).
 
+Sous-lot V2.25.4 (« arbres de l'atelier », affichage seulement) : les 14 essences faites à l'atelier (6 arbres chacune) remplacent les arbres téléchargés ; essence selon le lieu, variante tirée de la position, LOD jusqu'à un imposteur à 8 angles, feuillage de la saison du monde (menu d'essai des saisons), veines du corrompu la nuit ; arbres de décor dans les vergers, sur les berges et autour du Seuil ; arbre millénaire livré, posé avec la grande carte. Détail : [UNITY.md](docs/UNITY.md), [MONDE.md](docs/MONDE.md).
+
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)
