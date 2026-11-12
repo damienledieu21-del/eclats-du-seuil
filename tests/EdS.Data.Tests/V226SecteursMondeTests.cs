@@ -636,4 +636,143 @@ public class V226SecteursMondeTests
         Assert.True(w.ViewOf("bruno").IsPresent);
         Assert.Equal(new[] { "bruno" }, w.Players);
     }
+
+    // --- Revue Codex de la PR #150 (3e tour) ---------------------------------------------------------------------------------------------
+
+    /// <summary>Carte d'essai dont chaque session de secteur dure <paramref name="durationMs"/>.</summary>
+    private static SectorMap ShortMap(long durationMs, CombatRules rules, params CombatantSetup[] creatures)
+    {
+        SectorMap m = Map(rules, creatures);
+        CombatSetup a = m.Area;
+        var area = new CombatSetup(a.Seed, durationMs, a.Stats, a.Damage, a.Progression, a.Combat, a.Combatants, a.Commands, a.Data, a.Space, a.Zone, a.Truces);
+        return new SectorMap(Grid, area, P(64, 128));
+    }
+
+    private static CharacterSetup Hurt(string id, double x, double z, long health)
+    {
+        CharacterSetup h = Hero(id, x, z);
+        return new CharacterSetup(h.Id, h.Team, h.Class, h.Build, 0, h.Placement, 0, carried: new CarriedState(health: health));
+    }
+
+    [Fact]
+    public void Joueur_present_jusqu_a_la_duree_limite_le_secteur_repart_et_le_monde_continue()
+    {
+        // P1 : la session du secteur atteint sa durée (5 s) : le secteur repart dans une session nouvelle au même tick du monde, le joueur y
+        // arrive avec son état ; le monde continue, plusieurs fois de suite.
+        SectorWorld w = World(ShortMap(5_000, Shipped.Combat));
+        w.Enter(Hurt("alice", 100, 128, 200));
+        w.Step();
+        Assert.Equal(200L, w.ViewOf("alice").Health);
+        long session = w.SectorZone("s00_00")!.Session;
+        var renewed = new List<SectorEvent>();
+        for (int i = 0; i < 400; i++)
+        {
+            renewed.AddRange(w.Step().Where(e => e.Kind == SectorEventKind.Renewed && e.Sector == "s00_00"));
+            Assert.All(w.OpenSectors, s => Assert.Equal(w.WorldTick, w.SectorZone(s)!.WorldTick));
+        }
+        Assert.True(renewed.Count >= 3, $"{renewed.Count} renouvellements");
+        Assert.True(w.SectorZone("s00_00")!.Session > session);
+        Assert.Equal(w.SectorZone("s00_00")!.Session.ToString(System.Globalization.CultureInfo.InvariantCulture), renewed[^1].Other);
+        CombatantView v = w.ViewOf("alice");
+        Assert.True(v.IsPresent && !v.IsDead);
+        Assert.True(v.Health <= 200 && v.Health < v.MaxHealth, "l'état (PV) passe d'une session à la suivante");
+        Assert.False(w.SectorZone("s00_00")!.IsOver);
+        // Il marche encore d'une session à l'autre.
+        Walk(w, "alice", 1, 0);
+        double x0 = D(w.ViewOf("alice").Position!.Value.X);
+        Run(w, 120);
+        Assert.True(D(w.ViewOf("alice").Position!.Value.X) > x0);
+    }
+
+    private static void Exhaust(SectorWorld w, string sector, int keep, double x0)
+    {
+        Zone zone = w.SectorZone(sector)!;
+        int n = 0;
+        while (zone.Engine.IdentitiesLeft > keep)
+        {
+            var batch = new List<string>();
+            while (zone.Engine.IdentitiesLeft > keep && zone.Engine.FreePlaces > 0)
+            {
+                string id = $"souche_{sector}_{n++}";
+                zone.Engine.Join(new DummySetup(id, "cibles", Fixed.Zero, Fixed.Zero,
+                    placement: new CombatantPlacement(P(x0 + n % 60, 20 + (n / 60) % 100 * 2), Fixed.FromRatio(1, 10)), arrivalMs: checked(zone.Engine.CurrentTick * 50)));
+                batch.Add(id);
+            }
+            foreach (string id in batch) zone.Leave(id);
+            w.Step();
+        }
+    }
+
+    [Fact]
+    public void Reprise_sans_place_des_deux_cotes_gardee_jusqu_au_placement()
+    {
+        // P2 : au moment du passage, plus aucune identité ni à l'arrivée ni au départ : la reprise est gardée (sans combattant), jamais
+        // effacée ; elle est faite dès qu'une place existe (ici, session nouvelle du secteur de départ à sa durée), avec le même état.
+        SectorWorld w = World(ShortMap(60_000, Shipped.Combat));
+        w.Enter(Hurt("alice", 250, 128, 200));
+        w.Step();
+        Exhaust(w, "s00_00", 0, 20);
+        Exhaust(w, "s01_00", 1, 400);
+        Walk(w, "alice", 1, 0);
+        Run(w, 300, e => e.Kind == SectorEventKind.Departed);
+        Zone east = w.SectorZone("s01_00")!;
+        east.Engine.Join(new DummySetup("dernier", "cibles", Fixed.Zero, Fixed.Zero, placement: new CombatantPlacement(P(500, 250), Fixed.FromRatio(1, 10)),
+            arrivalMs: checked(east.Engine.CurrentTick * 50)));
+        Assert.Equal(0, east.Engine.IdentitiesLeft);
+        List<SectorEvent> events = Run(w, 5);
+        Assert.DoesNotContain(events, e => e.Kind == SectorEventKind.Arrived);
+        Assert.Contains("alice", w.Players);
+        Assert.True(w.IsResuming("alice"));
+        Assert.Throws<InvalidOperationException>(() => w.CombatantOf("alice"));
+        Run(w, 1300, e => e.Kind == SectorEventKind.Renewed);
+        w.Step();
+        Assert.False(w.IsResuming("alice"));
+        CombatantView v = w.ViewOf("alice");
+        Assert.True(v.IsPresent && !v.IsDead);
+        Assert.Equal(200L, v.Health);
+    }
+
+    [Fact]
+    public void Cles_de_mort_des_sessions_fermees_purgees_faits_persistants_gardes()
+    {
+        // P2 : de nombreuses sessions successives du même secteur (durée de 1 s) : les clés de mort de chaque session fermée sont purgées,
+        // les faits persistants (autres clés) gardés ; le registre ne grossit pas.
+        SectorWorld w = World(ShortMap(1_000, Shipped.Combat), null);
+        w.Enter(Hero("alice", 100, 128));
+        w.Step();
+        int sessions = 0;
+        for (int i = 0; i < 4000 && sessions < 60; i++)
+        {
+            Zone home = w.SectorZone("s00_00")!;
+            if (home.Session != sessions)
+            {
+                for (int k = 0; k < 50; k++) Assert.True(home.Consume(home.EventKey(ZoneEventKind.Death, $"loup{k}")));
+                Assert.True(home.Consume($"zone.essai/coffre_{home.Session}"));
+                sessions = (int)home.Session;
+            }
+            w.Step();
+        }
+        Assert.True(sessions >= 60);
+        IReadOnlyList<string> consumed = w.Consumed;
+        Assert.True(consumed.Count(k => k.Contains("/death/")) <= 50, $"{consumed.Count(k => k.Contains("/death/"))} clés de mort gardées");
+        Assert.All(consumed.Where(k => k.Contains("/death/")), k => Assert.StartsWith($"zone.essai/{w.SectorZone("s00_00")!.Session}/death/", k));
+        Assert.True(consumed.Count(k => k.StartsWith("zone.essai/coffre_", StringComparison.Ordinal)) >= 59);
+    }
+
+    [Fact]
+    public void Fermeture_d_un_secteur_purge_ses_cles_de_mort()
+    {
+        SectorWorld w = World(Map(Wolf("loup_est", 400, 128)));
+        w.Enter(Hero("alice", 100, 128));
+        w.Step();
+        Walk(w, "alice", 1, 0);
+        Run(w, 400, e => e.Kind == SectorEventKind.Opened);
+        Zone east = w.SectorZone("s01_00")!;
+        Assert.True(east.Consume(east.EventKey(ZoneEventKind.Death, "loup_est")));
+        Assert.True(east.Consume("zone.essai/s01_00/coffre"));
+        Walk(w, "alice", -1, 0);
+        Run(w, 2000, e => e.Kind == SectorEventKind.Closed);
+        Assert.DoesNotContain("zone.essai/s01_00/1/death/loup_est", w.Consumed);
+        Assert.Contains("zone.essai/s01_00/coffre", w.Consumed);
+    }
 }
