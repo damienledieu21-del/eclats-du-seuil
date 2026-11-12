@@ -116,7 +116,6 @@ namespace EdS.Data.Zones
             Cells = Frozen.List(cells, nameof(cells));
         }
 
-        /// <summary>Repère des Vallons d'Aube agrandis (plan, § 2.1).</summary>
         /// <summary>
         /// Sous-lot V2.26 : distance (en mètres, exacte en virgule fixe) d'un point de la région au bord le plus proche de son secteur (0 sur
         /// le bord ; un point hors de la région : 0).
@@ -135,6 +134,7 @@ namespace EdS.Data.Zones
             return d < Fixed.Zero ? Fixed.Zero : d;
         }
 
+        /// <summary>Repère des Vallons d'Aube agrandis (plan, § 2.1).</summary>
         public static RegionGrid Vallons() => new RegionGrid(VallonsOriginX, VallonsOriginZ, VallonsColumns, VallonsRows);
 
         /// <summary>Nombre de colonnes ou de rangées admis : pair, de 2 à <paramref name="max"/>.</summary>

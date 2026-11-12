@@ -56,10 +56,12 @@ public class V226SecteursMondeTests
 
     private static readonly RegionGrid Grid = new(0, 0, 4, 2);
 
-    private static SectorMap Map(params CombatantSetup[] creatures)
+    private static SectorMap Map(params CombatantSetup[] creatures) => Map(Shipped.Combat, creatures);
+
+    private static SectorMap Map(CombatRules rules, params CombatantSetup[] creatures)
     {
         var rock = new SpaceObstacle("rocher", new[] { P(255, 200), P(258, 200), P(258, 203), P(255, 203) });
-        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, creatures, Array.Empty<CombatCommand>(),
+        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, rules, creatures, Array.Empty<CombatCommand>(),
             Shipped.Data, new CombatSpace(P(0, 0), P(512, 256), new[] { rock }), zone: true);
         return new SectorMap(Grid, area, P(64, 128));
     }
@@ -143,12 +145,21 @@ public class V226SecteursMondeTests
     [Fact]
     public void Passage_hors_combat_avec_l_etat_au_tick_suivant()
     {
-        SectorWorld w = World(Map());
-        w.Enter(Hero("alice", 240, 128));
+        // Relecture indépendante de la PR #150 : un joueur blessé et fatigué, qui vient de frapper (recharges en cours), passe à l'est : il
+        // arrive avec les mêmes PV, la même endurance, la même Résonance et les mêmes recharges restantes.
+        CharacterSetup hero = Hero("alice", 242, 128);
+        hero = new CharacterSetup(hero.Id, hero.Team, hero.Class, hero.Build, 0, hero.Placement, 0, carried: new CarriedState(health: 200, endurance: 30, enduranceRegenMs: 1000));
+        var souche = new DummySetup("souche", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(242, 129.5), Fixed.FromRatio(1, 2)));
+        SectorWorld w = World(Map(souche));
+        w.Enter(hero);
         w.Step();
-        // Un peu entamée : PV et endurance emportés.
         CombatEngine west = w.EngineOf("alice");
-        Assert.Equal(new[] { "s00_00", "s01_00" }, w.OpenSectors);   // 16 m du voisin : ouvert d'emblée
+        Assert.Equal((200L, 30L), (west.View("alice").Health!.Value, west.View("alice").Endurance));
+        west.Submit(new CombatCommand(west.CurrentTick * 50, "alice", "skill.bastion.frappe_du_rempart", "souche"));
+        w.Step();
+        CombatantView struck = west.View("alice");
+        Assert.True(struck.CooldownReadyTick("skill.bastion.frappe_du_rempart") > west.CurrentTick);
+        Assert.Equal(new[] { "s00_00", "s01_00" }, w.OpenSectors);   // 14 m du voisin : ouvert d'emblée
         Walk(w, "alice", 1, 0);
         List<SectorEvent> events = Run(w, 200, e => e.Kind == SectorEventKind.Arrived);
         SectorEvent departed = events.Single(e => e.Kind == SectorEventKind.Departed);
@@ -160,15 +171,53 @@ public class V226SecteursMondeTests
         Assert.True(before.Position!.Value.X > Fixed.FromInt(264));   // au-delà de 8 m d'hystérésis
         Assert.Equal("s01_00", w.SectorOf("alice"));
         Assert.Equal("alice", w.CombatantOf("alice"));
+        CombatEngine east = w.EngineOf("alice");
+        long cooldownLeft = before.CooldownReadyTick("skill.bastion.frappe_du_rempart") - west.CurrentTick;
+        Assert.True(cooldownLeft > 0, "la recharge de la frappe doit courir encore au passage");
         w.Step();
         CombatantView after = w.ViewOf("alice");
         Assert.True(after.IsPresent);
-        Assert.Equal((before.Health, before.Endurance, before.Resonance), (after.Health, after.Endurance, after.Resonance));
+        Assert.Equal(200L, after.Health);
+        Assert.True(after.Health < after.MaxHealth);
+        Assert.InRange(after.Endurance, before.Endurance, before.Endurance + 1);
+        Assert.True(after.Endurance < after.MaxEndurance);
+        Assert.Equal((before.Resonance, before.RampartCharges), (after.Resonance, after.RampartCharges));
+        // Même recharge restante, en ticks du monde (les deux sessions ne sont pas ouvertes au même tick : leurs numéros de tick diffèrent).
+        Assert.Equal(cooldownLeft - 1, after.CooldownReadyTick("skill.bastion.frappe_du_rempart") - east.CurrentTick);
         Assert.Equal(before.Facing, after.Facing);
         Assert.NotNull(after.MoveDirection);   // la marche continue de l'autre côté
         Assert.True(after.Position!.Value.X > before.Position!.Value.X);
-        // Les deux sessions sont au même tick du monde.
         Assert.All(w.OpenSectors, s => Assert.Equal(w.WorldTick, w.SectorZone(s)!.WorldTick));
+    }
+
+    [Fact]
+    public void Pas_de_depart_sans_place_dans_le_secteur_d_arrivee()
+    {
+        // Relecture indépendante de la PR #150 : secteur est plein (deux places, deux loups au calme) : le joueur ne part pas, il reste dans
+        // son secteur (bloqué au bout de la marge) et n'est jamais perdu.
+        CombatRules two = Rules(Shipped.Combat, 2);
+        SectorMap map = Map(two, Wolf("loup_a", 450, 60), Wolf("loup_b", 450, 200));
+        SectorWorld w = World(map);
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        Assert.Equal(0, w.SectorZone("s01_00")!.Engine.FreePlaces);
+        Walk(w, "alice", 1, 0);
+        List<SectorEvent> events = Run(w, 400);
+        Assert.DoesNotContain(events, e => e.Kind == SectorEventKind.Departed || e.Kind == SectorEventKind.Arrived);
+        Assert.Equal("s00_00", w.SectorOf("alice"));
+        CombatantView v = w.ViewOf("alice");
+        Assert.True(v.IsPresent && !v.IsDead);
+        Assert.True(v.Position!.Value.X > Fixed.FromInt(286));   // au bout de la marge
+    }
+
+    /// <summary>Les règles livrées, places limitées à <paramref name="places"/> (copie des propriétés).</summary>
+    private static CombatRules Rules(CombatRules shipped, int places)
+    {
+        var copy = new CombatRules();
+        foreach (var property in typeof(CombatRules).GetProperties().Where(p => p.CanWrite))
+            property.SetValue(copy, property.GetValue(shipped));
+        typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCombatants))!.SetValue(copy, places);
+        return copy;
     }
 
     [Fact]
