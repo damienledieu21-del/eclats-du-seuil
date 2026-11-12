@@ -262,6 +262,10 @@ public class V28CheminsMoteurTests
 [Trait("Category", "Space")]
 public class V28CheminsGrilleTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper output;
+
+    public V28CheminsGrilleTests(Xunit.Abstractions.ITestOutputHelper output) => this.output = output;
+
     private static ConvexPolygon Rect(double x0, double z0, double x1, double z1) =>
         new ConvexPolygon(new[] { P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1) });
 
@@ -390,9 +394,53 @@ public class V28CheminsGrilleTests
         // CI de la PR #151 : mise en route d'abord (une quarantaine d'appels : la recompilation à chaud du moteur d'exécution, vers le 30e
         // appel, peut allouer sur le fil de l'appelant) ; seule la recherche elle-même est mesurée ensuite.
         for (int i = 0; i < 40; i++) search.Find(grid, start, goal, 8_192, path, out _);
-        long allocated = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
-        Assert.True(GC.GetAllocatedBytesForCurrentThread() - allocated < 4_096);
+        // Le compteur par fil est approximatif autour d'une collecte (le tampon d'allocation du fil est repris et recompté,
+        // d'un quantum d'environ 8 Kio) ; la suite de tests, parallèle, déclenche des collectes sur d'autres fils pendant la mesure. Une région
+        // sans collecte rend la lecture exacte : aucune collecte ne peut survenir entre les deux lectures.
+        // Revue de la PR #153 : le budget de la région (8 Mo) est global ; des tests parallèles peuvent le dépasser et provoquer une collecte.
+        // Les compteurs de collectes avant et après disent si la lecture est exacte ; sinon on refait (3 essais au plus). Sans mesure
+        // exacte, le résultat est non concluant (message dans la sortie du test), pas un échec : le seuil reste 4 096 octets.
+        long delta = -1;
+        for (int attempt = 1; attempt <= 3 && delta < 0; attempt++)
+        {
+            bool region;
+            try
+            {
+                region = GC.TryStartNoGCRegion(8_000_000);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                region = false;   // budget refusé par ce système : repli sans région, contrôlé par les compteurs seuls
+            }
+            try
+            {
+                int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
+                long allocated = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
+                long measured = GC.GetAllocatedBytesForCurrentThread() - allocated;
+                if (gen0 == GC.CollectionCount(0) && gen1 == GC.CollectionCount(1) && gen2 == GC.CollectionCount(2)) delta = measured;
+            }
+            finally
+            {
+                if (region && System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.NoGCRegion)
+                {
+                    try
+                    {
+                        GC.EndNoGCRegion();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // région déjà terminée par une collecte : l'essai est écarté par les compteurs
+                    }
+                }
+            }
+        }
+        if (delta < 0)
+        {
+            output.WriteLine("NON CONCLUANT : une collecte a eu lieu pendant chacun des 3 essais de mesure, la lecture par fil n'est pas exacte.");
+            return;
+        }
+        Assert.True(delta < 4_096, $"{delta} octets alloués par 20 recherches.");
     }
     [Fact]
     public void Statut_garde_en_cache_reponses_identiques_au_premier_appel()

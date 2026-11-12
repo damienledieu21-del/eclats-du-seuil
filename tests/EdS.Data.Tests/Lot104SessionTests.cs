@@ -16,6 +16,9 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Network")]
 public class Lot104SessionTests
 {
+    /// <summary>Limite d'un test TCP en temps réel : large (la CI charge deux cœurs), elle ne joue qu'en cas d'échec ; un test sain finit en quelques secondes.</summary>
+    private const double TcpDeadlineSeconds = 60;
+
     private const string Rempart = "build.bastion.rempart";
     private const string Gardien = "build.bastion.gardien";
 
@@ -422,7 +425,7 @@ public class Lot104SessionTests
         bool ready = false;
         // Les deux clients (joueur et robot, chacun sa connexion) doivent avoir reçu la fin : sous charge, l'un peut la recevoir plus tard.
         bool Done(NetworkClient? c) => c?.Combat?.IsFinished == true && c.Status == ClientStatus.Lobby;
-        while (watch.Elapsed.TotalSeconds < 15 && !(Done(session.Client) && Done(session.Bot?.Client)))
+        while (watch.Elapsed.TotalSeconds < TcpDeadlineSeconds && !(Done(session.Client) && Done(session.Bot?.Client)))
         {
             double now = watch.Elapsed.TotalSeconds;
             session.Advance(now - last);
@@ -435,6 +438,8 @@ public class Lot104SessionTests
             Thread.Sleep(5);
         }
         Assert.Null(session.Error);
+        Assert.True(session.Client?.Combat != null && session.Bot?.Client.Combat != null,
+            $"combat jamais commencé après {TcpDeadlineSeconds} s. Joueur : {session.Client?.Status} {session.Client?.Error}, robot : {session.Bot?.Client.Status} {session.Bot?.Client.Error}");
         NetworkCombat combat = session.Client!.Combat!;
         Assert.True(combat.IsFinished, $"{session.Client.Status} {session.Client.Error}");
         string expected = session.Host!.Read(room => HashingCombatLog.Of(new[] { combat.Header }.Concat(room.LastJournal!.Skip(1))));
