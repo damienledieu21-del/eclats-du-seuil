@@ -342,8 +342,9 @@ namespace EdS.Data.Zones
         internal ZoneDefinition(int schemaVersion, string contentVersion, string id, string name, string scenarioName, CombatSetup setup, SafePoint entry,
             IEnumerable<SafePoint> safePoints, IEnumerable<Place> places, IEnumerable<Population> populations, IEnumerable<Passage> passages, Boss? boss = null,
             IEnumerable<Road>? roads = null, bool indoor = false, IEnumerable<Door>? doors = null, IEnumerable<Boss>? chiefs = null,
-            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null)
+            ZoneScaling? scaling = null, IEnumerable<NightSpot>? nightSpots = null, IEnumerable<WorldEventDefinition>? events = null, RegionGrid? region = null)
         {
+            Region = region;
             Events = Frozen.List(events ?? Array.Empty<WorldEventDefinition>(), nameof(events));
             NightSpots = Frozen.List(nightSpots ?? Array.Empty<NightSpot>(), nameof(nightSpots));
             Scaling = scaling;
@@ -368,6 +369,12 @@ namespace EdS.Data.Zones
 
         /// <summary>Sous-lot V2.1 (schéma 8) : PNJ qui rentrent chez eux la nuit, dans l'ordre du fichier (vide sans eux).</summary>
         public IReadOnlyList<NightSpot> NightSpots { get; }
+
+        /// <summary>
+        /// Sous-lot V2.25.3 (schéma 13) : grille de la région (cases de 128 m, secteurs de 256 m), ou null. Données seulement : la simulation
+        /// n'en dépend pas (découpage : <see cref="RegionCutting.Cut"/>).
+        /// </summary>
+        public RegionGrid? Region { get; }
 
         /// <summary>Sous-lot V2.5 (schéma 10) : événements du monde de la zone, dans l'ordre du fichier (vide sans eux).</summary>
         public IReadOnlyList<WorldEventDefinition> Events { get; }
@@ -437,7 +444,7 @@ namespace EdS.Data.Zones
                 p.RespawnMs, p.LeashRange, p.Loot, p.Family, p.Night, p.Level, p.Hours, p.Weather)).ToList();
             Boss? ScaleBoss(Boss? b) => b is null ? null : new Boss(b.Id, b.Forms.Select(f => One(f, true)), b.Fact, b.Rewards, b.Loot);
             return new ZoneDefinition(SchemaVersion, ContentVersion, Id, Name, ScenarioName, setup, Entry, SafePoints, Places, populations, Passages,
-                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events);
+                ScaleBoss(Boss), Roads, Indoor, Doors, Chiefs.Select(c => ScaleBoss(c)!).ToList(), Scaling, NightSpots, Events, Region);
         }
     }
 
@@ -486,8 +493,11 @@ namespace EdS.Data.Zones
         /// et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6, « le Seuil qui grandit ») : <c>scar</c> facultatif sur une faille et
         /// <c>haunts</c> facultatif sur une variante d'une faille à cicatrice (voir <see cref="CheckScar"/>) ; la version 10 est encore lue (sans
         /// eux). Version 12 (sous-lot V2.6.1, « suites du Seuil ») : propagation facultative d'une cicatrice au lieu voisin (<c>scar.spreadStage</c>,
-        /// <c>scar.spreadDays</c>, <c>scar.spreadFact</c>, <c>groups[g].spreadTo</c>) ; la version 11 est encore lue (sans elle).</remarks>
-        public const int CurrentSchemaVersion = 12;
+        /// <c>scar.spreadDays</c>, <c>scar.spreadFact</c>, <c>groups[g].spreadTo</c>) ; la version 11 est encore lue (sans elle). Version 13
+        /// (sous-lot V2.25.3, grande carte : cases et repère) : <c>region</c> facultatif (<c>origin</c>, <c>columns</c>, <c>rows</c> : grille de
+        /// cases de 128 m et secteurs de 256 m, voir <see cref="RegionGrid"/>) ; une zone à région a des bornes relevées et des bornes par case
+        /// (<see cref="MaxRegionPlaces"/>) ; la version 12 est encore lue (sans elle).</remarks>
+        public const int CurrentSchemaVersion = 13;
 
         /// <summary>Sous-lot V2.6.1 : version encore lue (sous-ensemble de la version 12, sans propagation des cicatrices).</summary>
         public const int ScarsSchemaVersion = 11;
@@ -561,6 +571,7 @@ namespace EdS.Data.Zones
             // Sous-lot V2.6 : la version 10 aussi (sans cicatrices). Sous-lot V2.6.1 : la version 11 aussi (sans propagation).
             int supported = document.SchemaVersion == OldestSchemaVersion || document.SchemaVersion == PreviousSchemaVersion
                 || document.SchemaVersion == WeatherSchemaVersion || document.SchemaVersion == EventsSchemaVersion || document.SchemaVersion == ScarsSchemaVersion
+                || document.SchemaVersion == SpreadSchemaVersion   // sous-lot V2.25.3 : la version 12 aussi (sans région)
                 ? document.SchemaVersion!.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new ZoneLoadResult(report, null);
@@ -568,7 +579,8 @@ namespace EdS.Data.Zones
             bool schema9 = document.SchemaVersion >= WeatherSchemaVersion;
             bool schema10 = document.SchemaVersion >= EventsSchemaVersion;
             bool schema11 = document.SchemaVersion >= ScarsSchemaVersion;
-            bool schema12 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
+            bool schema12 = document.SchemaVersion >= SpreadSchemaVersion;   // sous-lot V2.6.1 : propagation des cicatrices
+            bool schema13 = document.SchemaVersion >= CurrentSchemaVersion;   // sous-lot V2.25.3 : région (cases et repère)
             ZoneData? d = document.Data;
             if (d is null)
             {
@@ -583,6 +595,20 @@ namespace EdS.Data.Zones
             else if (scenario != null && (!scenario.Zone || scenario.Space is null))
                 report.Add("$.data.scenario", ValidationCode.InvalidValue, "le scénario d'une zone doit être une simulation de zone positionnée (zone: true, bloc space).");
             CombatSpace? space = scenario is { Zone: true } ? scenario.Space : null;
+
+            // Sous-lot V2.25.3 (schéma 13) : grille de la région ; ses bornes (au total et par case) remplacent celles d'une zone seule.
+            RegionGrid? region = null;
+            bool regional = d.Region != null;
+            if (d.Region != null)
+            {
+                if (!schema13) report.Add("$.data.region", ValidationCode.InvalidValue, $"région : schéma {CurrentSchemaVersion} attendu.");
+                else region = CheckRegion(d.Region, space, report);
+            }
+            int maxPlaces = regional ? MaxRegionPlaces : MaxPlaces, maxDoors = regional ? MaxRegionDoors : MaxDoors;
+            int maxRoads = regional ? MaxRegionRoads : MaxRoads, maxRoadPoints = regional ? MaxRegionRoadPoints : MaxRoadPoints;
+            var placeIndices = new List<int>();
+            var roadIndices = new List<int>();
+            var doorIndices = new List<int>();
 
             bool Inside(GroundVector p) => space is null || (p.X >= space.Min.X && p.X <= space.Max.X && p.Z >= space.Min.Z && p.Z <= space.Max.Z);
 
@@ -613,7 +639,7 @@ namespace EdS.Data.Zones
             if (d.Places is null) Missing(report, "$.data.places", "lieux nommés, éventuellement vide");
             else
             {
-                if (d.Places.Count > MaxPlaces) report.Add("$.data.places", ValidationCode.LimitExceeded, $"{d.Places.Count} lieux, au plus {MaxPlaces}.");
+                if (d.Places.Count > maxPlaces) report.Add("$.data.places", ValidationCode.LimitExceeded, $"{d.Places.Count} lieux, au plus {maxPlaces}.");
                 for (int i = 0; i < d.Places.Count; i++)
                 {
                     string path = $"$.data.places[{i}]";
@@ -633,7 +659,11 @@ namespace EdS.Data.Zones
                             report.Add(path + ".minLevel", ValidationCode.OutOfRange, $"niveau minimum hors de [1, {maxLevel}].");
                             ok = false;
                         }
-                        if (ok) places.Add(new Place(p.Id!, p.Name!, min, max, p.MinLevel ?? 1));
+                        if (ok)
+                        {
+                            places.Add(new Place(p.Id!, p.Name!, min, max, p.MinLevel ?? 1));
+                            placeIndices.Add(i);
+                        }
                     }
                 }
             }
@@ -741,7 +771,7 @@ namespace EdS.Data.Zones
             var roads = new List<Road>();
             if (d.Roads != null)
             {
-                if (d.Roads.Count > MaxRoads) report.Add("$.data.roads", ValidationCode.LimitExceeded, $"{d.Roads.Count} routes, au plus {MaxRoads}.");
+                if (d.Roads.Count > maxRoads) report.Add("$.data.roads", ValidationCode.LimitExceeded, $"{d.Roads.Count} routes, au plus {maxRoads}.");
                 for (int i = 0; i < d.Roads.Count; i++)
                 {
                     string path = $"$.data.roads[{i}]";
@@ -757,8 +787,8 @@ namespace EdS.Data.Zones
                     { report.Add(path + ".width", ValidationCode.OutOfRange, $"largeur hors de [{MinRoadWidth}, {MaxRoadWidth}] m."); ok = false; }
                     var points = new List<GroundVector>();
                     if (r.Points is null) { Missing(report, path + ".points", "points de la route [x, z]"); ok = false; }
-                    else if (r.Points.Count < 2 || r.Points.Count > MaxRoadPoints)
-                    { report.Add(path + ".points", ValidationCode.OutOfRange, $"{r.Points.Count} points, de 2 à {MaxRoadPoints} attendus."); ok = false; }
+                    else if (r.Points.Count < 2 || r.Points.Count > maxRoadPoints)
+                    { report.Add(path + ".points", ValidationCode.OutOfRange, $"{r.Points.Count} points, de 2 à {maxRoadPoints} attendus."); ok = false; }
                     else
                         for (int j = 0; j < r.Points.Count; j++)
                         {
@@ -769,14 +799,18 @@ namespace EdS.Data.Zones
                             else if (points.Count > 0 && points[points.Count - 1] == point) { report.Add(pp, ValidationCode.InvalidValue, "deux points de suite confondus."); ok = false; }
                             else points.Add(point);
                         }
-                    if (ok) roads.Add(new Road(r.Id!, kind, r.Width!.Value, points));
+                    if (ok)
+                    {
+                        roads.Add(new Road(r.Id!, kind, r.Width!.Value, points));
+                        roadIndices.Add(i);
+                    }
                 }
             }
 
             var doors = new List<Door>();
             if (d.Doors != null)
             {
-                if (d.Doors.Count > MaxDoors) report.Add("$.data.doors", ValidationCode.LimitExceeded, $"{d.Doors.Count} portes, au plus {MaxDoors}.");
+                if (d.Doors.Count > maxDoors) report.Add("$.data.doors", ValidationCode.LimitExceeded, $"{d.Doors.Count} portes, au plus {maxDoors}.");
                 for (int i = 0; i < d.Doors.Count; i++)
                 {
                     string path = $"$.data.doors[{i}]";
@@ -802,7 +836,11 @@ namespace EdS.Data.Zones
                         else if (building != null && placed && Gap(Point(door.Position!), building) > MaxDoorGap)
                         { report.Add(path + ".position", ValidationCode.OutOfRange, $"porte à plus de {MaxDoorGap} m de son bâtiment « {door.Building} »."); ok = false; }
                     }
-                    if (ok) doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building));
+                    if (ok)
+                    {
+                        doors.Add(new Door(door.Id!, door.Name!, Point(door.Position!), door.To!, door.ToDoor!, door.Building));
+                        doorIndices.Add(i);
+                    }
                 }
             }
 
@@ -861,12 +899,19 @@ namespace EdS.Data.Zones
                 else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
                     scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null, schema12);
             }
+            // Sous-lot V2.25.3 : bornes par case de la région (lieux, portes, routes qui touchent la case).
+            if (region != null && space != null)   // éléments déjà dans l'aire, donc dans la région
+            {
+                CheckPerCell("$.data.places", "lieux", MaxPlacesPerCell, places.Select((p, k) => (placeIndices[k], region.CellsCovering(p.Min, p.Max))), report);
+                CheckPerCell("$.data.doors", "portes", MaxDoorsPerCell, doors.Select((x, k) => (doorIndices[k], (IReadOnlyList<RegionCell>)new[] { region.CellOf(x.Position) })), report);
+                CheckPerCell("$.data.roads", "routes", MaxRoadsPerCell, roads.Select((r, k) => (roadIndices[k], region.CellsAlong(r.Points))), report);
+            }
             if (!report.IsValid || scenario is null || entry is null || document.ContentVersion is null) return new ZoneLoadResult(report, null);
             ZoneScaling? scaling = d.Scaling is null ? null
                 : CheckScaling(d.Scaling, scenario.Progression.MaxLevel, scenario, (boss is null ? Array.Empty<Boss>() : new[] { boss }).Concat(chiefs).SelectMany(x => x.Forms), report);
             if (!report.IsValid) return new ZoneLoadResult(report, null);
             return new ZoneLoadResult(report, new ZoneDefinition(document.SchemaVersion!.Value, document.ContentVersion, d.Id!, d.Name!, d.Scenario!, scenario,
-                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events));
+                entry, safePoints, places, populations, passages, boss, roads, d.Indoor ?? false, doors, chiefs, scaling, nightSpots, events, region));
         }
 
         /// <summary>Sous-lot V2.1 (schéma 8) : heures d'une population : de 1 à 3 moments connus, sans doublon ; signe facultatif.</summary>

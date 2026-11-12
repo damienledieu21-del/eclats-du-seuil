@@ -293,7 +293,7 @@ namespace EdS.Data.Zones
             if (s.SpreadStage != null || s.SpreadDays != null || s.SpreadFact != null)
             {
                 string first = s.SpreadStage != null ? ".spreadStage" : s.SpreadDays != null ? ".spreadDays" : ".spreadFact";
-                if (!schema12) { report.Add(path + first, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {CurrentSchemaVersion} attendu."); ok = false; }
+                if (!schema12) { report.Add(path + first, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {SpreadSchemaVersion} attendu."); ok = false; }
                 else
                 {
                     if (Range(s.SpreadStage, "spreadStage", "palier de la propagation", 1, max ?? MaxScarStage) is int ss) spreadStage = ss;
@@ -324,7 +324,7 @@ namespace EdS.Data.Zones
                 List<string?>? to = data[g]?.SpreadTo;
                 if (to is null) continue;
                 string p = $"{path}.groups[{g}].spreadTo";
-                if (!schema12) { report.Add(p, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {CurrentSchemaVersion} attendu."); ok = false; continue; }
+                if (!schema12) { report.Add(p, ValidationCode.InvalidValue, $"propagation d'une cicatrice : schéma {SpreadSchemaVersion} attendu."); ok = false; continue; }
                 if (scarData is null || scarData.SpreadStage is null) { report.Add(p, ValidationCode.InvalidValue, "des voisines seulement pour une faille dont la cicatrice se propage (« scar.spreadStage »)."); ok = false; continue; }
                 if (to.Count < 1 || to.Count > MaxEventGroups) { report.Add(p, ValidationCode.OutOfRange, $"de 1 à {MaxEventGroups} variantes voisines."); ok = false; continue; }
                 var seen = new HashSet<string>(StringComparer.Ordinal);

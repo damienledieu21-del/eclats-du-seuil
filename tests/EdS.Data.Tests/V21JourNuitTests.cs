@@ -89,8 +89,8 @@ public sealed class V21JourNuitTests : IDisposable
     public void Vallons_livres_au_schema_8()
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
-        Assert.Equal((12, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal(12, Vallons.SchemaVersion);   // V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
+        Assert.Equal((13, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal(13, Vallons.SchemaVersion);   // V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -131,6 +131,7 @@ public sealed class V21JourNuitTests : IDisposable
         ZoneLoadResult v7 = ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
             root["data"]!.AsObject().Remove("nightSpots");
             root["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
@@ -148,6 +149,7 @@ public sealed class V21JourNuitTests : IDisposable
         ValidationError hours = Error(ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             root["data"]!.AsObject().Remove("nightSpots");
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");   // V2.4
         }));
@@ -156,10 +158,11 @@ public sealed class V21JourNuitTests : IDisposable
         ValidationError spots = Error(ZoneMutated(root =>
         {
             root["schemaVersion"] = 7;
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 13 })
+        foreach (int version in new[] { 6, 14 })
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));

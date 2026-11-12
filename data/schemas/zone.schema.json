@@ -22,9 +22,10 @@
         9,
         10,
         11,
-        12
+        12,
+        13
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle)."
     },
     "kind": {
       "const": "zone"
@@ -66,6 +67,41 @@
           "pattern": "^[a-z][a-z0-9_]*$",
           "maxLength": 64
         },
+        "region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "origin",
+            "columns",
+            "rows"
+          ],
+          "description": "Schéma 13 (sous-lot V2.25.3, grande carte) : repère et grille de la région. Cases carrées de 128 m depuis le coin sud-ouest origin (colonne 0 à l'ouest, rangée 0 au sud, noms c<colonne>_r<rangée>) ; secteurs de 2 × 2 cases (256 m, noms s<colonne>_<rangée> sur deux chiffres). L'aire praticable et les obstacles du scénario sont dans la région. Données seulement : le jeu n'en dépend pas.",
+          "properties": {
+            "origin": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "integer",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "description": "Coin sud-ouest [x, z], en mètres entiers."
+            },
+            "columns": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 64,
+              "description": "Nombre pair (des secteurs entiers) : vérifié par le validateur."
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 64,
+              "description": "Nombre pair (des secteurs entiers) : vérifié par le validateur."
+            }
+          }
+        },
         "safePoints": {
           "type": "array",
           "minItems": 1,
@@ -101,7 +137,8 @@
         },
         "places": {
           "type": "array",
-          "maxItems": 64,
+          "maxItems": 2048,
+          "description": "Au plus 64 sans region ; avec region (schéma 13), au plus 2 048 et 64 par case.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -530,8 +567,8 @@
         },
         "roads": {
           "type": "array",
-          "maxItems": 32,
-          "description": "Vallons agrandis (schéma 3) : routes et chemins de la zone, lignes brisées de largeur constante dans l'aire praticable. Affichage seulement : le moteur ne les connaît pas.",
+          "maxItems": 1024,
+          "description": "Au plus 32 (de 32 points) sans region ; avec region (schéma 13), au plus 1 024 (de 128 points) et 32 par case. Vallons agrandis (schéma 3) : routes et chemins de la zone, lignes brisées de largeur constante dans l'aire praticable. Affichage seulement : le moteur ne les connaît pas.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -563,7 +600,7 @@
               "points": {
                 "type": "array",
                 "minItems": 2,
-                "maxItems": 32,
+                "maxItems": 128,
                 "items": {
                   "type": "array",
                   "minItems": 2,
@@ -610,8 +647,8 @@
         },
         "doors": {
           "type": "array",
-          "maxItems": 16,
-          "description": "Portes vers d'autres zones : on s'y tient pour passer, on y arrive en venant de la porte toDoor de la zone to, qui ramène ici.",
+          "maxItems": 256,
+          "description": "Au plus 16 sans region ; avec region (schéma 13), au plus 256 et 16 par case. Portes vers d'autres zones : on s'y tient pour passer, on y arrive en venant de la porte toDoor de la zone to, qui ramène ici.",
           "items": {
             "type": "object",
             "additionalProperties": false,

@@ -1,6 +1,6 @@
 {
   "$schema": "../../../schemas/zone.schema.json",
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "kind": "zone",
   "contentVersion": "0.17.0-provisoire",
   "data": {
@@ -8,6 +8,14 @@
     "name": "Vallons d'Aube",
     "scenario": "zones/vallons",
     "entry": "place_du_village",
+    "region": {
+      "origin": [
+        -1908,
+        -1614
+      ],
+      "columns": 32,
+      "rows": 24
+    },
     "safePoints": [
       {
         "id": "place_du_village",

@@ -113,7 +113,7 @@ namespace EdS.Data.Json
                 ["entry"] = (v, p) => d.Entry = input.Text(v, p),
                 ["safePoints"] = (v, p) => d.SafePoints = input.ReadLimitedList(v, p, ZoneValidator.MaxSafePoints, n => $"{n} points sûrs, au plus {ZoneValidator.MaxSafePoints}.",
                     (e, ip) => ReadSafePoint(input, e, ip)),
-                ["places"] = (v, p) => d.Places = input.ReadLimitedList(v, p, ZoneValidator.MaxPlaces, n => $"{n} lieux, au plus {ZoneValidator.MaxPlaces}.",
+                ["places"] = (v, p) => d.Places = input.ReadLimitedList(v, p, ZoneValidator.MaxRegionPlaces, n => $"{n} lieux, au plus {ZoneValidator.MaxRegionPlaces}.",
                     (e, ip) => ReadPlace(input, e, ip)),
                 ["populations"] = (v, p) => d.Populations = input.ReadLimitedList(v, p, ZoneValidator.MaxPopulations,
                     n => $"{n} populations, au plus {ZoneValidator.MaxPopulations}.", (e, ip) => ReadPopulation(input, e, ip)),
@@ -122,7 +122,7 @@ namespace EdS.Data.Json
                 ["boss"] = (v, p) => d.Boss = ReadBoss(input, v, p),   // sous-lot 12.7 (schéma 2)
                 ["chiefs"] = (v, p) => d.Chiefs = input.ReadLimitedList(v, p, ZoneValidator.MaxChiefs, n => $"{n} chefs, au plus {ZoneValidator.MaxChiefs}.",
                     (e, ip) => ReadBoss(input, e, ip)),   // sous-lot V1.6 (schéma 5)
-                ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRoads}.",
+                ["roads"] = (v, p) => d.Roads = input.ReadLimitedList(v, p, ZoneValidator.MaxRegionRoads, n => $"{n} routes, au plus {ZoneValidator.MaxRegionRoads}.",
                     (e, ip) => ReadRoad(input, e, ip)),   // Vallons agrandis (schéma 3)
                 ["indoor"] = (v, p) => d.Indoor = input.Boolean(v, p),   // intérieurs (schéma 4)
                 ["scaling"] = (v, p) =>   // sous-lot V1.8 (schéma 7) : zones en mélange
@@ -137,12 +137,22 @@ namespace EdS.Data.Json
                         ["easeLevels"] = (sv, sp) => s.EaseLevels = input.Int32(sv, sp),
                     })) d.Scaling = s;
                 },
-                ["doors"] = (v, p) => d.Doors = input.ReadLimitedList(v, p, ZoneValidator.MaxDoors, n => $"{n} portes, au plus {ZoneValidator.MaxDoors}.",
+                ["doors"] = (v, p) => d.Doors = input.ReadLimitedList(v, p, ZoneValidator.MaxRegionDoors, n => $"{n} portes, au plus {ZoneValidator.MaxRegionDoors}.",
                     (e, ip) => ReadDoor(input, e, ip)),
                 ["nightSpots"] = (v, p) => d.NightSpots = input.ReadLimitedList(v, p, ZoneValidator.MaxNightSpots,
                     n => $"{n} places de nuit, au plus {ZoneValidator.MaxNightSpots}.", (e, ip) => ReadNightSpot(input, e, ip)),   // sous-lot V2.1 (schéma 8)
                 ["events"] = (v, p) => d.Events = input.ReadLimitedList(v, p, ZoneValidator.MaxEvents,
                     n => $"{n} événements, au plus {ZoneValidator.MaxEvents}.", (e, ip) => ReadEvent(input, e, ip)),   // sous-lot V2.5 (schéma 10)
+                ["region"] = (v, p) =>   // sous-lot V2.25.3 (schéma 13) : grille de la région
+                {
+                    var r = new RegionData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["origin"] = (rv, rp) => r.Origin = ScenarioJsonReader.ReadPoint(input, rv, rp),
+                        ["columns"] = (rv, rp) => r.Columns = input.Int32(rv, rp),
+                        ["rows"] = (rv, rp) => r.Rows = input.Int32(rv, rp),
+                    })) d.Region = r;
+                },
             });
             return ok ? d : null;
         }
@@ -453,8 +463,8 @@ namespace EdS.Data.Json
                 ["id"] = (v, p) => road.Id = input.Text(v, p),
                 ["kind"] = (v, p) => road.Kind = input.Text(v, p),
                 ["width"] = (v, p) => road.Width = input.Decimal(v, p),
-                ["points"] = (v, p) => road.Points = input.ReadLimitedList(v, p, ZoneValidator.MaxRoadPoints,
-                    n => $"{n} points, au plus {ZoneValidator.MaxRoadPoints}.", (e, ip) => ScenarioJsonReader.ReadPoint(input, e, ip)),
+                ["points"] = (v, p) => road.Points = input.ReadLimitedList(v, p, ZoneValidator.MaxRegionRoadPoints,
+                    n => $"{n} points, au plus {ZoneValidator.MaxRegionRoadPoints}.", (e, ip) => ScenarioJsonReader.ReadPoint(input, e, ip)),
             });
             return ok ? road : null;
         }

@@ -72,7 +72,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire", "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
-        Assert.Equal((12, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((13, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
     }
 
     [Fact]
@@ -324,7 +324,7 @@ public class V24AnimauxMondeTests
     [Fact]
     public void Populations_livrees_et_leurs_temps()
     {
-        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
+        Assert.Equal((13, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : schéma 13 ; V2.6.1 : schéma 12, contenu 0.15.0 ; V2.6 : schéma 11, contenu 0.14.0 ; V2.5 : schéma 10, contenu 0.13.0
         Assert.All(Mist, id => Assert.Equal(new[] { "mist" }, Vallons.PopulationOf(id)!.Weather!.Kinds));
         Assert.All(Mist.Take(3), id => Assert.Equal(("loup", "loot.loup"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
         Assert.All(Mist.Skip(3), id => Assert.Equal(("echo", "loot.echo"), (Vallons.PopulationOf(id)!.Family, Vallons.PopulationOf(id)!.Loot)));
@@ -552,12 +552,13 @@ public class V24AnimauxMondeTests
         ZoneLoadResult v8 = ZoneMutated(r =>
         {
             r["schemaVersion"] = 8;
+            r["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             foreach (JsonNode? p in r["data"]!["populations"]!.AsArray()) p!.AsObject().Remove("weather");
             r["data"]!.AsObject().Remove("events");   // V2.5 (schéma 10)
         });
         Assert.True(v8.IsValid, v8.Report.ToString());
         Assert.All(v8.Zone!.Populations, p => Assert.Null(p.Weather));
-        AssertError(ZoneMutated(r => r["schemaVersion"] = 13), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(ZoneMutated(r => r["schemaVersion"] = 14), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Fact]

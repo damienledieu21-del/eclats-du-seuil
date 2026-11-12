@@ -75,9 +75,9 @@ public class V26SeuilGranditTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((12, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
+        Assert.Equal((13, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
         Assert.Equal((17, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
-        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.6.1 : propagation
+        Assert.Equal((13, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
         Assert.Equal("0.25.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         Assert.Equal("0.25.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios ne changent (ceux de V2.4.1).
@@ -105,6 +105,7 @@ public class V26SeuilGranditTests
         ZoneLoadResult r = Mutated(root =>
         {
             root["schemaVersion"] = 10;
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             RiftJson(root).Remove("scar");
             foreach (JsonNode? g in RiftJson(root)["groups"]!.AsArray())
             {

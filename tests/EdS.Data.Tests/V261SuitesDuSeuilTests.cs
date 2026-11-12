@@ -123,9 +123,9 @@ public class V261SuitesDuSeuilTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
+        Assert.Equal((13, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((13, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((12, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));
+        Assert.Equal((13, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((13, "0.25.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.25.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.17.0-provisoire", ItemsCatalog.ContentVersion);
@@ -161,6 +161,7 @@ public class V261SuitesDuSeuilTests
         ZoneLoadResult r = Mutated(root =>
         {
             root["schemaVersion"] = 11;
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
             JsonObject scar = RiftJson(root)["scar"]!.AsObject();
             scar.Remove("spreadStage");
             scar.Remove("spreadDays");
@@ -176,7 +177,7 @@ public class V261SuitesDuSeuilTests
         ZoneLoadResult old = Mutated(root => root["schemaVersion"] = 11);
         AssertError(old.Report, $"$.data.events[{i}].scar.spreadStage", ValidationCode.InvalidValue);
         AssertError(old.Report, $"$.data.events[{i}].groups[0].spreadTo", ValidationCode.InvalidValue);
-        AssertError(Mutated(root => root["schemaVersion"] = 13).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(Mutated(root => root["schemaVersion"] = 14).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Theory]
@@ -244,7 +245,7 @@ public class V261SuitesDuSeuilTests
         Assert.True(ReadStory(big).IsValid);
         entries.Insert(0, entries[^1]!.DeepClone());
         AssertError(ReadStory(big).Report, $"$.data.dialogues[{gaspard}].entries", ValidationCode.LimitExceeded);   // borne du lecteur, la même
-        Assert.Equal(12, ZoneValidator.CurrentSchemaVersion);
+        Assert.Equal(12, ZoneValidator.SpreadSchemaVersion);   // V2.25.3 : la version courante est 13 (région)
     }
 
     [Fact]
