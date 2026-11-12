@@ -293,6 +293,30 @@ public class V226MoteurSecteursTests
     }
 
     [Fact]
+    public void Recharge_des_objets_de_soin_plafonnee_aux_objets_encore_emportes()
+    {
+        // Relecture indépendante de la PR #149 : l'élixir (recharge 5 s, une charge) est bu puis vidé ; la potion (1 s) reste. La recharge
+        // partagée emportée (5 s restantes) ne dépasse pas celle de la potion : l'arrivée de l'autre côté est admise.
+        var items = new[] { new ConsumableSetup("item.elixir_test", 50, 1, 5000), new ConsumableSetup("item.potion_test", 30, 2, 1000) };
+        CharacterSetup tank = Tank();
+        var setup = Duel(new CombatantSetup[] { Carrying(tank, 0, null, consumables: items), Dummy(), Assailant(intervalMs: 500) },
+            new[] { CombatCommand.Use(2500, "bastion", "item.elixir_test") });
+        var a = new CombatEngine(setup, NullCombatLog.Instance);
+        for (int t = 0; t < 60; t++) a.Step();
+        Assert.Equal(0, a.View("bastion").ConsumableCharges["item.elixir_test"]);
+        CarriedState carried = a.Carried("bastion");
+        Assert.Equal(1000L, carried.ConsumableCooldownMs);
+        IReadOnlyList<ConsumableSetup> left = a.CarriedConsumables("bastion");
+        Assert.Equal(new[] { "item.potion_test" }, left.Select(c => c.Id));
+        long at = a.CurrentTick * 50;
+        var other = Duel(new CombatantSetup[] { Dummy("souche"), Carrying(tank, at, carried, consumables: left) }, Array.Empty<CombatCommand>(), at + 3000);
+        Assert.Empty(other.Validate());
+        var b = new CombatEngine(other, NullCombatLog.Instance);
+        while (b.Step()) { }
+        Assert.True(b.View("bastion").IsPresent);
+    }
+
+    [Fact]
     public void Etat_emporte_hors_bornes_refuse_avec_son_chemin()
     {
         CharacterSetup tank = Tank();
