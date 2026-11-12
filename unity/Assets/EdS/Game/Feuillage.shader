@@ -16,6 +16,13 @@ Shader "EdS/Feuillage"
         _WindSpeed ("Vitesse du vent", Range(0, 5)) = 1.2
         _Flutter ("Frémissement des feuilles", Range(0, 1)) = 1
         _Translucency ("Lumière à travers les feuilles", Range(0, 2)) = 0.6
+        // V2.25.4 (arbres de l'atelier) : couleur de sommet des cartes × 1,1 (variation de teinte ; 0 : ignorée, comme avant), veines
+        // lumineuses de l'arbre corrompu (noir par défaut : rien), faces éliminées réglables (_FaceCull, propre à ce shader pour ne pas
+        // reprendre le _Cull d'URP d'une matière convertie : 0 aucune, comme avant ; 2 l'arrière, pour l'écorce).
+        _VertexTint ("Couleur de sommet × 1,1", Range(0, 1)) = 0
+        _GlowMap ("Émission", 2D) = "black" {}
+        [HDR] _GlowColor ("Couleur d'émission", Color) = (0, 0, 0, 1)
+        [Enum(UnityEngine.Rendering.CullMode)] _FaceCull ("Faces éliminées", Float) = 0
         [HideInInspector] _Cull ("__cull", Float) = 0
     }
 
@@ -30,6 +37,8 @@ Shader "EdS/Feuillage"
         SAMPLER(sampler_BaseMap);
         TEXTURE2D(_BumpMap);
         SAMPLER(sampler_BumpMap);
+        TEXTURE2D(_GlowMap);
+        SAMPLER(sampler_GlowMap);
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
@@ -43,6 +52,8 @@ Shader "EdS/Feuillage"
             float _Flutter;
             half _Translucency;
             float _Cull;
+            half _VertexTint;
+            half4 _GlowColor;
         CBUFFER_END
 
         // Vent : balancement de tout le modèle (croît avec la hauteur au-dessus de son pied) et frémissement des feuilles.
@@ -65,7 +76,7 @@ Shader "EdS/Feuillage"
         {
             Name "Feuillage"
             Tags { "LightMode" = "UniversalForward" }
-            Cull Off
+            Cull [_FaceCull]
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -89,6 +100,7 @@ Shader "EdS/Feuillage"
                 float3 normalOS : NORMAL;
                 float4 tangentOS : TANGENT;
                 float2 uv : TEXCOORD0;
+                half4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -100,6 +112,7 @@ Shader "EdS/Feuillage"
                 half3 normalWS : TEXCOORD2;
                 half4 tangentWS : TEXCOORD3;
                 half fogFactor : TEXCOORD4;
+                half3 tint : TEXCOORD5;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -116,6 +129,7 @@ Shader "EdS/Feuillage"
                 output.normalWS = normals.normalWS;
                 output.tangentWS = half4(normals.tangentWS, input.tangentOS.w * GetOddNegativeScale());
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
+                output.tint = lerp(half3(1.0h, 1.0h, 1.0h), input.color.rgb * 1.1h, _VertexTint);
                 return output;
             }
 
@@ -124,6 +138,7 @@ Shader "EdS/Feuillage"
                 UNITY_SETUP_INSTANCE_ID(input);
                 half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
                 clip(albedo.a - _Cutoff);
+                albedo.rgb *= input.tint;
 
                 half3 normalTS = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv), _BumpScale);
                 half3 normalWS = normalize(input.normalWS);
@@ -157,6 +172,7 @@ Shader "EdS/Feuillage"
                 Light sun = GetMainLight(inputData.shadowCoord);
                 half back = saturate(dot(-inputData.viewDirectionWS, sun.direction));
                 color.rgb += albedo.rgb * sun.color * pow(back, 4.0h) * _Translucency * sun.shadowAttenuation;
+                color.rgb += SAMPLE_TEXTURE2D(_GlowMap, sampler_GlowMap, input.uv).rgb * _GlowColor.rgb;
 
                 color.rgb = MixFog(color.rgb, input.fogFactor);
                 return half4(color.rgb, 1.0h);
@@ -171,7 +187,7 @@ Shader "EdS/Feuillage"
             ZWrite On
             ZTest LEqual
             ColorMask 0
-            Cull Off
+            Cull [_FaceCull]
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -234,7 +250,7 @@ Shader "EdS/Feuillage"
             Tags { "LightMode" = "DepthOnly" }
             ZWrite On
             ColorMask R
-            Cull Off
+            Cull [_FaceCull]
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -276,7 +292,7 @@ Shader "EdS/Feuillage"
             Name "DepthNormals"
             Tags { "LightMode" = "DepthNormals" }
             ZWrite On
-            Cull Off
+            Cull [_FaceCull]
 
             HLSLPROGRAM
             #pragma vertex Vert
