@@ -24,6 +24,13 @@ public class Lot103ClientTests
     private static CombatSetup Duo => ScenarioJsonReader.ReadFile(ScenarioPath("coop/duo_meute"), ShippedData).Setup!;
 
     /// <summary>Les deux Bastions face à un mannequin qui ne frappe pas : le combat dure tout son temps.</summary>
+    /// <summary>
+    /// Limite d'un test TCP en temps réel. Le combat dure 1,5 s de jeu : un test sain finit en quelques secondes et cette limite ne
+    /// joue qu'en cas d'échec. Elle est large parce que la CI lance plusieurs assemblages de tests en parallèle sur deux cœurs (échecs
+    /// observés à 15 s sous cette charge).
+    /// </summary>
+    private const double TcpDeadlineSeconds = 60;
+
     private static CombatSetup Calm(long durationMs = 20_000)
     {
         var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ScenarioPath("coop/duo_meute")))!.AsObject();
@@ -746,7 +753,7 @@ public class Lot103ClientTests
             var watch = System.Diagnostics.Stopwatch.StartNew();
             double last = 0;
             bool readySent = false;
-            while (watch.Elapsed.TotalSeconds < 15 && !(a.Combat?.IsFinished == true && b.Combat?.IsFinished == true && a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby))
+            while (watch.Elapsed.TotalSeconds < TcpDeadlineSeconds && !(a.Combat?.IsFinished == true && b.Combat?.IsFinished == true && a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby))
             {
                 double now = watch.Elapsed.TotalSeconds;
                 if (!readySent && a.Status == ClientStatus.Lobby && b.Status == ClientStatus.Lobby)
@@ -762,7 +769,9 @@ public class Lot103ClientTests
                 Thread.Sleep(5);
             }
             Assert.Null(host.Error);
-            Assert.True(a.Combat!.IsFinished, $"{a.Status} {a.Error}");
+            string state = $"A : {a.Status} {a.Error}, B : {b.Status} {b.Error}, prêts envoyés : {readySent}";
+            Assert.True(a.Combat != null && b.Combat != null, "combat jamais commencé après " + TcpDeadlineSeconds + " s. " + state);
+            Assert.True(a.Combat!.IsFinished && b.Combat!.IsFinished, "combat non terminé. " + state);
             Assert.Equal(0, a.Combat.Desyncs + b.Combat!.Desyncs);
             string expected = host.Read(r => HashingCombatLog.Of(new[] { a.Combat.Header }.Concat(r.LastJournal!.Skip(1))));
             Assert.Equal(expected, a.Combat.Hash);
