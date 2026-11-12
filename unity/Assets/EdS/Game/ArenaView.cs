@@ -732,7 +732,11 @@ namespace EdS.Game
             // V1.10 (revue Codex, 3e tour) : Cut attend le milieu du corps (la position du corps affiché, les pieds plus 1 m), pas les pieds :
             // les points sondés sont alors bien le bas des jambes, le milieu et la tête (0,3 / 1 / 2 m au-dessus des pieds).
             _space.Cut(camera, _player.transform.position, deltaTime);
+            _space.Trees(camera);   // V2.25.4 : saison, veines du corrompu, imposteurs tournés vers la caméra
         }
+
+        /// <summary>V2.25.4 : saison du monde (0 printemps à 3 hiver) pour le feuillage des arbres de l'atelier.</summary>
+        public void Season(int season) => _space?.Season(season);
 
         /// <summary>
         /// Met l'arène à l'état du combat : garde, parade, cible, allié visé (null : aucun), combattants hors de combat, adversaires

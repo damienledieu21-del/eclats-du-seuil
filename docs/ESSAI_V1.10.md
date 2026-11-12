@@ -674,3 +674,18 @@ Les modèles de l'atelier remplacent les menhirs, la porte du moulin, les murs e
 | 40.8 | La carrière | Front à gradins face à l'ouest, blocs, chèvre de levage, traîneau, outils et tas d'éclats devant le front, rien sur les chemins ni sur le filon | [ ] | |
 | 40.9 | Ton avis : proportions, couleurs | — | [ ] | |
 
+## 41. Arbres de l'atelier (V2.25.4)
+
+Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 41.1 | Lire le rapport du menu | « Arbres de l'atelier : chene (6), hetre (6)… » (14 essences) et « arbre millénaire livré, pas posé » | [ ] | |
+| 41.2 | Forêt des Loups (nord-ouest) | Épicéas, pins, hêtres, chênes, quelques arbres morts et foudroyés ; plus aucun arbre de Sketchfab | [ ] | |
+| 41.3 | Vergers (sud-est du lac) | Rangs de pommiers et de poiriers, fruits sur l'atlas ; rien sur les chemins | [ ] | Trop serrés ? |
+| 41.4 | Rivière et lac | Saules et aulnes sur les berges, pas dans l'eau ni sur le pont | [ ] | |
+| 41.5 | Le Seuil, de jour puis la nuit | Arbres corrompus autour des pierres, hors du cercle de cailloux ; veines qui luisent la nuit | [ ] | |
+| 41.6 | S'éloigner d'un bois | Passage LOD1 → LOD2 → imposteur sans saut gênant ; l'imposteur garde la bonne face en tournant autour | [ ] | Imposteur à l'envers ou de travers ? |
+| 41.7 | Mode Jeu, menu Essai des saisons : printemps, été, automne, hiver | Le feuillage change ; feuilles au sol en automne seulement ; branches nues en hiver | [ ] | |
+| 41.8 | Sur téléphone (ou PC modeste) | Imposteurs plus tôt, pas de saccade | [ ] | |
+| 41.9 | Ton avis : tailles réelles (chênes de 16 à 20 m), densité des bois, arbres qu'on traverse | — | [ ] | |
