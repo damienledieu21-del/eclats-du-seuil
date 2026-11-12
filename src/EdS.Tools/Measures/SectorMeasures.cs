@@ -31,10 +31,13 @@ namespace EdS.Tools.Measures
             CombatSpace space = reference.Space ?? throw new ArgumentException("Scénario de référence sans espace.", nameof(reference));
             var wolf = (AssailantSetup)reference.Combatants.First(c => c is AssailantSetup);
             long cx = (space.Min.X.Raw + space.Max.X.Raw) / 2, cz = (space.Min.Z.Raw + space.Max.Z.Raw) / 2;
+            // Revue Codex de la PR #151 : « calme » : la cible est dans un coin, et aucun loup n'est à moins de 60 m d'elle (distance
+            // d'engagement de 30 m, marge comprise) : personne ne s'engage.
+            long tx = kind == "calme" ? space.Min.X.Raw + 10_000 : cx, tz = kind == "calme" ? space.Min.Z.Raw + 10_000 : cz;
             var walls = space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray();
             var combatants = new List<CombatantSetup>
             {
-                new DummySetup("cible", "joueurs", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(Pos(cx, cz), Fixed.FromRatio(1, 2))),
+                new DummySetup("cible", "joueurs", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(Pos(tx, tz), Fixed.FromRatio(1, 2))),
             };
             var behavior = kind == "engages" ? new AssailantBehavior(Fixed.FromRatio(1, 2), null, null) : wolf.Behavior;
             int placed = 0;
@@ -57,13 +60,12 @@ namespace EdS.Tools.Measures
                 }
                 if (x + 6_000 > space.Max.X.Raw || z + 6_000 > space.Max.Z.Raw || Math.Abs(x - cx) < 20_000 && Math.Abs(z - cz) < 20_000) continue;
                 if (walls.Any(w => w.OverlapsCircle(x, z, 7_000))) continue;
+                if (kind == "calme" && Planar.WithinDistance(tx, tz, x, z, 600_000)) continue;
                 if (combatants.Skip(1).Any(c => Planar.CirclesOverlap(x, z, 7_000, c.Placement!.Position.X.Raw, c.Placement.Position.Z.Raw, 7_000))) continue;
                 combatants.Add(new AssailantSetup($"loup{placed++}", "meute", wolf.Armor, wolf.MagicResistance, null, wolf.FirstAttackMs, wolf.IntervalMs,
                     wolf.Attacks, 0, wolf.StatusResistance, wolf.Triggers, 1_000_000, new CombatantPlacement(Pos(x, z), wolf.Placement!.Radius, null, wolf.Placement.Speed),
                     null, behavior));
             }
-            if (kind == "calme") combatants[0] = new DummySetup("cible", "joueurs", Fixed.FromInt(50), Fixed.Zero,
-                placement: new CombatantPlacement(Pos(space.Min.X.Raw + 10_000, space.Min.Z.Raw + 10_000), Fixed.FromRatio(1, 2)));
             return new CombatSetup(reference.Seed, durationMs, reference.Stats, reference.Damage, reference.Progression, reference.Combat, combatants,
                 Array.Empty<CombatCommand>(), reference.Data, space, zone: true);
         }

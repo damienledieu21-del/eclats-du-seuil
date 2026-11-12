@@ -572,7 +572,7 @@ namespace EdS.Data.Saves
         /// (<c>consumed</c>) ne garde plus aucune clé de mort (« zone.vallons/3/death/loup1 », « zone.vallons/s08_05/1/death/loup1 ») : elles ne
         /// protègent que contre un rejeu dans leur session, et une partie reprend toujours dans une session nouvelle ; elles sont purgées à la
         /// fermeture d'une session (refusées dans un fichier de version 18). <c>sectors</c> facultatif : dernière session de chaque secteur de
-        /// simulation autre que celui du cœur (objet « s08_05 : session », de 1 à <see cref="MaxWorldTick"/>, ordre ordinal, au plus
+        /// simulation (le cœur seulement s'il a été rouvert) (objet « s08_05 : session », de 1 à <see cref="MaxWorldTick"/>, ordre ordinal, au plus
         /// <see cref="MaxSectors"/>). Une sauvegarde de version 17 ou antérieure est lue, ses clés de mort purgées, et mise à jour ; elle n'a pas
         /// de <c>sectors</c> (refusé, champ inconnu).</remarks>
         public const int CurrentSchemaVersion = 18;

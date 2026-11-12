@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Json;
+using EdS.Data.Zones;
 using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.World;
@@ -98,6 +99,13 @@ public class V226RegistreTests
             CombatSetup sector = SectorMeasures.Sector(reference, kind, 10_000);
             Assert.Empty(sector.Validate());
             Assert.Equal((60, 195, true), (sector.Combatants.Count, sector.Space!.Obstacles.Count, sector.Zone));
+            if (kind == "calme")
+            {
+                // Revue Codex de la PR #151 : au calme, personne ne s'engage pendant toute la mesure.
+                var engine = new EdS.Simulation.Engine.CombatEngine(sector, EdS.Simulation.Engine.NullCombatLog.Instance);
+                for (int t = 0; t < 150; t++) engine.Step();
+                Assert.DoesNotContain(engine.CombatantIds, id => engine.View(id).Engaged);
+            }
             SectorMeasures.Result r = SectorMeasures.Measure(kind, sector, 20);
             Assert.Equal(20, r.Ticks);
             Assert.True(r.MeanMs >= 0 && r.MaxMs >= r.P95Ms);
@@ -120,5 +128,19 @@ public class V226RegistreTests
         SaveLoadResult ok = SaveJsonReader.Read(text.Replace("      \"s00_00\": 1", exact, StringComparison.Ordinal));
         Assert.True(ok.IsValid, ok.Report.ToString());
         Assert.Equal(SaveValidator.MaxSectors, ok.Save!.Sectors.Count);
+    }
+
+    [Fact]
+    public void Partie_solo_garde_les_sessions_des_secteurs()
+    {
+        // Revue Codex de la PR #151 : une sauvegarde v18 avec des sessions de secteurs, reprise par la partie solo puis réécrite, les garde.
+        ZoneDefinition zone = V11TestData.Zone();
+        WorldSave start = new(zone.Id, 0, 2, Array.Empty<string>(), V11TestData.Hero(), sectors: new[] { new KeyValuePair<string, long>("s08_06", 3) });
+        WorldSave read = SaveJsonReader.Read(SaveJsonReader.Write(start)).Save!;
+        var session = new WorldSession(read, zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog);
+        for (int i = 0; i < 5; i++) session.Step();
+        WorldSave after = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
+        Assert.Equal(3L, after.Sectors["s08_06"]);
+        Assert.Equal(3L, after.Sessions);
     }
 }

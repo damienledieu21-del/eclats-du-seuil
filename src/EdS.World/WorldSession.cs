@@ -128,6 +128,12 @@ namespace EdS.World
         private readonly CharacterProgression _progression;
         private SavedCharacter _character;
 
+        /// <summary>
+        /// Sous-lot V2.26 (sauvegarde v18, revue Codex de la PR #151) : sessions des secteurs de la sauvegarde ; la partie solo (une seule
+        /// session de zone) ne les change pas mais les rend à chaque sauvegarde.
+        /// </summary>
+        private readonly IReadOnlyDictionary<string, long> _sectors;
+
         /// <summary>Essai réaliste 6 : classe du personnage et règles de progression (jugement des talents choisis en route).</summary>
         private readonly ClassDefinition? _class;
         private readonly ProgressionRules _rules;
@@ -315,6 +321,7 @@ namespace EdS.World
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if (items is null) throw new ArgumentNullException(nameof(items));
             _character = save.Character ?? throw new ArgumentException("Sauvegarde sans personnage : le créer d'abord.", nameof(save));
+            _sectors = save.Sectors;   // revue Codex de la PR #151 : gardées telles quelles, rendues à la sauvegarde
             // Relecture de la PR #72 : bourse dans ses bornes (déjà vérifiée à la construction du personnage ; le contrat de la partie est
             // dit ici aussi, la bourse affichée ne peut pas sortir de [0, Coins.Max]).
             if (!Coins.IsValid(_character.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(save));
@@ -1168,7 +1175,7 @@ namespace EdS.World
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
-            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character);
+            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character, sectors: _sectors);
         }
     }
 }
