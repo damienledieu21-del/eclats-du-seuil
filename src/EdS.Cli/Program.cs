@@ -45,6 +45,8 @@ switch (args[0])
         return RunNetwork(args.AsSpan(1));
     case "carte":   // sous-lot V2.25.3 : cases de la région, densité, image de contrôle
         return EdS.Tools.Map.RegionMap.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
+    case "mesures":   // sous-lot V2.26 : coût d'un secteur de simulation par tick
+        return EdS.Tools.Measures.SectorMeasures.Run(args.Skip(1).ToArray(), Console.Out, Console.Error);
     default:
         Console.Error.WriteLine($"Commande inconnue : {args[0]}");
         PrintHelp();
@@ -525,6 +527,7 @@ static void PrintHelp()
     Console.WriteLine("                                                 Markdown ; code 3 si une empreinte diffère ou une divergence survient ;");
     Console.WriteLine("                                                 --esquive : esquive d'une attaque annoncée selon la latence (0 à 200 ms)");
     Console.WriteLine("                                                 et le temps de réaction (scénario par défaut : coop/esquive_duo)");
+    Console.WriteLine("  eds mesures secteurs [--ticks N]                 sous-lot V2.26 : temps d'un tick d'un secteur de 60 combattants (cible < 1 ms)");
     Console.WriteLine("  eds carte cases|densite|image [--zone Z] [--data D] [--scenarios S] [--ids] [--vides]");
     Console.WriteLine("            [--out F.png] [--pixels-par-case N] [--cadre c14_r12:c15_r13]");
     Console.WriteLine("                                                 Grille de la région (schéma de zone 13, cases de 128 m, secteurs de 256 m) :");

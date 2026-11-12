@@ -283,11 +283,11 @@ namespace EdS.Runtime
                 return Inventory.Outfit(c, items);
             }
             WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh(true));
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false));
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false), sectors: save.Sectors);
             // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
             // plus reprend à l'entrée de la zone de départ.
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
-            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated);
+            if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated, sectors: save.Sectors);
             _lastSafePoint = _zone.Entry.Id;
             Open(save, null);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
@@ -831,7 +831,7 @@ namespace EdS.Runtime
             string from = _zone.Id;
             ZoneDefinition target = _zones.First(z => z.Id == door.To);
             WorldSave here = World.Save();
-            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             Door arrival = target.DoorOf(door.ToDoor)!;
             // Relecture indépendante : la session d'arrivée est construite avant d'écrire quoi que ce soit ; puis la sauvegarde ; l'aventure ne
             // change qu'une fois les deux réussies.

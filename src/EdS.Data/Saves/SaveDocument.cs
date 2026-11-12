@@ -25,6 +25,9 @@ namespace EdS.Data.Saves
         /// <summary>Événements consommables déjà attribués (morts, étapes, récompenses), par clé unique.</summary>
         public List<string?>? Consumed { get; set; }
 
+        /// <summary>Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation ; facultatif.</summary>
+        public List<KeyValuePair<string, long?>>? Sectors { get; set; }
+
         /// <summary>Sous-lot 12.2 (version 2) : personnage du joueur ; null tant qu'aucun n'a été créé.</summary>
         public CharacterData? Character { get; set; }
 

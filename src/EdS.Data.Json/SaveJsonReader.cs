@@ -55,6 +55,16 @@ namespace EdS.Data.Json
                 ["sessions"] = (v, p) => data.Sessions = input.Int64(v, p),
                 ["consumed"] = (v, p) => data.Consumed = input.ReadLimitedList(v, p, SaveValidator.MaxConsumed,
                     n => $"{n} événements consommés, au plus {SaveValidator.MaxConsumed}.", (e, ip) => input.Text(e, ip)),
+                ["sectors"] = (v, p) =>   // sous-lot V2.26 (version 18)
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet")) return;
+                    data.Sectors = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (data.Sectors.Count >= SaveValidator.MaxSectors) break;
+                        data.Sectors.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                },
                 ["character"] = (v, p) =>   // sous-lot 12.2 (version 2) : null ou le personnage
                 {
                     data.HasCharacter = true;
@@ -395,6 +405,14 @@ namespace EdS.Data.Json
             b.Append("    \"worldTick\": ").Append(save.WorldTick.ToString(CultureInfo.InvariantCulture)).Append(",\n");
             b.Append("    \"sessions\": ").Append(save.Sessions.ToString(CultureInfo.InvariantCulture)).Append(",\n");
             WriteCharacter(b, save.Character);
+            if (save.Sectors.Count > 0)   // sous-lot V2.26 (version 18) : seulement s'il y en a
+            {
+                b.Append("    \"sectors\": {\n");
+                int k = 0;
+                foreach (KeyValuePair<string, long> s in save.Sectors)
+                    b.Append("      \"").Append(s.Key).Append("\": ").Append(s.Value.ToString(CultureInfo.InvariantCulture)).Append(++k < save.Sectors.Count ? ",\n" : "\n");
+                b.Append("    },\n");
+            }
             if (save.Consumed.Count == 0) b.Append("    \"consumed\": []\n");
             else
             {

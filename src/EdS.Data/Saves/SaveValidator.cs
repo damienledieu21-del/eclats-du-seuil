@@ -460,15 +460,30 @@ namespace EdS.Data.Saves
         /// <summary>La sauvegarde vient d'une version antérieure, mise à jour à la lecture (elle sera réécrite à la version courante).</summary>
         public bool Migrated { get; }
 
-        public WorldSave(string zone, long worldTick, long sessions, IEnumerable<string> consumed, SavedCharacter? character = null, bool migrated = false)
+        /// <summary>Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation autre que celui du cœur, ordre ordinal.</summary>
+        public IReadOnlyDictionary<string, long> Sectors { get; }
+
+        /// <remarks>Sous-lot V2.26 (version 18) : les clés de mort (<see cref="SaveValidator.IsDeathKey"/>) ne sont pas gardées : une sauvegarde
+        /// ferme sa session, et la partie reprendra dans une session nouvelle.</remarks>
+        public WorldSave(string zone, long worldTick, long sessions, IEnumerable<string> consumed, SavedCharacter? character = null, bool migrated = false,
+            IEnumerable<KeyValuePair<string, long>>? sectors = null)
         {
+            var map = new SortedDictionary<string, long>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, long> s in sectors ?? Array.Empty<KeyValuePair<string, long>>())
+            {
+                if (!SaveValidator.IsSectorName(s.Key) || s.Value < 1 || s.Value > SaveValidator.MaxWorldTick || map.ContainsKey(s.Key))
+                    throw new ArgumentException($"Session de secteur « {s.Key} » invalide.", nameof(sectors));
+                map[s.Key] = s.Value;
+            }
+            if (map.Count > SaveValidator.MaxSectors) throw new ArgumentException($"{map.Count} secteurs, au plus {SaveValidator.MaxSectors}.", nameof(sectors));
+            Sectors = map;
             Character = character;
             Migrated = migrated;
             Zone = zone ?? throw new ArgumentNullException(nameof(zone));
             WorldTick = worldTick;
             Sessions = sessions;
-            Consumed = Frozen.List((consumed ?? throw new ArgumentNullException(nameof(consumed))).Distinct(StringComparer.Ordinal)
-                .OrderBy(k => k, StringComparer.Ordinal), nameof(consumed));
+            Consumed = Frozen.List((consumed ?? throw new ArgumentNullException(nameof(consumed))).Where(k => !SaveValidator.IsDeathKey(k))
+                .Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal), nameof(consumed));
         }
     }
 
@@ -553,7 +568,29 @@ namespace EdS.Data.Saves
         /// tant que le joueur n'a rien choisi ; objet <c>{ "body", "hair", "beard", "dark", "hairTone", "palette" }</c>, voir <see cref="SavedLook"/>).
         /// Une sauvegarde de version 16 ou antérieure est lue telle quelle (aspect par défaut) et mise à jour ; elle n'a pas de <c>look</c> (refusé,
         /// champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 17;
+        /// <remarks>Version 18 (sous-lot V2.26, <see cref="SectorsSince"/>, secteurs de simulation ; PLAN_GRANDE_CARTE.md § 2.4) : le registre
+        /// (<c>consumed</c>) ne garde plus aucune clé de mort (« zone.vallons/3/death/loup1 », « zone.vallons/s08_05/1/death/loup1 ») : elles ne
+        /// protègent que contre un rejeu dans leur session, et une partie reprend toujours dans une session nouvelle ; elles sont purgées à la
+        /// fermeture d'une session (refusées dans un fichier de version 18). <c>sectors</c> facultatif : dernière session de chaque secteur de
+        /// simulation autre que celui du cœur (objet « s08_05 : session », de 1 à <see cref="MaxWorldTick"/>, ordre ordinal, au plus
+        /// <see cref="MaxSectors"/>). Une sauvegarde de version 17 ou antérieure est lue, ses clés de mort purgées, et mise à jour ; elle n'a pas
+        /// de <c>sectors</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 18;
+
+        /// <summary>Sous-lot V2.26 : version où le registre est purgé des clés de mort et où les sessions des secteurs entrent dans la sauvegarde.</summary>
+        public const int SectorsSince = 18;
+
+        /// <summary>Sous-lot V2.26 : secteurs au plus dans <c>sectors</c> (64 × 64 cases de 128 m, secteurs de 2 × 2 cases).</summary>
+        public const int MaxSectors = 1024;
+
+        private static readonly Regex DeathKey = new Regex(@"^zone\.[a-z][a-z0-9_]*/(s[0-9]{2}_[0-9]{2}/)?[0-9]+/death/[a-z0-9_.]+\z", RegexOptions.CultureInvariant);
+        private static readonly Regex SectorName = new Regex(@"^s[0-9]{2}_[0-9]{2}\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Sous-lot V2.26 : clé de mort d'une session (« zone.vallons/3/death/loup1 », « zone.vallons/s08_05/1/death/loup1 ») ?</summary>
+        public static bool IsDeathKey(string? key) => key != null && DeathKey.IsMatch(key);
+
+        /// <summary>Sous-lot V2.26 : nom de secteur de simulation (« s08_05 ») ?</summary>
+        public static bool IsSectorName(string? name) => name != null && SectorName.IsMatch(name);
 
         /// <summary>Sous-lot V2.16 : version où l'aspect du héros (<c>look</c>, créateur de personnage) entre dans la sauvegarde.</summary>
         public const int LookSince = 17;
@@ -745,6 +782,8 @@ namespace EdS.Data.Saves
                     if (key is null) { if (!report.HasErrorAtOrAbove(path)) report.Add(path, ValidationCode.InvalidValue, "clé d'événement attendue."); }
                     else if (!IsEventKey(key)) report.Add(path, ValidationCode.InvalidValue, $"clé d'événement « {key} » invalide : segments [a-z0-9_.] séparés par « / ».");
                     else if (!seen.Add(key)) report.Add(path, ValidationCode.DuplicateId, $"événement « {key} » déjà consommé plus haut : une seule attribution.");
+                    else if (version >= SectorsSince && IsDeathKey(key))
+                        report.Add(path, ValidationCode.InvalidValue, $"clé de mort « {key} » : purgée à la fermeture de sa session depuis la version {SectorsSince}.");
                     else if (i > 0 && data.Consumed[i - 1] is string previous && string.CompareOrdinal(previous, key) > 0)
                         report.Add(path, ValidationCode.InvalidValue, "événements consommés hors de l'ordre ordinal (forme canonique).");
                 }
@@ -756,8 +795,25 @@ namespace EdS.Data.Saves
             }
             else if (!data.HasCharacter && data.Character == null) Missing(report, "$.data.character", "personnage du joueur, ou null");
             else if (data.Character is CharacterData c) character = CheckCharacter(c, version, report);
+            // Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation, ordre ordinal.
+            if (data.Sectors != null)
+            {
+                if (version < SectorsSince) report.Add("$.data.sectors", ValidationCode.UnknownField, $"champ inconnu en version {version} (secteurs : version {SectorsSince}).");
+                else if (data.Sectors.Count > MaxSectors) report.Add("$.data.sectors", ValidationCode.LimitExceeded, $"{data.Sectors.Count} secteurs, au plus {MaxSectors}.");
+                else
+                    for (int i = 0; i < data.Sectors.Count; i++)
+                    {
+                        string path = "$.data.sectors." + data.Sectors[i].Key;
+                        if (!IsSectorName(data.Sectors[i].Key)) report.Add(path, ValidationCode.InvalidValue, $"secteur « {data.Sectors[i].Key} » mal nommé : « s<col>_<rang> ».");
+                        else if (data.Sectors[i].Value is not long session || session < 1 || session > MaxWorldTick)
+                            report.Add(path, ValidationCode.OutOfRange, $"session hors de [1, {MaxWorldTick}].");
+                        else if (i > 0 && string.CompareOrdinal(data.Sectors[i - 1].Key, data.Sectors[i].Key) >= 0)
+                            report.Add(path, ValidationCode.InvalidValue, "secteurs hors de l'ordre ordinal (forme canonique).");
+                    }
+            }
             if (!report.IsValid || document.ContentVersion is null) return new SaveLoadResult(report, null);
-            return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating));
+            return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating,
+                data.Sectors?.Select(s => new KeyValuePair<string, long>(s.Key, s.Value!.Value))));
         }
 
         private static SavedCharacter? CheckCharacter(CharacterData c, int version, ValidationReport report)

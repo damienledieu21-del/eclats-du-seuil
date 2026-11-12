@@ -353,6 +353,13 @@ namespace EdS.World
             }
         }
 
+        /// <summary>
+        /// Sous-lot V2.26 : sauvegarde du monde à ce tick (zone, temps du monde, session du cœur, registre purgé des clés de mort, dernière
+        /// session de chaque autre secteur ; sauvegarde v18).
+        /// </summary>
+        public EdS.Data.Saves.WorldSave Save(EdS.Data.Saves.SavedCharacter? character = null) =>
+            new EdS.Data.Saves.WorldSave(_zoneId, WorldTick, _session, Consumed, character, sectors: _sectorSessions);
+
         /// <summary>Joueurs (dans l'ordre des identifiants).</summary>
         public IReadOnlyList<string> Players => _players.Keys.ToArray();
 
@@ -414,7 +421,9 @@ namespace EdS.World
 
         private void CloseSector(Open open, List<SectorEvent> events)
         {
-            _consumed.UnionWith(open.Zone.Consumed);
+            // Sous-lot V2.26 (sauvegarde v18) : les clés de mort de la session fermée ne servent plus (elles ne protègent que contre un rejeu
+            // dans cette session) : purgées, le registre reste borné même après des heures de jeu.
+            _consumed.UnionWith(open.Zone.Consumed.Where(k => !EdS.Data.Saves.SaveValidator.IsDeathKey(k)));
             _open.Remove(open.Name);
             events.Add(new SectorEvent(SectorEventKind.Closed, open.Name, null, null, WorldTick));
         }

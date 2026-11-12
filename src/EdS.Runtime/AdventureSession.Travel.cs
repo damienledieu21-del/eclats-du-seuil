@@ -86,7 +86,7 @@ namespace EdS.Runtime
             }
             ZoneDefinition target = _zones.First(z => z.Id == zone);
             WorldSave here = World.Save();
-            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             // Comme une porte : la session d'arrivée est construite avant d'écrire quoi que ce soit ; l'aventure ne change qu'une fois les
             // deux réussies.
             WorldSession next = Build(moved, target, safePoint, null);
