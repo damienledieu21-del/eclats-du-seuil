@@ -387,6 +387,9 @@ public class V28CheminsGrilleTests
         Assert.Equal(NavStatus.Found, search.Find(grid, start, goal, 8_192, whole, out int full));
         Assert.Equal(goal, whole[full - 1]);
         Assert.Equal(start, path[0]);
+        // CI de la PR #151 : mise en route d'abord (une quarantaine d'appels : la recompilation à chaud du moteur d'exécution, vers le 30e
+        // appel, peut allouer sur le fil de l'appelant) ; seule la recherche elle-même est mesurée ensuite.
+        for (int i = 0; i < 40; i++) search.Find(grid, start, goal, 8_192, path, out _);
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
         Assert.True(GC.GetAllocatedBytesForCurrentThread() - allocated < 4_096);
