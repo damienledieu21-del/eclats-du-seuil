@@ -290,6 +290,9 @@ namespace EdS.World
 
             /// <summary>Revue Codex de la PR #150 : arrivée programmée (secteur de départ et personnage complet), pour la rattraper si elle est refusée.</summary>
             public string? ArrivingFrom;
+
+            /// <summary>Revue Codex de la PR #150 (2e tour) : entré dans la région sans place encore (il réessaie à chaque tick).</summary>
+            public bool Waiting;
             public CharacterSetup? Arrival;
             public bool PendingBackward;
             public int Passages;
@@ -376,7 +379,12 @@ namespace EdS.World
         public string? SectorOf(string player) => _players.TryGetValue(player, out Player? p) ? p.Sector : null;
 
         /// <summary>Identité du joueur dans la session de son secteur (la sienne, ou <c>&lt;joueur&gt;_p&lt;n&gt;</c> après un passage).</summary>
-        public string CombatantOf(string player) => _players.TryGetValue(player, out Player? p) ? p.Combatant : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
+        public string CombatantOf(string player) => _players.TryGetValue(player, out Player? p)
+            ? (p.Waiting ? throw new InvalidOperationException($"Joueur {player} en attente d'une place.") : p.Combatant)
+            : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
+
+        /// <summary>Revue Codex de la PR #150 (2e tour) : vrai si le joueur est entré dans la région sans place libre encore (il réessaie à chaque tick).</summary>
+        public bool IsWaiting(string player) => _players.TryGetValue(player, out Player? p) ? p.Waiting : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
 
         /// <summary>Moteur du secteur du joueur, pour ses commandes (déplacement, compétences).</summary>
         public CombatEngine EngineOf(string player) =>
@@ -490,7 +498,7 @@ namespace EdS.World
         /// identité disponibles, arrivée admise par le moteur ; faux sans rien changer sinon.
         /// </summary>
         private bool Place(Player p, string sector, GroundVector at, Fixed radius, GroundVector? facing, IReadOnlyList<ConsumableSetup>? consumables,
-            CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null)
+            CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null, bool announce = true)
         {
             if (!_open.TryGetValue(sector, out Open? target) || target.Zone.IsOver) return false;
             CombatEngine engine = target.Zone.Engine;
@@ -511,7 +519,7 @@ namespace EdS.World
             }
             // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
             if (move is GroundVector m) engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));
-            events.Add(new SectorEvent(SectorEventKind.Arrived, sector, p.Id, from ?? p.Sector, WorldTick));   // sector == from : retour, passage impossible
+            if (announce) events.Add(new SectorEvent(SectorEventKind.Arrived, sector, p.Id, from ?? p.Sector, WorldTick));   // sector == from : retour, passage impossible
             p.ArrivingFrom = from ?? p.ArrivingFrom;
             p.Arrival = arrival;
             p.Sector = sector;
@@ -550,19 +558,32 @@ namespace EdS.World
         {
             var events = new List<SectorEvent>();
             // 0. Sorties, puis entrées, dans l'ordre des joueurs.
+            // Revue Codex de la PR #150 (2e tour) : un joueur dont l'arrivée est programmée à ce tick (passage tout juste fait) sort aussi :
+            // son arrivée a lieu au début du tick, son départ en fin du même tick ; il ne reste jamais un combattant sans suivi.
             foreach (string id in _exiting)
-                if (_players.TryGetValue(id, out Player? p) && p.Sector is string s && _open.TryGetValue(s, out Open? o) && o.Zone.Engine.View(p.Combatant).IsPresent)
-                    o.Zone.Leave(p.Combatant);
+                if (_players.TryGetValue(id, out Player? p) && !p.Waiting && p.Sector is string s && _open.TryGetValue(s, out Open? o))
+                {
+                    CombatantView v = o.Zone.Engine.View(p.Combatant);
+                    bool arriving = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick == o.Zone.Engine.CurrentTick;
+                    if ((v.IsPresent && !v.IsDead) || arriving) o.Zone.Leave(p.Combatant);
+                }
             foreach (string id in _exiting) _players.Remove(id);
             _exiting.Clear();
+            foreach (Player p in _players.Values.Where(x => x.Waiting).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
+            {
+                OpenSector(p.Sector!, events);
+                if (Place(p, p.Sector!, p.Setup.Placement!.Position, p.Setup.Placement.Radius, p.Setup.Placement.Facing, null, p.Setup.Carried, null, events, announce: false))
+                    p.Waiting = false;
+            }
             foreach (CharacterSetup c in _entering.Values)
             {
+                // Revue Codex de la PR #150 (2e tour) : première arrivée dans la région par la même voie qu'un passage : place libre la plus
+                // proche (arrivées déjà programmées comprises), place et identité disponibles ; sinon le joueur attend et réessaie à chaque tick.
                 string sector = _map.SectorOf(c.Placement!.Position);
-                Open open = OpenSector(sector, events);
-                var p = new Player { Id = c.Id, Setup = c, Sector = sector };
-                p.Combatant = IdentityIn(open.Zone, p);
-                open.Zone.Enter(Arriving(c, p.Combatant, c.Placement, 0, null, c.Carried));   // un joueur peut entrer avec un état (reprise, autre région)
+                OpenSector(sector, events);
+                var p = new Player { Id = c.Id, Setup = c, Sector = sector };   // un joueur peut entrer avec un état (reprise, autre région)
                 _players[c.Id] = p;
+                p.Waiting = !Place(p, sector, c.Placement.Position, c.Placement.Radius, c.Placement.Facing, null, c.Carried, null, events, announce: false);
             }
             _entering.Clear();
 
@@ -619,7 +640,7 @@ namespace EdS.World
             // 3. Ouvertures : chaque secteur à moins de 96 m d'un joueur, pour le tick suivant.
             foreach (Player p in _players.Values)
             {
-                if (p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
+                if (p.Waiting || p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
                 CombatantView v = o.Zone.Engine.View(p.Combatant);
                 if (v.Position is GroundVector pos)
                     foreach (string near in _map.Near(pos)) OpenSector(near, events);
@@ -628,7 +649,7 @@ namespace EdS.World
             // 4. Nouveaux passages et lâchers au bout de la marge (ordre du secteur, puis du joueur).
             foreach (Player p in _players.Values.OrderBy(x => x.Sector, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal))
             {
-                if (p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
+                if (p.Waiting || p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
                 CombatantView v = o.Zone.Engine.View(p.Combatant);
                 if (!v.IsPresent || v.IsDead || v.Position is not GroundVector pos || o.Zone.IsOver) continue;
                 if (_map.Overshoot(p.Sector, pos) <= checked(SectorMap.HysteresisMeters * Fixed.Scale)) continue;
@@ -666,7 +687,7 @@ namespace EdS.World
             foreach (Open o in _open.Values.ToList())
             {
                 bool near = _players.Values.Any(p => p.Sector == o.Name || p.PendingTo == o.Name
-                    || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
+                    || (!p.Waiting && p.Sector != null && _open.TryGetValue(p.Sector, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
                         && _map.DistanceTo(o.Name, pos) <= checked(SectorMap.ActivationMeters * Fixed.Scale)));
                 o.IdleTicks = near ? 0 : checked(o.IdleTicks + 1);
                 if (o.IdleTicks >= _closeAfterTicks) CloseSector(o, events);

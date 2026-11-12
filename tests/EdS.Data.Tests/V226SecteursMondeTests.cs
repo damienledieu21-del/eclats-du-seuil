@@ -534,4 +534,81 @@ public class V226SecteursMondeTests
         w.Step();
         Assert.Empty(w.Players);
     }
+
+    // --- Revue Codex de la PR #150 (2e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Sortie_juste_apres_l_arrivee_d_un_passage_aucun_combattant_sans_suivi()
+    {
+        // P1 : Exit au tick où l'arrivée du passage est programmée : le combattant arrive puis s'en va dans le même tick ; il n'est jamais
+        // présent, actif et ciblable sans joueur.
+        SectorWorld w = World(Map());
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        Walk(w, "alice", 1, 0);
+        List<SectorEvent> events = Run(w, 200, e => e.Kind == SectorEventKind.Arrived);
+        Assert.Contains(events, e => e.Kind == SectorEventKind.Arrived && e.Sector == "s01_00");
+        CombatEngine east = w.EngineOf("alice");
+        string id = w.CombatantOf("alice");
+        Assert.False(east.View(id).IsPresent);   // arrivée programmée au prochain tick
+        w.Exit("alice");
+        w.Step();
+        Assert.Empty(w.Players);
+        for (int i = 0; i < 5; i++)
+        {
+            CombatantView v = east.View(id);
+            Assert.False(v.IsPresent);
+            Assert.True(v.HasLeft);
+            w.Step();
+        }
+    }
+
+    [Fact]
+    public void Deux_joueurs_entres_au_meme_endroit_tous_deux_places()
+    {
+        // P2 : deux joueurs entrent au même endroit : tous deux arrivent (les personnages ne se bloquent pas entre eux, règle de contact) ;
+        // aucun n'est laissé sans combattant.
+        SectorWorld w = World(Map());
+        w.Enter(Hero("alice", 100, 100));
+        w.Enter(Hero("bruno", 100, 100));
+        w.Step();
+        CombatantView a = w.ViewOf("alice"), b = w.ViewOf("bruno");
+        Assert.True(a.IsPresent && b.IsPresent);
+        Assert.False(w.IsWaiting("alice") || w.IsWaiting("bruno"));
+        Assert.Throws<ArgumentException>(() => w.Enter(Hero("bruno", 120, 100)));   // déjà là, et bien là
+    }
+
+    [Fact]
+    public void Joueur_entre_sur_une_creature_solide_place_a_cote()
+    {
+        SectorWorld w = World(Map(Wolf("loup", 100, 100)));
+        w.Enter(Hero("alice", 100, 100));
+        w.Step();
+        CombatantView a = w.ViewOf("alice");
+        Assert.True(a.IsPresent);
+        Assert.NotEqual(P(100, 100), a.Position!.Value);
+        Assert.True(w.EngineOf("alice").View("loup").IsPresent);
+    }
+
+    [Fact]
+    public void Joueur_entre_dans_un_secteur_plein_attend_puis_prend_la_place_liberee()
+    {
+        // P2 : plus aucune place (deux places : un loup au calme et Alice) : le joueur attend (sans combattant) et réessaie à chaque tick ; il entre dès qu'une place se libère.
+        SectorWorld w = World(Map(Rules(Shipped.Combat, 2), Wolf("loup", 230, 230)));
+        w.Enter(Hero("alice", 100, 100));
+        w.Step();
+        w.Enter(Hero("bruno", 140, 100));
+        Run(w, 3);
+        Assert.True(w.IsWaiting("bruno"));
+        Assert.False(w.IsWaiting("alice"));
+        Assert.Throws<InvalidOperationException>(() => w.CombatantOf("bruno"));
+        Assert.Throws<ArgumentException>(() => w.Enter(Hero("bruno", 140, 100)));
+        Assert.Equal(new[] { "alice", "bruno" }, w.Players);
+        w.Exit("alice");
+        w.Step();   // départ d'Alice en fin de tick
+        w.Step();   // place libre : Bruno arrive
+        Assert.False(w.IsWaiting("bruno"));
+        Assert.True(w.ViewOf("bruno").IsPresent);
+        Assert.Equal(new[] { "bruno" }, w.Players);
+    }
 }
