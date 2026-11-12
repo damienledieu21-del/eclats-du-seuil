@@ -21,7 +21,7 @@ namespace EdS.Game.Editor
     /// coupés. Les fichiers créés vont dans <c>Assets/Style/Generated</c>.
     /// </para>
     /// </summary>
-    public static class EdsStyle
+    public static partial class EdsStyle
     {
         public const string Root = "Assets/Style";
         public const string CatalogFolder = Root + "/Resources";
@@ -279,6 +279,7 @@ namespace EdS.Game.Editor
             BuildingLook[] own = OwnBuildings(notes);
             if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
             catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
+            OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
             // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
             InteriorLook[] oldFurniture = catalog.Furniture ?? new InteriorLook[0];
