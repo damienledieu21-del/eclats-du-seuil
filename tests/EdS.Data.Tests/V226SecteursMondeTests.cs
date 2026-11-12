@@ -846,4 +846,52 @@ public class V226SecteursMondeTests
         }
         Assert.True(w.ViewOf("alice").IsPresent);
     }
+
+    // --- Revue Codex de la PR #150 (5e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Bonus_d_equipement_courant_garde_au_passage()
+    {
+        // P2 : un bonus d'équipement changé en jeu (commande gear) passe avec le joueur : PV au-dessus du maximum de départ, placement réussi
+        // et bonus conservé.
+        SectorWorld w = World(Map());
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        CombatEngine west = w.EngineOf("alice");
+        long baseMax = west.View("alice").MaxHealth!.Value;
+        var gear = new EdS.Domain.Stats.GearBonus(maxHealth: 500);
+        west.Submit(CombatCommand.SetGear(west.CurrentTick * 50, "alice", gear));
+        Run(w, 400, _ => w.ViewOf("alice").Health > baseMax);
+        CombatantView before = w.ViewOf("alice");
+        Assert.True(before.Health > baseMax, $"PV {before.Health}, maximum de départ {baseMax}");
+        Assert.Equal(gear, before.Gear);
+        Walk(w, "alice", 1, 0);
+        Run(w, 300, e => e.Kind == SectorEventKind.Arrived);
+        w.Step();
+        Assert.Equal("s01_00", w.SectorOf("alice"));
+        CombatantView after = w.ViewOf("alice");
+        Assert.True(after.IsPresent);
+        Assert.Equal(gear, after.Gear);
+        Assert.True(after.Health > baseMax);
+        Assert.Equal(before.MaxHealth, after.MaxHealth);
+    }
+
+    [Fact]
+    public void Lacher_refuse_par_le_budget_la_creature_reste_et_le_monde_continue()
+    {
+        // P2 : au bout de la marge, le lâcher d'une créature est refusé (budget de commandes épuisé, InvalidOperationException) : elle reste
+        // (nouvel essai au tick suivant), le monde n'est jamais interrompu.
+        CombatRules rules = Rules(Shipped.Combat, Shipped.Combat.MaxCombatants);
+        typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, 1);
+        SectorWorld w = World(Map(rules, Wolf("loup", 236, 128)));
+        w.Enter(Hero("alice", 246, 128));
+        w.Step();
+        Walk(w, "alice", 1, 0);   // seule commande admise
+        var events = new List<SectorEvent>();
+        for (int i = 0; i < 1200; i++) events.AddRange(w.Step());
+        Assert.DoesNotContain(events, e => e.Kind == SectorEventKind.Released || e.Kind == SectorEventKind.Departed);
+        Zone west = w.SectorZone("s00_00")!;
+        Assert.False(west.Engine.View("loup").HasLeft);
+        Assert.Equal(1201L, w.WorldTick);
+    }
 }
