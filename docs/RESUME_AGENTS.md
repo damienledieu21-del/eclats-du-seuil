@@ -31,7 +31,7 @@
 
 | Élément | Version | Où (grep) |
 |---|---|---|
-| Sauvegarde | v17 (v16 encore lue ; aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
+| Sauvegarde | v18 (v17 et antérieures encore lues ; registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.31.0 (secteurs : état emporté, places recyclées, ±4 096 m, 256 obstacles, V2.26) | `CombatEngine.cs` (`Version`) |
