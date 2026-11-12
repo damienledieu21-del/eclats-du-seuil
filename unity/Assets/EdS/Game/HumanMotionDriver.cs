@@ -25,7 +25,7 @@ namespace EdS.Game
 
         /// <summary>
         /// Sous-lot V2.15 : chaque pied descend ou monte sur le sol affiché sous lui (<see cref="StyleWorld.StandHeight"/> : le tablier du
-        /// pont cintré ; le sol du monde est plat ailleurs, donc rien à faire : coût nul), le bassin descend pour que le pied le plus bas
+        /// pont cintré et, depuis V2.24, le relief affiché du sol), le bassin descend pour que le pied le plus bas
         /// touche. Le sol est sondé par sa hauteur connue, sans lancer de rayon (le décor n'a pas de collisions) : même effet, moins cher.
         /// </summary>
         private void OnAnimatorIK(int layer)

@@ -689,7 +689,7 @@ namespace EdS.Game
             float k = look.transform.localScale.y;
             look.name = id + " (essai de style)";
             look.transform.SetParent(parent, false);
-            look.transform.position = new Vector3(center.x, -bottom * k, center.z);
+            look.transform.position = new Vector3(center.x, center.y - bottom * k, center.z);   // V2.24 : posé à la hauteur demandée (le sol affiché)
             look.transform.rotation = Quaternion.Euler(0f, StyleRules.Variant(id, 360), 0f);
             return look;
         }

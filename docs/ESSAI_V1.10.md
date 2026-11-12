@@ -640,3 +640,20 @@ Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de 
 | 38.7 | Camp des rôdeurs | Trois tentes identiques tournées vers leur route ; palissade ouest (16 m) et sud (23 m) face rugueuse dehors ; **portail fermé** à x ≈ 100 sur la palissade sud | [ ] | Où mettre le portail, faut-il l'ouvrir ? |
 | 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |
 
+## 39. Le relief des Vallons (V2.24)
+
+Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief doux dans l'aire, **affichage seulement** (le combat reste sur un sol plat : un ennemi derrière une butte te voit toujours). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« Relief des Vallons »). Les hauteurs sont provisoires : dis ce qui est trop fort ou trop plat.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 39.1 | Se promener dans les prés et les vergers | Le sol **ondule** doucement (quelques mètres) ; le personnage et le compagnon montent et descendent avec lui, pieds au sol | [ ] | Trop fort, trop plat ? |
+| 39.2 | Bourg, village, hameau | Chaque maison, puits, étal **à plat** sur son replat, ni de travers, ni enterrée, ni flottante ; les PNJ marchent au sol | [ ] | Une maison qui flotte : son nom |
+| 39.3 | Rivière, pont, lac | L'eau dans le creux, à son niveau ; le **pont** se raccorde au sol des deux côtés ; le chemin du lac **descend** vers l'eau | [ ] | |
+| 39.4 | Pierres du Seuil et tour de guet | Elles sont **sur une butte** | [ ] | |
+| 39.5 | Longer le bord de l'aire | Des **collines** et par endroits des **falaises** de roche au-delà, avec la forêt dessus ; le muret du bord suit le sol | [ ] | |
+| 39.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
+| 39.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
+| 39.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
+| 39.9 | Près du bord de l'aire, caméra au plus loin et basse, tourner autour du personnage | La caméra **se rapproche en douceur** quand une colline passe derrière toi ; jamais sous le sol, jamais de saut | [ ] | Un saut ou une vue sous le sol : où |
+| 39.10 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
+

@@ -67,11 +67,13 @@ namespace EdS.Game
                 if (!allowed(x, z)) continue;
                 var key = (Mathf.FloorToInt(x / CellSize), Mathf.FloorToInt(z / CellSize), spot.Flowers);
                 if (!byCell.TryGetValue(key, out List<Matrix4x4> items)) byCell[key] = items = new List<Matrix4x4>();
-                items.Add(Matrix4x4.TRS(new Vector3(x, 0f, z), Quaternion.Euler(0f, (float)spot.Yaw, 0f), Vector3.one * (float)spot.Scale));
+                items.Add(Matrix4x4.TRS(new Vector3(x, StyleWorld.StandHeight(x, z), z), Quaternion.Euler(0f, (float)spot.Yaw, 0f), Vector3.one * (float)spot.Scale));
             }
             foreach (KeyValuePair<(int, int, bool), List<Matrix4x4>> cell in byCell)
             {
-                var center = new Vector3((cell.Key.Item1 + 0.5f) * CellSize, 0f, (cell.Key.Item2 + 0.5f) * CellSize);
+                // V2.24 : la case suit le relief affiché (sa boîte s'allonge d'une case de pente).
+                float cx = (cell.Key.Item1 + 0.5f) * CellSize, cz = (cell.Key.Item2 + 0.5f) * CellSize;
+                var center = new Vector3(cx, StyleWorld.StandHeight(cx, cz), cz);
                 // Par paquets de 511 au plus (revue Codex de la PR #59) : la limite d'un dessin répété quand le shader reçoit les deux
                 // matrices de chaque touffe ; le shader déclare aussi l'échelle uniforme des touffes.
                 for (int start = 0; start < cell.Value.Count; start += Batch)
@@ -80,7 +82,7 @@ namespace EdS.Game
                     grass._cells.Add(new Cell
                     {
                         Center = center, Items = cell.Value.GetRange(start, count).ToArray(), Flowers = cell.Key.Item3,
-                        Bounds = new Bounds(center + Vector3.up * 0.6f, new Vector3(CellSize + 2f, 2.4f, CellSize + 2f)),
+                        Bounds = new Bounds(center + Vector3.up * 0.6f, new Vector3(CellSize + 2f, 2.4f + CellSize, CellSize + 2f)),
                     });
                 }
             }
@@ -114,18 +116,20 @@ namespace EdS.Game
             {
                 var key = (Mathf.FloorToInt((float)x / CellSize), Mathf.FloorToInt((float)z / CellSize));
                 if (!byCell.TryGetValue(key, out List<Matrix4x4> items)) byCell[key] = items = new List<Matrix4x4>();
-                items.Add(Matrix4x4.TRS(new Vector3((float)x, 0f, (float)z), Quaternion.Euler(0f, (float)yaw, 0f), Vector3.one * (float)(2.0 * scale)));
+                items.Add(Matrix4x4.TRS(new Vector3((float)x, StyleWorld.StandHeight((float)x, (float)z), (float)z), Quaternion.Euler(0f, (float)yaw, 0f), Vector3.one * (float)(2.0 * scale)));
             }
             foreach (KeyValuePair<(int, int), List<Matrix4x4>> cell in byCell)
             {
-                var center = new Vector3((cell.Key.Item1 + 0.5f) * CellSize, 0f, (cell.Key.Item2 + 0.5f) * CellSize);
+                // V2.24 : la case suit le relief affiché (sa boîte s'allonge d'une case de pente).
+                float cx = (cell.Key.Item1 + 0.5f) * CellSize, cz = (cell.Key.Item2 + 0.5f) * CellSize;
+                var center = new Vector3(cx, StyleWorld.StandHeight(cx, cz), cz);
                 for (int start = 0; start < cell.Value.Count; start += Batch)
                 {
                     int count = Mathf.Min(Batch, cell.Value.Count - start);
                     crop._cells.Add(new Cell
                     {
                         Center = center, Items = cell.Value.GetRange(start, count).ToArray(), Flowers = false,
-                        Bounds = new Bounds(center + Vector3.up * 1.2f, new Vector3(CellSize + 2f, 3f, CellSize + 2f)),
+                        Bounds = new Bounds(center + Vector3.up * 1.2f, new Vector3(CellSize + 2f, 3f + CellSize, CellSize + 2f)),
                     });
                 }
             }

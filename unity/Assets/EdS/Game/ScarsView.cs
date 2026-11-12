@@ -87,7 +87,8 @@ namespace EdS.Game
         {
             var s = new Shown { Stage = v.Stage, Root = new GameObject("Cicatrice " + v.Key) };
             s.Root.transform.SetParent(_root.transform, false);
-            s.Root.transform.position = new Vector3(Raw(v.Position.X), 0f, Raw(v.Position.Z));
+            s.Root.transform.position = StyleWorld.OnGround(new Vector3(Raw(v.Position.X), 0f, Raw(v.Position.Z)));   // V2.24 : sur le sol affiché,
+            s.Root.transform.rotation = StyleWorld.GroundTilt(Raw(v.Position.X), Raw(v.Position.Z));   // couchée sur sa pente
             float radius = Raw(v.Radius);
             // Le disque d'herbe pâle (posé à ras du sol), plus froid à chaque palier.
             s.Disc = Piece(PrimitiveType.Cylinder, "herbe_pale", Color.Lerp(Pale, Heart, 0.15f * v.Stage), s.Root.transform);
