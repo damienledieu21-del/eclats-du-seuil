@@ -34,9 +34,9 @@
 | Sauvegarde | v17 (v16 encore lue ; aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
-| Moteur | 0.30.0 | `CombatEngine.cs` (`Version`) |
-| Journal | 24 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 17 | `ScenarioValidator.cs` |
+| Moteur | 0.31.0 (secteurs : état emporté, places recyclées, ±4 096 m, 256 obstacles, V2.26) | `CombatEngine.cs` (`Version`) |
+| Journal | 25 | `CombatEngine.cs` (`LogFormatVersion`) |
+| Scénarios (schéma) | 18 (`carried`, V2.26) | `ScenarioValidator.cs` |
 | Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v13 (v12 à v7 encore lues ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
@@ -44,7 +44,7 @@
 | Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
-Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0` (V2.8, recherche de chemin : `EdS.Domain/Space/Navigator.cs`).
+Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0` (V2.26, secteurs : `scenarios/espace_secteur.json`, `EdS.Domain/Combat/CarriedState.cs`, `EdS.Domain/Space/ObstacleIndex.cs`).
 À ne pas confondre : version du contenu des règles (0.17.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 16).
 
 ## 5. Où chercher

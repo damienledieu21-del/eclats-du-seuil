@@ -47,6 +47,11 @@ namespace EdS.Data.Json
         internal static ScenarioData? ReadData(JsonInput input, JsonElement element, string path, CombatRules limits)
         {
             var data = new ScenarioData();
+            // Sous-lot V2.26 (recyclage des places) : une session de zone complétée peut compter plus d'identités que de places (jusqu'à la
+            // borne technique) ; un combat fermé garde la limite d'avant. La validation du combat juge ensuite selon le mode.
+            bool zoneMode = element.ValueKind == JsonValueKind.Object
+                && element.EnumerateObject().Any(property => property.Name == "zone" && property.Value.ValueKind == JsonValueKind.True);
+            int maxCombatants = zoneMode ? Math.Max(limits.MaxCombatants, CombatRules.MaxSessionCombatants) : limits.MaxCombatants;
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["seed"] = (v, p) => data.Seed = input.Int64(v, p),
@@ -61,8 +66,9 @@ namespace EdS.Data.Json
                     data.Present.Add("space");
                     data.Space = ReadSpace(input, v, p);
                 },
-                ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, limits.MaxCombatants,
-                    n => $"{n} combattants, au plus {limits.MaxCombatants} (combat.limits.maxCombatants).", (e, ip) => ReadCombatant(input, e, ip)),
+                ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, maxCombatants,
+                    n => zoneMode ? $"{n} combattants dans la session de zone, au plus {maxCombatants} (borne technique)."
+                        : $"{n} combattants, au plus {maxCombatants} (combat.limits.maxCombatants).", (e, ip) => ReadCombatant(input, e, ip)),
                 ["commands"] = (v, p) => data.Commands = input.ReadLimitedList(v, p, limits.MaxCommands,
                     n => $"{n} commandes, au plus {limits.MaxCommands} (combat.limits.maxCommands).", (e, ip) => ReadCommand(input, e, ip)),
             });
@@ -107,6 +113,25 @@ namespace EdS.Data.Json
                 ["speed"] = Track("speed", (v, p) => c.Speed = input.Decimal(v, p)),
                 ["arrivalMs"] = Track("arrivalMs", (v, p) => c.ArrivalMs = input.Int64(v, p)),   // sous-lot 11.4d (schéma 7)
                 ["behavior"] = Track("behavior", (v, p) => c.Behavior = ReadBehavior(input, v, p)),   // sous-lot 11.5 (schéma 8)
+                ["carried"] = Track("carried", (v, p) => c.Carried = ReadCarried(input, v, p)),   // sous-lot V2.26 (schéma 18)
+            });
+            return ok ? c : null;
+        }
+
+        /// <summary>Sous-lot V2.26 (schéma 18) : état emporté d'un autre secteur.</summary>
+        private static CarriedData? ReadCarried(JsonInput input, JsonElement element, string path)
+        {
+            var c = new CarriedData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["health"] = (v, p) => c.Health = input.Int64(v, p),
+                ["endurance"] = (v, p) => c.Endurance = input.Int64(v, p),
+                ["enduranceRegenMs"] = (v, p) => c.EnduranceRegenMs = input.Int64(v, p),
+                ["resonance"] = (v, p) => c.Resonance = input.Int32(v, p),
+                ["rampartCharges"] = (v, p) => c.RampartCharges = input.Int32(v, p),
+                ["globalCooldownMs"] = (v, p) => c.GlobalCooldownMs = input.Int64(v, p),
+                ["cooldowns"] = (v, p) => c.Cooldowns = ReadIntegerMap(input, v, p),
+                ["consumableCooldownMs"] = (v, p) => c.ConsumableCooldownMs = input.Int64(v, p),
             });
             return ok ? c : null;
         }

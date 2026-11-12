@@ -73,7 +73,7 @@ public class V27ReputationTests
         Assert.Equal(new[] { "villagers", "guard", "rangers", "bandits" }, Reputations.Factions);
         Assert.Equal(7, Reputations.Tiers.Count);
         // Ni le moteur, ni le journal, ni les scénarios.
-        Assert.Equal(("0.30.0", 24, 17), (EdS.Simulation.Engine.CombatEngine.Version, EdS.Simulation.Engine.CombatEngine.LogFormatVersion, EdS.Data.Scenarios.ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.31.0", 25, 18), (EdS.Simulation.Engine.CombatEngine.Version, EdS.Simulation.Engine.CombatEngine.LogFormatVersion, EdS.Data.Scenarios.ScenarioValidator.CurrentSchemaVersion));
     }
 
     // --- Données livrées -----------------------------------------------------------------------------------------------

@@ -30,7 +30,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.30.0";
+        public const string Version = "0.31.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -114,9 +114,15 @@ namespace EdS.Simulation.Engine
         /// exactement les mêmes lignes qu'au format 22. 24 (sous-lot V2.8, recherche de chemin) : l'en-tête d'un combat positionné porte
         /// <c>navigation</c> (<c>queriesPerTick</c>, <c>maxExpanded</c>) ; un ennemi à comportement dont la ligne droite est barrée par le décor
         /// contourne (lignes <c>moved</c> différentes), ou attend s'il n'a aucun chemin. Ligne droite libre partout : mêmes lignes
-        /// d'événements qu'au format 23. Un journal d'un autre format est refusé au rejeu.
+        /// d'événements qu'au format 23. 25 (sous-lot V2.26, secteurs de simulation) : un combattant qui arrive en route peut porter <c>carried</c>
+        /// dans l'en-tête (état emporté d'un autre secteur : <c>health</c>, <c>endurance</c>, <c>enduranceRegenMs</c>, <c>resonance</c>,
+        /// <c>rampartCharges</c>, <c>globalCooldownMs</c>, <c>cooldowns</c>, <c>consumableCooldownMs</c>), appliqué à son arrivée (sa ligne
+        /// <c>combatantJoined</c> écrit ses PV et ressources d'arrivée) ; dans une zone, une arrivée sans place libre est refusée
+        /// (<c>arrivalRefused</c>, raison <c>full</c> ; un mort ou un parti libère sa place, l'identité n'est jamais réutilisée) ; coordonnées
+        /// jusqu'à ±4 096 m et 256 obstacles. Sans état emporté ni arrivée sans place : mêmes lignes d'événements qu'au format 24. Un journal
+        /// d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 24;
+        public const int LogFormatVersion = 25;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -141,6 +147,13 @@ namespace EdS.Simulation.Engine
             /// sans elle, les PV manquants d'un vivant sont exactement ses dégâts subis moins ses soins (contrôle de l'instantané).
             /// </summary>
             public long GearHealthShift;
+
+            /// <summary>
+            /// Sous-lot V2.26 : PV manquants emportés d'un autre secteur (maximum − PV emportés), notés à la création et comptés une fois arrivé ;
+            /// 0 sans état emporté.
+            /// Les PV manquants d'un vivant arrivé avec un état sont ses dégâts subis moins ses soins plus cette valeur (contrôle de l'instantané).
+            /// </summary>
+            public long CarriedHealthShift;
 
             /// <summary>Sous-lot 8.1 : règles effectives (règles de base et modificateurs X1, évaluation des X2) ; neutres hors personnage.</summary>
             public CombatantRules Rules = null!;
@@ -684,6 +697,9 @@ namespace EdS.Simulation.Engine
                         f.AttackStats[attack.Id] = CombatantStats.ForAssailantAttack(_setup.Stats, attack.RawDamage);
                     break;
             }
+            // Sous-lot V2.26 : PV manquants emportés, notés dès la création (un absent ne reçoit aucun bonus modifié avant son arrivée : son
+            // maximum à l'arrivée est celui-ci) ; ils ne comptent qu'une fois le combattant arrivé (ApplyCarried, contrôle de l'instantané).
+            if (setup.Carried?.Health is long carriedHealth && f.MaxHealth is long carriedMax) f.CarriedHealthShift = checked(carriedMax - carriedHealth);
             return f;
         }
 

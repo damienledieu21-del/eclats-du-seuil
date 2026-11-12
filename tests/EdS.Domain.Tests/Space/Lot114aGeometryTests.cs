@@ -160,7 +160,7 @@ public class Lot114aGeometryTests
         { "concave", new[] { P("0", "0"), P("2", "0"), P("1", "0.5"), P("2", "2"), P("0", "2") } },
         { "côtés croisés", new[] { P("0", "0"), P("2", "2"), P("2", "0"), P("0", "2") } },
         { "pentagramme", new[] { P("0", "1"), P("0.588", "-0.809"), P("-0.951", "0.309"), P("0.951", "0.309"), P("-0.588", "-0.809") } },
-        { "hors bornes", new[] { P("0", "0"), P("1000.0001", "0"), P("0", "1") } },
+        { "hors bornes", new[] { P("0", "0"), P("4096.0001", "0"), P("0", "1") } },   // V2.26 : ±4 096 m
         { "dix-sept sommets", Enumerable.Range(0, 17).Select(i => P((i * 3).ToString(), (i * i).ToString())).ToArray() },
     };
 

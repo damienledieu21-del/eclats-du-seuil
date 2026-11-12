@@ -90,6 +90,26 @@ namespace EdS.Simulation.Engine
             if (!attack.HoldPosition) w.Field("holdPosition", false);
         }
 
+        /// <summary>Sous-lot V2.26 (format 25) : état emporté, sous la forme du fichier de scénario (champs nuls ou vides omis).</summary>
+        private static void WriteCarried(JsonLineWriter w, CarriedState c)
+        {
+            w.Name("carried").BeginObject();
+            if (c.Health is long health) w.Field("health", health);
+            if (c.Endurance is long endurance) w.Field("endurance", endurance);
+            if (c.EnduranceRegenMs != 0) w.Field("enduranceRegenMs", c.EnduranceRegenMs);
+            if (c.Resonance != 0) w.Field("resonance", c.Resonance);
+            if (c.RampartCharges != 0) w.Field("rampartCharges", c.RampartCharges);
+            if (c.GlobalCooldownMs != 0) w.Field("globalCooldownMs", c.GlobalCooldownMs);
+            if (c.Cooldowns.Count > 0)
+            {
+                w.Name("cooldowns").BeginObject();
+                foreach (KeyValuePair<string, long> cooldown in c.Cooldowns) w.Field(cooldown.Key, cooldown.Value);
+                w.EndObject();
+            }
+            if (c.ConsumableCooldownMs != 0) w.Field("consumableCooldownMs", c.ConsumableCooldownMs);
+            w.EndObject();
+        }
+
         /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
         internal static JsonLineWriter WritePoint(JsonLineWriter w, GroundVector p) => w.BeginArray().Value(p.X).Value(p.Z).EndArray();
 
@@ -340,6 +360,7 @@ namespace EdS.Simulation.Engine
             }
             if (c.Placement is { } placement) WritePlacement(w, placement);
             if (c.ArrivalMs is long arrivalMs) w.Field("arrivalMs", arrivalMs);   // sous-lot 11.4d (format 13) : seulement s'il arrive en route
+            if (c.Carried is { } carried) WriteCarried(w, carried);   // sous-lot V2.26 (format 25) : seulement avec un état emporté
             w.EndObject();
         }
     }

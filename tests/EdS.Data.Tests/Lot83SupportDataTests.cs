@@ -108,7 +108,7 @@ public class Lot83SupportDataTests
         Assert.Contains("antérieure à la version 9", klass.Message);
         ValidationError scenario = Assert.Single(ScenarioTestData.ReadMutated(s => s["schemaVersion"] = 2).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (scenario.Path, scenario.Code));
-        Assert.Equal(17, ScenarioValidator.CurrentSchemaVersion);   // V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // V1.2 : 13 ; sous-lot 11.1 : 4 (health des assaillants mortels) ; 11.4a : 5 (positions) ; 11.4c : 6 (formes) ; 11.4d : 7 (arrivées) ; 11.5 : 8 ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
+        Assert.Equal(18, ScenarioValidator.CurrentSchemaVersion);   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // V1.2 : 13 ; sous-lot 11.1 : 4 (health des assaillants mortels) ; 11.4a : 5 (positions) ; 11.4c : 6 (formes) ; 11.4d : 7 (arrivées) ; 11.5 : 8 ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
     }
 
     [Fact]

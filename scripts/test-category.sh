@@ -44,7 +44,7 @@ if [[ -n "$results" ]]; then
   echo "Recettes par catégorie : tests listés par catégorie, rapprochés des résultats de l'exécution complète ($results)."
 fi
 
-known=(Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World)
+known=(Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World Sector)
 is_known() { local k; for k in "${known[@]}"; do [[ "$k" == "$1" ]] && return 0; done; return 1; }
 status=0
 declared=$( (grep -rhoE --include='*.cs' --exclude-dir=bin --exclude-dir=obj 'Trait\("Category", *"[^"]*"\)' "$root/tests" || true) \

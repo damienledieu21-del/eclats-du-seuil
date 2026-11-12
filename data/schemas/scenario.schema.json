@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 17
+      "const": 18
     },
     "kind": {
       "const": "scenario"
@@ -91,10 +91,10 @@
       "maxItems": 2,
       "items": {
         "type": "number",
-        "minimum": -1000,
-        "maximum": 1000
+        "minimum": -4096,
+        "maximum": 4096
       },
-      "description": "Sous-lot 11.4 : point [x, z] du sol, en mètres (x vers l'est, z vers le nord), dans ±1000 m (borne technique)."
+      "description": "Sous-lot 11.4 : point [x, z] du sol, en mètres (x vers l'est, z vers le nord), dans ±4 096 m depuis V2.26 (±1 000 m avant ; borne technique)."
     },
     "direction": {
       "type": "array",
@@ -133,7 +133,7 @@
         },
         "obstacles": {
           "type": "array",
-          "maxItems": 64,
+          "maxItems": 256,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -419,7 +419,26 @@
         "arrivalMs": {
           "type": "integer",
           "minimum": 0,
-          "description": "Sous-lot 11.4d : arrivée en cours de combat, en millisecondes (multiple du tick, avant la fin) ; absente : présent dès le départ. Avant son arrivée, le combattant n'agit pas et n'est pas ciblé ; arrivée refusée si une emprise solide occupe sa place."
+          "description": "Sous-lot 11.4d : arrivée en cours de combat, en millisecondes (multiple du tick, avant la fin) ; absente : présent dès le départ. Avant son arrivée, le combattant n'agit pas et n'est pas ciblé ; arrivée refusée si une emprise solide occupe sa place (ou, dans une zone, sans place libre : V2.26)."
+        },
+        "carried": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Sous-lot V2.26 (schéma 18) : état de combat emporté d'un autre secteur, appliqué à l'arrivée (personnage ou assaillant qui arrive en route ; un assaillant n'emporte que ses PV). Durées en ms, multiples du tick, comptées depuis l'arrivée ; bornes vérifiées par la validation du combat (PV dans [1, max], endurance dans [0, max], recharges au plus leur durée).",
+          "properties": {
+            "health": { "type": "integer", "minimum": 1 },
+            "endurance": { "type": "integer", "minimum": 0 },
+            "enduranceRegenMs": { "type": "integer", "minimum": 0 },
+            "resonance": { "type": "integer", "minimum": 0 },
+            "rampartCharges": { "type": "integer", "minimum": 0 },
+            "globalCooldownMs": { "type": "integer", "minimum": 0 },
+            "cooldowns": {
+              "type": "object",
+              "maxProperties": 32,
+              "additionalProperties": { "type": "integer", "minimum": 1 }
+            },
+            "consumableCooldownMs": { "type": "integer", "minimum": 0 }
+          }
         },
         "consumables": {
           "type": "array",

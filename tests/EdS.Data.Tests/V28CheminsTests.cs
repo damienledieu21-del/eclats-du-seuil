@@ -30,7 +30,7 @@ namespace EdS.Data.Tests;
 public class V28CheminsMoteurTests
 {
     private const string Chemins = "espace_chemins";
-    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.29.0-contenu-0.6.0-regles-0.17.0";
+    private const string Latest = "reference-0.31.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.29.0-contenu-0.6.0-regles-0.17.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -58,7 +58,7 @@ public class V28CheminsMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.31.0", 25, 18, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((8, 8_192), (CombatEngine.MaxPathQueriesPerTick, CombatEngine.MaxPathExpanded));
     }
 
@@ -387,6 +387,9 @@ public class V28CheminsGrilleTests
         Assert.Equal(NavStatus.Found, search.Find(grid, start, goal, 8_192, whole, out int full));
         Assert.Equal(goal, whole[full - 1]);
         Assert.Equal(start, path[0]);
+        // CI de la PR #151 : mise en route d'abord (une quarantaine d'appels : la recompilation à chaud du moteur d'exécution, vers le 30e
+        // appel, peut allouer sur le fil de l'appelant) ; seule la recherche elle-même est mesurée ensuite.
+        for (int i = 0; i < 40; i++) search.Find(grid, start, goal, 8_192, path, out _);
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
         Assert.True(GC.GetAllocatedBytesForCurrentThread() - allocated < 4_096);

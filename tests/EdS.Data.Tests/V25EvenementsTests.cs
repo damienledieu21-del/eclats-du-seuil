@@ -155,7 +155,7 @@ public class V25EvenementsTests
         Assert.Equal((17, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
         Assert.Equal((13, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
         // Ni le moteur, ni les règles, ni le journal ne changent.
-        Assert.Equal(("0.30.0", 24, 17), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.31.0", 25, 18), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
 
     [Fact]
@@ -851,17 +851,21 @@ public class V25EvenementsTests
         FillTo(w, max - w.ReservedPlaces);
         long at22 = WorldEventSchedule.TickAt(Clock, o.Day * 1440 + 22 * 60 + 2);
         List<PopulationEvent> population = new();
-        while (w.Zone.StartWorldTick + e.CurrentTick < at22) population.AddRange(w.Step().Population);
-        Assert.Contains(population, p => p.Kind == PopulationEventKind.Exhausted && p.Population.StartsWith("loup_nuit", StringComparison.Ordinal));
-        Assert.DoesNotContain(population, p => p.Kind == PopulationEventKind.Respawned);
-        Assert.Equal(max - w.ReservedPlaces, e.CombatantIds.Count);
+        // Sous-lot V2.26 (places recyclées) : des places toutes prises ne sont plus un épuisement de la session ; une place libérée (bête
+        // qui s'en va à la nuit) peut resservir à une autre vie, mais jamais la place réservée de la créature d'événement.
+        while (w.Zone.StartWorldTick + e.CurrentTick < at22)
+        {
+            population.AddRange(w.Step().Population);
+            Assert.True(e.PlacesTaken + w.ReservedPlaces <= max, $"place réservée prise : {e.PlacesTaken} places prises");
+        }
+        Assert.DoesNotContain(population, p => p.Kind == PopulationEventKind.Exhausted);
         Assert.Equal(1, w.EventsRuntime.PendingPlaces);
         // La place se libère : l'assaillant arrive, sans dépasser le plafond.
         w.Zone.Leave("bouchon");
         Run(w, 60);
         Assert.Equal(0, w.EventsRuntime.PendingPlaces);
         Assert.Single(w.WorldEvents.Single().Creatures);
-        Assert.True(e.CombatantIds.Count <= max);
+        Assert.True(e.PlacesTaken <= max);
     }
 
     [Theory]
@@ -957,7 +961,7 @@ public class V25EvenementsTests
 [Trait("Category", "Regression")]
 public class V25EvenementScenarioTests
 {
-    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.30.0-regles-0.17.0", "evenement_hameau.jsonl");
+    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.31.0-regles-0.17.0", "evenement_hameau.jsonl");
 
     [Fact]
     public void Scenario_d_evenement_fige_identique_et_rejoue()

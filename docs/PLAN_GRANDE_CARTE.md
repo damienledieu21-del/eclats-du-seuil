@@ -295,6 +295,8 @@ Numérotation : le premier sous-lot, appelé V2.25 dans la première version du 
 
 **Avancement** : V2.25.3 réalisé (12 novembre 2026, en PR) : zones en schéma 13 (bloc `region`), découpage du cœur sans changement de jeu, bornes relevées et par case, outil `eds carte` ([DONNEES.md](DONNEES.md#cases-et-repère-de-la-région-sous-lot-v2253)). Écarts au plan : les points sûrs (32), populations (256) et zones reliées (64) gardent leurs bornes (relevées avec V2.28 et V2.45) ; `eds carte densite` compte pour l'instant les lieux, points sûrs, portes et populations comme points d'intérêt (les gabarits du § 4.5 viendront avec les lieux).
 
+**Avancement V2.26** (12 novembre 2026, en PR, découpé en PR empilées pour la revue) : **(a) moteur** : arrivée avec état emporté (journal 25, moteur 0.31.0, scénarios en schéma 18), places recyclées d'une zone (identités jamais réutilisées, 1 024 par session), coordonnées ±4 096 m, 256 obstacles rangés par cases, grille de navigation de 524 288 cases ([MOTEUR.md](MOTEUR.md#secteurs-de-simulation--moteur-sous-lot-v226)). Écart au plan : **les altérations ne passent pas** d'un secteur à l'autre (le passage se fait hors rencontre ; une altération reste liée à sa source).
+
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |
 |---|---|---|---|---|
 | **V2.25.3** Cases et repère | Format de région (zones en schéma 13 : grille, cases, secteurs), découpage du cœur sans rien changer au jeu, outil `eds carte` (cases, densité, image de contrôle), relèvement des bornes de données (lieux, portes, routes par case) | M | — | aucun |

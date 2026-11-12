@@ -257,7 +257,9 @@ public class Lot124ZoneTests
         // Plafond : 128 combattants depuis les règles 0.12.0 (64 avant ; décision de Damien du 29 octobre 2026) : les créatures de la zone
         // (32 depuis le sous-lot V1.6, 33 depuis V1.7, 36 depuis V1.9.3, 37 depuis V1.9.4), le Bastion, les premières formes du chef et du chef des bandits, puis les vies suivantes ; une place
         // gardée à la seconde forme de chacun (revue Codex de la PR #48) ; une seule annonce, puis plus rien pour cette population.
-        int max = ShippedData.Rules.Combat.MaxCombatants;
+        // Sous-lot V2.26 (places recyclées) : une vie partie libère sa place ; le plafond qui arrête les vies suivantes est celui des identités
+        // d'une session de zone (1 024), plus celui des 128 places.
+        int max = CombatRules.MaxSessionCombatants;
         int creatures = z.Setup.Combatants.Count;
         Assert.Equal(66, creatures);   // V2.9.2 : deux ours et le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos (absents le jour) ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
         Assert.Equal(max - 3, session.Zone.Engine.CombatantIds.Count);   // V1.9.6 : trois secondes formes gardées (Croc-Gris)
