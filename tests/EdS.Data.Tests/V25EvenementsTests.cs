@@ -209,6 +209,7 @@ public class V25EvenementsTests
         {
             root["schemaVersion"] = 9;
             root["data"]!.AsObject().Remove("events");
+            root["data"]!.AsObject().Remove("region");   // V2.25.3 (schéma 13)
         });
         Assert.True(r.IsValid, r.Report.ToString());
         Assert.Empty(r.Zone!.Events);
