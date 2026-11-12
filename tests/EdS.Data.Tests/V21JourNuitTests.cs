@@ -90,7 +90,7 @@ public sealed class V21JourNuitTests : IDisposable
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
         Assert.Equal((14, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
-        Assert.Equal(13, Vallons.SchemaVersion);   // V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
+        Assert.Equal(14, Vallons.SchemaVersion);   // V2.26 : 14 (territoire) ; V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {
             Population p = Vallons.PopulationOf(id)!;
@@ -162,7 +162,7 @@ public sealed class V21JourNuitTests : IDisposable
             foreach (JsonNode? p in root["data"]!["populations"]!.AsArray()) { p!.AsObject().Remove("hours"); p.AsObject().Remove("weather"); }
         }));
         Assert.Equal(("$.data.nightSpots", ValidationCode.InvalidValue), (spots.Path, spots.Code));
-        foreach (int version in new[] { 6, 14 })
+        foreach (int version in new[] { 6, 15 })   // V2.26 : 14 est la version courante
         {
             ValidationError e = Error(ZoneMutated(root => root["schemaVersion"] = version));
             Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (e.Path, e.Code));
