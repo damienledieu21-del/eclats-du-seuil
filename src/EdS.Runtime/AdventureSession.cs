@@ -1478,10 +1478,6 @@ namespace EdS.Runtime
         }
 
         /// <summary>
-        /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
-        /// Recalculée à chaque nouvelle session.
-        /// </summary>
-        /// <summary>
         /// V2.25.2 : le passage dont <paramref name="obstacle"/> est la porte est-il ouvert pour de bon (registre du monde) ? Vrai dès que
         /// la quête l'ouvre, avant même que l'obstacle disparaisse (à la session suivante) : la barrière du moulin s'ouvre alors.
         /// </summary>
@@ -1492,6 +1488,10 @@ namespace EdS.Runtime
             return false;
         }
 
+        /// <summary>
+        /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
+        /// Recalculée à chaque nouvelle session.
+        /// </summary>
         public AdventureMap Map
         {
             get

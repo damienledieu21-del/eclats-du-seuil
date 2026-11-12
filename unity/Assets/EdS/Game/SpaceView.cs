@@ -537,6 +537,7 @@ namespace EdS.Game
         /// <summary>Barrières de l'atelier (obstacle de leur passage) ; relues deux fois par seconde.</summary>
         private readonly List<(string Id, GateSwing Swing)> _gates = new List<(string, GateSwing)>();
         private float _gatePoll;
+        private bool _gatesSynced;
 
         /// <summary>Emprise et face exploitée du front de taille de l'atelier, s'il est posé.</summary>
         private (float X0, float Z0, float X1, float Z1, (int X, int Z) Facing)? _quarryFront;
@@ -671,16 +672,25 @@ namespace EdS.Game
 
         /// <summary>
         /// V2.25.2 : la barrière du moulin suit le registre du monde (relu deux fois par seconde) : elle s'ouvre doucement dès que la quête
-        /// ouvre le passage (<see cref="AdventureSession.GateOpen"/>).
+        /// ouvre le passage (<see cref="AdventureSession.GateOpen"/>). Relecture de la PR #147 : à la première lecture après la construction
+        /// de la vue, elle est posée d'un coup dans l'état du passage (<see cref="AtelierDecor.GateSnaps"/>) : une vue refaite après
+        /// l'ouverture, l'obstacle encore là, ne rejoue pas l'animation.
         /// </summary>
         public void Gates(AdventureSession adventure, float deltaTime)
         {
             if (_gates.Count == 0 || adventure == null) return;
             _gatePoll -= deltaTime;
-            if (_gatePoll > 0f) return;
+            if (_gatePoll > 0f && _gatesSynced) return;
             _gatePoll = 0.5f;
+            bool snap = AtelierDecor.GateSnaps(_gatesSynced);
+            _gatesSynced = true;
             foreach ((string id, GateSwing swing) in _gates)
-                if (swing != null) swing.Open = adventure.GateOpen(id);
+            {
+                if (swing == null) continue;
+                bool open = adventure.GateOpen(id);
+                if (snap) swing.Snap(open);
+                else swing.Open = open;
+            }
         }
 
         /// <summary>

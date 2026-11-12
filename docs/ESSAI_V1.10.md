@@ -651,7 +651,7 @@ Les modèles de l'atelier remplacent les menhirs, la porte du moulin, les murs e
 | 39.3 | Même endroit, la nuit | Les fissures et les éclats **luisent** bleu-violet pâle, nettement, sans halo autour | [ ] | Trop fort, trop faible ? |
 | 39.4 | La porte du moulin, quête pas faite | Deux poteaux, deux vantaux **fermés**, chaîne et cadenas | [ ] | |
 | 39.5 | Faire poser la ferrure par Maëlle | Les vantaux **s'ouvrent doucement vers le moulin** (environ 3 s), la chaîne pend, cadenas ouvert ; après la halte, on passe et la barrière reste ouverte | [ ] | S'ouvrent du mauvais côté ? |
-| 39.6 | Les ruines (à l'est de la rivière) | Deux murs en ruine (baie en arc, départ de voûte), débris au pied ; plus les tours de l'Asset Store | [ ] | |
+| 39.6 | Les ruines (à l'est de la rivière) | Deux murs en ruine (baie en arc, départ de voûte), débris au pied | [ ] | |
 | 39.7 | Les piliers à l'ouest du moulin | Quatre piliers brisés de hauteurs différentes ; **plus d'abri** sur eux | [ ] | Garder l'abri ailleurs ? |
 | 39.8 | La carrière | Front à gradins face à l'ouest, blocs, chèvre de levage, traîneau, outils et tas d'éclats devant le front, rien sur les chemins ni sur le filon | [ ] | |
 | 39.9 | Ton avis : proportions, couleurs | — | [ ] | |

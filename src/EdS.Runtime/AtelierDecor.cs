@@ -165,6 +165,13 @@ namespace EdS.Runtime
             return open ? Math.Min(1.0, p + step) : Math.Max(0.0, p - step);
         }
 
+        /// <summary>
+        /// Première lecture du registre par une vue qui vient d'être construite (<paramref name="synced"/> faux) : la barrière est posée
+        /// d'un coup dans l'état du passage (vrai : sans animation), même si la quête l'a ouvert plus tôt dans la session, l'obstacle encore
+        /// là ; ensuite, seul un changement pendant que la vue existe s'anime (faux).
+        /// </summary>
+        public static bool GateSnaps(bool synced) => !synced;
+
         /// <summary>Angle des vantaux (degrés) pour une part d'ouverture : départ et arrivée en douceur.</summary>
         public static double GateAngle(double progress)
         {
@@ -222,7 +229,7 @@ namespace EdS.Runtime
         {
             ("chevre", 4.0, 1.0, 180),
             ("traineau", 3.0, -3.5, 90),
-            ("outils", 2.6, 3.7, 160),
+            ("outils", 2.6, 4.0, 160),
             ("tas_eclats", 2.5, -12.3, 180),
         };
 

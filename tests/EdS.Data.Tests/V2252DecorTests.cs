@@ -333,8 +333,18 @@ public class V2252DecorTests : IDisposable
         Assert.True(a.World.OpenPassage("moulin"));
         Assert.True(a.GateOpen("porte_moulin"));
         Assert.False(a.GateOpen("haie_est"));
+        // Relecture de la PR #147 : une vue construite (ou refaite) après l'ouverture, l'obstacle encore là, pose la barrière ouverte d'un
+        // coup à sa première lecture du registre ; seul un passage fermé → ouvert pendant que la vue existe s'anime.
+        Assert.True(AtelierDecor.GateSnaps(false));
+        Assert.False(AtelierDecor.GateSnaps(true));
+        Assert.Contains(a.Map.Obstacles, o => o.Id == "porte_moulin");
         string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
-        Assert.Contains("swing.Open = adventure.GateOpen(id);", view, StringComparison.Ordinal);
+        string gates = view.Substring(view.IndexOf("public void Gates(AdventureSession adventure, float deltaTime)", StringComparison.Ordinal));
+        gates = gates.Substring(0, gates.IndexOf("\n        }\n", StringComparison.Ordinal));
+        Assert.Contains("bool snap = AtelierDecor.GateSnaps(_gatesSynced);", gates, StringComparison.Ordinal);
+        Assert.Contains("if (snap) swing.Snap(open);", gates, StringComparison.Ordinal);
+        Assert.Contains("else swing.Open = open;", gates, StringComparison.Ordinal);
+        Assert.Contains("if (_gatePoll > 0f && _gatesSynced) return;", gates, StringComparison.Ordinal);
         Assert.Contains("OwnPiece(gate.Id, gate.Points.Select(", view, StringComparison.Ordinal);
         Assert.Contains("_arena.Gates(a, Time.deltaTime);", File.ReadAllText(Path.Combine(Game, "EdsGame.cs")), StringComparison.Ordinal);
     }
@@ -458,6 +468,20 @@ public class V2252DecorTests : IDisposable
             Assert.All(pts, q => Assert.True(q.X >= quarry.MinX && q.X <= quarry.MaxX && q.Z >= quarry.MinZ && q.Z <= quarry.MaxZ, p.Piece + " hors de la carrière"));
             foreach (var k in keep) Assert.True(pts.Min(q => Math.Sqrt((q.X - k.X) * (q.X - k.X) + (q.Z - k.Z) * (q.Z - k.Z))) >= 2.5, p.Piece + " gêne " + k.Id);
         }
+        // Les accessoires ne se chevauchent pas (boîtes de leurs emprises tournées, 0,5 m d'écart au moins), tas d'éclats compris.
+        Assert.Equal((53.5, -16.3), (props[3].X, props[3].Z));
+        var boxes = props.Select(p =>
+        {
+            var (hx, hy) = half[p.Piece];
+            var pts = Footprint(p.X, p.Z, p.Yaw, -hx, hx, -hy, hy);
+            return (p.Piece, X0: pts.Min(q => q.X), X1: pts.Max(q => q.X), Z0: pts.Min(q => q.Z), Z1: pts.Max(q => q.Z));
+        }).ToList();
+        for (int i = 0; i < boxes.Count; i++)
+            for (int j = i + 1; j < boxes.Count; j++)
+            {
+                double gap = Math.Max(Math.Max(boxes[j].X0 - boxes[i].X1, boxes[i].X0 - boxes[j].X1), Math.Max(boxes[j].Z0 - boxes[i].Z1, boxes[i].Z0 - boxes[j].Z1));
+                Assert.True(gap >= 0.5, boxes[i].Piece + " chevauche " + boxes[j].Piece + " (" + gap + ")");
+            }
         string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
         int own = view.IndexOf("OwnPiece(id, points)) return;", StringComparison.Ordinal);
         Assert.True(own > 0 && own < view.IndexOf("QuarryFace(id, points)) return;", StringComparison.Ordinal)
