@@ -21,7 +21,7 @@ namespace EdS.World
     /// <item>Obstacles d'un secteur : ceux de l'aire dont la boîte touche son espace (marge comprise), dans l'ordre de l'aire.</item>
     /// <item>Créatures d'un secteur : celles de l'aire dont la place de départ est dans le secteur (case de <see cref="RegionGrid.CellOf"/>) :
     /// chaque créature appartient à un seul secteur.</item>
-    /// <item>Secteur du cœur (<see cref="HomeSector"/>, celui du point d'entrée de la zone) : si l'aire entière tient dans son espace, sa
+    /// <item>Secteur du cœur (<see cref="HomeSector"/>, celui du point d'entrée de la zone) : si l'aire entière tient dans son carré (sans la marge), sa
     /// simulation est <b>exactement</b> celle de la zone (même combat, même graine, mêmes clés) : les Vallons d'aujourd'hui ne changent pas.
     /// Un autre secteur tire sa graine de celle de l'aire, de l'empreinte de son nom et de son numéro de session.</item>
     /// </list>
@@ -51,7 +51,7 @@ namespace EdS.World
             Area = area ?? throw new ArgumentNullException(nameof(area));
             if (area.Space is null) throw new ArgumentException("Une aire à secteurs est un combat positionné.", nameof(area));
             if (!grid.Contains(entry)) throw new ArgumentException("Point d'entrée hors de la région.", nameof(entry));
-            HomeSector = grid.CellOf(entry).SectorName;
+            HomeSector = OwnerOf(entry);
         }
 
         /// <summary>Découpage d'une zone à région (schéma 13 et suivants).</summary>
@@ -141,20 +141,41 @@ namespace EdS.World
             return result;
         }
 
-        /// <summary>L'aire entière tient-elle dans l'espace du secteur du cœur ? (sa session est alors exactement celle de la zone)</summary>
+        /// <summary>
+        /// L'aire entière tient-elle dans le <b>rectangle</b> du secteur du cœur, sans la marge ? Sa session est alors exactement celle de la zone
+        /// (aucun autre secteur ne touche l'aire par son intérieur, aucun ne possède de créature). Revue Codex de la PR #150 (7e tour) : tenir
+        /// seulement dans sa marge ne suffit pas (un voisin posséderait alors une partie de l'aire : créature simulée deux fois).
+        /// </summary>
         public bool HomeHoldsArea
         {
             get
             {
-                var s = Space(HomeSector);
+                var h = Rect(HomeSector);
                 CombatSpace a = Area.Space!;
-                return s is { } h && h.MinX <= a.Min.X.Raw && h.MinZ <= a.Min.Z.Raw && h.MaxX >= a.Max.X.Raw && h.MaxZ >= a.Max.Z.Raw;
+                return Space(HomeSector) != null && h.MinX <= a.Min.X.Raw && h.MinZ <= a.Min.Z.Raw && h.MaxX >= a.Max.X.Raw && h.MaxZ >= a.Max.Z.Raw;
             }
         }
 
-        /// <summary>Le combattant de l'aire appartient-il au secteur (place de départ dans le secteur) ?</summary>
+        /// <summary>
+        /// Revue Codex de la PR #150 (7e tour) : secteur propriétaire d'un point de l'aire, toujours un secteur simulable. C'est celui de sa case
+        /// (<see cref="SectorOf"/>), sauf pour un point posé sur le bord ouest ou sud d'un secteur qui ne touche pas l'aire par son intérieur (bord
+        /// est ou nord de l'aire sur une limite de secteur) : il revient au voisin ouest, sud ou sud-ouest, qui le simule. Une seule réponse par
+        /// point : chaque créature a exactement un propriétaire.
+        /// </summary>
+        public string OwnerOf(GroundVector p)
+        {
+            string sector = SectorOf(p);
+            if (Space(sector) != null || !TryParse(sector, out int column, out int row)) return sector;
+            var r = Rect(sector);
+            bool west = column > 0 && p.X.Raw == r.MinX, south = row > 0 && p.Z.Raw == r.MinZ;
+            foreach ((bool ok, int c, int w) in new[] { (west, column - 1, row), (south, column, row - 1), (west && south, column - 1, row - 1) })
+                if (ok && Space(NameOf(c, w)) != null) return NameOf(c, w);
+            return sector;
+        }
+
+        /// <summary>Le combattant de l'aire appartient-il au secteur (place de départ, <see cref="OwnerOf"/>) ?</summary>
         public bool Owns(string sector, CombatantSetup combatant) =>
-            combatant.Placement is { } p && SectorOf(p.Position) == sector;
+            combatant.Placement is { } p && OwnerOf(p.Position) == sector;
 
         /// <summary>
         /// Simulation du secteur pour sa session <paramref name="session"/> : espace avec marge, obstacles qui le touchent, créatures qui lui
@@ -436,7 +457,7 @@ namespace EdS.World
             if (_players.ContainsKey(player.Id) || _entering.ContainsKey(player.Id)) throw new ArgumentException($"Joueur déjà là : {player.Id}.", nameof(player));
             CombatSpace area = _map.Area.Space!;
             GroundVector at = player.Placement.Position;
-            if (at.X < area.Min.X || at.X > area.Max.X || at.Z < area.Min.Z || at.Z > area.Max.Z || _map.Space(_map.SectorOf(at)) is null)
+            if (at.X < area.Min.X || at.X > area.Max.X || at.Z < area.Min.Z || at.Z > area.Max.Z || _map.Space(_map.OwnerOf(at)) is null)
                 throw new ArgumentException("Place hors de l'aire.", nameof(player));
             _entering[player.Id] = player;
         }
@@ -469,7 +490,7 @@ namespace EdS.World
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
             // Revue Codex de la PR #150 (4e tour) : toutes les populations dont la place est dans le secteur, comme l'hôte d'une zone (une
             // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).
-            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.SectorOf(p.Template.Placement.Position) == name));
+            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name));
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
@@ -700,7 +721,7 @@ namespace EdS.World
             {
                 // Revue Codex de la PR #150 (2e tour) : première arrivée dans la région par la même voie qu'un passage : place libre la plus
                 // proche (arrivées déjà programmées comprises), place et identité disponibles ; sinon le joueur attend et réessaie à chaque tick.
-                string sector = _map.SectorOf(c.Placement!.Position);
+                string sector = _map.OwnerOf(c.Placement!.Position);
                 OpenSector(sector, events);
                 var p = new Player { Id = c.Id, Setup = c, Sector = sector };   // un joueur peut entrer avec un état (reprise, autre région)
                 _players[c.Id] = p;

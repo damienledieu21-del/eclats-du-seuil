@@ -915,4 +915,64 @@ public class V226SecteursMondeTests
         Assert.InRange(closed.WorldTick - left, 1_200, 1_210);   // 60 s après le départ du dernier joueur proche
         Assert.Equal(new[] { "s00_00" }, w.OpenSectors);
     }
+
+    // --- Revue Codex de la PR #150 (7e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Aire_dans_la_marge_du_coeur_mais_pas_dans_son_rectangle_pas_de_creature_simulee_deux_fois()
+    {
+        // L'exemple de la revue : aire de 280 × 256 m, entrée dans s00_00, créature en (270, 100) : elle appartient au seul secteur s01_00.
+        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, new CombatantSetup[] { Wolf("loup", 270, 100) },
+            Array.Empty<CombatCommand>(), Shipped.Data, new CombatSpace(P(0, 0), P(280, 256)), zone: true);
+        var map = new SectorMap(Wide, area, P(64, 128));
+        Assert.False(map.HomeHoldsArea);
+        Assert.DoesNotContain(map.SetupFor("s00_00", 1).Combatants, c => c.Id == "loup");
+        Assert.DoesNotContain(map.SetupFor("s00_00", 2, reopened: true).Combatants, c => c.Id == "loup");
+        Assert.Contains(map.SetupFor("s01_00", 1).Combatants, c => c.Id == "loup");
+    }
+
+    [Fact]
+    public void Propriete_chaque_creature_a_exactement_un_proprietaire()
+    {
+        // Aires variées (dans un secteur, sur une limite de secteur, débordant de quelques mètres, sur plusieurs secteurs) et places variées
+        // (bords de l'aire, limites de secteur, coins) : chaque créature est dans la simulation d'exactement un secteur simulable, à la
+        // première ouverture comme à la réouverture du cœur.
+        double[] maxXs = { 128, 200, 256, 257, 280, 288, 300, 512, 520, 600, 768 }, maxZs = { 100, 128, 256 };
+        double[] minXs = { 0, 64 };
+        int cases = 0;
+        foreach (double minX in minXs)
+            foreach (double maxX in maxXs)
+                foreach (double maxZ in maxZs)
+                {
+                    if (maxX <= minX + 16) continue;
+                    var xs = new SortedSet<double> { minX + 1, (minX + maxX) / 2, maxX - 1, maxX - 0.0001 };
+                    foreach (double edge in new double[] { 256, 512 }) if (edge > minX && edge < maxX) { xs.Add(edge); xs.Add(edge - 0.0001); xs.Add(edge + 0.0001); }
+                    var zs = new SortedSet<double> { 1, maxZ / 2, maxZ - 1 };
+                    var creatures = new List<CombatantSetup>();
+                    int n = 0;
+                    foreach (double x in xs)
+                        foreach (double z in zs)
+                            creatures.Add(new DummySetup($"c{n++}", "cibles", Fixed.FromInt(50), Fixed.Zero,
+                                placement: new CombatantPlacement(new GroundVector(Fixed.FromRaw((long)Math.Round(x * 10_000)), Fixed.FromRaw((long)Math.Round(z * 10_000))), Fixed.FromRatio(1, 10))));
+                    var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, creatures,
+                        Array.Empty<CombatCommand>(), Shipped.Data, new CombatSpace(P(minX, 0), P(maxX, maxZ)), zone: true);
+                    foreach (double entryX in new[] { minX + 8, maxX - 8 })
+                    {
+                        var map = new SectorMap(Wide, area, P(entryX, Math.Min(64, maxZ / 2)));
+                        string[] sectors = { "s00_00", "s01_00", "s02_00" };
+                        foreach (bool reopen in new[] { false, true })
+                        {
+                            var owners = creatures.ToDictionary(c => c.Id, _ => new List<string>());
+                            foreach (string sector in sectors.Where(x => map.Space(x) != null))
+                                foreach (CombatantSetup c in map.SetupFor(sector, reopen ? 2 : 1, reopened: reopen && sector == map.HomeSector).Combatants)
+                                    owners[c.Id].Add(sector);
+                            foreach (var (id, list) in owners)
+                                Assert.True(list.Count == 1, $"aire [{minX}, {maxX}] × [0, {maxZ}], cœur {map.HomeSector}, {id} en " +
+                                    $"{creatures.Single(c => c.Id == id).Placement!.Position} : propriétaires [{string.Join(", ", list)}]");
+                            cases++;
+                        }
+                    }
+                }
+        Assert.True(cases > 100);
+    }
 }
