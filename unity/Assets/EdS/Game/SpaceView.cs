@@ -1273,7 +1273,7 @@ namespace EdS.Game
             for (int i = 0; i < trees.Count; i++)
             {
                 StyleWoodTree tree = trees[i];
-                if (phone && !tree.Edge && i % 3 != 0) continue;   // relecture : un arbre du cœur sur trois sur téléphone
+                if (!atelier && phone && !tree.Edge && i % 3 != 0) continue;   // relecture : un arbre du cœur sur trois sur téléphone (arbres téléchargés ; ceux de l'atelier ont leur propre filtre, revue Codex #152)
                 // V2.25.4 : les arbres de l'atelier sont à leur taille réelle (houppiers de 10 à 17 m) : un arbre du cœur sur deux (sur quatre
                 // sur téléphone), et aucun sur une route, un point sûr, une porte ou un autre obstacle.
                 if (atelier && (!tree.Edge && i % (phone ? 4 : 2) != 0 || !AtelierTrees.WoodFree(tree.X, tree.Z, _treeMap, _space.Obstacles))) continue;

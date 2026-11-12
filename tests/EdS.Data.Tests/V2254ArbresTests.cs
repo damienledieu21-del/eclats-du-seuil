@@ -326,4 +326,11 @@ public class V2254ArbresTests : IDisposable
         // Aucune donnée de zone touchée : pas d'arbre millénaire, les huit obstacles « arbre… » d'avant.
         Assert.Equal(8, Vallons().Obstacles.Count(o => o.Id.StartsWith("arbre", StringComparison.Ordinal)));
     }
+
+    [Fact]
+    public void Sur_telephone_un_seul_filtre_pour_les_arbres_de_l_atelier()
+    {
+        string view = System.IO.File.ReadAllText(System.IO.Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "SpaceView.cs"));
+        Assert.Contains("if (!atelier && phone && !tree.Edge && i % 3 != 0) continue;", view, System.StringComparison.Ordinal);
+    }
 }
