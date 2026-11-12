@@ -76,10 +76,13 @@ public class V2253CasesTests
         RegionGrid g = Vallons.Region!;
         CombatSpace space = Vallons.Setup.Space!;
         Assert.Equal((P(-100, -70), P(140, 100)), (space.Min, space.Max));
-        IReadOnlyList<RegionCell> cells = g.CellsCovering(space.Min, space.Max);
-        Assert.Equal(CoreCells, cells.Select(c => c.Name));
+        // L'aire tient dans les quatre cases du secteur s07_06 ; son bord est (x = 140) est le bord de c16 (revue Codex de la PR #148 :
+        // un rectangle fermé touche toutes les cases de ses points au sens de CellOf).
+        IReadOnlyList<RegionCell> cells = CoreCells.Select(n => g.Cells.Single(c => c.Name == n)).ToList();
         Assert.All(cells, c => Assert.Equal("s07_06", c.SectorName));
         Assert.Equal((P(-116, -78), P(140, 178)), (g.CellMin(cells[0]), g.CellMax(cells[^1])));
+        Assert.True(space.Min.X >= g.CellMin(cells[0]).X && space.Min.Z >= g.CellMin(cells[0]).Z && space.Max.X <= g.CellMax(cells[^1]).X && space.Max.Z <= g.CellMax(cells[^1]).Z);
+        Assert.Equal(new[] { "c14_r12", "c15_r12", "c16_r12", "c14_r13", "c15_r13", "c16_r13" }, g.CellsCovering(space.Min, space.Max).Select(c => c.Name));
     }
 
     [Fact]
@@ -95,14 +98,26 @@ public class V2253CasesTests
         Assert.Equal("c16_r12", g.CellOf(P(140, 0)).Name);
         Assert.Throws<ArgumentOutOfRangeException>(() => g.CellOf(P(2188.0001, 0)));
         Assert.Throws<ArgumentOutOfRangeException>(() => g.CellOf(P(0, -1614.0001)));
-        // Un rectangle dont le bord est tombe sur un bord de case ne déborde pas dans la suivante ; un rectangle plat sur un bord, oui.
-        Assert.Equal(new[] { "c15_r12" }, g.CellsCovering(P(12, -78), P(140, 50)).Select(c => c.Name));
+        // Revue Codex de la PR #148 : un rectangle fermé touche les cases de tous ses points au sens de CellOf, bords est et nord compris.
+        Assert.Equal(new[] { "c15_r12", "c16_r12", "c15_r13", "c16_r13" }, g.CellsCovering(P(12, -78), P(140, 50)).Select(c => c.Name));
+        Assert.Equal(new[] { "c15_r12" }, g.CellsCovering(P(12, -78), P(139.9999, 49.9999)).Select(c => c.Name));
         Assert.Equal(new[] { "c16_r12" }, g.CellsCovering(P(140, 0), P(140, 10)).Select(c => c.Name));
         Assert.Equal(new[] { "c15_r12", "c16_r12" }, g.CellsCovering(P(139, 0), P(141, 10)).Select(c => c.Name));
         Assert.Throws<ArgumentOutOfRangeException>(() => g.CellsCovering(P(10, 0), P(0, 10)));
         // Ligne brisée : réunion des boîtes des tronçons, sans doublon, rangée.
         Assert.Equal(new[] { "c14_r12", "c15_r12", "c15_r13" },
             g.CellsAlong(new[] { P(0, 0), P(20, 0), P(20, 60) }).Select(c => c.Name));
+        // Revue Codex de la PR #148 : un sommet posé sur une frontière de case est dans la case de CellOf, avec la route.
+        Assert.Equal(new[] { "c14_r12", "c15_r12" }, g.CellsAlong(new[] { P(0, 0), P(12, 0) }).Select(c => c.Name));
+        Assert.Equal(new[] { "c15_r12", "c15_r13" }, g.CellsAlong(new[] { P(20, 0), P(20, 50) }).Select(c => c.Name));
+        Assert.Equal(new[] { "c15_r12" }, g.CellsAlong(new[] { P(12, 0), P(12, 40) }).Select(c => c.Name));
+        foreach (GroundVector[] road in new[] { new[] { P(0, 0), P(12, 0) }, new[] { P(-116, -78), P(12, 50), P(140, -78) } })
+            Assert.All(road, v => Assert.Contains(g.CellOf(v), g.CellsAlong(road)));
+        // Lieux et obstacles : un coin sur une frontière est dans la case de CellOf.
+        foreach ((GroundVector min, GroundVector max) in new[] { (P(0, 0), P(12, 10)), (P(0, -100), P(10, -78)), (P(-116, 0), P(12, 50)) })
+            foreach (GroundVector corner in new[] { min, max, new GroundVector(min.X, max.Z), new GroundVector(max.X, min.Z) })
+                Assert.Contains(g.CellOf(corner), g.CellsCovering(min, max));
+        Assert.Contains(g.CellOf(P(12, 10)), g.CellsOfPolygon(new[] { P(0, 0), P(12, 10), P(0, 10) }));
         Assert.True(g.TryParseCell("c14_r12", out RegionCell parsed) && parsed == new RegionCell(14, 12));
         foreach (string bad in new[] { "c32_r0", "c0_r24", "c014_r1", "c_r1", "x1_r1", "c1r1", "", "c-1_r0" })
             Assert.False(g.TryParseCell(bad, out _), bad);
@@ -122,11 +137,14 @@ public class V2253CasesTests
         IReadOnlyList<RegionCellContent> cut = RegionCutting.Cut(z);
         Assert.Equal(768, cut.Count);
         Assert.Equal(g.Cells, cut.Select(c => c.Cell));
-        Assert.Equal(CoreCells.OrderBy(n => g.Cells.Single(c => c.Name == n)), cut.Where(c => c.Total > 0).Select(c => c.Cell.Name));
+        // Le cœur, plus les cases c16 que touchent les lieux dont le bord est est celui de l'aire (x = 140).
+        Assert.Equal(new[] { "c14_r12", "c15_r12", "c16_r12", "c14_r13", "c15_r13", "c16_r13" }, cut.Where(c => c.Total > 0).Select(c => c.Cell.Name));
+        Assert.All(cut.Where(c => c.Cell.Column == 16), c => Assert.Equal(c.Total, c.Places.Count));
         RegionCellContent At(string name) => cut.Single(c => c.Cell.Name == name);
         bool In(GroundVector p, RegionCell c) => p.X >= g.CellMin(c).X && p.X < g.CellMax(c).X && p.Z >= g.CellMin(c).Z && p.Z < g.CellMax(c).Z;
+        // Rectangle fermé (revue Codex de la PR #148) : la case contient un de ses points au sens de CellOf (bords ouest et sud compris).
         bool Meets(GroundVector min, GroundVector max, RegionCell c) =>
-            min.X < g.CellMax(c).X && max.X > g.CellMin(c).X && min.Z < g.CellMax(c).Z && max.Z > g.CellMin(c).Z;
+            min.X < g.CellMax(c).X && max.X >= g.CellMin(c).X && min.Z < g.CellMax(c).Z && max.Z >= g.CellMin(c).Z;
         // Éléments ponctuels : exactement une case, celle qui contient le point.
         void Point(string id, GroundVector p, Func<RegionCellContent, IReadOnlyList<string>> list)
         {
@@ -143,7 +161,6 @@ public class V2253CasesTests
         {
             var holders = cut.Where(c => list(c).Contains(id)).Select(c => c.Cell).ToList();
             var expected = g.Cells.Where(c => Meets(min, max, c)).ToList();
-            if (expected.Count == 0) expected.Add(g.CellOf(min));   // rectangle plat
             Assert.Equal(expected, holders);
         }
         foreach (Place p in z.Places) Box(p.Id, p.Min, p.Max, c => c.Places);
@@ -159,7 +176,7 @@ public class V2253CasesTests
                 GroundVector a = r.Points[i - 1], b = r.Points[i];
                 var min = new GroundVector(Fixed.Min(a.X, b.X), Fixed.Min(a.Z, b.Z));
                 var max = new GroundVector(Fixed.Max(a.X, b.X), Fixed.Max(a.Z, b.Z));
-                return g.CellsCovering(min, max).Contains(c);
+                return Meets(min, max, c);
             }), $"{r.Id} : {c}"));
         }
         // Totaux : chaque élément compté (au moins une fois), rien d'autre.
@@ -339,7 +356,7 @@ public class V2253CasesTests
         foreach (string c in CoreCells) Assert.Contains(c, text);
         Assert.Contains("s07_06", text);
         Assert.Contains("place_du_village", text);
-        Assert.EndsWith("4 cases occupées, 764 vides.\n", text);
+        Assert.EndsWith("6 cases occupées, 762 vides.\n", text);
         Assert.Equal(text, Carte("cases", "--ids").Out);   // déterministe
 
         (code, text, err) = Carte("densite", "--vides");
@@ -347,7 +364,7 @@ public class V2253CasesTests
         string[] lines = text.Split('\n');
         Assert.Equal(24, lines.Count(l => l.StartsWith("r", StringComparison.Ordinal)));
         Assert.All(lines.Where(l => l.StartsWith("r", StringComparison.Ordinal)), l => Assert.Equal(4 + 32, l.Length));
-        Assert.Contains("764 cases sans point d'intérêt sur 768.", text);
+        Assert.Contains("762 cases sans point d'intérêt sur 768.", text);
         Assert.Contains("c0_r0", text);
         Assert.DoesNotContain("c14_r12 ", text);
         string row12 = lines.Single(l => l.StartsWith("r12 ", StringComparison.Ordinal));

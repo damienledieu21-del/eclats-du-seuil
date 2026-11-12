@@ -127,8 +127,9 @@ namespace EdS.Data.Zones
         }
 
         /// <summary>
-        /// Cases que touche un rectangle (un lieu, la boîte d'un obstacle) : celles dont l'intérieur le rencontre ; un rectangle plat posé sur
-        /// un bord est dans la case de <see cref="CellOf"/>. Rangées par rangée, puis par colonne.
+        /// Cases que touche un rectangle fermé (un lieu, la boîte d'un obstacle, d'un tronçon de route) : toutes les cases qui contiennent un
+        /// de ses points au sens de <see cref="CellOf"/> (revue Codex de la PR #148) ; un rectangle dont le bord est ou nord tombe sur un bord
+        /// de case touche donc aussi la case suivante, comme le point de ce bord. Rangées par rangée, puis par colonne.
         /// </summary>
         public IReadOnlyList<RegionCell> CellsCovering(GroundVector min, GroundVector max)
         {
@@ -143,14 +144,15 @@ namespace EdS.Data.Zones
         }
 
         /// <summary>
-        /// Cases que touche une ligne brisée (une route, sa ligne médiane) : réunion des cases de la boîte de chaque tronçon (un peu plus large
-        /// que le tracé exact pour un tronçon en biais ; voulu : un comptage par excès). Rangées, sans doublon.
+        /// Cases que touche une ligne brisée (une route, sa ligne médiane) : réunion des cases de la boîte fermée de chaque tronçon, donc aussi
+        /// la case de chaque sommet (<see cref="CellOf"/>), même posé sur un bord de case (un peu plus large que le tracé exact pour un tronçon
+        /// en biais ; voulu : un comptage par excès). Rangées, sans doublon.
         /// </summary>
         public IReadOnlyList<RegionCell> CellsAlong(IReadOnlyList<GroundVector> points)
         {
             if (points is null) throw new ArgumentNullException(nameof(points));
             var set = new SortedSet<RegionCell>();
-            if (points.Count == 1) set.Add(CellOf(points[0]));
+            foreach (GroundVector p in points) set.Add(CellOf(p));   // revue Codex de la PR #148 : chaque sommet dans sa case
             for (int i = 1; i < points.Count; i++)
             {
                 GroundVector a = points[i - 1], b = points[i];
@@ -207,10 +209,9 @@ namespace EdS.Data.Zones
 
         private static (int First, int Last) Span(Fixed min, Fixed max, Fixed origin, int count)
         {
+            // Revue Codex de la PR #148 : rectangle fermé, mêmes bords que CellOf (un point sur un bord est à la case de l'est ou du nord).
             int first = Math.Min(FloorIndex(min, origin), count - 1);
-            long offset = checked(max.Raw - origin.Raw);
-            int last = checked((int)((offset + CellRaw - 1) / CellRaw)) - 1;   // plafond, moins un : le bord est ou nord d'une case est à elle
-            last = Math.Min(Math.Max(last, first), count - 1);
+            int last = Math.Min(FloorIndex(max, origin), count - 1);
             return (first, last);
         }
     }
