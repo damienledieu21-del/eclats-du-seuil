@@ -129,6 +129,7 @@ namespace EdS.Game
             _root.transform.SetParent(parent, false);
             // Sous-lot V2.24 : relief affiché d'après la carte de la zone (plat dans une pièce ou sans carte) ; le moteur reste plat.
             StyleWorld.UseRelief(map);   // revue Codex de la PR #144 : plat sans terrain peint
+            _treeMap = map;   // V2.25.4 : lieux de la zone, pour l'essence des arbres de l'atelier
             _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));   // annonce sans le shader « EdS/Annonce »
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
@@ -181,6 +182,7 @@ namespace EdS.Game
             WeatherDecor();   // sous-lot V2.2 : flaques le long des chemins
             Plants(space);
             if (terrain) Forest(space);
+            AtelierDecorTrees(space);   // V2.25.4 : vergers, berges, abords du Seuil (arbres de l'atelier)
             Bridge(space);
             Roof(space);
             if (terrain) Grass(space);
@@ -373,6 +375,9 @@ namespace EdS.Game
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).
                 // Essai réaliste 4 : hauteur des arbres réglée dans le catalogue (les arbres de Sketchfab sont grands).
+                // V2.25.4 : l'arbre de l'atelier de l'essence du lieu passe devant (monté sur le relief par Obstacle, comme avant).
+                Vector3 foot = Center(points);
+                if (AtelierTree(AtelierTrees.Spot(foot.x, foot.z, TreeSource.Obstacle, _treeMap, _space.Obstacles), true, true) != null) return;
                 GameObject tree = StyleLook.Decor(_root.transform, StyleSlot.Tree, id, Center(points), TreeHeight() * 0.8f);
                 if (tree != null)
                 {
@@ -489,7 +494,8 @@ namespace EdS.Game
         private void Forest(CombatSpace space)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            if (catalog == null || catalog.Trees == null || catalog.Trees.Length == 0) return;
+            bool atelier = catalog != null && catalog.HasAtelierTrees;   // V2.25.4
+            if (catalog == null || (catalog.Trees == null || catalog.Trees.Length == 0) && !atelier) return;
             // Vallons agrandis : le nombre d'arbres suit le tour de l'aire (celui des premiers Vallons, 284 m, porte le nombre du catalogue).
             float perimeter = 2f * (Raw(space.Max.X.Raw) - Raw(space.Min.X.Raw) + Raw(space.Max.Z.Raw) - Raw(space.Min.Z.Raw));
             bool phone = Application.isMobilePlatform;
@@ -501,8 +507,10 @@ namespace EdS.Game
                 string id = "lisiere" + i;
                 var at = new Vector3((float)spots[i].X, Ground((float)spots[i].X, (float)spots[i].Z, 0.4f), (float)spots[i].Z);   // V2.24 : sur les collines
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.
+                // V2.25.4 : l'arbre de l'atelier de l'essence du lieu le plus proche, s'il y en a.
                 GameObject look = debris && i % 4 == 3
                     ? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)
+                    : atelier ? AtelierTree(AtelierTrees.Spot(spots[i].X, spots[i].Z, TreeSource.Edge, _treeMap, space.Obstacles), false)
                     : StyleLook.Decor(_root.transform, StyleSlot.Tree, id, at, TreeHeight() * (0.75f + 0.005f * StyleRules.Variant(id, 101)));
                 // Revue Codex de la PR #56 : en vue 2, la caméra (6 m derrière le Bastion) peut entrer dans la lisière quand il longe le bord ;
                 // ces arbres sont coupés comme ceux des obstacles quand ils le cachent.
@@ -1253,7 +1261,8 @@ namespace EdS.Game
         private void Woods(string id, List<Vector3> points)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            if (catalog == null || catalog.Trees == null || catalog.Trees.Length == 0)
+            bool atelier = catalog != null && catalog.HasAtelierTrees;   // V2.25.4
+            if (catalog == null || (catalog.Trees == null || catalog.Trees.Length == 0) && !atelier)
             {
                 Prism(id, points, 7f, ArenaView.MakeMaterial(new Color(0.16f, 0.3f, 0.12f)), true);
                 return;
@@ -1265,10 +1274,14 @@ namespace EdS.Game
             {
                 StyleWoodTree tree = trees[i];
                 if (phone && !tree.Edge && i % 3 != 0) continue;   // relecture : un arbre du cœur sur trois sur téléphone
+                // V2.25.4 : les arbres de l'atelier sont à leur taille réelle (houppiers de 10 à 17 m) : un arbre du cœur sur deux (sur quatre
+                // sur téléphone), et aucun sur une route, un point sûr, une porte ou un autre obstacle.
+                if (atelier && (!tree.Edge && i % (phone ? 4 : 2) != 0 || !AtelierTrees.WoodFree(tree.X, tree.Z, _treeMap, _space.Obstacles))) continue;
                 string part = id + "/" + i;
                 var at = new Vector3((float)tree.X, Ground((float)tree.X, (float)tree.Z, 0.4f), (float)tree.Z);   // V2.24 : sur la pente
                 GameObject look = debris && !tree.Edge && i % 6 == 5
                     ? StyleLook.Decor(_root.transform, StyleSlot.Debris, part, at, 1f, 0f, true)
+                    : atelier ? AtelierTree(AtelierTrees.Spot(tree.X, tree.Z, TreeSource.Woods, _treeMap, _space.Obstacles), false)
                     : StyleLook.Decor(_root.transform, StyleSlot.Tree, part, at, TreeHeight() * (float)(0.6 + 0.3 * tree.Scale));
                 if (look != null && tree.Edge) AddModelOccluders(look);
             }
