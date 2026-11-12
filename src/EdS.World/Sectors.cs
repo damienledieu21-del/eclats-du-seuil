@@ -527,6 +527,10 @@ namespace EdS.World
             var scratch = new List<SectorEvent>();
             CloseSector(old, scratch);
             Open fresh = OpenSector(old.Name, scratch);
+            // Revue Codex de la PR #150 (6e tour) : le compteur d'inactivité continue d'une session à la suivante (un secteur abandonné se
+            // ferme à 60 s même si sa session est plus courte). Le reste de l'état du secteur est celui d'une réouverture : session, graine,
+            // journal, populations et décor de la session nouvelle ; registre repris (clés de mort de l'ancienne session purgées).
+            fresh.IdleTicks = old.IdleTicks;
             events.Add(new SectorEvent(SectorEventKind.Renewed, old.Name, null, fresh.Zone.Session.ToString(CultureInfo.InvariantCulture), WorldTick));
             foreach (var (p, v, carried, consumables) in moves)
             {

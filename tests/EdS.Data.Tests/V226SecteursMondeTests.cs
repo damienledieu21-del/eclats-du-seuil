@@ -919,4 +919,25 @@ public class V226SecteursMondeTests
         Assert.False(west.Engine.View("loup").HasLeft);
         Assert.Equal(1201L, w.WorldTick);
     }
+
+    // --- Revue Codex de la PR #150 (6e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Secteur_abandonne_ferme_a_60_s_malgre_des_sessions_de_5_s()
+    {
+        // P2 : sessions de 5 s ; le secteur est, ouvert puis laissé sans joueur proche, se renouvelle plusieurs fois et se ferme quand même
+        // 60 s après le départ du dernier joueur proche (le compteur d'inactivité passe d'une session à la suivante).
+        SectorWorld w = World(ShortMap(5_000, Shipped.Combat));
+        w.Enter(Hero("alice", 100, 128));
+        w.Step();
+        Walk(w, "alice", 1, 0);
+        Run(w, 400, e => e.Kind == SectorEventKind.Opened && e.Sector == "s01_00");
+        Walk(w, "alice", -1, 0);
+        long left = w.WorldTick;
+        List<SectorEvent> events = Run(w, 2_400, e => e.Kind == SectorEventKind.Closed && e.Sector == "s01_00");
+        SectorEvent closed = Assert.Single(events, e => e.Kind == SectorEventKind.Closed && e.Sector == "s01_00");
+        Assert.True(events.Count(e => e.Kind == SectorEventKind.Renewed && e.Sector == "s01_00") >= 5);
+        Assert.InRange(closed.WorldTick - left, 1_200, 1_210);   // 60 s après le départ du dernier joueur proche
+        Assert.Equal(new[] { "s00_00" }, w.OpenSectors);
+    }
 }
