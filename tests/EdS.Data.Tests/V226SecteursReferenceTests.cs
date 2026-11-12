@@ -17,7 +17,7 @@ namespace EdS.Data.Tests;
 /// Sous-lot V2.26 (secteurs de simulation ; rupture retenue par Damien le 11 novembre 2026) : moteur 0.31.0, journal au format 25 (état
 /// emporté, places recyclées d'une zone, ±4 096 m, 256 obstacles), scénarios en schéma 18 ; instantané (6) et règles (16) inchangés.
 /// Nouvelle référence figée <c>Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0</c> : les anciens journaux y ont exactement le même
-/// corps (seul l'en-tête change), et <c>espace_secteur</c> (un secteur de 320 m au coin sud-est des bornes, 197 obstacles, un personnage
+/// corps (seul l'en-tête change), et <c>espace_secteur</c> (un secteur de 320 m au coin sud-est des bornes, 195 obstacles, un personnage
 /// qui arrive avec un état emporté, un loup blessé qui arrive avec ses PV). Les anciennes références restent figées : elles sont refusées
 /// au rejeu par ce moteur (autre version) et leur corps est reproduit octet par octet.
 /// </summary>
@@ -66,7 +66,7 @@ public class V226SecteursReferenceTests
         Assert.Equal(frozen, Simulate(Load(Secteur)).Lines);
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
         Assert.Equal(SecteurFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
-        // Ce que le journal montre : 197 obstacles, coordonnées au-delà de l'ancienne borne, arrivées avec état.
+        // Ce que le journal montre : 195 obstacles, coordonnées au-delà de l'ancienne borne, arrivées avec état.
         JsonElement header = JsonDocument.Parse(frozen[0]).RootElement;
         JsonElement scenario = header.GetProperty("scenario");
         Assert.True(scenario.GetProperty("space").GetProperty("obstacles").GetArrayLength() > 64);
