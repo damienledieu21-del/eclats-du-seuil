@@ -180,6 +180,23 @@ namespace EdS.Simulation.Engine
         /// <summary>Sous-lot 8.6 : commandes soumises pendant la simulation (<see cref="Submit"/>), dans l'ordre de soumission.</summary>
         public IReadOnlyList<CombatCommand> SubmittedCommands => _submitted.AsReadOnly();
 
+        /// <summary>
+        /// Revue Codex de la PR #150 (4e tour) : vrai si une arrivée (<see cref="Join"/>) suivie de <paramref name="commands"/> commandes du
+        /// tick courant pour ce nouveau combattant tient dans les budgets (combat.limits.maxCommands et maxPendingEvents) : l'appelant les
+        /// réserve avant l'arrivée, pour un refus atomique. Ne change rien.
+        /// </summary>
+        public bool HasRoomToJoinWith(int commands)
+        {
+            if (commands < 0) throw new ArgumentOutOfRangeException(nameof(commands));
+            if (IsFinished) return false;
+            long initialEvents = _initialEvents >= 0 ? _initialEvents : _setup.InitialEventCount();
+            long entries = checked(1L + commands);
+            return checked(_commandCount + (long)commands) <= _rules.MaxCommands
+                && commands <= _rules.MaxCommandsPerActorPerTick
+                && checked(_queue.Count + entries) <= _rules.MaxPendingEvents
+                && checked(initialEvents + _joined.Count + _submitted.Count + entries) <= _rules.MaxPendingEvents;
+        }
+
         private void CountSubmitted(CombatCommand command)
         {
             var key = (command.Actor, command.AtMs / _tickMs);
