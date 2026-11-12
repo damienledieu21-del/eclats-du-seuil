@@ -1778,6 +1778,20 @@ namespace EdS.Domain.Combat
         /// </summary>
         private void ValidateCarried(CombatantSetup c, CarriedState carried, string path, long tick, List<RuleViolation> errors)
         {
+            // Revue Codex de la PR #149 : tout calcul de ce contrôle (statistiques, règles effectives, recharges) précède le précontrôle
+            // numérique ; un débordement devient une violation localisée.
+            try
+            {
+                ValidateCarriedCore(c, carried, path, tick, errors);
+            }
+            catch (OverflowException)
+            {
+                errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, "valeurs hors des bornes numériques : l'état emporté ne peut pas être jugé.", path + ".carried"));
+            }
+        }
+
+        private void ValidateCarriedCore(CombatantSetup c, CarriedState carried, string path, long tick, List<RuleViolation> errors)
+        {
             string cp = path + ".carried";
             if (c.ArrivalMs is null) errors.Add(new RuleViolation("seul un combattant qui arrive en route (arrivalMs) emporte un état.", cp));
             void Duration(long ms, long max, string field)
@@ -1797,7 +1811,20 @@ namespace EdS.Domain.Combat
                 case CharacterSetup character:
                 {
                     if (character.Class.Validate(Progression).Count > 0 || BuildValidator.Validate(character.Build, character.Class, Progression).Count > 0) return;
-                    DerivedStats stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.For(character), character.Gear);
+                    // Revue Codex de la PR #149 : les statistiques se calculent avant le précontrôle numérique : un débordement (règles ou bonus
+                    // extrêmes) est rendu comme une violation localisée, jamais comme une exception.
+                    DerivedStats stats;
+                    try
+                    {
+                        stats = CombatantStats.ForCharacter(Stats, character.Build, ModifierSet.For(character), character.Gear);
+                        _ = stats.MaxHealth.RoundToInt(RoundingMode.Floor);
+                        _ = stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
+                    }
+                    catch (OverflowException)
+                    {
+                        errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, "statistiques hors des bornes numériques : l'état emporté ne peut pas être jugé.", cp));
+                        return;
+                    }
                     long maxHealth = stats.MaxHealth.RoundToInt(RoundingMode.Floor), maxEndurance = stats.MaxEndurance.RoundToInt(RoundingMode.Floor);
                     CombatantRules rules = character.EffectiveRules(Combat);
                     if (carried.Health is long carriedHp && (carriedHp < 1 || carriedHp > maxHealth))
