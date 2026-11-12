@@ -373,6 +373,112 @@ public class V226SecteursMondeTests
         Assert.True(gone.HasLeft && !gone.IsDead);
     }
 
+
+    // --- Revue Codex de la PR #150 ------------------------------------------------------------------------------------------------------
+
+    private static readonly RegionGrid Wide = new(0, 0, 6, 2);   // trois secteurs : s00_00, s01_00, s02_00
+
+    private static SectorMap WideMap(params CombatantSetup[] creatures)
+    {
+        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, creatures, Array.Empty<CombatCommand>(),
+            Shipped.Data, new CombatSpace(P(0, 0), P(768, 256)), zone: true);
+        return new SectorMap(Wide, area, P(64, 128));
+    }
+
+    [Fact]
+    public void Deux_joueurs_de_deux_secteurs_arrivent_au_meme_tick_dans_le_meme_secteur()
+    {
+        // Alice vient de l'ouest, Bruno de l'est ; tous deux entrent dans le secteur du milieu au même tick du monde : aucun n'est perdu.
+        SectorWorld w = new(WideMap(), "zone.essai", 0, 1);
+        w.Enter(Hero("alice", 255.5, 128));
+        w.Enter(Hero("bruno", 512.5, 128));
+        w.Step();
+        Assert.Equal(("s00_00", "s02_00"), (w.SectorOf("alice"), w.SectorOf("bruno")));
+        Walk(w, "alice", 1, 0);
+        Walk(w, "bruno", -1, 0);
+        var events = new List<SectorEvent>();
+        for (int i = 0; i < 200 && events.Count(e => e.Kind == SectorEventKind.Arrived) < 2; i++) events.AddRange(w.Step());
+        SectorEvent[] arrived = events.Where(e => e.Kind == SectorEventKind.Arrived).ToArray();
+        Assert.Equal(2, arrived.Length);
+        Assert.Equal(arrived[0].WorldTick, arrived[1].WorldTick);   // positions symétriques : même tick
+        Assert.All(arrived, a => Assert.Equal("s01_00", a.Sector));
+        w.Step();
+        Assert.True(w.ViewOf("alice").IsPresent && w.ViewOf("bruno").IsPresent);
+        Assert.Equal(("s01_00", "s01_00"), (w.SectorOf("alice"), w.SectorOf("bruno")));
+    }
+
+    [Fact]
+    public void Arrivee_programmee_d_une_creature_reservee_pour_le_passage()
+    {
+        // Une créature dont l'arrivée est programmée à ce tick (réapparition) tient déjà sa place : un joueur qui passe prend la place libre
+        // la plus proche au lieu d'être refusé au début du tick.
+        SectorWorld w = World(Map());
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        Zone east = w.SectorZone("s01_00")!;
+        GroundVector at = P(270, 128);
+        Fixed radius = Fixed.FromRatio(1, 2);
+        Assert.Equal(at, w.FreeSpotIn("s01_00", at, radius));
+        AssailantSetup wolf = Wolf("loup_surprise", 270, 128);
+        east.Engine.Join(new AssailantSetup(wolf.Id, wolf.Team, wolf.Armor, wolf.MagicResistance, wolf.Target, 600_000, wolf.IntervalMs, wolf.Attacks, 0,
+            wolf.StatusResistance, wolf.Triggers, wolf.Health, wolf.Placement, checked(east.Engine.CurrentTick * 50), wolf.Behavior));
+        Assert.False(east.Engine.View("loup_surprise").IsPresent);   // pas encore arrivée
+        GroundVector spot = w.FreeSpotIn("s01_00", at, radius)!.Value;
+        Assert.NotEqual(at, spot);
+        Assert.False(Planar.CirclesOverlap(spot.X.Raw, spot.Z.Raw, radius.Raw, at.X.Raw, at.Z.Raw, wolf.Placement!.Radius.Raw));
+    }
+
+    [Fact]
+    public void Pas_de_depart_quand_le_secteur_d_arrivee_n_a_plus_d_identite()
+    {
+        // La session du secteur est n'a plus d'identité libre (1 024 combattants passés) : le joueur ne part pas et n'est pas perdu.
+        SectorWorld w = World(Map());
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        CombatEngine east = w.SectorZone("s01_00")!.Engine;
+        int n = 0;
+        while (east.IdentitiesLeft > 0)
+        {
+            var batch = new List<string>();
+            while (east.IdentitiesLeft > 0 && east.FreePlaces > 0)
+            {
+                string id = $"souche{n++}";
+                east.Join(new DummySetup(id, "cibles", Fixed.Zero, Fixed.Zero, placement: new CombatantPlacement(P(400 + n % 60, 20 + (n / 60) % 100 * 2), Fixed.FromRatio(1, 10)),
+                    arrivalMs: checked(east.CurrentTick * 50)));
+                batch.Add(id);
+            }
+            foreach (string id in batch) w.SectorZone("s01_00")!.Leave(id);
+            w.Step();
+        }
+        Assert.Equal(0, east.IdentitiesLeft);
+        Walk(w, "alice", 1, 0);
+        List<SectorEvent> events = Run(w, 300);
+        Assert.DoesNotContain(events, e => e.Kind == SectorEventKind.Departed || e.Kind == SectorEventKind.Arrived);
+        Assert.Equal("s00_00", w.SectorOf("alice"));
+        Assert.True(w.ViewOf("alice").IsPresent);
+    }
+
+    [Fact]
+    public void Coeur_rouvert_en_session_nouvelle_cles_au_format_du_coeur()
+    {
+        var logs = new Dictionary<string, MemoryCombatLog>();
+        SectorWorld w = World(Map(), logs);
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        Assert.Equal("zone.essai/1/death/x", w.SectorZone("s00_00")!.EventKey(ZoneEventKind.Death, "x"));
+        Walk(w, "alice", 1, 0);
+        Run(w, 3000, e => e.Kind == SectorEventKind.Closed && e.Sector == "s00_00");
+        Assert.Null(w.SectorZone("s00_00"));
+        Walk(w, "alice", -1, 0);
+        Run(w, 3000, e => e.Kind == SectorEventKind.Opened && e.Sector == "s00_00");
+        Zone home = w.SectorZone("s00_00")!;
+        Assert.Equal(2L, home.Session);
+        Assert.Equal("zone.essai/2/death/x", home.EventKey(ZoneEventKind.Death, "x"));   // format du cœur, session nouvelle
+        Assert.Equal(SectorMap.SeedOf(7, "s00_00", 2), home.Setup.Seed);
+        Assert.Equal(2L, w.SectorSessions["s00_00"]);
+        Assert.True(logs.ContainsKey("s00_00/1") && logs.ContainsKey("s00_00/2"));   // journaux distincts
+    }
+
     // --- Déterminisme -------------------------------------------------------------------------------------------------------------------
 
     private static (List<string> Events, Dictionary<string, MemoryCombatLog> Logs) Play(bool second, bool reversed)
