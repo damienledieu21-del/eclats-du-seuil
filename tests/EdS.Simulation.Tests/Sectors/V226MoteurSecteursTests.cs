@@ -317,6 +317,18 @@ public class V226MoteurSecteursTests
     }
 
     [Fact]
+    public void Etat_emporte_avec_statistiques_qui_debordent_violation_localisee()
+    {
+        // Revue Codex de la PR #149 : PV de base au maximum de la virgule fixe : le calcul des statistiques déborde avant le précontrôle
+        // numérique ; la validation rend une violation au chemin de l'état emporté, sans exception.
+        var stats = new EdS.Domain.Stats.StatRules { BaseMaxHealth = Fixed.MaxValue };
+        var setup = new CombatSetup(42, 10_000, stats, DamageRules.Provisional, ProgressionRules.Provisional, NoUpkeep,
+            new CombatantSetup[] { Carrying(Tank(), 500, new CarriedState(health: 10)), Dummy() }, Array.Empty<CombatCommand>(), Identity);
+        IReadOnlyList<RuleViolation> errors = setup.Validate();
+        Assert.Contains(errors, e => e.Kind == RuleViolationKind.NumericLimit && e.Fields.Contains("combatants[0].carried"));
+    }
+
+    [Fact]
     public void Etat_emporte_hors_bornes_refuse_avec_son_chemin()
     {
         CharacterSetup tank = Tank();
