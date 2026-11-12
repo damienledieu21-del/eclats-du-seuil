@@ -103,6 +103,12 @@ namespace EdS.Game
 
         private float _clear = (float)CameraRules.MaxDistance;
 
+        /// <summary>Sous-lot V2.24 : distance libre affichée contre le relief (<see cref="CameraRules.SettleTerrain"/>).</summary>
+        private float _terrainClear = (float)CameraRules.MaxDistance;
+
+        /// <summary>Sous-lot V2.24 : hauteur du sol affiché, délégué créé une fois (pas d'allocation par image).</summary>
+        private static readonly System.Func<double, double, double> StandHeight = (x, z) => StyleWorld.StandHeight((float)x, (float)z);
+
         private CameraRig(Camera camera)
         {
             _camera = camera;
@@ -241,6 +247,7 @@ namespace EdS.Game
                 _target = aim;
                 _shownDistance = Wanted;
                 _placed = true;
+                _terrainClear = float.NaN;   // V2.24 : à la pose, la distance libre contre le relief est prise telle quelle
             }
             _target = Vector3.Lerp(_target, aim, 1f - Mathf.Exp(-14f * deltaTime));
             _shownDistance = Mathf.Lerp(_shownDistance, Wanted, 1f - Mathf.Exp(-10f * deltaTime));
@@ -252,8 +259,20 @@ namespace EdS.Game
             double clear = CameraRules.ClearDistance((_target.x, _target.y, _target.z), (dx, dy, dz), Blockers);
             _clear = (float)CameraRules.SettleClear(_clear, clear, deltaTime);
             held = Mathf.Min(held, _clear);
+            // Sous-lot V2.24 (revue Codex de la PR #144) : avec le relief affiché (collines au bord des Vallons), la caméra se rapproche
+            // quand le sol passe entre elle et le personnage (CameraRules.TerrainClearDistance), vite mais sans saut, puis revient en
+            // douceur ; sa hauteur reste au-dessus du sol sous elle. Un délégué gardé, aucune allocation par image.
+            if (StyleWorld.HasRelief)
+            {
+                double ground = CameraRules.TerrainClearDistance((_target.x, _target.y, _target.z), (dx, dy, dz), StandHeight, _shownDistance);
+                _terrainClear = (float)CameraRules.SettleTerrain(_terrainClear, ground, deltaTime);
+                held = Mathf.Min(held, _terrainClear);
+            }
+            else _terrainClear = (float)CameraRules.MaxDistance;
             (double ox, double oy, double oz) = CameraRules.Offset(_yaw, _pitch, held);
             Vector3 position = _target + new Vector3((float)ox, (float)oy, (float)oz);
+            if (StyleWorld.HasRelief)
+                position.y = (float)CameraRules.AboveGround(position.y, StyleWorld.StandHeight(position.x, position.z));
             Quaternion rotation = Quaternion.Euler(_pitch, _yaw, 0f);
             // Essai réaliste 7 : le tremblement s'ajoute à la pose, sans s'y accumuler (GameFeel, testé dans le cœur).
             _shock = GameFeel.Settle(_shock, deltaTime);

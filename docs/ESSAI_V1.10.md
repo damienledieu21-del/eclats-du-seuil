@@ -641,3 +641,20 @@ Les modèles de l'atelier remplacent la grange, le moulin (et la roue à eau de 
 | 38.8 | Ton avis : proportions, couleurs, relief | — | [ ] | |
 | 38.9 | (V2.25.1) Depuis le chemin des champs, prendre le chemin de terre vers l'ouest jusqu'à la grange | Un **chemin de terre de 3 m** quitte le chemin des champs, tourne et arrive **droit sur la porte charretière** ; devant la porte, une **aire de terre battue** plus large ; il ne passe dans rien (grange, maison 9, arbres) ; il apparaît sur la **carte** (M) | [ ] | Trop étroit, trop court, ailleurs ? Le dire |
 
+## 39. Le relief des Vallons (V2.24)
+
+Ta décision du 11 novembre 2026 : collines et falaises au bord du monde, relief doux dans l'aire, **affichage seulement** (le combat reste sur un sol plat : un ennemi derrière une butte te voit toujours). Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md) (« Relief des Vallons »). Les hauteurs sont provisoires : dis ce qui est trop fort ou trop plat.
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 39.1 | Se promener dans les prés et les vergers | Le sol **ondule** doucement (quelques mètres) ; le personnage et le compagnon montent et descendent avec lui, pieds au sol | [ ] | Trop fort, trop plat ? |
+| 39.2 | Bourg, village, hameau | Chaque maison, puits, étal **à plat** sur son replat, ni de travers, ni enterrée, ni flottante ; les PNJ marchent au sol | [ ] | Une maison qui flotte : son nom |
+| 39.3 | Rivière, pont, lac | L'eau dans le creux, à son niveau ; le **pont** se raccorde au sol des deux côtés ; le chemin du lac **descend** vers l'eau | [ ] | |
+| 39.4 | Pierres du Seuil et tour de guet | Elles sont **sur une butte** | [ ] | |
+| 39.5 | Longer le bord de l'aire | Des **collines** et par endroits des **falaises** de roche au-delà, avec la forêt dessus ; le muret du bord suit le sol | [ ] | |
+| 39.6 | Routes, points sûrs, haltes | Routes pas trop raides ; points sûrs **à plat** ; marqueurs, nœuds de récolte, flaques, herbe et lanternes **au sol** (rien ne flotte) | [ ] | Ce qui flotte : où |
+| 39.7 | Une annonce d'attaque sur une pente | L'annonce rouge épouse le sol | [ ] | |
+| 39.8 | La carte (touche de la carte) | Un **léger ombrage** des collines | [ ] | |
+| 39.9 | Près du bord de l'aire, caméra au plus loin et basse, tourner autour du personnage | La caméra **se rapproche en douceur** quand une colline passe derrière toi ; jamais sous le sol, jamais de saut | [ ] | Un saut ou une vue sous le sol : où |
+| 39.10 | Ton avis : ressenti, hauteurs à régler | — | [ ] | |
+

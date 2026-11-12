@@ -127,6 +127,8 @@ namespace EdS.Game
             else _fields = new List<StyleField>();
             _root = new GameObject("Décor");
             _root.transform.SetParent(parent, false);
+            // Sous-lot V2.24 : relief affiché d'après la carte de la zone (plat dans une pièce ou sans carte) ; le moteur reste plat.
+            StyleWorld.UseRelief(map);   // revue Codex de la PR #144 : plat sans terrain peint
             _fill = ArenaView.MakeMaterial(new Color(0.85f, 0.16f, 0.1f));   // annonce sans le shader « EdS/Annonce »
             // Essai réaliste : l'eau de la rivière (vagues qui glissent) si le catalogue est là, sinon le bleu simple.
             _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
@@ -147,6 +149,9 @@ namespace EdS.Game
                 _shapes.Where((o, i) => TownRules.BuildingFor(space.Obstacles[i].Id) == StyleBuilding.Woods).Select(o => (IReadOnlyList<(double X, double Z)>)o.Points).ToList());
             bool terrain = _terrain != null;
             if (!terrain) _rivers.Clear();
+            // Revue Codex de la PR #144 : sans terrain (pas de catalogue ni de texture de sol), le sol de remplacement est un pavé plat à 0 :
+            // pas de relief, sinon personnages, décor et marqueurs flotteraient au-dessus.
+            if (!terrain) StyleWorld.SetRelief(null);
             if (!terrain)
             {
                 GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -159,10 +164,10 @@ namespace EdS.Game
             }
             // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit). Essai réaliste : en pavés.
             Material border = Built(StyleSurface.Cobble, new Color(0.3f, 0.27f, 0.22f), out float borderTile);
-            Box("Bord ouest", new Vector3(minX - 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border, borderTile);
-            Box("Bord est", new Vector3(maxX + 0.15f, 0.25f, (minZ + maxZ) / 2f), new Vector3(0.3f, 0.5f, maxZ - minZ + 0.6f), border, borderTile);
-            Box("Bord sud", new Vector3((minX + maxX) / 2f, 0.25f, minZ - 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border, borderTile);
-            Box("Bord nord", new Vector3((minX + maxX) / 2f, 0.25f, maxZ + 0.15f), new Vector3(maxX - minX, 0.5f, 0.3f), border, borderTile);
+            Border("Bord ouest", new Vector3(minX - 0.15f, 0f, minZ - 0.3f), new Vector3(minX - 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            Border("Bord est", new Vector3(maxX + 0.15f, 0f, minZ - 0.3f), new Vector3(maxX + 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
+            Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             Pavements();
@@ -226,7 +231,98 @@ namespace EdS.Game
 
         // --- Obstacles -------------------------------------------------------------------------------------------------------
 
+        /// <summary>
+        /// Sous-lot V2.24 : muret bas du bord de l'aire, de <paramref name="a"/> à <paramref name="b"/>, en tronçons de 4 m posés chacun sur
+        /// le sol affiché (un seul bloc sur un sol plat).
+        /// </summary>
+        private void Border(string name, Vector3 a, Vector3 b, Material material, float tile)
+        {
+            float length = Vector3.Distance(a, b);
+            int count = StyleWorld.HasRelief ? Mathf.Max(1, Mathf.CeilToInt(length / 4f)) : 1;
+            bool alongX = Mathf.Abs(b.x - a.x) > Mathf.Abs(b.z - a.z);
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 c = Vector3.Lerp(a, b, (i + 0.5f) / count);
+                float ground = Mathf.Min(StyleWorld.StandHeight(c.x - (alongX ? length / count / 2f : 0f), c.z - (alongX ? 0f : length / count / 2f)),
+                    StyleWorld.StandHeight(c.x + (alongX ? length / count / 2f : 0f), c.z + (alongX ? 0f : length / count / 2f)));
+                float piece = length / count + (count > 1 ? 0.05f : 0f);
+                Box(count > 1 ? name + " " + i : name, new Vector3(c.x, ground + 0.1f, c.z), alongX ? new Vector3(piece, 0.5f + 0.3f, 0.3f) : new Vector3(0.3f, 0.5f + 0.3f, piece),
+                    material, tile);
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.24 : un obstacle posé sur le sol affiché. Un obstacle bâti (<see cref="GroundRelief.Builds"/>) monte tout entier sur son
+        /// replat horizontal ; un arbre monte au point le plus bas sous son pied (rien ne flotte) ; l'eau reste dans le creux, les bois et les
+        /// murets de pierres sèches suivent le sol eux-mêmes. Ses coupes (occulteurs, boîtes de la caméra) montent avec lui.
+        /// </summary>
         private void Obstacle(SpaceObstacle obstacle)
+        {
+            int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
+            ObstacleShape(obstacle);
+            if (!StyleWorld.HasRelief || obstacle.Low || TownRules.BuildingFor(obstacle.Id) == StyleBuilding.Woods
+                || StyleRules.FenceFor(obstacle.Id) == StyleFence.Hedge) return;
+            float cx = Raw((obstacle.Points.Min(p => p.X.Raw) + obstacle.Points.Max(p => p.X.Raw)) / 2);
+            float cz = Raw((obstacle.Points.Min(p => p.Z.Raw) + obstacle.Points.Max(p => p.Z.Raw)) / 2);
+            Lift(children, occluders, boxes, Ground(cx, cz, 0.4f));
+        }
+
+        /// <summary>Sous-lot V2.24 : hauteur la plus basse du sol affiché sous un pied de rayon <paramref name="r"/> (centre et quatre points).</summary>
+        private static float Ground(float x, float z, float r) =>
+            Mathf.Min(StyleWorld.StandHeight(x, z), Mathf.Min(Mathf.Min(StyleWorld.StandHeight(x - r, z), StyleWorld.StandHeight(x + r, z)),
+                Mathf.Min(StyleWorld.StandHeight(x, z - r), StyleWorld.StandHeight(x, z + r))));
+
+        /// <summary>
+        /// Sous-lot V2.24 : monte de <paramref name="lift"/> mètres le décor posé depuis les rangs donnés (enfants du décor, occulteurs,
+        /// boîtes de la caméra).
+        /// </summary>
+        private void Lift(int children, int occluders, int boxes, float lift)
+        {
+            if (lift == 0f) return;
+            for (int i = children; i < _root.transform.childCount; i++) _root.transform.GetChild(i).position += Vector3.up * lift;
+            for (int i = occluders; i < _occluders.Count; i++)
+            {
+                _occluders[i].Min += Vector3.up * lift;
+                _occluders[i].Max += Vector3.up * lift;
+            }
+            for (int i = boxes; i < _cameraBoxes.Count; i++)
+            {
+                CameraBox b = _cameraBoxes[i];
+                _cameraBoxes[i] = new CameraBox(b.MinX, b.MinY + lift, b.MinZ, b.MaxX, b.MaxY + lift, b.MaxZ);
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.24 : maillage fait par le code posé sur le sol affiché : chaque sommet monte de la hauteur du sol sous lui (chemins
+        /// pavés, labours, murets de pierres sèches). Rend l'écart (bas, haut) des hauteurs ajoutées.
+        /// </summary>
+        /// <summary>Sous-lot V2.24 : longueur (m) des morceaux d'un maillage posé au sol avant drapé (rues pavées, labours).</summary>
+        private const double DrapeStep = 1.0;   // écart au sol de 5 cm au plus entre deux sommets (V224ReliefTests)
+
+        private static (float Low, float High) Drape(GameObject go)
+        {
+            if (go == null || !StyleWorld.HasRelief) return (0f, 0f);
+            MeshFilter filter = go.GetComponent<MeshFilter>();
+            if (filter == null || filter.sharedMesh == null) return (0f, 0f);
+            Mesh mesh = filter.sharedMesh;
+            Vector3[] vertices = mesh.vertices;
+            float low = float.MaxValue, high = float.MinValue;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                Vector3 w = go.transform.TransformPoint(vertices[i]);
+                float h = StyleWorld.StandHeight(w.x, w.z);
+                low = Mathf.Min(low, h);
+                high = Mathf.Max(high, h);
+                vertices[i] = go.transform.InverseTransformPoint(w + Vector3.up * h);
+            }
+            mesh.vertices = vertices;
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            return vertices.Length > 0 ? (low, high) : (0f, 0f);
+        }
+
+        private void ObstacleShape(SpaceObstacle obstacle)
         {
             string id = obstacle.Id;
             List<Vector3> points = obstacle.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
@@ -378,7 +474,7 @@ namespace EdS.Game
             {
                 float x = Mathf.Lerp(minX + 1f, maxX - 1f, Next()), z = Mathf.Lerp(minZ + 1f, maxZ - 1f, Next());
                 if (InObstacle(x, z, 1f) || InField(x, z, 1f) || TownRules.RoadAt(x, z, _roads).Edge < 0.6) continue;
-                StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, 0f, z), 0.6f + 0.4f * Next(), 0f, true);
+                StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante" + placed, new Vector3(x, Ground(x, z, 0.3f), z), 0.6f + 0.4f * Next(), 0f, true);   // V2.24
                 placed++;
             }
         }
@@ -400,7 +496,7 @@ namespace EdS.Game
             for (int i = 0; i < spots.Count; i++)
             {
                 string id = "lisiere" + i;
-                var at = new Vector3((float)spots[i].X, 0f, (float)spots[i].Z);
+                var at = new Vector3((float)spots[i].X, Ground((float)spots[i].X, (float)spots[i].Z, 0.4f), (float)spots[i].Z);   // V2.24 : sur les collines
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.
                 GameObject look = debris && i % 4 == 3
                     ? StyleLook.Decor(_root.transform, StyleSlot.Debris, id, at, 1f, 0f, true)
@@ -673,7 +769,7 @@ namespace EdS.Game
         {
             if (id == null || !_speakers.TryGetValue(id, out Villager v) || v.Body == null) return false;
             Vector3 at = v.Body.position;
-            var target = new Vector3(x, v.Height, z);
+            var target = new Vector3(x, v.Height + StyleWorld.StandHeight(x, z), z);   // V2.24 : sur le sol affiché
             Vector3 way = target - at;
             way.y = 0f;
             bool moving = way.sqrMagnitude > 1e-8f;
@@ -779,7 +875,7 @@ namespace EdS.Game
                 body.name = v.Id + " (villageois)";
                 Object.Destroy(body.GetComponent<Collider>());
                 body.transform.SetParent(_root.transform, false);
-                body.transform.position = new Vector3((float)v.X, 1f, (float)v.Z);
+                body.transform.position = StyleWorld.OnGround(new Vector3((float)v.X, 1f, (float)v.Z));
                 body.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
                 body.transform.rotation = Quaternion.Euler(0f, (float)v.Yaw, 0f);
                 StyleBody look = StyleLook.Dress(body, StyleSlot.Character, v.Character, 1.8f, v.Id);   // sous-lot V2.9.2 : l'aspect suit le villageois
@@ -792,7 +888,7 @@ namespace EdS.Game
                 // le corps entier est donc mis à l'échelle après, les pieds restant au sol (bas de la capsule à 1 m sous son centre).
                 float size = 1f + 0.01f * (StyleRules.Variant(v.Id, 11) - 5);
                 body.transform.localScale = body.transform.localScale * size;
-                body.transform.position = new Vector3((float)v.X, size, (float)v.Z);
+                body.transform.position = StyleWorld.OnGround(new Vector3((float)v.X, size, (float)v.Z));   // V2.24 : sur le sol affiché
                 look.Loop(v.Activity, StyleRules.Variant(v.Id, 97));
                 // Revue Codex de la PR #109 : le corps d'un PNJ qui parle ne fait pas de courses (le cœur le place).
                 bool speaker = v.Id != null && v.Id.StartsWith("npc.", System.StringComparison.Ordinal);
@@ -831,7 +927,7 @@ namespace EdS.Game
                 }
                 v.Yaw = (float)Locomotion.TurnStep(v.Yaw, target, 200.0, 0.12, deltaTime);
                 if (v.Look != null) v.Look.Pace(v.Pace);
-                v.Body.position = new Vector3((float)v.Data.X + dx * v.Along, v.Height, (float)v.Data.Z + dz * v.Along);
+                v.Body.position = StyleWorld.OnGround(new Vector3((float)v.Data.X + dx * v.Along, v.Height, (float)v.Data.Z + dz * v.Along));
                 v.Body.rotation = Quaternion.Euler(0f, v.Yaw, 0f);
             }
         }
@@ -862,7 +958,7 @@ namespace EdS.Game
             Vector3 at = v.Body.position;
             // Sous-lot V2.8 : il suit son trajet, qui contourne les maisons (le but lui-même si la ligne droite est libre).
             (double ax, double az) = v.Route.Next(Paths, at.x, at.z, goal.X, goal.Z);
-            var target = new Vector3((float)ax, v.Height, (float)az);
+            var target = new Vector3((float)ax, v.Height + StyleWorld.StandHeight((float)ax, (float)az), (float)az);   // V2.24
             // Sous-lot V2.15 : départ en accélérant, virage avant d'avancer franchement, ralenti pour s'arrêter sur la place.
             Vector3 way = target - at;
             way.y = 0f;
@@ -870,6 +966,7 @@ namespace EdS.Game
             float left = Mathf.Sqrt((at.x - (float)goal.X) * (at.x - (float)goal.X) + (at.z - (float)goal.Z) * (at.z - (float)goal.Z));
             v.Pace = way.sqrMagnitude > 1e-8f ? Stride(v.Pace, WalkSpeed, left, aim - v.Yaw, deltaTime) : 0f;
             Vector3 step = Vector3.MoveTowards(at, target, v.Pace * deltaTime);
+            step.y = v.Height + StyleWorld.StandHeight(step.x, step.z);   // V2.24 : les pieds sur le sol affiché
             bool moving = (step - at).sqrMagnitude > 1e-8f;
             if (moving)
             {
@@ -966,7 +1063,7 @@ namespace EdS.Game
                 StyleWoodTree tree = trees[i];
                 if (phone && !tree.Edge && i % 3 != 0) continue;   // relecture : un arbre du cœur sur trois sur téléphone
                 string part = id + "/" + i;
-                var at = new Vector3((float)tree.X, 0f, (float)tree.Z);
+                var at = new Vector3((float)tree.X, Ground((float)tree.X, (float)tree.Z, 0.4f), (float)tree.Z);   // V2.24 : sur la pente
                 GameObject look = debris && !tree.Edge && i % 6 == 5
                     ? StyleLook.Decor(_root.transform, StyleSlot.Debris, part, at, 1f, 0f, true)
                     : StyleLook.Decor(_root.transform, StyleSlot.Tree, part, at, TreeHeight() * (float)(0.6 + 0.3 * tree.Scale));
@@ -980,7 +1077,7 @@ namespace EdS.Game
             foreach (StyleRoad road in _roads.Where(r => r.Paved))
             {
                 Material cobble = Built(StyleSurface.Cobble, new Color(0.42f, 0.4f, 0.37f), out float tile);
-                Shape("Rue pavée " + road.Id, TownShapes.Pavement(road, tile), cobble);
+                Drape(Shape("Rue pavée " + road.Id, TownShapes.Pavement(road, tile, 24, StyleWorld.HasRelief ? DrapeStep : 0), cobble));   // V2.24 : découpé, drapé
             }
         }
 
@@ -1001,7 +1098,7 @@ namespace EdS.Game
                 if (field.Crop == 2)
                 {
                     Material soil = Soil(catalog);
-                    Shape("Labour", TownShapes.Furrows(field, soilTile), soil);
+                    Drape(Shape("Labour", TownShapes.Furrows(field, soilTile, StyleWorld.HasRelief ? DrapeStep : 0), soil));   // V2.24 : découpé, drapé
                 }
                 else (field.Crop == 0 ? ripe : green).AddRange(TownShapes.CropSpots(field, step));
             }
@@ -1177,8 +1274,9 @@ namespace EdS.Game
             Material stone = Stone(out float tile);
             StyleMesh wall = StyleShapes.DryStoneWall(x0, z0, x1, z1, id, tile);
             GameObject go = Shape(id + " (muret de pierres sèches)", wall, stone);
+            (float low, float high) = Drape(go);   // V2.24 : le muret suit le sol affiché
             float top = (float)wall.Bounds().Max.Y;
-            _occluders.Add(new Occluder { Transform = go.transform, Renderer = go.GetComponent<Renderer>(), Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+            _occluders.Add(new Occluder { Transform = go.transform, Renderer = go.GetComponent<Renderer>(), Lower = true, Min = new Vector3(x0, low, z0), Max = new Vector3(x1, top + high, z1) });
         }
 
         /// <summary>Pierre brute du catalogue (muret, culées, socles), sinon la pierre des murs, sinon une couleur.</summary>
@@ -1431,6 +1529,7 @@ namespace EdS.Game
         {
             List<SpaceObstacle> pillars = space.Obstacles.Where(o => o.Id.StartsWith("pilier")).ToList();
             if (pillars.Count < 2) return;
+            int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
             var posts = pillars.Select(o => ((double)Raw((o.Points.Min(p => p.X.Raw) + o.Points.Max(p => p.X.Raw)) / 2),
                 (double)Raw((o.Points.Min(p => p.Z.Raw) + o.Points.Max(p => p.Z.Raw)) / 2))).ToList();
             Material wood = Built(StyleSurface.Wood, new Color(0.42f, 0.3f, 0.2f), out float woodTile);
@@ -1451,6 +1550,11 @@ namespace EdS.Game
             var max = new Vector3((float)shelter.X1, top, (float)shelter.Z1);
             AddOccluder(roof.transform, false, min, max);
             AddOccluder(under.transform, false, min, max);
+            // V2.24 : l'abri monte sur le replat de ses piliers (le même pour tous : ils sont groupés).
+            float lift = StyleWorld.StandHeight((x0 + x1) / 2f, (z0 + z1) / 2f);
+            Lift(children, occluders, boxes, lift);
+            _roofMin += Vector3.up * lift;
+            _roofMax += Vector3.up * lift;
         }
 
         // --- Coupe des décors qui cachent le joueur --------------------------------------------------------------------------
@@ -1669,6 +1773,7 @@ namespace EdS.Game
             foreach (Mesh mesh in _meshes) Object.Destroy(mesh);   // relecture des Vallons agrandis : les maillages faits par le code
             foreach (Occluder o in _occluders) ReleaseFade(o);   // V1.10 : copies transparentes des décors passés en fondu
             StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);   // essai réaliste 5 : plus de pont cintré sous les pieds
+            StyleWorld.SetRelief(null);   // V2.24 : plus de relief sous les pieds
             if (_indoor) StyleWorld.SetIndoors(false);   // intérieurs : le ciel, le soleil et la brume reviennent
             ReleaseNight();   // sous-lot V2.1 : matériaux du décor de nuit
             ReleaseWeather();   // sous-lot V2.2 : matériau des flaques
@@ -1739,8 +1844,8 @@ namespace EdS.Game
             var vertices = new Vector3[n];
             var uv = new Vector2[n];
             var uv2 = new Vector2[n];
-            bool deck = followDeck && n > 0 && StyleWorld.OnDeck((float)shape.Vertices.Min(v => v.X), (float)shape.Vertices.Min(v => v.Z),
-                (float)shape.Vertices.Max(v => v.X), (float)shape.Vertices.Max(v => v.Z));
+            bool deck = followDeck && n > 0 && (StyleWorld.HasRelief || StyleWorld.OnDeck((float)shape.Vertices.Min(v => v.X), (float)shape.Vertices.Min(v => v.Z),
+                (float)shape.Vertices.Max(v => v.X), (float)shape.Vertices.Max(v => v.Z)));   // V2.24 : ou le relief
             for (int i = 0; i < n; i++)
             {
                 float x = (float)shape.Vertices[i].X, z = (float)shape.Vertices[i].Z;
@@ -1816,13 +1921,15 @@ namespace EdS.Game
         /// </summary>
         public void ShowCircle(float x, float z, float radius, float progress, bool unblockable, bool lingering)
         {
-            string key = "cible|" + Mathf.RoundToInt(radius * 1000f);
+            // V2.24 : avec du relief, le cercle est refait à sa place (tous les 10 cm) et chaque sommet suit le sol affiché.
+            bool relief = StyleWorld.HasRelief;
+            string key = "cible|" + Mathf.RoundToInt(radius * 1000f) + (relief ? "|" + Mathf.RoundToInt(x * 10f) + "|" + Mathf.RoundToInt(z * 10f) : "");
             if (key != _shape)
             {
                 _shape = key;
-                Annonces.Fill(_mesh, TelegraphShapes.Circle(0, 0, radius), false);
+                Annonces.Fill(_mesh, relief ? TelegraphShapes.Circle(x, z, radius) : TelegraphShapes.Circle(0, 0, radius), relief);
             }
-            _body.transform.position = new Vector3(x, Height + StyleWorld.StandHeight(x, z), z);
+            _body.transform.position = relief ? new Vector3(0f, Height, 0f) : new Vector3(x, Height + StyleWorld.StandHeight(x, z), z);
             Style(0f, progress, unblockable, lingering);
         }
 

@@ -264,6 +264,7 @@ namespace EdS.Game
                 return;
             }
             HumanBodies.HeroLook = _adventure.HeroLook;   // sous-lot V2.16 : l'aspect choisi du héros, repris avec la sauvegarde
+            StyleWorld.UseRelief(_adventure.Map);   // revue Codex de la PR #144 : le relief de la zone avant ses repères
             _markers = new WorldMarkers(_adventure);
             _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
             _shownZone = _adventure.CurrentZone;
@@ -324,6 +325,7 @@ namespace EdS.Game
             if (_markers != null && _shownZone != _adventure.CurrentZone)
             {
                 _markers.Destroy();
+                StyleWorld.UseRelief(_adventure.Map);   // revue Codex de la PR #144 : le relief de la nouvelle zone avant ses repères
                 _markers = new WorldMarkers(_adventure);
                 _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
                 PaintedMap.Forget();

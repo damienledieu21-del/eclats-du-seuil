@@ -69,6 +69,7 @@ namespace EdS.Game
                 }
                 // Pas de cheminée devinée pour une cuisine d'auberge ni pour l'âtre d'une épicerie (V2.21) : seuls les fournils en ont une.
                 else if (!c.Id.StartsWith("cheminee/", System.StringComparison.Ordinal)) continue;
+                top = StyleWorld.OnGround(top);   // V2.24 : le bâtiment est sur son replat
                 var chimney = new Chimney { Id = c.Id, Top = top, Strength = (float)TownModels.SmokeStrength(c.Id) };
                 // V2.22 : une fumée légère (le feu de tisanes de Sauge) est celle du jeu, allégée ; les autres, celle du pack.
                 chimney.Pack = chimney.Strength < 1f
@@ -93,7 +94,7 @@ namespace EdS.Game
             {
                 var holder = new GameObject(w.Id + " (atelier couvert)");
                 holder.transform.SetParent(_root.transform, false);
-                holder.transform.position = new Vector3((float)w.X, 0f, (float)w.Z);
+                holder.transform.position = StyleWorld.OnGround(new Vector3((float)w.X, 0f, (float)w.Z));   // V2.24
                 const float width = 6f, depth = 4.6f, low = 2.6f, high = 3.6f;
                 for (int i = 0; i < 3; i++)
                     for (int s = -1; s <= 1; s += 2)
@@ -139,7 +140,7 @@ namespace EdS.Game
         /// <summary>Enseigne : potence de fer et planche de bois peinte, à 2,6 m, le long de la façade.</summary>
         private void Signboard(WorldMarker sign)
         {
-            var at = new Vector3((float)sign.X, 0f, (float)sign.Z);
+            var at = StyleWorld.OnGround(new Vector3((float)sign.X, 0f, (float)sign.Z));   // V2.24 : sur le replat du bâtiment
             Material wood = Made(new Color(0.42f, 0.27f, 0.14f));
             Material iron = Made(new Color(0.12f, 0.11f, 0.1f));
             Material paint = Made(new Color(0.78f, 0.62f, 0.3f));
@@ -168,7 +169,7 @@ namespace EdS.Game
             }
             var holder = new GameObject("étal " + stall.Id + " (forme simple)");
             holder.transform.SetParent(root, false);
-            holder.transform.position = new Vector3((float)stall.X, 0f, (float)stall.Z);
+            holder.transform.position = StyleWorld.OnGround(new Vector3((float)stall.X, 0f, (float)stall.Z));   // V2.24
             holder.transform.rotation = Quaternion.Euler(0f, (float)stall.Face, 0f);
             Material wood = Made(new Color(0.46f, 0.32f, 0.19f));
             Material awning = Made(AwningColor(stall.Kind));

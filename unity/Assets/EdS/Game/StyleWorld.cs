@@ -364,7 +364,7 @@ namespace EdS.Game
         private const float TerrainBase = 3f;
 
         /// <summary>Hauteur totale (m) que le terrain peut décrire.</summary>
-        private const float TerrainHeight = 10f;
+        private const float TerrainHeight = 40f;   // V2.24 : collines et falaises hors de l'aire (jusqu'à une vingtaine de mètres)
 
         /// <summary>
         /// Sol réaliste d'un combat positionné : un terrain (hauteur 0 où l'on marche, comme le sol du moteur) qui couvre l'aire et
@@ -403,7 +403,7 @@ namespace EdS.Game
                 {
                     double x = x0 + col / (double)(hres - 1) * width, z = z0 + row / (double)(hres - 1) * depth;
                     double dig = banks.Count > 0 ? StyleRules.ChannelDepth(StyleRules.UnionDistance(x, z, rivers, banks)) : 0;
-                    heights[row, col] = (float)((TerrainBase - dig) / TerrainHeight);
+                    heights[row, col] = (float)((TerrainBase - dig + (_relief.IsFlat ? 0 : _relief.Height(x, z))) / TerrainHeight);   // V2.24 : relief
                 }
             data.SetHeights(0, 0, heights);
             // Couches dans l'ordre de StyleGround (terre, roche, herbe) ; une couche sans texture prend celle d'une autre. Essai du 27 octobre
@@ -444,6 +444,15 @@ namespace EdS.Game
                             double w = System.Math.Min(1, (inside + 1.5) / 3);
                             mix = new StyleMix(mix.Soil * (1 - w) + w, mix.Rock * (1 - w), mix.Grass * (1 - w));
                         }
+                    // V2.24 : la roche affleure sur les pentes raides des collines et falaises hors de l'aire (pente lue sur la carte des hauteurs).
+                    if (!_relief.IsFlat && _relief.Outside(x, z) > 0)
+                    {
+                        int hr = Mathf.Min(hres - 2, row * (hres - 1) / res), hc = Mathf.Min(hres - 2, col * (hres - 1) / res);
+                        double sx = (heights[hr, hc + 1] - heights[hr, hc]) * TerrainHeight * (hres - 1) / width;
+                        double sz = (heights[hr + 1, hc] - heights[hr, hc]) * TerrainHeight * (hres - 1) / depth;
+                        double steep = System.Math.Max(0, System.Math.Min(1, (System.Math.Sqrt(sx * sx + sz * sz) - 0.6) / 0.5));
+                        if (steep > 0) mix = new StyleMix(mix.Soil * (1 - steep), mix.Rock * (1 - steep) + steep, mix.Grass * (1 - steep));
+                    }
                     double field = 0;
                     if (fields != null)
                         foreach (StyleField f in fields)
@@ -673,7 +682,67 @@ namespace EdS.Game
         /// (<see cref="StyleShapes.StandHeight"/>). Affichage seulement : le moteur ne connaît pas la hauteur.
         /// </summary>
         public static float StandHeight(float x, float z) =>
-            _deckRise > 0f ? (float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise) : 0f;
+            (_relief.IsFlat ? 0f : (float)_relief.Height(x, z))
+            + (_deckRise > 0f ? (float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise) : 0f);
+
+        private static GroundRelief _relief = GroundRelief.Flat;
+
+        /// <summary>
+        /// Sous-lot V2.24 (décision de Damien du 11 novembre 2026) : relief affiché du décor posé (<see cref="GroundRelief"/>) ; null : sol plat.
+        /// Tout ce qui se tient au sol passe par <see cref="StandHeight"/> (personnages, décor, marqueurs, effets) ; le moteur reste plat.
+        /// </summary>
+        public static void SetRelief(GroundRelief relief)
+        {
+            _relief = relief ?? GroundRelief.Flat;
+            _reliefKey = null;
+        }
+
+        private static string _reliefKey;
+
+        /// <summary>
+        /// Revue Codex de la PR #144 (2e tour) : pose le relief de la zone de <paramref name="map"/> (plat sans carte, dans une pièce, ou sans
+        /// terrain peint : le sol de remplacement est un pavé plat). Appelé avant de construire les repères d'une zone (qui précèdent le décor
+        /// de <c>SpaceView</c>) et par <c>SpaceView</c> ; la même carte garde le même relief (pas recalculé).
+        /// </summary>
+        public static void UseRelief(AdventureMap map)
+        {
+            if (map == null || !CanPaintGround)
+            {
+                SetRelief(null);
+                return;
+            }
+            if (_reliefKey == map.Signature) return;
+            SetRelief(GroundRelief.For(map));
+            _reliefKey = map.Signature;
+        }
+
+        /// <summary>Revue Codex de la PR #144 : <see cref="Ground"/> peut-il faire un terrain (catalogue et au moins une texture de sol) ?</summary>
+        public static bool CanPaintGround
+        {
+            get
+            {
+                StyleCatalog catalog = StyleCatalog.Loaded;
+                return catalog != null && (catalog.GrassColor != null || catalog.SoilColor != null || catalog.RockColor != null);
+            }
+        }
+
+        /// <summary>Sous-lot V2.24 : le sol affiché a-t-il du relief ?</summary>
+        public static bool HasRelief => !_relief.IsFlat;
+
+        /// <summary>Sous-lot V2.24 : relief affiché en cours (plat hors des zones dehors).</summary>
+        public static GroundRelief Relief => _relief;
+
+        /// <summary>Sous-lot V2.24 : <paramref name="p"/> remonté de la hauteur du sol affiché sous lui (y : hauteur au-dessus du sol).</summary>
+        public static Vector3 OnGround(Vector3 p) => new Vector3(p.x, p.y + StandHeight(p.x, p.z), p.z);
+
+        /// <summary>Sous-lot V2.24 : rotation qui couche une chose plate (flaque, disque) sur la pente du sol affiché en (x, z).</summary>
+        public static Quaternion GroundTilt(float x, float z)
+        {
+            if (_relief.IsFlat) return Quaternion.identity;
+            const float e = 0.3f;
+            var normal = new Vector3(StandHeight(x - e, z) - StandHeight(x + e, z), 2f * e, StandHeight(x, z - e) - StandHeight(x, z + e));
+            return Quaternion.FromToRotation(Vector3.up, normal.normalized);
+        }
 
         /// <summary>Revue Codex de la PR #60 : emprise du tablier du pont cintré (x0, z0, x1, z1), ou null sans pont.</summary>
         public static (double X0, double Z0, double X1, double Z1)? Deck() =>

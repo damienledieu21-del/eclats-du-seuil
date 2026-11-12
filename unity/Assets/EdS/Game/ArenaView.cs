@@ -578,7 +578,7 @@ namespace EdS.Game
         {
             if (!_bodies.TryGetValue(id, out GameObject body) || !body.activeSelf) return null;
             Vector3 p = body.transform.position;
-            return new Vector3(p.x, 0f, p.z);
+            return new Vector3(p.x, StyleWorld.StandHeight(p.x, p.z), p.z);   // V2.24 : le sol affiché
         }
 
         /// <summary>Sous-lot 11.6 : taille de l'emprise du moteur (capsule de 1 m de diamètre à l'échelle 1).</summary>

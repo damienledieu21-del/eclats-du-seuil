@@ -392,7 +392,7 @@ namespace EdS.Game
             var pieces = new List<Transform>();
             var anchor = new GameObject("Faille " + id);
             anchor.transform.SetParent(_root.transform, false);
-            anchor.transform.position = new Vector3(Raw(at.X), 0f, Raw(at.Z));
+            anchor.transform.position = StyleWorld.OnGround(new Vector3(Raw(at.X), 0f, Raw(at.Z)));   // V2.24 : sur le sol affiché
             pieces.Add(anchor.transform);
             foreach (WildlifePart part in EventLooks.Rift(0))
             {
@@ -513,7 +513,7 @@ namespace EdS.Game
                 (double R, double G, double B) c = smoke ? EventLooks.Smoke : EventLooks.Debris;
                 piece.GetComponent<Renderer>().sharedMaterial = MaterialFor(new Color((float)c.R, (float)c.G, (float)c.B), 0f);
                 piece.transform.SetParent(root.transform, false);
-                piece.transform.position = new Vector3((float)x, smoke ? 2f : 0.2f, (float)z);
+                piece.transform.position = StyleWorld.OnGround(new Vector3((float)x, smoke ? 2f : 0.2f, (float)z));   // V2.24
                 piece.transform.localScale = smoke ? new Vector3(1.6f, 3.5f, 1.6f) : new Vector3(0.7f, 0.4f, 0.5f);
                 piece.transform.rotation = Quaternion.Euler(smoke ? 0f : 18f * n, 37f * n, smoke ? 0f : 9f * n);
                 if (smoke) smokes.Add(piece.transform);
@@ -527,10 +527,11 @@ namespace EdS.Game
             {
                 if (t == null) continue;
                 Vector3 p = t.position;
+                float ground = StyleWorld.StandHeight(p.x, p.z);   // V2.24 : la fumée monte au-dessus du sol affiché
                 p.y += deltaTime * 0.6f;
-                if (p.y > 6f) p.y = 1.5f;
+                if (p.y - ground > 6f) p.y = ground + 1.5f;
                 t.position = p;
-                float s = 1.2f + (p.y - 1.5f) * 0.25f;
+                float s = 1.2f + (p.y - ground - 1.5f) * 0.25f;
                 t.localScale = new Vector3(s, 3.5f, s);
             }
         }
