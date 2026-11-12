@@ -36,12 +36,12 @@ jobs:
       # Revue de la PR #73 : la catégorie Time, déclarée dans les tests et connue du script, est désormais contrôlée aussi.
       - name: Rapprochement des catégories, tests du script (hors ligne)
         run: python3 -m unittest discover -s scripts -p 'test_category_results.py' -v
-      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World
+      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World Sector
       # Correctif 7.3.1 (D4) : scénario de référence avec déclencheurs, simulé par la CLI, comparé octet par octet au journal figé, puis rejoué.
       - name: Scénario entrainement_declencheurs (simulation, comparaison, rejeu)
         run: |
           dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/entrainement_declencheurs.json --out "$RUNNER_TEMP/declencheurs.jsonl"
-          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0/entrainement_declencheurs.jsonl
+          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0/entrainement_declencheurs.jsonl
           dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/declencheurs.jsonl"
 
   # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.

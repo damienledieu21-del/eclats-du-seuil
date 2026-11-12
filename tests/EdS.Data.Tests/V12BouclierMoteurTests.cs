@@ -26,7 +26,7 @@ public class V12BouclierMoteurTests
     private const string Bouclier = "entrainement_bouclier";
     // Sous-lot V1.3 : la référence courante est celle du moteur 0.26.0 (règles 0.14.0) ; celle du moteur 0.25.0 reste figée (V13EffetsMoteurTests).
     private static string Reference(string name) =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.30.0-contenu-0.6.0-regles-0.17.0", name + ".jsonl");   // V2.4 : moteur 0.28.0, règles 0.16.0 (corps identiques)
+        Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.31.0-contenu-0.6.0-regles-0.17.0", name + ".jsonl");   // V2.4 : moteur 0.28.0, règles 0.16.0 (corps identiques)
     private static string Frozen(string version, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-" + version, name + ".jsonl");
 
     private static CombatSetup Load(string name)
@@ -57,10 +57,10 @@ public class V12BouclierMoteurTests
     public void Versions_du_sous_lot()
     {
         // Sous-lot V1.3 : moteur 0.26.0, format 20, règles 0.14.0 (schéma 14), scénarios en schéma 14 ; le bloc combat.shield ne change pas.
-        Assert.Equal(("0.30.0", 24), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // V2.4.1 : bêtes qui se promènent
+        Assert.Equal(("0.31.0", 25), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // V2.4.1 : bêtes qui se promènent
         // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), schéma inchangé.
         Assert.Equal((16, "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));   // V2.4 : schéma 15, contenu 0.16.0
-        Assert.Equal(17, ScenarioValidator.CurrentSchemaVersion);   // V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
+        Assert.Equal(18, ScenarioValidator.CurrentSchemaVersion);   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
         Assert.Equal("0.17.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.45"), Fixed.Parse("0.7"), 4, 20, 50L), (rules.ShieldMinDamageReduction, rules.ShieldMaxDamageReduction,
@@ -199,7 +199,7 @@ public class V12BouclierMoteurTests
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((18, "0.24.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
-        Assert.Equal((24, "0.30.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((25, "0.31.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
         Assert.Equal(before.GetProperty("data").GetProperty("classes").GetRawText(), after.GetProperty("data").GetProperty("classes").GetRawText());
     }

@@ -34,7 +34,7 @@ namespace EdS.Data.Tests;
 public class V241PromenadeMoteurTests
 {
     private const string Promenade = "espace_promenade";
-    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
+    private const string Latest = "reference-0.31.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
     private static readonly string[] Deer = { "cerf2", "cerf3", "cerf_chef" };
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
@@ -72,7 +72,7 @@ public class V241PromenadeMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.31.0", 25, 18, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal((Fixed.FromInt(30), 15_000L), (ShippedData.Rules.Combat.WanderMaxRadius, ShippedData.Rules.Combat.WanderCalmMs));
     }
@@ -344,7 +344,7 @@ public class V241PromenadeMoteurTests
     public void Schemas_JSON_du_sous_lot()
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(17, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(18, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode wander = scenario["$defs"]!["combatant"]!["properties"]!["behavior"]!["properties"]!["wander"]!;
         Assert.Equal(new[] { "style", "radius", "pace", "legMs", "pauseMs" }, wander["required"]!.AsArray().Select(v => v!.GetValue<string>()));
         Assert.Equal(new[] { "graze", "hop", "patrol", "root" }, wander["properties"]!["style"]!["enum"]!.AsArray().Select(v => v!.GetValue<string>()));

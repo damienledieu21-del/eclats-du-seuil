@@ -112,8 +112,9 @@ public class Lot114aSpaceValidationTests
     [Fact]
     public void Position_au_dela_des_bornes_techniques()
     {
-        RuleViolation error = Assert.Single(Errors(new CombatSpace(P("-1000", "-1000"), P("1000", "1000")),
-            new CombatantSetup[] { Player("bastion", At("1000.0001", "0")), Creature("loup", At("5", "0")) }));
+        // Sous-lot V2.26 : bornes relevées à ±4 096 m et 256 obstacles (±1 000 m et 64 avant).
+        RuleViolation error = Assert.Single(Errors(new CombatSpace(P("-4096", "-4096"), P("4096", "4096")),
+            new CombatantSetup[] { Player("bastion", At("4096.0001", "0")), Creature("loup", At("5", "0")) }));
         Assert.Equal((RuleViolationKind.NumericLimit, "combatants[0].position"), (error.Kind, error.Fields.Single()));
     }
 
@@ -138,13 +139,13 @@ public class Lot114aSpaceValidationTests
     public void Aire_et_obstacles_invalides()
     {
         Assert.Equal("space.bounds", Only(Errors(new CombatSpace(P("10", "-10"), P("-10", "10")))));
-        Assert.Equal("space.bounds", Only(Errors(new CombatSpace(P("-1000.0001", "-10"), P("10", "10")))));
+        Assert.Equal("space.bounds", Only(Errors(new CombatSpace(P("-4096.0001", "-10"), P("10", "10")))));
         Assert.Equal("space.obstacles[1].id", Only(Errors(Arena(Rock(), new SpaceObstacle("rocher", Rock().Points.Select(p => new GroundVector(p.X, p.Z + Fixed.FromInt(5))))))));
         Assert.Equal("space.obstacles[0].id", Only(Errors(Arena(new SpaceObstacle("Rocher", Rock().Points)))));
         Assert.Equal("space.obstacles[0].points", Only(Errors(Arena(new SpaceObstacle("mur", new[] { P("1", "1"), P("2", "1") })))));
         Assert.Equal("space.obstacles[0].points", Only(Errors(Arena(new SpaceObstacle("mur", new[] { P("1", "1"), P("3", "1"), P("2", "1.2"), P("3", "3"), P("1", "3") })))));
-        Assert.Equal("space.obstacles[0].points", Only(Errors(Arena(new SpaceObstacle("mur", new[] { P("1", "1"), P("1000.5", "1"), P("1", "3") })))));
-        RuleViolation tooMany = Assert.Single(Errors(Arena(Enumerable.Range(0, 65).Select(i => new SpaceObstacle($"o{i}",
+        Assert.Equal("space.obstacles[0].points", Only(Errors(Arena(new SpaceObstacle("mur", new[] { P("1", "1"), P("4096.5", "1"), P("1", "3") })))));
+        RuleViolation tooMany = Assert.Single(Errors(Arena(Enumerable.Range(0, 257).Select(i => new SpaceObstacle($"o{i}",
             new[] { P("-9", "-9"), P("-8.9", "-9"), P("-9", "-8.9") })).ToArray())));
         Assert.Equal((RuleViolationKind.LimitExceeded, "space.obstacles"), (tooMany.Kind, tooMany.Fields.Single()));
         // Un obstacle en sens horaire est valide.

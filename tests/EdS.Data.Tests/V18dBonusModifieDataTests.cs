@@ -22,7 +22,7 @@ namespace EdS.Data.Tests;
 public class V18dBonusModifieDataTests
 {
     private const string Bonus = "entrainement_bonus";
-    private const string Latest = "reference-0.30.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.26.0-contenu-0.6.0-regles-0.15.0";
+    private const string Latest = "reference-0.31.0-contenu-0.6.0-regles-0.17.0", Previous = "reference-0.26.0-contenu-0.6.0-regles-0.15.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -53,7 +53,7 @@ public class V18dBonusModifieDataTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.30.0", 24, 17, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.31.0", 25, 18, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal("gear", CombatActionIds.Of(CombatAction.Gear));
         Assert.DoesNotContain("gear", CombatActionIds.Named);   // écrite à part, comme consume
     }
@@ -97,7 +97,7 @@ public class V18dBonusModifieDataTests
     {
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement command = schema.RootElement.GetProperty("$defs").GetProperty("command");
-        Assert.Equal(17, schema.RootElement.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());   // V2.4 : 16
+        Assert.Equal(18, schema.RootElement.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());   // V2.4 : 16
         JsonElement gear = command.GetProperty("properties").GetProperty("gear");
         Assert.Equal(GearBonus.Fields, gear.GetProperty("properties").EnumerateObject().Select(p => p.Name));
         Assert.All(gear.GetProperty("properties").EnumerateObject(), p => Assert.Equal(GearBonus.MaxValue, p.Value.GetProperty("maximum").GetInt32()));
