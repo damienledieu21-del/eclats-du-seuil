@@ -23,7 +23,6 @@ public class Lot103ClientTests
 
     private static CombatSetup Duo => ScenarioJsonReader.ReadFile(ScenarioPath("coop/duo_meute"), ShippedData).Setup!;
 
-    /// <summary>Les deux Bastions face à un mannequin qui ne frappe pas : le combat dure tout son temps.</summary>
     /// <summary>
     /// Limite d'un test TCP en temps réel. Le combat dure 1,5 s de jeu : un test sain finit en quelques secondes et cette limite ne
     /// joue qu'en cas d'échec. Elle est large parce que la CI lance plusieurs assemblages de tests en parallèle sur deux cœurs (échecs
@@ -31,6 +30,7 @@ public class Lot103ClientTests
     /// </summary>
     private const double TcpDeadlineSeconds = 60;
 
+    /// <summary>Les deux Bastions face à un mannequin qui ne frappe pas : le combat dure tout son temps.</summary>
     private static CombatSetup Calm(long durationMs = 20_000)
     {
         var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ScenarioPath("coop/duo_meute")))!.AsObject();
