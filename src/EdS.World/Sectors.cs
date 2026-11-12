@@ -217,6 +217,13 @@ namespace EdS.World
 
         /// <summary>Au bout de la marge, encore engagé : une créature de la rencontre lâche (comme pour la laisse).</summary>
         Released = 4,
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (3e tour) : la session du secteur a atteint sa durée (<c>durationMs</c>) ; le secteur repart dans une
+        /// session nouvelle au même tick du monde (registre repris, clés de mort de l'ancienne session purgées), ses joueurs y arrivent avec
+        /// leur état. <see cref="SectorEvent.Other"/> : numéro de la nouvelle session.
+        /// </summary>
+        Renewed = 5,
     }
 
     public sealed class SectorEvent
@@ -293,6 +300,15 @@ namespace EdS.World
 
             /// <summary>Revue Codex de la PR #150 (2e tour) : entré dans la région sans place encore (il réessaie à chaque tick).</summary>
             public bool Waiting;
+
+            /// <summary>
+            /// Revue Codex de la PR #150 (3e tour) : reprise en attente sans combattant (<see cref="Arrival"/> garde l'état ; aucune place
+            /// trouvée ni à l'arrivée ni au départ) ; elle est gardée jusqu'à un placement réussi. À distinguer d'une arrivée programmée.
+            /// </summary>
+            public bool Resume;
+
+            /// <summary>Revue Codex de la PR #150 (3e tour) : mort dans une session terminée ; sa dernière vue reste lisible.</summary>
+            public CombatantView? Final;
             public CharacterSetup? Arrival;
             public bool PendingBackward;
             public int Passages;
@@ -380,8 +396,15 @@ namespace EdS.World
 
         /// <summary>Identité du joueur dans la session de son secteur (la sienne, ou <c>&lt;joueur&gt;_p&lt;n&gt;</c> après un passage).</summary>
         public string CombatantOf(string player) => _players.TryGetValue(player, out Player? p)
-            ? (p.Waiting ? throw new InvalidOperationException($"Joueur {player} en attente d'une place.") : p.Combatant)
+            ? (p.Waiting || p.Resume ? throw new InvalidOperationException($"Joueur {player} en attente d'une place.")
+                : p.Final != null ? throw new InvalidOperationException($"Joueur {player} mort dans une session terminée.") : p.Combatant)
             : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
+
+        /// <summary>Revue Codex de la PR #150 (3e tour) : vrai si le joueur attend la reprise d'un passage (aucune place des deux côtés).</summary>
+        public bool IsResuming(string player) => _players.TryGetValue(player, out Player? p) ? p.Resume : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
+
+        /// <summary>Joueur suivi par un combattant de la session de son secteur (ni en attente, ni en reprise, ni mort dans une session terminée).</summary>
+        private static bool Live(Player p) => !p.Waiting && !p.Resume && p.Final is null && p.Sector != null;
 
         /// <summary>Revue Codex de la PR #150 (2e tour) : vrai si le joueur est entré dans la région sans place libre encore (il réessaie à chaque tick).</summary>
         public bool IsWaiting(string player) => _players.TryGetValue(player, out Player? p) ? p.Waiting : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
@@ -391,7 +414,8 @@ namespace EdS.World
             SectorOf(player) is string s && _open.TryGetValue(s, out Open? o) ? o.Zone.Engine : throw new InvalidOperationException($"{player} n'est dans aucun secteur ouvert.");
 
         /// <summary>Vue du joueur dans son secteur.</summary>
-        public CombatantView ViewOf(string player) => EngineOf(player).View(CombatantOf(player));
+        public CombatantView ViewOf(string player) =>
+            _players.TryGetValue(player, out Player? p) && p.Final is CombatantView last ? last : EngineOf(player).View(CombatantOf(player));
 
         /// <summary>Un joueur entre dans la région à sa place (appliqué au début du prochain tick, dans l'ordre des identifiants).</summary>
         /// <exception cref="ArgumentException">Joueur sans place, déjà là ou déjà annoncé.</exception>
@@ -443,9 +467,59 @@ namespace EdS.World
 
         private void CloseSector(Open open, List<SectorEvent> events)
         {
-            _consumed.UnionWith(open.Zone.Consumed);
+            // Revue Codex de la PR #150 (3e tour) : les clés de mort de la session fermée sont purgées (plan § 2.4 : un secteur rouvert
+            // reprend dans une session nouvelle, ces morts n'y comptent plus) ; les faits persistants du monde (autres clés) sont gardés.
+            string deaths = DeathPrefix(open.Zone);
+            _consumed.UnionWith(open.Zone.Consumed.Where(k => !k.StartsWith(deaths, StringComparison.Ordinal)));
+            _consumed.RemoveWhere(k => k.StartsWith(deaths, StringComparison.Ordinal));
             _open.Remove(open.Name);
             events.Add(new SectorEvent(SectorEventKind.Closed, open.Name, null, null, WorldTick));
+        }
+
+        /// <summary>Début des clés de mort d'une session de secteur (« zone.&lt;nom&gt;/[&lt;secteur&gt;/]&lt;session&gt;/death/ »).</summary>
+        private static string DeathPrefix(Zone zone)
+        {
+            string key = zone.EventKey(ZoneEventKind.Death, "x");
+            return key.Substring(0, key.Length - 1);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (3e tour) : session terminée (durée atteinte) : fermeture (registre repris, clés de mort purgées) et
+        /// réouverture dans une session nouvelle au même tick du monde ; chaque joueur du secteur y arrive avec son état (vivant présent :
+        /// position, état emporté, objets ; arrivée en attente ou reprise : son arrivée) ; un joueur mort garde sa dernière vue.
+        /// </summary>
+        private void Renew(Open old, List<SectorEvent> events)
+        {
+            CombatEngine engine = old.Zone.Engine;
+            var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
+            foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && !x.Waiting && x.Final is null).ToList())
+            {
+                if (p.Arrival != null)
+                {
+                    p.Resume = true;   // arrivée programmée ou reprise : elle sera faite dans la session nouvelle
+                    continue;
+                }
+                CombatantView v = engine.View(p.Combatant);
+                if (v.IsDead) { p.Final = v; continue; }
+                if (!v.IsPresent || v.Position is null) continue;   // déjà parti : sa sortie ou son passage est en cours
+                CarriedState carried = engine.Carried(p.Combatant);
+                moves.Add((p, v, carried.IsEmpty ? null : carried, engine.CarriedConsumables(p.Combatant)));
+            }
+            var scratch = new List<SectorEvent>();
+            CloseSector(old, scratch);
+            Open fresh = OpenSector(old.Name, scratch);
+            events.Add(new SectorEvent(SectorEventKind.Renewed, old.Name, null, fresh.Zone.Session.ToString(CultureInfo.InvariantCulture), WorldTick));
+            foreach (var (p, v, carried, consumables) in moves)
+            {
+                p.PendingBackward = v.MoveBackward;
+                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false))
+                {
+                    // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried);
+                    p.ArrivingFrom = null;
+                    p.Resume = true;
+                }
+            }
         }
 
         /// <summary>Identité libre du joueur dans une session : la sienne, sinon <c>&lt;joueur&gt;_p&lt;n&gt;</c> (n croissant, jamais reprise).</summary>
@@ -557,11 +631,14 @@ namespace EdS.World
         public IReadOnlyList<SectorEvent> Step(List<(string Sector, ZoneEvent Event)>? zoneEvents = null, List<(string Sector, PopulationEvent Event)>? populationEvents = null)
         {
             var events = new List<SectorEvent>();
+            // 00. Revue Codex de la PR #150 (3e tour) : un secteur dont la session a atteint sa durée repart dans une session nouvelle (ses
+            // joueurs y arrivent avec leur état) ; le monde n'est jamais bloqué par une session terminée.
+            foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
             // 0. Sorties, puis entrées, dans l'ordre des joueurs.
             // Revue Codex de la PR #150 (2e tour) : un joueur dont l'arrivée est programmée à ce tick (passage tout juste fait) sort aussi :
             // son arrivée a lieu au début du tick, son départ en fin du même tick ; il ne reste jamais un combattant sans suivi.
             foreach (string id in _exiting)
-                if (_players.TryGetValue(id, out Player? p) && !p.Waiting && p.Sector is string s && _open.TryGetValue(s, out Open? o))
+                if (_players.TryGetValue(id, out Player? p) && Live(p) && p.Sector is string s && _open.TryGetValue(s, out Open? o))
                 {
                     CombatantView v = o.Zone.Engine.View(p.Combatant);
                     bool arriving = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick == o.Zone.Engine.CurrentTick;
@@ -598,18 +675,24 @@ namespace EdS.World
 
             // 1 bis. Revue Codex de la PR #150 : une arrivée refusée malgré tout (place prise au début du tick) : le joueur repart de son secteur
             // de départ (ou réessaie au tick suivant), avec le même état : il n'est jamais perdu.
+            // Revue Codex de la PR #150 (3e tour) : une reprise sans combattant (Resume) n'est jamais effacée par l'état de l'ancien combattant ;
+            // elle reste jusqu'à un placement réussi.
             foreach (Player p in _players.Values.Where(x => x.Arrival != null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
-                CombatantView v = _open[p.Sector!].Zone.Engine.View(p.Combatant);
-                if (v.IsPresent || v.IsDead || v.HasLeft || v.ArrivalTick is not long due || due >= _open[p.Sector!].Zone.Engine.CurrentTick)
+                if (!p.Resume)
                 {
-                    if (v.IsPresent || v.IsDead || v.HasLeft) { p.Arrival = null; p.ArrivingFrom = null; }
-                    continue;
+                    CombatantView v = _open[p.Sector!].Zone.Engine.View(p.Combatant);
+                    if (v.IsPresent || v.IsDead || v.HasLeft || v.ArrivalTick is not long due || due >= _open[p.Sector!].Zone.Engine.CurrentTick)
+                    {
+                        if (v.IsPresent || v.IsDead || v.HasLeft) { p.Arrival = null; p.ArrivingFrom = null; }
+                        continue;
+                    }
                 }
                 CharacterSetup again = p.Arrival!;
                 string back = p.ArrivingFrom != null && _open.ContainsKey(p.ArrivingFrom) ? p.ArrivingFrom : p.Sector!;
-                if (!Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events))
-                    Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events);
+                p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events)
+                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events);
+                if (p.Resume) p.Arrival = again;
             }
 
             // 2. Passages commencés : départ effectif en fin du tick simulé, arrivée au tick suivant dans le voisin.
@@ -634,13 +717,14 @@ namespace EdS.World
                 {
                     p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state);
                     p.ArrivingFrom = from.Name;
+                    p.Resume = true;   // Revue Codex de la PR #150 (3e tour) : reprise sans combattant, gardée jusqu'à un placement réussi
                 }
             }
 
             // 3. Ouvertures : chaque secteur à moins de 96 m d'un joueur, pour le tick suivant.
             foreach (Player p in _players.Values)
             {
-                if (p.Waiting || p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
+                if (!Live(p) || !_open.TryGetValue(p.Sector!, out Open? o)) continue;
                 CombatantView v = o.Zone.Engine.View(p.Combatant);
                 if (v.Position is GroundVector pos)
                     foreach (string near in _map.Near(pos)) OpenSector(near, events);
@@ -649,10 +733,10 @@ namespace EdS.World
             // 4. Nouveaux passages et lâchers au bout de la marge (ordre du secteur, puis du joueur).
             foreach (Player p in _players.Values.OrderBy(x => x.Sector, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal))
             {
-                if (p.Waiting || p.Sector is null || !_open.TryGetValue(p.Sector, out Open? o)) continue;
+                if (!Live(p) || !_open.TryGetValue(p.Sector!, out Open? o)) continue;
                 CombatantView v = o.Zone.Engine.View(p.Combatant);
                 if (!v.IsPresent || v.IsDead || v.Position is not GroundVector pos || o.Zone.IsOver) continue;
-                if (_map.Overshoot(p.Sector, pos) <= checked(SectorMap.HysteresisMeters * Fixed.Scale)) continue;
+                if (_map.Overshoot(p.Sector!, pos) <= checked(SectorMap.HysteresisMeters * Fixed.Scale)) continue;
                 string to = _map.SectorOf(pos);
                 if (to == p.Sector || _map.Space(to) is null) continue;
                 if (InEncounter(o.Zone, p.Combatant))
@@ -680,14 +764,14 @@ namespace EdS.World
                 p.PendingBackward = v.MoveBackward;
                 o.Zone.Leave(p.Combatant);
                 p.PendingTo = to;
-                events.Add(new SectorEvent(SectorEventKind.Departed, p.Sector, p.Id, to, WorldTick));
+                events.Add(new SectorEvent(SectorEventKind.Departed, p.Sector!, p.Id, to, WorldTick));
             }
 
             // 5. Fermetures : 60 s sans joueur à moins de 96 m (et aucun joueur dedans).
             foreach (Open o in _open.Values.ToList())
             {
                 bool near = _players.Values.Any(p => p.Sector == o.Name || p.PendingTo == o.Name
-                    || (!p.Waiting && p.Sector != null && _open.TryGetValue(p.Sector, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
+                    || (Live(p) && _open.TryGetValue(p.Sector!, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
                         && _map.DistanceTo(o.Name, pos) <= checked(SectorMap.ActivationMeters * Fixed.Scale)));
                 o.IdleTicks = near ? 0 : checked(o.IdleTicks + 1);
                 if (o.IdleTicks >= _closeAfterTicks) CloseSector(o, events);
