@@ -390,9 +390,22 @@ public class V28CheminsGrilleTests
         // CI de la PR #151 : mise en route d'abord (une quarantaine d'appels : la recompilation à chaud du moteur d'exécution, vers le 30e
         // appel, peut allouer sur le fil de l'appelant) ; seule la recherche elle-même est mesurée ensuite.
         for (int i = 0; i < 40; i++) search.Find(grid, start, goal, 8_192, path, out _);
-        long allocated = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
-        Assert.True(GC.GetAllocatedBytesForCurrentThread() - allocated < 4_096);
+        // Le compteur par fil est approximatif autour d'une collecte (le tampon d'allocation du fil est repris et recompté,
+        // d'un quantum d'environ 8 Kio) ; la suite de tests, parallèle, déclenche des collectes sur d'autres fils pendant la mesure. Une région
+        // sans collecte rend la lecture exacte : aucune collecte ne peut survenir entre les deux lectures.
+        Assert.True(GC.TryStartNoGCRegion(8_000_000), "région sans collecte refusée.");
+        long delta;
+        try
+        {
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 20; i++) search.Find(grid, start, goal, 8_192, path, out _);
+            delta = GC.GetAllocatedBytesForCurrentThread() - allocated;
+        }
+        finally
+        {
+            if (System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.NoGCRegion) GC.EndNoGCRegion();
+        }
+        Assert.True(delta < 4_096, $"{delta} octets alloués par 20 recherches.");
     }
     [Fact]
     public void Statut_garde_en_cache_reponses_identiques_au_premier_appel()
