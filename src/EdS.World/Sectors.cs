@@ -7,6 +7,7 @@ using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
 
 namespace EdS.World
@@ -530,10 +531,10 @@ namespace EdS.World
             foreach (var (p, v, carried, consumables) in moves)
             {
                 p.PendingBackward = v.MoveBackward;
-                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false))
+                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: v.Gear))
                 {
                     // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, v.Gear);
                     p.ArrivingFrom = null;
                     p.Resume = true;
                 }
@@ -590,7 +591,7 @@ namespace EdS.World
         /// identité disponibles, arrivée admise par le moteur ; faux sans rien changer sinon.
         /// </summary>
         private bool Place(Player p, string sector, GroundVector at, Fixed radius, GroundVector? facing, IReadOnlyList<ConsumableSetup>? consumables,
-            CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null, bool announce = true)
+            CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null, bool announce = true, GearBonus? gear = null)
         {
             if (!_open.TryGetValue(sector, out Open? target) || target.Zone.IsOver) return false;
             CombatEngine engine = target.Zone.Engine;
@@ -602,18 +603,27 @@ namespace EdS.World
             int passages = p.Passages;
             string id = IdentityIn(target.Zone, p);
             long atMs = checked(engine.CurrentTick * engine.TickMilliseconds);
-            CharacterSetup arrival = Arriving(p.Setup, id, new CombatantPlacement(spot, radius, facing), atMs, consumables, carried);
+            CharacterSetup arrival = Arriving(p.Setup, id, new CombatantPlacement(spot, radius, facing), atMs, consumables, carried, gear);
             try
             {
                 target.Zone.Enter(arrival);
             }
-            catch (ArgumentException)
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
                 p.Passages = passages;
                 return false;
             }
             // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
-            if (move is GroundVector m) engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));   // budget réservé plus haut
+            // Budget réservé plus haut ; par prudence, une marche refusée malgré tout laisse l'arrivée faite (le suivi reste cohérent, le
+            // joueur arrive arrêté) : revue Codex de la PR #150 (5e tour), aucun refus qui n'intercepte qu'une des deux exceptions.
+            if (move is GroundVector m)
+                try
+                {
+                    engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                }
             if (announce) events.Add(new SectorEvent(SectorEventKind.Arrived, sector, p.Id, from ?? p.Sector, WorldTick));   // sector == from : retour, passage impossible
             p.ArrivingFrom = from ?? p.ArrivingFrom;
             p.Arrival = arrival;
@@ -622,9 +632,11 @@ namespace EdS.World
             return true;
         }
 
+        /// <param name="gear">Revue Codex de la PR #150 (5e tour) : bonus d'équipement courant du combattant qui part (<see cref="CombatantView.Gear"/>,
+        /// changé en jeu par une commande gear) ; null : celui du personnage.</param>
         private static CharacterSetup Arriving(CharacterSetup c, string id, CombatantPlacement placement, long atMs, IReadOnlyList<ConsumableSetup>? consumables,
-            CarriedState? carried) =>
-            new CharacterSetup(id, c.Team, c.Class, c.Build, c.Initiative, placement, atMs, c.Gear, consumables ?? c.Consumables, c.Shield, c.Equipment, carried);
+            CarriedState? carried, GearBonus? gear = null) =>
+            new CharacterSetup(id, c.Team, c.Class, c.Build, c.Initiative, placement, atMs, gear ?? c.Gear, consumables ?? c.Consumables, c.Shield, c.Equipment, carried);
 
         private static bool Leave(Zone zone, string combatant)
         {
@@ -635,9 +647,9 @@ namespace EdS.World
                 zone.Leave(combatant);
                 return true;
             }
-            catch (ArgumentException)
+            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
-                return false;   // départ refusé par le pilote (plafond de commandes) : nouvel essai au tick suivant
+                return false;   // départ refusé par le pilote (forme ou budget de commandes, revue Codex de la PR #150, 5e tour) : nouvel essai au tick suivant
             }
         }
 
@@ -672,7 +684,7 @@ namespace EdS.World
                         {
                             o.Zone.Leave(p.Combatant);
                         }
-                        catch (InvalidOperationException)
+                        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
                         {
                             (stay ??= new List<string>()).Add(id);
                         }
@@ -725,8 +737,8 @@ namespace EdS.World
                 }
                 CharacterSetup again = p.Arrival!;
                 string back = p.ArrivingFrom != null && _open.ContainsKey(p.ArrivingFrom) ? p.ArrivingFrom : p.Sector!;
-                p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events)
-                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events);
+                p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear)
+                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear);
                 if (p.Resume) p.Arrival = again;
             }
 
@@ -747,10 +759,10 @@ namespace EdS.World
                 // le départ ; si, entre-temps, l'arrivée est devenue impossible, le joueur revient dans son secteur de départ (son départ y a
                 // libéré sa place), avec le même état ; sinon il réessaie au tick suivant.
                 CarriedState? state = carried.IsEmpty ? null : carried;
-                if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name)
-                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name))
+                if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear)
+                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear))
                 {
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state, left.Gear);
                     p.ArrivingFrom = from.Name;
                     p.Resume = true;   // Revue Codex de la PR #150 (3e tour) : reprise sans combattant, gardée jusqu'à un placement réussi
                 }
@@ -801,7 +813,7 @@ namespace EdS.World
                 {
                     o.Zone.Leave(p.Combatant);
                 }
-                catch (InvalidOperationException)
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
                 {
                     continue;
                 }
