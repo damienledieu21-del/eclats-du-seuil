@@ -89,7 +89,7 @@ public sealed class V21JourNuitTests : IDisposable
     public void Vallons_livres_au_schema_8()
     {
         // Sous-lot V2.4 : schéma 9 (populations selon le temps) ; 8 et 7 encore lus.
-        Assert.Equal((13, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
+        Assert.Equal((14, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
         Assert.Equal(13, Vallons.SchemaVersion);   // V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements)
         foreach (string id in NightWolves.Concat(Echoes))
         {

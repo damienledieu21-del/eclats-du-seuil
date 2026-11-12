@@ -56,7 +56,7 @@ public class V2253CasesTests
     [Fact]
     public void Repere_du_plan_32_x_24_cases_192_secteurs()
     {
-        Assert.Equal((13, 12), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion));
+        Assert.Equal((14, 12), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion));
         RegionGrid g = Vallons.Region!;
         Assert.Equal((-1908, -1614, 32, 24), (g.OriginX, g.OriginZ, g.Columns, g.Rows));
         Assert.Equal((P(-1908, -1614), P(2188, 1458)), (g.Min, g.Max));
