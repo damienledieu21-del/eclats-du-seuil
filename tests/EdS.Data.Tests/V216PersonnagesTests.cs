@@ -330,8 +330,8 @@ public sealed class V216PersonnagesTests
     [Fact]
     public void Sauvegarde_v17_de_l_aspect_et_v16_encore_lue()
     {
-        Assert.Equal(17, SaveValidator.CurrentSchemaVersion);
-        Assert.Equal(SaveValidator.LookSince, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(18, SaveValidator.CurrentSchemaVersion);   // V2.26 : 18 (registre purgé, secteurs)
+        Assert.Equal(SaveValidator.LookSince + 1, SaveValidator.CurrentSchemaVersion);   // V2.26 : la version 18 suit celle de l'aspect du héros
         var look = new SavedLook("made.odile", 3, false, true, 5, 12);
         string text = SaveJsonReader.Write(SaveWith(look));
         Assert.Contains("\"look\": {\"body\": \"made.odile\", \"hair\": 3, \"beard\": false, \"dark\": true, \"hairTone\": 5, \"palette\": 12}", text, StringComparison.Ordinal);

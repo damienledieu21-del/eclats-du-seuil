@@ -191,9 +191,12 @@ public class Lot121WorldTests
         Assert.Equal((ZoneEventKind.Death, "zone.vallons/3/death/loup1", "loup1", true), (death.Kind, death.Key, death.Combatant, death.FirstTime));
         Assert.Contains("zone.vallons/3/death/loup1", first.Consumed);
         Assert.True(first.IsConsumed(death.Key));
-        // Rechargée depuis la sauvegarde (même session rejouée, registre gardé) : la même mort n'est plus une première fois.
+        // Sous-lot V2.26 (sauvegarde v18) : la sauvegarde ferme la session ; ses clés de mort sont purgées (une partie reprend toujours dans une
+        // session nouvelle, où la même mort a une autre clé).
         WorldSave save = first.Save();
-        Zone again = NewZone(setup, session: 3, consumed: save.Consumed);
+        Assert.DoesNotContain(save.Consumed, SaveValidator.IsDeathKey);
+        // La même session rejouée avec son registre vivant (reprise d'un instantané, serveur) : la même mort n'est plus une première fois.
+        Zone again = NewZone(setup, session: 3, consumed: first.Consumed);
         again.Enter(Bastion());
         again.Step();
         again.Engine.Submit(new CombatCommand(again.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", "loup1"));
@@ -273,7 +276,7 @@ public class Lot121WorldTests
 
     // --- Sauvegardes ------------------------------------------------------------------------------
 
-    private static string SaveText(string zone = "\"zone.vallons\"", string tick = "1234", string sessions = "2", string consumed = "[\"zone.vallons/1/death/loup1\", \"zone.vallons/2/death/loup2\"]",
+    private static string SaveText(string zone = "\"zone.vallons\"", string tick = "1234", string sessions = "2", string consumed = "[\"zone.vallons/1/quest/loup1\", \"zone.vallons/2/quest/loup2\"]",
         int version = 2, string kind = "save") =>
         $"{{\"schemaVersion\": {version}, \"kind\": \"{kind}\", \"contentVersion\": \"0.1.0-provisoire\", \"data\": {{\"zone\": {zone}, \"worldTick\": {tick}, \"sessions\": {sessions}, {(version >= 2 ? "\"character\": null, " : "")}\"consumed\": {consumed}}}}}";
 
@@ -284,11 +287,11 @@ public class Lot121WorldTests
         Assert.True(read.IsValid, read.Report.ToString());
         WorldSave save = read.Save!;
         Assert.Equal(("zone.vallons", 1234L, 2L), (save.Zone, save.WorldTick, save.Sessions));
-        Assert.Equal(new[] { "zone.vallons/1/death/loup1", "zone.vallons/2/death/loup2" }, save.Consumed);
+        Assert.Equal(new[] { "zone.vallons/1/quest/loup1", "zone.vallons/2/quest/loup2" }, save.Consumed);
         string text = SaveJsonReader.Write(save);
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         Assert.EndsWith("}\n", text, StringComparison.Ordinal);
-        Assert.Contains("\n    \"consumed\": [\n      \"zone.vallons/1/death/loup1\",\n", text, StringComparison.Ordinal);
+        Assert.Contains("\n    \"consumed\": [\n      \"zone.vallons/1/quest/loup1\",\n", text, StringComparison.Ordinal);
         Assert.Contains("\"consumed\": []", SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>())), StringComparison.Ordinal);
         // La sauvegarde trie et dédoublonne son registre ; l'écriture refuse une clé hors format.
         Assert.Equal(new[] { "a.b/1", "a.b/2" }, new WorldSave("zone.vallons", 0, 0, new[] { "a.b/2", "a.b/1", "a.b/2" }).Consumed);
@@ -302,8 +305,8 @@ public class Lot121WorldTests
     [InlineData("tick", "-1", "$.data.worldTick", ValidationCode.OutOfRange)]
     [InlineData("tick", "\"12\"", "$.data.worldTick", null)]
     [InlineData("sessions", "-1", "$.data.sessions", ValidationCode.OutOfRange)]
-    [InlineData("consumed", "[\"zone.vallons/2/death/loup2\", \"zone.vallons/1/death/loup1\"]", "$.data.consumed[1]", ValidationCode.InvalidValue)]
-    [InlineData("consumed", "[\"zone.vallons/1/death/loup1\", \"zone.vallons/1/death/loup1\"]", "$.data.consumed[1]", ValidationCode.DuplicateId)]
+    [InlineData("consumed", "[\"zone.vallons/2/quest/loup2\", \"zone.vallons/1/quest/loup1\"]", "$.data.consumed[1]", ValidationCode.InvalidValue)]
+    [InlineData("consumed", "[\"zone.vallons/1/quest/loup1\", \"zone.vallons/1/quest/loup1\"]", "$.data.consumed[1]", ValidationCode.DuplicateId)]
     [InlineData("consumed", "[\"pas une clé\"]", "$.data.consumed[0]", ValidationCode.InvalidValue)]
     [InlineData("consumed", "[\"seul\"]", "$.data.consumed[0]", ValidationCode.InvalidValue)]
     public void Sauvegarde_invalide_refusee_avec_son_chemin(string field, string value, string path, ValidationCode? code)
@@ -330,7 +333,7 @@ public class Lot121WorldTests
         Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", SaveValidator.MaxWorldTick + 1, 0, Array.Empty<string>())));
         Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, -1, Array.Empty<string>())));
         Assert.Throws<ArgumentException>(() => SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0,
-            Enumerable.Range(0, SaveValidator.MaxConsumed + 1).Select(i => $"zone.vallons/1/death/c{i}"))));
+            Enumerable.Range(0, SaveValidator.MaxConsumed + 1).Select(i => $"zone.vallons/1/quest/c{i}"))));
         string edge = SaveJsonReader.Write(new WorldSave("zone.vallons", SaveValidator.MaxWorldTick, SaveValidator.MaxWorldTick, Array.Empty<string>()));
         Assert.True(SaveJsonReader.Read(edge).IsValid);
     }
@@ -371,7 +374,7 @@ public class Lot121WorldTests
     public void Registre_jamais_au_dela_de_sa_borne()
     {
         // Revue Codex de la PR #42 (2e tour) : place réservée avant chaque tick pour toutes les morts possibles (5 créatures).
-        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        string Key(int i) => $"zone.vallons/0/quest/c{i}";
         int creatures = ZoneSetup().Combatants.Count;
         Zone full = NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed - creatures + 1).Select(Key));
         Assert.Throws<InvalidOperationException>(() => full.Step());
@@ -390,7 +393,7 @@ public class Lot121WorldTests
     public void Registre_initial_au_dela_de_la_borne_refuse()
     {
         // Revue Codex de la PR #42 (3e tour) : la zone n'admet pas un registre qu'elle ne pourrait ni faire avancer ni sauvegarder.
-        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        string Key(int i) => $"zone.vallons/0/quest/c{i}";
         Assert.Throws<ArgumentException>(() => NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed + 1).Select(Key)));
         Assert.Equal(SaveValidator.MaxConsumed, NewZone(consumed: Enumerable.Range(0, SaveValidator.MaxConsumed).Select(Key)).Consumed.Count);
     }
@@ -400,7 +403,7 @@ public class Lot121WorldTests
     {
         // Revue Codex de la PR #42 (3e tour) : une session rechargée dont les morts sont déjà au registre avance avec un registre plein ;
         // un combattant immortel ne réserve pas de place.
-        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        string Key(int i) => $"zone.vallons/0/quest/c{i}";
         CombatSetup setup = ZoneSetup();
         string[] deaths = setup.Combatants.Select(c => $"{ZoneId}/1/death/{c.Id}").ToArray();
         Zone reloaded = NewZone(consumed: deaths.Concat(Enumerable.Range(0, SaveValidator.MaxConsumed - deaths.Length).Select(Key)));
@@ -419,7 +422,7 @@ public class Lot121WorldTests
     public void Reserve_sans_les_arrivees_futures()
     {
         // Revue Codex de la PR #42 (5e tour) : une créature qui n'arrivera que plus tard ne réserve pas de place au registre avant son tick.
-        string Key(int i) => $"zone.vallons/0/death/c{i}";
+        string Key(int i) => $"zone.vallons/0/quest/c{i}";
         CombatSetup later = ZoneSetup(root =>
         {
             foreach (JsonNode? c in root["data"]!["combatants"]!.AsArray()) c!["arrivalMs"] = 1000;
@@ -481,8 +484,8 @@ public class Lot121WorldTests
             SaveReadResult nothing = SaveStore.Read(path);
             Assert.Null(nothing.Save);
             Assert.False(nothing.Unreadable);
-            var first = new WorldSave("zone.vallons", 100, 1, new[] { "zone.vallons/1/death/loup1" });
-            var second = new WorldSave("zone.vallons", 200, 2, new[] { "zone.vallons/1/death/loup1", "zone.vallons/2/death/loup2" });
+            var first = new WorldSave("zone.vallons", 100, 1, new[] { "zone.vallons/1/quest/loup1" });
+            var second = new WorldSave("zone.vallons", 200, 2, new[] { "zone.vallons/1/quest/loup1", "zone.vallons/2/quest/loup2" });
             SaveStore.Write(path, first);
             Assert.False(File.Exists(SaveStore.TemporaryPath(path)));
             Assert.Equal(100, SaveStore.Read(path).Save!.WorldTick);
@@ -496,7 +499,7 @@ public class Lot121WorldTests
             Assert.True(recovered.FromBackup);
             Assert.Equal(100, recovered.Save!.WorldTick);
             // Revue Codex de la PR #42 (3e tour) : écrire après ce repli ne fait pas de la principale abîmée la copie de secours.
-            var third = new WorldSave("zone.vallons", 300, 3, new[] { "zone.vallons/1/death/loup1" });
+            var third = new WorldSave("zone.vallons", 300, 3, new[] { "zone.vallons/1/quest/loup1" });
             SaveStore.Write(path, third);
             Assert.Equal(SaveJsonReader.Write(first), File.ReadAllText(SaveStore.BackupPath(path)));
             Assert.Equal(300, SaveStore.Read(path).Save!.WorldTick);

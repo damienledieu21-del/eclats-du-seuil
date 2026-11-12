@@ -130,7 +130,7 @@ public class V261SuitesDuSeuilTests
         Assert.Equal("0.25.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.17.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
-        Assert.Equal(17, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(18, SaveValidator.CurrentSchemaVersion);   // V2.26 : 18 (registre purgé, secteurs)
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
         Assert.Equal(("0.31.0", 25, 18), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }

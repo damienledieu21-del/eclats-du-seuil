@@ -132,7 +132,7 @@ public class Lot122CharacterTests
     // --- Sauvegarde, version 2 ---------------------------------------------------------------------
 
     private static WorldSave HeroSave(long xp = 40) =>
-        new("zone.vallons", 1200, 1, new[] { "zone.vallons/1/death/loup1" }, PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
+        new("zone.vallons", 1200, 1, new[] { "zone.vallons/1/quest/loup1" }, PlayerCharacters.Create("bastion", "class.bastion", Shipped).WithXp(xp));
 
     [Fact]
     public void Sauvegarde_du_personnage_lue_et_ecrite_a_l_identique()
@@ -261,7 +261,7 @@ public class Lot122CharacterTests
         Assert.Equal((60L, 2, 1), (session.Character.Xp, session.Level, session.EnteredLevel));   // le niveau 2 prend effet à la prochaine entrée
         WorldSave after = session.Save();
         Assert.Equal((60L, 2L), (after.Character!.Xp, after.Sessions));
-        Assert.Contains("zone.vallons/2/death/loup1", after.Consumed);
+        Assert.DoesNotContain("zone.vallons/2/death/loup1", after.Consumed);   // sous-lot V2.26 : clés de mort purgées à la sauvegarde
         Assert.True(after.WorldTick > 7200);
         // Reprise : le personnage entre au niveau 2, avec les attributs de ce niveau.
         var next = new WorldSession(SaveJsonReader.Read(SaveJsonReader.Write(after)).Save!, loaded.Setup!, ShippedData, quick, Items,
@@ -302,7 +302,7 @@ public class Lot122CharacterTests
     [InlineData("\"sessions\": 1,", "\"sessions\": 630720001,")]   // revue Codex de la PR #43 (5e tour) : même borne que le temps du monde
     [InlineData("\"worldTick\": 1200,", "\"worldTick\": 630720001,")]
     [InlineData("\"contentVersion\": \"", "\"contentVersion\": \"v")]
-    [InlineData("\"zone.vallons/1/death/loup1\"", "\"zone.vallons/1/death/loup1\", \"zone.vallons/1/death/loup1\"")]
+    [InlineData("\"zone.vallons/1/quest/loup1\"", "\"zone.vallons/1/quest/loup1\", \"zone.vallons/1/quest/loup1\"")]
     public void Schema_refuse_ce_que_la_lecture_refuse(string from, string to)
     {
         // Revue Codex de la PR #43 : le schéma JSON des sauvegardes suit le format exigé par la lecture.
