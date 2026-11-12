@@ -775,4 +775,100 @@ public class V226SecteursMondeTests
         Assert.DoesNotContain("zone.essai/s01_00/1/death/loup_est", w.Consumed);
         Assert.Contains("zone.essai/s01_00/coffre", w.Consumed);
     }
+
+    // --- Revue Codex de la PR #150 (4e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Populations_a_heures_voulues_comme_dans_l_hote_d_une_zone()
+    {
+        // P2 : le prédicat de présence (heures, temps, nuits) est passé aux populations de chaque secteur, au tick du monde : même journal
+        // que l'hôte d'une zone avec le même prédicat, et les créatures à heures arrivent quand elles sont voulues.
+        ZoneDefinition vallons = V11TestData.Zone();
+        Population timed = vallons.Populations.First(x => x.Timed);
+        bool Wanted(Population pop, long tick) => tick >= 20;
+        var log = new MemoryCombatLog();
+        var reference = new MemoryCombatLog();
+        var seen = new List<long>();
+        var world = SectorWorld.For(vallons, 0, 1, logs: (sector, session) => sector == "s07_06" ? log : NullCombatLog.Instance,
+            wanted: (pop, tick) => { seen.Add(tick); return Wanted(pop, tick); });
+        var zone = new Zone(vallons.Id, ZoneSetups.For(vallons, Array.Empty<string>()), 1, 0, log: reference);
+        var populations = new ZonePopulations(vallons);
+        world.Enter(Hero("bastion", -18, -12));
+        zone.Enter(Hero("bastion", -18, -12));
+        var events = new List<(string Sector, PopulationEvent Event)>();
+        var expected = new List<PopulationEvent>();
+        for (int i = 0; i < 200; i++)
+        {
+            world.Step(populationEvents: events);
+            zone.Step();
+            expected.AddRange(populations.Step(zone, 0, Wanted));
+        }
+        Assert.Equal(reference.Lines, log.Lines);
+        static string Text(PopulationEvent e) => $"{e.Kind}/{e.Population}/{e.Creature}/{e.Tick}";
+        Assert.Equal(expected.Select(Text), events.Select(e => Text(e.Event)));
+        Assert.Contains(events, e => e.Event.Population == timed.Creature && e.Event.Tick >= 20);
+        Assert.NotEmpty(seen);
+
+        // Sans prédicat : jamais voulues (comme l'hôte d'une zone sans prédicat).
+        var quiet = SectorWorld.For(vallons, 0, 1);
+        quiet.Enter(Hero("bastion", -18, -12));
+        var none = new List<(string Sector, PopulationEvent Event)>();
+        for (int i = 0; i < 200; i++) quiet.Step(populationEvents: none);
+        Assert.DoesNotContain(none, e => e.Event.Population == timed.Creature && e.Event.Tick >= 20);
+        Assert.NotEqual(events.Select(e => Text(e.Event)), none.Select(e => Text(e.Event)));
+    }
+
+    [Fact]
+    public void Predicat_de_presence_au_tick_du_monde()
+    {
+        // Un monde qui commence au tick 1 000 : le prédicat reçoit le tick du monde, pas celui de la session du secteur.
+        ZoneDefinition vallons = V11TestData.Zone();
+        var seen = new List<long>();
+        var world = SectorWorld.For(vallons, 1_000, 1, wanted: (pop, tick) => { seen.Add(tick); return false; });
+        world.Enter(Hero("bastion", -18, -12));
+        for (int i = 0; i < 10; i++) world.Step();
+        Assert.NotEmpty(seen);
+        Assert.All(seen, t => Assert.InRange(t, 1_000, 1_011));
+    }
+
+    [Fact]
+    public void Arrivee_refusee_sans_rien_changer_si_la_commande_de_marche_ne_tient_pas()
+    {
+        // P1 : la marche qui continue de l'autre côté a son budget (maxCommands) réservé avant l'arrivée. Le budget de commandes du secteur
+        // est s'épuise entre le départ et l'arrivée : l'arrivée n'y est pas admise (refus atomique : aucun combattant d'Alice à l'est) ; Alice
+        // revient à l'ouest avec son état, son suivi reste cohérent, le monde n'est jamais interrompu par une commande refusée.
+        CombatRules rules = Rules(Shipped.Combat, Shipped.Combat.MaxCombatants);
+        typeof(CombatRules).GetProperty(nameof(CombatRules.MaxCommands))!.SetValue(rules, 8);
+        SectorWorld w = World(Map(rules));
+        w.Enter(Hurt("alice", 250, 128, 200));
+        w.Step();
+        CombatEngine east = w.SectorZone("s01_00")!.Engine;
+        foreach (string id in new[] { "souche_a", "souche_b" })
+            east.Join(new DummySetup(id, "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(id == "souche_a" ? 500 : 480, 250), Fixed.FromRatio(1, 2)),
+                arrivalMs: checked(east.CurrentTick * 50)));
+        w.Step();
+        Walk(w, "alice", 1, 0);
+        List<SectorEvent> run = Run(w, 300, e => e.Kind == SectorEventKind.Departed);
+        Assert.Contains(run, e => e.Kind == SectorEventKind.Departed);
+        foreach (string id in new[] { "souche_a", "souche_b" })
+            for (int k = 0; k < 4; k++)
+                east.Submit(new CombatCommand(east.CurrentTick * 50, id, k % 2 == 0 ? CombatAction.GuardStart : CombatAction.GuardStop));
+        Assert.True(east.HasRoomToJoinWith(0));
+        Assert.False(east.HasRoomToJoinWith(1));
+        List<SectorEvent> back = w.Step().ToList();
+        Assert.Contains(back, e => e.Kind == SectorEventKind.Arrived && e.Sector == "s00_00" && e.Other == "s00_00");   // retour au départ
+        Assert.DoesNotContain(east.CombatantIds, id => id.StartsWith("alice", StringComparison.Ordinal));
+        w.Step();
+        Assert.Equal("s00_00", w.SectorOf("alice"));
+        CombatantView v = w.ViewOf("alice");
+        Assert.True(v.IsPresent);
+        Assert.Equal(200L, v.Health);
+        // Ensuite, plus de départ vers un secteur sans budget pour l'arrivée : Alice reste à l'ouest, sans erreur.
+        for (int i = 0; i < 200; i++)
+        {
+            Assert.DoesNotContain(w.Step(), e => e.Kind == SectorEventKind.Departed);
+            Assert.Equal("s00_00", w.SectorOf("alice"));
+        }
+        Assert.True(w.ViewOf("alice").IsPresent);
+    }
 }

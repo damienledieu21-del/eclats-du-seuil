@@ -284,6 +284,9 @@ namespace EdS.World
             public ZonePopulations Populations = null!;
             public long IdleTicks;
             public ObstacleIndex Walls = null!;
+
+            /// <summary>Revue Codex de la PR #150 (4e tour) : présence voulue de ses populations (heures, temps, nuits), au tick de sa session.</summary>
+            public Func<Population, long, bool>? Wanted;
         }
 
         private sealed class Player
@@ -318,6 +321,7 @@ namespace EdS.World
         private readonly string _zoneId;
         private readonly long _session;
         private readonly IReadOnlyList<Population> _populations;
+        private readonly Func<Population, long, bool>? _wanted;
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -337,9 +341,14 @@ namespace EdS.World
         /// <param name="session">Session du monde (celle du secteur du cœur, comme une session de zone d'avant).</param>
         /// <param name="sectorSessions">Dernière session de chaque autre secteur (sauvegarde) : une réouverture prend la suivante.</param>
         /// <param name="logs">Journal de chaque session de secteur (nom, session) ; null : aucun.</param>
+        /// <param name="wanted">Revue Codex de la PR #150 (4e tour) : une créature à heures, à temps ou rare de la nuit est-elle voulue au tick du
+        /// monde donné (<c>(population, tick du monde)</c>) ? Même prédicat que l'hôte d'une zone (<see cref="ZonePopulations.Step"/>), passé
+        /// aux populations de chaque secteur ; null : jamais (comme l'hôte d'une zone sans prédicat).</param>
         public SectorWorld(SectorMap map, string zoneId, long startWorldTick, long session, IEnumerable<string>? consumed = null,
-            IEnumerable<Population>? populations = null, IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null)
+            IEnumerable<Population>? populations = null, IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null,
+            Func<Population, long, bool>? wanted = null)
         {
+            _wanted = wanted;
             _map = map ?? throw new ArgumentNullException(nameof(map));
             _zoneId = zoneId ?? throw new ArgumentNullException(nameof(zoneId));
             if (session < 1) throw new ArgumentOutOfRangeException(nameof(session));
@@ -360,12 +369,12 @@ namespace EdS.World
 
         /// <summary>Hôte des secteurs d'une zone à région, avec ses populations (chacune dans son secteur).</summary>
         public static SectorWorld For(ZoneDefinition zone, long startWorldTick, long session, IEnumerable<string>? consumed = null,
-            IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null)
+            IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null, Func<Population, long, bool>? wanted = null)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
             CombatSetup area = ZoneSetups.For(zone, keys);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs);
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted);
         }
 
         /// <summary>Secteurs ouverts, dans l'ordre des noms.</summary>
@@ -464,9 +473,11 @@ namespace EdS.World
             if (!home || reopened) _sectorSessions[name] = session;
             CombatSetup setup = _map.SetupFor(name, session, reopened);
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
-            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.SectorOf(p.Template.Placement.Position) == name
-                && setup.Combatants.Any(c => c.Id == p.Creature)));
-            open = new Open { Name = name, Zone = zone, Populations = populations, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
+            // Revue Codex de la PR #150 (4e tour) : toutes les populations dont la place est dans le secteur, comme l'hôte d'une zone (une
+            // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).
+            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.SectorOf(p.Template.Placement.Position) == name));
+            Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
+            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
             return open;
@@ -585,6 +596,9 @@ namespace EdS.World
             CombatEngine engine = target.Zone.Engine;
             if (engine.FreePlaces == 0 || engine.IdentitiesLeft == 0) return false;
             if (FreeSpot(target, at, radius) is not GroundVector spot) return false;
+            // Revue Codex de la PR #150 (4e tour) : budgets de l'arrivée et de la marche qui continue réservés avant l'arrivée (refus atomique :
+            // aucune arrivée admise dont la commande serait ensuite refusée).
+            if (!engine.HasRoomToJoinWith(move is null ? 0 : 1)) return false;
             int passages = p.Passages;
             string id = IdentityIn(target.Zone, p);
             long atMs = checked(engine.CurrentTick * engine.TickMilliseconds);
@@ -599,7 +613,7 @@ namespace EdS.World
                 return false;
             }
             // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
-            if (move is GroundVector m) engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));
+            if (move is GroundVector m) engine.Submit(new CombatCommand(atMs, id, m, p.PendingBackward));   // budget réservé plus haut
             if (announce) events.Add(new SectorEvent(SectorEventKind.Arrived, sector, p.Id, from ?? p.Sector, WorldTick));   // sector == from : retour, passage impossible
             p.ArrivingFrom = from ?? p.ArrivingFrom;
             p.Arrival = arrival;
@@ -642,6 +656,7 @@ namespace EdS.World
             // joueurs y arrivent avec leur état) ; le monde n'est jamais bloqué par une session terminée.
             foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
             // 0. Sorties, puis entrées, dans l'ordre des joueurs.
+            List<string>? stay = null;
             // Revue Codex de la PR #150 (2e tour) : un joueur dont l'arrivée est programmée à ce tick (passage tout juste fait) sort aussi :
             // son arrivée a lieu au début du tick, son départ en fin du même tick ; il ne reste jamais un combattant sans suivi.
             foreach (string id in _exiting)
@@ -649,10 +664,23 @@ namespace EdS.World
                 {
                     CombatantView v = o.Zone.Engine.View(p.Combatant);
                     bool arriving = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick == o.Zone.Engine.CurrentTick;
-                    if ((v.IsPresent && !v.IsDead) || arriving) o.Zone.Leave(p.Combatant);
+                    if ((v.IsPresent && !v.IsDead) || arriving)
+                    {
+                        // Revue Codex de la PR #150 (4e tour) : sortie refusée (budget de commandes épuisé) : le joueur reste suivi et
+                        // réessaie au tick suivant ; jamais un combattant présent sans suivi.
+                        try
+                        {
+                            o.Zone.Leave(p.Combatant);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            (stay ??= new List<string>()).Add(id);
+                        }
+                    }
                 }
-            foreach (string id in _exiting) _players.Remove(id);
+            foreach (string id in _exiting) if (stay is null || !stay.Contains(id)) _players.Remove(id);
             _exiting.Clear();
+            if (stay != null) foreach (string id in stay) _exiting.Add(id);
             foreach (Player p in _players.Values.Where(x => x.Waiting).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 OpenSector(p.Sector!, events);
@@ -676,7 +704,7 @@ namespace EdS.World
             {
                 if (o.Zone.WorldTick != WorldTick) throw new InvalidOperationException($"Secteur {o.Name} au tick {o.Zone.WorldTick}, monde au tick {WorldTick}.");
                 foreach (ZoneEvent e in o.Zone.Step()) zoneEvents?.Add((o.Name, e));
-                foreach (PopulationEvent e in o.Populations.Step(o.Zone)) populationEvents?.Add((o.Name, e));
+                foreach (PopulationEvent e in o.Populations.Step(o.Zone, 0, o.Wanted)) populationEvents?.Add((o.Name, e));
             }
             WorldTick = checked(WorldTick + 1);
 
@@ -766,10 +794,19 @@ namespace EdS.World
                 // Relecture indépendante de la PR #150 : pas de départ sans place libre (places et endroit) dans le secteur d'arrivée ; le joueur
                 // reste où il est (au pire au bout de la marge) et réessaie au tick suivant.
                 if (!_open.TryGetValue(to, out Open? next) || next.Zone.IsOver || next.Zone.Engine.FreePlaces == 0 || next.Zone.Engine.IdentitiesLeft == 0
-                    || FreeSpot(next, pos, v.Radius!.Value) is null) continue;
+                    || FreeSpot(next, pos, v.Radius!.Value) is null || !next.Zone.Engine.HasRoomToJoinWith(v.MoveDirection is null ? 0 : 1)) continue;
+                // Revue Codex de la PR #150 (4e tour) : commande de départ refusée (budget de commandes du secteur épuisé) : pas de départ,
+                // rien n'a changé (soumission tout ou rien).
+                try
+                {
+                    o.Zone.Leave(p.Combatant);
+                }
+                catch (InvalidOperationException)
+                {
+                    continue;
+                }
                 p.PendingMove = v.MoveDirection;
                 p.PendingBackward = v.MoveBackward;
-                o.Zone.Leave(p.Combatant);
                 p.PendingTo = to;
                 events.Add(new SectorEvent(SectorEventKind.Departed, p.Sector!, p.Id, to, WorldTick));
             }
