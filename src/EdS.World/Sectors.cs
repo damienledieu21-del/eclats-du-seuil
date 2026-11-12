@@ -510,7 +510,7 @@ namespace EdS.World
                 Open open = OpenSector(sector, events);
                 var p = new Player { Id = c.Id, Setup = c, Sector = sector };
                 p.Combatant = IdentityIn(open.Zone, p);
-                open.Zone.Enter(Arriving(c, p.Combatant, c.Placement, 0, null, null));
+                open.Zone.Enter(Arriving(c, p.Combatant, c.Placement, 0, null, c.Carried));   // un joueur peut entrer avec un état (reprise, autre région)
                 _players[c.Id] = p;
             }
             _entering.Clear();
@@ -540,14 +540,24 @@ namespace EdS.World
                 IReadOnlyList<ConsumableSetup> consumables = from.Zone.Engine.CarriedConsumables(p.Combatant);
                 Open target = OpenSector(to, events);
                 Fixed radius = left.Radius!.Value;
-                GroundVector at = FreeSpot(target, left.Position!.Value, radius) ?? left.Position!.Value;
+                // Relecture indépendante de la PR #150 : passage atomique. Place et place libre ont été vérifiées avant le départ ; si, entre-temps,
+                // le secteur d'arrivée n'a plus de place ou plus d'endroit libre, le joueur revient dans son secteur de départ (son départ y a
+                // libéré sa place), avec le même état : il n'est jamais perdu.
+                GroundVector? spot = target.Zone.Engine.FreePlaces > 0 ? FreeSpot(target, left.Position!.Value, radius) : null;
+                if (spot is null)
+                {
+                    target = from;
+                    to = from.Name;
+                    spot = FreeSpot(from, left.Position!.Value, radius) ?? left.Position!.Value;
+                }
+                GroundVector at = spot.Value;
                 string id = IdentityIn(target.Zone, p);
                 long atMs = checked(target.Zone.Engine.CurrentTick * target.Zone.Engine.TickMilliseconds);
                 target.Zone.Enter(Arriving(p.Setup, id, new CombatantPlacement(at, radius, left.Facing), atMs, consumables, carried.IsEmpty ? null : carried));
                 // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
                 if (p.PendingMove is GroundVector move) target.Zone.Engine.Submit(new CombatCommand(atMs, id, move, p.PendingBackward));
                 p.PendingMove = null;
-                events.Add(new SectorEvent(SectorEventKind.Arrived, to, p.Id, p.Sector, WorldTick));
+                events.Add(new SectorEvent(SectorEventKind.Arrived, to, p.Id, p.Sector, WorldTick));   // to == p.Sector : retour, passage impossible
                 p.Sector = to;
                 p.Combatant = id;
             }
@@ -587,6 +597,9 @@ namespace EdS.World
                         }
                     continue;   // il passera au prochain tick sans rencontre
                 }
+                // Relecture indépendante de la PR #150 : pas de départ sans place libre (places et endroit) dans le secteur d'arrivée ; le joueur
+                // reste où il est (au pire au bout de la marge) et réessaie au tick suivant.
+                if (!_open.TryGetValue(to, out Open? next) || next.Zone.IsOver || next.Zone.Engine.FreePlaces == 0 || FreeSpot(next, pos, v.Radius!.Value) is null) continue;
                 p.PendingMove = v.MoveDirection;
                 p.PendingBackward = v.MoveBackward;
                 o.Zone.Leave(p.Combatant);

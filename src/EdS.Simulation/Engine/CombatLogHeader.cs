@@ -90,7 +90,6 @@ namespace EdS.Simulation.Engine
             if (!attack.HoldPosition) w.Field("holdPosition", false);
         }
 
-        /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
         /// <summary>Sous-lot V2.26 (format 25) : état emporté, sous la forme du fichier de scénario (champs nuls ou vides omis).</summary>
         private static void WriteCarried(JsonLineWriter w, CarriedState c)
         {
@@ -111,6 +110,7 @@ namespace EdS.Simulation.Engine
             w.EndObject();
         }
 
+        /// <summary>Sous-lot 11.4 : point ou direction sous la forme des fichiers de scénario, <c>[x, z]</c>.</summary>
         internal static JsonLineWriter WritePoint(JsonLineWriter w, GroundVector p) => w.BeginArray().Value(p.X).Value(p.Z).EndArray();
 
         private static void WriteSpace(JsonLineWriter w, CombatSpace space)
