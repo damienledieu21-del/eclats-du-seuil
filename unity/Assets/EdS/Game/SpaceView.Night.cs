@@ -123,7 +123,7 @@ namespace EdS.Game
             {
                 var holder = new GameObject(spot.Id);
                 holder.transform.SetParent(_nightRoot.transform, false);
-                holder.transform.position = new Vector3((float)spot.X, 0f, (float)spot.Z);
+                holder.transform.position = StyleWorld.OnGround(new Vector3((float)spot.X, 0f, (float)spot.Z));   // V2.24 : sur le sol affiché
                 holder.transform.rotation = Quaternion.Euler(0f, (float)spot.Yaw, 0f);
                 float top = (float)NightLamps.LanternTop(spot);
                 // Revue Codex de la PR #99 : pièces placées en coordonnées locales au support (chaque lanterne à sa place, tournée avec lui).
@@ -140,7 +140,7 @@ namespace EdS.Game
                     foreach (NightLamp w in NightLamps.Wisps(place.Id, place.MinX, place.MinZ, place.MaxX, place.MaxZ, place.Id == "riviere" ? 3 : 5,
                                  (x, z) => place.Id != "ruines" || Free(x, z, 0.5)))
                     {
-                        Transform body = Piece(_nightRoot.transform, w.Id, PrimitiveType.Sphere, new Vector3((float)w.X, (float)w.Y, (float)w.Z),
+                        Transform body = Piece(_nightRoot.transform, w.Id, PrimitiveType.Sphere, StyleWorld.OnGround(new Vector3((float)w.X, (float)w.Y, (float)w.Z)),
                             new Vector3(0.16f, 0.16f, 0.16f), _wispGlow).transform;
                         _wisps.Add(new Lamp { Data = w, Body = body, Glow = body.position });
                     }
@@ -151,7 +151,7 @@ namespace EdS.Game
                 if (!(NightLamps.Owl(tree.Id, cx, cz) is NightLamp owl)) continue;
                 var holder = new GameObject(owl.Id);
                 holder.transform.SetParent(_nightRoot.transform, false);
-                holder.transform.position = new Vector3((float)owl.X, (float)owl.Y, (float)owl.Z);
+                holder.transform.position = StyleWorld.OnGround(new Vector3((float)owl.X, (float)owl.Y, (float)owl.Z));   // V2.24 : l'arbre a monté
                 holder.transform.rotation = Quaternion.Euler(0f, (float)owl.Yaw, 0f);
                 foreach (float side in new[] { -0.07f, 0.07f })
                     Piece(holder.transform, "œil", PrimitiveType.Sphere, holder.transform.position + holder.transform.rotation * new Vector3(side, 0f, 0.45f),

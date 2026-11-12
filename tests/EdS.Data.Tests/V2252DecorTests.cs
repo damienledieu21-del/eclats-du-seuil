@@ -487,4 +487,115 @@ public class V2252DecorTests : IDisposable
         Assert.True(own > 0 && own < view.IndexOf("QuarryFace(id, points)) return;", StringComparison.Ordinal)
             && own < view.IndexOf("Wave5Role.Menhir", StringComparison.Ordinal), "les modèles de l'atelier avant le front, les menhirs et les rochers faits par le code");
     }
+
+    // --- Relief (V2.24) ----------------------------------------------------------------------------------------------------------
+
+    /// <summary>Plus grand écart de hauteur du sol affiché entre les points et <paramref name="level"/>.</summary>
+    private static double Spread(GroundRelief relief, IEnumerable<(double X, double Z)> points, double level) =>
+        points.Max(p => Math.Abs(relief.Height(p.X, p.Z) - level));
+
+    /// <summary>Hauteur où la vue pose un obstacle (SpaceView.Ground : le plus bas du centre et de quatre points à 0,4 m).</summary>
+    private static double Seat(GroundRelief relief, double x, double z, double r) =>
+        new[] { (x, z), (x - r, z), (x + r, z), (x, z - r), (x, z + r) }.Min(p => relief.Height(p.Item1, p.Item2));
+
+    /// <summary>
+    /// Relief fusionné (V2.24) : chaque obstacle de V2.25.2 est bâti (replat horizontal jusqu'à 1,5 m de son emprise) ; la vue le monte
+    /// tout entier à ce niveau (SpaceView.Obstacle) : le modèle, ses débris, éclats et vantaux ouverts (qui ne sortent pas de 1,5 m) sont au
+    /// sol, ni enterrés ni flottants (5 mm près). Les vantaux tournent autour d'axes verticaux (rotation autour de y seulement).
+    /// </summary>
+    [Fact]
+    public void Les_obstacles_de_l_atelier_sont_sur_leur_replat()
+    {
+        AdventureMap map = Vallons().Map;
+        GroundRelief relief = GroundRelief.For(map);
+        Assert.False(relief.IsFlat);
+        var reach = new Dictionary<string, (double X0, double X1, double Y0, double Y1)>
+        {
+            ["pierre_seuil1"] = (-0.5, 0.5, -0.5, 0.5), ["pierre_seuil2"] = (-0.5, 0.5, -0.5, 0.5), ["pierre_seuil3"] = (-0.5, 0.5, -0.5, 0.5),
+            ["porte_moulin"] = (-3, 3, -0.5, -0.13), ["mur_nord"] = (-6.25, 6.25, -1.15, 1.05), ["mur_sud"] = (-6.75, 6.75, -1.2, 1.05),
+            ["pilier1"] = (-0.25, 0.42, -0.43, 0.25), ["pilier2"] = (-0.25, 0.42, -0.43, 0.25), ["pilier3"] = (-0.25, 0.42, -0.43, 0.25),
+            ["pilier4"] = (-0.25, 0.42, -0.43, 0.25), ["front_de_taille"] = (-14, 14, -2, 2), ["bloc1"] = (-1.5, 1.5, -1.5, 1.5),
+            ["bloc2"] = (-1.5, 1.5, -1.5, 1.5), ["bloc3"] = (-1.5, 1.5, -1.5, 1.5), ["bloc4"] = (-2, 2, -2, 2), ["bloc5"] = (-2, 2, -2, 2),
+            ["bloc6"] = (-2, 2, -2, 2),
+        };
+        foreach (var (id, r) in reach)
+        {
+            SpaceObstacle o = map.Obstacles.Single(x => x.Id == id);
+            Assert.True(GroundRelief.Builds(o), id + " : pas de replat");
+            var b = Box(o);
+            double cx = (b.MinX + b.MaxX) / 2, cz = (b.MinZ + b.MaxZ) / 2;
+            (int X, int Z) facing = TownModels.OwnFacing(id, TownRules.FacingOf(id, b.MinX, b.MinZ, b.MaxX, b.MaxZ, map.Roads, map.Doors));
+            // Les pierres tournent d'un lacet quelconque : leur cercle de 0,71 m tient dans le replat.
+            double yaw = AtelierDecor.IsSeuilStone(id) ? AtelierDecor.SeuilStoneYaw(cx, cz, AtelierDecor.SeuilCenter(map.Obstacles)!.Value) : TownModels.FacingYaw(facing);
+            var pts = Footprint(cx, cz, yaw, r.X0, r.X1, r.Y0, r.Y1);
+            Assert.All(pts, p => Assert.True(Math.Max(Math.Max(b.MinX - p.X, p.X - b.MaxX), Math.Max(b.MinZ - p.Z, p.Z - b.MaxZ)) <= 1.5 + 1e-9, id + " sort du replat"));
+            double seat = Seat(relief, cx, cz, 0.4);
+            Assert.True(Spread(relief, pts, seat) < 0.005, id + " : " + Spread(relief, pts, seat));
+        }
+        // Vantaux ouverts (bout à 2 m de l'emprise, au-delà du replat de 1,5 m) : moins de 1 mm d'écart au sol (mesuré).
+        double gateSeat = Seat(relief, -3, 19.5, 0.4);
+        double leaves = Spread(relief, Footprint(-3, 19.5, 0, -2.69, -2.40, -0.19, 2.481).Concat(Footprint(-3, 19.5, 0, 2.40, 2.69, -0.19, 2.479)), gateSeat);
+        Assert.True(leaves < 0.005, "vantaux : " + leaves);
+        // Les pierres sont sur la butte du Seuil (plus haut que la plaine alentour).
+        Assert.True(Seat(relief, 44.5, 28.5, 0.4) > relief.Height(44.5, 10) + 0.5);
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        Assert.Contains("Lift(children, occluders, boxes, Ground(cx, cz, 0.4f));", view, StringComparison.Ordinal);
+        string swing = File.ReadAllText(Path.Combine(Game, "GateSwing.cs"));
+        Assert.Contains("Quaternion.Euler(0f, AtelierDecor.GateLeafSign(\"G\") * angle, 0f)", swing, StringComparison.Ordinal);
+        Assert.Contains("Quaternion.Euler(0f, AtelierDecor.GateLeafSign(\"D\") * angle, 0f)", swing, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Passage ouvert (session suivante : l'obstacle retiré) : la porte garde son replat (<see cref="AdventureMap.Gates"/>), la barrière
+    /// ouverte y est posée au même niveau qu'avant l'ouverture (SpaceView.OpenGates la monte comme un obstacle).
+    /// </summary>
+    [Fact]
+    public void La_barriere_ouverte_garde_son_replat()
+    {
+        AdventureMap map = Vallons().Map;
+        SpaceObstacle gate = map.Gates.Single();
+        var space = new CombatSpace(G(map.MinX, map.MinZ), G(map.MaxX, map.MaxZ), map.Obstacles.Where(o => o.Id != gate.Id));
+        var open = new AdventureMap(space, map.Places, map.Roads, map.Clearings, map.Doors, false, null, map.Gates);
+        Assert.DoesNotContain(open.Obstacles, o => o.Id == gate.Id);
+        GroundRelief before = GroundRelief.For(map), after = GroundRelief.For(open);
+        Assert.Contains(after.Pads, p => p.Id == "porte_moulin");
+        double level = Seat(before, -3, 19.5, 0.4);
+        Assert.Equal(level, Seat(after, -3, 19.5, 0.4), 3);
+        var leaves = Footprint(-3, 19.5, 0, -3, 3, -0.5, 2.5);
+        Assert.True(Spread(after, leaves, Seat(after, -3, 19.5, 0.4)) < 0.005);
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        int gates = view.IndexOf("private void OpenGates(", StringComparison.Ordinal);
+        Assert.True(view.IndexOf("Lift(children, occluders, boxes, Ground(", gates, StringComparison.Ordinal) > gates);
+    }
+
+    /// <summary>
+    /// Cailloux, touffes et accessoires de la carrière, posés par la vue au plus bas du sol affiché sous leur pied
+    /// (<see cref="AtelierDecor.Foot"/>) : rien ne flotte, et le sol ne monte pas de plus de quelques centimètres sous eux (rien d'enfoui).
+    /// </summary>
+    [Fact]
+    public void Les_petits_decors_suivent_le_sol()
+    {
+        AdventureSession a = Vallons();
+        AdventureMap map = a.Map;
+        GroundRelief relief = GroundRelief.For(map);
+        (double X, double Z) heart = AtelierDecor.SeuilCenter(map.Obstacles)!.Value;
+        var b = Box(map.Obstacles.Single(o => o.Id == "front_de_taille"));
+        var spots = AtelierDecor.SeuilPebbles(heart, map.Obstacles, map.Roads).Concat(AtelierDecor.SeuilTufts(map.Obstacles))
+            .Concat(AtelierDecor.QuarryProps(b.MinX, b.MinZ, b.MaxX, b.MaxZ, (-1, 0))).ToList();
+        double worst = 0;
+        foreach (DecorSpot p in spots)
+        {
+            double r = AtelierDecor.Foot(p.Piece) * p.Scale, seat = Seat(relief, p.X, p.Z, AtelierDecor.Foot(p.Piece));
+            var under = Footprint(p.X, p.Z, 0, -r, r, -r, r);
+            double buried = under.Max(q => relief.Height(q.X, q.Z)) - seat;
+            Assert.True(seat <= relief.Height(p.X, p.Z) + 1e-9, p.Piece + " flotte");
+            worst = Math.Max(worst, buried / Math.Max(r, 0.1));
+            Assert.True(buried < (r > 0.5 ? 0.15 : 0.03), p.Piece + " enfoui de " + buried);
+        }
+        Assert.True(worst < 0.2);
+        Assert.Equal(new[] { 0.09, 0.11, 0.12, 0.11, 1.39, 1.5, 0.8, 1.6 },
+            new[] { "caillou_p", "caillou_m", "caillou_g", "touffe", "chevre", "traineau", "outils", "tas_eclats" }.Select(AtelierDecor.Foot));
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        Assert.Contains("Ground(x, z, (float)AtelierDecor.Foot(spot.Piece))", view, StringComparison.Ordinal);
+    }
 }

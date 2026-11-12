@@ -57,6 +57,26 @@ namespace EdS.Runtime
         public static bool IsPiece(string? model, string piece) =>
             model != null && model.EndsWith("_" + piece, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Rayon (m) du pied d'un petit décor (demi-côté le plus grand de l'export de jeu, échelle 1) : la vue le pose au plus bas du sol
+        /// affiché sous ce pied (V2.24).
+        /// </summary>
+        public static double Foot(string piece)
+        {
+            switch (piece)
+            {
+                case "caillou_p": return 0.09;
+                case "caillou_m": return 0.11;
+                case "caillou_g": return 0.12;
+                case "touffe": return 0.11;
+                case "chevre": return 1.39;
+                case "traineau": return 1.5;
+                case "outils": return 0.8;
+                case "tas_eclats": return 1.6;
+                default: return 0.5;
+            }
+        }
+
         /// <summary>Matière sans élimination des faces arrière (les brins de la touffe sont en double face, rapport de l'atelier).</summary>
         public static bool DoubleSided(string? material) => StyleRules.Key(material ?? string.Empty) == "pierresseuilaccessoires";
 

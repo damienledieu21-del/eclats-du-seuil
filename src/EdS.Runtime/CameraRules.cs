@@ -184,6 +184,84 @@ namespace EdS.Runtime
             return shown + (clear - shown) * (1.0 - Math.Exp(-CollisionReturnSpeed * dt));
         }
 
+        /// <summary>
+        /// Sous-lot V2.24 (revue Codex de la PR #144, accord de Damien : « Ok pour corriger la caméra ») : pas (m) des points du rayon de la
+        /// caméra comparés au sol affiché, et nombre de demi-pas pour affiner le premier point sous le sol.
+        /// </summary>
+        public const double TerrainStep = 0.5;
+
+        private const int TerrainRefine = 6;
+
+        /// <summary>
+        /// Sous-lot V2.24 : vitesse (par seconde) à laquelle la caméra se rapproche quand une colline passe entre elle et le personnage :
+        /// rapide mais sans saut (le relief, lui, peut changer d'un coup quand une crête croise le rayon) ; elle revient ensuite à
+        /// <see cref="CollisionReturnSpeed"/>.
+        /// </summary>
+        public const double TerrainApproachSpeed = 14.0;
+
+        /// <summary>
+        /// Sous-lot V2.24 (revue Codex de la PR #144) : distance libre derrière le point visé <paramref name="target"/>, dans la direction
+        /// <paramref name="direction"/> (celle de <see cref="Offset"/> pour une distance de 1), contre le sol affiché <paramref name="ground"/>
+        /// (hauteur en x, z ; le relief des Vallons, les collines hors de l'aire) : tous les points du rayon jusqu'à la distance rendue restent
+        /// au moins à <see cref="GroundClearance"/> au-dessus du sol (rien ne cache le personnage, la caméra n'est jamais sous une colline).
+        /// <paramref name="limit"/> (au plus <see cref="MaxDistance"/>) si rien ne gêne, ou sans sol, ou si le point visé est lui-même trop
+        /// bas (rien à protéger). Points tous les <see cref="TerrainStep"/> m, premier point gênant affiné par dichotomie ; sans allocation
+        /// (un délégué gardé par l'appelant).
+        /// </summary>
+        public static double TerrainClearDistance((double X, double Y, double Z) target, (double X, double Y, double Z) direction,
+            Func<double, double, double>? ground, double limit = MaxDistance)
+        {
+            double max = Finite(limit) ? Clamp(limit, 0, MaxDistance) : MaxDistance;
+            if (ground == null || !Finite(target.X) || !Finite(target.Y) || !Finite(target.Z) || !Finite(direction.X) || !Finite(direction.Y)
+                || !Finite(direction.Z)) return max;
+            if (!Clears(target, direction, 0, ground)) return max;
+            double ok = 0;
+            for (double s = TerrainStep; ; s += TerrainStep)
+            {
+                double at = Math.Min(s, max);
+                if (!Clears(target, direction, at, ground))
+                {
+                    double bad = at;
+                    for (int i = 0; i < TerrainRefine; i++)
+                    {
+                        double mid = (ok + bad) / 2;
+                        if (Clears(target, direction, mid, ground)) ok = mid;
+                        else bad = mid;
+                    }
+                    return Math.Max(CollisionMinDistance, ok);
+                }
+                ok = at;
+                if (at >= max) return max;
+            }
+        }
+
+        private static bool Clears((double X, double Y, double Z) target, (double X, double Y, double Z) direction, double s, Func<double, double, double> ground)
+        {
+            double h = ground(target.X + direction.X * s, target.Z + direction.Z * s);
+            return !Finite(h) || target.Y + direction.Y * s >= h + GroundClearance;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.24 : distance libre affichée contre le relief : elle se rapproche vite (<see cref="TerrainApproachSpeed"/>) et revient
+        /// en douceur (<see cref="CollisionReturnSpeed"/>), sans saut ; <see cref="AboveGround"/> garde la caméra hors du sol pendant le
+        /// rapprochement.
+        /// </summary>
+        public static double SettleTerrain(double shown, double clear, double deltaTime)
+        {
+            if (double.IsNaN(clear)) return double.IsNaN(shown) ? MaxDistance : shown;
+            if (double.IsNaN(shown)) return clear;
+            double dt = double.IsNaN(deltaTime) || deltaTime < 0 ? 0 : deltaTime;
+            double speed = clear < shown ? TerrainApproachSpeed : CollisionReturnSpeed;
+            return shown + (clear - shown) * (1.0 - Math.Exp(-speed * dt));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.24 : hauteur de la caméra gardée au moins à <see cref="GroundClearance"/> au-dessus du sol affiché sous elle
+        /// (<paramref name="groundY"/>) : continue (elle suit le sol), jamais sous une colline, même pendant un rapprochement.
+        /// </summary>
+        public static double AboveGround(double cameraY, double groundY) =>
+            !Finite(groundY) ? cameraY : Math.Max(cameraY, groundY + GroundClearance);
+
         /// <summary>Angle ramené dans [0, 360[.</summary>
         public static double Wrap(double degrees)
         {
