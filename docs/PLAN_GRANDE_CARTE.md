@@ -105,7 +105,7 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 
 ### 2.6 Combien ça coûte et ce qui ne casse pas
 
-- **Journaux de référence** : intacts. La session du cœur se joue comme avant tant qu'on ne sort pas de son secteur. Le premier sous-lot (V2.25) ne change aucun comportement : il découpe les données et relève des bornes seulement.
+- **Journaux de référence** : intacts. La session du cœur se joue comme avant tant qu'on ne sort pas de son secteur. Le premier sous-lot (V2.25.3, appelé V2.25 dans la première version du plan) ne change aucun comportement : il découpe les données et relève des bornes seulement.
 - **Déterminisme** : chaque secteur a son `Pcg32` tiré de l'empreinte de son nom et de son numéro de session (comme les événements du monde) ; secteurs au même tick ; passages entre deux ticks, dans un ordre stable ; rien ne dépend de l'ordre d'arrivée des messages ni du nombre de secteurs actifs **pour un même secteur**.
 - **Coût serveur** : à mesurer au V2.26 (`eds mesures secteurs`). Cible : un secteur de 60 combattants à moins de 1 ms par tick ; 20 à 40 secteurs actifs sur la région pour quelques centaines de joueurs.
 
@@ -291,11 +291,15 @@ Numérotés à la suite de V2.24 (relief, en cours). Tailles : S (quelques jours
 
 ### Étape 1 : cases et surface
 
+Numérotation : le premier sous-lot, appelé V2.25 dans la première version du plan, est devenu **V2.25.3** (V2.25, V2.25.1 et V2.25.2 ont été pris entre-temps par les modèles 3D) ; les suivants gardent leur numéro.
+
+**Avancement** : V2.25.3 réalisé (12 novembre 2026, en PR) : zones en schéma 13 (bloc `region`), découpage du cœur sans changement de jeu, bornes relevées et par case, outil `eds carte` ([DONNEES.md](DONNEES.md#cases-et-repère-de-la-région-sous-lot-v2253)). Écarts au plan : les points sûrs (32), populations (256) et zones reliées (64) gardent leurs bornes (relevées avec V2.28 et V2.45) ; `eds carte densite` compte pour l'instant les lieux, points sûrs, portes et populations comme points d'intérêt (les gabarits du § 4.5 viendront avec les lieux).
+
 | Sous-lot | Contenu | Taille | Dépend de | Modèles à demander |
 |---|---|---|---|---|
-| **V2.25** Cases et repère | Format de région (zones en schéma 13 : grille, cases, secteurs), découpage du cœur sans rien changer au jeu, outil `eds carte` (cases, densité, image de contrôle), relèvement des bornes de données (lieux, portes, routes par case) | M | — | aucun |
-| **V2.26** Secteurs de simulation | **Rupture retenue par Damien** (11 novembre 2026) : arrivée avec état (journal 25, moteur 0.31.0), coordonnées ±4 096 m, 256 obstacles, grille de navigation, recyclage des places, territoire des populations, passage de secteur, activation et fermeture, purge du registre (sauvegarde v18), mesures | L | V2.25 | aucun |
-| **V2.27** Chargement par cases dans Unity | Anneaux, construction étalée, recyclage, terrain basse résolution de la région, réglages selon `MachineTier`, mesures sur Note8 et PC modeste | L | V2.25, V2.24 fusionné | arbres de la région en 3 LOD + imposteurs (chêne, hêtre, pin, bouleau, saule, vigne) ; rochers (5 tailles) |
+| **V2.25.3** Cases et repère | Format de région (zones en schéma 13 : grille, cases, secteurs), découpage du cœur sans rien changer au jeu, outil `eds carte` (cases, densité, image de contrôle), relèvement des bornes de données (lieux, portes, routes par case) | M | — | aucun |
+| **V2.26** Secteurs de simulation | **Rupture retenue par Damien** (11 novembre 2026) : arrivée avec état (journal 25, moteur 0.31.0), coordonnées ±4 096 m, 256 obstacles, grille de navigation, recyclage des places, territoire des populations, passage de secteur, activation et fermeture, purge du registre (sauvegarde v18), mesures | L | V2.25.3 | aucun |
+| **V2.27** Chargement par cases dans Unity | Anneaux, construction étalée, recyclage, terrain basse résolution de la région, réglages selon `MachineTier`, mesures sur Note8 et PC modeste | L | V2.25.3, V2.24 fusionné | arbres de la région en 3 LOD + imposteurs (chêne, hêtre, pin, bouleau, saule, vigne) ; rochers (5 tailles) |
 | **V2.28** Surface de 4 × 3 km | Toute la région praticable : relief d'affichage, rivière jusqu'à la cascade, lac et marais, nappes de forêt, collines, routes, ravins et falaises en obstacles, points sûrs aux carrefours, cheval à 13 m/s ; **reprise d'une partie au dernier point sûr** (sauvegarde : secteur et point sûr ; section 3) ; lieux en emplacements vides | M | V2.26, V2.27 | pont de pierre long, ponton, gué, bornes et panneaux, murets, clôtures, haies |
 | **V2.29** Horizon | Cartes peintes du ciel, silhouettes lointaines, point de vue du sommet | S | V2.28 | silhouettes basses des Crêtes de Fer ; imposteurs des grands lieux (au fil des lieux) |
 
