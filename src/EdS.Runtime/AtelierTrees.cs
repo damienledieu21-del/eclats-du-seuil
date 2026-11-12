@@ -221,13 +221,28 @@ namespace EdS.Runtime
                 return TreeEssence.Corrompu;
             MapPlace? place = PlaceAt(x, z, map);
             bool wolves = place != null && PlaceIs(place, "foret");
-            if (source == TreeSource.Woods) return wolves ? Pick(WolfForest, x, z) : Pick(Grove, x, z);
+            // Un bois qui touche la forêt des Loups en fait partie tout entier (bois_no4 déborde au sud du lieu).
+            if (source == TreeSource.Woods)
+                return wolves || WoodInForest(x, z, map, obstacles) ? Pick(WolfForest, x, z) : Pick(Grove, x, z);
             if (obstacles != null && obstacles.Any(o => IsWater(o.Id) && Within(Box(o), x, z, BankReach))) return Pick(Banks, x, z);
             if (place == null) return Pick(Meadow, x, z);
             if (wolves) return Pick(WolfForest, x, z);
             if (PlaceIs(place, "verger")) return Pick(Orchard, x, z);
             if (PlaceIs(place, "vigne")) return TreeEssence.Cypres;
             return Pick(Meadow, x, z);
+        }
+
+        private static bool WoodInForest(double x, double z, AdventureMap? map, IEnumerable<SpaceObstacle> obstacles)
+        {
+            if (map == null || obstacles == null) return false;
+            foreach (SpaceObstacle o in obstacles)
+            {
+                if (!o.Id.StartsWith("bois", StringComparison.Ordinal)) continue;
+                var b = Box(o);
+                if (x < b.MinX || x > b.MaxX || z < b.MinZ || z > b.MaxZ) continue;
+                if (map.Places.Any(p => PlaceIs(p, "foret") && b.MinX <= p.MaxX && b.MaxX >= p.MinX && b.MinZ <= p.MaxZ && b.MaxZ >= p.MinZ)) return true;
+            }
+            return false;
         }
 
         private static bool Within((double MinX, double MinZ, double MaxX, double MaxZ) b, double x, double z, double reach) =>
