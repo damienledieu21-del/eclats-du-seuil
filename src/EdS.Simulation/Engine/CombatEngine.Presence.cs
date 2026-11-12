@@ -130,10 +130,14 @@ namespace EdS.Simulation.Engine
             foreach (KeyValuePair<string, long> c in f.CooldownReadyTick.OrderBy(c => c.Key, StringComparer.Ordinal))
                 if (Remaining(c.Value) > 0) cooldowns.Add(new KeyValuePair<string, long>(c.Key, Remaining(c.Value)));
             bool tired = f.Endurance < f.MaxEndurance;
-            bool hasConsumables = f.ConsumableCharges.Any(c => c.Value > 0);
+            // Relecture indépendante de la PR #149 : seuls les objets de soin qui ont encore des charges sont emportés (CarriedConsumables) ;
+            // la recharge partagée emportée est plafonnée à la plus longue recharge de ceux-là (la validation de l'arrivée l'exige), même si
+            // elle vient d'un objet vidé plus lent.
+            long consumableSpanMs = f.Character.Consumables.Where(c => f.ConsumableCharges[c.Id] > 0).Select(c => c.CooldownMs).DefaultIfEmpty(0).Max();
+            bool hasConsumables = consumableSpanMs > 0 || f.ConsumableCharges.Any(c => c.Value > 0);
             return new CarriedState(health, tired ? f.Endurance : (long?)null,
                 tired && f.RegenFromTick is long regen ? Remaining(regen) : 0, f.Resonance, f.RampartCharges,
-                Remaining(f.GlobalCooldownReadyTick), cooldowns, hasConsumables ? Remaining(f.ConsumableReadyTick) : 0);
+                Remaining(f.GlobalCooldownReadyTick), cooldowns, hasConsumables ? Math.Min(Remaining(f.ConsumableReadyTick), consumableSpanMs) : 0);
         }
 
         /// <summary>
