@@ -21,7 +21,9 @@ namespace EdS.Tools.Measures
     /// </summary>
     public static class SectorMeasures
     {
-        public sealed record Result(string Case, int Combatants, int Obstacles, long Ticks, double MeanMs, double P95Ms, double MaxMs, double BytesPerTick);
+        /// <param name="Engaged">Revue Codex de la PR #151 (10e tour) : loups engagés au moins une fois pendant la mesure (mise en route
+        /// comprise) ; les autres ne l'ont jamais été.</param>
+        public sealed record Result(string Case, int Combatants, int Obstacles, long Ticks, double MeanMs, double P95Ms, double MaxMs, double BytesPerTick, int Engaged = 0);
 
         public const int Warmup = 100;
 
@@ -46,9 +48,13 @@ namespace EdS.Tools.Measures
                 long x, z;
                 if (kind == "repartis" || kind == "calme")
                 {
-                    // Grille sur tout l'espace (« calme » : la cible est retirée plus bas, personne ne s'engage).
-                    x = space.Min.X.Raw + 120_000 + (k % 24) * 125_000;
-                    z = space.Min.Z.Raw + 120_000 + (k / 24) * 125_000;
+                    // Revue Codex de la PR #151 (10e tour) : grille de 8 × 8 places sur les deux axes de tout l'espace (environ 40 m entre deux
+                    // places), décalée à chaque passe pour remplacer les places prises par le décor : les 59 loups couvrent tout le secteur ;
+                    // ceux à moins de 30 m de la cible s'engagent, les autres non (« calme » : la cible est dans un coin, personne ne s'engage).
+                    int slot = k % 64, pass = k / 64;
+                    long stepX = (space.Max.X.Raw - space.Min.X.Raw - 240_000) / 7, stepZ = (space.Max.Z.Raw - space.Min.Z.Raw - 240_000) / 7;
+                    x = space.Min.X.Raw + 120_000 + (slot % 8) * stepX + pass * 47_000;
+                    z = space.Min.Z.Raw + 120_000 + (slot / 8) * stepZ + pass * 31_000;
                 }
                 else
                 {
@@ -75,7 +81,17 @@ namespace EdS.Tools.Measures
         public static Result Measure(string kind, CombatSetup setup, int ticks)
         {
             var engine = new CombatEngine(setup, NullCombatLog.Instance);
-            for (int t = 0; t < Warmup && !engine.IsFinished; t++) engine.Step();
+            string[] wolves = engine.CombatantIds.Where(id => id.StartsWith("loup", StringComparison.Ordinal)).ToArray();
+            var engaged = new HashSet<string>(StringComparer.Ordinal);
+            void Note()
+            {
+                foreach (string id in wolves) if (engine.View(id).Engaged) engaged.Add(id);
+            }
+            for (int t = 0; t < Warmup && !engine.IsFinished; t++)
+            {
+                engine.Step();
+                Note();
+            }
             var times = new double[ticks];
             long before = GC.GetAllocatedBytesForCurrentThread();
             var watch = new Stopwatch();
@@ -87,9 +103,10 @@ namespace EdS.Tools.Measures
                 times[done] = watch.Elapsed.TotalMilliseconds;
             }
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Note();
             double[] sorted = times.Take(done).OrderBy(x => x).ToArray();
             return new Result(kind, setup.Combatants.Count, setup.Space!.Obstacles.Count, done, sorted.Average(),
-                sorted[(int)Math.Min(sorted.Length - 1, Math.Ceiling(sorted.Length * 0.95) - 1)], sorted[^1], (double)allocated / Math.Max(1, done));
+                sorted[(int)Math.Min(sorted.Length - 1, Math.Ceiling(sorted.Length * 0.95) - 1)], sorted[^1], (double)allocated / Math.Max(1, done), engaged.Count);
         }
 
         public static int Run(IReadOnlyList<string> args, TextWriter output, TextWriter error)
@@ -139,11 +156,11 @@ namespace EdS.Tools.Measures
         {
             var b = new StringBuilder();
             b.AppendLine("Mesures des secteurs (V2.26) — temps du moteur par tick, sur cette machine ; cible : 60 combattants < 1 ms par tick");
-            b.AppendLine("| cas | combattants | obstacles | ticks | moyenne (ms) | 95e centile (ms) | maximum (ms) | octets alloués par tick | cible |");
-            b.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            b.AppendLine("| cas | combattants | obstacles | loups engagés / non engagés | ticks | moyenne (ms) | 95e centile (ms) | maximum (ms) | octets alloués par tick | cible |");
+            b.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
             foreach (Result r in results)
                 b.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                    $"| {r.Case} | {r.Combatants} | {r.Obstacles} | {r.Ticks} | {r.MeanMs:0.000} | {r.P95Ms:0.000} | {r.MaxMs:0.000} | {r.BytesPerTick:0} | {(r.MeanMs < 1 ? "atteinte" : "non atteinte")} |"));
+                    $"| {r.Case} | {r.Combatants} | {r.Obstacles} | {r.Engaged} / {r.Combatants - 1 - r.Engaged} | {r.Ticks} | {r.MeanMs:0.000} | {r.P95Ms:0.000} | {r.MaxMs:0.000} | {r.BytesPerTick:0} | {(r.MeanMs < 1 ? "atteinte" : "non atteinte")} |"));
             return b.ToString();
         }
     }

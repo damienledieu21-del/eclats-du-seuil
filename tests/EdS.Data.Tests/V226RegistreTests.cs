@@ -108,9 +108,13 @@ public class V226RegistreTests
             }
             SectorMeasures.Result r = SectorMeasures.Measure(kind, sector, 20);
             Assert.Equal(20, r.Ticks);
+            // Revue Codex de la PR #151 (10e tour) : « répartis » a bien des engagés et des non-engagés ; « engagés » : tous ; « calme » : aucun.
+            if (kind == "repartis") Assert.InRange(r.Engaged, 1, 57);
+            if (kind == "engages") Assert.Equal(59, r.Engaged);
+            if (kind == "calme") Assert.Equal(0, r.Engaged);
             Assert.True(r.MeanMs >= 0 && r.MaxMs >= r.P95Ms);
         }
-        Assert.Contains("| engages | 60 | 195 |", SectorMeasures.Format(new[] { new SectorMeasures.Result("engages", 60, 195, 20, 0.5, 0.7, 0.9, 1000) }), StringComparison.Ordinal);
+        Assert.Contains("| engages | 60 | 195 | 59 / 0 |", SectorMeasures.Format(new[] { new SectorMeasures.Result("engages", 60, 195, 20, 0.5, 0.7, 0.9, 1000, 59) }), StringComparison.Ordinal);
     }
 
     [Fact]
