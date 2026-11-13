@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using EdS.Data.Crafting;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -270,6 +271,43 @@ public class V228b2PassageTests
             if (w.Zone.Engine.View(w.CombatantId).Counters.DamageTaken > 0) bled++;
         }
         Assert.Equal(0, bled);   // les altérations ne passent pas : le saignement s'arrête au passage
+    }
+
+    [Fact]
+    public void Noeud_de_recolte_repousse_au_tick_du_monde_meme_apres_la_reouverture_du_secteur()
+    {
+        // Revue Codex de la PR #157 (2e tour) : un filon récolté à l'ouest (repousse : 60 s), puis le personnage part à l'est assez loin pour
+        // que l'ouest se ferme, et revient : l'ouest rouvert repart d'une session neuve (tick 0). Le filon est prêt, 60 s du monde après la
+        // récolte ; compté en ticks de session, il serait encore épuisé.
+        ZoneDefinition zone = TwoSectors.Value;
+        JsonObject crafting = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
+        JsonObject data = crafting["data"]!.AsObject();
+        var filon = (JsonObject)data["nodes"]!.AsArray().First(n => (long)n!["respawnMs"]! == 60_000)!.DeepClone();
+        filon["position"] = new JsonArray(230, 140);
+        data["nodes"] = new JsonArray(filon);
+        data["recipes"] = new JsonArray();
+        data["repair"]!["places"] = new JsonArray();
+        CraftingLoadResult loaded = CraftingJsonReader.Read(crafting.ToJsonString(), Texts, zone, ItemsCatalog);
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        string node = (string)filon["id"]!;
+        var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero()), zone, ShippedData, Progression, ItemsCatalog, crafting: loaded.Book);
+        w.Step();
+        WalkTo(w, 230, 139);
+        Assert.Equal(CraftRefusal.None, w.Gather(node, out _));
+        long gathered = w.Zone.WorldTick;
+        Assert.False(w.IsNodeReady(node));
+        Assert.Equal(CraftRefusal.Depleted, w.Gather(node, out _));
+        Zone first = w.Host!.SectorZone("s00_00")!;
+        WalkTo(w, 380, 139);
+        while (w.Host.OpenSectors.Contains("s00_00")) w.Step();   // l'ouest se ferme (60 s sans personne à moins de 96 m)
+        WalkTo(w, 230, 139);
+        Zone again = w.Zone;
+        Assert.NotSame(first, again);
+        Assert.Equal(2L, again.Session);
+        Assert.True(w.Zone.WorldTick - gathered >= 60_000 / 50);
+        Assert.True(again.Engine.CurrentTick < 1200);   // en ticks de la session rouverte, la repousse ne serait pas finie
+        Assert.True(w.IsNodeReady(node));
+        Assert.Equal(CraftRefusal.None, w.Gather(node, out _));
     }
 
     [Fact]

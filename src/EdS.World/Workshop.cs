@@ -168,6 +168,8 @@ namespace EdS.World
         public IReadOnlyDictionary<string, long> Professions => new Dictionary<string, long>(_xp, StringComparer.Ordinal);
 
         /// <summary>Le nœud peut être récolté à ce tick de la session.</summary>
+        /// <param name="tick">Revue Codex de la PR #157 (2e tour) : tick du <b>monde</b> (les échéances sont en ticks du monde, jamais en ticks
+        /// d'une session). Non sauvegardées : une partie reprise trouve tous les nœuds prêts, comme avant.</param>
         public bool IsReady(string node, long tick) => !_readyTick.TryGetValue(node, out long ready) || tick >= ready;
 
         internal CraftRefusal Gather(string node, long tick, long tickMs, GroundVector? player, Inventory inventory, out CraftEvent? done)

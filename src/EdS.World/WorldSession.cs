@@ -181,6 +181,13 @@ namespace EdS.World
         /// <summary>Internes, pour les tests : l'hôte des secteurs de la partie.</summary>
         internal SectorWorld? Host => _host;
 
+        /// <summary>
+        /// Revue Codex de la PR #157 (2e tour) : le nœud de récolte est-il prêt ? Les échéances des nœuds sont en ticks du <b>monde</b>
+        /// (<see cref="Zone.WorldTick"/>), l'horloge commune à toutes les sessions de secteur : une session qui repart de zéro (secteur rouvert,
+        /// passage) ne les décale pas.
+        /// </summary>
+        public bool IsNodeReady(string node) => (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).IsReady(node, Zone.WorldTick);
+
         /// <summary>Sous-lot V2.28b (2) : population d'une créature, dans le secteur où elle vit.</summary>
         private Population? PopulationOf(string combatant) => _host != null ? _host.PopulationOf(combatant) : _populations?.Of(combatant);
 
@@ -477,7 +484,7 @@ namespace EdS.World
 
         /// <summary>Sous-lot 12.6 : récolte un nœud à portée (3 m), s'il a repoussé et que l'objet tient.</summary>
         public CraftRefusal Gather(string node, out CraftEvent? done) =>
-            (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).Gather(node, Zone.Engine.CurrentTick, Zone.Engine.TickMilliseconds,
+            (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).Gather(node, Zone.WorldTick, Zone.Engine.TickMilliseconds,
                 ((INarrativeWorld)this).PlayerPosition, Inventory, out done);
 
         /// <summary>Sous-lot 12.6 : fabrique une recette dans son atelier (lieu de la zone) ; une recette à qualité attend ses frappes (V1.4).</summary>
