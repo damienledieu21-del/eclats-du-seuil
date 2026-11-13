@@ -382,10 +382,16 @@ namespace EdS.World
             int number = checked(life.Number + 1);
             string id = $"{t.Id}_v{number}";
             while (taken.Contains(id)) id = $"{t.Id}_v{number = checked(number + 1)}";
-            // Revue Codex de la PR #150 (11e tour) : une cible explicite absente de la session (secteur découpé : elle est dans un autre
-            // secteur) est retirée à une bête à comportement (elle choisit le plus proche) ; sans comportement, la population n'est pas dans ce
-            // secteur (populations tirées des combattants de la session découpée). L'hôte d'une zone ne change pas (la cible y est toujours).
-            string? target = t.Target is string tg && t.Behavior != null && !engine.CombatantIds.Contains(tg) ? null : t.Target;
+            // Revue Codex de la PR #150 (11e et 13e tours) : références adaptées aux combattants de la session, par la même règle que le
+            // découpage (CombatantReferences.Adapt) : une cible absente (dans un autre secteur) est retirée à une bête à comportement ou sans
+            // attaque à cible unique ; une bête liée à une cible absente ne revient pas (sa vie s'arrête : la réessayer serait sans fin).
+            // L'hôte d'une zone ne change pas (la cible y est toujours).
+            if (CombatantReferences.Adapt(t, taken.Contains) is not AssailantSetup adapted)
+            {
+                life.Exhausted = true;
+                return null;
+            }
+            string? target = adapted.Target;
             var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 t.StatusResistance, t.Triggers, t.Health, t.Placement, checked(now * tickMs), t.Behavior);
             try

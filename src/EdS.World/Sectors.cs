@@ -220,7 +220,7 @@ namespace EdS.World
             // cible appartient à un autre secteur est retirée (son acteur ou sa cible n'existe pas dans cette session ; la commande de l'acteur
             // reste dans son secteur seulement si sa cible y est aussi). Ordre de l'aire gardé.
             var ids = new HashSet<string>(combatants.Select(c => c.Id), StringComparer.Ordinal);
-            var commands = Area.Commands.Where(c => ids.Contains(c.Actor) && (c.Target is null || ids.Contains(c.Target))).ToList();
+            var commands = Area.Commands.Where(c => CombatantReferences.Keeps(c, ids.Contains)).ToList();
             long seed = sector == HomeSector && !reopened ? Area.Seed : SeedOf(Area.Seed, sector, session);
             return new CombatSetup(seed, Area.DurationMs, Area.Stats, Area.Damage, Area.Progression, Area.Combat, combatants, commands,
                 Area.Data, cut, true, Area.Truces);
@@ -249,19 +249,14 @@ namespace EdS.World
                 var next = new List<CombatantSetup>(list.Count);
                 foreach (CombatantSetup c in list)
                 {
-                    if (c is not AssailantSetup { Target: string target } a || ids.Contains(target)) { next.Add(c); continue; }
-                    if (a.Behavior is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy)) { removed = true; continue; }
-                    next.Add(WithoutTarget(a));
+                    if (c is not AssailantSetup a) { next.Add(c); continue; }
+                    if (CombatantReferences.Adapt(a, ids.Contains) is AssailantSetup kept) next.Add(kept);
+                    else removed = true;
                 }
                 list = next;
                 if (!removed) return list;
             }
         }
-
-        /// <summary>L'assaillant, sans cible explicite (tout le reste identique).</summary>
-        public static AssailantSetup WithoutTarget(AssailantSetup a) =>
-            new AssailantSetup(a.Id, a.Team, a.Armor, a.MagicResistance, null, a.FirstAttackMs, a.IntervalMs, a.Attacks, a.Initiative, a.StatusResistance,
-                a.Triggers, a.Health, a.Placement, a.ArrivalMs, a.Behavior, a.Carried);
 
         /// <summary>Graine d'un secteur : FNV-1a 64 du nom et du numéro de session, mêlée à celle de l'aire ; positive.</summary>
         public static long SeedOf(long areaSeed, string sector, long session)
@@ -274,6 +269,32 @@ namespace EdS.World
     }
 
     /// <summary>Sous-lot V2.26 : ce qui s'est passé entre les secteurs pendant un tick du monde.</summary>
+    /// <summary>
+    /// Revue Codex de la PR #150 (11e à 13e tours) : adaptation des références entre combattants à ceux présents dans une session (secteur
+    /// découpé, réapparition) ; une seule règle, partagée par le découpage (<see cref="SectorMap.SetupFor(string, long, bool, CombatSetup)"/>)
+    /// et la réapparition des populations (<see cref="ZonePopulations"/>).
+    /// </summary>
+    public static class CombatantReferences
+    {
+        /// <summary>
+        /// L'assaillant adapté aux combattants présents (<paramref name="present"/>) : inchangé sans cible ou si sa cible est là ; sinon, à
+        /// comportement (il choisit le plus proche) ou sans attaque à cible unique (toutes visent tous les ennemis), sans sa cible ; sinon
+        /// null (lié à une cible absente : il n'est pas simulé).
+        /// </summary>
+        public static AssailantSetup? Adapt(AssailantSetup a, Func<string, bool> present)
+        {
+            if (a is null) throw new ArgumentNullException(nameof(a));
+            if (a.Target is not string target || present(target)) return a;
+            if (a.Behavior is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy)) return null;
+            return new AssailantSetup(a.Id, a.Team, a.Armor, a.MagicResistance, null, a.FirstAttackMs, a.IntervalMs, a.Attacks, a.Initiative, a.StatusResistance,
+                a.Triggers, a.Health, a.Placement, a.ArrivalMs, a.Behavior, a.Carried);
+        }
+
+        /// <summary>Une commande est gardée si son acteur et sa cible (s'il y en a une) sont présents ; sinon elle est retirée.</summary>
+        public static bool Keeps(CombatCommand command, Func<string, bool> present) =>
+            present((command ?? throw new ArgumentNullException(nameof(command))).Actor) && (command.Target is null || present(command.Target));
+    }
+
     public enum SectorEventKind
     {
         /// <summary>Un secteur s'ouvre (une session de zone commence) au tick du monde donné.</summary>
@@ -578,6 +599,9 @@ namespace EdS.World
             IReadOnlyList<RuleViolation> violations = probe.Validate();
             return violations.Count == 0 ? null : string.Join(" ; ", violations.Take(3).Select(v => $"{string.Join(", ", v.Fields)} : {v.Message}"));
         }
+
+        /// <summary>Pour les tests : vies des populations d'un secteur ouvert, ou null.</summary>
+        internal ZonePopulations? PopulationsIn(string sector) => _open.TryGetValue(sector, out Open? o) ? o.Populations : null;
 
         /// <summary>Pour les tests : créatures des populations d'un secteur ouvert (vide s'il est fermé).</summary>
         internal IReadOnlyList<string> PopulationCreaturesIn(string sector) =>
