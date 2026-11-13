@@ -165,6 +165,163 @@ public class V228bSoloSecteursTests
         Assert.Equal(SaveJsonReader.Write(b.Save.WithResume(null)), SaveJsonReader.Write(a.Save.WithResume(null)));
     }
 
+    [Fact]
+    public void Un_tick_apres_la_fin_de_session_puis_sauvegarde_et_session_suivante()
+    {
+        // Relecture indépendante de la PR #156 : la session terminée reste chez l'hôte, qui n'est plus appelé (il la renouvellerait). Un tick
+        // de plus ne fait rien et ne lève pas ; la sauvegarde est celle d'une session de zone ; la session suivante s'ouvre de même.
+        static void Short(JsonObject s) => s["data"]!["durationMs"] = 5_000;
+        ZoneDefinition hosted = Vallons(true, Short), plain = Vallons(false, Short);
+        var logs = new Dictionary<bool, string>();
+        var saves = new Dictionary<bool, string>();
+        foreach (bool region in new[] { true, false })
+        {
+            ZoneDefinition zone = region ? hosted : plain;
+            var log = new MemoryCombatLog();
+            var session = new WorldSession(Start(zone, 0, 1), zone, ShippedData, Progression, ItemsCatalog, Book(zone), log: log);
+            Assert.Equal(region, session.OnSectors);
+            for (int i = 0; i < 100; i++) session.Step();
+            Assert.True(session.Zone.IsOver);
+            int lines = log.Lines.Count;
+            long tick = session.Zone.WorldTick;
+            Assert.True(session.Step().IsEmpty);   // un tick après la fin : rien, sans exception
+            Assert.True(session.Step().IsEmpty);
+            Assert.Equal((lines, tick, 1L), (log.Lines.Count, session.Zone.WorldTick, session.Zone.Session));
+            WorldSave save = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
+            Assert.Equal((100L, 1L), (save.WorldTick, save.Sessions));
+            // La session suivante : numéro suivant, même temps du monde, personnage entré.
+            var next = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, Book(zone), log: log);
+            Assert.Equal(region, next.OnSectors);
+            for (int i = 0; i < 30; i++) next.Step();
+            Assert.Equal((2L, 130L), (next.Zone.Session, next.Zone.WorldTick));
+            Assert.True(next.Zone.Engine.View("bastion").IsPresent);
+            logs[region] = log.ToString();
+            saves[region] = SaveJsonReader.Write(next.Save().WithResume(null));
+        }
+        Assert.Equal(logs[false], logs[true]);
+        Assert.Equal(saves[false], saves[true]);
+    }
+
+    [Fact]
+    public void Registre_au_plafond_meme_tick_accepte_et_meme_refus_entier_que_la_session_de_zone()
+    {
+        // Relecture indépendante de la PR #156 : près du plafond du registre, la partie tenue par l'hôte accepte et refuse exactement les
+        // mêmes ticks que la session de zone ; un tick refusé ne change rien (ni temps, ni moteur, ni registre).
+        foreach (bool region in new[] { true, false })
+        {
+            ZoneDefinition zone = Vallons(region);
+            // Session ouverte avec un registre presque plein, puis rempli jusqu'à laisser <room> places de plus que les morts possibles d'un tick.
+            WorldSession At(int room)
+            {
+                var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.vallons/test/k{i}").Append(PlayerCharacters.PlacesKey);
+                var session = new WorldSession(new WorldSave(zone.Id, 0, 0, keys, HeroAt(1)), zone, ShippedData, Progression, ItemsCatalog);
+                int fill = SaveValidator.MaxConsumed - session.Zone.ConsumedCount - session.Zone.NewDeathsPossible - room;
+                for (int i = 0; i < fill; i++) Assert.True(session.Zone.Consume($"zone.vallons/test/plein{i}"));
+                return session;
+            }
+            // Juste la place des morts possibles d'un tick : accepté, et le registre reste sous le plafond.
+            WorldSession exact = At(0);
+            Assert.Equal(region, exact.OnSectors);
+            Assert.Equal(SaveValidator.MaxConsumed, exact.Zone.ConsumedCount + exact.Zone.NewDeathsPossible);
+            Assert.InRange(exact.Zone.NewDeathsPossible, 10, 300);
+            exact.Step();
+            Assert.Equal(1L, exact.Zone.Engine.CurrentTick);
+            Assert.InRange(exact.Zone.ConsumedCount, 0, SaveValidator.MaxConsumed);
+            // Une clé de trop : refus entier, deux fois de suite, rien n'a bougé.
+            WorldSession full = At(-1);
+            Assert.Equal(SaveValidator.MaxConsumed + 1, full.Zone.ConsumedCount + full.Zone.NewDeathsPossible);
+            long tick = full.Zone.WorldTick;
+            int count = full.Zone.ConsumedCount;
+            Assert.Throws<InvalidOperationException>(() => full.Step());
+            Assert.Throws<InvalidOperationException>(() => full.Step());
+            Assert.Equal((0L, tick, count), (full.Zone.Engine.CurrentTick, full.Zone.WorldTick, full.Zone.ConsumedCount));
+            Assert.False(full.Zone.Engine.View("bastion").IsPresent);   // même son arrivée n'a pas eu lieu
+        }
+    }
+
+    // --- Parité à travers les sessions : couvre-feu, défaite, halte, voyage --------------------------------------------------
+
+    /// <summary>Un loup mortel à deux mètres de l'entrée : le personnage tombe en quelques secondes.</summary>
+    private static void DeadlyWolf(JsonObject scenario)
+    {
+        JsonObject wolf = scenario["data"]!["combatants"]!.AsArray().Select(c => c!.AsObject()).Single(c => c["id"]!.GetValue<string>() == "loup1");
+        wolf["position"] = new JsonArray(-16, -12);
+        foreach (JsonNode? attack in wolf["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+    }
+
+    /// <summary>
+    /// Enchaîne les sessions comme le fait l'aventure (sauvegarde, puis session nouvelle au point sûr par la règle d'arrivée) : couvre-feu au
+    /// Bourg la nuit, défaite au village, reprise, halte, voyage rapide. Rend tous les journaux, toutes les sauvegardes et la trace.
+    /// </summary>
+    private static (string Logs, string Saves, string Trace) Chain(ZoneDefinition zone)
+    {
+        var logs = new StringBuilder();
+        var saves = new StringBuilder();
+        var trace = new StringBuilder();
+        var all = new List<MemoryCombatLog>();
+        StoryBook story = Book(zone);
+        SavedCharacter hero = Hero().WithStory(new SavedStory(reputation: new Dictionary<string, int> { ["guard"] = -700 }));
+        var save = new WorldSave(zone.Id, 130_000, 0, new[] { PlayerCharacters.PlacesKey }, hero);   // 22 h 27 : la nuit, la garde hait le personnage
+        WorldSession Open(string? safePoint)
+        {
+            (string? at, GroundVector? place) = WorldSession.SafeArrival(save, zone, Progression, safePoint, zone.Id);
+            var log = new MemoryCombatLog();
+            var session = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, story, log: log, safePoint: at, place: place);
+            trace.Append("session ").Append(session.Zone.Session).Append(" à ").Append(session.LastSafePoint).Append(' ').Append(place?.ToString() ?? "sa place").Append('\n');
+            all.Add(log);
+            return session;
+        }
+        void Close(WorldSession session, string why)
+        {
+            save = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
+            saves.Append(why).Append('\n').Append(SaveJsonReader.Write(save.WithResume(null)));
+            trace.Append(why).Append(" tick ").Append(session.Zone.Engine.CurrentTick).Append(" reprise ").Append(save.Resume!.SafePoint).Append('\n');
+        }
+        // 1. Au Bourg, la nuit : le couvre-feu tombe ; le personnage est reconduit au point sûr du couvre-feu.
+        WorldSession bourg = Open("place_du_bourg");
+        string? curfew = null;
+        for (int i = 0; i < 40 && curfew is null; i++)
+        {
+            bourg.Step();
+            curfew = bourg.CurfewSafePoint;
+        }
+        Assert.Equal("place_du_village", curfew);
+        Close(bourg, "couvre-feu");
+        // 2. Au village, le loup mortel : défaite.
+        WorldSession village = Open(curfew);
+        for (int i = 0; i < 1200 && !village.IsDefeated; i++) village.Step();
+        Assert.True(village.IsDefeated);
+        Close(village, "défaite");
+        // 3. Reprise au dernier point sûr, puis halte (sauvegarde et session nouvelle au même point sûr).
+        WorldSession again = Open(save.Resume!.SafePoint);
+        for (int i = 0; i < 5; i++) again.Step();
+        Close(again, "halte");
+        WorldSession rested = Open(save.Resume!.SafePoint);
+        for (int i = 0; i < 5; i++) rested.Step();
+        Close(rested, "voyage");
+        // 4. Voyage rapide vers la place du Bourg.
+        WorldSession travelled = Open("place_du_bourg");
+        for (int i = 0; i < 100; i++) travelled.Step();
+        Close(travelled, "fin");
+        foreach (MemoryCombatLog log in all) logs.Append(log.ToString());
+        return (logs.ToString(), saves.ToString(), trace.ToString());
+    }
+
+    [Fact]
+    public void Couvre_feu_defaite_halte_et_voyage_meme_journal_et_memes_sauvegardes_que_la_session_de_zone()
+    {
+        // Relecture indépendante de la PR #156 : la parité tient à travers les changements de session de la partie.
+        var a = Chain(Vallons(true, DeadlyWolf));
+        var b = Chain(Vallons(false, DeadlyWolf));
+        Assert.True(a.Logs.Length > 50_000);
+        Assert.Equal(b.Logs, a.Logs);
+        Assert.Equal(b.Saves, a.Saves);
+        Assert.Equal(b.Trace, a.Trace);
+        Assert.Contains("couvre-feu", a.Trace, StringComparison.Ordinal);
+        Assert.Contains("défaite", a.Trace, StringComparison.Ordinal);
+        Assert.Contains("session 5 à place_du_bourg", a.Trace, StringComparison.Ordinal);
+    }
+
     // --- L'hôte : entrée avec la session, début de session, crochets du tick --------------------------------------------------
 
     private static CharacterSetup Player(ZoneDefinition zone, double x, double z)

@@ -197,8 +197,11 @@ namespace EdS.World
         public static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
             StoryBook? story = null, string? storyZone = null) => ResumeArrival(save, zone, progression, story, storyZone, SectorWorld.ArrivalRings);
 
-        /// <summary>Pour les tests : la même règle sur <paramref name="rings"/> anneaux.</summary>
-        internal static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+        /// <summary>Anneaux de 0,5 m de la règle d'arrivée à un point sûr (16 : 8 m au plus), comme l'arrivée dans un secteur.</summary>
+        public const int ArrivalRings = SectorWorld.ArrivalRings;
+
+        /// <summary>La même règle sur <paramref name="rings"/> anneaux de 0,5 m (essais ; la partie en prend <see cref="ArrivalRings"/>).</summary>
+        public static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
             StoryBook? story, string? storyZone, int rings) =>
             SafeArrival(save, zone, progression, ResumeSafePoint(save, zone, story, storyZone), storyZone, rings);
 
@@ -219,9 +222,12 @@ namespace EdS.World
         public static (string? SafePoint, GroundVector? Place) SafeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
             string? safePoint, string? storyZone = null) => SafeArrival(save, zone, progression, safePoint, storyZone, SectorWorld.ArrivalRings);
 
-        internal static (string? SafePoint, GroundVector? Place) SafeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+        /// <summary>La même règle sur <paramref name="rings"/> anneaux de 0,5 m (essais ; la partie en prend <see cref="ArrivalRings"/>).</summary>
+        /// <exception cref="ArgumentOutOfRangeException">Anneaux hors de [0, <see cref="ArrivalRings"/>].</exception>
+        public static (string? SafePoint, GroundVector? Place) SafeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
             string? safePoint, string? storyZone, int rings)
         {
+            if (rings < 0 || rings > ArrivalRings) throw new ArgumentOutOfRangeException(nameof(rings), rings, $"Anneaux de la règle d'arrivée hors de [0, {ArrivalRings}].");
             if (save is null) throw new ArgumentNullException(nameof(save));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             if (progression is null) throw new ArgumentNullException(nameof(progression));

@@ -383,6 +383,28 @@ public class Lot128AdventureTests : IDisposable
     }
 
     [Fact]
+    public void Arrivee_refusee_puis_nouvel_essai_en_dernier_recours()
+    {
+        // Relecture indépendante de la PR #156 : le dernier recours de la règle d'arrivée, au niveau de l'aventure. Aucune place libre autour
+        // du point sûr (règle réduite à zéro anneau pour l'essai) : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.
+        (string data, string scenarios) = DeadlyCopy(x: -18, arriving: true);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath, 0);
+        a.Advance(0.05);
+        Assert.True(a.Stranded);
+        Assert.True(a.MustContinue);
+        Assert.False(a.World.IsDefeated);
+        Assert.Contains("Une créature occupe le point sûr : impossible d'y arriver pour l'instant.", a.DrainMessages());
+        Assert.Equal(0, a.Advance(1));
+        Assert.True(a.Continue());
+        Assert.Equal(2, a.Opened);
+        a.Advance(0.05);
+        Assert.True(a.Stranded);   // le sanglier revient à sa place : toujours occupé
+        // La portée de la règle est bornée : de zéro anneau à celle du jeu.
+        Assert.Throws<ArgumentOutOfRangeException>(() => AdventureSession.Load(data, scenarios, SavePath, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AdventureSession.Load(data, scenarios, SavePath, WorldSession.ArrivalRings + 1));
+    }
+
+    [Fact]
     public void Pont_temps_reel_sur_un_moteur_tenu_ailleurs()
     {
         AdventureSession a = New();
