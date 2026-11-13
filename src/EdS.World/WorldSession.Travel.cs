@@ -37,6 +37,14 @@ namespace EdS.World
         /// et ne servirait qu'à rendre les PV (la halte est faite pour cela).
         /// </summary>
         AlreadyHere = 6,
+
+        /// <summary>
+        /// Décision de Damien du 13 novembre 2026, 19 h 51 (« Non 2 pardon ») : la destination n'a aucune place libre à 8 m (règle d'arrivée à
+        /// un point sûr, <see cref="WorldSession.SafeArrival(WorldSave, ZoneDefinition, EdS.Data.Characters.CharacterProgression, string?, string?)"/>) :
+        /// le voyage est refusé, le personnage ne bouge pas. Jugé au moment du voyage (la règle demande la session d'arrivée telle qu'elle
+        /// s'ouvrirait), pas par <c>CanTravel</c>.
+        /// </summary>
+        Blocked = 7,
     }
 
     /// <summary>
