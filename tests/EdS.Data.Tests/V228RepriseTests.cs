@@ -519,16 +519,23 @@ public class V228RepriseTests : IDisposable
         string saved = File.ReadAllText(SavePath);
         (GroundVector where, long tick, int opened, string last) = (Position(a), a.Combat.Tick, a.Opened, a.LastSafePoint);
         WorldSession world = a.World;
+        string state = SaveJsonReader.Write(a.World.Save());   // faits, quêtes, registre, inventaire, temps : tout l'état de la partie
+        // Relecture indépendante de la PR #157 : l'écran du voyage le sait d'avance (bouton grisé avec la raison), sans rien changer.
+        Assert.Equal(TravelRefusal.Blocked, a.CanTravel("zone.vallons", "place_du_bourg"));
+        Assert.Equal(TravelRefusal.None, a.CanTravel("zone.vallons", "place_du_village") == TravelRefusal.AlreadyHere ? TravelRefusal.None : a.CanTravel("zone.vallons", "place_du_village"));
+        Assert.Empty(a.DrainMessages());
         Assert.Equal(TravelRefusal.Blocked, a.Travel("zone.vallons", "place_du_bourg"));
         Assert.Equal(new[] { a.Text("text.ui.travel.blocked") }, a.DrainMessages());
         Assert.Same(world, a.World);
         Assert.Equal((where, tick, opened, last, 0), (Position(a), a.Combat.Tick, a.Opened, a.LastSafePoint, a.Travels));
         Assert.Equal(saved, File.ReadAllText(SavePath));
+        Assert.Equal(state, SaveJsonReader.Write(a.World.Save()));
         a.Advance(0.05);
         Assert.Equal((where, false), (Position(a), a.Stranded));
         // Avec la règle du jeu (8 m), la même destination a une place libre : on y arrive.
         AdventureSession full = AdventureSession.Load(data, scenarios, SavePath);
         full.Advance(0.05);
+        Assert.Equal(TravelRefusal.None, full.CanTravel("zone.vallons", "place_du_bourg"));
         Assert.Equal(TravelRefusal.None, full.Travel("zone.vallons", "place_du_bourg"));
         full.Advance(0.05);
         Assert.False(full.Stranded);

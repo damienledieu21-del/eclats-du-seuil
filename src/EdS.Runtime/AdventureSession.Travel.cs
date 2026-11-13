@@ -60,7 +60,8 @@ namespace EdS.Runtime
         /// <summary>
         /// Refus qu'aurait le voyage vers le point sûr <paramref name="safePoint"/> de la zone <paramref name="zone"/> maintenant (rien ne
         /// change) : destination inconnue ou pas découverte, personnage tombé, dialogue ouvert ou reprise à faire, déjà à ce point sûr, en
-        /// plein combat.
+        /// plein combat ; relecture indépendante de la PR #157 : destination encombrée (<see cref="TravelRefusal.Blocked"/>, aucune place libre à
+        /// 8 m), pour que l'écran grise le bouton avec la raison au lieu de refuser au clic.
         /// </summary>
         public TravelRefusal CanTravel(string zone, string safePoint)
         {
@@ -69,12 +70,42 @@ namespace EdS.Runtime
             TravelRefusal refusal = World.CanTravel(target, safePoint);
             if (refusal == TravelRefusal.UnknownPlace || refusal == TravelRefusal.NotDiscovered) return refusal;
             if (MustContinue || Dialogue != null) return TravelRefusal.Unavailable;
+            if (refusal == TravelRefusal.None && Blocked(target, safePoint)) return TravelRefusal.Blocked;
             return refusal;
+        }
+
+        /// <summary>Sauvegarde de la partie, déplacée dans la zone <paramref name="target"/> (celle que le voyage écrirait).</summary>
+        private WorldSave MovedTo(ZoneDefinition target)
+        {
+            WorldSave here = World.Save();
+            return new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
+        }
+
+        // Relecture indépendante de la PR #157 : l'écran du voyage demande l'état de chaque destination à chaque image ; la règle d'arrivée
+        // (session d'arrivée telle qu'elle s'ouvrirait) est calculée au plus une fois par destination et par tick de la partie.
+        private readonly Dictionary<(string Zone, string SafePoint), bool> _blocked = new Dictionary<(string, string), bool>();
+        private (WorldSession? World, long Tick) _blockedStamp;
+
+        /// <summary>La destination n'a aucune place libre à 8 m (règle d'arrivée à un point sûr) : le voyage serait refusé.</summary>
+        private bool Blocked(ZoneDefinition target, string safePoint)
+        {
+            (WorldSession, long) stamp = (World, World.Zone.WorldTick);
+            if (!ReferenceEquals(_blockedStamp.World, World) || _blockedStamp.Tick != stamp.Item2)
+            {
+                _blocked.Clear();
+                _blockedStamp = stamp;
+            }
+            if (_blocked.TryGetValue((target.Id, safePoint), out bool known)) return known;
+            (string? at, GroundVector? _) = WorldSession.SafeArrival(MovedTo(target), target, _progression, safePoint, ZoneId, _arrivalRings);
+            bool blocked = at != safePoint;
+            _blocked[(target.Id, safePoint)] = blocked;
+            return blocked;
         }
 
         /// <summary>
         /// Voyage rapide vers le point sûr <paramref name="safePoint"/> de la zone <paramref name="zone"/> : la session d'arrivée est
-        /// préparée, puis la partie sauvegardée dans cette zone, puis la session s'ouvre au point sûr. Un refus (<see cref="CanTravel"/>) ou
+        /// préparée, puis la partie sauvegardée dans cette zone, puis la session s'ouvre au point sûr. Un refus (<see cref="CanTravel"/>, destination
+        /// encombrée comprise) ou
         /// une sauvegarde impossible (disque plein : <see cref="TravelRefusal.SaveFailed"/>) ne change rien ; un message dit pourquoi.
         /// </summary>
         public TravelRefusal Travel(string zone, string safePoint)
@@ -86,8 +117,7 @@ namespace EdS.Runtime
                 return refusal;
             }
             ZoneDefinition target = _zones.First(z => z.Id == zone);
-            WorldSave here = World.Save();
-            var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
+            WorldSave moved = MovedTo(target);
             // Comme une porte : la session d'arrivée est construite avant d'écrire quoi que ce soit ; l'aventure ne change qu'une fois les
             // deux réussies.
             // Sous-lot V2.28b : règle d'arrivée à un point sûr (place libre la plus proche si la destination est occupée).
