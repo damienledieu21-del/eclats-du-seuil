@@ -123,9 +123,9 @@ public class V261SuitesDuSeuilTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((13, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
+        Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((13, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((13, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
+        Assert.Equal((14, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((13, "0.25.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.25.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.17.0-provisoire", ItemsCatalog.ContentVersion);
@@ -177,7 +177,7 @@ public class V261SuitesDuSeuilTests
         ZoneLoadResult old = Mutated(root => root["schemaVersion"] = 11);
         AssertError(old.Report, $"$.data.events[{i}].scar.spreadStage", ValidationCode.InvalidValue);
         AssertError(old.Report, $"$.data.events[{i}].groups[0].spreadTo", ValidationCode.InvalidValue);
-        AssertError(Mutated(root => root["schemaVersion"] = 14).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        AssertError(Mutated(root => root["schemaVersion"] = 15).Report, "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
     }
 
     [Theory]

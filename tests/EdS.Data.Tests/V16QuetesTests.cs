@@ -531,7 +531,7 @@ public class V16QuetesTests
     public void Chef_des_bandits_livre_a_deux_formes()
     {
         ZoneDefinition z = Zone();
-        Assert.Equal(13, z.SchemaVersion);   // V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
+        Assert.Equal(14, z.SchemaVersion);   // V2.26 : 14 (territoire) ; V2.25.3 : 13 (région) ; V2.6.1 : 12 (propagation) ; V2.6 : 11 (cicatrices) ; V2.5 : 10 (événements) ; V2.4 : 9 (temps) ; V2.1 : 8 (jour et nuit) ; 5 au sous-lot V1.6 ; 6 depuis les réponses du 31 octobre 2026 (créature de la nuit) ; 7 (V1.8 : zones en mélange)
         Boss chef = z.Chiefs[0];   // sous-lot V1.9.6 : Croc-Gris est le second (V196OuvertureTests)
         Assert.Equal(new[] { "chef_des_bandits", "croc_gris" }, z.Chiefs.Select(c => c.Id));
         Assert.Equal(("chef_des_bandits", "fact.chef_des_bandits.vaincu", "loot.chef_des_bandits"), (chef.Id, chef.Fact, chef.Loot!));

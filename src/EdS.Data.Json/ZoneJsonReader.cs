@@ -374,6 +374,7 @@ namespace EdS.Data.Json
                 ["creature"] = (v, p) => population.Creature = input.Text(v, p),
                 ["respawnMs"] = (v, p) => population.RespawnMs = input.Int64(v, p),
                 ["leashRange"] = (v, p) => population.LeashRange = input.Decimal(v, p),
+                ["territory"] = (v, p) => population.Territory = input.Decimal(v, p),   // sous-lot V2.26 (schéma 14)
                 ["loot"] = (v, p) => population.Loot = input.NullableText(v, p),
                 ["family"] = (v, p) => population.Family = input.Text(v, p),   // sous-lot V1.6 (schéma 5)
                 ["night"] = (v, p) => population.Night = ReadNight(input, v, p),   // réponses du 31 octobre 2026 (schéma 6)

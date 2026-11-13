@@ -111,11 +111,31 @@ namespace EdS.World
         /// <param name="phase">Sous-lot V2.1 : moment de la journée au début de la session (null : toutes les créatures à heures sont là).</param>
         /// <param name="weather">Sous-lot V2.4 : temps au début de la session (null : toutes les créatures à temps sont là).</param>
         public ZonePopulations(ZoneDefinition zone, DayPhase? phase = null, WeatherKind? weather = null)
+            : this((zone ?? throw new ArgumentNullException(nameof(zone))).Populations, phase, weather) { }
+
+        /// <summary>Sous-lot V2.26 : vies des seules populations données (celles d'un secteur), dans leur ordre.</summary>
+        public ZonePopulations(IEnumerable<Population> populations, DayPhase? phase = null, WeatherKind? weather = null)
         {
             // Réponses du 31 octobre 2026 : une créature rare de la nuit n'est pas là au début de la session (ZoneSetups la retire).
             // Sous-lot V2.1 : une créature à heures non plus, hors de ses heures.
-            _lives = zone.Populations.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase, weather) }).ToList();
-            foreach (Population p in zone.Populations) _byCreature[p.Creature] = p;
+            Population[] list = (populations ?? throw new ArgumentNullException(nameof(populations))).ToArray();
+            _lives = list.Select(p => new Life { Population = p, Current = p.Creature, Dormant = !PresentAtStart(p, phase, weather) }).ToList();
+            foreach (Population p in list) _byCreature[p.Creature] = p;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 (PLAN_GRANDE_CARTE.md § 2.4, au bout de la marge) : la vie en cours <paramref name="combatant"/> lâche comme pour la
+        /// laisse (elle s'en va, ni mort ni butin ; une vie calme la remplace chez elle). Faux si ce n'est pas une vie présente d'une population,
+        /// ou si son départ est refusé (nouvel essai possible).
+        /// </summary>
+        public PopulationEvent? Release(Zone zone, string combatant)
+        {
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            Life? life = _lives.FirstOrDefault(l => l.Current == combatant);
+            if (life is null || life.Leashing || life.Withdrawing || !zone.Engine.View(combatant).IsPresent || zone.Engine.View(combatant).IsDead) return null;
+            if (!TryLeave(zone, combatant)) return null;
+            life.Leashing = true;
+            return new PopulationEvent(PopulationEventKind.Leashed, life.Population.Creature, combatant, zone.Engine.CurrentTick);
         }
 
         /// <summary>
@@ -182,8 +202,8 @@ namespace EdS.World
                         life.Died = true;   // sous-lot V2.9.1
                     }
                     else if (v.HasLeft || refused) life.RespawnAt = now;   // laisse (ou arrivée refusée) : une vie calme la remplace aussitôt
-                    else if (!life.Leashing && !Flees(life.Population) && v.IsPresent && v.Engaged && v.CurrentTarget is string target
-                        && Beyond(v, engine.View(target), life.Population.LeashRange))
+                    else if (!life.Leashing && !Flees(life.Population) && v.IsPresent && v.Engaged
+                        && ((v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange)) || OutOfTerritory(v, life.Population)))
                     {
                         // Revue Codex de la PR #45 : un départ refusé par le pilote (plafond de commandes, refus atomique) ne fait pas échouer le
                         // tick ; la laisse est retentée au tick suivant.
@@ -283,7 +303,8 @@ namespace EdS.World
             }
             if (life.Withdrawing || life.Leashing || !v.IsPresent) return null;
             // Relecture de la PR #104 : une bête qui fuit n'a pas de laisse (elle reste où sa fuite l'a menée : aucune vie usée).
-            if (!Flees(life.Population) && v.Engaged && v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange))
+            if (!Flees(life.Population) && v.Engaged
+                && ((v.CurrentTarget is string target && Beyond(v, engine.View(target), life.Population.LeashRange)) || OutOfTerritory(v, life.Population)))
             {
                 if (TryLeave(zone, life.Current))
                 {
@@ -361,7 +382,17 @@ namespace EdS.World
             int number = checked(life.Number + 1);
             string id = $"{t.Id}_v{number}";
             while (taken.Contains(id)) id = $"{t.Id}_v{number = checked(number + 1)}";
-            var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
+            // Revue Codex de la PR #150 (11e et 13e tours) : références adaptées aux combattants de la session, par la même règle que le
+            // découpage (CombatantReferences.Adapt) : une cible absente (dans un autre secteur) est retirée à une bête à comportement ou sans
+            // attaque à cible unique ; une bête liée à une cible absente ne revient pas (sa vie s'arrête : la réessayer serait sans fin).
+            // L'hôte d'une zone ne change pas (la cible y est toujours).
+            if (CombatantReferences.Adapt(t, taken.Contains) is not AssailantSetup adapted)
+            {
+                life.Exhausted = true;
+                return null;
+            }
+            string? target = adapted.Target;
+            var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 t.StatusResistance, t.Triggers, t.Health, t.Placement, checked(now * tickMs), t.Behavior);
             try
             {
@@ -406,6 +437,14 @@ namespace EdS.World
             }
             return false;
         }
+
+        /// <summary>
+        /// Sous-lot V2.26 (schéma de zone 14) : la créature est-elle sortie de son territoire (centre strictement au-delà du rayon autour de sa
+        /// place de départ) ? Faux sans territoire (comme avant).
+        /// </summary>
+        internal static bool OutOfTerritory(CombatantView creature, Population population) =>
+            population.Territory is Fixed territory && creature.Position is GroundVector at && population.Template.Placement is { } home
+            && Beyond(at, Fixed.Zero, home.Position, Fixed.Zero, territory);
 
         private static bool Beyond(CombatantView creature, CombatantView target, Fixed leash) =>
             target.IsPresent && !target.IsDead && creature.Position is GroundVector a && creature.Radius is Fixed ra && target.Position is GroundVector b

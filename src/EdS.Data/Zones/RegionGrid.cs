@@ -43,6 +43,15 @@ namespace EdS.Data.Zones
         public override string ToString() => Name;
     }
 
+    /// <summary>Sous-lot V2.26 : forme des noms de secteur (« s07_06 »).</summary>
+    public static class RegionCellNames
+    {
+        private static readonly System.Text.RegularExpressions.Regex SectorName =
+            new System.Text.RegularExpressions.Regex(@"^s[0-9]{2}_[0-9]{2}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        public static bool IsSectorName(string? name) => name != null && SectorName.IsMatch(name);
+    }
+
     /// <summary>
     /// Sous-lot V2.25.3 (schéma de zone 13) : repère et grille d'une région (docs/PLAN_GRANDE_CARTE.md, § 2.1). Un seul repère pour toute la
     /// région, en mètres (x vers l'est, z vers le nord), celui de la zone : rien ne bouge. Cases carrées de <see cref="CellMeters"/> m depuis
@@ -105,6 +114,24 @@ namespace EdS.Data.Zones
             for (int r = 0; r < rows; r++)
                 for (int c = 0; c < columns; c++) cells.Add(new RegionCell(c, r));
             Cells = Frozen.List(cells, nameof(cells));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.26 : distance (en mètres, exacte en virgule fixe) d'un point de la région au bord le plus proche de son secteur (0 sur
+        /// le bord ; un point hors de la région : 0).
+        /// </summary>
+        public static Fixed DistanceToSectorEdge(RegionGrid grid, GroundVector p)
+        {
+            if (grid is null) throw new ArgumentNullException(nameof(grid));
+            if (!grid.Contains(p)) return Fixed.Zero;
+            RegionCell cell = grid.CellOf(p);
+            Fixed minX = Fixed.FromInt(grid.OriginX + cell.SectorColumn * SectorMeters), minZ = Fixed.FromInt(grid.OriginZ + cell.SectorRow * SectorMeters);
+            Fixed maxX = minX + Fixed.FromInt(SectorMeters), maxZ = minZ + Fixed.FromInt(SectorMeters);
+            Fixed d = p.X - minX;
+            if (maxX - p.X < d) d = maxX - p.X;
+            if (p.Z - minZ < d) d = p.Z - minZ;
+            if (maxZ - p.Z < d) d = maxZ - p.Z;
+            return d < Fixed.Zero ? Fixed.Zero : d;
         }
 
         /// <summary>Repère des Vallons d'Aube agrandis (plan, § 2.1).</summary>

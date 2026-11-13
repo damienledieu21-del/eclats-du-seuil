@@ -39,7 +39,7 @@
 | Scénarios (schéma) | 18 (`carried`, V2.26) | `ScenarioValidator.cs` |
 | Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
-| Zones (schéma) | v13 (v12 à v7 encore lues ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
+| Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |

@@ -23,9 +23,10 @@
         10,
         11,
         12,
-        13
+        13,
+        14
       ],
-      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle)."
+      "description": "Version 8 (sous-lot V2.1, jour et nuit) : hours sur une population et nightSpots ; la version 7 est encore lue (sans eux). Version 10 (sous-lot V2.5) : events ; les versions 9, 8 et 7 sont encore lues (sans eux). Version 11 (sous-lot V2.6) : scar sur une faille et haunts sur ses variantes ; la version 10 est encore lue (sans eux). Version 12 (sous-lot V2.6.1) : propagation d'une cicatrice (scar.spreadStage, spreadDays, spreadFact ; spreadTo sur une variante) ; la version 11 est encore lue (sans elle). Version 13 (sous-lot V2.25.3, grande carte : cases et repère) : region (grille de cases de 128 m, secteurs de 256 m) ; une zone à région a des bornes relevées (2 048 lieux, 256 portes, 1 024 routes de 128 points au plus) et des bornes par case (64 lieux, 16 portes, 32 routes) ; la version 12 est encore lue (sans elle). Version 14 (sous-lot V2.26, secteurs de simulation) : territory sur une population ; dans une zone à région, une créature peuplée part d'au moins 8 m du bord de son secteur ; la version 13 est encore lue (sans eux)."
     },
     "kind": {
       "const": "zone"
@@ -213,6 +214,12 @@
                 "exclusiveMinimum": 0,
                 "maximum": 100,
                 "description": "Écart à sa cible (entre les bords) au-delà duquel la créature lâche, en mètres."
+              },
+              "territory": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 256,
+                "description": "Sous-lot V2.26 (schéma 14) : rayon autour de sa place de départ, en mètres ; engagée, la créature qui en sort lâche (ni mort ni butin, une vie calme la remplace). Au plus 40 m sans région ; avec une région, au plus la distance de sa place au bord de son secteur plus la marge de 32 m."
               },
               "loot": {
                 "anyOf": [
