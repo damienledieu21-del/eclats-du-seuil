@@ -1509,7 +1509,9 @@ namespace EdS.Runtime
                         // Sous-lot V2.3.1 : et ceux qui y passent dans la journée (leur corps attend à la porte, caché, quand ils sont ailleurs).
                         _zone.Indoor ? NpcStage().Select(n => (n.Id, n.X, n.Z)) : null,
                         // V2.25.2 : la porte du moulin, fermée ou ouverte (sa barrière reste dans le décor).
-                        _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!);
+                        _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!,
+                        // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
+                        _zone.Indoor ? null : _zone.Region);
                     _mapSession = Opened;
                 }
                 return _map;
