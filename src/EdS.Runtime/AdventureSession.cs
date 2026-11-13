@@ -252,8 +252,11 @@ namespace EdS.Runtime
         public bool IsNewGame { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings)
         {
+            if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
+                throw new ArgumentOutOfRangeException(nameof(arrivalRings), arrivalRings, $"Anneaux de la règle d'arrivée hors de [0, {WorldSession.ArrivalRings}].");
+            _arrivalRings = arrivalRings;
             _market = new Market(merchants);   // sous-lot V1.1 : une seule instance, d'une session à l'autre (lots rachetables)
             _guild = guild;   // sous-lot V1.7
             _data = data;
@@ -291,7 +294,7 @@ namespace EdS.Runtime
             // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
             // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
             // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
-            (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId);
+            (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);
             Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
             // Sous-lot V1.9.6 : une nouvelle partie dit d'emblée la première étape de l'ouverture (le réveil).
@@ -304,7 +307,15 @@ namespace EdS.Runtime
         /// sauvegarde <paramref name="savePath"/> (absente ou illisible : nouvelle partie, l'illisible est signalée et remplacée à la
         /// première sauvegarde). Toute donnée refusée lève <see cref="InvalidDataException"/> avec les messages du validateur.
         /// </summary>
-        public static AdventureSession Load(string dataDirectory, string scenariosDirectory, string savePath)
+        public static AdventureSession Load(string dataDirectory, string scenariosDirectory, string savePath) =>
+            Load(dataDirectory, scenariosDirectory, savePath, WorldSession.ArrivalRings);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #156 : la même aventure avec une règle d'arrivée à un point sûr de <paramref name="arrivalRings"/>
+        /// anneaux de 0,5 m (de 0 à <see cref="WorldSession.ArrivalRings"/>, la valeur du jeu), pour les essais du dernier recours (aucune
+        /// place libre autour du point sûr).
+        /// </summary>
+        public static AdventureSession Load(string dataDirectory, string scenariosDirectory, string savePath, int arrivalRings)
         {
             if (savePath is null) throw new ArgumentNullException(nameof(savePath));
             GameDataLoadResult loaded = GameDataLoader.Load(dataDirectory);
@@ -330,7 +341,7 @@ namespace EdS.Runtime
             // Sous-lot V1.7 : la Guilde des aventuriers (rangs, contrats, épreuves, portes, boutique).
             GuildLoadResult guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, definition, zones.Zones, catalog, merchantBook);
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, Need(crafting.Book, "métiers", () => crafting.Report),
-                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath);
+                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -1799,6 +1810,9 @@ namespace EdS.Runtime
         /// <summary>Dernier point de reprise vu par l'aventure dans la session en cours (null : pas encore regardé).</summary>
         private string? _trackedSafePoint;
 
+        /// <summary>Anneaux de 0,5 m de la règle d'arrivée à un point sûr (<see cref="WorldSession.ArrivalRings"/> dans le jeu).</summary>
+        private readonly int _arrivalRings;
+
         /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon celui où la session a commencé).</summary>
         public string LastSafePoint => _zone.SafePoints.First(s => s.Id == World.LastSafePoint).Name;
 
@@ -1848,7 +1862,11 @@ namespace EdS.Runtime
         {
             WorldSave save = World.Save();
             Write(save);
-            Open(save, save.Resume?.SafePoint);
+            // Sous-lot V2.28b : même règle d'arrivée que le jeu relancé (place libre la plus proche si le point sûr est occupé, sinon l'entrée).
+            // Relecture indépendante de la PR #156 : le point de reprise est celui que la session tient (toujours un point sûr de sa zone),
+            // passé tel quel à la règle : rien ne le remplace en silence par l'entrée ; seule la règle d'arrivée peut y mener (aucune place libre).
+            (string? at, GroundVector? place) = WorldSession.SafeArrival(save, _zone, _progression, World.LastSafePoint, ZoneId, _arrivalRings);
+            Open(save, at, null, place);
             Say(message, LastSafePoint);
             AnnounceLearned();
         }

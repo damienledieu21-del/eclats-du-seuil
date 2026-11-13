@@ -359,11 +359,36 @@ public class Lot128AdventureTests : IDisposable
     }
 
     [Fact]
-    public void Arrivee_refusee_puis_nouvel_essai()
+    public void Point_sur_occupe_arrivee_a_la_place_libre_la_plus_proche()
     {
-        // Une créature sur le point sûr : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.
+        // Sous-lot V2.28b (règle d'arrivée à un point sûr, la même pour toute session) : une créature sur le point sûr d'entrée : le
+        // personnage arrive à la place libre la plus proche, sans attente ni message. Avant : son arrivée était refusée (« Stranded »), la
+        // partie le disait, et une reprise réessayait au même point, toujours occupé.
         (string data, string scenarios) = DeadlyCopy(x: -18, arriving: true);
         AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        Assert.False(a.World.IsDefeated);
+        Assert.DoesNotContain("Une créature occupe le point sûr : impossible d'y arriver pour l'instant.", a.DrainMessages());
+        CombatantView me = a.World.Zone.Engine.View(AdventureSession.PlayerId);
+        Assert.True(me.IsPresent);
+        double dx = (me.Position!.Value.X.Raw + 180_000) / 1e4, dz = (me.Position.Value.Z.Raw + 120_000) / 1e4, away = Math.Sqrt(dx * dx + dz * dz);
+        Assert.InRange(away, 0.5, 8.0);
+        Assert.Equal("Place du village", a.LastSafePoint);
+        // La règle seule : la session ouverte au point sûr même n'y arrive pas (l'arrivée refusée reste le dernier recours, sans place libre).
+        var exact = new WorldSession(a.World.Save(), a.World.Definition!, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog);
+        exact.Step();
+        exact.Step();
+        Assert.False(exact.Zone.Engine.View(AdventureSession.PlayerId).IsPresent);
+    }
+
+    [Fact]
+    public void Arrivee_refusee_puis_nouvel_essai_en_dernier_recours()
+    {
+        // Relecture indépendante de la PR #156 : le dernier recours de la règle d'arrivée, au niveau de l'aventure. Aucune place libre autour
+        // du point sûr (règle réduite à zéro anneau pour l'essai) : le personnage n'arrive pas ; la partie le dit et une reprise réessaie.
+        (string data, string scenarios) = DeadlyCopy(x: -18, arriving: true);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath, 0);
         a.Advance(0.05);
         Assert.True(a.Stranded);
         Assert.True(a.MustContinue);
@@ -374,6 +399,9 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(2, a.Opened);
         a.Advance(0.05);
         Assert.True(a.Stranded);   // le sanglier revient à sa place : toujours occupé
+        // La portée de la règle est bornée : de zéro anneau à celle du jeu.
+        Assert.Throws<ArgumentOutOfRangeException>(() => AdventureSession.Load(data, scenarios, SavePath, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AdventureSession.Load(data, scenarios, SavePath, WorldSession.ArrivalRings + 1));
     }
 
     [Fact]

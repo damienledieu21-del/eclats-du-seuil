@@ -314,7 +314,8 @@ namespace EdS.World
         }
 
         private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
-            CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables, ICombatLog? log, bool _)
+            CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables, ICombatLog? log, bool _, ZoneDefinition? hosted = null,
+            string? storyZone = null)
         {
             _items = items;
             if (save is null) throw new ArgumentNullException(nameof(save));
@@ -392,7 +393,15 @@ namespace EdS.World
                 shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
                 equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
-            Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
+            // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
+            // la session de son secteur, qui est alors exactement celle de la zone.
+            _host = hosted is null ? null : HostFor(hosted, save, storyZone, log);
+            if (_host != null)
+            {
+                _host.EnterAtStart(setup);
+                Zone = _host.SectorZone(_host.SectorOf(setup.Id)!)!;
+            }
+            else Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
             // Sous-lot V1.4 : point de départ du relevé des dégâts reçus, et pièces portées à l'entrée (celles du combat de cette session).
             _lastTaken = Zone.Engine.View(_character.Id).Counters.DamageTaken;
@@ -471,6 +480,59 @@ namespace EdS.World
         private readonly ItemCatalog _items;
         private readonly ZonePopulations? _populations;
 
+        /// <summary>
+        /// Sous-lot V2.28b (PLAN_GRANDE_CARTE.md § 2.3, « en solo, la partie joue le rôle de l'hôte ») : hôte des secteurs qui tient la
+        /// session d'une zone à région ; null pour une zone sans région (un intérieur), une session sans zone du monde, ou une aire qui ne
+        /// tient pas dans le secteur du cœur (pas encore : le passage du personnage d'un secteur à l'autre vient ensuite).
+        /// </summary>
+        private readonly SectorWorld? _host;
+
+        // Relecture indépendante de la PR #156 : ce que le tick en cours rapporte entre la session et ses populations (AfterZone), et de quoi
+        // appeler l'hôte sans rien allouer à chaque tick.
+        private bool _tickWasPresent;
+        private IReadOnlyList<BoonExpired> _tickExpired = Array.Empty<BoonExpired>();
+        private IReadOnlyList<ExperienceGained> _tickGains = Array.Empty<ExperienceGained>();
+        private IReadOnlyList<LootGained> _tickLoot = Array.Empty<LootGained>();
+        private readonly List<(string Sector, PopulationEvent Event)> _tickPopulations = new List<(string Sector, PopulationEvent Event)>();
+        private Action<string, IReadOnlyList<ZoneEvent>>? _afterZone;
+        private Func<string, int>? _reserved;
+
+        /// <summary>Après le tick de la session, avant ses populations : objets de soin, bonus actifs, récompenses des morts du tick.</summary>
+        private void AfterZone(IReadOnlyList<ZoneEvent> events)
+        {
+            SyncConsumables();
+            // Sous-lot V1.8c : le temps des bonus actifs baisse d'un tick ; un bonus fini quitte sa place à ce tick précis.
+            _tickExpired = TickBoons();
+            // Sous-lot V1.8d : effet immédiat : un bonus fini quitte le combat au tick suivant, le premier qu'il ne couvre plus (bonus modifié
+            // soumis maintenant, appliqué au début de ce tick) ; un bonus modifié encore refusé par le pilote est retenté.
+            if (_tickExpired.Count > 0 || _gearPending) SyncCombatGear();
+            if (events.Count > 0)
+            {
+                Reward(events, _tickWasPresent, out IReadOnlyList<ExperienceGained> gains, out IReadOnlyList<LootGained> loot);
+                _tickGains = gains;
+                _tickLoot = loot;
+            }
+        }
+
+        /// <summary>Sous-lot V2.28b : la session est tenue par l'hôte des secteurs (zone à région dont l'aire tient dans le secteur du cœur).</summary>
+        public bool OnSectors => _host != null;
+
+        /// <summary>
+        /// Sous-lot V2.28b : hôte des secteurs de <paramref name="zone"/> pour cette partie, ou null (zone sans région ou sans espace, aire
+        /// plus grande que le secteur du cœur). Même simulation que la session d'une zone : même aire au début (heure et temps du monde),
+        /// même session, même registre, mêmes créatures voulues.
+        /// </summary>
+        private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
+        {
+            if (zone.Region is null || zone.Setup.Space is null || !SectorMap.For(zone).HomeHoldsArea) return null;
+            var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
+            string weatherZone = storyZone ?? zone.Id;
+            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), save.Consumed, null,
+                log is null ? (Func<string, long, ICombatLog>?)null : (sector, session) => log,
+                (population, worldTick) => Wanted(population, checked(worldTick - Zone.StartWorldTick)),
+                tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind));
+        }
+
         /// <summary>Sous-lot 12.4 : zone du monde de la partie (null pour une partie sur une simulation donnée).</summary>
         public ZoneDefinition? Definition { get; }
 
@@ -514,11 +576,12 @@ namespace EdS.World
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled,
             GroundVector? place = null)
             : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
-                null, log, CheckZone(save, zone, story, crafting, market, guild))
+                null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone)
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
-            _populations = new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
+            // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
+            _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
@@ -927,20 +990,37 @@ namespace EdS.World
         public SessionStep Step()
         {
             // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
-            bool wasPresent = Zone.Engine.View(_character.Id).IsPresent;
-            IReadOnlyList<ZoneEvent> events = Zone.Step();
-            SyncConsumables();
-            // Sous-lot V1.8c : le temps des bonus actifs baisse d'un tick ; un bonus fini quitte sa place à ce tick précis.
-            IReadOnlyList<BoonExpired> expired = TickBoons();
-            // Sous-lot V1.8d : effet immédiat : un bonus fini quitte le combat au tick suivant, le premier qu'il ne couvre plus (bonus modifié
-            // soumis maintenant, appliqué au début de ce tick) ; un bonus modifié encore refusé par le pilote est retenté.
-            if (expired.Count > 0 || _gearPending) SyncCombatGear();
-            IReadOnlyList<ExperienceGained> gains = Array.Empty<ExperienceGained>();
-            IReadOnlyList<LootGained> loot = Array.Empty<LootGained>();
-            if (events.Count > 0) Reward(events, wasPresent, out gains, out loot);
+            _tickWasPresent = Zone.Engine.View(_character.Id).IsPresent;
+            _tickExpired = Array.Empty<BoonExpired>();
+            _tickGains = Array.Empty<ExperienceGained>();
+            _tickLoot = Array.Empty<LootGained>();
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
-            IReadOnlyList<PopulationEvent> population = _populations?.Step(Zone, ReservedPlaces, Wanted) ?? Array.Empty<PopulationEvent>();
+            IReadOnlyList<PopulationEvent> population;
+            if (_host != null && !Zone.IsOver)
+            {
+                // Sous-lot V2.28b : le tick est celui de l'hôte des secteurs (même ordre : session, récompenses, populations). Une session
+                // terminée n'est pas renouvelée ici : la partie la reprend au dernier point sûr, comme avant.
+                // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
+                _tickPopulations.Clear();
+                _host.Step(null, _tickPopulations, _afterZone ??= (sector, events) => AfterZone(events), _reserved ??= sector => ReservedPlaces);
+                if (_tickPopulations.Count == 0) population = Array.Empty<PopulationEvent>();
+                else
+                {
+                    var list = new List<PopulationEvent>(_tickPopulations.Count);
+                    foreach ((string _, PopulationEvent e) in _tickPopulations) list.Add(e);
+                    population = list;
+                }
+            }
+            else
+            {
+                AfterZone(Zone.Step());
+                population = _populations?.Step(Zone, ReservedPlaces, Wanted) ?? Array.Empty<PopulationEvent>();
+            }
+            bool wasPresent = _tickWasPresent;
+            IReadOnlyList<BoonExpired> expired = _tickExpired;
+            IReadOnlyList<ExperienceGained> gains = _tickGains;
+            IReadOnlyList<LootGained> loot = _tickLoot;
             var story = new List<StoryEvent>();
             // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
             IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
+using EdS.Domain.Space;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -89,7 +90,10 @@ namespace EdS.Runtime
             var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             // Comme une porte : la session d'arrivée est construite avant d'écrire quoi que ce soit ; l'aventure ne change qu'une fois les
             // deux réussies.
-            WorldSession next = Build(moved, target, safePoint, null);
+            // Sous-lot V2.28b (relecture indépendante de la PR #156) : règle d'arrivée entière, comme toute session ouverte à un point sûr :
+            // place libre la plus proche si la destination est occupée, sinon l'entrée de la zone d'arrivée ; jamais d'exception.
+            (string? at, GroundVector? place) = WorldSession.SafeArrival(moved, target, _progression, safePoint, ZoneId, _arrivalRings);
+            WorldSession next = Build(moved, target, at, null, place);
             moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr d'arrivée
             try
             {
@@ -103,7 +107,7 @@ namespace EdS.Runtime
             _zone = target;
             Travels = checked(Travels + 1);
             Commit(next);
-            Say("text.ui.travel.arrived", target.SafePoints.First(s => s.Id == safePoint).Name);
+            Say("text.ui.travel.arrived", LastSafePoint);   // là où l'on est arrivé (la destination, ou l'entrée si elle n'avait aucune place libre)
             AnnounceLearned();
             return TravelRefusal.None;
         }

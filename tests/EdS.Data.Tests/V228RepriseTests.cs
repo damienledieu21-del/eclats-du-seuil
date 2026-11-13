@@ -402,7 +402,15 @@ public class V228RepriseTests : IDisposable
         boar["arrivalMs"] = 0;
     }
 
-    private (string Data, string Scenarios) CopyWithBoarOnTheBourg()
+    private (string Data, string Scenarios) CopyWithBoarOnTheBourg(bool deadly = false) => CopyWith(root =>
+    {
+        BoarOnTheBourg(root);
+        if (deadly)
+            foreach (JsonNode? attack in root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+    });
+
+    /// <summary>Données et scénarios copiés dans le dossier du test, le scénario des Vallons retouché.</summary>
+    private (string Data, string Scenarios) CopyWith(Action<JsonObject> scenario)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
@@ -414,7 +422,7 @@ public class V228RepriseTests : IDisposable
             }
         string path = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject root = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
-        BoarOnTheBourg(root);
+        scenario(root);
         File.WriteAllText(path, root.ToJsonString());
         return (data, scenarios);
     }
@@ -450,6 +458,154 @@ public class V228RepriseTests : IDisposable
         (string? point, GroundVector? place) = WorldSession.ResumeArrival(saved, again.World.Definition!, Progression, again.World.Narrative!.Book, AdventureSession.ZoneId);
         Assert.Equal(("place_du_bourg", (GroundVector?)here), (point, place));
         Assert.Equal(here, Position(Adventure(SavePath, data, scenarios)));
+    }
+
+    [Fact]
+    public void Voyage_et_reprise_apres_une_defaite_sur_un_point_sur_occupe()
+    {
+        // Sous-lot V2.28b : la règle d'arrivée du jeu relancé vaut pour toute session ouverte à un point sûr. Avant : le voyage et la reprise
+        // après une défaite arrivaient sur le point sûr même, occupé (arrivée refusée, à réessayer sans fin).
+        (string data, string scenarios) = CopyWithBoarOnTheBourg(deadly: true);
+        AdventureSession a = Adventure(SavePath, data, scenarios);
+        a.Save();
+        // La place du Bourg est déjà découverte (clé au registre, dans l'ordre ordinal).
+        EditSave(d =>
+        {
+            var keys = d["consumed"]!.AsArray().Select(k => (string)k!).Append("zone.vallons/safe/place_du_bourg").Distinct().OrderBy(k => k, StringComparer.Ordinal).ToArray();
+            d["consumed"] = new JsonArray(keys.Select(k => (JsonNode?)JsonValue.Create(k)).ToArray());
+        });
+        a = Adventure(SavePath, data, scenarios);
+        Assert.Equal(At(-18, -12), Position(a));
+        // Voyage rapide vers le point sûr occupé : arrivée à la place libre la plus proche, à destination.
+        Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        GroundVector arrived = Position(a);
+        Assert.InRange(Distance(arrived, At(-58, -6)), 0.5, 8.0);
+        Assert.Equal("Place du Bourg", a.LastSafePoint);
+        Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+        // Le sanglier, mortel ici, fait tomber le personnage ; la reprise rouvre une session au même point sûr, à la même place libre.
+        for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);
+        Assert.True(a.World.IsDefeated);
+        int opened = a.Opened;
+        Assert.True(a.Continue());
+        Assert.Equal(opened + 1, a.Opened);
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        Assert.False(a.World.IsDefeated);
+        Assert.Equal(arrived, Position(a));
+        Assert.Equal("Place du Bourg", a.LastSafePoint);
+    }
+
+    /// <summary>La sauvegarde écrite, avec la place du Bourg déjà découverte (clé au registre, dans l'ordre ordinal).</summary>
+    private void DiscoverTheBourg() => EditSave(d =>
+    {
+        var keys = d["consumed"]!.AsArray().Select(k => (string)k!).Append("zone.vallons/safe/place_du_bourg").Distinct().OrderBy(k => k, StringComparer.Ordinal).ToArray();
+        d["consumed"] = new JsonArray(keys.Select(k => (JsonNode?)JsonValue.Create(k)).ToArray());
+    });
+
+    [Fact]
+    public void Voyage_vers_un_point_sur_sans_place_libre_arrivee_a_l_entree_sans_exception()
+    {
+        // Relecture indépendante de la PR #156 : le voyage suit la règle d'arrivée entière. Aucune place libre autour de la destination
+        // (règle réduite à deux anneaux pour l'essai, tous sous le sanglier) : arrivée à l'entrée de la zone, dite telle quelle ; jamais
+        // d'exception, jamais d'arrivée refusée.
+        (string data, string scenarios) = CopyWithBoarOnTheBourg();
+        AdventureSession.Load(data, scenarios, SavePath, 2).Save();
+        DiscoverTheBourg();
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath, 2);
+        a.Advance(0.05);
+        a.DrainMessages();
+        Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
+        Assert.Equal("Voyage rapide : te voici à Place du village.", a.DrainMessages().Last());
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        Assert.Equal((At(-18, -12), "Place du village", 1), (Position(a), a.LastSafePoint, a.Travels));
+        Assert.Equal("place_du_village", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+        // Avec la règle du jeu (8 m), la même destination a une place libre : on y arrive.
+        AdventureSession full = AdventureSession.Load(data, scenarios, SavePath);
+        full.Advance(0.05);
+        Assert.Equal(TravelRefusal.None, full.Travel("zone.vallons", "place_du_bourg"));
+        full.Advance(0.05);
+        Assert.False(full.Stranded);
+        Assert.Equal("Place du Bourg", full.LastSafePoint);
+        Assert.InRange(Distance(Position(full), At(-58, -6)), 0.5, 8.0);
+    }
+
+    [Fact]
+    public void Couvre_feu_vers_un_point_sur_occupe()
+    {
+        // Relecture indépendante de la PR #156 : le couvre-feu suit la règle d'arrivée entière. Le sanglier arrive sur la place du village
+        // (point sûr du couvre-feu, et entrée de la zone).
+        (string data, string scenarios) = CopyWith(root =>
+        {
+            JsonObject boar = root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
+            boar["position"] = new JsonArray(-18, -12);
+            boar["arrivalMs"] = 0;
+        });
+        AdventureSession.Load(data, scenarios, SavePath).Save();
+        // La nuit, au Bourg, haï de la garde.
+        WorldSave fresh = SaveStore.Read(SavePath).Save!;
+        SavedStory story = fresh.Character!.Story;
+        SavedCharacter hated = fresh.Character.WithStory(new SavedStory(story.Facts, story.Quests, story.Trust, story.Discoveries, story.Tracked, story.Guild, story.Hunted,
+            new Dictionary<string, int> { ["guard"] = -700 }, story.Festivals));
+        var night = new WorldSave(fresh.Zone, 130_000, fresh.Sessions, fresh.Consumed.Append("zone.vallons/safe/place_du_bourg"), hated, resume: new SavedResume("place_du_bourg", "s07_06"));
+        SaveStore.Write(SavePath, night);
+        // Règle du jeu : reconduit à la place libre la plus proche de la place du village, sans attente.
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        a.Advance(0.05);
+        Assert.Equal(1, a.Expulsions);
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        Assert.Equal("Place du village", a.LastSafePoint);
+        Assert.InRange(Distance(Position(a), At(-18, -12)), 0.5, 8.0);
+        // Aucune place libre autour (règle réduite à deux anneaux) : le point sûr du couvre-feu est l'entrée ; dernier recours, sans exception :
+        // l'arrivée y est refusée, la partie le dit, et une reprise réessaie.
+        SaveStore.Write(SavePath, night);
+        AdventureSession b = AdventureSession.Load(data, scenarios, SavePath, 2);
+        b.Advance(0.05);
+        Assert.Equal(1, b.Expulsions);
+        b.Advance(0.05);
+        Assert.True(b.Stranded);
+        Assert.Contains("Une créature occupe le point sûr : impossible d'y arriver pour l'instant.", b.DrainMessages());
+        Assert.True(b.Continue());
+        b.Advance(0.05);
+        Assert.True(b.Stranded);
+        Assert.Equal(1, b.Expulsions);
+    }
+
+    [Fact]
+    public void Halte_a_chaque_point_sur_la_session_rouvre_au_meme_point()
+    {
+        // Relecture indépendante de la PR #156 : la reprise (halte, défaite) passe à la règle d'arrivée le point sûr que la session tient,
+        // toujours un point sûr de sa zone : aucun cas réel ne le remplace par l'entrée, sauf la règle elle-même (aucune place libre).
+        // Propriété : à chaque point sûr des Vallons, la planque secrète révélée comprise, la halte rouvre la session au même point.
+        AdventureSession.Load(DataDirectory, ScenariosDirectory, SavePath).Save();
+        WorldSave fresh = SaveStore.Read(SavePath).Save!;
+        ZoneDefinition zone = V11TestData.Zone();
+        StoryBook book = Book(zone);
+        SavedStory story = fresh.Character!.Story;
+        SavedCharacter knowing = fresh.Character.WithStory(new SavedStory(story.Facts.Concat(book.Reputation.Hidden.Select(h => h.Fact)), story.Quests, story.Trust,
+            story.Discoveries, story.Tracked, story.Guild, story.Hunted, story.Reputation, story.Festivals));
+        var rested = new List<string>();
+        foreach (SafePoint point in zone.SafePoints)
+        {
+            SaveStore.Write(SavePath, new WorldSave(fresh.Zone, fresh.WorldTick, fresh.Sessions, fresh.Consumed, knowing, resume: new SavedResume(point.Id, "s07_06")));
+            AdventureSession a = Adventure(SavePath);
+            Assert.Equal(point.Position, Position(a));
+            Assert.Equal(point.Name, a.LastSafePoint);
+            if (!a.CanRest) continue;   // un ennemi à moins de 12 m : pas de halte ici
+            int opened = a.Opened;
+            Assert.True(a.Rest());
+            a.Advance(0.05);
+            Assert.Equal((opened + 1, point.Position, point.Name), (a.Opened, Position(a), a.LastSafePoint));
+            Assert.Equal(point.Id, SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+            rested.Add(point.Id);
+        }
+        Assert.Contains("place_du_village", rested);
+        Assert.Contains("place_du_bourg", rested);
+        Assert.Contains(book.Reputation.Hidden.Single().SafePoint, rested);
+        Assert.True(rested.Count >= 4, string.Join(", ", rested));
     }
 
     [Fact]

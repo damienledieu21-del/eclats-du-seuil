@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Domain.Space;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -64,7 +65,9 @@ namespace EdS.Runtime
             if (!(World.CurfewSafePoint is string safePoint) || Dialogue != null || MustContinue) return;
             WorldSave here = World.Save();
             var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
-            WorldSession next = Build(moved, _zone, safePoint, null);
+            // Sous-lot V2.28b (relecture indépendante de la PR #156) : règle d'arrivée entière (place libre la plus proche, sinon l'entrée).
+            (string? at, GroundVector? place) = WorldSession.SafeArrival(moved, _zone, _progression, safePoint, ZoneId, _arrivalRings);
+            WorldSession next = Build(moved, _zone, at, null, place);
             moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr du couvre-feu
             try
             {
@@ -77,7 +80,7 @@ namespace EdS.Runtime
             }
             Expulsions = checked(Expulsions + 1);
             Commit(next);
-            Say("text.ui.curfew", _zone.SafePoints.First(s => s.Id == safePoint).Name);
+            Say("text.ui.curfew", LastSafePoint);
         }
 
         /// <summary>Sous-lot V2.7 : seul un changement de palier s'annonce (les petits changements se lisent sur la carte d'aventurier).</summary>
