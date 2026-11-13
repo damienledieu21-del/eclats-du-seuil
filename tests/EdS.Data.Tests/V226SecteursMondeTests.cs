@@ -9,6 +9,7 @@ using EdS.Data.Validation;
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
 using EdS.Data.Zones;
+using EdS.Domain;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -1174,5 +1175,87 @@ public class V226SecteursMondeTests
         w.Exit("alice");
         w.Step();
         Assert.Equal(new[] { "bruno" }, w.Players);
+    }
+
+    // --- Revue Codex de la PR #150 (11e tour) --------------------------------------------------------------------------------------------
+
+    private static AssailantSetup Beast(string id, string team, double x, double z, string? target, bool behavior)
+    {
+        AssailantSetup w = Wolf(id, x, z);
+        return new AssailantSetup(id, team, w.Armor, w.MagicResistance, target, w.FirstAttackMs, w.IntervalMs, w.Attacks, 0, w.StatusResistance, w.Triggers,
+            400, w.Placement, null, behavior ? w.Behavior : null);
+    }
+
+    [Fact]
+    public void Propriete_chaque_secteur_decoupe_d_une_aire_valide_est_valide()
+    {
+        // Aires valides aux références croisées entre secteurs (cibles d'assaillants avec et sans comportement, chaînes d'assaillants sans
+        // comportement, commandes, groupes et trêves) : chaque secteur découpé, à la première ouverture et à la réouverture, passe la validation.
+        double[] xs = { 30, 200, 250, 256, 262, 300, 480, 512, 530, 700 };
+        double[] zs = { 20, 128, 236 };
+        ulong state = 12345;
+        int Next(int n) { state = state * 6364136223846793005UL + 1442695040888963407UL; return (int)((state >> 33) % (ulong)n); }
+        int checkedSectors = 0;
+        for (int round = 0; round < 40; round++)
+        {
+            var all = new List<CombatantSetup>();
+            bool truce = Next(2) == 0;   // meute et rôdeurs en trêve : une bête ne vise alors qu'un mannequin
+            var spots = xs.SelectMany(x => zs.Select(z => (x, z))).ToList();   // places tirées sans remise (6 m au moins entre deux)
+            (double X, double Z) Spot() { int i = Next(spots.Count); var v = spots[i]; spots.RemoveAt(i); return v; }
+            int d = 2 + Next(4);
+            for (int k = 0; k < d; k++) all.Add(new DummySetup($"cible{k}", "cibles", Fixed.FromInt(50), Fixed.Zero,
+                placement: new CombatantPlacement(Spot() is var sp ? P(sp.X, sp.Z) : default, Fixed.FromRatio(1, 10))));
+            int beasts = 2 + Next(6);
+            for (int k = 0; k < beasts; k++)
+            {
+                bool behavior = Next(2) == 0;
+                string team = k % 2 == 0 ? "meute" : "rodeurs";
+                // Cible : un mannequin, ou (sans comportement) une bête d'une autre équipe déjà posée : chaîne possible.
+                var hostiles = all.Where(c => c.Team != team && (c is DummySetup || (!truce && c is AssailantSetup))).Select(c => c.Id).ToList();
+                string? target = behavior && Next(3) == 0 ? null : hostiles[Next(hostiles.Count)];
+                var at = Spot();
+                all.Add(Beast($"bete{k}", team, at.X, at.Z, target, behavior));
+            }
+            var commands = new List<CombatCommand>();
+            foreach (CombatantSetup c in all.Where(c => c is DummySetup).Take(2))
+                commands.Add(new CombatCommand(0, c.Id, CombatAction.GuardStart));
+            var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, all, commands,
+                Shipped.Data, new CombatSpace(P(0, 0), P(768, 256)), zone: true, truce ? new[] { new TeamTruce("meute", "rodeurs") } : null);
+            Assert.Empty(area.Validate());
+            var map = new SectorMap(Wide, area, P(64, 128));
+            foreach (string sector in new[] { "s00_00", "s01_00", "s02_00" })
+                foreach (bool reopen in new[] { false, true })
+                {
+                    CombatSetup cut = map.SetupFor(sector, reopen ? 2 : 1, reopened: reopen && sector == map.HomeSector);
+                    IReadOnlyList<RuleViolation> errors = cut.Validate();
+                    Assert.True(errors.Count == 0, $"tour {round}, {sector} : {string.Join(" ; ", errors.Select(e => string.Join(",", e.Fields) + " " + e.Message))}");
+                    checkedSectors++;
+                }
+        }
+        Assert.Equal(240, checkedSectors);
+    }
+
+    [Fact]
+    public void Assaillant_a_comportement_qui_vise_un_autre_secteur_perd_sa_cible_le_secteur_s_ouvre()
+    {
+        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat,
+            new CombatantSetup[]
+            {
+                new DummySetup("cible_est", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(400, 100), Fixed.FromRatio(1, 2))),
+                Beast("loup", "meute", 100, 100, "cible_est", behavior: true),
+                Beast("garde", "meute", 120, 100, "cible_est", behavior: false),
+            },
+            Array.Empty<CombatCommand>(), Shipped.Data, new CombatSpace(P(0, 0), P(512, 256)), zone: true);
+        Assert.Empty(area.Validate());
+        var map = new SectorMap(Grid, area, P(64, 128));
+        CombatSetup west = map.SetupFor("s00_00", 1);
+        Assert.Null(((AssailantSetup)west.Combatants.Single(c => c.Id == "loup")).Target);
+        Assert.DoesNotContain(west.Combatants, c => c.Id == "garde");   // sans comportement, lié à sa cible : pas simulé ici
+        Assert.Empty(west.Validate());
+        SectorWorld w = World(map);
+        w.Enter(Hero("alice", 60, 128));
+        w.Step();
+        Assert.Contains("s00_00", w.OpenSectors);
+        Assert.True(w.SectorZone("s00_00")!.Engine.View("loup").IsPresent);
     }
 }

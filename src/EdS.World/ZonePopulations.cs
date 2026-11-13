@@ -382,7 +382,11 @@ namespace EdS.World
             int number = checked(life.Number + 1);
             string id = $"{t.Id}_v{number}";
             while (taken.Contains(id)) id = $"{t.Id}_v{number = checked(number + 1)}";
-            var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
+            // Revue Codex de la PR #150 (11e tour) : une cible explicite absente de la session (secteur découpé : elle est dans un autre
+            // secteur) est retirée à une bête à comportement (elle choisit le plus proche) ; sans comportement, la population n'est pas dans ce
+            // secteur (SectorMap.Simulates). L'hôte d'une zone ne change pas (la cible y est toujours).
+            string? target = t.Target is string tg && t.Behavior != null && !engine.CombatantIds.Contains(tg) ? null : t.Target;
+            var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 t.StatusResistance, t.Triggers, t.Health, t.Placement, checked(now * tickMs), t.Behavior);
             try
             {

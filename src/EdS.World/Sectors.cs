@@ -6,6 +6,7 @@ using System.Text;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
 using EdS.Domain;
+using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -214,7 +215,7 @@ namespace EdS.World
             });
             var cut = new CombatSpace(new GroundVector(Fixed.FromRaw(space.MinX), Fixed.FromRaw(space.MinZ)),
                 new GroundVector(Fixed.FromRaw(space.MaxX), Fixed.FromRaw(space.MaxZ)), obstacles);
-            var combatants = Area.Combatants.Where(c => Owns(sector, c)).ToList();
+            var combatants = Cut(Area.Combatants.Where(c => Owns(sector, c)));
             // Revue Codex de la PR #150 (10e tour) : commandes de l'aire découpées avec leurs acteurs. Choix : une commande dont l'acteur ou la
             // cible appartient à un autre secteur est retirée (son acteur ou sa cible n'existe pas dans cette session ; la commande de l'acteur
             // reste dans son secteur seulement si sa cible y est aussi). Ordre de l'aire gardé.
@@ -223,6 +224,55 @@ namespace EdS.World
             long seed = sector == HomeSector && !reopened ? Area.Seed : SeedOf(Area.Seed, sector, session);
             return new CombatSetup(seed, Area.DurationMs, Area.Stats, Area.Damage, Area.Progression, Area.Combat, combatants, commands,
                 Area.Data, cut, true, Area.Truces);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (11e tour) : références entre combattants d'un secteur découpé. Les seules d'un combat sont la cible d'un
+        /// assaillant (<see cref="AssailantSetup.Target"/>) et l'acteur et la cible d'une commande (traités dans <see cref="SetupFor(string, long, bool, CombatSetup)"/>) ;
+        /// les trêves lient des équipes, les groupes d'errance un nom (un groupe sans son chef dans le secteur suit le premier chef présent,
+        /// ou erre sans chef), les populations une créature (leur propriétaire). Règle pour une cible dans un autre secteur :
+        /// <list type="bullet">
+        /// <item>assaillant à comportement : la cible explicite est retirée (il choisit le plus proche, comme sans cible) ;</item>
+        /// <item>assaillant sans comportement dont toutes les attaques visent tous les ennemis : la cible est retirée (elle ne sert pas) ;</item>
+        /// <item>assaillant sans comportement à attaque à cible unique : il est lié à sa cible, il n'est pas simulé dans ce secteur (il ne
+        /// pourrait frapper personne) ; de proche en proche, un assaillant qui visait un assaillant retiré l'est aussi.</item>
+        /// </list>
+        /// Chaque secteur découpé d'une aire valide passe donc la validation (test de propriété).
+        /// </summary>
+        private static List<CombatantSetup> Cut(IEnumerable<CombatantSetup> owned)
+        {
+            var list = owned.ToList();
+            while (true)
+            {
+                var ids = new HashSet<string>(list.Select(c => c.Id), StringComparer.Ordinal);
+                bool removed = false;
+                var next = new List<CombatantSetup>(list.Count);
+                foreach (CombatantSetup c in list)
+                {
+                    if (c is not AssailantSetup { Target: string target } a || ids.Contains(target)) { next.Add(c); continue; }
+                    if (a.Behavior is null && a.Attacks.Any(x => x.Targeting == SkillTargeting.Enemy)) { removed = true; continue; }
+                    next.Add(WithoutTarget(a));
+                }
+                list = next;
+                if (!removed) return list;
+            }
+        }
+
+        /// <summary>L'assaillant, sans cible explicite (tout le reste identique).</summary>
+        public static AssailantSetup WithoutTarget(AssailantSetup a) =>
+            new AssailantSetup(a.Id, a.Team, a.Armor, a.MagicResistance, null, a.FirstAttackMs, a.IntervalMs, a.Attacks, a.Initiative, a.StatusResistance,
+                a.Triggers, a.Health, a.Placement, a.ArrivalMs, a.Behavior, a.Carried);
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (11e tour) : la créature d'une population est-elle simulée dans le secteur (propriétaire, et pas un
+        /// assaillant sans comportement lié à une cible d'un autre secteur) ?
+        /// </summary>
+        public bool Simulates(string sector, AssailantSetup creature)
+        {
+            if (!Owns(sector, creature)) return false;
+            if (creature.Target is not string target || creature.Behavior != null || creature.Attacks.All(x => x.Targeting != SkillTargeting.Enemy)) return true;
+            CombatantSetup? t = Area.Combatants.FirstOrDefault(c => c.Id == target);
+            return t != null && Owns(sector, t);
         }
 
         /// <summary>Graine d'un secteur : FNV-1a 64 du nom et du numéro de session, mêlée à celle de l'aire ; positive.</summary>
@@ -587,7 +637,8 @@ namespace EdS.World
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
             // Revue Codex de la PR #150 (4e tour) : toutes les populations dont la place est dans le secteur, comme l'hôte d'une zone (une
             // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).
-            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name));
+            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name
+                && _map.Simulates(name, p.Template)));
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
