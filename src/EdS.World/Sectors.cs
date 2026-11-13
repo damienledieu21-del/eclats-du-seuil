@@ -185,10 +185,17 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Secteur inconnu ou hors de l'aire.</exception>
         public CombatSetup SetupFor(string sector, long session) => SetupFor(sector, session, reopened: false);
 
+        public CombatSetup SetupFor(string sector, long session, bool reopened) => SetupFor(sector, session, reopened, null);
+
         /// <param name="reopened">Revue Codex de la PR #150 : le cœur rouvert après une fermeture prend une graine tirée de son nom et de sa
         /// session, comme un autre secteur (sa première ouverture reste exactement la zone).</param>
-        public CombatSetup SetupFor(string sector, long session, bool reopened)
+        /// <param name="area">Revue Codex de la PR #150 (8e tour) : aire de la session (décor et créatures tirés du registre courant, mêmes
+        /// bornes que <see cref="Area"/>) ; null : <see cref="Area"/>.</param>
+        public CombatSetup SetupFor(string sector, long session, bool reopened, CombatSetup? area)
         {
+            CombatSetup Area = area ?? this.Area;
+            if (area != null && (area.Space is null || !area.Space.Min.Equals(this.Area.Space!.Min) || !area.Space.Max.Equals(this.Area.Space.Max)))
+                throw new ArgumentException("L'aire d'une session garde les bornes de l'aire découpée.", nameof(area));
             if (sector == HomeSector && HomeHoldsArea && !reopened)
                 return Area;
             if (sector == HomeSector && HomeHoldsArea)
@@ -198,8 +205,7 @@ namespace EdS.World
                     a.Data, a.Space, a.Zone, a.Truces);
             }
             var space = Space(sector) ?? throw new ArgumentException($"Secteur « {sector} » hors de l'aire.", nameof(sector));
-            CombatSpace area = Area.Space!;
-            var obstacles = area.Obstacles.Where(o =>
+            var obstacles = Area.Space!.Obstacles.Where(o =>
             {
                 var poly = new ConvexPolygon(o.Points);
                 return poly.MaxX >= space.MinX && poly.MinX <= space.MaxX && poly.MaxZ >= space.MinZ && poly.MinZ <= space.MaxZ;
@@ -344,6 +350,9 @@ namespace EdS.World
         private readonly long _session;
         private readonly IReadOnlyList<Population> _populations;
         private readonly Func<Population, long, bool>? _wanted;
+
+        /// <summary>Revue Codex de la PR #150 (8e tour) : zone dont l'aire est refaite à chaque session nouvelle (<see cref="For"/>) ; null : aire fixe.</summary>
+        private ZoneDefinition? _zone;
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -396,7 +405,7 @@ namespace EdS.World
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
             CombatSetup area = ZoneSetups.For(zone, keys);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted);
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone };
         }
 
         /// <summary>Secteurs ouverts, dans l'ordre des noms.</summary>
@@ -486,7 +495,10 @@ namespace EdS.World
             }
             if (home) _homeOpened = true;
             if (!home || reopened) _sectorSessions[name] = session;
-            CombatSetup setup = _map.SetupFor(name, session, reopened);
+            // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
+            // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed);
+            CombatSetup setup = _map.SetupFor(name, session, reopened, sessionArea);
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
             // Revue Codex de la PR #150 (4e tour) : toutes les populations dont la place est dans le secteur, comme l'hôte d'une zone (une
             // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).

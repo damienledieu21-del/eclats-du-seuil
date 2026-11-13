@@ -975,4 +975,33 @@ public class V226SecteursMondeTests
                 }
         Assert.True(cases > 100);
     }
+
+    // --- Revue Codex de la PR #150 (8e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Passage_ouvert_pendant_le_monde_son_obstacle_disparait_a_la_session_suivante()
+    {
+        // La clé du passage du moulin est consommée pendant le monde : la session en cours garde la porte ; après fermeture et réouverture
+        // du cœur, la session nouvelle n'a plus la porte (docs/MONDE.md : « l'obstacle disparaît à la session suivante »).
+        ZoneDefinition vallons = V11TestData.Zone();
+        var moulin = vallons.Passages.Single(x => x.Id == "moulin");
+        var world = SectorWorld.For(vallons, 0, 1);
+        world.Enter(Hero("bastion", -18, -12));
+        world.Step();
+        Zone first = world.SectorZone("s07_06")!;
+        Assert.Contains(first.Setup.Space!.Obstacles, o => o.Id == moulin.Obstacle);
+        Assert.True(first.Consume(vallons.PassageKey("moulin")));
+        world.Step();
+        Assert.Contains(world.SectorZone("s07_06")!.Setup.Space!.Obstacles, o => o.Id == moulin.Obstacle);   // pas pendant la session
+        world.Exit("bastion");
+        Run(world, 1_400, e => e.Kind == SectorEventKind.Closed && e.Sector == "s07_06");
+        Assert.Empty(world.OpenSectors);
+        Assert.Contains(vallons.PassageKey("moulin"), world.Consumed);
+        world.Enter(Hero("bastion", -18, -12));
+        world.Step();
+        Zone next = world.SectorZone("s07_06")!;
+        Assert.True(next.Session > first.Session);
+        Assert.DoesNotContain(next.Setup.Space!.Obstacles, o => o.Id == moulin.Obstacle);
+        Assert.Equal(first.Setup.Space.Obstacles.Count - 1, next.Setup.Space.Obstacles.Count);
+    }
 }
