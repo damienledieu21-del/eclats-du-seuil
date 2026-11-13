@@ -263,18 +263,6 @@ namespace EdS.World
             new AssailantSetup(a.Id, a.Team, a.Armor, a.MagicResistance, null, a.FirstAttackMs, a.IntervalMs, a.Attacks, a.Initiative, a.StatusResistance,
                 a.Triggers, a.Health, a.Placement, a.ArrivalMs, a.Behavior, a.Carried);
 
-        /// <summary>
-        /// Revue Codex de la PR #150 (11e tour) : la créature d'une population est-elle simulée dans le secteur (propriétaire, et pas un
-        /// assaillant sans comportement lié à une cible d'un autre secteur) ?
-        /// </summary>
-        public bool Simulates(string sector, AssailantSetup creature)
-        {
-            if (!Owns(sector, creature)) return false;
-            if (creature.Target is not string target || creature.Behavior != null || creature.Attacks.All(x => x.Targeting != SkillTargeting.Enemy)) return true;
-            CombatantSetup? t = Area.Combatants.FirstOrDefault(c => c.Id == target);
-            return t != null && Owns(sector, t);
-        }
-
         /// <summary>Graine d'un secteur : FNV-1a 64 du nom et du numéro de session, mêlée à celle de l'aire ; positive.</summary>
         public static long SeedOf(long areaSeed, string sector, long session)
         {
@@ -598,6 +586,10 @@ namespace EdS.World
             return violations.Count == 0 ? null : string.Join(" ; ", violations.Take(3).Select(v => $"{string.Join(", ", v.Fields)} : {v.Message}"));
         }
 
+        /// <summary>Pour les tests : créatures des populations d'un secteur ouvert (vide s'il est fermé).</summary>
+        internal IReadOnlyList<string> PopulationCreaturesIn(string sector) =>
+            _open.TryGetValue(sector, out Open? o) ? _populations.Where(p => o.Populations.Of(p.Creature) != null).Select(p => p.Creature).ToArray() : Array.Empty<string>();
+
         /// <summary>Pour les tests : le joueur est refusé pour de bon (son combattant s'en va), comme après une arrivée refusée par la validation.</summary>
         internal void RefuseForTest(string player, string diagnostic)
         {
@@ -628,17 +620,25 @@ namespace EdS.World
                 session = checked(Math.Max(last, home ? _session : 0) + 1);
                 reopened = home;
             }
-            if (home) _homeOpened = true;
-            if (!home || reopened) _sectorSessions[name] = session;
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
             CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed);
             CombatSetup setup = _map.SetupFor(name, session, reopened, sessionArea);
+            // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
+            // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
+            // au début : rare de la nuit, hors de ses heures ou de son temps ; elle garde sa vie et revient quand elle est voulue).
+            var present = new HashSet<string>(setup.Combatants.Select(c => c.Id), StringComparer.Ordinal);
+            var inArea = new HashSet<string>((sessionArea ?? _map.Area).Combatants.Select(c => c.Id), StringComparer.Ordinal);
+            var mine = _populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name
+                && (present.Contains(p.Creature) || !inArea.Contains(p.Creature))).ToList();
+            // Garde : une population présente au début désigne un combattant de la session ; sinon refus avec diagnostic, avant toute modification.
+            foreach (Population p in mine)
+                if (ZonePopulations.PresentAtStart(p, null, null) && !present.Contains(p.Creature))
+                    throw new InvalidOperationException($"Secteur {name} : la population « {p.Creature} » désigne un combattant absent de la session ; secteur non ouvert.");
+            if (home) _homeOpened = true;
+            if (!home || reopened) _sectorSessions[name] = session;
             var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
-            // Revue Codex de la PR #150 (4e tour) : toutes les populations dont la place est dans le secteur, comme l'hôte d'une zone (une
-            // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).
-            var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name
-                && _map.Simulates(name, p.Template)));
+            var populations = new ZonePopulations(mine);
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;

@@ -1258,4 +1258,82 @@ public class V226SecteursMondeTests
         Assert.Contains("s00_00", w.OpenSectors);
         Assert.True(w.SectorZone("s00_00")!.Engine.View("loup").IsPresent);
     }
+
+    // --- Revue Codex de la PR #150 (12e tour) --------------------------------------------------------------------------------------------
+
+    private static Population Pop(AssailantSetup template) =>
+        (Population)typeof(Population).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .Single().Invoke(new object?[] { template.Id, template, 90_000L, Fixed.FromInt(20), null, null, null, null, null, null, null });
+
+    [Fact]
+    public void Propriete_populations_en_chaine_chaque_population_designe_un_combattant_present()
+    {
+        // Chaînes de cibles entre assaillants qui sont tous des populations (A vise B, B vise un autre secteur, de proche en proche) : dans
+        // chaque secteur ouvert, toute population désigne un combattant de la session, et 100 ticks passent sans exception.
+        double[] xs = { 30, 200, 250, 256, 262, 300, 480, 512, 530, 700 };
+        double[] zs = { 20, 128, 236 };
+        ulong state = 98765;
+        int Next(int n) { state = state * 6364136223846793005UL + 1442695040888963407UL; return (int)((state >> 33) % (ulong)n); }
+        int chains = 0, sectors = 0;
+        for (int round = 0; round < 40; round++)
+        {
+            var spots = xs.SelectMany(x => zs.Select(z => (x, z))).Where(s => s.x != 128 && s.x != 384 && s.x != 640).ToList();
+            (double X, double Z) Spot() { int i = Next(spots.Count); var v = spots[i]; spots.RemoveAt(i); return v; }
+            var all = new List<CombatantSetup>();
+            for (int k = 0, d = 1 + Next(3); k < d; k++)
+            {
+                var at = Spot();
+                all.Add(new DummySetup($"cible{k}", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(at.X, at.Z), Fixed.FromRatio(1, 10))));
+            }
+            var beasts = new List<AssailantSetup>();
+            for (int k = 0, n = 3 + Next(6); k < n; k++)
+            {
+                string team = k % 2 == 0 ? "meute" : "rodeurs";
+                bool behavior = Next(3) == 0;
+                // Sans comportement, de préférence une bête d'une autre équipe (chaîne), sinon un mannequin.
+                var prey = beasts.Where(b => b.Team != team).Select(b => b.Id).ToList();
+                string target = !behavior && prey.Count > 0 && Next(3) > 0 ? prey[Next(prey.Count)] : all.OfType<DummySetup>().ElementAt(Next(all.OfType<DummySetup>().Count())).Id;
+                if (prey.Contains(target)) chains++;
+                var at = Spot();
+                beasts.Add(Beast($"bete{k}", team, at.X, at.Z, target, behavior));
+            }
+            all.AddRange(beasts);
+            var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, all, Array.Empty<CombatCommand>(),
+                Shipped.Data, new CombatSpace(P(0, 0), P(768, 256)), zone: true);
+            Assert.Empty(area.Validate());
+            var map = new SectorMap(Wide, area, P(128, 128));
+            var w = new SectorWorld(map, "zone.essai", 0, 1, populations: beasts.Select(Pop));
+            w.Enter(Hero("alice", 128, 128));
+            w.Enter(Hero("bruno", 384, 128));
+            w.Enter(Hero("chloe", 640, 128));
+            for (int t = 0; t < 100; t++)
+            {
+                w.Step();
+                foreach (string sector in w.OpenSectors)
+                {
+                    IReadOnlyList<string> ids = w.SectorZone(sector)!.Engine.CombatantIds;
+                    foreach (string creature in w.PopulationCreaturesIn(sector))
+                        Assert.True(ids.Contains(creature), $"tour {round}, {sector} : population « {creature} » sans combattant");
+                }
+            }
+            Assert.Equal(new[] { "s00_00", "s01_00", "s02_00" }, w.OpenSectors);
+            sectors += 3;
+        }
+        Assert.Equal(120, sectors);
+        Assert.True(chains >= 20, $"{chains} chaînes");
+    }
+
+    [Fact]
+    public void Ouverture_refusee_avec_diagnostic_pour_une_population_sans_combattant()
+    {
+        // Garde : une population présente au début dont la créature manque à la session : l'ouverture est refusée avec son diagnostic, avant
+        // toute modification du secteur (aucune session prise, aucun secteur ouvert).
+        SectorWorld w = new(Map(), "zone.essai", 0, 1, populations: new[] { Pop(Beast("fantome", "meute", 100, 100, null, behavior: true)) });
+        w.Enter(Hero("alice", 100, 128));
+        InvalidOperationException e = Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Contains("fantome", e.Message);
+        Assert.Empty(w.OpenSectors);
+        Assert.Empty(w.SectorSessions);
+        Assert.Equal(0L, w.WorldTick);
+    }
 }
