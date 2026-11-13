@@ -96,6 +96,9 @@ namespace EdS.Game
         /// </summary>
         public string Key { get; }
 
+        /// <summary>Sous-lot V2.27 : rectangle couvert par le sol de la zone (x, z) ; vide dans une pièce.</summary>
+        public Rect Covered { get; private set; }
+
         /// <summary>Clé du décor d'un espace et d'une carte (<see cref="Key"/>).</summary>
         public static string KeyOf(CombatSpace space, AdventureMap map)
         {
@@ -149,6 +152,10 @@ namespace EdS.Game
                 _rivers.Select(r => (IReadOnlyList<(double X, double Z)>)r.Select(p => ((double)p.x, (double)p.z)).ToList()).ToList(), _roads, _fields,
                 _shapes.Where((o, i) => TownRules.BuildingFor(space.Obstacles[i].Id) == StyleBuilding.Woods).Select(o => (IReadOnlyList<(double X, double Z)>)o.Points).ToList());
             bool terrain = _terrain != null;
+            // Sous-lot V2.27 : rectangle déjà couvert par ce sol (le terrain peint et sa marge, ou le pavé simple) ; le terrain de la région
+            // chargé par cases (CellStreamView) n'est pas fait dessous.
+            float margin = terrain && StyleCatalog.Loaded != null ? StyleCatalog.Loaded.ForestMargin : 0f;
+            Covered = new Rect(minX - margin, minZ - margin, maxX - minX + 2f * margin, maxZ - minZ + 2f * margin);
             if (!terrain) _rivers.Clear();
             // Revue Codex de la PR #144 : sans terrain (pas de catalogue ni de texture de sol), le sol de remplacement est un pavé plat à 0 :
             // pas de relief, sinon personnages, décor et marqueurs flotteraient au-dessus.

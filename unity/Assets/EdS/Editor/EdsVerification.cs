@@ -104,6 +104,8 @@ namespace EdS.Game.Editor
             // Sous-lot V2.12.4 : classe de la machine (mémoire vidéo, mémoire) et limite des textures que le jeu appliquera (choix du joueur compris).
             report.Add(Unity, EssaiLevel.Ok, "Machine et textures",
                 MachineTier.Describe(DeviceQuality.Vram, DeviceQuality.Ram, Application.isMobilePlatform, DeviceQuality.Limit));
+            // Sous-lot V2.27 : réglages du chargement par cases pour cette machine (anneaux, finesse, distance de vue, budgets).
+            report.Add(Unity, EssaiLevel.Ok, "Chargement par cases", CellStreamView.Describe(StreamingProfile.For(DeviceQuality.Tier)));
             if (problem == null) report.Add(Unity, EssaiLevel.Ok, "Version de Unity", Application.unityVersion);
             else report.Add(Unity, EssaiLevel.Warning, "Version de Unity", problem, "Ouvre le projet avec Unity " + expected + " (Unity Hub → Installs).");
 

@@ -121,6 +121,13 @@ namespace EdS.Game
             bool catalogFog = catalog.FogEnd > catalog.FogStart;
             bool weatherFog = weather.FogEnd < 0.95;
             float fogStart = catalogFog ? catalog.FogStart : 30f, fogEnd = catalogFog ? catalog.FogEnd : 180f;
+            // Sous-lot V2.27 (plan de la grande carte, § 6.2) : dehors, avec le terrain de la région chargé par cases, la brume recule jusqu'à
+            // la distance de vue de la machine (600 m sur téléphone, 900 m sur PC modeste) ; la brume du temps la rapproche toujours.
+            if (ViewDistance > 0f && catalogFog)
+            {
+                fogStart = Mathf.Max(fogStart, ViewDistance * 0.35f);
+                fogEnd = Mathf.Max(fogEnd, ViewDistance);
+            }
             RenderSettings.fog = catalogFog || weatherFog;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = Color.Lerp(catalog.FogColor * Tint(light.FogTint) * Tint(weather.FogTint), ScarCold * (0.4f + 0.6f * ambient), _scarFade * 0.7f);
@@ -136,7 +143,7 @@ namespace EdS.Game
             // La brume du matin et la pluie rapprochent la brume du catalogue (jamais à moins de 9 m : on voit toujours autour de soi).
             RenderSettings.fogStartDistance = fogStart * (float)weather.FogStart;
             RenderSettings.fogEndDistance = Mathf.Max(9f, fogEnd * (float)weather.FogEnd * Mathf.Lerp(1f, 0.3f, _scarFade));   // sous-lot V2.6 : brume froide plus proche
-            if (_camera != null) _camera.farClipPlane = Mathf.Max(250f, catalog.FogEnd + 20f);
+            if (_camera != null) _camera.farClipPlane = Mathf.Max(Mathf.Max(250f, catalog.FogEnd + 20f), ViewDistance > 0f ? ViewDistance + 20f : 0f);
             if (_sun != null)
             {
                 // Le jour, le soleil du catalogue ; la nuit, la lune (froide, haute, à l'opposé) ; entre les deux, l'aube rose et le soir orangé.
@@ -686,6 +693,9 @@ namespace EdS.Game
             + (_deckRise > 0f ? (float)StyleShapes.StandHeight(x, z, _deckX0, _deckZ0, _deckX1, _deckZ1, _deckRise) : 0f);
 
         private static GroundRelief _relief = GroundRelief.Flat;
+
+        /// <summary>Sous-lot V2.27 : distance de vue (m) du terrain de la région chargé par cases (0 : aucun, brume du catalogue seule).</summary>
+        public static float ViewDistance { get; set; }
 
         /// <summary>
         /// Sous-lot V2.24 (décision de Damien du 11 novembre 2026) : relief affiché du décor posé (<see cref="GroundRelief"/>) ; null : sol plat.

@@ -188,6 +188,9 @@ namespace EdS.Game
                 if (_space != null) _space.Destroy();
                 _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform, map) : null;
             }
+            // Sous-lot V2.27 : terrain de la région chargé par cases autour de la caméra (gardé d'une session à l'autre de la même zone :
+            // ressortir d'une maison ne le refait pas) ; caché dans une pièce, une arène ou une zone sans région.
+            CellStreamView.Use(_space != null ? map : null, _space != null ? _space.Covered : default(Rect));
             _obstacles = CombatDisplay.SightObstacles(combat.Space);   // sous-lot 11.9 : la vue (obstacles bas exclus)
             _defaultGround.SetActive(_space == null);
             _from.Clear();
@@ -733,6 +736,7 @@ namespace EdS.Game
             // les points sondés sont alors bien le bas des jambes, le milieu et la tête (0,3 / 1 / 2 m au-dessus des pieds).
             _space.Cut(camera, _player.transform.position, deltaTime);
             _space.Trees(camera);   // V2.25.4 : saison, veines du corrompu, imposteurs tournés vers la caméra
+            CellStreamView.Frame(camera);   // V2.27 : au plus 2 ms de construction par image
         }
 
         /// <summary>V2.25.4 : saison du monde (0 printemps à 3 hiver) pour le feuillage des arbres de l'atelier.</summary>
