@@ -90,6 +90,7 @@ namespace EdS.Runtime
             // Comme une porte : la session d'arrivée est construite avant d'écrire quoi que ce soit ; l'aventure ne change qu'une fois les
             // deux réussies.
             WorldSession next = Build(moved, target, safePoint, null);
+            moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr d'arrivée
             try
             {
                 Write(moved);
@@ -100,7 +101,6 @@ namespace EdS.Runtime
                 return TravelRefusal.SaveFailed;
             }
             _zone = target;
-            _lastSafePoint = safePoint;
             Travels = checked(Travels + 1);
             Commit(next);
             Say("text.ui.travel.arrived", target.SafePoints.First(s => s.Id == safePoint).Name);

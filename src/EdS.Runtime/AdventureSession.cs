@@ -210,7 +210,7 @@ namespace EdS.Runtime
         public static readonly Fixed TargetRange = Fixed.FromInt(20);
 
         /// <summary>Distance d'un point sûr pour y faire halte (provisoire).</summary>
-        public static readonly Fixed RestRange = Fixed.FromInt(5);
+        public static readonly Fixed RestRange = WorldSession.RestRange;
 
         /// <summary>Pas de halte avec un ennemi vivant à moins de cette distance (provisoire).</summary>
         public static readonly Fixed RestSafety = Fixed.FromInt(12);
@@ -236,7 +236,6 @@ namespace EdS.Runtime
         private bool _dirty;
         private bool _strandedAnnounced;
         private double _sinceSave;
-        private string _lastSafePoint;
 
         public TextCatalog Texts { get; }
         public string SavePath { get; }
@@ -283,13 +282,17 @@ namespace EdS.Runtime
                 return Inventory.Outfit(c, items);
             }
             WorldSave save = read.Save ?? new WorldSave(start.Id, 0, 0, Array.Empty<string>(), Fresh(true));
-            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false), sectors: save.Sectors);
-            // Intérieurs : la partie reprend dans la zone de la sauvegarde (un intérieur : à son entrée) ; une zone que les données ne relient
-            // plus reprend à l'entrée de la zone de départ.
+            if (save.Character is null) save = new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, Fresh(false), sectors: save.Sectors, resume: save.Resume);
+            // Intérieurs : la partie reprend dans la zone de la sauvegarde ; une zone que les données ne relient plus reprend à l'entrée de la
+            // zone de départ (le point de reprise, qui était de l'autre zone, n'est pas gardé).
             _zone = zones.FirstOrDefault(z => z.Id == save.Zone) ?? start;
             if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated, sectors: save.Sectors);
-            _lastSafePoint = _zone.Entry.Id;
-            Open(save, null);
+            // Sous-lot V2.28 (PLAN_GRANDE_CARTE.md § 3 ; sauvegarde v19) : la partie reprend au dernier point sûr approché (resume), s'il
+            // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
+            // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
+            // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
+            (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId);
+            Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
             // Sous-lot V1.9.6 : une nouvelle partie dit d'emblée la première étape de l'ouverture (le réveil).
             if (read.Save is null && World.Narrative?.CurrentStep(StoryConversions.Opening) is QuestStep first) Say("text.ui.quest_step", Text(first.Text));
@@ -337,11 +340,11 @@ namespace EdS.Runtime
         /// Ouvre une session de la zone en cours sur <paramref name="save"/>, au point sûr <paramref name="safePoint"/> (null : l'entrée), ou à la
         /// porte <paramref name="door"/> (intérieurs). L'histoire et les métiers restent ceux de la zone de départ.
         /// </summary>
-        private void Open(WorldSave save, string? safePoint, string? door = null) => Commit(Build(save, _zone, safePoint, door));
+        private void Open(WorldSave save, string? safePoint, string? door = null, GroundVector? place = null) => Commit(Build(save, _zone, safePoint, door, place));
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
-        private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild);
+        private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door, GroundVector? place = null) =>
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild, place);
 
         private void Commit(WorldSession world)
         {
@@ -350,6 +353,7 @@ namespace EdS.Runtime
             Shop = null;
             GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
+            _trackedSafePoint = world.LastSafePoint;   // sous-lot V2.28 : point de reprise de la session nouvelle (déjà écrit ou à écrire par qui l'ouvre)
             _drunk.Clear();
             _strandedAnnounced = false;
             foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
@@ -836,6 +840,9 @@ namespace EdS.Runtime
             // Relecture indépendante : la session d'arrivée est construite avant d'écrire quoi que ce soit ; puis la sauvegarde ; l'aventure ne
             // change qu'une fois les deux réussies.
             WorldSession next = Build(moved, target, null, arrival.Id);
+            // Sous-lot V2.28 : la reprise (défaite, fin de session, relance du jeu) se fait au point sûr de la zone d'arrivée le plus proche de
+            // la porte (WorldSession.LastSafePoint), écrit dans la sauvegarde.
+            moved = moved.WithResume(next.Resume);
             try
             {
                 Write(moved);
@@ -846,8 +853,6 @@ namespace EdS.Runtime
                 return false;
             }
             _zone = target;
-            // La reprise après une défaite ou une fin de session se fait au point sûr de la zone le plus proche de la porte d'arrivée.
-            _lastSafePoint = target.SafePoints.Where(sp => !World.IsSecret(sp.Id)).OrderBy(sp => Distance2(sp.Position, arrival.Position)).ThenBy(sp => sp.Id, StringComparer.Ordinal).First().Id;
             Commit(next);
             // Sous-lot V1.9.6 : entrer dans une scène ou en sortir ne s'annonce pas comme une porte.
             if (_story.SceneIn(target.Id) is null && _story.SceneIn(from) is null) Say("text.ui.door_entered", target.Name);
@@ -1779,13 +1784,23 @@ namespace EdS.Runtime
 
         // --- Halte, reprise, sauvegarde ---------------------------------------------------------------------------------
 
+        /// <summary>
+        /// Sous-lot V2.28 : le dernier point sûr approché est tenu par la session (<see cref="WorldSession.LastSafePoint"/>) et écrit dans la
+        /// sauvegarde (v19) ; un changement est à sauvegarder (la partie relancée reprendra là).
+        /// </summary>
         private void TrackSafePoint()
         {
-            if (Me is GroundVector p && World.RestPointNear(p, RestRange) is SafePoint near) _lastSafePoint = near.Id;
+            string? before = _trackedSafePoint;
+            World.TrackSafePoint();
+            _trackedSafePoint = World.LastSafePoint;
+            if (before != null && before != _trackedSafePoint) _dirty = true;
         }
 
-        /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon l'entrée).</summary>
-        public string LastSafePoint => _zone.SafePoints.First(s => s.Id == _lastSafePoint).Name;
+        /// <summary>Dernier point de reprise vu par l'aventure dans la session en cours (null : pas encore regardé).</summary>
+        private string? _trackedSafePoint;
+
+        /// <summary>Point sûr où la partie reprendra (le dernier approché, sinon celui où la session a commencé).</summary>
+        public string LastSafePoint => _zone.SafePoints.First(s => s.Id == World.LastSafePoint).Name;
 
         /// <summary>
         /// Halte possible : personnage vivant à <see cref="RestRange"/> d'un point sûr, aucun ennemi vivant à moins de
@@ -1833,7 +1848,7 @@ namespace EdS.Runtime
         {
             WorldSave save = World.Save();
             Write(save);
-            Open(save, _lastSafePoint);
+            Open(save, save.Resume?.SafePoint);
             Say(message, LastSafePoint);
             AnnounceLearned();
         }

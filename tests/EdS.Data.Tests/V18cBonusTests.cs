@@ -567,7 +567,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((18, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.26 : 18 (registre purgé, secteurs) ; V2.16 : 17 (aspect du héros) ; V2.10 : 16 (stock) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal((19, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.26 : 18 (registre purgé, secteurs) ; V2.16 : 17 (aspect du héros) ; V2.10 : 16 (stock) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
         Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",

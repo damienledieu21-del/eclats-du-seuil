@@ -65,6 +65,7 @@ namespace EdS.Runtime
             WorldSave here = World.Save();
             var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             WorldSession next = Build(moved, _zone, safePoint, null);
+            moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr du couvre-feu
             try
             {
                 Write(moved);
@@ -74,7 +75,6 @@ namespace EdS.Runtime
                 Say("text.ui.save_failed", e.Message);
                 return;
             }
-            _lastSafePoint = safePoint;
             Expulsions = checked(Expulsions + 1);
             Commit(next);
             Say("text.ui.curfew", _zone.SafePoints.First(s => s.Id == safePoint).Name);

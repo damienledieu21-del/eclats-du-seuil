@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Data.Characters;
+using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -94,6 +97,143 @@ namespace EdS.World
                 if (!((INarrativeWorld)this).InPlace(c.Place) || InCombat) return null;
                 return c.SafePoint;
             }
+        }
+
+        // --- Reprise au dernier point sûr (sous-lot V2.28, PLAN_GRANDE_CARTE.md § 3 ; sauvegarde v19) ---------------------------------
+
+        /// <summary>Distance d'un point sûr (écart entre les centres) qui en fait le point de reprise : celle de la halte et de la découverte.</summary>
+        public static readonly Fixed RestRange = DiscoverRange;
+
+        /// <summary>Point de reprise de la sauvegarde d'entrée, rendu tel quel par une session sans zone du monde.</summary>
+        private readonly SavedResume? _savedResume;
+
+        private string? _lastSafePoint;
+        private SectorMap? _resumeSectors;
+
+        /// <summary>
+        /// Sous-lot V2.28 : point sûr de la zone de la partie où elle reprendra : celui où la session a commencé (entrée, halte, voyage ;
+        /// arrivé par une porte : le plus proche d'elle, hors point secret), puis le dernier dont le personnage, présent et vivant, s'est
+        /// approché à <see cref="RestRange"/> (<see cref="RestPointNear"/> : jamais un point secret pas encore révélé). Null sans zone du monde.
+        /// </summary>
+        public string? LastSafePoint => _lastSafePoint;
+
+        /// <summary>
+        /// Sous-lot V2.28 : point de reprise à sauvegarder : <see cref="LastSafePoint"/> et, pour une zone à région, le secteur de simulation
+        /// qui possède sa place (<see cref="SectorMap.OwnerOf"/>). Sans zone du monde : celui de la sauvegarde d'entrée, inchangé.
+        /// </summary>
+        public SavedResume? Resume
+        {
+            get
+            {
+                if (Definition is null || _lastSafePoint is null) return _savedResume;
+                if (Definition.Region is null || Definition.Setup.Space is null) return new SavedResume(_lastSafePoint);
+                SafePoint point = Definition.SafePoints.First(s => s.Id == _lastSafePoint);
+                _resumeSectors ??= SectorMap.For(Definition);
+                return new SavedResume(_lastSafePoint, _resumeSectors.OwnerOf(point.Position));
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28 : met à jour <see cref="LastSafePoint"/> d'après la place du personnage (présent et vivant) ; rend vrai s'il a
+        /// changé. Faite à chaque tick (<see cref="Step"/>) ; l'hôte la refait avant une halte (un fait appris hors d'un tick peut révéler un
+        /// point sûr secret tout proche). Ne change rien d'autre.
+        /// </summary>
+        public bool TrackSafePoint()
+        {
+            if (Definition is null) return false;
+            CombatantView me = Zone.Engine.View(_character.Id);
+            if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return false;
+            if (!(RestPointNear(p, RestRange) is SafePoint near) || near.Id == _lastSafePoint) return false;
+            _lastSafePoint = near.Id;
+            return true;
+        }
+
+        /// <summary>
+        /// Point sûr non secret le plus proche de <paramref name="position"/> (écart entre les centres ; à égalité, ordre ordinal des
+        /// identifiants) ; l'entrée de la zone s'ils sont tous secrets.
+        /// </summary>
+        private string NearestSafePoint(GroundVector position)
+        {
+            SafePoint? best = null;
+            long bestDistance = 0;
+            foreach (SafePoint s in Definition!.SafePoints)
+            {
+                if (IsSecret(s.Id)) continue;
+                long dx = checked(s.Position.X.Raw - position.X.Raw), dz = checked(s.Position.Z.Raw - position.Z.Raw);
+                long distance = checked(dx * dx + dz * dz);
+                if (best is null || distance < bestDistance || (distance == bestDistance && string.CompareOrdinal(s.Id, best.Id) < 0))
+                {
+                    best = s;
+                    bestDistance = distance;
+                }
+            }
+            return (best ?? Definition.Entry).Id;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28 : point sûr de <paramref name="zone"/> où reprend la partie de <paramref name="save"/> (à passer à la session),
+        /// ou null : l'entrée de la zone. Fonction pure. Le point de reprise de la sauvegarde vaut s'il est de cette zone, s'il existe encore
+        /// dans ses données et s'il n'est pas un point secret que le personnage ne connaît pas (<paramref name="story"/>, dans la zone de
+        /// l'histoire <paramref name="storyZone"/>) ; sinon l'entrée, sans erreur (des données ont changé depuis la sauvegarde). Le secteur
+        /// sauvegardé n'est pas comparé : le point sûr fait foi, son secteur est recalculé à la sauvegarde suivante.
+        /// </summary>
+        public static string? ResumeSafePoint(WorldSave save, ZoneDefinition zone, StoryBook? story = null, string? storyZone = null)
+        {
+            if (save is null) throw new ArgumentNullException(nameof(save));
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
+            if (!(save.Resume is SavedResume resume) || save.Zone != zone.Id || zone.SafePoints.All(s => s.Id != resume.SafePoint)) return null;
+            if (story != null && zone.Id == (storyZone ?? zone.Id))
+                foreach ((string id, string fact) in story.Reputation.Hidden)
+                    if (id == resume.SafePoint && !(save.Character?.Story.Facts.Contains(fact) ?? false)) return null;
+            return resume.SafePoint;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28 (relecture indépendante de la PR #155) : arrivée d'une partie relancée. Le point sûr de reprise
+        /// (<see cref="ResumeSafePoint"/>) et, si sa place est prise au début de la session, la place libre la plus proche par la règle
+        /// d'arrivée des secteurs (<see cref="SectorWorld.NearestFree"/> : anneaux de 0,5 m jusqu'à 8 m, ordre fixe) ; sans aucune place
+        /// libre, l'entrée de la zone (<c>(null, null)</c>, comme avant le V2.28), sans erreur : une créature posée sur le point sûr ne bloque
+        /// jamais une sauvegarde. Fonction pure : même sauvegarde et mêmes données, même arrivée. <c>Place</c> est null quand le point sûr
+        /// lui-même est libre. À passer à la session (<c>safePoint</c>, <c>place</c>).
+        /// </summary>
+        public static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            StoryBook? story = null, string? storyZone = null) => ResumeArrival(save, zone, progression, story, storyZone, SectorWorld.ArrivalRings);
+
+        /// <summary>Pour les tests : la même règle sur <paramref name="rings"/> anneaux.</summary>
+        internal static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            StoryBook? story, string? storyZone, int rings)
+        {
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (!(ResumeSafePoint(save, zone, story, storyZone) is string point)) return (null, null);
+            // La session telle qu'elle s'ouvrira : même zone réglée au niveau du personnage, même décor, mêmes créatures de départ.
+            ZoneDefinition played = ForPlayer(zone, save, progression, storyZone);
+            CombatSetup setup = ZoneSetups.For(played, save.Consumed, StartPhase(played, save), StartWeather(played, save, storyZone));
+            GroundVector at = zone.SafePoints.First(s => s.Id == point).Position;
+            GroundVector? free = FreeArrival(setup, played.Bosses.Select(b => (CombatantSetup)b.Forms[0]), at, CharacterRadius, rings);
+            if (free is null) return (null, null);
+            return (point, free.Value == at ? (GroundVector?)null : free);
+        }
+
+        /// <summary>
+        /// Place libre la plus proche de <paramref name="at"/> au premier tick de <paramref name="setup"/> pour une emprise de
+        /// <paramref name="radius"/> : dans l'espace, hors du décor, sans chevaucher une emprise solide posée au début (créatures de départ,
+        /// celles qui arrivent au premier tick : elles passent avant le personnage ; <paramref name="alsoArriving"/> : premières formes des
+        /// chefs). Par excès : une créature dont l'arrivée serait elle-même refusée compte quand même. Null s'il n'y en a aucune.
+        /// </summary>
+        internal static GroundVector? FreeArrival(CombatSetup setup, IEnumerable<CombatantSetup> alsoArriving, GroundVector at, Fixed radius,
+            int rings = SectorWorld.ArrivalRings)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (!(setup.Space is CombatSpace space)) return at;
+            var walls = new ObstacleIndex(space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray());
+            List<CombatantPlacement> others = setup.Combatants.Where(c => c.ArrivalMs is null || c.ArrivalMs == 0).Concat(alsoArriving ?? Array.Empty<CombatantSetup>())
+                .Where(c => c.Placement != null && setup.Combat.AreSolid(true, radius, c is CharacterSetup, c.Placement.Radius)).Select(c => c.Placement!).ToList();
+            long r = radius.Raw;
+            bool Free(long x, long z) =>
+                x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
+                && !walls.AnyOverlapsCircle(x, z, r)
+                && !others.Any(q => Planar.CirclesOverlap(x, z, r, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw));
+            return SectorWorld.NearestFree(at, Free, rings);
         }
 
         public bool IsDiscovered(ZoneDefinition zone, string safePoint) =>

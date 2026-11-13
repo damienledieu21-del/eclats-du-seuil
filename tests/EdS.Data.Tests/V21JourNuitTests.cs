@@ -362,7 +362,7 @@ public sealed class V21JourNuitTests : IDisposable
         Until(w, DayPhase.Night, 20);
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", text, StringComparison.Ordinal);
-        Assert.Equal(18, SaveValidator.CurrentSchemaVersion);   // V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(19, SaveValidator.CurrentSchemaVersion);   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         // Session suivante, toujours la nuit : les bêtes de la nuit sont là d'emblée, les sangliers dorment.
         var next = new WorldSession(back, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
