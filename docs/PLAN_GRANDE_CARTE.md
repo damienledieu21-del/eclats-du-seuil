@@ -120,7 +120,7 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 - Rappel : la règle du moteur reste **un seul niveau par espace** (L11-D6). Les étages sont des espaces différents ; on change d'étage par un passage. Le vrai relief et les étages superposés dans un même espace restent pour plus tard.
 - **Voyage** : le voyage rapide reste entre points sûrs découverts **de la surface** (Retenu, sujet 7). Points sûrs aussi au dessous (camp de mineurs) et dans l'Envers (autel de l'Aube), découvrables, mais le voyage rapide n'y mène pas (Recommandation).
 - **Plafonds** : 16 portes par zone et 64 zones reliées ne suffiront pas (intérieurs du Bourg, dessous, failles) : à relever au V2.45.
-- **Reprise d'une partie** : aujourd'hui une partie reprend à l'entrée de la zone sauvegardée ; dès le **V2.28** (surface de 4 × 3 km), elle reprendra au **dernier point sûr** (sauvegarde : secteur et point sûr).
+- **Reprise d'une partie** — **Retenu (Damien, 13 novembre 2026, 15 h 00 : « La 1 »)** : une partie relancée reprend au **dernier point sûr dont le personnage s'est approché à moins de 5 m, même sans y avoir fait de halte** (sauvegarde : secteur et point sûr). Avant le V2.28, elle reprenait à l'entrée de la zone sauvegardée. L'autre choix proposé (seulement le dernier point sûr où l'on a fait une halte) est écarté. Réalisé au V2.28a (sauvegarde v19, [DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)).
 
 ## 4. Le plan de la région
 
@@ -303,7 +303,7 @@ Numérotation : le premier sous-lot, appelé V2.25 dans la première version du 
 
 | Partie | Contenu | État |
 |---|---|---|
-| **V2.28a** Reprise au dernier point sûr | Sauvegarde **v19** : `resume` (dernier point sûr approché et son secteur) ; le jeu relancé reprend à ce point sûr, plus à l'entrée de la zone ; v18 lue et mise à jour ([DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)) | en PR |
+| **V2.28a** Reprise au dernier point sûr | Sauvegarde **v19** : `resume` (dernier point sûr approché et son secteur) ; le jeu relancé reprend à ce point sûr, plus à l'entrée de la zone (retenu par Damien le 13 novembre 2026, § 3) ; point sûr occupé : place libre la plus proche, sinon l'entrée ; v18 lue et mise à jour ([DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)) | en PR |
 | **V2.28b** Partie solo sur l'hôte des secteurs | `WorldSession` et `AdventureSession` jouent sur `SectorWorld` (activation à 96 m, passage avec l'état, registre commun aux secteurs ouverts) ; avec le cœur seul, mêmes journaux qu'aujourd'hui ; la reprise ouvre le secteur de `resume` | à faire |
 | **V2.28c** Surface étendue | Aire de la zone portée à toute la région ; rivière jusqu'à la cascade, lac et marais, gorge, ravins et falaises en obstacles ; routes ; points sûrs aux carrefours (borne de 32 à relever) ; lieux en emplacements vides ; relief d'affichage de la région (altitudes du § 4.2) ; journaux des essais de zone figés à nouveau | à faire |
 | **V2.28d** Décor par cases dans Unity et monture | Rivière, lac, nappes de forêt et routes construits par cases (`CellStreamView`), carte peinte de la région ; cheval à 13 m/s (la monture retenue au sujet 7 n'existe pas encore dans le cœur) | à faire |
