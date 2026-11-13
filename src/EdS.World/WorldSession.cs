@@ -322,6 +322,7 @@ namespace EdS.World
             if (items is null) throw new ArgumentNullException(nameof(items));
             _character = save.Character ?? throw new ArgumentException("Sauvegarde sans personnage : le créer d'abord.", nameof(save));
             _sectors = save.Sectors;   // revue Codex de la PR #151 : gardées telles quelles, rendues à la sauvegarde
+            _savedResume = save.Resume;   // sous-lot V2.28 : gardé tel quel par une session sans zone du monde
             // Relecture de la PR #72 : bourse dans ses bornes (déjà vérifiée à la construction du personnage ; le contrat de la partie est
             // dit ici aussi, la bourse affichée ne peut pas sortir de [0, Coins.Max]).
             if (!Coins.IsValid(_character.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(save));
@@ -529,6 +530,8 @@ namespace EdS.World
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
+            // Sous-lot V2.28 : la reprise part du point sûr où commence la session ; arrivé par une porte, du point sûr le plus proche d'elle.
+            _lastSafePoint = door is null ? safePoint ?? zone.Entry.Id : NearestSafePoint(zone.DoorOf(door)!.Position);
             // Compétences données à l'entrée (réponse de Damien du 30 octobre 2026), après le chef comme la découverte.
             GiveAtEntry();
             // Sous-lot V2.5 : événements du monde de la zone (registre du personnage, sauvegarde v13).
@@ -960,6 +963,8 @@ namespace EdS.World
             WearReport? wear = TrackWear(defeated);
             // Sous-lot V1.1 : points sûrs approchés, découverts pour de bon (voyage rapide).
             DiscoverSafePoints(story);
+            // Sous-lot V2.28 : dernier point sûr approché, où la partie reprendra (sauvegarde v19).
+            TrackSafePoint();
             // Sous-lot V1.9.6 : gestes du joueur depuis le tick précédent (coups portés, coups bloqués, parades parfaites), pour le tutoriel.
             Practice(me);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
@@ -1175,7 +1180,7 @@ namespace EdS.World
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
-            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character, sectors: _sectors);
+            return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character, sectors: _sectors, resume: Resume);
         }
     }
 }

@@ -65,7 +65,7 @@ public class V210MarchandsFetesTests
     {
         Assert.Equal((13, 12, 13), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));
         Assert.Equal((6, 4, "0.11.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
-        Assert.Equal((18, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
+        Assert.Equal((19, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
@@ -764,7 +764,7 @@ public class V210MarchandsFetesTests
         SaveLoadResult refused = SaveJsonReader.Read(v15);
         Assert.Contains(refused.Report.Errors, e => e.Path.EndsWith(".stock", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownField);
         Assert.Contains(refused.Report.Errors, e => e.Path.EndsWith(".festivals", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownField);
-        string plain = SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save()).Replace($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", "\"schemaVersion\": 15");
+        string plain = SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save().WithResume(null)).Replace($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", "\"schemaVersion\": 15");
         SaveLoadResult old = SaveJsonReader.Read(plain);
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.Empty(old.Save!.Character!.Stock);
