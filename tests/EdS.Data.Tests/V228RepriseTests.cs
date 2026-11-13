@@ -392,6 +392,130 @@ public class V228RepriseTests : IDisposable
         Assert.Equal(At(-58, -6), Position(back));
     }
 
+    // --- Point sûr de reprise occupé (relecture indépendante de la PR #155) ---------------------------------------------------
+
+    /// <summary>Le sanglier arrive au premier tick sur la place du Bourg (il passe avant le personnage, que le validateur ne protège pas d'une arrivée).</summary>
+    private static void BoarOnTheBourg(JsonObject scenario)
+    {
+        JsonObject boar = scenario["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
+        boar["position"] = new JsonArray(-58, -6);
+        boar["arrivalMs"] = 0;
+    }
+
+    private (string Data, string Scenarios) CopyWithBoarOnTheBourg()
+    {
+        string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
+        foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
+            foreach (string file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+            {
+                string target = Path.Combine(to, Path.GetRelativePath(from, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file, target, true);
+            }
+        string path = Path.Combine(scenarios, "zones", "vallons.json");
+        JsonObject root = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        BoarOnTheBourg(root);
+        File.WriteAllText(path, root.ToJsonString());
+        return (data, scenarios);
+    }
+
+    private static double Distance(GroundVector a, GroundVector b) => Math.Sqrt(Math.Pow((a.X.Raw - b.X.Raw) / 1e4, 2) + Math.Pow((a.Z.Raw - b.Z.Raw) / 1e4, 2));
+
+    [Fact]
+    public void Point_de_reprise_occupe_place_libre_la_plus_proche()
+    {
+        (string data, string scenarios) = CopyWithBoarOnTheBourg();
+        AdventureSession a = Adventure(SavePath, data, scenarios);
+        Assert.False(a.Stranded);   // nouvelle partie : l'entrée (le village) est libre
+        a.Save();
+        EditSave(d => d["resume"] = new JsonObject { ["safePoint"] = "place_du_bourg", ["sector"] = "s07_06" });
+        WorldSave saved = SaveStore.Read(SavePath).Save!;
+        // Le cas est réel : une session ouverte sur le point sûr même n'y arrive pas (le sanglier y est déjà).
+        var exact = new WorldSession(saved, a.World.Definition!, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg");
+        exact.Step();
+        exact.Step();
+        Assert.False(exact.Zone.Engine.View(AdventureSession.PlayerId).IsPresent);
+        // Le jeu relancé : le personnage arrive à la place libre la plus proche du point sûr, sans erreur ni attente.
+        AdventureSession again = Adventure(SavePath, data, scenarios);
+        Assert.Null(again.SaveProblem);
+        Assert.False(again.Stranded);
+        Assert.False(again.MustContinue);
+        Assert.True(again.World.Zone.Engine.View("sanglier").IsPresent);
+        Assert.InRange(Distance(again.World.Zone.Engine.View("sanglier").Position!.Value, At(-58, -6)), 0, 1.0);   // arrivé sur le point sûr (il a fait un pas depuis)
+        GroundVector here = Position(again);
+        Assert.NotEqual(At(-58, -6), here);
+        Assert.InRange(Distance(here, At(-58, -6)), 0.5, 8.0);
+        Assert.Equal("Place du Bourg", again.LastSafePoint);
+        // C'est la place de la règle (fonction pure des données et de la sauvegarde), la même à chaque relance.
+        (string? point, GroundVector? place) = WorldSession.ResumeArrival(saved, again.World.Definition!, Progression, again.World.Narrative!.Book, AdventureSession.ZoneId);
+        Assert.Equal(("place_du_bourg", (GroundVector?)here), (point, place));
+        Assert.Equal(here, Position(Adventure(SavePath, data, scenarios)));
+    }
+
+    [Fact]
+    public void Regle_d_arrivee_de_la_reprise_et_repli_sur_l_entree()
+    {
+        ZoneDefinition busy = V11TestData.Zone(scenario: BoarOnTheBourg), calm = V11TestData.Zone();
+        WorldSave Save(ZoneDefinition zone, string? safePoint) =>
+            new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(), resume: safePoint is null ? null : new SavedResume(safePoint, "s07_06"));
+        // Point sûr libre : le point sûr même (aucune place à part) ; rien à reprendre : l'entrée.
+        Assert.Equal(("place_du_bourg", (GroundVector?)null), WorldSession.ResumeArrival(Save(calm, "place_du_bourg"), calm, Progression));
+        Assert.Equal(((string?)null, (GroundVector?)null), WorldSession.ResumeArrival(Save(calm, null), calm, Progression));
+        Assert.Equal(((string?)null, (GroundVector?)null), WorldSession.ResumeArrival(Save(calm, "nulle_part"), calm, Progression));
+        // Point sûr occupé : la première place libre des anneaux de 0,5 m (ordre fixe : l'est d'abord), hors de l'emprise du sanglier.
+        (string? point, GroundVector? place) = WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression);
+        Assert.Equal("place_du_bourg", point);
+        Assert.NotNull(place);
+        Assert.Equal(At(-58, -6).Z, place!.Value.Z);
+        Assert.True(place.Value.X > At(-58, -6).X);
+        Assert.Equal(place, WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression).Place);   // déterministe
+        // Les autres points sûrs de la même zone ne sont pas touchés.
+        Assert.Equal(("place_du_village", (GroundVector?)null), WorldSession.ResumeArrival(Save(busy, "place_du_village"), busy, Progression));
+        // Aucune place libre dans les anneaux (ici réduits à 0,5 m, tous sous le sanglier) : l'entrée de la zone, sans erreur.
+        Assert.Equal(((string?)null, (GroundVector?)null), WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression, null, null, rings: 1));
+        Assert.Equal(((string?)null, (GroundVector?)null), WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression, null, null, rings: 0));
+        // La règle seule : une place hors de l'aire à plus de 8 m n'a aucune place libre ; une place libre est rendue telle quelle.
+        Fixed r = WorldSession.CharacterRadius;
+        Assert.Null(WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-120, 0), r));
+        Assert.Equal(At(-58, -6), WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-58, -6), r));
+        Assert.Throws<ArgumentNullException>(() => WorldSession.ResumeArrival(Save(calm, null), calm, null!));
+        // La session n'accepte une place d'arrivée qu'autour de son point sûr (8 m), jamais avec une porte.
+        var aside = new WorldSession(Save(busy, null), busy, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg", place: place);
+        aside.Step();
+        aside.Step();
+        Assert.True(aside.Zone.Engine.View("bastion").IsPresent);
+        Assert.Equal(place, aside.Zone.Engine.View("bastion").Position);
+        Assert.Equal("place_du_bourg", aside.LastSafePoint);
+        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg", place: At(-49.9, -6)));
+        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, door: "porte_auberge", place: At(-69, 4)));
+    }
+
+    [Fact]
+    public void Donnees_livrees_aucun_point_sur_n_est_occupe_au_debut_d_une_session()
+    {
+        // Avec les données livrées, le repli ne sert jamais : le validateur des zones refuse une créature de départ ou une forme de chef sur
+        // un point sûr, et aucune créature n'y arrive au premier tick. Propriété : à chaque heure du monde sur quatre jours (nuits, attaque
+        // du hameau, faille, chasse de l'aube : niveau 12), chaque point sûr est libre ; un échantillon de sessions le confirme au moteur.
+        ZoneDefinition zone = V11TestData.Zone();
+        StoryBook story = Book(zone);
+        long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 12);
+        SavedCharacter hero = Hero().WithXp(xp).WithStory(new SavedStory(story.Reputation.Hidden.Select(h => h.Fact)));
+        int sessions = 0;
+        for (int hour = 0; hour < 96; hour++)
+            foreach (SafePoint point in zone.SafePoints)
+            {
+                var save = new WorldSave(zone.Id, hour * 9000L, 3, new[] { PlayerCharacters.PlacesKey }, hero, resume: new SavedResume(point.Id));
+                Assert.Equal((point.Id, (GroundVector?)null), WorldSession.ResumeArrival(save, zone, Progression, story, zone.Id));
+                if (hour % 8 != 5) continue;   // 13 h, 21 h (attaque du hameau), 5 h (aube) : sessions jouées
+                var session = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, story, safePoint: point.Id);
+                session.Step();
+                session.Step();
+                Assert.True(session.Zone.Engine.View("bastion").IsPresent, $"{point.Id}, heure {hour}");
+                sessions++;
+            }
+        Assert.Equal(12 * zone.SafePoints.Count, sessions);
+    }
+
     [Fact]
     public void Halte_et_reprise_comme_avant()
     {

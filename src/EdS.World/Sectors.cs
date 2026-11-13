@@ -772,13 +772,27 @@ namespace EdS.World
                 x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
                 && !open.Walls.AnyOverlapsCircle(x, z, r)
                 && !others.Any(v => Planar.CirclesOverlap(x, z, r, v.Position!.Value.X.Raw, v.Position.Value.Z.Raw, v.Radius!.Value.Raw));
-            if (Free(at.X.Raw, at.Z.Raw)) return at;
+            return NearestFree(at, Free);
+        }
+
+        /// <summary>Anneaux de la règle d'arrivée (<see cref="NearestFree"/>) : 16 anneaux de 0,5 m, soit 8 m au plus.</summary>
+        internal const int ArrivalRings = 16;
+
+        /// <summary>
+        /// Règle d'arrivée : <paramref name="at"/> si la place est libre (<paramref name="free"/>, coordonnées brutes), sinon la première place
+        /// libre des anneaux de 0,5 m autour d'elle (<paramref name="rings"/> anneaux, huit directions dans un ordre fixe : est, nord-est,
+        /// nord…) ; null s'il n'y en a aucune. Sous-lot V2.28 : la même règle sert à la reprise d'une partie relancée
+        /// (<c>WorldSession.ResumeArrival</c>).
+        /// </summary>
+        internal static GroundVector? NearestFree(GroundVector at, Func<long, long, bool> free, int rings = ArrivalRings)
+        {
+            if (free(at.X.Raw, at.Z.Raw)) return at;
             long[] dx = { 10_000, 7_071, 0, -7_071, -10_000, -7_071, 0, 7_071 }, dz = { 0, 7_071, 10_000, 7_071, 0, -7_071, -10_000, -7_071 };
-            for (int ring = 1; ring <= 16; ring++)
+            for (int ring = 1; ring <= rings; ring++)
                 for (int d = 0; d < 8; d++)
                 {
                     long x = checked(at.X.Raw + dx[d] * ring / 2), z = checked(at.Z.Raw + dz[d] * ring / 2);
-                    if (Free(x, z)) return new GroundVector(Fixed.FromRaw(x), Fixed.FromRaw(z));
+                    if (free(x, z)) return new GroundVector(Fixed.FromRaw(x), Fixed.FromRaw(z));
                 }
             return null;
         }

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EdS.Data.Characters;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
@@ -184,6 +186,54 @@ namespace EdS.World
                 foreach ((string id, string fact) in story.Reputation.Hidden)
                     if (id == resume.SafePoint && !(save.Character?.Story.Facts.Contains(fact) ?? false)) return null;
             return resume.SafePoint;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28 (relecture indépendante de la PR #155) : arrivée d'une partie relancée. Le point sûr de reprise
+        /// (<see cref="ResumeSafePoint"/>) et, si sa place est prise au début de la session, la place libre la plus proche par la règle
+        /// d'arrivée des secteurs (<see cref="SectorWorld.NearestFree"/> : anneaux de 0,5 m jusqu'à 8 m, ordre fixe) ; sans aucune place
+        /// libre, l'entrée de la zone (<c>(null, null)</c>, comme avant le V2.28), sans erreur : une créature posée sur le point sûr ne bloque
+        /// jamais une sauvegarde. Fonction pure : même sauvegarde et mêmes données, même arrivée. <c>Place</c> est null quand le point sûr
+        /// lui-même est libre. À passer à la session (<c>safePoint</c>, <c>place</c>).
+        /// </summary>
+        public static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            StoryBook? story = null, string? storyZone = null) => ResumeArrival(save, zone, progression, story, storyZone, SectorWorld.ArrivalRings);
+
+        /// <summary>Pour les tests : la même règle sur <paramref name="rings"/> anneaux.</summary>
+        internal static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            StoryBook? story, string? storyZone, int rings)
+        {
+            if (progression is null) throw new ArgumentNullException(nameof(progression));
+            if (!(ResumeSafePoint(save, zone, story, storyZone) is string point)) return (null, null);
+            // La session telle qu'elle s'ouvrira : même zone réglée au niveau du personnage, même décor, mêmes créatures de départ.
+            ZoneDefinition played = ForPlayer(zone, save, progression, storyZone);
+            CombatSetup setup = ZoneSetups.For(played, save.Consumed, StartPhase(played, save), StartWeather(played, save, storyZone));
+            GroundVector at = zone.SafePoints.First(s => s.Id == point).Position;
+            GroundVector? free = FreeArrival(setup, played.Bosses.Select(b => (CombatantSetup)b.Forms[0]), at, CharacterRadius, rings);
+            if (free is null) return (null, null);
+            return (point, free.Value == at ? (GroundVector?)null : free);
+        }
+
+        /// <summary>
+        /// Place libre la plus proche de <paramref name="at"/> au premier tick de <paramref name="setup"/> pour une emprise de
+        /// <paramref name="radius"/> : dans l'espace, hors du décor, sans chevaucher une emprise solide posée au début (créatures de départ,
+        /// celles qui arrivent au premier tick : elles passent avant le personnage ; <paramref name="alsoArriving"/> : premières formes des
+        /// chefs). Par excès : une créature dont l'arrivée serait elle-même refusée compte quand même. Null s'il n'y en a aucune.
+        /// </summary>
+        internal static GroundVector? FreeArrival(CombatSetup setup, IEnumerable<CombatantSetup> alsoArriving, GroundVector at, Fixed radius,
+            int rings = SectorWorld.ArrivalRings)
+        {
+            if (setup is null) throw new ArgumentNullException(nameof(setup));
+            if (!(setup.Space is CombatSpace space)) return at;
+            var walls = new ObstacleIndex(space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray());
+            List<CombatantPlacement> others = setup.Combatants.Where(c => c.ArrivalMs is null || c.ArrivalMs == 0).Concat(alsoArriving ?? Array.Empty<CombatantSetup>())
+                .Where(c => c.Placement != null && setup.Combat.AreSolid(true, radius, c is CharacterSetup, c.Placement.Radius)).Select(c => c.Placement!).ToList();
+            long r = radius.Raw;
+            bool Free(long x, long z) =>
+                x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
+                && !walls.AnyOverlapsCircle(x, z, r)
+                && !others.Any(q => Planar.CirclesOverlap(x, z, r, q.Position.X.Raw, q.Position.Z.Raw, q.Radius.Raw));
+            return SectorWorld.NearestFree(at, Free, rings);
         }
 
         public bool IsDiscovered(ZoneDefinition zone, string safePoint) =>

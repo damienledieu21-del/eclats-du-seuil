@@ -495,21 +495,25 @@ namespace EdS.World
         /// (les marchands sont ses PNJ). Null : partie sans commerce.</param>
         /// <param name="guild">Sous-lot V1.7 : la Guilde des aventuriers (rangs, contrats, épreuves) ; demande l'histoire (sa maîtresse est un
         /// PNJ). Null : partie sans guilde (une carte sauvegardée est gardée telle quelle).</param>
+        /// <param name="place">Sous-lot V2.28 : place d'arrivée d'une partie relancée quand celle du point sûr est prise
+        /// (<see cref="ResumeArrival(WorldSave, ZoneDefinition, CharacterProgression, StoryBook?, string?)"/>), à 8 m au plus de lui ; null :
+        /// la place du point sûr. Jamais avec une porte.</param>
         public WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story = null,
             CraftingBook? crafting = null, ICombatLog? log = null, string? safePoint = null, string? door = null, string? storyZone = null, Market? market = null,
-            GuildBook? guild = null)
+            GuildBook? guild = null, GroundVector? place = null)
             : this(save ?? throw new ArgumentNullException(nameof(save)),
                 // Sous-lot V1.8 (zones en mélange) : la zone telle que le personnage la trouve à son niveau d'entrée (créatures, chefs),
                 // calculée une seule fois (relecture de la PR #83).
                 ForPlayer(zone ?? throw new ArgumentNullException(nameof(zone)), save, progression, storyZone), data, progression, items, story, crafting, log, safePoint,
-                door, storyZone, market, guild, scaled: true)
+                door, storyZone, market, guild, scaled: true, place)
         {
         }
 
         /// <summary>Forme de la session pour une zone déjà réglée au niveau du personnage (<paramref name="zone"/>, <see cref="ForPlayer"/>).</summary>
         private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
-            CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled)
-            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door), CharacterRadius),
+            CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled,
+            GroundVector? place = null)
+            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
                 null, log, CheckZone(save, zone, story, crafting, market, guild))
         {
             Definition = zone;
@@ -799,15 +803,21 @@ namespace EdS.World
         public bool InStoryZone => Definition is null || Definition.Id == _storyZone;
 
         /// <summary>Place d'entrée : la porte demandée, sinon le point sûr demandé, sinon l'entrée de la zone.</summary>
-        private static GroundVector EntryOf(ZoneDefinition zone, string? safePoint, string? door)
+        private static GroundVector EntryOf(ZoneDefinition zone, string? safePoint, string? door, GroundVector? place = null)
         {
             if (door != null)
             {
                 if (safePoint != null) throw new ArgumentException("Entrée par une porte ou par un point sûr, pas les deux.", nameof(door));
+                if (place != null) throw new ArgumentException("Une place d'arrivée va avec un point sûr, pas avec une porte.", nameof(place));
                 return (zone.DoorOf(door) ?? throw new ArgumentException($"Porte « {door} » inconnue de {zone.Id}.", nameof(door))).Position;
             }
-            return (safePoint is null ? zone.Entry
+            GroundVector at = (safePoint is null ? zone.Entry
                 : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint))).Position;
+            if (!(place is GroundVector near)) return at;
+            // Sous-lot V2.28 : une place d'arrivée reste dans les anneaux de la règle d'arrivée autour du point sûr (8 m), jamais ailleurs.
+            long reach = checked(SectorWorld.ArrivalRings * Fixed.Scale / 2), dx = checked(near.X.Raw - at.X.Raw), dz = checked(near.Z.Raw - at.Z.Raw);
+            if (checked(dx * dx + dz * dz) > checked(reach * reach)) throw new ArgumentException("Place d'arrivée à plus de 8 m du point sûr.", nameof(place));
+            return near;
         }
 
         /// <summary>

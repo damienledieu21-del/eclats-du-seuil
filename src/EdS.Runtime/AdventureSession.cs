@@ -289,7 +289,10 @@ namespace EdS.Runtime
             if (_zone.Id != save.Zone) save = new WorldSave(_zone.Id, save.WorldTick, save.Sessions, save.Consumed, save.Character, save.Migrated, sectors: save.Sectors);
             // Sous-lot V2.28 (PLAN_GRANDE_CARTE.md § 3 ; sauvegarde v19) : la partie reprend au dernier point sûr approché (resume), s'il
             // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
-            Open(save, WorldSession.ResumeSafePoint(save, _zone, story, ZoneId));
+            // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
+            // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
+            (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId);
+            Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
             // Sous-lot V1.9.6 : une nouvelle partie dit d'emblée la première étape de l'ouverture (le réveil).
             if (read.Save is null && World.Narrative?.CurrentStep(StoryConversions.Opening) is QuestStep first) Say("text.ui.quest_step", Text(first.Text));
@@ -337,11 +340,11 @@ namespace EdS.Runtime
         /// Ouvre une session de la zone en cours sur <paramref name="save"/>, au point sûr <paramref name="safePoint"/> (null : l'entrée), ou à la
         /// porte <paramref name="door"/> (intérieurs). L'histoire et les métiers restent ceux de la zone de départ.
         /// </summary>
-        private void Open(WorldSave save, string? safePoint, string? door = null) => Commit(Build(save, _zone, safePoint, door));
+        private void Open(WorldSave save, string? safePoint, string? door = null, GroundVector? place = null) => Commit(Build(save, _zone, safePoint, door, place));
 
         /// <summary>Session de <paramref name="zone"/> prête à jouer, sans rien changer à l'aventure (<see cref="Commit"/> la met en jeu).</summary>
-        private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door) =>
-            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild);
+        private WorldSession Build(WorldSave save, ZoneDefinition zone, string? safePoint, string? door, GroundVector? place = null) =>
+            new WorldSession(save, zone, _data, _progression, _items, _story, _crafting, null, safePoint, door, ZoneId, _market, _guild, place);
 
         private void Commit(WorldSession world)
         {
