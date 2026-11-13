@@ -1081,4 +1081,73 @@ public class V226SecteursMondeTests
         Assert.Throws<InvalidOperationException>(() => w.Step());   // toujours refusé entier, jamais un secteur en avance
         Assert.All(w.OpenSectors, x => Assert.Equal(tick, w.SectorZone(x)!.WorldTick));
     }
+
+    // --- Revue Codex de la PR #150 (10e tour) --------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Commandes_de_l_aire_decoupees_avec_leurs_acteurs()
+    {
+        // Une aire valide avec une commande de départ (garde) pour une souche de l'est, et une commande de l'ouest qui vise l'est : le secteur
+        // ouest s'ouvre (la commande de l'est n'y est pas, celle qui vise l'autre secteur est retirée) ; l'est garde la sienne.
+        var west = new DummySetup("souche_ouest", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(100, 100), Fixed.FromRatio(1, 2)));
+        var east = new DummySetup("souche_est", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(400, 100), Fixed.FromRatio(1, 2)));
+        var commands = new[]
+        {
+            new CombatCommand(0, "souche_est", CombatAction.GuardStart),
+            new CombatCommand(0, "souche_ouest", CombatAction.GuardStart),
+            new CombatCommand(50, "souche_ouest", "skill.inconnue", "souche_est"),
+        };
+        var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, new CombatantSetup[] { west, east }, commands,
+            Shipped.Data, new CombatSpace(P(0, 0), P(512, 256)), zone: true);
+        var map = new SectorMap(Grid, area, P(64, 128));
+        CombatSetup w = map.SetupFor("s00_00", 1), e = map.SetupFor("s01_00", 1);
+        Assert.Equal(new[] { "souche_ouest" }, w.Commands.Select(c => c.Actor));
+        Assert.Null(w.Commands.Single().Target);
+        Assert.Equal(new[] { "souche_est" }, e.Commands.Select(c => c.Actor));
+        Assert.Empty(w.Validate());
+        Assert.Empty(e.Validate());
+        SectorWorld world = World(map);
+        world.Enter(Hero("alice", 100, 128));
+        world.Step();
+        Assert.Contains("s00_00", world.OpenSectors);
+    }
+
+    [Fact]
+    public void Identifiant_dont_la_cle_de_mort_serait_trop_longue_refuse_a_l_entree()
+    {
+        SectorWorld w = World(Map());
+        Assert.Throws<ArgumentException>(() => w.Enter(Hero(new string('a', 190), 100, 128)));
+        Assert.Throws<ArgumentException>(() => w.Enter(Hero(new string('a', 150), 100, 128)));
+        w.Step();
+        Assert.Empty(w.Players);
+        // Un identifiant long mais admis passe d'un secteur à l'autre (identité <id>_p1) sans refus.
+        string id = new string('a', 120);
+        w.Enter(Hero(id, 250, 128));
+        w.Step();
+        Walk(w, id, 1, 0);
+        Run(w, 300, x => x.Kind == SectorEventKind.Arrived);
+        w.Step();
+        Assert.Equal("s01_00", w.SectorOf(id));
+        Assert.Null(w.RefusalOf(id));
+    }
+
+    [Fact]
+    public void Joueur_refuse_pour_de_bon_pas_renouvele_le_monde_continue()
+    {
+        // Un joueur refusé pour de bon (sans combattant) reste suivi avec son diagnostic ; le renouvellement de la session l'ignore (pas de vue
+        // d'un combattant vide) ; les autres joueurs passent dans la session nouvelle.
+        SectorWorld w = World(ShortMap(5_000, Shipped.Combat));
+        w.Enter(Hero("alice", 100, 128));
+        w.Enter(Hero("bruno", 120, 128));
+        w.Step();
+        w.RefuseForTest("alice", "diagnostic d'essai");
+        List<SectorEvent> events = Run(w, 300);
+        Assert.Contains(events, x => x.Kind == SectorEventKind.Renewed && x.Sector == "s00_00");
+        Assert.Equal("diagnostic d'essai", w.RefusalOf("alice"));
+        Assert.True(w.ViewOf("bruno").IsPresent);
+        Assert.Throws<InvalidOperationException>(() => w.CombatantOf("alice"));
+        w.Exit("alice");
+        w.Step();
+        Assert.Equal(new[] { "bruno" }, w.Players);
+    }
 }
