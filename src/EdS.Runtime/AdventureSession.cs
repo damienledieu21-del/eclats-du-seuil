@@ -660,7 +660,7 @@ namespace EdS.Runtime
 
         /// <summary>Nœud de récolte prêt le plus proche à portée, ou null.</summary>
         public GatheringNode? NodeInReach => Me is GroundVector p && World.InStoryZone
-            ? _crafting.Nodes.Where(n => Within(p, n.Position, Workshop.GatherRange) && World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))
+            ? _crafting.Nodes.Where(n => Within(p, n.Position, Workshop.GatherRange) && World.IsNodeReady(n.Id))
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault() : null;
 
         /// <summary>
@@ -1455,7 +1455,7 @@ namespace EdS.Runtime
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
-            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.Workshop!.IsReady(n.Id, World.Zone.Engine.CurrentTick))).ToList()
+            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.IsNodeReady(n.Id))).ToList()
             : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
         public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Where(s => !World.IsSecret(s.Id)).Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();   // V2.7 : la planque secrète reste cachée

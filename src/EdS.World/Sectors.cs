@@ -542,6 +542,48 @@ namespace EdS.World
             _players[player.Id] = new Player { Id = player.Id, Setup = player, Sector = sector, Combatant = player.Id };
         }
 
+        /// <summary>Sous-lot V2.28b (2) : session du monde (celle de la première ouverture du secteur du cœur).</summary>
+        public long Session => _session;
+
+        /// <summary>Sous-lot V2.28b (2) : l'événement est-il au registre du monde ou à celui d'une session ouverte ?</summary>
+        public bool IsConsumed(string key)
+        {
+            if (_consumed.Contains(key)) return true;
+            foreach (Open o in _open.Values)
+                if (o.Zone.IsConsumed(key)) return true;
+            return false;
+        }
+
+        /// <summary>Sous-lot V2.28b (2) : place restante au registre du monde entier, d'après sa borne (jamais plus que la place réelle).</summary>
+        public long RegistryRoom => SaveValidator.MaxConsumed - RegistryBound();
+
+        /// <summary>Sous-lot V2.28b (2) : population d'une créature d'un secteur ouvert, ou null.</summary>
+        public Population? PopulationOf(string combatant)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.Of(combatant) is Population p) return p;
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : vie en cours de la population <paramref name="population"/> (sa créature d'origine), dans son secteur ; la
+        /// créature d'origine si son secteur n'est pas ouvert.
+        /// </summary>
+        public string CurrentOf(string population)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.Of(population) != null) return o.Populations.CurrentOf(population);
+            return population;
+        }
+
+        /// <summary>Sous-lot V2.28b (2) : la créature est-elle revenue après une mort (dans un secteur ouvert) ?</summary>
+        public bool ReturnedFromDeath(string combatant)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.ReturnedFromDeath(combatant)) return true;
+            return false;
+        }
+
         /// <summary>Secteurs ouverts, dans l'ordre des noms.</summary>
         public IReadOnlyList<string> OpenSectors => _open.Keys.ToArray();
 
@@ -703,7 +745,35 @@ namespace EdS.World
         internal IReadOnlyList<string> PopulationCreaturesIn(string sector) =>
             _open.TryGetValue(sector, out Open? o) ? _populations.Where(p => o.Populations.Of(p.Creature) != null).Select(p => p.Creature).ToArray() : Array.Empty<string>();
 
+        /// <summary>
+        /// Relecture indépendante de la PR #157 : le joueur est-il suivi par un combattant de la session de son secteur (ni en attente d'une
+        /// place, ni en reprise d'un passage, ni mort dans une session terminée, ni refusé pour de bon) ? Sinon <see cref="CombatantOf"/> lève.
+        /// </summary>
+        public bool IsFollowed(string player) => _players.TryGetValue(player, out Player? p) && Live(p);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #157 : combattants de toutes les sessions ouvertes, réserve des morts possibles du prochain tick
+        /// pour tout le monde (la borne du tick, <see cref="NextTickRegistryNeed"/>, compte celles de chaque secteur ouvert).
+        /// </summary>
+        public int OpenCombatants
+        {
+            get
+            {
+                int n = 0;
+                foreach (Open o in _open.Values) n = checked(n + o.Zone.Engine.CombatantIds.Count);
+                return n;
+            }
+        }
+
         /// <summary>Pour les tests : le joueur est refusé pour de bon (son combattant s'en va), comme après une arrivée refusée par la validation.</summary>
+        /// <summary>Pour les tests : le joueur passe en reprise d'un passage (sans combattant), comme après une arrivée refusée des deux côtés.</summary>
+        internal void ResumeForTest(string player)
+        {
+            Player p = _players[player];
+            p.Arrival = p.Setup;
+            p.Resume = true;
+        }
+
         internal void RefuseForTest(string player, string diagnostic)
         {
             Player p = _players[player];
@@ -1222,7 +1292,19 @@ namespace EdS.World
                 if (!Live(p) || !_open.TryGetValue(p.Sector!, out Open? o)) continue;
                 CombatantView v = o.Zone.Engine.View(p.Combatant);
                 if (v.Position is GroundVector pos)
-                    foreach (string near in _map.Near(pos)) OpenSector(near, events);
+                    foreach (string near in _map.Near(pos))
+                    {
+                        // Relecture indépendante de la PR #157 : un voisin qui ne peut pas s'ouvrir (sauvegarde abîmée : sa session suivante
+                        // dépasserait le temps du monde) reste fermé, sans rien changer (la préparation d'une session ne touche à rien) :
+                        // le joueur ne peut pas y passer (pas de départ vers un secteur fermé) et le tick va à son terme.
+                        try
+                        {
+                            OpenSector(near, events);
+                        }
+                        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                        {
+                        }
+                    }
             }
 
             // 4. Nouveaux passages et lâchers au bout de la marge (ordre du secteur, puis du joueur).

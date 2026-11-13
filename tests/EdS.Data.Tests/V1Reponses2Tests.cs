@@ -322,10 +322,10 @@ public class V1Reponses2Tests
         // La victoire de la nuit garde la clé de la nuit (vaincu de jour, rien n'est gardé).
         WorldSession w = VallonsAt(Tick(yes, 23), Hero(), out _);
         Population wolf = w.Definition!.PopulationOf(WhiteWolf)!;
-        w.NightDefeated(wolf, 0);
+        w.NightDefeated(wolf, w.Zone.StartWorldTick);   // revue Codex de la PR #157 : tick du monde (ici, celui du début de la session)
         Assert.True(w.Zone.IsConsumed(key));
         WorldSession day = VallonsAt(Tick(yes, 12), Hero(), out _);
-        day.NightDefeated(wolf, 0);
+        day.NightDefeated(wolf, day.Zone.StartWorldTick);
         Assert.DoesNotContain(day.Zone.Consumed, k => k.Contains("/night/", StringComparison.Ordinal));
         // Une halte (nouvelle session) la même nuit : la clé au registre, il ne revient pas.
         WorldSession after = VallonsAt(Tick(yes, 23, 30), Hero(), out SessionStep first, new[] { key });

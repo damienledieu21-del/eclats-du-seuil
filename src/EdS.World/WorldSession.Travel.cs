@@ -37,6 +37,14 @@ namespace EdS.World
         /// et ne servirait qu'à rendre les PV (la halte est faite pour cela).
         /// </summary>
         AlreadyHere = 6,
+
+        /// <summary>
+        /// Décision de Damien du 13 novembre 2026, 19 h 51 (« Non 2 pardon ») : la destination n'a aucune place libre à 8 m (règle d'arrivée à
+        /// un point sûr, <see cref="WorldSession.SafeArrival(WorldSave, ZoneDefinition, EdS.Data.Characters.CharacterProgression, string?, string?)"/>) :
+        /// le voyage est refusé, le personnage ne bouge pas. Jugé au moment du voyage (la règle demande la session d'arrivée telle qu'elle
+        /// s'ouvrirait), pas par <c>CanTravel</c>.
+        /// </summary>
+        Blocked = 7,
     }
 
     /// <summary>
@@ -141,7 +149,7 @@ namespace EdS.World
         public bool TrackSafePoint()
         {
             if (Definition is null) return false;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return false;
             if (!(RestPointNear(p, RestRange) is SafePoint near) || near.Id == _lastSafePoint) return false;
             _lastSafePoint = near.Id;
@@ -265,7 +273,7 @@ namespace EdS.World
         }
 
         public bool IsDiscovered(ZoneDefinition zone, string safePoint) =>
-            Zone.IsConsumed((zone ?? throw new ArgumentNullException(nameof(zone))).SafePointKey(safePoint ?? throw new ArgumentNullException(nameof(safePoint))));
+            Registered((zone ?? throw new ArgumentNullException(nameof(zone))).SafePointKey(safePoint ?? throw new ArgumentNullException(nameof(safePoint))));
 
         /// <summary>
         /// Inscrit la découverte d'un point sûr de la zone de la partie (une zone du dehors) ; faux s'il l'était déjà, si la zone est un
@@ -275,7 +283,7 @@ namespace EdS.World
         {
             if (Definition is null || Definition.Indoor) return false;
             string key = Definition.SafePointKey(safePoint);
-            if (Zone.IsConsumed(key) || Zone.RegistryRoom <= Zone.Engine.CombatantIds.Count) return false;
+            if (Registered(key) || RegistryRoom <= DeathReserve) return false;
             return Zone.Consume(key);
         }
 
@@ -283,7 +291,7 @@ namespace EdS.World
         private void DiscoverSafePoints(List<StoryEvent> events)
         {
             if (Definition is null || Definition.Indoor) return;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return;
             foreach (SafePoint s in Definition.SafePoints)
             {
@@ -310,16 +318,16 @@ namespace EdS.World
         {
             get
             {
-                CombatantView me = Zone.Engine.View(_character.Id);
+                CombatantView me = Zone.Engine.View(CombatantId);
                 if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return true;
                 long limit = checked(CombatRange.Raw * CombatRange.Raw);
                 foreach (string id in Zone.Engine.CombatantIds)
                 {
-                    if (id == _character.Id) continue;
+                    if (id == CombatantId) continue;
                     CombatantView v = Zone.Engine.View(id);
                     if (v.Team == me.Team || !v.IsPresent || v.IsDead) continue;
                     if (v.Flees) continue;   // revue Codex de la PR #104 (tour 3) : un cerf ou un lièvre n'est pas un combat
-                    if (v.Engaged && v.CurrentTarget == _character.Id && WithinLeash(v, me)) return true;
+                    if (v.Engaged && v.CurrentTarget == CombatantId && WithinLeash(v, me)) return true;
                     if (v.Position is GroundVector q)
                     {
                         long dx = checked(q.X.Raw - p.X.Raw), dz = checked(q.Z.Raw - p.Z.Raw);
@@ -336,7 +344,7 @@ namespace EdS.World
         /// </summary>
         private bool WithinLeash(CombatantView creature, CombatantView me)
         {
-            if (!(_populations?.Of(creature.Id) is Population population)) return true;
+            if (!(PopulationOf(creature.Id) is Population population)) return true;
             if (!(creature.Position is GroundVector a && creature.Radius is Fixed ra && me.Position is GroundVector b && me.Radius is Fixed rb)) return true;
             return !ZonePopulations.Beyond(a, ra, b, rb, population.LeashRange);
         }
@@ -350,7 +358,7 @@ namespace EdS.World
             if (zone is null || Definition is null || zone.Id != Definition.Id) return false;
             SafePoint? s = Definition.SafePoints.FirstOrDefault(x => x.Id == safePoint);
             if (s is null) return false;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             return me.IsPresent && !me.IsDead && me.Position is GroundVector p && !ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, DiscoverRange);
         }
 
@@ -364,7 +372,7 @@ namespace EdS.World
         {
             if (zone is null || zone.Indoor || safePoint is null || zone.SafePoints.All(s => s.Id != safePoint)) return TravelRefusal.UnknownPlace;
             if (!IsDiscovered(zone, safePoint)) return TravelRefusal.NotDiscovered;
-            if (_defeated || !Zone.Engine.View(_character.Id).IsPresent || Zone.Engine.View(_character.Id).IsDead) return TravelRefusal.Unavailable;
+            if (_defeated || !Zone.Engine.View(CombatantId).IsPresent || Zone.Engine.View(CombatantId).IsDead) return TravelRefusal.Unavailable;
             if (InCombat) return TravelRefusal.InCombat;
             return IsAt(zone, safePoint) ? TravelRefusal.AlreadyHere : TravelRefusal.None;
         }

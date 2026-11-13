@@ -105,11 +105,18 @@ namespace EdS.World
             GearBonus wanted = CombatGear;
             _gearPending = false;
             if (wanted.Equals(_combatGear) || Zone.Engine.IsFinished) return;
-            CombatantView me = Zone.Engine.View(_character.Id);
-            if (me.IsDead || !me.IsPresent) return;
+            CombatantView me = Zone.Engine.View(CombatantId);
+            if (me.IsDead) return;
+            // Revue Codex de la PR #157 (1er tour) : absent (parti au tick d'un passage, ou pas encore arrivé), la synchronisation reste en
+            // attente : elle s'applique au combattant d'arrivée dès qu'il est là, au lieu d'être perdue.
+            if (!me.IsPresent)
+            {
+                _gearPending = true;
+                return;
+            }
             try
             {
-                Zone.Engine.Submit(CombatCommand.SetGear(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), _character.Id, wanted));
+                Zone.Engine.Submit(CombatCommand.SetGear(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), CombatantId, wanted));
                 _combatGear = wanted;
             }
             catch (InvalidOperationException)
@@ -123,7 +130,7 @@ namespace EdS.World
         {
             if (item is null || !_items.TryGetItem(item, out ItemDefinition definition) || definition.Boon is null) return BoonRefusal.NotBoon;
             if (Inventory.Available(item) < 1) return BoonRefusal.NothingThere;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             if (_defeated || !me.IsPresent || me.IsDead) return BoonRefusal.Unavailable;
             return InCombat ? BoonRefusal.InCombat : BoonRefusal.None;
         }

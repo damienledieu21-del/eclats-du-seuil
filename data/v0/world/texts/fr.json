@@ -335,6 +335,7 @@
       "text.ui.travel.unavailable": "Voyage impossible pour l'instant.",
       "text.ui.travel.savefailed": "Sauvegarde impossible : tu restes où tu es.",
       "text.ui.travel.alreadyhere": "Tu es déjà à ce point sûr : fais plutôt une halte.",
+      "text.ui.travel.blocked": "Ce point sûr est encombré : impossible d'y arriver pour l'instant. Tu restes où tu es.",
       "text.ui.reward_purse_full": "Bourse pleine : dépense des pièces pour recevoir ta récompense.",
       "text.ui.purse_full": "Ta bourse est pleine : ces pièces n'y tiendraient pas.",
       "text.npc.aubergiste.name": "Mathurin l'aubergiste",
