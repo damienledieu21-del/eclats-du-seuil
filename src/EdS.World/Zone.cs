@@ -166,6 +166,24 @@ namespace EdS.World
             return here && !view.HasLeft && view.MaxHealth != null && !_transient.Contains(combatant) && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
         }
 
+        /// <summary>Revue Codex de la PR #150 (9e tour) : morts qui ajouteraient une clé au prochain tick (0 si la session est terminée).</summary>
+        public int NewDeathsPossible => _engine.IsFinished ? 0 : _engine.CombatantIds.Count(NewDeathPossible);
+
+        /// <summary>Revue Codex de la PR #150 (9e tour) : clés au registre de la session (le sien, recopié à l'ouverture, plus les nouvelles).</summary>
+        public int ConsumedCount => _consumed.Count;
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (9e tour) : motif pour lequel <see cref="Step"/> refuserait le prochain tick à cause d'une clé de mort hors
+        /// du format, ou null. Ne change rien.
+        /// </summary>
+        public string? KeyRefusal()
+        {
+            foreach (string combatant in _engine.CombatantIds)
+                if (!_keyed.Contains(combatant) && !DeathKeyFits(combatant))
+                    return $"Clé de mort de « {combatant} » trop longue ou hors du format des sauvegardes.";
+            return null;
+        }
+
         private bool DeathKeyFits(string combatant) => SaveValidator.IsEventKey(EventKey(ZoneEventKind.Death, combatant));
 
         /// <summary>Ticks déjà simulés dans cette session (le moteur ne compte plus après son dernier tick : il est compris ici).</summary>

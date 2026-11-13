@@ -4,6 +4,7 @@ using System.Linq;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.Data.Json;
 using EdS.Data.Scenarios;
@@ -1028,5 +1029,81 @@ public class V226SecteursMondeTests
         Assert.True(next.Session > first.Session);
         Assert.DoesNotContain(next.Setup.Space!.Obstacles, o => o.Id == moulin.Obstacle);
         Assert.Equal(first.Setup.Space.Obstacles.Count - 1, next.Setup.Space.Obstacles.Count);
+    }
+
+    // --- Revue Codex de la PR #150 (9e tour) ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Registre_presque_plein_tick_refuse_entier_puis_repris_apres_liberation()
+    {
+        // P1 : deux secteurs ouverts (Alice à la limite), registre presque plein : le tick est refusé entier (aucun secteur n'avance, ni le tick
+        // du monde) ; dès que la place exigée est libérée (ici : Bruno renonce à entrer), le monde reprend.
+        SectorWorld Make(int keys)
+        {
+            var consumed = Enumerable.Range(0, keys).Select(k => $"zone.essai/fait_{k:D6}");
+            return new SectorWorld(Map(Wolf("loup_ouest", 100, 60), Wolf("loup_est", 400, 128)), "zone.essai", 0, 1, consumed);
+        }
+        SectorWorld twin = Make(0);
+        twin.Enter(Hero("alice", 250, 128));
+        twin.Step();
+        twin.Enter(Hero("bruno", 100, 100));
+        long rest = twin.NextTickRegistryNeed;
+        Assert.InRange(rest, 5, 50);
+        SectorWorld w = Make(checked((int)(SaveValidator.MaxConsumed - rest + 1)));
+        w.Enter(Hero("alice", 250, 128));
+        w.Step();
+        Assert.Equal(new[] { "s00_00", "s01_00" }, w.OpenSectors);
+        w.Enter(Hero("bruno", 100, 100));
+        Assert.Equal(SaveValidator.MaxConsumed + 1L, w.NextTickRegistryNeed);
+        long tick = w.WorldTick;
+        var before = w.OpenSectors.ToDictionary(x => x, x => w.SectorZone(x)!.Engine.CurrentTick);
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Equal(tick, w.WorldTick);
+        Assert.All(w.OpenSectors, x => Assert.Equal((before[x], tick), (w.SectorZone(x)!.Engine.CurrentTick, w.SectorZone(x)!.WorldTick)));
+        Assert.Equal(new[] { "alice" }, w.Players);
+        Assert.True(w.CancelEnter("bruno"));
+        Assert.Equal(SaveValidator.MaxConsumed + 0L, w.NextTickRegistryNeed);
+        w.Step();
+        Assert.Equal(tick + 1, w.WorldTick);
+        Assert.All(w.OpenSectors, x => Assert.Equal(w.WorldTick, w.SectorZone(x)!.WorldTick));
+        Assert.True(w.ViewOf("alice").IsPresent);
+    }
+
+    [Fact]
+    public void Entree_invalide_refusee_tout_de_suite_avec_son_diagnostic()
+    {
+        // P2 : PV emportés au-delà du maximum : refus définitif à l'annonce (diagnostic), pas une attente de place.
+        SectorWorld w = World(Map());
+        ArgumentException e = Assert.Throws<ArgumentException>(() => w.Enter(Hurt("alice", 100, 128, 10_000_000)));
+        Assert.Contains("alice", e.Message);
+        Assert.Contains("carried", e.Message, StringComparison.OrdinalIgnoreCase);
+        w.Step();
+        Assert.Empty(w.Players);
+        // Une entrée valide au même endroit (sur un loup) reste admise : la place exacte est choisie à l'arrivée.
+        SectorWorld v = World(Map(Wolf("loup", 100, 100)));
+        v.Enter(Hero("bruno", 100, 100));
+        v.Step();
+        Assert.True(v.ViewOf("bruno").IsPresent);
+        Assert.Null(v.RefusalOf("bruno"));
+    }
+
+    [Fact]
+    public void Registre_a_99_999_cles_aucun_secteur_n_avance_seul()
+    {
+        // Le scénario de la revue : registre à 99 999 clés ; le secteur ouest (aucun mortel) avancerait, l'est (Alice et un loup) refuserait
+        // sa réservation : le tick est refusé entier, aucun secteur n'avance seul (avant : l'ouest avançait, le monde restait bloqué).
+        SectorWorld w = World(Map(Wolf("loup_est", 400, 128)));
+        w.Enter(Hero("alice", 300, 128));
+        w.Step();
+        Assert.Equal(new[] { "s00_00", "s01_00" }, w.OpenSectors);
+        Zone east = w.SectorZone("s01_00")!;
+        for (int k = 0; east.RegistryRoom > 1; k++) east.Consume($"zone.essai/fait_{k:D6}");
+        long tick = w.WorldTick;
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Equal(tick, w.WorldTick);
+        Assert.All(w.OpenSectors, x => Assert.Equal(tick, w.SectorZone(x)!.WorldTick));
+        Assert.Throws<InvalidOperationException>(() => w.Step());   // toujours refusé entier, jamais un secteur en avance
+        Assert.All(w.OpenSectors, x => Assert.Equal(tick, w.SectorZone(x)!.WorldTick));
     }
 }
