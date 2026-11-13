@@ -124,7 +124,7 @@ namespace EdS.Runtime
             var scars = save.Character.Scars.Where(x => x.Id != key).Concat(new[] { new SavedScar(key, stage, day, day) }).ToList();
             if (scars.Count > SavedScar.MaxEntries) return "Trop de cicatrices : rien n'a changé.";
             string copy = DayTrial.KeepCopy(path, stamp);
-            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(scars), save.Migrated));
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(scars), save.Migrated, sectors: save.Sectors));
             GroundVector at = e.Groups.First(g => g.Id == group).Position!.Value;
             string haunts = stage >= e.Scar.HauntStage ? " Des échos y rôdent : viens à bout d'eux," : "";
             return $"Cicatrice créée {Where(group)} (x {at.X}, z {at.Z}), palier {stage} sur {e.Scar.MaxStage}, jour {day}. Elle gagne un palier tous les {e.Scar.GrowDays} jours du monde."
@@ -153,7 +153,7 @@ namespace EdS.Runtime
             if (!(read.Save is WorldSave save) || save.Character is null) return "Sauvegarde illisible ou sans personnage.";
             if (save.Character.Scars.Count == 0) return "Aucune cicatrice : rien n'a changé.";
             string copy = DayTrial.KeepCopy(path, stamp);
-            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(Array.Empty<SavedScar>()), save.Migrated));
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(Array.Empty<SavedScar>()), save.Migrated, sectors: save.Sectors));
             return $"Cicatrices effacées. Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }
 
@@ -185,7 +185,7 @@ namespace EdS.Runtime
             var targets = new HashSet<string>(from.SpreadTo.Select(g => WorldScarRules.Key(zone.Id, e.Id, g)), StringComparer.Ordinal);
             var scars = save.Character.Scars.Where(x => x.Id != key && !targets.Contains(x.Id)).Concat(new[] { new SavedScar(key, rule.SpreadStage, since, since) }).ToList();
             string copy = DayTrial.KeepCopy(path, stamp);
-            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(scars), save.Migrated));
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, save.Character.WithScars(scars), save.Migrated, sectors: save.Sectors));
             return $"Cicatrice au palier {rule.SpreadStage} {Where(from.Id)} depuis {rule.SpreadDays} jours du monde, et plus rien {string.Join(" ni ", from.SpreadTo.Select(Where))}. "
                 + $"En entrant dans les Vallons, le froid gagne {Where(from.SpreadTo[0])} ; la voisine suivante {rule.SpreadDays} jours plus tard. Purifier la nouvelle accorde {rule.SpreadDays} jours de répit ; purifier la source arrête tout. Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }
@@ -233,7 +233,7 @@ namespace EdS.Runtime
                 shards = " Ton sac est plein : pas d'éclat de Seuil ajouté.";
             }
             string copy = DayTrial.KeepCopy(path, stamp);
-            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, hero, save.Migrated));
+            SaveStore.Write(path, new WorldSave(save.Zone, save.WorldTick, save.Sessions, save.Consumed, hero, save.Migrated, sectors: save.Sectors));
             return "Quête « Les cicatrices du Seuil » commencée et suivie : purifie une cicatrice, retourne voir Sœur Albe (à la chapelle, ou sur le parvis de 17 h à 18 h), puis purifie-en deux autres."
                 + where + shards + $" Copie d'avant l'essai : {System.IO.Path.GetFileName(copy)}.";
         }

@@ -63,7 +63,7 @@ namespace EdS.Runtime
         {
             if (!(World.CurfewSafePoint is string safePoint) || Dialogue != null || MustContinue) return;
             WorldSave here = World.Save();
-            var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character);
+            var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             WorldSession next = Build(moved, _zone, safePoint, null);
             try
             {

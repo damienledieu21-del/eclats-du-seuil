@@ -527,7 +527,7 @@ namespace EdS.Runtime
 
         /// <summary>Relecture de la PR #101 : la même sauvegarde, au tick <paramref name="tick"/> (drapeau de migration compris).</summary>
         public static WorldSave Advanced(WorldSave save, long tick) =>
-            new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character, save.Migrated);
+            new WorldSave(save.Zone, tick, save.Sessions, save.Consumed, save.Character, save.Migrated, sectors: save.Sectors);
 
         /// <summary>
         /// Relecture de la PR #101 : avant un essai qui réécrit la sauvegarde, une copie à part (<c>vallons.json.essai-&lt;marque&gt;.bak</c>),

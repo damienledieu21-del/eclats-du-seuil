@@ -539,8 +539,8 @@ public class Lot123ItemTests
         Assert.Equal(new GearBonus(armor: 60), next.EnteredGear);   // l'écu seul
         Assert.Empty(next.Restored);
         Assert.Equal(withGambison - 40, next.Zone.Engine.View("bastion").MaxHealth);
-        // La mort de la session précédente reste consommée : elle ne redonne rien (nouvelle session, nouvelle clé).
-        Assert.Contains("zone.vallons/1/death/loup1", after.Consumed);
+        // Sous-lot V2.26 (sauvegarde v18) : la clé de mort de la session fermée est purgée ; elle ne redonnerait rien (nouvelle session, nouvelle clé).
+        Assert.DoesNotContain("zone.vallons/1/death/loup1", after.Consumed);
         // Table inconnue : refusée à l'ouverture de la partie.
         Assert.Throws<ArgumentException>(() => new WorldSession(after, loaded.Setup!, ShippedData, Progression, catalog, placement,
             new Dictionary<string, string> { ["loup1"] = "loot.inconnu" }));

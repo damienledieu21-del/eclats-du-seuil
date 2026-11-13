@@ -1,0 +1,167 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using EdS.Data;
+using EdS.Data.Json;
+using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
+using EdS.Domain.Space;
+using EdS.Simulation.Engine;
+
+namespace EdS.Tools.Measures
+{
+    /// <summary>
+    /// Sous-lot V2.26 (PLAN_GRANDE_CARTE.md § 2.6 : « à mesurer au V2.26, eds mesures secteurs ») : coût du moteur par tick pour un secteur de
+    /// simulation, sur la machine qui lance l'outil. Espace du scénario de référence <c>espace_secteur</c> (320 m, 195 obstacles), un
+    /// mannequin au centre (cible inépuisable) et 59 loups (60 combattants) : « répartis » (sur tout le secteur, ceux à moins de 30 m
+    /// s'engagent), « engagés » (tous engagés d'emblée, ils contournent le décor pour rejoindre la cible : le pire cas), « calme » (aucun
+    /// joueur proche). Chaque cas : moyenne, 95e centile et maximum du temps d'un tick (après 100 ticks de mise en route), octets alloués
+    /// par tick sur le fil de la simulation. Cible du plan : un secteur de 60 combattants à moins de 1 ms par tick. Mesure, pas un test :
+    /// les chiffres varient avec la machine ; aucun résultat n'entre dans un journal.
+    /// </summary>
+    public static class SectorMeasures
+    {
+        /// <param name="Engaged">Revue Codex de la PR #151 (10e tour) : loups engagés au moins une fois pendant la mesure (mise en route
+        /// comprise) ; les autres ne l'ont jamais été.</param>
+        public sealed record Result(string Case, int Combatants, int Obstacles, long Ticks, double MeanMs, double P95Ms, double MaxMs, double BytesPerTick, int Engaged = 0);
+
+        public const int Warmup = 100;
+
+        /// <summary>Simulation d'un secteur de 60 combattants dans l'espace du scénario de référence.</summary>
+        public static CombatSetup Sector(CombatSetup reference, string kind, long durationMs)
+        {
+            CombatSpace space = reference.Space ?? throw new ArgumentException("Scénario de référence sans espace.", nameof(reference));
+            var wolf = (AssailantSetup)reference.Combatants.First(c => c is AssailantSetup);
+            long cx = (space.Min.X.Raw + space.Max.X.Raw) / 2, cz = (space.Min.Z.Raw + space.Max.Z.Raw) / 2;
+            // Revue Codex de la PR #151 : « calme » : la cible est dans un coin, et aucun loup n'est à moins de 60 m d'elle (distance
+            // d'engagement de 30 m, marge comprise) : personne ne s'engage.
+            long tx = kind == "calme" ? space.Min.X.Raw + 10_000 : cx, tz = kind == "calme" ? space.Min.Z.Raw + 10_000 : cz;
+            var walls = space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray();
+            var combatants = new List<CombatantSetup>
+            {
+                new DummySetup("cible", "joueurs", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(Pos(tx, tz), Fixed.FromRatio(1, 2))),
+            };
+            var behavior = kind == "engages" ? new AssailantBehavior(Fixed.FromRatio(1, 2), null, null) : wolf.Behavior;
+            int placed = 0;
+            for (int k = 0; placed < 59 && k < 4000; k++)
+            {
+                long x, z;
+                if (kind == "repartis" || kind == "calme")
+                {
+                    // Revue Codex de la PR #151 (10e tour) : grille de 8 × 8 places sur les deux axes de tout l'espace (environ 40 m entre deux
+                    // places), décalée à chaque passe pour remplacer les places prises par le décor : les 59 loups couvrent tout le secteur ;
+                    // ceux à moins de 30 m de la cible s'engagent, les autres non (« calme » : la cible est dans un coin, personne ne s'engage).
+                    int slot = k % 64, pass = k / 64;
+                    long stepX = (space.Max.X.Raw - space.Min.X.Raw - 240_000) / 7, stepZ = (space.Max.Z.Raw - space.Min.Z.Raw - 240_000) / 7;
+                    x = space.Min.X.Raw + 120_000 + (slot % 8) * stepX + pass * 47_000;
+                    z = space.Min.Z.Raw + 120_000 + (slot / 8) * stepZ + pass * 31_000;
+                }
+                else
+                {
+                    // Anneaux de 15 à 60 m autour de la cible : tous engagés, ils la rejoignent en contournant le décor.
+                    int ring = k / 20, slot = k % 20;
+                    double angle = 2 * Math.PI * slot / 20 + ring * 0.13, r = 150_000 + ring * 50_000;
+                    x = cx + (long)Math.Round(Math.Cos(angle) * r);
+                    z = cz + (long)Math.Round(Math.Sin(angle) * r);
+                }
+                if (x + 6_000 > space.Max.X.Raw || z + 6_000 > space.Max.Z.Raw || Math.Abs(x - cx) < 20_000 && Math.Abs(z - cz) < 20_000) continue;
+                if (walls.Any(w => w.OverlapsCircle(x, z, 7_000))) continue;
+                if (kind == "calme" && Planar.WithinDistance(tx, tz, x, z, 600_000)) continue;
+                if (combatants.Skip(1).Any(c => Planar.CirclesOverlap(x, z, 7_000, c.Placement!.Position.X.Raw, c.Placement.Position.Z.Raw, 7_000))) continue;
+                combatants.Add(new AssailantSetup($"loup{placed++}", "meute", wolf.Armor, wolf.MagicResistance, null, wolf.FirstAttackMs, wolf.IntervalMs,
+                    wolf.Attacks, 0, wolf.StatusResistance, wolf.Triggers, 1_000_000, new CombatantPlacement(Pos(x, z), wolf.Placement!.Radius, null, wolf.Placement.Speed),
+                    null, behavior));
+            }
+            return new CombatSetup(reference.Seed, durationMs, reference.Stats, reference.Damage, reference.Progression, reference.Combat, combatants,
+                Array.Empty<CombatCommand>(), reference.Data, space, zone: true);
+        }
+
+        private static GroundVector Pos(long x, long z) => new GroundVector(Fixed.FromRaw(x), Fixed.FromRaw(z));
+
+        public static Result Measure(string kind, CombatSetup setup, int ticks)
+        {
+            var engine = new CombatEngine(setup, NullCombatLog.Instance);
+            string[] wolves = engine.CombatantIds.Where(id => id.StartsWith("loup", StringComparison.Ordinal)).ToArray();
+            var engaged = new HashSet<string>(StringComparer.Ordinal);
+            void Note()
+            {
+                foreach (string id in wolves) if (engine.View(id).Engaged) engaged.Add(id);
+            }
+            for (int t = 0; t < Warmup && !engine.IsFinished; t++)
+            {
+                engine.Step();
+                Note();
+            }
+            var times = new double[ticks];
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            var watch = new Stopwatch();
+            int done = 0;
+            for (; done < ticks && !engine.IsFinished; done++)
+            {
+                watch.Restart();
+                engine.Step();
+                times[done] = watch.Elapsed.TotalMilliseconds;
+            }
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Note();
+            double[] sorted = times.Take(done).OrderBy(x => x).ToArray();
+            return new Result(kind, setup.Combatants.Count, setup.Space!.Obstacles.Count, done, sorted.Average(),
+                sorted[(int)Math.Min(sorted.Length - 1, Math.Ceiling(sorted.Length * 0.95) - 1)], sorted[^1], (double)allocated / Math.Max(1, done), engaged.Count);
+        }
+
+        public static int Run(IReadOnlyList<string> args, TextWriter output, TextWriter error)
+        {
+            if (args.Count == 0 || args[0] != "secteurs")
+            {
+                error.WriteLine("Usage : eds mesures secteurs [--ticks N] [--data D] [--scenario S]");
+                return 1;
+            }
+            int ticks = 1200;
+            string data = Path.Combine("data", "v0"), scenario = Path.Combine("scenarios", "espace_secteur.json");
+            for (int i = 1; i < args.Count; i++)
+            {
+                bool hasValue = i + 1 < args.Count;
+                switch (args[i])
+                {
+                    case "--ticks" when hasValue && int.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int n) && n >= 1 && n <= 72_000:
+                        ticks = n;
+                        i++;
+                        break;
+                    case "--data" when hasValue: data = args[++i]; break;
+                    case "--scenario" when hasValue: scenario = args[++i]; break;
+                    default:
+                        error.WriteLine($"Option inconnue ou invalide : {args[i]}");
+                        return 1;
+                }
+            }
+            GameDataLoadResult loaded = GameDataLoader.Load(data, builds: false);
+            if (loaded.Data is null)
+            {
+                foreach (var (path, report) in loaded.Failures) error.WriteLine($"{path} : {report}");
+                return 1;
+            }
+            var read = ScenarioJsonReader.ReadFile(scenario, loaded.Data);
+            if (read.Setup is null)
+            {
+                error.WriteLine(read.Report.ToString());
+                return 1;
+            }
+            long durationMs = (long)(ticks + Warmup + 1) * read.Setup.Combat.TickMilliseconds;
+            var results = new[] { "repartis", "engages", "calme" }.Select(k => Measure(k, Sector(read.Setup, k, durationMs), ticks)).ToList();
+            output.Write(Format(results));
+            return 0;
+        }
+
+        public static string Format(IReadOnlyList<Result> results)
+        {
+            var b = new StringBuilder();
+            b.AppendLine("Mesures des secteurs (V2.26) — temps du moteur par tick, sur cette machine ; cible : 60 combattants < 1 ms par tick");
+            b.AppendLine("| cas | combattants | obstacles | loups engagés / non engagés | ticks | moyenne (ms) | 95e centile (ms) | maximum (ms) | octets alloués par tick | cible |");
+            b.AppendLine("|---|---|---|---|---|---|---|---|---|---|");
+            foreach (Result r in results)
+                b.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                    $"| {r.Case} | {r.Combatants} | {r.Obstacles} | {r.Engaged} / {r.Combatants - 1 - r.Engaged} | {r.Ticks} | {r.MeanMs:0.000} | {r.P95Ms:0.000} | {r.MaxMs:0.000} | {r.BytesPerTick:0} | {(r.MeanMs < 1 ? "atteinte" : "non atteinte")} |"));
+            return b.ToString();
+        }
+    }
+}

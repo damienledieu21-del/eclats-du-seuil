@@ -375,6 +375,31 @@ public class V226SecteursMondeTests
         Assert.True(gone.HasLeft && !gone.IsDead);
     }
 
+    [Fact]
+    public void Fermeture_purge_les_cles_de_mort_et_sauvegarde_les_sessions_des_secteurs()
+    {
+        SectorWorld w = World(Map(Wolf("loup_est", 400, 128)));
+        w.Enter(Hero("alice", 200, 128));
+        w.Step();
+        Zone east = w.SectorZone("s01_00")!;
+        Assert.True(east.Consume("zone.essai/s01_00/1/death/loup_est"));
+        Assert.True(east.Consume("zone.essai/quest/source"));
+        Assert.Contains("zone.essai/s01_00/1/death/loup_est", w.Consumed);   // registre vivant : la session est ouverte
+        Walk(w, "alice", -1, 0);
+        Run(w, 3000, e => e.Kind == SectorEventKind.Closed);
+        Assert.Equal(new[] { "s00_00" }, w.OpenSectors);
+        Assert.DoesNotContain("zone.essai/s01_00/1/death/loup_est", w.Consumed);
+        Assert.Contains("zone.essai/quest/source", w.Consumed);
+        EdS.Data.Saves.WorldSave save = w.Save();
+        Assert.Equal(1L, save.Sectors["s01_00"]);
+        Assert.DoesNotContain(save.Consumed, EdS.Data.Saves.SaveValidator.IsDeathKey);
+        Assert.Equal(save.Sectors, SaveJsonReader.Read(SaveJsonReader.Write(save)).Save!.Sectors);
+        // Reprise : la réouverture prend la session suivante.
+        var resumed = new SectorWorld(w.Map, "zone.essai", save.WorldTick, 2, save.Consumed, sectorSessions: save.Sectors);
+        resumed.Enter(Hero("alice", 250, 128));
+        resumed.Step();
+        Assert.Equal(2L, resumed.SectorSessions["s01_00"]);
+    }
 
     // --- Revue Codex de la PR #150 ------------------------------------------------------------------------------------------------------
 

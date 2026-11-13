@@ -457,7 +457,7 @@ public class V16QuetesTests
         // passent en version 8.
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 1, Array.Empty<string>(), WithQuest(Hero(), Peaux, "chasse", 2, Peaux)));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);
-        Assert.Equal(17, SaveValidator.CurrentSchemaVersion);   // V1.3   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
+        Assert.Equal(18, SaveValidator.CurrentSchemaVersion);   // V2.26 : 18 (registre purgé, secteurs)   // V1.3   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */ : 9 (instances d'objets) ; V1.7 : 10 (guilde) ; V1.4 : 11 (qualité, usure) ; V1.8c : 12 (bonus)
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
         Assert.Equal(text, SaveJsonReader.Write(SaveJsonReader.Read(text).Save!));
         // Sous-lot V1.3 : une sauvegarde de version 8 (même forme, sans instance aux propriétés) est lue, mise à jour et réécrite en version 9,

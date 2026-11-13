@@ -501,6 +501,13 @@ namespace EdS.World
             }
         }
 
+        /// <summary>
+        /// Sous-lot V2.26 : sauvegarde du monde à ce tick (zone, temps du monde, session du cœur, registre purgé des clés de mort, dernière
+        /// session de chaque autre secteur ; sauvegarde v18).
+        /// </summary>
+        public EdS.Data.Saves.WorldSave Save(EdS.Data.Saves.SavedCharacter? character = null) =>
+            new EdS.Data.Saves.WorldSave(_zoneId, WorldTick, _session, Consumed, character, sectors: _sectorSessions);
+
         /// <summary>Joueurs (dans l'ordre des identifiants).</summary>
         public IReadOnlyList<string> Players => _players.Keys.ToArray();
 
