@@ -121,6 +121,7 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 - **Voyage** : le voyage rapide reste entre points sûrs découverts **de la surface** (Retenu, sujet 7). Points sûrs aussi au dessous (camp de mineurs) et dans l'Envers (autel de l'Aube), découvrables, mais le voyage rapide n'y mène pas (Recommandation).
 - **Plafonds** : 16 portes par zone et 64 zones reliées ne suffiront pas (intérieurs du Bourg, dessous, failles) : à relever au V2.45.
 - **Reprise d'une partie** — **Retenu (Damien, 13 novembre 2026, 15 h 00 : « La 1 »)** : une partie relancée reprend au **dernier point sûr dont le personnage s'est approché à moins de 5 m, même sans y avoir fait de halte** (sauvegarde : secteur et point sûr). Avant le V2.28, elle reprenait à l'entrée de la zone sauvegardée. L'autre choix proposé (seulement le dernier point sûr où l'on a fait une halte) est écarté. Réalisé au V2.28a (sauvegarde v19, [DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)).
+- **Voyage rapide vers un point sûr bloqué** — **Retenu (Damien, 13 novembre 2026, 19 h 51 : « Non 2 pardon », rapporté par la session principale)** : quand aucune place n'est libre à 8 m de la destination (créatures sur le point sûr), le voyage est **refusé** et le personnage ne bouge pas, avec un message. L'autre choix (arriver à l'entrée de la zone) est écarté. Le couvre-feu, où le joueur ne choisit pas sa destination, garde le repli sur l'entrée de la zone. Réalisé au V2.28b (2) ([DONNEES.md](DONNEES.md#règle-darrivée-à-un-point-sûr-sous-lot-v228b)).
 
 ## 4. Le plan de la région
 
