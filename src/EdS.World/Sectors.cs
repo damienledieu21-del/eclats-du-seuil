@@ -450,6 +450,14 @@ namespace EdS.World
         /// aucun passage n'est possible (bornes de l'aire fixes : calculé une fois).
         /// </summary>
         private readonly bool _single;
+
+        /// <summary>
+        /// Revue Codex de la PR #156 (1er tour) : nombre de créatures au plus d'une session qui naît (ouverture, réouverture, renouvellement),
+        /// quelles que soient l'heure, le temps et le registre au moment où elle naît : celles de la définition entière de la zone (non filtrée),
+        /// sinon celles de l'aire fixe. Jamais l'aire filtrée au départ (<see cref="SectorMap.Area"/> après <c>start</c>), qui ne majore pas une
+        /// session ouverte à une autre heure.
+        /// </summary>
+        private int _bornCombatants;
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -494,6 +502,7 @@ namespace EdS.World
             _logs = logs;
             _closeAfterTicks = SectorMap.CloseAfterMs / map.Area.Combat.TickMilliseconds;
             _single = map.HomeHoldsArea;
+            _bornCombatants = map.Area.Combatants.Count;
         }
 
         /// <summary>Hôte des secteurs d'une zone à région, avec ses populations (chacune dans son secteur).</summary>
@@ -507,7 +516,7 @@ namespace EdS.World
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
             (DayPhase? phase, WeatherKind? weather) = start?.Invoke(startWorldTick) ?? (null, null);
             CombatSetup area = ZoneSetups.For(zone, keys, phase, weather);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start };
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start, _bornCombatants = Math.Max(zone.Setup.Combatants.Count, area.Combatants.Count) };
         }
 
         /// <summary>
@@ -616,7 +625,7 @@ namespace EdS.World
                 long need = RegistryBound();
                 foreach (Open o in _open.Values) need = checked(need + o.Zone.NewDeathsPossible);
                 long arriving = Arriving(out bool born);
-                return checked(need + (born ? _map.Area.Combatants.Count : 0) + arriving);
+                return checked(need + (born ? _bornCombatants : 0) + arriving);
             }
         }
 
@@ -712,10 +721,34 @@ namespace EdS.World
         private Open OpenSector(string name, List<SectorEvent> events, IEnumerable<CharacterSetup>? entering = null)
         {
             if (_open.TryGetValue(name, out Open? open)) return open;
-            (DayPhase? phase, WeatherKind? weather) = _start?.Invoke(WorldTick) ?? (null, null);
+            return Register(Prepare(name, entering, _consumed), events);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #156 (1er tour) : session prête à naître dans un secteur, sans rien changer à l'hôte (son journal reçoit
+        /// seulement son en-tête). <see cref="Register"/> la met en jeu.
+        /// </summary>
+        private sealed class Pending
+        {
+            public string Name = string.Empty;
+            public Zone Zone = null!;
+            public List<Population> Mine = null!;
+            public DayPhase? Phase;
+            public WeatherKind? Weather;
+            public bool Home, Reopened;
+            public long Session;
+            public CombatSetup Setup = null!;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #156 (1er tour) : combattants de départ de la session qui naîtrait maintenant dans <paramref name="name"/>
+        /// (aire du moment : heure, temps, registre courant), sans rien créer. Fonction pure de l'état de l'hôte.
+        /// </summary>
+        private CombatSetup PlanSetup(string name, out long session, out bool reopened, out DayPhase? phase, out WeatherKind? weather)
+        {
+            (phase, weather) = _start?.Invoke(WorldTick) ?? (null, null);
             bool home = name == _map.HomeSector;
-            long session;
-            bool reopened = false;
+            reopened = false;
             if (home && !_homeOpened && !_sectorSessions.ContainsKey(name)) session = _session;
             else
             {
@@ -728,7 +761,15 @@ namespace EdS.World
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
             CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
-            CombatSetup setup = _map.SetupFor(name, session, reopened, sessionArea);
+            return _map.SetupFor(name, session, reopened, sessionArea);
+        }
+
+        /// <param name="consumed">Registre recopié par la session (celui du monde, ou celui qu'il aura après une fermeture en cours).</param>
+        private Pending Prepare(string name, IEnumerable<CharacterSetup>? entering, IEnumerable<string> consumed)
+        {
+            CombatSetup setup = PlanSetup(name, out long session, out bool reopened, out DayPhase? phase, out WeatherKind? weather);
+            bool home = name == _map.HomeSector;
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
             // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
             // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
             // au début : rare de la nuit, hors de ses heures ou de son temps ; elle garde sa vie et revient quand elle est voulue).
@@ -741,12 +782,21 @@ namespace EdS.World
                 if (ZonePopulations.PresentAtStart(p, phase, weather) && !present.Contains(p.Creature))
                     throw new InvalidOperationException($"Secteur {name} : la population « {p.Creature} » désigne un combattant absent de la session ; secteur non ouvert.");
             // Sous-lot V2.28b : la session est créée (et son personnage de départ admis par le moteur) avant de changer quoi que ce soit.
-            var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name, entering: entering);
-            if (home) _homeOpened = true;
-            if (!home || reopened) _sectorSessions[name] = session;
-            var populations = new ZonePopulations(mine, phase, weather);
+            var zone = new Zone(_zoneId, setup, session, WorldTick, consumed, _logs?.Invoke(name, session), sector: home ? null : name, entering: entering);
+            return new Pending { Name = name, Zone = zone, Mine = mine, Phase = phase, Weather = weather, Home = home, Reopened = reopened, Session = session, Setup = setup };
+        }
+
+        /// <summary>Revue Codex de la PR #156 (1er tour) : met en jeu une session préparée (<see cref="Prepare"/>).</summary>
+        private Open Register(Pending pending, List<SectorEvent> events)
+        {
+            string name = pending.Name;
+            Zone zone = pending.Zone;
+            CombatSetup setup = pending.Setup;
+            if (pending.Home) _homeOpened = true;
+            if (!pending.Home || pending.Reopened) _sectorSessions[name] = pending.Session;
+            var populations = new ZonePopulations(pending.Mine, pending.Phase, pending.Weather);
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
-            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
+            var open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
             return open;
@@ -783,6 +833,9 @@ namespace EdS.World
         /// </summary>
         private void Renew(Open old, List<SectorEvent> events)
         {
+            // Revue Codex de la PR #156 (1er tour) : renouvellement atomique. La session nouvelle est d'abord préparée (sur le registre que le
+            // monde aura après la fermeture) ; un refus à ce moment-là ne change rien. Ensuite seulement l'ancienne est fermée.
+            Pending pending = Prepare(old.Name, null, RegistryAfterClosing(old));
             CombatEngine engine = old.Zone.Engine;
             var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
             // Revue Codex de la PR #150 (10e tour) : un joueur refusé pour de bon (sans combattant) n'est pas renouvelé, comme pour Live.
@@ -801,7 +854,7 @@ namespace EdS.World
             }
             var scratch = new List<SectorEvent>();
             CloseSector(old, scratch);
-            Open fresh = OpenSector(old.Name, scratch);
+            Open fresh = Register(pending, scratch);
             // Revue Codex de la PR #150 (6e tour) : le compteur d'inactivité continue d'une session à la suivante (un secteur abandonné se
             // ferme à 60 s même si sa session est plus courte). Le reste de l'état du secteur est celui d'une réouverture : session, graine,
             // journal, populations et décor de la session nouvelle ; registre repris (clés de mort de l'ancienne session purgées).
@@ -819,6 +872,38 @@ namespace EdS.World
                     p.Resume = true;
                 }
             }
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #156 (1er tour) : registre du monde tel qu'il sera après la fermeture de <paramref name="open"/>
+        /// (<see cref="CloseSector"/> : clés de la session reprises, ses clés de mort purgées), sans rien changer.
+        /// </summary>
+        private HashSet<string> RegistryAfterClosing(Open open)
+        {
+            string deaths = DeathPrefix(open.Zone);
+            var after = new HashSet<string>(_consumed, StringComparer.Ordinal);
+            after.UnionWith(open.Zone.Consumed);
+            after.RemoveWhere(k => k.StartsWith(deaths, StringComparison.Ordinal));
+            return after;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #156 (1er tour) : place au registre exigée par les renouvellements du tick, calculée avant de fermer quoi que ce
+        /// soit : borne du registre (une fermeture ne l'augmente jamais), morts possibles des sessions qui restent, et pour chaque session qui
+        /// renaît, ses créatures de départ <b>à l'heure du renouvellement</b> et une clé par joueur qui y arrive.
+        /// </summary>
+        private long RenewalNeed(IReadOnlyCollection<Open> renewing)
+        {
+            long need = RegistryBound();
+            foreach (Open o in _open.Values)
+                if (!renewing.Contains(o)) need = checked(need + o.Zone.NewDeathsPossible);
+            foreach (Open o in renewing)
+            {
+                need = checked(need + PlanSetup(o.Name, out _, out _, out _, out _).Combatants.Count);
+                foreach (Player p in _players.Values)
+                    if (p.Sector == o.Name) need = checked(need + 1);
+            }
+            return checked(need + _entering.Count);
         }
 
         /// <summary>Identité libre du joueur dans une session : la sienne, sinon <c>&lt;joueur&gt;_p&lt;n&gt;</c> (n croissant, jamais reprise).</summary>
@@ -1003,7 +1088,13 @@ namespace EdS.World
             // Relecture indépendante de la PR #156 (allocations par tick) : chaque étape rare est gardée par un balayage simple, sans liste
             // ni tri quand il n'y a rien à faire.
             if (born)
-                foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
+            {
+                List<Open> renewing = _open.Values.Where(x => x.Zone.IsOver).ToList();
+                // Revue Codex de la PR #156 (1er tour) : borne exacte des renouvellements vérifiée avant toute fermeture (tick tout ou rien).
+                if (renewing.Count > 0 && RenewalNeed(renewing) > SaveValidator.MaxConsumed)
+                    throw new InvalidOperationException($"Registre du monde presque plein : les renouvellements de session demandent {RenewalNeed(renewing)} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");
+                foreach (Open o in renewing) Renew(o, events);
+            }
             // 0. Sorties, puis entrées, dans l'ordre des joueurs.
             List<string>? stay = null;
             // Revue Codex de la PR #150 (2e tour) : un joueur dont l'arrivée est programmée à ce tick (passage tout juste fait) sort aussi :

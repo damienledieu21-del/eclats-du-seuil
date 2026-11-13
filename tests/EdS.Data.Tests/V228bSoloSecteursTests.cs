@@ -401,6 +401,66 @@ public class V228bSoloSecteursTests
     }
 
     [Fact]
+    public void Renouvellement_de_nuit_apres_un_depart_de_jour_registre_presque_plein_jamais_partiel()
+    {
+        // Revue Codex de la PR #156 (1er tour) : l'aire de départ est filtrée par l'heure (crépuscule : sangliers, lièvres, ourse) ; la
+        // session renouvelée la nuit a plus de créatures (loups de la nuit, échos, ours). La borne des naissances doit couvrir toutes les
+        // heures : près du plafond, le tick du renouvellement est refusé entier, ou accepté entier, jamais partiel.
+        static void Short(JsonObject s) => s["data"]!["durationMs"] = 5_000;
+        ZoneDefinition zone = Vallons(true, Short);
+        var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
+        Func<long, (DayPhase?, WeatherKind?)> start = tick => (clock.At(tick).Phase, WorldWeather.At(zone.Id, clock.At(tick)).Kind);
+        const long departure = 125_900;   // 21 h 59, crépuscule ; la session de 5 s finit à 22 h, la nuit
+        int Creatures(long tick) => ZoneSetups.For(zone, Array.Empty<string>(), clock.At(tick).Phase, WorldWeather.At(zone.Id, clock.At(tick)).Kind).Combatants.Count;
+        Assert.Equal(DayPhase.Dusk, clock.At(departure).Phase);
+        Assert.Equal(DayPhase.Night, clock.At(departure + 100).Phase);
+        int dusk = Creatures(departure), night = Creatures(departure + 100);
+        Assert.True(night > dusk, $"nuit {night}, crépuscule {dusk}");
+        SectorWorld Ended(int fill)
+        {
+            SectorWorld w = SectorWorld.For(zone, departure, 1, start: start);
+            w.EnterAtStart(Player(zone, -18, -12));
+            Zone s = w.SectorZone("s07_06")!;
+            Assert.Equal(dusk + 1, s.Setup.Combatants.Count);   // l'aire du départ, filtrée, et le personnage
+            for (int i = 0; i < 150 && !s.IsOver; i++) w.Step();
+            Assert.True(s.IsOver);
+            for (int i = 0; i < fill; i++) Assert.True(s.Consume($"zone.vallons/test/k{i:D6}"));
+            return w;
+        }
+        SectorWorld probe = Ended(0);
+        int own = probe.SectorZone("s07_06")!.ConsumedCount;   // clés de la session à sa fin (aucune mort possible : elle est terminée)
+        // Rempli pour qu'une borne tirée de l'aire filtrée au départ (crépuscule) laisse passer le tick tout juste : refusé entier, deux fois,
+        // rien ne bouge.
+        int squeezed = SaveValidator.MaxConsumed - (own + dusk + 1);
+        SectorWorld w = Ended(squeezed);
+        Zone old = w.SectorZone("s07_06")!;
+        long tick = w.WorldTick;
+        int keys = w.Consumed.Count;
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Same(old, w.SectorZone("s07_06"));
+        Assert.True(old.IsOver);
+        Assert.Equal((tick, keys, 1L), (w.WorldTick, w.Consumed.Count, old.Session));
+        Assert.Equal(new[] { "s07_06" }, w.OpenSectors);
+        Assert.Equal(("s07_06", "bastion"), (w.SectorOf("bastion"), w.CombatantOf("bastion")));
+        // La borne compte les créatures de la définition entière, pas celles de l'aire filtrée au départ.
+        long need = probe.NextTickRegistryNeed;
+        Assert.Equal(own + (long)zone.Setup.Combatants.Count + 1, need);
+        Assert.True(zone.Setup.Combatants.Count >= night);
+        // Rempli jusqu'à la borne : accepté entier ; la session de la nuit a ses créatures de la nuit, le registre reste sous le plafond.
+        SectorWorld ok = Ended(checked((int)(SaveValidator.MaxConsumed - need)));
+        Assert.Equal(SaveValidator.MaxConsumed + 0L, ok.NextTickRegistryNeed);
+        IReadOnlyList<SectorEvent> events = ok.Step();
+        Assert.Contains(events, e => e.Kind == SectorEventKind.Renewed);
+        Zone fresh = ok.SectorZone("s07_06")!;
+        Assert.Equal(2L, fresh.Session);
+        Assert.True(fresh.Setup.Combatants.Count > dusk + 1, $"{fresh.Setup.Combatants.Count} combattants, {dusk + 1} au départ");
+        Assert.Contains(fresh.Setup.Combatants, c => c.Id == "ours");
+        Assert.InRange(ok.Consumed.Count, 0, SaveValidator.MaxConsumed);
+        Assert.True(ok.ViewOf("bastion").IsPresent || fresh.Engine.View(ok.CombatantOf("bastion")).ArrivalTick != null);
+    }
+
+    [Fact]
     public void Crochets_du_tick_entre_la_session_et_ses_populations()
     {
         ZoneDefinition zone = Vallons(true, WolfNearby);
@@ -463,7 +523,8 @@ public class V228bSoloSecteursTests
         // Une entrée annoncée peut faire naître une session avant le tick : toutes les créatures de l'aire et le joueur sont comptés.
         CharacterSetup hero = Player(zone, -20, -12);
         world.Enter(new CharacterSetup("alice", hero.Team, hero.Class, hero.Build, 0, hero.Placement));
-        Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible + world.Map.Area.Combatants.Count + 1, world.NextTickRegistryNeed);
+        // Revue Codex de la PR #156 (1er tour) : les créatures de la définition entière, quelle que soit l'heure de la session qui naîtra.
+        Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible + zone.Setup.Combatants.Count + 1, world.NextTickRegistryNeed);
         Assert.True(world.CancelEnter("alice"));
         Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible, world.NextTickRegistryNeed);
     }
