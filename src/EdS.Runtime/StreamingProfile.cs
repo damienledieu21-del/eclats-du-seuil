@@ -87,7 +87,7 @@ namespace EdS.Runtime
         public static StreamingProfile For(DeviceTier tier) => tier switch
         {
             DeviceTier.Phone => new StreamingProfile(tier, 1, 2, 65, 17, 600, 16L << 20, false, 150, 300_000),
-            DeviceTier.Modest => new StreamingProfile(tier, 1, 3, 129, 33, 900, 40L << 20, true, 300, 600_000),
+            DeviceTier.Modest => new StreamingProfile(tier, 1, 3, 129, 33, 900, 24L << 20, true, 300, 600_000),
             DeviceTier.Full => new StreamingProfile(tier, 2, 3, 129, 33, 6000, 96L << 20, true, 1500, 3_000_000),
             _ => throw new ArgumentOutOfRangeException(nameof(tier)),
         };

@@ -235,8 +235,8 @@ public class V227StreamingTests : IDisposable
         for (int j = 0; j <= 16; j++) Assert.Equal(east.HeightAt(0, 4 * j), coarse.HeightAt(0, j));
         // Jupe : 4 côtés de 64 segments, deux sommets abaissés chacun.
         Assert.Equal(65 * 65 + 2 * 4 * 64, east.VertexCount);
-        Assert.Equal(64 * 64 * 6 + 4 * 64 * 12, east.Indices.Length);
-        Assert.All(east.Indices, i => Assert.InRange(i, 0, east.VertexCount - 1));
+        Assert.Equal(64 * 64 * 6 + 4 * 64 * 12, east.IndexCount);
+        Assert.All(east.Indices.Take(east.IndexCount), i => Assert.InRange(i, 0, east.VertexCount - 1));
         Assert.False(east.WideIndices);
         Assert.Equal(TerrainPatch.EstimateBytes(65), east.Bytes);
         // Normales unitaires, vers le haut.
@@ -256,7 +256,7 @@ public class V227StreamingTests : IDisposable
         while (!patch.StepOnce()) { }
         for (int j = 0; j < 64; j++)
             for (int i = 0; i < 64; i++) Assert.False(patch.Kept(i, j));   // case entièrement sous le terrain de la zone
-        Assert.Empty(patch.Indices);
+        Assert.Equal(0, patch.IndexCount);
         TerrainPatch edge = new TerrainPatch(140, -78, 2, 64, 64, (x, z) => 1.0, covered: covered);
         while (!edge.StepOnce()) { }
         Assert.False(edge.Kept(0, 0));
@@ -272,6 +272,18 @@ public class V227StreamingTests : IDisposable
         var bad = new TerrainPatch(0, 0, 1, 4, 4, (x, z) => double.NaN);
         Assert.Throws<InvalidOperationException>(() => bad.StepOnce());
         Assert.Throws<InvalidOperationException>(() => new TerrainPatch(0, 0, 1, 4, 4, (x, z) => 0).HeightAt(0, 0));
+        Assert.Throws<InvalidOperationException>(() => new TerrainPatch(0, 0, 1, 4, 4, (x, z) => 0).Kept(0, 0));
+        // Recyclage : les tableaux rendus servent au morceau suivant ; le morceau rendu ne se lit plus ni ne se rend deux fois.
+        TerrainBuffers buffers = edge.Release();
+        Assert.True(edge.Released);
+        Assert.Throws<InvalidOperationException>(() => edge.Release());
+        Assert.Throws<InvalidOperationException>(() => edge.HeightAt(0, 0));
+        Assert.True(edge.Kept(30, 0));   // la forme reste
+        float[] reused = buffers.Positions;
+        var again = new TerrainPatch(140, -78, 2, 64, 64, (x, z) => 2.0, covered: covered, buffers: buffers);
+        while (!again.StepOnce()) { }
+        Assert.Same(reused, again.Positions);
+        Assert.Equal(2.0f, again.Positions[3 * 40 + 1]);
     }
 
     /// <summary>
@@ -298,7 +310,7 @@ public class V227StreamingTests : IDisposable
         int notReady = 0, frames = 0, sectorChanges = 0;
         string sector = terrain.Streamer.CellAt(20, 10).SectorName;
         // 30 images par seconde, 20 m/s vers le nord-est puis l'est : 600 m, au moins trois bords de secteur.
-        int stepsPerFrame = tier == DeviceTier.Phone ? 20 : 40;
+        int stepsPerFrame = 60;
         for (double t = 0; t < 30; t += 1.0 / 30, frames++)
         {
             double x = 20 + 20 * t * 0.8, z = 10 + 20 * t * 0.6;

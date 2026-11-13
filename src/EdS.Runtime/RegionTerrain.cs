@@ -4,7 +4,10 @@ using EdS.Data.Zones;
 
 namespace EdS.Runtime
 {
-    /// <summary>Sous-lot V2.27 : ce qui montre les morceaux de terrain (Unity : <c>CellStreamView</c> ; tests : un enregistreur).</summary>
+    /// <summary>
+    /// Sous-lot V2.27 : ce qui montre les morceaux de terrain (Unity : <c>CellStreamView</c> ; tests : un enregistreur). Les tableaux d'un
+    /// morceau (<see cref="TerrainPatch.Positions"/>…) ne valent que pendant l'appel : ils sont recyclés juste après.
+    /// </summary>
     public interface ITerrainSink
     {
         /// <summary>Montre la case à l'anneau <paramref name="ring"/> avec ce maillage, ou la cache (et recycle son objet) si <paramref name="patch"/> est null.</summary>
@@ -41,6 +44,7 @@ namespace EdS.Runtime
         private readonly Func<double, double, double> _height;
         private readonly (double X0, double Z0, double X1, double Z1)? _covered;
         private readonly Queue<(int Column, int Row)> _farQueue = new Queue<(int, int)>();
+        private readonly Dictionary<(int, int), Stack<TerrainBuffers>> _pool = new Dictionary<(int, int), Stack<TerrainBuffers>>();
         private Job? _job;
 
         public CellStreamer Streamer { get; }
@@ -121,6 +125,9 @@ namespace EdS.Runtime
                     }
                     sink.ShowFarBlock(job.BlockColumn, job.BlockRow, job.Far!);
                     Commits++;
+                    // Recyclage : le montreur a copié les tableaux pendant son appel ; ils servent au morceau suivant de même taille.
+                    Recycle(job.Cell);
+                    Recycle(job.Far!);
                 }
             }
             while (!overBudget());
@@ -133,6 +140,18 @@ namespace EdS.Runtime
             int steps = 0;
             while (steps < maxSteps && !Idle) steps += Work(() => steps >= maxSteps, sink);
             return steps;
+        }
+
+        private TerrainBuffers? Buffers(int quadsX, int quadsZ) =>
+            _pool.TryGetValue((quadsX, quadsZ), out Stack<TerrainBuffers>? stack) && stack.Count > 0 ? stack.Pop() : null;
+
+        private void Recycle(TerrainPatch? patch)
+        {
+            if (patch == null) return;
+            var key = (patch.QuadsX, patch.QuadsZ);
+            if (!_pool.TryGetValue(key, out Stack<TerrainBuffers>? stack)) _pool.Add(key, stack = new Stack<TerrainBuffers>());
+            TerrainBuffers b = patch.Release();
+            if (stack.Count < 2) stack.Push(b);   // borné : deux jeux par taille au plus
         }
 
         private bool Start()
@@ -149,7 +168,8 @@ namespace EdS.Runtime
             if (change.To != CellStreamer.Far)
             {
                 int quads = Profile.ResolutionOf(change.To) - 1;
-                cell = new TerrainPatch(x0, z0, (double)RegionGrid.CellMeters / quads, quads, quads, _height, null, _covered, Profile.SkirtMeters);
+                cell = new TerrainPatch(x0, z0, (double)RegionGrid.CellMeters / quads, quads, quads, _height, null, _covered, Profile.SkirtMeters,
+                    Buffers(quads, quads));
             }
             _job = new Job
             {
@@ -174,7 +194,8 @@ namespace EdS.Runtime
                 return built == CellStreamer.Far;
             }
             (double x0, double z0) = Streamer.Corner(new RegionCell(c0, r0));
-            return new TerrainPatch(x0, z0, StreamingProfile.FarStep, cells * per, rows * per, _height, Keep, _covered, Profile.SkirtMeters);
+            return new TerrainPatch(x0, z0, StreamingProfile.FarStep, cells * per, rows * per, _height, Keep, _covered, Profile.SkirtMeters,
+                Buffers(cells * per, rows * per));
         }
     }
 }

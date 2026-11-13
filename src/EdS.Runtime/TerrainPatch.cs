@@ -5,7 +5,7 @@ namespace EdS.Runtime
 {
     /// <summary>
     /// Sous-lot V2.27 (docs/PLAN_GRANDE_CARTE.md, § 6.1) : un morceau de terrain affiché (une case, ou un bloc du terrain lointain), construit
-    /// <b>par petits pas</b> (<see cref="StepOnce"/> : une rangée de hauteurs, puis le maillage) pour tenir dans le budget de temps d'une image.
+    /// <b>par petits pas</b> (<see cref="StepOnce"/> : une rangée de hauteurs, de sommets ou de triangles) pour tenir dans le budget de temps d'une image.
     /// Hauteurs lues d'une seule fonction (le relief affiché, <see cref="GroundRelief.Height"/>) aux mêmes points des deux côtés d'un bord :
     /// deux cases voisines de même finesse se raccordent exactement ; les normales sont tirées des hauteurs voisines (un point de plus
     /// autour), donc identiques de part et d'autre. Entre deux finesses, une <b>jupe</b> (paroi qui descend sous chaque bord libre) bouche
@@ -24,8 +24,9 @@ namespace EdS.Runtime
         private readonly Func<int, int, bool>? _keep;
         private readonly (double X0, double Z0, double X1, double Z1)? _covered;
         private readonly double _skirt;
-        private readonly double[] _h;
-        private int _rows;
+        private TerrainBuffers _b;
+        private bool[] _kept = Array.Empty<bool>();
+        private int _phase, _row, _next, _indexCount;
 
         public double X0 { get; }
         public double Z0 { get; }
@@ -36,26 +37,39 @@ namespace EdS.Runtime
         /// <summary>Le maillage est prêt (<see cref="Positions"/>, <see cref="Normals"/>, <see cref="Uvs"/>, <see cref="Indices"/>).</summary>
         public bool Done { get; private set; }
 
-        /// <summary>Pas faits jusqu'ici (rangées de hauteurs, plus un pour le maillage).</summary>
+        /// <summary>Pas faits jusqu'ici.</summary>
         public int Steps { get; private set; }
 
-        /// <summary>Pas nécessaires en tout.</summary>
-        public int TotalSteps => QuadsZ + 3 + 1;
+        /// <summary>Pas nécessaires en tout : rangées de hauteurs (une de plus de chaque côté), préparation, rangées de sommets, rangées de triangles.</summary>
+        public int TotalSteps => (QuadsZ + 3) + 1 + (QuadsZ + 1) + QuadsZ;
 
-        public float[] Positions { get; private set; } = Array.Empty<float>();
-        public float[] Normals { get; private set; } = Array.Empty<float>();
-        public float[] Uvs { get; private set; } = Array.Empty<float>();
-        public int[] Indices { get; private set; } = Array.Empty<int>();
+        /// <summary>Positions (x, y, z) des <see cref="VertexCount"/> premiers sommets ; le tableau peut être plus long (recyclé).</summary>
+        public float[] Positions => _b.Positions;
+
+        public float[] Normals => _b.Normals;
+
+        public float[] Uvs => _b.Uvs;
+
+        /// <summary>Index des triangles : les <see cref="IndexCount"/> premiers ; le tableau peut être plus long (recyclé).</summary>
+        public int[] Indices => _b.Indices;
+
         public int VertexCount { get; private set; }
+
+        public int IndexCount => _indexCount;
 
         /// <summary>Plus de 65 535 sommets : index sur 32 bits.</summary>
         public bool WideIndices => VertexCount > 65535;
 
-        public int TriangleCount => Indices.Length / 3;
+        public int TriangleCount => _indexCount / 3;
 
-        /// <param name="keep">Garder le quadrilatère (i, j) ? null : tous (sauf ceux sous <paramref name="covered"/>).</param>
+        /// <summary>Les tableaux ont été rendus au recyclage (<see cref="RegionTerrain"/>, après l'appel au <see cref="ITerrainSink"/>).</summary>
+        public bool Released { get; private set; }
+
+        /// <param name="keep">Garder le quadrilatère (i, j) ? null : tous (sauf ceux sous <paramref name="covered"/>). Lu une seule fois, à la préparation.</param>
+        /// <param name="buffers">Tableaux recyclés (agrandis au besoin), ou null : neufs.</param>
         public TerrainPatch(double x0, double z0, double step, int quadsX, int quadsZ, Func<double, double, double> height,
-            Func<int, int, bool>? keep = null, (double X0, double Z0, double X1, double Z1)? covered = null, double skirt = 6.0)
+            Func<int, int, bool>? keep = null, (double X0, double Z0, double X1, double Z1)? covered = null, double skirt = 6.0,
+            TerrainBuffers? buffers = null)
         {
             if (!(step > 0) || double.IsInfinity(step)) throw new ArgumentOutOfRangeException(nameof(step));
             if (quadsX < 1 || quadsZ < 1 || quadsX > 512 || quadsZ > 512) throw new ArgumentOutOfRangeException(nameof(quadsX), "De 1 à 512 quadrilatères par côté.");
@@ -70,7 +84,8 @@ namespace EdS.Runtime
             Step = step;
             QuadsX = quadsX;
             QuadsZ = quadsZ;
-            _h = new double[(quadsX + 3) * (quadsZ + 3)];
+            _b = buffers ?? new TerrainBuffers();
+            _b.EnsureHeights((quadsX + 3) * (quadsZ + 3));
         }
 
         /// <summary>Octets estimés du maillage d'une case de <paramref name="resolution"/> points par côté (copie du processeur et de la carte).</summary>
@@ -84,41 +99,48 @@ namespace EdS.Runtime
         }
 
         /// <summary>Octets du maillage construit (même règle que <see cref="EstimateBytes"/>).</summary>
-        public long Bytes => 2 * ((long)VertexCount * 32 + (long)Indices.Length * (WideIndices ? 4 : 2));
+        public long Bytes => 2 * ((long)VertexCount * 32 + (long)_indexCount * (WideIndices ? 4 : 2));
 
-        /// <summary>Un pas : une rangée de hauteurs, ou (à la fin) le maillage. Vrai quand le maillage est prêt.</summary>
+        /// <summary>Un pas : une rangée de hauteurs, la préparation, une rangée de sommets ou de triangles. Vrai quand le maillage est prêt.</summary>
         public bool StepOnce()
         {
             if (Done) return true;
-            int w = QuadsX + 3;
-            if (_rows < QuadsZ + 3)
+            if (Released) throw new InvalidOperationException("Morceau de terrain rendu au recyclage.");
+            switch (_phase)
             {
-                double z = Z0 + (_rows - 1) * Step;
-                for (int i = 0; i < w; i++)
-                {
-                    double y = _height(X0 + (i - 1) * Step, z);
-                    if (double.IsNaN(y) || double.IsInfinity(y)) throw new InvalidOperationException("Hauteur non finie.");
-                    _h[_rows * w + i] = y;
-                }
-                _rows++;
-                Steps++;
-                return false;
+                case 0: Heights(); break;
+                case 1: Prepare(); break;
+                case 2: Vertices(); break;
+                default: Triangles(); break;
             }
-            Mesh();
             Steps++;
-            Done = true;
-            return true;
+            return Done;
         }
 
-        private double H(int i, int j) => _h[(j + 1) * (QuadsX + 3) + i + 1];
+        private void Heights()
+        {
+            int w = QuadsX + 3;
+            double z = Z0 + (_row - 1) * Step;
+            for (int i = 0; i < w; i++)
+            {
+                double y = _height(X0 + (i - 1) * Step, z);
+                if (double.IsNaN(y) || double.IsInfinity(y)) throw new InvalidOperationException("Hauteur non finie.");
+                _b.Heights[_row * w + i] = y;
+            }
+            if (++_row == QuadsZ + 3)
+            {
+                _phase = 1;
+                _row = 0;
+            }
+        }
+
+        private double H(int i, int j) => _b.Heights[(j + 1) * (QuadsX + 3) + i + 1];
 
         private bool InCovered(double x, double z, double pad) =>
             _covered is { } c && x >= c.X0 - pad && x <= c.X1 + pad && z >= c.Z0 - pad && z <= c.Z1 + pad;
 
-        /// <summary>Le quadrilatère (i, j) est-il fait ?</summary>
-        public bool Kept(int i, int j)
+        private bool Decide(int i, int j)
         {
-            if (i < 0 || j < 0 || i >= QuadsX || j >= QuadsZ) return false;
             if (_covered is { } c)
             {
                 double x0 = X0 + i * Step, z0 = Z0 + j * Step;
@@ -127,98 +149,159 @@ namespace EdS.Runtime
             return _keep == null || _keep(i, j);
         }
 
-        private void Mesh()
+        /// <summary>Le quadrilatère (i, j) est-il fait ? (décidé à la préparation ; faux hors du morceau)</summary>
+        public bool Kept(int i, int j)
         {
-            int nx = QuadsX + 1, nz = QuadsZ + 1;
-            var keep = new bool[QuadsX * QuadsZ];
+            if (_phase < 2 && !Done) throw new InvalidOperationException("Morceau de terrain pas encore préparé.");
+            return i >= 0 && j >= 0 && i < QuadsX && j < QuadsZ && _kept[j * QuadsX + i];
+        }
+
+        private void Prepare()
+        {
+            _kept = new bool[QuadsX * QuadsZ];
             int kept = 0, edges = 0;
             for (int j = 0; j < QuadsZ; j++)
                 for (int i = 0; i < QuadsX; i++)
-                    if (keep[j * QuadsX + i] = Kept(i, j)) kept++;
+                    if (_kept[j * QuadsX + i] = Decide(i, j)) kept++;
+            _phase = 2;
             for (int j = 0; j < QuadsZ; j++)
                 for (int i = 0; i < QuadsX; i++)
                 {
-                    if (!keep[j * QuadsX + i]) continue;
+                    if (!_kept[j * QuadsX + i]) continue;
                     if (!Kept(i - 1, j)) edges++;
                     if (!Kept(i + 1, j)) edges++;
                     if (!Kept(i, j - 1)) edges++;
                     if (!Kept(i, j + 1)) edges++;
                 }
-            int vertices = checked(nx * nz + 2 * edges);
-            var pos = new float[vertices * 3];
-            var nor = new float[vertices * 3];
-            var uv = new float[vertices * 2];
-            for (int j = 0; j < nz; j++)
-                for (int i = 0; i < nx; i++)
-                {
-                    int v = j * nx + i;
-                    double x = X0 + i * Step, z = Z0 + j * Step;
-                    double y = H(i, j) - (InCovered(x, z, Step) ? Sink : 0);
-                    pos[3 * v] = (float)x;
-                    pos[3 * v + 1] = (float)y;
-                    pos[3 * v + 2] = (float)z;
-                    double ax = H(i - 1, j) - H(i + 1, j), ay = 2 * Step, az = H(i, j - 1) - H(i, j + 1);
-                    double len = Math.Sqrt(ax * ax + ay * ay + az * az);
-                    nor[3 * v] = (float)(ax / len);
-                    nor[3 * v + 1] = (float)(ay / len);
-                    nor[3 * v + 2] = (float)(az / len);
-                    uv[2 * v] = (float)(x / UvTile);
-                    uv[2 * v + 1] = (float)(z / UvTile);
-                }
-            var idx = new List<int>(checked(kept * 6 + edges * 12));
-            for (int j = 0; j < QuadsZ; j++)
-                for (int i = 0; i < QuadsX; i++)
-                {
-                    if (!keep[j * QuadsX + i]) continue;
-                    int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
-                    // Unity : faces avant dans le sens des aiguilles d'une montre vues d'en haut (x vers l'est, z vers le nord).
-                    idx.Add(a); idx.Add(c); idx.Add(d);
-                    idx.Add(a); idx.Add(d); idx.Add(b);
-                }
-            int next = nx * nz;
-            void Skirt(int top0, int top1)
+            VertexCount = checked((QuadsX + 1) * (QuadsZ + 1) + 2 * edges);
+            _b.EnsureMesh(VertexCount, checked(kept * 6 + edges * 12));
+            _next = (QuadsX + 1) * (QuadsZ + 1);
+            _indexCount = 0;
+        }
+
+        private void Vertices()
+        {
+            int nx = QuadsX + 1, j = _row;
+            float[] pos = _b.Positions, nor = _b.Normals, uv = _b.Uvs;
+            for (int i = 0; i < nx; i++)
             {
-                int low0 = next++, low1 = next++;
-                Copy(top0, low0);
-                Copy(top1, low1);
-                // Les deux faces : la jupe se voit des deux côtés (d'une case plus fine comme d'une plus grossière).
-                idx.Add(top0); idx.Add(low0); idx.Add(low1);
-                idx.Add(top0); idx.Add(low1); idx.Add(top1);
-                idx.Add(top0); idx.Add(low1); idx.Add(low0);
-                idx.Add(top0); idx.Add(top1); idx.Add(low1);
+                int v = j * nx + i;
+                double x = X0 + i * Step, z = Z0 + j * Step;
+                double y = H(i, j) - (InCovered(x, z, Step) ? Sink : 0);
+                pos[3 * v] = (float)x;
+                pos[3 * v + 1] = (float)y;
+                pos[3 * v + 2] = (float)z;
+                double ax = H(i - 1, j) - H(i + 1, j), ay = 2 * Step, az = H(i, j - 1) - H(i, j + 1);
+                double len = Math.Sqrt(ax * ax + ay * ay + az * az);
+                nor[3 * v] = (float)(ax / len);
+                nor[3 * v + 1] = (float)(ay / len);
+                nor[3 * v + 2] = (float)(az / len);
+                uv[2 * v] = (float)(x / UvTile);
+                uv[2 * v + 1] = (float)(z / UvTile);
             }
-            void Copy(int from, int to)
+            if (++_row == QuadsZ + 1)
             {
-                pos[3 * to] = pos[3 * from];
-                pos[3 * to + 1] = (float)(pos[3 * from + 1] - _skirt);
-                pos[3 * to + 2] = pos[3 * from + 2];
-                for (int k = 0; k < 3; k++) nor[3 * to + k] = nor[3 * from + k];
-                uv[2 * to] = uv[2 * from];
-                uv[2 * to + 1] = (float)(uv[2 * from + 1] - _skirt / UvTile);
+                _phase = 3;
+                _row = 0;
             }
-            for (int j = 0; j < QuadsZ; j++)
-                for (int i = 0; i < QuadsX; i++)
-                {
-                    if (!keep[j * QuadsX + i]) continue;
-                    int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
-                    if (!Kept(i - 1, j)) Skirt(a, c);
-                    if (!Kept(i + 1, j)) Skirt(b, d);
-                    if (!Kept(i, j - 1)) Skirt(a, b);
-                    if (!Kept(i, j + 1)) Skirt(c, d);
-                }
-            Positions = pos;
-            Normals = nor;
-            Uvs = uv;
-            Indices = idx.ToArray();
-            VertexCount = vertices;
+        }
+
+        private void Add(int a, int b, int c)
+        {
+            int[] idx = _b.Indices;
+            idx[_indexCount++] = a;
+            idx[_indexCount++] = b;
+            idx[_indexCount++] = c;
+        }
+
+        private void Triangles()
+        {
+            int nx = QuadsX + 1, j = _row;
+            for (int i = 0; i < QuadsX; i++)
+            {
+                if (!_kept[j * QuadsX + i]) continue;
+                int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
+                // Unity : faces avant dans le sens des aiguilles d'une montre vues d'en haut (x vers l'est, z vers le nord).
+                Add(a, c, d);
+                Add(a, d, b);
+                if (!Kept(i - 1, j)) Skirt(a, c);
+                if (!Kept(i + 1, j)) Skirt(b, d);
+                if (!Kept(i, j - 1)) Skirt(a, b);
+                if (!Kept(i, j + 1)) Skirt(c, d);
+            }
+            if (++_row == QuadsZ) Done = true;
+        }
+
+        private void Skirt(int top0, int top1)
+        {
+            int low0 = _next++, low1 = _next++;
+            Copy(top0, low0);
+            Copy(top1, low1);
+            // Les deux faces : la jupe se voit des deux côtés (d'une case plus fine comme d'une plus grossière).
+            Add(top0, low0, low1);
+            Add(top0, low1, top1);
+            Add(top0, low1, low0);
+            Add(top0, top1, low1);
+        }
+
+        private void Copy(int from, int to)
+        {
+            float[] pos = _b.Positions, nor = _b.Normals, uv = _b.Uvs;
+            pos[3 * to] = pos[3 * from];
+            pos[3 * to + 1] = (float)(pos[3 * from + 1] - _skirt);
+            pos[3 * to + 2] = pos[3 * from + 2];
+            for (int k = 0; k < 3; k++) nor[3 * to + k] = nor[3 * from + k];
+            uv[2 * to] = uv[2 * from];
+            uv[2 * to + 1] = (float)(uv[2 * from + 1] - _skirt / UvTile);
         }
 
         /// <summary>Hauteur du sommet (i, j) de la grille (avant enfoncement), pour les tests de raccord.</summary>
         public double HeightAt(int i, int j)
         {
-            if (!Done) throw new InvalidOperationException("Morceau de terrain pas encore construit.");
+            if (!Done || Released) throw new InvalidOperationException("Morceau de terrain pas construit, ou rendu au recyclage.");
             if (i < 0 || j < 0 || i > QuadsX || j > QuadsZ) throw new ArgumentOutOfRangeException(nameof(i));
             return H(i, j);
+        }
+
+        /// <summary>Rend les tableaux au recyclage : le morceau garde seulement sa forme (<see cref="Kept"/>, comptes).</summary>
+        public TerrainBuffers Release()
+        {
+            if (Released) throw new InvalidOperationException("Morceau de terrain déjà rendu.");
+            Released = true;
+            TerrainBuffers b = _b;
+            _b = TerrainBuffers.Empty;
+            return b;
+        }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.27 : tableaux d'un morceau de terrain, recyclés d'un morceau à l'autre (pas d'allocation à chaque case : pas de pause du
+    /// ramasse-miettes en chemin). Agrandis seulement si un morceau en demande plus.
+    /// </summary>
+    public sealed class TerrainBuffers
+    {
+        internal static readonly TerrainBuffers Empty = new TerrainBuffers();
+
+        public double[] Heights { get; private set; } = Array.Empty<double>();
+        public float[] Positions { get; private set; } = Array.Empty<float>();
+        public float[] Normals { get; private set; } = Array.Empty<float>();
+        public float[] Uvs { get; private set; } = Array.Empty<float>();
+        public int[] Indices { get; private set; } = Array.Empty<int>();
+
+        internal void EnsureHeights(int count)
+        {
+            if (Heights.Length < count) Heights = new double[count];
+        }
+
+        internal void EnsureMesh(int vertices, int indices)
+        {
+            if (Positions.Length < vertices * 3)
+            {
+                Positions = new float[vertices * 3];
+                Normals = new float[vertices * 3];
+                Uvs = new float[vertices * 2];
+            }
+            if (Indices.Length < indices) Indices = new int[indices];
         }
     }
 }
