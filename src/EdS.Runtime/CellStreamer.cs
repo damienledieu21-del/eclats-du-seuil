@@ -36,7 +36,7 @@ namespace EdS.Runtime
     /// <item>Case d'ancrage avec hystérésis : elle ne change que si la caméra en sort de plus de <see cref="StreamingProfile.HysteresisMeters"/>.</item>
     /// <item>Anneaux autour de l'ancrage (distance de Tchebychev en cases) : 0 (détail), 1 (simplifié), au-delà rien (terrain lointain).</item>
     /// <item>Une case qui perd du détail le garde <see cref="StreamingProfile.UnloadDelaySeconds"/> s (demi-tour sans à-coup), sauf si la
-    /// mémoire des maillages dépasse le budget : les plus anciennes rendent alors leur détail d'abord.</item>
+    /// mémoire ou les triangles des maillages dépassent le budget : les plus anciennes rendent alors leur détail d'abord.</item>
     /// <item>Un seul changement à la fois (<see cref="TryNext"/> puis <see cref="Complete"/>), ordre stable : d'abord ce qui gagne du détail
     /// (anneau visé, distance, rangée, colonne), puis ce qui en perd (plus ancien d'abord, puis rangée, colonne).</item>
     /// </list>
@@ -54,6 +54,7 @@ namespace EdS.Runtime
             public int Wanted = Far;
             public double CoarserSince = double.NaN;
             public long Bytes;
+            public long Triangles;
         }
 
         private readonly SortedDictionary<RegionCell, Slot> _slots = new SortedDictionary<RegionCell, Slot>();
@@ -69,6 +70,9 @@ namespace EdS.Runtime
 
         /// <summary>Octets des maillages de cases construits (estimation de <see cref="TerrainPatch.EstimateBytes"/>).</summary>
         public long Bytes { get; private set; }
+
+        /// <summary>Triangles des maillages de cases construits (estimation de <see cref="TerrainPatch.EstimateTriangles"/>).</summary>
+        public long Triangles { get; private set; }
 
         /// <summary>Changements d'ancrage depuis le début (mesures, tests d'hystérésis).</summary>
         public int AnchorChanges { get; private set; }
@@ -196,7 +200,7 @@ namespace EdS.Runtime
             }
             if (best == null)
             {
-                bool pressure = Bytes > Profile.MemoryBudgetBytes;
+                bool pressure = Bytes > Profile.MemoryBudgetBytes || Triangles > Profile.TerrainTriangleBudget;
                 foreach (Slot s in _slots.Values)
                 {
                     int target = Target(s, pressure);
@@ -232,6 +236,9 @@ namespace EdS.Runtime
             long bytes = change.To == Far ? 0 : TerrainPatch.EstimateBytes(Profile.ResolutionOf(change.To));
             Bytes = checked(Bytes - s.Bytes + bytes);
             s.Bytes = bytes;
+            long triangles = change.To == Far ? 0 : TerrainPatch.EstimateTriangles(Profile.ResolutionOf(change.To));
+            Triangles = checked(Triangles - s.Triangles + triangles);
+            s.Triangles = triangles;
             s.Built = change.To;
             s.CoarserSince = s.Wanted > s.Built ? _now : double.NaN;
             if (s.Wanted == Far && s.Built == Far) _slots.Remove(change.Cell);

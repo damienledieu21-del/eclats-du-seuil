@@ -99,6 +99,11 @@ public class V227StreamingTests : IDisposable
             long wanted = detail * TerrainPatch.EstimateBytes(p.DetailResolution) + (view - detail) * TerrainPatch.EstimateBytes(p.SimpleResolution);
             Assert.True(wanted + (2 * p.DetailRadius + 1) * TerrainPatch.EstimateBytes(p.DetailResolution) <= p.MemoryBudgetBytes,
                 $"{p.Tier} : {wanted} octets voulus");
+            long triangles = detail * TerrainPatch.EstimateTriangles(p.DetailResolution) + (view - detail) * TerrainPatch.EstimateTriangles(p.SimpleResolution)
+                + 2L * (4096 / StreamingProfile.FarStep) * (3072 / StreamingProfile.FarStep);
+            Assert.True(triangles <= p.TerrainTriangleBudget, $"{p.Tier} : {triangles} triangles voulus");
+            // Au pire (nouvelle rangée de détail construite avant que l'ancienne cède), encore sous la cible du plan.
+            Assert.True(triangles + (2 * p.DetailRadius + 1) * TerrainPatch.EstimateTriangles(p.DetailResolution) <= p.TriangleBudget);
             // Appels de dessin du terrain : cases en vue + blocs lointains, loin sous la cible.
             Assert.True(view + 12 <= p.DrawCallBudget / 2);
         }
@@ -202,6 +207,7 @@ public class V227StreamingTests : IDisposable
             s.Update(-1800 + 9 * k, -1500 + 7 * k + (k % 20 < 10 ? 0 : 300), t);
             while (s.TryNext(out CellChange c)) s.Complete(c);
             Assert.True(s.Bytes <= p.MemoryBudgetBytes + TerrainPatch.EstimateBytes(p.DetailResolution), $"{s.Bytes} octets");
+            Assert.True(s.Triangles <= p.TerrainTriangleBudget + TerrainPatch.EstimateTriangles(p.DetailResolution), $"{s.Triangles} triangles");
             Assert.True(s.Ready);
         }
     }
@@ -239,6 +245,7 @@ public class V227StreamingTests : IDisposable
         Assert.All(east.Indices.Take(east.IndexCount), i => Assert.InRange(i, 0, east.VertexCount - 1));
         Assert.False(east.WideIndices);
         Assert.Equal(TerrainPatch.EstimateBytes(65), east.Bytes);
+        Assert.Equal(TerrainPatch.EstimateTriangles(65), east.TriangleCount);
         // Normales unitaires, vers le haut.
         for (int v = 0; v < east.VertexCount; v++)
         {

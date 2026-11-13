@@ -63,6 +63,12 @@ namespace EdS.Runtime
 
         public long TriangleBudget { get; }
 
+        /// <summary>
+        /// Part des triangles visibles laissée au terrain des cases (4/5 de <see cref="TriangleBudget"/>) : au-delà, les cases gardées après
+        /// leur départ rendent leur détail tout de suite, comme pour la mémoire.
+        /// </summary>
+        public long TerrainTriangleBudget => TriangleBudget * 4 / 5;
+
         private StreamingProfile(DeviceTier tier, int detail, int view, int detailRes, int simpleRes, double viewMeters, long memory,
             bool shadows, int drawCalls, long triangles)
         {

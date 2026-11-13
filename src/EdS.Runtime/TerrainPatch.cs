@@ -98,6 +98,14 @@ namespace EdS.Runtime
             return 2 * (vertices * 32 + indices * (vertices > 65535 ? 4 : 2));
         }
 
+        /// <summary>Triangles estimés d'une case de <paramref name="resolution"/> points par côté (jupes comprises).</summary>
+        public static long EstimateTriangles(int resolution)
+        {
+            if (resolution < 2) return 0;
+            long q = resolution - 1;
+            return 2 * q * q + 4 * q * 4;
+        }
+
         /// <summary>Octets du maillage construit (même règle que <see cref="EstimateBytes"/>).</summary>
         public long Bytes => 2 * ((long)VertexCount * 32 + (long)_indexCount * (WideIndices ? 4 : 2));
 
