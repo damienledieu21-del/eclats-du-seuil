@@ -189,29 +189,51 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Sous-lot V2.28 (relecture indépendante de la PR #155) : arrivée d'une partie relancée. Le point sûr de reprise
-        /// (<see cref="ResumeSafePoint"/>) et, si sa place est prise au début de la session, la place libre la plus proche par la règle
-        /// d'arrivée des secteurs (<see cref="SectorWorld.NearestFree"/> : anneaux de 0,5 m jusqu'à 8 m, ordre fixe) ; sans aucune place
-        /// libre, l'entrée de la zone (<c>(null, null)</c>, comme avant le V2.28), sans erreur : une créature posée sur le point sûr ne bloque
-        /// jamais une sauvegarde. Fonction pure : même sauvegarde et mêmes données, même arrivée. <c>Place</c> est null quand le point sûr
-        /// lui-même est libre. À passer à la session (<c>safePoint</c>, <c>place</c>).
+        /// Sous-lot V2.28 (relecture indépendante de la PR #155) : arrivée d'une partie relancée, d'une halte ou d'une reprise après une
+        /// défaite : le point sûr de reprise de la sauvegarde (<see cref="ResumeSafePoint"/>), par la règle d'arrivée à un point sûr
+        /// (<see cref="SafeArrival(WorldSave, ZoneDefinition, CharacterProgression, string?, string?)"/>). Fonction pure : même sauvegarde et
+        /// mêmes données, même arrivée. À passer à la session (<c>safePoint</c>, <c>place</c>).
         /// </summary>
         public static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
             StoryBook? story = null, string? storyZone = null) => ResumeArrival(save, zone, progression, story, storyZone, SectorWorld.ArrivalRings);
 
         /// <summary>Pour les tests : la même règle sur <paramref name="rings"/> anneaux.</summary>
         internal static (string? SafePoint, GroundVector? Place) ResumeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
-            StoryBook? story, string? storyZone, int rings)
+            StoryBook? story, string? storyZone, int rings) =>
+            SafeArrival(save, zone, progression, ResumeSafePoint(save, zone, story, storyZone), storyZone, rings);
+
+        /// <summary>
+        /// Sous-lot V2.28b : règle d'arrivée à un point sûr, la même pour toute session qui s'y ouvre (jeu relancé, halte, reprise après une
+        /// défaite, voyage rapide, couvre-feu, entrée de la zone). <paramref name="safePoint"/> null : l'entrée de la zone.
+        /// <list type="number">
+        /// <item>La place du point sûr si elle est libre au début de la session (<c>Place</c> null).</item>
+        /// <item>Sinon la place libre la plus proche par la règle d'arrivée des secteurs (<see cref="SectorWorld.NearestFree"/> : anneaux de
+        /// 0,5 m jusqu'à 8 m, ordre fixe).</item>
+        /// <item>Sans aucune place libre autour de lui : l'entrée de la zone (<c>SafePoint</c> null), à sa place libre la plus proche.</item>
+        /// <item>Sans aucune place libre autour de l'entrée non plus : l'entrée même (l'arrivée y sera refusée tant que la place est prise ;
+        /// une reprise réessaie, comme avant).</item>
+        /// </list>
+        /// Sans erreur : une créature posée sur un point sûr ne bloque jamais une partie. Fonction pure.
+        /// </summary>
+        /// <exception cref="ArgumentException">Point sûr inconnu de la zone.</exception>
+        public static (string? SafePoint, GroundVector? Place) SafeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            string? safePoint, string? storyZone = null) => SafeArrival(save, zone, progression, safePoint, storyZone, SectorWorld.ArrivalRings);
+
+        internal static (string? SafePoint, GroundVector? Place) SafeArrival(WorldSave save, ZoneDefinition zone, CharacterProgression progression,
+            string? safePoint, string? storyZone, int rings)
         {
+            if (save is null) throw new ArgumentNullException(nameof(save));
+            if (zone is null) throw new ArgumentNullException(nameof(zone));
             if (progression is null) throw new ArgumentNullException(nameof(progression));
-            if (!(ResumeSafePoint(save, zone, story, storyZone) is string point)) return (null, null);
+            SafePoint point = safePoint is null ? zone.Entry
+                : zone.SafePoints.FirstOrDefault(p => p.Id == safePoint) ?? throw new ArgumentException($"Point sûr « {safePoint} » inconnu de {zone.Id}.", nameof(safePoint));
             // La session telle qu'elle s'ouvrira : même zone réglée au niveau du personnage, même décor, mêmes créatures de départ.
             ZoneDefinition played = ForPlayer(zone, save, progression, storyZone);
             CombatSetup setup = ZoneSetups.For(played, save.Consumed, StartPhase(played, save), StartWeather(played, save, storyZone));
-            GroundVector at = zone.SafePoints.First(s => s.Id == point).Position;
-            GroundVector? free = FreeArrival(setup, played.Bosses.Select(b => (CombatantSetup)b.Forms[0]), at, CharacterRadius, rings);
-            if (free is null) return (null, null);
-            return (point, free.Value == at ? (GroundVector?)null : free);
+            List<CombatantSetup> forms = played.Bosses.Select(b => (CombatantSetup)b.Forms[0]).ToList();
+            GroundVector? Near(GroundVector at) => FreeArrival(setup, forms, at, CharacterRadius, rings) is GroundVector free && free != at ? free : (GroundVector?)null;
+            if (FreeArrival(setup, forms, point.Position, CharacterRadius, rings) != null) return (safePoint, Near(point.Position));
+            return (null, Near(zone.Entry.Position));
         }
 
         /// <summary>

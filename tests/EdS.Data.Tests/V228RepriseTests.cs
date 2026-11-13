@@ -402,7 +402,7 @@ public class V228RepriseTests : IDisposable
         boar["arrivalMs"] = 0;
     }
 
-    private (string Data, string Scenarios) CopyWithBoarOnTheBourg()
+    private (string Data, string Scenarios) CopyWithBoarOnTheBourg(bool deadly = false)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
@@ -415,6 +415,8 @@ public class V228RepriseTests : IDisposable
         string path = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject root = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
         BoarOnTheBourg(root);
+        if (deadly)
+            foreach (JsonNode? attack in root["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
         File.WriteAllText(path, root.ToJsonString());
         return (data, scenarios);
     }
@@ -450,6 +452,43 @@ public class V228RepriseTests : IDisposable
         (string? point, GroundVector? place) = WorldSession.ResumeArrival(saved, again.World.Definition!, Progression, again.World.Narrative!.Book, AdventureSession.ZoneId);
         Assert.Equal(("place_du_bourg", (GroundVector?)here), (point, place));
         Assert.Equal(here, Position(Adventure(SavePath, data, scenarios)));
+    }
+
+    [Fact]
+    public void Voyage_et_reprise_apres_une_defaite_sur_un_point_sur_occupe()
+    {
+        // Sous-lot V2.28b : la règle d'arrivée du jeu relancé vaut pour toute session ouverte à un point sûr. Avant : le voyage et la reprise
+        // après une défaite arrivaient sur le point sûr même, occupé (arrivée refusée, à réessayer sans fin).
+        (string data, string scenarios) = CopyWithBoarOnTheBourg(deadly: true);
+        AdventureSession a = Adventure(SavePath, data, scenarios);
+        a.Save();
+        // La place du Bourg est déjà découverte (clé au registre, dans l'ordre ordinal).
+        EditSave(d =>
+        {
+            var keys = d["consumed"]!.AsArray().Select(k => (string)k!).Append("zone.vallons/safe/place_du_bourg").Distinct().OrderBy(k => k, StringComparer.Ordinal).ToArray();
+            d["consumed"] = new JsonArray(keys.Select(k => (JsonNode?)JsonValue.Create(k)).ToArray());
+        });
+        a = Adventure(SavePath, data, scenarios);
+        Assert.Equal(At(-18, -12), Position(a));
+        // Voyage rapide vers le point sûr occupé : arrivée à la place libre la plus proche, à destination.
+        Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        GroundVector arrived = Position(a);
+        Assert.InRange(Distance(arrived, At(-58, -6)), 0.5, 8.0);
+        Assert.Equal("Place du Bourg", a.LastSafePoint);
+        Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+        // Le sanglier, mortel ici, fait tomber le personnage ; la reprise rouvre une session au même point sûr, à la même place libre.
+        for (int i = 0; i < 1200 && !a.World.IsDefeated; i++) a.Advance(0.05);
+        Assert.True(a.World.IsDefeated);
+        int opened = a.Opened;
+        Assert.True(a.Continue());
+        Assert.Equal(opened + 1, a.Opened);
+        a.Advance(0.05);
+        Assert.False(a.Stranded);
+        Assert.False(a.World.IsDefeated);
+        Assert.Equal(arrived, Position(a));
+        Assert.Equal("Place du Bourg", a.LastSafePoint);
     }
 
     [Fact]

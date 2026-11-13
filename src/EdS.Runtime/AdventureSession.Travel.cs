@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
+using EdS.Domain.Space;
 using EdS.World;
 
 namespace EdS.Runtime
@@ -76,6 +77,17 @@ namespace EdS.Runtime
         /// préparée, puis la partie sauvegardée dans cette zone, puis la session s'ouvre au point sûr. Un refus (<see cref="CanTravel"/>) ou
         /// une sauvegarde impossible (disque plein : <see cref="TravelRefusal.SaveFailed"/>) ne change rien ; un message dit pourquoi.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.28b : place d'arrivée au point sûr <paramref name="safePoint"/> (règle d'arrivée, <c>WorldSession.SafeArrival</c>) :
+        /// null si sa place est libre, sinon la place libre la plus proche. Sans place libre autour de lui : null aussi (l'arrivée attend au
+        /// point sûr même, et la reprise ramène à l'entrée) : un voyage ne mène jamais ailleurs qu'à sa destination.
+        /// </summary>
+        private GroundVector? ArrivalPlace(WorldSave save, ZoneDefinition zone, string safePoint)
+        {
+            (string? at, GroundVector? place) = WorldSession.SafeArrival(save, zone, _progression, safePoint, ZoneId);
+            return at == safePoint ? place : null;
+        }
+
         public TravelRefusal Travel(string zone, string safePoint)
         {
             TravelRefusal refusal = CanTravel(zone, safePoint);
@@ -89,7 +101,7 @@ namespace EdS.Runtime
             var moved = new WorldSave(target.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
             // Comme une porte : la session d'arrivée est construite avant d'écrire quoi que ce soit ; l'aventure ne change qu'une fois les
             // deux réussies.
-            WorldSession next = Build(moved, target, safePoint, null);
+            WorldSession next = Build(moved, target, safePoint, null, ArrivalPlace(moved, target, safePoint));
             moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr d'arrivée
             try
             {

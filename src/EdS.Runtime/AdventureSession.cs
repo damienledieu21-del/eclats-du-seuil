@@ -1848,7 +1848,9 @@ namespace EdS.Runtime
         {
             WorldSave save = World.Save();
             Write(save);
-            Open(save, save.Resume?.SafePoint);
+            // Sous-lot V2.28b : même règle d'arrivée que le jeu relancé (place libre la plus proche si le point sûr est occupé, sinon l'entrée).
+            (string? at, GroundVector? place) = WorldSession.ResumeArrival(save, _zone, _progression, _story, ZoneId);
+            Open(save, at, null, place);
             Say(message, LastSafePoint);
             AnnounceLearned();
         }

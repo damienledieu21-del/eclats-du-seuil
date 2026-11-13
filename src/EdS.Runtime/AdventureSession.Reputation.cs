@@ -64,7 +64,7 @@ namespace EdS.Runtime
             if (!(World.CurfewSafePoint is string safePoint) || Dialogue != null || MustContinue) return;
             WorldSave here = World.Save();
             var moved = new WorldSave(_zone.Id, here.WorldTick, here.Sessions, here.Consumed, here.Character, sectors: here.Sectors);
-            WorldSession next = Build(moved, _zone, safePoint, null);
+            WorldSession next = Build(moved, _zone, safePoint, null, ArrivalPlace(moved, _zone, safePoint));
             moved = moved.WithResume(next.Resume);   // sous-lot V2.28 : la partie relancée reprend au point sûr du couvre-feu
             try
             {
