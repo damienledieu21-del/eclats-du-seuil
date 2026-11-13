@@ -32,8 +32,10 @@ namespace EdS.Runtime
         /// <summary>Retours conservés au plus (les plus anciens sont abandonnés si le client ne les lit pas).</summary>
         public const int MaxPendingFeedback = FeedbackTracker.MaxPending;
 
-        private readonly CombatSetup _setup;
-        private readonly CombatEngine _engine;
+        // Sous-lot V2.28b (2b) : simulation, moteur et identité du joueur changent à un passage de secteur ou au renouvellement d'une
+        // session (Rebind) ; le pont, lui, reste le même objet (intentions, retours non lus, temps accumulé).
+        private CombatSetup _setup;
+        private CombatEngine _engine;
         private readonly long _tickMs;
         private readonly FeedbackTracker _feedback;
         private double _accumulated;
@@ -43,13 +45,18 @@ namespace EdS.Runtime
 
         // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
         // partagées avec la salle du serveur).
-        private readonly IReadOnlyList<ConvexPolygon>? _obstacles;
+        private IReadOnlyList<ConvexPolygon>? _obstacles;
         private readonly MovementIntent _movement = new MovementIntent();
         private readonly TargetKeeper _targets = new TargetKeeper();
 
         // Sous-lot 12.8 : moteur tenu ailleurs (session de zone du monde), avancé par ce pas ; portée de choix de la cible.
         private readonly Action? _step;
         private readonly Fixed? _targetRange;
+
+        // Sous-lot V2.28b (2b) : où joue le personnage après chaque pas (la session de son secteur et son identité), et si une session
+        // terminée est renouvelée sans coupure par qui tient le moteur.
+        private readonly Func<CombatBinding>? _follow;
+        private readonly Func<bool>? _renews;
 
         /// <summary>Ticks simulés au plus par appel à <see cref="Advance"/> : une image très lente ne fait pas rattraper des secondes d'un coup.</summary>
         public int MaxTicksPerAdvance { get; set; } = 5;
@@ -79,7 +86,21 @@ namespace EdS.Runtime
         /// <param name="setup">Simulation de la zone (aire, décor, règles) ; <paramref name="engine"/> doit la jouer.</param>
         /// <exception cref="ArgumentException">Le joueur n'est pas un personnage du moteur.</exception>
         public RealtimeCombat(CombatSetup setup, CombatEngine engine, string playerId, Action step, Fixed? targetRange)
+            : this(setup, engine, playerId, step, targetRange, null, null)
         {
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : pont sur un moteur tenu ailleurs, qui peut changer à chaque pas. Après chaque pas, <paramref name="follow"/>
+        /// dit où joue le personnage (simulation, moteur, identité) ; s'il a changé (passage d'un secteur à l'autre, session renouvelée), le
+        /// pont se rebranche (<see cref="Rebind"/>). <paramref name="renews"/> : vrai si une session terminée est renouvelée au pas suivant ;
+        /// le combat ne se termine alors pas avec elle (<see cref="IsFinished"/>).
+        /// </summary>
+        public RealtimeCombat(CombatSetup setup, CombatEngine engine, string playerId, Action step, Fixed? targetRange, Func<CombatBinding>? follow,
+            Func<bool>? renews)
+        {
+            _follow = follow;
+            _renews = renews;
             _setup = setup ?? throw new ArgumentNullException(nameof(setup));
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
             _step = step ?? throw new ArgumentNullException(nameof(step));
@@ -94,7 +115,14 @@ namespace EdS.Runtime
             TargetId = Enemies().FirstOrDefault()?.Id;
         }
 
-        public string PlayerId { get; }
+        /// <summary>Identité du joueur dans le moteur du moment (sous-lot V2.28b (2b) : elle peut changer à un passage).</summary>
+        public string PlayerId { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : rebranchements faits depuis la création du pont (un de plus à chaque passage de secteur ou session
+        /// renouvelée) ; l'affichage refait ses corps quand il change (identités et créatures d'un autre moteur).
+        /// </summary>
+        public int Rebinds { get; private set; }
 
         /// <summary>
         /// Cible des compétences à cible ennemie unique : un ennemi vivant et, dans un combat positionné, en vue du joueur ; null s'il n'y en
@@ -103,7 +131,11 @@ namespace EdS.Runtime
         /// </summary>
         public string? TargetId { get; private set; }
 
-        public bool IsFinished => _engine.IsFinished;
+        /// <summary>
+        /// Combat terminé : moteur terminé (durée atteinte ou une équipe vaincue). Sous-lot V2.28b (2b) : pas tant qu'une session terminée est
+        /// renouvelée au pas suivant (le personnage y continue sans coupure).
+        /// </summary>
+        public bool IsFinished => _engine.IsFinished && !(_renews?.Invoke() ?? false);
 
         /// <summary>Résultat du combat une fois terminé (durée atteinte ou une équipe vaincue).</summary>
         public CombatResult? Result => _engine.Result;
@@ -246,11 +278,41 @@ namespace EdS.Runtime
         public void StepOnce()
         {
             if (IsFinished) return;
-            SubmitIntentions();
+            // Sous-lot V2.28b (2b) : une session terminée qui va être renouvelée ne reçoit plus de commande ; les intentions restent tenues
+            // (garde, marche) et partent dans la session nouvelle.
+            if (!_engine.IsFinished) SubmitIntentions();
             if (_step != null) _step();   // sous-lot 12.8 : session de zone
             else _engine.Step();
+            if (_follow != null)
+            {
+                CombatBinding now = _follow();
+                if (!ReferenceEquals(now.Engine, _engine) || now.PlayerId != PlayerId) Rebind(now);
+            }
             _feedback.Collect(_engine);
             TargetId = _targets.Keep(_engine, PlayerId, _obstacles, TargetId, _targetRange);   // sous-lot 11.9 : cible perdue remplacée après un court délai
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : rebranche le pont sur le moteur où joue désormais le personnage, dans l'ordre : relever, propager, remplacer.
+        /// 1. Relever : les retours du dernier tick de l'ancien moteur (dégâts, blocage, parade, morts) sont collectés avant de le quitter.
+        /// 2. Propager : garde tenue, marche voulue (le moteur d'arrivée a reçu la marche en cours), retours non lus et temps accumulé restent ;
+        ///    la sélection de la cible ne passe pas (les identités des créatures sont celles d'un autre moteur) : la cible repart du plus
+        ///    proche ennemi en vue, sans délai de cible perdue.
+        /// 3. Remplacer : simulation, moteur, identité, décor de la vue, références des compteurs (rien n'est compté deux fois).
+        /// </summary>
+        private void Rebind(CombatBinding to)
+        {
+            if (to.Setup is null || to.Engine is null || to.PlayerId is null) throw new InvalidOperationException("Rebranchement incomplet.");
+            if (to.Engine.TickMilliseconds != _tickMs) throw new InvalidOperationException($"Tick de {to.Engine.TickMilliseconds} ms au lieu de {_tickMs} ms.");
+            _feedback.Collect(_engine);
+            if (!ReferenceEquals(to.Setup.Space, _setup.Space)) _obstacles = CombatDisplay.SightObstacles(to.Setup.Space);
+            _setup = to.Setup;
+            _engine = to.Engine;
+            PlayerId = to.PlayerId;
+            _feedback.Reset(_engine);
+            _targets.Reset();
+            TargetId = null;
+            Rebinds = checked(Rebinds + 1);
         }
 
         private void SubmitIntentions()
@@ -314,5 +376,23 @@ namespace EdS.Runtime
         public IReadOnlyList<OtherState> Others() => CombatDisplay.Others(_engine, PlayerId, 0, TickProgress * TickSeconds, _obstacles);
 
         private IEnumerable<OtherState> Enemies() => CombatDisplay.NearbyEnemies(_engine, PlayerId, _obstacles, _targetRange);
+    }
+
+    /// <summary>
+    /// Sous-lot V2.28b (2b) : où joue le personnage d'un pont temps réel (<see cref="RealtimeCombat"/>) : simulation de sa session, moteur
+    /// qui la joue, identité qu'il y porte.
+    /// </summary>
+    public readonly struct CombatBinding
+    {
+        public CombatBinding(CombatSetup setup, CombatEngine engine, string playerId)
+        {
+            Setup = setup;
+            Engine = engine;
+            PlayerId = playerId;
+        }
+
+        public CombatSetup Setup { get; }
+        public CombatEngine Engine { get; }
+        public string PlayerId { get; }
     }
 }

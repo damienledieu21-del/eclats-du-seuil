@@ -103,6 +103,12 @@ namespace EdS.Game
         private bool _crowdAsked;
         private int _shownSession;
 
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : rebranchements du pont affichés (passage de secteur, session renouvelée) : les corps sont refaits avec les
+        /// identités du moteur d'arrivée, sans fondu (même zone, même partie).
+        /// </summary>
+        private int _shownRebinds;
+
         /// <summary>Distance au-delà de laquelle une créature de l'aventure n'a pas de barre au-dessus d'elle.</summary>
         private const float OverheadRange = 25f;
 
@@ -344,6 +350,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : entrer dans le souvenir ou en sortir passe par un fondu blanc (la mise en scène), pas par le noir des portes.
             if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
             _shownSession = _adventure.Opened;
+            _shownRebinds = _adventure.Combat.Rebinds;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;
             _paused = _creator != null && _creator.Open;   // V2.16 : jamais de reprise du jeu sous le créateur de personnage
@@ -564,6 +571,15 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
+            else if (a.Combat.Rebinds != _shownRebinds)
+            {
+                // Sous-lot V2.28b (2b) : le personnage est passé dans un autre secteur (ou sa session a été renouvelée) : autre moteur,
+                // autres identités. La carte de la session du moment et les corps sont refaits ; la caméra et l'orientation restent.
+                _combat = a.Combat;
+                _arena.Populate(_combat, a.Map);
+                _shownRebinds = a.Combat.Rebinds;
+                _shownCharges = -1;
+            }
             if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
             // Sous-lot V1.1 : la boutique suit l'écran (Échap, I, J, K, L la ferment) ; le bouton Parler la ferme pour le dialogue.
             if (_screens.Open == AdventureScreens.Panel.Merchant && a.Shop == null) _screens.Close();
