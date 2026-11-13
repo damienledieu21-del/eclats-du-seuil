@@ -5,6 +5,8 @@
     <ProjectReference Include="..\EdS.Data.Json\EdS.Data.Json.csproj" />
     <ProjectReference Include="..\EdS.Simulation\EdS.Simulation.csproj" />
     <ProjectReference Include="..\EdS.Net\EdS.Net.csproj" />
+    <!-- Sous-lot V2.27 : mesures du chargement par cases (relief des Vallons, RegionTerrain). -->
+    <ProjectReference Include="..\EdS.Runtime\EdS.Runtime.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

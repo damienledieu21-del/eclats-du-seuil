@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EdS.Domain.Space;
+using EdS.Data.Zones;
 
 namespace EdS.Runtime
 {
@@ -123,10 +124,17 @@ namespace EdS.Runtime
         /// </summary>
         public IReadOnlyList<SpaceObstacle> Gates { get; }
 
+        /// <summary>
+        /// Sous-lot V2.27 : grille de la région de la zone (cases de 128 m, schéma de zone 13), ou null (intérieur, arène, zone sans région) :
+        /// le terrain de la région est alors chargé par cases autour de la caméra (<see cref="RegionTerrain"/>).
+        /// </summary>
+        public RegionGrid? Region { get; }
+
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
-            IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null)
+            IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null)
         {
+            Region = region;
             Gates = (gates ?? Array.Empty<SpaceObstacle>()).ToList();
             Speakers = (speakers ?? Array.Empty<(string, double, double)>()).ToList();
             if (space is null) throw new ArgumentNullException(nameof(space));
@@ -155,6 +163,7 @@ namespace EdS.Runtime
             }
             foreach ((double x, double z) in Clearings) key.Append(FormattableString.Invariant($"o{x},{z}"));
             foreach (MapDoor d in Doors) key.Append(FormattableString.Invariant($"+{d.Id}@{d.Building}:{d.X},{d.Z}"));
+            if (Region != null) key.Append(FormattableString.Invariant($"#région:{Region.OriginX}/{Region.OriginZ}/{Region.Columns}/{Region.Rows}"));
             Signature = key.ToString();
         }
 
