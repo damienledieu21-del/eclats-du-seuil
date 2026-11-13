@@ -426,6 +426,15 @@ namespace EdS.World
 
         /// <summary>Revue Codex de la PR #150 (8e tour) : zone dont l'aire est refaite à chaque session nouvelle (<see cref="For"/>) ; null : aire fixe.</summary>
         private ZoneDefinition? _zone;
+
+        /// <summary>
+        /// Sous-lot V2.28b : moment de la journée et temps au début d'une session qui s'ouvre au tick du monde donné (créatures à heures ou à
+        /// temps absentes d'emblée hors de leurs heures, comme la session d'une zone) ; null : toutes là, comme avant.
+        /// </summary>
+        private Func<long, (DayPhase? Phase, WeatherKind? Weather)>? _start;
+
+        /// <summary>Sous-lot V2.28b : événements d'une ouverture faite hors d'un tick (<see cref="EnterAtStart"/>), rendus au tick suivant.</summary>
+        private readonly List<SectorEvent> _early = new List<SectorEvent>();
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -472,13 +481,40 @@ namespace EdS.World
         }
 
         /// <summary>Hôte des secteurs d'une zone à région, avec ses populations (chacune dans son secteur).</summary>
+        /// <param name="start">Sous-lot V2.28b : moment de la journée et temps au début d'une session ouverte au tick du monde donné
+        /// (<see cref="ZoneSetups.For"/>, <see cref="ZonePopulations"/>) ; null : toutes les créatures à heures ou à temps sont là.</param>
         public static SectorWorld For(ZoneDefinition zone, long startWorldTick, long session, IEnumerable<string>? consumed = null,
-            IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null, Func<Population, long, bool>? wanted = null)
+            IEnumerable<KeyValuePair<string, long>>? sectorSessions = null, Func<string, long, ICombatLog>? logs = null, Func<Population, long, bool>? wanted = null,
+            Func<long, (DayPhase? Phase, WeatherKind? Weather)>? start = null)
         {
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
-            CombatSetup area = ZoneSetups.For(zone, keys);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone };
+            (DayPhase? phase, WeatherKind? weather) = start?.Invoke(startWorldTick) ?? (null, null);
+            CombatSetup area = ZoneSetups.For(zone, keys, phase, weather);
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start };
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (partie solo sur l'hôte des secteurs) : un joueur entre <b>avec la session</b> de son secteur : le secteur de sa
+        /// place s'ouvre maintenant (au tick du monde courant) et le joueur fait partie de sa simulation de départ (arrivée au tick 0 à sa
+        /// place exacte, en-tête du journal compris), comme le personnage d'une session de zone (<see cref="Zone"/>, <c>entering</c>). Pour le
+        /// secteur du cœur d'une aire qui tient dans son carré, la session est exactement celle de la zone avec son personnage.
+        /// </summary>
+        /// <exception cref="ArgumentException">Joueur sans place, déjà là ou annoncé, place hors de l'aire, ou personnage refusé par le moteur.</exception>
+        /// <exception cref="InvalidOperationException">Le secteur de sa place est déjà ouvert (entrer alors par <see cref="Enter"/>).</exception>
+        public void EnterAtStart(CharacterSetup player)
+        {
+            if (player is null) throw new ArgumentNullException(nameof(player));
+            if (player.Placement is null) throw new ArgumentException("Un joueur entre à une place.", nameof(player));
+            if (_players.ContainsKey(player.Id) || _entering.ContainsKey(player.Id)) throw new ArgumentException($"Joueur déjà là : {player.Id}.", nameof(player));
+            CombatSpace area = _map.Area.Space!;
+            GroundVector at = player.Placement.Position;
+            if (at.X < area.Min.X || at.X > area.Max.X || at.Z < area.Min.Z || at.Z > area.Max.Z || _map.Space(_map.OwnerOf(at)) is null)
+                throw new ArgumentException("Place hors de l'aire.", nameof(player));
+            string sector = _map.OwnerOf(at);
+            if (_open.ContainsKey(sector)) throw new InvalidOperationException($"Secteur {sector} déjà ouvert : le joueur y entre par Enter.");
+            OpenSector(sector, _early, new[] { player });   // refusé par le moteur : rien n'est ouvert, rien n'a changé
+            _players[player.Id] = new Player { Id = player.Id, Setup = player, Sector = sector, Combatant = player.Id };
         }
 
         /// <summary>Secteurs ouverts, dans l'ordre des noms.</summary>
@@ -547,7 +583,15 @@ namespace EdS.World
         /// <summary>
         /// Revue Codex de la PR #150 (9e tour) : place au registre exigée par le prochain tick (précontrôle de <see cref="Step"/>) : borne du
         /// registre, morts possibles de chaque secteur ouvert, et au plus une clé par créature de l'aire (sessions ouvertes ou renouvelées
-        /// pendant le tick) et par joueur (présent ou annoncé). Au-delà de <see cref="SaveValidator.MaxConsumed"/>, le tick est refusé entier.
+        /// pendant le tick) et par joueur qui peut arriver pendant le tick. Au-delà de <see cref="SaveValidator.MaxConsumed"/>, le tick est
+        /// refusé entier.
+        /// <para>Sous-lot V2.28b : borne exacte quand aucune session ne peut naître avant le tick des secteurs. Une session ne naît à ce
+        /// moment-là que d'un renouvellement (session terminée), d'une entrée annoncée ou d'un joueur en attente d'une place ; les
+        /// ouvertures et les passages viennent après le tick des secteurs, et leurs morts comptent au tick suivant. Sans rien de cela, la
+        /// borne est celle d'une session de zone (registre et morts possibles du tick : un joueur présent, ou dont l'arrivée est programmée à
+        /// ce tick, compte déjà parmi elles) : la partie solo garde la borne qu'elle avait. Sinon : toutes les créatures de l'aire, et une
+        /// clé par joueur qui entre, attend, reprend ou se trouve dans une session terminée. La garde d'après les entrées
+        /// (<see cref="Step"/>) vérifie la place réelle dans tous les cas.</para>
         /// </summary>
         public long NextTickRegistryNeed
         {
@@ -555,8 +599,28 @@ namespace EdS.World
             {
                 long need = RegistryBound();
                 foreach (Open o in _open.Values) need = checked(need + o.Zone.NewDeathsPossible);
-                return checked(need + _map.Area.Combatants.Count + _players.Count + _entering.Count);
+                long arriving = Arriving(out bool born);
+                return checked(need + (born ? _map.Area.Combatants.Count : 0) + arriving);
             }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b : joueurs qui peuvent arriver pendant le prochain tick (entrée annoncée, attente d'une place, reprise, session
+        /// terminée à renouveler) ; <paramref name="born"/> : une session peut naître avant le tick des secteurs (l'un d'eux, ou une session
+        /// terminée sans joueur).
+        /// </summary>
+        private long Arriving(out bool born)
+        {
+            long arriving = _entering.Count;
+            born = arriving > 0;
+            foreach (Open o in _open.Values) born |= o.Zone.IsOver;
+            foreach (Player p in _players.Values)
+                if (p.Waiting || p.Resume || p.Arrival != null || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? at) && at.Zone.IsOver))
+                {
+                    arriving = checked(arriving + 1);
+                    born = true;
+                }
+            return arriving;
         }
 
         /// <summary>Revue Codex de la PR #150 (2e tour) : vrai si le joueur est entré dans la région sans place libre encore (il réessaie à chaque tick).</summary>
@@ -629,9 +693,10 @@ namespace EdS.World
             _exiting.Add(player);
         }
 
-        private Open OpenSector(string name, List<SectorEvent> events)
+        private Open OpenSector(string name, List<SectorEvent> events, IEnumerable<CharacterSetup>? entering = null)
         {
             if (_open.TryGetValue(name, out Open? open)) return open;
+            (DayPhase? phase, WeatherKind? weather) = _start?.Invoke(WorldTick) ?? (null, null);
             bool home = name == _map.HomeSector;
             long session;
             bool reopened = false;
@@ -646,7 +711,7 @@ namespace EdS.World
             }
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
             CombatSetup setup = _map.SetupFor(name, session, reopened, sessionArea);
             // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
             // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
@@ -657,12 +722,13 @@ namespace EdS.World
                 && (present.Contains(p.Creature) || !inArea.Contains(p.Creature))).ToList();
             // Garde : une population présente au début désigne un combattant de la session ; sinon refus avec diagnostic, avant toute modification.
             foreach (Population p in mine)
-                if (ZonePopulations.PresentAtStart(p, null, null) && !present.Contains(p.Creature))
+                if (ZonePopulations.PresentAtStart(p, phase, weather) && !present.Contains(p.Creature))
                     throw new InvalidOperationException($"Secteur {name} : la population « {p.Creature} » désigne un combattant absent de la session ; secteur non ouvert.");
+            // Sous-lot V2.28b : la session est créée (et son personnage de départ admis par le moteur) avant de changer quoi que ce soit.
+            var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name, entering: entering);
             if (home) _homeOpened = true;
             if (!home || reopened) _sectorSessions[name] = session;
-            var zone = new Zone(_zoneId, setup, session, WorldTick, _consumed, _logs?.Invoke(name, session), sector: home ? null : name);
-            var populations = new ZonePopulations(mine);
+            var populations = new ZonePopulations(mine, phase, weather);
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
@@ -880,18 +946,33 @@ namespace EdS.World
         /// joueur), lâchers au bout de la marge, fermetures. Rend les événements entre secteurs ; ceux de chaque session (morts, populations)
         /// sont dans <paramref name="zoneEvents"/> et <paramref name="populationEvents"/> si donnés.
         /// </summary>
-        public IReadOnlyList<SectorEvent> Step(List<(string Sector, ZoneEvent Event)>? zoneEvents = null, List<(string Sector, PopulationEvent Event)>? populationEvents = null)
+        /// <param name="afterZone">Sous-lot V2.28b : appelé pour chaque secteur entre le tick de sa session et celui de ses populations, avec
+        /// ses événements (<c>(secteur, événements)</c>) : la partie solo y attribue les morts du tick avant les réapparitions, comme une session
+        /// de zone. Il ne doit ni ouvrir ni fermer de secteur, ni faire entrer ou sortir de joueur.</param>
+        /// <param name="reserved">Sous-lot V2.28b : places de combattants d'un secteur gardées pour d'autres arrivées (formes d'un chef,
+        /// événements), que ses populations ne prennent pas (<see cref="ZonePopulations.Step"/>) ; null : aucune.</param>
+        public IReadOnlyList<SectorEvent> Step(List<(string Sector, ZoneEvent Event)>? zoneEvents = null, List<(string Sector, PopulationEvent Event)>? populationEvents = null,
+            Action<string, IReadOnlyList<ZoneEvent>>? afterZone = null, Func<string, int>? reserved = null)
         {
             // Revue Codex de la PR #150 (9e tour) : tick tout ou rien. Avant toute modification, le registre du monde entier doit avoir la place
             // de tout ce que le tick peut y ajouter (borne : NextTickRegistryNeed), et chaque clé de mort de chaque secteur doit être au format ;
             // sinon refus, rien n'a bougé (aucun secteur n'avance, ni le tick du monde). Les budgets du moteur (travail, file, événements) ne
             // lèvent pas : un dépassement termine la session (renouvelée au tick suivant).
-            long need = NextTickRegistryNeed;
-            if (need > SaveValidator.MaxConsumed)
-                throw new InvalidOperationException($"Registre du monde presque plein : le tick peut demander {need} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");
-            foreach (Open o in _open.Values)
-                if (o.Zone.KeyRefusal() is string bad) throw new InvalidOperationException($"Secteur {o.Name} : {bad} Aucun secteur n'avance.");
-            var events = new List<SectorEvent>();
+            // Sous-lot V2.28b : un seul secteur ouvert, aucune session à naître, aucune sortie demandée (la partie solo, presque toujours) :
+            // rien ne change avant le tick de sa session, dont le propre précontrôle (Zone.Step : même borne du registre, mêmes clés de mort,
+            // rien ne bouge si elle refuse) suffit ; il n'est pas refait ici (mesure : deux passes sur tous les combattants de moins par tick).
+            Arriving(out bool born);
+            bool alone = _open.Count == 1 && !born && _exiting.Count == 0;
+            if (!alone)
+            {
+                long need = NextTickRegistryNeed;
+                if (need > SaveValidator.MaxConsumed)
+                    throw new InvalidOperationException($"Registre du monde presque plein : le tick peut demander {need} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");
+                foreach (Open o in _open.Values)
+                    if (o.Zone.KeyRefusal() is string bad) throw new InvalidOperationException($"Secteur {o.Name} : {bad} Aucun secteur n'avance.");
+            }
+            var events = new List<SectorEvent>(_early);
+            _early.Clear();
             // 00. Revue Codex de la PR #150 (3e tour) : un secteur dont la session a atteint sa durée repart dans une session nouvelle (ses
             // joueurs y arrivent avec leur état) ; le monde n'est jamais bloqué par une session terminée.
             foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
@@ -942,15 +1023,20 @@ namespace EdS.World
 
             // 1. Tous les secteurs ouverts, au même tick du monde.
             // Garde : après les entrées et les renouvellements, la place réelle (bornée par le précontrôle) suffit toujours.
-            long exact = RegistryBound();
-            foreach (Open o in _open.Values) exact = checked(exact + o.Zone.NewDeathsPossible);
-            if (exact > SaveValidator.MaxConsumed || _open.Values.Any(o => o.Zone.KeyRefusal() != null))
-                throw new InvalidOperationException("Précontrôle du registre insuffisant (anomalie) : aucun secteur n'avance.");
+            if (!alone)
+            {
+                long exact = RegistryBound();
+                foreach (Open o in _open.Values) exact = checked(exact + o.Zone.NewDeathsPossible);
+                if (exact > SaveValidator.MaxConsumed || _open.Values.Any(o => o.Zone.KeyRefusal() != null))
+                    throw new InvalidOperationException("Précontrôle du registre insuffisant (anomalie) : aucun secteur n'avance.");
+            }
             foreach (Open o in _open.Values)
             {
                 if (o.Zone.WorldTick != WorldTick) throw new InvalidOperationException($"Secteur {o.Name} au tick {o.Zone.WorldTick}, monde au tick {WorldTick}.");
-                foreach (ZoneEvent e in o.Zone.Step()) zoneEvents?.Add((o.Name, e));
-                foreach (PopulationEvent e in o.Populations.Step(o.Zone, 0, o.Wanted)) populationEvents?.Add((o.Name, e));
+                IReadOnlyList<ZoneEvent> stepped = o.Zone.Step();
+                foreach (ZoneEvent e in stepped) zoneEvents?.Add((o.Name, e));
+                afterZone?.Invoke(o.Name, stepped);
+                foreach (PopulationEvent e in o.Populations.Step(o.Zone, reserved?.Invoke(o.Name) ?? 0, o.Wanted)) populationEvents?.Add((o.Name, e));
             }
             WorldTick = checked(WorldTick + 1);
 

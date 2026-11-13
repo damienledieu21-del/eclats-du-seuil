@@ -1064,7 +1064,9 @@ public class V226SecteursMondeTests
         Assert.All(w.OpenSectors, x => Assert.Equal((before[x], tick), (w.SectorZone(x)!.Engine.CurrentTick, w.SectorZone(x)!.WorldTick)));
         Assert.Equal(new[] { "alice" }, w.Players);
         Assert.True(w.CancelEnter("bruno"));
-        Assert.Equal(SaveValidator.MaxConsumed + 0L, w.NextTickRegistryNeed);
+        // Sous-lot V2.28b : sans entrée annoncée, aucune session ne peut naître avant le tick des secteurs : la borne redevient exacte
+        // (registre et morts possibles), sans la clé de Bruno ni celles des deux créatures de l'aire.
+        Assert.Equal(SaveValidator.MaxConsumed + 1L - 1 - 2, w.NextTickRegistryNeed);
         w.Step();
         Assert.Equal(tick + 1, w.WorldTick);
         Assert.All(w.OpenSectors, x => Assert.Equal(w.WorldTick, w.SectorZone(x)!.WorldTick));
