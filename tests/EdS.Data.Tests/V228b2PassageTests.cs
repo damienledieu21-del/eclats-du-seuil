@@ -7,6 +7,7 @@ using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Stats;
 using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
@@ -216,16 +217,144 @@ public class V228b2PassageTests
     }
 
     /// <summary>Frappe la créature de la population jusqu'à sa mort (le loup attaque aussi) ; rend vrai si elle est tombée.</summary>
-    private static bool Kill(WorldSession w, string population)
+    private static bool Kill(WorldSession w, string population, List<SessionStep>? steps = null)
     {
         for (int i = 0; i < 1200; i++)
         {
             if (i % 20 == 0)
                 try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", w.CurrentCreature(population))); }
                 catch (ArgumentException) { }
-            if (w.Step().Experience.Count > 0) return true;
+            SessionStep step = w.Step();
+            steps?.Add(step);
+            if (step.Experience.Count > 0) return true;
         }
         return false;
+    }
+
+    // --- Revue Codex de la PR #157 (1er tour) : relever, propager, puis remplacer ----------------------------------------------
+
+    [Fact]
+    public void Degats_du_dernier_tick_au_depart_comptes_pour_l_usure()
+    {
+        // Un loup du bord saigne le personnage (saignement : 6 s, un coup toutes les 2 s) ; il est vaincu, puis le personnage attend k ticks
+        // et passe à l'est en saignant encore. Pour chaque k (un saignement tombe au tick même du départ pour l'un d'eux), tous les dégâts
+        // reçus par ses deux combattants sont comptés pour l'usure : rapports d'usure et dégâts en attente.
+        ZoneDefinition zone = Essai(
+            z => z["data"]!["populations"]!.AsArray().Add(new JsonObject { ["creature"] = "loup_bord", ["respawnMs"] = 600_000, ["leashRange"] = 20, ["loot"] = "loot.loup" }),
+            sc =>
+            {
+                var wolf = (JsonObject)sc["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_ouest")!.DeepClone();
+                wolf["id"] = "loup_bord";
+                wolf["position"] = new JsonArray(244, 128);
+                wolf["health"] = 120;
+                wolf["attacks"]![0]!["applies"] = new JsonArray(new JsonObject { ["status"] = "bleed", ["coefficient"] = 0.5 });
+                sc["data"]!["combatants"]!.AsArray().Add(wolf);
+            });
+        int bled = 0;
+        for (int k = 0; k < 44; k++)
+        {
+            WorldSession w = Open(zone);
+            var steps = new List<SessionStep>();
+            WalkTo(w, 238, 128, steps);
+            Assert.True(Kill(w, "loup_bord", steps));
+            for (int i = 0; i < k; i++) steps.Add(w.Step());
+            Zone west = w.Zone;
+            string westId = w.CombatantId;
+            WalkTo(w, 300, 128, steps);
+            Assert.Equal(("s01_00", 1), (w.Sector, w.Passages));
+            for (int i = 0; i < 200; i++) steps.Add(w.Step());   // saignement fini, combat fini : l'usure est passée
+            long taken = west.Engine.View(westId).Counters.DamageTaken + w.Zone.Engine.View(w.CombatantId).Counters.DamageTaken;
+            long counted = steps.Sum(x => x.Wear?.Damage ?? 0) + w.PendingDamage;
+            Assert.True(taken > 0);
+            Assert.True(taken == counted, $"k = {k} : {taken} reçus, {counted} comptés");
+            if (w.Zone.Engine.View(w.CombatantId).Counters.DamageTaken > 0) bled++;
+        }
+        Assert.Equal(0, bled);   // les altérations ne passent pas : le saignement s'arrête au passage
+    }
+
+    [Fact]
+    public void Releves_repris_avec_les_ecarts_du_dernier_tick_du_sortant()
+    {
+        // Le sortant a reçu 50 dégâts et fait 7 coups, 2 blocages, 1 parade ; le dernier relevé en avait compté 40, 5, 2 et 0 (son dernier
+        // tick n'est pas relevé). L'arrivant part de zéro. Le prochain relevé doit compter 10, 2, 0 et 1 de plus que l'arrivant.
+        var rebased = WorldSession.Rebased((50, 7, 2, 1), (0, 0, 0, 0), (40, 5, 2, 0));
+        Assert.Equal((-10L, -2L, 0L, -1L), rebased);
+        // Propriété : arrivant quelconque, l'écart compté au relevé suivant est celui du sortant plus celui de l'arrivant.
+        foreach (long arrive in new long[] { 0, 3, 120 })
+        {
+            var r = WorldSession.Rebased((50, 7, 2, 1), (arrive, arrive, arrive, arrive), (40, 5, 2, 0));
+            Assert.Equal((10L, 2L, 0L, 1L), (arrive - r.Taken, arrive - r.Hits, arrive - r.Blocks, arrive - r.Parries));
+        }
+        // Rien de neuf chez le sortant : l'arrivant repart de ses propres compteurs.
+        Assert.Equal((4L, 4L, 4L, 4L), WorldSession.Rebased((40, 5, 2, 0), (4, 4, 4, 4), (40, 5, 2, 0)));
+    }
+
+    [Fact]
+    public void Nuit_d_une_creature_rare_tombee_dans_un_autre_secteur_au_tick_du_monde()
+    {
+        // La session de l'est s'ouvre ~20 s après celle de l'ouest ; la créature rare de l'est tombe à 22 h (début de la nuit) pendant que le
+        // personnage est à l'ouest. Le tick de sa mort, relatif à la session de l'est, donne la nuit 0 ; relatif à celle de l'ouest, il
+        // tomberait avant 22 h (de jour) et la créature reviendrait la même nuit.
+        ZoneDefinition zone = Essai(
+            z => z["data"]!["populations"]!.AsArray().Add(JsonNode.Parse("""
+                { "creature": "loup_rare", "respawnMs": 600000, "leashRange": 25, "loot": "loot.loup",
+                  "night": { "chancePercent": 35, "signMs": 15000, "sign": "text.zone.loup_blanc.signe" } }
+                """)),
+            sc =>
+            {
+                var wolf = (JsonObject)sc["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_est")!.DeepClone();
+                wolf["id"] = "loup_rare";
+                wolf["position"] = new JsonArray(420, 60);
+                sc["data"]!["combatants"]!.AsArray().Add(wolf);
+            });
+        var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
+        const long start = 124_800;   // 21 h 52
+        WorldSession w = Open(zone, new WorldSave(zone.Id, start, 0, new[] { PlayerCharacters.PlacesKey }, Hero()));
+        WalkTo(w, 170, 128);
+        Assert.Equal("s00_00", w.Sector);
+        Zone east = w.Host!.SectorZone("s01_00")!;
+        Assert.True(east.StartWorldTick > w.Zone.StartWorldTick + 100);
+        while (w.Host.WorldTick < 126_100) w.Step();   // 22 h passées
+        long death = checked(w.Host.WorldTick - 1 - east.StartWorldTick);   // tick de la session de l'est
+        Assert.Null(NightCreatures.NightOf(clock.At(w.Zone.StartWorldTick + death)));   // l'ancienne conversion : de jour
+        long night = NightCreatures.NightOf(clock.At(east.StartWorldTick + death))!.Value;
+        string key = NightCreatures.Key(zone.Id, night, "loup_rare");
+        Assert.False(w.Registered(key));
+        w.AfterSector("s01_00", new[] { new ZoneEvent(ZoneEventKind.Death, "zone.essai/s01_00/1/death/loup_rare", "loup_rare", death, true) });
+        Assert.True(w.Registered(key));
+    }
+
+    [Fact]
+    public void Bonus_expire_au_tick_du_passage_retire_au_combattant_d_arrivee()
+    {
+        // Un élixir actif expire au tick même du départ (pour l'une des durées essayées) : le bonus retiré n'est pas perdu, il est appliqué
+        // au combattant d'arrivée.
+        ZoneDefinition zone = TwoSectors.Value;
+        // Tick de la partie (compté depuis l'ouverture) où le passage a lieu, en marchant tout droit vers l'est.
+        WorldSession timing = Open(zone);
+        int passage = 1;
+        CombatEngine first = timing.Zone.Engine;
+        first.Submit(new CombatCommand(first.CurrentTick * first.TickMilliseconds, timing.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
+        while (timing.Passages == 0)
+        {
+            timing.Step();
+            passage++;
+        }
+        Assert.True(passage > 100);
+        foreach (int ticks in Enumerable.Range(passage - 3, 7))
+        {
+            SavedCharacter hero = Hero().WithBoons(new[] { new SavedBoon(BoonKind.Elixir, "item.elixir_de_vigueur", ticks) });
+            var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, ItemsCatalog);
+            GearBonus boosted = w.CombatGear;
+            w.Step();
+            CombatEngine e = w.Zone.Engine;
+            e.Submit(new CombatCommand(e.CurrentTick * e.TickMilliseconds, w.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
+            while (w.Passages == 0) w.Step();
+            for (int i = 0; i < 20; i++) w.Step();
+            Assert.Empty(w.ActiveBoons);
+            Assert.NotEqual(boosted, w.CombatGear);
+            Assert.True(w.Zone.Engine.View(w.CombatantId).Gear!.Equals(w.CombatGear), $"durée {ticks}, passage au tick {passage}");
+        }
     }
 
     [Fact]

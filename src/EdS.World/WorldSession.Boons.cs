@@ -106,7 +106,14 @@ namespace EdS.World
             _gearPending = false;
             if (wanted.Equals(_combatGear) || Zone.Engine.IsFinished) return;
             CombatantView me = Zone.Engine.View(CombatantId);
-            if (me.IsDead || !me.IsPresent) return;
+            if (me.IsDead) return;
+            // Revue Codex de la PR #157 (1er tour) : absent (parti au tick d'un passage, ou pas encore arrivé), la synchronisation reste en
+            // attente : elle s'applique au combattant d'arrivée dès qu'il est là, au lieu d'être perdue.
+            if (!me.IsPresent)
+            {
+                _gearPending = true;
+                return;
+            }
             try
             {
                 Zone.Engine.Submit(CombatCommand.SetGear(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), CombatantId, wanted));

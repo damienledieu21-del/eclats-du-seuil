@@ -548,7 +548,7 @@ namespace EdS.World
         /// récompenses (<see cref="AfterZone"/>, une fois par tick). Une autre : seulement la nuit d'une créature rare tombée là (il ne peut
         /// l'avoir frappée : il n'est pas dans cette session).
         /// </summary>
-        private void AfterSector(string sector, IReadOnlyList<ZoneEvent> events)
+        internal void AfterSector(string sector, IReadOnlyList<ZoneEvent> events)
         {
             if (!_tickDone && sector == _host!.SectorOf(_character.Id))
             {
@@ -556,8 +556,12 @@ namespace EdS.World
                 AfterZone(events);
                 return;
             }
+            // Revue Codex de la PR #157 (1er tour) : le tick d'un événement est relatif à la session de son secteur ; il est converti en tick du
+            // monde avec la session de ce secteur-là, jamais avec celle du personnage.
+            if (!(_host!.SectorZone(sector) is Zone there)) return;
             foreach (ZoneEvent e in events)
-                if (e.Kind == ZoneEventKind.Death && e.FirstTime && _host!.PopulationOf(e.Combatant) is Population rare && rare.Night != null) NightDefeated(rare, e.Tick);
+                if (e.Kind == ZoneEventKind.Death && e.FirstTime && _host.PopulationOf(e.Combatant) is Population rare && rare.Night != null)
+                    NightDefeated(rare, checked(there.StartWorldTick + e.Tick));
         }
 
         /// <summary>
@@ -573,15 +577,35 @@ namespace EdS.World
             if (!_host!.IsFollowed(_character.Id) || !(_host.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
             string id = _host.CombatantOf(_character.Id);
             if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
+            // Revue Codex de la PR #157 (1er tour) : une seule passe, dans l'ordre : relever, propager, puis remplacer.
+            // 1. Relever : ce que le combattant sortant a reçu et fait depuis le dernier relevé (son dernier tick compris : dégâts pour
+            //    l'usure, coups, blocages et parades pour le tutoriel) n'est pas encore compté ; c'est gardé comme écart.
+            CombatantCounters gone = Zone.Engine.View(CombatantId).Counters;
+            // 2. Remplacer : session et identité du combattant d'arrivée.
             Zone = zone;
             _combatantId = id;
             Passages = checked(Passages + 1);
-            CombatantCounters c = zone.Engine.View(id).Counters;
-            _lastTaken = c.DamageTaken;
-            _hitsSeen = c.Hits;
-            _blocksSeen = c.Blocks;
-            _parriesSeen = c.PerfectParries;
+            CombatantView arriving = zone.Engine.View(id);
+            CombatantCounters c = arriving.Counters;
+            // Les relevés repartent du combattant d'arrivée, moins les écarts du sortant : TrackWear et Practice les comptent au même tick.
+            (_lastTaken, _hitsSeen, _blocksSeen, _parriesSeen) = Rebased((gone.DamageTaken, gone.Hits, gone.Blocks, gone.PerfectParries),
+                (c.DamageTaken, c.Hits, c.Blocks, c.PerfectParries), (_lastTaken, _hitsSeen, _blocksSeen, _parriesSeen));
+            // 3. Propager le bonus d'équipement voulu : l'hôte a placé le combattant d'arrivée avec le bonus du sortant ; si un bonus a expiré
+            //    (ou changé) quand le sortant n'était plus là pour le recevoir, la synchronisation reste en attente et s'applique à l'arrivant.
+            if (arriving.Gear is GearBonus carried) _combatGear = carried;
+            if (!CombatGear.Equals(_combatGear)) _gearPending = true;
         }
+
+        /// <summary>
+        /// Revue Codex de la PR #157 (1er tour) : relevés (dégâts reçus pour l'usure, coups, blocages, parades pour le tutoriel) repris du
+        /// combattant d'arrivée <paramref name="arriving"/>, moins ce que le sortant <paramref name="gone"/> a reçu et fait depuis le dernier
+        /// relevé <paramref name="seen"/> (son dernier tick compris) : le prochain relevé compte ces écarts une fois, avec ceux de l'arrivant.
+        /// Fonction pure.
+        /// </summary>
+        internal static (long Taken, long Hits, long Blocks, long Parries) Rebased((long Taken, long Hits, long Blocks, long Parries) gone,
+            (long Taken, long Hits, long Blocks, long Parries) arriving, (long Taken, long Hits, long Blocks, long Parries) seen) =>
+            (checked(arriving.Taken - Math.Max(0, gone.Taken - seen.Taken)), checked(arriving.Hits - (gone.Hits - seen.Hits)),
+             checked(arriving.Blocks - (gone.Blocks - seen.Blocks)), checked(arriving.Parries - (gone.Parries - seen.Parries)));
 
         /// <summary>Après le tick de la session, avant ses populations : objets de soin, bonus actifs, récompenses des morts du tick.</summary>
         private void AfterZone(IReadOnlyList<ZoneEvent> events)
@@ -1218,9 +1242,11 @@ namespace EdS.World
         /// revient pas avant la nuit suivante, même après une halte). Le registre garde la place des morts possibles d'un tick : sans elle, la
         /// clé n'est pas gardée (la créature pourra revenir cette nuit-là).
         /// </summary>
-        internal void NightDefeated(Population population, long tick)
+        /// <param name="worldTick">Revue Codex de la PR #157 (1er tour) : tick du <b>monde</b> de la mort (celui de la session de son secteur,
+        /// converti par l'appelant).</param>
+        internal void NightDefeated(Population population, long worldTick)
         {
-            if (population.Night is null || !(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return;
+            if (population.Night is null || !(NightCreatures.NightOf(Zone.Clock.At(worldTick)) is long night)) return;
             if (RegistryRoom - 1 >= DeathReserve) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
         }
 
@@ -1236,7 +1262,7 @@ namespace EdS.World
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == CombatantId) continue;
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
-                if (PopulationOf(e.Combatant) is Population rare) NightDefeated(rare, e.Tick);   // réponses du 31 octobre 2026
+                if (PopulationOf(e.Combatant) is Population rare) NightDefeated(rare, checked(Zone.StartWorldTick + e.Tick));   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 // Sous-lot V2.4 (bêtes qui se battent) : et il doit l'avoir frappée ; une bête tuée par d'autres bêtes ne compte pas (ni
                 // expérience, ni butin, ni objectif « vaincre »).
