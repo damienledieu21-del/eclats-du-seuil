@@ -138,7 +138,40 @@ namespace EdS.World
         private readonly ClassDefinition? _class;
         private readonly ProgressionRules _rules;
 
-        public Zone Zone { get; }
+        /// <summary>
+        /// Session de zone où se trouve le personnage. Sous-lot V2.28b (2) : sur une aire à plusieurs secteurs, celle du secteur où il est ;
+        /// elle change à chaque passage (<see cref="Passages"/>).
+        /// </summary>
+        public Zone Zone { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : identité du personnage dans la session où il est : la sienne, ou <c>&lt;personnage&gt;_p&lt;n&gt;</c> quand il
+        /// revient dans une session où la sienne a déjà servi (<see cref="SectorWorld.CombatantOf"/>).
+        /// </summary>
+        public string CombatantId => _combatantId ?? _character.Id;
+
+        private string? _combatantId;
+
+        /// <summary>Sous-lot V2.28b (2) : passages d'un secteur à l'autre faits par le personnage depuis le début de la session.</summary>
+        public int Passages { get; private set; }
+
+        /// <summary>Sous-lot V2.28b (2) : secteur de simulation où se trouve le personnage (null hors de l'hôte des secteurs).</summary>
+        public string? Sector => _host?.SectorOf(_character.Id);
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : l'événement <paramref name="key"/> est-il au registre du monde ? Sur l'hôte des secteurs : le registre du
+        /// monde et celui de chaque session ouverte (une découverte faite dans un secteur vaut dans les autres) ; sinon celui de la session.
+        /// </summary>
+        public bool Registered(string key) => _host?.IsConsumed(key) ?? Zone.IsConsumed(key);
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : place restante au registre. Sur l'hôte des secteurs, d'après la borne du registre du monde entier
+        /// (<see cref="SectorWorld.RegistryRoom"/>), jamais d'après la seule recopie de la session où est le personnage.
+        /// </summary>
+        public int RegistryRoom => _host is null ? Zone.RegistryRoom : (int)Math.Min(Zone.RegistryRoom, _host.RegistryRoom);
+
+        /// <summary>Sous-lot V2.28b (2) : population d'une créature, dans le secteur où elle vit.</summary>
+        private Population? PopulationOf(string combatant) => _host != null ? _host.PopulationOf(combatant) : _populations?.Of(combatant);
 
         /// <summary>Personnage tel qu'il sera sauvegardé (expérience à jour).</summary>
         public SavedCharacter Character => _character;
@@ -193,7 +226,7 @@ namespace EdS.World
                 // vient de retirer.
                 // Relecture indépendante de la PR #74 : tout ou rien. Sans la place de toutes les clés au registre, le changement entier est
                 // refusé (sinon une compétence retirée reviendrait à la halte et serait annoncée de nouveau).
-                PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out IReadOnlyList<SkillUnlock> handed);
+                PlayerCharacters.Learn(_character, _progression, _rules, Registered, out _, out IReadOnlyList<SkillUnlock> handed);
                 if (!CanGive(Keys(handed)))
                     return new BuildViolation(BuildViolationCode.RegistryFull, "skills",
                         "Le registre du monde est plein : ce changement de compétences ne peut pas être gardé.");
@@ -208,7 +241,7 @@ namespace EdS.World
 
         /// <summary>Clés de <paramref name="keys"/> pas encore au registre, sans doublon.</summary>
         private List<string> ToGive(IEnumerable<string> keys) =>
-            keys.Distinct(StringComparer.Ordinal).Where(k => !Zone.IsConsumed(k)).ToList();
+            keys.Distinct(StringComparer.Ordinal).Where(k => !Registered(k)).ToList();
 
         /// <summary>
         /// Le registre a la place de toutes les clés à donner, en gardant celle des morts possibles d'un tick (la règle de la découverte d'un
@@ -217,7 +250,7 @@ namespace EdS.World
         private bool CanGive(IEnumerable<string> keys)
         {
             int count = ToGive(keys).Count;
-            return count == 0 || Zone.RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
+            return count == 0 || RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
         }
 
         /// <summary>
@@ -247,7 +280,7 @@ namespace EdS.World
         /// </summary>
         private void GiveAtEntry()
         {
-            if (!Give(_keysAtEntry) && _migrating && !Zone.IsConsumed(PlayerCharacters.PlacesKey) && Zone.RegistryRoom > 0)
+            if (!Give(_keysAtEntry) && _migrating && !Registered(PlayerCharacters.PlacesKey) && RegistryRoom > 0)
                 Zone.Consume(PlayerCharacters.PlacesKey);
         }
 
@@ -294,7 +327,7 @@ namespace EdS.World
         /// équipées dans les places libres (<see cref="PlayerCharacters.Learn"/>, sans rien changer ici). C'est la barre que montre et
         /// que modifie l'écran des compétences.
         /// </summary>
-        public SavedCharacter NextEntry => PlayerCharacters.Learn(_character, _progression, _rules, Zone.IsConsumed, out _, out _);
+        public SavedCharacter NextEntry => PlayerCharacters.Learn(_character, _progression, _rules, Registered, out _, out _);
 
         /// <summary>Sous-lot 12.9b : compétences gagnées et équipées à l'entrée dans cette session (niveau atteint depuis la précédente).</summary>
         public IReadOnlyList<SkillUnlock> Learned { get; }
@@ -404,7 +437,7 @@ namespace EdS.World
             else Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
             // Sous-lot V1.4 : point de départ du relevé des dégâts reçus, et pièces portées à l'entrée (celles du combat de cette session).
-            _lastTaken = Zone.Engine.View(_character.Id).Counters.DamageTaken;
+            _lastTaken = Zone.Engine.View(CombatantId).Counters.DamageTaken;
             List<string> entryPlaces = Inventory.Places().Where(p => Inventory.WornInstanceAt(p) is { } x && items.Wears(items.Item(x.Item))).ToList();
             _entryPieces = entryPlaces.Select(p => Inventory.WornInstanceAt(p)!).ToList();   // les instances mêmes (suivi par identité)
             EnteredGear = setup.Gear;
@@ -428,7 +461,7 @@ namespace EdS.World
         public void Drink(string item)
         {
             if (item is null || !_carried.ContainsKey(item)) throw new ArgumentException($"Objet de soin « {item} » non emporté.", nameof(item));
-            Zone.Engine.Submit(CombatCommand.Use(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), _character.Id, item));
+            Zone.Engine.Submit(CombatCommand.Use(checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), CombatantId, item));
         }
 
         /// <summary>Sous-lot 12.6 : récolte un nœud à portée (3 m), s'il a repoussé et que l'objet tient.</summary>
@@ -466,7 +499,7 @@ namespace EdS.World
         private void SyncConsumables()
         {
             if (_carried.Count == 0) return;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             foreach (string id in _carried.Keys.ToArray())
             {
                 int now = me.ConsumableCharges.TryGetValue(id, out int left) ? left : _carried[id];
@@ -497,6 +530,45 @@ namespace EdS.World
         private Action<string, IReadOnlyList<ZoneEvent>>? _afterZone;
         private Func<string, int>? _reserved;
 
+        private bool _tickDone;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : après le tick d'une session de secteur, avant ses populations. Celle du personnage : objets de soin, bonus,
+        /// récompenses (<see cref="AfterZone"/>, une fois par tick). Une autre : seulement la nuit d'une créature rare tombée là (il ne peut
+        /// l'avoir frappée : il n'est pas dans cette session).
+        /// </summary>
+        private void AfterSector(string sector, IReadOnlyList<ZoneEvent> events)
+        {
+            if (!_tickDone && sector == _host!.SectorOf(_character.Id))
+            {
+                _tickDone = true;
+                AfterZone(events);
+                return;
+            }
+            foreach (ZoneEvent e in events)
+                if (e.Kind == ZoneEventKind.Death && e.FirstTime && _host!.PopulationOf(e.Combatant) is Population rare && rare.Night != null) NightDefeated(rare, e.Tick);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : après un tick de l'hôte, suit le personnage dans la session de son secteur. À un passage (session ou identité
+        /// nouvelle), les compteurs relevés sur son combattant (dégâts reçus pour l'usure, gestes pour le tutoriel) repartent de ceux du
+        /// combattant d'arrivée : rien n'est compté deux fois ni perdu.
+        /// </summary>
+        private void Follow()
+        {
+            if (!(_host!.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
+            string id = _host.CombatantOf(_character.Id);
+            if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
+            Zone = zone;
+            _combatantId = id;
+            Passages = checked(Passages + 1);
+            CombatantCounters c = zone.Engine.View(id).Counters;
+            _lastTaken = c.DamageTaken;
+            _hitsSeen = c.Hits;
+            _blocksSeen = c.Blocks;
+            _parriesSeen = c.PerfectParries;
+        }
+
         /// <summary>Après le tick de la session, avant ses populations : objets de soin, bonus actifs, récompenses des morts du tick.</summary>
         private void AfterZone(IReadOnlyList<ZoneEvent> events)
         {
@@ -524,10 +596,16 @@ namespace EdS.World
         /// </summary>
         private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
         {
-            if (zone.Region is null || zone.Setup.Space is null || !SectorMap.For(zone).HomeHoldsArea) return null;
+            if (zone.Region is null || zone.Setup.Space is null) return null;
+            // Sous-lot V2.28b (2) : une aire à plusieurs secteurs est tenue par l'hôte si la zone n'a ni chef ni événement du monde (ils seront
+            // liés à leur secteur ensuite) ; sinon elle reste une seule session, comme avant.
+            bool single = SectorMap.For(zone).HomeHoldsArea;
+            if (!single && (zone.Bosses.Count > 0 || zone.Events.Count > 0)) return null;
             var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
             string weatherZone = storyZone ?? zone.Id;
-            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), save.Consumed, null,
+            // L'aire du cœur seul garde exactement la session d'avant (sessions des secteurs rendues telles quelles) ; une aire à plusieurs
+            // secteurs reprend la dernière session de chaque secteur : une réouverture prend la suivante.
+            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), save.Consumed, single ? null : save.Sectors,
                 log is null ? (Func<string, long, ICombatLog>?)null : (sector, session) => log,
                 (population, worldTick) => Wanted(population, checked(worldTick - Zone.StartWorldTick)),
                 tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind));
@@ -739,7 +817,7 @@ namespace EdS.World
         /// </summary>
         public WeatherState Weather => WorldWeather.At(_storyZone ?? Zone.Id, Zone.Time);
 
-        int INarrativeWorld.PassageRoom => Zone.RegistryRoom;
+        int INarrativeWorld.PassageRoom => RegistryRoom;
 
         GroundVector? INarrativeWorld.PlayerPosition
         {
@@ -747,7 +825,7 @@ namespace EdS.World
             {
                 // Intérieurs : hors de la zone de l'histoire (un intérieur), les PNJ, lieux, nœuds et ateliers ne sont pas là.
                 if (!InStoryZone) return null;
-                CombatantView me = Zone.Engine.View(_character.Id);
+                CombatantView me = Zone.Engine.View(CombatantId);
                 return me.IsPresent && !me.IsDead ? me.Position : null;
             }
         }
@@ -760,7 +838,7 @@ namespace EdS.World
         {
             if (zone is null) return ((INarrativeWorld)this).PlayerPosition;
             if (Definition is null || Definition.Id != zone) return null;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             return me.IsPresent && !me.IsDead ? me.Position : null;
         }
 
@@ -933,17 +1011,17 @@ namespace EdS.World
             return Zone.Consume(zone.PassageKey(passage));
         }
 
-        public bool IsPassageOpen(string passage) => Definition is { } zone && Zone.IsConsumed(zone.PassageKey(passage));
+        public bool IsPassageOpen(string passage) => Definition is { } zone && Registered(zone.PassageKey(passage));
 
         /// <summary>Vie en cours d'une population (<c>loup1</c>, puis <c>loup1_v2</c>…).</summary>
         public string CurrentCreature(string population) =>
-            (_populations ?? throw new InvalidOperationException("Partie sans zone du monde.")).CurrentOf(population);
+            _host != null ? _host.CurrentOf(population) : (_populations ?? throw new InvalidOperationException("Partie sans zone du monde.")).CurrentOf(population);
 
         /// <summary>
         /// Sous-lot V2.9.1 (revue Codex de la PR #115) : <paramref name="combatant"/> est-il une vie revenue après la mort de la précédente ?
         /// Faux pour une première arrivée, une laisse, un retour à ses heures sans mort, et sans zone du monde. Affichage seulement.
         /// </summary>
-        public bool ReturnedFromDeath(string combatant) => _populations != null && _populations.ReturnedFromDeath(combatant);
+        public bool ReturnedFromDeath(string combatant) => _host != null ? _host.ReturnedFromDeath(combatant) : _populations != null && _populations.ReturnedFromDeath(combatant);
 
         /// <summary>Sous-lot 12.3 : inventaire et équipement du personnage (changements effectifs à la prochaine entrée).</summary>
         public Inventory Inventory { get; }
@@ -968,7 +1046,7 @@ namespace EdS.World
         public IReadOnlyList<string> Adjusted { get; }
 
         /// <summary>Sous-lot V1.2 : garde du bouclier avec lequel il est entré dans la zone (null : celle des règles).</summary>
-        public ShieldGuard? EnteredShield => Zone.Engine.View(_character.Id).Rules?.Shield;
+        public ShieldGuard? EnteredShield => Zone.Engine.View(CombatantId).Rules?.Shield;
 
         /// <summary>
         /// Porte l'équipement de la place <paramref name="place"/> de l'inventaire, au niveau actuel du personnage, à la place où il va
@@ -990,7 +1068,7 @@ namespace EdS.World
         public SessionStep Step()
         {
             // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
-            _tickWasPresent = Zone.Engine.View(_character.Id).IsPresent;
+            _tickWasPresent = Zone.Engine.View(CombatantId).IsPresent;
             _tickExpired = Array.Empty<BoonExpired>();
             _tickGains = Array.Empty<ExperienceGained>();
             _tickLoot = Array.Empty<LootGained>();
@@ -1003,7 +1081,10 @@ namespace EdS.World
                 // terminée n'est pas renouvelée ici : la partie la reprend au dernier point sûr, comme avant.
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
-                _host.Step(null, _tickPopulations, _afterZone ??= (sector, events) => AfterZone(events), _reserved ??= sector => ReservedPlaces);
+                _tickDone = false;
+                _host.Step(null, _tickPopulations, _afterZone ??= AfterSector, _reserved ??= sector => ReservedPlaces);
+                if (!_tickDone) AfterZone(Array.Empty<ZoneEvent>());   // le personnage n'est dans aucun secteur simulé (reprise d'un passage)
+                Follow();
                 if (_tickPopulations.Count == 0) population = Array.Empty<PopulationEvent>();
                 else
                 {
@@ -1024,7 +1105,7 @@ namespace EdS.World
             var story = new List<StoryEvent>();
             // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
             IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
             var boss = new List<BossEvent>();
             boss.AddRange(_bossStarts);
@@ -1039,7 +1120,7 @@ namespace EdS.World
                     // Revue Codex de la PR #48 (4e tour) : même présence que pour l'expérience : un départ prend effet en fin de tick, après
                     // les morts ; le personnage présent au début du tick et vivant compte.
                     bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
-                    if (b.Kind == BossEventKind.Defeated && here && !Zone.IsConsumed(Definition!.VictoryKeyOf(fight.Boss))) fight.RewardPending = true;
+                    if (b.Kind == BossEventKind.Defeated && here && !Registered(Definition!.VictoryKeyOf(fight.Boss))) fight.RewardPending = true;
                 }
                 if (fight.RewardPending) GiveBossRewards(fight, rewards, story);
             }
@@ -1115,7 +1196,7 @@ namespace EdS.World
         {
             if (Narrative?.Hunts(population.Creature, population.Family) == true) return true;
             if (!(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return false;
-            return !Zone.IsConsumed(NightCreatures.Key(Zone.Id, night, population.Creature)) && NightCreatures.Appears(Zone.Id, night, population);
+            return !Registered(NightCreatures.Key(Zone.Id, night, population.Creature)) && NightCreatures.Appears(Zone.Id, night, population);
         }
 
         /// <summary>
@@ -1126,22 +1207,22 @@ namespace EdS.World
         internal void NightDefeated(Population population, long tick)
         {
             if (population.Night is null || !(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return;
-            if (Zone.RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
+            if (RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
         }
 
         /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
         private void Reward(IReadOnlyList<ZoneEvent> events, bool wasPresent, out IReadOnlyList<ExperienceGained> experience, out IReadOnlyList<LootGained> rolls)
         {
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
             var gains = new List<ExperienceGained>();
             var loot = new List<LootGained>();
             foreach (ZoneEvent e in events)
             {
-                if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == _character.Id) continue;
+                if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == CombatantId) continue;
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
-                if (_populations?.Of(e.Combatant) is Population rare) NightDefeated(rare, e.Tick);   // réponses du 31 octobre 2026
+                if (PopulationOf(e.Combatant) is Population rare) NightDefeated(rare, e.Tick);   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 // Sous-lot V2.4 (bêtes qui se battent) : et il doit l'avoir frappée ; une bête tuée par d'autres bêtes ne compte pas (ni
                 // expérience, ni butin, ni objectif « vaincre »).
@@ -1170,7 +1251,7 @@ namespace EdS.World
                 // Sous-lot 12.5 : compte pour les objectifs « vaincre » de sa population.
                 // Sous-lot V2.5 : une créature d'événement compte pour sa famille (contrats), jamais comme la créature de son modèle (le
                 // meneur des bandits d'une quête reste à vaincre lui-même).
-                Population? population = _populations?.Of(e.Combatant);
+                Population? population = PopulationOf(e.Combatant);
                 Population? eventModel = population is null ? _events?.Of(e.Combatant) : null;
                 Narrative?.Defeated(population?.Creature ?? e.Combatant, population?.Family ?? eventModel?.Family);
             }
@@ -1190,7 +1271,7 @@ namespace EdS.World
             // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
             // plein : les récompenses attendent, comme un inventaire plein).
             // Relecture de la PR #76 : même règle que les autres clés du registre : la clé de victoire et les morts possibles d'un tick.
-            bool room = Zone.RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count;
+            bool room = RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count;
             foreach ((string item, int count) in b.Rewards)
                 if (!room || trial.Add(item, count) != InventoryRefusal.None)
                 {
@@ -1270,6 +1351,10 @@ namespace EdS.World
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
+            // Sous-lot V2.28b (2) : sur une aire à plusieurs secteurs, la sauvegarde est celle du monde : session du monde, registre du monde et
+            // de chaque session ouverte, dernière session de chaque secteur.
+            if (_host != null && !_host.Map.HomeHoldsArea)
+                return new WorldSave(world.Zone, world.WorldTick, _host.Session, _host.Consumed, character, sectors: _host.SectorSessions, resume: Resume);
             return new WorldSave(world.Zone, world.WorldTick, world.Sessions, world.Consumed, character, sectors: _sectors, resume: Resume);
         }
     }

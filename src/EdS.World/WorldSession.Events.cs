@@ -44,7 +44,7 @@ namespace EdS.World
         /// </summary>
         internal int ReservedPlaces => checked(FormsToCome + (_events?.PendingPlaces ?? 0));
 
-        private Population? PopulationOfCombatant(string combatant) => _populations?.Of(combatant) ?? _events?.Of(combatant);
+        private Population? PopulationOfCombatant(string combatant) => PopulationOf(combatant) ?? _events?.Of(combatant);
 
         internal Population PopulationFor(string creature) =>
             Definition?.PopulationOf(creature) ?? throw new InvalidOperationException($"Population « {creature} » absente de la zone.");
@@ -72,7 +72,7 @@ namespace EdS.World
         {
             if (_events is null) return RiftRefusal.NoRift;
             var notices = new List<WorldEventNotice>();
-            RiftRefusal refusal = _events.CloseRift(this, Zone, eventId ?? throw new ArgumentNullException(nameof(eventId)), _character.Id, notices);
+            RiftRefusal refusal = _events.CloseRift(this, Zone, eventId ?? throw new ArgumentNullException(nameof(eventId)), CombatantId, notices);
             _queuedNotices.AddRange(notices);
             return refusal;
         }

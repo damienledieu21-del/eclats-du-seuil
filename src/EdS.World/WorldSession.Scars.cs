@@ -174,7 +174,7 @@ namespace EdS.World
             if (!(Definition is ZoneDefinition zone) || !InStoryZone || !(ScarOf(zone, key) is (WorldEventDefinition e, WorldEventGroup g))
                 || !_character.Scars.Any(x => x.Id == key)) return ScarRefusal.NoScar;
             WorldEventScar rule = e.Scar!;
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p) || !(me.Radius is Fixed radius)
                 || ZonePopulations.Beyond(p, radius, g.Position!.Value, Fixed.Zero, PurifyRange)) return ScarRefusal.TooFar;
             if (_events?.RiftOpenAt(e.Id, g.Id) == true) return ScarRefusal.RiftOpen;

@@ -103,7 +103,7 @@ namespace EdS.World
         /// <summary>Relève la baisse des PV du personnage depuis le tick précédent ; applique l'usure à la fin du combat.</summary>
         private WearReport? TrackWear(bool defeated)
         {
-            CombatantView me = Zone.Engine.View(_character.Id);
+            CombatantView me = Zone.Engine.View(CombatantId);
             long taken = me.Counters.DamageTaken;
             if (taken > _lastTaken) _pendingDamage = checked(_pendingDamage + (taken - _lastTaken));
             _lastTaken = Math.Max(_lastTaken, taken);
@@ -169,7 +169,7 @@ namespace EdS.World
         {
             if (_pendingDamage == 0) return Inventory;
             Inventory copy = Inventory.Clone();
-            copy.WearPieces(_entryPieces, PieceLosses(_pendingDamage, Zone.Engine.View(_character.Id).MaxHealth, _pieceCarry, out _), out _);
+            copy.WearPieces(_entryPieces, PieceLosses(_pendingDamage, Zone.Engine.View(CombatantId).MaxHealth, _pieceCarry, out _), out _);
             return copy;
         }
 

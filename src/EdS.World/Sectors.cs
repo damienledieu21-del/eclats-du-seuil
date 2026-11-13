@@ -542,6 +542,48 @@ namespace EdS.World
             _players[player.Id] = new Player { Id = player.Id, Setup = player, Sector = sector, Combatant = player.Id };
         }
 
+        /// <summary>Sous-lot V2.28b (2) : session du monde (celle de la première ouverture du secteur du cœur).</summary>
+        public long Session => _session;
+
+        /// <summary>Sous-lot V2.28b (2) : l'événement est-il au registre du monde ou à celui d'une session ouverte ?</summary>
+        public bool IsConsumed(string key)
+        {
+            if (_consumed.Contains(key)) return true;
+            foreach (Open o in _open.Values)
+                if (o.Zone.IsConsumed(key)) return true;
+            return false;
+        }
+
+        /// <summary>Sous-lot V2.28b (2) : place restante au registre du monde entier, d'après sa borne (jamais plus que la place réelle).</summary>
+        public long RegistryRoom => SaveValidator.MaxConsumed - RegistryBound();
+
+        /// <summary>Sous-lot V2.28b (2) : population d'une créature d'un secteur ouvert, ou null.</summary>
+        public Population? PopulationOf(string combatant)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.Of(combatant) is Population p) return p;
+            return null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2) : vie en cours de la population <paramref name="population"/> (sa créature d'origine), dans son secteur ; la
+        /// créature d'origine si son secteur n'est pas ouvert.
+        /// </summary>
+        public string CurrentOf(string population)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.Of(population) != null) return o.Populations.CurrentOf(population);
+            return population;
+        }
+
+        /// <summary>Sous-lot V2.28b (2) : la créature est-elle revenue après une mort (dans un secteur ouvert) ?</summary>
+        public bool ReturnedFromDeath(string combatant)
+        {
+            foreach (Open o in _open.Values)
+                if (o.Populations.ReturnedFromDeath(combatant)) return true;
+            return false;
+        }
+
         /// <summary>Secteurs ouverts, dans l'ordre des noms.</summary>
         public IReadOnlyList<string> OpenSectors => _open.Keys.ToArray();
 
