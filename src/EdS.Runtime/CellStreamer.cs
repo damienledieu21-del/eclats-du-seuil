@@ -77,11 +77,17 @@ namespace EdS.Runtime
         /// <summary>Changements d'ancrage depuis le début (mesures, tests d'hystérésis).</summary>
         public int AnchorChanges { get; private set; }
 
+        private readonly long _farTriangles;
+
         public CellStreamer(RegionGrid grid, StreamingProfile profile)
         {
             Grid = grid ?? throw new ArgumentNullException(nameof(grid));
             Profile = profile ?? throw new ArgumentNullException(nameof(profile));
+            _farTriangles = RegionTerrain.FarTriangles(grid);
         }
+
+        /// <summary>Le budget de triangles compte aussi le terrain lointain entier (24 576 triangles pour les Vallons), toujours montré.</summary>
+        public long TrianglesWithFar => checked(Triangles + _farTriangles);
 
         /// <summary>Case qui contient (x, z), le point ramené dans la région.</summary>
         public RegionCell CellAt(double x, double z)
@@ -200,7 +206,7 @@ namespace EdS.Runtime
             }
             if (best == null)
             {
-                bool pressure = Bytes > Profile.MemoryBudgetBytes || Triangles > Profile.TerrainTriangleBudget;
+                bool pressure = Bytes > Profile.MemoryBudgetBytes || checked(Triangles + _farTriangles) > Profile.TerrainTriangleBudget;
                 foreach (Slot s in _slots.Values)
                 {
                     int target = Target(s, pressure);
@@ -231,13 +237,17 @@ namespace EdS.Runtime
         public void Complete(CellChange change)
         {
             if (!_busy || !_pending.Equals(change)) throw new InvalidOperationException("Ce changement de case n'est pas celui en cours.");
-            _busy = false;
-            if (!_slots.TryGetValue(change.Cell, out Slot? s)) _slots.Add(change.Cell, s = new Slot { Cell = change.Cell });
+            // Tout est calculé avant la moindre mutation : une exception ici ne laisse rien à moitié changé (le changement reste en cours).
+            _slots.TryGetValue(change.Cell, out Slot? s);
+            long oldBytes = s?.Bytes ?? 0, oldTriangles = s?.Triangles ?? 0;
             long bytes = change.To == Far ? 0 : TerrainPatch.EstimateBytes(Profile.ResolutionOf(change.To));
-            Bytes = checked(Bytes - s.Bytes + bytes);
-            s.Bytes = bytes;
             long triangles = change.To == Far ? 0 : TerrainPatch.EstimateTriangles(Profile.ResolutionOf(change.To));
-            Triangles = checked(Triangles - s.Triangles + triangles);
+            long newBytes = checked(Bytes - oldBytes + bytes), newTriangles = checked(Triangles - oldTriangles + triangles);
+            if (s == null) _slots.Add(change.Cell, s = new Slot { Cell = change.Cell });
+            _busy = false;
+            Bytes = newBytes;
+            Triangles = newTriangles;
+            s.Bytes = bytes;
             s.Triangles = triangles;
             s.Built = change.To;
             s.CoarserSince = s.Wanted > s.Built ? _now : double.NaN;

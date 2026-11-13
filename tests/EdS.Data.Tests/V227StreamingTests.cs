@@ -28,29 +28,45 @@ public class V227StreamingTests : IDisposable
 
     private static readonly RegionGrid Grid = RegionGrid.Vallons();
 
-    /// <summary>Enregistre ce qui est montré, et vérifie à chaque changement qu'aucune case n'est ni vide ni couverte deux fois.</summary>
+    /// <summary>
+    /// Enregistre ce qui est montré (les tableaux d'un morceau ne valent que pendant l'appel : on en copie la forme), et vérifie à chaque
+    /// changement qu'aucune case n'est ni vide ni couverte deux fois.
+    /// </summary>
     private sealed class Recorder : ITerrainSink
     {
-        public readonly Dictionary<RegionCell, (int Ring, TerrainPatch Patch)> Cells = new();
-        public readonly Dictionary<(int, int), TerrainPatch> Far = new();
+        public readonly Dictionary<RegionCell, int> Cells = new();
+        public readonly Dictionary<(int, int), (double X0, double Z0, double Step, int QuadsX, bool[] Kept)> Far = new();
         public readonly List<string> Log = new();
+
+        /// <summary>Pas déjà faits dans l'image quand un changement est montré (doit être 0 : montrer est le premier pas d'une image).</summary>
+        public Func<int>? StepsSoFar;
+
+        public int FarShown, FarExpected, LastFrom = -1;
 
         public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch)
         {
+            if (StepsSoFar != null) Assert.Equal(0, StepsSoFar());
             Log.Add("case " + cell.Name + " " + ring);
+            bool had = Cells.ContainsKey(cell);
             if (patch == null) Cells.Remove(cell);
             else
             {
                 Assert.True(patch.Done);
-                Cells[cell] = (ring, patch);
+                Cells[cell] = ring;
             }
+            if (had != (patch != null)) FarExpected++;   // le trou du bloc lointain change seulement si la case gagne ou perd son maillage
         }
 
         public void ShowFarBlock(int column, int row, TerrainPatch patch)
         {
+            if (StepsSoFar != null) Assert.Equal(0, StepsSoFar());
             Assert.True(patch.Done);
             Log.Add("loin " + column + "," + row + " " + patch.TriangleCount);
-            Far[(column, row)] = patch;
+            var kept = new bool[patch.QuadsX * patch.QuadsZ];
+            for (int j = 0; j < patch.QuadsZ; j++)
+                for (int i = 0; i < patch.QuadsX; i++) kept[j * patch.QuadsX + i] = patch.Kept(i, j);
+            Far[(column, row)] = (patch.X0, patch.Z0, patch.Step, patch.QuadsX, kept);
+            FarShown++;
         }
 
         /// <summary>Chaque case de la région (hors du rectangle couvert) a exactement un sol : le sien ou celui de son bloc lointain.</summary>
@@ -60,7 +76,7 @@ public class V227StreamingTests : IDisposable
             foreach (RegionCell cell in grid.Cells)
             {
                 var block = (cell.Column / StreamingProfile.FarBlockCells, cell.Row / StreamingProfile.FarBlockCells);
-                if (!Far.TryGetValue(block, out TerrainPatch? far)) continue;   // bloc pas encore construit (début du chargement)
+                if (!Far.TryGetValue(block, out var far)) continue;   // bloc pas encore construit (début du chargement)
                 int i0 = cell.Column % StreamingProfile.FarBlockCells * per, j0 = cell.Row % StreamingProfile.FarBlockCells * per;
                 bool own = Cells.ContainsKey(cell);
                 for (int j = j0; j < j0 + per; j++)
@@ -69,7 +85,7 @@ public class V227StreamingTests : IDisposable
                         double x = far.X0 + i * far.Step, z = far.Z0 + j * far.Step;
                         bool inCovered = covered is { } c && x >= c.X0 && x + far.Step <= c.X1 && z >= c.Z0 && z + far.Step <= c.Z1;
                         if (inCovered) continue;
-                        Assert.True(far.Kept(i, j) != own, $"{cell.Name} : sol {(own ? "double" : "absent")} ({i},{j})");
+                        Assert.True(far.Kept[j * far.QuadsX + i] != own, $"{cell.Name} : sol {(own ? "double" : "absent")} ({i},{j})");
                     }
             }
         }
@@ -207,7 +223,7 @@ public class V227StreamingTests : IDisposable
             s.Update(-1800 + 9 * k, -1500 + 7 * k + (k % 20 < 10 ? 0 : 300), t);
             while (s.TryNext(out CellChange c)) s.Complete(c);
             Assert.True(s.Bytes <= p.MemoryBudgetBytes + TerrainPatch.EstimateBytes(p.DetailResolution), $"{s.Bytes} octets");
-            Assert.True(s.Triangles <= p.TerrainTriangleBudget + TerrainPatch.EstimateTriangles(p.DetailResolution), $"{s.Triangles} triangles");
+            Assert.True(s.TrianglesWithFar <= p.TerrainTriangleBudget + TerrainPatch.EstimateTriangles(p.DetailResolution), $"{s.TrianglesWithFar} triangles");
             Assert.True(s.Ready);
         }
     }
@@ -285,7 +301,7 @@ public class V227StreamingTests : IDisposable
         Assert.True(edge.Released);
         Assert.Throws<InvalidOperationException>(() => edge.Release());
         Assert.Throws<InvalidOperationException>(() => edge.HeightAt(0, 0));
-        Assert.True(edge.Kept(30, 0));   // la forme reste
+        Assert.Throws<InvalidOperationException>(() => edge.Kept(30, 0));   // le masque est parti avec les tableaux
         float[] reused = buffers.Positions;
         var again = new TerrainPatch(140, -78, 2, 64, 64, (x, z) => 2.0, covered: covered, buffers: buffers);
         while (!again.StepOnce()) { }
@@ -322,8 +338,10 @@ public class V227StreamingTests : IDisposable
         {
             double x = 20 + 20 * t * 0.8, z = 10 + 20 * t * 0.6;
             terrain.Update(x, z, t);
-            int budget = stepsPerFrame;
-            terrain.Work(() => --budget <= 0, sink);
+            int budget = stepsPerFrame, done = 0;
+            sink.StepsSoFar = () => done;
+            terrain.Work(() => { done++; return --budget <= 0; }, sink);
+            sink.StepsSoFar = null;
             sink.CheckCoverage(map.Region!, covered);
             string now = terrain.Streamer.CellAt(x, z).SectorName;
             if (now != sector) { sectorChanges++; sector = now; }
@@ -342,6 +360,9 @@ public class V227StreamingTests : IDisposable
         Assert.True(notReady < frames / 4, $"{notReady} images sur {frames} sans anneau 0 complet");
         Assert.True(sink.Cells.Count <= (2 * p.ViewRadius + 1) * (2 * p.ViewRadius + 1) + 2 * (2 * p.ViewRadius + 1));
         Assert.Equal(sink.Cells.Keys.OrderBy(c => c), terrain.Streamer.Loaded);
+        // Passage de l'anneau 1 à l'anneau 0 (et retour) : le bloc lointain n'est pas refait (12 blocs du premier chargement en plus).
+        Assert.Contains(sink.Log, l => l.StartsWith("case ") && l.EndsWith(" 0"));
+        Assert.Equal(12 + sink.FarExpected, sink.FarShown);
     }
 
     [Fact]
@@ -362,5 +383,118 @@ public class V227StreamingTests : IDisposable
         }
         Assert.Equal(Run(), Run());
         Assert.Throws<ArgumentException>(() => new RegionTerrain(Grid, StreamingProfile.For(DeviceTier.Phone), h, (5, 5, 5, 9)));
+    }
+    private static long Wanted(StreamingProfile p, bool triangles)
+    {
+        int detail = (2 * p.DetailRadius + 1) * (2 * p.DetailRadius + 1), view = (2 * p.ViewRadius + 1) * (2 * p.ViewRadius + 1);
+        return triangles
+            ? detail * TerrainPatch.EstimateTriangles(p.DetailResolution) + (view - detail) * TerrainPatch.EstimateTriangles(p.SimpleResolution)
+            : detail * TerrainPatch.EstimateBytes(p.DetailResolution) + (view - detail) * TerrainPatch.EstimateBytes(p.SimpleResolution);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #154 : la branche d'éviction est vraiment atteinte. Budget de mémoire réduit à ce que veulent les
+    /// anneaux : les cases quittées cèdent leur détail tout de suite (avant les 10 s), la plus ancienne d'abord ; sans pression, elles le gardent.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Sous_pression_les_cases_gardees_cedent_avant_le_delai_la_plus_ancienne_d_abord(bool byTriangles)
+    {
+        StreamingProfile phone = StreamingProfile.For(DeviceTier.Phone);
+        StreamingProfile tight = byTriangles
+            ? phone.WithBudgets(long.MaxValue, (Wanted(phone, true) + RegionTerrain.FarTriangles(Grid)) * 5 / 4)
+            : phone.WithBudgets(Wanted(phone, false), long.MaxValue);
+        Assert.Throws<ArgumentOutOfRangeException>(() => phone.WithBudgets(-1, 0));
+        foreach ((StreamingProfile p, bool pressure) in new[] { (phone.WithBudgets(long.MaxValue, long.MaxValue), false), (tight, true) })
+        {
+            var s = new CellStreamer(Grid, p);
+            var log = new List<CellChange>();
+            void Finer() { while (s.TryNext(out CellChange c)) { if (!c.Finer) { s.Cancel(); break; } s.Complete(c); } }
+            s.Update(0, 0, 0);
+            while (s.TryNext(out CellChange c0)) s.Complete(c0);
+            RegionCell first = s.Anchor;                 // c14_r12
+            s.Update(300, 0, 1);                         // ancrage c17_r12 : la colonne c12 sort de vue
+            Finer();                                     // nouvelles cases seulement : les quittées attendent
+            s.Update(300, 300, 2);                       // ancrage c17_r14 : la rangée r10 sort de vue
+            Finer();
+            while (s.TryNext(out CellChange c)) { s.Complete(c); log.Add(c); }
+            if (!pressure)
+            {
+                Assert.Empty(log);                       // rien ne cède avant le délai
+                Assert.Equal(0, s.Built(first));
+                continue;
+            }
+            Assert.NotEmpty(log);
+            Assert.All(log, c => Assert.False(c.Finer));
+            Assert.Equal(CellStreamer.Far, s.Built(first));   // cédée avant les 10 s
+            if (!byTriangles) Assert.True(s.Bytes <= p.MemoryBudgetBytes);
+            else Assert.True(s.TrianglesWithFar <= p.TerrainTriangleBudget);
+            // La plus ancienne d'abord : les cases qui ont perdu du détail à t = 1 (ancrage c14_r12 → c17_r12) avant celles de t = 2.
+            int Ring(RegionCell c, int col, int row) => p.RingAt(Math.Max(Math.Abs(c.Column - col), Math.Abs(c.Row - row)));
+            bool Old(RegionCell c) => Ring(c, 17, 12) > Ring(c, 14, 12);
+            int lastOld = log.FindLastIndex(c => Old(c.Cell)), firstNew = log.FindIndex(c => !Old(c.Cell));
+            Assert.True(lastOld >= 0 && firstNew >= 0, string.Join(" ", log));
+            Assert.True(lastOld < firstNew, string.Join(" ", log));
+        }
+    }
+
+    /// <summary>Relecture indépendante de la PR #154 : une exception pendant la construction n'abîme rien ; tout reprend ensuite.</summary>
+    [Fact]
+    public void Une_exception_abandonne_proprement_le_changement_en_cours()
+    {
+        bool broken = false;
+        int calls = 0;
+        Func<double, double, double> h = (x, z) =>
+        {
+            if (broken && ++calls > 200) throw new InvalidOperationException("relief cassé");
+            return Math.Sin(x * 0.01);
+        };
+        var terrain = new RegionTerrain(Grid, StreamingProfile.For(DeviceTier.Phone), h);
+        var sink = new Recorder();
+        terrain.Update(0, 0, 0);
+        broken = true;
+        Assert.Throws<InvalidOperationException>(() => terrain.Warm(sink));
+        Assert.False(terrain.Busy);
+        Assert.False(terrain.Streamer.Busy);
+        int shown = sink.Log.Count;
+        broken = false;
+        terrain.Warm(sink);
+        Assert.True(terrain.Idle && terrain.FarReady && terrain.Streamer.DetailReady);
+        Assert.Equal(12, sink.Far.Count);
+        Assert.True(sink.Log.Count > shown);
+        sink.CheckCoverage(Grid, null);
+        // Montreur qui échoue : le changement est abandonné, le flux reste utilisable.
+        terrain.Update(600, 0, 1);
+        var failing = new FailingSink();
+        Assert.Throws<InvalidOperationException>(() => terrain.Warm(failing));
+        Assert.False(terrain.Busy);
+        Assert.False(terrain.Streamer.Busy);
+        terrain.Cancel();   // sans changement en cours : rien
+        terrain.Warm(sink);
+        Assert.True(terrain.Idle);
+    }
+
+    private sealed class FailingSink : ITerrainSink
+    {
+        public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch) => throw new InvalidOperationException("montreur cassé");
+        public void ShowFarBlock(int column, int row, TerrainPatch patch) => throw new InvalidOperationException("montreur cassé");
+    }
+
+    /// <summary>Relecture indépendante de la PR #154 : <c>Warm</c> respecte vraiment son plafond de pas.</summary>
+    [Fact]
+    public void Warm_respecte_son_plafond_de_pas()
+    {
+        var terrain = new RegionTerrain(Grid, StreamingProfile.For(DeviceTier.Phone), (x, z) => 0);
+        terrain.Update(0, 0, 0);
+        var sink = new Recorder();
+        Assert.Equal(5, terrain.Warm(sink, 5));
+        Assert.False(terrain.Idle);
+        Assert.Equal(5, terrain.Steps);
+        Assert.Throws<ArgumentOutOfRangeException>(() => terrain.Warm(sink, 0));
+        int all = terrain.Warm(sink);
+        Assert.True(terrain.Idle);
+        Assert.Equal(0, terrain.Warm(sink));
+        Assert.Equal(5 + all, terrain.Steps);
     }
 }

@@ -67,7 +67,7 @@ namespace EdS.Runtime
         /// Part des triangles visibles laissée au terrain des cases (4/5 de <see cref="TriangleBudget"/>) : au-delà, les cases gardées après
         /// leur départ rendent leur détail tout de suite, comme pour la mémoire.
         /// </summary>
-        public long TerrainTriangleBudget => TriangleBudget * 4 / 5;
+        public long TerrainTriangleBudget => TriangleBudget / 5 * 4 + TriangleBudget % 5 * 4 / 5;   // sans débordement
 
         private StreamingProfile(DeviceTier tier, int detail, int view, int detailRes, int simpleRes, double viewMeters, long memory,
             bool shadows, int drawCalls, long triangles)
@@ -97,6 +97,15 @@ namespace EdS.Runtime
             DeviceTier.Full => new StreamingProfile(tier, 2, 3, 129, 33, 6000, 96L << 20, true, 1500, 3_000_000),
             _ => throw new ArgumentOutOfRangeException(nameof(tier)),
         };
+
+        /// <summary>Les mêmes réglages avec d'autres budgets de mémoire (octets) et de triangles visibles (essais, tests de l'éviction).</summary>
+        public StreamingProfile WithBudgets(long memoryBytes, long triangles)
+        {
+            if (memoryBytes < 0) throw new ArgumentOutOfRangeException(nameof(memoryBytes));
+            if (triangles < 0) throw new ArgumentOutOfRangeException(nameof(triangles));
+            return new StreamingProfile(Tier, DetailRadius, ViewRadius, DetailResolution, SimpleResolution, ViewMeters, memoryBytes, DetailShadows,
+                DrawCallBudget, triangles);
+        }
 
         /// <summary>Points par côté pour un anneau (0 ou 1) ; 0 au-delà (pas de maillage de case).</summary>
         public int ResolutionOf(int ring) => ring == 0 ? DetailResolution : ring == 1 ? SimpleResolution : 0;

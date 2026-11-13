@@ -10,7 +10,7 @@ namespace EdS.Tools.Measures
     /// Sous-lot V2.27 (PLAN_GRANDE_CARTE.md, § 6.2 : « cibles à mesurer ») : coût du chargement par cases du terrain de la région, sur la
     /// machine qui lance l'outil, avec le vrai relief des Vallons (V2.24) et les réglages de chaque classe de machine. Une chevauchée part
     /// du cœur vers le nord-est (plusieurs bords de case et de secteur) à 5, 13 et 20 m/s, 30 images par seconde ; chaque image donne
-    /// au plus <see cref="StreamingProfile.BudgetMs"/> ms à la construction (au moins un pas). Chiffres : chargement initial, temps par
+    /// au plus <see cref="StreamingProfile.BudgetMs"/> ms à la construction (au moins un pas), copie des maillages comprise. Chiffres : chargement initial, temps par
     /// image (moyenne, 95e centile, maximum), images au-delà du budget de plus de 0,5 ms, images sans anneau 0 complet, mémoire et
     /// triangles des maillages montrés, appels de dessin du terrain. Mesure, pas un test : les chiffres dépendent de la machine (le
     /// processeur d'un PC de développement, ni un Note8 ni la carte graphique).
@@ -22,20 +22,55 @@ namespace EdS.Tools.Measures
 
         private sealed class Counter : ITerrainSink
         {
-            private readonly Dictionary<RegionCell, TerrainPatch> _cells = new();
-            private readonly Dictionary<(int, int), TerrainPatch> _far = new();
+            private readonly Dictionary<RegionCell, (long Bytes, int Triangles)> _cells = new();
+            private readonly Dictionary<(int, int), (long Bytes, int Triangles)> _far = new();
+
+            private float[] _copy = Array.Empty<float>();
+            private int[] _indices = Array.Empty<int>();
 
             public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch)
             {
                 if (patch == null) _cells.Remove(cell);
-                else _cells[cell] = patch;
+                else
+                {
+                    Fill(patch);
+                    _cells[cell] = (patch.Bytes, patch.TriangleCount);
+                }
             }
 
-            public void ShowFarBlock(int column, int row, TerrainPatch patch) => _far[(column, row)] = patch;
+            public void ShowFarBlock(int column, int row, TerrainPatch patch)
+            {
+                Fill(patch);
+                _far[(column, row)] = (patch.Bytes, patch.TriangleCount);
+            }
+
+            /// <summary>
+            /// Relecture indépendante de la PR #154 : le coût de la copie que fait Unity (CellStreamView.Fill : sommets, normales et coordonnées
+            /// de texture vers ses tableaux, index) est compté dans le temps de l'image, comme dans le jeu (sans l'envoi à la carte graphique).
+            /// </summary>
+            private void Fill(TerrainPatch patch)
+            {
+                int n = patch.VertexCount;
+                if (_copy.Length < n * 8) _copy = new float[n * 8];
+                if (_indices.Length < patch.IndexCount) _indices = new int[patch.IndexCount];
+                float[] p = patch.Positions, q = patch.Normals, t = patch.Uvs;
+                for (int i = 0; i < n; i++)
+                {
+                    _copy[8 * i] = p[3 * i];
+                    _copy[8 * i + 1] = p[3 * i + 1];
+                    _copy[8 * i + 2] = p[3 * i + 2];
+                    _copy[8 * i + 3] = q[3 * i];
+                    _copy[8 * i + 4] = q[3 * i + 1];
+                    _copy[8 * i + 5] = q[3 * i + 2];
+                    _copy[8 * i + 6] = t[2 * i];
+                    _copy[8 * i + 7] = t[2 * i + 1];
+                }
+                Array.Copy(patch.Indices, _indices, patch.IndexCount);
+            }
 
             public long Bytes => _cells.Values.Concat(_far.Values).Sum(p => p.Bytes);
-            public long Triangles => _cells.Values.Concat(_far.Values).Sum(p => (long)p.TriangleCount);
-            public int DrawCalls => _cells.Values.Concat(_far.Values).Count(p => p.TriangleCount > 0);
+            public long Triangles => _cells.Values.Concat(_far.Values).Sum(p => (long)p.Triangles);
+            public int DrawCalls => _cells.Values.Concat(_far.Values).Count(p => p.Triangles > 0);
         }
 
         public static Result Measure(RegionGrid grid, GroundRelief relief, (double, double, double, double) covered, DeviceTier tier, double speed, double seconds)

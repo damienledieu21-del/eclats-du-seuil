@@ -13,7 +13,7 @@ namespace EdS.Game
     /// (<see cref="RegionTerrain"/> décide et construit, sans Unity). Réglages selon la classe de la machine (<see cref="DeviceQuality.Tier"/>,
     /// <see cref="StreamingProfile"/>). Au plus <see cref="StreamingProfile.BudgetMs"/> ms de construction par image ; une case et son bloc
     /// lointain changent à la même image (jamais de trou). Objets et maillages <b>recyclés</b> : une case quittée rend son objet, la suivante
-    /// le reprend. Le terrain est gardé tant que la zone ne change pas : ressortir d'une maison ne le refait pas. Hauteurs : le relief
+    /// le reprend. Montrer un changement (copie des maillages) est le premier pas d'une image, compté dans son budget. Le terrain est gardé tant que la zone ne change pas : ressortir d'une maison ne le refait pas. Hauteurs : le relief
     /// affiché de la zone (<see cref="StyleWorld.Relief"/>, V2.24) ; le terrain peint de la zone reste au-dessus (<see cref="SpaceView.Covered"/>).
     /// Affichage seulement.
     /// </summary>
@@ -60,6 +60,7 @@ namespace EdS.Game
         /// </summary>
         public static void Use(AdventureMap map, Rect covered)
         {
+            Forget();
             if (map == null || map.Indoor || map.Region == null)
             {
                 if (_current != null) _current._root.SetActive(false);
@@ -90,6 +91,7 @@ namespace EdS.Game
         /// <summary>Une image : la caméra en <paramref name="camera"/> ; construit au plus le budget de temps de la machine.</summary>
         public static void Frame(Vector3 camera)
         {
+            Forget();
             CellStreamView view = _current;
             if (view == null || !view._root.activeSelf) return;
             view._terrain.Update(camera.x, camera.z, Time.unscaledTime);
@@ -202,11 +204,28 @@ namespace EdS.Game
             Fill(renderer, patch);
         }
 
+        /// <summary>
+        /// Relecture indépendante de la PR #154 : la racine a été détruite par Unity (changement de scène, arrêt du mode jeu) alors que le
+        /// statique la garde : on libère les maillages et le matériau, et le terrain sera refait au prochain <see cref="Use"/>.
+        /// </summary>
+        private static void Forget()
+        {
+            if (_current == null || _current._root != null) return;
+            _current.Destroy();
+            _current = null;
+            StyleWorld.ViewDistance = 0f;
+        }
+
         private void Destroy()
         {
-            foreach (Mesh mesh in _meshes) Object.Destroy(mesh);   // objets recyclés (inactifs) compris
-            Object.Destroy(_root);
-            Object.Destroy(_material);
+            _terrain.Cancel();
+            foreach (Mesh mesh in _meshes) if (mesh != null) Object.Destroy(mesh);   // objets recyclés (inactifs) compris
+            _meshes.Clear();
+            _cells.Clear();
+            _far.Clear();
+            _pool.Clear();
+            if (_root != null) Object.Destroy(_root);
+            if (_material != null) Object.Destroy(_material);
         }
     }
 }

@@ -25,7 +25,6 @@ namespace EdS.Runtime
         private readonly (double X0, double Z0, double X1, double Z1)? _covered;
         private readonly double _skirt;
         private TerrainBuffers _b;
-        private bool[] _kept = Array.Empty<bool>();
         private int _phase, _row, _next, _indexCount;
 
         public double X0 { get; }
@@ -157,25 +156,30 @@ namespace EdS.Runtime
             return _keep == null || _keep(i, j);
         }
 
-        /// <summary>Le quadrilatère (i, j) est-il fait ? (décidé à la préparation ; faux hors du morceau)</summary>
+        /// <summary>
+        /// Le quadrilatère (i, j) est-il fait ? (décidé à la préparation ; faux hors du morceau). Lisible jusqu'au recyclage (<see cref="Release"/>) :
+        /// le masque est dans les tableaux recyclés.
+        /// </summary>
         public bool Kept(int i, int j)
         {
             if (_phase < 2 && !Done) throw new InvalidOperationException("Morceau de terrain pas encore préparé.");
-            return i >= 0 && j >= 0 && i < QuadsX && j < QuadsZ && _kept[j * QuadsX + i];
+            if (Released) throw new InvalidOperationException("Morceau de terrain rendu au recyclage.");
+            return i >= 0 && j >= 0 && i < QuadsX && j < QuadsZ && _b.Kept[j * QuadsX + i];
         }
 
         private void Prepare()
         {
-            _kept = new bool[QuadsX * QuadsZ];
+            _b.EnsureKept(QuadsX * QuadsZ);
+            bool[] mask = _b.Kept;
             int kept = 0, edges = 0;
             for (int j = 0; j < QuadsZ; j++)
                 for (int i = 0; i < QuadsX; i++)
-                    if (_kept[j * QuadsX + i] = Decide(i, j)) kept++;
+                    if (mask[j * QuadsX + i] = Decide(i, j)) kept++;
             _phase = 2;
             for (int j = 0; j < QuadsZ; j++)
                 for (int i = 0; i < QuadsX; i++)
                 {
-                    if (!_kept[j * QuadsX + i]) continue;
+                    if (!mask[j * QuadsX + i]) continue;
                     if (!Kept(i - 1, j)) edges++;
                     if (!Kept(i + 1, j)) edges++;
                     if (!Kept(i, j - 1)) edges++;
@@ -227,7 +231,7 @@ namespace EdS.Runtime
             int nx = QuadsX + 1, j = _row;
             for (int i = 0; i < QuadsX; i++)
             {
-                if (!_kept[j * QuadsX + i]) continue;
+                if (!_b.Kept[j * QuadsX + i]) continue;
                 int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
                 // Unity : faces avant dans le sens des aiguilles d'une montre vues d'en haut (x vers l'est, z vers le nord).
                 Add(a, c, d);
@@ -271,7 +275,7 @@ namespace EdS.Runtime
             return H(i, j);
         }
 
-        /// <summary>Rend les tableaux au recyclage : le morceau garde seulement sa forme (<see cref="Kept"/>, comptes).</summary>
+        /// <summary>Rend les tableaux au recyclage : le morceau ne garde que ses comptes (sommets, index, octets, triangles).</summary>
         public TerrainBuffers Release()
         {
             if (Released) throw new InvalidOperationException("Morceau de terrain déjà rendu.");
@@ -295,6 +299,14 @@ namespace EdS.Runtime
         public float[] Normals { get; private set; } = Array.Empty<float>();
         public float[] Uvs { get; private set; } = Array.Empty<float>();
         public int[] Indices { get; private set; } = Array.Empty<int>();
+
+        /// <summary>Masque des quadrilatères faits (rangée par rangée).</summary>
+        public bool[] Kept { get; private set; } = Array.Empty<bool>();
+
+        internal void EnsureKept(int count)
+        {
+            if (Kept.Length < count) Kept = new bool[count];
+        }
 
         internal void EnsureHeights(int count)
         {
