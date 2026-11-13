@@ -303,10 +303,18 @@ Numérotation : le premier sous-lot, appelé V2.25 dans la première version du 
 
 | Partie | Contenu | État |
 |---|---|---|
-| **V2.28a** Reprise au dernier point sûr | Sauvegarde **v19** : `resume` (dernier point sûr approché et son secteur) ; le jeu relancé reprend à ce point sûr, plus à l'entrée de la zone (retenu par Damien le 13 novembre 2026, § 3) ; point sûr occupé : place libre la plus proche, sinon l'entrée ; v18 lue et mise à jour ([DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)) | en PR |
-| **V2.28b** Partie solo sur l'hôte des secteurs | `WorldSession` et `AdventureSession` jouent sur `SectorWorld` (activation à 96 m, passage avec l'état, registre commun aux secteurs ouverts) ; avec le cœur seul, mêmes journaux qu'aujourd'hui ; la reprise ouvre le secteur de `resume` | à faire |
+| **V2.28a** Reprise au dernier point sûr | Sauvegarde **v19** : `resume` (dernier point sûr approché et son secteur) ; le jeu relancé reprend à ce point sûr, plus à l'entrée de la zone (retenu par Damien le 13 novembre 2026, § 3) ; point sûr occupé : place libre la plus proche, sinon l'entrée ; v18 lue et mise à jour ([DONNEES.md](DONNEES.md#point-de-reprise-sous-lot-v228a)) | fusionné (PR #155) |
+| **V2.28b** Partie solo sur l'hôte des secteurs | Découpé à son tour (ci-dessous) : **(1) l'hôte sous la partie, à parité** ; (2) passage du personnage solo d'un secteur à l'autre ; (3) affichage de plusieurs secteurs dans Unity | (1) en PR |
 | **V2.28c** Surface étendue | Aire de la zone portée à toute la région ; rivière jusqu'à la cascade, lac et marais, gorge, ravins et falaises en obstacles ; routes ; points sûrs aux carrefours (borne de 32 à relever) ; lieux en emplacements vides ; relief d'affichage de la région (altitudes du § 4.2) ; journaux des essais de zone figés à nouveau | à faire |
 | **V2.28d** Décor par cases dans Unity et monture | Rivière, lac, nappes de forêt et routes construits par cases (`CellStreamView`), carte peinte de la région ; cheval à 13 m/s (la monture retenue au sujet 7 n'existe pas encore dans le cœur) | à faire |
+
+**Avancement V2.28b** (13 novembre 2026 ; découpage de Claude) :
+
+| Partie | Contenu | État |
+|---|---|---|
+| **V2.28b (1)** L'hôte sous la partie solo, à parité | La session d'une zone à région est tenue par `SectorWorld` (personnage entré avec la session de son secteur, aire du moment, crochets du tick, borne exacte du registre) ; tant que l'aire tient dans le secteur du cœur, même journal octet par octet, mêmes événements, même sauvegarde qu'avant ; **règle d'arrivée à un point sûr** unifiée (jeu relancé, halte, reprise, voyage, couvre-feu : place libre la plus proche, sinon l'entrée) ([DONNEES.md](DONNEES.md#partie-solo-sur-lhôte-des-secteurs-sous-lot-v228b-première-partie)) | en PR |
+| **V2.28b (2)** Passage du personnage solo | `WorldSession` suit le personnage d'un secteur à l'autre (identité et moteur qui changent, compteurs d'usure et de gestes repris, registre commun aux secteurs ouverts, sessions des secteurs sauvegardées) ; chefs, événements du monde, créatures de la nuit et cicatrices liés à leur secteur (ouverture, fermeture) ; `RealtimeCombat` et `AdventureSession` rebranchés à chaque passage ; renouvellement sans coupure d'une session terminée ; essais sur une zone à plusieurs secteurs | à faire |
+| **V2.28b (3)** Unity | `SpaceView` et la carte montrent les créatures et le décor de tous les secteurs ouverts ; prédiction du déplacement à travers un passage | à faire |
 
 Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat positionné, plafonné à **256 obstacles pour toute la région** (59 pris par le cœur) ; la surface nue tient dessous, le Bourg fortifié non : l'aire devra être assemblée de données par case (§ 3, « une donnée par case »).
 
