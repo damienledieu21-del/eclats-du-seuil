@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using EdS.Data.Saves;
 using EdS.Data.Zones;
+using EdS.Domain;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -315,6 +317,10 @@ namespace EdS.World
 
             /// <summary>Revue Codex de la PR #150 (4e tour) : présence voulue de ses populations (heures, temps, nuits), au tick de sa session.</summary>
             public Func<Population, long, bool>? Wanted;
+
+            /// <summary>Revue Codex de la PR #150 (9e tour) : clés de la session à son ouverture (recopie du registre du monde), et clés de
+            /// cette recopie purgées depuis du registre du monde (comptées à part pour borner le registre entier).</summary>
+            public int InitialConsumed, Stale;
         }
 
         private sealed class Player
@@ -340,6 +346,9 @@ namespace EdS.World
 
             /// <summary>Revue Codex de la PR #150 (3e tour) : mort dans une session terminée ; sa dernière vue reste lisible.</summary>
             public CombatantView? Final;
+
+            /// <summary>Revue Codex de la PR #150 (9e tour) : arrivée refusée pour de bon par la validation (diagnostic) ; plus aucun essai.</summary>
+            public string? Refusal;
             public CharacterSetup? Arrival;
             public bool PendingBackward;
             public int Passages;
@@ -444,7 +453,39 @@ namespace EdS.World
         public bool IsResuming(string player) => _players.TryGetValue(player, out Player? p) ? p.Resume : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
 
         /// <summary>Joueur suivi par un combattant de la session de son secteur (ni en attente, ni en reprise, ni mort dans une session terminée).</summary>
-        private static bool Live(Player p) => !p.Waiting && !p.Resume && p.Final is null && p.Sector != null;
+        private static bool Live(Player p) => !p.Waiting && !p.Resume && p.Final is null && p.Refusal is null && p.Sector != null;
+
+        /// <summary>Revue Codex de la PR #150 (9e tour) : diagnostic d'une arrivée refusée pour de bon par la validation (passage, reprise), ou null.</summary>
+        public string? RefusalOf(string player) => _players.TryGetValue(player, out Player? p) ? p.Refusal : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
+
+        /// <summary>Revue Codex de la PR #150 (9e tour) : un joueur annoncé (<see cref="Enter"/>) mais pas encore entré renonce ; faux s'il n'était pas annoncé.</summary>
+        public bool CancelEnter(string player) => _entering.Remove(player);
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (9e tour) : borne du registre du monde entier (le sien et celui des secteurs ouverts), sans le recalculer :
+        /// registre du monde, plus les clés ajoutées par chaque session ouverte, plus celles de sa recopie purgées depuis.
+        /// </summary>
+        private long RegistryBound()
+        {
+            long n = _consumed.Count;
+            foreach (Open o in _open.Values) n = checked(n + o.Zone.ConsumedCount - o.InitialConsumed + o.Stale);
+            return n;
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #150 (9e tour) : place au registre exigée par le prochain tick (précontrôle de <see cref="Step"/>) : borne du
+        /// registre, morts possibles de chaque secteur ouvert, et au plus une clé par créature de l'aire (sessions ouvertes ou renouvelées
+        /// pendant le tick) et par joueur (présent ou annoncé). Au-delà de <see cref="SaveValidator.MaxConsumed"/>, le tick est refusé entier.
+        /// </summary>
+        public long NextTickRegistryNeed
+        {
+            get
+            {
+                long need = RegistryBound();
+                foreach (Open o in _open.Values) need = checked(need + o.Zone.NewDeathsPossible);
+                return checked(need + _map.Area.Combatants.Count + _players.Count + _entering.Count);
+            }
+        }
 
         /// <summary>Revue Codex de la PR #150 (2e tour) : vrai si le joueur est entré dans la région sans place libre encore (il réessaie à chaque tick).</summary>
         public bool IsWaiting(string player) => _players.TryGetValue(player, out Player? p) ? p.Waiting : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
@@ -468,7 +509,25 @@ namespace EdS.World
             GroundVector at = player.Placement.Position;
             if (at.X < area.Min.X || at.X > area.Max.X || at.Z < area.Min.Z || at.Z > area.Max.Z || _map.Space(_map.OwnerOf(at)) is null)
                 throw new ArgumentException("Place hors de l'aire.", nameof(player));
+            // Revue Codex de la PR #150 (9e tour) : l'entrée est validée avant d'être mise en attente (refus définitif, avec son diagnostic) ;
+            // seul le manque de place reste temporaire (attente). Validation sur l'aire sans décor ni autre combattant, élargie de l'emprise :
+            // la place exacte est choisie à l'arrivée (place libre la plus proche).
+            string? invalid = EntryRefusal(player);
+            if (invalid != null) throw new ArgumentException($"Entrée de « {player.Id} » refusée : {invalid}", nameof(player));
             _entering[player.Id] = player;
+        }
+
+        private string? EntryRefusal(CharacterSetup player)
+        {
+            CombatSetup a = _map.Area;
+            long reach = checked(player.Placement!.Radius.Raw + Fixed.Scale), limit = checked((long)SpaceLimits.MaxCoordinateMeters * Fixed.Scale);
+            Fixed Lo(Fixed v) => Fixed.FromRaw(Math.Max(-limit, checked(v.Raw - reach)));
+            Fixed Hi(Fixed v) => Fixed.FromRaw(Math.Min(limit, checked(v.Raw + reach)));
+            var space = new CombatSpace(new GroundVector(Lo(a.Space!.Min.X), Lo(a.Space.Min.Z)), new GroundVector(Hi(a.Space.Max.X), Hi(a.Space.Max.Z)));
+            var probe = new CombatSetup(a.Seed, a.DurationMs, a.Stats, a.Damage, a.Progression, a.Combat, new CombatantSetup[] { Arriving(player, player.Id, player.Placement, 0, null, player.Carried) },
+                Array.Empty<CombatCommand>(), a.Data, space, true, a.Truces);
+            IReadOnlyList<RuleViolation> violations = probe.Validate();
+            return violations.Count == 0 ? null : string.Join(" ; ", violations.Take(3).Select(v => $"{string.Join(", ", v.Fields)} : {v.Message}"));
         }
 
         /// <summary>Un joueur quitte la région (départ au prochain tick, dans l'ordre des identifiants).</summary>
@@ -504,7 +563,7 @@ namespace EdS.World
             // créature retirée au début, rare de la nuit ou hors de ses heures, garde sa vie et revient quand elle est voulue).
             var populations = new ZonePopulations(_populations.Where(p => p.Template.Placement != null && _map.OwnerOf(p.Template.Placement.Position) == name));
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
-            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
+            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
             return open;
@@ -515,6 +574,11 @@ namespace EdS.World
             // Revue Codex de la PR #150 (3e tour) : les clés de mort de la session fermée sont purgées (plan § 2.4 : un secteur rouvert
             // reprend dans une session nouvelle, ces morts n'y comptent plus) ; les faits persistants du monde (autres clés) sont gardés.
             string deaths = DeathPrefix(open.Zone);
+            // Revue Codex de la PR #150 (9e tour) : clés purgées du registre du monde qui restent dans la recopie d'autres sessions ouvertes.
+            List<string> purged = _consumed.Where(k => k.StartsWith(deaths, StringComparison.Ordinal)).ToList();
+            if (purged.Count > 0)
+                foreach (Open other in _open.Values)
+                    if (other != open) other.Stale = checked(other.Stale + purged.Count(other.Zone.IsConsumed));
             _consumed.UnionWith(open.Zone.Consumed.Where(k => !k.StartsWith(deaths, StringComparison.Ordinal)));
             _consumed.RemoveWhere(k => k.StartsWith(deaths, StringComparison.Ordinal));
             _open.Remove(open.Name);
@@ -561,7 +625,8 @@ namespace EdS.World
             foreach (var (p, v, carried, consumables) in moves)
             {
                 p.PendingBackward = v.MoveBackward;
-                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: v.Gear))
+                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: v.Gear)
+                    && p.Refusal is null)
                 {
                     // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
                     p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, v.Gear);
@@ -638,9 +703,17 @@ namespace EdS.World
             {
                 target.Zone.Enter(arrival);
             }
-            catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+            catch (ArgumentException e)
             {
+                // Revue Codex de la PR #150 (9e tour) : places, identité, endroit et budgets vérifiés plus haut : un refus restant vient de la
+                // validation de l'arrivée (ou du format de sa clé de mort) : définitif, avec son diagnostic ; plus aucun essai.
                 p.Passages = passages;
+                p.Refusal = e.Message;
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                p.Passages = passages;   // session terminée, file pleine : temporaire, nouvel essai
                 return false;
             }
             // La marche en cours continue de l'autre côté (même direction, dès le tick d'arrivée).
@@ -693,6 +766,15 @@ namespace EdS.World
         /// </summary>
         public IReadOnlyList<SectorEvent> Step(List<(string Sector, ZoneEvent Event)>? zoneEvents = null, List<(string Sector, PopulationEvent Event)>? populationEvents = null)
         {
+            // Revue Codex de la PR #150 (9e tour) : tick tout ou rien. Avant toute modification, le registre du monde entier doit avoir la place
+            // de tout ce que le tick peut y ajouter (borne : NextTickRegistryNeed), et chaque clé de mort de chaque secteur doit être au format ;
+            // sinon refus, rien n'a bougé (aucun secteur n'avance, ni le tick du monde). Les budgets du moteur (travail, file, événements) ne
+            // lèvent pas : un dépassement termine la session (renouvelée au tick suivant).
+            long need = NextTickRegistryNeed;
+            if (need > SaveValidator.MaxConsumed)
+                throw new InvalidOperationException($"Registre du monde presque plein : le tick peut demander {need} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");
+            foreach (Open o in _open.Values)
+                if (o.Zone.KeyRefusal() is string bad) throw new InvalidOperationException($"Secteur {o.Name} : {bad} Aucun secteur n'avance.");
             var events = new List<SectorEvent>();
             // 00. Revue Codex de la PR #150 (3e tour) : un secteur dont la session a atteint sa durée repart dans une session nouvelle (ses
             // joueurs y arrivent avec leur état) ; le monde n'est jamais bloqué par une session terminée.
@@ -723,10 +805,11 @@ namespace EdS.World
             foreach (string id in _exiting) if (stay is null || !stay.Contains(id)) _players.Remove(id);
             _exiting.Clear();
             if (stay != null) foreach (string id in stay) _exiting.Add(id);
-            foreach (Player p in _players.Values.Where(x => x.Waiting).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
+            foreach (Player p in _players.Values.Where(x => x.Waiting && x.Refusal is null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 OpenSector(p.Sector!, events);
-                if (Place(p, p.Sector!, p.Setup.Placement!.Position, p.Setup.Placement.Radius, p.Setup.Placement.Facing, null, p.Setup.Carried, null, events, announce: false))
+                if (Place(p, p.Sector!, p.Setup.Placement!.Position, p.Setup.Placement.Radius, p.Setup.Placement.Facing, null, p.Setup.Carried, null, events, announce: false)
+                    || p.Refusal != null)
                     p.Waiting = false;
             }
             foreach (CharacterSetup c in _entering.Values)
@@ -737,11 +820,16 @@ namespace EdS.World
                 OpenSector(sector, events);
                 var p = new Player { Id = c.Id, Setup = c, Sector = sector };   // un joueur peut entrer avec un état (reprise, autre région)
                 _players[c.Id] = p;
-                p.Waiting = !Place(p, sector, c.Placement.Position, c.Placement.Radius, c.Placement.Facing, null, c.Carried, null, events, announce: false);
+                p.Waiting = !Place(p, sector, c.Placement.Position, c.Placement.Radius, c.Placement.Facing, null, c.Carried, null, events, announce: false) && p.Refusal is null;
             }
             _entering.Clear();
 
             // 1. Tous les secteurs ouverts, au même tick du monde.
+            // Garde : après les entrées et les renouvellements, la place réelle (bornée par le précontrôle) suffit toujours.
+            long exact = RegistryBound();
+            foreach (Open o in _open.Values) exact = checked(exact + o.Zone.NewDeathsPossible);
+            if (exact > SaveValidator.MaxConsumed || _open.Values.Any(o => o.Zone.KeyRefusal() != null))
+                throw new InvalidOperationException("Précontrôle du registre insuffisant (anomalie) : aucun secteur n'avance.");
             foreach (Open o in _open.Values)
             {
                 if (o.Zone.WorldTick != WorldTick) throw new InvalidOperationException($"Secteur {o.Name} au tick {o.Zone.WorldTick}, monde au tick {WorldTick}.");
@@ -754,7 +842,7 @@ namespace EdS.World
             // de départ (ou réessaie au tick suivant), avec le même état : il n'est jamais perdu.
             // Revue Codex de la PR #150 (3e tour) : une reprise sans combattant (Resume) n'est jamais effacée par l'état de l'ancien combattant ;
             // elle reste jusqu'à un placement réussi.
-            foreach (Player p in _players.Values.Where(x => x.Arrival != null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
+            foreach (Player p in _players.Values.Where(x => x.Arrival != null && x.Refusal is null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 if (!p.Resume)
                 {
@@ -768,7 +856,9 @@ namespace EdS.World
                 CharacterSetup again = p.Arrival!;
                 string back = p.ArrivingFrom != null && _open.ContainsKey(p.ArrivingFrom) ? p.ArrivingFrom : p.Sector!;
                 p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear)
-                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear);
+                    && p.Refusal is null
+                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear)
+                    && p.Refusal is null;
                 if (p.Resume) p.Arrival = again;
             }
 
@@ -790,7 +880,9 @@ namespace EdS.World
                 // libéré sa place), avec le même état ; sinon il réessaie au tick suivant.
                 CarriedState? state = carried.IsEmpty ? null : carried;
                 if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear)
-                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear))
+                    && p.Refusal is null
+                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear)
+                    && p.Refusal is null)
                 {
                     p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state, left.Gear);
                     p.ArrivingFrom = from.Name;
