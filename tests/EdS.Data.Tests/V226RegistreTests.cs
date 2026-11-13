@@ -40,7 +40,7 @@ public class V226RegistreTests
     [Fact]
     public void Version_17_lue_purgee_et_reecrite_en_18()
     {
-        Assert.Equal((18, 18), (SaveValidator.CurrentSchemaVersion, SaveValidator.SectorsSince));
+        Assert.Equal((19, 18), (SaveValidator.CurrentSchemaVersion, SaveValidator.SectorsSince));   // V2.28 : 19 (point de reprise)
         SaveLoadResult read = SaveJsonReader.Read(V17);
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.True(read.Save!.Migrated);

@@ -28,11 +28,21 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation ; facultatif.</summary>
         public List<KeyValuePair<string, long?>>? Sectors { get; set; }
 
+        /// <summary>Sous-lot V2.28 (version 19) : point de reprise (dernier point sûr approché) ; facultatif.</summary>
+        public ResumeData? Resume { get; set; }
+
         /// <summary>Sous-lot 12.2 (version 2) : personnage du joueur ; null tant qu'aucun n'a été créé.</summary>
         public CharacterData? Character { get; set; }
 
         /// <summary>Le champ <c>character</c> est présent (null compris).</summary>
         public bool HasCharacter { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.28 (version 19) : point de reprise tel que lu (<see cref="SavedResume"/> une fois validé).</summary>
+    public sealed class ResumeData
+    {
+        public string? SafePoint { get; set; }
+        public string? Sector { get; set; }
     }
 
     /// <summary>Sous-lot 12.2 : personnage persistant (le niveau se déduit de l'expérience, les attributs de la classe et du niveau).</summary>

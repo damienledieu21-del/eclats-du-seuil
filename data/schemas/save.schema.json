@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 18
+      "const": 19
     },
     "kind": {
       "const": "save"
@@ -57,6 +57,16 @@
           "propertyNames": { "pattern": "^s[0-9]{2}_[0-9]{2}$" },
           "additionalProperties": { "type": "integer", "minimum": 1 },
           "description": "Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation autre que celui du cœur, ordre ordinal ; facultatif."
+        },
+        "resume": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["safePoint"],
+          "properties": {
+            "safePoint": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+            "sector": { "type": "string", "pattern": "^s[0-9]{2}_[0-9]{2}$" }
+          },
+          "description": "Sous-lot V2.28 (version 19) : où la partie reprend dans la zone de la sauvegarde : dernier point sûr approché, et son secteur de simulation pour une zone à région (le point sûr fait foi, le secteur est recalculé des données) ; facultatif (absent : entrée de la zone)."
         },
         "consumed": {
           "type": "array",

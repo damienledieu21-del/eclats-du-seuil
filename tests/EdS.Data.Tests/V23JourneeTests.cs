@@ -398,7 +398,7 @@ public sealed class V23JourneeTests : IDisposable
         WorldSession a = At(tick), b = At(tick);
         foreach (Npc npc in a.Narrative!.Book.Npcs) Assert.Equal(a.NpcPosition(npc), b.NpcPosition(b.Narrative!.Book.Npc(npc.Id)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(18, SaveValidator.CurrentSchemaVersion);   // V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // rien de l'emploi du temps n'est sauvegardé
+        Assert.Equal(19, SaveValidator.CurrentSchemaVersion);   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // rien de l'emploi du temps n'est sauvegardé
         Assert.DoesNotContain("schedule", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Book(Vallons), market: new Market(ShippedMerchants));
         back.Step();

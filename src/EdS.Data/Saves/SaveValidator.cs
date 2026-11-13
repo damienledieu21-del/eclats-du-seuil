@@ -463,11 +463,21 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation autre que celui du cœur, ordre ordinal.</summary>
         public IReadOnlyDictionary<string, long> Sectors { get; }
 
+        /// <summary>
+        /// Sous-lot V2.28 (version 19) : où la partie reprend dans <see cref="Zone"/> (dernier point sûr approché et son secteur) ; null :
+        /// à l'entrée de la zone (nouvelle partie, sauvegarde de version 18 ou antérieure).
+        /// </summary>
+        public SavedResume? Resume { get; }
+
+        /// <summary>Sous-lot V2.28 : la même sauvegarde, reprise à <paramref name="resume"/> (null : à l'entrée de la zone).</summary>
+        public WorldSave WithResume(SavedResume? resume) => new WorldSave(Zone, WorldTick, Sessions, Consumed, Character, Migrated, Sectors, resume);
+
         /// <remarks>Sous-lot V2.26 (version 18) : les clés de mort (<see cref="SaveValidator.IsDeathKey"/>) ne sont pas gardées : une sauvegarde
         /// ferme sa session, et la partie reprendra dans une session nouvelle.</remarks>
         public WorldSave(string zone, long worldTick, long sessions, IEnumerable<string> consumed, SavedCharacter? character = null, bool migrated = false,
-            IEnumerable<KeyValuePair<string, long>>? sectors = null)
+            IEnumerable<KeyValuePair<string, long>>? sectors = null, SavedResume? resume = null)
         {
+            Resume = resume;
             var map = new SortedDictionary<string, long>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, long> s in sectors ?? Array.Empty<KeyValuePair<string, long>>())
             {
@@ -575,7 +585,15 @@ namespace EdS.Data.Saves
         /// simulation (le cœur seulement s'il a été rouvert) (objet « s08_05 : session », de 1 à <see cref="MaxWorldTick"/>, ordre ordinal, au plus
         /// <see cref="MaxSectors"/>). Une sauvegarde de version 17 ou antérieure est lue, ses clés de mort purgées, et mise à jour ; elle n'a pas
         /// de <c>sectors</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 18;
+        /// <remarks>Version 19 (sous-lot V2.28, <see cref="ResumeSince"/>, reprise au dernier point sûr ; PLAN_GRANDE_CARTE.md § 3) :
+        /// <c>resume</c> facultatif : <c>{ "safePoint", "sector" }</c>, le dernier point sûr approché dans la zone de la sauvegarde (identifiant
+        /// local, <see cref="IsSafePointId"/>) et, pour une zone à région, son secteur de simulation (« s07_06 », facultatif). La partie y
+        /// reprend ; sans lui, à l'entrée de la zone. Une sauvegarde de version 18 ou antérieure est lue telle quelle (reprise à l'entrée) et
+        /// mise à jour ; elle n'a pas de <c>resume</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 19;
+
+        /// <summary>Sous-lot V2.28 : version où le point de reprise (<c>resume</c>) entre dans la sauvegarde.</summary>
+        public const int ResumeSince = 19;
 
         /// <summary>Sous-lot V2.26 : version où le registre est purgé des clés de mort et où les sessions des secteurs entrent dans la sauvegarde.</summary>
         public const int SectorsSince = 18;
@@ -739,6 +757,9 @@ namespace EdS.Data.Saves
         /// </summary>
         public static bool IsDataId(string? id) => id != null && id.Length <= 200 && DataId.IsMatch(id);
 
+        /// <summary>Sous-lot V2.28 : identifiant local d'un point sûr, au format des zones (minuscules, chiffres et « _ », une lettre d'abord, 64 au plus).</summary>
+        public static bool IsSafePointId(string? id) => id != null && id.Length <= 64 && CharacterId.IsMatch(id);
+
         public static bool IsCharacterId(string? id) => id != null && id.Length <= MaxCharacterIdLength && CharacterId.IsMatch(id);
 
         public static bool IsZoneId(string? id) => id != null && id.Length <= 64 && ZoneId.IsMatch(id);
@@ -811,9 +832,23 @@ namespace EdS.Data.Saves
                             report.Add(path, ValidationCode.InvalidValue, "secteurs hors de l'ordre ordinal (forme canonique).");
                     }
             }
+            // Sous-lot V2.28 (version 19) : point de reprise (dernier point sûr approché, et son secteur pour une zone à région).
+            if (data.Resume is ResumeData resume)
+            {
+                if (version < ResumeSince) report.Add("$.data.resume", ValidationCode.UnknownField, $"champ inconnu en version {version} (point de reprise : version {ResumeSince}).");
+                else
+                {
+                    if (resume.SafePoint is null) Missing(report, "$.data.resume.safePoint", "identifiant du point sûr de reprise");
+                    else if (!IsSafePointId(resume.SafePoint))
+                        report.Add("$.data.resume.safePoint", ValidationCode.InvalidValue, $"point sûr « {resume.SafePoint} » invalide : minuscules, chiffres et « _ », commençant par une lettre, 64 caractères au plus.");
+                    if (resume.Sector != null && !IsSectorName(resume.Sector))
+                        report.Add("$.data.resume.sector", ValidationCode.InvalidValue, $"secteur « {resume.Sector} » mal nommé : « s<col>_<rang> ».");
+                }
+            }
             if (!report.IsValid || document.ContentVersion is null) return new SaveLoadResult(report, null);
             return new SaveLoadResult(report, new WorldSave(data.Zone!, data.WorldTick!.Value, data.Sessions!.Value, data.Consumed!.Select(k => k!), character, migrating,
-                data.Sectors?.Select(s => new KeyValuePair<string, long>(s.Key, s.Value!.Value))));
+                data.Sectors?.Select(s => new KeyValuePair<string, long>(s.Key, s.Value!.Value)),
+                data.Resume is ResumeData r ? new SavedResume(r.SafePoint!, r.Sector) : null));
         }
 
         private static SavedCharacter? CheckCharacter(CharacterData c, int version, ValidationReport report)

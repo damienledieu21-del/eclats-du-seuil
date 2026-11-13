@@ -70,6 +70,15 @@ namespace EdS.Data.Json
                     foreach (JsonProperty property in input.UniqueProperties(v, p))
                         data.Sectors.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
                 },
+                ["resume"] = (v, p) =>   // sous-lot V2.28 (version 19) : dernier point sûr approché et son secteur
+                {
+                    var resume = new ResumeData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["safePoint"] = (e, ip) => resume.SafePoint = input.Text(e, ip),
+                        ["sector"] = (e, ip) => resume.Sector = input.Text(e, ip),
+                    })) data.Resume = resume;
+                },
                 ["character"] = (v, p) =>   // sous-lot 12.2 (version 2) : null ou le personnage
                 {
                     data.HasCharacter = true;
@@ -417,6 +426,12 @@ namespace EdS.Data.Json
                 foreach (KeyValuePair<string, long> s in save.Sectors)
                     b.Append("      \"").Append(s.Key).Append("\": ").Append(s.Value.ToString(CultureInfo.InvariantCulture)).Append(++k < save.Sectors.Count ? ",\n" : "\n");
                 b.Append("    },\n");
+            }
+            if (save.Resume is SavedResume resume)   // sous-lot V2.28 (version 19) : identifiants déjà validés (aucun échappement nécessaire)
+            {
+                b.Append("    \"resume\": {\n      \"safePoint\": \"").Append(resume.SafePoint).Append('"');
+                if (resume.Sector != null) b.Append(",\n      \"sector\": \"").Append(resume.Sector).Append('"');
+                b.Append("\n    },\n");
             }
             if (save.Consumed.Count == 0) b.Append("    \"consumed\": []\n");
             else
