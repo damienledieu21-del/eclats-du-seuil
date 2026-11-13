@@ -345,12 +345,169 @@ public class V228b2PassageTests
     }
 
     [Fact]
-    public void Aire_a_plusieurs_secteurs_avec_chef_ou_evenement_reste_une_session()
+    public void Aire_a_plusieurs_secteurs_avec_un_evenement_du_monde_reste_une_seule_session()
     {
-        // Les chefs et les événements du monde ne sont pas encore liés à leur secteur : une telle zone reste une seule session, comme avant.
-        ZoneDefinition vallons = V11TestData.Zone();
-        Assert.True(vallons.Bosses.Count > 0 || vallons.Events.Count > 0);
-        Assert.True(SectorMap.For(vallons).HomeHoldsArea);   // les Vallons d'aujourd'hui : le cœur seul, tenu par l'hôte (V2.28b, première partie)
-        Assert.True(new WorldSession(new WorldSave(vallons.Id, 0, 0, Array.Empty<string>(), Hero()), vallons, ShippedData, Progression, ItemsCatalog).OnSectors);
+        // Relecture indépendante de la PR #157 : les événements du monde ne sont pas encore liés à leur secteur : une aire à plusieurs secteurs
+        // qui en a reste une seule session (comme avant), sans passage.
+        ZoneDefinition zone = Essai(z => z["data"]!["events"] = JsonNode.Parse("""
+            [{ "id": "chasse", "kind": "hunt", "everyDays": 1, "chancePercent": 50, "firstDay": 1, "start": "05:15", "spreadMinutes": 45,
+               "announceMinutes": 0, "durationMinutes": 60,
+               "groups": [{ "id": "ouest", "weight": 1, "creatures": [{ "like": "loup_ouest", "position": [60, 60] }, { "like": "loup_ouest", "position": [70, 60] }] }] }]
+            """));
+        Assert.Single(zone.Events);
+        Assert.False(SectorMap.For(zone).HomeHoldsArea);
+        WorldSession w = Open(zone);
+        Assert.False(w.OnSectors);
+        Assert.Null(w.Sector);
+        Assert.Null(w.Zone.Sector);
+        WalkTo(w, 300, 128);   // toute l'aire est une seule session : aucun passage
+        Assert.Equal((0, "bastion", (string?)null), (w.Passages, w.CombatantId, w.Sector));
+        Assert.InRange(Where(w).X, 299, 301);
+    }
+
+    [Fact]
+    public void Personnage_sans_combattant_la_partie_ne_leve_pas_et_le_retrouve()
+    {
+        // Relecture indépendante de la PR #157 : en reprise d'un passage (refusé des deux côtés) ou refusé pour de bon, le personnage n'a
+        // pas de combattant : chaque tick de la partie avance sans lever (aucun tick partiel), la session et l'identité restent les dernières.
+        ZoneDefinition zone = TwoSectors.Value;
+        foreach (bool refused in new[] { false, true })
+        {
+            WorldSession w = Open(zone);
+            WalkTo(w, 200, 128);
+            SectorWorld host = w.Host!;
+            Zone before = w.Zone;
+            if (refused) host.RefuseForTest("bastion", "essai");
+            else host.ResumeForTest("bastion");
+            Assert.False(host.IsFollowed("bastion"));
+            long tick = host.WorldTick;
+            w.Step();   // le tick où le personnage n'a pas de combattant : ne lève pas
+            for (int i = 0; i < 19; i++) w.Step();
+            Assert.Equal(tick + 20, host.WorldTick);
+            Assert.Same(before, w.Zone);
+            w.Save();
+            if (refused)
+            {
+                Assert.Equal("bastion", w.CombatantId);   // la dernière identité, son combattant parti
+                Assert.False(host.IsFollowed("bastion"));
+                continue;
+            }
+            // La reprise replace le personnage dès qu'une place est libre (ici tout de suite) : la partie le retrouve, sous l'identité suivante.
+            Assert.True(host.IsFollowed("bastion"));
+            Assert.Equal(host.CombatantOf("bastion"), w.CombatantId);
+            Assert.Equal("bastion_p1", w.CombatantId);
+            Assert.True(w.Zone.Engine.View(w.CombatantId).IsPresent);
+        }
+    }
+
+    [Fact]
+    public void Passage_pendant_un_combat_au_bout_de_la_marge_la_creature_lache()
+    {
+        // Engagé par un loup près du bord, le personnage reste dans son secteur jusqu'au bout de la marge (32 m au-delà du bord) ; là, le
+        // loup lâche (ni mort, ni butin) et le personnage passe au tick suivant.
+        ZoneDefinition zone = Essai(
+            z => z["data"]!["populations"]!.AsArray().Add(new JsonObject { ["creature"] = "loup_bord", ["respawnMs"] = 90_000, ["leashRange"] = 20, ["loot"] = "loot.loup" }),
+            s =>
+            {
+                var w = (JsonObject)s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_ouest")!.DeepClone();
+                w["id"] = "loup_bord";
+                w["position"] = new JsonArray(236, 128);
+                w["health"] = 500;
+                s["data"]!["combatants"]!.AsArray().Add(w);
+            });
+        WorldSession w = Open(zone);
+        var steps = new List<SessionStep>();
+        List<string> changes = WalkTo(w, 320, 128, steps);
+        string change = Assert.Single(changes);
+        Assert.EndsWith("s00_00->s01_00 bastion", change, StringComparison.Ordinal);
+        Assert.Contains(steps.SelectMany(x => x.Population), e => e.Kind == PopulationEventKind.Leashed && e.Population == "loup_bord");
+        Assert.Contains(steps, x => x.Population.Any(e => e.Kind == PopulationEventKind.Leashed));
+        Assert.Empty(steps.SelectMany(x => x.Experience));   // lâché, pas vaincu
+        Assert.False(w.IsDefeated);
+        Assert.Equal(1, w.Passages);
+    }
+
+    [Fact]
+    public void Bord_exact_hysteresis_et_aller_retour_rapide()
+    {
+        ZoneDefinition zone = TwoSectors.Value;
+        WorldSession w = Open(zone);
+        WalkTo(w, 256, 128);   // sur le bord : pas de passage
+        Assert.Equal("s00_00", w.Sector);
+        WalkTo(w, 263, 128);   // moins de 8 m au-delà : toujours pas
+        Assert.Equal(("s00_00", 0), (w.Sector, w.Passages));
+        WalkTo(w, 266, 128);   // plus de 8 m : passage
+        Assert.Equal(("s01_00", 1), (w.Sector, w.Passages));
+        WalkTo(w, 251, 128);   // revenu sous le bord, mais à moins de 8 m : on reste à l'est
+        Assert.Equal(("s01_00", 1), (w.Sector, w.Passages));
+        WalkTo(w, 245, 128);   // plus de 8 m à l'ouest : retour
+        Assert.Equal(("s00_00", 2, "bastion_p1"), (w.Sector, w.Passages, w.CombatantId));
+        WalkTo(w, 266, 128);   // et de nouveau à l'est, aussitôt
+        Assert.Equal(("s01_00", 3), (w.Sector, w.Passages));
+        Assert.True(w.Zone.Engine.View(w.CombatantId).IsPresent);
+    }
+
+    [Fact]
+    public void Sauvegarde_abimee_secteurs_et_point_de_reprise()
+    {
+        ZoneDefinition zone = TwoSectors.Value;
+        WorldSave fine = Open(zone).Save();
+        // Point de reprise avec un secteur faux : le point sûr fait foi, le secteur est réécrit.
+        WorldSave wrong = fine.WithResume(new SavedResume("camp_est", "s05_05"));
+        WorldSession a = Open(zone, wrong, safePoint: WorldSession.ResumeSafePoint(wrong, zone));
+        Assert.Equal("s01_00", a.Sector);
+        Assert.Equal("s01_00", a.Save().Resume!.Sector);
+        // Une session de secteur pour un secteur hors de la région : gardée telle quelle, sans effet.
+        var odd = new WorldSave(fine.Zone, fine.WorldTick, fine.Sessions, fine.Consumed, fine.Character,
+            sectors: new[] { new KeyValuePair<string, long>("s09_09", 4) }, resume: fine.Resume);
+        WorldSession b = Open(zone, odd);
+        WalkTo(b, 300, 128);
+        Assert.Equal("s01_00", b.Sector);
+        WorldSave kept = SaveJsonReader.Read(SaveJsonReader.Write(b.Save())).Save!;
+        Assert.Equal((4L, 1L), (kept.Sectors["s09_09"], kept.Sectors["s01_00"]));
+        // Session d'un secteur déjà au plafond du temps du monde : le secteur ne peut plus s'ouvrir ; le personnage reste à l'ouest, au
+        // bout de la marge, et la partie avance (aucun tick partiel).
+        var worn = new WorldSave(fine.Zone, fine.WorldTick, fine.Sessions, fine.Consumed, fine.Character,
+            sectors: new[] { new KeyValuePair<string, long>("s01_00", SaveValidator.MaxWorldTick) }, resume: fine.Resume);
+        Assert.True(SaveJsonReader.Read(SaveJsonReader.Write(worn)).IsValid);
+        WorldSession c = Open(zone, worn);
+        for (int i = 0; i < 2000 && Where(c).X < 280; i++)
+        {
+            CombatEngine e = c.Zone.Engine;
+            if (i % 40 == 0) e.Submit(new CombatCommand(e.CurrentTick * e.TickMilliseconds, c.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
+            c.Step();
+        }
+        for (int i = 0; i < 100; i++) c.Step();
+        Assert.Equal(("s00_00", 0), (c.Sector, c.Passages));
+        Assert.InRange(Where(c).X, 270, 288);
+        Assert.DoesNotContain("s01_00", c.Host!.OpenSectors);
+    }
+
+    [Fact]
+    public void Reserve_du_registre_de_tous_les_secteurs_ouverts_la_decouverte_attend()
+    {
+        // Relecture indépendante de la PR #157 : une inscription de la partie (ici la découverte d'un point sûr) garde la place des morts
+        // possibles de tous les secteurs ouverts, comme la borne du tick du monde ; sinon elle remplit le registre et le monde ne peut plus
+        // avancer. Deux secteurs ouverts (le personnage à 56 m du bord), registre presque plein.
+        ZoneDefinition zone = Essai(z => z["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "borne", ["name"] = "Borne", ["position"] = new JsonArray(212, 128) }));
+        var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+        WorldSession w = Open(zone, new WorldSave(zone.Id, 0, 0, keys, Hero()));
+        WalkTo(w, 200, 128);
+        Assert.Equal(new[] { "s00_00", "s01_00" }, w.Host!.OpenSectors);
+        Assert.False(w.IsDiscovered(zone, "borne"));
+        int own = w.Zone.Engine.CombatantIds.Count, all = w.Host.OpenCombatants;
+        Assert.True(all > own);
+        // Place restante : de quoi inscrire une clé avec la seule réserve du secteur du personnage, pas avec celle de tous les secteurs.
+        int fill = w.RegistryRoom - own - 1;
+        for (int i = 0; i < fill; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D4}"));
+        Assert.Equal(own + 1, w.RegistryRoom);
+        Assert.True(w.Host.NextTickRegistryNeed <= SaveValidator.MaxConsumed);
+        // Il s'approche de la borne : la découverte attend ; le monde continue d'avancer, tick après tick.
+        long tick = w.Host.WorldTick;
+        WalkTo(w, 211, 128);
+        for (int i = 0; i < 20; i++) w.Step();
+        Assert.False(w.IsDiscovered(zone, "borne"));
+        Assert.True(w.Host.WorldTick > tick + 20);
+        Assert.True(w.Host.NextTickRegistryNeed <= SaveValidator.MaxConsumed);
     }
 }

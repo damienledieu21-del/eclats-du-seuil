@@ -170,6 +170,17 @@ namespace EdS.World
         /// </summary>
         public int RegistryRoom => _host is null ? Zone.RegistryRoom : (int)Math.Min(Zone.RegistryRoom, _host.RegistryRoom);
 
+        /// <summary>
+        /// Relecture indépendante de la PR #157 : réserve du registre pour les morts possibles d'un tick, la même pour toute inscription faite
+        /// par la partie (compétences données, découverte d'un point sûr, nuit d'une créature rare, récompenses d'un chef) : les combattants
+        /// de la session, ou ceux de toutes les sessions ouvertes sur l'hôte des secteurs (la borne du tick du monde les compte tous). Avec le
+        /// seul secteur du cœur, c'est exactement la réserve d'avant.
+        /// </summary>
+        internal int DeathReserve => _host?.OpenCombatants ?? Zone.Engine.CombatantIds.Count;
+
+        /// <summary>Internes, pour les tests : l'hôte des secteurs de la partie.</summary>
+        internal SectorWorld? Host => _host;
+
         /// <summary>Sous-lot V2.28b (2) : population d'une créature, dans le secteur où elle vit.</summary>
         private Population? PopulationOf(string combatant) => _host != null ? _host.PopulationOf(combatant) : _populations?.Of(combatant);
 
@@ -250,7 +261,7 @@ namespace EdS.World
         private bool CanGive(IEnumerable<string> keys)
         {
             int count = ToGive(keys).Count;
-            return count == 0 || RegistryRoom - count >= Zone.Engine.CombatantIds.Count;
+            return count == 0 || RegistryRoom - count >= DeathReserve;
         }
 
         /// <summary>
@@ -556,7 +567,10 @@ namespace EdS.World
         /// </summary>
         private void Follow()
         {
-            if (!(_host!.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
+            // Relecture indépendante de la PR #157 : en attente d'une place, en reprise d'un passage, refusé pour de bon ou mort dans une session
+            // terminée, le personnage n'a pas de combattant à suivre : la partie garde sa dernière session et sa dernière identité (vues de
+            // son combattant parti), sans lever ; elle le retrouve au tick où l'hôte le replace.
+            if (!_host!.IsFollowed(_character.Id) || !(_host.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
             string id = _host.CombatantOf(_character.Id);
             if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
             Zone = zone;
@@ -1207,7 +1221,7 @@ namespace EdS.World
         internal void NightDefeated(Population population, long tick)
         {
             if (population.Night is null || !(NightCreatures.NightOf(Zone.Clock.At(checked(Zone.StartWorldTick + tick))) is long night)) return;
-            if (RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
+            if (RegistryRoom - 1 >= DeathReserve) Zone.Consume(NightCreatures.Key(Zone.Id, night, population.Creature));
         }
 
         /// <summary>Expérience et butin des morts du tick (premières attributions), rangés dans le personnage et l'inventaire.</summary>
@@ -1271,7 +1285,7 @@ namespace EdS.World
             // Même règle que la revue Codex de la PR #46 : la clé de victoire réserve sa place au registre avant toute mutation (registre
             // plein : les récompenses attendent, comme un inventaire plein).
             // Relecture de la PR #76 : même règle que les autres clés du registre : la clé de victoire et les morts possibles d'un tick.
-            bool room = RegistryRoom - 1 >= Zone.Engine.CombatantIds.Count;
+            bool room = RegistryRoom - 1 >= DeathReserve;
             foreach ((string item, int count) in b.Rewards)
                 if (!room || trial.Add(item, count) != InventoryRefusal.None)
                 {

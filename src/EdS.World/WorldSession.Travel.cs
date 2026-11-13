@@ -283,7 +283,7 @@ namespace EdS.World
         {
             if (Definition is null || Definition.Indoor) return false;
             string key = Definition.SafePointKey(safePoint);
-            if (Registered(key) || RegistryRoom <= Zone.Engine.CombatantIds.Count) return false;
+            if (Registered(key) || RegistryRoom <= DeathReserve) return false;
             return Zone.Consume(key);
         }
 
