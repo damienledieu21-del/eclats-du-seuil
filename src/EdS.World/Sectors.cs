@@ -215,8 +215,13 @@ namespace EdS.World
             var cut = new CombatSpace(new GroundVector(Fixed.FromRaw(space.MinX), Fixed.FromRaw(space.MinZ)),
                 new GroundVector(Fixed.FromRaw(space.MaxX), Fixed.FromRaw(space.MaxZ)), obstacles);
             var combatants = Area.Combatants.Where(c => Owns(sector, c)).ToList();
+            // Revue Codex de la PR #150 (10e tour) : commandes de l'aire découpées avec leurs acteurs. Choix : une commande dont l'acteur ou la
+            // cible appartient à un autre secteur est retirée (son acteur ou sa cible n'existe pas dans cette session ; la commande de l'acteur
+            // reste dans son secteur seulement si sa cible y est aussi). Ordre de l'aire gardé.
+            var ids = new HashSet<string>(combatants.Select(c => c.Id), StringComparer.Ordinal);
+            var commands = Area.Commands.Where(c => ids.Contains(c.Actor) && (c.Target is null || ids.Contains(c.Target))).ToList();
             long seed = sector == HomeSector && !reopened ? Area.Seed : SeedOf(Area.Seed, sector, session);
-            return new CombatSetup(seed, Area.DurationMs, Area.Stats, Area.Damage, Area.Progression, Area.Combat, combatants, Area.Commands,
+            return new CombatSetup(seed, Area.DurationMs, Area.Stats, Area.Damage, Area.Progression, Area.Combat, combatants, commands,
                 Area.Data, cut, true, Area.Truces);
         }
 
@@ -453,7 +458,8 @@ namespace EdS.World
         /// <summary>Identité du joueur dans la session de son secteur (la sienne, ou <c>&lt;joueur&gt;_p&lt;n&gt;</c> après un passage).</summary>
         public string CombatantOf(string player) => _players.TryGetValue(player, out Player? p)
             ? (p.Waiting || p.Resume ? throw new InvalidOperationException($"Joueur {player} en attente d'une place.")
-                : p.Final != null ? throw new InvalidOperationException($"Joueur {player} mort dans une session terminée.") : p.Combatant)
+                : p.Final != null ? throw new InvalidOperationException($"Joueur {player} mort dans une session terminée.")
+                : p.Refusal != null ? throw new InvalidOperationException($"Joueur {player} refusé pour de bon : {p.Refusal}") : p.Combatant)
             : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
 
         /// <summary>Revue Codex de la PR #150 (3e tour) : vrai si le joueur attend la reprise d'un passage (aucune place des deux côtés).</summary>
@@ -533,8 +539,21 @@ namespace EdS.World
             var space = new CombatSpace(new GroundVector(Lo(a.Space!.Min.X), Lo(a.Space.Min.Z)), new GroundVector(Hi(a.Space.Max.X), Hi(a.Space.Max.Z)));
             var probe = new CombatSetup(a.Seed, a.DurationMs, a.Stats, a.Damage, a.Progression, a.Combat, new CombatantSetup[] { Arriving(player, player.Id, player.Placement, 0, null, player.Carried) },
                 Array.Empty<CombatCommand>(), a.Data, space, true, a.Truces);
+            // Revue Codex de la PR #150 (10e tour) : la clé de mort de chacune de ses identités possibles (la sienne, <id>_p<n>, dans le secteur le
+            // plus long et la session la plus grande) doit tenir au format des sauvegardes (200 caractères) : sinon refus dès l'entrée.
+            string longest = $"{_zoneId}/{SectorMap.NameOf(99, 99)}/{long.MaxValue.ToString(CultureInfo.InvariantCulture)}/death/{player.Id}_p{int.MaxValue.ToString(CultureInfo.InvariantCulture)}";
+            if (!SaveValidator.IsEventKey(longest))
+                return $"identifiant « {player.Id} » trop long ou hors du format des clés de mort (au plus 200 caractères avec la zone, le secteur, la session et le suffixe de passage).";
             IReadOnlyList<RuleViolation> violations = probe.Validate();
             return violations.Count == 0 ? null : string.Join(" ; ", violations.Take(3).Select(v => $"{string.Join(", ", v.Fields)} : {v.Message}"));
+        }
+
+        /// <summary>Pour les tests : le joueur est refusé pour de bon (son combattant s'en va), comme après une arrivée refusée par la validation.</summary>
+        internal void RefuseForTest(string player, string diagnostic)
+        {
+            Player p = _players[player];
+            if (p.Sector != null && _open.TryGetValue(p.Sector, out Open? o) && o.Zone.Engine.View(p.Combatant).IsPresent) o.Zone.Leave(p.Combatant);
+            p.Refusal = diagnostic;
         }
 
         /// <summary>Un joueur quitte la région (départ au prochain tick, dans l'ordre des identifiants).</summary>
@@ -608,7 +627,8 @@ namespace EdS.World
         {
             CombatEngine engine = old.Zone.Engine;
             var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
-            foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && !x.Waiting && x.Final is null).ToList())
+            // Revue Codex de la PR #150 (10e tour) : un joueur refusé pour de bon (sans combattant) n'est pas renouvelé, comme pour Live.
+            foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && !x.Waiting && x.Final is null && x.Refusal is null).ToList())
             {
                 if (p.Arrival != null)
                 {
