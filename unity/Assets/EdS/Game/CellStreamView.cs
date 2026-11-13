@@ -163,45 +163,74 @@ namespace EdS.Game
             mesh.SetNormals(_normals, 0, n);
             mesh.SetUVs(0, _uvs, 0, n);
             mesh.SetTriangles(patch.Indices, 0, patch.IndexCount, 0);
-            renderer.gameObject.SetActive(patch.IndexCount > 0);
+            renderer.gameObject.SetActive(false);   // préparé, pas encore montré
         }
 
-        void ITerrainSink.ShowCell(RegionCell cell, int ring, TerrainPatch patch)
+        // Revue Codex de la PR #154 : publication atomique. Préparer remplit un objet de réserve (inactif, rien ne change à l'écran) ;
+        // publier échange d'un coup les objets préparés avec ceux montrés (activer, désactiver, rendre au recyclage : rien qui puisse
+        // échouer) ; oublier rend les objets préparés au recyclage.
+        private readonly List<(bool Far, RegionCell Cell, int Block, MeshRenderer Renderer, bool Visible)> _staged =
+            new List<(bool, RegionCell, int, MeshRenderer, bool)>();
+
+        private MeshRenderer Spare() => _pool.Count > 0 ? _pool.Pop() : Make("Terrain");
+
+        void ITerrainSink.StageCell(RegionCell cell, int ring, TerrainPatch patch)
         {
-            MeshRenderer renderer;
-            if (patch == null)
+            MeshRenderer renderer = null;
+            if (patch != null)
             {
-                if (_cells.TryGetValue(cell, out renderer))
+                renderer = Spare();
+                _staged.Add((false, cell, 0, renderer, patch.IndexCount > 0));   // inscrit avant de remplir : un échec le rend au recyclage (Discard)
+                renderer.gameObject.name = "Case " + cell.Name + " anneau " + ring;
+                Fill(renderer, patch);
+                bool shadows = ring == 0 && _terrain.Profile.DetailShadows;
+                renderer.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+                renderer.receiveShadows = ring == 0;
+            }
+            else _staged.Add((false, cell, 0, null, false));
+        }
+
+        void ITerrainSink.StageFarBlock(int column, int row, TerrainPatch patch)
+        {
+            MeshRenderer renderer = Spare();
+            _staged.Add((true, default(RegionCell), row * 1000 + column, renderer, patch.IndexCount > 0));
+            renderer.gameObject.name = "Terrain lointain " + column + "," + row;
+            Fill(renderer, patch);
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        void ITerrainSink.Publish()
+        {
+            foreach ((bool far, RegionCell cell, int block, MeshRenderer next, bool visible) in _staged)
+            {
+                MeshRenderer old;
+                bool had = far ? _far.TryGetValue(block, out old) : _cells.TryGetValue(cell, out old);
+                if (next != null)
                 {
-                    _cells.Remove(cell);
-                    renderer.gameObject.SetActive(false);
-                    _pool.Push(renderer);   // recyclage : la prochaine case reprend l'objet et son maillage
+                    next.gameObject.SetActive(visible);
+                    if (far) _far[block] = next;
+                    else _cells[cell] = next;
                 }
-                return;
+                else if (!far) _cells.Remove(cell);
+                if (had)
+                {
+                    old.gameObject.SetActive(false);
+                    _pool.Push(old);   // recyclage : le prochain morceau reprend l'objet et son maillage
+                }
             }
-            if (!_cells.TryGetValue(cell, out renderer))
-            {
-                renderer = _pool.Count > 0 ? _pool.Pop() : Make("Case");
-                _cells.Add(cell, renderer);
-            }
-            renderer.gameObject.name = "Case " + cell.Name + " anneau " + ring;
-            Fill(renderer, patch);
-            bool shadows = ring == 0 && _terrain.Profile.DetailShadows;
-            renderer.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
-            renderer.receiveShadows = ring == 0;
+            _staged.Clear();
         }
 
-        void ITerrainSink.ShowFarBlock(int column, int row, TerrainPatch patch)
+        void ITerrainSink.Discard()
         {
-            int key = row * 1000 + column;
-            if (!_far.TryGetValue(key, out MeshRenderer renderer))
-            {
-                renderer = Make("Terrain lointain " + column + "," + row);
-                renderer.shadowCastingMode = ShadowCastingMode.Off;
-                renderer.receiveShadows = false;
-                _far.Add(key, renderer);
-            }
-            Fill(renderer, patch);
+            foreach ((bool far, RegionCell cell, int block, MeshRenderer renderer, bool visible) in _staged)
+                if (renderer != null)
+                {
+                    renderer.gameObject.SetActive(false);
+                    _pool.Push(renderer);
+                }
+            _staged.Clear();
         }
 
         /// <summary>
@@ -221,6 +250,7 @@ namespace EdS.Game
             _terrain.Cancel();
             foreach (Mesh mesh in _meshes) if (mesh != null) Object.Destroy(mesh);   // objets recyclés (inactifs) compris
             _meshes.Clear();
+            _staged.Clear();
             _cells.Clear();
             _far.Clear();
             _pool.Clear();

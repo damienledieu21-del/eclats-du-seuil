@@ -28,21 +28,33 @@ namespace EdS.Tools.Measures
             private float[] _copy = Array.Empty<float>();
             private int[] _indices = Array.Empty<int>();
 
-            public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch)
+            private readonly List<Action> _staged = new();
+
+            public void StageCell(RegionCell cell, int ring, TerrainPatch? patch)
             {
-                if (patch == null) _cells.Remove(cell);
+                if (patch == null) _staged.Add(() => _cells.Remove(cell));
                 else
                 {
                     Fill(patch);
-                    _cells[cell] = (patch.Bytes, patch.TriangleCount);
+                    var shown = (patch.Bytes, patch.TriangleCount);
+                    _staged.Add(() => _cells[cell] = shown);
                 }
             }
 
-            public void ShowFarBlock(int column, int row, TerrainPatch patch)
+            public void StageFarBlock(int column, int row, TerrainPatch patch)
             {
                 Fill(patch);
-                _far[(column, row)] = (patch.Bytes, patch.TriangleCount);
+                var shown = (patch.Bytes, patch.TriangleCount);
+                _staged.Add(() => _far[(column, row)] = shown);
             }
+
+            public void Publish()
+            {
+                foreach (Action a in _staged) a();
+                _staged.Clear();
+            }
+
+            public void Discard() => _staged.Clear();
 
             /// <summary>
             /// Relecture indépendante de la PR #154 : le coût de la copie que fait Unity (CellStreamView.Fill : sommets, normales et coordonnées

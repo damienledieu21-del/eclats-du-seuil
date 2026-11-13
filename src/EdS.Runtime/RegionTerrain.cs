@@ -5,16 +5,25 @@ using EdS.Data.Zones;
 namespace EdS.Runtime
 {
     /// <summary>
-    /// Sous-lot V2.27 : ce qui montre les morceaux de terrain (Unity : <c>CellStreamView</c> ; tests : un enregistreur). Les tableaux d'un
-    /// morceau (<see cref="TerrainPatch.Positions"/>…) ne valent que pendant l'appel : ils sont recyclés juste après.
+    /// Sous-lot V2.27 : ce qui montre les morceaux de terrain (Unity : <c>CellStreamView</c> ; tests : un enregistreur). Publication
+    /// <b>en deux temps</b> (revue Codex de la PR #154) : <see cref="StageCell"/> et <see cref="StageFarBlock"/> <b>préparent</b> sans rien
+    /// changer à l'écran (ils peuvent échouer) ; <see cref="Publish"/> montre d'un coup tout ce qui est préparé et <b>ne doit pas échouer</b>
+    /// (échange de maillages déjà remplis) ; <see cref="Discard"/> oublie ce qui est préparé (après un échec). Les tableaux d'un morceau
+    /// (<see cref="TerrainPatch.Positions"/>…) ne valent que pendant l'appel de préparation : ils sont recyclés ensuite.
     /// </summary>
     public interface ITerrainSink
     {
-        /// <summary>Montre la case à l'anneau <paramref name="ring"/> avec ce maillage, ou la cache (et recycle son objet) si <paramref name="patch"/> est null.</summary>
-        void ShowCell(RegionCell cell, int ring, TerrainPatch? patch);
+        /// <summary>Prépare la case à l'anneau <paramref name="ring"/> avec ce maillage, ou sa disparition si <paramref name="patch"/> est null.</summary>
+        void StageCell(RegionCell cell, int ring, TerrainPatch? patch);
 
-        /// <summary>Remplace le maillage du bloc lointain (<paramref name="column"/>, <paramref name="row"/>).</summary>
-        void ShowFarBlock(int column, int row, TerrainPatch patch);
+        /// <summary>Prépare le nouveau maillage du bloc lointain (<paramref name="column"/>, <paramref name="row"/>).</summary>
+        void StageFarBlock(int column, int row, TerrainPatch patch);
+
+        /// <summary>Montre d'un coup tout ce qui est préparé. Ne doit pas échouer.</summary>
+        void Publish();
+
+        /// <summary>Oublie tout ce qui est préparé, sans rien changer à l'écran. Ne doit pas échouer.</summary>
+        void Discard();
     }
 
     /// <summary>
@@ -24,7 +33,7 @@ namespace EdS.Runtime
     /// <see cref="StreamingProfile.FarBlockCells"/> × <see cref="StreamingProfile.FarBlockCells"/> cases ; un bloc a un trou (avec jupe) sous
     /// chaque case qui a son propre maillage.</item>
     /// <item><b>Cases</b> : choisies par <see cref="CellStreamer"/> ; un changement construit le maillage de la case puis celui de son bloc
-    /// lointain, et les montre <b>ensemble</b> (<see cref="ITerrainSink"/>, au même appel) : jamais de trou ni de double sol à l'écran.</item>
+    /// lointain, et les montre <b>ensemble</b> (<see cref="ITerrainSink"/> : préparés, puis publiés d'un seul appel) : jamais de trou ni de double sol à l'écran.</item>
     /// <item><b>Construction étalée</b> : <see cref="Work"/> fait des pas (une rangée de hauteurs) tant que le budget de l'image n'est pas
     /// épuisé, et au moins un pas par image (le chargement avance toujours).</item>
     /// </list>
@@ -141,17 +150,31 @@ namespace EdS.Runtime
             return steps;
         }
 
+        /// <summary>
+        /// Montre le changement : case et bloc lointain d'abord <b>préparés</b> (un échec ici est oublié par <see cref="ITerrainSink.Discard"/> :
+        /// l'écran, les blocs et le <see cref="Streamer"/> restent dans leur état d'avant, et <see cref="Work"/> abandonne le changement, qui
+        /// sera redemandé), puis <b>publiés</b> d'un seul appel, enfin enregistrés dans le <see cref="Streamer"/>.
+        /// </summary>
         private void Commit(ITerrainSink sink)
         {
-            if (_job.HasChange) sink.ShowCell(_job.Change.Cell, _job.Change.To, _job.Cell);
-            if (_job.NeedsFar) sink.ShowFarBlock(_job.BlockColumn, _job.BlockRow, _job.Far!);
+            try
+            {
+                if (_job.HasChange) sink.StageCell(_job.Change.Cell, _job.Change.To, _job.Cell);
+                if (_job.NeedsFar) sink.StageFarBlock(_job.BlockColumn, _job.BlockRow, _job.Far!);
+            }
+            catch
+            {
+                sink.Discard();
+                throw;
+            }
+            sink.Publish();
             if (_job.HasChange)
             {
                 Streamer.Complete(_job.Change);
                 Commits++;
             }
             if (_job.NeedsFar) Commits++;
-            // Recyclage : le montreur a copié les tableaux pendant son appel ; ils servent au morceau suivant de même taille.
+            // Recyclage : le montreur a copié les tableaux pendant la préparation ; ils servent au morceau suivant de même taille.
             Recycle(_job.Cell);
             Recycle(_job.Far);
             Clear();

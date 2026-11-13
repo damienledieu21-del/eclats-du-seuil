@@ -41,33 +41,77 @@ public class V227StreamingTests : IDisposable
         /// <summary>Pas déjà faits dans l'image quand un changement est montré (doit être 0 : montrer est le premier pas d'une image).</summary>
         public Func<int>? StepsSoFar;
 
-        public int FarShown, FarExpected, LastFrom = -1;
+        public int FarShown, FarExpected;
 
-        public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch)
+        /// <summary>Échoue (exception) à la préparation numéro <see cref="FailAt"/> (comptées depuis 1), une seule fois ; 0 : jamais.</summary>
+        public int FailAt, Staged;
+
+        /// <summary>Après un échec, le prochain appel doit être <see cref="Discard"/> (rien de préparé ne doit survivre).</summary>
+        private bool _mustDiscard;
+
+        private readonly List<Action> _staged = new();
+
+        private void Stage(string what)
         {
+            Assert.False(_mustDiscard, "préparation après un échec sans Discard");
             if (StepsSoFar != null) Assert.Equal(0, StepsSoFar());
-            Log.Add("case " + cell.Name + " " + ring);
-            bool had = Cells.ContainsKey(cell);
-            if (patch == null) Cells.Remove(cell);
-            else
+            if (++Staged == FailAt)
             {
-                Assert.True(patch.Done);
-                Cells[cell] = ring;
+                _mustDiscard = true;
+                throw new InvalidOperationException("montreur cassé : " + what);
             }
-            if (had != (patch != null)) FarExpected++;   // le trou du bloc lointain change seulement si la case gagne ou perd son maillage
         }
 
-        public void ShowFarBlock(int column, int row, TerrainPatch patch)
+        public void StageCell(RegionCell cell, int ring, TerrainPatch? patch)
         {
-            if (StepsSoFar != null) Assert.Equal(0, StepsSoFar());
+            Stage("case");
+            if (patch != null) Assert.True(patch.Done);
+            int triangles = patch?.TriangleCount ?? 0;
+            _staged.Add(() =>
+            {
+                Log.Add("case " + cell.Name + " " + ring);
+                bool had = Cells.ContainsKey(cell);
+                if (patch == null) Cells.Remove(cell);
+                else Cells[cell] = ring;
+                if (had != (patch != null)) FarExpected++;   // le trou du bloc lointain change seulement si la case gagne ou perd son maillage
+            });
+        }
+
+        public void StageFarBlock(int column, int row, TerrainPatch patch)
+        {
+            Stage("bloc");
             Assert.True(patch.Done);
-            Log.Add("loin " + column + "," + row + " " + patch.TriangleCount);
+            // Copie de la forme pendant l'appel (les tableaux sont recyclés ensuite).
             var kept = new bool[patch.QuadsX * patch.QuadsZ];
             for (int j = 0; j < patch.QuadsZ; j++)
                 for (int i = 0; i < patch.QuadsX; i++) kept[j * patch.QuadsX + i] = patch.Kept(i, j);
-            Far[(column, row)] = (patch.X0, patch.Z0, patch.Step, patch.QuadsX, kept);
-            FarShown++;
+            var far = (patch.X0, patch.Z0, patch.Step, patch.QuadsX, kept);
+            int triangles = patch.TriangleCount;
+            _staged.Add(() =>
+            {
+                Log.Add("loin " + column + "," + row + " " + triangles);
+                Far[(column, row)] = far;
+                FarShown++;
+            });
         }
+
+        public void Publish()
+        {
+            Assert.False(_mustDiscard, "publication après un échec sans Discard");
+            Assert.NotEmpty(_staged);
+            foreach (Action a in _staged) a();
+            _staged.Clear();
+            Publications++;
+        }
+
+        public void Discard()
+        {
+            _staged.Clear();
+            _mustDiscard = false;
+            Discards++;
+        }
+
+        public int Publications, Discards;
 
         /// <summary>Chaque case de la région (hors du rectangle couvert) a exactement un sol : le sien ou celui de son bloc lointain.</summary>
         public void CheckCoverage(RegionGrid grid, (double X0, double Z0, double X1, double Z1)? covered)
@@ -477,8 +521,56 @@ public class V227StreamingTests : IDisposable
 
     private sealed class FailingSink : ITerrainSink
     {
-        public void ShowCell(RegionCell cell, int ring, TerrainPatch? patch) => throw new InvalidOperationException("montreur cassé");
-        public void ShowFarBlock(int column, int row, TerrainPatch patch) => throw new InvalidOperationException("montreur cassé");
+        public void StageCell(RegionCell cell, int ring, TerrainPatch? patch) => throw new InvalidOperationException("montreur cassé");
+        public void StageFarBlock(int column, int row, TerrainPatch patch) => throw new InvalidOperationException("montreur cassé");
+        public void Publish() => throw new InvalidOperationException("rien à publier");
+        public void Discard() { }
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #154 : un montreur qui échoue à la 2e préparation d'un changement (la case est préparée, le bloc lointain non).
+    /// Rien n'est montré à moitié : l'écran, le bloc lointain et le <see cref="CellStreamer"/> restent dans leur état d'avant, et la case
+    /// est redemandée puis montrée avec son bloc.
+    /// </summary>
+    [Fact]
+    public void Un_echec_entre_la_case_et_son_bloc_ne_montre_rien_a_moitie()
+    {
+        var terrain = new RegionTerrain(Grid, StreamingProfile.For(DeviceTier.Phone), (x, z) => Math.Sin(x * 0.01));
+        var sink = new Recorder();
+        terrain.Update(0, 0, 0);
+        terrain.Warm(sink);
+        Assert.True(terrain.Idle);
+        sink.CheckCoverage(Grid, null);
+        // Un pas à l'est : de nouvelles cases entrent dans l'anneau 1 (elles gagnent leur maillage : case et bloc lointain à changer).
+        terrain.Update(300, 0, 1);
+        for (int k = 0; k < 10_000 && !(terrain.Streamer.Pending is { } p && (p.From == CellStreamer.Far) != (p.To == CellStreamer.Far)); k++)
+            terrain.Work(() => true, sink);   // un pas à la fois
+        Assert.True(terrain.Busy);
+        CellChange change = terrain.Streamer.Pending!.Value;
+        Assert.Equal(CellStreamer.Far, change.From);
+        var before = (Cells: sink.Cells.ToDictionary(k => k.Key, k => k.Value), Far: sink.Far.ToDictionary(k => k.Key, k => k.Value.Kept),
+            Log: sink.Log.Count, Loaded: terrain.Streamer.Loaded.ToList());
+        sink.FailAt = sink.Staged + 2;   // la case passe, le bloc échoue
+        Assert.Throws<InvalidOperationException>(() => { while (terrain.Busy) terrain.Work(() => true, sink); });
+        Assert.Equal(1, sink.Discards);
+        Assert.False(terrain.Busy);
+        Assert.False(terrain.Streamer.Busy);
+        Assert.Equal(before.Log, sink.Log.Count);                          // rien de montré
+        Assert.Equal(before.Cells, sink.Cells);
+        Assert.Equal(before.Far.Keys, sink.Far.Keys);
+        foreach (var k in before.Far.Keys) Assert.Equal(before.Far[k], sink.Far[k].Kept);
+        Assert.Equal(before.Loaded, terrain.Streamer.Loaded);
+        Assert.Equal(CellStreamer.Far, terrain.Streamer.Built(change.Cell));
+        sink.CheckCoverage(Grid, null);
+        // La case est redemandée en premier, puis montrée avec son bloc ; tout reste cohérent ensuite.
+        Assert.True(terrain.Streamer.TryNext(out CellChange again));
+        Assert.Equal(change, again);
+        terrain.Streamer.Cancel();
+        terrain.Warm(sink);
+        Assert.True(terrain.Idle);
+        Assert.Equal(change.To, terrain.Streamer.Built(change.Cell));
+        Assert.Equal(sink.Cells.Keys.OrderBy(c => c), terrain.Streamer.Loaded);
+        sink.CheckCoverage(Grid, null);
     }
 
     /// <summary>Relecture indépendante de la PR #154 : <c>Warm</c> respecte vraiment son plafond de pas.</summary>

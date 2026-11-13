@@ -174,6 +174,9 @@ namespace EdS.Runtime
         public IReadOnlyList<string> DetailSectors =>
             _slots.Values.Where(s => s.Built == 0).Select(s => s.Cell.SectorName).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
 
+        /// <summary>Le changement en cours (pris par <see cref="TryNext"/>), ou null.</summary>
+        public CellChange? Pending => _busy ? _pending : (CellChange?)null;
+
         /// <summary>Un changement est-il en cours (pris par <see cref="TryNext"/>, pas encore <see cref="Complete"/>) ?</summary>
         public bool Busy => _busy;
 
