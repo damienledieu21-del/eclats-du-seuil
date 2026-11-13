@@ -1067,10 +1067,89 @@ public class V226SecteursMondeTests
         // Sous-lot V2.28b : sans entrée annoncée, aucune session ne peut naître avant le tick des secteurs : la borne redevient exacte
         // (registre et morts possibles), sans la clé de Bruno ni celles des deux créatures de l'aire.
         Assert.Equal(SaveValidator.MaxConsumed + 1L - 1 - 2, w.NextTickRegistryNeed);
+        // Relecture indépendante de la PR #156 : cette borne suffit. Le registre est rempli jusqu'à elle (deux clés de plus) : le tick est
+        // accepté et le registre du monde reste sous le plafond ; une clé de plus : refus entier, rien ne bouge.
+        Zone west = w.SectorZone("s00_00")!;
+        Assert.True(west.Consume("zone.essai/plein_0"));
+        Assert.True(west.Consume("zone.essai/plein_1"));
+        Assert.Equal(SaveValidator.MaxConsumed + 0L, w.NextTickRegistryNeed);
         w.Step();
         Assert.Equal(tick + 1, w.WorldTick);
         Assert.All(w.OpenSectors, x => Assert.Equal(w.WorldTick, w.SectorZone(x)!.WorldTick));
         Assert.True(w.ViewOf("alice").IsPresent);
+        Assert.InRange(w.Consumed.Count, 0, SaveValidator.MaxConsumed);
+        Assert.True(west.Consume("zone.essai/plein_2"));
+        Assert.Equal(SaveValidator.MaxConsumed + 1L, w.NextTickRegistryNeed);
+        var held = w.OpenSectors.ToDictionary(x => x, x => w.SectorZone(x)!.Engine.CurrentTick);
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Equal(tick + 1, w.WorldTick);
+        Assert.All(w.OpenSectors, x => Assert.Equal(held[x], w.SectorZone(x)!.Engine.CurrentTick));
+    }
+
+    [Fact]
+    public void Voisin_ferme_registre_presque_plein_le_precontrole_du_monde_reste_fait()
+    {
+        // Relecture indépendante de la PR #156 : un seul secteur ouvert ne dispense du précontrôle du monde que si le registre du monde n'a
+        // pas changé depuis son ouverture. Ici le voisin s'est fermé : ses dix clés sont au registre du monde, pas dans la recopie de la
+        // session restante, qui croit avoir dix places de plus. Elle seule accepterait le tick ; le monde le refuse entier.
+        const int extra = 10;
+        var consumed = Enumerable.Range(0, SaveValidator.MaxConsumed - 60).Select(k => $"zone.essai/fait_{k:D6}");
+        var w = new SectorWorld(Map(Wolf("loup_ouest", 100, 60), Wolf("loup_est", 400, 128)), "zone.essai", 0, 1, consumed);
+        w.Enter(Hero("alice", 30, 200));    // loin du loup de l'ouest (156 m) et du secteur de l'est (226 m)
+        w.Enter(Hero("bruno", 300, 200));   // à l'est, loin de son loup
+        w.Step();
+        Assert.Equal(new[] { "s00_00", "s01_00" }, w.OpenSectors);
+        Zone east = w.SectorZone("s01_00")!;
+        for (int i = 0; i < extra; i++) Assert.True(east.Consume($"zone.essai/voisin_{i}"));
+        w.Exit("bruno");
+        for (int i = 0; i < 1300 && w.OpenSectors.Count > 1; i++) w.Step();
+        Assert.Equal(new[] { "s00_00" }, w.OpenSectors);   // l'est s'est fermé : ses clés sont reprises par le monde
+        Assert.Equal(new[] { "alice" }, w.Players);
+        Zone west = w.SectorZone("s00_00")!;
+        Assert.True(w.ViewOf("alice").IsPresent);
+        int room = SaveValidator.MaxConsumed - west.ConsumedCount - west.NewDeathsPossible;
+        Assert.InRange(room, extra + 1, 60);
+        for (int i = 0; i < room; i++) Assert.True(west.Consume($"zone.essai/ouest_{i}"));
+        Assert.Equal(SaveValidator.MaxConsumed, west.ConsumedCount + west.NewDeathsPossible);   // la session seule accepterait ce tick
+        Assert.Equal(SaveValidator.MaxConsumed + (long)extra, w.NextTickRegistryNeed);          // le monde non : les clés du voisin fermé
+        long tick = w.WorldTick, engineTick = west.Engine.CurrentTick;
+        int keys = west.ConsumedCount;
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Throws<InvalidOperationException>(() => w.Step());
+        Assert.Equal((tick, engineTick, keys), (w.WorldTick, west.Engine.CurrentTick, west.ConsumedCount));
+        Assert.Equal(new[] { "s00_00" }, w.OpenSectors);
+        Assert.True(w.ViewOf("alice").IsPresent);
+    }
+
+    [Fact]
+    public void La_borne_du_registre_suffit_a_chaque_tick()
+    {
+        // Relecture indépendante de la PR #156 : propriété de la borne (NextTickRegistryNeed), pas seulement sa formule : avant chaque tick,
+        // elle majore le registre du monde d'après ce tick, à travers une entrée, une mort, un passage, une sortie, une fermeture.
+        AssailantSetup wolf = Wolf("faible", 244, 128);
+        var weak = new AssailantSetup(wolf.Id, wolf.Team, wolf.Armor, wolf.MagicResistance, null, wolf.FirstAttackMs, wolf.IntervalMs, wolf.Attacks, 0, wolf.StatusResistance,
+            wolf.Triggers, 30, wolf.Placement, null, wolf.Behavior);
+        SectorWorld w = World(Map(weak, Wolf("loup_est", 400, 60)));
+        w.Enter(Hero("alice", 242, 128));
+        var kinds = new HashSet<SectorEventKind>();
+        int deaths = 0;
+        for (int i = 0; i < 2600; i++)
+        {
+            if (i == 50) w.Enter(Hero("bruno", 60, 60));
+            if (i == 300) w.Exit("bruno");
+            if (i > 0 && i < 300 && i % 20 == 1 && w.SectorOf("alice") == "s00_00")
+                try { CombatEngine e = w.EngineOf("alice"); e.Submit(new CombatCommand(e.CurrentTick * 50, w.CombatantOf("alice"), "skill.bastion.frappe_du_rempart", "faible")); }
+                catch (ArgumentException) { }
+            if (i == 320) Walk(w, "alice", 1, 0);     // vers l'est : passage, puis l'ouest se ferme derrière elle
+            long need = w.NextTickRegistryNeed;
+            var zoneEvents = new List<(string Sector, ZoneEvent Event)>();
+            foreach (SectorEvent e in w.Step(zoneEvents)) kinds.Add(e.Kind);
+            deaths += zoneEvents.Count(z => z.Event.Kind == ZoneEventKind.Death);
+            int after = w.Consumed.Count;
+            Assert.True(after <= need, $"tick {i} : registre {after}, borne {need}");
+        }
+        Assert.True(deaths > 0);
+        Assert.Superset(new HashSet<SectorEventKind> { SectorEventKind.Opened, SectorEventKind.Departed, SectorEventKind.Arrived, SectorEventKind.Closed }, kinds);
     }
 
     [Fact]

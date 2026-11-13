@@ -385,6 +385,9 @@ namespace EdS.World
             /// <summary>Revue Codex de la PR #150 (9e tour) : clés de la session à son ouverture (recopie du registre du monde), et clés de
             /// cette recopie purgées depuis du registre du monde (comptées à part pour borner le registre entier).</summary>
             public int InitialConsumed, Stale;
+
+            /// <summary>Relecture indépendante de la PR #156 : état du registre du monde (<see cref="_registryVersion"/>) à l'ouverture de la session.</summary>
+            public long RegistryVersion;
         }
 
         private sealed class Player
@@ -435,6 +438,18 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.28b : événements d'une ouverture faite hors d'un tick (<see cref="EnterAtStart"/>), rendus au tick suivant.</summary>
         private readonly List<SectorEvent> _early = new List<SectorEvent>();
+
+        /// <summary>
+        /// Relecture indépendante de la PR #156 : compte les changements du registre du monde (fermeture d'un secteur : clés reprises, clés
+        /// de mort purgées). Une session ouverte depuis le dernier changement a une recopie qui contient tout le registre du monde.
+        /// </summary>
+        private long _registryVersion;
+
+        /// <summary>
+        /// Sous-lot V2.28b : l'aire tient dans le secteur du cœur (<see cref="SectorMap.HomeHoldsArea"/>) : aucun autre secteur n'est simulé,
+        /// aucun passage n'est possible (bornes de l'aire fixes : calculé une fois).
+        /// </summary>
+        private readonly bool _single;
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -478,6 +493,7 @@ namespace EdS.World
             }
             _logs = logs;
             _closeAfterTicks = SectorMap.CloseAfterMs / map.Area.Combat.TickMilliseconds;
+            _single = map.HomeHoldsArea;
         }
 
         /// <summary>Hôte des secteurs d'une zone à région, avec ses populations (chacune dans son secteur).</summary>
@@ -730,7 +746,7 @@ namespace EdS.World
             if (!home || reopened) _sectorSessions[name] = session;
             var populations = new ZonePopulations(mine, phase, weather);
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
-            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
+            open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
             return open;
@@ -748,6 +764,7 @@ namespace EdS.World
                     if (other != open) other.Stale = checked(other.Stale + purged.Count(other.Zone.IsConsumed));
             _consumed.UnionWith(open.Zone.Consumed.Where(k => !k.StartsWith(deaths, StringComparison.Ordinal)));
             _consumed.RemoveWhere(k => k.StartsWith(deaths, StringComparison.Ordinal));
+            _registryVersion = checked(_registryVersion + 1);   // le registre du monde a changé : les recopies des sessions ouvertes ne le contiennent plus forcément
             _open.Remove(open.Name);
             events.Add(new SectorEvent(SectorEventKind.Closed, open.Name, null, null, WorldTick));
         }
@@ -958,11 +975,19 @@ namespace EdS.World
             // de tout ce que le tick peut y ajouter (borne : NextTickRegistryNeed), et chaque clé de mort de chaque secteur doit être au format ;
             // sinon refus, rien n'a bougé (aucun secteur n'avance, ni le tick du monde). Les budgets du moteur (travail, file, événements) ne
             // lèvent pas : un dépassement termine la session (renouvelée au tick suivant).
-            // Sous-lot V2.28b : un seul secteur ouvert, aucune session à naître, aucune sortie demandée (la partie solo, presque toujours) :
-            // rien ne change avant le tick de sa session, dont le propre précontrôle (Zone.Step : même borne du registre, mêmes clés de mort,
-            // rien ne bouge si elle refuse) suffit ; il n'est pas refait ici (mesure : deux passes sur tous les combattants de moins par tick).
+            // Sous-lot V2.28b : un seul secteur ouvert, aucune session à naître, aucune sortie demandée, registre du monde inchangé depuis
+            // l'ouverture de ce secteur (la partie solo, presque toujours) : rien ne change avant le tick de sa session, dont le propre
+            // précontrôle (Zone.Step : mêmes clés de mort, rien ne bouge si elle refuse) suffit ; il n'est pas refait ici (mesure : deux passes
+            // sur tous les combattants de moins par tick).
+            // Relecture indépendante de la PR #156 : la borne de Zone.Step (sa recopie du registre et ses morts possibles) n'est celle du
+            // monde (RegistryBound) que si le registre du monde n'a pas changé depuis l'ouverture du secteur : après la fermeture d'un voisin
+            // (clés reprises par le monde, absentes de la recopie), la session croirait avoir plus de place qu'il n'en reste ; le précontrôle
+            // du monde est alors fait.
             Arriving(out bool born);
-            bool alone = _open.Count == 1 && !born && _exiting.Count == 0;
+            Open? only = null;
+            if (_open.Count == 1)
+                foreach (Open o in _open.Values) only = o;
+            bool alone = only != null && !born && _exiting.Count == 0 && only.RegistryVersion == _registryVersion;
             if (!alone)
             {
                 long need = NextTickRegistryNeed;
@@ -975,7 +1000,10 @@ namespace EdS.World
             _early.Clear();
             // 00. Revue Codex de la PR #150 (3e tour) : un secteur dont la session a atteint sa durée repart dans une session nouvelle (ses
             // joueurs y arrivent avec leur état) ; le monde n'est jamais bloqué par une session terminée.
-            foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
+            // Relecture indépendante de la PR #156 (allocations par tick) : chaque étape rare est gardée par un balayage simple, sans liste
+            // ni tri quand il n'y a rien à faire.
+            if (born)
+                foreach (Open o in _open.Values.Where(x => x.Zone.IsOver).ToList()) Renew(o, events);
             // 0. Sorties, puis entrées, dans l'ordre des joueurs.
             List<string>? stay = null;
             // Revue Codex de la PR #150 (2e tour) : un joueur dont l'arrivée est programmée à ce tick (passage tout juste fait) sort aussi :
@@ -1002,6 +1030,7 @@ namespace EdS.World
             foreach (string id in _exiting) if (stay is null || !stay.Contains(id)) _players.Remove(id);
             _exiting.Clear();
             if (stay != null) foreach (string id in stay) _exiting.Add(id);
+            if (AnyPlayer(x => x.Waiting && x.Refusal is null))
             foreach (Player p in _players.Values.Where(x => x.Waiting && x.Refusal is null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 OpenSector(p.Sector!, events);
@@ -1044,6 +1073,7 @@ namespace EdS.World
             // de départ (ou réessaie au tick suivant), avec le même état : il n'est jamais perdu.
             // Revue Codex de la PR #150 (3e tour) : une reprise sans combattant (Resume) n'est jamais effacée par l'état de l'ancien combattant ;
             // elle reste jusqu'à un placement réussi.
+            if (AnyPlayer(x => x.Arrival != null && x.Refusal is null))
             foreach (Player p in _players.Values.Where(x => x.Arrival != null && x.Refusal is null).OrderBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 if (!p.Resume)
@@ -1065,6 +1095,7 @@ namespace EdS.World
             }
 
             // 2. Passages commencés : départ effectif en fin du tick simulé, arrivée au tick suivant dans le voisin.
+            if (AnyPlayer(x => x.PendingTo != null))
             foreach (Player p in _players.Values.Where(x => x.PendingTo != null).OrderBy(x => x.Sector, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).ToList())
             {
                 Open from = _open[p.Sector!];
@@ -1093,6 +1124,8 @@ namespace EdS.World
             }
 
             // 3. Ouvertures : chaque secteur à moins de 96 m d'un joueur, pour le tick suivant.
+            // Sous-lot V2.28b : une aire qui tient dans le secteur du cœur n'a ni autre secteur à ouvrir ni passage (étapes 3 et 4).
+            if (!_single)
             foreach (Player p in _players.Values)
             {
                 if (!Live(p) || !_open.TryGetValue(p.Sector!, out Open? o)) continue;
@@ -1102,6 +1135,7 @@ namespace EdS.World
             }
 
             // 4. Nouveaux passages et lâchers au bout de la marge (ordre du secteur, puis du joueur).
+            if (!_single)
             foreach (Player p in _players.Values.OrderBy(x => x.Sector, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal))
             {
                 if (!Live(p) || !_open.TryGetValue(p.Sector!, out Open? o)) continue;
@@ -1148,15 +1182,34 @@ namespace EdS.World
             }
 
             // 5. Fermetures : 60 s sans joueur à moins de 96 m (et aucun joueur dedans).
-            foreach (Open o in _open.Values.ToList())
+            // Relecture indépendante de la PR #156 (allocations par tick) : mêmes fermetures, dans le même ordre, sans recopie de la liste des
+            // secteurs ni fermeture de délégué à chaque tick ; les secteurs à fermer le sont après le balayage.
+            List<Open>? closing = null;
+            foreach (Open o in _open.Values)
             {
-                bool near = _players.Values.Any(p => p.Sector == o.Name || p.PendingTo == o.Name
-                    || (Live(p) && _open.TryGetValue(p.Sector!, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
-                        && _map.DistanceTo(o.Name, pos) <= checked(SectorMap.ActivationMeters * Fixed.Scale)));
+                bool near = false;
+                foreach (Player p in _players.Values)
+                    if (p.Sector == o.Name || p.PendingTo == o.Name
+                        || (Live(p) && _open.TryGetValue(p.Sector!, out Open? po) && po.Zone.Engine.View(p.Combatant).Position is GroundVector pos
+                            && _map.DistanceTo(o.Name, pos) <= checked(SectorMap.ActivationMeters * Fixed.Scale)))
+                    {
+                        near = true;
+                        break;
+                    }
                 o.IdleTicks = near ? 0 : checked(o.IdleTicks + 1);
-                if (o.IdleTicks >= _closeAfterTicks) CloseSector(o, events);
+                if (o.IdleTicks >= _closeAfterTicks) (closing ??= new List<Open>()).Add(o);
             }
+            if (closing != null)
+                foreach (Open o in closing) CloseSector(o, events);
             return events;
+        }
+
+        /// <summary>Un joueur au moins vérifie-t-il <paramref name="test"/> ? Balayage simple (un délégué sans capture n'alloue rien).</summary>
+        private bool AnyPlayer(Func<Player, bool> test)
+        {
+            foreach (Player p in _players.Values)
+                if (test(p)) return true;
+            return false;
         }
 
         /// <summary>
