@@ -633,6 +633,9 @@ namespace EdS.World
         /// <summary>Revue Codex de la PR #150 (9e tour) : diagnostic d'une arrivée refusée pour de bon par la validation (passage, reprise), ou null.</summary>
         public string? RefusalOf(string player) => _players.TryGetValue(player, out Player? p) ? p.Refusal : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
 
+        /// <summary>Sous-lot V2.28b (2b) : comme <see cref="RefusalOf"/>, null pour un joueur inconnu (sorti ou jamais entré).</summary>
+        public string? RefusalOrNull(string player) => _players.TryGetValue(player, out Player? p) ? p.Refusal : null;
+
         /// <summary>Revue Codex de la PR #150 (9e tour) : un joueur annoncé (<see cref="Enter"/>) mais pas encore entré renonce ; faux s'il n'était pas annoncé.</summary>
         public bool CancelEnter(string player) => _entering.Remove(player);
 

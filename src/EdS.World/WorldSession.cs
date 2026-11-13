@@ -170,6 +170,12 @@ namespace EdS.World
 
         private readonly bool _renews;
 
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : diagnostic d'un passage refusé pour de bon par l'hôte des secteurs (arrivée invalide) : le personnage n'a
+        /// plus de combattant et ne sera plus replacé ; la partie doit reprendre au dernier point sûr. Null sinon (et hors de l'hôte).
+        /// </summary>
+        public string? SectorRefusal => _host?.RefusalOrNull(_character.Id);
+
         /// <summary>Sous-lot V2.28b (2b) : secteur de la session suivie (<see cref="Zone"/>), pour distinguer un passage d'un renouvellement.</summary>
         private string? _zoneSector;
 

@@ -410,6 +410,7 @@ namespace EdS.Runtime
             // Remarque de Codex sur la PR #84 : le temps des bonus actifs baisse à chaque tick simulé sans autre événement ; il est gardé à la
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
+            AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             if (boons && steps > 0) _dirty = true;
@@ -475,16 +476,20 @@ namespace EdS.Runtime
 
         private string ItemName(string item) => _items.Items.FirstOrDefault(i => i.Id == item)?.Name ?? item;
 
+        /// <summary>Annonce une fois l'arrivée refusée (ou, sous-lot V2.28b (2b), le passage de secteur refusé pour de bon).</summary>
+        private void AnnounceStranded()
+        {
+            if (!Stranded || _strandedAnnounced) return;
+            _strandedAnnounced = true;
+            Say(World.SectorRefusal != null ? "text.ui.sector_refused" : "text.ui.stranded");
+        }
+
         /// <summary>Traduit ce qu'un tick de la session rapporte.</summary>
         private void Collect(WorldSession world, SessionStep step)
         {
             if (!ReferenceEquals(world, World)) return;
             DrinkMessages();
-            if (Stranded && !_strandedAnnounced)
-            {
-                _strandedAnnounced = true;
-                Say("text.ui.stranded");
-            }
+            AnnounceStranded();
             if (step.IsEmpty) return;
             _dirty = true;
             foreach (ExperienceGained g in step.Experience)
@@ -1837,6 +1842,8 @@ namespace EdS.Runtime
         {
             get
             {
+                // Sous-lot V2.28b (2b) : ou un passage de secteur refusé pour de bon : plus de combattant, la reprise au dernier point sûr.
+                if (World.SectorRefusal != null) return true;
                 CombatantView me = World.Zone.Engine.View(World.CombatantId);
                 return !me.IsPresent && !me.HasLeft && me.ArrivalTick is long t && t < World.Zone.Engine.CurrentTick;
             }
