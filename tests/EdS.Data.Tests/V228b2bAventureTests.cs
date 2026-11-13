@@ -114,7 +114,7 @@ public class V228b2bAventureTests : IDisposable
                 if (ReferenceEquals(current, a) && a.CurrentTick == first) current = b;
             }, null, () => new CombatBinding(setup, current, training.PlayerId), null);
         IReadOnlyList<CombatFeedback> atSwitch = Array.Empty<CombatFeedback>();
-        while (c.Rebinds == 0)
+        for (int i = 0; i < 400 && c.Rebinds == 0; i++)
         {
             if (c.Rebinds == 0) c.UseSlot(0);
             c.StepOnce();
