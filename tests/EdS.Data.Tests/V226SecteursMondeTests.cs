@@ -1302,7 +1302,7 @@ public class V226SecteursMondeTests
                 Shipped.Data, new CombatSpace(P(0, 0), P(768, 256)), zone: true);
             Assert.Empty(area.Validate());
             var map = new SectorMap(Wide, area, P(128, 128));
-            var w = new SectorWorld(map, "zone.essai", 0, 1, populations: beasts.Select(Pop));
+            var w = new SectorWorld(map, "zone.essai", 0, 1, populations: beasts.Select(b => Pop(b)));
             w.Enter(Hero("alice", 128, 128));
             w.Enter(Hero("bruno", 384, 128));
             w.Enter(Hero("chloe", 640, 128));
@@ -1335,5 +1335,85 @@ public class V226SecteursMondeTests
         Assert.Empty(w.OpenSectors);
         Assert.Empty(w.SectorSessions);
         Assert.Equal(0L, w.WorldTick);
+    }
+
+    // --- Revue Codex de la PR #150 (13e tour) --------------------------------------------------------------------------------------------
+
+    private static AssailantSetup Breath(string id, string team, double x, double z, string target)
+    {
+        AssailantSetup w = Wolf(id, x, z);
+        return new AssailantSetup(id, team, w.Armor, w.MagicResistance, target, w.FirstAttackMs, w.IntervalMs,
+            new[] { new AssailantAttack("souffle", 5, targeting: EdS.Domain.Builds.SkillTargeting.AllEnemies) }, 0, w.StatusResistance, w.Triggers, 400, w.Placement);
+    }
+
+    private static Population Pop(AssailantSetup template, long respawnMs) =>
+        (Population)typeof(Population).GetConstructors(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            .Single().Invoke(new object?[] { template.Id, template, respawnMs, Fixed.FromInt(20), null, null, null, null, null, null, null });
+
+    [Fact]
+    public void Propriete_chaque_population_de_chaque_secteur_revient_apres_son_depart()
+    {
+        // Populations de toutes sortes (à comportement, sans comportement à cible unique, sans comportement aux attaques visant tous les
+        // ennemis), cibles croisées entre secteurs : dans chaque secteur découpé, chaque population présente part (lâcher), et sa vie suivante
+        // est admise et revient (même règle d'adaptation des références que le découpage).
+        double[] xs = { 30, 200, 250, 256, 262, 300, 480, 512, 530, 700 };
+        double[] zs = { 20, 236 };
+        ulong state = 4242;
+        int Next(int n) { state = state * 6364136223846793005UL + 1442695040888963407UL; return (int)((state >> 33) % (ulong)n); }
+        int returned = 0, breaths = 0;
+        for (int round = 0; round < 40; round++)
+        {
+            var spots = xs.SelectMany(x => zs.Select(z => (x, z))).ToList();
+            (double X, double Z) Spot() { int i = Next(spots.Count); var v = spots[i]; spots.RemoveAt(i); return v; }
+            var all = new List<CombatantSetup>();
+            for (int k = 0, d = 2 + Next(3); k < d; k++)
+            {
+                var at = Spot();
+                all.Add(new DummySetup($"cible{k}", "cibles", Fixed.FromInt(50), Fixed.Zero, placement: new CombatantPlacement(P(at.X, at.Z), Fixed.FromRatio(1, 10))));
+            }
+            var beasts = new List<AssailantSetup>();
+            for (int k = 0, n = 3 + Next(5); k < n; k++)
+            {
+                string team = k % 2 == 0 ? "meute" : "rodeurs";
+                var dummies = all.OfType<DummySetup>().ToList();
+                string target = dummies[Next(dummies.Count)].Id;
+                var at = Spot();
+                int kind = Next(3);
+                beasts.Add(kind == 0 ? Beast($"bete{k}", team, at.X, at.Z, target, behavior: true)
+                    : kind == 1 ? Beast($"bete{k}", team, at.X, at.Z, target, behavior: false)
+                    : Breath($"bete{k}", team, at.X, at.Z, target));
+            }
+            all.AddRange(beasts);
+            var area = new CombatSetup(7, 3_600_000, Shipped.Stats, Shipped.Damage, Shipped.Progression, Shipped.Combat, all, Array.Empty<CombatCommand>(),
+                Shipped.Data, new CombatSpace(P(0, 0), P(768, 256)), zone: true);
+            Assert.Empty(area.Validate());
+            var w = new SectorWorld(new SectorMap(Wide, area, P(128, 128)), "zone.essai", 0, 1, populations: beasts.Select(b => Pop(b, 500)));
+            w.Enter(Hero("alice", 128, 128));
+            w.Enter(Hero("bruno", 384, 128));
+            w.Enter(Hero("chloe", 640, 128));
+            w.Step();
+            foreach (string sector in w.OpenSectors)
+            {
+                Zone zone = w.SectorZone(sector)!;
+                ZonePopulations pops = w.PopulationsIn(sector)!;
+                var gone = new Dictionary<string, string>();
+                foreach (string creature in w.PopulationCreaturesIn(sector))
+                {
+                    string current = pops.CurrentOf(creature);
+                    if (pops.Release(zone, current) != null) gone[creature] = current;
+                }
+                for (int t = 0; t < 40; t++) w.Step();
+                foreach (var (creature, before) in gone)
+                {
+                    string now = pops.CurrentOf(creature);
+                    Assert.True(now != before && zone.Engine.View(now).IsPresent,
+                        $"tour {round}, {sector} : « {creature} » n'est pas revenue ({before} → {now})");
+                    returned++;
+                    if (beasts.Single(b => b.Id == creature).Behavior is null && beasts.Single(b => b.Id == creature).Attacks.All(a => a.Targeting != EdS.Domain.Builds.SkillTargeting.Enemy)) breaths++;
+                }
+            }
+        }
+        Assert.True(returned >= 100, $"{returned} retours");
+        Assert.True(breaths >= 20, $"{breaths} retours sans comportement, attaques sur tous les ennemis");
     }
 }
