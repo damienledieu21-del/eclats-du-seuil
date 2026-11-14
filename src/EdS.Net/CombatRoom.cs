@@ -667,7 +667,12 @@ namespace EdS.Net
             int before = engine.SubmittedCommands.Count;
             foreach (Seat seat in _seats)
             {
-                if (!seat.InCombat) continue;   // sous-lot 11.7 : place libre, personnage hors du combat
+                if (!seat.InCombat)
+                {
+                    // Relecture indépendante de la PR #164 : une esquive demandée hors du combat ne part pas à l'arrivée (demande périmée).
+                    seat.Dodge = false;
+                    continue;   // sous-lot 11.7 : place libre, personnage hors du combat
+                }
                 CombatantView me = engine.View(seat.Id);
                 int? slot = Available(engine, seat, me, tick);
                 // Esquive : bond dans le cap de marche reçu avec la demande (ou vers l'arrière), combat positionné seulement.

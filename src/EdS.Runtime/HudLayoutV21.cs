@@ -137,6 +137,12 @@ namespace EdS.Runtime
 
         public HudMode Mode => _mode;
 
+        /// <summary>
+        /// Esquive (décision de Damien du 14 novembre 2026, 21 h 05) : le bouton Esquive est montré pour ce combat, c'est-à-dire un combat
+        /// positionné (le moteur n'admet l'esquive que là) ; argument <c>dodge</c> de <see cref="Update"/>.
+        /// </summary>
+        public static bool DodgeFor(ICombatClient? combat) => combat != null && combat.Space != null;
+
         /// <summary>Le bouton Esquive est montré (la règle d'esquive existe).</summary>
         public bool DodgeShown => _dodge;
 

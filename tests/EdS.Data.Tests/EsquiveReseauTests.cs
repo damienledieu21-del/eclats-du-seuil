@@ -95,6 +95,23 @@ public class EsquiveReseauTests
     }
 
     [Fact]
+    public void Planificateur_garde_la_garde_quand_l_esquive_serait_refusee()
+    {
+        // Relecture indépendante de la PR #164 : en recharge (ou sans endurance), l'esquive serait refusée ; la garde tenue n'est pas lâchée.
+        var engine = new CombatEngine(Arena(), new MemoryCombatLog());
+        engine.Submit(CombatCommand.DodgeToward(0, "bastion", GroundVector.Parse("0", "1")));
+        engine.Step();
+        engine.Submit(new CombatCommand(50, "bastion", CombatAction.GuardStart));
+        engine.Step();
+        CombatantView me = engine.View("bastion");
+        Assert.True(me.Guarding && me.CanDodge);
+        Assert.False(me.DodgeAvailable);   // recharge jusqu'au tick 20
+        Assert.Empty(IntentionPlanner.Plan(me, 100, guardHeld: true, parry: false, slot: null, _ => null, dodge: true));
+        while (engine.CurrentTick < me.DodgeReadyTick) engine.Step();
+        Assert.True(engine.View("bastion").DodgeAvailable);
+    }
+
+    [Fact]
     public void Pont_temps_reel_bond_dans_le_cap_du_joystick_ou_vers_l_arriere()
     {
         var combat = new RealtimeCombat(Arena(), "bastion");

@@ -119,6 +119,12 @@ namespace EdS.Simulation.Engine
         /// <summary>Esquive : personnage présent et vivant d'un combat positionné, pas bloqué dans son déplacement (sans tenir compte de la garde, de la recharge ni de l'endurance).</summary>
         public bool CanDodge { get; internal set; }
 
+        /// <summary>
+        /// Esquive (relecture indépendante de la PR #164) : une esquive serait admise à ce tick hors garde et hors mur : <see cref="CanDodge"/>,
+        /// recharge passée et endurance suffisante (le mur, qui dépend de la direction, reste jugé par le moteur).
+        /// </summary>
+        public bool DodgeAvailable { get; internal set; }
+
         /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick ; faux pour un absent ou un mort.</summary>
         public bool CanCast { get; internal set; }
         public bool CanGuard { get; internal set; }
@@ -345,6 +351,7 @@ namespace EdS.Simulation.Engine
                     view.DodgeEndTick = checked(dodged + DodgeDurationTicks);
                 }
                 view.CanDodge = !f.Out && _spatial && !Blocked(StatusBlocks.Movement);
+                view.DodgeAvailable = view.CanDodge && tick >= DodgeReadyTick(f) && f.Endurance >= _rules.DodgeEnduranceCost;
             }
             if (f.Body is { } body)
             {

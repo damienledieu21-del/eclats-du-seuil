@@ -1494,7 +1494,7 @@ namespace EdS.Game
             HudMode mode = Network ? HudMode.Network : _adventure != null ? HudMode.Adventure : HudMode.Training;
             // Esquive : le bouton est montré dans un combat positionné (la règle existe depuis le moteur 0.32.0) ; la garde monte alors à
             // gauche de la parade (HudLayoutV21).
-            _hudLayout.Update(UiKit.Width, UiKit.ReferenceHeight, insets, _touch.Active, mode, dodge: _combat != null && _combat.Space != null);
+            _hudLayout.Update(UiKit.Width, UiKit.ReferenceHeight, insets, _touch.Active, mode, dodge: HudLayoutV21.DodgeFor(_combat));
         }
 
         /// <summary>Essai réaliste 6, étape 2 : écrans et dialogue de l'aventure (uGUI) ; un onglet peut ouvrir l'arbre des Éclats.</summary>

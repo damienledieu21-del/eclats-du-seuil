@@ -40,9 +40,11 @@ namespace EdS.Runtime
                 groups.Add(me.Guarding ? new[] { new CombatCommand(atMs, me.Id, CombatAction.GuardStop), cast } : new[] { cast });
                 casting = true;
             }
-            if (dodge && me.CanDodge)
+            if (dodge && me.DodgeAvailable)
             {
                 // Esquive : refusée par le moteur en garde ; la garde est quittée dans le même groupe (sauf si un lancer vient de le faire).
+                // Relecture indépendante de la PR #164 : seulement si la vue dit l'esquive possible (recharge, endurance), pour ne pas lâcher
+                // la garde pour une esquive refusée ; un mur collé reste jugé par le moteur.
                 var bound = CombatCommand.DodgeToward(atMs, me.Id, dodgeDirection);
                 groups.Add(me.Guarding && !casting ? new[] { new CombatCommand(atMs, me.Id, CombatAction.GuardStop), bound } : new[] { bound });
             }

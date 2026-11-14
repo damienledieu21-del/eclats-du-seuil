@@ -183,6 +183,8 @@ Valeurs dans les règles (`combat.dodge`) : 3 m, 300 ms d'invulnérabilité, 20 
 3. **Altération déjà posée** (poison, saignement) : elle continue pendant l'invulnérabilité.
 4. **Touche PC** : Ctrl gauche.
 
+**Décision de Damien du 14 novembre 2026 (vers 23 h 58) — Retenu** : un coup esquivé ne donne aucune Résonance à l'attaquant.
+
 Les valeurs (bond de 150 ms, 20 d'endurance) restent à confirmer à l'essai.
 
 ## 5 bis. Choix de l'essai du 22 octobre 2026 (sous-lot 11.9)

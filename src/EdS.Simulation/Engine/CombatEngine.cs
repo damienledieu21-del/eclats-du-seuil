@@ -1325,7 +1325,9 @@ namespace EdS.Simulation.Engine
             System.Action? afterResolve = null)
         {
             bool damaging = action.Damaging;
-            bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
+            // Esquive (décision de Damien du 14 novembre 2026, vers 23 h 58) : un coup esquivé ne donne aucune Résonance ; il en faut au moins un
+            // qui porte.
+            bool resonance = damaging && targets.Any(t => !Evades(tick, action.Actor, t)) && action.Actor.Character != null && action.GeneratesResonance;
             var postures = new Postures();
             Cost cost = prefix + (resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None);
             foreach (Fighter target in targets)
@@ -1362,7 +1364,7 @@ namespace EdS.Simulation.Engine
             Cost cost = Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken);   // impact, ligne « damage »
             // Sous-lot 8.3 (X6) : une protection active sur la cible transfère une part de l'impact : ligne « damageTransferred », non
             // notifiée, même si la part est nulle (le coût ne dépend jamais du montant des dégâts).
-            cost += Cost.Line.If(ActiveProtection(target) != null);
+            cost += Cost.Line.If(TransferringProtection(tick, action.Actor, target) != null);   // esquive : pas vers un protecteur invulnérable
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
             Defense applicable = DefenseOf(action, target, target.ParryOpen, target.Guarding);
             bool parried = false;
@@ -1570,7 +1572,7 @@ namespace EdS.Simulation.Engine
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
             // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
             // Sous-lot 8.3 (X6) : une protection active transfère d'abord sa part au protecteur ; les boucliers de la cible absorbent le reste.
-            Transfer transfer = PlanTransfer(target, amount);
+            Transfer transfer = PlanTransfer(tick, actor, target, amount);
             Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
             DamageUpdate update = PrepareDamage(target, actor, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
@@ -2222,9 +2224,9 @@ namespace EdS.Simulation.Engine
         /// quand la garde tient sans pouvoir payer un blocage (<c>guard.noUpkeepBreak</c>) ; sans ce drapeau, un transfert ne paie rien
         /// et ne brise pas la garde : réduction pleine.
         /// </summary>
-        private Transfer PlanTransfer(Fighter target, long amount)
+        private Transfer PlanTransfer(long tick, Fighter? source, Fighter target, long amount)
         {
-            if (ActiveProtection(target) is not { } protection) return default;
+            if (TransferringProtection(tick, source, target) is not { } protection) return default;
             Fighter protector = _byId[protection.Source!];
             Fixed ratio = protector.Rules.RedirectRatio(protection.Definition);
             long part = amount <= 0 ? 0 : (Fixed.FromInt(amount) * ratio).RoundToInt(RoundingMode.Floor);
@@ -2387,6 +2389,22 @@ namespace EdS.Simulation.Engine
             w.EndArray();
         }
 
+        /// <summary>
+        /// Esquive (relecture indépendante de la PR #164) : protection qui transfère vraiment un coup de <paramref name="source"/> à ce tick :
+        /// celle de <see cref="ActiveProtection"/>, sauf si son protecteur est invulnérable (esquive) face à cette source (ennemi du protecteur,
+        /// ou source inconnue) ; la cible prend alors tout le coup, sans ligne <c>damageTransferred</c>. Même réponse pour le coût et l'effet.
+        /// </summary>
+        private StatusInstance? TransferringProtection(long tick, Fighter? source, Fighter target)
+        {
+            if (ActiveProtection(target) is not { } protection) return null;
+            Fighter protector = _byId[protection.Source!];
+            if (Invulnerable(protector, tick) && (source is null || (!ReferenceEquals(source, protector) && Enemies(source, protector)))) return null;
+            return protection;
+        }
+
+        private Fighter? SourceOf(StatusInstance status) =>
+            status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
+
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
         private static bool IsLastDotTick(long tick, StatusInstance status) => tick >= status.UntilTick;
 
@@ -2397,7 +2415,7 @@ namespace EdS.Simulation.Engine
         private Cost DotTickCost(long tick, DotTick dot)
         {
             if (!IsCurrent(dot, out StatusInstance? status)) return Cost.None;
-            return Cost.Op + Observable(TriggerEvent.DotTick) + Cost.Line.If(ActiveProtection(dot.Fighter) != null)   // 8.3 : transfert
+            return Cost.Op + Observable(TriggerEvent.DotTick) + Cost.Line.If(TransferringProtection(tick, SourceOf(status), dot.Fighter) != null)   // 8.3 : transfert
                 + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
         }
 
@@ -2431,7 +2449,7 @@ namespace EdS.Simulation.Engine
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
             amount = InfightingCap(source, target, amount);   // relecture de la PR #104 : jamais mortel entre bêtes
             // Sous-lot 8.3 (X6) : une protection transfère aussi sa part d'un tick de DOT.
-            Transfer transfer = PlanTransfer(target, amount);
+            Transfer transfer = PlanTransfer(tick, source, target, amount);
             Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
             DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);

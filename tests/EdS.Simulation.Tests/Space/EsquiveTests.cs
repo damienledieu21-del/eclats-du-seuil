@@ -115,6 +115,49 @@ public class EsquiveTests
         Assert.Empty(Lines(log, "pushed"));
     }
 
+    private static CharacterSetup Placed(CharacterSetup c, CombatantPlacement at, string? team = null) =>
+        new(c.Id, team ?? c.Team, c.Class, c.Build, c.Initiative, at, c.ArrivalMs);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Pas_de_transfert_vers_un_protecteur_invulnerable(bool dodges)
+    {
+        // Relecture indépendante de la PR #164 : le Bastion protège l'allié (Lien, 25 %) puis esquive ; le coup du tick 20 sur l'allié ne lui
+        // transfère rien (ni ligne damageTransferred) : l'allié prend tout. Sans esquive, le transfert a lieu.
+        var brute = new AssailantSetup("assaillant", "cibles", Fixed.Zero, Fixed.Zero, "allie", 1000, 2000,
+            new[] { new AssailantAttack("coup", 100, EdS.Domain.Stats.DamageType.Physique, SkillTargeting.Enemy, false) }, placement: At("0", "4"));
+        var commands = new List<CombatCommand> { Support.Lot83Kit.Use(0, Support.Lot83Kit.Lien, target: "allie") };
+        if (dodges) commands.Add(Dodge(950, "0", "-1"));
+        var (_, log) = Run(Spatial(Arena(20), new CombatantSetup[]
+        {
+            Placed(Support.Lot83Kit.Bastion(), At("0", "0")), Placed(Support.Lot83Kit.Ally(), At("2", "0")), brute,
+        }, commands, Support.Lot83Kit.Rules, 1100));
+        JsonElement hit = Assert.Single(DamageTo(log, "allie"));
+        Assert.Equal(dodges ? 0L : 25L, hit.GetProperty("transferred").GetInt64());
+        Assert.Equal(dodges ? 0 : 1, Lines(log, "damageTransferred").Count);
+        Assert.Equal(dodges ? 1 : 0, Lines(log, "dodgeStarted").Count);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Coup_esquive_sans_Resonance_pour_l_attaquant(bool dodges)
+    {
+        // Décision de Damien du 14 novembre 2026 (vers 23 h 58) : un coup esquivé ne donne aucune Résonance à l'attaquant (duel entre deux
+        // personnages d'équipes ennemies, Coup au tick 20).
+        var commands = new List<CombatCommand> { Support.Lot83Kit.Use(1000, Support.Lot83Kit.Coup, actor: "duelliste", target: "bastion") };
+        if (dodges) commands.Add(Dodge(950, "0", "1"));
+        var (_, log) = Run(Spatial(Arena(20), new CombatantSetup[]
+        {
+            Placed(Support.Lot83Kit.Bastion(), At("0", "0")),
+            Placed(Support.Lot83Kit.Hero("duelliste", new[] { Support.Lot83Kit.Coup, Support.Lot83Kit.Lien, Support.Lot83Kit.Garde, Support.Lot83Kit.Barriere }), At("1.5", "0"), "rivaux"),
+        }, commands, Support.Lot83Kit.Rules, 1100));
+        bool Gained(JsonElement g) => g.Str("actor") == "duelliste" && g.Str("source") == "directHit";
+        Assert.Equal(dodges ? 1 : 0, Lines(log, "evaded").Count);
+        Assert.Equal(dodges ? 0 : 1, Lines(log, "resourceGained").Count(Gained));
+    }
+
     // --- Bond : direction, décor, bords ---------------------------------------------------------------------
 
     [Fact]

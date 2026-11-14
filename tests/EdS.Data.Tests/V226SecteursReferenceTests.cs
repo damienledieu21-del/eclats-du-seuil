@@ -18,10 +18,11 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Sous-lot V2.26 (secteurs de simulation ; rupture retenue par Damien le 11 novembre 2026) : moteur 0.31.0, journal au format 25 (état
 /// emporté, places recyclées d'une zone, ±4 096 m, 256 obstacles), scénarios en schéma 18 ; instantané (6) et règles (16) inchangés.
-/// Nouvelle référence figée <c>Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0</c> : les anciens journaux y ont exactement le même
+/// Nouvelle référence figée <c>Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0</c> : les anciens journaux y ont exactement le même
 /// corps (seul l'en-tête change), et <c>espace_secteur</c> (un secteur de 320 m au coin sud-est des bornes, 195 obstacles, un personnage
 /// qui arrive avec un état emporté, un loup blessé qui arrive avec ses PV). Les anciennes références restent figées : elles sont refusées
-/// au rejeu par ce moteur (autre version) et leur corps est reproduit octet par octet.
+/// au rejeu par ce moteur (autre version) et leur corps est reproduit octet par octet. Depuis l'esquive (moteur 0.32.0), cette référence
+/// est figée à son tour : refusée au rejeu, corps reproduit (la référence courante est vérifiée par <c>EsquiveReferenceTests</c>).
 /// </summary>
 [Trait("Category", "Sector")]
 [Trait("Category", "Regression")]
@@ -52,7 +53,7 @@ public class V226SecteursReferenceTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.True(CombatEngine.LogFormatVersion >= 25 && ScenarioValidator.CurrentSchemaVersion >= 18);   // esquive : moteur 0.32.0, format 26, schéma 19 (EsquiveReferenceTests)
+        Assert.Equal(("0.32.0", 26, 19, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));   // esquive (V2.26 : 0.31.0, 25, 18, 6)
         JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement;
         Assert.Equal(ScenarioValidator.CurrentSchemaVersion, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
