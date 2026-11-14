@@ -15,6 +15,18 @@ namespace EdS.World
 
         /// <summary>La dernière forme est tombée : victoire.</summary>
         Defeated = 1,
+
+        /// <summary>
+        /// Décision de Damien du 14 novembre 2026 (« AAA », 1) : la forme du moment, qui avait lâché au bout de la marge de son secteur,
+        /// revient à sa place avec tous ses PV (même forme).
+        /// </summary>
+        Returned = 2,
+
+        /// <summary>
+        /// Décision de Damien du 14 novembre 2026 (« AAA », 2) : la session de son secteur est renouvelée pendant le combat : la forme du
+        /// moment y continue telle quelle (place et PV emportés).
+        /// </summary>
+        Carried = 3,
     }
 
     public sealed class BossEvent
@@ -54,6 +66,7 @@ namespace EdS.World
 
         /// <summary>Identité de la forme en cours dans le moteur (celle de la forme, ou <c>{forme}_v{n}</c> après une arrivée refusée).</summary>
         private string _current;
+        private bool _returning;
 
         public BossFight(Boss boss)
         {
@@ -70,6 +83,18 @@ namespace EdS.World
         public bool RewardPending { get; set; }
 
         public bool RewardAnnounced { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : secteur du chef sur l'hôte des secteurs (celui de sa première forme) ; null hors de l'hôte.
+        /// </summary>
+        public string? Sector { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : session de zone où se joue ce combat (celle du personnage hors de l'hôte, celle du secteur du chef sur
+        /// l'hôte). Le combat ne vit qu'avec elle : une session nouvelle de ce secteur (ouverture, réouverture, renouvellement) en commence un
+        /// autre, à la première forme, comme une halte.
+        /// </summary>
+        public Zone? Session { get; set; }
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
@@ -99,6 +124,13 @@ namespace EdS.World
                 // en jeu : elle est retentée sous une nouvelle identité, la même forme, une seconde plus tard.
                 if (!v.IsPresent && !v.IsDead && !v.HasLeft && v.ArrivalTick is long at && at < now)
                     _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
+                // Décision de Damien du 14 novembre 2026 (« AAA », 1) : partie sans mourir (lâchée au bout de la marge de son secteur par
+                // l'hôte) : la même forme revient à sa place, tous ses PV, sous une identité nouvelle.
+                else if (!v.IsPresent && !v.IsDead && v.HasLeft)
+                {
+                    _nextAt = now;
+                    _returning = true;
+                }
                 else
                 {
                     if (!v.IsDead) return Array.Empty<BossEvent>();
@@ -132,7 +164,44 @@ namespace EdS.World
             }
             _current = id;
             _nextAt = null;
-            return new[] { new BossEvent(BossEventKind.FormArrived, _boss.Id, id, _phase, now) };
+            BossEventKind kind = _returning ? BossEventKind.Returned : BossEventKind.FormArrived;
+            _returning = false;
+            return new[] { new BossEvent(kind, _boss.Id, id, _phase, now) };
+        }
+
+        /// <summary>
+        /// Décision de Damien du 14 novembre 2026 (« AAA », 2) : le combat continue dans la session renouvelée <paramref name="to"/> de son
+        /// secteur, tel qu'il était dans <paramref name="from"/> : même forme, même phase ; la forme du moment, présente et vivante, y arrive
+        /// à sa place avec son état emporté (PV, ressources) ; sinon (morte, en attente, partie), la forme à venir arrive au premier pas, à sa
+        /// place. Un chef vaincu le reste (aucune forme, aucune seconde victoire). Ne lève pas : une arrivée refusée par le moteur est
+        /// retentée au premier pas, à sa place.
+        /// </summary>
+        public static BossFight Continue(BossFight old, CombatEngine from, CombatEngine to, out BossEvent? arrived)
+        {
+            var fight = new BossFight(old._boss) { RewardPending = old.RewardPending, RewardAnnounced = old.RewardAnnounced, _phase = old._phase, _over = old._over };
+            fight._current = old._current;
+            arrived = null;
+            if (old._over) return fight;
+            AssailantSetup form = old._boss.Forms[old._phase];
+            CombatantView? v = System.Linq.Enumerable.Contains(from.CombatantIds, old._current) ? from.View(old._current) : null;
+            if (old._nextAt is null && v is { IsPresent: true, IsDead: false, Position: GroundVector at, Radius: Fixed radius })
+            {
+                string id = FreeIdentity(to, form.Id);
+                try
+                {
+                    CarriedState carried = from.Carried(old._current);
+                    to.Join(Copy(form, id, to, new CombatantPlacement(at, radius, v.Facing), carried.IsEmpty ? null : carried));
+                    fight._current = id;
+                    arrived = new BossEvent(BossEventKind.Carried, old._boss.Id, id, old._phase, to.CurrentTick);
+                    return fight;
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                }
+            }
+            fight._nextAt = to.CurrentTick;   // la forme du moment (ou celle à venir) arrive à sa place au premier pas
+            fight._returning = old._nextAt is null;   // la même forme qui revient, pas une forme nouvelle
+            return fight;
         }
 
         /// <summary>L'identité de la forme si elle est libre, sinon la première <c>{forme}_v{n}</c> libre (une identité n'est jamais réutilisée).</summary>
@@ -145,9 +214,9 @@ namespace EdS.World
             return $"{form}_v{n}";
         }
 
-        private static AssailantSetup Copy(AssailantSetup t, string id, CombatEngine engine) =>
+        private static AssailantSetup Copy(AssailantSetup t, string id, CombatEngine engine, CombatantPlacement? placement = null, CarriedState? carried = null) =>
             new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
-                t.Triggers, t.Health, t.Placement, checked(engine.CurrentTick * engine.TickMilliseconds), t.Behavior);
+                t.Triggers, t.Health, placement ?? t.Placement, checked(engine.CurrentTick * engine.TickMilliseconds), t.Behavior, carried);
 
         /// <summary>
         /// Place prise par un combattant présent, ou par un combattant qui arrive à ce même tick (revue Codex de la PR #48 : une réapparition

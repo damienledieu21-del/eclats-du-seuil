@@ -443,10 +443,10 @@ public class V228bSoloSecteursTests
         Assert.Equal((tick, keys, 1L), (w.WorldTick, w.Consumed.Count, old.Session));
         Assert.Equal(new[] { "s07_06" }, w.OpenSectors);
         Assert.Equal(("s07_06", "bastion"), (w.SectorOf("bastion"), w.CombatantOf("bastion")));
-        // La borne compte les créatures de la définition entière, pas celles de l'aire filtrée au départ.
+        // La borne compte les créatures de la session qui naîtra, à l'heure du renouvellement (la nuit), pas celles de l'aire filtrée au
+        // départ (relecture indépendante de la PR #159 : exactement celles-là ; avant, toute la définition).
         long need = probe.NextTickRegistryNeed;
-        Assert.Equal(own + (long)zone.Setup.Combatants.Count + 1, need);
-        Assert.True(zone.Setup.Combatants.Count >= night);
+        Assert.Equal(own + (long)night + 1, need);
         // Rempli jusqu'à la borne : accepté entier ; la session de la nuit a ses créatures de la nuit, le registre reste sous le plafond.
         SectorWorld ok = Ended(checked((int)(SaveValidator.MaxConsumed - need)));
         Assert.Equal(SaveValidator.MaxConsumed + 0L, ok.NextTickRegistryNeed);
@@ -520,11 +520,11 @@ public class V228bSoloSecteursTests
         Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible, world.NextTickRegistryNeed);
         world.Step();
         Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible, world.NextTickRegistryNeed);
-        // Une entrée annoncée peut faire naître une session avant le tick : toutes les créatures de l'aire et le joueur sont comptés.
+        // Une entrée annoncée dans un secteur déjà ouvert : aucune session ne naît ; seule la clé du joueur qui entre s'ajoute (relecture
+        // indépendante de la PR #159 : borne exacte ; avant, toutes les créatures de l'aire s'ajoutaient).
         CharacterSetup hero = Player(zone, -20, -12);
         world.Enter(new CharacterSetup("alice", hero.Team, hero.Class, hero.Build, 0, hero.Placement));
-        // Revue Codex de la PR #156 (1er tour) : les créatures de la définition entière, quelle que soit l'heure de la session qui naîtra.
-        Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible + zone.Setup.Combatants.Count + 1, world.NextTickRegistryNeed);
+        Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible + 1, world.NextTickRegistryNeed);
         Assert.True(world.CancelEnter("alice"));
         Assert.Equal(sector.ConsumedCount + sector.NewDeathsPossible, world.NextTickRegistryNeed);
     }
