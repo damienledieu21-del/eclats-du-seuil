@@ -171,7 +171,7 @@ public class InterfaceStyleTests
         Assert.Contains("_adventureHelp = HelpKeys.Adventure(a.Text(\"text.ui.help\"));", game, StringComparison.Ordinal);
         Assert.Contains("Texture2D painted = PaintedMap.For(map);", view, StringComparison.Ordinal);
         Assert.Contains("_mapImage.uvRect = PaintedMap.Window(map, cx, cz, MapRadius);", view, StringComparison.Ordinal);
-        Assert.Contains("_work = Task.Run(() => MapPainter.Paint(map, w, h));", Read("unity", "Assets", "EdS", "Game", "PaintedMap.cs"), StringComparison.Ordinal);
+        Assert.Contains("slot.Work = Task.Run(() => MapPainter.Paint(map, w, h));", Read("unity", "Assets", "EdS", "Game", "PaintedMap.cs"), StringComparison.Ordinal);   // V2.28c : deux images au plus
 
         // Projet : paquet uGUI, ressources de TextMeshPro importées par l'éditeur (non suivies), images importées à leur taille exacte.
         string setup = Read("unity", "Assets", "EdS", "Editor", "EdsInterfaceSetup.cs");
