@@ -69,6 +69,9 @@ namespace EdS.Data.Zones
 
         public const int SectorMeters = CellMeters * SectorCells;
 
+        /// <summary>Sous-lot V2.26 : marge d'un secteur simulé, de chaque côté (son espace : son carré plus cette marge, coupé aux bornes de l'aire).</summary>
+        public const int SectorMarginMeters = 32;
+
         /// <summary>Colonnes et rangées au plus (64 × 128 m = 8 192 m).</summary>
         public const int MaxColumns = 64, MaxRows = 64;
 

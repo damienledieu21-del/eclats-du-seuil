@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 18
+      "const": 19
     },
     "kind": {
       "const": "scenario"
@@ -133,7 +133,8 @@
         },
         "obstacles": {
           "type": "array",
-          "maxItems": 256,
+          "description": "Au plus 256 obstacles pour tout scénario simulé d'un bloc (un combat, une zone sans région, une zone lue seule). Jusqu'à 4 096 seulement pour l'aire d'une zone à région (zone vrai, lue par sa zone), simulée par secteurs d'au plus 256 chacun (schéma 19, sous-lot V2.28c).",
+          "maxItems": 4096,
           "items": {
             "type": "object",
             "additionalProperties": false,

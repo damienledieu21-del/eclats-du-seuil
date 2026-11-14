@@ -49,16 +49,19 @@ namespace EdS.Domain.Space
         }
 
         /// <summary>Incohérences de l'espace lui-même ; chemins de la forme du fichier de scénario (<c>space.obstacles[2].points</c>).</summary>
-        public IReadOnlyList<RuleViolation> Validate()
+        public IReadOnlyList<RuleViolation> Validate() => Validate(SpaceLimits.MaxObstacles);
+
+        /// <summary>Sous-lot V2.28c : même validation, avec au plus <paramref name="maxObstacles"/> obstacles (aire d'une zone : <see cref="SpaceLimits.MaxAreaObstacles"/>).</summary>
+        public IReadOnlyList<RuleViolation> Validate(int maxObstacles)
         {
             var errors = new List<RuleViolation>();
             if (!SpaceLimits.InRange(Min) || !SpaceLimits.InRange(Max))
                 errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"coins hors de ±{SpaceLimits.MaxCoordinate} m (borne technique).", "space.bounds"));
             else if (Min.X >= Max.X || Min.Z >= Max.Z)
                 errors.Add(new RuleViolation("le coin min doit être strictement au sud-ouest du coin max.", "space.bounds"));
-            if (Obstacles.Count > SpaceLimits.MaxObstacles)
+            if (Obstacles.Count > maxObstacles)
             {
-                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{Obstacles.Count} obstacles, au plus {SpaceLimits.MaxObstacles}.", "space.obstacles"));
+                errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{Obstacles.Count} obstacles, au plus {maxObstacles}.", "space.obstacles"));
                 return errors;
             }
             var ids = new Dictionary<string, int>(StringComparer.Ordinal);

@@ -72,7 +72,7 @@ public class V241PromenadeMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.31.0", 25, 18, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.31.0", 25, 19, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((16, "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal((Fixed.FromInt(30), 15_000L), (ShippedData.Rules.Combat.WanderMaxRadius, ShippedData.Rules.Combat.WanderCalmMs));
     }
@@ -344,7 +344,7 @@ public class V241PromenadeMoteurTests
     public void Schemas_JSON_du_sous_lot()
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(18, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(19, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode wander = scenario["$defs"]!["combatant"]!["properties"]!["behavior"]!["properties"]!["wander"]!;
         Assert.Equal(new[] { "style", "radius", "pace", "legMs", "pauseMs" }, wander["required"]!.AsArray().Select(v => v!.GetValue<string>()));
         Assert.Equal(new[] { "graze", "hop", "patrol", "root" }, wander["properties"]!["style"]!["enum"]!.AsArray().Select(v => v!.GetValue<string>()));

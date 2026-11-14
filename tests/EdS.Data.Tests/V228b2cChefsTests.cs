@@ -49,7 +49,7 @@ public class V228b2cChefsTests
         }
         JsonObject Scenario(JsonArray combatants) => new()
         {
-            ["schemaVersion"] = 18,
+            ["schemaVersion"] = 19,
             ["kind"] = "scenario",
             ["contentVersion"] = "0.1.0-provisoire",
             ["data"] = new JsonObject
