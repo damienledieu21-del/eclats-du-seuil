@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Space;
 using EdS.Domain.Numerics;
 using EdS.Domain.Stats;
 using EdS.Simulation.Combat;
@@ -605,6 +606,10 @@ namespace EdS.Simulation.Engine
             _log = log ?? throw new ArgumentNullException(nameof(log));
             var violations = setup.Validate(queueBound, numericLimits);
             if (violations.Count > 0) throw new CombatSetupException(violations);
+            // Sous-lot V2.28c : un espace simulé garde au plus 256 obstacles (l'aire d'une zone, qui peut en avoir plus, est simulée par secteurs).
+            if (setup.Space is CombatSpace space && space.Obstacles.Count > SpaceLimits.MaxObstacles)
+                throw new CombatSetupException(new[] { new EdS.Domain.RuleViolation(EdS.Domain.RuleViolationKind.LimitExceeded,
+                    $"{space.Obstacles.Count} obstacles dans un espace simulé, au plus {SpaceLimits.MaxObstacles} (une aire plus grande se simule par secteurs).", "space.obstacles") });
 
             _rules = setup.Combat;
             _tickMs = _rules.TickMilliseconds;

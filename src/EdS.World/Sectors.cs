@@ -32,7 +32,7 @@ namespace EdS.World
     public sealed class SectorMap
     {
         /// <summary>Marge de l'espace d'un secteur au-delà de ses bords (32 m), hystérésis d'un passage (8 m), distance d'activation (96 m).</summary>
-        public const int MarginMeters = 32, HysteresisMeters = 8, ActivationMeters = 96;
+        public const int MarginMeters = RegionGrid.SectorMarginMeters, HysteresisMeters = 8, ActivationMeters = 96;
 
         /// <summary>Un secteur sans joueur à moins de <see cref="ActivationMeters"/> m depuis 60 s se ferme.</summary>
         public const long CloseAfterMs = 60_000;

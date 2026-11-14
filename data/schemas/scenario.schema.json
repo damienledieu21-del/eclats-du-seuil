@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 18
+      "const": 19
     },
     "kind": {
       "const": "scenario"
@@ -133,7 +133,7 @@
         },
         "obstacles": {
           "type": "array",
-          "maxItems": 256,
+          "maxItems": 4096,
           "items": {
             "type": "object",
             "additionalProperties": false,

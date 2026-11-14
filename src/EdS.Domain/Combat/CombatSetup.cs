@@ -1172,7 +1172,8 @@ namespace EdS.Domain.Combat
                 return;
             }
             int first = errors.Count;
-            errors.AddRange(Space.Validate());
+            // Sous-lot V2.28c : l'aire d'une zone peut en avoir plus (découpée en secteurs) ; un espace simulé reste borné (CombatEngine).
+            errors.AddRange(Space.Validate(Zone ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles));
             bool spaceValid = errors.Count == first;
             ConvexPolygon[] polygons = spaceValid ? Space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray() : Array.Empty<ConvexPolygon>();
             bool placementsValid = true;

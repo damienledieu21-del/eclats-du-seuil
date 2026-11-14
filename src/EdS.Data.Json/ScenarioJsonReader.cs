@@ -64,7 +64,7 @@ namespace EdS.Data.Json
                 ["space"] = (v, p) =>   // sous-lot 11.4 (schéma 5)
                 {
                     data.Present.Add("space");
-                    data.Space = ReadSpace(input, v, p);
+                    data.Space = ReadSpace(input, v, p, zoneMode);
                 },
                 ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, maxCombatants,
                     n => zoneMode ? $"{n} combattants dans la session de zone, au plus {maxCombatants} (borne technique)."
@@ -201,14 +201,15 @@ namespace EdS.Data.Json
             return point.X is null || point.Z is null ? null : point;
         }
 
-        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path)
+        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path, bool zoneMode)
         {
             var space = new SpaceData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["bounds"] = (v, p) => space.Bounds = ReadBounds(input, v, p),
-                ["obstacles"] = (v, p) => space.Obstacles = input.ReadLimitedList(v, p, SpaceLimits.MaxObstacles,
-                    n => $"{n} obstacles, au plus {SpaceLimits.MaxObstacles}.", (e, ip) => ReadObstacle(input, e, ip)),
+                // Sous-lot V2.28c (schéma 19) : l'aire d'une zone peut en avoir jusqu'à 4 096 (découpée en secteurs) ; le schéma est vérifié ensuite.
+                ["obstacles"] = (v, p) => space.Obstacles = input.ReadLimitedList(v, p, zoneMode ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles,
+                    n => $"{n} obstacles, au plus {(zoneMode ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles)}.", (e, ip) => ReadObstacle(input, e, ip)),
             });
             return ok ? space : null;
         }

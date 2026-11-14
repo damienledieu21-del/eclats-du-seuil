@@ -65,9 +65,10 @@ namespace EdS.Data.Scenarios
         /// <c>points</c> facultatifs). Version 18 (sous-lot V2.26, secteurs de simulation) : <c>carried</c> facultatif sur un personnage ou un
         /// assaillant qui arrive en route (état emporté d'un autre secteur) ; coordonnées jusqu'à ±4 096 m et 256 obstacles ; une zone compte ses
         /// places (combattants présents au départ au plus <c>combat.limits.maxCombatants</c>, identités au plus 1 024). Une version antérieure
-        /// est refusée sans migration : le fichier se met à jour à la main.
+        /// est refusée sans migration : le fichier se met à jour à la main. Version 19 (sous-lot V2.28c, surface étendue) : l'aire d'une zone
+        /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun.
         /// </summary>
-        public const int CurrentSchemaVersion = 18;
+        public const int CurrentSchemaVersion = 19;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
