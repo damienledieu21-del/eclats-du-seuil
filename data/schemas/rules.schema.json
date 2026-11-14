@@ -913,13 +913,13 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 1000,
-                  "description": "Durée du bond (ms, multiple du tick ; 150 livré). Distance ÷ durée ≤ 20 m/s (vitesse technique maximale)."
+                  "description": "Durée du bond (ms, arrondie au tick supérieur ; 150 livré). Distance ÷ durée ≤ 20 m/s (vitesse technique maximale)."
                 },
                 "invulnerableMs": {
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 60000,
-                  "description": "Invulnérabilité au début du bond (ms, multiple du tick, au plus la recharge ; 300 livré, 6 ticks)."
+                  "description": "Invulnérabilité au début du bond (ms, arrondie au tick supérieur, au plus la recharge ; 300 livré, 6 ticks)."
                 },
                 "enduranceCost": {
                   "type": "integer",
@@ -931,7 +931,7 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 60000,
-                  "description": "Recharge comptée depuis le début du bond (ms, multiple du tick, au moins la durée du bond ; 1 000 livré)."
+                  "description": "Recharge comptée depuis le début du bond (ms, arrondie au tick supérieur, au moins la durée du bond ; 1 000 livré)."
                 }
               },
               "required": [

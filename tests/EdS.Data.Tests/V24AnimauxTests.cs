@@ -104,7 +104,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
         JsonElement before = JsonDocument.Parse(old[0]).RootElement, after = JsonDocument.Parse(latest[0]).RootElement;
-        Assert.Equal((21, "0.27.0", 25, "0.31.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
+        Assert.Equal((21, "0.27.0", 26, "0.32.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
             after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
@@ -195,7 +195,7 @@ public class V24AnimauxMoteurTests
         Assert.True(engine.View("cerf").HurtByCharacter);
         Assert.False(engine.View("sanglier").HurtByCharacter);   // mordu par le loup seulement
         CombatSnapshot snapshot = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":6,", snapshot.Text);
+        Assert.StartsWith("{\"snapshot\":7,", snapshot.Text);
         Assert.Contains("\"hurtByCharacter\":true", snapshot.Text);
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, new MemoryCombatLog());
         Assert.True(resumed.View("cerf").HurtByCharacter);
@@ -263,7 +263,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(19, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.NotNull(scenario["properties"]!["data"]!["properties"]!["truces"]);
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
-        Assert.Equal(16, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17
         JsonNode zone = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json")))!;
         Assert.Equal(new[] { 7, 8, 9, 10, 11, 12, 13, 14 }, zone["properties"]!["schemaVersion"]!["enum"]!.AsArray().Select(v => v!.GetValue<int>()));
     }

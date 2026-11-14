@@ -290,13 +290,14 @@ namespace EdS.Domain.Combat
 
         /// <summary>
         /// Esquive : durée du bond (<c>combat.dodge.durationMs</c>, 150 ms livrées, soit 3 ticks : choix technique de Claude, « un bond rapide »),
-        /// multiple du tick, dans [1 tick, 1 000] ms ; la vitesse du bond (distance ÷ durée) ne dépasse pas la vitesse technique maximale.
+        /// dans [1, 1 000] ms, arrondie au tick supérieur (comme les deux suivantes) ; la vitesse du bond (distance ÷ durée) ne dépasse pas la
+        /// vitesse technique maximale.
         /// </summary>
         public long DodgeDurationMs { get; init; } = 150;
 
         /// <summary>
-        /// Esquive : invulnérabilité au début du bond (<c>combat.dodge.invulnerableMs</c>, 300 ms livrées, soit 6 ticks), multiple du tick,
-        /// dans [0, recharge] : aucune invulnérabilité permanente par enchaînement.
+        /// Esquive : invulnérabilité au début du bond (<c>combat.dodge.invulnerableMs</c>, 300 ms livrées, soit 6 ticks), dans [0, recharge] :
+        /// aucune invulnérabilité permanente par enchaînement.
         /// </summary>
         public long DodgeInvulnerableMs { get; init; } = 300;
 
@@ -304,8 +305,8 @@ namespace EdS.Domain.Combat
         public long DodgeEnduranceCost { get; init; } = 20;
 
         /// <summary>
-        /// Esquive : recharge, comptée depuis le début du bond (<c>combat.dodge.cooldownMs</c>, 1 000 ms livrées), multiple du tick, au moins la
-        /// durée du bond, au plus 60 000 ms.
+        /// Esquive : recharge, comptée depuis le début du bond (<c>combat.dodge.cooldownMs</c>, 1 000 ms livrées), au moins la durée du bond,
+        /// au plus 60 000 ms.
         /// </summary>
         public long DodgeCooldownMs { get; init; } = 1000;
 
@@ -394,10 +395,10 @@ namespace EdS.Domain.Combat
             bool dodgeTimesValid = true;
             foreach (var (value, name, min, max) in new[] { (DodgeDurationMs, nameof(DodgeDurationMs), 1L, 1000L),
                 (DodgeInvulnerableMs, nameof(DodgeInvulnerableMs), 0L, 60_000L), (DodgeCooldownMs, nameof(DodgeCooldownMs), 0L, 60_000L) })
-                if (value < min || value > max || (TickMilliseconds > 0 && value % TickMilliseconds != 0))
+                if (value < min || value > max)
                 {
                     dodgeTimesValid = false;
-                    errors.Add(new RuleViolation($"doit être dans [{min}, {max}] ms et un multiple du tick.", name, nameof(TickMilliseconds)));
+                    errors.Add(new RuleViolation($"doit être dans [{min}, {max}] ms.", name));
                 }
             if (dodgeTimesValid && DodgeCooldownMs < DodgeDurationMs)
                 errors.Add(new RuleViolation("la recharge ne peut pas être plus courte que le bond.", nameof(DodgeCooldownMs), nameof(DodgeDurationMs)));

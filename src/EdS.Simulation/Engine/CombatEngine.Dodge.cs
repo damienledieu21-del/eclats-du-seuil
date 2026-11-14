@@ -26,9 +26,12 @@ namespace EdS.Simulation.Engine
     /// </summary>
     public sealed partial class CombatEngine
     {
-        private long DodgeDurationTicks => _rules.DodgeDurationMs / _tickMs;
-        private long DodgeInvulnerableTicks => _rules.DodgeInvulnerableMs / _tickMs;
-        private long DodgeCooldownTicks => _rules.DodgeCooldownMs / _tickMs;
+        // Durées arrondies au tick supérieur (exactes au tick de 50 ms des règles livrées) ; un bond dure au moins un tick (validation).
+        private long DodgeDurationTicks => CeilTicks(_rules.DodgeDurationMs);
+        private long DodgeInvulnerableTicks => CeilTicks(_rules.DodgeInvulnerableMs);
+        private long DodgeCooldownTicks => CeilTicks(_rules.DodgeCooldownMs);
+
+        private long CeilTicks(long ms) => IntMath.MulDiv(ms, 1, _tickMs, RoundingMode.Ceiling);
 
         /// <summary>Tick à partir duquel le combattant peut de nouveau esquiver (0 s'il n'a jamais esquivé).</summary>
         private long DodgeReadyTick(Fighter f) => f.DodgeStartTick is long start ? checked(start + DodgeCooldownTicks) : 0;

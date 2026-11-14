@@ -961,7 +961,7 @@ public class V25EvenementsTests
 [Trait("Category", "Regression")]
 public class V25EvenementScenarioTests
 {
-    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.31.0-regles-0.17.0", "evenement_hameau.jsonl");
+    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.32.0-regles-0.18.0", "evenement_hameau.jsonl");
 
     [Fact]
     public void Scenario_d_evenement_fige_identique_et_rejoue()

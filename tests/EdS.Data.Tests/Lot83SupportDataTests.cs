@@ -103,7 +103,7 @@ public class Lot83SupportDataTests
         // 11.4b : règles 11 et classes 9 ; 11.4c : règles 12, scénarios 6.
         ValidationError rules = Assert.Single(RulesTestData.ReadMutated(r => r["schemaVersion"] = 8).Report.Errors);
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (rules.Path, rules.Code));
-        Assert.Contains("antérieure à la version 16", rules.Message);   // V1.2 : règles 13 (boucliers) ; V1.3 : 14 (effets d'équipement) ; V2.4 : 15 (bêtes qui se battent) ; V2.4.1 : 16 (bêtes qui se promènent)
+        Assert.Contains("antérieure à la version 17", rules.Message);   // esquive : 17 ; V1.2 : règles 13 (boucliers) ; V1.3 : 14 (effets d'équipement) ; V2.4 : 15 (bêtes qui se battent) ; V2.4.1 : 16 (bêtes qui se promènent)
         ValidationError klass = Assert.Single(ClassTestData.ReadMutated(c => c["schemaVersion"] = 7).Report.Errors);
         Assert.Contains("antérieure à la version 9", klass.Message);
         ValidationError scenario = Assert.Single(ScenarioTestData.ReadMutated(s => s["schemaVersion"] = 2).Report.Errors);

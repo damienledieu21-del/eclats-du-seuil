@@ -60,9 +60,9 @@ public class V13EffetsMoteurTests
     {
         Assert.Equal(("0.32.0", 26), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // V2.4.1 : bêtes qui se promènent
         // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), schéma inchangé.
-        Assert.Equal((16, "0.17.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));   // V2.4 : schéma 15, contenu 0.16.0
+        Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));   // V2.4 : schéma 15, contenu 0.16.0
         Assert.Equal(19, ScenarioValidator.CurrentSchemaVersion);   // esquive : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
-        Assert.Equal("0.17.0-provisoire", ShippedData.Rules.ContentVersion);
+        Assert.Equal("0.18.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.25"), Fixed.Parse("0.15"), Fixed.Parse("0.15"), Fixed.Parse("3"), 1000L, Fixed.One, 2, 1000L),
             (rules.EquipmentMaxDamageDealt, rules.EquipmentMaxDamageTaken, rules.EquipmentMaxHealthPercent, rules.EquipmentMaxEnduranceRegen,
@@ -73,7 +73,7 @@ public class V13EffetsMoteurTests
     public void Regles_au_schema_13_refusees_et_bloc_equipment_obligatoire()
     {
         string rules = File.ReadAllText(Path.Combine(DataDirectory, "rules.json"));
-        Assert.False(RulesJsonReader.Read(rules.Replace("\"schemaVersion\": 16", "\"schemaVersion\": 13")).IsValid);
+        Assert.False(RulesJsonReader.Read(rules.Replace("\"schemaVersion\": 17", "\"schemaVersion\": 13")).IsValid);
         JsonObject root = JsonNode.Parse(rules)!.AsObject();
         root["data"]!["combat"]!.AsObject().Remove("equipment");
         RulesLoadResult missing = RulesJsonReader.Read(root.ToJsonString());
@@ -214,7 +214,7 @@ public class V13EffetsMoteurTests
         Assert.Equal(frozen.Skip(1), current.Skip(1));
         JsonElement before = JsonDocument.Parse(frozen[0]).RootElement, after = JsonDocument.Parse(current[0]).RootElement;
         Assert.Equal((19, "0.25.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString()));
-        Assert.Equal((25, "0.31.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
+        Assert.Equal((26, "0.32.0"), (after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
         Assert.Equal(before.GetProperty("scenario").GetRawText(), after.GetProperty("scenario").GetRawText());
         Assert.Equal(before.GetProperty("data").GetProperty("classes").GetRawText(), after.GetProperty("data").GetProperty("classes").GetRawText());
     }

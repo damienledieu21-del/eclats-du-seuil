@@ -1617,6 +1617,25 @@ namespace EdS.Simulation.Engine
         /// durée du tick, × 1 + les accélérations positives du catalogue, chacune une fois, plafonné par la vitesse technique), deux fois
         /// pour les dégagements le long du décor et des emprises, plus une marge d'arrondi.
         /// </summary>
+        /// <summary>
+        /// Esquive : borne de la distance parcourue par les bonds de <paramref name="g"/> depuis <paramref name="from"/> : chaque commande dodge
+        /// dont le bond a pu avancer après ce tick (au plus au tick précédent) compte deux fois la distance du bond, plus une marge d'arrondi
+        /// par tick (comme <see cref="StepBound"/>). Une commande refusée est comptée aussi : la borne reste large, jamais trop courte.
+        /// </summary>
+        private long DodgeTravelBound(Fighter g, long from)
+        {
+            if (g.Character is null || g.Body is null) return 0;
+            long duration = DodgeDurationTicks, total = 0;
+            foreach (CombatCommand c in _setup.Commands)
+            {
+                if (c.Action != CombatAction.Dodge || c.Actor != g.Id) continue;
+                long tick = c.AtMs / _tickMs;
+                if (tick > CurrentTick - 1 || checked(tick + duration) <= from) continue;
+                total = checked(total + 2 * _rules.DodgeDistance.Raw + 16 * duration);
+            }
+            return total;
+        }
+
         private long StepBound(Fighter g)
         {
             Fixed boost = Fixed.One;
@@ -1733,7 +1752,7 @@ namespace EdS.Simulation.Engine
         private bool Reachable(Fighter g, long from, long x, long z)
         {
             if (FreeMover(g)) return true;
-            long travel = checked(MovingTicks(g, from) * StepBound(g));
+            long travel = checked(MovingTicks(g, from) * StepBound(g) + DodgeTravelBound(g, from));
             long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
             return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
         }

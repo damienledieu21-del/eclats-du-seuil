@@ -213,7 +213,7 @@ public class V241PromenadeMoteurTests
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 560) engine.Step();
         CombatSnapshot quiet = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":6,", quiet.Text);
+        Assert.StartsWith("{\"snapshot\":7,", quiet.Text);
         Assert.Contains("\"quietSince\":", quiet.Text.Split('\n').Single(l => l.StartsWith("{\"fighter\":\"cerf_chef\",\"presence\"", StringComparison.Ordinal)).Replace("\"quietSince\":null", ""));
         var resumedLog = new MemoryCombatLog();
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), quiet, resumedLog);
@@ -349,7 +349,7 @@ public class V241PromenadeMoteurTests
         Assert.Equal(new[] { "style", "radius", "pace", "legMs", "pauseMs" }, wander["required"]!.AsArray().Select(v => v!.GetValue<string>()));
         Assert.Equal(new[] { "graze", "hop", "patrol", "root" }, wander["properties"]!["style"]!["enum"]!.AsArray().Select(v => v!.GetValue<string>()));
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
-        Assert.Equal(16, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17
         Assert.NotNull(rules["properties"]!["data"]!["properties"]!["combat"]!["properties"]!["wander"]);
     }
 
@@ -521,8 +521,8 @@ public class V241PromenadeMoteurTests
         var engine = new CombatEngine(Load(), new MemoryCombatLog());
         for (int i = 0; i < 20; i++) engine.Step();
         string text = engine.Snapshot().Text;
-        Assert.StartsWith("{\"snapshot\":6,", text);
-        string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":6,".Length);
+        Assert.StartsWith("{\"snapshot\":7,", text);   // esquive : format 7
+        string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":7,".Length);
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(old), new MemoryCombatLog()));
     }
 
