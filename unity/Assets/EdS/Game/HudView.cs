@@ -577,6 +577,7 @@ namespace EdS.Game
                 s.ShownTenths = -1;
             }
             _hint.Size = essential;
+            _hint.Value = "";   // l'indication se replace à son prochain affichage
         }
 
         // --- Mise à jour ------------------------------------------------------------------------------------------------------------
