@@ -1057,18 +1057,27 @@ namespace EdS.World
         /// <summary>Place libre la plus proche dans un secteur ouvert (null s'il n'est pas ouvert ou s'il n'y en a pas) ; pour les tests.</summary>
         internal GroundVector? FreeSpotIn(string sector, GroundVector at, Fixed radius) => _open.TryGetValue(sector, out Open? o) ? FreeSpot(o, at, radius) : null;
 
-        private GroundVector? FreeSpot(Open open, GroundVector at, Fixed radius)
+        private GroundVector? FreeSpot(Open open, GroundVector at, Fixed radius) => FreeSpotOf(open.Zone, open.Walls, at, radius);
+
+        /// <summary>
+        /// Revue Codex de la PR #159 (1er tour) : la même règle de place libre la plus proche pour une session qui n'est pas (encore) tenue
+        /// par l'hôte (session qui naît, combat de chef emporté) ; le décor est rangé pour l'occasion.
+        /// </summary>
+        internal static GroundVector? FreeSpotOf(Zone zone, GroundVector at, Fixed radius) =>
+            FreeSpotOf(zone, new ObstacleIndex(zone.Setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()), at, radius);
+
+        private static GroundVector? FreeSpotOf(Zone zone, ObstacleIndex walls, GroundVector at, Fixed radius)
         {
-            CombatEngine engine = open.Zone.Engine;
-            CombatSpace space = open.Zone.Setup.Space!;
+            CombatEngine engine = zone.Engine;
+            CombatSpace space = zone.Setup.Space!;
             long r = radius.Raw;
             // Revue Codex de la PR #150 : les arrivées déjà programmées à ce tick (réapparitions, autres passages) comptent comme présentes.
             var others = engine.CombatantIds.Select(engine.View).Where(v => (v.IsPresent || (!v.HasLeft && !v.IsDead && v.ArrivalTick == engine.CurrentTick))
                 && !v.IsDead && v.Position != null && v.Radius != null
-                && open.Zone.Setup.Combat.AreSolid(true, radius, v.Kind == CombatantKind.Character, v.Radius.Value)).ToList();
+                && zone.Setup.Combat.AreSolid(true, radius, v.Kind == CombatantKind.Character, v.Radius.Value)).ToList();
             bool Free(long x, long z) =>
                 x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
-                && !open.Walls.AnyOverlapsCircle(x, z, r)
+                && !walls.AnyOverlapsCircle(x, z, r)
                 && !others.Any(v => Planar.CirclesOverlap(x, z, r, v.Position!.Value.X.Raw, v.Position.Value.Z.Raw, v.Radius!.Value.Raw));
             return NearestFree(at, Free);
         }

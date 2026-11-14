@@ -68,6 +68,11 @@ namespace EdS.World
         private string _current;
         private bool _returning;
 
+        // Revue Codex de la PR #159 (1er tour) : état emporté au renouvellement de la session (place, PV, ressources), gardé jusqu'à l'arrivée
+        // effective de la forme et réutilisé à chaque nouvel essai ; l'événement Carried n'est rendu qu'à cette arrivée.
+        private CombatantPlacement? _carryPlace;
+        private CarriedState? _carryState;
+
         public BossFight(Boss boss)
         {
             _boss = boss ?? throw new ArgumentNullException(nameof(boss));
@@ -111,7 +116,12 @@ namespace EdS.World
             return new BossEvent(BossEventKind.FormArrived, _boss.Id, _current, 0, engine.CurrentTick);
         }
 
-        public IReadOnlyList<BossEvent> Step(CombatEngine engine)
+        public IReadOnlyList<BossEvent> Step(CombatEngine engine) => Step(engine, null);
+
+        /// <summary>Sous-lot V2.28b (2c) : un pas dans la session <paramref name="zone"/> (règle de place libre pour une forme emportée).</summary>
+        public IReadOnlyList<BossEvent> Step(Zone zone) => Step((zone ?? throw new ArgumentNullException(nameof(zone))).Engine, zone);
+
+        private IReadOnlyList<BossEvent> Step(CombatEngine engine, Zone? zone)
         {
             if (_over) return Array.Empty<BossEvent>();
             long now = engine.CurrentTick;
@@ -130,6 +140,15 @@ namespace EdS.World
                 {
                     _nextAt = now;
                     _returning = true;
+                    _carryPlace = null;   // la règle du retour à sa place, tous ses PV, l'emporte
+                    _carryState = null;
+                }
+                // Revue Codex de la PR #159 (1er tour) : la forme emportée est arrivée pour de bon : le combat est emporté.
+                else if (_carryPlace != null && v.IsPresent && !v.IsDead)
+                {
+                    _carryPlace = null;
+                    _carryState = null;
+                    return new[] { new BossEvent(BossEventKind.Carried, _boss.Id, _current, _phase, now) };
                 }
                 else
                 {
@@ -146,7 +165,21 @@ namespace EdS.World
             }
             if (engine.IsFinished || _nextAt > now) return Array.Empty<BossEvent>();
             AssailantSetup form = _boss.Forms[_phase];
-            if (Occupied(engine, form.Placement!, now))
+            // Revue Codex de la PR #159 (1er tour) : une forme emportée qui n'est pas encore arrivée réessaie avec son état emporté, à la
+            // place libre la plus proche de la sienne (règle d'arrivée du joueur) ; les autres, à leur place de départ.
+            CombatantPlacement place = form.Placement!;
+            if (_carryPlace is CombatantPlacement carried)
+            {
+                GroundVector? spot = zone != null ? SectorWorld.FreeSpotOf(zone, carried.Position, carried.Radius)
+                    : Occupied(engine, carried, now) ? (GroundVector?)null : carried.Position;
+                if (spot is not GroundVector free)
+                {
+                    _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
+                    return Array.Empty<BossEvent>();
+                }
+                place = new CombatantPlacement(free, carried.Radius, carried.Facing);
+            }
+            else if (Occupied(engine, place, now))
             {
                 _nextAt = checked(now + Math.Max(1, 1000 / engine.TickMilliseconds));
                 return Array.Empty<BossEvent>();
@@ -154,7 +187,7 @@ namespace EdS.World
             string id = FreeIdentity(engine, form.Id);
             try
             {
-                engine.Join(Copy(form, id, engine));
+                engine.Join(Copy(form, id, engine, place, _carryPlace != null ? _carryState : null));
             }
             catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
@@ -164,6 +197,7 @@ namespace EdS.World
             }
             _current = id;
             _nextAt = null;
+            if (_carryPlace != null) return Array.Empty<BossEvent>();   // l'événement Carried vient à l'arrivée effective
             BossEventKind kind = _returning ? BossEventKind.Returned : BossEventKind.FormArrived;
             _returning = false;
             return new[] { new BossEvent(kind, _boss.Id, id, _phase, now) };
@@ -172,39 +206,41 @@ namespace EdS.World
         /// <summary>
         /// Décision de Damien du 14 novembre 2026 (« AAA », 2) : le combat continue dans la session renouvelée <paramref name="to"/> de son
         /// secteur, tel qu'il était dans <paramref name="from"/> : même forme, même phase ; la forme du moment, présente et vivante, y arrive
-        /// à sa place avec son état emporté (PV, ressources) ; sinon (morte, en attente, partie), la forme à venir arrive au premier pas, à sa
-        /// place. Un chef vaincu le reste (aucune forme, aucune seconde victoire). Ne lève pas : une arrivée refusée par le moteur est
-        /// retentée au premier pas, à sa place.
+        /// à sa place (ou la place libre la plus proche, règle d'arrivée du joueur) avec son état emporté (PV, ressources) ; sinon (morte, en
+        /// attente, partie), la forme à venir arrive au premier pas, à sa place. Un chef vaincu le reste (aucune forme, aucune seconde
+        /// victoire). Revue Codex de la PR #159 (1er tour) : l'état emporté est gardé jusqu'à l'arrivée effective ; une arrivée refusée
+        /// (place prise au moment d'arriver, aucune place libre à 8 m, refus du moteur) est retentée à chaque pas avec le même état ;
+        /// l'événement <see cref="BossEventKind.Carried"/> n'est rendu qu'à l'arrivée. Ne lève pas.
         /// </summary>
-        public static BossFight Continue(BossFight old, CombatEngine from, CombatEngine to, out BossEvent? arrived)
+        public static BossFight Continue(BossFight old, CombatEngine from, Zone to)
         {
+            if (old is null) throw new ArgumentNullException(nameof(old));
+            if (from is null) throw new ArgumentNullException(nameof(from));
+            if (to is null) throw new ArgumentNullException(nameof(to));
             var fight = new BossFight(old._boss) { RewardPending = old.RewardPending, RewardAnnounced = old.RewardAnnounced, _phase = old._phase, _over = old._over };
             fight._current = old._current;
-            arrived = null;
             if (old._over) return fight;
-            AssailantSetup form = old._boss.Forms[old._phase];
             CombatantView? v = System.Linq.Enumerable.Contains(from.CombatantIds, old._current) ? from.View(old._current) : null;
             if (old._nextAt is null && v is { IsPresent: true, IsDead: false, Position: GroundVector at, Radius: Fixed radius })
             {
-                string id = FreeIdentity(to, form.Id);
-                try
-                {
-                    CarriedState carried = from.Carried(old._current);
-                    to.Join(Copy(form, id, to, new CombatantPlacement(at, radius, v.Facing), carried.IsEmpty ? null : carried));
-                    fight._current = id;
-                    arrived = new BossEvent(BossEventKind.Carried, old._boss.Id, id, old._phase, to.CurrentTick);
-                    return fight;
-                }
-                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
-                {
-                }
+                // Revue Codex de la PR #159 (1er tour) : l'état emporté est gardé dans le combat jusqu'à l'arrivée effective.
+                CarriedState carried = from.Carried(old._current);
+                fight._carryPlace = new CombatantPlacement(at, radius, v.Facing);
+                fight._carryState = carried.IsEmpty ? null : carried;
             }
-            fight._nextAt = to.CurrentTick;   // la forme du moment (ou celle à venir) arrive à sa place au premier pas
-            fight._returning = old._nextAt is null;   // la même forme qui revient, pas une forme nouvelle
+            else if (old._carryPlace != null)
+            {
+                fight._carryPlace = old._carryPlace;   // une forme emportée pas encore arrivée l'est de nouveau
+                fight._carryState = old._carryState;
+            }
+            else fight._returning = old._nextAt is null;   // la même forme qui revient (sans état à emporter), pas une forme nouvelle
+            fight._nextAt = to.Engine.CurrentTick;
+            // Arrivée tout de suite, avant le premier tick de la session nouvelle, si la place (ou la plus proche) est libre ; sinon, ou si le
+            // moteur refuse, nouvel essai à chaque pas avec le même état.
+            if (fight._carryPlace != null) fight.Step(to.Engine, to);
             return fight;
         }
 
-        /// <summary>L'identité de la forme si elle est libre, sinon la première <c>{forme}_v{n}</c> libre (une identité n'est jamais réutilisée).</summary>
         private static string FreeIdentity(CombatEngine engine, string form)
         {
             var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);

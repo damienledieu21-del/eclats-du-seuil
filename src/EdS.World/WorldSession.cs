@@ -846,10 +846,10 @@ namespace EdS.World
                 BossFight fight;
                 if (renewedFrom != null && old != null && ReferenceEquals(old.Session, renewedFrom))
                 {
-                    fight = BossFight.Continue(old, renewedFrom.Engine, zone.Engine, out BossEvent? carried);
+                    fight = BossFight.Continue(old, renewedFrom.Engine, zone);   // l'événement Carried vient à l'arrivée effective
                     fight.Sector = sector;
                     fight.Session = zone;
-                    prepared.Add((at, b, fight, carried));
+                    prepared.Add((at, b, fight, null));
                 }
                 else
                 {
@@ -1318,7 +1318,7 @@ namespace EdS.World
             {
                 // Sous-lot V2.28b (2c) : chaque combat avance dans la session de son secteur ; une session fermée ou remplacée le laisse en
                 // sommeil (le suivant commencera avec la session nouvelle).
-                IReadOnlyList<BossEvent> stepped = Live(fight) ? fight.Step(fight.Session!.Engine) : Array.Empty<BossEvent>();
+                IReadOnlyList<BossEvent> stepped = Live(fight) ? fight.Step(fight.Session!) : Array.Empty<BossEvent>();
                 foreach (BossEvent b in stepped)
                 {
                     boss.Add(b);
