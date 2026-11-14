@@ -42,7 +42,7 @@ public class V228b2cEvenementsTests
     }
 
     /// <summary>Tick du monde où commence la première occurrence (06 h 00) après le début du temps du monde.</summary>
-    private static long StartTick(ZoneDefinition zone)
+    internal static long StartTick(ZoneDefinition zone)
     {
         var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
         // La première occurrence après le début du temps du monde (et au moins 100 ticks après lui).
@@ -50,7 +50,7 @@ public class V228b2cEvenementsTests
         return WorldEventSchedule.TickAt(clock, o.StartAt);
     }
 
-    private static WorldSession Open(ZoneDefinition zone, long worldTick, string safePoint, int level = 1, IEnumerable<string>? consumed = null)
+    internal static WorldSession Open(ZoneDefinition zone, long worldTick, string safePoint, int level = 1, IEnumerable<string>? consumed = null)
     {
         SavedCharacter hero = Hero();
         if (level > 1) hero = hero.WithXp(Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= level));
@@ -58,22 +58,23 @@ public class V228b2cEvenementsTests
         return new WorldSession(new WorldSave(zone.Id, worldTick, 0, keys, hero), zone, ShippedData, Progression, ItemsCatalog, safePoint: safePoint);
     }
 
-    private static List<string> HuntersIn(Zone zone) =>
+    internal static List<string> HuntersIn(Zone zone) =>
         zone.Engine.CombatantIds.Where(id => id.Contains("_ev", StringComparison.Ordinal) && zone.Engine.View(id) is { IsPresent: true, IsDead: false }).ToList();
 
-    private static void Walk(WorldSession w, double x, double z)
+    internal static void Walk(WorldSession w, double x, double z, Action<WorldSession>? each = null)
     {
         (double, double)? sent = null;
         for (int i = 0; i < 6000; i++)
         {
             CombatEngine e = w.Zone.Engine;
             CombatantView me = e.View(w.CombatantId);
-            if (!me.IsPresent || me.Position is not GroundVector p) { w.Step(); sent = null; continue; }
+            if (!me.IsPresent || me.Position is not GroundVector p) { w.Step(); each?.Invoke(w); sent = null; continue; }
             double dx = x - p.X.Raw / 1e4, dz = z - p.Z.Raw / 1e4, d = Math.Sqrt(dx * dx + dz * dz);
             if (d <= 1)
             {
                 e.Submit(new CombatCommand(e.CurrentTick * e.TickMilliseconds, w.CombatantId, CombatAction.Stop));
                 w.Step();
+                each?.Invoke(w);
                 return;
             }
             var dir = (Math.Round(dx / d, 3), Math.Round(dz / d, 3));
@@ -84,6 +85,7 @@ public class V228b2cEvenementsTests
                 sent = dir;
             }
             w.Step();
+            each?.Invoke(w);
         }
         throw new Xunit.Sdk.XunitException($"({x}, {z}) pas atteint");
     }
@@ -418,7 +420,7 @@ public class V228b2cEvenementsTests
     /// Revue Codex de la PR #160 (1er tour) : une faille du Seuil courte (40 min du monde, chaque jour à 06 h 00, sûre) à l'est, ses échos
     /// qui frappent à peine.
     /// </summary>
-    private static ZoneDefinition ShortRift()
+    private static ZoneDefinition ShortRift(bool slow = true)
     {
         ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z =>
         {
@@ -447,7 +449,7 @@ public class V228b2cEvenementsTests
                 {
                     c["health"] = 5000;        // échos solides : une frappe les blesse sans les tuer
                     c["intervalMs"] = 10_000;  // et qui frappent rarement (le personnage traverse sans tomber)
-                    c["speed"] = 1;            // et lents : le personnage les distance, ils lâchent (laisse de 20 m)
+                    if (slow) c["speed"] = 1;  // et lents : le personnage les distance, ils lâchent (laisse de 20 m)
                 }
                 foreach (JsonNode? attack in c["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
             }
@@ -456,6 +458,149 @@ public class V228b2cEvenementsTests
         return loaded.Zone!;
 
         static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
+    }
+
+    /// <summary>
+    /// Sous-lot V2.28b (4) : trois échos rapides (une faille de l'est) poursuivent le personnage, blessé l'un d'eux, vers l'ouest. Rend la
+    /// partie (après avoir blessé l'écho) et la session de l'est.
+    /// </summary>
+    private static (WorldSession W, Zone East, List<string> Echoes) ChasedWest()
+    {
+        ZoneDefinition zone = ShortRift(slow: false);
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 5, "camp_est", level: 25);
+        for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 3; i++) w.Step();
+        Zone east = w.Zone;
+        List<string> echoes = HuntersIn(east).OrderBy(id => id, StringComparer.Ordinal).ToList();
+        Assert.Equal(3, echoes.Count);
+        string echo = echoes[0];
+        GroundVector home = east.Engine.View(echo).Position!.Value;
+        Walk(w, home.X.Raw / 1e4 + 1.5, home.Z.Raw / 1e4);
+        for (int i = 0; i < 200 && east.Engine.View(echo) is { } h && h.Health == h.MaxHealth; i++)
+        {
+            if (i % 20 == 0)
+                try { east.Engine.Submit(new CombatCommand(east.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", echo)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        Assert.True(east.Engine.View(echo).Engaged);
+        Walk(w, 420, 200);
+        return (w, east, echoes);
+    }
+
+    [Fact]
+    public void Poursuivi_hors_de_son_secteur_les_creatures_au_bout_de_la_marge_lachent_meme_entre_lui_et_le_bout()
+    {
+        // Sous-lot V2.28b (4), défaut vu à la PR #160 : arrivés avant lui au bout de la marge (x = 224), les échos se mettent entre lui et le
+        // bout : il n'y arrivait jamais, la rencontre ne lâchait pas. Chaque créature de la rencontre arrivée elle-même au bout lâche ; seules
+        // celles-là : les autres restent engagées ; le personnage, au-delà du seuil de 8 m mais pas au bout, passe ensuite à l'ouest.
+        var (w, east, echoes) = ChasedWest();
+        double? heroAtFirst = null;
+        int stillEngaged = -1;
+        Walk(w, 140, 128, s =>
+        {
+            if (heroAtFirst != null || !echoes.Any(id => east.Engine.View(id).HasLeft)) return;
+            heroAtFirst = east.Engine.View(s.CombatantId).Position!.Value.X.Raw / 1e4;
+            stillEngaged = echoes.Count(id => east.Engine.View(id) is { IsPresent: true, HasLeft: false, Engaged: true });
+        });
+        Assert.True(heroAtFirst != null, "aucun écho n'a lâché");
+        Assert.InRange(heroAtFirst!.Value, 225.2, 248);   // au-delà du seuil de 8 m (x < 248), pas au bout de la marge (x = 224 + son emprise)
+        Assert.True(stillEngaged > 0, "seuls les échos arrivés au bout lâchent");
+        Assert.Equal("s00_00", w.Sector);
+        Assert.True(w.Passages >= 1);
+        Assert.False(w.IsDefeated);
+    }
+
+    [Fact]
+    public void Poursuivi_hors_de_son_secteur_regle_d_avant_le_personnage_reste_coince()
+    {
+        // Le blocage d'avant, établi : avec la règle d'avant (seul le personnage au bout fait lâcher), il n'atteint jamais l'ouest.
+        var (w, east, echoes) = ChasedWest();
+        w.Host!.MarginEndOnlyForTest = true;
+        Assert.Throws<Xunit.Sdk.XunitException>(() => Walk(w, 140, 128));
+        Assert.Equal("s01_00", w.Sector);
+        Assert.Equal(0, w.Passages);
+        Assert.DoesNotContain(echoes, id => east.Engine.View(id).HasLeft);
+        Assert.InRange(east.Engine.View(w.CombatantId).Position!.Value.X.Raw / 1e4, 224, 248);   // coincé dans la marge
+    }
+
+    [Fact]
+    public void Au_bout_de_la_marge_le_chef_revient_pv_pleins_meme_forme_et_le_loup_de_population_lache_sans_mort_ni_butin()
+    {
+        // Sous-lot V2.28b (4) : le personnage engagé par un chef et un loup de population de l'est va au bout de la marge (x = 224), où la
+        // rencontre lâche : le chef revient à sa place, tous ses PV, sous la même forme (décision 1 de Damien) ; le loup lâche (laisse : ni
+        // mort, ni expérience, ni butin). Le lâcher d'une créature seule au bout (sans le personnage) est essayé avec les échos ci-dessus ;
+        // il passe par le même départ (Leave, retour du chef, laisse de population).
+        const string Chef = "chef_est";
+        ZoneLoadResult loaded = V228b2cChefsTests.Read(
+            zone: z => z["data"]!["populations"]!.AsArray().Add(new JsonObject { ["creature"] = "loup_bord", ["respawnMs"] = 90_000, ["leashRange"] = 40, ["loot"] = "loot.loup" }),
+            scenario: s =>
+            {
+                var wolf = (JsonObject)s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup_est")!.DeepClone();
+                wolf["id"] = "loup_bord";
+                wolf["position"] = new JsonArray(271, 123);
+                wolf["health"] = 5000;
+                s["data"]!["combatants"]!.AsArray().Add(wolf);
+                foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
+                    foreach (JsonNode? attack in c!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            },
+            chief: c =>
+            {
+                int k = 0;
+                foreach (JsonNode? form in c["data"]!["combatants"]!.AsArray())
+                {
+                    form!["health"] = 5000;
+                    form["position"] = new JsonArray(268 + 4 * k++, 120);
+                    form["behavior"]!["encircle"] = true;
+                    foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+                }
+            });
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        ZoneDefinition zone = loaded.Zone!;
+        WorldSession w = Open(zone, 100, "camp_est", level: 25);
+        Zone east = w.Zone;
+        var steps = new List<SessionStep>();
+        Walk(w, 269.8, 121);
+        string chief = w.BossForms.Single();
+        Assert.StartsWith(Chef, chief, StringComparison.Ordinal);
+        CombatantView start = east.Engine.View(chief);
+        for (int i = 0; i < 120; i++)
+        {
+            if (i % 20 == 0 || i % 20 == 10)
+                try { east.Engine.Submit(new CombatCommand(east.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", i % 20 == 0 ? chief : "loup_bord")); }
+                catch (ArgumentException) { }
+            steps.Add(w.Step());
+        }
+        Assert.True(east.Engine.View(chief).Health < start.MaxHealth, "le chef n'a pas été blessé");
+        Assert.True(east.Engine.View("loup_bord").Engaged, "le loup n'est pas engagé");
+        double? chiefLeft = null, wolfLeft = null;
+        void Watch(WorldSession _)
+        {
+            double at = east.Engine.View(w.CombatantId).Position!.Value.X.Raw / 1e4;
+            if (chiefLeft is null && east.Engine.View(chief).HasLeft) chiefLeft = at;
+            if (wolfLeft is null && east.Engine.View("loup_bord").HasLeft) wolfLeft = at;
+        }
+        Walk(w, 226.6, 121, Watch);
+        for (int i = 0; i < 1200 && (chiefLeft is null || wolfLeft is null); i++)
+        {
+            steps.Add(w.Step());
+            Watch(w);
+        }
+        for (int i = 0; i < 60; i++) steps.Add(w.Step());   // le chef et le loup reviennent à leur place
+        Assert.True(chiefLeft != null && wolfLeft != null, $"chef : {chiefLeft}, loup : {wolfLeft}");
+        Assert.InRange(chiefLeft!.Value, 224, 248);   // lâché dans la marge (au-delà du seuil de 8 m), le personnage poussé contre son bout
+        string again = w.BossForms.Single();
+        CombatantView v = east.Engine.View(again);
+        Assert.NotEqual(chief, again);
+        Assert.Equal(start.Assailant!.Health, v.Health);   // tous ses PV
+        Assert.Equal(new GroundVector(Fixed.FromInt(268), Fixed.FromInt(120)), v.Position);   // à sa place
+        Assert.DoesNotContain("furieux", chief, StringComparison.Ordinal);
+        Assert.DoesNotContain("furieux", again, StringComparison.Ordinal);   // même forme (la première)
+        Assert.Contains(steps.SelectMany(t => t.Boss), b => b.Kind == BossEventKind.Returned);
+        Assert.Contains(steps, t => t.Population.Any(e => e.Kind == PopulationEventKind.Leashed && e.Population == "loup_bord"));
+        Assert.Empty(steps.SelectMany(t => t.Experience));
+        Assert.Empty(steps.SelectMany(t => t.Loot));
+        Assert.DoesNotContain(steps.SelectMany(t => t.Boss), b => b.Kind == BossEventKind.Defeated);
     }
 
     [Theory]
