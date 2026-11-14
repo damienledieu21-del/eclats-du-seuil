@@ -75,6 +75,12 @@ namespace EdS.Game
         private readonly Dictionary<string, Vector3> _to = new Dictionary<string, Vector3>();
         private long _shownTick = -1;
 
+        // Sous-lot V2.28b (3) : glissement du personnage à travers un passage de secteur, créatures des autres secteurs ouverts et vue sur
+        // le décor de l'aire entière.
+        private readonly PassageGlide _glide = new PassageGlide();
+        private SectorCrowdView _crowdView;
+        private IReadOnlyList<ConvexPolygon> _areaSight;
+
         /// <summary>Matériau modèle emporté par la construction (nom partagé avec <c>EdsBuildShaders.TemplateName</c>).</summary>
         public const string TemplateName = "EdsCouleur";
 
@@ -160,8 +166,32 @@ namespace EdS.Game
         /// Remplace les combattants affichés par ceux d'un nouveau combat. Vallons agrandis : <paramref name="map"/> (carte de l'aventure) donne
         /// les routes et les champs du décor ; un nouveau combat sur le même espace garde le décor (<see cref="SpaceView.Key"/>).
         /// </summary>
-        public void Populate(ICombatClient combat, AdventureMap map = null)
+        /// <remarks>
+        /// Sous-lot V2.28b (3) : <paramref name="carry"/>, le personnage vient de passer dans un autre secteur (ou sa session d'être
+        /// renouvelée) : son corps est gardé (même modèle, même pas, sans saut) sous sa nouvelle identité, et son glissement continue
+        /// (<see cref="PassageGlide"/>). Le décor est celui de la carte (l'aire entière d'une zone à plusieurs secteurs), gardé au passage.
+        /// </remarks>
+        public void Populate(ICombatClient combat, AdventureMap map = null, bool carry = false)
         {
+            // Sous-lot V2.28b (3) : relever le corps du personnage avant de défaire les autres (propager, puis remplacer plus bas).
+            GameObject keptBody = null;
+            StyleBody keptLook = null;
+            Renderer keptRenderer = null;
+            Color keptColor = default(Color);
+            if (carry && _player != null && _playerId != null && _bodies.TryGetValue(_playerId, out GameObject mine) && mine == _player)
+            {
+                keptBody = mine;
+                _bodies.Remove(_playerId);
+                _looks.TryGetValue(_playerId, out keptLook);
+                _renderers.TryGetValue(_playerId, out keptRenderer);
+                _baseColors.TryGetValue(_playerId, out keptColor);
+                _glowing.Remove(_playerId);
+            }
+            if (!carry)
+            {
+                _glide.Reset();
+                _crowdView?.Clear();
+            }
             foreach (GameObject body in _bodies.Values) Object.Destroy(body);
             _bodies.Clear();
             foreach (GameObject den in _cubs.Values) if (den != null) Object.Destroy(den);
@@ -179,14 +209,18 @@ namespace EdS.Game
             _echoMaterials.Clear();
             _ghosts.Clear();
             _baseColors.Clear();
-            if (_player != null) Object.Destroy(_player);
+            if (_player != null && keptBody == null) Object.Destroy(_player);
             if (_targetRing != null) Object.Destroy(_targetRing);
             if (_allyRing != null) Object.Destroy(_allyRing);
-            if (_space != null && combat.Space != null && _space.Key == SpaceView.KeyOf(combat.Space, map)) _space.Reset();
+            // Sous-lot V2.28b (3) : le décor est celui de l'espace de la carte (l'aire entière d'une zone à plusieurs secteurs : tous les
+            // secteurs ouverts, gardé d'un passage à l'autre) ; sans carte, celui du combat.
+            CombatSpace decor = combat.Space != null && map != null && map.Space != null ? map.Space : combat.Space;
+            if (_space != null && decor != null && _space.Key == SpaceView.KeyOf(decor, map)) _space.Reset();
             else
             {
                 if (_space != null) _space.Destroy();
-                _space = combat.Space != null ? new SpaceView(combat.Space, _root.transform, map) : null;
+                _space = decor != null ? new SpaceView(decor, _root.transform, map) : null;
+                _areaSight = decor != null ? CombatDisplay.SightObstacles(decor) : null;
             }
             // Sous-lot V2.27 : terrain de la région chargé par cases autour de la caméra (gardé d'une session à l'autre de la même zone :
             // ressortir d'une maison ne le refait pas) ; caché dans une pièce, une arène ou une zone sans région.
@@ -197,6 +231,19 @@ namespace EdS.Game
             _to.Clear();
             _shownTick = -1;
 
+            if (keptBody != null)
+            {
+                // Sous-lot V2.28b (3) : remplacer : le même corps sous l'identité du moment (arme, bouclier et cape compris).
+                _player = keptBody;
+                _player.name = combat.PlayerId;
+                _bodies[combat.PlayerId] = keptBody;
+                if (keptLook != null) _looks[combat.PlayerId] = keptLook;
+                if (keptRenderer != null) _renderers[combat.PlayerId] = keptRenderer;
+                _baseColors[combat.PlayerId] = keptColor;
+                _playerId = combat.PlayerId;
+            }
+            else
+            {
             _player = Body(combat.PlayerId, PrimitiveType.Capsule, new Color(0.25f, 0.45f, 0.95f), Vector3.zero);
             _playerId = combat.PlayerId;
             Fit(_player, combat.Player().View);
@@ -211,6 +258,7 @@ namespace EdS.Game
             _shield.transform.localScale = new Vector3(0.9f, 0.04f, 1.1f);
             _shieldRenderer = _shield.GetComponent<Renderer>();
             _shield.SetActive(false);
+            }
 
             List<OtherState> others = combat.Others().ToList();
             for (int i = 0; i < others.Count; i++)
@@ -626,12 +674,27 @@ namespace EdS.Game
             foreach (CombatantView v in views)
             {
                 if (!_bodies.TryGetValue(v.Id, out GameObject body)) continue;
+                if (v.Id == combat.PlayerId && !predicted.HasValue)
+                {
+                    // Sous-lot V2.28b (3) : le personnage glisse d'un tick à l'autre et d'un moteur à l'autre ; pendant le tick de son arrivée
+                    // dans un autre secteur (pas encore présent), il est montré à sa place d'arrivée, sans trou ni saut (PassageGlide).
+                    bool glides = _glide.Follow(combat.PlayerId, combat.Tick, v);
+                    present[v.Id] = glides;
+                    if (!glides)
+                    {
+                        body.SetActive(false);
+                        continue;
+                    }
+                    shown[v.Id] = new Vector3((float)_glide.Track.X(t), 0f, (float)_glide.Track.Z(t));
+                }
                 // Revue Codex de la PR #34 : un combattant sans place (renfort pas encore arrivé) est caché, barre comprise (Head le suit).
-                if (v.Position is not GroundVector p)
+                else if (v.Position is not GroundVector p)
                 {
                     body.SetActive(false);
                     continue;
                 }
+                else
+                {
                 Vector3 target = World(p);
                 if (snap || !_to.ContainsKey(v.Id))
                 {
@@ -644,6 +707,7 @@ namespace EdS.Game
                     _to[v.Id] = target;
                 }
                 shown[v.Id] = Vector3.Lerp(_from[v.Id], _to[v.Id], t);
+                }
                 // Essai réaliste 5 : sur le pont cintré, le corps monte avec le tablier (affichage seulement).
                 Vector3 place = shown[v.Id] + Vector3.up * (1f + StyleWorld.StandHeight(shown[v.Id].x, shown[v.Id].z));
                 // Sous-lot 11.7 : en réseau, le joueur est montré à sa place prédite, rejointe en douceur (un écart corrigé glisse).
@@ -689,6 +753,59 @@ namespace EdS.Game
                 if (_cubs.TryGetValue(v.Id, out GameObject den) && den != null) den.SetActive(here);
             }
         }
+
+        /// <summary>
+        /// Sous-lot V2.28b (3), au passage, avant <see cref="Populate"/> (relever) : chaque créature de la session quittée (secteur
+        /// <paramref name="sector"/>) reprend dans <paramref name="crowd"/> de la place où elle était montrée au dernier tick, sans saut.
+        /// </summary>
+        public void HandOver(WorldSession world, SectorCrowd crowd, string sector)
+        {
+            if (world == null || crowd == null || sector == null) return;
+            foreach (KeyValuePair<string, Vector3> to in _to)
+                if (to.Key != _playerId) crowd.Seed(world, sector, to.Key, to.Value.x, to.Value.z);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (3), au passage, après <see cref="Populate"/> (remplacer) : chaque créature de la session d'arrivée, montrée
+        /// jusque-là parmi celles des autres secteurs, glisse depuis la place où elle était montrée au dernier tick.
+        /// </summary>
+        public void Carry(ICombatClient combat, SectorCrowd crowd, string sector)
+        {
+            if (crowd == null || sector == null || _space == null) return;
+            bool any = false;
+            foreach (string id in _bodies.Keys)
+            {
+                if (id == _playerId || !_to.ContainsKey(id) || !crowd.TryLast(sector, id, out double x, out double z)) continue;
+                _to[id] = new Vector3((float)x, 0f, (float)z);
+                _from[id] = _to[id];
+                any = true;
+            }
+            if (!any) return;
+            _shownTick = -1;   // la prochaine image fait glisser de ces places vers celles du moteur
+            Place(combat, false);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : créatures des autres secteurs ouverts, relues une fois par tick du monde et montrées à chaque image, après
+        /// <see cref="Sync"/> (la place montrée du personnage sert d'œil).
+        /// </summary>
+        public void SyncCrowd(WorldSession world, SectorCrowd crowd, ICombatClient combat, float deltaTime)
+        {
+            if (_space == null || world == null || crowd == null) return;
+            if (_crowdView == null) _crowdView = new SectorCrowdView(_root.transform);
+            crowd.Refresh(world);
+            Vector3? eye = _player != null && _player.activeSelf ? _player.transform.position : (Vector3?)null;
+            _crowdView.Sync(crowd, combat.TickProgress, eye, _areaSight, Paint, deltaTime);
+        }
+
+        /// <summary>Sous-lot V2.28b (3) : ennemis des autres secteurs ouverts montrés, pour la carte.</summary>
+        public void CrowdEnemies(SectorCrowd crowd, List<MapEnemy> into, System.Func<string, bool> boss)
+        {
+            if (_crowdView != null && crowd != null) _crowdView.Enemies(crowd, into, boss);
+        }
+
+        /// <summary>Corps des créatures des autres secteurs montrés à la dernière image (vérification).</summary>
+        public int CrowdShown => _crowdView != null ? _crowdView.Visible : 0;
 
         /// <summary>Mètres affichés en dix-millièmes de mètre (unité des places du moteur).</summary>
         private static long Raw(float metres) => (long)System.Math.Round(metres * 10000.0);
@@ -751,7 +868,8 @@ namespace EdS.Game
             CombatantView me = player.View;
             bool broken = me.States.Contains("guardBreak");
             // Revue Codex de la PR #32 (20e tour) : le joueur absent (avant son arrivée, après son départ) est caché, bouclier compris.
-            _player.SetActive(me.IsPresent);
+            // Sous-lot V2.28b (3) : ni caché pendant le tick d'arrivée d'un passage (PassageGlide).
+            _player.SetActive(me.IsPresent || (_space != null && _glide.Shown));
             // Essai réaliste 6 (essai de Damien du 27 octobre 2026 : « Le bouclier se modélise comme ça quand je l'active c'est à corriger ») :
             // le disque ne sert plus qu'au corps sans modèle ; le chevalier garde son vrai bouclier, joue sa garde (clip « Block » s'il est
             // là) et l'interface affiche « Garde levée », « Parade » ou « Garde brisée ».

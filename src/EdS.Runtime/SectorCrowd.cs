@@ -218,6 +218,11 @@ namespace EdS.Runtime
         /// <summary>Nombre de relectures faites (une par tick du monde au plus).</summary>
         public long Reads { get; private set; }
 
+        /// <summary>
+        /// Change quand des fiches sont oubliées (partie remplacée, secteur fermé) : l'affichage libère alors les corps des fiches disparues.
+        /// </summary>
+        public long Generation { get; private set; }
+
         /// <summary>Nombre de créatures montrées à la dernière relecture.</summary>
         public int ShownCount { get; private set; }
 
@@ -227,6 +232,7 @@ namespace EdS.Runtime
             _names.Clear();
             _zones.Clear();
             _byKey.Clear();
+            if (_members.Count > 0) Generation = checked(Generation + 1);
             _members.Clear();
             _world = null;
             _own = null;
@@ -346,6 +352,7 @@ namespace EdS.Runtime
                 {
                     _byKey.Remove((_members[i].Sector, _members[i].Id));
                     _members.RemoveAt(i);
+                    Generation = checked(Generation + 1);
                 }
         }
 
