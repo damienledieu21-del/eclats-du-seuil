@@ -103,6 +103,21 @@ namespace EdS.World
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
+        /// <summary>
+        /// Revue Codex de la PR #159 (3e tour) : la forme du moment est emportée d'une session renouvelée et pas encore arrivée (état gardé,
+        /// nouvel essai à chaque pas et dès la session suivante, <see cref="Continue"/>). Comptée partout comme une arrivée à venir : borne du
+        /// registre à la naissance d'une session, places gardées.
+        /// </summary>
+        public bool IsCarrying => _carryPlace != null;
+
+        /// <summary>Pour les essais : la forme du moment devient une forme emportée en attente (état gardé à <paramref name="place"/>, nouvel essai au tick <paramref name="retryAt"/>).</summary>
+        internal void CarryForTest(CombatantPlacement place, long retryAt)
+        {
+            _carryPlace = place;
+            _carryState = null;
+            _nextAt = retryAt;
+        }
+
         /// <summary>Revue Codex de la PR #48 : formes encore à venir (places de combattants à leur garder).</summary>
         public int FormsToCome => _over ? 0 : _boss.Forms.Count - 1 - _phase + (_nextAt != null ? 1 : 0);
 
@@ -182,7 +197,7 @@ namespace EdS.World
             CombatantPlacement place = form.Placement!;
             if (_carryPlace is CombatantPlacement carried)
             {
-                GroundVector? spot = zone != null ? SectorWorld.FreeSpotOf(zone, carried.Position, carried.Radius)
+                GroundVector? spot = zone != null ? SectorWorld.FreeSpotOf(zone, carried.Position, carried.Radius, character: false)
                     : Occupied(engine, carried, now) ? (GroundVector?)null : carried.Position;
                 if (spot is not GroundVector free)
                 {

@@ -890,11 +890,27 @@ namespace EdS.World
                 if (renewing is null) { n++; continue; }
                 BossFight? f = _fights.FirstOrDefault(x => ReferenceEquals(x.Boss, b));
                 if (f is null || !ReferenceEquals(f.Session, renewing)) { n++; continue; }   // pas de combat dans cette session : il recommence
-                if (f.IsDefeated || !renewing.Engine.CombatantIds.Contains(f.CurrentForm)) continue;   // vaincu, ou forme à venir
+                if (f.IsDefeated) continue;
+                // Revue Codex de la PR #159 (3e tour) : une forme emportée pas encore arrivée l'est de nouveau, dès la session suivante (Continue).
+                if (f.IsCarrying) { n++; continue; }
+                if (!renewing.Engine.CombatantIds.Contains(f.CurrentForm)) continue;   // forme à venir : elle arrive après le tick
                 CombatantView v = renewing.Engine.View(f.CurrentForm);
                 if (v.IsPresent && !v.IsDead) n++;
             }
             return n;
+        }
+
+        /// <summary>
+        /// Pour les essais : la forme du moment du chef <paramref name="boss"/> quitte sa session et devient une forme emportée en attente,
+        /// à sa place, sans nouvel essai avant <paramref name="ticks"/> ticks (sinon au renouvellement : <see cref="BossFight.Continue"/>).
+        /// </summary>
+        internal void PendChiefForTest(string boss, long ticks)
+        {
+            BossFight f = _fights.Single(x => x.Boss.Id == boss);
+            Zone z = f.Session!;
+            CombatantView v = z.Engine.View(f.CurrentForm);
+            z.Leave(f.CurrentForm);
+            f.CarryForTest(new CombatantPlacement(v.Position!.Value, v.Radius!.Value, v.Facing), checked(z.Engine.CurrentTick + ticks));
         }
 
         /// <summary>Rang du chef dans la zone : les combats restent dans l'ordre des chefs (ordre stable des événements).</summary>
