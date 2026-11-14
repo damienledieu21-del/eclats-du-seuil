@@ -104,7 +104,15 @@ namespace EdS.World
         {
             GearBonus wanted = CombatGear;
             _gearPending = false;
-            if (wanted.Equals(_combatGear) || Zone.Engine.IsFinished) return;
+            // Revue Codex de la PR #158 (1er tour) : les prochaines arrivées du personnage (passage, session renouvelée, reprise) portent le
+            // bonus voulu dès leur premier tick, même si son combattant actuel ne peut plus le recevoir.
+            _host?.CarryGear(_character.Id, wanted);
+            if (wanted.Equals(_combatGear)) return;
+            if (Zone.Engine.IsFinished)
+            {
+                _gearPending = true;   // session terminée : appliqué au combattant de la suivante (Follow), s'il ne le porte pas déjà
+                return;
+            }
             CombatantView me = Zone.Engine.View(CombatantId);
             if (me.IsDead) return;
             // Revue Codex de la PR #157 (1er tour) : absent (parti au tick d'un passage, ou pas encore arrivé), la synchronisation reste en

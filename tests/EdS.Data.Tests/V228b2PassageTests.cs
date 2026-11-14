@@ -25,10 +25,10 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Sector")]
 public class V228b2PassageTests
 {
-    private static readonly Lazy<ZoneDefinition> TwoSectors = new(() => Essai());
+    internal static readonly Lazy<ZoneDefinition> TwoSectors = new(() => Essai());
 
     /// <summary>La zone d'essai, lue et validée comme une zone livrée (zone en schéma 14, scénario en schéma 18) ; retouches possibles.</summary>
-    private static ZoneDefinition Essai(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null)
+    internal static ZoneDefinition Essai(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null)
     {
         JsonObject loup = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!["data"]!["combatants"]!.AsArray()
             .Single(c => (string)c!["id"]! == "loup1")!.AsObject();
@@ -96,16 +96,16 @@ public class V228b2PassageTests
         }
     }
 
-    private static GroundVector At(double x, double z) => new(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+    internal static GroundVector At(double x, double z) => new(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-    private static (double X, double Z) Where(WorldSession w)
+    internal static (double X, double Z) Where(WorldSession w)
     {
         GroundVector p = w.Zone.Engine.View(w.CombatantId).Position!.Value;
         return (p.X.Raw / 1e4, p.Z.Raw / 1e4);
     }
 
-    private static WorldSession Open(ZoneDefinition zone, WorldSave? save = null, MemoryCombatLog? log = null, string? safePoint = null)
+    internal static WorldSession Open(ZoneDefinition zone, WorldSave? save = null, MemoryCombatLog? log = null, string? safePoint = null)
     {
         save ??= new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero());
         var w = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, log: log, safePoint: safePoint);
@@ -117,7 +117,7 @@ public class V228b2PassageTests
     /// Marche vers (x, z) tick par tick (la commande suit le personnage d'une session à l'autre : moteur et identité du moment) ; rend la
     /// trace des ticks où le secteur change. Échoue si la cible n'est pas atteinte.
     /// </summary>
-    private static List<string> WalkTo(WorldSession w, double x, double z, List<SessionStep>? steps = null)
+    internal static List<string> WalkTo(WorldSession w, double x, double z, List<SessionStep>? steps = null)
     {
         var changes = new List<string>();
         string? sector = w.Sector;

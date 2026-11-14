@@ -277,6 +277,7 @@
       "text.ui.save_failed": "Sauvegarde impossible pour l'instant : {0}",
       "text.ui.cannot_rest": "Halte impossible ici : approche-toi d'un point sûr, loin des ennemis.",
       "text.ui.stranded": "Une créature occupe le point sûr : impossible d'y arriver pour l'instant.",
+      "text.ui.sector_refused": "Le passage vers cette partie de la région est impossible : tu reprends au dernier point sûr.",
       "text.ui.session_over": "Le temps de cette session est écoulé.",
       "text.ui.craft_hint": "K : forger ({0})",
       "text.npc.armurier.name": "Garin, l'armurier",

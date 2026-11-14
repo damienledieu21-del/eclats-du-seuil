@@ -419,6 +419,12 @@ namespace EdS.World
             public CharacterSetup? Arrival;
             public bool PendingBackward;
             public int Passages;
+
+            /// <summary>
+            /// Revue Codex de la PR #158 (1er tour) : bonus d'équipement voulu par qui tient le joueur (la partie solo : bonus actifs), porté
+            /// par ses prochaines arrivées (passage, renouvellement, reprise) au lieu de celui de son dernier combattant ; null : celui-là.
+            /// </summary>
+            public GearBonus? Gear;
         }
 
         private readonly SectorMap _map;
@@ -633,8 +639,22 @@ namespace EdS.World
         /// <summary>Revue Codex de la PR #150 (9e tour) : diagnostic d'une arrivée refusée pour de bon par la validation (passage, reprise), ou null.</summary>
         public string? RefusalOf(string player) => _players.TryGetValue(player, out Player? p) ? p.Refusal : throw new ArgumentException($"Joueur inconnu : {player}.", nameof(player));
 
+        /// <summary>Sous-lot V2.28b (2b) : comme <see cref="RefusalOf"/>, null pour un joueur inconnu (sorti ou jamais entré).</summary>
+        public string? RefusalOrNull(string player) => _players.TryGetValue(player, out Player? p) ? p.Refusal : null;
+
         /// <summary>Revue Codex de la PR #150 (9e tour) : un joueur annoncé (<see cref="Enter"/>) mais pas encore entré renonce ; faux s'il n'était pas annoncé.</summary>
         public bool CancelEnter(string player) => _entering.Remove(player);
+
+        /// <summary>
+        /// Revue Codex de la PR #158 (1er tour) : bonus d'équipement que les prochaines arrivées du joueur porteront (passage, session
+        /// renouvelée, reprise), dès leur premier tick. Un bonus fini quand son combattant ne peut plus le recevoir (session terminée, départ
+        /// au tick d'un passage) ne dure ainsi pas un tick de trop chez le combattant d'arrivée. Joueur inconnu : sans effet.
+        /// </summary>
+        public void CarryGear(string player, GearBonus gear)
+        {
+            if (gear is null) throw new ArgumentNullException(nameof(gear));
+            if (_players.TryGetValue(player, out Player? p)) p.Gear = gear;
+        }
 
         /// <summary>
         /// Revue Codex de la PR #150 (9e tour) : borne du registre du monde entier (le sien et celui des secteurs ouverts), sans le recalculer :
@@ -933,11 +953,11 @@ namespace EdS.World
             foreach (var (p, v, carried, consumables) in moves)
             {
                 p.PendingBackward = v.MoveBackward;
-                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: v.Gear)
+                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
                     && p.Refusal is null)
                 {
                     // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, v.Gear);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, p.Gear ?? v.Gear);
                     p.ArrivingFrom = null;
                     p.Resume = true;
                 }
@@ -1043,6 +1063,7 @@ namespace EdS.World
             CarriedState? carried, GroundVector? move, List<SectorEvent> events, string? from = null, bool announce = true, GearBonus? gear = null)
         {
             if (!_open.TryGetValue(sector, out Open? target) || target.Zone.IsOver) return false;
+            gear = p.Gear ?? gear;   // revue Codex de la PR #158 (1er tour) : le bonus voulu, toute arrivée comprise (attente d'une place)
             CombatEngine engine = target.Zone.Engine;
             if (engine.FreePlaces == 0 || engine.IdentitiesLeft == 0) return false;
             if (FreeSpot(target, at, radius) is not GroundVector spot) return false;
@@ -1248,9 +1269,9 @@ namespace EdS.World
                 }
                 CharacterSetup again = p.Arrival!;
                 string back = p.ArrivingFrom != null && _open.ContainsKey(p.ArrivingFrom) ? p.ArrivingFrom : p.Sector!;
-                p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear)
+                p.Resume = !Place(p, back, again.Placement!.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: p.Gear ?? again.Gear)
                     && p.Refusal is null
-                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: again.Gear)
+                    && !Place(p, p.Sector!, again.Placement.Position, again.Placement.Radius, again.Placement.Facing, again.Consumables, again.Carried, null, events, gear: p.Gear ?? again.Gear)
                     && p.Refusal is null;
                 if (p.Resume) p.Arrival = again;
             }
@@ -1273,12 +1294,12 @@ namespace EdS.World
                 // le départ ; si, entre-temps, l'arrivée est devenue impossible, le joueur revient dans son secteur de départ (son départ y a
                 // libéré sa place), avec le même état ; sinon il réessaie au tick suivant.
                 CarriedState? state = carried.IsEmpty ? null : carried;
-                if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear)
+                if (!Place(p, to, left.Position!.Value, left.Radius!.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: p.Gear ?? left.Gear)
                     && p.Refusal is null
-                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: left.Gear)
+                    && !Place(p, from.Name, left.Position.Value, left.Radius.Value, left.Facing, consumables, state, move, events, from: from.Name, gear: p.Gear ?? left.Gear)
                     && p.Refusal is null)
                 {
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state, left.Gear);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(left.Position.Value, left.Radius.Value, left.Facing), 0, consumables, state, p.Gear ?? left.Gear);
                     p.ArrivingFrom = from.Name;
                     p.Resume = true;   // Revue Codex de la PR #150 (3e tour) : reprise sans combattant, gardée jusqu'à un placement réussi
                 }

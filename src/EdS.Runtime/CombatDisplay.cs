@@ -106,6 +106,19 @@ namespace EdS.Runtime
         /// Sous-lot 11.9 : décor qui arrête la vue (null sans espace), à garder pour <see cref="Others"/> et <see cref="InSightAt"/> : les
         /// obstacles bas (rivière) arrêtent la marche mais pas la vue, comme dans le moteur.
         /// </summary>
+        /// <summary>
+        /// Relecture indépendante de la PR #158 : deux espaces identiques (mêmes bornes, mêmes obstacles, dans le même ordre ; un secteur
+        /// renouvelé reprend les obstacles de l'aire tels quels) ; sert à ne pas refaire la vue, la carte ou les trajets pour rien.
+        /// </summary>
+        public static bool SameSpace(CombatSpace? a, CombatSpace? b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null || !a.Min.Equals(b.Min) || !a.Max.Equals(b.Max) || a.Obstacles.Count != b.Obstacles.Count) return false;
+            for (int i = 0; i < a.Obstacles.Count; i++)
+                if (!ReferenceEquals(a.Obstacles[i], b.Obstacles[i])) return false;
+            return true;
+        }
+
         public static IReadOnlyList<ConvexPolygon>? SightObstacles(CombatSpace? space) =>
             space?.Obstacles.Where(o => !o.Low).Select(o => new ConvexPolygon(o.Points)).ToList();
 
@@ -173,6 +186,17 @@ namespace EdS.Runtime
                 _counters[id] = view.Counters;
                 _dead[id] = view.IsDead;
             }
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #158 : oublie la référence des compteurs de <paramref name="id"/> ; ils comptent de nouveau depuis
+        /// zéro au prochain <see cref="Collect"/> (combattant d'arrivée, toujours nouveau : son premier tick n'est pas perdu).
+        /// </summary>
+        public void Forget(string id)
+        {
+            if (id is null) throw new ArgumentNullException(nameof(id));
+            _counters.Remove(id);
+            _dead.Remove(id);
         }
 
         public void Add(CombatFeedback feedback)

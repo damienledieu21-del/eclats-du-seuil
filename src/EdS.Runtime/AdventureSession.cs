@@ -363,11 +363,14 @@ namespace EdS.Runtime
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
             GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
-            Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, PlayerId, () => Collect(world, world.Step()), TargetRange);
+            // Sous-lot V2.28b (2b) : le pont suit le personnage d'une session à l'autre (passage de secteur, session renouvelée) : moteur et
+            // identité du moment (world.CombatantId, et plus PlayerId : au retour dans une session où il a déjà servi, il est bastion_p<n>).
+            Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, world.CombatantId, () => Collect(world, world.Step()), TargetRange,
+                () => new CombatBinding(world.Zone.Setup, world.Zone.Engine, world.CombatantId), () => world.RenewsSessions);
             _trackedSafePoint = world.LastSafePoint;   // sous-lot V2.28 : point de reprise de la session nouvelle (déjà écrit ou à écrire par qui l'ouvre)
             _drunk.Clear();
             _strandedAnnounced = false;
-            foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(PlayerId).ConsumableCharges) _drunk[c.Key] = c.Value;
+            foreach (KeyValuePair<string, int> c in world.Zone.Engine.View(world.CombatantId).ConsumableCharges) _drunk[c.Key] = c.Value;
             Opened = checked(Opened + 1);
             if (world.Learned.Count > 0) _dirty = true;   // sous-lot 12.9b : les compétences gagnées vont à la prochaine sauvegarde
             if (world.Restored.Count > 0) _dirty = true;   // sous-lot V1.2 : places obligatoires remplies, à garder
@@ -407,6 +410,7 @@ namespace EdS.Runtime
             // Remarque de Codex sur la PR #84 : le temps des bonus actifs baisse à chaque tick simulé sans autre événement ; il est gardé à la
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
+            AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             if (boons && steps > 0) _dirty = true;
@@ -472,16 +476,20 @@ namespace EdS.Runtime
 
         private string ItemName(string item) => _items.Items.FirstOrDefault(i => i.Id == item)?.Name ?? item;
 
+        /// <summary>Annonce une fois l'arrivée refusée (ou, sous-lot V2.28b (2b), le passage de secteur refusé pour de bon).</summary>
+        private void AnnounceStranded()
+        {
+            if (!Stranded || _strandedAnnounced) return;
+            _strandedAnnounced = true;
+            Say(World.SectorRefusal != null ? "text.ui.sector_refused" : "text.ui.stranded");
+        }
+
         /// <summary>Traduit ce qu'un tick de la session rapporte.</summary>
         private void Collect(WorldSession world, SessionStep step)
         {
             if (!ReferenceEquals(world, World)) return;
             DrinkMessages();
-            if (Stranded && !_strandedAnnounced)
-            {
-                _strandedAnnounced = true;
-                Say("text.ui.stranded");
-            }
+            AnnounceStranded();
             if (step.IsEmpty) return;
             _dirty = true;
             foreach (ExperienceGained g in step.Experience)
@@ -607,7 +615,7 @@ namespace EdS.Runtime
         private void DrinkMessages()
         {
             if (_drunk.Count == 0) return;
-            IReadOnlyDictionary<string, int> now = World.Zone.Engine.View(PlayerId).ConsumableCharges;
+            IReadOnlyDictionary<string, int> now = World.Zone.Engine.View(World.CombatantId).ConsumableCharges;
             foreach (string id in _drunk.Keys.ToArray())
             {
                 int left = now.TryGetValue(id, out int n) ? n : _drunk[id];
@@ -626,7 +634,7 @@ namespace EdS.Runtime
         {
             get
             {
-                CombatantView me = World.Zone.Engine.View(PlayerId);
+                CombatantView me = World.Zone.Engine.View(World.CombatantId);
                 return me.IsPresent && !me.IsDead ? me.Position : null;
             }
         }
@@ -807,7 +815,7 @@ namespace EdS.Runtime
         /// par une porte, même règle que la halte), aucun dialogue ouvert.
         /// </summary>
         public bool CanUseDoor => DoorInReach != null && Dialogue is null && !MustContinue
-            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any();
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any();
 
         /// <summary>
         /// Passe la porte à portée : la partie est sauvegardée dans la zone où elle mène, puis une session de cette zone s'ouvre, le personnage
@@ -898,7 +906,7 @@ namespace EdS.Runtime
         public bool EnterScene()
         {
             if (!(PendingScene is Scene scene)) return false;
-            if (World.IsDefeated || Dialogue != null || MustContinue || CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any())
+            if (World.IsDefeated || Dialogue != null || MustContinue || CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any())
             {
                 Say("text.ui.door_blocked");
                 return false;
@@ -992,7 +1000,7 @@ namespace EdS.Runtime
         /// </summary>
         public bool Drink()
         {
-            IReadOnlyDictionary<string, int> charges = World.Zone.Engine.View(PlayerId).ConsumableCharges;
+            IReadOnlyDictionary<string, int> charges = World.Zone.Engine.View(World.CombatantId).ConsumableCharges;
             string? best = charges.Where(c => c.Value > 0).Select(c => c.Key).OrderBy(id => _items.Item(id).Heal).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault();
             if (best is null)
             {
@@ -1171,7 +1179,7 @@ namespace EdS.Runtime
         {
             get
             {
-                CombatantView me = World.Zone.Engine.View(PlayerId);
+                CombatantView me = World.Zone.Engine.View(World.CombatantId);
                 return (me.MaxHealth ?? 0, me.MaxEndurance);
             }
         }
@@ -1189,7 +1197,7 @@ namespace EdS.Runtime
         /// personnage est tombé ou qu'un dialogue est ouvert.
         /// </summary>
         public bool CanChangeTalents => !World.IsDefeated && Dialogue is null
-            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any();
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any();
 
         /// <summary>
         /// Garde les talents de <paramref name="build"/> (jugés à son niveau par le validateur des builds) ; effet à la prochaine halte,
@@ -1230,7 +1238,7 @@ namespace EdS.Runtime
         private string? SkillsLockKey =>
             World.IsDefeated ? "text.ui.skills.defeated"
             : Dialogue != null ? "text.ui.skills.in_dialogue"
-            : CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() || EngagedOnMe ? "text.ui.skills.in_combat"
+            : CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any() || EngagedOnMe ? "text.ui.skills.in_combat"
             : null;
 
         /// <summary>Sous-lot V1.5 : un ennemi présent, vivant et engagé (<see cref="CombatantView.Engaged"/>) vise le personnage.</summary>
@@ -1239,12 +1247,13 @@ namespace EdS.Runtime
             get
             {
                 CombatEngine engine = World.Zone.Engine;
-                string team = engine.View(PlayerId).Team;
+                string me = World.CombatantId;
+                string team = engine.View(me).Team;
                 foreach (string id in engine.CombatantIds)
                 {
-                    if (id == PlayerId) continue;
+                    if (id == me) continue;
                     CombatantView v = engine.View(id);
-                    if (v.Team != team && v.IsPresent && !v.IsDead && v.Engaged && v.CurrentTarget == PlayerId) return true;
+                    if (v.Team != team && v.IsPresent && !v.IsDead && v.Engaged && v.CurrentTarget == me) return true;
                 }
                 return false;
             }
@@ -1473,8 +1482,10 @@ namespace EdS.Runtime
 
         private AdventureMap? _map;
         private int _mapSession = -1;
+        private CombatSpace? _mapSpace;
         private WalkPaths? _paths;
         private int _pathsSession = -1;
+        private CombatSpace? _pathsSpace;
 
         /// <summary>
         /// Sous-lot V2.8 (recherche de chemin) : trajets des PNJ et des passants de la zone ouverte (ils contournent son décor) ; recalculés
@@ -1484,10 +1495,13 @@ namespace EdS.Runtime
         {
             get
             {
-                if (_paths is null || _pathsSession != Opened)
+                // Sous-lot V2.28b (2b) : et quand l'espace de la session du moment change (passage de secteur) ; relecture indépendante de la
+                // PR #158 : pas pour une session renouvelée sur le même espace (la grille de navigation est coûteuse).
+                if (_paths is null || _pathsSession != Opened || !CombatDisplay.SameSpace(_pathsSpace, World.Zone.Setup.Space))
                 {
                     _paths = new WalkPaths(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."));
                     _pathsSession = Opened;
+                    _pathsSpace = World.Zone.Setup.Space;
                 }
                 return _paths;
             }
@@ -1512,7 +1526,7 @@ namespace EdS.Runtime
         {
             get
             {
-                if (_map is null || _mapSession != Opened)
+                if (_map is null || _mapSession != Opened || !CombatDisplay.SameSpace(_mapSpace, World.Zone.Setup.Space))   // sous-lot V2.28b (2b) : comme Paths
                 {
                     _map = new AdventureMap(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."),
                         _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
@@ -1529,6 +1543,7 @@ namespace EdS.Runtime
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
                         _zone.Indoor ? null : _zone.Region);
                     _mapSession = Opened;
+                    _mapSpace = World.Zone.Setup.Space;
                 }
                 return _map;
             }
@@ -1728,7 +1743,7 @@ namespace EdS.Runtime
             // Relecture de l'essai 7 : une seule recherche (la plus large), puis la distance de chaque ennemi trouvé.
             bool fighting = false, boss = false;
             long rest2 = checked(RestSafety.Raw * RestSafety.Raw);
-            foreach (OtherState o in CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, BossMusicRange))
+            foreach (OtherState o in CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, BossMusicRange))
             {
                 if (o.View.Position is GroundVector q)
                 {
@@ -1821,7 +1836,7 @@ namespace EdS.Runtime
         /// <see cref="RestSafety"/>, aucun dialogue ouvert.
         /// </summary>
         public bool CanRest => !World.IsDefeated && Me is GroundVector p && World.RestPointNear(p, RestRange) != null   // V2.7 : jamais la planque secrète avant le sentier
-            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, PlayerId, null, RestSafety).Any() && Dialogue is null;
+            && !CombatDisplay.NearbyEnemies(World.Zone.Engine, World.CombatantId, null, RestSafety).Any() && Dialogue is null;
 
         /// <summary>
         /// L'arrivée du personnage a été refusée (une créature occupait le point sûr) : il n'est pas dans la zone ; une reprise réessaie.
@@ -1830,7 +1845,9 @@ namespace EdS.Runtime
         {
             get
             {
-                CombatantView me = World.Zone.Engine.View(PlayerId);
+                // Sous-lot V2.28b (2b) : ou un passage de secteur refusé pour de bon : plus de combattant, la reprise au dernier point sûr.
+                if (World.SectorRefusal != null) return true;
+                CombatantView me = World.Zone.Engine.View(World.CombatantId);
                 return !me.IsPresent && !me.HasLeft && me.ArrivalTick is long t && t < World.Zone.Engine.CurrentTick;
             }
         }

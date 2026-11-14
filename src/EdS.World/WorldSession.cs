@@ -155,6 +155,35 @@ namespace EdS.World
         /// <summary>Sous-lot V2.28b (2) : passages d'un secteur à l'autre faits par le personnage depuis le début de la session.</summary>
         public int Passages { get; private set; }
 
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : sessions de son secteur renouvelées sous le personnage (session terminée : durée atteinte ou budget du
+        /// moteur dépassé) depuis le début de la partie, sans coupure (<see cref="RenewsSessions"/>).
+        /// </summary>
+        public int Renewals { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : une session terminée est renouvelée sans coupure : l'hôte des secteurs ouvre la suivante au même tick du
+        /// monde, le personnage y arrive avec son état et la partie le suit. Seulement sur l'hôte et pour une zone sans chef ni événement
+        /// du monde (liés à leur session jusqu'au V2.28b (2c)) ; sinon, comme avant, la partie reprend au dernier point sûr.
+        /// </summary>
+        /// <remarks>
+        /// Relecture indépendante de la PR #158 : pas quand l'hôte refuserait le tick du renouvellement (registre du monde trop plein pour la
+        /// session nouvelle) : la session terminée mène alors à la reprise au dernier point sûr, comme avant, et plus à un tick refusé (une
+        /// exception) à chaque tick.
+        /// </remarks>
+        public bool RenewsSessions => _host != null && _renews && !(Zone.IsOver && _host.NextTickRegistryNeed > SaveValidator.MaxConsumed);
+
+        private readonly bool _renews;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2b) : diagnostic d'un passage refusé pour de bon par l'hôte des secteurs (arrivée invalide) : le personnage n'a
+        /// plus de combattant et ne sera plus replacé ; la partie doit reprendre au dernier point sûr. Null sinon (et hors de l'hôte).
+        /// </summary>
+        public string? SectorRefusal => _host?.RefusalOrNull(_character.Id);
+
+        /// <summary>Sous-lot V2.28b (2b) : secteur de la session suivie (<see cref="Zone"/>), pour distinguer un passage d'un renouvellement.</summary>
+        private string? _zoneSector;
+
         /// <summary>Sous-lot V2.28b (2) : secteur de simulation où se trouve le personnage (null hors de l'hôte des secteurs).</summary>
         public string? Sector => _host?.SectorOf(_character.Id);
 
@@ -450,7 +479,9 @@ namespace EdS.World
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
-                Zone = _host.SectorZone(_host.SectorOf(setup.Id)!)!;
+                _zoneSector = _host.SectorOf(setup.Id)!;
+                Zone = _host.SectorZone(_zoneSector)!;
+                _renews = hosted!.Bosses.Count == 0 && hosted.Events.Count == 0;
             }
             else Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
@@ -560,6 +591,11 @@ namespace EdS.World
             if (!_tickDone && sector == _host!.SectorOf(_character.Id))
             {
                 _tickDone = true;
+                // Revue Codex de la PR #158 (1er tour) : la session du personnage a pu changer pendant ce tick de l'hôte, avant le pas des
+                // sessions (session renouvelée, arrivée après une attente ou une reprise) : la partie le suit d'abord, pour que objets de soin,
+                // bonus et récompenses de ce tick lisent la session et le combattant où il est, pas une session périmée. Un passage, lui, se
+                // décide après le pas des sessions : il est suivi après le tick de l'hôte (Step).
+                Follow();
                 AfterZone(events);
                 return;
             }
@@ -584,6 +620,8 @@ namespace EdS.World
             if (!_host!.IsFollowed(_character.Id) || !(_host.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
             string id = _host.CombatantOf(_character.Id);
             if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
+            // Sous-lot V2.28b (2b) : même secteur, autre session : la session du secteur a été renouvelée (au plus une fois par tick).
+            bool renewed = sector == _zoneSector && !ReferenceEquals(zone, Zone);
             // Revue Codex de la PR #157 (1er tour) : une seule passe, dans l'ordre : relever, propager, puis remplacer.
             // 1. Relever : ce que le combattant sortant a reçu et fait depuis le dernier relevé (son dernier tick compris : dégâts pour
             //    l'usure, coups, blocages et parades pour le tutoriel) n'est pas encore compté ; c'est gardé comme écart.
@@ -591,12 +629,17 @@ namespace EdS.World
             // 2. Remplacer : session et identité du combattant d'arrivée.
             Zone = zone;
             _combatantId = id;
-            Passages = checked(Passages + 1);
+            _zoneSector = sector;
+            if (renewed) Renewals = checked(Renewals + 1);
+            else Passages = checked(Passages + 1);
             CombatantView arriving = zone.Engine.View(id);
-            CombatantCounters c = arriving.Counters;
-            // Les relevés repartent du combattant d'arrivée, moins les écarts du sortant : TrackWear et Practice les comptent au même tick.
+            // Les relevés repartent de zéro pour le combattant d'arrivée (toujours un combattant nouveau, compteurs à zéro à son arrivée),
+            // moins les écarts du sortant : TrackWear et Practice les comptent au même tick.
+            // Sous-lot V2.28b (2b) : de zéro, et plus de ses compteurs du moment. Au passage, l'arrivée est programmée au tick suivant et ses
+            // compteurs sont encore à zéro (même résultat qu'avant) ; au renouvellement, il arrive au début du tick, qui est déjà joué quand
+            // la partie le suit : ce qu'il a reçu ou fait à ce premier tick serait sinon perdu.
             (_lastTaken, _hitsSeen, _blocksSeen, _parriesSeen) = Rebased((gone.DamageTaken, gone.Hits, gone.Blocks, gone.PerfectParries),
-                (c.DamageTaken, c.Hits, c.Blocks, c.PerfectParries), (_lastTaken, _hitsSeen, _blocksSeen, _parriesSeen));
+                (0, 0, 0, 0), (_lastTaken, _hitsSeen, _blocksSeen, _parriesSeen));
             // 3. Propager le bonus d'équipement voulu : l'hôte a placé le combattant d'arrivée avec le bonus du sortant ; si un bonus a expiré
             //    (ou changé) quand le sortant n'était plus là pour le recevoir, la synchronisation reste en attente et s'applique à l'arrivant.
             if (arriving.Gear is GearBonus carried) _combatGear = carried;
@@ -1120,10 +1163,12 @@ namespace EdS.World
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
             IReadOnlyList<PopulationEvent> population;
-            if (_host != null && !Zone.IsOver)
+            if (_host != null && (!Zone.IsOver || RenewsSessions))
             {
-                // Sous-lot V2.28b : le tick est celui de l'hôte des secteurs (même ordre : session, récompenses, populations). Une session
-                // terminée n'est pas renouvelée ici : la partie la reprend au dernier point sûr, comme avant.
+                // Sous-lot V2.28b : le tick est celui de l'hôte des secteurs (même ordre : session, récompenses, populations).
+                // Sous-lot V2.28b (2b) : une session terminée est renouvelée par l'hôte à ce tick et la partie suit le personnage dans la
+                // suivante (Follow), si la zone n'a ni chef ni événement du monde (RenewsSessions) ; sinon la partie la reprend au dernier
+                // point sûr, comme avant.
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
                 _tickDone = false;
