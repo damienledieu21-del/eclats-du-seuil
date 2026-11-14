@@ -517,6 +517,55 @@ public class V228b2cEvenementsTests
     }
 
     [Fact]
+    public void Plafond_du_registre_echo_rodeur_emporte_ne_compte_aucune_cle()
+    {
+        // Revue Codex de la PR #160 (2e tour) : un écho rôdeur est transitoire (sa mort n'inscrit aucune clé) : emporté au renouvellement, il
+        // ne compte pas dans la borne du registre. Même borne avec ou sans la cicatrice ; registre plein jusqu'à elle : la session est
+        // renouvelée (avant : une clé fictive par écho, renouvellement refusé alors qu'il tenait).
+        long need = -1;
+        foreach (bool scarred in new[] { false, true })
+        {
+            ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z =>
+            {
+                var rift = (JsonObject)JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!["data"]!["events"]!.AsArray()
+                    .Single(x => (string)x!["id"]! == "faille_du_seuil")!.DeepClone();
+                var g = (JsonObject)rift["groups"]![0]!.DeepClone();
+                g.Remove("spreadTo");
+                g["position"] = new JsonArray(380, 90);
+                g["creatures"] = new JsonArray(Creature(380, 94), Creature(384, 90), Creature(376, 90));
+                g["haunts"] = new JsonArray(Creature(390, 100), Creature(370, 100), Creature(380, 104));
+                rift["groups"] = new JsonArray(g);
+                z["data"]!["events"] = new JsonArray(rift);
+            }, scenario: s => s["data"]!["durationMs"] = 30_000);
+            Assert.True(loaded.IsValid, loaded.Report.ToString());
+            ZoneDefinition zone = loaded.Zone!;
+            SavedCharacter hero = Hero();
+            if (scarred) hero = hero.WithScars(new[] { new SavedScar("zone.essai/faille_du_seuil/ruines", 2, 0, 0) });
+            var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+            var w = new WorldSession(new WorldSave(zone.Id, 2000, 0, keys, hero), zone, ShippedData, Progression, ItemsCatalog, safePoint: "camp_est");
+            Assert.Equal("s01_00", w.Sector);
+            while (!w.Zone.IsOver) w.Step();
+            List<string> echoes = HuntersIn(w.Zone);
+            Assert.Equal(scarred ? 1 : 0, echoes.Count);
+            Assert.All(echoes, id => Assert.True(w.Zone.IsTransient(id)));
+            long now = w.Host!.NextTickRegistryNeed;
+            if (!scarred)
+            {
+                need = now;
+                continue;
+            }
+            Assert.Equal(need, now);   // l'écho emporté ne compte aucune clé
+            for (long i = w.Zone.ConsumedCount; i < SaveValidator.MaxConsumed - need; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D6}"));
+            Assert.True(w.RenewsSessions);
+            w.Step();
+            Assert.Equal(1, w.Renewals);
+            Assert.Single(HuntersIn(w.Zone));   // emporté
+        }
+
+        static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
+    }
+
+    [Fact]
     public void Cicatrice_dans_un_secteur_ferme_ses_echos_roent_dans_la_session_de_son_secteur()
     {
         // Décision 3 de Damien, aux cicatrices : les échos rôdeurs d'une cicatrice jouent dans la session du secteur de son lieu ; secteur

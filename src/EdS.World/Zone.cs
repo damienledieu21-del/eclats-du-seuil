@@ -165,6 +165,16 @@ namespace EdS.World
 
         internal bool IsTransient(string combatant) => _transient.Contains(combatant);
 
+        /// <summary>
+        /// Revue Codex de la PR #160 (2e tour) : <b>la</b> règle d'une mort qui inscrit une clé au registre : un combattant mortel (des PV) et
+        /// pas transitoire (écho rôdeur). Le moteur de la session (<see cref="NewDeathPossible"/>, inscription des morts) et toutes les bornes du
+        /// registre (sessions qui naissent, créatures emportées) passent par elle.
+        /// </summary>
+        internal static bool KeyedDeath(bool mortal, bool transient) => mortal && !transient;
+
+        /// <summary>Revue Codex de la PR #160 (2e tour) : combattant de départ mortel (un personnage l'est toujours ; un assaillant, s'il a des PV).</summary>
+        internal static bool Mortal(CombatantSetup combatant) => !(combatant is AssailantSetup a) || a.Health != null;
+
         /// <summary>La mort de ce combattant à ce tick ajouterait-elle une clé au registre ? (mortel, présent ou arrivant à ce tick, ni mort ni
         /// parti, clé pas encore inscrite)</summary>
         private bool NewDeathPossible(string combatant)
@@ -173,7 +183,7 @@ namespace EdS.World
             CombatantView view = _engine.View(combatant);
             // Revue Codex de la PR #42 (5e tour) : présent, ou dont l'arrivée est due à ce tick ; une arrivée future ou refusée ne meurt pas ce tick.
             bool here = view.IsPresent || (!view.HasLeft && view.ArrivalTick == _engine.CurrentTick);
-            return here && !view.HasLeft && view.MaxHealth != null && !_transient.Contains(combatant) && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
+            return here && !view.HasLeft && KeyedDeath(view.MaxHealth != null, _transient.Contains(combatant)) && !_consumed.Contains(EventKey(ZoneEventKind.Death, combatant));
         }
 
         /// <summary>Revue Codex de la PR #150 (9e tour) : morts qui ajouteraient une clé au prochain tick (0 si la session est terminée).</summary>
@@ -248,7 +258,7 @@ namespace EdS.World
                 if (_dead.Contains(combatant) || !_engine.View(combatant).IsDead) continue;
                 _dead.Add(combatant);
                 string key = EventKey(ZoneEventKind.Death, combatant);
-                events.Add(new ZoneEvent(ZoneEventKind.Death, key, combatant, tick, _transient.Contains(combatant) || _consumed.Add(key)));
+                events.Add(new ZoneEvent(ZoneEventKind.Death, key, combatant, tick, !KeyedDeath(true, _transient.Contains(combatant)) || _consumed.Add(key)));   // un combattant qui meurt est mortel
             }
             return events;
         }

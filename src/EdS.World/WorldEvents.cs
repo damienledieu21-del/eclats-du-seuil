@@ -896,7 +896,7 @@ namespace EdS.World
             s.RetryAt = null;
             _byCreature[id] = s.Like;
             // Relecture de la PR #110 : un écho rôdeur revient sans fin : sa mort n'est pas inscrite au registre (borné).
-            if (s.Haunt) zone.Transient(id);
+            if (Transient(s)) zone.Transient(id);
             Changed();
         }
 
@@ -1038,9 +1038,14 @@ namespace EdS.World
             int n = 0;
             foreach (Slot s in SlotsOf(sector))
                 if (!s.Dead && !s.Gone && s.Current != null && ReferenceEquals(s.Session, renewing)
-                    && renewing.Engine.View(s.Current) is { IsPresent: true, IsDead: false }) n++;
+                    && renewing.Engine.View(s.Current) is { IsPresent: true, IsDead: false } v
+                    // Revue Codex de la PR #160 (2e tour) : seules les morts qui inscrivent une clé (règle unique ; un écho rôdeur n'en inscrit pas).
+                    && Zone.KeyedDeath(v.MaxHealth != null, Transient(s))) n++;
             return n;
         }
+
+        /// <summary>Revue Codex de la PR #160 (2e tour) : la créature est transitoire (écho rôdeur : sa mort n'inscrit aucune clé, elle revient sans fin).</summary>
+        private static bool Transient(Slot s) => s.Haunt;
 
         /// <summary>
         /// Sous-lot V2.28b (2c), même règle que les chefs (décision de Damien du 14 novembre 2026, « AAA », 2, par analogie) : la session de
@@ -1142,7 +1147,7 @@ namespace EdS.World
                         s.Session = fresh;
                         s.RetryAt = null;
                         _byCreature[id] = s.Like;
-                        if (s.Haunt) fresh.Transient(id);
+                        if (Transient(s)) fresh.Transient(id);
                     }
                     else if (s.Current != null)
                     {
