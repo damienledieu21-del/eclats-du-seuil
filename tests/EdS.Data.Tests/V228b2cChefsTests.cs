@@ -345,6 +345,14 @@ public class V228b2cChefsTests
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
             if (wide) s["data"]!["space"]!["bounds"]!["max"]![0] = 300;
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+            // Croc-Gris affaibli (PV et coups) : le combat va jusqu'à la victoire en quelques centaines de ticks.
+            JsonObject croc = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_croc_gris")))!.AsObject();
+            foreach (JsonNode? form in croc["data"]!["combatants"]!.AsArray())
+            {
+                form!["health"] = 10;
+                foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            }
+            File.WriteAllText(Path.Combine(directory, "zones", "vallons_croc_gris.json"), croc.ToJsonString());
             CopyMissingZoneScenarios(directory);
             ZoneLoadResult loaded = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);
             Assert.True(loaded.IsValid, loaded.Report.ToString());
@@ -398,7 +406,8 @@ public class V228b2cChefsTests
         Assert.True(SectorMap.For(single).HomeHoldsArea);
         Assert.False(SectorMap.For(wide).HomeHoldsArea);
         string a = Trace(single, 2400), b = Trace(wide, 2400);
-        Assert.True(a.Contains("Defeated:croc_gris", StringComparison.Ordinal), string.Join("\n", a.Split('\n').Where(l => l.Contains("croc", StringComparison.Ordinal) || l.Contains("bastion", StringComparison.Ordinal)).Take(40)));
+        Assert.Contains("Defeated:croc_gris", a, StringComparison.Ordinal);
+        Assert.Contains("item.collier_de_croc_gris", a, StringComparison.Ordinal);
         Assert.Equal(a, b);
     }
 }
