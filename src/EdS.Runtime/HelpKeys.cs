@@ -29,6 +29,7 @@ namespace EdS.Runtime
         private static readonly HelpKey[] Combat =
         {
             new HelpKey("Z Q S D", "Se déplacer"), new HelpKey("Clic droit", "Garde (maintenir)"), new HelpKey("Espace", "Parade parfaite"),
+            new HelpKey("Ctrl", "Esquive"),   // décision de Damien du 14 novembre 2026
             new HelpKey("1 – 6", "Compétences"), new HelpKey("R", "Ultime"), new HelpKey("Tab", "Cible suivante"), new HelpKey("A / E", "Tourner la vue"),
             new HelpKey("Molette", "Rapprocher la vue"), new HelpKey("C", "Vue derrière toi"),   // essai réaliste 9 : caméra façon World of Warcraft
         };

@@ -412,6 +412,17 @@ public class InterfaceV21Tests
     }
 
     [Fact]
+    public void Esquive_branchee_bouton_touche_Ctrl_et_place_dans_un_combat_positionne()
+    {
+        // Esquive (décision de Damien du 14 novembre 2026, 21 h 05, qui remplace L11-D4) : le jeu montre le bouton dans un combat positionné
+        // (la garde monte alors à gauche de la parade), et le bouton ou Ctrl gauche demandent l'esquive au combat.
+        string game = Script("EdsGame.cs");
+        Assert.Contains("_touch.Active, mode, dodge: _combat != null && _combat.Space != null);", game, StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.LeftControl) || _touch.DodgePressed) _combat.Dodge();", game, StringComparison.Ordinal);
+        Assert.Contains(HelpKeys.Training, k => k.Key == "Ctrl" && k.Action == "Esquive");
+    }
+
+    [Fact]
     public void Esquive_prevue_a_sa_place_de_la_maquette_et_masquee_sans_regle()
     {
         var l = new HudLayoutV21();
