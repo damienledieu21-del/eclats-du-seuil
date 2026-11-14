@@ -254,10 +254,14 @@ public class V228b2cChefsTests
     }
 
     /// <summary>Zone d'essai à sessions de 40 s, chef aux coups faibles (le personnage tient), son secteur à l'est.</summary>
-    private static ZoneDefinition ShortWeak(Action<JsonObject>? zone = null) => Essai(zone: zone, scenario: s => s["data"]!["durationMs"] = 40_000, chief: c =>
+    /// <remarks>La forme furieuse a beaucoup de PV : un coup ne la tue pas.</remarks>
+    private static ZoneDefinition ShortWeak(Action<JsonObject>? zone = null, int furious = 4000) => Essai(zone: zone, scenario: s => s["data"]!["durationMs"] = 40_000, chief: c =>
     {
         foreach (JsonNode? form in c["data"]!["combatants"]!.AsArray())
-            foreach (JsonNode? attack in form!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        {
+            if (form!["id"]!.GetValue<string>() != Chef) form["health"] = furious;
+            foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        }
     });
 
     private static void Strike(WorldSession w, int i)
@@ -300,15 +304,15 @@ public class V228b2cChefsTests
         Assert.Contains(renewal.Boss, b => b.Kind == BossEventKind.Carried && b.Phase == 1);
         Assert.DoesNotContain(renewal.Boss, b => b.Kind == BossEventKind.FormArrived);
         Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id == Chef);   // pas de retour à la première forme
-        // Le combat va à son terme dans la session nouvelle : une victoire, une récompense.
+        // Le renouvellement suivant l'emporte encore : toujours la même forme, aucune victoire ni récompense en route.
         steps.Clear();
-        for (int i = 0; i < 2400 && !steps.Any(s => s.Boss.Any(b => b.Kind == BossEventKind.Defeated)); i++)
-        {
-            Strike(w, i);
-            steps.Add(w.Step());
-        }
-        Assert.Single(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated);
-        Assert.Single(steps.SelectMany(s => s.Rewards));
+        Zone second = w.Zone;
+        for (int i = 0; i < 2000 && ReferenceEquals(second, w.Zone); i++) steps.Add(w.Step());
+        Assert.Equal(2, w.Renewals);
+        Assert.StartsWith(Chef + "_furieux", ChiefForm(w));
+        Assert.Contains(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Carried);
+        Assert.DoesNotContain(steps.SelectMany(s => s.Boss), b => b.Kind == BossEventKind.Defeated || b.Kind == BossEventKind.FormArrived);
+        Assert.Empty(steps.SelectMany(s => s.Rewards));
     }
 
     [Fact]
@@ -316,7 +320,7 @@ public class V228b2cChefsTests
     {
         // Sac plein à la victoire : la récompense attend. La session se renouvelle : le chef vaincu le reste (aucune forme), la récompense
         // attend toujours ; une place libérée : elle arrive, une fois ; la sauvegarde garde la victoire, une partie reprise ne la redonne pas.
-        ZoneDefinition zone = ShortWeak();
+        ZoneDefinition zone = ShortWeak(furious: 40);
         SavedCharacter hero = Hero(0, Enumerable.Repeat(new ItemStack("item.gambison", 1), 24).ToArray())
             .WithXp(Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 20));
         var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, ItemsCatalog, safePoint: "guet_est");
@@ -355,12 +359,13 @@ public class V228b2cChefsTests
         // Décision de Damien du 14 novembre 2026 (« AAA », 1) : le chef poursuit le personnage vers l'ouest ; au bout de la marge de son
         // secteur, il lâche, revient à sa place et reprend tous ses PV (même forme) ; le personnage passe ensuite à l'ouest.
         ZoneDefinition zone = Essai(
-            zone: z => z["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "guet_bord", ["name"] = "Bord", ["position"] = new JsonArray(278, 64) }),
+            zone: z => z["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "guet_bord", ["name"] = "Bord", ["position"] = new JsonArray(274, 61) }),
             chief: c =>
             {
                 foreach (JsonNode? form in c["data"]!["combatants"]!.AsArray())
                 {
                     form!["position"] = new JsonArray(form["id"]!.GetValue<string>() == Chef ? 272 : 276, 56);
+                    form["health"] = 4000;
                     foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
                 }
             });
@@ -521,15 +526,22 @@ public class V228b2cChefsTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
             if (shape == Shape.Wide) s["data"]!["space"]!["bounds"]!["max"]![0] = 300;
+            // Toutes les créatures frappent à peine : le personnage traverse le Vallon sans tomber (la parité porte sur le monde, pas sur sa mort).
+            foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
+                foreach (JsonNode? attack in c!["attacks"]?.AsArray() ?? new JsonArray()) attack!["rawDamage"] = 1;
             File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
-            // Croc-Gris affaibli (PV et coups) : le combat va jusqu'à la victoire en quelques centaines de ticks.
-            JsonObject croc = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_croc_gris")))!.AsObject();
-            foreach (JsonNode? form in croc["data"]!["combatants"]!.AsArray())
+            // Croc-Gris affaibli (PV et coups) : le combat va jusqu'à la victoire en quelques centaines de ticks ; les autres chefs frappent à
+            // peine (le personnage traverse le Vallon sans tomber).
+            foreach (string chief in new[] { "vallons_croc_gris", "vallons_chef", "vallons_bandits" })
             {
-                form!["health"] = 10;
-                foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+                JsonObject forms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/" + chief)))!.AsObject();
+                foreach (JsonNode? form in forms["data"]!["combatants"]!.AsArray())
+                {
+                    if (chief == "vallons_croc_gris") form!["health"] = 10;
+                    foreach (JsonNode? attack in form!["attacks"]?.AsArray() ?? new JsonArray()) attack!["rawDamage"] = 1;
+                }
+                File.WriteAllText(Path.Combine(directory, "zones", chief + ".json"), forms.ToJsonString());
             }
-            File.WriteAllText(Path.Combine(directory, "zones", "vallons_croc_gris.json"), croc.ToJsonString());
             CopyMissingZoneScenarios(directory);
             ZoneLoadResult loaded = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);
             Assert.True(loaded.IsValid, loaded.Report.ToString());
@@ -542,33 +554,23 @@ public class V228b2cChefsTests
     }
 
     /// <summary>
-    /// Joue <paramref name="ticks"/> ticks : combat contre Croc-Gris, puis marche vers l'est (sans quitter le cœur) ; rend la trace (ce
+    /// Joue <paramref name="ticks"/> ticks depuis <paramref name="safePoint"/> (Croc-Gris frappé s'il est là) ; rend la trace (ce
     /// que la partie rapporte, combattants du cœur tous les 100 ticks, sauvegarde), le journal et le nombre de secteurs ouverts au plus.
     /// </summary>
-    private static (string Trace, string Log, int Open) Trace(ZoneDefinition zone, int ticks)
+    private static (string Trace, string Log, int Open) Trace(ZoneDefinition zone, int ticks, string safePoint = "essai_croc")
     {
         long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 25);
         var log = new MemoryCombatLog();
         var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithXp(xp)), zone, ShippedData, Progression,
-            ItemsCatalog, log: log, safePoint: "essai_croc");
+            ItemsCatalog, log: log, safePoint: safePoint);
         var trace = new StringBuilder();
         int open = 1;
         for (int i = 0; i < ticks; i++)
         {
             string? croc = w.BossForms.FirstOrDefault(f => f.StartsWith("croc_gris", StringComparison.Ordinal));
-            if (i < 1500 && i % 20 == 1 && croc != null)
+            if (i % 20 == 1 && croc != null)
                 try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", croc)); }
                 catch (ArgumentException) { }
-            // Puis vers l'est, jusqu'à x = 70 : à moins de 96 m du secteur voisin (il s'ouvre, ses chefs aussi : OnOpened), sans le passer.
-            if (i >= 1500 && w.Zone.Engine.View(w.CombatantId) is { IsPresent: true, Position: GroundVector at })
-            {
-                bool far = at.X < Fixed.FromInt(70);
-                CombatantView me = w.Zone.Engine.View(w.CombatantId);
-                if (far && me.MoveDirection is null)
-                    w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
-                else if (!far && me.MoveDirection != null)
-                    w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, CombatAction.Stop));
-            }
             SessionStep step = w.Step();
             open = Math.Max(open, w.Host?.OpenSectors.Count ?? 1);
             if (!step.IsEmpty)
@@ -586,6 +588,8 @@ public class V228b2cChefsTests
                 }
         }
         Assert.Equal(0, w.Passages);
+        CombatantView end = w.Zone.Engine.View(w.CombatantId);
+        trace.Append("fin ").Append(end.Position).Append(' ').Append(end.MoveDirection).Append(' ').Append(end.Health).Append(' ').Append(end.IsDead).Append(' ').Append(end.Counters.CommandsRejected).Append('\n');
         trace.Append(SaveJsonReader.Write(w.Save().WithResume(null)));
         return (trace.ToString(), log.ToString(), open);
     }
@@ -606,7 +610,7 @@ public class V228b2cChefsTests
     public void Parite_Vallons_une_session_contre_hote_a_plusieurs_secteurs_sans_changer_de_secteur()
     {
         // Tant que le personnage reste dans le secteur du cœur, les Vallons à deux secteurs (hôte, chefs liés à leur secteur, voisin ouvert
-        // en marchant vers lui : OnOpened appelé) jouent comme les Vallons d'une seule session : mêmes créatures, positions, PV, combat contre
+        // près de lui : OnOpened appelé) jouent comme les Vallons d'une seule session : mêmes créatures, positions, PV, combat contre
         // Croc-Gris jusqu'à la victoire et la récompense, même sauvegarde.
         ZoneDefinition single = Vallons(Shape.Home), wide = Vallons(Shape.Wide);
         Assert.True(SectorMap.For(single).HomeHoldsArea);
@@ -614,7 +618,16 @@ public class V228b2cChefsTests
         (string Trace, string Log, int Open) a = Trace(single, 2400), b = Trace(wide, 2400);
         Assert.Contains("Defeated:croc_gris", a.Trace, StringComparison.Ordinal);
         Assert.Contains("item.collier_de_croc_gris", a.Trace, StringComparison.Ordinal);
-        Assert.Equal((1, 2), (a.Open, b.Open));
         Assert.Equal(a.Trace, b.Trace);
+        // Au hameau de la carrière (x = 80), le secteur voisin (x ≥ 140) est à moins de 96 m : il s'ouvre dès le début (OnOpened est appelé
+        // pour lui) ; le cœur joue toujours de même.
+        (string Trace, string Log, int Open) c = Trace(single, 1200, "hameau_de_la_carriere"), d = Trace(wide, 1200, "hameau_de_la_carriere");
+        Assert.Equal((1, 2), (c.Open, d.Open));
+        // La sauvegarde du monde à deux secteurs écrit en plus la session du voisin (sectors) : on compare la trace jusqu'à elle, et le
+        // personnage sauvegardé.
+        static string Played(string t) => t[..t.IndexOf("fin ", StringComparison.Ordinal)];
+        static string Hero(string t) => JsonNode.Parse(t[t.IndexOf('{')..])!["data"]!["character"]!.ToJsonString();
+        Assert.Equal(Played(c.Trace), Played(d.Trace));
+        Assert.Equal(Hero(c.Trace), Hero(d.Trace));
     }
 }
