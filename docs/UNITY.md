@@ -185,18 +185,19 @@ Dans la salle d'attente : **F1 à F5** changent de build de référence, **T** o
 
 Premier essai tactile : la scène des Vallons au doigt, d'abord dans le **simulateur d'appareils** de l'éditeur, puis sur le **Galaxy Note8** (Android). L'iPhone 13 demande un Mac avec Xcode : pas pour cet essai.
 
-**Les commandes au doigt** (téléphone tenu à l'horizontale) :
+**Les commandes au doigt** (téléphone tenu à l'horizontale ; disposition de l'**interface V2.1** depuis le 14 novembre 2026, voir plus bas) :
 
 | Où | Geste | Action |
 |---|---|---|
-| moitié gauche | poser le pouce et le pousser | marcher (le stick apparaît là où le pouce se pose ; marche relative à la caméra) |
-| en bas à droite | maintenir **Garde** | garde |
-| en bas à droite | toucher **Parade** | parade parfaite |
-| au-dessus | **1**, **2**, **3**, **4**, **Ultime** | compétences |
-| au-dessus | **Cible**, **Vue** (et **Allié** en réseau) | ennemi suivant, caméra remise derrière le personnage, allié visé |
+| moitié gauche | poser le pouce et le pousser | marcher (le stick apparaît là où le pouce se pose ; au repos, son cercle est dessiné en bas à gauche) |
+| en bas à droite | toucher **Parade** (le plus gros bouton) | parade parfaite |
+| sous la parade | maintenir **Garde** | garde |
+| rangée du bas | **1** à **6** | compétences (icône et recharge dessinées dans la case) |
+| au-dessus | **Ultime**, **Potion**, **Cible**, **Agir** (ou **Allié** en réseau) | ultime, boire, ennemi suivant, parler ou récolter |
+| en haut à droite, à gauche de la carte | **Pause**, **Vue**… puis **Plus** | la rangée utile ; **Plus** ouvre un tiroir avec ce qui n'y tient pas (Sac, Journal, Talents, Atelier, Halte ou Rejouer, Scène, Aide, Menu) |
+| la petite carte | toucher | l'agrandir |
 | moitié droite, hors des boutons | glisser un doigt | tourner la vue (gauche-droite) et l'incliner (haut-bas) |
 | moitié droite | écarter ou rapprocher deux doigts | rapprocher ou éloigner la caméra |
-| à droite, sous la fiche de la cible | **Menu**, **Aide** ; seul : **Pause**, **Rejouer**, **Scène** | menu réseau, aide, pause, recommencer, scène suivante |
 
 **a. Dans l'éditeur, sans téléphone** : **Window → General → Device Simulator**. Dans l'onglet *Simulator* qui s'ouvre, choisir un téléphone (un Samsung Galaxy si la liste en propose un, sinon un téléphone Android récent), le tourner à l'horizontale (bouton de rotation), puis **Play** : la souris fait le doigt (un seul doigt : le pincement ne s'essaie que sur le vrai téléphone). Vérifier que les boutons ne cachent ni les barres ni la fiche de la cible. Au PC sans simulateur, **F8** affiche aussi les commandes (la souris fait un doigt).
 
@@ -988,6 +989,24 @@ Affichage seulement ([plan de la grande carte](PLAN_GRANDE_CARTE.md#6-le-rendu-r
 - **Branchement** : `ArenaView` appelle `CellStreamView.Use(carte, sol couvert)` à chaque construction d'espace (caché dans une pièce, une arène, une zone sans région ; gardé pour la même zone : ressortir d'une maison ne le refait pas ; si Unity a détruit sa racine, maillages et matériau sont libérés et il est refait) et `CellStreamView.Frame(caméra)` à chaque image. `StyleWorld.ViewDistance` recule la brume du catalogue et le plan lointain de la caméra jusqu'à la distance de vue (la brume du temps la rapproche toujours). La fenêtre de vérification affiche la ligne « Chargement par cases » ; `CellStreamView.Stats` donne cases, mémoire et temps de la dernière et de la pire image.
 - **Mesures** : `eds mesures cases [--secondes N]` (chevauchée depuis le cœur à 5, 13 et 20 m/s, 30 images par seconde, pour chaque classe de machine) : temps par image, images au-delà de 2,5 ms, images sans anneau 0 complet (l'anneau 1 est alors montré, jamais un trou), mémoire, triangles, appels de dessin. Processeur de la machine qui lance l'outil seulement.
 - **Pas encore** : décor par cases (arbres en imposteurs, rochers, herbe, silhouettes des grands lieux : modèles demandés, surface de V2.28) ; le décor du cœur reste construit d'un coup par `SpaceView`. **Rien n'a été vérifié dans Unity** ni sur un Note8 : seuls la compilation (`EdS.Unity.CompileCheck`), les tests portables et les mesures sur PC le sont.
+
+### Interface V2.1 : HUD et commandes au doigt (14 novembre 2026)
+
+Le dossier **Interface V2.1** (PDF du 12 novembre 2026, `Eclats_du_Seuil_AssetLab/Interface/v2_1/`) fait foi. Cette étape intègre d'abord le plus visible : le HUD de jeu et les commandes au doigt, puis le livre d'aventure (remarques du catalogue). Affichage seulement : aucune règle de jeu ne change.
+
+- **Disposition** (`src/EdS.Runtime/HudLayoutV21.cs`, sans Unity, testée par `InterfaceV21Tests`) : les cotes de la maquette de la page 20 (PC 1 920 × 1 080, téléphone 960 × 432 unités). Chaque élément s'accroche à un bord dans la **zone sûre** du téléphone (encoche, caméra, gestes : `Screen.safeArea`). Une unité vaut 2,5 pixels du canevas (1 080 de haut) jusqu'au 16:9 ; en 4:3, elle diminue pour garder 768 unités de large. Les éléments du milieu (cible, boussole, annonces, indication) se glissent entre ceux des bords. Cibles tactiles : 72 pour la parade, 64 pour la garde, 56 pour les compétences, 48 pour le reste, 8 d'écart ; sur le Note8, 9 mm au moins pour le combat.
+- **HUD** (`HudView`) : en haut à gauche, la vie et l'endurance en barres chiffrées, la Résonance dans sa case, les Charges dessous, puis la garde et les altérations ; en haut au milieu, la cible (nom, vie, coup annoncé), la boussole et l'heure (aventure), l'état du monde ou le minuteur, puis trois annonces au plus ; en haut à droite, la mini-carte, le lieu et la quête suivie ; en bas, les compétences en cases carrées (PC : barre au milieu ; téléphone : dans les boutons mêmes). Le sceau et les éclats de l'essai réaliste 6 sont retirés.
+- **Matières** (`UiV21Art`) : cuir sombre, filet d'or d'une unité, liseré intérieur, coins de 12 qui ne s'étirent pas, rail sombre des barres, cercle du joystick, table du livre : tout est dessiné par le code (fait pour le jeu, aucune licence tierce).
+- **Textes** : les libellés du HUD et des boutons viennent des données (`text.ui.hud.*` dans `data/v0/world/texts/fr.json`, `UiTexts`). Sur téléphone, les textes suivent la charte (16 unités pour l'essentiel, 14 au plus petit) et les noms au-dessus des ennemis, les chiffres de combat et les fenêtres du centre grossissent.
+- **Livre d'aventure** : il est posé sur une table de cuir qui couvre tout l'écran (plus de bandes sombres vides de chaque côté) et grandit jusqu'à la hauteur de l'écran ; sous-titre, onglets et « Fermer » sont plus grands.
+
+**Ce que tu regardes dans Unity** (rien n'a pu être vérifié ici) :
+1. **PC, 16:9** : vie et endurance en haut à gauche, lisibles ; la cible en haut au milieu quand tu en as une (nom, barre, coup annoncé qui bat) ; la boussole qui tourne avec le personnage et l'heure dessous ; la carte et la quête à droite ; les compétences en bas au milieu (icône, recharge, coût, touche).
+2. **Simulateur d'appareils** (*Window → General → Device Simulator*), **Galaxy Note8** s'il est proposé, puis un téléphone 16:9 et une tablette 4:3, à l'horizontale, ou **F8** au PC : rien ne sort de l'écran ni ne passe sous l'encoche ; les boutons ne cachent ni les barres ni la cible ; **Plus** ouvre et ferme le tiroir ; le cercle du joystick est en bas à gauche.
+3. **Sur le Note8** : les pouces atteignent la parade, la garde et les compétences sans gêne ; les textes se lisent à bout de bras.
+4. **Livre** (I, J, K, L) : plus de bandes noires de chaque côté, le livre est plus grand, les onglets se lisent.
+
+Limites : les compétences gardent leurs icônes peintes (packs CC BY déjà crédités) ; les autres boutons portent un libellé, pas encore d'icône faite pour le jeu ; pas encore de mode édition du HUD (déplacer, agrandir) ni de profil gaucher ; le livre garde ses pages de l'essai 6 (seuls le fond, la taille et les petits textes changent) ; certains textes du HUD existant (sous-titre du lieu, marqueurs de la carte, aide) se recalculent encore quand ils changent, mais les chiffres de combat ne s'écrivent plus qu'au changement.
 
 ## 8. En cas de problème
 
