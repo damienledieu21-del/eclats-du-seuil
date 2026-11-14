@@ -163,8 +163,10 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V2.28b (2b) : une session terminée est renouvelée sans coupure : l'hôte des secteurs ouvre la suivante au même tick du
-        /// monde, le personnage y arrive avec son état et la partie le suit. Seulement sur l'hôte et pour une zone sans chef ni événement
-        /// du monde (liés à leur session jusqu'au V2.28b (2c)) ; sinon, comme avant, la partie reprend au dernier point sûr.
+        /// monde, le personnage y arrive avec son état et la partie le suit. Seulement sur l'hôte et pour une zone sans événement du monde
+        /// (liés à leur session jusqu'à la suite du V2.28b (2c)) ; sinon, comme avant, la partie reprend au dernier point sûr. Sous-lot V2.28b
+        /// (2c) : les chefs n'empêchent plus le renouvellement, y compris dans une zone au seul secteur du cœur (changement de comportement :
+        /// avant, elle reprenait au dernier point sûr) ; leur combat y continue tel quel (décision de Damien du 14 novembre 2026, « AAA », 2).
         /// </summary>
         /// <remarks>
         /// Relecture indépendante de la PR #158 : pas quand l'hôte refuserait le tick du renouvellement (registre du monde trop plein pour la
@@ -694,7 +696,7 @@ namespace EdS.World
         private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
         {
             if (zone.Region is null || zone.Setup.Space is null) return null;
-            // Sous-lot V2.28b (2) : une aire à plusieurs secteurs est tenue par l'hôte si la zone n'a ni chef ni événement du monde (ils seront
+            // Sous-lot V2.28b (2) : une aire à plusieurs secteurs est tenue par l'hôte si la zone n'a pas d'événement du monde (ils seront
             // liés à leur secteur ensuite) ; sinon elle reste une seule session, comme avant.
             bool single = SectorMap.For(zone).HomeHoldsArea;
             // Sous-lot V2.28b (2c) : les chefs le sont désormais (OpenedSector) ; les événements du monde, pas encore.
@@ -775,7 +777,7 @@ namespace EdS.World
                 if (ReferenceEquals(boss, zone.Boss)) _boss = fight;
             }
             if (_host != null && zone.Bosses.Count > 0)
-                _host.OnOpened(OpenedSector, s => zone.Bosses.Count(b => _host.Map.OwnerOf(b.Forms[0].Placement!.Position) == s), zone.Bosses.Count);
+                _host.OnOpened(OpenedSector, s => zone.Bosses.Count(b => _host.Map.OwnerOf(b.Forms[0].Placement!.Position) == s));
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
@@ -831,7 +833,11 @@ namespace EdS.World
         /// </remarks>
         private void OpenedSector(string sector, Zone zone, Zone? renewedFrom)
         {
+            // Relecture indépendante de la PR #159 : en deux temps. D'abord les combats nouveaux, préparés sur la session qui naît (seule
+            // touchée : si quelque chose lève, l'hôte, qui appelle ce rappel avant toute mutation, la jette et rien n'a changé) ; ensuite
+            // seulement la partie les adopte, sans rien qui puisse lever.
             Boss? main = Definition?.Boss;
+            var prepared = new List<(int At, Boss Boss, BossFight Fight, BossEvent? Started)>();
             foreach (Boss b in Definition!.Bosses)
             {
                 if (_host!.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
@@ -843,20 +849,26 @@ namespace EdS.World
                     fight = BossFight.Continue(old, renewedFrom.Engine, zone.Engine, out BossEvent? carried);
                     fight.Sector = sector;
                     fight.Session = zone;
-                    if (carried != null) _bossStarts.Add(carried);
+                    prepared.Add((at, b, fight, carried));
                 }
                 else
                 {
                     fight = new BossFight(b) { Sector = sector, Session = zone, RewardPending = old?.RewardPending ?? false, RewardAnnounced = old?.RewardAnnounced ?? false };
+                    BossEvent? started = null;
                     try
                     {
-                        _bossStarts.Add(fight.Start(zone.Engine));
+                        started = fight.Start(zone.Engine);
                     }
                     catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
                     {
-                        fight.Session = null;   // absent de cette session : sa récompense en attente reste
+                        fight.Session = null;   // arrivée refusée par le moteur (place prise) : absent de cette session, sa récompense en attente reste
                     }
+                    prepared.Add((at, b, fight, started));
                 }
+            }
+            foreach ((int at, Boss b, BossFight fight, BossEvent? started) in prepared)
+            {
+                if (started != null) _bossStarts.Add(started);
                 if (at >= 0) _fights[at] = fight;
                 else _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(b)), fight);
                 if (ReferenceEquals(b, main)) _boss = fight;
@@ -1246,8 +1258,8 @@ namespace EdS.World
             {
                 // Sous-lot V2.28b : le tick est celui de l'hôte des secteurs (même ordre : session, récompenses, populations).
                 // Sous-lot V2.28b (2b) : une session terminée est renouvelée par l'hôte à ce tick et la partie suit le personnage dans la
-                // suivante (Follow), si la zone n'a ni chef ni événement du monde (RenewsSessions) ; sinon la partie la reprend au dernier
-                // point sûr, comme avant.
+                // suivante (Follow), si la zone n'a pas d'événement du monde (RenewsSessions ; les combats de chefs y continuent tels quels,
+                // OpenedSector) ; sinon la partie la reprend au dernier point sûr, comme avant.
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
                 _tickDone = false;

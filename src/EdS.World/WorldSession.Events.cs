@@ -34,7 +34,8 @@ namespace EdS.World
         public bool IsEventCreature(string combatant) => _events?.Of(combatant) != null;
 
         /// <summary>Formes de chef encore à venir (places gardées).</summary>
-        private int FormsToCome => _fights.Sum(f => f.FormsToCome);
+        // Relecture indépendante de la PR #159 : comme ReservedIn, seulement les combats qui ont une session (pas un chef absent).
+        private int FormsToCome => _fights.Where(f => f.Session != null).Sum(f => f.FormsToCome);
 
         /// <summary>
         /// Revue Codex de la PR #107 (tour 2) : places de combattants gardées pour des arrivées déjà décidées : les formes de chef à venir et

@@ -942,7 +942,9 @@ namespace EdS.Data.Zones
             }
             // Sous-lot V2.28b (2c) (PLAN_GRANDE_CARTE.md § 2.5) : dans une zone à région, un chef vit dans un secteur : toutes ses formes y
             // arrivent (la session de ce secteur les fait jouer), à au moins 8 m de ses bords intérieurs, comme une population.
-            if (schema14 && region != null && space != null)
+            // Relecture indépendante de la PR #159 : dès qu'il y a une région (schéma 13 compris), comme l'hôte des secteurs, qui tient toute
+            // zone à région : aucune zone n'y passe sans cette règle.
+            if (region != null && space != null)
             {
                 if (boss != null) CheckBossSector(boss, "$.data.boss", region, space, report);
                 for (int i = 0; d.Chiefs != null && i < d.Chiefs.Count; i++)
