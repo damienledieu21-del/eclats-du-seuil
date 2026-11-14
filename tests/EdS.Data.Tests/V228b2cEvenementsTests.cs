@@ -220,15 +220,16 @@ public class V228b2cEvenementsTests
     /// <summary>
     /// Partie à l'est, chasseurs arrivés à côté du camp ; le personnage frappe le premier chasseur au tick de session
     /// <paramref name="strikeAt"/> (null : jamais) ; rend la partie à la fin de sa session (pas encore renouvelée), le chasseur et le tick
-    /// (de session) où il est mort, s'il l'est.
+    /// (de session) où il est mort, s'il l'est, et s'il est mort au tick même où la session finit.
     /// </summary>
-    private static (WorldSession W, string Hunter, long? DiedAt) StrikeNearEnd(ZoneDefinition zone, long? strikeAt)
+    private static (WorldSession W, string Hunter, long? DiedAt, bool OnLast) StrikeNearEnd(ZoneDefinition zone, long? strikeAt)
     {
         WorldSession w = Open(zone, StartTick(zone) - 5, "camp_est", level: 12);
         for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 2; i++) w.Step();
         CombatEngine e = w.Zone.Engine;
         string hunter = HuntersIn(w.Zone)[0];
         long? died = null;
+        bool onLast = false;
         while (!w.Zone.IsOver)
         {
             if (strikeAt == e.CurrentTick)
@@ -236,9 +237,13 @@ public class V228b2cEvenementsTests
                 catch (ArgumentException) { }
             bool alive = !e.View(hunter).IsDead;
             w.Step();
-            if (alive && e.View(hunter).IsDead) died = e.CurrentTick;
+            if (alive && e.View(hunter).IsDead)
+            {
+                died = e.CurrentTick;
+                onLast = w.Zone.IsOver;   // le moteur simule son dernier tick et finit dans le même pas
+            }
         }
-        return (w, hunter, died);
+        return (w, hunter, died, onLast);
     }
 
     [Fact]
@@ -256,11 +261,11 @@ public class V228b2cEvenementsTests
         var probe = StrikeNearEnd(zone, 200);
         Assert.NotNull(probe.DiedAt);
         long delay = probe.DiedAt!.Value - 200, last = probe.W.Zone.Engine.CurrentTick;
-        (WorldSession W, string Hunter, long? DiedAt)? hit = null;
-        for (long k = delay; k <= delay + 6 && hit is null; k++)
+        (WorldSession W, string Hunter, long? DiedAt, bool OnLast)? hit = null;
+        for (long k = delay - 2; k <= delay + 6 && hit is null; k++)
         {
             var run = StrikeNearEnd(zone, last - k);
-            if (run.DiedAt == last) hit = run;
+            if (run.OnLast) hit = run;
         }
         Assert.True(hit != null, "aucune frappe ne tue au dernier tick");
         WorldSession w = hit!.Value.W;
@@ -269,6 +274,7 @@ public class V228b2cEvenementsTests
         w.Step();
         Assert.Equal(1, w.Renewals);
         Assert.False(w.IsEventCreature(hit.Value.Hunter));   // identités de la session finie purgées
+        Walk(w, 405, 200);                       // sa place libérée (le personnage s'en éloigne)
         for (int i = 0; i < 60; i++) w.Step();   // plus d'une seconde : une créature remise en attente serait revenue
         Assert.Single(HuntersIn(w.Zone));        // seul le second chasseur, emporté
         Assert.Equal(1, w.EventsRuntime!.PendingPlaces + HuntersIn(w.Zone).Count);
