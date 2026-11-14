@@ -104,9 +104,6 @@ namespace EdS.Game
             _buttonSprite = Sliced(_button, Corner);
             _trackSprite = Sliced(_track, 2);
             _plainSprite = Sliced(_plain, 0);
-            _panelStyle = Style(_panel);
-            _buttonStyle = Style(_button);
-            _buttonDownStyle = Style(_buttonDown);
         }
 
         private static Color32 Disc(int x, int y, int size, float fillAlpha, float rim)
@@ -123,6 +120,19 @@ namespace EdS.Game
         private static Sprite Sliced(Texture2D texture, int border) =>
             Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), PixelsPerUnit, 0u, SpriteMeshType.FullRect,
                 new Vector4(border, border, border, border));
+
+        /// <summary>
+        /// Styles IMGUI, créés à la première image dessinée : <c>GUI.skin</c> n'existe que pendant <c>OnGUI</c> (relecture indépendante de la
+        /// PR #161). <see cref="Load"/>, appelé à la construction du HUD et du livre, ne touche donc qu'aux textures et aux sprites.
+        /// </summary>
+        private static void Styles()
+        {
+            Load();
+            if (_panelStyle != null) return;
+            _panelStyle = Style(_panel);
+            _buttonStyle = Style(_button);
+            _buttonDownStyle = Style(_buttonDown);
+        }
 
         private static GUIStyle Style(Texture2D texture)
         {
@@ -152,13 +162,13 @@ namespace EdS.Game
         /// <summary>IMGUI (commandes au doigt) : panneau de cuir, bouton au repos, bouton appuyé.</summary>
         public static void DrawPanel(Rect rect)
         {
-            Load();
+            Styles();
             GUI.Box(rect, GUIContent.none, _panelStyle);
         }
 
         public static void DrawButton(Rect rect, bool pressed)
         {
-            Load();
+            Styles();
             GUI.Box(rect, GUIContent.none, pressed ? _buttonDownStyle : _buttonStyle);
         }
 

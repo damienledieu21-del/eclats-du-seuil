@@ -11,9 +11,12 @@ namespace EdS.Runtime
     public static class HudTextsV21
     {
         public const string Health = "text.ui.hud.health", Endurance = "text.ui.hud.endurance", EnduranceShort = "text.ui.hud.endurance_short",
-            Resonance = "text.ui.hud.resonance", Infinite = "text.ui.hud.infinite", GuardBroken = "text.ui.hud.guard_broken",
+            Infinite = "text.ui.hud.infinite", GuardBroken = "text.ui.hud.guard_broken",
             ParryOpen = "text.ui.hud.parry_open", GuardUp = "text.ui.hud.guard_up", ParryIn = "text.ui.hud.parry_in", GuardIdle = "text.ui.hud.guard_idle",
-            Close = "text.ui.hud.close";
+            Unblockable = "text.ui.hud.unblockable", Seconds = "text.ui.hud.seconds", Level = "text.ui.hud.level", UltimateKey = "text.ui.hud.ultimate_key",
+            SettingsTitle = "text.ui.hud.settings.title", CameraClick = "text.ui.hud.settings.camera_click", CameraFree = "text.ui.hud.settings.camera_free",
+            InvertOn = "text.ui.hud.settings.invert_on", InvertOff = "text.ui.hud.settings.invert_off", Sensitivity = "text.ui.hud.settings.sensitivity",
+            Creator = "text.ui.hud.settings.creator", Minus = "text.ui.hud.settings.minus", Plus = "text.ui.hud.settings.plus";
 
         /// <summary>Huit directions de la boussole, dans le sens des aiguilles d'une montre depuis le nord (0°, 45°, …).</summary>
         public static readonly string[] Compass =
@@ -49,12 +52,29 @@ namespace EdS.Runtime
             }
         }
 
+        /// <summary>
+        /// Largeur estimée d'un texte en Barlow Condensed (au plus une demi-capitale par lettre), espacement des lettres en centièmes
+        /// d'em compris : sert à poser les onglets du livre à la taille de leur texte et aux tests qui vérifient qu'un libellé tient.
+        /// </summary>
+        public static float EstimateWidth(string text, float size, float spacing = 0f) =>
+            string.IsNullOrEmpty(text) ? 0f : text.Length * (0.5f + spacing / 100f) * size;
+
+        /// <summary>Onglets du livre : taille du texte, espacement, marge de chaque onglet, abscisse du premier, bord droit disponible.</summary>
+        public const float TabFont = 21f, TabSpacing = 12f, TabPadding = 18f, TabStart = 540f, TabEnd = 1460f;
+
+        /// <summary>Clés des onglets du livre, dans l'ordre (AdventureBook).</summary>
+        public static readonly string[] BookTabs =
+        {
+            "text.ui.tab.character", "text.ui.tab.skills", "text.ui.tab.talents", "text.ui.tab.journal", "text.ui.tab.crafting", "text.ui.tab.map",
+        };
+
         /// <summary>Toutes les clés du HUD V2.1 (pour les tests et le contrôle au lancement).</summary>
         public static string[] AllKeys()
         {
             var keys = new System.Collections.Generic.List<string>
             {
-                Health, Endurance, EnduranceShort, Resonance, Infinite, GuardBroken, ParryOpen, GuardUp, ParryIn, GuardIdle, Close,
+                Health, Endurance, EnduranceShort, Infinite, GuardBroken, ParryOpen, GuardUp, ParryIn, GuardIdle, Unblockable, Seconds, Level,
+                UltimateKey, SettingsTitle, CameraClick, CameraFree, InvertOn, InvertOff, Sensitivity, Creator, Minus, Plus,
             };
             keys.AddRange(Compass);
             foreach (HudButton b in (HudButton[])Enum.GetValues(typeof(HudButton)))

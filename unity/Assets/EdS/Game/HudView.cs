@@ -48,6 +48,8 @@ namespace EdS.Game
             public RectTransform Node;
             public UiText Name;
             public Image Fill, Telegraph;
+            public string Id;
+            public bool IsTarget;
         }
 
         private readonly Canvas _canvas;
@@ -96,7 +98,11 @@ namespace EdS.Game
         private Image _questBar;
         private readonly List<Image> _markerPool = new List<Image>();
         private int _markerCount;
-        private string _subZone, _subTime, _subFestival, _subMarket;
+        private string _subZone, _subTime, _subFestival, _subMarket, _shownProgress;
+        private IReadOnlyList<MapMarker> _mapMarkers;
+        private AdventureSession _markersSession;
+        private float _markersAt;
+        private const float MarkersPeriod = 0.25f;
 
         // Aide, étiquettes, textes flottants, annonces.
         private RectTransform _help;
@@ -336,6 +342,9 @@ namespace EdS.Game
         private RectTransform _settings;
         private UiButton _mouseMode, _invertY, _textures;
         private UiText _sensitivity, _brightness;
+        private float _shownSensitivity = float.NaN;
+        private UiText _settingsTitle;
+        private UiButton _slower, _faster, _darker, _brighter, _creatorButton;
         private System.Action _toggleClickLook, _toggleInvert;
         private System.Action<float> _stepSensitivity;
         private System.Action _openCreator;
@@ -362,9 +371,19 @@ namespace EdS.Game
         {
             UiKit.Show(_settings, shown);
             if (!shown) return;
-            _mouseMode.Text.Value = clickLook ? "Caméra : clic gauche maintenu" : "Caméra : souris libre (sans clic)";
-            _invertY.Text.Value = invertY ? "Haut-bas : inversé" : "Haut-bas : normal";
-            _sensitivity.Value = "Sensibilité " + sensitivity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+            // Libellés lus dans les données à l'affichage (le HUD est construit avant le chargement des textes).
+            _settingsTitle.Value = UiTexts.Get(HudTextsV21.SettingsTitle);
+            _slower.Text.Value = _darker.Text.Value = UiTexts.Get(HudTextsV21.Minus);
+            _faster.Text.Value = _brighter.Text.Value = UiTexts.Get(HudTextsV21.Plus);
+            _creatorButton.Text.Value = UiTexts.Get(HudTextsV21.Creator);
+            _mouseMode.Text.Value = UiTexts.Get(clickLook ? HudTextsV21.CameraClick : HudTextsV21.CameraFree);
+            _invertY.Text.Value = UiTexts.Get(invertY ? HudTextsV21.InvertOn : HudTextsV21.InvertOff);
+            if (sensitivity != _shownSensitivity)
+            {
+                _shownSensitivity = sensitivity;
+                _sensitivity.Value = string.Format(UiTexts.Get(HudTextsV21.Sensitivity),
+                    sensitivity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ','));
+            }
             _textures.Text.Value = DeviceQuality.Label;   // sous-lot V2.12.4
             _brightness.Value = BrightnessSetting.Label;   // sous-lot V2.13
         }
@@ -374,33 +393,32 @@ namespace EdS.Game
             // Relecture : entre le bandeau « Pause » et l'indication du bas ; montré seulement sans annonce (fin de combat, défaite).
             _settings = At(UiKit.Node(_center, "Réglages"), 450f, 540f, 560f, 420f, 0.5f, 0.5f);   // V2.13 : luminosité ; V2.16 : Mon personnage
             UiKit.Fill(UiKit.Image(_settings, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
-            UiText title = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
-            At(title.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
-            title.Gold();
-            title.Value = "Réglages";
+            _settingsTitle = UiText.Create(_settings, "Titre", UiFace.Title, 26f, Color.white, TextAnchor.MiddleCenter, 4f);
+            At(_settingsTitle.Rect, 280f, 34f, 500f, 36f, 0.5f, 0.5f);
+            _settingsTitle.Gold();
             _mouseMode = UiKit.Button(_settings, "Souris", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _toggleClickLook?.Invoke());
             At(_mouseMode.Rect, 280f, 86f, 440f, 44f, 0.5f, 0.5f);
             _invertY = UiKit.Button(_settings, "Haut-bas", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _toggleInvert?.Invoke());
             At(_invertY.Rect, 280f, 140f, 440f, 44f, 0.5f, 0.5f);
-            UiButton slower = UiKit.Button(_settings, "Moins sensible", "bouton_sobre", "−", UiFace.Title, 24f, UiKit.Ink, () => _stepSensitivity?.Invoke(-0.25f));
-            At(slower.Rect, 120f, 196f, 52f, 44f, 0.5f, 0.5f);
+            _slower = UiKit.Button(_settings, "Moins sensible", "bouton_sobre", "", UiFace.Title, 24f, UiKit.Ink, () => _stepSensitivity?.Invoke(-0.25f));
+            At(_slower.Rect, 120f, 196f, 52f, 44f, 0.5f, 0.5f);
             _sensitivity = UiText.Create(_settings, "Sensibilité", UiFace.Bold, 18f, UiKit.Dawn, TextAnchor.MiddleCenter, 6f, true);
             At(_sensitivity.Rect, 280f, 196f, 240f, 40f, 0.5f, 0.5f);
-            UiButton faster = UiKit.Button(_settings, "Plus sensible", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => _stepSensitivity?.Invoke(0.25f));
-            At(faster.Rect, 440f, 196f, 52f, 44f, 0.5f, 0.5f);
+            _faster = UiKit.Button(_settings, "Plus sensible", "bouton", "", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => _stepSensitivity?.Invoke(0.25f));
+            At(_faster.Rect, 440f, 196f, 52f, 44f, 0.5f, 0.5f);
             // Sous-lot V2.12.4 : qualité des textures (auto, pleine, moitié, quart), sauvegardée et appliquée tout de suite.
             _textures = UiKit.Button(_settings, "Textures", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, DeviceQuality.Cycle);
             At(_textures.Rect, 280f, 250f, 440f, 44f, 0.5f, 0.5f);
             // Sous-lot V2.13 (« le jeu est trop sombre ») : luminosité de 50 % à 200 %, par pas de 10, sauvegardée et appliquée en direct.
-            UiButton darker = UiKit.Button(_settings, "Moins lumineux", "bouton_sobre", "−", UiFace.Title, 24f, UiKit.Ink, () => BrightnessSetting.Step(-1));
-            At(darker.Rect, 120f, 304f, 52f, 44f, 0.5f, 0.5f);
+            _darker = UiKit.Button(_settings, "Moins lumineux", "bouton_sobre", "", UiFace.Title, 24f, UiKit.Ink, () => BrightnessSetting.Step(-1));
+            At(_darker.Rect, 120f, 304f, 52f, 44f, 0.5f, 0.5f);
             _brightness = UiText.Create(_settings, "Luminosité", UiFace.Bold, 18f, UiKit.Dawn, TextAnchor.MiddleCenter, 6f, true);
             At(_brightness.Rect, 280f, 304f, 240f, 40f, 0.5f, 0.5f);
-            UiButton brighter = UiKit.Button(_settings, "Plus lumineux", "bouton", "+", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => BrightnessSetting.Step(1));
-            At(brighter.Rect, 440f, 304f, 52f, 44f, 0.5f, 0.5f);
+            _brighter = UiKit.Button(_settings, "Plus lumineux", "bouton", "", UiFace.Title, 24f, new Color(0.1f, 0.05f, 0.02f), () => BrightnessSetting.Step(1));
+            At(_brighter.Rect, 440f, 304f, 52f, 44f, 0.5f, 0.5f);
             // Sous-lot V2.16 : le créateur de personnage (corps, coiffure, couleurs).
-            UiButton creator = UiKit.Button(_settings, "Mon personnage", "bouton_sobre", "Mon personnage…", UiFace.Bold, 18f, UiKit.Ink, () => _openCreator?.Invoke());
-            At(creator.Rect, 280f, 358f, 440f, 44f, 0.5f, 0.5f);
+            _creatorButton = UiKit.Button(_settings, "Mon personnage", "bouton_sobre", "", UiFace.Bold, 18f, UiKit.Ink, () => _openCreator?.Invoke());
+            At(_creatorButton.Rect, 280f, 358f, 440f, 44f, 0.5f, 0.5f);
             UiKit.Show(_settings, false);
         }
 
@@ -589,7 +607,7 @@ namespace EdS.Game
         public void LevelUp(int level, string detail)
         {
             _levelUpAge = 0f;
-            _levelUpTitle.Value = "Niveau " + level;
+            _levelUpTitle.Value = string.Format(UiTexts.Get(HudTextsV21.Level), level);
             _levelUpSub.Value = detail ?? "";
             UiKit.Show(_levelUp, true);
             UiSounds.Play(UiCue.LevelUp);   // essai réaliste 7 : fanfare
@@ -728,7 +746,7 @@ namespace EdS.Game
                 shard.Icon.sprite = UiKit.Icon(IconName(slot.SkillId));
                 shard.Icon.color = shard.Icon.sprite != null ? Color.white : new Color(0.25f, 0.3f, 0.4f);
                 shard.LastRemaining = slot.RemainingSeconds;
-                shard.Key.Value = slot.IsUltimate ? "R" : (slot.Slot + 1).ToString();
+                shard.Key.Value = slot.IsUltimate ? UiTexts.Get(HudTextsV21.UltimateKey) : (slot.Slot + 1).ToString();
             }
             if (slot.EnduranceCost != shard.ShownCost)
             {
@@ -828,8 +846,8 @@ namespace EdS.Game
                 if (key != _chipKey)
                 {
                     _chipKey = key;
-                    _chipText.Value = DisplayNames.Attack(v.NextAttack.Id) + " · " + (System.Math.Ceiling(next * 10) / 10).ToString("0.0") + " s"
-                        + (unblockable ? " · imparable" : "");
+                    string seconds = string.Format(UiTexts.Get(HudTextsV21.Seconds), (System.Math.Ceiling(next * 10) / 10).ToString("0.0"));
+                    _chipText.Value = DisplayNames.Attack(v.NextAttack.Id) + " · " + seconds + (unblockable ? " · " + UiTexts.Get(HudTextsV21.Unblockable) : "");
                     _chipText.Color = unblockable ? new Color(1f, 0.55f, 0.5f) : UiV21Art.BrightGold;
                 }
                 float urgency = Mathf.Clamp01(1f - (float)next / 2f);
@@ -854,9 +872,15 @@ namespace EdS.Game
             float k = UiKit.ReferenceHeight / Mathf.Max(1, Screen.height);
             At(plate.Node, screen.x * k, (Screen.height - screen.y) * k, 180f, 60f, 0.5f, 1f);
             plate.Node.localScale = new Vector3(_worldScale, _worldScale, 1f);
-            string name = DisplayNames.Of(other.Id);
-            plate.Name.Value = isTarget ? "» " + name : name;
-            plate.Name.Color = isTarget ? UiKit.Dawn : UiKit.Ink;
+            // Nom refait seulement quand l'étiquette change de combattant ou de rôle (cible ou non) : rien n'est alloué à chaque image.
+            if (plate.Id != other.Id || plate.IsTarget != isTarget)
+            {
+                plate.Id = other.Id;
+                plate.IsTarget = isTarget;
+                string name = DisplayNames.Of(other.Id);
+                plate.Name.Value = isTarget ? "» " + name : name;
+                plate.Name.Color = isTarget ? UiKit.Dawn : UiKit.Ink;
+            }
             CombatantView v = other.View;
             plate.Fill.fillAmount = v.Health is long h && v.MaxHealth is long max && max > 0 ? Mathf.Clamp01(h / (float)max) : 1f;
             bool telegraph = v.NextAttack != null && other.NextAttackSeconds is double && !v.IsDead;
@@ -971,10 +995,18 @@ namespace EdS.Game
             if (!on) return;
             AdventureMap map = a.Map;
             Texture2D painted = PaintedMap.For(map);
-            MapMarker me = null;
-            foreach (MapMarker m in a.MapMarkers())
-                if (m.Kind == MapMarkerKind.Player) { me = m; break; }
-            double cx = me?.X ?? (map.MinX + map.MaxX) / 2, cz = me?.Z ?? (map.MinZ + map.MaxZ) / 2;
+            // Centre de la carte à chaque image sans liste ; les repères (liste construite par la session) sont relus 4 fois par seconde.
+            if (!a.TryPlayerPosition(out double cx, out double cz))
+            {
+                cx = (map.MinX + map.MaxX) / 2;
+                cz = (map.MinZ + map.MaxZ) / 2;
+            }
+            if (_mapMarkers == null || !ReferenceEquals(_markersSession, a) || _time >= _markersAt)
+            {
+                _mapMarkers = a.MapMarkers();
+                _markersSession = a;
+                _markersAt = _time + MarkersPeriod;
+            }
             _mapImage.texture = painted;
             _mapImage.color = painted != null ? Color.white : UiKit.Night;
             _mapImage.uvRect = PaintedMap.Window(map, cx, cz, MapRadius);
@@ -984,8 +1016,9 @@ namespace EdS.Game
                 MapEnemy e = enemies[i];
                 Marker("repere_ennemi", e.X - cx, e.Z - cz, e.Boss ? 16f : 11f, e.Boss ? new Color(0.78f, 0.45f, 1f) : Color.white, false);
             }
-            foreach (MapMarker m in a.MapMarkers())
+            for (int i = 0; i < _mapMarkers.Count; i++)
             {
+                MapMarker m = _mapMarkers[i];
                 switch (m.Kind)
                 {
                     case MapMarkerKind.Npc: Marker("repere_rond", m.X - cx, m.Z - cz, 11f, Color.white, false); break;
@@ -1018,9 +1051,14 @@ namespace EdS.Game
             {
                 _questTitle.Value = followed.Name;
                 _questStep.Value = followed.Step ?? "";
-                _questProgress.Value = followed.Progress ?? "";
-                _questBar.fillAmount = Progress(followed.Progress);
-                UiKit.Show(_questBar, followed.Progress != null);
+                if (followed.Progress != _shownProgress || _shownProgress == null)
+                {
+                    // Avancée « 1 / 3 » relue seulement quand elle change (Progress découpe le texte).
+                    _shownProgress = followed.Progress;
+                    _questProgress.Value = followed.Progress ?? "";
+                    _questBar.fillAmount = Progress(followed.Progress);
+                    UiKit.Show(_questBar, followed.Progress != null);
+                }
             }
         }
 

@@ -202,12 +202,40 @@ namespace EdS.Game
             }
             Zones();
             _gestures.Update(Fingers(), _zones, Hud.Width);
-            // Tiroir « Plus » : le toucher l'ouvre ou le ferme ; un bouton du tiroir touché le referme après son action.
+            // Tiroir « Plus » : le toucher l'ouvre ou le ferme ; un bouton du tiroir touché le referme après son action ; un doigt posé
+            // ailleurs (hors du tiroir et de « Plus ») le referme aussi (relecture indépendante de la PR #161).
             if (Tapped(HudButton.More)) _drawerOpen = !_drawerOpen;
             else if (_drawerOpen)
+            {
                 for (int i = 0; i < _layout.UtilityCount; i++)
                     if (_layout.InDrawer(_layout.UtilityAt(i)) && Tapped(_layout.UtilityAt(i))) _drawerOpen = false;
+                if (_drawerOpen && DrawerDismissed(_fingers, _layout)) _drawerOpen = false;
+            }
         }
+
+        /// <summary>Un doigt vient de se poser hors du tiroir ouvert et hors du bouton « Plus » (le tiroir se referme).</summary>
+        private static bool DrawerDismissed(List<FingerPoint> fingers, HudLayoutV21 layout)
+        {
+            UiBox drawer = layout.Drawer, more = layout.Button(HudButton.More);
+            for (int i = 0; i < fingers.Count; i++)
+            {
+                FingerPoint f = fingers[i];
+                if (f.Phase == FingerPhase.Began && !drawer.Contains(f.X, f.Y) && !more.Contains(f.X, f.Y)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Le jeu signale à chaque image s'il y a un combat ; le tiroir se referme quand un combat commence (relecture indépendante de la
+        /// PR #161), puis peut se rouvrir pendant le combat.
+        /// </summary>
+        public void Fighting(bool fighting)
+        {
+            if (fighting && !_fighting) _drawerOpen = false;
+            _fighting = fighting;
+        }
+
+        private bool _fighting;
 
         /// <summary>Dessine le stick, les boutons et le tiroir (dans <c>OnGUI</c>, après <see cref="Hud.Begin"/>) ; rien quand un panneau les couvre.</summary>
         public void Draw(bool covered = false)

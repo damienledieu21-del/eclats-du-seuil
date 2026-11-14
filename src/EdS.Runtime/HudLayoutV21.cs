@@ -210,6 +210,9 @@ namespace EdS.Runtime
             Overflow = false;
             if (phone) LayoutPhone();
             else LayoutPc();
+            // On joue le téléphone à l'horizontale (cadrage, sujet 19 : « paysage pour jouer ») : en portrait, les cibles deviendraient
+            // trop petites ; la disposition le signale.
+            if (phone && width < height) Overflow = true;
         }
 
         // --- Accroches ------------------------------------------------------------------------------------------------------------------
@@ -396,7 +399,13 @@ namespace EdS.Runtime
             float limit = target.Bottom > map.Y && target.Y < map.Y + size ? target.Right + gap : Safe.X;
             int slots = 0;
             for (float x = map.X - gap - size; x >= limit - 0.01f; x -= size + gap) slots++;
-            slots = Math.Max(2, slots);
+            // Relecture indépendante de la PR #161 : deux places au moins (une action et « Plus ») ; si la cible les a mangées, la
+            // disposition le dit (Overflow) au lieu de poser la rangée sur la cible en silence.
+            if (slots < 2)
+            {
+                Overflow = true;
+                slots = 2;
+            }
             bool drawer = _utilityCount > slots;
             int inRow = drawer ? slots - 1 : _utilityCount;
             for (int i = 0; i < inRow; i++) Set(_utility[i], new UiBox(map.X - (i + 1) * (size + gap), map.Y, size, size));

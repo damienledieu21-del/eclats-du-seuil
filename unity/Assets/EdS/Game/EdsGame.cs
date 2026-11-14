@@ -907,6 +907,7 @@ namespace EdS.Game
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             UpdateHudLayout();
             _touch.Update(_hudLayout, AdventureCovered);
+            if (_touch.Active && _combat != null) _touch.Fighting(InFight());
             // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la
             // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
             // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
@@ -1524,9 +1525,21 @@ namespace EdS.Game
         }
 
         /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
+        /// <summary>Interface V2.1 : un ennemi visible et vivant est engagé (il poursuit ou attaque) : un combat est en cours.</summary>
+        private bool InFight()
+        {
+            foreach (OtherState o in _combat.Others())
+                if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && o.View.Engaged && _arena.Shown(o.Id)) return true;
+            return false;
+        }
+
+        private readonly List<MapEnemy> _mapEnemies = new List<MapEnemy>();
+
+        /// <summary>Ennemis montrés sur la carte (liste gardée d'une image à l'autre : interface V2.1, pas de nouvelle liste par image).</summary>
         private List<MapEnemy> AdventureEnemies()
         {
-            var enemies = new List<MapEnemy>();
+            List<MapEnemy> enemies = _mapEnemies;
+            enemies.Clear();
             foreach (OtherState o in _combat.Others())
                 if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
                     enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, _adventure.IsBoss(o.Id)));

@@ -140,7 +140,7 @@ namespace EdS.Game
             for (int i = 0; i < Tabs.Length; i++)
             {
                 int index = i;
-                UiText tab = Text(_panel, UiFace.Bold, 21f, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, Tabs[i].Width - 12f, 30f, 0f, 0.5f, 12f, true);
+                UiText tab = Text(_panel, UiFace.Bold, HudTextsV21.TabFont, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, Tabs[i].Width - 12f, 30f, 0f, 0.5f, 12f, true);
                 Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
                 UiKit.Fill(hit.rectTransform, -6f);
                 UiKit.Pointer(hit).Left = () => Tab(index);
@@ -188,6 +188,21 @@ namespace EdS.Game
             UiText text = UiText.Create(parent, "Texte", face, size, color, anchor, spacing, upper);
             UiKit.Place(text.Rect, new Vector2(x, y), new Vector2(w, h), new Vector2(px, py));
             return text;
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #161 : chaque onglet prend la largeur de son texte (police de 21, espacement de 12) au lieu d'une
+        /// largeur fixe ; refait seulement quand un libellé change. La place totale est vérifiée par InterfaceV21Tests.
+        /// </summary>
+        private void LayTabs()
+        {
+            float tx = HudTextsV21.TabStart;
+            for (int i = 0; i < _tabs.Count; i++)
+            {
+                float w = HudTextsV21.EstimateWidth(_tabs[i].Value, HudTextsV21.TabFont, HudTextsV21.TabSpacing) + 12f;
+                UiKit.Place(_tabs[i].Rect, new Vector2(tx, 72f), new Vector2(w, 30f), new Vector2(0f, 0.5f));
+                tx += w + HudTextsV21.TabPadding;
+            }
         }
 
         private RectTransform Page(AdventureScreens.Panel panel)
@@ -882,12 +897,16 @@ namespace EdS.Game
                 // Sous-lot V1.7 : le titre affiché (Guilde des aventuriers) sous le nom.
                 _subtitle.Value = $"Chevalier gardien · niveau {a.World.Level} · {a.PlaceName}" + (a.ShownTitle != null ? " · " + a.ShownTitle : "");
                 _close.Value = KeyOf(screens.Open) + " · " + a.Text("text.ui.close");
+                bool relayout = false;
                 for (int i = 0; i < _tabs.Count; i++)
                 {
-                    _tabs[i].Value = a.Text(Tabs[i].Key);
+                    string label = a.Text(Tabs[i].Key);
+                    if (label != _tabs[i].Value) relayout = true;
+                    _tabs[i].Value = label;
                     bool active = Tabs[i].Panel == screens.Open && Tabs[i].Panel != AdventureScreens.Panel.None;
                     _tabs[i].Color = active ? UiKit.Dawn : UiKit.Muted;
                 }
+                if (relayout) LayTabs();
                 foreach (KeyValuePair<AdventureScreens.Panel, RectTransform> page in _pages) UiKit.Show(page.Value, page.Key == screens.Open);
                 if (screens.Open != AdventureScreens.Panel.Inventory && screens.Open != AdventureScreens.Panel.Merchant) UiKit.Show(_tip, false);
                 if (screens.Open == AdventureScreens.Panel.Merchant) RefreshMerchant(a);   // sous-lot V1.1

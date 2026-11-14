@@ -279,4 +279,131 @@ public class InterfaceV21Tests
         Assert.True(loaded.Report.IsValid, loaded.Report.ToString());
         return loaded.Texts!;
     }
+
+    [Fact]
+    public void Portrait_et_element_du_milieu_trop_etroit_sont_signales()
+    {
+        var l = new HudLayoutV21();
+        l.Update(1080f * 1440f / 2960f, 1080f, UiInsets.None, true, HudMode.Adventure);   // Note8 en portrait
+        Assert.True(l.Overflow);
+        // Téléphone : l'unité baisse pour garder 768 unités, même avec une grande zone sûre ; rien ne déborde.
+        l.Update(1920f, 1080f, new UiInsets(700f, 0f, 0f, 0f), true, HudMode.Adventure);
+        Assert.False(l.Overflow);
+        // PC (unité fixe) : zone sûre énorme, la cible ne tient plus entre les bords même à sa largeur minimale : signalé, jamais en silence.
+        l.Update(1920f, 1080f, new UiInsets(700f, 0f, 0f, 0f), false, HudMode.Adventure);
+        Assert.True(l.Overflow);
+        l.Update(2220f, 1080f, UiInsets.None, true, HudMode.Adventure);
+        Assert.False(l.Overflow);
+    }
+
+    [Fact]
+    public void Balayage_des_formats_sans_debordement_signale_rien_ne_se_chevauche()
+    {
+        HudPart[] top = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Compass, HudPart.MiniMap, HudPart.Effects, HudPart.Quests };
+        var l = new HudLayoutV21();
+        int checkedLayouts = 0;
+        foreach (bool phone in new[] { true, false })
+            foreach (HudMode mode in Modes)
+                for (float w = 1100f; w <= 2700f; w += 40f)
+                    foreach (UiInsets safe in new[] { UiInsets.None, Notch, new UiInsets(0f, 0f, 160f, 0f), new UiInsets(40f, 40f, 40f, 40f) })
+                    {
+                        l.Update(w, 1080f, safe, phone, mode);
+                        if (l.Overflow) continue;
+                        checkedLayouts++;
+                        string where = $"{(phone ? "téléphone" : "PC")} {w}, {mode}, zone sûre {safe.Left}/{safe.Top}/{safe.Right}/{safe.Bottom}";
+                        for (int i = 0; i < top.Length; i++)
+                        {
+                            Assert.True(l[top[i]].Inside(l.Safe), $"{where} : {top[i]}");
+                            for (int j = i + 1; j < top.Length; j++) Assert.False(l[top[i]].Overlaps(l[top[j]]), $"{where} : {top[i]} et {top[j]}");
+                        }
+                        foreach (HudButton b in Used(l).Where(b => !l.InDrawer(b) && b != HudButton.Map))
+                        {
+                            Assert.True(l.Button(b).Inside(l.Safe), $"{where} : {b}");
+                            foreach (HudPart p in top) Assert.False(l.Button(b).Overlaps(l[p]), $"{where} : {b} sur {p}");
+                        }
+                    }
+        Assert.True(checkedLayouts > 600, checkedLayouts.ToString());
+    }
+
+    private static string Script(string name) => File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", name));
+
+    [Fact]
+    public void Onglets_du_livre_a_la_taille_de_leur_texte_et_qui_tiennent()
+    {
+        TextCatalog texts = Texts();
+        float x = HudTextsV21.TabStart;
+        foreach (string key in HudTextsV21.BookTabs)
+        {
+            Assert.True(texts.Has(key), key);
+            x += HudTextsV21.EstimateWidth(texts.Get(key), HudTextsV21.TabFont, HudTextsV21.TabSpacing) + 12f + HudTextsV21.TabPadding;
+        }
+        Assert.True(x - HudTextsV21.TabPadding <= HudTextsV21.TabEnd, $"onglets jusqu'à {x - HudTextsV21.TabPadding:0}, place jusqu'à {HudTextsV21.TabEnd}");
+        string book = Script("AdventureBook.cs");
+        int at = -1;
+        foreach (string key in HudTextsV21.BookTabs)
+        {
+            int next = book.IndexOf("\"" + key + "\"", StringComparison.Ordinal);
+            Assert.True(next > at, $"{key} absent ou hors d'ordre dans AdventureBook.cs");
+            at = next;
+        }
+        Assert.Contains("private void LayTabs()", book, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #161 : <c>GUI.skin</c> n'existe que pendant <c>OnGUI</c>. Le HUD et le livre sont construits dans
+    /// <c>Start</c> : ni eux ni le chargement des matières (<c>UiV21Art.Load</c>) ne touchent à IMGUI ; les styles se créent au premier dessin.
+    /// </summary>
+    [Fact]
+    public void Aucun_appel_IMGUI_hors_du_dessin()
+    {
+        string art = Script("UiV21Art.cs");
+        int load = art.IndexOf("private static void Load()", StringComparison.Ordinal);
+        Assert.True(load >= 0);
+        string loadBody = art.Substring(load, art.IndexOf("\n        }\n", load, StringComparison.Ordinal) - load);
+        Assert.DoesNotContain("GUI", loadBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Style(", loadBody, StringComparison.Ordinal);
+        foreach (string user in new[] { "DrawPanel", "DrawButton" })
+        {
+            int at = art.IndexOf("public static void " + user, StringComparison.Ordinal);
+            Assert.Contains("Styles();", art.Substring(at, 120), StringComparison.Ordinal);
+        }
+        foreach (string script in new[] { "HudView.cs", "AdventureBook.cs", "UiTexts.cs" })
+        {
+            string code = Script(script);
+            Assert.DoesNotContain("GUI.skin", code, StringComparison.Ordinal);
+            Assert.DoesNotContain("new GUIStyle", code, StringComparison.Ordinal);
+        }
+        // Commandes au doigt : leur style se crée dans Draw (appelé depuis OnGUI), jamais dans Update.
+        string touch = Script("TouchControls.cs");
+        int draw = touch.IndexOf("public void Draw(", StringComparison.Ordinal);
+        Assert.True(touch.IndexOf("GUI.skin", StringComparison.Ordinal) > draw);
+    }
+
+    /// <summary>Toute chaîne visible du HUD passe par les données de textes : aucun littéral avec des lettres n'est affiché tel quel.</summary>
+    [Fact]
+    public void Aucun_texte_visible_en_dur_dans_le_HUD()
+    {
+        var literal = new System.Text.RegularExpressions.Regex("\"((?:[^\"\\\\]|\\\\.)*)\"");
+        var letters = new System.Text.RegularExpressions.Regex("\\p{L}");
+        var button = new System.Text.RegularExpressions.Regex("UiKit\\.Button\\(\\s*[\\w.]+,\\s*\"[^\"]*\",\\s*\"[^\"]*\",\\s*\"([^\"]*)\"");
+        foreach (string script in new[] { "HudView.cs", "TouchControls.cs" })
+        {
+            string[] lines = Script(script).Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                if (line.TrimStart().StartsWith("//", StringComparison.Ordinal)) continue;
+                if (line.Contains(".Value =", StringComparison.Ordinal) || line.Contains("GUI.Label(", StringComparison.Ordinal))
+                    foreach (System.Text.RegularExpressions.Match m in literal.Matches(line))
+                        Assert.False(letters.IsMatch(m.Groups[1].Value), $"{script}:{i + 1} : « {m.Groups[1].Value} » affiché en dur");
+                foreach (System.Text.RegularExpressions.Match m in button.Matches(line))
+                    Assert.False(letters.IsMatch(m.Groups[1].Value), $"{script}:{i + 1} : bouton « {m.Groups[1].Value} » en dur");
+            }
+        }
+        // Toutes les clés déclarées servent (relecture : « résonance » et « fermer » étaient inutilisées).
+        string all = Script("HudView.cs") + Script("TouchControls.cs") + File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "src", "EdS.Runtime", "HudTextsV21.cs"));
+        foreach (System.Reflection.FieldInfo f in typeof(HudTextsV21).GetFields().Where(f => f.IsLiteral && f.FieldType == typeof(string) && ((string)f.GetValue(null)!).StartsWith("text.", StringComparison.Ordinal)))
+            Assert.Contains("HudTextsV21." + f.Name, Script("HudView.cs") + Script("TouchControls.cs"), StringComparison.Ordinal);
+        Assert.Contains("HudTextsV21.Compass", all, StringComparison.Ordinal);
+    }
 }
