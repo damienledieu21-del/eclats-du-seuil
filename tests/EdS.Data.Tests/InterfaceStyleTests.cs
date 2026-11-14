@@ -89,7 +89,7 @@ public class InterfaceStyleTests
         string[] sprites = System.Text.RegularExpressions.Regex.Matches(code, "UiKit\\.Sprite\\(\"([a-z_0-9]+)\"")
             .Select(m => m.Groups[1].Value).Concat(new[] { "eclat_1_masque", "eclat_5_cadre", "repere_ennemi", "repere_rond", "repere_objectif", "vague" })
             .Distinct().ToArray();
-        Assert.True(sprites.Length >= 25, string.Join(", ", sprites));
+        Assert.True(sprites.Length >= 10, string.Join(", ", sprites));   // interface V2.1 : le sceau et ses dessins ne sont plus demandés
         foreach (string sprite in sprites)
         {
             (int w, int h) = PngSize(Path.Combine(Root, Hud, sprite + ".png"));
@@ -157,7 +157,7 @@ public class InterfaceStyleTests
         Assert.Contains("private void LateUpdate()", game, StringComparison.Ordinal);
         Assert.Contains("!_menuOpen && !LobbyShown && _talents == null && _combat != null", game, StringComparison.Ordinal);
         Assert.Contains("&& !TalentsOpen;", game, StringComparison.Ordinal);
-        Assert.Contains("_hud.Player(player, _touch.Active, deltaTime);", game, StringComparison.Ordinal);
+        Assert.Contains("_hud.Player(player, deltaTime);", game, StringComparison.Ordinal);
         Assert.Contains("_hud.Help(_help && open, a.PlaceName,", game, StringComparison.Ordinal);
         Assert.DoesNotContain("Hud.Player(", game, StringComparison.Ordinal);
         Assert.DoesNotContain("DrawMini", game, StringComparison.Ordinal);
@@ -222,7 +222,7 @@ public class InterfaceStyleTests
         Assert.Contains("BuildViolation why = delta > 0 ? _editor.Add(node.Talent.Id) : _editor.Remove(node.Talent.Id);", view, StringComparison.Ordinal);
         Assert.Contains("string refusal = _apply(_editor.Build);", view, StringComparison.Ordinal);
         Assert.Contains("go.AddComponent<StandaloneInputModule>();", kit, StringComparison.Ordinal);
-        Assert.Contains("ButtonId.Talents", Read("unity", "Assets", "EdS", "Game", "TouchControls.cs"), StringComparison.Ordinal);
+        Assert.Contains("HudButton.Talents", Read("unity", "Assets", "EdS", "Game", "TouchControls.cs"), StringComparison.Ordinal);
         foreach (string sprite in new[] { "noeud_masque", "noeud_fond", "noeud_cadre", "noeud_cadre_sobre", "majeur_masque", "majeur_cadre", "anneau_progression",
                      "graine", "pip_on", "pip_off" })
             PngSize(Path.Combine(Root, Hud, sprite + ".png"));
@@ -379,8 +379,8 @@ public class InterfaceStyleTests
     public void Essai_7_branche()
     {
         string hud = Read("unity", "Assets", "EdS", "Game", "HudView.cs");
-        Assert.Contains("public const float ShardScale = 0.74f;", hud, StringComparison.Ordinal);
-        Assert.Contains("shard.Node.localScale = new Vector3(ShardScale, ShardScale, 1f);", hud, StringComparison.Ordinal);
+        // Interface V2.1 : les éclats deviennent des cases carrées aux places de HudLayoutV21 (tailles testées par InterfaceV21Tests).
+        Assert.Contains("UiBox b = l.Skill(i);", hud, StringComparison.Ordinal);
         Assert.Contains("ChargesShown = total > 0 && me.RampartCharges > 0;", hud, StringComparison.Ordinal);
         Assert.Contains("UiSounds.Play(UiCue.ChargeGained)", hud, StringComparison.Ordinal);
         Assert.Contains("UiSounds.Play(UiCue.SkillReady)", hud, StringComparison.Ordinal);
