@@ -772,7 +772,16 @@ namespace EdS.World
                 string? sector = _host?.Map.OwnerOf(boss.Forms[0].Placement!.Position);
                 if (sector != null && sector != _zoneSector) continue;
                 var fight = new BossFight(boss) { Sector = sector, Session = Zone };
-                _bossStarts.Add(fight.Start(Zone.Engine));
+                // Revue Codex de la PR #159 (4e tour) : une première forme refusée (liée à une cible absente de la session, place prise) laisse
+                // ce chef absent de la session, comme à l'ouverture d'un secteur ; la partie s'ouvre quand même.
+                try
+                {
+                    _bossStarts.Add(fight.Start(Zone.Engine));
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                    fight.Session = null;
+                }
                 _fights.Add(fight);
                 if (ReferenceEquals(boss, zone.Boss)) _boss = fight;
             }

@@ -68,6 +68,9 @@ namespace EdS.World
         private string _current;
         private bool _returning;
 
+        // Revue Codex de la PR #159 (4e tour) : forme liée à une cible absente de la session : le combat s'y arrête.
+        private bool _stalled;
+
         // Revue Codex de la PR #159 (1er tour) : état emporté au renouvellement de la session (place, PV, ressources), gardé jusqu'à l'arrivée
         // effective de la forme et réutilisé à chaque nouvel essai ; l'événement Carried n'est rendu qu'à cette arrivée.
         private CombatantPlacement? _carryPlace;
@@ -119,7 +122,7 @@ namespace EdS.World
         }
 
         /// <summary>Revue Codex de la PR #48 : formes encore à venir (places de combattants à leur garder).</summary>
-        public int FormsToCome => _over ? 0 : _boss.Forms.Count - 1 - _phase + (_nextAt != null ? 1 : 0);
+        public int FormsToCome => _over || _stalled ? 0 : _boss.Forms.Count - 1 - _phase + (_nextAt != null ? 1 : 0);
 
         /// <summary>Le combattant est la dernière forme du chef (son butin).</summary>
         public bool IsFinalForm(string combatant) => _phase == _boss.Forms.Count - 1 && combatant == _current;
@@ -127,7 +130,8 @@ namespace EdS.World
         /// <summary>Fait arriver la première forme (début de session).</summary>
         public BossEvent Start(CombatEngine engine)
         {
-            engine.Join(Copy(_boss.Forms[0], _current, engine));
+            engine.Join(Copy(_boss.Forms[0], _current, engine)
+                ?? throw new ArgumentException($"Forme « {_current} » liée à une cible absente de la session : elle n'y est pas simulée."));
             return new BossEvent(BossEventKind.FormArrived, _boss.Id, _current, 0, engine.CurrentTick);
         }
 
@@ -138,7 +142,7 @@ namespace EdS.World
 
         private IReadOnlyList<BossEvent> Step(CombatEngine engine, Zone? zone)
         {
-            if (_over) return Array.Empty<BossEvent>();
+            if (_over || _stalled) return Array.Empty<BossEvent>();
             // Revue Codex de la PR #159 (2e tour) : l'état emporté est consommé dès que l'arrivée de la forme a eu lieu (fait du moteur :
             // ArrivedTick), même si elle est déjà morte quand le combat l'examine (le moteur fait les arrivées puis les dégâts du tick), et
             // avant tout changement de phase : la forme suivante n'en hérite jamais.
@@ -214,7 +218,17 @@ namespace EdS.World
             string id = FreeIdentity(engine, form.Id);
             try
             {
-                engine.Join(Copy(form, id, engine, place, _carryPlace != null ? _carryState : null));
+                // Revue Codex de la PR #159 (4e tour) : une forme liée à une cible absente n'est pas simulée dans cette session ; le combat s'y
+                // arrête (aucun nouvel essai sans fin, aucune place gardée), comme une vie de population épuisée.
+                if (Copy(form, id, engine, place, _carryPlace != null ? _carryState : null) is not AssailantSetup ready)
+                {
+                    _stalled = true;
+                    _nextAt = null;
+                    _carryPlace = null;
+                    _carryState = null;
+                    return Array.Empty<BossEvent>();
+                }
+                engine.Join(ready);
             }
             catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
             {
@@ -277,9 +291,19 @@ namespace EdS.World
             return $"{form}_v{n}";
         }
 
-        private static AssailantSetup Copy(AssailantSetup t, string id, CombatEngine engine, CombatantPlacement? placement = null, CarriedState? carried = null) =>
-            new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
+        /// <summary>
+        /// La forme <paramref name="t"/> prête à arriver sous <paramref name="id"/>. Revue Codex de la PR #159 (4e tour) : ses références
+        /// adaptées aux combattants de la session par la règle unique du découpage et des populations (<see cref="CombatantReferences.Adapt"/>) :
+        /// une cible absente (dans un autre secteur) est retirée à une forme à comportement ; null pour une forme liée à une cible absente (elle
+        /// n'est pas simulée dans cette session). Toute arrivée d'une forme passe par ici : premier départ, forme suivante, emportée, retour.
+        /// </summary>
+        private static AssailantSetup? Copy(AssailantSetup t, string id, CombatEngine engine, CombatantPlacement? placement = null, CarriedState? carried = null)
+        {
+            var form = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
                 t.Triggers, t.Health, placement ?? t.Placement, checked(engine.CurrentTick * engine.TickMilliseconds), t.Behavior, carried);
+            var present = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
+            return CombatantReferences.Adapt(form, present.Contains);
+        }
 
         /// <summary>
         /// Place prise par un combattant présent, ou par un combattant qui arrive à ce même tick (revue Codex de la PR #48 : une réapparition
