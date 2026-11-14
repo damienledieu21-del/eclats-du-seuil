@@ -777,7 +777,7 @@ namespace EdS.World
                 if (ReferenceEquals(boss, zone.Boss)) _boss = fight;
             }
             if (_host != null && zone.Bosses.Count > 0)
-                _host.OnOpened(OpenedSector, s => zone.Bosses.Count(b => _host.Map.OwnerOf(b.Forms[0].Placement!.Position) == s));
+                _host.OnOpened(OpenedSector, JoinsAtBirth);
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
@@ -873,6 +873,28 @@ namespace EdS.World
                 else _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(b)), fight);
                 if (ReferenceEquals(b, main)) _boss = fight;
             }
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #159 : chefs qui arrivent dans la session qui naît dans <paramref name="sector"/> (borne exacte du
+        /// registre) : au renouvellement, ceux dont la forme du moment est là et vivante (emportée) ; à une ouverture, tous ceux du secteur
+        /// (première forme). Une forme à venir arrive après le tick : elle compte au tick suivant.
+        /// </summary>
+        private int JoinsAtBirth(string sector)
+        {
+            Zone? renewing = _host!.SectorZone(sector) is Zone z && z.IsOver ? z : null;
+            int n = 0;
+            foreach (Boss b in Definition!.Bosses)
+            {
+                if (_host.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
+                if (renewing is null) { n++; continue; }
+                BossFight? f = _fights.FirstOrDefault(x => ReferenceEquals(x.Boss, b));
+                if (f is null || !ReferenceEquals(f.Session, renewing)) { n++; continue; }   // pas de combat dans cette session : il recommence
+                if (f.IsDefeated || !renewing.Engine.CombatantIds.Contains(f.CurrentForm)) continue;   // vaincu, ou forme à venir
+                CombatantView v = renewing.Engine.View(f.CurrentForm);
+                if (v.IsPresent && !v.IsDead) n++;
+            }
+            return n;
         }
 
         /// <summary>Rang du chef dans la zone : les combats restent dans l'ordre des chefs (ordre stable des événements).</summary>
