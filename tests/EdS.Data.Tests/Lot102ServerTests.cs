@@ -216,8 +216,9 @@ public class Lot102ServerTests
     [InlineData(1, Rempart, "protocole 1 non pris en charge")]   // sous-lot 11.7 : le protocole 1 (lot 10) n'est plus servi
     [InlineData(2, Rempart, "protocole 2 non pris en charge")]   // sous-lot 11.9 : protocole 3 (marche à reculons)
     [InlineData(3, Rempart, "protocole 3 non pris en charge")]   // sous-lot V1.8 : protocole 4 (six places et l'ultime)
-    [InlineData(5, Rempart, "protocole 5 non pris en charge")]
-    [InlineData(4, "build.bastion.inconnu", "build de référence inconnu")]
+    [InlineData(4, Rempart, "protocole 4 non pris en charge")]   // esquive : protocole 5
+    [InlineData(6, Rempart, "protocole 6 non pris en charge")]
+    [InlineData(5, "build.bastion.inconnu", "build de référence inconnu")]
     public void Presentation_refusee(int protocol, string build, string expected)
     {
         var world = new World();
@@ -424,7 +425,8 @@ public class Lot102ServerTests
 
     [Theory]
     [InlineData(3)]   // relecture indépendante de la PR #82 : au protocole 3, l'emplacement 4 était l'ultime
-    [InlineData(5)]
+    [InlineData(4)]   // esquive : protocole 5
+    [InlineData(6)]
     public void Retour_avec_le_jeton_d_un_autre_protocole_refuse(int protocol)
     {
         var world = new World();
