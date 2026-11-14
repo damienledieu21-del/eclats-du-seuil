@@ -21,7 +21,25 @@ namespace EdS.World
 
         private void OpenEvents()
         {
-            if (Definition is { } zone && zone.Events.Count > 0 && InStoryZone) _events = new WorldEvents(zone, _storyZone ?? zone.Id);
+            // Sous-lot V2.28b (2c), décision de Damien du 14 novembre 2026 (« AAA », 3) : chaque événement joue dans le secteur de son lieu.
+            if (Definition is { } zone && zone.Events.Count > 0 && InStoryZone)
+                _events = new WorldEvents(zone, _storyZone ?? zone.Id, _host is null ? (Func<WorldEventDefinition, string?>?)null : e => _host.Map.OwnerOf(PlaceOf(e)));
+        }
+
+        /// <summary>Sous-lot V2.28b (2c) : lieu d'un événement : la place de sa première variante, sinon de sa première créature.</summary>
+        internal static GroundVector PlaceOf(WorldEventDefinition e) => e.Groups[0].Position ?? e.Groups[0].Creatures[0].Position;
+
+        /// <summary>Sous-lot V2.28b (2c) : session du secteur <paramref name="sector"/> (null : la session de la partie ; secteur fermé : null).</summary>
+        private Zone? SessionOfSector(string? sector) => sector is null ? Zone : _host!.SectorZone(sector);
+
+        /// <summary>Sous-lot V2.28b (2c) : formes de chefs à venir dans le secteur <paramref name="sector"/> (null : toutes).</summary>
+        private int FormsIn(string? sector)
+        {
+            if (sector is null) return FormsToCome;
+            int n = 0;
+            foreach (BossFight f in _fights)
+                if (f.Sector == sector && f.Session != null) n = checked(n + f.FormsToCome);
+            return n;
         }
 
         /// <summary>Sous-lot V2.5 : événements suivis dans la session (annoncés, en cours, qui finissent), pour l'affichage.</summary>
@@ -50,12 +68,15 @@ namespace EdS.World
         /// (combats en cours), et celles des événements du monde dans le secteur du personnage (une zone qui en a reste d'un seul secteur).
         /// Avec le seul secteur du cœur, exactement <see cref="ReservedPlaces"/>.
         /// </summary>
+        private Func<string?, Zone?>? _sessionOf;
+        private Func<string?, int>? _formsIn;
+
         internal int ReservedIn(string sector)
         {
             int forms = 0;
             foreach (BossFight f in _fights)
                 if (f.Sector == sector && f.Session != null) forms = checked(forms + f.FormsToCome);
-            return checked(forms + (sector == _zoneSector ? _events?.PendingPlaces ?? 0 : 0));
+            return checked(forms + (_events?.PendingIn(sector) ?? 0));   // sous-lot V2.28b (2c) : les événements de ce secteur
         }
 
         private Population? PopulationOfCombatant(string combatant) => PopulationOf(combatant) ?? _events?.Of(combatant);
@@ -85,6 +106,9 @@ namespace EdS.World
         public RiftRefusal CloseRift(string eventId)
         {
             if (_events is null) return RiftRefusal.NoRift;
+            // Sous-lot V2.28b (2c) : la faille se referme dans la session du secteur de son événement, où doit être le personnage.
+            if (_events.SectorOf(eventId ?? throw new ArgumentNullException(nameof(eventId))) is string sector && !ReferenceEquals(_host!.SectorZone(sector), Zone))
+                return _events.RiftOpenAnywhere(eventId) ? RiftRefusal.TooFar : RiftRefusal.NoRift;
             var notices = new List<WorldEventNotice>();
             RiftRefusal refusal = _events.CloseRift(this, Zone, eventId ?? throw new ArgumentNullException(nameof(eventId)), CombatantId, notices);
             _queuedNotices.AddRange(notices);
@@ -172,7 +196,7 @@ namespace EdS.World
         {
             var notices = new List<WorldEventNotice>(_queuedNotices);
             _queuedNotices.Clear();
-            if (_events != null) notices.AddRange(_events.Step(this, Zone, FormsToCome));
+            if (_events != null) notices.AddRange(_host is null ? _events.Step(this, Zone, FormsToCome) : _events.Step(this, Zone, _sessionOf ??= SessionOfSector, _formsIn ??= FormsIn));
             if (_events != null) StepScars(notices);   // sous-lot V2.6 : paliers gagnés avec les jours, fait « profonde »
             foreach (string fact in _eventFacts)
                 if (Narrative != null) Narrative.Learn(fact, story);

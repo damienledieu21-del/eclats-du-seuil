@@ -777,10 +777,10 @@ public class V228b2cChefsTests
     /// Croc-Gris affaibli ; l'archer bandit à 6 m du bord du cœur reculé. <see cref="Shape.ZoneSession"/> : sans région (zone en schéma 12,
     /// comme avant les secteurs) ; <see cref="Shape.Wide"/> : aire agrandie vers l'est jusqu'à x = 300 (deux secteurs).
     /// </summary>
-    private static ZoneDefinition Vallons(Shape shape)
+    private static ZoneDefinition Vallons(Shape shape, bool events = false, long? durationMs = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
-        root["data"]!.AsObject().Remove("events");
+        if (!events) root["data"]!.AsObject().Remove("events");   // V2.28b (2c), suite : avec eux, chacun lié au secteur de son lieu
         root["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "essai_croc", ["name"] = "Essai", ["position"] = new JsonArray(1, 34) });
         if (shape == Shape.ZoneSession)
         {
@@ -794,6 +794,7 @@ public class V228b2cChefsTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
             if (shape == Shape.Wide) s["data"]!["space"]!["bounds"]!["max"]![0] = 300;
+            if (durationMs is long ms) s["data"]!["durationMs"] = ms;   // relecture indépendante de la PR #160 : parité au-delà d'un renouvellement
             // Toutes les créatures frappent à peine : le personnage traverse le Vallon sans tomber (la parité porte sur le monde, pas sur sa mort).
             foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
                 foreach (JsonNode? attack in c!["attacks"]?.AsArray() ?? new JsonArray()) attack!["rawDamage"] = 1;
@@ -825,18 +826,18 @@ public class V228b2cChefsTests
     /// Joue <paramref name="ticks"/> ticks depuis <paramref name="safePoint"/> (Croc-Gris frappé s'il est là) ; rend la trace (ce
     /// que la partie rapporte, combattants du cœur tous les 100 ticks, sauvegarde), le journal et le nombre de secteurs ouverts au plus.
     /// </summary>
-    private static (string Trace, string Log, int Open) Trace(ZoneDefinition zone, int ticks, string safePoint = "essai_croc")
+    private static (string Trace, string Log, int Open) Trace(ZoneDefinition zone, int ticks, string safePoint = "essai_croc", long worldTick = 0)
     {
         long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 25);
         var log = new MemoryCombatLog();
-        var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithXp(xp)), zone, ShippedData, Progression,
+        var w = new WorldSession(new WorldSave(zone.Id, worldTick, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithXp(xp)), zone, ShippedData, Progression,
             ItemsCatalog, log: log, safePoint: safePoint);
         var trace = new StringBuilder();
         int open = 1;
         for (int i = 0; i < ticks; i++)
         {
             string? croc = w.BossForms.FirstOrDefault(f => f.StartsWith("croc_gris", StringComparison.Ordinal));
-            if (i % 20 == 1 && croc != null)
+            if (i % 20 == 1 && croc != null && !w.Zone.Engine.IsFinished)
                 try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", croc)); }
                 catch (ArgumentException) { }
             SessionStep step = w.Step();
@@ -847,6 +848,7 @@ public class V228b2cChefsTests
                     .Append(" vies ").Append(string.Join(",", step.Population.Select(p => $"{p.Kind}:{p.Population}:{p.Creature}:{p.Tick}")))
                     .Append(" chefs ").Append(string.Join(",", step.Boss.Select(b => $"{b.Kind}:{b.Boss}:{b.Form}:{b.Phase}:{b.Tick}")))
                     .Append(" récompenses ").Append(string.Join(",", step.Rewards.Select(r => $"{r.Item}x{r.Count}")))
+                    .Append(" monde ").Append(string.Join(",", step.Events.Select(e => $"{e.Kind}:{e.Event}:{e.Group}:{e.Day}:{e.Wave}")))
                     .Append(step.Defeated ? " tombé" : string.Empty).Append('\n');
             if (i % 100 == 99)
                 foreach (string id in w.Zone.Engine.CombatantIds)
@@ -856,11 +858,17 @@ public class V228b2cChefsTests
                 }
         }
         Assert.Equal(0, w.Passages);
+        trace.Append("renouvellements ").Append(w.Renewals).Append('\n');
         CombatantView end = w.Zone.Engine.View(w.CombatantId);
         trace.Append("fin ").Append(end.Position).Append(' ').Append(end.MoveDirection).Append(' ').Append(end.Health).Append(' ').Append(end.IsDead).Append(' ').Append(end.Counters.CommandsRejected).Append('\n');
         trace.Append(SaveJsonReader.Write(w.Save().WithResume(null)));
         return (trace.ToString(), log.ToString(), open);
     }
+
+    /// <summary>V2.28b (2c), suite : pour les essais des événements (0 : session de zone, 1 : hôte au cœur seul, 2 : hôte à deux secteurs).</summary>
+    internal static ZoneDefinition VallonsOf(int shape, bool events, long? durationMs = null) => Vallons((Shape)shape, events, durationMs);
+
+    internal static (string Trace, string Log, int Open) TraceOf(ZoneDefinition zone, int ticks, string safePoint, long worldTick) => Trace(zone, ticks, safePoint, worldTick);
 
     [Fact]
     public void Parite_Vallons_session_de_zone_contre_hote_au_coeur_seul()

@@ -1045,7 +1045,15 @@ namespace EdS.World
         /// renaît, ses créatures de départ <b>à l'heure du renouvellement</b> et une clé par joueur qui y arrive.
         /// </summary>
         /// <summary>Relecture indépendante de la PR #159 : morts possibles d'une session qui naîtrait maintenant dans <paramref name="sector"/> (sans ses joueurs).</summary>
-        private long Newborn(string sector) => checked(PlanSetup(sector, out _, out _, out _, out _).Combatants.Count + (_openedJoins?.Invoke(sector) ?? 0));
+        private long Newborn(string sector)
+        {
+            // Revue Codex de la PR #160 (2e tour) : la règle unique des morts qui inscrivent une clé (Zone.KeyedDeath) ; les combattants de
+            // départ ne sont jamais transitoires.
+            long n = 0;
+            foreach (CombatantSetup c in PlanSetup(sector, out _, out _, out _, out _).Combatants)
+                if (Zone.KeyedDeath(Zone.Mortal(c), transient: false)) n = checked(n + 1);
+            return checked(n + (_openedJoins?.Invoke(sector) ?? 0));
+        }
 
         private long RenewalNeed(IReadOnlyCollection<Open> renewing)
         {
@@ -1092,7 +1100,7 @@ namespace EdS.World
         /// autres personnages et les créatures) ; faux pour une créature (une forme de chef emportée), solide pour tout autre combattant, le
         /// personnage compris.</param>
         internal static GroundVector? FreeSpotOf(Zone zone, GroundVector at, Fixed radius, bool character) =>
-            FreeSpotOf(zone, new ObstacleIndex(zone.Setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()), at, radius, character);
+            FreeSpotOf(zone, zone.Walls, at, radius, character);   // relecture indépendante de la PR #160 : décor rangé une fois par session
 
         private static GroundVector? FreeSpotOf(Zone zone, ObstacleIndex walls, GroundVector at, Fixed radius, bool character)
         {

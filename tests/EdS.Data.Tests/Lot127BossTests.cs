@@ -236,7 +236,8 @@ public class Lot127BossTests
         ZoneDefinition shortened = Arena(zoneScenario: s => s["data"]!["durationMs"] = end * 50);
         WorldSession session = Play(shortened, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()));
         List<SessionStep> steps = Fight(session);
-        Assert.True(session.Zone.Engine.IsFinished);
+        // Sous-lot V2.28b (2c) : sur l'hôte, la session terminée est renouvelée aux ticks qui suivent ; la victoire reste reconnue.
+        Assert.True(session.Zone.Engine.IsFinished || session.Renewals > 0);
         Assert.True(session.BossDefeated);
         Assert.Equal(new[] { ("item.lame_du_seuil", 1) }, steps.SelectMany(s => s.Rewards));
         Assert.Contains("zone.vallons/boss/gardien_du_seuil", session.Save().Consumed);
