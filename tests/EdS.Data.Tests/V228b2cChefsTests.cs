@@ -435,6 +435,80 @@ public class V228b2cChefsTests
     }
 
     [Fact]
+    public void Forme_emportee_le_personnage_immobile_sur_sa_place_elle_arrive_a_cote()
+    {
+        // Revue Codex de la PR #159 (3e tour) : la recherche de place d'une forme de chef emportée tient le personnage pour solide (contact
+        // joueur-créature solide) : il se tient immobile sur la place de la forme, elle arrive à la place libre voisine (pas sur lui, refusée
+        // par le moteur, sans fin).
+        ZoneDefinition zone = Essai(chief: c =>
+        {
+            foreach (JsonNode? form in c["data"]!["combatants"]!.AsArray())
+                foreach (JsonNode? attack in form!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        });
+        SectorMap map = SectorMap.For(zone);
+        var source = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero()), zone, ShippedData, Progression, ItemsCatalog,
+            safePoint: "guet_est");
+        var hero = (CharacterSetup)source.Zone.Setup.Combatants.Single(c => c.Id == "bastion");
+        var spot = new GroundVector(Fixed.FromInt(330), Fixed.FromInt(60));
+        Boss boss = zone.Bosses.Single();
+        var from = new Zone(zone.Id, map.SetupFor("s01_00", 1), 1, 0,
+            entering: new[] { new CharacterSetup(hero.Id, hero.Team, hero.Class, hero.Build, hero.Initiative, new CombatantPlacement(new GroundVector(Fixed.FromInt(420), Fixed.FromInt(200)), WorldSession.CharacterRadius)) },
+            sector: "s01_00");
+        var old = new BossFight(boss);
+        old.Start(from.Engine);
+        for (int i = 0; i < 3; i++) from.Step();
+        Assert.Empty(old.Step(from));
+        // Session nouvelle : le personnage y est dès le départ, exactement sur la place du chef, et n'en bouge pas.
+        var to = new Zone(zone.Id, map.SetupFor("s01_00", 2, true), 2, 3,
+            entering: new[] { new CharacterSetup(hero.Id, hero.Team, hero.Class, hero.Build, hero.Initiative, new CombatantPlacement(spot, WorldSession.CharacterRadius)) },
+            sector: "s01_00");
+        BossFight fight = BossFight.Continue(old, from.Engine, to);
+        var events = new List<BossEvent>();
+        for (int i = 0; i < 100 && !events.Any(e => e.Kind == BossEventKind.Carried); i++)
+        {
+            to.Step();
+            events.AddRange(fight.Step(to));
+        }
+        BossEvent carried = Assert.Single(events, e => e.Kind == BossEventKind.Carried);
+        CombatantView chief = to.Engine.View(carried.Form);
+        Assert.True(chief.IsPresent);
+        GroundVector at = chief.Position!.Value;
+        double d = Math.Sqrt(Math.Pow((at.X.Raw - spot.X.Raw) / 1e4, 2) + Math.Pow((at.Z.Raw - spot.Z.Raw) / 1e4, 2));
+        Assert.InRange(d, 1.2, 8);   // à côté du personnage, pas sur lui
+    }
+
+    [Fact]
+    public void Plafond_du_registre_chef_emporte_en_attente_compte_dans_la_borne()
+    {
+        // Revue Codex de la PR #159 (3e tour) : une forme emportée encore en attente au renouvellement est réessayée dès la session suivante,
+        // avant son premier tick (Continue) : elle compte dans la borne. Juste à la borne : accepté entier ; une clé de plus : pas de
+        // renouvellement, rien ne lève. Sans elle dans la borne, le tick était accepté puis interrompu après le remplacement (tick partiel).
+        foreach (int spare in new[] { 0, -1 })
+        {
+            ZoneDefinition zone = Essai(scenario: s => s["data"]!["durationMs"] = 2_000);
+            var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+            var w = new WorldSession(new WorldSave(zone.Id, 0, 0, keys, Hero()), zone, ShippedData, Progression, ItemsCatalog, safePoint: "camp_est");
+            Assert.Equal("s01_00", w.Sector);
+            for (int i = 0; i < 30; i++) w.Step();
+            w.PendChiefForTest(Chef, 1_000);   // la forme quitte la session, emportée en attente jusqu'au renouvellement
+            while (!w.Zone.IsOver) w.Step();
+            Assert.DoesNotContain(w.Zone.Engine.CombatantIds, id => id.StartsWith(Chef, StringComparison.Ordinal) && w.Zone.Engine.View(id).IsPresent);
+            SectorWorld host = w.Host!;
+            long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
+            for (int i = 0; i < room - spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D4}"));
+            if (spare == 0)
+            {
+                w.Step();
+                Assert.Equal(1, w.Renewals);
+                Assert.Contains(w.Zone.Engine.CombatantIds, id => id.StartsWith(Chef, StringComparison.Ordinal));
+                continue;
+            }
+            Assert.False(w.RenewsSessions);
+            Assert.Equal(0, w.Renewals);
+        }
+    }
+
+    [Fact]
     public void Chef_vaincu_le_reste_au_renouvellement_recompense_en_attente_gardee_puis_donnee_une_fois()
     {
         // Sac plein à la victoire : la récompense attend. La session se renouvelle : le chef vaincu le reste (aucune forme), la récompense
