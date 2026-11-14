@@ -172,7 +172,7 @@ public class Lot114aSpaceDataTests
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (old.Path, old.Code));
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement, defs = root.GetProperty("$defs");
-        Assert.Equal(18, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(19, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         Assert.Equal("#/$defs/space", root.GetProperty("properties").GetProperty("data").GetProperty("properties").GetProperty("space").GetProperty("$ref").GetString());
         JsonElement combatant = defs.GetProperty("combatant").GetProperty("properties");
         Assert.All(new[] { "position", "facing", "radius", "speed" }, f => Assert.True(combatant.TryGetProperty(f, out _), f));

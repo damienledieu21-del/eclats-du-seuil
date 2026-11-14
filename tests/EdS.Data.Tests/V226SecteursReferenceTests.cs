@@ -55,7 +55,7 @@ public class V226SecteursReferenceTests
         Assert.Equal(("0.31.0", 25, 19, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement;
-        Assert.Equal(18, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(19, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         Assert.True(root.GetProperty("$defs").GetProperty("combatant").GetProperty("properties").TryGetProperty("carried", out _));
         Assert.Equal(4096, root.GetProperty("$defs").GetProperty("point").GetProperty("items").GetProperty("maximum").GetInt32());
     }
