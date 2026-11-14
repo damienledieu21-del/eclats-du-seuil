@@ -451,7 +451,7 @@ public class V228b2bAventureTests : IDisposable
     /// Données et scénarios copiés, Vallons agrandis vers l'est (jusqu'à x = 300 : deux secteurs, s07_06 et s08_06), sans chef ni événement
     /// du monde (sinon une seule session), avec un point sûr « seuil_est » près du bord ; durée de session réglable.
     /// </summary>
-    internal (string Data, string Scenarios) TwoSectorVallons(long? durationMs = null)
+    internal (string Data, string Scenarios) TwoSectorVallons(long? durationMs = null, int maxX = 300)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
@@ -463,7 +463,7 @@ public class V228b2bAventureTests : IDisposable
             }
         string scenarioPath = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject scenario = JsonNode.Parse(File.ReadAllText(scenarioPath))!.AsObject();
-        scenario["data"]!["space"]!["bounds"]!["max"]![0] = 300;
+        scenario["data"]!["space"]!["bounds"]!["max"]![0] = maxX;
         if (durationMs is long d) scenario["data"]!["durationMs"] = d;
         // Le bord du secteur du cœur (x = 140) passe à 6 m d'un archer bandit : il est reculé de 8 m (une population part de l'intérieur).
         scenario["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
@@ -584,6 +584,62 @@ public class V228b2bAventureTests : IDisposable
         Assert.Equal(1, a.Opened);
         Assert.True(a.Rest());
         Assert.Equal(2, a.Opened);
+    }
+
+    [Fact]
+    public void Aire_plus_large_que_deux_fenetres_carte_et_decor_de_la_fenetre_du_secteur()
+    {
+        // Sous-lot V2.28c : Vallons agrandis jusqu'à x = 1 000 (1 100 m de large, plus de deux fenêtres de 384 m) : la carte (petite carte,
+        // décor) est la fenêtre du secteur du personnage (son carré et 64 m autour, coupés à l'aire) ; elle change au passage ; la grande
+        // carte reste l'aire entière ; le relief se calcule sur l'aire entière. Images bornées : au plus 2 048 pixels de côté.
+        (string data, string scenarios) = TwoSectorVallons(maxX: 1000);
+        AdventureSession a = AtEastThreshold(data, scenarios);
+        AdventureMap west = a.Map, region = a.RegionMap;
+        Assert.Equal((-100.0, -70.0, 204.0, 100.0), (west.MinX, west.MinZ, west.MaxX, west.MaxZ));   // s07_06 : x de −116 à 140, 64 m autour, coupés à l'aire
+        Assert.Equal((-100.0, 1000.0), (region.MinX, region.MaxX));
+        Assert.Same(region, west.Whole);
+        Assert.Same(region, region.Whole);
+        Assert.Same(west, a.Map);   // gardée tant que le secteur ne change pas
+        Assert.All(west.Obstacles, o => Assert.True(o.Points.Max(p => p.X.Raw) >= -100 * 10_000 && o.Points.Min(p => p.X.Raw) <= 204 * 10_000));
+        Assert.True(region.Obstacles.Count >= west.Obstacles.Count);
+        Walk(a, 175, 0, () => a.World.Passages == 1);
+        Assert.Equal("s08_06", a.World.Sector);
+        AdventureMap east = a.Map;
+        Assert.NotSame(west, east);
+        Assert.NotEqual(west.Signature, east.Signature);   // image repeinte, décor refait au passage
+        Assert.Equal((76.0, 460.0), (east.MinX, east.MaxX));   // s08_06 : x de 140 à 396, 64 m autour
+        Assert.Same(region, a.RegionMap);
+        Assert.Same(region, east.Whole);
+        // Coût borné : la fenêtre d'un secteur tient en 2 048 pixels à plus de 5 pixels par mètre ; l'aire entière, en 2 048 aussi.
+        (int w, int h) = MapPainter.Size(east);
+        Assert.True(w <= 2048 && h <= 2048 && w >= (east.Width + 2 * MapPainter.Margin) * 5, $"{w} × {h}");
+        Assert.True(MapPainter.Size(region).Width <= 2048);
+        Assert.Equal(w * h * 4, MapPainter.Paint(east, w, h).Length);
+    }
+
+    [Fact]
+    public void Fenetre_d_une_aire_de_toute_la_region_bornee()
+    {
+        // Sous-lot V2.28c : l'aire de toute la région des Vallons (4 096 × 3 072 m) : fenêtre d'un secteur au plus 384 m de côté, image au
+        // plus 2 048 pixels de côté (16 Mo en RVBA), obstacles de la fenêtre seulement.
+        var obstacles = Enumerable.Range(0, 32).Select(i => new SpaceObstacle($"o{i}", new[] { V228b2PassageTests.At(-1900 + 128 * i, 0), V228b2PassageTests.At(-1898 + 128 * i, 0), V228b2PassageTests.At(-1898 + 128 * i, 2) }));
+        var area = new CombatSpace(V228b2PassageTests.At(-1908, -1614), V228b2PassageTests.At(2188, 1458), obstacles);
+        Assert.True(AdventureMap.Wide(area));
+        RegionGrid grid = RegionGrid.Vallons();
+        long M(int m) => m * 10_000L;
+        var rect = (M(grid.OriginX + 7 * 256), M(grid.OriginZ + 6 * 256), M(grid.OriginX + 8 * 256), M(grid.OriginZ + 7 * 256));   // s07_06
+        CombatSpace window = AdventureMap.WindowOf(area, rect);
+        Assert.Equal(384L * 10_000, window.Max.X.Raw - window.Min.X.Raw);
+        Assert.Equal(384L * 10_000, window.Max.Z.Raw - window.Min.Z.Raw);
+        Assert.InRange(window.Obstacles.Count, 2, 4);   // ceux dont la boîte touche la fenêtre seulement
+        var map = new AdventureMap(window, Array.Empty<MapPlace>());
+        (int w, int h) = MapPainter.Size(map);
+        Assert.True(w <= 2048 && h <= 2048);
+        var whole = new AdventureMap(area, Array.Empty<MapPlace>());
+        Assert.Equal(2048, MapPainter.Size(whole).Width);
+        Assert.True(MapPainter.Size(whole).Height <= 2048);
+        // Une aire d'au plus deux fenêtres garde la carte de l'aire entière (V2.28b (3)).
+        Assert.False(AdventureMap.Wide(new CombatSpace(V228b2PassageTests.At(0, 0), V228b2PassageTests.At(768, 768))));
     }
 
     [Fact]

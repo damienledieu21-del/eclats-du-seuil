@@ -1520,18 +1520,67 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Sous-lot 12.9d : carte de la zone pour la session ouverte (décor de son espace : une porte ouverte n'y est plus ; lieux nommés).
-        /// Recalculée à chaque nouvelle session.
+        /// Recalculée à chaque nouvelle session. Sous-lot V2.28b (3) : une zone à plusieurs secteurs a la carte et le décor de son aire entière
+        /// (gardés d'un passage à l'autre). Sous-lot V2.28c : une aire plus grande qu'une fenêtre (<see cref="AdventureMap.WindowMeters"/>,
+        /// la surface étendue des Vallons) a la carte et le décor d'une <b>fenêtre</b> autour du secteur du personnage (son carré et
+        /// <see cref="AdventureMap.WindowMarginMeters"/> m autour, coupés à l'aire : la session du secteur, marge comprise, y tient) ; elle
+        /// change quand il passe dans un autre secteur (mini-carte repeinte et décor refait à ce moment-là, coût borné). La carte de l'aire
+        /// entière : <see cref="RegionMap"/>.
         /// </summary>
         public AdventureMap Map
         {
             get
             {
-                // Sous-lot V2.28b (3) : une zone à plusieurs secteurs a la carte et le décor de son aire entière (tous les secteurs ouverts et
-                // les autres), la même d'un passage à l'autre : ni carte repeinte ni décor refait au passage.
-                CombatSpace? space = World.AreaSpace ?? World.Zone.Setup.Space;
-                if (_map is null || _mapSession != Opened || !CombatDisplay.SameSpace(_mapSpace, space))   // sous-lot V2.28b (2b) : comme Paths
+                CombatSpace? area = World.AreaSpace;
+                CombatSpace space = area ?? World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace.");
+                string? sector = area != null && AdventureMap.Wide(area) ? World.Sector ?? _mapSector ?? World.HomeSector : null;
+                if (_map is null || _mapSession != Opened || _mapSector != sector || !CombatDisplay.SameSpace(_mapSpace, space))   // sous-lot V2.28b (2b) : comme Paths
                 {
-                    _map = new AdventureMap(space ?? throw new InvalidOperationException("Zone sans espace."),
+                    if (sector != null && World.SectorRect(sector) is { } rect)
+                    {
+                        _map = BuildMap(AdventureMap.WindowOf(space, rect));
+                        _map.Whole = WholeMap(space);   // relief et ombrage d'après l'aire entière : sans couture d'une fenêtre à l'autre
+                    }
+                    else _map = BuildMap(space);
+                    _mapSession = Opened;
+                    _mapSpace = space;
+                    _mapSector = sector;
+                }
+                return _map;
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c : carte de l'aire entière (la grande carte), égale à <see cref="Map"/> tant que l'aire tient dans une fenêtre. Son
+        /// image reste bornée (<see cref="MapPainter.Size"/> : au plus 2 048 pixels de côté).
+        /// </summary>
+        public AdventureMap RegionMap
+        {
+            get
+            {
+                AdventureMap map = Map;
+                return _mapSector is null ? map : WholeMap(_mapSpace!);
+            }
+        }
+
+        private AdventureMap WholeMap(CombatSpace space)
+        {
+            if (_regionMap is null || _regionSession != Opened || !CombatDisplay.SameSpace(_regionSpace, space))
+            {
+                _regionMap = BuildMap(space);
+                _regionSession = Opened;
+                _regionSpace = space;
+            }
+            return _regionMap;
+        }
+
+        private string? _mapSector;
+        private AdventureMap? _regionMap;
+        private int _regionSession = -1;
+        private CombatSpace? _regionSpace;
+
+        private AdventureMap BuildMap(CombatSpace space) =>
+            new AdventureMap(space,
                         _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
                         Roads(_zone),
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
@@ -1545,12 +1594,6 @@ namespace EdS.Runtime
                         _zone.Passages.Select(p => _zone.Setup.Space?.Obstacles.FirstOrDefault(o => o.Id == p.Obstacle)).Where(o => o != null)!,
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
                         _zone.Indoor ? null : _zone.Region);
-                    _mapSession = Opened;
-                    _mapSpace = space;
-                }
-                return _map;
-            }
-        }
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
 

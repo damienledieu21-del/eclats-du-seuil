@@ -27,40 +27,70 @@ namespace EdS.Game
     /// </summary>
     public static class PaintedMap
     {
-        private static AdventureMap _source;
-        private static Task<byte[]> _work;
-        private static Texture2D _texture;
-        private static int _width, _height;
+        /// <summary>Une image peinte : sa carte, son calcul en cours, sa texture.</summary>
+        private sealed class Slot
+        {
+            public AdventureMap Source;
+            public Task<byte[]> Work;
+            public Texture2D Texture;
+            public int Width, Height;
+            public int Used;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c : au plus deux images à la fois (la fenêtre du secteur pour la petite carte, l'aire entière pour la grande ; une
+        /// seule quand elles sont la même carte), chacune d'au plus 2 048 pixels de côté (<see cref="MapPainter.Size"/>) : 32 Mo au plus.
+        /// </summary>
+        private const int MaxSlots = 2;
+
+        private static readonly System.Collections.Generic.List<Slot> _slots = new System.Collections.Generic.List<Slot>();
+        private static int _clock;
 
         /// <summary>Texture de la carte <paramref name="map"/>, ou null si elle n'est pas encore prête (ou impossible).</summary>
         public static Texture2D For(AdventureMap map)
         {
             if (map == null) return null;
+            _clock++;
+            Slot slot = null;
             // Vallons agrandis : une nouvelle carte de même signature (une halte) garde l'image ; une porte ouverte la fait repeindre.
-            if (!ReferenceEquals(map, _source) && _source != null && map.Signature == _source.Signature) _source = map;
-            if (!ReferenceEquals(map, _source))
+            foreach (Slot s in _slots)
+                if (ReferenceEquals(s.Source, map) || s.Source.Signature == map.Signature)
+                {
+                    s.Source = map;
+                    slot = s;
+                    break;
+                }
+            if (slot == null)
             {
-                _source = map;
-                if (_texture != null) UnityEngine.Object.Destroy(_texture);
-                _texture = null;
-                (_width, _height) = MapPainter.Size(map);
-                int w = _width, h = _height;
-                _work = Task.Run(() => MapPainter.Paint(map, w, h));
+                if (_slots.Count >= MaxSlots)
+                {
+                    Slot oldest = _slots[0];
+                    foreach (Slot s in _slots)
+                        if (s.Used < oldest.Used) oldest = s;
+                    if (oldest.Texture != null) UnityEngine.Object.Destroy(oldest.Texture);
+                    _slots.Remove(oldest);
+                }
+                slot = new Slot { Source = map };
+                (slot.Width, slot.Height) = MapPainter.Size(map);
+                int w = slot.Width, h = slot.Height;
+                slot.Work = Task.Run(() => MapPainter.Paint(map, w, h));
+                _slots.Add(slot);
             }
-            if (_texture == null && _work != null && _work.IsCompleted)
+            slot.Used = _clock;
+            if (slot.Texture == null && slot.Work != null && slot.Work.IsCompleted)
             {
-                if (_work.Exception != null) Debug.LogException(_work.Exception.GetBaseException());
+                if (slot.Work.Exception != null) Debug.LogException(slot.Work.Exception.GetBaseException());
                 else
                 {
-                    _texture = new Texture2D(_width, _height, TextureFormat.RGBA32, false);
-                    _texture.filterMode = FilterMode.Bilinear;
-                    _texture.wrapMode = TextureWrapMode.Clamp;
-                    _texture.LoadRawTextureData(_work.Result);
-                    _texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image (7 Mo) gardée en mémoire
+                    slot.Texture = new Texture2D(slot.Width, slot.Height, TextureFormat.RGBA32, false);
+                    slot.Texture.filterMode = FilterMode.Bilinear;
+                    slot.Texture.wrapMode = TextureWrapMode.Clamp;
+                    slot.Texture.LoadRawTextureData(slot.Work.Result);
+                    slot.Texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image (7 Mo) gardée en mémoire
                 }
-                _work = null;
+                slot.Work = null;
             }
-            return _texture;
+            return slot.Texture;
         }
 
         /// <summary>
@@ -81,13 +111,12 @@ namespace EdS.Game
             return new Rect((float)(m / w), (float)(m / d), (float)(map.Width / w), (float)(map.Depth / d));
         }
 
-        /// <summary>Oublie la carte (nouvelle aventure).</summary>
+        /// <summary>Oublie les cartes (nouvelle aventure).</summary>
         public static void Forget()
         {
-            _source = null;
-            _work = null;
-            if (_texture != null) UnityEngine.Object.Destroy(_texture);
-            _texture = null;
+            foreach (Slot s in _slots)
+                if (s.Texture != null) UnityEngine.Object.Destroy(s.Texture);
+            _slots.Clear();
         }
     }
 }

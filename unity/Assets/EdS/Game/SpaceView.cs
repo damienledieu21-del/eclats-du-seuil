@@ -99,6 +99,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.27 : rectangle couvert par le sol de la zone (x, z) ; vide dans une pièce.</summary>
         public Rect Covered { get; private set; }
 
+        /// <summary>Sous-lot V2.28c : bornes de l'aire entière (celles de l'espace, sauf pour une fenêtre de l'aire).</summary>
+        private (double MinX, double MinZ, double MaxX, double MaxZ) _whole;
+
         /// <summary>Clé du décor d'un espace et d'une carte (<see cref="Key"/>).</summary>
         public static string KeyOf(CombatSpace space, AdventureMap map)
         {
@@ -172,10 +175,12 @@ namespace EdS.Game
             }
             // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit). Essai réaliste : en pavés.
             Material border = Built(StyleSurface.Cobble, new Color(0.3f, 0.27f, 0.22f), out float borderTile);
-            Border("Bord ouest", new Vector3(minX - 0.15f, 0f, minZ - 0.3f), new Vector3(minX - 0.15f, 0f, maxZ + 0.3f), border, borderTile);
-            Border("Bord est", new Vector3(maxX + 0.15f, 0f, minZ - 0.3f), new Vector3(maxX + 0.15f, 0f, maxZ + 0.3f), border, borderTile);
-            Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
-            Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
+            // Sous-lot V2.28c : décor d'une fenêtre de l'aire (surface étendue) : seuls les vrais bords de l'aire ont leur muret.
+            _whole = map != null ? (map.Whole.MinX, map.Whole.MinZ, map.Whole.MaxX, map.Whole.MaxZ) : (minX, minZ, maxX, maxZ);
+            if (minX <= _whole.MinX) Border("Bord ouest", new Vector3(minX - 0.15f, 0f, minZ - 0.3f), new Vector3(minX - 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            if (maxX >= _whole.MaxX) Border("Bord est", new Vector3(maxX + 0.15f, 0f, minZ - 0.3f), new Vector3(maxX + 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            if (minZ <= _whole.MinZ) Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
+            if (maxZ >= _whole.MaxZ) Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
@@ -511,6 +516,8 @@ namespace EdS.Game
             bool debris = catalog.Debris != null && catalog.Debris.Length > 0;
             for (int i = 0; i < spots.Count; i++)
             {
+                // Sous-lot V2.28c : la lisière n'est plantée qu'au-delà des vrais bords de l'aire (pas au bord d'une fenêtre, en plein monde).
+                if (spots[i].X >= _whole.MinX && spots[i].X <= _whole.MaxX && spots[i].Z >= _whole.MinZ && spots[i].Z <= _whole.MaxZ) continue;
                 string id = "lisiere" + i;
                 var at = new Vector3((float)spots[i].X, Ground((float)spots[i].X, (float)spots[i].Z, 0.4f), (float)spots[i].Z);   // V2.24 : sur les collines
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.

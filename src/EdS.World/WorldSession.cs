@@ -189,6 +189,12 @@ namespace EdS.World
         /// <summary>Sous-lot V2.28b (2) : secteur de simulation où se trouve le personnage (null hors de l'hôte des secteurs).</summary>
         public string? Sector => _host?.SectorOf(_character.Id);
 
+        /// <summary>Sous-lot V2.28c : secteur du cœur (là où l'on entre), ou null hors de l'hôte.</summary>
+        public string? HomeSector => _host?.Map.HomeSector;
+
+        /// <summary>Sous-lot V2.28c : rectangle (bornes brutes, sans la marge) du secteur <paramref name="sector"/>, ou null hors de l'hôte.</summary>
+        public (long MinX, long MinZ, long MaxX, long MaxZ)? SectorRect(string sector) => _host?.Map.Rect(sector);
+
         /// <summary>
         /// Sous-lot V2.28b (2) : l'événement <paramref name="key"/> est-il au registre du monde ? Sur l'hôte des secteurs : le registre du
         /// monde et celui de chaque session ouverte (une découverte faite dans un secteur vaut dans les autres) ; sinon celui de la session.

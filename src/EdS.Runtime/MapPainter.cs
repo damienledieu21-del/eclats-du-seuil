@@ -249,7 +249,7 @@ namespace EdS.Runtime
             }
 
             // Sous-lot V2.24 : léger ombrage du relief affiché (lumière du nord-ouest), lu sur une grille d'un mètre calculée une fois.
-            GroundRelief relief = GroundRelief.For(map);
+            GroundRelief relief = GroundRelief.For(map.Whole);   // sous-lot V2.28c : relief de l'aire entière (fenêtre sans couture)
             int gw = (int)Math.Ceiling(w) + 2, gd = (int)Math.Ceiling(d) + 2;
             double[,]? ground = relief.IsFlat ? null : new double[gw, gd];
             if (ground != null)
