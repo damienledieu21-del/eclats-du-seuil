@@ -980,6 +980,10 @@ namespace EdS.Data.Zones
                 else CheckEvents(d.Events, space, places, populations, items, scenario?.Combat.TickMilliseconds ?? 50, report, events,
                     scenario?.Progression.MaxLevel ?? EdS.Domain.Builds.ProgressionRules.MaxLevelLimit, schema11, SaveValidator.IsZoneId(d.Id) ? d.Id : null, schema12);
             }
+            // Sous-lot V2.28b (2c), décision de Damien du 14 novembre 2026 (« AAA », 3) : dans une zone à région, chaque événement du monde est lié
+            // au secteur de son lieu : toutes ses variantes (place, créatures, échos rôdeurs) y tiennent, à au moins 8 m de ses bords intérieurs.
+            if (region != null && space != null)
+                for (int i = 0; i < events.Count; i++) CheckEventSector(events[i], d.Events!.FindIndex(x => x?.Id == events[i].Id), region, space, report);
             // Sous-lot V2.25.3 : bornes par case de la région (lieux, portes, routes qui touchent la case).
             if (region != null && space != null)   // éléments déjà dans l'aire, donc dans la région
             {
@@ -1170,6 +1174,34 @@ namespace EdS.Data.Zones
         /// Sous-lot V2.28b (2c) : les formes d'un chef d'une zone à région sont toutes dans le secteur de sa première forme, à au moins
         /// <see cref="MinSectorInset"/> de ses bords intérieurs (au-delà, un autre secteur simulé).
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.28b (2c), décision de Damien du 14 novembre 2026 (« AAA », 3) : un événement du monde d'une zone à région est lié au
+        /// secteur de son lieu (place de sa première variante, sinon sa première créature) : chaque place de variante, créature et écho
+        /// rôdeur y est, à au moins <see cref="MinSectorInset"/> de ses bords intérieurs.
+        /// </summary>
+        private static void CheckEventSector(WorldEventDefinition e, int index, RegionGrid region, CombatSpace space, ValidationReport report)
+        {
+            GroundVector lieu = e.Groups[0].Position ?? e.Groups[0].Creatures[0].Position;
+            if (!region.Contains(lieu)) return;
+            string sector = region.CellOf(lieu).SectorName;
+            string path = $"$.data.events[{index}]";
+            void Check(string at, GroundVector p, string what)
+            {
+                if (!region.Contains(p) || region.CellOf(p).SectorName != sector)
+                    report.Add(at, ValidationCode.InvalidValue, $"{what} hors du secteur du lieu de l'événement « {e.Id} » ({sector}) : un événement est lié au secteur de son lieu.");
+                else if (InnerEdgeDistance(region, space, p) is Fixed inset && inset < MinSectorInset)
+                    report.Add(at, ValidationCode.OutOfRange, $"{what} à moins de {MinSectorInset} m du bord de son secteur ({sector}) : un événement part de l'intérieur de son secteur.");
+            }
+            for (int g = 0; g < e.Groups.Count; g++)
+            {
+                WorldEventGroup group = e.Groups[g];
+                string gp = $"{path}.groups[{g}]";
+                if (group.Position is GroundVector place) Check(gp + ".position", place, "place de la variante");
+                for (int c = 0; c < group.Creatures.Count; c++) Check($"{gp}.creatures[{c}].position", group.Creatures[c].Position, "créature");
+                for (int h = 0; h < group.Haunts.Count; h++) Check($"{gp}.haunts[{h}].position", group.Haunts[h].Position, "écho rôdeur");
+            }
+        }
+
         private static void CheckBossSector(Boss boss, string path, RegionGrid region, CombatSpace space, ValidationReport report)
         {
             AssailantSetup first = boss.Forms[0];
