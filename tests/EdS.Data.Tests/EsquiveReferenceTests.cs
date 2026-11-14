@@ -18,7 +18,7 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// Esquive (décision de Damien du 14 novembre 2026, qui revient sur L11-D4) : moteur 0.32.0, journal au format 26, règles en schéma 17
-/// (contenu 0.18.0, bloc <c>combat.dodge</c>), scénarios en schéma 19 (action <c>dodge</c>), instantané au format 7. Nouvelle référence
+/// (contenu 0.18.0, bloc <c>combat.dodge</c>), scénarios en schéma 20 (action <c>dodge</c> ; 19 : V2.28c), instantané au format 7. Nouvelle référence
 /// figée <c>Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0</c> : les journaux de la référence 0.31.0 y ont exactement le même corps
 /// (seul l'en-tête change), plus <c>espace_esquive</c> (coup imparable esquivé, coup reçu sans esquive, bond arrêté par un mur, recharge,
 /// mur collé, bord de l'aire, bond vers l'arrière). Les anciennes références restent figées et refusées au rejeu.
@@ -54,7 +54,7 @@ public class EsquiveReferenceTests
     [Fact]
     public void Versions_et_regles_livrees()
     {
-        Assert.Equal(("0.32.0", 26, 19, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.FromInt(3), 150L, 300L, 20L, 1000L),
@@ -149,7 +149,7 @@ public class EsquiveReferenceTests
         AssertError(ReadMutated(r => Cmd(r, 0)["skill"] = "skill.bastion.frappe_du_rempart", scenario: Esquive), "$.data.commands[0].skill");
         Assert.False(ReadMutated(r => Cmd(r, 0)["actor"] = "ogre", scenario: Esquive).IsValid);   // une créature n'esquive pas
         Assert.False(ReadMutated(r => Cmd(r, 0)["direction"] = new JsonArray(0, 0), scenario: Esquive).IsValid);
-        AssertError(ReadMutated(r => r["schemaVersion"] = 18, scenario: Esquive), "$.schemaVersion");
+        AssertError(ReadMutated(r => r["schemaVersion"] = 19, scenario: Esquive), "$.schemaVersion");
         // Une direction reste réservée à move et dodge.
         AssertError(ReadMutated(r => { Cmd(r, 0)["action"] = "parry"; }, scenario: Esquive), "$.data.commands[0].direction");
     }
@@ -159,7 +159,7 @@ public class EsquiveReferenceTests
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
-        Assert.Equal(19, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(20, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Contains("dodge", scenario.ToJsonString());
         JsonNode dodge = rules["properties"]!["data"]!["properties"]!["combat"]!["properties"]!["dodge"]!;

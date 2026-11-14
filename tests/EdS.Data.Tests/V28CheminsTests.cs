@@ -58,7 +58,7 @@ public class V28CheminsMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.32.0", 26, 19, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((8, 8_192), (CombatEngine.MaxPathQueriesPerTick, CombatEngine.MaxPathExpanded));
     }
 

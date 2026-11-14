@@ -53,7 +53,7 @@ public class V18dBonusModifieDataTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.32.0", 26, 19, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal("gear", CombatActionIds.Of(CombatAction.Gear));
         Assert.DoesNotContain("gear", CombatActionIds.Named);   // écrite à part, comme consume
     }
@@ -97,7 +97,7 @@ public class V18dBonusModifieDataTests
     {
         using JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement command = schema.RootElement.GetProperty("$defs").GetProperty("command");
-        Assert.Equal(19, schema.RootElement.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());   // V2.4 : 16
+        Assert.Equal(20, schema.RootElement.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());   // V2.4 : 16
         JsonElement gear = command.GetProperty("properties").GetProperty("gear");
         Assert.Equal(GearBonus.Fields, gear.GetProperty("properties").EnumerateObject().Select(p => p.Name));
         Assert.All(gear.GetProperty("properties").EnumerateObject(), p => Assert.Equal(GearBonus.MaxValue, p.Value.GetProperty("maximum").GetInt32()));

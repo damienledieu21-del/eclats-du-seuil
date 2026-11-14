@@ -245,6 +245,15 @@ Relevés le 19 octobre 2026 en confrontant le cadrage aux documents et au code, 
 | **E11** | Première version du plan : questions Q1 à Q10, numérotées autrement (Q7 défaite, Q8 deuxième joueur…) | Q1 à Q40 du questionnaire | **Appliqué** : numérotation Q1 à Q40 partout |
 | **E12** | `CLAUDE.md` : « Après le lot 8 viennent le prototype Unity 3D, puis un serveur autoritaire » ; liste de lecture sans ce registre | — | **Appliqué** : `CLAUDE.md` et `AGENTS.md` renvoient à ce registre |
 
+## 7 bis. Compagnons et boss du monde (Retenu)
+
+Décisions de Damien rapportées par la session principale ; elles précisent le sujet 11 « Compagnons » de la [feuille de route](FEUILLE_DE_ROUTE.md) (en solo, un compagnon, puis deux plus tard dans l'histoire).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Deuxième place de compagnon | Elle s'ouvre **par l'histoire**, à la **fin du chapitre 1 des Vallons**, après le Grand Solitaire ou le chef des bandits, par une **quête de lien au feu de camp** : le premier compagnon présente quelqu'un, ou ramène Cendre assez grand. Un **niveau minimum doux, d'environ 12**, évite qu'elle s'ouvre trop tôt (valeur exacte à équilibrer). | Retenu (Damien, 14 novembre 2026, 23 h 43 : « Ok on fait ça », sur la recommandation de Claude) |
+| Compagnons pendant le Grand Solitaire (boss du monde, de 5 à 100 joueurs) | Chaque joueur garde **un seul compagnon au combat** ; le second **attend au point de repli** de l'événement. La proposition « tous au repli » n'est pas retenue. Source : dossier ChatGPT « Grand Solitaire et compagnons », p. 34. | Retenu (Damien, 14 novembre 2026, 23 h 45) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

@@ -64,11 +64,13 @@ namespace EdS.Data.Scenarios
         /// (<c>style</c>, <c>radius</c>, <c>pace</c>, <c>legMs</c>, <c>pauseMs</c> obligatoires ; <c>group</c>, <c>lead</c>, <c>spacing</c>,
         /// <c>points</c> facultatifs). Version 18 (sous-lot V2.26, secteurs de simulation) : <c>carried</c> facultatif sur un personnage ou un
         /// assaillant qui arrive en route (état emporté d'un autre secteur) ; coordonnées jusqu'à ±4 096 m et 256 obstacles ; une zone compte ses
-        /// places (combattants présents au départ au plus <c>combat.limits.maxCombatants</c>, identités au plus 1 024). Version 19 (esquive,
+        /// places (combattants présents au départ au plus <c>combat.limits.maxCombatants</c>, identités au plus 1 024). Une version antérieure
+        /// est refusée sans migration : le fichier se met à jour à la main. Version 19 (sous-lot V2.28c, surface étendue) : l'aire d'une zone
+        /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun. Version 20 (esquive,
         /// décision de Damien du 14 novembre 2026) : action <c>dodge</c> d'un personnage d'un combat positionné, <c>direction</c> facultative
-        /// (vers l'arrière sans elle). Une version antérieure est refusée sans migration : le fichier se met à jour à la main.
+        /// (vers l'arrière sans elle).
         /// </summary>
-        public const int CurrentSchemaVersion = 19;
+        public const int CurrentSchemaVersion = 20;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -112,18 +114,25 @@ namespace EdS.Data.Scenarios
             c.Resonance ?? 0, c.RampartCharges ?? 0, c.GlobalCooldownMs ?? 0,
             c.Cooldowns?.Select(k => new KeyValuePair<string, long>(k.Key, k.Value ?? 0)), c.ConsumableCooldownMs ?? 0);
 
-        public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null)
+        public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null) => Validate(document, data, report, area: false);
+
+        /// <summary>Sous-lot V2.28c : <paramref name="area"/> vrai : l'aire d'une zone à région (jusqu'à 4 096 obstacles).</summary>
+        public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report, bool area)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (data is null) throw new ArgumentNullException(nameof(data));
             report ??= new ValidationReport();
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, report))
                 return new ScenarioLoadResult(report, null);
-            return ValidateData(document.Data, data, "$.data", report);
+            return ValidateData(document.Data, data, "$.data", report, area);
         }
 
         /// <summary>Valide le contenu d'un scénario situé à <paramref name="root"/> (« $.data » dans un fichier, « $.scenario » dans un journal).</summary>
-        public static ScenarioLoadResult ValidateData(ScenarioData? scenario, GameData data, string root, ValidationReport report)
+        public static ScenarioLoadResult ValidateData(ScenarioData? scenario, GameData data, string root, ValidationReport report) =>
+            ValidateData(scenario, data, root, report, area: false);
+
+        /// <summary>Sous-lot V2.28c : <paramref name="area"/> vrai : l'aire d'une zone à région (jusqu'à 4 096 obstacles, simulée par secteurs).</summary>
+        public static ScenarioLoadResult ValidateData(ScenarioData? scenario, GameData data, string root, ValidationReport report, bool area)
         {
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (report is null) throw new ArgumentNullException(nameof(report));
@@ -131,7 +140,7 @@ namespace EdS.Data.Scenarios
             if (!report.IsValid) return new ScenarioLoadResult(report, null);
 
             CombatSetup setup = Build(scenario!, data);
-            foreach (RuleViolation violation in setup.Validate())
+            foreach (RuleViolation violation in area && setup.Zone ? setup.ValidateArea() : setup.Validate())
             {
                 ValidationCode code = violation.Kind switch
                 {

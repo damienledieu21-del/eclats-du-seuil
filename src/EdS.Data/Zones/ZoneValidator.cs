@@ -984,6 +984,15 @@ namespace EdS.Data.Zones
             // au secteur de son lieu : toutes ses variantes (place, créatures, échos rôdeurs) y tiennent, à au moins 8 m de ses bords intérieurs.
             if (region != null && space != null)
                 for (int i = 0; i < events.Count; i++) CheckEventSector(events[i], d.Events!.FindIndex(x => x?.Id == events[i].Id), region, space, report);
+            // Sous-lot V2.28c : obstacles de l'aire. Une zone à région est simulée par secteurs : chaque espace simulé (secteur et marge, coupés à
+            // l'aire) en garde au plus 256 ; une zone sans région est simulée d'un bloc : son aire aussi.
+            if (space != null)
+            {
+                if (region != null) CheckSectorObstacles(region, space, report);
+                else if (d.Region is null && space.Obstacles.Count > SpaceLimits.MaxObstacles)   // une région refusée l'est déjà
+                    report.Add("$.data.scenario", ValidationCode.LimitExceeded,
+                        $"{space.Obstacles.Count} obstacles dans l'aire d'une zone sans région (simulée d'un bloc), au plus {SpaceLimits.MaxObstacles}.");
+            }
             // Sous-lot V2.25.3 : bornes par case de la région (lieux, portes, routes qui touchent la case).
             if (region != null && space != null)   // éléments déjà dans l'aire, donc dans la région
             {
@@ -1175,6 +1184,42 @@ namespace EdS.Data.Zones
         /// secteur de son lieu (place de sa première variante, sinon sa première créature) : chaque place de variante, créature et écho
         /// rôdeur y est, à au moins <see cref="MinSectorInset"/> de ses bords intérieurs.
         /// </summary>
+        /// <summary>
+        /// Sous-lot V2.28c : chaque secteur qui touche l'aire par son intérieur garde au plus <see cref="SpaceLimits.MaxObstacles"/> obstacles
+        /// dans son espace simulé (son carré plus <see cref="RegionGrid.SectorMarginMeters"/> m, coupé à l'aire ; un obstacle y compte si sa
+        /// boîte touche cet espace : la règle de découpage de l'hôte, <c>SectorMap</c>).
+        /// </summary>
+        internal static void CheckSectorObstacles(RegionGrid region, CombatSpace area, ValidationReport report)
+        {
+            if (area.Obstacles.Count <= SpaceLimits.MaxObstacles) return;   // aucun secteur ne peut en avoir plus que l'aire
+            var boxes = new (long MinX, long MinZ, long MaxX, long MaxZ)[area.Obstacles.Count];
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                var poly = new ConvexPolygon(area.Obstacles[i].Points);
+                boxes[i] = (poly.MinX, poly.MinZ, poly.MaxX, poly.MaxZ);
+            }
+            long M(int meters) => checked(meters * Fixed.Scale);
+            for (int row = 0; row < region.SectorRows; row++)
+                for (int column = 0; column < region.SectorColumns; column++)
+                {
+                    long rMinX = checked(M(region.OriginX) + column * M(RegionGrid.SectorMeters)), rMinZ = checked(M(region.OriginZ) + row * M(RegionGrid.SectorMeters));
+                    long rMaxX = checked(rMinX + M(RegionGrid.SectorMeters)), rMaxZ = checked(rMinZ + M(RegionGrid.SectorMeters));
+                    bool owns = Math.Max(rMinX, area.Min.X.Raw) < Math.Min(rMaxX, area.Max.X.Raw) && Math.Max(rMinZ, area.Min.Z.Raw) < Math.Min(rMaxZ, area.Max.Z.Raw);
+                    if (!owns) continue;
+                    long minX = Math.Max(checked(rMinX - M(RegionGrid.SectorMarginMeters)), area.Min.X.Raw), minZ = Math.Max(checked(rMinZ - M(RegionGrid.SectorMarginMeters)), area.Min.Z.Raw);
+                    long maxX = Math.Min(checked(rMaxX + M(RegionGrid.SectorMarginMeters)), area.Max.X.Raw), maxZ = Math.Min(checked(rMaxZ + M(RegionGrid.SectorMarginMeters)), area.Max.Z.Raw);
+                    int n = 0;
+                    foreach (var b in boxes)
+                        if (b.MaxX >= minX && b.MinX <= maxX && b.MaxZ >= minZ && b.MinZ <= maxZ) n++;
+                    if (n > SpaceLimits.MaxObstacles)
+                    {
+                        string name = new RegionCell(column * RegionGrid.SectorCells, row * RegionGrid.SectorCells).SectorName;
+                        report.Add("$.data.scenario", ValidationCode.LimitExceeded,
+                            $"secteur {name} : {n} obstacles dans son espace simulé (marge de {RegionGrid.SectorMarginMeters} m comprise), au plus {SpaceLimits.MaxObstacles}.");
+                    }
+                }
+        }
+
         private static void CheckEventSector(WorldEventDefinition e, int index, RegionGrid region, CombatSpace space, ValidationReport report)
         {
             GroundVector lieu = e.Groups[0].Position ?? e.Groups[0].Creatures[0].Position;
@@ -1338,7 +1383,10 @@ namespace EdS.Data.Zones
             static AssailantSetup Arriving(AssailantSetup t) =>
                 new AssailantSetup(t.Id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
                     t.Triggers, t.Health, t.Placement, 0, t.Behavior);
-            IReadOnlyList<RuleViolation> violations = scenario.Completed(earlier.Append(form).Select(Arriving), Array.Empty<CombatCommand>()).Validate();
+            CombatSetup completed = scenario.Completed(earlier.Append(form).Select(Arriving), Array.Empty<CombatCommand>());
+            // Sous-lot V2.28c : l'aire d'une zone à région (lue comme telle : plus de 256 obstacles) se valide comme une aire ; chaque secteur
+            // est vérifié à part (CheckSectorObstacles).
+            IReadOnlyList<RuleViolation> violations = completed.Space?.Obstacles.Count > SpaceLimits.MaxObstacles ? completed.ValidateArea() : completed.Validate();
             return violations.Count == 0 ? null : $"{string.Join(", ", violations[0].Fields)} : {violations[0].Message}";
         }
 

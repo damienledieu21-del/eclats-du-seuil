@@ -36,7 +36,7 @@
 | Règles (contenu) | 0.18.0 (écrit « 0.18.0-provisoire » ; esquive `combat.dodge`) | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.32.0 (esquive, décision de Damien du 14 novembre 2026 ; 0.31.0 : secteurs, V2.26) | `CombatEngine.cs` (`Version`) |
 | Journal | 26 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 19 (action `dodge`, esquive ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
+| Scénarios (schéma) | 20 (action `dodge`, esquive ; 19 : aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
 | Instantané (format) | 7 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |

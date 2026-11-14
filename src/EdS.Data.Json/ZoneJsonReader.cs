@@ -67,7 +67,8 @@ namespace EdS.Data.Json
             CombatSetup? scenario = null;
             if (report.IsValid && document.Data?.Scenario is string name && ZoneValidator.IsScenarioPath(name))
             {
-                ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, name + ".json"), data);
+                // Sous-lot V2.28c : l'aire d'une zone à région (simulée par secteurs) peut avoir jusqu'à 4 096 obstacles ; sans région, 256.
+                ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, name + ".json"), data, area: document.Data.Region != null);
                 if (loaded.Setup is null)
                     report.Add("$.data.scenario", ValidationCode.InvalidValue,
                         $"scénario de zone « {name} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");

@@ -39,6 +39,13 @@ namespace EdS.Domain.Space
         /// d'un obstacle (au moins 3).
         /// </summary>
         public const int MaxObstacles = 256;
+
+        /// <summary>
+        /// Sous-lot V2.28c (surface étendue) : nombre maximal d'obstacles de l'aire d'une <b>zone</b> (scénario de zone, schéma 19), découpée
+        /// en secteurs par l'hôte. Chaque espace simulé (un secteur, marge comprise) en garde au plus <see cref="MaxObstacles"/> : le moteur
+        /// refuse un espace qui en a plus, le validateur des zones vérifie chaque secteur.
+        /// </summary>
+        public const int MaxAreaObstacles = 4096;
         public const int MinVertices = 3, MaxVertices = 16;
 
         /// <summary>Le point est-il dans le carré de ±<see cref="MaxCoordinate"/> ?</summary>

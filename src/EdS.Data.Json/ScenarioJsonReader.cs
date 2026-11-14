@@ -16,27 +16,37 @@ namespace EdS.Data.Json
     /// </summary>
     public static class ScenarioJsonReader
     {
-        public static ScenarioLoadResult ReadFile(string path, GameData data)
+        public static ScenarioLoadResult ReadFile(string path, GameData data) => ReadFile(path, data, area: false);
+
+        /// <summary>
+        /// Sous-lot V2.28c : <paramref name="area"/> vrai : le scénario est l'<b>aire</b> d'une zone à région, simulée par secteurs (jusqu'à
+        /// <see cref="EdS.Domain.Space.SpaceLimits.MaxAreaObstacles"/> obstacles, chaque secteur vérifié par le validateur des zones). Faux :
+        /// un scénario simulé d'un bloc (au plus 256 obstacles, refusé dès la validation sinon).
+        /// </summary>
+        public static ScenarioLoadResult ReadFile(string path, GameData data, bool area)
         {
             var report = new ValidationReport();
-            return Read(JsonInput.ReadFile(path, report), data, report);
+            return Read(JsonInput.ReadFile(path, report), data, report, area);
         }
 
-        public static ScenarioLoadResult Read(string json, GameData data)
+        public static ScenarioLoadResult Read(string json, GameData data) => Read(json, data, area: false);
+
+        /// <summary>Sous-lot V2.28c : voir <see cref="ReadFile(string, GameData, bool)"/>.</summary>
+        public static ScenarioLoadResult Read(string json, GameData data, bool area)
         {
             var report = new ValidationReport();
-            return Read(JsonInput.Utf8(json, report), data, report);
+            return Read(JsonInput.Utf8(json, report), data, report, area);
         }
 
-        private static ScenarioLoadResult Read(byte[]? json, GameData data, ValidationReport report)
+        private static ScenarioLoadResult Read(byte[]? json, GameData data, ValidationReport report, bool area)
         {
             if (json is null) return ScenarioValidator.Validate(new ScenarioDocument(), data, report);
             var document = new ScenarioDocument();
-            JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data", data.Rules.Combat));
+            JsonHeader header = JsonInput.Parse(json, report, (input, element) => document.Data = ReadData(input, element, "$.data", data.Rules.Combat, area));
             document.SchemaVersion = header.SchemaVersion;
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
-            return ScenarioValidator.Validate(document, data, report);
+            return ScenarioValidator.Validate(document, data, report, area);
         }
 
         /// <summary>
@@ -44,7 +54,7 @@ namespace EdS.Data.Json
         /// tableaux de combattants et de commandes sont comparés aux limites configurées <b>avant</b> la construction de
         /// leurs éléments ; un tableau trop long donne une seule erreur, avec le même message que l'admission du domaine.
         /// </summary>
-        internal static ScenarioData? ReadData(JsonInput input, JsonElement element, string path, CombatRules limits)
+        internal static ScenarioData? ReadData(JsonInput input, JsonElement element, string path, CombatRules limits, bool area = false)
         {
             var data = new ScenarioData();
             // Sous-lot V2.26 (recyclage des places) : une session de zone complétée peut compter plus d'identités que de places (jusqu'à la
@@ -64,7 +74,7 @@ namespace EdS.Data.Json
                 ["space"] = (v, p) =>   // sous-lot 11.4 (schéma 5)
                 {
                     data.Present.Add("space");
-                    data.Space = ReadSpace(input, v, p);
+                    data.Space = ReadSpace(input, v, p, zoneMode && area);
                 },
                 ["combatants"] = (v, p) => data.Combatants = input.ReadLimitedList(v, p, maxCombatants,
                     n => zoneMode ? $"{n} combattants dans la session de zone, au plus {maxCombatants} (borne technique)."
@@ -201,14 +211,16 @@ namespace EdS.Data.Json
             return point.X is null || point.Z is null ? null : point;
         }
 
-        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path)
+        private static SpaceData? ReadSpace(JsonInput input, JsonElement element, string path, bool areaMode)
         {
             var space = new SpaceData();
             bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["bounds"] = (v, p) => space.Bounds = ReadBounds(input, v, p),
-                ["obstacles"] = (v, p) => space.Obstacles = input.ReadLimitedList(v, p, SpaceLimits.MaxObstacles,
-                    n => $"{n} obstacles, au plus {SpaceLimits.MaxObstacles}.", (e, ip) => ReadObstacle(input, e, ip)),
+                // Sous-lot V2.28c (schéma 19) : l'aire d'une zone à région peut en avoir jusqu'à 4 096 (simulée par secteurs) ; tout scénario simulé
+                // d'un bloc (un combat, une zone lue seule, une zone sans région, l'en-tête d'un journal) au plus 256.
+                ["obstacles"] = (v, p) => space.Obstacles = input.ReadLimitedList(v, p, areaMode ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles,
+                    n => $"{n} obstacles, au plus {(areaMode ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles)}.", (e, ip) => ReadObstacle(input, e, ip)),
             });
             return ok ? space : null;
         }
