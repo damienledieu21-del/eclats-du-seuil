@@ -989,7 +989,7 @@ namespace EdS.Data.Zones
             if (space != null)
             {
                 if (region != null) CheckSectorObstacles(region, space, report);
-                else if (space.Obstacles.Count > SpaceLimits.MaxObstacles)
+                else if (d.Region is null && space.Obstacles.Count > SpaceLimits.MaxObstacles)   // une région refusée l'est déjà
                     report.Add("$.data.scenario", ValidationCode.LimitExceeded,
                         $"{space.Obstacles.Count} obstacles dans l'aire d'une zone sans région (simulée d'un bloc), au plus {SpaceLimits.MaxObstacles}.");
             }
@@ -1383,7 +1383,10 @@ namespace EdS.Data.Zones
             static AssailantSetup Arriving(AssailantSetup t) =>
                 new AssailantSetup(t.Id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
                     t.Triggers, t.Health, t.Placement, 0, t.Behavior);
-            IReadOnlyList<RuleViolation> violations = scenario.Completed(earlier.Append(form).Select(Arriving), Array.Empty<CombatCommand>()).Validate();
+            CombatSetup completed = scenario.Completed(earlier.Append(form).Select(Arriving), Array.Empty<CombatCommand>());
+            // Sous-lot V2.28c : l'aire d'une zone à région (lue comme telle : plus de 256 obstacles) se valide comme une aire ; chaque secteur
+            // est vérifié à part (CheckSectorObstacles).
+            IReadOnlyList<RuleViolation> violations = completed.Space?.Obstacles.Count > SpaceLimits.MaxObstacles ? completed.ValidateArea() : completed.Validate();
             return violations.Count == 0 ? null : $"{string.Join(", ", violations[0].Fields)} : {violations[0].Message}";
         }
 

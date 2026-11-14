@@ -925,6 +925,12 @@ namespace EdS.Domain.Combat
         public IReadOnlyList<RuleViolation> Validate() => Validate(queueBound: true);
 
         /// <summary>
+        /// Sous-lot V2.28c : validation de l'<b>aire</b> d'une zone à région, jamais simulée d'un bloc (l'hôte la découpe en secteurs) : jusqu'à
+        /// <see cref="SpaceLimits.MaxAreaObstacles"/> obstacles. <see cref="Validate()"/> (tout combat simulé d'un bloc) en garde au plus 256.
+        /// </summary>
+        public IReadOnlyList<RuleViolation> ValidateArea() => Validate(queueBound: true, numericLimits: true, SpaceLimits.MaxAreaObstacles);
+
+        /// <summary>
         /// Variante réservée aux tests du filet de sécurité <c>queueLimitExceeded</c> : sans le majorant de saturation, un combat
         /// valide peut atteindre la capacité de la file en cours de simulation.
         /// </summary>
@@ -934,7 +940,9 @@ namespace EdS.Domain.Combat
         /// Correctif 7.3.1 : <paramref name="numericLimits"/> faux omet aussi le précontrôle numérique, pour exercer en test la
         /// défense en profondeur du moteur (mutations préparées dans des variables vérifiées, arrêt <c>overflow</c> sans effet partiel).
         /// </summary>
-        internal IReadOnlyList<RuleViolation> Validate(bool queueBound, bool numericLimits)
+        internal IReadOnlyList<RuleViolation> Validate(bool queueBound, bool numericLimits) => Validate(queueBound, numericLimits, SpaceLimits.MaxObstacles);
+
+        private IReadOnlyList<RuleViolation> Validate(bool queueBound, bool numericLimits, int maxObstacles)
         {
             var errors = new List<RuleViolation>();
             foreach (RuleViolation v in Combat.Validate()) errors.Add(new RuleViolation(v.Kind, v.Message, v.Fields.Select(f => "rules.combat." + f).ToArray()));
@@ -1064,7 +1072,7 @@ namespace EdS.Domain.Combat
                     else if (!Hostile(target.Team, assailant.Team))   // sous-lot V2.4 : ni la même équipe, ni une équipe en trêve
                         errors.Add(new RuleViolation("la cible de l'assaillant doit être un ennemi.", $"combatants[{i}].target"));
                 }
-            ValidateSpace(errors);
+            ValidateSpace(errors, maxObstacles);
             ValidateTruces(errors);   // sous-lot V2.4
             if (errors.Count == 0) ValidateTriggerCount(errors);
             if (errors.Count == 0 && numericLimits) ValidateNumericLimits(errors);
@@ -1162,7 +1170,7 @@ namespace EdS.Domain.Combat
         /// sans chevaucher un obstacle ni un combattant qui lui est solide (<see cref="CombatRules.AreSolid"/>, selon la règle de contact).
         /// L'état de départ respecte ainsi les invariants que le déplacement maintient ensuite.
         /// </summary>
-        private void ValidateSpace(List<RuleViolation> errors)
+        private void ValidateSpace(List<RuleViolation> errors, int maxObstacles)
         {
             if (Space is null)
             {
@@ -1172,8 +1180,8 @@ namespace EdS.Domain.Combat
                 return;
             }
             int first = errors.Count;
-            // Sous-lot V2.28c : l'aire d'une zone peut en avoir plus (découpée en secteurs) ; un espace simulé reste borné (CombatEngine).
-            errors.AddRange(Space.Validate(Zone ? SpaceLimits.MaxAreaObstacles : SpaceLimits.MaxObstacles));
+            // Sous-lot V2.28c : l'aire d'une zone à région peut en avoir plus (ValidateArea, découpée en secteurs) ; un espace simulé, 256.
+            errors.AddRange(Space.Validate(maxObstacles));
             bool spaceValid = errors.Count == first;
             ConvexPolygon[] polygons = spaceValid ? Space.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray() : Array.Empty<ConvexPolygon>();
             bool placementsValid = true;

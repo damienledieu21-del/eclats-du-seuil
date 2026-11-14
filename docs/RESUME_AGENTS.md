@@ -36,7 +36,7 @@
 | Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.31.0 (secteurs : état emporté, places recyclées, ±4 096 m, 256 obstacles, V2.26) | `CombatEngine.cs` (`Version`) |
 | Journal | 25 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 18 (`carried`, V2.26) | `ScenarioValidator.cs` |
+| Scénarios (schéma) | 19 (aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; `carried`, V2.26) | `ScenarioValidator.cs` |
 | Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
