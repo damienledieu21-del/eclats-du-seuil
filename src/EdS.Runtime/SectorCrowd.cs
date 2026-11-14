@@ -74,9 +74,6 @@ namespace EdS.Runtime
         /// <summary>Le personnage était-il montré à la dernière image ?</summary>
         public bool Shown { get; private set; }
 
-        /// <summary>Nombre de passages (changements de combattant) suivis sans pose d'un coup.</summary>
-        public int Carried { get; private set; }
-
         /// <summary>
         /// Combattant à montrer à ce tick bien qu'absent : son arrivée (passage de secteur, renouvellement) est programmée au tick courant
         /// du moteur, à une place connue ; ni mort, ni parti.
@@ -104,23 +101,28 @@ namespace EdS.Runtime
         /// </summary>
         public bool Follow(string id, long tick, CombatantView view)
         {
-            if (id is null) throw new ArgumentNullException(nameof(id));
             if (view is null) throw new ArgumentNullException(nameof(view));
+            return Follow(id, tick, view.IsPresent, view.IsDead, view.HasLeft, view.ArrivalTick, view.Position);
+        }
+
+        /// <summary>Même suivi, d'après les champs de la vue (présent, mort, parti, tick d'arrivée, place).</summary>
+        public bool Follow(string id, long tick, bool present, bool dead, bool left, long? arrivalTick, GroundVector? position)
+        {
+            if (id is null) throw new ArgumentNullException(nameof(id));
             bool fresh = tick != _tick || !string.Equals(id, _id, StringComparison.Ordinal);
-            bool passage = _id != null && !string.Equals(id, _id, StringComparison.Ordinal);
             if (!fresh) return Shown;
             _tick = tick;
             _id = id;
-            if (view.IsDead && view.Position is GroundVector dead)
+            if (dead && position is GroundVector corpse)
             {
                 _predicted = 0;
-                _track.Next(dead.X.Raw / 10000.0, dead.Z.Raw / 10000.0);
+                _track.Next(corpse.X.Raw / 10000.0, corpse.Z.Raw / 10000.0);
                 return Shown = true;
             }
-            if (Shows(view, tick) && view.Position is GroundVector p)
+            bool arriving = !present && !dead && !left && arrivalTick == tick && position.HasValue;
+            if ((present || arriving) && position is GroundVector p)
             {
                 _predicted = 0;
-                if (passage && _track.Known) Carried = checked(Carried + 1);
                 _track.Next(p.X.Raw / 10000.0, p.Z.Raw / 10000.0);
                 return Shown = true;
             }

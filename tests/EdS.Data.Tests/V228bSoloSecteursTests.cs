@@ -24,7 +24,7 @@ namespace EdS.Data.Tests;
 public class V228bSoloSecteursTests
 {
     /// <summary>Les Vallons livrés, avec leur région (schéma courant) ou sans (schéma 12 : l'ancien fichier), scénario retouché au besoin.</summary>
-    private static ZoneDefinition Vallons(bool region, Action<JsonObject>? scenario = null)
+    internal static ZoneDefinition Vallons(bool region, Action<JsonObject>? scenario = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         if (!region)
