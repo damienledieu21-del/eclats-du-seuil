@@ -201,6 +201,115 @@ public class V228b2cEvenementsTests
                 && Math.Abs(v.Position!.Value.X.Raw - at.X.Raw) + Math.Abs(v.Position.Value.Z.Raw - at.Z.Raw) < 100_000);
     }
 
+    /// <summary>Loups (et chasseurs, sur leur modèle) à 1 PV qui frappent à peine ; session de <paramref name="durationMs"/>.</summary>
+    private static ZoneDefinition Fragile(long durationMs, Action<JsonObject>? hunt = null)
+    {
+        ZoneLoadResult loaded = Read(hunt: hunt, scenario: s =>
+        {
+            s["data"]!["durationMs"] = durationMs;
+            foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
+            {
+                if (((string)c!["id"]!).StartsWith("loup", StringComparison.Ordinal)) c["health"] = 1;
+                foreach (JsonNode? attack in c["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            }
+        });
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        return loaded.Zone!;
+    }
+
+    /// <summary>
+    /// Partie à l'est, chasseurs arrivés à côté du camp ; le personnage frappe le premier chasseur au tick de session
+    /// <paramref name="strikeAt"/> (null : jamais) ; rend la partie à la fin de sa session (pas encore renouvelée), le chasseur et le tick
+    /// (de session) où il est mort, s'il l'est.
+    /// </summary>
+    private static (WorldSession W, string Hunter, long? DiedAt) StrikeNearEnd(ZoneDefinition zone, long? strikeAt)
+    {
+        WorldSession w = Open(zone, StartTick(zone) - 5, "camp_est", level: 12);
+        for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 2; i++) w.Step();
+        CombatEngine e = w.Zone.Engine;
+        string hunter = HuntersIn(w.Zone)[0];
+        long? died = null;
+        while (!w.Zone.IsOver)
+        {
+            if (strikeAt == e.CurrentTick)
+                try { e.Submit(new CombatCommand(e.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", hunter)); }
+                catch (ArgumentException) { }
+            bool alive = !e.View(hunter).IsDead;
+            w.Step();
+            if (alive && e.View(hunter).IsDead) died = e.CurrentTick;
+        }
+        return (w, hunter, died);
+    }
+
+    [Fact]
+    public void Creature_morte_au_dernier_tick_de_la_session_relevee_avant_le_renouvellement()
+    {
+        // Relecture indépendante de la PR #160 (relever, propager, remplacer) : un chasseur tué au tout dernier tick de la session n'est
+        // pas relu par le pas des événements (session finie) ; le renouvellement le relève mort avant tout remplacement : il ne revient pas
+        // vivant dans la session nouvelle, et sa mort compte pour l'issue.
+        ZoneDefinition zone = Fragile(20_000, hunt: e =>
+        {
+            e["groups"]![0]!["creatures"]![0]!["position"] = new JsonArray(421.5, 200);   // au contact du personnage, au camp de l'est
+            e["groups"]![0]!["creatures"]![1]!["position"] = new JsonArray(426, 204);
+        });
+        // Un premier essai donne le délai entre la frappe et la mort, et le dernier tick ; puis la frappe est posée pour finir au dernier tick.
+        var probe = StrikeNearEnd(zone, 200);
+        Assert.NotNull(probe.DiedAt);
+        long delay = probe.DiedAt!.Value - 200, last = probe.W.Zone.Engine.CurrentTick;
+        (WorldSession W, string Hunter, long? DiedAt)? hit = null;
+        for (long k = delay; k <= delay + 6 && hit is null; k++)
+        {
+            var run = StrikeNearEnd(zone, last - k);
+            if (run.DiedAt == last) hit = run;
+        }
+        Assert.True(hit != null, "aucune frappe ne tue au dernier tick");
+        WorldSession w = hit!.Value.W;
+        Assert.True(w.Zone.Engine.View(hit.Value.Hunter).IsDead);
+        Assert.True(w.IsEventCreature(hit.Value.Hunter));
+        w.Step();
+        Assert.Equal(1, w.Renewals);
+        Assert.False(w.IsEventCreature(hit.Value.Hunter));   // identités de la session finie purgées
+        for (int i = 0; i < 60; i++) w.Step();   // plus d'une seconde : une créature remise en attente serait revenue
+        Assert.Single(HuntersIn(w.Zone));        // seul le second chasseur, emporté
+        Assert.Equal(1, w.EventsRuntime!.PendingPlaces + HuntersIn(w.Zone).Count);
+    }
+
+    [Fact]
+    public void Evenement_issu_d_un_secteur_ferme_ouvert_pendant_qu_il_dure_une_seule_issue()
+    {
+        // Relecture indépendante de la PR #160 : une attaque (issue à la dernière créature vaincue) commence secteur fermé ; le personnage
+        // ouvre le secteur et tue les deux assaillants : une seule issue (une victoire), aucune seconde.
+        ZoneDefinition zone = Fragile(3_600_000, hunt: e =>
+        {
+            e["kind"] = "raid";
+            e["reward"] = new JsonObject { ["xp"] = 10, ["money"] = 5 };
+        });
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 40, "camp_ouest", level: 12);
+        for (int i = 0; i < 80; i++) w.Step();
+        Assert.Null(w.Host!.SectorZone("s01_00"));
+        Walk(w, 370, 96);
+        var notices = new List<WorldEventNotice>();
+        for (int i = 0; i < 2400 && !w.Character.Events.Any(x => x.Won > 0); i++)
+        {
+            CombatEngine e = w.Zone.Engine;
+            if (i % 10 == 0 && HuntersIn(w.Zone).FirstOrDefault() is string h)
+            {
+                GroundVector at = e.View(h).Position!.Value;
+                CombatantView me = e.View(w.CombatantId);
+                double dx = at.X.Raw / 1e4 - me.Position!.Value.X.Raw / 1e4, dz = at.Z.Raw / 1e4 - me.Position.Value.Z.Raw / 1e4;
+                if (dx * dx + dz * dz > 9) { Walk(w, at.X.Raw / 1e4 - 1.5, at.Z.Raw / 1e4); continue; }
+                try { e.Submit(new CombatCommand(e.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", h)); }
+                catch (ArgumentException) { }
+            }
+            notices.AddRange(w.Step().Events);
+        }
+        for (int i = 0; i < 200; i++) notices.AddRange(w.Step().Events);
+        SavedEvent saved = Assert.Single(w.Character.Events, x => x.Id.EndsWith(Hunt, StringComparison.Ordinal));
+        Assert.Equal((1L, 0L), (saved.Won, saved.Lost));
+        Assert.DoesNotContain(notices, n => n.Kind == WorldEventNoticeKind.Lost && n.Event == Hunt);
+    }
+
     [Fact]
     public void Secteur_ferme_puis_rouvert_les_creatures_d_evenement_reviennent_a_leur_place()
     {
@@ -285,6 +394,16 @@ public class V228b2cEvenementsTests
         for (int i = 0; i < 2400 && HuntersIn(east).Count == 0; i++) w.Step();
         Assert.NotEmpty(HuntersIn(east));   // les échos voulus au palier 2 (un seul)
         Assert.Empty(HuntersIn(w.Zone));
+        // Relecture indépendante de la PR #160 : sauvegardée puis rechargée, la cicatrice reste liée à son secteur : ses échos se lèvent dans
+        // la session de l'est (secteur du personnage repris au camp de l'est), jamais à l'ouest.
+        WorldSave save = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
+        SavedScar scar = Assert.Single(save.Character!.Scars);
+        Assert.Equal(("zone.essai/faille_du_seuil/ruines", 2), (scar.Id, scar.Stage));
+        var again = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, safePoint: "camp_est");
+        Assert.Equal("s01_00", again.Sector);
+        for (int i = 0; i < 2400 && HuntersIn(again.Zone).Count == 0; i++) again.Step();
+        Assert.NotEmpty(HuntersIn(again.Zone));
+        Assert.Equal("s01_00", again.Sector);
 
         static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
     }
@@ -315,6 +434,65 @@ public class V228b2cEvenementsTests
         static string Hero(string t) => JsonNode.Parse(t[t.IndexOf('{')..])!["data"]!["character"]!.ToJsonString();
         Assert.Equal(Played(home.Trace), Played(wide.Trace));
         Assert.Equal(Hero(home.Trace), Hero(wide.Trace));
+    }
+
+    [Fact]
+    public void Parite_Vallons_avec_evenements_au_dela_des_renouvellements()
+    {
+        // Relecture indépendante de la PR #160 : sessions de 20 s (au moins un renouvellement en 1 200 ticks), juste avant la faille du Seuil :
+        // l'hôte au cœur seul et l'hôte à deux secteurs jouent de même à travers les renouvellements (trace, personnage sauvegardé).
+        ZoneDefinition shipped = Zone();
+        var clock = new WorldClock(shipped.Setup.Combat.TickMilliseconds);
+        EventOccurrence o = WorldEventSchedule.Next(shipped.Id, shipped.Id, shipped.Events.Single(e => e.Id == "faille_du_seuil"), checked(WorldEventSchedule.Absolute(clock.At(100)) + 1))!;
+        long worldTick = checked(WorldEventSchedule.TickAt(clock, o.StartAt) - 40);
+        (string Trace, string Log, int Open) home = V228b2cChefsTests.TraceOf(V228b2cChefsTests.VallonsOf(1, events: true, durationMs: 20_000), 1200, "essai_croc", worldTick),
+            wide = V228b2cChefsTests.TraceOf(V228b2cChefsTests.VallonsOf(2, events: true, durationMs: 20_000), 1200, "essai_croc", worldTick);
+        string renewals = home.Trace[(home.Trace.IndexOf("renouvellements ", StringComparison.Ordinal) + 16)..].Split('\n')[0];
+        Assert.True(int.Parse(renewals, System.Globalization.CultureInfo.InvariantCulture) >= 1, renewals);
+        Assert.Contains("Started:faille_du_seuil", home.Trace, StringComparison.Ordinal);
+        static string Played(string t) => t[..t.IndexOf("fin ", StringComparison.Ordinal)];
+        static string Hero(string t) => JsonNode.Parse(t[t.IndexOf('{')..])!["data"]!["character"]!.ToJsonString();
+        Assert.Equal(Played(home.Trace), Played(wide.Trace));
+        Assert.Equal(Hero(home.Trace), Hero(wide.Trace));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Plafond_du_registre_Vallons_livres_chefs_evenements_et_populations_tout_ou_rien(int spare)
+    {
+        // Relecture indépendante de la PR #160 : les Vallons livrés (chefs, événements du monde, populations), session courte finie pendant
+        // la faille du Seuil, registre à la borne exacte du tick : accepté entier (renouvelé) ; une clé de plus : pas de renouvellement,
+        // rien ne lève, aucun tick partiel.
+        ZoneDefinition zone = Zone(scenario: s => s["data"]!["durationMs"] = 10_000);
+        var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
+        EventOccurrence o = WorldEventSchedule.Next(zone.Id, zone.Id, zone.Events.Single(e => e.Id == "faille_du_seuil"), checked(WorldEventSchedule.Absolute(clock.At(100)) + 1))!;
+        long at = checked(WorldEventSchedule.TickAt(clock, o.StartAt) - 60);
+        long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 25);
+        var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 2000).Select(i => $"zone.vallons/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+        var w = new WorldSession(new WorldSave(zone.Id, at, 0, keys, Hero().WithXp(xp)), zone, ShippedData, Progression, ItemsCatalog);
+        Assert.True(w.OnSectors);
+        while (!w.Zone.IsOver) w.Step();
+        Assert.Contains(w.Zone.Engine.CombatantIds, id => w.IsEventCreature(id));
+        SectorWorld host = w.Host!;
+        long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
+        Assert.True(room > 0);
+        for (int i = 0; i < room - spare; i++) Assert.True(w.Zone.Consume($"zone.vallons/test/plein{i:D5}"));
+        int consumed = w.Zone.ConsumedCount;
+        long tick = w.Zone.WorldTick;
+        w.Step();
+        if (spare == 0)
+        {
+            Assert.Equal(1, w.Renewals);
+            Assert.Equal(tick + 1, w.Zone.WorldTick);
+            Assert.True(w.Zone.ConsumedCount <= SaveValidator.MaxConsumed);
+            for (int i = 0; i < 40; i++) w.Step();
+            Assert.True(w.Zone.ConsumedCount <= SaveValidator.MaxConsumed);
+            return;
+        }
+        Assert.False(w.RenewsSessions);
+        Assert.Equal(0, w.Renewals);
+        Assert.Equal((consumed, tick), (w.Zone.ConsumedCount, w.Zone.WorldTick));   // rien n'a bougé
     }
 
     /// <summary>Ticks du monde des vagues de la faille (et de son départ), sur <paramref name="ticks"/> ticks à partir de 22 h 50 du premier jour de faille.</summary>

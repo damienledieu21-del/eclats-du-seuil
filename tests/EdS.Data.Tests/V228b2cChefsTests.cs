@@ -777,7 +777,7 @@ public class V228b2cChefsTests
     /// Croc-Gris affaibli ; l'archer bandit à 6 m du bord du cœur reculé. <see cref="Shape.ZoneSession"/> : sans région (zone en schéma 12,
     /// comme avant les secteurs) ; <see cref="Shape.Wide"/> : aire agrandie vers l'est jusqu'à x = 300 (deux secteurs).
     /// </summary>
-    private static ZoneDefinition Vallons(Shape shape, bool events = false)
+    private static ZoneDefinition Vallons(Shape shape, bool events = false, long? durationMs = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         if (!events) root["data"]!.AsObject().Remove("events");   // V2.28b (2c), suite : avec eux, chacun lié au secteur de son lieu
@@ -794,6 +794,7 @@ public class V228b2cChefsTests
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
             if (shape == Shape.Wide) s["data"]!["space"]!["bounds"]!["max"]![0] = 300;
+            if (durationMs is long ms) s["data"]!["durationMs"] = ms;   // relecture indépendante de la PR #160 : parité au-delà d'un renouvellement
             // Toutes les créatures frappent à peine : le personnage traverse le Vallon sans tomber (la parité porte sur le monde, pas sur sa mort).
             foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
                 foreach (JsonNode? attack in c!["attacks"]?.AsArray() ?? new JsonArray()) attack!["rawDamage"] = 1;
@@ -836,7 +837,7 @@ public class V228b2cChefsTests
         for (int i = 0; i < ticks; i++)
         {
             string? croc = w.BossForms.FirstOrDefault(f => f.StartsWith("croc_gris", StringComparison.Ordinal));
-            if (i % 20 == 1 && croc != null)
+            if (i % 20 == 1 && croc != null && !w.Zone.Engine.IsFinished)
                 try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", croc)); }
                 catch (ArgumentException) { }
             SessionStep step = w.Step();
@@ -857,6 +858,7 @@ public class V228b2cChefsTests
                 }
         }
         Assert.Equal(0, w.Passages);
+        trace.Append("renouvellements ").Append(w.Renewals).Append('\n');
         CombatantView end = w.Zone.Engine.View(w.CombatantId);
         trace.Append("fin ").Append(end.Position).Append(' ').Append(end.MoveDirection).Append(' ').Append(end.Health).Append(' ').Append(end.IsDead).Append(' ').Append(end.Counters.CommandsRejected).Append('\n');
         trace.Append(SaveJsonReader.Write(w.Save().WithResume(null)));
@@ -864,7 +866,7 @@ public class V228b2cChefsTests
     }
 
     /// <summary>V2.28b (2c), suite : pour les essais des événements (0 : session de zone, 1 : hôte au cœur seul, 2 : hôte à deux secteurs).</summary>
-    internal static ZoneDefinition VallonsOf(int shape, bool events) => Vallons((Shape)shape, events);
+    internal static ZoneDefinition VallonsOf(int shape, bool events, long? durationMs = null) => Vallons((Shape)shape, events, durationMs);
 
     internal static (string Trace, string Log, int Open) TraceOf(ZoneDefinition zone, int ticks, string safePoint, long worldTick) => Trace(zone, ticks, safePoint, worldTick);
 

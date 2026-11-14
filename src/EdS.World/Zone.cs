@@ -91,6 +91,16 @@ namespace EdS.World
         public CombatEngine Engine => _engine;
 
         /// <summary>Simulation de départ de la session.</summary>
+        /// <summary>
+        /// Relecture indépendante de la PR #160 : décor de la session rangé une fois (espace immuable), pour la règle de place libre des
+        /// arrivées (<see cref="SectorWorld.FreeSpotOf(Zone, EdS.Domain.Space.GroundVector, EdS.Domain.Numerics.Fixed, bool)"/>) : aucun
+        /// index refait à chaque essai.
+        /// </summary>
+        internal EdS.Domain.Space.ObstacleIndex Walls => _walls ??= new EdS.Domain.Space.ObstacleIndex(
+            Setup.Space!.Obstacles.Select(o => new EdS.Domain.Space.ConvexPolygon(o.Points)).ToArray());
+
+        private EdS.Domain.Space.ObstacleIndex? _walls;
+
         public CombatSetup Setup { get; }
 
         /// <param name="setup">Simulation de la zone (<see cref="CombatSetup.Zone"/> vrai) ; validée par le moteur.</param>

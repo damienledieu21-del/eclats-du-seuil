@@ -471,10 +471,15 @@ namespace EdS.World
         internal int PendingIn(string? sector, bool all = false)
         {
             int n = 0;
+            // Relecture indépendante de la PR #160 : des boucles, aucun délégué par appel.
             foreach (KeyValuePair<string, Run?> r in _runs)
-                if (r.Value != null && (all || SectorOf(r.Key) == sector)) n = checked(n + r.Value.Slots.Count(Pending));
+                if (r.Value != null && (all || SectorOf(r.Key) == sector))
+                    foreach (Slot s in r.Value.Slots)
+                        if (Pending(s)) n = checked(n + 1);
             foreach (KeyValuePair<string, Haunt> h in _haunts)
-                if (all || SectorOf(HauntEvent(h.Key)) == sector) n = checked(n + h.Value.Slots.Count(x => x != null && Pending(x)));
+                if (all || SectorOf(HauntEvent(h.Key)) == sector)
+                    foreach (Slot? s in h.Value.Slots)
+                        if (s != null && Pending(s)) n = checked(n + 1);
             return n;
         }
 
@@ -521,7 +526,18 @@ namespace EdS.World
         /// Après un tick de la zone (et des populations) : annonces, départs, arrivées, vagues, laisses, issues ; les réglages passent par
         /// <paramref name="world"/> (registre, récompenses, faits).
         /// </summary>
-        public IReadOnlyList<WorldEventNotice> Step(WorldSession world, Zone zone, int reserved) => Step(world, zone, _ => zone, _ => reserved);
+        public IReadOnlyList<WorldEventNotice> Step(WorldSession world, Zone zone, int reserved)
+        {
+            // Relecture indépendante de la PR #160 : aucune allocation par tick (délégués faits une fois, lisant la session et les places du tick).
+            _soloZone = zone;
+            _soloReserved = reserved;
+            return Step(world, zone, _soloSessionOf ??= _ => _soloZone, _soloReservedIn ??= _ => _soloReserved);
+        }
+
+        private Zone? _soloZone;
+        private int _soloReserved;
+        private Func<string?, Zone?>? _soloSessionOf;
+        private Func<string?, int>? _soloReservedIn;
 
         /// <summary>
         /// Sous-lot V2.28b (2c) : chaque événement (et les échos rôdeurs de ses cicatrices) joue dans la session du secteur de son lieu
@@ -1009,6 +1025,10 @@ namespace EdS.World
         internal Action Renew(string sector, Zone fresh, Zone old)
         {
             var adopt = new List<(Slot S, string? Id, CombatantPlacement? Place, CarriedState? State, bool Reset)>();
+            // Relecture indépendante de la PR #160 (relever, propager, remplacer) : la session qui finit n'est plus relue par Step ; une
+            // créature morte à son dernier tick est relevée ici (morte, blessée ou non par le personnage) avant tout remplacement : l'issue de
+            // l'événement la compte au tick suivant, elle ne revient pas vivante.
+            var fallen = new List<(Slot S, bool Hurt)>();
             CombatEngine to = fresh.Engine;
             int counter = _counter;   // identités prises ici ; adoptées ensuite
             long tickMs = _zone.Setup.Combat.TickMilliseconds;
@@ -1023,7 +1043,12 @@ namespace EdS.World
                 }
                 if (!ReferenceEquals(s.Session, old)) continue;   // une session déjà remplacée : traitée par StepSlot
                 CombatantView v = old.Engine.View(s.Current);
-                if (!v.IsPresent || v.IsDead || !(v.Position is GroundVector at) || !(v.Radius is Fixed radius))
+                if (v.IsDead)
+                {
+                    fallen.Add((s, v.HurtByCharacter));
+                    continue;
+                }
+                if (!v.IsPresent || !(v.Position is GroundVector at) || !(v.Radius is Fixed radius))
                 {
                     adopt.Add((s, null, null, null, true));   // partie ou pas encore là : elle revient à sa place après une place réservée
                     continue;
@@ -1057,6 +1082,17 @@ namespace EdS.World
             return () =>
             {
                 _counter = counter;
+                // Relecture indépendante de la PR #160 : les identités de la session qui finit ne sont plus celles de créatures d'événement
+                // (identités uniques : compteur commun à toutes les sessions).
+                foreach (string gone in old.Engine.CombatantIds) _byCreature.Remove(gone);
+                foreach ((Slot s, bool hurt) in fallen)
+                {
+                    s.Dead = true;
+                    s.Hurt |= hurt;
+                    s.Leashing = false;
+                    s.CarryPlace = null;
+                    s.CarryState = null;
+                }
                 foreach ((Slot s, string? id, CombatantPlacement? place, CarriedState? state, bool reset) in adopt)
                 {
                     s.Leashing = false;

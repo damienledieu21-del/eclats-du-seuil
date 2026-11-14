@@ -1067,7 +1067,7 @@ namespace EdS.World
         /// autres personnages et les créatures) ; faux pour une créature (une forme de chef emportée), solide pour tout autre combattant, le
         /// personnage compris.</param>
         internal static GroundVector? FreeSpotOf(Zone zone, GroundVector at, Fixed radius, bool character) =>
-            FreeSpotOf(zone, new ObstacleIndex(zone.Setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()), at, radius, character);
+            FreeSpotOf(zone, zone.Walls, at, radius, character);   // relecture indépendante de la PR #160 : décor rangé une fois par session
 
         private static GroundVector? FreeSpotOf(Zone zone, ObstacleIndex walls, GroundVector at, Fixed radius, bool character)
         {

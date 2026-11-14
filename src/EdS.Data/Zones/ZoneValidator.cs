@@ -1171,10 +1171,6 @@ namespace EdS.Data.Zones
         private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
         /// <summary>
-        /// Sous-lot V2.28b (2c) : les formes d'un chef d'une zone à région sont toutes dans le secteur de sa première forme, à au moins
-        /// <see cref="MinSectorInset"/> de ses bords intérieurs (au-delà, un autre secteur simulé).
-        /// </summary>
-        /// <summary>
         /// Sous-lot V2.28b (2c), décision de Damien du 14 novembre 2026 (« AAA », 3) : un événement du monde d'une zone à région est lié au
         /// secteur de son lieu (place de sa première variante, sinon sa première créature) : chaque place de variante, créature et écho
         /// rôdeur y est, à au moins <see cref="MinSectorInset"/> de ses bords intérieurs.
@@ -1202,6 +1198,10 @@ namespace EdS.Data.Zones
             }
         }
 
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : les formes d'un chef d'une zone à région sont toutes dans le secteur de sa première forme, à au moins
+        /// <see cref="MinSectorInset"/> de ses bords intérieurs (au-delà, un autre secteur simulé).
+        /// </summary>
         private static void CheckBossSector(Boss boss, string path, RegionGrid region, CombatSpace space, ValidationReport report)
         {
             AssailantSetup first = boss.Forms[0];

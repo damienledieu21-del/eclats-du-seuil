@@ -176,7 +176,8 @@ public class V228bSoloSecteursTests
     public void Un_tick_apres_la_fin_de_session_puis_sauvegarde_et_session_suivante()
     {
         // Relecture indépendante de la PR #156 : un tick après la fin ne lève pas. Sous-lot V2.28b (2c) : l'hôte renouvelle la session (sans
-        // coupure) ; la session de zone ne fait plus rien. La sauvegarde et la session suivante s'ouvrent ensuite de même façon.
+        // coupure) ; la session de zone ne fait plus rien. Relecture indépendante de la PR #160 : parité rétablie : la sauvegarde prise à la
+        // fin et la session suivante ouverte depuis elle sont les mêmes octet pour octet (journaux, sauvegardes) sur les deux chemins.
         static void Short(JsonObject s) => s["data"]!["durationMs"] = 5_000;
         ZoneDefinition hosted = Vallons(true, Short), plain = Vallons(false, Short);
         var logs = new Dictionary<bool, string>();
@@ -189,28 +190,31 @@ public class V228bSoloSecteursTests
             Assert.Equal(region, session.OnSectors);
             for (int i = 0; i < 100; i++) session.Step();
             Assert.True(session.Zone.IsOver);
+            string ended = log.ToString();
+            WorldSave save = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
+            Assert.Equal((100L, 1L), (save.WorldTick, save.Sessions));
             int lines = log.Lines.Count;
-            long tick = session.Zone.WorldTick;
             session.Step();   // un tick après la fin : sans exception
             session.Step();
-            if (!region)
+            if (region)
             {
-                Assert.Equal((lines, tick, 1L), (log.Lines.Count, session.Zone.WorldTick, session.Zone.Session));   // la session de zone : rien
-                continue;
+                Assert.Equal(1, session.Renewals);   // l'hôte : session renouvelée, le temps du monde continue
+                Assert.Equal(102L, session.Zone.WorldTick);
+                Assert.True(session.Zone.Engine.View(session.CombatantId).IsPresent);
             }
-            Assert.Equal(1, session.Renewals);   // l'hôte : session renouvelée, le temps du monde continue
-            Assert.Equal(tick + 2, session.Zone.WorldTick);
-            WorldSave save = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
-            Assert.Equal(tick + 2, save.WorldTick);
-            // La session suivante : numéro suivant, même temps du monde, personnage entré.
-            var next = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, Book(zone), log: log);
-            Assert.True(next.OnSectors);
+            else Assert.Equal((lines, 100L, 1L), (log.Lines.Count, session.Zone.WorldTick, session.Zone.Session));   // la session de zone : rien
+            // La session suivante depuis la sauvegarde de la fin : numéro suivant, même temps du monde, personnage entré.
+            var nextLog = new MemoryCombatLog();
+            var next = new WorldSession(save, zone, ShippedData, Progression, ItemsCatalog, Book(zone), log: nextLog);
+            Assert.Equal(region, next.OnSectors);
             for (int i = 0; i < 30; i++) next.Step();
-            Assert.Equal(tick + 32, next.Zone.WorldTick);
+            Assert.Equal((2L, 130L), (next.Zone.Session, next.Zone.WorldTick));
             Assert.True(next.Zone.Engine.View("bastion").IsPresent);
+            logs[region] = ended + nextLog;
+            saves[region] = SaveJsonReader.Write(save.WithResume(null)) + SaveJsonReader.Write(next.Save().WithResume(null));
         }
-        Assert.Empty(logs);
-        Assert.Empty(saves);
+        Assert.Equal(logs[false], logs[true]);
+        Assert.Equal(saves[false], saves[true]);
     }
 
     [Fact]
