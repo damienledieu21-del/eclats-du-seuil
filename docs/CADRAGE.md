@@ -176,6 +176,15 @@ Toutes **Retenu** : validées par Damien le 20 octobre 2026, dans les termes de 
 
 Valeurs dans les règles (`combat.dodge`) : 3 m, 300 ms d'invulnérabilité, 20 d'endurance, 1 s de recharge ; durée du bond 150 ms (choix technique de Claude, « un bond rapide »). Les créatures n'esquivent pas (aucune donnée ne le prévoit). Réalisation : moteur 0.32.0, [MOTEUR.md](MOTEUR.md#esquive-décision-de-damien-du-14-novembre-2026), [COMBAT_ESPACE.md](COMBAT_ESPACE.md#2-déplacement). La règle de conception de L11-D4 (une attaque ordinaire évitable laisse le temps d'en sortir au pas de base) reste vérifiée par le validateur : l'esquive s'ajoute à la marche, elle ne la remplace pas.
 
+**Réponses de Damien du 14 novembre 2026 (vers 23 h 50), conformes aux recommandations — Retenu** :
+
+1. **Esquive en garde** : on quitte la garde, on bondit, puis la garde reprend si le bouton est tenu (le moteur refuse `guardActive` ; l'interface quitte la garde dans le même groupe).
+2. **Incantations longues futures** : l'esquive les interrompt (à réaliser avec la première incantation longue ; rien à coder aujourd'hui, les compétences du Bastion sont instantanées).
+3. **Altération déjà posée** (poison, saignement) : elle continue pendant l'invulnérabilité.
+4. **Touche PC** : Ctrl gauche.
+
+Les valeurs (bond de 150 ms, 20 d'endurance) restent à confirmer à l'essai.
+
 ## 5 bis. Choix de l'essai du 22 octobre 2026 (sous-lot 11.9)
 
 **Retenu** : choix de Damien dans la fiche d'essai du lot 11 ([ESSAI_LOT_11.md](ESSAI_LOT_11.md), rapport à la section 7).

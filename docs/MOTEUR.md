@@ -560,8 +560,9 @@ Damien revient sur L11-D4 ([CADRAGE.md](CADRAGE.md#5-décisions-du-20-octobre-20
 
 - L'état d'esquive n'est pas emporté d'un secteur à l'autre (`CarriedState` inchangé, la grande carte est en cours dans une autre PR) : un bond qui fait changer de secteur perd la fin de son bond et de son invulnérabilité, et la recharge repart de zéro dans le secteur d'arrivée.
 - Le contrôle `dodgeBlocked` simule le premier pas depuis les positions du début de la phase des commandes ; un combattant qui bouge avant dans la phase de déplacement peut encore arrêter le bond (accepté, endurance dépensée, bond court).
-- Un DOT déjà posé continue pendant l'invulnérabilité ; une application hostile de groupe ou de réaction n'écrit pas de ligne quand elle est esquivée (seuls les impacts et les soutiens ciblés écrivent `evaded`).
+- Un DOT déjà posé continue pendant l'invulnérabilité (retenu par Damien le 14 novembre 2026, vers 23 h 50) ; une application hostile de groupe ou de réaction n'écrit pas de ligne quand elle est esquivée (seuls les impacts et les soutiens ciblés écrivent `evaded`).
 - Le pilote de mesure (`CombatPilot`) n'esquive jamais : les mesures 8.6 sont inchangées.
+- À faire avec la première incantation longue (décision de Damien du 14 novembre 2026, vers 23 h 50) : l'esquive l'interrompt.
 - Pas de prédiction de l'esquive chez le client réseau ; l'essai à deux postes avec latence reste à faire.
 
 ## Compteurs de mesure et pilotage (sous-lot 8.6)
