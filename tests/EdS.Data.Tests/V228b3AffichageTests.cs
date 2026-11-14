@@ -163,6 +163,35 @@ public class V228b3AffichageTests
     }
 
     [Fact]
+    public void Combattant_parti_cache_tout_de_suite_sans_prolongation()
+    {
+        // Relecture indépendante de la PR #162 : un combattant parti n'est pas prolongé comme un arrivant inconnu.
+        var glide = new PassageGlide();
+        Assert.True(glide.Follow("h", 1, true, false, false, null, GroundVector.FromRaw(100_000, 0)));
+        Assert.True(glide.Follow("h", 2, true, false, false, null, GroundVector.FromRaw(102_500, 0)));
+        Assert.False(glide.Follow("h", 3, false, false, true, null, GroundVector.FromRaw(102_500, 0)));
+        Assert.False(glide.Track.Known);
+    }
+
+    [Fact]
+    public void Foule_cadencee_sur_le_tick_de_l_hote_meme_sans_combattant()
+    {
+        WorldSession w = Open(TwoSectors.Value);
+        RealtimeCombat c = Bridge(w);
+        var crowd = new SectorCrowd();
+        East_(c, crowd, w, () => Shown(crowd, East, "loup_est") != null);
+        w.Host!.RefuseForTest("bastion", "essai");   // plus de combattant suivi
+        long reads = crowd.Reads;
+        for (int i = 0; i < 40; i++)
+        {
+            c.StepOnce();
+            Assert.Equal(w.Host.WorldTick, w.SectorsTick);
+            Assert.True(crowd.Refresh(w));
+        }
+        Assert.Equal(reads + 40, crowd.Reads);
+    }
+
+    [Fact]
     public void Reprise_sans_saut_des_creatures_du_secteur_quitte()
     {
         WorldSession w = Open(TwoSectors.Value);

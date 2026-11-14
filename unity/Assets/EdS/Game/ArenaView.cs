@@ -178,6 +178,7 @@ namespace EdS.Game
             StyleBody keptLook = null;
             Renderer keptRenderer = null;
             Color keptColor = default(Color);
+            Material keptGlow = null;
             if (carry && _player != null && _playerId != null && _bodies.TryGetValue(_playerId, out GameObject mine) && mine == _player)
             {
                 keptBody = mine;
@@ -185,7 +186,8 @@ namespace EdS.Game
                 _looks.TryGetValue(_playerId, out keptLook);
                 _renderers.TryGetValue(_playerId, out keptRenderer);
                 _baseColors.TryGetValue(_playerId, out keptColor);
-                _glowing.Remove(_playerId);
+                // Relecture indépendante de la PR #162 : le matériau lumineux du corps gardé l'est aussi (pas détruit, pas perdu).
+                if (_glowing.TryGetValue(_playerId, out keptGlow)) _glowing.Remove(_playerId);
             }
             if (!carry)
             {
@@ -240,6 +242,7 @@ namespace EdS.Game
                 if (keptLook != null) _looks[combat.PlayerId] = keptLook;
                 if (keptRenderer != null) _renderers[combat.PlayerId] = keptRenderer;
                 _baseColors[combat.PlayerId] = keptColor;
+                if (keptGlow != null) _glowing[combat.PlayerId] = keptGlow;
                 _playerId = combat.PlayerId;
             }
             else

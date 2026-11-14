@@ -695,6 +695,13 @@ namespace EdS.World
         public long SectorsVersion => _host?.OpenVersion ?? 0;
 
         /// <summary>
+        /// Sous-lot V2.28b (3) (relecture indépendante de la PR #162) : tick du monde de l'hôte des secteurs (<see cref="SectorWorld.WorldTick"/>),
+        /// qui avance même quand le personnage attend une place et que sa dernière session est fermée ; hors de l'hôte, celui de la session.
+        /// Lecture seule.
+        /// </summary>
+        public long SectorsTick => _host?.WorldTick ?? Zone.WorldTick;
+
+        /// <summary>
         /// Sous-lot V2.28b (3) : secteurs ouverts et leur session, dans l'ordre des noms (<see cref="SectorWorld.CopyOpen"/>) ; hors de
         /// l'hôte, la seule session de la partie, sans nom de secteur (chaîne vide). Lecture seule : ne change rien à la partie.
         /// </summary>

@@ -29,6 +29,15 @@ namespace EdS.Game
         private readonly List<SectorCrowd.Member> _gone = new List<SectorCrowd.Member>();
         private long _generation = -1;
 
+        /// <summary>
+        /// Relecture indépendante de la PR #162 : au-delà de tant de mètres du personnage, un corps est caché et n'est pas mis à jour (le
+        /// voisin s'ouvre à 96 m de son bord : ses créatures lointaines ne coûtent rien) ; et au plus tant de corps sont faits par image (un
+        /// secteur qui s'ouvre ne fait pas tous ses corps d'un coup).
+        /// </summary>
+        public const float ShowDistance = 140f;
+
+        public const int MakesPerFrame = 4;
+
         public SectorCrowdView(Transform parent)
         {
             _parent = parent;
@@ -48,18 +57,19 @@ namespace EdS.Game
         {
             if (crowd.Generation != _generation) Prune(crowd);
             IReadOnlyList<SectorCrowd.Member> members = crowd.Members;
-            int visible = 0;
+            int visible = 0, made = 0;
             for (int i = 0; i < members.Count; i++)
             {
                 SectorCrowd.Member m = members[i];
+                float x = (float)m.Track.X(t), z = (float)m.Track.Z(t);
+                bool show = m.Shown && m.Track.Known && (!eye.HasValue || Near(eye.Value, x, z));
                 if (!_bodies.TryGetValue(m, out Shown b))
                 {
-                    if (!m.Shown) continue;
+                    if (!show || made >= MakesPerFrame) continue;   // fait à une image suivante
                     b = Make(m, paint);
                     _bodies[m] = b;
+                    made++;
                 }
-                bool show = m.Shown && m.Track.Known;
-                float x = (float)m.Track.X(t), z = (float)m.Track.Z(t);
                 if (show && m.Enemy && eye.HasValue && sight != null) show = InSight(eye.Value, x, z, sight);
                 if (b.Active != show)
                 {
@@ -143,6 +153,12 @@ namespace EdS.Game
             WildlifeLook wild = look == null && Wildlife.KindOf(m.Id) is WildlifeKind kind && kind != WildlifeKind.None ? new WildlifeLook(body, kind) : null;
             body.SetActive(false);
             return new Shown { Body = body, Look = look, Wild = wild, Active = false };
+        }
+
+        private static bool Near(Vector3 eye, float x, float z)
+        {
+            float dx = x - eye.x, dz = z - eye.z;
+            return dx * dx + dz * dz <= ShowDistance * ShowDistance;
         }
 
         private static bool InSight(Vector3 eye, float x, float z, IReadOnlyList<ConvexPolygon> sight)

@@ -119,7 +119,15 @@ namespace EdS.Runtime
                 _track.Next(corpse.X.Raw / 10000.0, corpse.Z.Raw / 10000.0);
                 return Shown = true;
             }
-            bool arriving = !present && !dead && !left && arrivalTick == tick && position.HasValue;
+            // Relecture indépendante de la PR #162 : un combattant parti (sortie, passage dont l'arrivée a échoué) est caché tout de suite,
+            // sans prolongation.
+            if (left && !present)
+            {
+                _predicted = 0;
+                _track.Forget();
+                return Shown = false;
+            }
+            bool arriving = !present && !dead && arrivalTick == tick && position.HasValue;
             if ((present || arriving) && position is GroundVector p)
             {
                 _predicted = 0;
@@ -256,10 +264,13 @@ namespace EdS.Runtime
                 _world = world;
             }
             Zone own = world.Zone;
-            long tick = own.WorldTick;
+            // Relecture indépendante de la PR #162 : cadencé sur le tick de l'hôte (la session du personnage peut être fermée pendant qu'il
+            // attend une place : son tick ne bouge plus, les autres secteurs si).
+            long tick = world.SectorsTick;
             bool listChanged = world.SectorsVersion != _version || !ReferenceEquals(own, _own);
             if (!listChanged && tick == _tick) return false;
             if (listChanged) Relist(world, own);
+            else if (_team.Length == 0) _team = TeamOf(own.Engine, world.CombatantId);   // combattant du personnage pas encore là au relevé
             _tick = tick;
             _round = checked(_round + 1);
             Reads = checked(Reads + 1);
@@ -285,7 +296,8 @@ namespace EdS.Runtime
                     m.Round = _round;
                     m.Team = place.Team;
                     m.Kind = place.Kind;
-                    m.Enemy = !string.Equals(place.Team, _team, StringComparison.Ordinal);
+                    // Camp du personnage inconnu (son combattant manque) : personne n'est montré en ennemi plutôt que tout le monde.
+                    m.Enemy = _team.Length > 0 && !string.Equals(place.Team, _team, StringComparison.Ordinal);
                     m.FacingX = place.FacingX;
                     m.FacingZ = place.FacingZ;
                     m.Radius = place.Radius / 10000.0;
@@ -362,7 +374,7 @@ namespace EdS.Runtime
             for (int j = 0; j < count; j++)
             {
                 CombatantPlace p = engine.PlaceAt(j);
-                if (string.Equals(p.Id, id, StringComparison.Ordinal)) return p.Team;
+                if (string.Equals(p.Id, id, StringComparison.Ordinal)) return p.Team ?? string.Empty;
             }
             return string.Empty;
         }

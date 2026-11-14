@@ -16,11 +16,6 @@ namespace EdS.Simulation.Engine
     }
 
     /// <summary>
-    /// Sous-lot 8.6 : instantané en lecture seule d'un combattant au début du tick courant, avant ses expirations et ses commandes, pour
-    /// un pilote de mesure (<c>EdS.Simulation.Pilot</c>). Une altération qui expire à ce tick n'y figure plus ; une fenêtre de parade qui
-    /// se ferme à ce tick non plus. Aucune référence à l'état mutable du moteur n'est exposée.
-    /// </summary>
-    /// <summary>
     /// Sous-lot V2.28b (3) : place d'un combattant pour l'affichage (<see cref="CombatEngine.PlaceAt"/>) : identité, camp, nature, présence,
     /// mort, et position orientation et emprise en dix-millièmes de mètre s'il a un corps dans l'espace. Valeur sans allocation.
     /// </summary>
@@ -56,6 +51,11 @@ namespace EdS.Simulation.Engine
         public long Radius { get; }
     }
 
+    /// <summary>
+    /// Sous-lot 8.6 : instantané en lecture seule d'un combattant au début du tick courant, avant ses expirations et ses commandes, pour
+    /// un pilote de mesure (<c>EdS.Simulation.Pilot</c>). Une altération qui expire à ce tick n'y figure plus ; une fenêtre de parade qui
+    /// se ferme à ce tick non plus. Aucune référence à l'état mutable du moteur n'est exposée.
+    /// </summary>
     public sealed class CombatantView
     {
         public string Id { get; internal set; } = string.Empty;
