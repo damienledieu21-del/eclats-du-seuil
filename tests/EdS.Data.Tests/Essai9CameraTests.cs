@@ -107,10 +107,9 @@ public class Essai9CameraTests
         Assert.Contains("_camera.Indoors = a.Indoors;", game, StringComparison.Ordinal);
         // Reculer à reculons quand la caméra est derrière le personnage (comme avant en vue 2).
         Assert.Contains("bool backward = _camera.Setting > 0.5f && z < 0f;", game, StringComparison.Ordinal);
-        // Sceau réduit d'environ moitié, collé au bas de l'écran.
-        Assert.Contains("public const float CrestScale = 0.42f;", hud, StringComparison.Ordinal);
-        Assert.Contains("_crest.localScale = new Vector3(CrestScale, CrestScale, 1f);", hud, StringComparison.Ordinal);
-        Assert.Contains("_crest = At(UiKit.Node(_bottom, \"Sceau\"), 500f, 322f, 290f, 320f, 0.5f, 1f);", hud, StringComparison.Ordinal);
+        // Le sceau réduit (essai 9) est remplacé par l'interface V2.1 : vie et endurance en haut à gauche, le personnage reste dégagé.
+        Assert.DoesNotContain("CrestScale", hud, StringComparison.Ordinal);
+        Assert.Contains("UiBox v = l[HudPart.Vitals];", hud, StringComparison.Ordinal);
         Assert.Contains("BuildSettings();", hud, StringComparison.Ordinal);
     }
 

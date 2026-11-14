@@ -1554,6 +1554,22 @@ namespace EdS.Runtime
 
         private static double Meters(Fixed f) => f.Raw / 10000.0;
 
+        /// <summary>
+        /// Interface V2.1 : position du personnage en mètres pour centrer la mini-carte à chaque image, sans construire la liste des repères
+        /// (<see cref="MapMarkers"/>, rafraîchie moins souvent par l'affichage). Faux si le personnage n'est pas sur le terrain.
+        /// </summary>
+        public bool TryPlayerPosition(out double x, out double z)
+        {
+            if (Me is GroundVector me)
+            {
+                x = Meters(me.X);
+                z = Meters(me.Z);
+                return true;
+            }
+            x = z = 0;
+            return false;
+        }
+
         /// <summary>Vallons agrandis : routes de la zone, en mètres, pour la carte peinte et le décor.</summary>
         public static IReadOnlyList<StyleRoad> Roads(ZoneDefinition zone) =>
             (zone ?? throw new ArgumentNullException(nameof(zone))).Roads

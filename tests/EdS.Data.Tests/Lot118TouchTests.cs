@@ -32,7 +32,8 @@ public class Lot118TouchTests
         Assert.True(TouchGestures.SmallButton * millimetresPerVirtual >= 9.0, $"{TouchGestures.SmallButton * millimetresPerVirtual:F2} mm");
         Assert.True(TouchGestures.BigButton >= TouchGestures.SmallButton);
         string touch = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "TouchControls.cs"));
-        Assert.Contains("Big = TouchGestures.BigButton, Small = TouchGestures.SmallButton", touch, StringComparison.Ordinal);
+        // Interface V2.1 : les boutons viennent de HudLayoutV21 (tailles en millimètres testées par InterfaceV21Tests).
+        Assert.Contains("UiBox box = _layout.Button(b);", touch, StringComparison.Ordinal);
         Assert.Contains("_gestures.Update(Fingers(), _zones, Hud.Width)", touch, StringComparison.Ordinal);
     }
 
