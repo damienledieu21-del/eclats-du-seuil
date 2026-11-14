@@ -40,11 +40,12 @@ public class V228b2cEvenementsTests
         return loaded.Zone!;
     }
 
-    /// <summary>Tick du monde où commence l'occurrence du premier jour (06 h 00).</summary>
+    /// <summary>Tick du monde où commence la première occurrence (06 h 00) après le début du temps du monde.</summary>
     private static long StartTick(ZoneDefinition zone)
     {
         var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
-        EventOccurrence o = WorldEventSchedule.Next(zone.Id, zone.Id, zone.Events.Single(), 0)!;
+        // La première occurrence après le début du temps du monde (et au moins 100 ticks après lui).
+        EventOccurrence o = WorldEventSchedule.Next(zone.Id, zone.Id, zone.Events.Single(), checked(WorldEventSchedule.Absolute(clock.At(100)) + 1))!;
         return WorldEventSchedule.TickAt(clock, o.StartAt);
     }
 
@@ -133,18 +134,35 @@ public class V228b2cEvenementsTests
     {
         // Décision de Damien du 14 novembre 2026 (« AAA », 2), appliquée par analogie aux créatures d'événement : au renouvellement, elles
         // arrivent dans la session nouvelle à leur place (libre la plus proche), avec leurs PV emportés ; pas de retour à leur place de départ.
-        ZoneDefinition zone = Essai(scenario: s => s["data"]!["durationMs"] = 20_000);
+        ZoneDefinition zone = Essai(scenario: s =>
+        {
+            s["data"]!["durationMs"] = 60_000;
+            foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())   // loups (et chasseurs, sur leur modèle) qui frappent à peine
+                foreach (JsonNode? attack in c!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        });
         long start = StartTick(zone);
-        WorldSession w = Open(zone, start - 5, "camp_est");
+        WorldSession w = Open(zone, start - 5, "camp_est", level: 12);
         for (int i = 0; i < 400 && HuntersIn(w.Zone).Count < 2; i++) w.Step();
         Zone first = w.Zone;
         List<string> hunters = HuntersIn(first);
         Assert.Equal(2, hunters.Count);
-        // Ils s'approchent du personnage (engagés) ; juste avant la fin de la session, leur place et leurs PV.
+        // Le personnage blesse le premier chasseur (sa place et ses PV changent) ; à la fin de la session, leur place et leurs PV.
+        GroundVector target = first.Engine.View(hunters[0]).Position!.Value;
+        Walk(w, target.X.Raw / 1e4 - 1.5, target.Z.Raw / 1e4);
+        for (int i = 0; i < 200 && first.Engine.View(hunters[0]) is { } h && h.Health == h.MaxHealth && !w.Zone.IsOver; i++)
+        {
+            if (i % 20 == 0)
+                try { first.Engine.Submit(new CombatCommand(first.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", hunters[0])); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        Assert.Same(first, w.Zone);
+        CombatantView hurt = first.Engine.View(hunters[0]);
+        Assert.True(hurt.Health < hurt.MaxHealth && !hurt.IsDead, "le chasseur n'a pas été blessé");
         while (!w.Zone.IsOver) w.Step();
         var before = hunters.Select(id => first.Engine.View(id)).Select(v => (v.Position!.Value, v.Health)).ToList();
         w.Step();
-        Assert.Equal(1, w.Renewals);
+        Assert.True(w.Renewals == 1, $"vaincu : {w.IsDefeated}, renouvelle : {w.RenewsSessions}");
         for (int i = 0; i < 3; i++) w.Step();
         List<string> carried = HuntersIn(w.Zone);
         Assert.Equal(2, carried.Count);
@@ -213,7 +231,7 @@ public class V228b2cEvenementsTests
         ZoneDefinition zone = Zone(scenario: s => s["data"]!["durationMs"] = sessionMs);
         WorldEventDefinition rift = zone.Events.Single(e => e.Id == "faille_du_seuil");
         var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
-        EventOccurrence o = WorldEventSchedule.Next(zone.Id, zone.Id, rift, 0)!;
+        EventOccurrence o = WorldEventSchedule.Next(zone.Id, zone.Id, rift, checked(WorldEventSchedule.Absolute(clock.At(100)) + 1))!;
         long at = checked(WorldEventSchedule.TickAt(clock, o.StartAt) - 60);
         long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 25);
         var w = new WorldSession(new WorldSave(zone.Id, at, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithXp(xp)), zone, ShippedData, Progression, ItemsCatalog);
