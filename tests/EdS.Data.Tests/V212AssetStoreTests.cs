@@ -207,8 +207,9 @@ public sealed class V212AssetStoreTests
         Assert.Contains("UiKit.WindowSprite()", Script("Game", "AdventureBook.cs"));
         Assert.Contains("UiKit.WindowSprite()", Script("Game", "AdventureBook.Forge.cs"));
         string hud = Script("Game", "HudView.cs");
-        Assert.Contains("UiKit.Image(_notice, \"Dalle\", UiKit.Sprite(\"dalle\", 40f)", hud);
-        Assert.Contains("UiKit.Image(_help, \"Dalle\", UiKit.Sprite(\"dalle\", 40f)", hud);
+        // Interface V2.1 (14 novembre 2026) : les petits cadres du HUD (annonce, aide) passent au cuir dessiné par le code.
+        Assert.Contains("UiKit.Image(_notice, \"Cuir\", UiV21Art.Panel", hud);
+        Assert.Contains("UiKit.Fill(Panel(_help, \"Cuir\").rectTransform);", hud);
     }
 
     [Fact]

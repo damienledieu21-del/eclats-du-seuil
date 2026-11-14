@@ -167,3 +167,7 @@ Relecture de la PR #114 : `docs/CREDITS.md` renvoie ici pour les auteurs à cite
 | [« RPG For Wenches, Ale, and LOOT!! ; RPG Never Go Full Bard ; RPG - The Graveyard »](https://opengameart.org/users/hitctrl) | **Hitctrl** | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
 
 Les autres ressources de l'essai de style sous CC BY (moulin, arbres et bâtiments de Sketchfab, icônes) sont listées dans `docs/CREDITS.md`.
+
+## Interface V2.1 (14 novembre 2026)
+
+Les matières du HUD V2.1 (cuir des panneaux, filet d'or, rail des barres, cercle du joystick, table du livre, pénombre des bords) sont dessinées par le code (`unity/Assets/EdS/Game/UiV21Art.cs`) : faites pour le jeu, aucun fichier ni licence tierce. Les icônes de compétence restent celles de l'essai réaliste 6 (« Painterly Spell Icons », CC BY 3.0, ci-dessus).

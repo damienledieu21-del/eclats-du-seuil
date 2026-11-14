@@ -125,6 +125,9 @@ namespace EdS.Game
 
         // Sous-lot 11.8 : commandes au doigt (téléphone, simulateur d'appareils de l'éditeur, F8 pour les forcer) ; données prêtes.
         private readonly TouchControls _touch = new TouchControls();
+
+        /// <summary>Interface V2.1 : disposition du HUD et des commandes au doigt, partagée par les deux et refaite seulement quand elle change.</summary>
+        private readonly HudLayoutV21 _hudLayout = new HudLayoutV21();
         private bool _ready;
 
         // Essai réaliste 6 : l'interface en jeu en uGUI (« Fragments du Seuil »), et l'aide de l'aventure découpée en touches.
@@ -205,6 +208,7 @@ namespace EdS.Game
                 problem = e;
             });
             _repoRoot = root ?? FindRepoRoot();
+            UiTexts.Load(Path.Combine(_repoRoot, "data", "v0"));   // interface V2.1 : libellés du HUD et des commandes au doigt
             _ready = true;
             if (problem != null)
             {
@@ -903,7 +907,9 @@ namespace EdS.Game
                 StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
             }
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
-            _touch.Update(Network, _adventure != null, AdventureCovered);
+            UpdateHudLayout();
+            _touch.Update(_hudLayout, AdventureCovered);
+            if (_touch.Active && _combat != null) _touch.Fighting(InFight());
             // Caméra à la souris libre (choix de Damien du 26 octobre 2026, « comme ESO ») : hors des écrans et des menus, la souris tourne la
             // caméra, curseur caché ; Alt tenu rend le curseur pour cliquer.
             // Échap rend le curseur (dans l'éditeur, pour arrêter le jeu) ; un clic dans le jeu le reprend.
@@ -1470,7 +1476,22 @@ namespace EdS.Game
         /// la pause et la petite carte sont dans l'interface uGUI (<see cref="UpdateHud"/>) ; les écrans et le dialogue aussi
         /// (<see cref="AdventureBook"/>).
         /// </summary>
-        private void DrawAdventure() => _touch.Draw(false, true, AdventureCovered);
+        private void DrawAdventure() => _touch.Draw(AdventureCovered);
+
+        /// <summary>
+        /// Interface V2.1 : disposition de l'image (canevas de 1 080 de haut, zone sûre du système, commandes au doigt ou non, mode). La zone
+        /// sûre (encoche, caméra, gestes) vient de <see cref="Screen.safeArea"/>, ramenée au canevas.
+        /// </summary>
+        private void UpdateHudLayout()
+        {
+            float h = Mathf.Max(1, Screen.height), w = Mathf.Max(1, Screen.width), k = UiKit.ReferenceHeight / h;
+            Rect safe = Screen.safeArea;
+            var insets = safe.width > 0f && safe.height > 0f
+                ? new UiInsets(safe.x * k, (h - safe.y - safe.height) * k, (w - safe.x - safe.width) * k, safe.y * k)
+                : UiInsets.None;
+            HudMode mode = Network ? HudMode.Network : _adventure != null ? HudMode.Adventure : HudMode.Training;
+            _hudLayout.Update(UiKit.Width, UiKit.ReferenceHeight, insets, _touch.Active, mode);
+        }
 
         /// <summary>Essai réaliste 6, étape 2 : écrans et dialogue de l'aventure (uGUI) ; un onglet peut ouvrir l'arbre des Éclats.</summary>
         private void UpdateBook(float deltaTime, bool shown)
@@ -1525,9 +1546,21 @@ namespace EdS.Game
         }
 
         /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
+        /// <summary>Interface V2.1 : un ennemi visible et vivant est engagé (il poursuit ou attaque) : un combat est en cours.</summary>
+        private bool InFight()
+        {
+            foreach (OtherState o in _combat.Others())
+                if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && o.View.Engaged && _arena.Shown(o.Id)) return true;
+            return false;
+        }
+
+        private readonly List<MapEnemy> _mapEnemies = new List<MapEnemy>();
+
+        /// <summary>Ennemis montrés sur la carte (liste gardée d'une image à l'autre : interface V2.1, pas de nouvelle liste par image).</summary>
         private List<MapEnemy> AdventureEnemies()
         {
-            var enemies = new List<MapEnemy>();
+            List<MapEnemy> enemies = _mapEnemies;
+            enemies.Clear();
             foreach (OtherState o in _combat.Others())
                 if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
                     enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, _adventure.IsBoss(o.Id)));
@@ -1560,6 +1593,7 @@ namespace EdS.Game
         private void UpdateHud(float deltaTime)
         {
             _hud.Begin(deltaTime);
+            _hud.Layout(_hudLayout);
             PlayerState player = _combat.Player();
             Camera camera = _camera.Camera;
             foreach (OtherState other in _combat.Others())
@@ -1583,7 +1617,7 @@ namespace EdS.Game
             string overhead = _stage?.Actor(_adventure) ?? _adventure?.ShownTitle;
             if (_adventure != null && _arena.Player != null && overhead != null)
                 _hud.Label(camera.WorldToScreenPoint(_arena.Player.position + Vector3.up * 2.4f), overhead, UiKit.Dawn);
-            _hud.Player(player, _touch.Active, deltaTime);   // plus serré quand les commandes tactiles occupent les coins
+            _hud.Player(player, deltaTime);
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
             _hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)), deltaTime);
             _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
@@ -1602,7 +1636,7 @@ namespace EdS.Game
                 _shownLevel = level;
                 bool open = a.Dialogue == null && _screens.Open == AdventureScreens.Panel.None;
                 double facing = _arena.Player != null ? _arena.Player.eulerAngles.y : _playerYaw;
-                _hud.Adventure(a, AdventureEnemies(), facing, open, _touch.Active);
+                _hud.Adventure(a, AdventureEnemies(), facing, open, _touch.DrawerOpen);
                 string notice = !a.MustContinue ? null
                     : a.Text(a.World.IsDefeated ? "text.ui.defeated" : a.Stranded ? "text.ui.stranded" : "text.ui.session_over");
                 _hud.Center(_paused && open ? "Pause" : null, notice, AdventureHint());
@@ -1613,7 +1647,7 @@ namespace EdS.Game
             }
             else
             {
-                _hud.Adventure(null, null, 0, false, _touch.Active);
+                _hud.Adventure(null, null, 0, false);
                 float elapsed = _combat.Tick * (float)_combat.TickSeconds;
                 _hud.Center(_paused ? "Pause" : null, null, null);
                 _hud.Settings(_paused && !_combat.IsFinished, _camera.ClickLook, _camera.InvertY, _camera.Sensitivity);   // pas sur l'écran de fin
@@ -1705,7 +1739,7 @@ namespace EdS.Game
                 _stage?.Draw(_adventure, calm && _adventure.Dialogue == null, calm, _touch.Active);
                 return;
             }
-            _touch.Draw(Network);   // sous-lot 11.8
+            _touch.Draw();   // sous-lot 11.8 ; interface V2.1
         }
     }
 
