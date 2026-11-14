@@ -33,6 +33,13 @@ namespace EdS.Simulation.Engine
         /// </summary>
         public bool IsPresent { get; internal set; } = true;
         public long? ArrivalTick { get; internal set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #159 (2e tour) : tick où l'arrivée en cours de route a effectivement eu lieu (fait du moteur, qu'il soit
+        /// encore là, mort ou parti depuis) ; null tant qu'elle n'a pas eu lieu (en attente ou refusée) et pour un combattant de départ.
+        /// Lecture seule : ne change ni la simulation, ni le journal, ni l'instantané (qui l'avaient déjà).
+        /// </summary>
+        public long? ArrivedTick { get; internal set; }
         public bool HasLeft { get; internal set; }
 
         /// <summary>PV ; null pour un mannequin ou un assaillant aux PV infinis.</summary>
@@ -222,6 +229,7 @@ namespace EdS.Simulation.Engine
                 IsPresent = !f.Absent,
                 ArrivalTick = f.Setup.ArrivalMs is long arrivalMs ? arrivalMs / _tickMs : (long?)null,
                 HasLeft = f.Presence == Presence.Left,
+                ArrivedTick = f.ArrivedTick,
                 Health = f.Health,
                 MaxHealth = f.MaxHealth,
                 States = f.Statuses.Values.Where(s => s.UntilTick > tick).Select(s => s.State).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray(),

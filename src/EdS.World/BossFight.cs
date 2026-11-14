@@ -124,6 +124,25 @@ namespace EdS.World
         private IReadOnlyList<BossEvent> Step(CombatEngine engine, Zone? zone)
         {
             if (_over) return Array.Empty<BossEvent>();
+            // Revue Codex de la PR #159 (2e tour) : l'état emporté est consommé dès que l'arrivée de la forme a eu lieu (fait du moteur :
+            // ArrivedTick), même si elle est déjà morte quand le combat l'examine (le moteur fait les arrivées puis les dégâts du tick), et
+            // avant tout changement de phase : la forme suivante n'en hérite jamais.
+            if (_carryPlace != null && _nextAt is null && engine.View(_current).ArrivedTick != null)
+            {
+                _carryPlace = null;
+                _carryState = null;
+                var carried = new BossEvent(BossEventKind.Carried, _boss.Id, _current, _phase, engine.CurrentTick);
+                IReadOnlyList<BossEvent> rest = StepForms(engine, zone);
+                if (rest.Count == 0) return new[] { carried };
+                var all = new List<BossEvent>(rest.Count + 1) { carried };
+                all.AddRange(rest);
+                return all;
+            }
+            return StepForms(engine, zone);
+        }
+
+        private IReadOnlyList<BossEvent> StepForms(CombatEngine engine, Zone? zone)
+        {
             long now = engine.CurrentTick;
             // Revue Codex de la PR #48 : la mort de la dernière forme compte encore au tick qui termine la session ; seules les arrivées
             // demandent un combat en cours.
@@ -142,13 +161,6 @@ namespace EdS.World
                     _returning = true;
                     _carryPlace = null;   // la règle du retour à sa place, tous ses PV, l'emporte
                     _carryState = null;
-                }
-                // Revue Codex de la PR #159 (1er tour) : la forme emportée est arrivée pour de bon : le combat est emporté.
-                else if (_carryPlace != null && v.IsPresent && !v.IsDead)
-                {
-                    _carryPlace = null;
-                    _carryState = null;
-                    return new[] { new BossEvent(BossEventKind.Carried, _boss.Id, _current, _phase, now) };
                 }
                 else
                 {
