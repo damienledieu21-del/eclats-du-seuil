@@ -321,6 +321,72 @@ public class V228b2cChefsTests
     }
 
     [Fact]
+    public void Chef_emporte_sur_la_place_d_une_creature_qui_revient_arrive_a_la_place_libre_la_plus_proche_avec_ses_PV()
+    {
+        // Revue Codex de la PR #159 (1er tour) : la forme furieuse (presque immobile) finit la session sur la place de départ du loup de l'est, tué
+        // plus tôt ; au renouvellement, le loup y revient. Le chef emporté arrive à la place libre la plus proche, avec ses PV emportés
+        // (pas à sa place de départ, PV pleins), et l'événement Carried n'est rendu qu'à son arrivée effective.
+        var wolf = new GroundVector(Fixed.FromInt(400), Fixed.FromInt(128));
+        ZoneDefinition zone = Essai(
+            zone: z => z["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "guet_loup", ["name"] = "Loup", ["position"] = new JsonArray(404, 131) }),
+            scenario: s => s["data"]!["durationMs"] = 40_000,
+            chief: c =>
+            {
+                JsonArray forms = c["data"]!["combatants"]!.AsArray();
+                forms[0]!["position"] = new JsonArray(406, 124);
+                forms[0]!["health"] = 5;
+                forms[1]!["position"] = new JsonArray(400, 128);   // la place de départ du loup de l'est
+                forms[1]!["health"] = 4000;
+                forms[1]!["speed"] = 0.1;   // presque immobile
+                forms[1]!["attacks"] = new JsonArray(forms[1]!["attacks"]![0]!.DeepClone());   // la morsure seule (le bond la déplacerait)
+                foreach (JsonNode? form in forms)
+                    foreach (JsonNode? attack in form!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            });
+        WorldSession w = Open(zone, safePoint: "guet_loup", level: 20);
+        Zone first = w.Zone;
+        // Le loup, puis la première forme ; la forme furieuse arrive sur la place du loup.
+        for (int i = 0; i < 1200 && !(w.Zone.Engine.View("loup_est").IsDead && ChiefForm(w) is string f && f.StartsWith(Chef + "_furieux", StringComparison.Ordinal)
+            && w.Zone.Engine.CombatantIds.Contains(f) && w.Zone.Engine.View(f).IsPresent); i++)
+        {
+            string? target = !w.Zone.Engine.View("loup_est").IsDead ? "loup_est" : ChiefForm(w);
+            if (i % 20 == 0 && target != null && w.Zone.Engine.CombatantIds.Contains(target))
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", target)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        string furious = ChiefForm(w)!;
+        Assert.StartsWith(Chef + "_furieux", furious);
+        Assert.True(Math.Abs(w.Zone.Engine.View(furious).Position!.Value.X.Raw - wolf.X.Raw) < 1_000);   // sur la place du loup (à 0,1 m près)
+        // S'approcher et la blesser.
+        WalkTo(w, 401.6, 128);
+        for (int i = 0; i < 400 && w.Zone.Engine.View(furious).Health == w.Zone.Engine.View(furious).MaxHealth; i++)
+        {
+            if (i % 20 == 0)
+                try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", furious)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        Assert.Same(first, w.Zone);
+        while (!w.Zone.IsOver) w.Step();
+        CombatantView before = first.Engine.View(furious);
+        Assert.True(before.Health < before.MaxHealth);
+        GroundVector b0 = before.Position!.Value;
+        Assert.InRange(Math.Sqrt(Math.Pow((b0.X.Raw - wolf.X.Raw) / 1e4, 2) + Math.Pow((b0.Z.Raw - wolf.Z.Raw) / 1e4, 2)), 0, 0.5);   // sur la place du loup
+        var boss = new List<BossEvent>();
+        for (int i = 0; i < 5; i++) boss.AddRange(w.Step().Boss);
+        Assert.Equal(1, w.Renewals);
+        Assert.True(w.Zone.Engine.View("loup_est").IsPresent);   // le loup est revenu sur sa place
+        BossEvent carried = Assert.Single(boss, b => b.Kind == BossEventKind.Carried);
+        CombatantView after = w.Zone.Engine.View(carried.Form);
+        Assert.True(after.IsPresent);
+        Assert.Equal((before.Health, before.MaxHealth), (after.Health, after.MaxHealth));
+        GroundVector p = after.Position!.Value;
+        double d = Math.Sqrt(Math.Pow((p.X.Raw - wolf.X.Raw) / 1e4, 2) + Math.Pow((p.Z.Raw - wolf.Z.Raw) / 1e4, 2));
+        Assert.InRange(d, 0.5, 8);   // la place libre la plus proche, hors du loup
+        Assert.DoesNotContain(boss, b => b.Kind == BossEventKind.FormArrived || b.Kind == BossEventKind.Returned);
+    }
+
+    [Fact]
     public void Chef_vaincu_le_reste_au_renouvellement_recompense_en_attente_gardee_puis_donnee_une_fois()
     {
         // Sac plein à la victoire : la récompense attend. La session se renouvelle : le chef vaincu le reste (aucune forme), la récompense
