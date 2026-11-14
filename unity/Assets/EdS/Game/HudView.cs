@@ -232,7 +232,8 @@ namespace EdS.Game
             _targetFlash.fillAmount = 1f;
             _targetHealth = Text(_targetTrack.rectTransform, "Points de vie", UiFace.Bold, UiV21Art.Parchment, TextAnchor.MiddleCenter);
             UiKit.Fill(_targetHealth.Rect);
-            _chip = UiKit.Image(_target, "Annonce", UiV21Art.ButtonSprite, Color.white, Image.Type.Sliced);
+            // Revue Codex de la PR #161 : le coup annoncé a sa ligne sous la cible (HudPart.Announce), plus dans le bas du panneau.
+            _chip = UiKit.Image(_screen, "Annonce", UiV21Art.ButtonSprite, Color.white, Image.Type.Sliced);
             _chipText = Text(_chip.rectTransform, "Annonce", UiFace.Bold, UiV21Art.BrightGold, TextAnchor.MiddleCenter);
             UiKit.Fill(_chipText.Rect, 4f);
             _targetStates = Text(_target, "Altérations", UiFace.Body, UiKit.Dawn, TextAnchor.MiddleLeft);
@@ -520,10 +521,10 @@ namespace EdS.Game
             _targetName.Size = essential;
             At(_targetTrack, tp, tp * 0.5f + nameH, t.W - 2f * tp, barH);
             _targetHealth.Size = meta;
-            At(_targetStates.Rect, tp, tp + nameH + barH, t.W * 0.5f, lowH);
+            At(_targetStates.Rect, tp, tp + nameH + barH, t.W - 2f * tp, lowH);
             _targetStates.Size = meta;
-            At(_chip, t.W * 0.42f, tp + nameH + barH, t.W * 0.58f - tp, lowH);
             _chipText.Size = meta;
+            _chipKey = int.MinValue;   // la plaque se replace à la largeur de son texte
 
             // Boussole : directions sur la bande, heure dessous ; l'état du monde (ou le minuteur) sous la boussole.
             UiBox c = l[HudPart.Compass];
@@ -794,6 +795,7 @@ namespace EdS.Game
             UiKit.Show(_target, target != null);
             if (target == null)
             {
+                UiKit.Show(_chip, false);
                 _targetId = null;
                 return;
             }
@@ -849,6 +851,10 @@ namespace EdS.Game
                     string seconds = string.Format(UiTexts.Get(HudTextsV21.Seconds), (System.Math.Ceiling(next * 10) / 10).ToString("0.0"));
                     _chipText.Value = DisplayNames.Attack(v.NextAttack.Id) + " · " + seconds + (unblockable ? " · " + UiTexts.Get(HudTextsV21.Unblockable) : "");
                     _chipText.Color = unblockable ? new Color(1f, 0.55f, 0.5f) : UiV21Art.BrightGold;
+                    // Plaque à la largeur du texte (compte à rebours et « imparable » compris), dans sa ligne réservée.
+                    UiBox an = _layout[HudPart.Announce];
+                    float w = Mathf.Min(an.W, HudTextsV21.EstimateWidth(_chipText.Value, _layout.Font(HudFont.Meta)) + 16f * _layout.Unit);
+                    At(_chip, an.CenterX - w / 2f, an.Y, w, an.H);
                 }
                 float urgency = Mathf.Clamp01(1f - (float)next / 2f);
                 float pulse = 1f + 0.05f * urgency * Mathf.Sin(_time * 12f);
@@ -961,10 +967,10 @@ namespace EdS.Game
 
         private void PlaceClock()
         {
-            UiBox c = _layout[HudPart.Compass];
-            float h = _layout.Font(HudFont.Essential) * 1.4f;
-            if (_compassShown) At(_clock.Rect, c.X - c.W * 0.25f, c.Bottom + 2f * _layout.Unit, c.W * 1.5f, h);
-            else At(_clock.Rect, c.X - c.W * 0.25f, c.Y, c.W * 1.5f, h);
+            // Revue Codex de la PR #161 : l'état du monde a sa ligne réservée (HudPart.WorldState), qui ne touche ni la boussole ni les annonces ;
+            // sans boussole (entraînement), le minuteur prend la place de celle-ci.
+            UiBox box = _compassShown ? _layout[HudPart.WorldState] : _layout[HudPart.Compass];
+            At(_clock.Rect, box.X, box.Y, box.W, Mathf.Min(box.H, _layout[HudPart.WorldState].H));
         }
 
         /// <summary>Annonce (butin, quête, refus…) sous la boussole ; trois au plus, les plus récentes, la dernière en bas.</summary>

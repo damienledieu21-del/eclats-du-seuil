@@ -53,6 +53,12 @@ namespace EdS.Runtime
     public enum HudPart
     {
         Vitals, Signal, Target, Compass, MiniMap, Effects, Quests, Group, Damage, Toasts, Prompt, Joystick,
+
+        /// <summary>Revue Codex de la PR #161 : coup annoncé de la cible, sur sa ligne, sous la cible (assez large pour le texte le plus long).</summary>
+        Announce,
+
+        /// <summary>Revue Codex de la PR #161 : état du monde (événement, cicatrice), sur sa ligne, entre la boussole et les annonces.</summary>
+        WorldState,
     }
 
     /// <summary>Boutons des commandes au doigt (téléphone), dans l'ordre de priorité de leur rangée.</summary>
@@ -301,8 +307,12 @@ namespace EdS.Runtime
             Set(HudPart.Quests, Anchor(1456, 300, 400, 210, H.Right, V.Top));
             Set(HudPart.Joystick, default);
             Set(HudPart.Target, Between(Anchor(712, 64, 496, 128, H.Center, V.Top), 400f, PcSides, PcSides.Length, false));
-            Set(HudPart.Compass, Between(Anchor(680, 210, 560, 70, H.Center, V.Top), 400f, PcSides, PcSides.Length, false));
-            Set(HudPart.Toasts, Between(Anchor(720, 290, 480, 120, H.Center, V.Top), 360f, PcSides, PcSides.Length, false));
+            // Revue Codex de la PR #161 : coup annoncé et état du monde ont chacun leur ligne réservée ; la boussole et les annonces descendent
+            // d'autant (cotes de la maquette décalées, aucune ligne ne se recouvre).
+            Set(HudPart.Announce, Between(Anchor(710, 196, 500, 34, H.Center, V.Top), 360f, PcSides, PcSides.Length, false));
+            Set(HudPart.Compass, Between(Anchor(680, 234, 560, 70, H.Center, V.Top), 400f, PcSides, PcSides.Length, false));
+            Set(HudPart.WorldState, Between(Anchor(660, 308, 600, 34, H.Center, V.Top), 400f, PcSides, PcSides.Length, false));
+            Set(HudPart.Toasts, Between(Anchor(720, 346, 480, 120, H.Center, V.Top), 360f, PcSides, PcSides.Length, false));
             Set(HudPart.Damage, Between(Anchor(850, 420, 320, 180, H.Center, V.Top), 240f, PcSides, PcSides.Length, false));
             Set(HudPart.Prompt, Between(Anchor(784, 824, 352, 64, H.Center, V.Bottom), 280f, PcSides, PcSides.Length, false));
             // Barre de compétences en bas au milieu : six places de 80 au pas de 96, puis l'ultime à 32 de la sixième.
@@ -365,12 +375,16 @@ namespace EdS.Runtime
             HudPart[] sides = PhoneSides;
             _parts[(int)HudPart.Prompt] = reserved;   // place provisoire : la rangée compte comme un bord pour la cible
             Set(HudPart.Target, Between(Anchor(360, 16, 240, 70, H.Center, V.Top), 180f, WithReserved(sides), sides.Length + 1, false));
-            Set(HudPart.Compass, Between(Anchor(352, 94, 272, 42, H.Center, V.Top), 200f, sides, sides.Length, false));
+            // Revue Codex de la PR #161 : lignes réservées, de haut en bas : coup annoncé (20), boussole (42), état du monde (22), trois
+            // annonces de 20 ; l'indication d'action descend juste au-dessus des boutons.
+            Set(HudPart.Announce, Between(Anchor(330, 88, 300, 20, H.Center, V.Top), 210f, sides, sides.Length, false));
+            Set(HudPart.Compass, Between(Anchor(352, 110, 272, 42, H.Center, V.Top), 200f, sides, sides.Length, false));
+            Set(HudPart.WorldState, Between(Anchor(300, 154, 360, 22, H.Center, V.Top), 200f, sides, sides.Length, false));
             Set(HudPart.Damage, Between(Anchor(430, 150, 150, 70, H.Center, V.Top), 120f, sides, sides.Length, false));
-            Set(HudPart.Toasts, Between(Anchor(300, 142, 360, 72, H.Center, V.Top), 200f, sides, sides.Length, false));
+            Set(HudPart.Toasts, Between(Anchor(300, 178, 360, 60, H.Center, V.Top), 200f, sides, sides.Length, false));
             Set(HudPart.Prompt, default);
             UtilityRow(map, size, gap);
-            Set(HudPart.Prompt, Between(Anchor(330, 228, 300, 32, H.Center, V.Bottom), 200f, sides, sides.Length, true));
+            Set(HudPart.Prompt, Between(Anchor(330, 244, 300, 32, H.Center, V.Bottom), 200f, sides, sides.Length, true));
         }
 
         private HudPart[] _withReserved = new HudPart[8];

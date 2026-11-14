@@ -39,6 +39,7 @@ public class InterfaceV21Tests
     private static readonly HudPart[] Panels =
     {
         HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Compass, HudPart.MiniMap, HudPart.Effects, HudPart.Quests, HudPart.Prompt,
+        HudPart.Announce, HudPart.WorldState, HudPart.Toasts,
     };
 
     private static float Millimetres(Format f, float canvas) => canvas * f.ScreenHeight / 1080f / f.Dpi * 25.4f;
@@ -112,7 +113,7 @@ public class InterfaceV21Tests
     [Fact]
     public void Telephone_les_panneaux_du_haut_ne_se_chevauchent_pas()
     {
-        HudPart[] top = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Compass, HudPart.MiniMap, HudPart.Effects, HudPart.Quests };
+        HudPart[] top = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Announce, HudPart.Compass, HudPart.WorldState, HudPart.Toasts, HudPart.Prompt, HudPart.MiniMap, HudPart.Effects, HudPart.Quests };
         foreach (var (f, mode, _, l) in PhoneLayouts())
             for (int i = 0; i < top.Length; i++)
                 for (int j = i + 1; j < top.Length; j++)
@@ -191,7 +192,7 @@ public class InterfaceV21Tests
         Assert.Equal(new UiBox(1616f, 64f, 240f, 200f), l[HudPart.MiniMap]);
         Assert.Equal(new UiBox(1456f, 300f, 400f, 210f), l[HudPart.Quests]);
         Assert.False(l.Has(HudButton.Parry));   // pas de commandes au doigt sur PC
-        HudPart[] panels = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Compass, HudPart.MiniMap, HudPart.Effects, HudPart.Quests, HudPart.Toasts, HudPart.Prompt };
+        HudPart[] panels = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Announce, HudPart.Compass, HudPart.WorldState, HudPart.MiniMap, HudPart.Effects, HudPart.Quests, HudPart.Toasts, HudPart.Prompt };
         foreach (float w in PcWidths)
         {
             l.Update(w, 1080f, UiInsets.None, false, HudMode.Adventure);
@@ -302,7 +303,7 @@ public class InterfaceV21Tests
     [Fact]
     public void Balayage_des_formats_sans_debordement_signale_rien_ne_se_chevauche()
     {
-        HudPart[] top = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Compass, HudPart.MiniMap, HudPart.Effects, HudPart.Quests };
+        HudPart[] top = { HudPart.Vitals, HudPart.Signal, HudPart.Target, HudPart.Announce, HudPart.Compass, HudPart.WorldState, HudPart.Toasts, HudPart.Prompt, HudPart.MiniMap, HudPart.Effects, HudPart.Quests };
         var l = new HudLayoutV21();
         int checkedLayouts = 0;
         foreach (bool phone in new[] { true, false })
@@ -427,5 +428,35 @@ public class InterfaceV21Tests
         Assert.Equal("Esquive", Texts().Get(HudTextsV21.Button(HudButton.Dodge, HudMode.Adventure)!));
         l.Update(2400f, 1080f, UiInsets.None, false, HudMode.Adventure, dodge: true);
         Assert.False(l.Has(HudButton.Dodge));   // PC : pas de bouton au doigt
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #161 : le coup annoncé le plus long (« Écrasement · 1,5 s · imparable ») tient sur sa ligne réservée, cible
+    /// réduite ou non, sur tous les formats ; l'état du monde ne touche plus la première annonce.
+    /// </summary>
+    [Fact]
+    public void Coup_annonce_le_plus_long_tient_et_etat_du_monde_sur_sa_ligne()
+    {
+        TextCatalog texts = Texts();
+        string longest = "Écrasement · " + string.Format(texts.Get(HudTextsV21.Seconds), "1,5") + " · " + texts.Get(HudTextsV21.Unblockable);
+        Assert.Equal("Écrasement · 1,5 s · imparable", longest);
+        foreach (var (f, mode, _, l) in PhoneLayouts())
+        {
+            float width = HudTextsV21.EstimateWidth(longest, l.Font(HudFont.Meta)) + 16f * l.Unit;
+            Assert.True(width <= l[HudPart.Announce].W + 0.01f, $"{f.Name}, {mode} : « {longest} » {width:0} dans {l[HudPart.Announce].W:0}");
+            Assert.True(l.Font(HudFont.Meta) <= l[HudPart.Announce].H, f.Name);
+            Assert.True(l.Font(HudFont.Essential) <= l[HudPart.WorldState].H, f.Name);
+            Assert.True(l[HudPart.WorldState].Bottom <= l[HudPart.Toasts].Y && l[HudPart.Compass].Bottom <= l[HudPart.WorldState].Y, f.Name);
+        }
+        var pc = new HudLayoutV21();
+        foreach (float w in PcWidths)
+        {
+            pc.Update(w, 1080f, UiInsets.None, false, HudMode.Adventure);
+            Assert.True(HudTextsV21.EstimateWidth(longest, pc.Font(HudFont.Meta)) + 16f <= pc[HudPart.Announce].W, $"PC {w}");
+            Assert.True(pc[HudPart.WorldState].Bottom <= pc[HudPart.Toasts].Y, $"PC {w}");
+        }
+        string hud = Script("HudView.cs");
+        Assert.Contains("_layout[HudPart.WorldState]", hud, StringComparison.Ordinal);
+        Assert.Contains("UiBox an = _layout[HudPart.Announce];", hud, StringComparison.Ordinal);
     }
 }
