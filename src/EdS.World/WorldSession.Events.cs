@@ -44,6 +44,19 @@ namespace EdS.World
         /// </summary>
         internal int ReservedPlaces => checked(FormsToCome + (_events?.PendingPlaces ?? 0));
 
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : places gardées dans la session du secteur <paramref name="sector"/> : formes à venir des chefs de ce secteur
+        /// (combats en cours), et celles des événements du monde dans le secteur du personnage (une zone qui en a reste d'un seul secteur).
+        /// Avec le seul secteur du cœur, exactement <see cref="ReservedPlaces"/>.
+        /// </summary>
+        internal int ReservedIn(string sector)
+        {
+            int forms = 0;
+            foreach (BossFight f in _fights)
+                if (f.Sector == sector && f.Session != null) forms = checked(forms + f.FormsToCome);
+            return checked(forms + (sector == _zoneSector ? _events?.PendingPlaces ?? 0 : 0));
+        }
+
         private Population? PopulationOfCombatant(string combatant) => PopulationOf(combatant) ?? _events?.Of(combatant);
 
         internal Population PopulationFor(string creature) =>

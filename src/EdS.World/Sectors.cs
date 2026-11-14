@@ -464,6 +464,26 @@ namespace EdS.World
         /// session ouverte à une autre heure.
         /// </summary>
         private int _bornCombatants;
+
+        // Sous-lot V2.28b (2c) : ce que fait qui tient l'hôte quand une session naît (les chefs de la partie solo y arrivent), combien de
+        // combattants il y ajoute au plus par secteur, et en tout.
+        private Action<string, Zone>? _opened;
+        private Func<string, int>? _openedJoins;
+        private int _openedJoinsMax;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : <paramref name="opened"/> est appelé quand une session naît dans un secteur (ouverture, réouverture,
+        /// renouvellement), avant son premier tick ; il peut y faire arriver des combattants (au plus <paramref name="joins"/> pour ce secteur,
+        /// <paramref name="max"/> en tout), comptés dans la borne du registre de chaque tick (tout ou rien). Il ne doit ni ouvrir ni fermer
+        /// de secteur, ni faire entrer ou sortir de joueur, ni lever.
+        /// </summary>
+        public void OnOpened(Action<string, Zone> opened, Func<string, int> joins, int max)
+        {
+            if (max < 0) throw new ArgumentOutOfRangeException(nameof(max));
+            _opened = opened ?? throw new ArgumentNullException(nameof(opened));
+            _openedJoins = joins ?? throw new ArgumentNullException(nameof(joins));
+            _openedJoinsMax = max;
+        }
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -687,7 +707,7 @@ namespace EdS.World
                 long need = RegistryBound();
                 foreach (Open o in _open.Values) need = checked(need + o.Zone.NewDeathsPossible);
                 long arriving = Arriving(out bool born);
-                return checked(need + (born ? _bornCombatants : 0) + arriving);
+                return checked(need + (born ? checked(_bornCombatants + _openedJoinsMax) : 0) + arriving);
             }
         }
 
@@ -889,6 +909,7 @@ namespace EdS.World
             var open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
+            _opened?.Invoke(name, zone);   // sous-lot V2.28b (2c) : les chefs de ce secteur y arrivent, avant son premier tick
             return open;
         }
 
@@ -989,7 +1010,7 @@ namespace EdS.World
                 if (!renewing.Contains(o)) need = checked(need + o.Zone.NewDeathsPossible);
             foreach (Open o in renewing)
             {
-                need = checked(need + PlanSetup(o.Name, out _, out _, out _, out _).Combatants.Count);
+                need = checked(need + PlanSetup(o.Name, out _, out _, out _, out _).Combatants.Count + (_openedJoins?.Invoke(o.Name) ?? 0));
                 foreach (Player p in _players.Values)
                     if (p.Sector == o.Name) need = checked(need + 1);
             }

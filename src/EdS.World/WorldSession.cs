@@ -481,7 +481,7 @@ namespace EdS.World
                 _host.EnterAtStart(setup);
                 _zoneSector = _host.SectorOf(setup.Id)!;
                 Zone = _host.SectorZone(_zoneSector)!;
-                _renews = hosted!.Bosses.Count == 0 && hosted.Events.Count == 0;
+                _renews = hosted!.Events.Count == 0;   // sous-lot V2.28b (2c) : les chefs recommencent avec la session nouvelle (OpenedSector)
             }
             else Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
@@ -582,6 +582,13 @@ namespace EdS.World
         private bool _tickDone;
 
         /// <summary>
+        /// Sous-lot V2.28b (2c) : session et identité où le personnage joue le tick en cours (celles du début du tick, ou de la session
+        /// renouvelée suivie dès AfterSector) ; un passage décidé à la fin du tick ne les change pas.
+        /// </summary>
+        private Zone? _tickZone;
+        private string? _tickId;
+
+        /// <summary>
         /// Sous-lot V2.28b (2) : après le tick d'une session de secteur, avant ses populations. Celle du personnage : objets de soin, bonus,
         /// récompenses (<see cref="AfterZone"/>, une fois par tick). Une autre : seulement la nuit d'une créature rare tombée là (il ne peut
         /// l'avoir frappée : il n'est pas dans cette session).
@@ -596,6 +603,8 @@ namespace EdS.World
                 // bonus et récompenses de ce tick lisent la session et le combattant où il est, pas une session périmée. Un passage, lui, se
                 // décide après le pas des sessions : il est suivi après le tick de l'hôte (Step).
                 Follow();
+                _tickZone = Zone;
+                _tickId = CombatantId;
                 AfterZone(events);
                 return;
             }
@@ -688,7 +697,8 @@ namespace EdS.World
             // Sous-lot V2.28b (2) : une aire à plusieurs secteurs est tenue par l'hôte si la zone n'a ni chef ni événement du monde (ils seront
             // liés à leur secteur ensuite) ; sinon elle reste une seule session, comme avant.
             bool single = SectorMap.For(zone).HomeHoldsArea;
-            if (!single && (zone.Bosses.Count > 0 || zone.Events.Count > 0)) return null;
+            // Sous-lot V2.28b (2c) : les chefs le sont désormais (OpenedSector) ; les événements du monde, pas encore.
+            if (!single && zone.Events.Count > 0) return null;
             var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
             string weatherZone = storyZone ?? zone.Id;
             // L'aire du cœur seul garde exactement la session d'avant (sessions des secteurs rendues telles quelles) ; une aire à plusieurs
@@ -753,13 +763,19 @@ namespace EdS.World
             Market = market;
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
             // Sous-lot V1.6 : les autres chefs aussi (le chef des bandits), chacun avec sa première forme.
+            // Sous-lot V2.28b (2c) : sur l'hôte des secteurs, chaque chef vit dans le secteur de sa première forme ; seuls ceux du secteur où
+            // entre le personnage arrivent maintenant, les autres avec la première session de leur secteur (OpenedSector).
             foreach (Boss boss in zone.Bosses)
             {
-                var fight = new BossFight(boss);
+                string? sector = _host?.Map.OwnerOf(boss.Forms[0].Placement!.Position);
+                if (sector != null && sector != _zoneSector) continue;
+                var fight = new BossFight(boss) { Sector = sector, Session = Zone };
                 _bossStarts.Add(fight.Start(Zone.Engine));
                 _fights.Add(fight);
                 if (ReferenceEquals(boss, zone.Boss)) _boss = fight;
             }
+            if (_host != null && zone.Bosses.Count > 0)
+                _host.OnOpened(OpenedSector, s => zone.Bosses.Count(b => _host.Map.OwnerOf(b.Forms[0].Placement!.Position) == s), zone.Bosses.Count);
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
@@ -799,8 +815,52 @@ namespace EdS.World
         private static DayPhase StartPhase(ZoneDefinition zone, WorldSave save) =>
             new WorldClock((zone ?? throw new ArgumentNullException(nameof(zone))).Setup.Combat.TickMilliseconds).At((save ?? throw new ArgumentNullException(nameof(save))).WorldTick).Phase;
 
-        private readonly BossFight? _boss;
+        private BossFight? _boss;
         private readonly List<BossFight> _fights = new List<BossFight>();
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : une session vient de naître dans <paramref name="sector"/> (ouverture, réouverture, renouvellement), avant son
+        /// premier tick : les chefs de ce secteur y commencent un combat nouveau, à leur première forme (comme à une halte) ; une récompense
+        /// en attente (victoire déjà acquise, sac ou registre plein) est gardée. Appelé par l'hôte des secteurs ; ne lève pas : une première
+        /// forme refusée par le moteur (place prise) laisse ce chef absent de cette session.
+        /// </summary>
+        private void OpenedSector(string sector, Zone zone)
+        {
+            Boss? main = Definition?.Boss;
+            foreach (Boss b in Definition!.Bosses)
+            {
+                if (_host!.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
+                int at = _fights.FindIndex(f => ReferenceEquals(f.Boss, b));
+                BossFight? old = at >= 0 ? _fights[at] : null;
+                var fight = new BossFight(b) { Sector = sector, Session = zone, RewardPending = old?.RewardPending ?? false, RewardAnnounced = old?.RewardAnnounced ?? false };
+                try
+                {
+                    _bossStarts.Add(fight.Start(zone.Engine));
+                }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                {
+                    fight.Session = null;   // absent de cette session : sa récompense en attente reste
+                }
+                if (at >= 0) _fights[at] = fight;
+                else _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(b)), fight);
+                if (ReferenceEquals(b, main)) _boss = fight;
+            }
+        }
+
+        /// <summary>Rang du chef dans la zone : les combats restent dans l'ordre des chefs (ordre stable des événements).</summary>
+        private int IndexOfBoss(Boss b)
+        {
+            int rank = Definition!.Bosses.ToList().IndexOf(b), i = 0;
+            while (i < _fights.Count && Definition.Bosses.ToList().IndexOf(_fights[i].Boss) < rank) i++;
+            return i;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : le combat se joue-t-il encore ? Sa session est celle qui tient son secteur (hors de l'hôte : celle du
+        /// personnage) ; une session fermée ou remplacée le laisse en sommeil jusqu'au combat suivant.
+        /// </summary>
+        private bool Live(BossFight f) =>
+            f.Session is Zone z && (f.Sector is null ? ReferenceEquals(z, Zone) : _host!.SectorZone(f.Sector) is Zone now && ReferenceEquals(now, z));
         private readonly List<BossEvent> _bossStarts = new List<BossEvent>();
         private bool _defeated;
 
@@ -1079,8 +1139,9 @@ namespace EdS.World
         {
             if (_lootTables.TryGetValue(combatant, out LootTable table)) return table;
             // Sous-lot 12.7 : la dernière forme du chef donne son butin.
+            // Sous-lot V2.28b (2c) : seulement un chef de la session du personnage (les identités d'une autre session ne sont pas les siennes).
             foreach (BossFight f in _fights)
-                if (f.Boss.Loot is string bossLoot && f.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
+                if (ReferenceEquals(f.Session, Zone) && f.Boss.Loot is string bossLoot && f.IsFinalForm(combatant) && _items.TryGetLoot(bossLoot, out LootTable bossTable))
                     return bossTable;
             // Sous-lot V2.5 : une créature d'événement donne le butin de la population dont elle prend le modèle.
             return PopulationOfCombatant(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
@@ -1157,6 +1218,8 @@ namespace EdS.World
         {
             // Revue Codex de la PR #43 : un départ prend effet en fin de tick, après les morts : la présence se juge aussi au début du tick.
             _tickWasPresent = Zone.Engine.View(CombatantId).IsPresent;
+            _tickZone = Zone;
+            _tickId = CombatantId;
             _tickExpired = Array.Empty<BoonExpired>();
             _tickGains = Array.Empty<ExperienceGained>();
             _tickLoot = Array.Empty<LootGained>();
@@ -1172,7 +1235,7 @@ namespace EdS.World
                 // Relecture indépendante de la PR #156 : délégués et liste gardés d'un tick à l'autre (rien n'est alloué pour appeler l'hôte).
                 _tickPopulations.Clear();
                 _tickDone = false;
-                _host.Step(null, _tickPopulations, _afterZone ??= AfterSector, _reserved ??= sector => ReservedPlaces);
+                _host.Step(null, _tickPopulations, _afterZone ??= AfterSector, _reserved ??= ReservedIn);
                 if (!_tickDone) AfterZone(Array.Empty<ZoneEvent>());   // le personnage n'est dans aucun secteur simulé (reprise d'un passage)
                 Follow();
                 if (_tickPopulations.Count == 0) population = Array.Empty<PopulationEvent>();
@@ -1203,13 +1266,18 @@ namespace EdS.World
             var rewards = new List<(string, int)>();
             foreach (BossFight fight in _fights)
             {
-                foreach (BossEvent b in fight.Step(Zone.Engine))
+                // Sous-lot V2.28b (2c) : chaque combat avance dans la session de son secteur ; une session fermée ou remplacée le laisse en
+                // sommeil (le suivant commencera avec la session nouvelle).
+                IReadOnlyList<BossEvent> stepped = Live(fight) ? fight.Step(fight.Session!.Engine) : Array.Empty<BossEvent>();
+                foreach (BossEvent b in stepped)
                 {
                     boss.Add(b);
                     // Victoire avec le personnage présent et vivant ; la première seulement est récompensée.
                     // Revue Codex de la PR #48 (4e tour) : même présence que pour l'expérience : un départ prend effet en fin de tick, après
                     // les morts ; le personnage présent au début du tick et vivant compte.
-                    bool here = !me.IsDead && (me.IsPresent || (me.HasLeft && wasPresent));
+                    // Sous-lot V2.28b (2c) : présent dans la session du chef, celle où il a joué ce tick (avant un passage décidé à la fin).
+                    CombatantView there = ReferenceEquals(fight.Session, _tickZone) ? _tickZone!.Engine.View(_tickId!) : me;
+                    bool here = ReferenceEquals(fight.Session, _tickZone) && !there.IsDead && (there.IsPresent || (there.HasLeft && wasPresent));
                     if (b.Kind == BossEventKind.Defeated && here && !Registered(Definition!.VictoryKeyOf(fight.Boss))) fight.RewardPending = true;
                 }
                 if (fight.RewardPending) GiveBossRewards(fight, rewards, story);

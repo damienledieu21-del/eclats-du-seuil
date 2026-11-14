@@ -70,6 +70,18 @@ namespace EdS.World
         public bool RewardPending { get; set; }
 
         public bool RewardAnnounced { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : secteur du chef sur l'hôte des secteurs (celui de sa première forme) ; null hors de l'hôte.
+        /// </summary>
+        public string? Sector { get; set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : session de zone où se joue ce combat (celle du personnage hors de l'hôte, celle du secteur du chef sur
+        /// l'hôte). Le combat ne vit qu'avec elle : une session nouvelle de ce secteur (ouverture, réouverture, renouvellement) en commence un
+        /// autre, à la première forme, comme une halte.
+        /// </summary>
+        public Zone? Session { get; set; }
         public int Phase => _phase;
         public bool IsDefeated => _over;
 
