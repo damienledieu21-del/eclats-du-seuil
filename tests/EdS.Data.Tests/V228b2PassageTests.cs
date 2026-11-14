@@ -512,10 +512,10 @@ public class V228b2PassageTests
     }
 
     [Fact]
-    public void Aire_a_plusieurs_secteurs_avec_un_evenement_du_monde_reste_une_seule_session()
+    public void Aire_a_plusieurs_secteurs_avec_un_evenement_du_monde_tenue_par_l_hote()
     {
-        // Relecture indépendante de la PR #157 : les événements du monde ne sont pas encore liés à leur secteur : une aire à plusieurs secteurs
-        // qui en a reste une seule session (comme avant), sans passage.
+        // Sous-lot V2.28b (2c) : les événements du monde sont liés au secteur de leur lieu (ici l'ouest) : une aire à plusieurs secteurs qui
+        // en a est tenue par l'hôte, avec passage (avant : une seule session, relecture indépendante de la PR #157).
         ZoneDefinition zone = Essai(z => z["data"]!["events"] = JsonNode.Parse("""
             [{ "id": "chasse", "kind": "hunt", "everyDays": 1, "chancePercent": 50, "firstDay": 1, "start": "05:15", "spreadMinutes": 45,
                "announceMinutes": 0, "durationMinutes": 60,
@@ -524,11 +524,11 @@ public class V228b2PassageTests
         Assert.Single(zone.Events);
         Assert.False(SectorMap.For(zone).HomeHoldsArea);
         WorldSession w = Open(zone);
-        Assert.False(w.OnSectors);
-        Assert.Null(w.Sector);
-        Assert.Null(w.Zone.Sector);
-        WalkTo(w, 300, 128);   // toute l'aire est une seule session : aucun passage
-        Assert.Equal((0, "bastion", (string?)null), (w.Passages, w.CombatantId, w.Sector));
+        Assert.True(w.OnSectors);
+        Assert.Equal("s00_00", w.Sector);
+        Assert.Equal("s00_00", w.EventsRuntime!.SectorOf("chasse"));
+        WalkTo(w, 300, 128);
+        Assert.Equal((1, "s01_00"), (w.Passages, w.Sector));
         Assert.InRange(Where(w).X, 299, 301);
     }
 
