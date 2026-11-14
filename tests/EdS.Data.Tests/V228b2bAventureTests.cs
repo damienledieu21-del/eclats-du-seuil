@@ -451,7 +451,7 @@ public class V228b2bAventureTests : IDisposable
     /// Données et scénarios copiés, Vallons agrandis vers l'est (jusqu'à x = 300 : deux secteurs, s07_06 et s08_06), sans chef ni événement
     /// du monde (sinon une seule session), avec un point sûr « seuil_est » près du bord ; durée de session réglable.
     /// </summary>
-    private (string Data, string Scenarios) TwoSectorVallons(long? durationMs = null)
+    internal (string Data, string Scenarios) TwoSectorVallons(long? durationMs = null)
     {
         string data = Path.Combine(_folder, "data", "v0"), scenarios = Path.Combine(_folder, "scenarios");
         foreach ((string from, string to) in new[] { (DataDirectory, data), (ScenariosDirectory, scenarios) })
@@ -539,7 +539,7 @@ public class V228b2bAventureTests : IDisposable
     }
 
     /// <summary>Partie relancée au point sûr « seuil_est » (point de reprise de la sauvegarde).</summary>
-    private AdventureSession AtEastThreshold(string data, string scenarios)
+    internal AdventureSession AtEastThreshold(string data, string scenarios)
     {
         Adventure(SavePath, data, scenarios).Save();
         JsonObject root = JsonNode.Parse(File.ReadAllText(SavePath))!.AsObject();
@@ -573,7 +573,7 @@ public class V228b2bAventureTests : IDisposable
         Walk(a, 175, 0, () => a.World.Passages == 1);
         Assert.Equal("s08_06", a.World.Sector);
         Assert.Equal((a.World.CombatantId, 1), (a.Combat.PlayerId, a.Combat.Rebinds));
-        Assert.NotSame(westMap, a.Map);   // carte de la session du moment
+        Assert.Same(westMap, a.Map);   // sous-lot V2.28b (3) : carte de l'aire entière, gardée au passage (avant : celle de la session)
         Walk(a, 175, 0, () => AdventureX(a) > 170);
         Assert.False(a.CanRest);   // aucun point sûr ici
         // Retour au point sûr du bord, dans la session de l'ouest où son identité a servi : bastion_p1. La halte y est possible.
