@@ -130,11 +130,18 @@ namespace EdS.Runtime
         /// </summary>
         public RegionGrid? Region { get; }
 
+        /// <summary>
+        /// Sous-lot V2.28b (3) : espace d'où la carte est tirée (celui de la session, ou l'aire entière d'une zone à plusieurs secteurs) ;
+        /// le décor (<c>SpaceView</c>) est construit sur lui, pas sur l'espace du secteur où est le personnage.
+        /// </summary>
+        public CombatSpace Space { get; }
+
         public AdventureMap(CombatSpace space, IEnumerable<MapPlace> places, IEnumerable<StyleRoad>? roads = null,
             IEnumerable<(double X, double Z)>? clearings = null, IEnumerable<MapDoor>? doors = null, bool indoor = false,
             IEnumerable<(string Id, double X, double Z)>? speakers = null, IEnumerable<SpaceObstacle>? gates = null, RegionGrid? region = null)
         {
             Region = region;
+            Space = space;
             Gates = (gates ?? Array.Empty<SpaceObstacle>()).ToList();
             Speakers = (speakers ?? Array.Empty<(string, double, double)>()).ToList();
             if (space is null) throw new ArgumentNullException(nameof(space));

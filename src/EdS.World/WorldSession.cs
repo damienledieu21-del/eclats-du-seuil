@@ -689,6 +689,45 @@ namespace EdS.World
         public bool OnSectors => _host != null;
 
         /// <summary>
+        /// Sous-lot V2.28b (3) : version des secteurs ouverts de l'hôte (<see cref="SectorWorld.OpenVersion"/>) ; 0 hors de l'hôte. Lecture
+        /// seule, pour l'affichage de tous les secteurs ouverts.
+        /// </summary>
+        public long SectorsVersion => _host?.OpenVersion ?? 0;
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) (relecture indépendante de la PR #162) : tick du monde de l'hôte des secteurs (<see cref="SectorWorld.WorldTick"/>),
+        /// qui avance même quand le personnage attend une place et que sa dernière session est fermée ; hors de l'hôte, celui de la session.
+        /// Lecture seule.
+        /// </summary>
+        public long SectorsTick => _host?.WorldTick ?? Zone.WorldTick;
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : secteurs ouverts et leur session, dans l'ordre des noms (<see cref="SectorWorld.CopyOpen"/>) ; hors de
+        /// l'hôte, la seule session de la partie, sans nom de secteur (chaîne vide). Lecture seule : ne change rien à la partie.
+        /// </summary>
+        public void OpenSectorZones(List<string> names, List<Zone> zones)
+        {
+            if (names is null) throw new ArgumentNullException(nameof(names));
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            if (_host != null)
+            {
+                _host.CopyOpen(names, zones);
+                return;
+            }
+            names.Clear();
+            zones.Clear();
+            names.Add(string.Empty);
+            zones.Add(Zone);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : aire entière de la zone (tous les secteurs, telle que l'hôte l'a tirée à son ouverture) quand elle déborde du
+        /// secteur du cœur ; null sinon (session de zone, ou aire qui tient dans le cœur : le décor reste celui de la session). Lecture seule :
+        /// le décor et la carte de tous les secteurs ouverts.
+        /// </summary>
+        public CombatSpace? AreaSpace => _host != null && !_host.Map.HomeHoldsArea ? _host.Map.Area.Space : null;
+
+        /// <summary>
         /// Sous-lot V2.28b : hôte des secteurs de <paramref name="zone"/> pour cette partie, ou null (zone sans région ou sans espace, aire
         /// plus grande que le secteur du cœur). Même simulation que la session d'une zone : même aire au début (heure et temps du monde),
         /// même session, même registre, mêmes créatures voulues.
