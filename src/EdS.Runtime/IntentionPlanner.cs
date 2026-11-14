@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
+using EdS.Domain.Space;
 using EdS.Simulation.Engine;
 
 namespace EdS.Runtime
@@ -22,18 +23,30 @@ namespace EdS.Runtime
         /// <param name="me">Vue du joueur au début du tick.</param>
         /// <param name="atMs">Instant du tick courant.</param>
         /// <param name="targetFor">Cible d'une compétence (ennemie, alliée ou null pour une zone).</param>
+        /// <param name="dodge">Esquive (décision de Damien du 14/11/2026) demandée à ce tick : elle passe avant la garde (quitter la garde puis
+        /// bondir, dans un seul groupe, comme un lancer) ; la garde tenue est reprise au tick suivant.</param>
+        /// <param name="dodgeDirection">Direction du bond (le joystick) ; null : vers l'arrière.</param>
         public static IReadOnlyList<CombatCommand[]> Plan(CombatantView me, long atMs, bool guardHeld, bool parry, int? slot,
-            Func<SkillDefinition, string?> targetFor)
+            Func<SkillDefinition, string?> targetFor, bool dodge = false, GroundVector? dodgeDirection = null)
         {
             if (me is null) throw new ArgumentNullException(nameof(me));
             if (targetFor is null) throw new ArgumentNullException(nameof(targetFor));
             var groups = new List<CombatCommand[]>();
             if (me.IsDead || !me.IsPresent) return groups;
+            bool casting = false;
             if (slot is int s && SkillAt(me, s) is { } skill)
             {
                 var cast = new CombatCommand(atMs, me.Id, skill.Id, targetFor(skill));
                 groups.Add(me.Guarding ? new[] { new CombatCommand(atMs, me.Id, CombatAction.GuardStop), cast } : new[] { cast });
+                casting = true;
             }
+            if (dodge && me.CanDodge)
+            {
+                // Esquive : refusée par le moteur en garde ; la garde est quittée dans le même groupe (sauf si un lancer vient de le faire).
+                var bound = CombatCommand.DodgeToward(atMs, me.Id, dodgeDirection);
+                groups.Add(me.Guarding && !casting ? new[] { new CombatCommand(atMs, me.Id, CombatAction.GuardStop), bound } : new[] { bound });
+            }
+            else if (casting) { }   // le lancer a déjà réglé la garde
             else if (guardHeld && !me.Guarding && me.CanGuard)
                 groups.Add(new[] { new CombatCommand(atMs, me.Id, CombatAction.GuardStart) });
             else if (!guardHeld && me.Guarding)

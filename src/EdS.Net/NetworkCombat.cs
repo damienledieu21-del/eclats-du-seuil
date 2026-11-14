@@ -26,6 +26,7 @@ namespace EdS.Net
         private double _sinceTick;
         private bool _guardHeld;
         private bool _parry;
+        private bool _dodge;   // esquive (protocole 5)
         private int? _slot;
         private bool _inputDirty;
         private IReadOnlyList<ConvexPolygon>? _obstacles;
@@ -209,6 +210,13 @@ namespace EdS.Net
             _inputDirty = true;
         }
 
+        /// <summary>Esquive (protocole 5) : demande ponctuelle envoyée avec le cap de marche ; le serveur reste seul juge.</summary>
+        public void Dodge()
+        {
+            _dodge = true;
+            _inputDirty = true;
+        }
+
         /// <summary>
         /// Même contrôle que le combat solo sur l'état reçu : un emplacement vide ou visiblement indisponible donne un retour
         /// <see cref="FeedbackKind.Unavailable"/> sans rien envoyer ; sinon la demande part au serveur, seul juge. Seule la dernière demande
@@ -286,8 +294,9 @@ namespace EdS.Net
         internal InputMessage? TakeInput()
         {
             if (!_inputDirty || IsFinished) return null;
-            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId, _heading, _backward);
+            var input = new InputMessage(_guardHeld, _parry, _slot, TargetId, AllyId, _heading, _backward, _dodge);
             _parry = false;
+            _dodge = false;
             _slot = null;
             _inputDirty = false;
             return input;
@@ -307,6 +316,7 @@ namespace EdS.Net
             _heading = null;
             _backward = false;
             _parry = false;
+            _dodge = false;
             _slot = null;
             _inputDirty = true;
             // Le serveur renvoie l'état courant de lui-même au retour ; s'il se perd, il est redemandé après le délai d'attente.

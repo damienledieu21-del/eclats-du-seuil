@@ -88,6 +88,7 @@ namespace EdS.Net
             public bool Abandoned;
             public bool Guard;
             public bool Parry;
+            public bool Dodge;   // esquive (protocole 5)
             public int? Slot;
             public string? Target;
             public string? Ally;
@@ -104,6 +105,7 @@ namespace EdS.Net
             {
                 Guard = false;
                 Parry = false;
+                Dodge = false;
                 Slot = null;
                 Movement.Wished = null;   // sous-lot 11.7 : un joueur coupé s'arrête
             }
@@ -488,6 +490,7 @@ namespace EdS.Net
                     if (Phase != RoomPhase.Combat) break;
                     seat.Guard = input.Guard;
                     if (input.Parry) seat.Parry = true;
+                    if (input.Dodge) seat.Dodge = true;   // esquive (protocole 5)
                     if (input.Slot != null) seat.Slot = input.Slot;
                     seat.Target = input.Target;
                     seat.Ally = input.Ally;
@@ -667,8 +670,11 @@ namespace EdS.Net
                 if (!seat.InCombat) continue;   // sous-lot 11.7 : place libre, personnage hors du combat
                 CombatantView me = engine.View(seat.Id);
                 int? slot = Available(engine, seat, me, tick);
-                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill));
+                // Esquive : bond dans le cap de marche reçu avec la demande (ou vers l'arrière), combat positionné seulement.
+                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill),
+                    seat.Dodge && engine.Setup.Space != null, seat.Movement.Wished is int heading ? MoveInput.Direction(heading) : (GroundVector?)null);
                 seat.Parry = false;
+                seat.Dodge = false;
                 seat.Slot = null;
                 bool TrySubmit(CombatCommand[] group)
                 {

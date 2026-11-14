@@ -321,15 +321,15 @@ public class V18ProgressionTests : IDisposable
     {
         // Réponse de Damien du 31 octobre 2026 : le protocole accepte huit actives (0 à 7) et l'ultime à l'emplacement 8, sans changer de
         // numéro (le protocole 4 n'est pas encore fusionné).
-        Assert.Equal(4, Protocol.Version);
+        Assert.Equal(5, Protocol.Version);   // esquive : protocole 5 (huit actives et ultime inchangés)
         foreach (int slot in new[] { 0, 4, 5, 6, 7, 8 })
         {
-            string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}}";
+            string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false,\"dodge\":false}}";
             NetMessage? m = MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(json), MessageDirection.ClientToServer, out string? error);
             Assert.True(error is null, error);
             Assert.Equal(slot, Assert.IsType<InputMessage>(m).Slot);
         }
-        string nine = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}";
+        string nine = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false,\"dodge\":false}";
         Assert.Null(MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(nine), MessageDirection.ClientToServer, out string? refused));
         Assert.Contains("hors de [0, 8]", refused);
     }
