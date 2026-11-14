@@ -33,7 +33,7 @@ public class InterfaceV21Tests
 
     private static readonly HudButton[] Combat =
     {
-        HudButton.Parry, HudButton.Guard, HudButton.Skill1, HudButton.Skill2, HudButton.Skill3, HudButton.Skill4, HudButton.Skill5, HudButton.Skill6,
+        HudButton.Parry, HudButton.Guard, HudButton.Dodge, HudButton.Skill1, HudButton.Skill2, HudButton.Skill3, HudButton.Skill4, HudButton.Skill5, HudButton.Skill6,
     };
 
     private static readonly HudPart[] Panels =
@@ -48,11 +48,12 @@ public class InterfaceV21Tests
         foreach (Format f in Phones)
             foreach (HudMode mode in Modes)
                 foreach (UiInsets safe in new[] { UiInsets.None, Notch })
-                {
-                    var layout = new HudLayoutV21();
-                    layout.Update(f.CanvasWidth, 1080f, safe, true, mode);
-                    yield return (f, mode, safe, layout);
-                }
+                    foreach (bool dodge in new[] { false, true })   // l'esquive prévue (réponse de Damien du 14 novembre 2026)
+                    {
+                        var layout = new HudLayoutV21();
+                        layout.Update(f.CanvasWidth, 1080f, safe, true, mode, dodge);
+                        yield return (f, mode, safe, layout);
+                    }
     }
 
     private static IEnumerable<HudButton> Used(HudLayoutV21 l) => Enum.GetValues<HudButton>().Where(l.Has);
@@ -86,7 +87,9 @@ public class InterfaceV21Tests
                 for (int j = i + 1; j < drawer.Length; j++)
                     Assert.False(l.Button(drawer[i]).Overlaps(l.Button(drawer[j]), gap), $"{f.Name}, {mode} : tiroir {drawer[i]} et {drawer[j]}");
             // Le tiroir ouvert ne cache aucune commande de combat ni le joystick.
-            foreach (HudButton b in row.Where(b => b != HudButton.More && !IsUtility(b)))
+            // Avec l'esquive, la garde monte et le tiroir (fermé dès qu'un combat commence) peut la couvrir : les commandes au doigt
+            // la masquent alors (ni dessin ni zone) ; rien d'autre ne passe dessous.
+            foreach (HudButton b in row.Where(b => b != HudButton.More && !IsUtility(b) && !(l.DodgeShown && b == HudButton.Guard)))
                 Assert.False(l.Drawer.Overlaps(l.Button(b)), $"{f.Name}, {mode} : le tiroir cache {b}");
             Assert.False(l.Drawer.Overlaps(l[HudPart.Joystick]), $"{f.Name}, {mode} : le tiroir cache le joystick");
         }
@@ -134,7 +137,7 @@ public class InterfaceV21Tests
         var note8 = new HudLayoutV21();
         note8.Update(Note8.CanvasWidth, 1080f, UiInsets.None, true, HudMode.Adventure);
         Assert.Equal(2.5f, note8.Unit, 3);
-        foreach (HudButton b in Combat) Assert.True(Millimetres(Note8, note8.Button(b).H) >= 9f, $"{b} : {Millimetres(Note8, note8.Button(b).H):0.0} mm");
+        foreach (HudButton b in Combat.Where(note8.Has)) Assert.True(Millimetres(Note8, note8.Button(b).H) >= 9f, $"{b} : {Millimetres(Note8, note8.Button(b).H):0.0} mm");
         foreach (HudButton b in Used(note8).Where(b => b != HudButton.Map)) Assert.True(Millimetres(Note8, note8.Button(b).H) >= 7.5f, b.ToString());
     }
 
@@ -307,7 +310,7 @@ public class InterfaceV21Tests
                 for (float w = 1100f; w <= 2700f; w += 40f)
                     foreach (UiInsets safe in new[] { UiInsets.None, Notch, new UiInsets(0f, 0f, 160f, 0f), new UiInsets(40f, 40f, 40f, 40f) })
                     {
-                        l.Update(w, 1080f, safe, phone, mode);
+                        l.Update(w, 1080f, safe, phone, mode, w % 80f == 0f);
                         if (l.Overflow) continue;
                         checkedLayouts++;
                         string where = $"{(phone ? "téléphone" : "PC")} {w}, {mode}, zone sûre {safe.Left}/{safe.Top}/{safe.Right}/{safe.Bottom}";
@@ -405,5 +408,24 @@ public class InterfaceV21Tests
         foreach (System.Reflection.FieldInfo f in typeof(HudTextsV21).GetFields().Where(f => f.IsLiteral && f.FieldType == typeof(string) && ((string)f.GetValue(null)!).StartsWith("text.", StringComparison.Ordinal)))
             Assert.Contains("HudTextsV21." + f.Name, Script("HudView.cs") + Script("TouchControls.cs"), StringComparison.Ordinal);
         Assert.Contains("HudTextsV21.Compass", all, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Esquive_prevue_a_sa_place_de_la_maquette_et_masquee_sans_regle()
+    {
+        var l = new HudLayoutV21();
+        l.Update(2400f, 1080f, UiInsets.None, true, HudMode.Adventure);
+        Assert.False(l.Has(HudButton.Dodge));
+        Assert.False(l.DodgeShown);
+        Assert.Equal(new UiBox(860f * 2.5f, 336f * 2.5f, 64f * 2.5f, 64f * 2.5f), l.Button(HudButton.Guard));
+        int version = l.Version;
+        l.Update(2400f, 1080f, UiInsets.None, true, HudMode.Adventure, dodge: true);
+        Assert.Equal(version + 1, l.Version);
+        Assert.True(l.Has(HudButton.Dodge));
+        Assert.Equal(new UiBox(860f * 2.5f, 336f * 2.5f, 64f * 2.5f, 64f * 2.5f), l.Button(HudButton.Dodge));   // sous la parade, comme la maquette
+        Assert.Equal(new UiBox(784f * 2.5f, 200f * 2.5f, 64f * 2.5f, 64f * 2.5f), l.Button(HudButton.Guard));
+        Assert.Equal("Esquive", Texts().Get(HudTextsV21.Button(HudButton.Dodge, HudMode.Adventure)!));
+        l.Update(2400f, 1080f, UiInsets.None, false, HudMode.Adventure, dodge: true);
+        Assert.False(l.Has(HudButton.Dodge));   // PC : pas de bouton au doigt
     }
 }

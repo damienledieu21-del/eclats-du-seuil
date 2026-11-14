@@ -32,6 +32,7 @@ namespace EdS.Runtime
             {
                 case HudButton.Parry: return "text.ui.hud.btn.parry";
                 case HudButton.Guard: return "text.ui.hud.btn.guard";
+                case HudButton.Dodge: return "text.ui.hud.btn.dodge";
                 case HudButton.Ultimate: return "text.ui.hud.btn.ultimate";
                 case HudButton.Potion: return "text.ui.hud.btn.potion";
                 case HudButton.Target: return "text.ui.hud.btn.target";

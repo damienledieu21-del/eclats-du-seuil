@@ -60,6 +60,12 @@ namespace EdS.Runtime
     {
         Parry, Guard, Skill1, Skill2, Skill3, Skill4, Skill5, Skill6, Ultimate, Potion, Target, Act, Ally,
         Pause, Menu, View, Bag, Journal, Talents, Workshop, Restart, NextScene, Help, More, Map,
+
+        /// <summary>
+        /// Esquive de la maquette (sous la parade). Réponse de Damien du 14 novembre 2026 (21 h 03) : il veut une vraie esquive, règle de
+        /// combat d'un chantier séparé ; sa place est prévue ici et reste masquée tant que la règle n'existe pas (<c>dodge</c> faux).
+        /// </summary>
+        Dodge,
     }
 
     /// <summary>Ce qui est en jeu : entraînement (seul), coopération en réseau, aventure dans les Vallons.</summary>
@@ -115,6 +121,7 @@ namespace EdS.Runtime
         private UiInsets _safe;
         private bool _phone;
         private HudMode _mode;
+        private bool _dodge;
 
         /// <summary>Change à chaque nouvelle disposition (format, zone sûre, mode) : l'affichage ne replace ses éléments qu'alors.</summary>
         public int Version { get; private set; }
@@ -123,6 +130,9 @@ namespace EdS.Runtime
         public bool Phone => _phone;
 
         public HudMode Mode => _mode;
+
+        /// <summary>Le bouton Esquive est montré (la règle d'esquive existe).</summary>
+        public bool DodgeShown => _dodge;
 
         /// <summary>Pixels du canevas par unité de la maquette (PC : 1 ; téléphone : 2,5 au plus).</summary>
         public float Unit { get; private set; }
@@ -190,9 +200,9 @@ namespace EdS.Runtime
         /// Refait la disposition pour un canevas de <paramref name="width"/> × <paramref name="height"/>, la zone sûre <paramref name="safe"/>,
         /// commandes au doigt ou non, et le mode de jeu. Rien ne change (ni la version) si rien n'a changé.
         /// </summary>
-        public void Update(float width, float height, UiInsets safe, bool phone, HudMode mode)
+        public void Update(float width, float height, UiInsets safe, bool phone, HudMode mode, bool dodge = false)
         {
-            if (width == _width && height == _height && phone == _phone && mode == _mode && safe.Left == _safe.Left && safe.Top == _safe.Top
+            if (width == _width && height == _height && phone == _phone && mode == _mode && dodge == _dodge && safe.Left == _safe.Left && safe.Top == _safe.Top
                 && safe.Right == _safe.Right && safe.Bottom == _safe.Bottom) return;
             if (!(width > 0f) || !(height > 0f)) throw new ArgumentOutOfRangeException(nameof(width), "canevas vide.");
             _width = width;
@@ -200,6 +210,7 @@ namespace EdS.Runtime
             _safe = safe;
             _phone = phone;
             _mode = mode;
+            _dodge = dodge;
             Version++;
             Safe = new UiBox(safe.Left, safe.Top, Math.Max(1f, width - safe.Left - safe.Right), Math.Max(1f, height - safe.Top - safe.Bottom));
             Array.Clear(_used, 0, _used.Length);
@@ -326,7 +337,14 @@ namespace EdS.Runtime
 
             // Pouce droit (charte : attaque 72, esquive 64 ; ici la parade et la garde, cadrage L11-D4 : pas d'esquive universelle).
             Set(HudButton.Parry, Anchor(856, 256, 72, 72, H.Right, V.Bottom));
-            Set(HudButton.Guard, Anchor(860, 336, 64, 64, H.Right, V.Bottom));
+            // Esquive (réponse de Damien du 14 novembre 2026) : à sa place de la maquette, sous la parade, quand la règle existera ; la garde
+            // monte alors à gauche de la parade, au-dessus de la rangée Cible / Agir. Sans esquive, la garde garde cette place.
+            if (_dodge)
+            {
+                Set(HudButton.Dodge, Anchor(860, 336, 64, 64, H.Right, V.Bottom));
+                Set(HudButton.Guard, Anchor(784, 200, 64, 64, H.Right, V.Bottom));
+            }
+            else Set(HudButton.Guard, Anchor(860, 336, 64, 64, H.Right, V.Bottom));
             for (int i = 0; i < 4; i++) Set(HudButton.Skill1 + i, Anchor(600 + 64 * i, 344, CombatMin, CombatMin, H.Right, V.Bottom));
             // Les règles ouvrent six places actives (sous-lot V1.8) : la 5e et la 6e prolongent la rangée vers la gauche.
             Set(HudButton.Skill5, Anchor(472, 344, CombatMin, CombatMin, H.Right, V.Bottom));

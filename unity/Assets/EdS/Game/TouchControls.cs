@@ -11,8 +11,8 @@ namespace EdS.Game
     /// <list type="bullet">
     /// <item>moitié gauche : le <b>stick</b> apparaît là où le pouce se pose (marche relative à la caméra) ; au repos, son cercle de 128 unités
     /// est dessiné à sa place de la maquette ;</item>
-    /// <item>pouce droit : <b>Parade</b> (72) et <b>Garde</b> à maintenir (64) à la place « attaque / esquive » de la maquette (cadrage
-    /// L11-D4 : pas d'esquive universelle) ; les compétences 1 à 6 en rangée de 56, l'<b>Ultime</b>, la <b>Potion</b>, <b>Cible</b> et
+    /// <item>pouce droit : <b>Parade</b> (72) et <b>Garde</b> à maintenir (64) à la place « attaque / esquive » de la maquette (pas encore
+    /// d'esquive dans les règles ; Damien en veut une, 14 novembre 2026 : sa place est prévue, <see cref="HudButton.Dodge"/>, masquée) ; les compétences 1 à 6 en rangée de 56, l'<b>Ultime</b>, la <b>Potion</b>, <b>Cible</b> et
     /// <b>Agir</b> (ou <b>Allié</b> en réseau) au-dessus ;</item>
     /// <item>en haut à droite, à gauche de la mini-carte : la rangée utile (<b>Pause</b>, <b>Vue</b>…) ; ce qui n'y tient pas va dans le tiroir
     /// <b>Plus</b> (Sac, Journal, Talents, Atelier, Halte ou Rejouer, Scène, Aide, Menu) ; la mini-carte elle-même s'agrandit au toucher ;</item>
@@ -57,6 +57,9 @@ namespace EdS.Game
 
         public bool GuardHeld => _gestures.IsHeld((int)HudButton.Guard);
         public bool ParryPressed => Tapped(HudButton.Parry);
+
+        /// <summary>Esquive touchée (bouton montré seulement quand la disposition a l'esquive : chantier de l'esquive, pas encore de règle).</summary>
+        public bool DodgePressed => Tapped(HudButton.Dodge);
         public bool TargetPressed => Tapped(HudButton.Target);
         public bool ViewPressed => Tapped(HudButton.View);
         public bool AllyPressed => Tapped(HudButton.Ally);
@@ -131,6 +134,13 @@ namespace EdS.Game
         /// <summary>Boutons dessinés par le HUD (icônes de compétence) ou zone sans dessin (la mini-carte).</summary>
         private static bool DrawnByHud(HudButton b) => (b >= HudButton.Skill1 && b <= HudButton.Ultimate) || b == HudButton.Map;
 
+        /// <summary>
+        /// Bouton absent de ce mode, rangé dans le tiroir fermé, ou couvert par le tiroir ouvert (la garde, quand l'esquive existe et la fait
+        /// monter) : ni dessiné ni touchable.
+        /// </summary>
+        private bool Hidden(HudButton b) =>
+            !_layout.Has(b) || (_layout.InDrawer(b) ? !_drawerOpen : _drawerOpen && b != HudButton.More && b != HudButton.Map && _layout.Drawer.Overlaps(_layout.Button(b)));
+
         /// <summary>Zones touchables, refaites seulement quand la disposition ou le tiroir changent.</summary>
         private void Zones()
         {
@@ -141,7 +151,7 @@ namespace EdS.Game
             for (int i = 0; i < _labels.Length; i++)
             {
                 var b = (HudButton)i;
-                if (!_layout.Has(b) || (_layout.InDrawer(b) && !_drawerOpen)) continue;
+                if (Hidden(b)) continue;
                 UiBox box = _layout.Button(b);
                 _zones.Add(new GestureButton(i, box.X, box.Y, box.W, box.H));
                 string key = HudTextsV21.Button(b, _layout.Mode);
@@ -253,7 +263,7 @@ namespace EdS.Game
             for (int i = 0; i < _labels.Length; i++)
             {
                 var b = (HudButton)i;
-                if (!_layout.Has(b) || (_layout.InDrawer(b) && !_drawerOpen)) continue;
+                if (Hidden(b)) continue;
                 Rect rect = Box(_layout.Button(b));
                 if (Highlighted(Highlight, b))
                 {
