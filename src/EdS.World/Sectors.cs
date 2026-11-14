@@ -495,6 +495,29 @@ namespace EdS.World
         /// <summary>Temps du monde du prochain tick à simuler.</summary>
         public long WorldTick { get; private set; }
 
+        /// <summary>
+        /// Sous-lot V2.28b (3) : version des secteurs ouverts, qui change à chaque ouverture, fermeture ou renouvellement de session. Lecture
+        /// seule : l'affichage ne recopie la liste (<see cref="CopyOpen"/>) que lorsqu'elle change.
+        /// </summary>
+        public long OpenVersion { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : recopie les secteurs ouverts et leur session, dans l'ordre des noms (ordinal). Lecture seule : ne change rien
+        /// à l'hôte. Les listes données sont vidées puis remplies.
+        /// </summary>
+        public void CopyOpen(List<string> names, List<Zone> zones)
+        {
+            if (names is null) throw new ArgumentNullException(nameof(names));
+            if (zones is null) throw new ArgumentNullException(nameof(zones));
+            names.Clear();
+            zones.Clear();
+            foreach (KeyValuePair<string, Open> o in _open)
+            {
+                names.Add(o.Key);
+                zones.Add(o.Value.Zone);
+            }
+        }
+
         /// <param name="session">Session du monde (celle du secteur du cœur, comme une session de zone d'avant).</param>
         /// <param name="sectorSessions">Dernière session de chaque autre secteur (sauvegarde) : une réouverture prend la suivante.</param>
         /// <param name="logs">Journal de chaque session de secteur (nom, session) ; null : aucun.</param>
@@ -922,6 +945,7 @@ namespace EdS.World
             Func<Population, long, bool>? wanted = _wanted is null ? null : (pop, tick) => _wanted(pop, checked(zone.StartWorldTick + tick));
             var open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
+            OpenVersion = checked(OpenVersion + 1);   // sous-lot V2.28b (3)
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
             return open;
         }
@@ -940,6 +964,7 @@ namespace EdS.World
             _consumed.RemoveWhere(k => k.StartsWith(deaths, StringComparison.Ordinal));
             _registryVersion = checked(_registryVersion + 1);   // le registre du monde a changé : les recopies des sessions ouvertes ne le contiennent plus forcément
             _open.Remove(open.Name);
+            OpenVersion = checked(OpenVersion + 1);   // sous-lot V2.28b (3)
             events.Add(new SectorEvent(SectorEventKind.Closed, open.Name, null, null, WorldTick));
         }
 

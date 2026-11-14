@@ -109,6 +109,11 @@ namespace EdS.Game
         /// </summary>
         private int _shownRebinds;
 
+        // Sous-lot V2.28b (3) : créatures des autres secteurs ouverts, secteur montré (pour le passage), chef ou non (délégué gardé).
+        private readonly SectorCrowd _sectorCrowd = new SectorCrowd();
+        private string _shownSector;
+        private System.Func<string, bool> _isBoss;
+
         /// <summary>Distance au-delà de laquelle une créature de l'aventure n'a pas de barre au-dessus d'elle.</summary>
         private const float OverheadRange = 25f;
 
@@ -355,6 +360,7 @@ namespace EdS.Game
             if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
             _shownSession = _adventure.Opened;
             _shownRebinds = _adventure.Combat.Rebinds;
+            _shownSector = _adventure.World.Sector;
             _shownCharges = -1;   // relecture de l'essai 7 : pas d'éclat d'or au début d'une session
             _moodAge = 99f;
             _paused = _creator != null && _creator.Open;   // V2.16 : jamais de reprise du jeu sous le créateur de personnage
@@ -575,15 +581,7 @@ namespace EdS.Game
                 }
             }
             if (a.Opened != _shownSession) ShowAdventureSession();
-            else if (a.Combat.Rebinds != _shownRebinds)
-            {
-                // Sous-lot V2.28b (2b) : le personnage est passé dans un autre secteur (ou sa session a été renouvelée) : autre moteur,
-                // autres identités. La carte de la session du moment et les corps sont refaits ; la caméra et l'orientation restent.
-                _combat = a.Combat;
-                _arena.Populate(_combat, a.Map);
-                _shownRebinds = a.Combat.Rebinds;
-                _shownCharges = -1;
-            }
+            else FollowRebind(a);
             if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
             // Sous-lot V1.1 : la boutique suit l'écran (Échap, I, J, K, L la ferment) ; le bouton Parler la ferme pour le dialogue.
             if (_screens.Open == AdventureScreens.Panel.Merchant && a.Shop == null) _screens.Close();
@@ -617,6 +615,9 @@ namespace EdS.Game
                 ReadCombatInput();
                 Move(player);
                 a.Advance(Time.deltaTime);
+                // Sous-lot V2.28b (3) : un passage fait à cette image est suivi avant l'affichage de cette image (sinon une image montrait
+                // le nouveau moteur avec les corps de l'ancien : personnage caché, créatures figées).
+                if (a.Opened == _shownSession) FollowRebind(a);
                 foreach (CombatFeedback feedback in _combat.DrainFeedback()) Show(feedback);
             }
             foreach (string message in a.DrainMessages())
@@ -637,6 +638,7 @@ namespace EdS.Game
             // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
             EchoContext(a);
             _arena.Sync(_combat, player, null);
+            _arena.SyncCrowd(a.World, _sectorCrowd, _combat, _paused ? 0f : Time.deltaTime);   // sous-lot V2.28b (3)
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
@@ -1524,6 +1526,25 @@ namespace EdS.Game
             }
         }
 
+        /// <summary>
+        /// Sous-lot V2.28b (2b), repris au (3) : le personnage est passé dans un autre secteur (ou sa session a été renouvelée) : autre moteur,
+        /// autres identités. Dans l'ordre : relever (places montrées des créatures de la session quittée, reprises parmi celles des autres
+        /// secteurs), propager (corps et glissement du personnage gardés), remplacer (corps de la session d'arrivée, partis des places où
+        /// ils étaient montrés). La carte et le décor de l'aire entière restent ; la caméra et l'orientation aussi.
+        /// </summary>
+        private void FollowRebind(AdventureSession a)
+        {
+            if (a.Combat.Rebinds == _shownRebinds) return;
+            string from = _shownSector, to = a.World.Sector;
+            if (from != null && to != null && from != to) _arena.HandOver(a.World, _sectorCrowd, from);
+            _combat = a.Combat;
+            _arena.Populate(_combat, a.Map, true);
+            if (from != null && to != null && from != to) _arena.Carry(_combat, _sectorCrowd, to);
+            _shownRebinds = a.Combat.Rebinds;
+            _shownSector = to;
+            _shownCharges = -1;
+        }
+
         /// <summary>Sous-lot 12.9d : ennemis à montrer sur la carte (en vue seulement, comme à l'écran).</summary>
         /// <summary>Interface V2.1 : un ennemi visible et vivant est engagé (il poursuit ou attaque) : un combat est en cours.</summary>
         private bool InFight()
@@ -1543,6 +1564,9 @@ namespace EdS.Game
             foreach (OtherState o in _combat.Others())
                 if (o.IsEnemy && o.View.IsPresent && !o.View.IsDead && _arena.Shown(o.Id) && o.View.Position is EdS.Domain.Space.GroundVector at)
                     enemies.Add(new MapEnemy(at.X.Raw / 10000f, at.Z.Raw / 10000f, _adventure.IsBoss(o.Id)));
+            // Sous-lot V2.28b (3) : et ceux des autres secteurs ouverts, en vue.
+            if (_isBoss == null) _isBoss = id => _adventure != null && _adventure.IsBoss(id);
+            _arena.CrowdEnemies(_sectorCrowd, enemies, _isBoss);
             return enemies;
         }
 
