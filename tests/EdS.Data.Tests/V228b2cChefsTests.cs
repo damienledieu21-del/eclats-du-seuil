@@ -387,6 +387,54 @@ public class V228b2cChefsTests
     }
 
     [Fact]
+    public void Forme_emportee_morte_avant_d_etre_examinee_la_suivante_n_herite_pas_de_son_etat()
+    {
+        // Revue Codex de la PR #159 (2e tour) : la forme emportée arrive dans la session renouvelée puis y meurt avant que le combat ne
+        // l'examine (le moteur fait les arrivées, puis les dégâts) : l'état emporté est consommé à son arrivée (Carried), et la forme
+        // suivante arrive à sa place de départ, PV pleins (FormArrived), sans la place ni les PV de la précédente.
+        ZoneDefinition zone = Essai(chief: c => c["data"]!["combatants"]![0]!["health"] = 5);
+        SectorMap map = SectorMap.For(zone);
+        long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 20);
+        var source = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero().WithXp(xp)), zone, ShippedData, Progression, ItemsCatalog,
+            safePoint: "guet_est");
+        var hero = (CharacterSetup)source.Zone.Setup.Combatants.Single(c => c.Id == "bastion");
+        CharacterSetup At(double x, double z) => new(hero.Id, hero.Team, hero.Class, hero.Build, hero.Initiative,
+            new CombatantPlacement(new GroundVector(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)), Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture))), WorldSession.CharacterRadius));
+        Boss boss = zone.Bosses.Single();
+        // Session qui finit : la première forme, présente et vivante, à sa place.
+        var from = new Zone(zone.Id, map.SetupFor("s01_00", 1), 1, 0, entering: new[] { At(420, 200) }, sector: "s01_00");
+        var old = new BossFight(boss);
+        old.Start(from.Engine);
+        for (int i = 0; i < 3; i++) from.Step();
+        Assert.Empty(old.Step(from));
+        Assert.True(from.Engine.View(Chef).IsPresent);
+        // Session renouvelée : le personnage y arrive collé à la place du chef ; le combat est emporté (état gardé jusqu'à l'arrivée).
+        var to = new Zone(zone.Id, map.SetupFor("s01_00", 2, true), 2, 3, entering: new[] { At(331.4, 60) }, sector: "s01_00");
+        BossFight fight = BossFight.Continue(old, from.Engine, to);
+        // Plusieurs ticks sans que le combat n'examine la forme : elle arrive, puis le personnage l'abat.
+        for (int i = 0; i < 60 && !(to.Engine.CombatantIds.Contains(Chef) && to.Engine.View(Chef).IsDead); i++)
+        {
+            if (i % 20 == 0)
+                try { to.Engine.Submit(new CombatCommand(to.Engine.CurrentTick * 50, "bastion", "skill.bastion.frappe_du_rempart", Chef)); }
+                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException) { }
+            to.Step();
+        }
+        CombatantView dead = to.Engine.View(Chef);
+        Assert.True(dead.IsDead);
+        Assert.NotNull(dead.ArrivedTick);
+        IReadOnlyList<BossEvent> events = fight.Step(to);
+        Assert.Equal(new[] { BossEventKind.Carried, BossEventKind.FormArrived }, events.Select(e => e.Kind));
+        Assert.Equal((Chef, 0), (events[0].Form, events[0].Phase));
+        Assert.Equal(1, events[1].Phase);
+        to.Step();
+        CombatantView next = to.Engine.View(events[1].Form);
+        Assert.True(next.IsPresent);
+        Assert.Equal(next.MaxHealth, next.Health);
+        GroundVector home = boss.Forms[1].Placement!.Position, p = next.Position!.Value;
+        Assert.InRange(Math.Abs(p.X.Raw - home.X.Raw) + Math.Abs(p.Z.Raw - home.Z.Raw), 0, 5_000);   // sa place de départ (un pas de plus au plus)
+    }
+
+    [Fact]
     public void Chef_vaincu_le_reste_au_renouvellement_recompense_en_attente_gardee_puis_donnee_une_fois()
     {
         // Sac plein à la victoire : la récompense attend. La session se renouvelle : le chef vaincu le reste (aucune forme), la récompense
