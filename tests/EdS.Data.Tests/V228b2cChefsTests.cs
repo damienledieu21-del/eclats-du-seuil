@@ -25,7 +25,8 @@ public class V228b2cChefsTests
     private const string Chef = "chef_est";
 
     /// <summary>Zone d'essai lue et validée comme une zone livrée ; retouches de la zone, du scénario et du scénario du chef.</summary>
-    internal static ZoneLoadResult Read(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, Action<JsonObject>? chief = null)
+    internal static ZoneLoadResult Read(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, Action<JsonObject>? chief = null,
+        Action<Func<JsonArray, JsonObject>, Dictionary<string, JsonObject>>? extra = null)
     {
         JsonObject vallons = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!["data"]!.AsObject();
         JsonObject loup = vallons["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "loup1")!.AsObject();
@@ -96,12 +97,15 @@ public class V228b2cChefsTests
             },
         };
         zone?.Invoke(root);
+        var files = new Dictionary<string, JsonObject>(StringComparer.Ordinal);
+        extra?.Invoke(Scenario, files);
         string directory = Path.Combine(Path.GetTempPath(), "eds_v228b2c_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(directory, "zones"));
         try
         {
             File.WriteAllText(Path.Combine(directory, "zones", "essai_secteurs.json"), s.ToJsonString());
             File.WriteAllText(Path.Combine(directory, "zones", "essai_chef.json"), c.ToJsonString());
+            foreach ((string name, JsonObject file) in files) File.WriteAllText(Path.Combine(directory, "zones", name + ".json"), file.ToJsonString());
             return ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);
         }
         finally
@@ -110,9 +114,10 @@ public class V228b2cChefsTests
         }
     }
 
-    internal static ZoneDefinition Essai(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, Action<JsonObject>? chief = null)
+    internal static ZoneDefinition Essai(Action<JsonObject>? zone = null, Action<JsonObject>? scenario = null, Action<JsonObject>? chief = null,
+        Action<Func<JsonArray, JsonObject>, Dictionary<string, JsonObject>>? extra = null)
     {
-        ZoneLoadResult loaded = Read(zone, scenario, chief);
+        ZoneLoadResult loaded = Read(zone, scenario, chief, extra);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         return loaded.Zone!;
     }
@@ -322,6 +327,71 @@ public class V228b2cChefsTests
             }
             Assert.False(w.RenewsSessions);
             Assert.Equal(0, w.Renewals);
+        }
+    }
+
+    [Fact]
+    public void Plafond_du_registre_deux_chefs_qui_reviennent_comptent_dans_la_borne()
+    {
+        // Les chefs qui arrivent avec une session nouvelle comptent dans la borne du tick : une aire sans autre créature, deux chefs à l'est,
+        // vaincus dans la session qui finit (aucune mort possible de plus pour eux) ; la session renouvelée les ramène tous les deux. Juste à
+        // la borne, le tick est accepté entier ; sans eux dans la borne, le tick était accepté puis interrompu après le renouvellement.
+        JsonArray crocForms = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons_croc_gris")))!["data"]!["combatants"]!.AsArray();
+        JsonObject Weak(string id, double x)
+        {
+            var f = (JsonObject)crocForms[0]!.DeepClone();
+            f["id"] = id;
+            f["position"] = new JsonArray(x, 60);
+            f["health"] = 5;
+            foreach (JsonNode? attack in f["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            return f;
+        }
+        ZoneDefinition zone = Essai(
+            zone: z =>
+            {
+                z["data"]!["populations"] = new JsonArray();
+                z["data"]!["chiefs"]![0]!["forms"] = new JsonArray(Chef);
+                z["data"]!["chiefs"]!.AsArray().Add(new JsonObject
+                {
+                    ["id"] = "chef_nord", ["scenario"] = "zones/essai_chef2", ["forms"] = new JsonArray("chef_nord"), ["fact"] = "fact.chef_nord.vaincu",
+                    ["rewards"] = new JsonArray(), ["loot"] = "loot.loup",
+                });
+            },
+            scenario: s =>
+            {
+                s["data"]!["combatants"] = new JsonArray();
+                s["data"]!["durationMs"] = 30_000;
+            },
+            chief: c => c["data"]!["combatants"] = new JsonArray(Weak(Chef, 326)),
+            extra: (scenario, files) => files["essai_chef2"] = scenario(new JsonArray(Weak("chef_nord", 336))));
+        foreach (int spare in new[] { 0, -1 })
+        {
+            var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+            long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= 20);
+            var w = new WorldSession(new WorldSave(zone.Id, 0, 0, keys, Hero().WithXp(xp)), zone, ShippedData, Progression, ItemsCatalog, safePoint: "guet_est");
+            int defeated = 0;
+            for (int i = 0; i < 600 && defeated < 2 && !w.Zone.IsOver; i++)
+            {
+                string? target = w.BossForms.FirstOrDefault(f => w.Zone.Engine.CombatantIds.Contains(f) && !w.Zone.Engine.View(f).IsDead);
+                if (i % 20 == 0 && target != null)
+                    try { w.Zone.Engine.Submit(new CombatCommand(w.Zone.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", target)); }
+                    catch (ArgumentException) { }
+                defeated += w.Step().Boss.Count(b => b.Kind == BossEventKind.Defeated);
+            }
+            Assert.Equal(2, defeated);
+            while (!w.Zone.IsOver) w.Step();
+            SectorWorld host = w.Host!;
+            long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
+            for (int i = 0; i < room - spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D4}"));
+            if (spare == 0)
+            {
+                w.Step();
+                Assert.Equal(1, w.Renewals);
+                Assert.Contains(Chef, w.Zone.Engine.CombatantIds);
+                Assert.Contains("chef_nord", w.Zone.Engine.CombatantIds);
+                continue;
+            }
+            Assert.False(w.RenewsSessions);
         }
     }
 
