@@ -17,7 +17,7 @@
       "description": "Chemin de ce schéma, pour l'auto-complétion des éditeurs ; ignoré par le programme."
     },
     "schemaVersion": {
-      "const": 16
+      "const": 17
     },
     "kind": {
       "const": "rules"
@@ -898,6 +898,50 @@
                 "calmMs"
               ],
               "description": "Bêtes qui se promènent (sous-lot V2.4.1, schéma 16)."
+            },
+            "dodge": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "distance": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10,
+                  "description": "Longueur du bond d'esquive (m ; 3 livré). Le bond s'arrête avant un obstacle ou une emprise solide."
+                },
+                "durationMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000,
+                  "description": "Durée du bond (ms, multiple du tick ; 150 livré). Distance ÷ durée ≤ 20 m/s (vitesse technique maximale)."
+                },
+                "invulnerableMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 60000,
+                  "description": "Invulnérabilité au début du bond (ms, multiple du tick, au plus la recharge ; 300 livré, 6 ticks)."
+                },
+                "enduranceCost": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Endurance dépensée par une esquive (20 livré)."
+                },
+                "cooldownMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 60000,
+                  "description": "Recharge comptée depuis le début du bond (ms, multiple du tick, au moins la durée du bond ; 1 000 livré)."
+                }
+              },
+              "required": [
+                "distance",
+                "durationMs",
+                "invulnerableMs",
+                "enduranceCost",
+                "cooldownMs"
+              ],
+              "description": "Esquive (schéma 17, décision de Damien du 14 novembre 2026, qui revient sur L11-D4)."
             }
           },
           "required": [
@@ -917,7 +961,8 @@
             "shield",
             "equipment",
             "infighting",
-            "wander"
+            "wander",
+            "dodge"
           ],
           "description": "Paramètres du moteur de combat (CombatRules)."
         },

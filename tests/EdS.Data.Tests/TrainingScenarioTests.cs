@@ -156,7 +156,7 @@ public class TrainingScenarioTests
         // qui erre : seul l'en-tête change ; référence dans Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0.
         // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; sans espace : seul l'en-tête change ; référence dans
         // Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0. Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénarios en schéma
-        // 18 ; sans état emporté : seul l'en-tête change ; référence dans Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0.
+        // 18 ; sans état emporté : seul l'en-tête change ; référence dans Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -283,6 +283,33 @@ namespace EdS.Domain.Combat
         public long WanderCalmMs { get; init; } = 15_000;
 
         /// <summary>
+        /// Esquive (schéma 17 ; décision de Damien du 14 novembre 2026, qui revient sur L11-D4) : longueur du bond (<c>combat.dodge.distance</c>,
+        /// 3 m livrés), dans ]0, 10] m. Le bond s'arrête avant un obstacle ou une emprise solide.
+        /// </summary>
+        public Fixed DodgeDistance { get; init; } = Fixed.FromInt(3);
+
+        /// <summary>
+        /// Esquive : durée du bond (<c>combat.dodge.durationMs</c>, 150 ms livrées, soit 3 ticks : choix technique de Claude, « un bond rapide »),
+        /// multiple du tick, dans [1 tick, 1 000] ms ; la vitesse du bond (distance ÷ durée) ne dépasse pas la vitesse technique maximale.
+        /// </summary>
+        public long DodgeDurationMs { get; init; } = 150;
+
+        /// <summary>
+        /// Esquive : invulnérabilité au début du bond (<c>combat.dodge.invulnerableMs</c>, 300 ms livrées, soit 6 ticks), multiple du tick,
+        /// dans [0, recharge] : aucune invulnérabilité permanente par enchaînement.
+        /// </summary>
+        public long DodgeInvulnerableMs { get; init; } = 300;
+
+        /// <summary>Esquive : endurance dépensée (<c>combat.dodge.enduranceCost</c>, 20 livrés), dans [0, 1 000 000].</summary>
+        public long DodgeEnduranceCost { get; init; } = 20;
+
+        /// <summary>
+        /// Esquive : recharge, comptée depuis le début du bond (<c>combat.dodge.cooldownMs</c>, 1 000 ms livrées), multiple du tick, au moins la
+        /// durée du bond, au plus 60 000 ms.
+        /// </summary>
+        public long DodgeCooldownMs { get; init; } = 1000;
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>
@@ -361,6 +388,27 @@ namespace EdS.Domain.Combat
                 errors.Add(new RuleViolation("doit être dans ]0, 100] m.", nameof(WanderMaxRadius)));
             if (WanderCalmMs < 1000 || WanderCalmMs > 600_000 || (TickMilliseconds > 0 && WanderCalmMs % TickMilliseconds != 0))
                 errors.Add(new RuleViolation("doit être dans [1 000, 600 000] ms et un multiple du tick.", nameof(WanderCalmMs)));
+            // Esquive (schéma 17, décision de Damien du 14/11/2026).
+            if (DodgeDistance <= Fixed.Zero || DodgeDistance > Fixed.FromInt(10))
+                errors.Add(new RuleViolation("doit être dans ]0, 10] m.", nameof(DodgeDistance)));
+            bool dodgeTimesValid = true;
+            foreach (var (value, name, min, max) in new[] { (DodgeDurationMs, nameof(DodgeDurationMs), 1L, 1000L),
+                (DodgeInvulnerableMs, nameof(DodgeInvulnerableMs), 0L, 60_000L), (DodgeCooldownMs, nameof(DodgeCooldownMs), 0L, 60_000L) })
+                if (value < min || value > max || (TickMilliseconds > 0 && value % TickMilliseconds != 0))
+                {
+                    dodgeTimesValid = false;
+                    errors.Add(new RuleViolation($"doit être dans [{min}, {max}] ms et un multiple du tick.", name, nameof(TickMilliseconds)));
+                }
+            if (dodgeTimesValid && DodgeCooldownMs < DodgeDurationMs)
+                errors.Add(new RuleViolation("la recharge ne peut pas être plus courte que le bond.", nameof(DodgeCooldownMs), nameof(DodgeDurationMs)));
+            if (dodgeTimesValid && DodgeInvulnerableMs > DodgeCooldownMs)
+                errors.Add(new RuleViolation("l'invulnérabilité ne peut pas dépasser la recharge (aucune invulnérabilité permanente).", nameof(DodgeInvulnerableMs), nameof(DodgeCooldownMs)));
+            // Vitesse du bond ≤ vitesse technique maximale : distance × 1 000 ≤ vitesse max × durée (entiers bruts, sans débordement : bornes ci-dessus).
+            if (dodgeTimesValid && DodgeDistance > Fixed.Zero && DodgeDistance <= Fixed.FromInt(10)
+                && checked(DodgeDistance.Raw * 1000) > checked(Space.SpaceLimits.MaxSpeed.Raw * DodgeDurationMs))
+                errors.Add(new RuleViolation($"bond plus rapide que la vitesse technique maximale ({Space.SpaceLimits.MaxSpeed} m/s).", nameof(DodgeDistance), nameof(DodgeDurationMs)));
+            if (DodgeEnduranceCost < 0 || DodgeEnduranceCost > 1_000_000)
+                errors.Add(new RuleViolation("doit être dans [0, 1 000 000].", nameof(DodgeEnduranceCost)));
             if (Statuses is null)
                 errors.Add(new RuleViolation("catalogue des altérations obligatoire.", nameof(GuardBreakStatus)));
             else if (GuardBreakStatus is null || !Statuses.TryGet(GuardBreakStatus, out StatusDefinition? guardBreak))

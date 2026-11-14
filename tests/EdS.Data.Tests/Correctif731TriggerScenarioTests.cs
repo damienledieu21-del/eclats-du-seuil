@@ -39,7 +39,7 @@ public class Correctif731TriggerScenarioTests
     /// Référence du contenu livré (sous-lot V1.8d : moteur 0.27.0, format 21 ; Bastion 0.6.0, règles 0.15.0 : barre « 4 + ultime dès le début », sous-lot
     /// V1.8). Celle des règles 0.14.0 (bornes des effets d'équipement, sous-lot V1.3) reste figée.
     /// </summary>
-    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.31.0-contenu-0.6.0-regles-0.17.0", Name + ".jsonl");   // V2.4
+    private static string FixturePath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.32.0-contenu-0.6.0-regles-0.18.0", Name + ".jsonl");   // V2.4
 
     /// <summary>
     /// En-tête sans ce qui distingue légitimement deux moteurs (format et version, sous-lot 11.1) ni, sur demande, l'identité des règles
