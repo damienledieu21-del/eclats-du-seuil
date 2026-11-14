@@ -42,7 +42,7 @@ public class V228b2cEvenementsTests
     }
 
     /// <summary>Tick du monde où commence la première occurrence (06 h 00) après le début du temps du monde.</summary>
-    private static long StartTick(ZoneDefinition zone)
+    internal static long StartTick(ZoneDefinition zone)
     {
         var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
         // La première occurrence après le début du temps du monde (et au moins 100 ticks après lui).
@@ -50,7 +50,7 @@ public class V228b2cEvenementsTests
         return WorldEventSchedule.TickAt(clock, o.StartAt);
     }
 
-    private static WorldSession Open(ZoneDefinition zone, long worldTick, string safePoint, int level = 1, IEnumerable<string>? consumed = null)
+    internal static WorldSession Open(ZoneDefinition zone, long worldTick, string safePoint, int level = 1, IEnumerable<string>? consumed = null)
     {
         SavedCharacter hero = Hero();
         if (level > 1) hero = hero.WithXp(Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => Progression.LevelFor(x) >= level));
@@ -58,10 +58,10 @@ public class V228b2cEvenementsTests
         return new WorldSession(new WorldSave(zone.Id, worldTick, 0, keys, hero), zone, ShippedData, Progression, ItemsCatalog, safePoint: safePoint);
     }
 
-    private static List<string> HuntersIn(Zone zone) =>
+    internal static List<string> HuntersIn(Zone zone) =>
         zone.Engine.CombatantIds.Where(id => id.Contains("_ev", StringComparison.Ordinal) && zone.Engine.View(id) is { IsPresent: true, IsDead: false }).ToList();
 
-    private static void Walk(WorldSession w, double x, double z)
+    internal static void Walk(WorldSession w, double x, double z)
     {
         (double, double)? sent = null;
         for (int i = 0; i < 6000; i++)
@@ -418,7 +418,7 @@ public class V228b2cEvenementsTests
     /// Revue Codex de la PR #160 (1er tour) : une faille du Seuil courte (40 min du monde, chaque jour à 06 h 00, sûre) à l'est, ses échos
     /// qui frappent à peine.
     /// </summary>
-    private static ZoneDefinition ShortRift()
+    private static ZoneDefinition ShortRift(bool slow = true)
     {
         ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z =>
         {
@@ -447,7 +447,7 @@ public class V228b2cEvenementsTests
                 {
                     c["health"] = 5000;        // échos solides : une frappe les blesse sans les tuer
                     c["intervalMs"] = 10_000;  // et qui frappent rarement (le personnage traverse sans tomber)
-                    c["speed"] = 1;            // et lents : le personnage les distance, ils lâchent (laisse de 20 m)
+                    if (slow) c["speed"] = 1;  // et lents : le personnage les distance, ils lâchent (laisse de 20 m)
                 }
                 foreach (JsonNode? attack in c["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
             }
@@ -456,6 +456,36 @@ public class V228b2cEvenementsTests
         return loaded.Zone!;
 
         static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
+    }
+
+    [Fact]
+    public void Poursuivi_hors_de_son_secteur_les_creatures_au_bout_de_la_marge_lachent_meme_entre_lui_et_le_bout()
+    {
+        // Sous-lot V2.28b (4), défaut vu à la PR #160 : trois échos poursuivent le personnage hors de l'est ; arrivés avant lui au bout de
+        // la marge, ils se mettent entre lui et le bout : il n'y arrivait jamais, la rencontre ne lâchait pas, il restait coincé dans son
+        // secteur. Chaque créature de la rencontre arrivée elle-même au bout de la marge lâche : il passe à l'ouest.
+        ZoneDefinition zone = ShortRift(slow: false);
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 5, "camp_est", level: 25);
+        for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 3; i++) w.Step();
+        Zone east = w.Zone;
+        string echo = HuntersIn(east).OrderBy(id => id, StringComparer.Ordinal).First();
+        GroundVector home = east.Engine.View(echo).Position!.Value;
+        Walk(w, home.X.Raw / 1e4 + 1.5, home.Z.Raw / 1e4);
+        for (int i = 0; i < 200 && east.Engine.View(echo) is { } h && h.Health == h.MaxHealth; i++)
+        {
+            if (i % 20 == 0)
+                try { east.Engine.Submit(new CombatCommand(east.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", echo)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        Assert.True(east.Engine.View(echo).Engaged);
+        Walk(w, 420, 200);
+        Walk(w, 140, 128);   // avant : « (140, 128) pas atteint », coincé vers x = 225
+        Assert.Equal("s00_00", w.Sector);
+        Assert.True(w.Passages >= 1);
+        Assert.False(w.IsDefeated);
+        Assert.Contains(east.Engine.CombatantIds, id => w.IsEventCreature(id) || east.Engine.View(id).HasLeft);
     }
 
     [Theory]

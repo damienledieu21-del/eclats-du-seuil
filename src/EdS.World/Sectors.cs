@@ -1400,10 +1400,15 @@ namespace EdS.World
                 if (to == p.Sector || _map.Space(to) is null) continue;
                 if (InEncounter(o.Zone, p.Combatant))
                 {
-                    if (!AtMarginEnd(o, pos, v.Radius!.Value)) continue;
+                    // Sous-lot V2.28b (4) : le joueur au bout de la marge : toute la rencontre lâche. Sinon (des créatures se sont mises entre
+                    // lui et le bout de la marge et l'empêchent d'y arriver), chaque créature de la rencontre arrivée elle-même au bout de la
+                    // marge lâche : on finit toujours par lâcher au bout de la marge (décisions de Damien du 14 novembre 2026, « AAA », 1).
+                    bool all = AtMarginEnd(o, pos, v.Radius!.Value);
                     foreach (Encounter e in o.Zone.Encounters().Where(e => e.Characters.Contains(p.Combatant)))
                         foreach (string creature in e.Creatures)
                         {
+                            if (!all && !(o.Zone.Engine.View(creature) is { IsPresent: true, IsDead: false, Position: GroundVector at, Radius: Fixed r } && AtMarginEnd(o, at, r)))
+                                continue;
                             bool gone;
                             if (o.Populations.Release(o.Zone, creature) is PopulationEvent released)
                             {
