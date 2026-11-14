@@ -414,6 +414,108 @@ public class V228b2cEvenementsTests
         }
     }
 
+    /// <summary>
+    /// Revue Codex de la PR #160 (1er tour) : une faille du Seuil courte (40 min du monde, chaque jour à 06 h 00, sûre) à l'est, ses échos
+    /// qui frappent à peine.
+    /// </summary>
+    private static ZoneDefinition ShortRift()
+    {
+        ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z =>
+        {
+            var rift = (JsonObject)JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!["data"]!["events"]!.AsArray()
+                .Single(x => (string)x!["id"]! == "faille_du_seuil")!.DeepClone();
+            rift["everyDays"] = 1;
+            rift["chancePercent"] = 100;
+            rift["firstDay"] = 0;
+            rift["start"] = "06:00";
+            rift["spreadMinutes"] = 0;
+            rift["announceMinutes"] = 0;
+            rift["durationMinutes"] = 40;
+            rift["waves"] = 1;   // 6 000 ticks (une minute du monde : 7,5 s)
+            var g = (JsonObject)rift["groups"]![0]!.DeepClone();
+            g.Remove("spreadTo");
+            g["position"] = new JsonArray(380, 90);
+            g["creatures"] = new JsonArray(Creature(380, 94), Creature(384, 90), Creature(376, 90));
+            g["haunts"] = new JsonArray(Creature(390, 100), Creature(370, 100), Creature(380, 104));
+            rift["groups"] = new JsonArray(g);
+            z["data"]!["events"] = new JsonArray(rift);
+        }, scenario: s =>
+        {
+            foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
+            {
+                if ((string)c!["id"]! == "loup_est")
+                {
+                    c["health"] = 5000;        // échos solides : une frappe les blesse sans les tuer
+                    c["intervalMs"] = 10_000;  // et qui frappent rarement (le personnage traverse sans tomber)
+                    c["speed"] = 1;            // et lents : le personnage les distance, ils lâchent (laisse de 20 m)
+                }
+                foreach (JsonNode? attack in c["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+            }
+        });
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        return loaded.Zone!;
+
+        static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Evenement_commence_secteur_ouvert_puis_ferme_avant_l_echeance_issue_et_cicatrice(bool reopen)
+    {
+        // Revue Codex de la PR #160 (1er tour) : la faille commence secteur ouvert, ses échos arrivent ; le personnage s'en va et le secteur
+        // se ferme avant l'échéance. Ses créatures sont relevées puis remises en attente : l'occurrence finit au temps du monde avec son
+        // issue normale (restée ouverte : perdue, une cicatrice) et ne bloque pas les suivantes. Avec une réouverture pendant l'événement,
+        // l'écho blessé revient à sa place, PV pleins.
+        ZoneDefinition zone = ShortRift();
+        const string Rift = "faille_du_seuil";
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 5, "camp_est", level: 25);
+        for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 3; i++) w.Step();
+        Zone east = w.Zone;
+        Assert.Equal("s01_00", w.Sector);
+        string echo = HuntersIn(east).OrderBy(id => id, StringComparer.Ordinal).First();
+        GroundVector home = east.Engine.View(echo).Position!.Value;
+        Walk(w, home.X.Raw / 1e4 + 1.5, home.Z.Raw / 1e4);
+        for (int i = 0; i < 200 && east.Engine.View(echo) is { } h && h.Health == h.MaxHealth; i++)
+        {
+            if (i % 20 == 0)
+                try { east.Engine.Submit(new CombatCommand(east.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", echo)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        Assert.True(east.Engine.View(echo) is { IsDead: false } hurt && hurt.Health < hurt.MaxHealth, "l'écho n'a pas été blessé");
+        var notices = new List<WorldEventNotice>();
+        Walk(w, 420, 200);   // par le camp de l'est (loin du chef de l'est)
+        Walk(w, 140, 128);   // à l'ouest, à plus de 96 m de l'est : il se ferme au bout de 60 s
+        for (int i = 0; i < 1400 && w.Host!.SectorZone("s01_00") != null; i++) notices.AddRange(w.Step().Events);
+        Assert.Null(w.Host!.SectorZone("s01_00"));
+        Assert.True(w.EventsRuntime!.Running(Rift));   // pas encore à l'échéance
+        if (reopen)
+        {
+            Walk(w, 300, 128);   // l'est se rouvre (moins de 96 m)
+            Zone again = w.Host.SectorZone("s01_00")!;
+            Assert.NotSame(east, again);
+            string? back = null;
+            for (int i = 0; i < 400 && back is null && w.EventsRuntime.Running(Rift); i++)
+            {
+                notices.AddRange(w.Step().Events);
+                back = HuntersIn(again).FirstOrDefault(id => again.Engine.View(id) is { } v && v.Position is GroundVector p
+                    && Math.Abs(p.X.Raw - home.X.Raw) + Math.Abs(p.Z.Raw - home.Z.Raw) < 10_000);
+            }
+            Assert.True(back != null, "l'écho n'est pas revenu à sa place");
+            CombatantView full = again.Engine.View(back!);
+            Assert.Equal(full.MaxHealth, full.Health);   // tous ses PV
+        }
+        for (int i = 0; i < 9000 && w.EventsRuntime.Running(Rift); i++) notices.AddRange(w.Step().Events);
+        Assert.False(w.EventsRuntime.Running(Rift));   // réglée : l'occurrence suivante peut avoir lieu
+        Assert.Contains(notices, n => n.Kind == WorldEventNoticeKind.Lost && n.Event == Rift);
+        SavedEvent saved = Assert.Single(w.Character.Events, x => x.Id.EndsWith(Rift, StringComparison.Ordinal));
+        Assert.Equal((0L, 1L), (saved.Won, saved.Lost));
+        for (int i = 0; i < 2400 && w.Character.Scars.Count == 0; i++) w.Step();
+        Assert.Contains(w.Character.Scars, x => x.Id == "zone.essai/faille_du_seuil/ruines");
+    }
+
     [Fact]
     public void Cicatrice_dans_un_secteur_ferme_ses_echos_roent_dans_la_session_de_son_secteur()
     {

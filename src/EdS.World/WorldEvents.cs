@@ -464,6 +464,9 @@ namespace EdS.World
         /// </summary>
         internal int PendingPlaces => PendingIn(null, all: true);
 
+        /// <summary>Revue Codex de la PR #160 (1er tour) : une occurrence de l'événement <paramref name="eventId"/> est-elle en cours (pas encore réglée) ?</summary>
+        internal bool Running(string eventId) => _runs.TryGetValue(eventId, out Run? r) && r != null;
+
         /// <summary>
         /// Sous-lot V2.28b (2c) : places réservées et pas encore prises dans la session du secteur <paramref name="sector"/> (événements et
         /// échos rôdeurs de ce secteur ; <paramref name="all"/> : de tous).
@@ -676,7 +679,7 @@ namespace EdS.World
                     notices.Add(new WorldEventNotice(WorldEventNoticeKind.Wave, e.Id, o.Group.Id, o.Day, run.WavesSpawned));
                 }
             }
-            foreach (Slot s in run.Slots) StepSlot(live, sector, s, nowTick, tickMs, reserved, run.Ending);
+            foreach (Slot s in run.Slots) StepSlot(live, zone, sector, s, nowTick, tickMs, reserved, run.Ending);
             // Attaque : plus aucun assaillant debout (vaincus, ou enfuis faute de place pour revenir), même après la fin si le combat a continué.
             if (e.Kind == WorldEventKind.Raid && run.Slots.All(s => s.Dead || (s.Gone && !s.Withdrawn)) && (!run.Ending || run.Slots.Any(s => s.Dead && s.Hurt)))
             {
@@ -723,9 +726,17 @@ namespace EdS.World
         internal static bool Fits(int combatants, int pending, int reserved, int count, int max) =>
             checked(combatants + pending + reserved + ZonePopulations.QuestReserve + count) <= max;
 
-        private void StepSlot(Zone? zone, string? sector, Slot s, long now, long tickMs, int reserved, bool ending)
+        /// <param name="zone">Session du secteur où la créature peut jouer à ce tick (null : secteur fermé, ou session finie).</param>
+        /// <param name="held">Session que l'hôte tient pour ce secteur, même finie (null : secteur fermé).</param>
+        private void StepSlot(Zone? zone, Zone? held, string? sector, Slot s, long now, long tickMs, int reserved, bool ending)
         {
             if (s.Dead || s.Gone) return;
+            // Revue Codex de la PR #160 (1er tour) : la créature jouait dans une session que l'hôte ne tient plus (secteur fermé, ou fermé
+            // puis rouvert : une vraie réouverture). Relever : sa mort (et qui l'a blessée) est lue sur cette session ; remplacer : sinon elle
+            // n'y est plus, en attente sans place ; elle reviendra à sa place, PV pleins, à l'ouverture. L'occurrence avance au temps du monde
+            // (à son échéance, une créature absente s'en va) et finit avec son issue normale. Une session finie encore tenue (renouvelée au
+            // tick suivant) est laissée au renouvellement (Renew), qui la relève de même.
+            if (s.Current != null && s.Session != null && !ReferenceEquals(s.Session, held)) Release(s);
             // Relecture de la PR #107 : après la fin, aucune arrivée : une créature qui n'est pas là ne viendra plus.
             if (ending && s.Current is null)
             {
@@ -735,19 +746,6 @@ namespace EdS.World
             // Sous-lot V2.28b (2c) : secteur fermé (ou session finie, renouvelée au tick suivant) : rien n'arrive ni n'est relevé.
             if (zone is null) return;
             CombatEngine engine = zone.Engine;
-            // Sous-lot V2.28b (2c) : la créature jouait dans une autre session de ce secteur (fermée puis rouverte : une vraie réouverture) :
-            // elle n'y est plus ; elle revient à sa place, PV pleins, après une place réservée dans la session du moment.
-            if (s.Current != null && !ReferenceEquals(s.Session, zone))
-            {
-                s.Current = null;
-                s.Session = null;
-                s.Leashing = false;
-                s.CarryPlace = null;
-                s.CarryState = null;
-                s.NeedsPlace = true;
-                s.RetryAt = -1;
-                Changed();
-            }
             long sessionTick = engine.CurrentTick;   // les faits du moteur (arrivée attendue) sont en ticks de sa session
             if (s.Current is string id)
             {
@@ -817,6 +815,34 @@ namespace EdS.World
                 s.NeedsPlace = false;
             }
             Join(zone, s, now, tickMs);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #160 (1er tour) : relève la créature sur la session qu'elle quitte (morte : vaincue, blessée ou non par le
+        /// personnage), puis, vivante, la remet en attente sans place (elle reviendra à sa place, PV pleins). Son identité n'est plus celle
+        /// d'une créature d'événement.
+        /// </summary>
+        private void Release(Slot s)
+        {
+            string id = s.Current!;
+            CombatantView v = s.Session!.Engine.View(id);
+            _byCreature.Remove(id);
+            s.Current = null;
+            s.Session = null;
+            s.Leashing = false;
+            s.CarryPlace = null;
+            s.CarryState = null;
+            if (v.IsDead)
+            {
+                s.Dead = true;
+                s.Hurt |= v.HurtByCharacter;
+            }
+            else
+            {
+                s.NeedsPlace = true;
+                s.RetryAt = -1;
+            }
+            Changed();
         }
 
         private void Join(Zone zone, Slot s, long now, long tickMs)
@@ -916,7 +942,8 @@ namespace EdS.World
                 _hauntEvents[key] = e.Id;
                 // Sous-lot V2.28b (2c) : les échos rôdeurs jouent dans la session du secteur de l'événement (null : secteur fermé).
                 string? sector = SectorOf(e.Id);
-                Zone? zone = sessionOf(sector) is Zone z && !z.Engine.IsFinished ? z : null;
+                Zone? held = sessionOf(sector);
+                Zone? zone = held != null && !held.Engine.IsFinished ? held : null;
                 int reserved = reservedIn(sector);
                 WorldEventScar rule = e.Scar!;
                 if (g.Haunts.Count == 0) continue;
@@ -932,7 +959,7 @@ namespace EdS.World
                         // Relecture de la PR #110 : un écho de trop (la cicatrice a reculé, une faille s'ouvre à sa place) ou plus fort que son
                         // palier s'en va dès qu'il ne se bat plus contre un personnage ; il revient à la minute suivante s'il est encore voulu.
                         bool surplus = i >= want || s.Strength > strength;
-                        StepSlot(zone, sector, s, nowTick, tickMs, reserved, surplus);
+                        StepSlot(zone, held, sector, s, nowTick, tickMs, reserved, surplus);
                         if (surplus && Withdraw(zone, s)) h.ReadyAt[i] = now;
                         else if (s.Dead || s.Gone) h.ReadyAt[i] = checked(now + rule.HauntRespawnMinutes);
                         if (s.Dead || s.Gone) h.Slots[i] = null;
@@ -954,12 +981,13 @@ namespace EdS.World
             {
                 if (live.Contains(pair.Key)) continue;
                 string? sector = SectorOf(HauntEvent(pair.Key));
-                Zone? zone = sessionOf(sector) is Zone z && !z.Engine.IsFinished ? z : null;
+                Zone? held = sessionOf(sector);
+                Zone? zone = held != null && !held.Engine.IsFinished ? held : null;
                 int reserved = reservedIn(sector);
                 for (int i = 0; i < pair.Value.Slots.Length; i++)
                 {
                     if (!(pair.Value.Slots[i] is Slot s)) continue;
-                    StepSlot(zone, sector, s, nowTick, tickMs, reserved, true);
+                    StepSlot(zone, held, sector, s, nowTick, tickMs, reserved, true);
                     Withdraw(zone, s);
                     if (s.Dead || s.Gone) pair.Value.Slots[i] = null;
                 }
