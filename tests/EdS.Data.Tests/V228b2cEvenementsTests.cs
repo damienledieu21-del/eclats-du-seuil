@@ -317,6 +317,53 @@ public class V228b2cEvenementsTests
     }
 
     [Fact]
+    public void Creature_d_evenement_qui_suit_le_personnage_hors_de_son_secteur_lache_et_revient_pv_pleins()
+    {
+        // Décision de Damien du 14 novembre 2026, 17 h 18 (« AAA », 3 de la PR #160) : une créature d'événement qui suit le personnage
+        // hors de son secteur le lâche au bout de la marge de 32 m, revient à sa place et reprend tous ses PV, comme un chef.
+        ZoneDefinition zone = Essai(x: 268, scenario: s =>
+        {
+            foreach (JsonNode? c in s["data"]!["combatants"]!.AsArray())
+                foreach (JsonNode? attack in c!["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        });
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 5, "camp_est", level: 12);
+        Walk(w, 262, 96);
+        for (int i = 0; i < 100 && HuntersIn(w.Zone).Count < 2; i++) w.Step();
+        Assert.Equal("s01_00", w.Sector);
+        Zone east = w.Zone;
+        string hunter = HuntersIn(east).OrderBy(id => id, StringComparer.Ordinal).First();
+        GroundVector home = new(Fixed.FromInt(268), Fixed.FromInt(90));
+        GroundVector near = east.Engine.View(hunter).Position!.Value;
+        Walk(w, near.X.Raw / 1e4 + 1.5, near.Z.Raw / 1e4);
+        for (int i = 0; i < 200 && east.Engine.View(hunter) is { } h && h.Health == h.MaxHealth; i++)
+        {
+            if (i % 20 == 0)
+                try { east.Engine.Submit(new CombatCommand(east.Engine.CurrentTick * 50, w.CombatantId, "skill.bastion.frappe_du_rempart", hunter)); }
+                catch (ArgumentException) { }
+            w.Step();
+        }
+        CombatantView hurt = east.Engine.View(hunter);
+        Assert.True(hurt.Health < hurt.MaxHealth && !hurt.IsDead, "le chasseur n'a pas été blessé");
+        Walk(w, 185, 96);   // à l'ouest, au-delà de la marge de 32 m de l'est (x < 224) : le chasseur suit, puis lâche
+        Assert.Equal("s00_00", w.Sector);
+        Assert.Same(east, w.Host!.SectorZone("s01_00"));   // l'est reste ouvert (moins de 96 m)
+        for (int i = 0; i < 200 && !east.Engine.View(hunter).HasLeft; i++) w.Step();
+        Assert.True(east.Engine.View(hunter).HasLeft, "le chasseur n'a pas lâché");
+        string? back = null;
+        for (int i = 0; i < 200 && back is null; i++)
+        {
+            w.Step();
+            back = HuntersIn(east).FirstOrDefault(id => id != hunter && east.Engine.View(id) is { } v && v.Position is GroundVector p
+                && Math.Abs(p.X.Raw - home.X.Raw) + Math.Abs(p.Z.Raw - home.Z.Raw) < 10_000);
+        }
+        Assert.True(back != null, "le chasseur n'est pas revenu à sa place");
+        CombatantView again = east.Engine.View(back!);
+        Assert.Equal(again.MaxHealth, again.Health);   // tous ses PV
+        Assert.True(w.IsEventCreature(back!));
+    }
+
+    [Fact]
     public void Secteur_ferme_puis_rouvert_les_creatures_d_evenement_reviennent_a_leur_place()
     {
         ZoneDefinition zone = Essai();
