@@ -591,6 +591,11 @@ namespace EdS.World
             if (!_tickDone && sector == _host!.SectorOf(_character.Id))
             {
                 _tickDone = true;
+                // Revue Codex de la PR #158 (1er tour) : la session du personnage a pu changer pendant ce tick de l'hôte, avant le pas des
+                // sessions (session renouvelée, arrivée après une attente ou une reprise) : la partie le suit d'abord, pour que objets de soin,
+                // bonus et récompenses de ce tick lisent la session et le combattant où il est, pas une session périmée. Un passage, lui, se
+                // décide après le pas des sessions : il est suivi après le tick de l'hôte (Step).
+                Follow();
                 AfterZone(events);
                 return;
             }

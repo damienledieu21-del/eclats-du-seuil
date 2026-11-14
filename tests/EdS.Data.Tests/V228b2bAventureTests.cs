@@ -4,6 +4,7 @@ using EdS.Data.Zones;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Stats;
 using EdS.Runtime;
 using EdS.Simulation.Engine;
 using EdS.World;
@@ -371,6 +372,73 @@ public class V228b2bAventureTests : IDisposable
         Assert.Equal(1, c.Rebinds);
         IReadOnlyList<CombatFeedback> got = c.DrainFeedback();
         Assert.Contains(got, f => f.CombatantId == training.PlayerId && (f.Kind == FeedbackKind.FailedParry || f.Kind == FeedbackKind.PerfectParry));
+    }
+
+    /// <summary>
+    /// Ticks du monde (pas de la partie) pendant lesquels le combattant du personnage porte le bonus d'un élixir de <paramref name="ticks"/>
+    /// ticks, sur <paramref name="steps"/> pas ; <paramref name="east"/> : en marchant vers l'est (passage de secteur).
+    /// </summary>
+    private static int BoostedTicks(ZoneDefinition zone, int ticks, int steps, bool east = false)
+    {
+        SavedCharacter hero = Hero().WithBoons(new[] { new SavedBoon(BoonKind.Elixir, "item.elixir_de_vigueur", ticks) });
+        var w = new WorldSession(new WorldSave(zone.Id, 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, ItemsCatalog);
+        GearBonus boosted = w.CombatGear;
+        int count = 0;
+        bool sent = false;
+        for (int i = 0; i < steps; i++)
+        {
+            CombatEngine e = w.Zone.Engine;
+            CombatantView me = e.View(w.CombatantId);
+            if (east && me.IsPresent && (!sent || me.MoveDirection is null))
+            {
+                e.Submit(new CombatCommand(e.CurrentTick * e.TickMilliseconds, w.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
+                sent = true;
+            }
+            string before = w.CombatantId;
+            w.Step();
+            // Bonus en vigueur pendant le tick qui vient d'être joué, chez le combattant qui l'a joué : celui que la partie suit s'il est là
+            // (après un renouvellement, l'arrivant joue déjà ce tick) ; sinon (passage : l'arrivant n'arrive qu'au tick suivant) le sortant.
+            CombatantView now = w.Zone.Engine.View(w.CombatantId);
+            CombatantView played = now.IsPresent ? now : e.View(before);
+            if ((played.IsPresent || played.HasLeft) && !played.IsDead && boosted.Equals(played.Gear)) count++;
+        }
+        return count;
+    }
+
+    [Fact]
+    public void Bonus_qui_expire_autour_d_un_renouvellement_dure_exactement_son_temps()
+    {
+        // Revue Codex de la PR #158 (1er tour) : un élixir qui expire au dernier tick d'une session, au premier de la suivante ou autour, agit
+        // exactement autant de ticks que sans renouvellement (règle « Fini » de MONDE.md : il quitte le combat au tick suivant).
+        ZoneDefinition renewed = Short(), long_ = TwoSectors.Value;
+        foreach (int ticks in Enumerable.Range(34, 12))   // session de 40 ticks, ouverte au premier pas : renouvellement vers le 40e
+        {
+            int expected = BoostedTicks(long_, ticks, 120);
+            Assert.True(expected > 30, $"essai : {expected}");
+            Assert.Equal((ticks, expected), (ticks, BoostedTicks(renewed, ticks, 120)));
+        }
+    }
+
+    [Fact]
+    public void Bonus_qui_expire_autour_d_un_passage_dure_exactement_son_temps()
+    {
+        // Même règle à un passage de secteur (V2.28b (2a)) : le combattant d'arrivée porte le bonus voulu dès son premier tick.
+        ZoneDefinition zone = TwoSectors.Value;
+        WorldSession timing = Open(zone);
+        CombatEngine first = timing.Zone.Engine;
+        first.Submit(new CombatCommand(first.CurrentTick * first.TickMilliseconds, timing.CombatantId, new GroundVector(Fixed.One, Fixed.Zero)));
+        int passage = 1;
+        while (timing.Passages == 0)
+        {
+            timing.Step();
+            passage++;
+        }
+        foreach (int ticks in Enumerable.Range(passage - 4, 9))
+        {
+            int still = BoostedTicks(zone, ticks, passage + 20);
+            int walking = BoostedTicks(zone, ticks, passage + 20, east: true);
+            Assert.Equal((ticks, still), (ticks, walking));
+        }
     }
 
     // --- Aventure ------------------------------------------------------------------------------------------------------
