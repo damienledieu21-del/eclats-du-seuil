@@ -569,7 +569,7 @@ public class V228b2bAventureTests : IDisposable
         Walk(a, 175, 0, () => a.World.Passages == 1);
         Assert.Equal("s08_06", a.World.Sector);
         Assert.Equal((a.World.CombatantId, 1), (a.Combat.PlayerId, a.Combat.Rebinds));
-        Assert.NotSame(westMap, a.Map);   // carte de la session du moment
+        Assert.Same(westMap, a.Map);   // sous-lot V2.28b (3) : carte de l'aire entière, gardée au passage (avant : celle de la session)
         Walk(a, 175, 0, () => AdventureX(a) > 170);
         Assert.False(a.CanRest);   // aucun point sûr ici
         // Retour au point sûr du bord, dans la session de l'ouest où son identité a servi : bastion_p1. La halte y est possible.
