@@ -35,7 +35,7 @@ public class V228cObstaclesTests
     }
 
     /// <summary>La zone d'essai (deux secteurs : ouest x &lt; 256, est), scénario en schéma 19, avec des obstacles en plus.</summary>
-    private static ZoneLoadResult Read(int westColumns, int westRows, int eastColumns, int eastRows, int schema = 19, bool region = true) =>
+    private static ZoneLoadResult Read(int westColumns, int westRows, int eastColumns, int eastRows, int schema = ScenarioValidator.CurrentSchemaVersion, bool region = true) =>
         V228b2cChefsTests.Read(zone: z =>
         {
             if (!region)
@@ -212,10 +212,10 @@ public class V228cObstaclesTests
     [Fact]
     public void Schema_18_au_plus_256_obstacles_meme_pour_une_zone()
     {
-        // Pré-alpha : une version antérieure est refusée entière (aucune migration) ; les scénarios livrés passent en schéma 19.
+        // Pré-alpha : une version antérieure est refusée entière (aucune migration) ; les scénarios livrés passent en schéma 19 (20 depuis l'esquive).
         ZoneLoadResult loaded = Read(21, 11, 21, 7, schema: 18);
         Assert.False(loaded.IsValid);
-        Assert.Contains("version de format 18 antérieure à la version 19", loaded.Report.ToString(), StringComparison.Ordinal);
+        Assert.Contains("version de format 18 antérieure à la version 20", loaded.Report.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
