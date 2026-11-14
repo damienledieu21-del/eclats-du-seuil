@@ -209,6 +209,11 @@ public class V228b2cChefsTests
         });
         Assert.False(edge.IsValid);
         Assert.Contains(edge.Report.Errors, e => e.Path == "$.data.chiefs[0].forms[0]" && e.Message.Contains("moins de 8 m", StringComparison.Ordinal));
+        // Relecture indépendante de la PR #159 : la règle vaut aussi pour une zone à région en schéma 13 (l'hôte la tient aussi).
+        ZoneLoadResult v13 = Read(zone: z => z["schemaVersion"] = 13, chief: c => c["data"]!["combatants"]![1]!["position"] = new JsonArray(200, 60));
+        Assert.False(v13.IsValid);
+        Assert.Contains(v13.Report.Errors, e => e.Path == "$.data.chiefs[0].forms[1]" && e.Message.Contains("hors du secteur", StringComparison.Ordinal));
+        Assert.True(Read(zone: z => z["schemaVersion"] = 13).IsValid);
         // À 8 m : acceptée.
         Assert.True(Read(chief: c =>
         {
@@ -497,6 +502,25 @@ public class V228b2cChefsTests
             Assert.False(w.RenewsSessions);
             Assert.Equal(0, w.Renewals);
         }
+    }
+
+    [Fact]
+    public void Rappel_de_naissance_qui_leve_au_renouvellement_rien_n_a_change()
+    {
+        // Relecture indépendante de la PR #159 : le rappel de naissance est appelé avant toute mutation de l'hôte. S'il lève (une erreur
+        // qui n'est pas un refus du moteur), le tick est refusé entier : même session, même tick du monde, aucun secteur fermé ni ouvert.
+        WorldSession w = Open(ShortWeak(), safePoint: "guet_est");
+        SectorWorld host = w.Host!;
+        host.OnOpened((sector, zone, renewed) => throw new FormatException("essai"), sector => 0);
+        while (!w.Zone.IsOver) w.Step();
+        Zone before = w.Zone;
+        long tick = host.WorldTick;
+        string[] open = host.OpenSectors.ToArray();
+        Assert.Throws<FormatException>(() => w.Step());
+        Assert.Same(before, host.SectorZone("s01_00"));
+        Assert.Equal(tick, host.WorldTick);
+        Assert.Equal(open, host.OpenSectors);
+        Assert.Equal(0, w.Renewals);
     }
 
     // --- Parité : Vallons d'une seule session contre Vallons à plusieurs secteurs ---------------------------------------------
