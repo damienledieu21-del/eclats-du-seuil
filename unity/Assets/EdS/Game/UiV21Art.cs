@@ -20,7 +20,7 @@ namespace EdS.Game
 
         private const float PixelsPerUnit = 100f;
 
-        private static Texture2D _panel, _button, _buttonDown, _track, _plain, _ring, _knob;
+        private static Texture2D _panel, _button, _buttonDown, _track, _plain, _ring, _knob, _table, _vignette;
         private static Sprite _panelSprite, _buttonSprite, _trackSprite, _plainSprite;
         private static GUIStyle _panelStyle, _buttonStyle, _buttonDownStyle;
 
@@ -85,6 +85,21 @@ namespace EdS.Game
             // Joystick : cercle de cuir sombre cerclé d'or (le pouce lit le bord), bouton central plein.
             _ring = Make(128, 128, (x, y, w, h) => Disc(x, y, w, 0.42f, 3f));
             _knob = Make(64, 64, (x, y, w, h) => Disc(x, y, w, 0.9f, 2f));
+            // Table du livre : cuir sombre au grain fin, qui se répète sans couture (bruit sur un tore de 256) ; pénombre des bords à part.
+            _table = Make(256, 256, (x, y, w, h) =>
+            {
+                float g = 0.5f * Grain(x, y) + 0.3f * Grain(x / 4, y / 4) + 0.2f * Grain(x / 16, y / 16);
+                Color c = Color.Lerp(Color.Lerp(Leather, Soot, 0.35f), g > 0 ? Leather : Soot, Mathf.Abs(g) * 0.5f);
+                c.a = 1f;
+                return c;
+            });
+            _table.wrapMode = TextureWrapMode.Repeat;
+            _vignette = Make(64, 64, (x, y, w, h) =>
+            {
+                float dx = (x - 31.5f) / 32f, dy = (y - 31.5f) / 32f;
+                float d = Mathf.Clamp01(Mathf.Sqrt(dx * dx * 0.7f + dy * dy) - 0.45f);
+                return new Color(0f, 0f, 0f, 0.75f * d);
+            });
             _panelSprite = Sliced(_panel, Corner);
             _buttonSprite = Sliced(_button, Corner);
             _trackSprite = Sliced(_track, 2);
@@ -127,6 +142,12 @@ namespace EdS.Game
 
         /// <summary>Remplissage clair à teinter (barres, recharge, voile).</summary>
         public static Sprite Plain { get { Load(); return _plainSprite; } }
+
+        /// <summary>Table de cuir sous le livre (à répéter, <see cref="TextureWrapMode.Repeat"/>).</summary>
+        public static Texture2D TableTexture { get { Load(); return _table; } }
+
+        /// <summary>Pénombre des bords de l'écran (étirée), au-dessus de la table.</summary>
+        public static Texture2D VignetteTexture { get { Load(); return _vignette; } }
 
         /// <summary>IMGUI (commandes au doigt) : panneau de cuir, bouton au repos, bouton appuyé.</summary>
         public static void DrawPanel(Rect rect)

@@ -50,6 +50,7 @@ namespace EdS.Game
         private readonly CanvasGroup _fade;
         private readonly RectTransform _book, _panel;
         private bool _bookShown;
+        private RawImage _table;
         private readonly UiText _title, _subtitle, _close;
         private readonly List<UiText> _tabs = new List<UiText>();
         private readonly Dictionary<AdventureScreens.Panel, RectTransform> _pages = new Dictionary<AdventureScreens.Panel, RectTransform>();
@@ -117,9 +118,14 @@ namespace EdS.Game
             Transform root = _canvas.transform;
             _book = UiKit.Fill(UiKit.Node(root, "Livre"));
             _fade = _book.gameObject.AddComponent<CanvasGroup>();
-            Image dim = UiKit.Image(_book, "Voile", null, new Color(0.02f, 0.03f, 0.05f, 0.62f));
-            UiKit.Fill(dim.rectTransform);
-            dim.raycastTarget = true;
+            // Interface V2.1 (remarque du catalogue : « bandes sombres vides de part et d'autre du livre ») : le livre est posé sur une table
+            // de cuir qui couvre tout l'écran, assombrie vers les bords, au lieu d'un voile noir qui laissait deux bandes vides.
+            RawImage table = UiKit.Raw(_book, "Table", UiV21Art.TableTexture, Color.white);
+            UiKit.Fill(table.rectTransform);
+            table.raycastTarget = true;
+            _table = table;
+            RawImage shade = UiKit.Raw(_book, "Pénombre des bords", UiV21Art.VignetteTexture, Color.white);
+            UiKit.Fill(shade.rectTransform);
             _panel = UiKit.Node(_book, "Panneau");
             _panel.anchorMin = new Vector2(0.5f, 0.5f);
             _panel.anchorMax = new Vector2(0.5f, 0.5f);
@@ -129,19 +135,19 @@ namespace EdS.Game
             UiKit.Fill(UiKit.Image(_panel, "Dalle", UiKit.WindowSprite(), Color.white, Image.Type.Sliced).rectTransform);
             _title = Text(_panel, UiFace.Title, 40f, Color.white, TextAnchor.MiddleLeft, 60f, 62f, 600f, 50f, 0f, 0.5f, 3f);
             _title.Gold();
-            _subtitle = Text(_panel, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 62f, 104f, 900f, 22f, 0f, 0.5f, 12f, true);
+            _subtitle = Text(_panel, UiFace.Bold, 20f, UiKit.Muted, TextAnchor.MiddleLeft, 62f, 104f, 900f, 22f, 0f, 0.5f, 12f, true);
             float tx = 540f;
             for (int i = 0; i < Tabs.Length; i++)
             {
                 int index = i;
-                UiText tab = Text(_panel, UiFace.Bold, 18f, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, Tabs[i].Width - 12f, 30f, 0f, 0.5f, 12f, true);
+                UiText tab = Text(_panel, UiFace.Bold, 21f, UiKit.Muted, TextAnchor.MiddleLeft, tx, 72f, Tabs[i].Width - 12f, 30f, 0f, 0.5f, 12f, true);
                 Image hit = UiKit.Image(tab.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
                 UiKit.Fill(hit.rectTransform, -6f);
                 UiKit.Pointer(hit).Left = () => Tab(index);
                 _tabs.Add(tab);
                 tx += Tabs[i].Width;
             }
-            _close = Text(_panel, UiFace.Bold, 15f, UiKit.Muted, TextAnchor.MiddleRight, 1440f, 106f, 300f, 24f, 1f, 0.5f, 12f, true);
+            _close = Text(_panel, UiFace.Bold, 20f, UiKit.Muted, TextAnchor.MiddleRight, 1440f, 106f, 300f, 24f, 1f, 0.5f, 12f, true);
             Image closeHit = UiKit.Image(_close.Rect, "Zone", null, new Color(1f, 1f, 1f, 0f));
             UiKit.Fill(closeHit.rectTransform, -6f);
             UiKit.Pointer(closeHit).Left = () => _request = Request.Close;
@@ -860,7 +866,11 @@ namespace EdS.Game
             _shownPanel = book ? screens.Open : AdventureScreens.Panel.None;
             _bookShown = book;
             _fade.alpha = Mathf.MoveTowards(_fade.alpha, 1f, deltaTime * 6f);
-            float zoom = Mathf.Lerp(0.97f, 1f, _fade.alpha);
+            // Interface V2.1 (« texte encore petit ») : le livre grandit jusqu'à remplir la hauteur de l'écran (marges de 32), sans dépasser sa
+            // largeur ; la table de cuir garde son grain à taille fixe quel que soit le format.
+            float width = UiKit.Width, fit = Mathf.Min((width - 64f) / PanelWidth, (UiKit.ReferenceHeight - 64f) / (PanelHeight + 20f));
+            float zoom = Mathf.Max(0.5f, fit) * Mathf.Lerp(0.97f, 1f, _fade.alpha);
+            if (book) _table.uvRect = new Rect(0f, 0f, width / 256f, UiKit.ReferenceHeight / 256f);
             _panel.localScale = new Vector3(zoom, zoom, 1f);
             UiKit.Show(_dialogue, talk);
             if (talk) RefreshDialogue(a);
