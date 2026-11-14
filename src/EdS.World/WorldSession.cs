@@ -824,7 +824,12 @@ namespace EdS.World
         /// en attente (victoire déjà acquise, sac ou registre plein) est gardée. Appelé par l'hôte des secteurs ; ne lève pas : une première
         /// forme refusée par le moteur (place prise) laisse ce chef absent de cette session.
         /// </summary>
-        private void OpenedSector(string sector, Zone zone)
+        /// <remarks>
+        /// Décision de Damien du 14 novembre 2026 (« AAA », 2) : une session renouvelée (<paramref name="renewedFrom"/>, la session terminée
+        /// qu'elle remplace) ne recommence pas le combat : il y continue tel quel (<see cref="BossFight.Continue"/> : forme, phase, place et PV
+        /// emportés ; un chef vaincu le reste). Seule une vraie ouverture ou réouverture du secteur le recommence à la première forme.
+        /// </remarks>
+        private void OpenedSector(string sector, Zone zone, Zone? renewedFrom)
         {
             Boss? main = Definition?.Boss;
             foreach (Boss b in Definition!.Bosses)
@@ -832,14 +837,25 @@ namespace EdS.World
                 if (_host!.Map.OwnerOf(b.Forms[0].Placement!.Position) != sector) continue;
                 int at = _fights.FindIndex(f => ReferenceEquals(f.Boss, b));
                 BossFight? old = at >= 0 ? _fights[at] : null;
-                var fight = new BossFight(b) { Sector = sector, Session = zone, RewardPending = old?.RewardPending ?? false, RewardAnnounced = old?.RewardAnnounced ?? false };
-                try
+                BossFight fight;
+                if (renewedFrom != null && old != null && ReferenceEquals(old.Session, renewedFrom))
                 {
-                    _bossStarts.Add(fight.Start(zone.Engine));
+                    fight = BossFight.Continue(old, renewedFrom.Engine, zone.Engine, out BossEvent? carried);
+                    fight.Sector = sector;
+                    fight.Session = zone;
+                    if (carried != null) _bossStarts.Add(carried);
                 }
-                catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                else
                 {
-                    fight.Session = null;   // absent de cette session : sa récompense en attente reste
+                    fight = new BossFight(b) { Sector = sector, Session = zone, RewardPending = old?.RewardPending ?? false, RewardAnnounced = old?.RewardAnnounced ?? false };
+                    try
+                    {
+                        _bossStarts.Add(fight.Start(zone.Engine));
+                    }
+                    catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                    {
+                        fight.Session = null;   // absent de cette session : sa récompense en attente reste
+                    }
                 }
                 if (at >= 0) _fights[at] = fight;
                 else _fights.Insert(Math.Min(_fights.Count, IndexOfBoss(b)), fight);

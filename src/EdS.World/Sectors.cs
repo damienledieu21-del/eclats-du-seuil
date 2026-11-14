@@ -467,17 +467,17 @@ namespace EdS.World
 
         // Sous-lot V2.28b (2c) : ce que fait qui tient l'hôte quand une session naît (les chefs de la partie solo y arrivent), combien de
         // combattants il y ajoute au plus par secteur, et en tout.
-        private Action<string, Zone>? _opened;
+        private Action<string, Zone, Zone?>? _opened;
         private Func<string, int>? _openedJoins;
         private int _openedJoinsMax;
 
         /// <summary>
         /// Sous-lot V2.28b (2c) : <paramref name="opened"/> est appelé quand une session naît dans un secteur (ouverture, réouverture,
-        /// renouvellement), avant son premier tick ; il peut y faire arriver des combattants (au plus <paramref name="joins"/> pour ce secteur,
+        /// renouvellement : la session terminée qu'elle remplace est donnée, sinon null), avant son premier tick ; il peut y faire arriver des combattants (au plus <paramref name="joins"/> pour ce secteur,
         /// <paramref name="max"/> en tout), comptés dans la borne du registre de chaque tick (tout ou rien). Il ne doit ni ouvrir ni fermer
         /// de secteur, ni faire entrer ou sortir de joueur, ni lever.
         /// </summary>
-        public void OnOpened(Action<string, Zone> opened, Func<string, int> joins, int max)
+        public void OnOpened(Action<string, Zone, Zone?> opened, Func<string, int> joins, int max)
         {
             if (max < 0) throw new ArgumentOutOfRangeException(nameof(max));
             _opened = opened ?? throw new ArgumentNullException(nameof(opened));
@@ -897,7 +897,7 @@ namespace EdS.World
         }
 
         /// <summary>Revue Codex de la PR #156 (1er tour) : met en jeu une session préparée (<see cref="Prepare"/>).</summary>
-        private Open Register(Pending pending, List<SectorEvent> events)
+        private Open Register(Pending pending, List<SectorEvent> events, Zone? renewedFrom = null)
         {
             string name = pending.Name;
             Zone zone = pending.Zone;
@@ -909,7 +909,7 @@ namespace EdS.World
             var open = new Open { Name = name, Zone = zone, Populations = populations, Wanted = wanted, InitialConsumed = zone.ConsumedCount, RegistryVersion = _registryVersion, Walls = new ObstacleIndex(setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()) };
             _open[name] = open;
             events.Add(new SectorEvent(SectorEventKind.Opened, name, null, null, WorldTick));
-            _opened?.Invoke(name, zone);   // sous-lot V2.28b (2c) : les chefs de ce secteur y arrivent, avant son premier tick
+            _opened?.Invoke(name, zone, renewedFrom);   // sous-lot V2.28b (2c) : les chefs de ce secteur y arrivent, avant son premier tick
             return open;
         }
 
@@ -965,7 +965,7 @@ namespace EdS.World
             }
             var scratch = new List<SectorEvent>();
             CloseSector(old, scratch);
-            Open fresh = Register(pending, scratch);
+            Open fresh = Register(pending, scratch, old.Zone);
             // Revue Codex de la PR #150 (6e tour) : le compteur d'inactivité continue d'une session à la suivante (un secteur abandonné se
             // ferme à 60 s même si sa session est plus courte). Le reste de l'état du secteur est celui d'une réouverture : session, graine,
             // journal, populations et décor de la session nouvelle ; registre repris (clés de mort de l'ancienne session purgées).
