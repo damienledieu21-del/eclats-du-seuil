@@ -1526,9 +1526,12 @@ namespace EdS.Runtime
         {
             get
             {
-                if (_map is null || _mapSession != Opened || !CombatDisplay.SameSpace(_mapSpace, World.Zone.Setup.Space))   // sous-lot V2.28b (2b) : comme Paths
+                // Sous-lot V2.28b (3) : une zone à plusieurs secteurs a la carte et le décor de son aire entière (tous les secteurs ouverts et
+                // les autres), la même d'un passage à l'autre : ni carte repeinte ni décor refait au passage.
+                CombatSpace? space = World.AreaSpace ?? World.Zone.Setup.Space;
+                if (_map is null || _mapSession != Opened || !CombatDisplay.SameSpace(_mapSpace, space))   // sous-lot V2.28b (2b) : comme Paths
                 {
-                    _map = new AdventureMap(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."),
+                    _map = new AdventureMap(space ?? throw new InvalidOperationException("Zone sans espace."),
                         _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
                         Roads(_zone),
                         // Vallons agrandis : là où l'on s'arrête (PNJ, points sûrs, ateliers, nœuds de récolte) reste dégagé des champs.
@@ -1543,7 +1546,7 @@ namespace EdS.Runtime
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
                         _zone.Indoor ? null : _zone.Region);
                     _mapSession = Opened;
-                    _mapSpace = World.Zone.Setup.Space;
+                    _mapSpace = space;
                 }
                 return _map;
             }

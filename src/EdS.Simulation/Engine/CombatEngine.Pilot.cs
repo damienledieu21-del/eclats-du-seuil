@@ -16,6 +16,42 @@ namespace EdS.Simulation.Engine
     }
 
     /// <summary>
+    /// Sous-lot V2.28b (3) : place d'un combattant pour l'affichage (<see cref="CombatEngine.PlaceAt"/>) : identité, camp, nature, présence,
+    /// mort, et position orientation et emprise en dix-millièmes de mètre s'il a un corps dans l'espace. Valeur sans allocation.
+    /// </summary>
+    public readonly struct CombatantPlace
+    {
+        public CombatantPlace(string id, string team, CombatantKind kind, bool present, bool dead, bool placed, long x, long z, long facingX, long facingZ, long radius)
+        {
+            Id = id;
+            Team = team;
+            Kind = kind;
+            IsPresent = present;
+            IsDead = dead;
+            HasBody = placed;
+            X = x;
+            Z = z;
+            FacingX = facingX;
+            FacingZ = facingZ;
+            Radius = radius;
+        }
+
+        public string Id { get; }
+        public string Team { get; }
+        public CombatantKind Kind { get; }
+        public bool IsPresent { get; }
+        public bool IsDead { get; }
+        public bool HasBody { get; }
+        public long X { get; }
+        public long Z { get; }
+        public long FacingX { get; }
+        public long FacingZ { get; }
+
+        /// <summary>Rayon de l'emprise, en dix-millièmes de mètre (0 sans corps).</summary>
+        public long Radius { get; }
+    }
+
+    /// <summary>
     /// Sous-lot 8.6 : instantané en lecture seule d'un combattant au début du tick courant, avant ses expirations et ses commandes, pour
     /// un pilote de mesure (<c>EdS.Simulation.Pilot</c>). Une altération qui expire à ce tick n'y figure plus ; une fenêtre de parade qui
     /// se ferme à ce tick non plus. Aucune référence à l'état mutable du moteur n'est exposée.
@@ -177,6 +213,26 @@ namespace EdS.Simulation.Engine
 
         /// <summary>Identifiants des combattants, dans l'ordre du scénario.</summary>
         public IReadOnlyList<string> CombatantIds => _fighters.Select(f => f.Id).ToArray();
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : nombre de combattants (arrivées comprises), pour <see cref="PlaceAt"/>. Lecture seule, sans allocation.
+        /// </summary>
+        public int CombatantCount => _fighters.Count;
+
+        /// <summary>
+        /// Sous-lot V2.28b (3) : place du combattant de rang <paramref name="index"/> (ordre du scénario, puis des arrivées) au début du tick
+        /// courant, pour l'affichage des créatures d'autres secteurs à chaque tick. Lecture seule et sans allocation (au contraire de
+        /// <see cref="View"/>) : ne change ni la simulation, ni le journal, ni l'instantané.
+        /// </summary>
+        public CombatantPlace PlaceAt(int index)
+        {
+            if (index < 0 || index >= _fighters.Count) throw new ArgumentOutOfRangeException(nameof(index));
+            Fighter f = _fighters[index];
+            CombatantKind kind = f.Character != null ? CombatantKind.Character : f.Assailant != null ? CombatantKind.Assailant : CombatantKind.Dummy;
+            return f.Body is { } b
+                ? new CombatantPlace(f.Id, f.Team, kind, !f.Absent, f.IsDead, true, b.X, b.Z, b.FacingX, b.FacingZ, b.Radius)
+                : new CombatantPlace(f.Id, f.Team, kind, !f.Absent, f.IsDead, false, 0, 0, 0, 0, 0);
+        }
 
         /// <summary>Durée du tick en millisecondes.</summary>
         public long TickMilliseconds => _tickMs;

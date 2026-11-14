@@ -251,7 +251,8 @@ public class Lot93UnityPackageTests
         Assert.True(game.IndexOf("if (!player.View.IsPresent)", move, StringComparison.Ordinal) is int guard && guard > move
             && guard < game.IndexOf("_arena.MovePlayer(delta, _playerYaw);", move, StringComparison.Ordinal), "garde d'absence avant le déplacement");
         Assert.Contains("if (me.IsPresent && other.IsEnemy", arena, StringComparison.Ordinal);
-        Assert.Contains("_player.SetActive(me.IsPresent);", arena, StringComparison.Ordinal);
+        // Sous-lot V2.28b (3) : seule exception, le tick d'arrivée d'un passage de secteur (PassageGlide, testé dans V228b3AffichageTests).
+        Assert.Contains("_player.SetActive(me.IsPresent || (_space != null && _glide.Shown));", arena, StringComparison.Ordinal);
         // Revue Codex de la PR #34 : en pause, la marche voulue d'un combat positionné n'est pas transmise.
         int spatial = game.IndexOf("if (_arena.Spatial)", move, StringComparison.Ordinal);
         Assert.True(spatial > 0 && game.IndexOf("if (_paused)", spatial, StringComparison.Ordinal) is int paused && paused > spatial
