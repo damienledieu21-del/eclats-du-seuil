@@ -161,18 +161,22 @@ public class V228b2bAventureTests : IDisposable
     }
 
     [Fact]
-    public void Zone_avec_evenement_du_monde_pas_de_renouvellement_le_pont_se_termine()
+    public void Vallons_avec_evenements_du_monde_session_renouvelee_sans_coupure()
     {
-        // Comme avant le V2.28b (2b) : les Vallons (événements du monde, liés à leur session jusqu'au V2.28b (2c)) ne renouvellent pas une
-        // session terminée ; la partie reprend au dernier point sûr.
+        // Sous-lot V2.28b (2c) : les événements du monde sont liés au secteur de leur lieu ; les Vallons livrés (chefs, événements)
+        // renouvellent désormais une session terminée sans coupure (avant : reprise au dernier point sûr).
         ZoneDefinition zone = Zone(scenario: s => s["data"]!["durationMs"] = 2_000);
         WorldSession w = Play(zone, Hero());
         Assert.True(w.OnSectors);
-        Assert.False(w.RenewsSessions);
+        Assert.True(w.RenewsSessions);
         RealtimeCombat c = Bridge(w);
-        for (int i = 0; i < 100 && !c.IsFinished; i++) c.StepOnce();
-        Assert.True(c.IsFinished);
-        Assert.Equal((0, 0), (w.Renewals, c.Rebinds));
+        for (int i = 0; i < 100; i++)
+        {
+            c.StepOnce();
+            Assert.False(c.IsFinished);
+        }
+        Assert.True(w.Renewals >= 2);
+        Assert.Equal(w.Renewals, c.Rebinds);
     }
 
     [Fact]
