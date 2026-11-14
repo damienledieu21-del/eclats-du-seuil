@@ -20,7 +20,7 @@ Ce qui est **décidé** est rappelé comme tel. Les cinq propositions de la sect
 - **Vitesse de base** : *Retenu comme valeur de départ* : 5 m/s, celle du prototype Unity.
 - **Garde en marchant** (décidé, L11-D3) : la garde ralentit le Bastion. La valeur se règle par essais ; l'essai 11.9 la fixe. *Retenu comme valeur de départ* : la moitié de la vitesse.
 - **Parade et compétences en mouvement** : *Proposition* oui pour le Bastion ; seules les incantations longues des classes futures s'interrompront au déplacement.
-- **Pas d'esquive universelle** (décidé, L11-D4) : on évite en marchant.
+- ~~**Pas d'esquive universelle** (décidé, L11-D4) : on évite en marchant.~~ **Remplacé par Damien le 14 novembre 2026** : **vraie esquive** (commande `dodge`, moteur 0.32.0). Un personnage bondit d'environ 3 m en 150 ms dans la direction du joystick, ou vers l'arrière de son orientation si le joystick est au repos (pas de roulade) ; il est invulnérable pendant les 0,3 s (6 ticks) du début du bond ; l'esquive coûte 20 d'endurance et a une recharge d'1 s. Le bond suit le décor et les emprises solides comme une marche : il ne traverse pas un mur, il s'arrête avant ; un bond qui n'avancerait pas (mur collé) est refusé (`dodgeBlocked`), sans rien dépenser. Parade et esquive restent deux choix : la parade récompense le timing, l'esquive replace et évite un coup imparable. En garde, l'esquive est refusée comme une compétence (`guardActive`) : l'interface quitte la garde pour bondir puis la reprend. Les créatures n'esquivent pas. Valeurs dans `combat.dodge` des règles. Détail : [MOTEUR.md](MOTEUR.md#esquive-décision-de-damien-du-14-novembre-2026).
 - **Règle de conception** (L11-D4), vérifiée par le validateur des données : une attaque ordinaire évitable laisse le temps d'en sortir au pas de base. Son annonce dure au moins le temps de traverser sa zone (rayon ÷ vitesse de base), plus un temps de réaction. *Retenu comme valeur de départ* : 300 ms de réaction.
 
 ## 3. Collisions
@@ -72,7 +72,7 @@ Décidé (L11-D7) : la forme d'une attaque et ses défenses sont deux informatio
   - coup dirigé : garde et parade selon les règles existantes ;
   - souffle ou onde : garde seulement si l'attaque le dit, pas de parade ;
   - zone persistante : il faut en sortir, la garde seule ne suffit pas ;
-  - attaque imparable : retour visuel explicite, on y répond en se déplaçant.
+  - attaque imparable : retour visuel explicite, on y répond en se déplaçant, ou, depuis le 14 novembre 2026, par une esquive (invulnérabilité au début du bond).
 - **Annonce en réseau** : le tick d'impact est envoyé au client, qui affiche le compte à rebours avancé du temps aller-retour (option B généralisée, [ARCHITECTURE_MONDE.md](ARCHITECTURE_MONDE.md#5-entrée-dans-une-zone-état-courant-mises-à-jour)).
 
 ## 6. Garde, parade et couverture du bouclier
