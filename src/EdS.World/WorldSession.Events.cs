@@ -34,7 +34,8 @@ namespace EdS.World
         public bool IsEventCreature(string combatant) => _events?.Of(combatant) != null;
 
         /// <summary>Formes de chef encore à venir (places gardées).</summary>
-        private int FormsToCome => _fights.Sum(f => f.FormsToCome);
+        // Relecture indépendante de la PR #159 : comme ReservedIn, seulement les combats qui ont une session (pas un chef absent).
+        private int FormsToCome => _fights.Where(f => f.Session != null).Sum(f => f.FormsToCome);
 
         /// <summary>
         /// Revue Codex de la PR #107 (tour 2) : places de combattants gardées pour des arrivées déjà décidées : les formes de chef à venir et
@@ -43,6 +44,19 @@ namespace EdS.World
         /// arrivée de population ne prend la place d'une créature d'événement réservée.
         /// </summary>
         internal int ReservedPlaces => checked(FormsToCome + (_events?.PendingPlaces ?? 0));
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : places gardées dans la session du secteur <paramref name="sector"/> : formes à venir des chefs de ce secteur
+        /// (combats en cours), et celles des événements du monde dans le secteur du personnage (une zone qui en a reste d'un seul secteur).
+        /// Avec le seul secteur du cœur, exactement <see cref="ReservedPlaces"/>.
+        /// </summary>
+        internal int ReservedIn(string sector)
+        {
+            int forms = 0;
+            foreach (BossFight f in _fights)
+                if (f.Sector == sector && f.Session != null) forms = checked(forms + f.FormsToCome);
+            return checked(forms + (sector == _zoneSector ? _events?.PendingPlaces ?? 0 : 0));
+        }
 
         private Population? PopulationOfCombatant(string combatant) => PopulationOf(combatant) ?? _events?.Of(combatant);
 

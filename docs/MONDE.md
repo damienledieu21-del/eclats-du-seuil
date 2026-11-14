@@ -190,6 +190,14 @@ Le chef d'une zone est décrit dans la zone (schéma 2, bloc `boss`) ; ses forme
 - **Défaite sans perte** (cadrage Q8) : quand le personnage tombe, la session le signale (`Defeated`, `IsDefeated`). Rien d'acquis n'est perdu : expérience, niveaux, objets, équipement, métiers, faits, quêtes, confiance et découvertes restent tels quels dans la sauvegarde ; seuls les objets de soin bus manquent. La partie reprend à la session suivante, au point sûr d'entrée, PV pleins ; le chef y est de nouveau entier.
 - **Mission** : l'étape « chef » (vaincre le Gardien : objectif `fact` sur `fact.chef.vaincu`) s'insère entre le rôdeur et le retour chez Odile.
 
+### Chefs et secteurs (sous-lot V2.28b (2c))
+
+Sur l'hôte des secteurs (grande carte), chaque chef vit dans le secteur de sa première forme ([DONNEES.md](DONNEES.md#chefs-liés-à-leur-secteur-sous-lot-v228b-2c-première-partie)). **Décisions de Damien du 14 novembre 2026, 11 h 20 (« AAA »)** :
+
+- **Poursuite hors du secteur** : un chef qui poursuit le personnage lâche au bout de la marge de 32 m au-delà du bord de son secteur ; il revient à sa place et reprend tous ses PV, sous la même forme (événement `Returned`).
+- **Session renouvelée pendant le combat** (une fois par heure de jeu) : le combat continue tel quel, forme, place et PV emportés comme ceux du personnage (événement `Carried`) ; un chef vaincu le reste ; aucune seconde victoire. Le chef ne recommence à sa première forme qu'à une vraie ouverture ou réouverture de son secteur, comme après une halte.
+- **Événements du monde** : chacun sera lié au secteur de son lieu, ses groupes vérifiés par le validateur (suite du V2.28b (2c)).
+
 ## L'aventure jouable (sous-lot 12.8)
 
 `AdventureSession` (`EdS.Runtime`) fait jouer la zone en temps réel par Unity : elle charge le monde (`data/v0/world/…`, `scenarios/zones/…`), reprend la sauvegarde locale (absente : nouveau Bastion ; illisible : nouvelle partie, motif affiché), ouvre une session (`WorldSession`) et la joue par le pont temps réel (`RealtimeCombat`, ici sur le moteur de la session). Détail des touches : [UNITY.md](UNITY.md#4-bis-laventure-dans-les-vallons-daube-sous-lot-128).

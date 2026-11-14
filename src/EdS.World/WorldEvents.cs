@@ -707,9 +707,17 @@ namespace EdS.World
             var taken = new HashSet<string>(engine.CombatantIds, StringComparer.Ordinal);
             string id;
             do id = $"{s.Like.Creature}_ev{_counter = checked(_counter + 1)}"; while (taken.Contains(id));
-            var setup = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
+            // Revue Codex de la PR #159 (4e tour) : références adaptées aux combattants de la session par la règle unique
+            // (CombatantReferences.Adapt) ; une créature liée à une cible absente ne vient pas (aucun nouvel essai sans fin).
+            if (CombatantReferences.Adapt(new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 // Sous-lot V2.4.1 : elle n'erre pas (elle attend à sa place, comme en V2.5 : la faille, l'attaque, la chasse ne changent pas).
-                t.StatusResistance, t.Triggers, t.Health, place, checked(now * tickMs), t.Behavior?.WithoutWander());
+                t.StatusResistance, t.Triggers, t.Health, place, checked(now * tickMs), t.Behavior?.WithoutWander()), taken.Contains) is not AssailantSetup setup)
+            {
+                s.Gone = true;
+                s.RetryAt = null;
+                Changed();
+                return;
+            }
             try
             {
                 engine.Join(setup);

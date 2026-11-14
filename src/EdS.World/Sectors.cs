@@ -463,7 +463,22 @@ namespace EdS.World
         /// sinon celles de l'aire fixe. Jamais l'aire filtrée au départ (<see cref="SectorMap.Area"/> après <c>start</c>), qui ne majore pas une
         /// session ouverte à une autre heure.
         /// </summary>
-        private int _bornCombatants;
+
+        // Sous-lot V2.28b (2c) : ce que fait qui tient l'hôte quand une session naît (les chefs de la partie solo y arrivent), combien de
+        // combattants il y ajoute au plus par secteur, et en tout.
+        private Action<string, Zone, Zone?>? _opened;
+        private Func<string, int>? _openedJoins;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : <paramref name="opened"/> est appelé quand une session naît dans un secteur (ouverture, réouverture,
+        /// renouvellement : la session terminée qu'elle remplace est donnée, sinon null), avant son premier tick ; il peut y faire arriver des combattants (au plus <paramref name="joins"/> pour ce secteur), comptés dans la borne du registre de chaque tick (tout ou rien). Il ne doit ni ouvrir ni fermer
+        /// de secteur, ni faire entrer ou sortir de joueur, ni lever.
+        /// </summary>
+        public void OnOpened(Action<string, Zone, Zone?> opened, Func<string, int> joins)
+        {
+            _opened = opened ?? throw new ArgumentNullException(nameof(opened));
+            _openedJoins = joins ?? throw new ArgumentNullException(nameof(joins));
+        }
         private readonly Func<string, long, ICombatLog>? _logs;
         private readonly SortedDictionary<string, Open> _open = new SortedDictionary<string, Open>(StringComparer.Ordinal);
         private readonly SortedDictionary<string, Player> _players = new SortedDictionary<string, Player>(StringComparer.Ordinal);
@@ -508,7 +523,6 @@ namespace EdS.World
             _logs = logs;
             _closeAfterTicks = SectorMap.CloseAfterMs / map.Area.Combat.TickMilliseconds;
             _single = map.HomeHoldsArea;
-            _bornCombatants = map.Area.Combatants.Count;
         }
 
         /// <summary>Hôte des secteurs d'une zone à région, avec ses populations (chacune dans son secteur).</summary>
@@ -522,7 +536,7 @@ namespace EdS.World
             string[] keys = (consumed ?? Array.Empty<string>()).ToArray();
             (DayPhase? phase, WeatherKind? weather) = start?.Invoke(startWorldTick) ?? (null, null);
             CombatSetup area = ZoneSetups.For(zone, keys, phase, weather);
-            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start, _bornCombatants = Math.Max(zone.Setup.Combatants.Count, area.Combatants.Count) };
+            return new SectorWorld(SectorMap.For(zone, area), zone.Id, startWorldTick, session, keys, zone.Populations, sectorSessions, logs, wanted) { _zone = zone, _start = start };
         }
 
         /// <summary>
@@ -684,10 +698,27 @@ namespace EdS.World
         {
             get
             {
+                // Relecture indépendante de la PR #159 : borne exacte, jamais plus basse que le besoin réel. Une session terminée est
+                // remplacée pendant le tick par la suivante : ses morts possibles ne comptent plus, celles de la suivante (créatures de départ
+                // à l'heure du renouvellement, chefs qui y arrivent) comptent à leur place ; un secteur fermé qui s'ouvre avant le tick des
+                // secteurs (joueur en attente, entrée annoncée) compte de même. Avant, toutes les créatures de l'aire et tous les chefs
+                // s'ajoutaient aux morts possibles des sessions terminées : le tick pouvait être refusé à tort près du plafond.
                 long need = RegistryBound();
-                foreach (Open o in _open.Values) need = checked(need + o.Zone.NewDeathsPossible);
                 long arriving = Arriving(out bool born);
-                return checked(need + (born ? _bornCombatants : 0) + arriving);
+                foreach (Open o in _open.Values)
+                    need = checked(need + (born && o.Zone.IsOver ? Newborn(o.Name) : o.Zone.NewDeathsPossible));
+                if (born)
+                {
+                    List<string>? opening = null;
+                    foreach (Player p in _players.Values)
+                        if (p.Waiting && p.Refusal is null && p.Sector != null && !_open.ContainsKey(p.Sector) && !(opening ??= new List<string>()).Contains(p.Sector))
+                            opening.Add(p.Sector);
+                    foreach (CharacterSetup c in _entering.Values)
+                        if (_map.OwnerOf(c.Placement!.Position) is string s && !_open.ContainsKey(s) && !(opening ??= new List<string>()).Contains(s))
+                            opening.Add(s);
+                    if (opening != null) foreach (string s in opening) need = checked(need + Newborn(s));
+                }
+                return checked(need + arriving);
             }
         }
 
@@ -811,7 +842,10 @@ namespace EdS.World
         private Open OpenSector(string name, List<SectorEvent> events, IEnumerable<CharacterSetup>? entering = null)
         {
             if (_open.TryGetValue(name, out Open? open)) return open;
-            return Register(Prepare(name, entering, _consumed), events);
+            Pending pending = Prepare(name, entering, _consumed);
+            // Relecture indépendante de la PR #159 : le rappel de naissance avant toute mutation de l'hôte (s'il lève, rien n'a changé).
+            _opened?.Invoke(name, pending.Zone, null);
+            return Register(pending, events);
         }
 
         /// <summary>
@@ -926,6 +960,9 @@ namespace EdS.World
             // Revue Codex de la PR #156 (1er tour) : renouvellement atomique. La session nouvelle est d'abord préparée (sur le registre que le
             // monde aura après la fermeture) ; un refus à ce moment-là ne change rien. Ensuite seulement l'ancienne est fermée.
             Pending pending = Prepare(old.Name, null, RegistryAfterClosing(old));
+            // Sous-lot V2.28b (2c) : les chefs du secteur arrivent dans la session nouvelle (leur combat y continue), avant son premier tick et
+            // avant toute mutation de l'hôte (relecture indépendante de la PR #159 : s'il lève, rien n'a changé).
+            _opened?.Invoke(old.Name, pending.Zone, old.Zone);
             CombatEngine engine = old.Zone.Engine;
             var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
             // Revue Codex de la PR #150 (10e tour) : un joueur refusé pour de bon (sans combattant) n'est pas renouvelé, comme pour Live.
@@ -982,6 +1019,9 @@ namespace EdS.World
         /// soit : borne du registre (une fermeture ne l'augmente jamais), morts possibles des sessions qui restent, et pour chaque session qui
         /// renaît, ses créatures de départ <b>à l'heure du renouvellement</b> et une clé par joueur qui y arrive.
         /// </summary>
+        /// <summary>Relecture indépendante de la PR #159 : morts possibles d'une session qui naîtrait maintenant dans <paramref name="sector"/> (sans ses joueurs).</summary>
+        private long Newborn(string sector) => checked(PlanSetup(sector, out _, out _, out _, out _).Combatants.Count + (_openedJoins?.Invoke(sector) ?? 0));
+
         private long RenewalNeed(IReadOnlyCollection<Open> renewing)
         {
             long need = RegistryBound();
@@ -989,7 +1029,7 @@ namespace EdS.World
                 if (!renewing.Contains(o)) need = checked(need + o.Zone.NewDeathsPossible);
             foreach (Open o in renewing)
             {
-                need = checked(need + PlanSetup(o.Name, out _, out _, out _, out _).Combatants.Count);
+                need = checked(need + PlanSetup(o.Name, out _, out _, out _, out _).Combatants.Count + (_openedJoins?.Invoke(o.Name) ?? 0));
                 foreach (Player p in _players.Values)
                     if (p.Sector == o.Name) need = checked(need + 1);
             }
@@ -1017,18 +1057,30 @@ namespace EdS.World
         /// <summary>Place libre la plus proche dans un secteur ouvert (null s'il n'est pas ouvert ou s'il n'y en a pas) ; pour les tests.</summary>
         internal GroundVector? FreeSpotIn(string sector, GroundVector at, Fixed radius) => _open.TryGetValue(sector, out Open? o) ? FreeSpot(o, at, radius) : null;
 
-        private GroundVector? FreeSpot(Open open, GroundVector at, Fixed radius)
+        private GroundVector? FreeSpot(Open open, GroundVector at, Fixed radius) => FreeSpotOf(open.Zone, open.Walls, at, radius, character: true);
+
+        /// <summary>
+        /// Revue Codex de la PR #159 (1er tour) : la même règle de place libre la plus proche pour une session qui n'est pas (encore) tenue
+        /// par l'hôte (session qui naît, combat de chef emporté) ; le décor est rangé pour l'occasion.
+        /// </summary>
+        /// <param name="character">Revue Codex de la PR #159 (3e tour) : l'arrivant est un personnage (joueur : la règle de contact avec les
+        /// autres personnages et les créatures) ; faux pour une créature (une forme de chef emportée), solide pour tout autre combattant, le
+        /// personnage compris.</param>
+        internal static GroundVector? FreeSpotOf(Zone zone, GroundVector at, Fixed radius, bool character) =>
+            FreeSpotOf(zone, new ObstacleIndex(zone.Setup.Space!.Obstacles.Select(o => new ConvexPolygon(o.Points)).ToArray()), at, radius, character);
+
+        private static GroundVector? FreeSpotOf(Zone zone, ObstacleIndex walls, GroundVector at, Fixed radius, bool character)
         {
-            CombatEngine engine = open.Zone.Engine;
-            CombatSpace space = open.Zone.Setup.Space!;
+            CombatEngine engine = zone.Engine;
+            CombatSpace space = zone.Setup.Space!;
             long r = radius.Raw;
             // Revue Codex de la PR #150 : les arrivées déjà programmées à ce tick (réapparitions, autres passages) comptent comme présentes.
             var others = engine.CombatantIds.Select(engine.View).Where(v => (v.IsPresent || (!v.HasLeft && !v.IsDead && v.ArrivalTick == engine.CurrentTick))
                 && !v.IsDead && v.Position != null && v.Radius != null
-                && open.Zone.Setup.Combat.AreSolid(true, radius, v.Kind == CombatantKind.Character, v.Radius.Value)).ToList();
+                && zone.Setup.Combat.AreSolid(character, radius, v.Kind == CombatantKind.Character, v.Radius.Value)).ToList();
             bool Free(long x, long z) =>
                 x - r >= space.Min.X.Raw && x + r <= space.Max.X.Raw && z - r >= space.Min.Z.Raw && z + r <= space.Max.Z.Raw
-                && !open.Walls.AnyOverlapsCircle(x, z, r)
+                && !walls.AnyOverlapsCircle(x, z, r)
                 && !others.Any(v => Planar.CirclesOverlap(x, z, r, v.Position!.Value.X.Raw, v.Position.Value.Z.Raw, v.Radius!.Value.Raw));
             return NearestFree(at, Free);
         }

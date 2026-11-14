@@ -940,6 +940,16 @@ namespace EdS.Data.Zones
                     }
                 }
             }
+            // Sous-lot V2.28b (2c) (PLAN_GRANDE_CARTE.md § 2.5) : dans une zone à région, un chef vit dans un secteur : toutes ses formes y
+            // arrivent (la session de ce secteur les fait jouer), à au moins 8 m de ses bords intérieurs, comme une population.
+            // Relecture indépendante de la PR #159 : dès qu'il y a une région (schéma 13 compris), comme l'hôte des secteurs, qui tient toute
+            // zone à région : aucune zone n'y passe sans cette règle.
+            if (region != null && space != null)
+            {
+                if (boss != null) CheckBossSector(boss, "$.data.boss", region, space, report);
+                for (int i = 0; d.Chiefs != null && i < d.Chiefs.Count; i++)
+                    if (chiefs.FirstOrDefault(c => c.Id == d.Chiefs[i]?.Id) is Boss chief) CheckBossSector(chief, $"$.data.chiefs[{i}]", region, space, report);
+            }
             // Sous-lot V2.1 (schéma 8) : les PNJ qui rentrent chez eux la nuit se tiennent devant leur porte (on peut toujours leur parler) ;
             // leur place est dans l'aire praticable, hors des obstacles. L'histoire vérifie que chaque PNJ existe et vit dans cette zone.
             var nightSpots = new List<NightSpot>();
@@ -1155,6 +1165,25 @@ namespace EdS.Data.Zones
 
         public const int MaxForms = 8, MaxRewards = 8;
         private static readonly Regex FactId = new Regex(@"^fact(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : les formes d'un chef d'une zone à région sont toutes dans le secteur de sa première forme, à au moins
+        /// <see cref="MinSectorInset"/> de ses bords intérieurs (au-delà, un autre secteur simulé).
+        /// </summary>
+        private static void CheckBossSector(Boss boss, string path, RegionGrid region, CombatSpace space, ValidationReport report)
+        {
+            AssailantSetup first = boss.Forms[0];
+            if (!region.Contains(first.Placement!.Position)) return;
+            string sector = region.CellOf(first.Placement.Position).SectorName;
+            for (int i = 0; i < boss.Forms.Count; i++)
+            {
+                GroundVector at = boss.Forms[i].Placement!.Position;
+                if (!region.Contains(at) || region.CellOf(at).SectorName != sector)
+                    report.Add($"{path}.forms[{i}]", ValidationCode.InvalidValue, $"forme « {boss.Forms[i].Id} » hors du secteur de la première forme ({sector}) : un chef vit dans un seul secteur.");
+                else if (InnerEdgeDistance(region, space, at) is Fixed inset && inset < MinSectorInset)
+                    report.Add($"{path}.forms[{i}]", ValidationCode.OutOfRange, $"forme « {boss.Forms[i].Id} » à moins de {MinSectorInset} m du bord de son secteur ({sector}) : un chef part de l'intérieur de son secteur.");
+            }
+        }
 
         private static Boss? CheckBoss(BossData b, string path, CombatSetup? scenario, CombatSetup? forms, ItemCatalog items, ValidationReport report,
             IReadOnlyList<SafePoint> safePoints, IReadOnlyList<Door> doors, int allForms, IReadOnlyList<Boss> others)

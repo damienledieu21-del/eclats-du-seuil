@@ -1049,7 +1049,7 @@ public class V226SecteursMondeTests
         twin.Step();
         twin.Enter(Hero("bruno", 100, 100));
         long rest = twin.NextTickRegistryNeed;
-        Assert.InRange(rest, 5, 50);
+        Assert.InRange(rest, 3, 50);
         SectorWorld w = Make(checked((int)(SaveValidator.MaxConsumed - rest + 1)));
         w.Enter(Hero("alice", 250, 128));
         w.Step();
@@ -1064,14 +1064,12 @@ public class V226SecteursMondeTests
         Assert.All(w.OpenSectors, x => Assert.Equal((before[x], tick), (w.SectorZone(x)!.Engine.CurrentTick, w.SectorZone(x)!.WorldTick)));
         Assert.Equal(new[] { "alice" }, w.Players);
         Assert.True(w.CancelEnter("bruno"));
-        // Sous-lot V2.28b : sans entrée annoncée, aucune session ne peut naître avant le tick des secteurs : la borne redevient exacte
-        // (registre et morts possibles), sans la clé de Bruno ni celles des deux créatures de l'aire.
-        Assert.Equal(SaveValidator.MaxConsumed + 1L - 1 - 2, w.NextTickRegistryNeed);
-        // Relecture indépendante de la PR #156 : cette borne suffit. Le registre est rempli jusqu'à elle (deux clés de plus) : le tick est
-        // accepté et le registre du monde reste sous le plafond ; une clé de plus : refus entier, rien ne bouge.
+        // Sous-lot V2.28b : sans entrée annoncée, la borne est celle du registre et des morts possibles, sans la clé de Bruno (relecture
+        // indépendante de la PR #159 : Bruno entrait dans un secteur ouvert, aucune session n'y naissait : seule sa clé comptait).
+        Assert.Equal(SaveValidator.MaxConsumed + 1L - 1, w.NextTickRegistryNeed);
+        // Relecture indépendante de la PR #156 : cette borne suffit. Le registre est à elle : le tick est accepté et le registre du monde
+        // reste sous le plafond ; une clé de plus : refus entier, rien ne bouge.
         Zone west = w.SectorZone("s00_00")!;
-        Assert.True(west.Consume("zone.essai/plein_0"));
-        Assert.True(west.Consume("zone.essai/plein_1"));
         Assert.Equal(SaveValidator.MaxConsumed + 0L, w.NextTickRegistryNeed);
         w.Step();
         Assert.Equal(tick + 1, w.WorldTick);
