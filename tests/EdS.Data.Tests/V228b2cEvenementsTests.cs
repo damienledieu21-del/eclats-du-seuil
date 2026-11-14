@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
 using EdS.Domain.Combat;
@@ -249,6 +250,43 @@ public class V228b2cEvenementsTests
             w.Step();
             Assert.Equal(0, w.Renewals);
         }
+    }
+
+    [Fact]
+    public void Cicatrice_dans_un_secteur_ferme_ses_echos_roent_dans_la_session_de_son_secteur()
+    {
+        // Décision 3 de Damien, aux cicatrices : les échos rôdeurs d'une cicatrice jouent dans la session du secteur de son lieu ; secteur
+        // fermé, ils attendent sans place réservée ; ouvert, ils s'y lèvent (jamais dans la session de l'ouest).
+        ZoneLoadResult loaded = V228b2cChefsTests.Read(zone: z =>
+        {
+            var rift = (JsonObject)JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!["data"]!["events"]!.AsArray()
+                .Single(x => (string)x!["id"]! == "faille_du_seuil")!.DeepClone();
+            var g = (JsonObject)rift["groups"]![0]!.DeepClone();
+            g.Remove("spreadTo");
+            g["position"] = new JsonArray(380, 90);
+            g["creatures"] = new JsonArray(Creature(380, 94), Creature(384, 90), Creature(376, 90));
+            g["haunts"] = new JsonArray(Creature(390, 100), Creature(370, 100), Creature(380, 104));
+            rift["groups"] = new JsonArray(g);
+            z["data"]!["events"] = new JsonArray(rift);
+        });
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        ZoneDefinition zone = loaded.Zone!;
+        SavedCharacter hero = Hero().WithScars(new[] { new SavedScar("zone.essai/faille_du_seuil/ruines", 2, 0, 0) });
+        var w = new WorldSession(new WorldSave(zone.Id, 2000, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression, ItemsCatalog,
+            safePoint: "camp_ouest");
+        Assert.True(w.OnSectors);
+        Assert.Equal("s01_00", w.EventsRuntime!.SectorOf("faille_du_seuil"));
+        for (int i = 0; i < 2400; i++) w.Step();   // deux minutes du monde : le secteur de la cicatrice est fermé
+        Assert.Null(w.Host!.SectorZone("s01_00"));
+        Assert.Empty(HuntersIn(w.Zone));
+        Assert.Equal(0, w.EventsRuntime.PendingIn("s01_00"));
+        Walk(w, 200, 128);
+        Zone east = w.Host.SectorZone("s01_00")!;
+        for (int i = 0; i < 2400 && HuntersIn(east).Count == 0; i++) w.Step();
+        Assert.NotEmpty(HuntersIn(east));   // les échos voulus au palier 2 (un seul)
+        Assert.Empty(HuntersIn(w.Zone));
+
+        static JsonObject Creature(double x, double z) => new() { ["like"] = "loup_est", ["position"] = new JsonArray(x, z) };
     }
 
     // --- Vallons livrés ------------------------------------------------------------------------------------------------
