@@ -130,6 +130,34 @@ public class V228b2cEvenementsTests
     }
 
     [Fact]
+    public void Place_reservee_en_attente_comptee_dans_les_places_gardees_du_secteur()
+    {
+        // Leçon des tours précédents (bornes exactes comptant les états en attente) : une créature d'événement dont la place est réservée
+        // mais pas encore prise (sa place est occupée par le personnage) est comptée dans les places gardées de son secteur, que reçoivent
+        // les populations de ce secteur sur l'hôte : aucune arrivée de population ne la lui prend.
+        ZoneLoadResult loaded = Read(hunt: e => e["groups"]![0]!["creatures"]![0]!["position"] = new JsonArray(420, 200));
+        Assert.True(loaded.IsValid, loaded.Report.ToString());
+        ZoneDefinition zone = loaded.Zone!;
+        long start = StartTick(zone);
+        WorldSession w = Open(zone, start - 20, "camp_est");   // le personnage se tient sur la place du premier chasseur
+        Assert.Equal("s01_00", w.Sector);
+        int waiting = 0, before = 0;
+        var forms = new HashSet<int>();   // places gardées hors événements (formes du chef de l'est) : inchangées
+        for (int i = 0; i < 120; i++)
+        {
+            w.Step();
+            int pending = w.EventsRuntime!.PendingIn("s01_00");
+            forms.Add(w.ReservedIn("s01_00") - pending);
+            Assert.Equal(0, w.EventsRuntime.PendingIn("s00_00"));
+            if (pending > 0) waiting++;
+            else if (waiting == 0) before++;
+        }
+        Assert.True(before > 0 && waiting > 0);
+        Assert.Single(forms);
+        Assert.Single(HuntersIn(w.Zone));
+    }
+
+    [Fact]
     public void Session_renouvelee_les_creatures_d_evenement_continuent_telles_quelles()
     {
         // Décision de Damien du 14 novembre 2026 (« AAA », 2), appliquée par analogie aux créatures d'événement : au renouvellement, elles
