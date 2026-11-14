@@ -508,6 +508,62 @@ public class V228b2cChefsTests
         }
     }
 
+    /// <summary>Zone d'essai dont les formes du chef (à comportement) ciblent le loup de l'ouest, dans l'autre secteur ; première forme fragile.</summary>
+    private static ZoneDefinition TargetElsewhere() => Essai(chief: c =>
+    {
+        foreach (JsonNode? form in c["data"]!["combatants"]!.AsArray())
+        {
+            form!["target"] = "loup_ouest";
+            form["team"] = "rivaux";   // une cible ennemie : le loup est de la meute
+            foreach (JsonNode? attack in form["attacks"]!.AsArray()) attack!["rawDamage"] = 1;
+        }
+        c["data"]!["combatants"]![0]!["health"] = 5;
+        // Le scénario du chef nomme sa cible (le loup de l'ouest de la zone), comme le veut son validateur ; seules les formes en sont prises.
+        JsonObject wolf = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!["data"]!["combatants"]!.AsArray()
+            .Single(x => (string)x!["id"]! == "loup1")!.AsObject();
+        var target = (JsonObject)wolf.DeepClone();
+        target["id"] = "loup_ouest";
+        target["position"] = new JsonArray(100, 40);
+        c["data"]!["combatants"]!.AsArray().Add(target);
+    });
+
+    [Fact]
+    public void Chef_a_cible_dans_l_autre_secteur_partie_qui_commence_dans_son_secteur()
+    {
+        // Revue Codex de la PR #159 (4e tour) : les formes visent le loup de l'ouest. Le validateur l'accepte (le scénario entier a ce loup),
+        // mais la session de l'est ne l'a pas : la cible est retirée à chaque arrivée (règle unique CombatantReferences.Adapt). La partie
+        // commence à l'est : elle s'ouvre, le chef est là ; sa forme suivante arrive aussi.
+        ZoneDefinition zone = TargetElsewhere();
+        Assert.Equal("loup_ouest", ((AssailantSetup)zone.Bosses.Single().Forms[0]).Target);
+        WorldSession w = Open(zone, safePoint: "guet_est", level: 20);
+        Assert.Equal("s01_00", w.Sector);
+        Assert.DoesNotContain("loup_ouest", w.Zone.Engine.CombatantIds);
+        Assert.Equal(Chef, ChiefForm(w));
+        Assert.True(w.Zone.Engine.View(Chef).IsPresent);
+        var steps = new List<SessionStep>();
+        for (int i = 0; i < 1200 && !steps.Any(s => s.Boss.Any(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1)); i++)
+        {
+            Strike(w, i);
+            steps.Add(w.Step());
+        }
+        BossEvent next = steps.SelectMany(s => s.Boss).Single(b => b.Kind == BossEventKind.FormArrived && b.Phase == 1);
+        w.Step();
+        Assert.True(w.Zone.Engine.View(next.Form).IsPresent);
+    }
+
+    [Fact]
+    public void Chef_a_cible_dans_l_autre_secteur_arrive_a_l_ouverture_de_son_secteur()
+    {
+        // Même chef, partie commencée à l'ouest (où est sa cible) : le secteur de l'est s'ouvre en s'approchant, le chef y arrive (sans sa
+        // cible, absente de cette session), au lieu de rester absent toute la session.
+        WorldSession w = Open(TargetElsewhere());
+        Assert.Equal("s00_00", w.Sector);
+        WalkTo(w, 200, 128);
+        Zone east = w.Host!.SectorZone("s01_00")!;
+        Assert.Contains(Chef, east.Engine.CombatantIds);
+        Assert.True(east.Engine.View(Chef).IsPresent);
+    }
+
     [Fact]
     public void Chef_vaincu_le_reste_au_renouvellement_recompense_en_attente_gardee_puis_donnee_une_fois()
     {
