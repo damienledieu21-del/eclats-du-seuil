@@ -356,6 +356,26 @@ namespace EdS.World
 
             /// <summary>Relecture de la PR #110 : écho rôdeur d'une cicatrice.</summary>
             public bool Haunt;
+
+            /// <summary>
+            /// Sous-lot V2.28b (2c) : session de zone où joue <see cref="Current"/> (celle du secteur de l'événement au moment de son arrivée).
+            /// Une autre session de ce secteur (réouverture) ne l'a pas : la créature y revient à sa place, après une place réservée.
+            /// </summary>
+            public Zone? Session;
+
+            /// <summary>
+            /// Sous-lot V2.28b (2c) : arrivée sans place réservée (secteur fermé au départ de l'occurrence, ou réouvert depuis) : elle réserve
+            /// sa place dans la session de son secteur avant d'arriver, et n'en garde aucune avant.
+            /// </summary>
+            public bool NeedsPlace;
+
+            /// <summary>
+            /// Sous-lot V2.28b (2c), même règle que les chefs (décision de Damien du 14 novembre 2026, « AAA », 2, par analogie) : état emporté
+            /// au renouvellement de la session (place, PV, ressources), gardé jusqu'à l'arrivée effective (ArrivedTick) et réutilisé à chaque
+            /// nouvel essai, à la place libre la plus proche.
+            /// </summary>
+            public CombatantPlacement? CarryPlace;
+            public CarriedState? CarryState;
         }
 
         /// <summary>Sous-lot V2.6 : échos rôdeurs d'une cicatrice (une place par écho rôdeur de la variante) et minute absolue de leur retour.</summary>
@@ -404,12 +424,25 @@ namespace EdS.World
         private readonly Dictionary<string, long> _tried = new Dictionary<string, long>(StringComparer.Ordinal);
         private long _minuteSeen = -1;
 
-        public WorldEvents(ZoneDefinition zone, string weatherZone)
+        public WorldEvents(ZoneDefinition zone, string weatherZone, Func<WorldEventDefinition, string?>? sectorOf = null)
         {
             _zone = zone;
             _weatherZone = weatherZone;
-            foreach (WorldEventDefinition e in zone.Events) _runs[e.Id] = null;
+            foreach (WorldEventDefinition e in zone.Events)
+            {
+                _runs[e.Id] = null;
+                _sectors[e.Id] = sectorOf?.Invoke(e);
+            }
         }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c), décision de Damien du 14 novembre 2026 (« AAA », 3) : secteur de simulation de chaque événement (celui de son
+        /// lieu ; tous ses groupes y tiennent, vérifié par le validateur) ; null hors de l'hôte des secteurs (la session de la partie).
+        /// </summary>
+        private readonly Dictionary<string, string?> _sectors = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        /// <summary>Sous-lot V2.28b (2c) : secteur de l'événement <paramref name="eventId"/> (null hors de l'hôte).</summary>
+        public string? SectorOf(string eventId) => _sectors.TryGetValue(eventId, out string? s) ? s : null;
 
         /// <summary>Population modèle d'une créature d'événement, ou null.</summary>
         public Population? Of(string combatant) => _byCreature.TryGetValue(combatant, out Population p) ? p : null;
@@ -429,10 +462,41 @@ namespace EdS.World
         /// Relecture de la PR #107 : places réservées et pas encore prises : créatures d'événement sans combattant (pas encore arrivées, place
         /// occupée, arrivée refusée, laisse). Chacune garde sa place jusqu'à son arrivée ou son abandon.
         /// </summary>
-        internal int PendingPlaces => checked(_runs.Values.Where(r => r != null).Sum(r => r!.Slots.Count(Pending))
-            + _haunts.Values.Sum(h => h.Slots.Count(s => s != null && Pending(s))));
+        internal int PendingPlaces => PendingIn(null, all: true);
 
-        private static bool Pending(Slot s) => s.Current is null && !s.Dead && !s.Gone;
+        /// <summary>Revue Codex de la PR #160 (1er tour) : une occurrence de l'événement <paramref name="eventId"/> est-elle en cours (pas encore réglée) ?</summary>
+        internal bool Running(string eventId) => _runs.TryGetValue(eventId, out Run? r) && r != null;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : places réservées et pas encore prises dans la session du secteur <paramref name="sector"/> (événements et
+        /// échos rôdeurs de ce secteur ; <paramref name="all"/> : de tous).
+        /// </summary>
+        internal int PendingIn(string? sector, bool all = false)
+        {
+            int n = 0;
+            // Relecture indépendante de la PR #160 : des boucles, aucun délégué par appel.
+            foreach (KeyValuePair<string, Run?> r in _runs)
+                if (r.Value != null && (all || SectorOf(r.Key) == sector))
+                    foreach (Slot s in r.Value.Slots)
+                        if (Pending(s)) n = checked(n + 1);
+            foreach (KeyValuePair<string, Haunt> h in _haunts)
+                if (all || SectorOf(HauntEvent(h.Key)) == sector)
+                    foreach (Slot? s in h.Value.Slots)
+                        if (s != null && Pending(s)) n = checked(n + 1);
+            return n;
+        }
+
+        /// <summary>Sous-lot V2.28b (2c) : événement d'une cicatrice (sa clé : « événement/variante », <see cref="WorldSession.ScarStates"/>).</summary>
+        private string HauntEvent(string key) => _hauntEvents.TryGetValue(key, out string? id) ? id : string.Empty;
+
+        private readonly Dictionary<string, string> _hauntEvents = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        // Sous-lot V2.28b (2c) : une arrivée sans place réservée (NeedsPlace) n'en garde aucune.
+        private static bool Pending(Slot s) => s.Current is null && !s.Dead && !s.Gone && !s.NeedsPlace;
+
+        /// <summary>Sous-lot V2.28b (2c) : une faille de l'événement <paramref name="eventId"/> est ouverte (quelle que soit sa variante).</summary>
+        public bool RiftOpenAnywhere(string eventId) =>
+            _runs.TryGetValue(eventId, out Run? r) && r is { Started: true, Closed: false, Ending: false, Refused: false } && r.Occurrence.Event.Kind == WorldEventKind.Rift;
 
         /// <summary>Sous-lot V2.6 : une faille de l'événement <paramref name="eventId"/> est ouverte à la variante <paramref name="group"/>.</summary>
         public bool RiftOpenAt(string eventId, string group) =>
@@ -467,11 +531,29 @@ namespace EdS.World
         /// </summary>
         public IReadOnlyList<WorldEventNotice> Step(WorldSession world, Zone zone, int reserved)
         {
-            CombatEngine engine = zone.Engine;
-            if (engine.IsFinished) return Array.Empty<WorldEventNotice>();
+            // Relecture indépendante de la PR #160 : aucune allocation par tick (délégués faits une fois, lisant la session et les places du tick).
+            _soloZone = zone;
+            _soloReserved = reserved;
+            return Step(world, zone, _soloSessionOf ??= _ => _soloZone, _soloReservedIn ??= _ => _soloReserved);
+        }
+
+        private Zone? _soloZone;
+        private int _soloReserved;
+        private Func<string?, Zone?>? _soloSessionOf;
+        private Func<string?, int>? _soloReservedIn;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : chaque événement (et les échos rôdeurs de ses cicatrices) joue dans la session du secteur de son lieu
+        /// (<paramref name="sessionOf"/>, null si ce secteur n'est pas ouvert), avec les places gardées de ce secteur (<paramref name="reservedIn"/>).
+        /// Son déroulé (annonce, départ, vagues, fin, issue) suit le temps du monde, que son secteur soit ouvert ou non ; ses créatures n'y
+        /// arrivent que quand il l'est. Les échéances sont en ticks du <b>monde</b> (horloge commune à toutes les sessions).
+        /// </summary>
+        public IReadOnlyList<WorldEventNotice> Step(WorldSession world, Zone zone, Func<string?, Zone?> sessionOf, Func<string?, int> reservedIn)
+        {
+            if (zone.Engine.IsFinished) return Array.Empty<WorldEventNotice>();
             var notices = new List<WorldEventNotice>();
-            long nowTick = engine.CurrentTick;
-            long now = WorldEventSchedule.Absolute(zone.Clock.At(checked(zone.StartWorldTick + nowTick)));
+            long nowTick = zone.WorldTick;   // tick du monde (toutes les sessions ouvertes sont au même)
+            long now = WorldEventSchedule.Absolute(zone.Clock.At(nowTick));
             if (!_opened)
             {
                 _opened = true;
@@ -507,7 +589,8 @@ namespace EdS.World
                     _runs[e.Id] = run = new Run { Occurrence = o };
                     Changed();
                 }
-                StepRun(world, zone, run, now, nowTick, reserved, notices);
+                string? sector = SectorOf(e.Id);
+                StepRun(world, sessionOf(sector), sector, run, now, nowTick, reservedIn(sector), notices);
                 if (Settled(run) || (run.Ending && run.Slots.Count == 0))
                 {
                     if (!run.Closed && e.Settles) Settle(world, run, notices);
@@ -516,7 +599,7 @@ namespace EdS.World
                     Changed();
                 }
             }
-            StepHaunts(world, zone, now, nowTick, reserved, minuteChanged, notices);
+            StepHaunts(world, sessionOf, reservedIn, now, nowTick, minuteChanged, notices);
             // Récompense due (sac plein à la réussite, ou dans une session précédente) : donnée dès qu'elle tient.
             foreach (WorldEventDefinition e in _zone.Events)
                 if (e.Settles && world.EventEntry(e).Owed)
@@ -549,12 +632,13 @@ namespace EdS.World
             }
         }
 
-        private void StepRun(WorldSession world, Zone zone, Run run, long now, long nowTick, int reserved, List<WorldEventNotice> notices)
+        private void StepRun(WorldSession world, Zone? zone, string? sector, Run run, long now, long nowTick, int reserved, List<WorldEventNotice> notices)
         {
-            CombatEngine engine = zone.Engine;
+            // Sous-lot V2.28b (2c) : session du secteur de l'événement (null : secteur fermé ; finie : renouvelée au tick suivant).
+            Zone? live = zone != null && !zone.Engine.IsFinished ? zone : null;
             EventOccurrence o = run.Occurrence;
             WorldEventDefinition e = o.Event;
-            long tickMs = engine.TickMilliseconds;
+            long tickMs = _zone.Setup.Combat.TickMilliseconds;
             if (!run.Announced && !run.Started && now < o.StartAt)
             {
                 run.Announced = true;
@@ -565,7 +649,8 @@ namespace EdS.World
                 run.Started = true;
                 run.Announced = true;
                 Changed();
-                if (!Reserve(zone, reserved, o.Group.Creatures.Count))
+                // Sous-lot V2.28b (2c) : secteur fermé : l'occurrence a lieu quand même ; ses créatures réservent leur place à leur arrivée.
+                if (live != null && !Reserve(live, sector, reserved, o.Group.Creatures.Count))
                 {
                     // Plus de place hors de la réserve des quêtes : l'occurrence n'a pas lieu, réglée sans issue (ni victoire ni pillage).
                     run.Ending = true;
@@ -575,7 +660,7 @@ namespace EdS.World
                     return;
                 }
                 notices.Add(new WorldEventNotice(WorldEventNoticeKind.Started, e.Id, o.Group.Id, o.Day, 1));
-                AddWave(run, world);
+                AddWave(run, world, live is null);
                 run.WavesSpawned = 1;
                 run.NextWaveTick = checked(nowTick + e.WaveMs / tickMs);
             }
@@ -588,13 +673,13 @@ namespace EdS.World
             {
                 run.WavesSpawned++;
                 run.NextWaveTick = checked(nowTick + e.WaveMs / tickMs);
-                if (Reserve(zone, reserved, o.Group.Creatures.Count))
+                if (live is null || Reserve(live, sector, reserved, o.Group.Creatures.Count))
                 {
-                    AddWave(run, world);
+                    AddWave(run, world, live is null);
                     notices.Add(new WorldEventNotice(WorldEventNoticeKind.Wave, e.Id, o.Group.Id, o.Day, run.WavesSpawned));
                 }
             }
-            foreach (Slot s in run.Slots) StepSlot(zone, s, nowTick, tickMs, reserved, run.Ending);
+            foreach (Slot s in run.Slots) StepSlot(live, zone, sector, s, nowTick, tickMs, reserved, run.Ending);
             // Attaque : plus aucun assaillant debout (vaincus, ou enfuis faute de place pour revenir), même après la fin si le combat a continué.
             if (e.Kind == WorldEventKind.Raid && run.Slots.All(s => s.Dead || (s.Gone && !s.Withdrawn)) && (!run.Ending || run.Slots.Any(s => s.Dead && s.Hurt)))
             {
@@ -603,12 +688,12 @@ namespace EdS.World
                 else world.SettleEvent(e, o, EventOutcome.None, null, notices);
                 return;
             }
-            if (run.Ending)
+            if (run.Ending && live != null)
                 foreach (Slot s in run.Slots)
-                    if (s.Current != null && !s.Dead && !s.Gone && !s.Leashing)
+                    if (s.Current != null && !s.Dead && !s.Gone && !s.Leashing && ReferenceEquals(s.Session, live))
                     {
-                        CombatantView v = engine.View(s.Current);
-                        if (v.IsPresent && !HeldByPlayer(engine, v) && TryLeave(zone, s.Current)) s.Gone = s.Withdrawn = true;
+                        CombatantView v = live.Engine.View(s.Current);
+                        if (v.IsPresent && !HeldByPlayer(live.Engine, v) && TryLeave(live, s.Current)) s.Gone = s.Withdrawn = true;
                     }
         }
 
@@ -616,41 +701,62 @@ namespace EdS.World
         private static bool HeldByPlayer(CombatEngine engine, CombatantView v) =>
             v.Engaged && v.CurrentTarget is string target && engine.View(target).Kind == CombatantKind.Character;
 
-        private void AddWave(Run run, WorldSession world)
+        private void AddWave(Run run, WorldSession world, bool needsPlace = false)
         {
             // Sous-lot V2.6 : une faille qui s'ouvre sur une cicatrice crache des échos plus forts (palier de la cicatrice à cette vague).
             long strength = world.ScarStrength(run.Occurrence.Event, run.Occurrence.Group.Id);
             foreach (WorldEventCreature c in run.Occurrence.Group.Creatures)
-                run.Slots.Add(new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = strength });
+                run.Slots.Add(new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = strength, NeedsPlace = needsPlace });
         }
 
         /// <summary>
         /// Place pour <paramref name="count"/> créatures de plus, hors de la réserve des quêtes, des places gardées (formes de chef) et des
         /// places déjà réservées par les créatures d'événement qui n'ont pas encore de combattant (<see cref="PendingPlaces"/>).
         /// </summary>
-        private bool Reserve(Zone zone, int reserved, int count) =>
-            Fits(zone.Engine.PlacesTaken, PendingPlaces, reserved, count, zone.Setup.Combat.MaxCombatants)
-            // Sous-lot V2.26 : places recyclées, identités bornées par la session.
-            && checked(PendingPlaces + reserved + count) <= zone.Engine.IdentitiesLeft;
+        private bool Reserve(Zone zone, string? sector, int reserved, int count)
+        {
+            // Sous-lot V2.28b (2c) : les places déjà réservées dans cette session (celles de son secteur ; hors de l'hôte : toutes).
+            int pending = PendingIn(sector, all: sector is null);
+            return Fits(zone.Engine.PlacesTaken, pending, reserved, count, zone.Setup.Combat.MaxCombatants)
+                // Sous-lot V2.26 : places recyclées, identités bornées par la session.
+                && checked(pending + reserved + count) <= zone.Engine.IdentitiesLeft;
+        }
 
         /// <summary>Relecture de la PR #107 : la règle de place, en nombres (testée seule).</summary>
         internal static bool Fits(int combatants, int pending, int reserved, int count, int max) =>
             checked(combatants + pending + reserved + ZonePopulations.QuestReserve + count) <= max;
 
-        private void StepSlot(Zone zone, Slot s, long now, long tickMs, int reserved, bool ending)
+        /// <param name="zone">Session du secteur où la créature peut jouer à ce tick (null : secteur fermé, ou session finie).</param>
+        /// <param name="held">Session que l'hôte tient pour ce secteur, même finie (null : secteur fermé).</param>
+        private void StepSlot(Zone? zone, Zone? held, string? sector, Slot s, long now, long tickMs, int reserved, bool ending)
         {
             if (s.Dead || s.Gone) return;
+            // Revue Codex de la PR #160 (1er tour) : la créature jouait dans une session que l'hôte ne tient plus (secteur fermé, ou fermé
+            // puis rouvert : une vraie réouverture). Relever : sa mort (et qui l'a blessée) est lue sur cette session ; remplacer : sinon elle
+            // n'y est plus, en attente sans place ; elle reviendra à sa place, PV pleins, à l'ouverture. L'occurrence avance au temps du monde
+            // (à son échéance, une créature absente s'en va) et finit avec son issue normale. Une session finie encore tenue (renouvelée au
+            // tick suivant) est laissée au renouvellement (Renew), qui la relève de même.
+            if (s.Current != null && s.Session != null && !ReferenceEquals(s.Session, held)) Release(s);
             // Relecture de la PR #107 : après la fin, aucune arrivée : une créature qui n'est pas là ne viendra plus.
             if (ending && s.Current is null)
             {
                 s.Gone = s.Withdrawn = true;
                 return;
             }
+            // Sous-lot V2.28b (2c) : secteur fermé (ou session finie, renouvelée au tick suivant) : rien n'arrive ni n'est relevé.
+            if (zone is null) return;
             CombatEngine engine = zone.Engine;
+            long sessionTick = engine.CurrentTick;   // les faits du moteur (arrivée attendue) sont en ticks de sa session
             if (s.Current is string id)
             {
                 CombatantView v = engine.View(id);
-                bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < now;
+                // Sous-lot V2.28b (2c) : arrivée effective (fait du moteur) : l'état emporté est consommé, même si elle est déjà morte.
+                if (s.CarryPlace != null && v.ArrivedTick != null)
+                {
+                    s.CarryPlace = null;
+                    s.CarryState = null;
+                }
+                bool refused = !v.IsPresent && !v.HasLeft && !v.IsDead && v.ArrivalTick is long at && at < sessionTick;
                 if (v.IsDead)
                 {
                     Changed();
@@ -671,8 +777,15 @@ namespace EdS.World
                     }
                     // Laisse (ou arrivée refusée) : une vie calme revient à sa place une seconde plus tard, si une nouvelle place se réserve
                     // maintenant (relecture de la PR #107 : avant tout retour) ; sinon elle a pris la fuite. Après la fin, elle est partie.
+                    // Sous-lot V2.28b (2c) : une créature emportée dont l'arrivée est refusée garde son état emporté pour le nouvel essai ; une
+                    // laisse l'efface (elle revient à sa place, comme une vie calme).
                     s.Leashing = false;
-                    if (ending || !Reserve(zone, reserved, 1))
+                    if (v.HasLeft)
+                    {
+                        s.CarryPlace = null;
+                        s.CarryState = null;
+                    }
+                    if (ending || !Reserve(zone, sector, reserved, 1))
                     {
                         s.Gone = true;
                         s.Withdrawn = ending;
@@ -690,7 +803,46 @@ namespace EdS.World
             }
             // Sa place est déjà réservée (vague, ou retour réservé ci-dessus) : l'arrivée n'en prend pas d'autre.
             if ((s.RetryAt ?? -1) > now) return;
+            // Sous-lot V2.28b (2c) : sans place réservée (secteur fermé au départ, ou rouvert depuis) : elle la réserve d'abord ; sinon elle
+            // attend la seconde suivante (aucune exception, aucun essai qui prendrait la place d'une autre).
+            if (s.NeedsPlace)
+            {
+                if (!Reserve(zone, sector, reserved, 1))
+                {
+                    s.RetryAt = checked(now + Math.Max(1, 1000 / tickMs));
+                    return;
+                }
+                s.NeedsPlace = false;
+            }
             Join(zone, s, now, tickMs);
+        }
+
+        /// <summary>
+        /// Revue Codex de la PR #160 (1er tour) : relève la créature sur la session qu'elle quitte (morte : vaincue, blessée ou non par le
+        /// personnage), puis, vivante, la remet en attente sans place (elle reviendra à sa place, PV pleins). Son identité n'est plus celle
+        /// d'une créature d'événement.
+        /// </summary>
+        private void Release(Slot s)
+        {
+            string id = s.Current!;
+            CombatantView v = s.Session!.Engine.View(id);
+            _byCreature.Remove(id);
+            s.Current = null;
+            s.Session = null;
+            s.Leashing = false;
+            s.CarryPlace = null;
+            s.CarryState = null;
+            if (v.IsDead)
+            {
+                s.Dead = true;
+                s.Hurt |= v.HurtByCharacter;
+            }
+            else
+            {
+                s.NeedsPlace = true;
+                s.RetryAt = -1;
+            }
+            Changed();
         }
 
         private void Join(Zone zone, Slot s, long now, long tickMs)
@@ -699,7 +851,18 @@ namespace EdS.World
             AssailantSetup t = s.Strength > 100 ? ZoneScaling.Strengthen(s.Like.Template, s.Strength) : s.Like.Template;
             CombatantPlacement model = t.Placement!;
             var place = new CombatantPlacement(s.Creature.Position, model.Radius, model.Facing, model.Speed);
-            if (Occupied(engine, place))
+            // Sous-lot V2.28b (2c) : une créature emportée arrive à la place libre la plus proche de la sienne (règle d'arrivée ; une
+            // créature : le personnage lui est solide), avec son état emporté.
+            if (s.CarryPlace is CombatantPlacement carried)
+            {
+                if (SectorWorld.FreeSpotOf(zone, carried.Position, carried.Radius, character: false) is not GroundVector free)
+                {
+                    s.RetryAt = checked(now + Math.Max(1, 1000 / tickMs));
+                    return;
+                }
+                place = new CombatantPlacement(free, carried.Radius, carried.Facing, model.Speed);
+            }
+            else if (Occupied(engine, place))
             {
                 s.RetryAt = checked(now + Math.Max(1, 1000 / tickMs));
                 return;
@@ -711,7 +874,8 @@ namespace EdS.World
             // (CombatantReferences.Adapt) ; une créature liée à une cible absente ne vient pas (aucun nouvel essai sans fin).
             if (CombatantReferences.Adapt(new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative,
                 // Sous-lot V2.4.1 : elle n'erre pas (elle attend à sa place, comme en V2.5 : la faille, l'attaque, la chasse ne changent pas).
-                t.StatusResistance, t.Triggers, t.Health, place, checked(now * tickMs), t.Behavior?.WithoutWander()), taken.Contains) is not AssailantSetup setup)
+                t.StatusResistance, t.Triggers, t.Health, place, checked(engine.CurrentTick * tickMs), t.Behavior?.WithoutWander(), s.CarryPlace != null ? s.CarryState : null),
+                taken.Contains) is not AssailantSetup setup)
             {
                 s.Gone = true;
                 s.RetryAt = null;
@@ -728,10 +892,11 @@ namespace EdS.World
                 return;
             }
             s.Current = id;
+            s.Session = zone;
             s.RetryAt = null;
             _byCreature[id] = s.Like;
             // Relecture de la PR #110 : un écho rôdeur revient sans fin : sa mort n'est pas inscrite au registre (borné).
-            if (s.Haunt) zone.Transient(id);
+            if (Transient(s)) zone.Transient(id);
             Changed();
         }
 
@@ -766,13 +931,20 @@ namespace EdS.World
         /// événements (réserve des quêtes, places gardées), réservée avant l'arrivée ; sans place, il attend la minute suivante. Pendant qu'une
         /// faille est ouverte à sa place, aucun ne se lève. Une cicatrice effacée laisse partir les siens dès qu'ils sont au calme.
         /// </summary>
-        private void StepHaunts(WorldSession world, Zone zone, long now, long nowTick, int reserved, bool minuteChanged, List<WorldEventNotice> notices)
+        private void StepHaunts(WorldSession world, Func<string?, Zone?> sessionOf, Func<string?, int> reservedIn, long now, long nowTick, bool minuteChanged,
+            List<WorldEventNotice> notices)
         {
-            long tickMs = zone.Engine.TickMilliseconds;
+            long tickMs = _zone.Setup.Combat.TickMilliseconds;
             var live = new HashSet<string>(StringComparer.Ordinal);
             foreach ((string key, WorldEventDefinition e, WorldEventGroup g, int stage) in world.ScarStates())
             {
                 live.Add(key);
+                _hauntEvents[key] = e.Id;
+                // Sous-lot V2.28b (2c) : les échos rôdeurs jouent dans la session du secteur de l'événement (null : secteur fermé).
+                string? sector = SectorOf(e.Id);
+                Zone? held = sessionOf(sector);
+                Zone? zone = held != null && !held.Engine.IsFinished ? held : null;
+                int reserved = reservedIn(sector);
                 WorldEventScar rule = e.Scar!;
                 if (g.Haunts.Count == 0) continue;
                 if (!_haunts.TryGetValue(key, out Haunt? h))
@@ -787,14 +959,14 @@ namespace EdS.World
                         // Relecture de la PR #110 : un écho de trop (la cicatrice a reculé, une faille s'ouvre à sa place) ou plus fort que son
                         // palier s'en va dès qu'il ne se bat plus contre un personnage ; il revient à la minute suivante s'il est encore voulu.
                         bool surplus = i >= want || s.Strength > strength;
-                        StepSlot(zone, s, nowTick, tickMs, reserved, surplus);
+                        StepSlot(zone, held, sector, s, nowTick, tickMs, reserved, surplus);
                         if (surplus && Withdraw(zone, s)) h.ReadyAt[i] = now;
                         else if (s.Dead || s.Gone) h.ReadyAt[i] = checked(now + rule.HauntRespawnMinutes);
                         if (s.Dead || s.Gone) h.Slots[i] = null;
                         else any = true;
                         continue;
                     }
-                    if (i >= want || !minuteChanged || now < h.ReadyAt[i] || !Reserve(zone, reserved, 1)) continue;
+                    if (i >= want || !minuteChanged || now < h.ReadyAt[i] || zone is null || !Reserve(zone, sector, reserved, 1)) continue;
                     WorldEventCreature c = g.Haunts[i];
                     h.Slots[i] = new Slot { Creature = c, Like = world.PopulationFor(c.Like), RetryAt = -1, Strength = strength, Haunt = true };
                     rose = any = true;
@@ -808,10 +980,14 @@ namespace EdS.World
             foreach (KeyValuePair<string, Haunt> pair in _haunts)
             {
                 if (live.Contains(pair.Key)) continue;
+                string? sector = SectorOf(HauntEvent(pair.Key));
+                Zone? held = sessionOf(sector);
+                Zone? zone = held != null && !held.Engine.IsFinished ? held : null;
+                int reserved = reservedIn(sector);
                 for (int i = 0; i < pair.Value.Slots.Length; i++)
                 {
                     if (!(pair.Value.Slots[i] is Slot s)) continue;
-                    StepSlot(zone, s, nowTick, tickMs, reserved, true);
+                    StepSlot(zone, held, sector, s, nowTick, tickMs, reserved, true);
                     Withdraw(zone, s);
                     if (s.Dead || s.Gone) pair.Value.Slots[i] = null;
                 }
@@ -823,7 +999,7 @@ namespace EdS.World
         /// Relecture de la PR #110 : un écho rôdeur qui n'est plus voulu part s'il est au calme (pas encore arrivé : il ne viendra pas) ; vrai
         /// s'il est parti ainsi (pas vaincu).
         /// </summary>
-        private bool Withdraw(Zone zone, Slot s)
+        private bool Withdraw(Zone? zone, Slot s)
         {
             if (s.Dead || s.Gone) return s.Withdrawn;
             if (s.Current is null)
@@ -832,11 +1008,158 @@ namespace EdS.World
                 Changed();
                 return true;
             }
+            // Sous-lot V2.28b (2c) : secteur fermé ou session remplacée : il n'y joue plus ; il part avec elle.
+            if (zone is null || !ReferenceEquals(s.Session, zone)) return false;
             CombatantView v = zone.Engine.View(s.Current);
             if (!v.IsPresent || HeldByPlayer(zone.Engine, v) || !TryLeave(zone, s.Current)) return false;
             s.Gone = s.Withdrawn = true;
             Changed();
             return true;
+        }
+
+        /// <summary>Sous-lot V2.28b (2c) : créatures d'événement et échos rôdeurs du secteur <paramref name="sector"/>, dans l'ordre stable des événements et des clés.</summary>
+        private IEnumerable<Slot> SlotsOf(string sector)
+        {
+            foreach (WorldEventDefinition e in _zone.Events)
+                if (SectorOf(e.Id) == sector && _runs[e.Id] is Run r)
+                    foreach (Slot s in r.Slots) yield return s;
+            foreach (KeyValuePair<string, Haunt> h in _haunts)
+                if (SectorOf(HauntEvent(h.Key)) == sector)
+                    foreach (Slot? s in h.Value.Slots)
+                        if (s != null) yield return s;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c) : créatures qui arriveront dans la session qui naît en renouvelant <paramref name="renewing"/> (borne exacte
+        /// du registre) : celles de ce secteur présentes et vivantes dans la session qui finit, que <see cref="Renew"/> y emporte.
+        /// </summary>
+        internal int JoinsAtBirth(string sector, Zone renewing)
+        {
+            int n = 0;
+            foreach (Slot s in SlotsOf(sector))
+                if (!s.Dead && !s.Gone && s.Current != null && ReferenceEquals(s.Session, renewing)
+                    && renewing.Engine.View(s.Current) is { IsPresent: true, IsDead: false } v
+                    // Revue Codex de la PR #160 (2e tour) : seules les morts qui inscrivent une clé (règle unique ; un écho rôdeur n'en inscrit pas).
+                    && Zone.KeyedDeath(v.MaxHealth != null, Transient(s))) n++;
+            return n;
+        }
+
+        /// <summary>Revue Codex de la PR #160 (2e tour) : la créature est transitoire (écho rôdeur : sa mort n'inscrit aucune clé, elle revient sans fin).</summary>
+        private static bool Transient(Slot s) => s.Haunt;
+
+        /// <summary>
+        /// Sous-lot V2.28b (2c), même règle que les chefs (décision de Damien du 14 novembre 2026, « AAA », 2, par analogie) : la session de
+        /// <paramref name="sector"/> est renouvelée (<paramref name="old"/> remplacée par <paramref name="fresh"/>, avant son premier tick) :
+        /// chaque créature d'événement ou écho rôdeur présent et vivant y arrive tel quel (place libre la plus proche, PV et ressources
+        /// emportés, gardés jusqu'à son arrivée effective) ; les autres (partis, en attente) arrivent ensuite comme d'habitude. En deux temps :
+        /// les arrivées sont faites sur la session qui naît (seule touchée ; si quelque chose lève, l'hôte la jette et rien n'a changé), puis
+        /// l'action rendue les adopte, sans rien qui puisse lever.
+        /// </summary>
+        internal Action Renew(string sector, Zone fresh, Zone old)
+        {
+            var adopt = new List<(Slot S, string? Id, CombatantPlacement? Place, CarriedState? State, bool Reset)>();
+            // Relecture indépendante de la PR #160 (relever, propager, remplacer) : la session qui finit n'est plus relue par Step ; une
+            // créature morte à son dernier tick est relevée ici (morte, blessée ou non par le personnage) avant tout remplacement : l'issue de
+            // l'événement la compte au tick suivant, elle ne revient pas vivante.
+            var fallen = new List<(Slot S, bool Hurt)>();
+            CombatEngine to = fresh.Engine;
+            int counter = _counter;   // identités prises ici ; adoptées ensuite
+            long tickMs = _zone.Setup.Combat.TickMilliseconds;
+            foreach (Slot s in SlotsOf(sector))
+            {
+                if (s.Dead || s.Gone) continue;
+                if (s.Current is null)
+                {
+                    // En attente d'arriver : elle arrivera dans la session nouvelle (sa place réservée y compte), avec son état emporté s'il y en a.
+                    adopt.Add((s, null, s.CarryPlace, s.CarryState, false));
+                    continue;
+                }
+                if (!ReferenceEquals(s.Session, old)) continue;   // une session déjà remplacée : traitée par StepSlot
+                CombatantView v = old.Engine.View(s.Current);
+                if (v.IsDead)
+                {
+                    fallen.Add((s, v.HurtByCharacter));
+                    continue;
+                }
+                if (!v.IsPresent || !(v.Position is GroundVector at) || !(v.Radius is Fixed radius))
+                {
+                    adopt.Add((s, null, null, null, true));   // partie ou pas encore là : elle revient à sa place après une place réservée
+                    continue;
+                }
+                CarriedState carried = old.Engine.Carried(s.Current);
+                var place = new CombatantPlacement(at, radius, v.Facing);
+                CarriedState? state = carried.IsEmpty ? null : carried;
+                string? id = null;
+                if (SectorWorld.FreeSpotOf(fresh, at, radius, character: false) is GroundVector free)
+                {
+                    AssailantSetup t = s.Strength > 100 ? ZoneScaling.Strengthen(s.Like.Template, s.Strength) : s.Like.Template;
+                    var taken = new HashSet<string>(to.CombatantIds, StringComparer.Ordinal);
+                    string candidate;
+                    do candidate = $"{s.Like.Creature}_ev{counter = checked(counter + 1)}"; while (taken.Contains(candidate));
+                    if (CombatantReferences.Adapt(new AssailantSetup(candidate, t.Team, t.Armor, t.MagicResistance, t.Target, t.FirstAttackMs, t.IntervalMs, t.Attacks,
+                        t.Initiative, t.StatusResistance, t.Triggers, t.Health, new CombatantPlacement(free, radius, v.Facing, t.Placement!.Speed),
+                        checked(to.CurrentTick * tickMs), t.Behavior?.WithoutWander(), state), taken.Contains) is AssailantSetup setup)
+                    {
+                        try
+                        {
+                            to.Join(setup);
+                            id = candidate;
+                        }
+                        catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+                        {
+                        }
+                    }
+                }
+                adopt.Add((s, id, place, state, false));
+            }
+            return () =>
+            {
+                _counter = counter;
+                // Relecture indépendante de la PR #160 : les identités de la session qui finit ne sont plus celles de créatures d'événement
+                // (identités uniques : compteur commun à toutes les sessions).
+                foreach (string gone in old.Engine.CombatantIds) _byCreature.Remove(gone);
+                foreach ((Slot s, bool hurt) in fallen)
+                {
+                    s.Dead = true;
+                    s.Hurt |= hurt;
+                    s.Leashing = false;
+                    s.CarryPlace = null;
+                    s.CarryState = null;
+                }
+                foreach ((Slot s, string? id, CombatantPlacement? place, CarriedState? state, bool reset) in adopt)
+                {
+                    s.Leashing = false;
+                    if (reset)
+                    {
+                        s.Current = null;
+                        s.Session = null;
+                        s.CarryPlace = null;
+                        s.CarryState = null;
+                        s.NeedsPlace = true;
+                        s.RetryAt = -1;
+                        continue;
+                    }
+                    s.CarryPlace = place;
+                    s.CarryState = state;
+                    if (id != null)
+                    {
+                        s.Current = id;
+                        s.Session = fresh;
+                        s.RetryAt = null;
+                        _byCreature[id] = s.Like;
+                        if (Transient(s)) fresh.Transient(id);
+                    }
+                    else if (s.Current != null)
+                    {
+                        // Pas de place libre à 8 m, ou refus du moteur : nouvel essai à chaque seconde, avec son état emporté (sa place compte
+                        // parmi les places réservées de la session nouvelle).
+                        s.Current = null;
+                        s.Session = null;
+                        s.RetryAt = -1;
+                    }
+                }
+                Changed();
+            };
         }
 
         private static void Settle(WorldSession world, Run run, List<WorldEventNotice> notices) =>

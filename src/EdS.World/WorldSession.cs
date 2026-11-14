@@ -483,7 +483,7 @@ namespace EdS.World
                 _host.EnterAtStart(setup);
                 _zoneSector = _host.SectorOf(setup.Id)!;
                 Zone = _host.SectorZone(_zoneSector)!;
-                _renews = hosted!.Events.Count == 0;   // sous-lot V2.28b (2c) : les chefs recommencent avec la session nouvelle (OpenedSector)
+                _renews = true;   // sous-lot V2.28b (2c) : chefs et événements du monde continuent dans la session nouvelle (OpenedSector)
             }
             else Zone = new Zone(save.Zone, zoneSetup, checked(save.Sessions + 1), save.WorldTick, save.Consumed, log, entering: new[] { setup });
             EnteredLevel = setup.Build.Level;
@@ -696,11 +696,9 @@ namespace EdS.World
         private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
         {
             if (zone.Region is null || zone.Setup.Space is null) return null;
-            // Sous-lot V2.28b (2) : une aire à plusieurs secteurs est tenue par l'hôte si la zone n'a pas d'événement du monde (ils seront
-            // liés à leur secteur ensuite) ; sinon elle reste une seule session, comme avant.
+            // Sous-lot V2.28b (2c) : une aire à plusieurs secteurs est tenue par l'hôte, chefs et événements du monde compris (chacun lié au
+            // secteur de son lieu : OpenedSector, WorldEvents).
             bool single = SectorMap.For(zone).HomeHoldsArea;
-            // Sous-lot V2.28b (2c) : les chefs le sont désormais (OpenedSector) ; les événements du monde, pas encore.
-            if (!single && zone.Events.Count > 0) return null;
             var clock = new WorldClock(zone.Setup.Combat.TickMilliseconds);
             string weatherZone = storyZone ?? zone.Id;
             // L'aire du cœur seul garde exactement la session d'avant (sessions des secteurs rendues telles quelles) ; une aire à plusieurs
@@ -785,8 +783,6 @@ namespace EdS.World
                 _fights.Add(fight);
                 if (ReferenceEquals(boss, zone.Boss)) _boss = fight;
             }
-            if (_host != null && zone.Bosses.Count > 0)
-                _host.OnOpened(OpenedSector, JoinsAtBirth);
             // Sous-lot V1.1 : le point sûr où commence la session (entrée, halte, reprise, voyage) est découvert d'emblée. Après l'arrivée du
             // chef : sa première forme compte alors parmi les combattants, et la découverte lui laisse la place de sa mort dans le registre.
             if (door is null) Discover(safePoint ?? zone.Entry.Id);
@@ -796,6 +792,9 @@ namespace EdS.World
             GiveAtEntry();
             // Sous-lot V2.5 : événements du monde de la zone (registre du personnage, sauvegarde v13).
             OpenEvents();
+            // Sous-lot V2.28b (2c) : chefs et événements du monde arrivent ou continuent avec chaque session qui naît sur l'hôte.
+            if (_host != null && (zone.Bosses.Count > 0 || _events != null))
+                _host.OnOpened(OpenedSector, JoinsAtBirth);
         }
 
         /// <summary>
@@ -875,6 +874,9 @@ namespace EdS.World
                     prepared.Add((at, b, fight, started));
                 }
             }
+            // Sous-lot V2.28b (2c) : créatures d'événement et échos rôdeurs de ce secteur emportés dans la session renouvelée (préparés de même).
+            Action? adoptEvents = renewedFrom != null ? _events?.Renew(sector, zone, renewedFrom) : null;
+            adoptEvents?.Invoke();
             foreach ((int at, Boss b, BossFight fight, BossEvent? started) in prepared)
             {
                 if (started != null) _bossStarts.Add(started);
@@ -906,6 +908,8 @@ namespace EdS.World
                 CombatantView v = renewing.Engine.View(f.CurrentForm);
                 if (v.IsPresent && !v.IsDead) n++;
             }
+            // Sous-lot V2.28b (2c) : et les créatures d'événement et échos rôdeurs que la session renouvelée reprend.
+            if (renewing != null && _events != null) n = checked(n + _events.JoinsAtBirth(sector, renewing));
             return n;
         }
 

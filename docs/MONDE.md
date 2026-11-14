@@ -196,7 +196,7 @@ Sur l'hôte des secteurs (grande carte), chaque chef vit dans le secteur de sa p
 
 - **Poursuite hors du secteur** : un chef qui poursuit le personnage lâche au bout de la marge de 32 m au-delà du bord de son secteur ; il revient à sa place et reprend tous ses PV, sous la même forme (événement `Returned`).
 - **Session renouvelée pendant le combat** (une fois par heure de jeu) : le combat continue tel quel, forme, place et PV emportés comme ceux du personnage (événement `Carried`) ; un chef vaincu le reste ; aucune seconde victoire. Le chef ne recommence à sa première forme qu'à une vraie ouverture ou réouverture de son secteur, comme après une halte.
-- **Événements du monde** : chacun sera lié au secteur de son lieu, ses groupes vérifiés par le validateur (suite du V2.28b (2c)).
+- **Événements du monde** : chacun est lié au secteur de son lieu, ses groupes (et les échos rôdeurs de ses cicatrices) vérifiés par le validateur ; **décisions de Damien du 14 novembre 2026, 17 h 18 (« AAA »)** : il a lieu au temps du monde même secteur fermé (même issue que sans le joueur), ses créatures arrivant si le joueur ouvre le secteur pendant qu'il dure ; au renouvellement de la session, elles continuent telles quelles (place et PV) ; une créature qui suit le personnage hors de son secteur le lâche au bout de la marge de 32 m, revient à sa place et reprend tous ses PV, comme un chef ([DONNEES.md](DONNEES.md#événements-du-monde-et-cicatrices-liés-à-leur-secteur-sous-lot-v228b-2c-suite)).
 
 ## L'aventure jouable (sous-lot 12.8)
 
