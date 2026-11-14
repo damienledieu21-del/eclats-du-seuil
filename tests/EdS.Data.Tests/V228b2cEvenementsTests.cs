@@ -291,6 +291,32 @@ public class V228b2cEvenementsTests
 
     // --- Vallons livrés ------------------------------------------------------------------------------------------------
 
+    [Theory]
+    [InlineData("attaque_hameau", "hameau_de_la_carriere")]
+    [InlineData("faille_du_seuil", "essai_croc")]
+    public void Parite_Vallons_avec_evenements_une_session_contre_hote_a_plusieurs_secteurs(string id, string safePoint)
+    {
+        ZoneDefinition shipped = Zone();
+        var clock = new WorldClock(shipped.Setup.Combat.TickMilliseconds);
+        EventOccurrence o = WorldEventSchedule.Next(shipped.Id, shipped.Id, shipped.Events.Single(e => e.Id == id), checked(WorldEventSchedule.Absolute(clock.At(100)) + 1))!;
+        long worldTick = checked(WorldEventSchedule.TickAt(clock, o.StartAt) - 40);   // juste avant l'occurrence
+        // Les Vallons livrés, événements du monde compris (chacun lié au secteur de son lieu, tous dans le cœur) : le chemin d'avant (session
+        // de zone, sans région) et l'hôte au cœur seul jouent octet pour octet ; l'hôte à deux secteurs joue de même tant que le personnage
+        // reste dans le cœur (trace, personnage sauvegardé ; 1 200 ticks : plus loin, un sanglier du bord est du cœur passe x = 140, la
+        // limite de l'aire d'une seule session, ce qui n'est pas une différence des événements).
+        (string Trace, string Log, int Open) plain = V228b2cChefsTests.TraceOf(V228b2cChefsTests.VallonsOf(0, events: true), 1200, safePoint, worldTick),
+            home = V228b2cChefsTests.TraceOf(V228b2cChefsTests.VallonsOf(1, events: true), 1200, safePoint, worldTick),
+            wide = V228b2cChefsTests.TraceOf(V228b2cChefsTests.VallonsOf(2, events: true), 1200, safePoint, worldTick);
+        string[] world = plain.Trace.Split('\n').Where(l => l.Contains(" monde ", StringComparison.Ordinal) && !l.EndsWith(" monde ", StringComparison.Ordinal)).ToArray();
+        Assert.True(world.Length > 0, string.Join("|", plain.Trace.Split('\n').Select(l => l[(l.IndexOf(" monde", StringComparison.Ordinal) + 1)..]).Distinct().Take(20)));
+        Assert.Equal(plain.Log, home.Log);
+        Assert.Equal(plain.Trace, home.Trace);
+        static string Played(string t) => t[..t.IndexOf("fin ", StringComparison.Ordinal)];
+        static string Hero(string t) => JsonNode.Parse(t[t.IndexOf('{')..])!["data"]!["character"]!.ToJsonString();
+        Assert.Equal(Played(home.Trace), Played(wide.Trace));
+        Assert.Equal(Hero(home.Trace), Hero(wide.Trace));
+    }
+
     /// <summary>Ticks du monde des vagues de la faille (et de son départ), sur <paramref name="ticks"/> ticks à partir de 22 h 50 du premier jour de faille.</summary>
     private static List<string> RiftTimeline(long sessionMs, int ticks)
     {
