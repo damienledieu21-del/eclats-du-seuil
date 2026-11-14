@@ -214,35 +214,163 @@ public class V228b2bAventureTests : IDisposable
         }
     }
 
-    [Fact]
-    public void Renouvellement_au_plafond_du_registre_tick_refuse_entier()
+    /// <summary>Remplit le registre de la partie pour qu'il reste <paramref name="spare"/> clés sous la borne du tick qui vient.</summary>
+    private static void FillTo(WorldSession w, int spare)
     {
-        // Atomicité : le tick qui renouvelle la session est tout ou rien près du plafond du registre (borne de l'hôte, tous les secteurs
-        // ouverts) ; refusé, il ne change ni la partie, ni le pont.
+        SectorWorld host = w.Host!;
+        long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
+        for (int i = 0; i < room - spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D4}"));
+        Assert.Equal(spare, SaveValidator.MaxConsumed - host.NextTickRegistryNeed);
+    }
+
+    private static WorldSession NearlyFull(ZoneDefinition zone)
+    {
+        var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
+        return new WorldSession(new WorldSave(zone.Id, 0, 0, keys, Hero()), zone, ShippedData, Progression, ItemsCatalog);
+    }
+
+    [Fact]
+    public void Renouvellement_au_plafond_du_registre_reprise_comme_avant_sans_exception()
+    {
+        // Atomicité : accepté juste à la borne (la session est renouvelée). Une clé de trop : relecture indépendante de la PR #158, le
+        // renouvellement n'est pas tenté (il serait refusé à chaque tick, par une exception) : la session terminée mène à la reprise au
+        // dernier point sûr, comme avant ; aucun tick n'avance, rien ne change, rien ne lève.
         foreach (int spare in new[] { 0, -1 })
         {
-            ZoneDefinition zone = Short();
-            var keys = Enumerable.Range(0, SaveValidator.MaxConsumed - 500).Select(i => $"zone.essai/test/k{i:D6}").Append(PlayerCharacters.PlacesKey);
-            var w = new WorldSession(new WorldSave(zone.Id, 0, 0, keys, Hero()), zone, ShippedData, Progression, ItemsCatalog);
+            WorldSession w = NearlyFull(Short());
             RealtimeCombat c = Bridge(w);
             while (!w.Zone.IsOver) c.StepOnce();
-            SectorWorld host = w.Host!;
-            long room = SaveValidator.MaxConsumed - host.NextTickRegistryNeed;
-            for (int i = 0; i < room - spare; i++) Assert.True(w.Zone.Consume($"zone.essai/test/plein{i:D4}"));
-            Assert.Equal(spare, SaveValidator.MaxConsumed - host.NextTickRegistryNeed);
+            FillTo(w, spare);
             Zone before = w.Zone;
-            long tick = host.WorldTick, bridgeTick = c.Tick;
+            long tick = w.Host!.WorldTick, bridgeTick = c.Tick;
             if (spare == 0)
             {
+                Assert.True(w.RenewsSessions);
                 c.StepOnce();
                 Assert.Equal((1, 1), (w.Renewals, c.Rebinds));
                 continue;
             }
-            Assert.Throws<InvalidOperationException>(() => c.StepOnce());
-            Assert.Throws<InvalidOperationException>(() => c.StepOnce());
+            Assert.False(w.RenewsSessions);
+            Assert.True(c.IsFinished);
+            for (int i = 0; i < 5; i++)
+            {
+                c.StepOnce();
+                Assert.Equal(0, c.Advance(0.25));
+            }
             Assert.Same(before, w.Zone);
-            Assert.Equal((tick, bridgeTick, 0, 0), (host.WorldTick, c.Tick, w.Renewals, c.Rebinds));
+            Assert.Equal((tick, bridgeTick, 0, 0), (w.Host!.WorldTick, c.Tick, w.Renewals, c.Rebinds));
         }
+    }
+
+    [Fact]
+    public void Renouvellement_au_plafond_avec_deux_secteurs_ouverts_l_un_seul_renouvele()
+    {
+        // La borne compte tous les secteurs ouverts : celui du personnage se renouvelle, l'autre (ouvert plus tard) continue sa session.
+        foreach (int spare in new[] { 0, -1 })
+        {
+            WorldSession w = NearlyFull(Short());
+            RealtimeCombat c = Bridge(w);
+            for (int i = 0; i < 4000 && w.Host!.OpenSectors.Count < 2; i++)
+            {
+                c.SetMove(1, 0);
+                c.StepOnce();
+            }
+            c.SetMove(0, 0);
+            Assert.Equal(2, w.Host!.OpenSectors.Count);
+            Assert.Equal("s00_00", w.Sector);
+            Zone east = w.Host.SectorZone("s01_00")!;
+            for (int i = 0; i < 100 && !w.Zone.IsOver; i++) c.StepOnce();
+            Assert.True(w.Zone.IsOver);
+            Assert.False(east.IsOver);
+            int renewals = w.Renewals;
+            FillTo(w, spare);
+            Zone before = w.Zone;
+            if (spare == 0)
+            {
+                c.StepOnce();
+                Assert.Equal(renewals + 1, w.Renewals);
+                Assert.NotSame(before, w.Zone);
+                Assert.Same(east, w.Host.SectorZone("s01_00"));
+                continue;
+            }
+            Assert.True(c.IsFinished);
+            for (int i = 0; i < 5; i++) c.StepOnce();
+            Assert.Same(before, w.Zone);
+            Assert.Equal(renewals, w.Renewals);
+        }
+    }
+
+    [Fact]
+    public void Mort_pendant_un_renouvellement_la_partie_ne_suit_pas_et_ne_leve_pas()
+    {
+        // Un loup qui tue d'un coup, à côté de l'entrée : la défaite termine la session ; l'hôte la renouvelle sans le personnage (mort, il
+        // garde sa dernière vue) ; le pont avance sans lever, la partie reste vaincue (reprise par l'aventure) et se sauvegarde.
+        ZoneDefinition zone = Essai(scenario: s =>
+        {
+            s["data"]!["durationMs"] = 2_000;
+            JsonObject wolf = s["data"]!["combatants"]!.AsArray().Single(x => (string)x!["id"]! == "loup_ouest")!.AsObject();
+            wolf["position"] = new JsonArray(66, 128);
+            foreach (JsonNode? attack in wolf["attacks"]!.AsArray()) attack!["rawDamage"] = 100_000;
+        });
+        WorldSession w = Open(zone);
+        RealtimeCombat c = Bridge(w);
+        for (int i = 0; i < 400 && !w.IsDefeated; i++) c.StepOnce();
+        Assert.True(w.IsDefeated);
+        for (int i = 0; i < 100; i++)
+        {
+            c.StepOnce();
+            _ = c.Player();
+            _ = c.Others();
+        }
+        Assert.Equal((0, 0), (w.Renewals, c.Rebinds));
+        Assert.True(c.Player().View.IsDead);
+        Assert.True(w.Host!.WorldTick > 100);
+        w.Save();
+    }
+
+    [Fact]
+    public void Demandes_ponctuelles_gardees_pour_le_premier_tick_de_l_arrivant()
+    {
+        // Relecture indépendante de la PR #158 : au tick où le combattant d'arrivée n'est pas encore là, une parade demandée n'est plus
+        // perdue sans retour : elle part au premier tick où il est présent.
+        WorldSession w = Open(TwoSectors.Value);
+        RealtimeCombat c = Bridge(w);
+        c.SetMove(1, 0);
+        for (int i = 0; i < 4000 && c.Rebinds == 0; i++) c.StepOnce();
+        Assert.Equal(1, c.Rebinds);
+        Assert.False(c.Player().View.IsPresent);
+        c.Parry();
+        c.StepOnce();   // arrivée : il n'est pas encore là quand les commandes partent
+        Assert.True(c.Player().View.IsPresent);
+        for (int i = 0; i < 40; i++) c.StepOnce();
+        CombatantView me = w.Zone.Engine.View(w.CombatantId);
+        Assert.True(me.Counters.FailedParries + me.Counters.PerfectParries > 0,
+            $"la parade demandée à l'arrivée n'a pas été faite ({me.ParryRecoveryUntilTick}, {me.Counters.CommandsRejected}, {string.Join(";", c.DrainFeedback().Select(f => f.Kind + " " + f.Detail))})");
+    }
+
+    [Fact]
+    public void Premier_tick_du_combattant_d_arrivee_rendu_dans_les_retours()
+    {
+        // Relecture indépendante de la PR #158 : le combattant d'arrivée est nouveau ; ce qu'il a fait ou reçu avant le rebranchement (son
+        // premier tick, après un renouvellement) est rendu, pas effacé par la nouvelle référence des compteurs.
+        TrainingSession training = TrainingSession.Load(DataDirectory, MannequinPath);
+        CombatSetup setup = training.Setup;
+        var b = new CombatEngine(setup, NullCombatLog.Instance);
+        b.Submit(new CombatCommand(0, training.PlayerId, CombatAction.Parry));
+        for (int i = 0; i < 40; i++) b.Step();
+        CombatantCounters before = b.View(training.PlayerId).Counters;
+        Assert.True(before.FailedParries + before.PerfectParries > 0, "essai : la parade du moteur d'arrivée n'a rien compté");
+        var a = new CombatEngine(setup, NullCombatLog.Instance);
+        CombatEngine current = a;
+        var c = new RealtimeCombat(setup, a, training.PlayerId, () =>
+            {
+                current.Step();
+                current = b;
+            }, null, () => new CombatBinding(setup, current, training.PlayerId), null);
+        c.StepOnce();
+        Assert.Equal(1, c.Rebinds);
+        IReadOnlyList<CombatFeedback> got = c.DrainFeedback();
+        Assert.Contains(got, f => f.CombatantId == training.PlayerId && (f.Kind == FeedbackKind.FailedParry || f.Kind == FeedbackKind.PerfectParry));
     }
 
     // --- Aventure ------------------------------------------------------------------------------------------------------
@@ -393,6 +521,8 @@ public class V228b2bAventureTests : IDisposable
         AdventureSession a = AtEastThreshold(data, scenarios);
         Assert.True(a.World.RenewsSessions);
         a.DrainMessages();
+        AdventureMap map = a.Map;
+        WalkPaths paths = a.Paths;
         for (int i = 0; i < 150; i++)
         {
             a.Advance(0.05);
@@ -400,6 +530,9 @@ public class V228b2bAventureTests : IDisposable
         }
         Assert.Equal(2, a.World.Renewals);
         Assert.Equal((1, 2), (a.Opened, a.Combat.Rebinds));
+        // Relecture indépendante de la PR #158 : même espace après un renouvellement : carte et trajets (grille de navigation) gardés.
+        Assert.Same(map, a.Map);
+        Assert.Same(paths, a.Paths);
         Assert.DoesNotContain(a.DrainMessages(), m => m.Contains("Tu reprends", StringComparison.Ordinal));
         Assert.True(a.CanRest);
         a.Save();

@@ -305,11 +305,14 @@ namespace EdS.Runtime
             if (to.Setup is null || to.Engine is null || to.PlayerId is null) throw new InvalidOperationException("Rebranchement incomplet.");
             if (to.Engine.TickMilliseconds != _tickMs) throw new InvalidOperationException($"Tick de {to.Engine.TickMilliseconds} ms au lieu de {_tickMs} ms.");
             _feedback.Collect(_engine);
-            if (!ReferenceEquals(to.Setup.Space, _setup.Space)) _obstacles = CombatDisplay.SightObstacles(to.Setup.Space);
+            if (!CombatDisplay.SameSpace(to.Setup.Space, _setup.Space)) _obstacles = CombatDisplay.SightObstacles(to.Setup.Space);
             _setup = to.Setup;
             _engine = to.Engine;
             PlayerId = to.PlayerId;
             _feedback.Reset(_engine);
+            // Relecture indépendante de la PR #158 : le combattant d'arrivée est toujours nouveau ; ses compteurs partent de zéro. Après un
+            // renouvellement, il a déjà joué son premier tick quand le pont se rebranche : ce qu'il y a reçu ou fait est rendu.
+            _feedback.Forget(PlayerId);
             _targets.Reset();
             TargetId = null;
             Rebinds = checked(Rebinds + 1);
@@ -318,6 +321,10 @@ namespace EdS.Runtime
         private void SubmitIntentions()
         {
             CombatantView me = _engine.View(PlayerId);
+            // Relecture indépendante de la PR #158 : personnage pas encore là (arrivée d'un passage au tick qui vient, attente d'une place) :
+            // le moteur ne prend aucune commande de lui ; les demandes ponctuelles (compétence, parade) sont gardées pour le premier tick où il
+            // est présent, au lieu d'être perdues sans retour. Une demande plus récente remplace l'ancienne, comme avant.
+            if (!me.IsPresent && !me.IsDead) return;
             IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
                 _slotRequested, TargetFor);
             _slotRequested = null;

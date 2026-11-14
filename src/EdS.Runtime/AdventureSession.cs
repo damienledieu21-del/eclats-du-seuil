@@ -1481,9 +1481,11 @@ namespace EdS.Runtime
         // --- Carte (sous-lot 12.9d) -------------------------------------------------------------------------------------
 
         private AdventureMap? _map;
-        private int _mapSession = -1, _mapBound;
+        private int _mapSession = -1;
+        private CombatSpace? _mapSpace;
         private WalkPaths? _paths;
-        private int _pathsSession = -1, _pathsBound;
+        private int _pathsSession = -1;
+        private CombatSpace? _pathsSpace;
 
         /// <summary>
         /// Sous-lot V2.8 (recherche de chemin) : trajets des PNJ et des passants de la zone ouverte (ils contournent son décor) ; recalculés
@@ -1493,12 +1495,13 @@ namespace EdS.Runtime
         {
             get
             {
-                // Sous-lot V2.28b (2b) : et à chaque passage de secteur ou session renouvelée (l'espace est celui de la session du moment).
-                if (_paths is null || _pathsSession != Opened || _pathsBound != Combat.Rebinds)
+                // Sous-lot V2.28b (2b) : et quand l'espace de la session du moment change (passage de secteur) ; relecture indépendante de la
+                // PR #158 : pas pour une session renouvelée sur le même espace (la grille de navigation est coûteuse).
+                if (_paths is null || _pathsSession != Opened || !CombatDisplay.SameSpace(_pathsSpace, World.Zone.Setup.Space))
                 {
                     _paths = new WalkPaths(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."));
                     _pathsSession = Opened;
-                    _pathsBound = Combat.Rebinds;
+                    _pathsSpace = World.Zone.Setup.Space;
                 }
                 return _paths;
             }
@@ -1523,7 +1526,7 @@ namespace EdS.Runtime
         {
             get
             {
-                if (_map is null || _mapSession != Opened || _mapBound != Combat.Rebinds)   // sous-lot V2.28b (2b) : comme Paths
+                if (_map is null || _mapSession != Opened || !CombatDisplay.SameSpace(_mapSpace, World.Zone.Setup.Space))   // sous-lot V2.28b (2b) : comme Paths
                 {
                     _map = new AdventureMap(World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace."),
                         _zone.Places.Select(p => new MapPlace(p.Id, p.Name, Meters(p.Min.X), Meters(p.Min.Z), Meters(p.Max.X), Meters(p.Max.Z))),
@@ -1540,7 +1543,7 @@ namespace EdS.Runtime
                         // Sous-lot V2.27 : la grille de la région (chargement du terrain par cases), pas pour un intérieur.
                         _zone.Indoor ? null : _zone.Region);
                     _mapSession = Opened;
-                    _mapBound = Combat.Rebinds;
+                    _mapSpace = World.Zone.Setup.Space;
                 }
                 return _map;
             }

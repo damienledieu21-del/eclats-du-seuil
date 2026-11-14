@@ -166,7 +166,12 @@ namespace EdS.World
         /// monde, le personnage y arrive avec son état et la partie le suit. Seulement sur l'hôte et pour une zone sans chef ni événement
         /// du monde (liés à leur session jusqu'au V2.28b (2c)) ; sinon, comme avant, la partie reprend au dernier point sûr.
         /// </summary>
-        public bool RenewsSessions => _host != null && _renews;
+        /// <remarks>
+        /// Relecture indépendante de la PR #158 : pas quand l'hôte refuserait le tick du renouvellement (registre du monde trop plein pour la
+        /// session nouvelle) : la session terminée mène alors à la reprise au dernier point sûr, comme avant, et plus à un tick refusé (une
+        /// exception) à chaque tick.
+        /// </remarks>
+        public bool RenewsSessions => _host != null && _renews && !(Zone.IsOver && _host.NextTickRegistryNeed > SaveValidator.MaxConsumed);
 
         private readonly bool _renews;
 
@@ -1153,7 +1158,7 @@ namespace EdS.World
             // Revue Codex de la PR #45 : les populations après les récompenses (les morts du tick sont déjà attribuées) ; leurs opérations
             // refusées par le moteur sont retentées au tick suivant, sans faire échouer celui-ci.
             IReadOnlyList<PopulationEvent> population;
-            if (_host != null && (!Zone.IsOver || _renews))
+            if (_host != null && (!Zone.IsOver || RenewsSessions))
             {
                 // Sous-lot V2.28b : le tick est celui de l'hôte des secteurs (même ordre : session, récompenses, populations).
                 // Sous-lot V2.28b (2b) : une session terminée est renouvelée par l'hôte à ce tick et la partie suit le personnage dans la
