@@ -639,6 +639,7 @@ namespace EdS.World
             // Relecture indépendante de la PR #157 : en attente d'une place, en reprise d'un passage, refusé pour de bon ou mort dans une session
             // terminée, le personnage n'a pas de combattant à suivre : la partie garde sa dernière session et sa dernière identité (vues de
             // son combattant parti), sans lever ; elle le retrouve au tick où l'hôte le replace.
+            if (_heldForTest) return;
             if (!_host!.IsFollowed(_character.Id) || !(_host.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
             string id = _host.CombatantOf(_character.Id);
             if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
@@ -809,6 +810,7 @@ namespace EdS.World
             // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
             _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
+            NoteRecruitedCompanions();   // compagnons : une troupe déjà recrutée apprend son fait (sauvegarde d'avant la quête de lien)
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
@@ -1387,6 +1389,7 @@ namespace EdS.World
             var story = new List<StoryEvent>();
             // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
             IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);
+            StepWorldBosses();   // Grand Solitaire (2e partie) : les boss du monde, en temps serveur fourni par l'hôte
             CombatantView me = Zone.Engine.View(CombatantId);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
             var boss = new List<BossEvent>();
@@ -1511,6 +1514,7 @@ namespace EdS.World
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == CombatantId) continue;
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
+                if (IsWorldBossForm(e.Combatant)) continue;   // Grand Solitaire : son butin est celui de l'événement, jamais une expérience de créature
                 if (PopulationOf(e.Combatant) is Population rare) NightDefeated(rare, checked(Zone.StartWorldTick + e.Tick));   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 // Sous-lot V2.4 (bêtes qui se battent) : et il doit l'avoir frappée ; une bête tuée par d'autres bêtes ne compte pas (ni

@@ -497,7 +497,8 @@ namespace EdS.Data.Allies
 
         private static readonly Regex CompanionId = new Regex(@"^companion\.[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
 
-        public static CompanionLoadResult Validate(CompanionDocument document, ValidationReport? report = null)
+        /// <param name="story">Histoire du monde (relecture de la PR #175) : la quête de lien doit y exister ; null : non vérifiée.</param>
+        public static CompanionLoadResult Validate(CompanionDocument document, ValidationReport? report = null, Story.StoryBook? story = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             ValidationReport r = report ?? new ValidationReport();
@@ -508,7 +509,7 @@ namespace EdS.Data.Allies
                 r.Add("$.data", ValidationCode.MissingField, "champ obligatoire absent (lien, emplacements, traits, compagnons).");
                 return new CompanionLoadResult(r, null);
             }
-            var c = new Checker(r);
+            var c = new Checker(r, story);
             CompanionCatalog? catalog = c.Run(d, document.SchemaVersion!.Value, document.ContentVersion!);
             return new CompanionLoadResult(r, r.IsValid ? catalog : null);
         }
@@ -516,8 +517,13 @@ namespace EdS.Data.Allies
         private sealed class Checker
         {
             private readonly ValidationReport _r;
+            private readonly Story.StoryBook? _story;
 
-            public Checker(ValidationReport r) => _r = r;
+            public Checker(ValidationReport r, Story.StoryBook? story)
+            {
+                _r = r;
+                _story = story;
+            }
 
             private bool Present(object? value, string path, string what)
             {
@@ -610,6 +616,8 @@ namespace EdS.Data.Allies
                     int initial = (int)Range(s.Initial, "$.data.slots.initial", "emplacements ouverts au départ", 1, max);
                     int level = (int)Range(s.SecondSlotLevel, "$.data.slots.secondSlotLevel", "niveau minimum doux de la deuxième place", 1, CompanionCombat.MaxLevel);
                     string quest = Text(s.SecondSlotQuest, "$.data.slots.secondSlotQuest", "quête de lien qui ouvre la deuxième place");
+                    if (_story != null && s.SecondSlotQuest != null && !_story.HasQuest(quest))
+                        _r.Add("$.data.slots.secondSlotQuest", ValidationCode.UnknownReference, $"quête « {quest} » absente de l'histoire.");
                     int boss = (int)Range(s.WorldBossInCombat, "$.data.slots.worldBossInCombat", "compagnons au combat pendant le boss du monde", 0, max);
                     slots = new SlotRules(initial, max, level, quest, boss);
                 }
@@ -754,6 +762,9 @@ namespace EdS.Data.Allies
                             Length(a.Range, ap + ".range", "portée, en mètres", SpaceLimits.MinRange, SpaceLimits.MaxRange)));
                     }
                 }
+                // Relecture de la PR #175 : un compagnon qui se tient au-delà de toutes ses portées ne frapperait jamais.
+                if (attacks.Count > 0 && s.MaxRange != null && attacks.All(a => maxRange > a.Range) && !_r.HasErrorAtOrAbove(p + ".maxRange"))
+                    _r.Add(p + ".maxRange", ValidationCode.InvalidValue, $"distance maximale {maxRange} au-delà de toutes les portées d'attaque du stade.");
                 DuoDefinition? duo = null;
                 if (s.Duo is { } d)
                 {

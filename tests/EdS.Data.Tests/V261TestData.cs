@@ -27,6 +27,12 @@ internal static class V261TestData
                 || ((string?)e!["node"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
             foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v261_", StringComparison.Ordinal)
                 || ((string?)n!["id"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            // Compagnons (PR #175) : sans l'offre de la quête de lien de Gaspard (une entrée de plus, au-delà de seize).
+            foreach (JsonNode? e in entries.Where(e => ((string?)e!["node"])!.StartsWith("compagnons_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
+            foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("compagnons_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            foreach (JsonNode? n in nodes)
+                if (n!["choices"] is JsonArray choices)
+                    foreach (JsonNode? c in choices.Where(c => ((string?)c!["next"])?.StartsWith("compagnons_", StringComparison.Ordinal) == true).ToList()) choices.Remove(c);
             foreach (JsonNode? n in nodes)
                 if (n!["lines"] is JsonArray lines)
                 {
