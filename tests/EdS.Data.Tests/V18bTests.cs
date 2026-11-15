@@ -40,7 +40,7 @@ public class V18bTests
         int Min(string place) => z.Places.Single(p => p.Id == place).MinLevel;
         Assert.Equal((1, 1, 6, 11, 16, 21), (Min("village"), Min("moulin"), Min("ruines"), Min("foret_des_loups"), Min("camp_des_rodeurs"), Min("seuil")));
         // Un niveau par chapitre ; sous-lot V1.9.5 : plus le cœur du Seuil (23), où se tient le Gardien de la fin du chapitre 5.
-        Assert.Equal(new[] { 1, 6, 11, 16, 21, 23 }, z.Places.Select(p => p.MinLevel).Distinct().OrderBy(l => l));
+        Assert.Equal(new[] { 1, 6, 11, 16, 21, 23 }, z.Places.Take(19).Select(p => p.MinLevel).Distinct().OrderBy(l => l));   // V2.28c (3) : les lieux du cœur
         Assert.Equal(23, z.MinLevelAt(z.Bosses.Single(b => b.Id == "gardien_du_seuil").Forms[0].Placement!.Position));
         // Le plus haut des lieux qui contiennent le point ; 1 hors de tout lieu.
         Assert.Equal(16, z.MinLevelAt(z.PopulationOf("bandit_epee1")!.Template.Placement!.Position));

@@ -278,6 +278,15 @@ Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session 
 |---|---|---|
 | Devise du jeu | **« Ce qui est brisé peut encore briller. »**, choisie parmi les six devises du dossier ChatGPT « L'âme du jeu ». | Retenu (Damien, 15 novembre 2026, 9 h 50) |
 
+## 7 quater. Grande carte des Vallons (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale. Elles précisent le [plan de la grande carte](PLAN_GRANDE_CARTE.md) (§ 3 et § 4.4).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
+| Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
