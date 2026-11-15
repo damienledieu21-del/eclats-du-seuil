@@ -102,13 +102,14 @@ namespace EdS.Domain.Combat
         /// Compagnons : mêmes contrôles de forme qu'une commande du scénario, pour une commande soumise en cours de combat (pilote) : le
         /// scénario complété reste valide. Liste vide si la commande est bien formée.
         /// </summary>
-        public IReadOnlyList<RuleViolation> CheckCompanionCommand(CombatCommand command)
+        /// <param name="find">Combattant d'un identifiant, arrivées en cours de combat comprises (relecture indépendante de la PR #169 : un
+        /// personnage et son compagnon arrivés par <c>Join</c> sont connus du pilote, pas de <see cref="Combatants"/>) ; null s'il est inconnu.</param>
+        public static IReadOnlyList<RuleViolation> CheckCompanionCommand(CombatCommand command, Func<string, CombatantSetup?> find, bool spatial)
         {
             if (command is null) throw new ArgumentNullException(nameof(command));
-            var ids = new Dictionary<string, int>(StringComparer.Ordinal);
-            for (int i = 0; i < Combatants.Count; i++) ids[Combatants[i].Id] = i;
+            if (find is null) throw new ArgumentNullException(nameof(find));
             var errors = new List<RuleViolation>();
-            ValidateCompanionCommand(command, "command", ids, errors);
+            ValidateCompanionCommand(command, "command", find, spatial, errors);
             return errors;
         }
 
@@ -117,7 +118,10 @@ namespace EdS.Domain.Combat
         /// un ordre connu, une cible seulement (et obligatoirement) pour « cibler » ; une attaque à deux a une cible et exige un compagnon qui en
         /// a une. Seules ces commandes nomment un compagnon ou un ordre.
         /// </summary>
-        private void ValidateCompanionCommand(CombatCommand command, string path, Dictionary<string, int> ids, List<RuleViolation> errors)
+        private void ValidateCompanionCommand(CombatCommand command, string path, Dictionary<string, int> ids, List<RuleViolation> errors) =>
+            ValidateCompanionCommand(command, path, id => ids.TryGetValue(id, out int i) ? Combatants[i] : null, Space != null, errors);
+
+        private static void ValidateCompanionCommand(CombatCommand command, string path, Func<string, CombatantSetup?> find, bool spatial, List<RuleViolation> errors)
         {
             bool companionCommand = command.Action == CombatAction.Order || command.Action == CombatAction.Duo;
             if (!companionCommand)
@@ -126,14 +130,14 @@ namespace EdS.Domain.Combat
                 if (command.Order != null) errors.Add(new RuleViolation("seul un ordre (order) nomme un ordre.", path + ".order"));
                 return;
             }
-            if (Space is null) errors.Add(new RuleViolation("ordre ou attaque à deux dans un combat sans espace (bloc space absent).", path + ".action"));
-            if (ids.TryGetValue(command.Actor, out int actor) && Combatants[actor] is not CharacterSetup)
+            if (!spatial) errors.Add(new RuleViolation("ordre ou attaque à deux dans un combat sans espace (bloc space absent).", path + ".action"));
+            if (find(command.Actor) is { } actor && actor is not CharacterSetup)
                 errors.Add(new RuleViolation("seul un personnage commande un compagnon.", path + ".actor"));
             AssailantSetup? companion = null;
             if (command.Companion is null) errors.Add(new RuleViolation("compagnon obligatoire.", path + ".companion"));
-            else if (!ids.TryGetValue(command.Companion, out int index))
+            else if (find(command.Companion) is not { } found)
                 errors.Add(new RuleViolation(RuleViolationKind.UnknownReference, $"combattant inconnu « {command.Companion} ».", path + ".companion"));
-            else if (Combatants[index] is not AssailantSetup { Companion: { } link } a || !string.Equals(link.Owner, command.Actor, StringComparison.Ordinal))
+            else if (found is not AssailantSetup { Companion: { } link } a || !string.Equals(link.Owner, command.Actor, StringComparison.Ordinal))
                 errors.Add(new RuleViolation($"« {command.Companion} » n'est pas un compagnon de « {command.Actor} ».", path + ".companion"));
             else companion = a;
             if (command.Action == CombatAction.Order)

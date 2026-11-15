@@ -169,6 +169,39 @@ public class CompagnonsMoteurTests
         Assert.Contains(Lines(log, "attackSkipped"), e => e.Str("actor") == "nyx" && e.Str("reason") == "recalled");
     }
 
+    [Fact]
+    public void Revenir_finit_dans_la_bande_d_arret_et_quand_l_Eveille_n_est_plus_la()
+    {
+        // Relecture indépendante de la PR #169 : bords à 1,5 m + 0,001 m (dans la tolérance de la bande où il s'arrête) : l'ordre finit au tick
+        // suivant au lieu de durer jusqu'à la fin du combat.
+        var (_, band) = Run(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Companion(At("2.451", "0", "0.45")),
+            Wolf("loup", At("15", "15", "0.6"), health: 100_000) }, new[] { Order(0, CompanionOrder.Return) }, durationMs: 1000));
+        JsonElement ended = Assert.Single(Lines(band, "orderEnded"));
+        Assert.Equal((1L, "arrived"), (ended.Tick(), ended.Str("reason")));
+        // L'Éveillé tombé : « revenir » finit (ownerDead).
+        var brute = new AssailantSetup("brute", "meute", Fixed.Zero, Fixed.Zero, "bastion", 0, 500, new[] { Seax(raw: 100_000, range: "2") }, health: 100_000,
+            placement: At("1.2", "0", "0.6"));
+        var (_, owner) = Run(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Player("autre", At("-6", "-6")), Companion(At("-8", "0", "0.45")), brute },
+            new[] { Order(0, CompanionOrder.Return) }, durationMs: 1000));
+        Assert.Contains(Lines(owner, "orderEnded"), e => e.Str("reason") == "ownerDead");
+    }
+
+    [Fact]
+    public void Pilote_admet_les_ordres_d_un_personnage_et_d_un_compagnon_arrives_par_Join()
+    {
+        // Relecture indépendante de la PR #169 : les contrôles du pilote connaissent les arrivées (pas seulement les combattants du scénario).
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Wolf("loup", At("6", "0")) }), new MemoryCombatLog());
+        engine.Step();
+        CharacterSetup baseHero = Player("arrivant", At("-4", "0"));
+        engine.Join(new CharacterSetup(baseHero.Id, baseHero.Team, baseHero.Class, baseHero.Build, 0, baseHero.Placement, 50));
+        AssailantSetup c = Companion(At("-4", "2", "0.45"), id: "chien", owner: "arrivant");
+        engine.Join(new AssailantSetup(c.Id, c.Team, c.Armor, c.MagicResistance, null, c.FirstAttackMs, c.IntervalMs, c.Attacks, health: c.Health,
+            placement: c.Placement, arrivalMs: 50, behavior: c.Behavior, companion: c.Companion));
+        engine.Submit(Order(50, CompanionOrder.Target, "loup", companion: "chien", actor: "arrivant"));
+        while (engine.Step()) { }
+        Assert.Single(engine.SubmittedCommands);
+    }
+
     // --- Attaque à deux ----------------------------------------------------------------------------------------------
 
     [Fact]
@@ -202,6 +235,33 @@ public class CompagnonsMoteurTests
         Assert.Contains(Lines(log, "skillCast"), e => e.Tick() == 51);
         // Le compagnon saute ses attaques pendant l'attaque à deux.
         Assert.Contains(Lines(log, "attackSkipped"), e => e.Str("actor") == "nyx" && e.Str("reason") == "duo");
+    }
+
+    [Theory]
+    [InlineData("-6", "0", "0", "1.2")]   // l'Éveillé loin, le compagnon à portée
+    [InlineData("0", "0", "-6", "0")]     // le compagnon loin, l'Éveillé à portée
+    public void Attaque_a_deux_refusee_si_un_seul_partenaire_est_a_portee(string ox, string oz, string cx, string cz)
+    {
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("bastion", At(ox, oz)), Companion(At(cx, cz, "0.45"), bond: 100, duo: ContreJour, firstMs: 600_000),
+            Wolf("loup", At("1.2", "0", "0.6"), health: 100_000, behavior: new AssailantBehavior(Fixed.FromInt(20))) }, new[] { Order(0, CompanionOrder.Wait), Duo(50, "loup") },
+            durationMs: 500));
+        Assert.Equal("targetOutOfRange", Assert.Single(Lines(log, "commandRejected")).Str("reason"));
+    }
+
+    [Fact]
+    public void Coups_de_l_attaque_a_deux_sans_gain_de_lien_et_rappel_qui_l_annule()
+    {
+        // L'Éveillé frappe le loup, puis l'attaque à deux le frappe dans la fenêtre de coordination : aucun gain à l'impact.
+        AssailantSetup nyx = Companion(At("0", "1.2", "0.45"), bond: 100, duo: ContreJour, firstMs: 600_000);
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), nyx, Wolf("loup", At("1.2", "0", "0.6"), health: 100_000) },
+            new[] { Cmd(0, Gratuite, target: "loup"), Duo(1500, "loup") }, durationMs: 3000));
+        long landed = Assert.Single(Lines(log, "duoLanded")).Tick();
+        Assert.DoesNotContain(Lines(log, "bondGained"), g => g.Tick() == landed);
+        // « Revenir » pendant l'annonce : l'attaque à deux ne part pas (duoCancelled, recalled), jauge non rendue.
+        var (_, recalled) = Run(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), nyx, Wolf("loup", At("1.2", "0", "0.6"), health: 100_000) },
+            new[] { Duo(0, "loup"), Order(200, CompanionOrder.Return) }, durationMs: 2000));
+        Assert.Equal("recalled", Assert.Single(Lines(recalled, "duoCancelled")).Str("reason"));
+        Assert.Empty(Lines(recalled, "duoLanded"));
     }
 
     [Fact]
@@ -327,7 +387,19 @@ public class CompagnonsMoteurTests
         var (_, b) = Run(setup);
         Assert.Equal(a.Lines, b.Lines);
         Assert.All(Lines(a, "bondGained"), g => Assert.InRange(g.Int("bond"), 0, 100));
-        Assert.All(Lines(a, "duoStarted"), d => Assert.Equal(0, d.Int("bond")));
+        // Jamais d'attaque à deux sans jauge pleine ni commande : la jauge suivie ligne à ligne vaut 100 avant chaque départ, et une commande duo
+        // de ce tick l'a demandée.
+        int bond = ((AssailantSetup)setup.Combatants[1]).Companion!.Bond;
+        foreach (JsonElement e in Events(a))
+        {
+            string kind = e.GetProperty("event").GetString()!;
+            if (kind == "bondGained") { Assert.Equal(bond + e.Int("amount"), e.Int("bond")); bond = (int)e.Int("bond"); }
+            if (kind != "duoStarted") continue;
+            Assert.Equal(100, bond);
+            Assert.Contains(commands, c => c.Action == CombatAction.Duo && c.AtMs / 50 == e.Tick());
+            bond = 0;
+            Assert.Equal(0, e.Int("bond"));
+        }
     }
 
     [Fact]
@@ -347,11 +419,13 @@ public class CompagnonsMoteurTests
         while (engine.Step()) { }
         Assert.Equal(log.Lines.Skip(log.Lines.Count - resumedLog.Lines.Count + 1), resumedLog.Lines.Skip(1));
         Assert.Single(Lines(log, "duoLanded"));
-        string tampered = snapshot.Text.Replace("\"bond\":0,", "\"bond\":150,");
+        // Remplacements ciblés sur l'objet companion de Nyx ; l'exception précise nomme le défaut.
+        string tampered = snapshot.Text.Replace("\"bond\":0,\"recalledTick\"", "\"bond\":150,\"recalledTick\"");
         Assert.NotEqual(snapshot.Text, tampered);
-        Assert.ThrowsAny<Exception>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), new MemoryCombatLog()));
+        Assert.Contains("jauge de lien", Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(tampered), new MemoryCombatLog())).Message);
         string early = snapshot.Text.Replace("\"duoImpactTick\":36", "\"duoImpactTick\":99");
-        Assert.ThrowsAny<Exception>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(early), new MemoryCombatLog()));
+        Assert.NotEqual(snapshot.Text, early);
+        Assert.Contains("impact hors de l'annonce", Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(early), new MemoryCombatLog())).Message);
     }
 
     [Fact]

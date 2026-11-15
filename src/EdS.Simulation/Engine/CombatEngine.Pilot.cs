@@ -471,7 +471,8 @@ namespace EdS.Simulation.Engine
                     && command.Action != CombatAction.Order && command.Action != CombatAction.Duo)
                     throw new ArgumentException("Une garde, une parade ou un déplacement n'a pas de cible.", nameof(commands));
                 // Compagnons : ordre et attaque à deux, mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).
-                if (_setup.CheckCompanionCommand(command) is { Count: > 0 } companionProblems)
+                if (CombatSetup.CheckCompanionCommand(command, id => _byId.TryGetValue(id, out Fighter? known) ? known.Setup : null, _setup.Space != null)
+                    is { Count: > 0 } companionProblems)
                     throw new ArgumentException($"Commande de compagnon refusée : {companionProblems[0].Message}", nameof(commands));
                 if (command.Action == CombatAction.Dodge)
                 {
