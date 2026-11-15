@@ -127,6 +127,17 @@ namespace EdS.Data.Json
             }) ? n : null;
         }
 
+        private static FestivalDateData? ReadFestivalDate(JsonInput input, JsonElement element, string path)
+        {
+            var d = new FestivalDateData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["month"] = (v, p) => d.Month = input.Int32(v, p),
+                ["day"] = (v, p) => d.Day = input.Int32(v, p),
+                ["days"] = (v, p) => d.Days = input.Int32(v, p),
+            }) ? d : null;
+        }
+
         /// <summary>Sous-lot V2.10 (schéma 13) : une fête du bourg.</summary>
         private static FestivalData? ReadFestival(JsonInput input, JsonElement element, string path)
         {
@@ -138,6 +149,7 @@ namespace EdS.Data.Json
                 ["weekday"] = (v, p) => f.Weekday = input.Int32(v, p),
                 ["season"] = (v, p) => f.Season = input.Text(v, p),
                 ["day"] = (v, p) => f.Day = input.Int32(v, p),
+                ["date"] = (v, p) => f.Date = ReadFestivalDate(input, v, p),   // fêtes aux vraies dates (schéma 14)
                 ["from"] = (v, p) => f.From = input.Text(v, p),
                 ["to"] = (v, p) => f.To = input.Text(v, p),
                 ["rounds"] = (v, p) => f.Rounds = input.Int32(v, p),

@@ -702,6 +702,14 @@ namespace EdS.Data.Story
         /// </summary>
         public Festival? FestivalAt(long day, int minute) => Festivals.FirstOrDefault(f => f.At(day, minute));
 
+        /// <summary>
+        /// Fêtes aux vraies dates : la fête qui bat son plein au jour du monde <paramref name="day"/> (jour réel <paramref name="civil"/>, ou
+        /// null sans date fournie) ; la première dans l'ordre des données (une fête annuelle datée passe donc avant un marché de la semaine).
+        /// </summary>
+        public Festival? FestivalAt(long day, int minute, EdS.Domain.Time.CivilDate? civil) => Festivals.FirstOrDefault(f => f.At(day, minute, civil));
+
+        public Festival? FestivalOn(long day, EdS.Domain.Time.CivilDate? civil) => Festivals.FirstOrDefault(f => f.OnDay(day, civil));
+
         /// <summary>Sous-lot V2.10 : la fête du jour <paramref name="day"/> (la première du fichier), à n'importe quelle heure, ou null.</summary>
         public Festival? FestivalOn(long day) => Festivals.FirstOrDefault(f => f.OnDay(day));
 

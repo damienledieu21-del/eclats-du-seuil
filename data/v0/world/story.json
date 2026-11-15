@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "kind": "story",
   "contentVersion": "0.25.0-provisoire",
   "data": {
@@ -24743,6 +24743,7 @@
         "day": 7,
         "from": "10:00",
         "to": "22:00",
+        "date": {"month": 9, "day": 20, "days": 14},
         "guests": [
           {
             "npc": "npc.boulanger",
@@ -24793,6 +24794,7 @@
         "day": 21,
         "from": "18:00",
         "to": "23:59",
+        "date": {"month": 12, "day": 18, "days": 14},
         "guests": [
           {
             "npc": "npc.pretre",
@@ -24835,6 +24837,7 @@
         "day": 14,
         "from": "08:00",
         "to": "20:00",
+        "date": {"month": 4, "day": 10, "days": 14},
         "guests": [
           {
             "npc": "npc.archer_garde",
