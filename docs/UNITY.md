@@ -1064,3 +1064,13 @@ Avant la surface étendue des Vallons (4 096 × 3 072 m), la carte et le décor 
   - **lus sur l'aire entière** (`RegionMap`) : enseignes et cheminées des boutiques, `ShopsView`, décor lointain et de la vague 5 (`WorldMarkers`), repères de l'histoire (`StoryStage`). Aucune boutique d'un autre secteur ne disparaît ;
   - **limite** : au changement de fenêtre, le décor (`SpaceView`) et le terrain (`CellStreamView.Warm`) sont encore refaits dans la même image. L'étalement sous un budget n'est pas fait ; il reste au V2.28d (décor par cases).
 - **Aires plus petites** : une aire d'au plus 768 m (les Vallons livrés d'aujourd'hui, les zones d'essai à deux secteurs) garde la carte et le décor de l'aire entière, gardés d'un passage à l'autre, comme au V2.28b (3).
+
+## Compagnons dans le HUD V2.1 (décisions de Damien du 14 novembre 2026)
+
+- **Panneau du compagnon** (`HudPart.Companion`, seulement quand le joueur a un compagnon) : nom, ordre en cours en toutes lettres, jauge de lien. PC : sous les effets, le groupe descend ; téléphone : à la place du groupe (en solo, le compagnon en tient lieu).
+- **Menu des ordres** : six cases avec leur mot (Suivre, Attendre, Cibler, Protéger, Revenir, À deux ; dossier p. 35 : cinq ordres au plus, jamais la couleur seule). « À deux ! » quand la jauge est pleine.
+- **Clavier** : **O** ouvre ou ferme le menu, puis **1 à 5** (les compétences ne partent pas tant qu'il est ouvert) ; **Maj + O** change de compagnon (avec deux) ; **Y** lance l'attaque à deux (jamais automatique).
+- **Doigt** : toucher le panneau ouvre le menu ; chaque case donne son ordre ; « À deux » lance l'attaque à deux.
+- Code : `EdS.Runtime/CompanionControls.cs` (modèle testé hors Unity), `RealtimeCombat` (`ICompanionCommands`), `HudLayoutV21` (cases), `HudView.Companions`, `TouchControls`, `EdsGame.ReadCompanionInput`. Textes : `text.ui.hud.companion.*`.
+- **Compilation de contrôle seulement** (`tests/EdS.Unity.CompileCheck`) : pas d'essai dans Unity dans cette PR. Le compagnon est montré dans la scène comme les autres combattants (allié) ; un modèle et des animations propres viendront avec les ressources du dossier.
+

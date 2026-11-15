@@ -25,6 +25,15 @@ namespace EdS.Runtime
             "text.ui.hud.compass.s", "text.ui.hud.compass.so", "text.ui.hud.compass.o", "text.ui.hud.compass.no",
         };
 
+        /// <summary>Compagnons : mots des six cases du menu (suivre, attendre, cibler, protéger, revenir, à deux), et deux états.</summary>
+        public static readonly string[] CompanionActions =
+        {
+            "text.ui.hud.companion.follow", "text.ui.hud.companion.wait", "text.ui.hud.companion.target", "text.ui.hud.companion.protect",
+            "text.ui.hud.companion.return", "text.ui.hud.companion.duo",
+        };
+
+        public const string CompanionDown = "text.ui.hud.companion.down", CompanionDuoReady = "text.ui.hud.companion.duo_ready";
+
         /// <summary>Clé du libellé d'un bouton tactile ; les compétences 1 à 6 gardent leur chiffre (pas de texte).</summary>
         public static string? Button(HudButton button, HudMode mode)
         {
@@ -78,6 +87,9 @@ namespace EdS.Runtime
                 UltimateKey, SettingsTitle, CameraClick, CameraFree, InvertOn, InvertOff, Sensitivity, Creator, Minus, Plus,
             };
             keys.AddRange(Compass);
+            keys.AddRange(CompanionActions);   // compagnons
+            keys.Add(CompanionDown);
+            keys.Add(CompanionDuoReady);
             foreach (HudButton b in (HudButton[])Enum.GetValues(typeof(HudButton)))
                 foreach (HudMode m in (HudMode[])Enum.GetValues(typeof(HudMode)))
                 {
