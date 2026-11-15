@@ -61,6 +61,7 @@ namespace EdS.Runtime
             list.Add(new HelpKey("L", "Carte"));
             list.Add(new HelpKey("T", "Talents"));
             list.Add(new HelpKey("B", "Choisir ses compétences"));   // sous-lot V1.5 : l'écran des compétences (K est l'atelier)
+            list.Add(new HelpKey("U", "Monture (appeler ou renvoyer)"));   // sous-lot V2.28d (2b) : le cheval, donné à la fin du chapitre 1
             list.Add(new HelpKey("Échap", "Pause et réglages"));
             list.Add(new HelpKey("M", "Jeu en réseau"));
             list.Add(new HelpKey("H", "Masquer l'aide"));
