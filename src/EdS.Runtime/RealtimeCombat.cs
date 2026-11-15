@@ -253,9 +253,10 @@ namespace EdS.Runtime
             if (_mountAtTick != null)
             {
                 _mountAtTick = null;
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, "montée annulée"));   // relecture de la PR #184
                 return;
             }
-            _dismountRequested = true;
+            _dismountRequested = _engine.View(PlayerId).Mounted;   // relecture de la PR #184 : seulement en selle
         }
 
         /// <summary>
@@ -370,6 +371,7 @@ namespace EdS.Runtime
             _targets.Reset();
             TargetId = null;
             _mountAtTick = null;   // sous-lot V2.28d (2b) : une montée ne passe pas d'une session à l'autre (le joueur la relance)
+            _dismountRequested = false;
             Rebinds = checked(Rebinds + 1);
         }
 
@@ -422,7 +424,32 @@ namespace EdS.Runtime
             }
             if (_engine.CurrentTick < at) return 0;
             _mountAtTick = null;
+            // Relecture indépendante de la PR #184 : les refus les plus courants du moteur sont dits avec leur motif (le moteur reste juge).
+            if (MountBlocked(me) is string why)
+            {
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, why));
+                return 0;
+            }
             return TrySubmit(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Mount) }) ? 1 : 0;
+        }
+
+        /// <summary>
+        /// Motif lisible d'un refus de la mise en selle par le moteur (même règle : contrôle qui empêche de bouger, ennemi vivant et présent à
+        /// moins de <see cref="CombatRules.MountSafeDistance"/>, écart entre les centres), ou null.
+        /// </summary>
+        private string? MountBlocked(CombatantView me)
+        {
+            if (!me.CanMove) return "impossible de monter : vous ne pouvez pas bouger";
+            if (!(me.Position is GroundVector p)) return null;
+            long safe = _setup.Combat.MountSafeDistance.Raw;
+            foreach (string id in _engine.CombatantIds)
+            {
+                CombatantView other = _engine.View(id);
+                if (other.Team == me.Team || other.IsDead || !other.IsPresent || !(other.Position is GroundVector q)) continue;
+                long dx = checked(q.X.Raw - p.X.Raw), dz = checked(q.Z.Raw - p.Z.Raw);
+                if (checked(dx * dx + dz * dz) < checked(safe * safe)) return "impossible de monter : un ennemi est trop proche";
+            }
+            return null;
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>

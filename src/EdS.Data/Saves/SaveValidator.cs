@@ -355,6 +355,8 @@ namespace EdS.Data.Saves
             SavedCompanions? companions = null, string? mount = null)
         {
             Companions = companions ?? SavedCompanions.Empty;
+            // Relecture indépendante de la PR #184 : seule une monture connue (l'écrivain de la sauvegarde la recopie telle quelle).
+            if (mount != null && !SaveValidator.Mounts.Contains(mount)) throw new ArgumentException($"Monture « {mount} » inconnue.", nameof(mount));
             Mount = mount;
             Look = look;
             Stock = SavedStock.Canonical(stock);
@@ -1096,8 +1098,11 @@ namespace EdS.Data.Saves
                 if (c.Present.Contains("mount") || c.Mount != null)
                     report.Add(path + ".mount", ValidationCode.UnknownField, $"champ inconnu en version {version} (monture : version {MountSince}).");
             }
-            else if (c.Present.Contains("mount") && (c.Mount is null || !Mounts.Contains(c.Mount)))
+            else if (c.Mount != null && !Mounts.Contains(c.Mount))
                 report.Add(path + ".mount", ValidationCode.UnknownReference, $"monture inconnue (connues : {string.Join(", ", Mounts)}).");
+            // Relecture de la PR #184 : « mount » présent mais pas une chaîne (null, nombre) : une seule erreur à ce chemin.
+            else if (c.Present.Contains("mount") && c.Mount is null && !report.Errors.Any(e => e.Path == path + ".mount"))
+                report.Add(path + ".mount", ValidationCode.WrongType, "monture : une chaîne attendue (absente sans monture).");
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),

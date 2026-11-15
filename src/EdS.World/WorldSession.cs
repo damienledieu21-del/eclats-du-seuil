@@ -238,6 +238,12 @@ namespace EdS.World
         /// </summary>
         public bool CanCallMount => Zone.Engine.View(CombatantId).MountSpeed != null;
 
+        /// <summary>
+        /// Relecture indépendante de la PR #184 : le personnage a une monture, même si elle n'est pas encore dans cette session (donnée à la
+        /// fin du chapitre 1 pendant la session : elle le rejoint à la prochaine entrée dans une zone, halte comprise).
+        /// </summary>
+        public bool OwnsMount => _character.Mount != null || Narrative?.IsDone(PlayerCharacters.HorseQuest) == true;
+
         /// <summary>Niveau du personnage d'après son expérience (celui de son entrée dans la zone peut être plus bas).</summary>
         public int Level => _progression.LevelFor(_character.Xp);
 
