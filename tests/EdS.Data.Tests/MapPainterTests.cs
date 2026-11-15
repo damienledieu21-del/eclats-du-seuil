@@ -31,8 +31,10 @@ public class MapPainterTests
     {
         AdventureMap map = Map();
         (int width, int height) = MapPainter.Size(map);
-        // Vallons agrandis : 240 × 170 m et 10 m de forêt de chaque côté, à 6 pixels par mètre.
-        Assert.Equal((1560, 1140), (width, height));
+        // Sous-lot V2.28c : la carte est la fenêtre du secteur du cœur (384 × 384 m, de [−180, −142] à [204, 242]) et 10 m de chaque côté,
+        // au plus 2 048 pixels de côté (5 pixels par mètre environ). Avant : les Vallons agrandis, 240 × 170 m à 6 pixels par mètre.
+        Assert.Equal((-180.0, -142.0, 204.0, 242.0), (map.MinX, map.MinZ, map.MaxX, map.MaxZ));
+        Assert.Equal((2048, 2048), (width, height));
         byte[] image = MapPainter.Paint(map, width, height);
         Assert.Equal(width * height * 4, image.Length);
         // Pour regarder l'image (EDS_CARTE=chemin) : RVBA brut, lignes du sud au nord.
@@ -43,7 +45,7 @@ public class MapPainterTests
         for (int i = 3; i < image.Length; i += 4) if (image[i] == 255) opaque++;
         Assert.Equal(width * height, opaque);   // tout est opaque
 
-        var river = At(image, width, height, map, 5.5, 20);           // milieu du bras nord
+        var river = At(image, width, height, map, 5.5, 30);           // bras nord (V2.28c : à 5 pixels par mètre, le muret haie_est déborde en z = 20)
         Assert.True(river.B > river.R + 0.1 && river.B > river.G, $"rivière {river}");
         var deck = At(image, width, height, map, 5.5, -0.3);          // planches du pont, entre les deux bras
         Assert.True(deck.R > deck.B + 0.1 && deck.R > 0.25, $"pont {deck}");
@@ -53,9 +55,10 @@ public class MapPainterTests
         Assert.True(mill.R > 0.6 && mill.G > 0.55, $"moulin {mill}");
         var tree = At(image, width, height, map, -12, 4);             // arbre1
         Assert.True(tree.G > tree.R && tree.G > tree.B && tree.G < 0.6, $"arbre {tree}");
-        // Hors de l'aire, à l'ouest (sous-bois et lisière), plus sombre en moyenne que le pré.
+        // Un bois (bois_no1, de [−80, 43] à [−44, 76]), plus sombre en moyenne que le pré. Sous-lot V2.28c : l'ouest du cœur n'est plus hors de
+        // l'aire (la surface continue), on mesure un bois.
         double Mean(double xa, double za) => Enumerable.Range(0, 49).Select(i => At(image, width, height, map, xa + i % 7, za + i / 7)).Average(p => p.R + p.G + p.B);
-        Assert.True(Mean(-109, -40) < Mean(28, 28) - 0.1, $"forêt {Mean(-109, -40)} pré {Mean(28, 28)}");
+        Assert.True(Mean(-65, 55) < Mean(28, 28) - 0.1, $"bois {Mean(-65, 55)} pré {Mean(28, 28)}");
         var meadow = At(image, width, height, map, 32, 32);
         Assert.True(meadow.G > meadow.R && meadow.G > meadow.B, $"pré {meadow}");
         var quarry = At(image, width, height, map, 58, -4);           // rochers du front de taille
@@ -87,8 +90,8 @@ public class MapPainterTests
         Assert.True(ripe.Average(p => p.R - p.B) > 0.2, "blé mûr");
 
         // Coordonnées de l'image : la marge est comprise.
-        Assert.Equal((0.0, 0.0), MapPainter.ToImage(map, -110, 110));
-        Assert.Equal((1.0, 1.0), MapPainter.ToImage(map, 150, -80));
+        Assert.Equal((0.0, 0.0), MapPainter.ToImage(map, -190, 252));   // V2.28c : coins de la fenêtre, marge de 10 m
+        Assert.Equal((1.0, 1.0), MapPainter.ToImage(map, 214, -152));
         Assert.Throws<ArgumentOutOfRangeException>(() => MapPainter.Paint(map, 0, 10));
         Assert.Throws<ArgumentOutOfRangeException>(() => MapPainter.Paint(map, 10, 2049));
         Assert.Throws<ArgumentOutOfRangeException>(() => MapPainter.Paint(map, 10, 10, -1));

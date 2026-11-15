@@ -19,7 +19,22 @@ namespace EdS.Data.Tests;
 [Trait("Category", "World")]
 public class V2253CasesTests
 {
-    private static string Scenarios => Path.Combine(AppContext.BaseDirectory, "scenarios");
+    /// <summary>
+    /// Sous-lot V2.28c : les scénarios livrés, les Vallons remis au cœur d'avant la surface étendue (ces essais portent sur le découpage du
+    /// cœur en cases ; la surface étendue a les siens, V228cSurfaceTests).
+    /// </summary>
+    private static string Scenarios => BeforeSurface.Value;
+
+    private static readonly Lazy<string> BeforeSurface = new(() =>
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "eds_v2253_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(directory, "zones"));
+        JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+        VallonsBefore(s);
+        File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+        CopyMissingZoneScenarios(directory);
+        return directory;
+    });
     private static ItemCatalog Items { get; } = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
     private static readonly Lazy<ZoneDefinition> Shipped = new(() => Read(ZoneJson()).Zone!);
     private static ZoneDefinition Vallons => Shipped.Value;

@@ -33,6 +33,19 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
+    /// Sous-lot V2.28c : espace des Vallons d'avant la surface étendue (le bourg et ses alentours). Les trajets des PNJ se calculent dans
+    /// l'espace du secteur simulé (AdventureSession.Paths) ; sur l'aire de toute la région, la grille de navigation passerait à 8 m.
+    /// </summary>
+    public static EdS.Domain.Space.CombatSpace VallonsBeforeSpace()
+    {
+        var s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+        VallonsBefore(s);
+        ScenarioLoadResult result = ScenarioJsonReader.Read(s.ToJsonString(), ShippedData);
+        if (!result.IsValid) throw new InvalidOperationException(result.Report.ToString());
+        return result.Setup!.Space!;
+    }
+
+    /// <summary>
     /// Intérieurs (28 octobre 2026) : copie dans <paramref name="scenarios"/> les scénarios de zone livrés qui y manquent (les intérieurs
     /// reliés aux Vallons par leurs portes, que l'aventure lit avec eux).
     /// </summary>
