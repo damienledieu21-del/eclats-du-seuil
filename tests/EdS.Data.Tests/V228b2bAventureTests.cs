@@ -610,6 +610,15 @@ public class V228b2bAventureTests : IDisposable
         Assert.Equal((76.0, 460.0), (east.MinX, east.MaxX));   // s08_06 : x de 140 à 396, 64 m autour
         Assert.Same(region, a.RegionMap);
         Assert.Same(region, east.Whole);
+        // Revue Codex de la PR #166 (2e tour) : les champs sont placés une fois pour l'aire entière (mêmes champs dans chaque fenêtre) ; une
+        // fenêtre ne construit que ceux qui la touchent (les champs, à l'ouest, ne touchent pas la fenêtre de l'est).
+        IReadOnlyList<StyleField> all = region.AreaFields(region.Roads);
+        Assert.NotEmpty(all);
+        Assert.Same(all, east.AreaFields(east.Roads));
+        Assert.Same(all, west.AreaFields(west.Roads));
+        Assert.Empty(east.WindowFields(east.Roads));
+        Assert.All(west.WindowFields(west.Roads), f => Assert.Contains(f, all));
+        Assert.NotEmpty(west.WindowFields(west.Roads));
         // Coût borné : la fenêtre d'un secteur tient en 2 048 pixels à plus de 5 pixels par mètre ; l'aire entière, en 2 048 aussi.
         (int w, int h) = MapPainter.Size(east);
         Assert.True(w <= 2048 && h <= 2048 && w >= (east.Width + 2 * MapPainter.Margin) * 5, $"{w} × {h}");

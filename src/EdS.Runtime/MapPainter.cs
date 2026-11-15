@@ -167,10 +167,7 @@ namespace EdS.Runtime
             // Relecture indépendante de la PR #166 : champs et lisière d'après l'aire entière (une fenêtre a les mêmes que ses voisines : aucune
             // couture d'une fenêtre à l'autre).
             AdventureMap whole = map.Whole;
-            var obstacleBoxes = whole.Obstacles.Select(o => Box(o.Points.Select(p => (X: p.X.Raw / 10000.0, Z: p.Z.Raw / 10000.0)).ToArray())).ToList();
-            var fields = map.Places.Where(p => TownRules.Farmland(p.Id))
-                .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, obstacleBoxes, roads, map.Clearings, (whole.MinX, whole.MinZ, whole.MaxX, whole.MaxZ)))
-                .ToList();
+            var fields = map.AreaFields(roads).ToList();   // revue Codex de la PR #166 (2e tour) : placés une fois par aire
 
             // Objets posés : arbres, rochers, pierres du Seuil, front de taille (rochers serrés), bois, forêt de la lisière.
             var blobs = new List<Blob>();

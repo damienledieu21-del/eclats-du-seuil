@@ -109,6 +109,36 @@ namespace EdS.Runtime
 
         private AdventureMap? _whole;
 
+        private string? _fieldsKey;
+        private IReadOnlyList<StyleField>? _fields;
+
+        /// <summary>
+        /// Revue Codex de la PR #166 (2e tour) : les champs cultivés de l'aire entière (<see cref="TownRules.Fields"/> d'après l'aire entière :
+        /// les mêmes d'une fenêtre à l'autre, aucune couture), calculés une fois et gardés par la carte de l'aire entière (clé : routes et places
+        /// dégagées).
+        /// </summary>
+        public IReadOnlyList<StyleField> AreaFields(IReadOnlyList<StyleRoad> roads)
+        {
+            if (roads is null) throw new ArgumentNullException(nameof(roads));
+            AdventureMap whole = Whole;
+            if (!ReferenceEquals(whole, this)) return whole.AreaFields(roads);
+            long key = 17;
+            foreach ((double cx, double cz) in Clearings) key = unchecked(key * 31 + (long)Math.Round(cx * 10) * 131 + (long)Math.Round(cz * 10));
+            foreach (StyleRoad r in roads) key = unchecked(key * 31 + r.Id.GetHashCode());
+            string k = key.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/" + roads.Count;
+            if (_fields != null && _fieldsKey == k) return _fields;
+            var boxes = Obstacles.Select(o => (o.Points.Min(p => p.X.Raw) / 10000.0, o.Points.Min(p => p.Z.Raw) / 10000.0,
+                o.Points.Max(p => p.X.Raw) / 10000.0, o.Points.Max(p => p.Z.Raw) / 10000.0)).ToList();
+            _fields = Places.Where(p => TownRules.Farmland(p.Id))
+                .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, boxes, roads, Clearings, (MinX, MinZ, MaxX, MaxZ))).ToList();
+            _fieldsKey = k;
+            return _fields;
+        }
+
+        /// <summary>Revue Codex de la PR #166 (2e tour) : les champs de l'aire entière qui touchent cette carte (une fenêtre ne construit que les siens).</summary>
+        public IEnumerable<StyleField> WindowFields(IReadOnlyList<StyleRoad> roads) =>
+            AreaFields(roads).Where(f => f.MaxX >= MinX && f.MinX <= MaxX && f.MaxZ >= MinZ && f.MinZ <= MaxZ);
+
         /// <summary>
         /// Relecture indépendante de la PR #166 : hystérésis de la fenêtre (m). La fenêtre d'un secteur reste tant que le personnage est à moins
         /// de cette distance de son carré : la petite carte (20 m autour de lui) y tient encore, et elle ne change qu'une fois le personnage

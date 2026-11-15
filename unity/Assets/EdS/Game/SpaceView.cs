@@ -128,12 +128,10 @@ namespace EdS.Game
             _spots = new SpotGrid(Spots(space));
             if (map != null)
             {
-                // Relecture indépendante de la PR #166 : champs d'après l'aire entière (mêmes champs d'une fenêtre à l'autre, aucune couture).
-                AdventureMap whole = map.Whole;
-                var boxes = whole.Obstacles.Select(o => ((double)Raw(o.Points.Min(p => p.X.Raw)), (double)Raw(o.Points.Min(p => p.Z.Raw)),
-                    (double)Raw(o.Points.Max(p => p.X.Raw)), (double)Raw(o.Points.Max(p => p.Z.Raw)))).ToList();
-                _fields = map.Places.Where(p => TownRules.Farmland(p.Id))
-                    .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, boxes, _roads, map.Clearings, (whole.MinX, whole.MinZ, whole.MaxX, whole.MaxZ))).ToList();
+                // Relecture indépendante de la PR #166 : champs placés d'après l'aire entière (mêmes champs d'une fenêtre à l'autre, aucune
+                // couture), une fois par aire (gardés d'une fenêtre à l'autre) ; revue Codex (2e tour) : seuls ceux qui touchent la fenêtre sont
+                // construits.
+                _fields = map.WindowFields(_roads).ToList();
             }
             else _fields = new List<StyleField>();
             _root = new GameObject("Décor");
