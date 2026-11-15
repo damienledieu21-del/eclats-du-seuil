@@ -224,6 +224,34 @@ public class FetesVraiesDatesTests
         Assert.Equal("festival.marche", market.MarketFestivalToday?.Id);
         Assert.NotEqual(EdS.Data.Merchants.MarketPhase.Calm, market.MarketPhase);
         Assert.Equal("festival.marche", market.Festival?.Id);
+        // Décision de Damien du 15 novembre 2026 : à 10 h 30 du monde, la fête des moissons (10 h à 22 h) et le marché (7 h à 13 h) se croisent :
+        // la fête datée passe avant le marché, et le marché se tient quand même.
+        WorldSession both = Open(friday, 10 * 60 + 30);
+        both.SetCivilTime(Utc(2027, 9, 20, 6));
+        Assert.Equal("festival.moissons", both.Festival?.Id);
+        Assert.Equal("festival.marche", both.MarketFestivalToday?.Id);
+        Assert.NotEqual(EdS.Data.Merchants.MarketPhase.Calm, both.MarketPhase);
+    }
+
+    [Fact]
+    public void La_fete_datee_passe_avant_le_marche_quel_que_soit_l_ordre_des_donnees()
+    {
+        // Le marché du vendredi déplacé en tête des fêtes : la fête datée passe toujours avant lui quand leurs heures se croisent.
+        StoryLoadResult r = Mutated(root =>
+        {
+            var list = root["data"]!["festivals"]!.AsArray();
+            JsonNode marche = list.Single(f => (string)f!["id"]! == "festival.marche")!;
+            list.Remove(marche);
+            list.Insert(0, marche);
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+        StoryBook book = r.Story!;
+        long friday = 0;
+        while (WorldCalendar.WeekdayOf(friday) != book.Festival("festival.marche").Weekday) friday++;
+        var sept20 = new CivilDate(2027, 9, 20);
+        Assert.Equal("festival.moissons", book.FestivalAt(friday, 10 * 60 + 30, sept20)?.Id);
+        Assert.Equal("festival.marche", book.FestivalAt(friday, 8 * 60, sept20)?.Id);
+        Assert.Equal("festival.moissons", book.FestivalOn(friday, sept20)?.Id);
     }
 
     [Fact]

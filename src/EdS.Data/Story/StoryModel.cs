@@ -704,11 +704,15 @@ namespace EdS.Data.Story
 
         /// <summary>
         /// Fêtes aux vraies dates : la fête qui bat son plein au jour du monde <paramref name="day"/> (jour réel <paramref name="civil"/>, ou
-        /// null sans date fournie) ; la première dans l'ordre des données (une fête annuelle datée passe donc avant un marché de la semaine).
+        /// null sans date fournie). Décision de Damien du 15 novembre 2026 : quand leurs heures se croisent, une fête annuelle datée passe
+        /// avant un marché de la semaine, quel que soit l'ordre des données ; sinon, la première dans l'ordre des données.
         /// </summary>
-        public Festival? FestivalAt(long day, int minute, EdS.Domain.Time.CivilDate? civil) => Festivals.FirstOrDefault(f => f.At(day, minute, civil));
+        public Festival? FestivalAt(long day, int minute, EdS.Domain.Time.CivilDate? civil) =>
+            Festivals.FirstOrDefault(f => f.HasDate && f.At(day, minute, civil)) ?? Festivals.FirstOrDefault(f => f.At(day, minute, civil));
 
-        public Festival? FestivalOn(long day, EdS.Domain.Time.CivilDate? civil) => Festivals.FirstOrDefault(f => f.OnDay(day, civil));
+        /// <summary>Fêtes aux vraies dates : la fête du jour du monde <paramref name="day"/>, à n'importe quelle heure (une fête datée d'abord), ou null.</summary>
+        public Festival? FestivalOn(long day, EdS.Domain.Time.CivilDate? civil) =>
+            Festivals.FirstOrDefault(f => f.HasDate && f.OnDay(day, civil)) ?? Festivals.FirstOrDefault(f => f.OnDay(day, civil));
 
         /// <summary>
         /// Fêtes aux vraies dates : la fête datée du calendrier au jour réel <paramref name="date"/> (fête du calendrier seulement comprise),

@@ -263,6 +263,18 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Dates des saisons | Les saisons changent le **1er mars, le 1er juin, le 1er septembre et le 1er décembre**, à l'heure de Paris (saisons météorologiques, hémisphère Nord), avec une **transition visuelle de 7 jours**. Le **serveur fait foi**. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
 | Glace du lac | Praticable **du 8 décembre à la fin février inclus**, après une première semaine où on la voit se former sans pouvoir y marcher. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
 
+## 7 quater. Fêtes aux vraies dates (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale (PR #174). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#fêtes-aux-vraies-dates-histoire-en-schéma-14).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Noms des trois fêtes existantes | **Semailles** (l'ancienne foire de printemps), **Fête des Moissons**, **Veillée des Contes** (l'ancienne veillée de l'Aube). La réplique « la nuit la plus longue » est retouchée (la veillée tombe en novembre). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
