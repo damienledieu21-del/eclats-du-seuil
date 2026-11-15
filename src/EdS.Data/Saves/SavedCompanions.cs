@@ -57,6 +57,9 @@ namespace EdS.Data.Saves
     /// recrutés (rangés par identifiant, uniques), compagnons actifs (dans l'ordre des places, au plus <see cref="Slots"/>, recrutés et
     /// distincts ; un compagnon hors combat peut rester actif : il ne se bat pas avant la halte). Immuable ; toute forme impossible est
     /// refusée à la construction (comme à la lecture d'une sauvegarde).
+    /// <para>Anciens mercenaires (<see cref="Former"/>, décision de Damien du 15 novembre 2026) : un mercenaire renvoyé y garde son estime
+    /// et son trait, jauge de lien à 0 et jamais hors combat ; réembauché, il les retrouve (seule la jauge repart de 0). Rangés par
+    /// identifiant, uniques, jamais en même temps recrutés.</para>
     /// </summary>
     public sealed class SavedCompanions : IEquatable<SavedCompanions>
     {
@@ -69,9 +72,12 @@ namespace EdS.Data.Saves
         public IReadOnlyList<SavedCompanion> Recruited { get; }
         public IReadOnlyList<string> Active { get; }
 
-        public bool IsEmpty => Slots == 1 && Recruited.Count == 0;
+        /// <summary>Mercenaires renvoyés (estime et trait gardés, jauge à 0, jamais hors combat), rangés par identifiant.</summary>
+        public IReadOnlyList<SavedCompanion> Former { get; }
 
-        public SavedCompanions(int slots, IEnumerable<SavedCompanion>? recruited, IEnumerable<string>? active)
+        public bool IsEmpty => Slots == 1 && Recruited.Count == 0 && Former.Count == 0;
+
+        public SavedCompanions(int slots, IEnumerable<SavedCompanion>? recruited, IEnumerable<string>? active, IEnumerable<SavedCompanion>? former = null)
         {
             if (slots < 1 || slots > MaxSlots) throw new ArgumentOutOfRangeException(nameof(slots), slots, $"Places hors de [1, {MaxSlots}].");
             List<SavedCompanion> list = (recruited ?? Array.Empty<SavedCompanion>()).OrderBy(c => c?.Id, StringComparer.Ordinal).ToList();
@@ -84,15 +90,28 @@ namespace EdS.Data.Saves
             if (actives.Distinct(StringComparer.Ordinal).Count() != actives.Count) throw new ArgumentException("Compagnon actif deux fois.", nameof(active));
             foreach (string id in actives)
                 if (!list.Any(c => c.Id == id)) throw new ArgumentException($"Compagnon actif « {id} » qui n'est pas recruté.", nameof(active));
+            List<SavedCompanion> formers = (former ?? Array.Empty<SavedCompanion>()).OrderBy(c => c?.Id, StringComparer.Ordinal).ToList();
+            if (formers.Any(c => c is null)) throw new ArgumentNullException(nameof(former));
+            if (formers.Count > MaxRecruited) throw new ArgumentException($"{formers.Count} anciens mercenaires, au plus {MaxRecruited}.", nameof(former));
+            for (int i = 0; i < formers.Count; i++)
+            {
+                if (i > 0 && formers[i].Id == formers[i - 1].Id) throw new ArgumentException($"Ancien mercenaire « {formers[i].Id} » deux fois.", nameof(former));
+                if (formers[i].Bond != 0 || formers[i].Down) throw new ArgumentException($"Ancien mercenaire « {formers[i].Id} » : jauge à 0 et jamais hors combat.", nameof(former));
+                if (list.Any(c => c.Id == formers[i].Id)) throw new ArgumentException($"Compagnon « {formers[i].Id} » à la fois recruté et renvoyé.", nameof(former));
+            }
             Slots = slots;
             Recruited = Frozen.List(list, nameof(recruited));
             Active = Frozen.List(actives, nameof(active));
+            Former = Frozen.List(formers, nameof(former));
         }
 
         public SavedCompanion? Find(string? id) => Recruited.FirstOrDefault(c => c.Id == id);
 
+        /// <summary>Ancien mercenaire renvoyé <paramref name="id"/>, ou null.</summary>
+        public SavedCompanion? FindFormer(string? id) => Former.FirstOrDefault(c => c.Id == id);
+
         public bool Equals(SavedCompanions? other) => other != null && Slots == other.Slots && Recruited.SequenceEqual(other.Recruited)
-            && Active.SequenceEqual(other.Active, StringComparer.Ordinal);
+            && Active.SequenceEqual(other.Active, StringComparer.Ordinal) && Former.SequenceEqual(other.Former);
 
         public override bool Equals(object? obj) => Equals(obj as SavedCompanions);
         public override int GetHashCode() => Slots * 31 + Recruited.Count * 7 + Active.Count;
@@ -104,6 +123,9 @@ namespace EdS.Data.Saves
         public int? Slots { get; set; }
         public List<SavedCompanionData?>? Recruited { get; set; }
         public List<string?>? Active { get; set; }
+
+        /// <summary>Anciens mercenaires (facultatif ; seuls <c>id</c>, <c>approval</c> et <c>trait</c> y sont écrits).</summary>
+        public List<SavedCompanionData?>? Former { get; set; }
     }
 
     /// <summary>Compagnons (version 20) : compagnon recruté tel que lu.</summary>
