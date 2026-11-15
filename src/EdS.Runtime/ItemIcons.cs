@@ -89,6 +89,9 @@ namespace EdS.Runtime
             ("bobine", new[] { "thread", "spool", "yarn" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
             ("carnet", new[] { "notebook", "book" }), ("sac", new[] { "bag", "sack" }), ("bourse", new[] { "pouch", "purse", "bag" }), ("corde", new[] { "rope" }),
             ("seau", new[] { "bucket" }), ("cor", new[] { "horn" }), ("poussiere", new[] { "dust", "powder" }),
+            // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
+            ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
+            ("trompette", new[] { "mushroom" }),
         };
 
         /// <summary>Mots anglais cherchés pour l'objet <paramref name="itemId"/> (« item.epee_de_garde » → sword), le meilleur d'abord ; vide sinon.</summary>

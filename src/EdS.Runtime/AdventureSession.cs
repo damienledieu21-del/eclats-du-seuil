@@ -12,12 +12,14 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
+using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.Zones;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Domain.Time;
 using EdS.Simulation.Engine;
 using EdS.World;
 
@@ -231,6 +233,8 @@ namespace EdS.Runtime
         private readonly IReadOnlyList<ZoneDefinition> _zones;
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
+        private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private long? _civilUtc;   // saisons : dernier instant UTC fourni par l'hôte (ou le serveur)
         private readonly List<string> _messages = new List<string>();
         private readonly Dictionary<string, int> _drunk = new Dictionary<string, int>(StringComparer.Ordinal);
         private bool _dirty;
@@ -252,7 +256,7 @@ namespace EdS.Runtime
         public bool IsNewGame { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null)
         {
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
                 throw new ArgumentOutOfRangeException(nameof(arrivalRings), arrivalRings, $"Anneaux de la règle d'arrivée hors de [0, {WorldSession.ArrivalRings}].");
@@ -267,6 +271,7 @@ namespace EdS.Runtime
             Texts = texts;
             _story = story;
             _crafting = crafting;
+            _seasons = seasons;
             SavePath = savePath;
             SaveReadResult read = SaveStore.Read(savePath);
             SaveProblem = read.Problem;
@@ -340,8 +345,14 @@ namespace EdS.Runtime
             MerchantBook merchantBook = Need(merchants.Book, "marchands", () => merchants.Report);
             // Sous-lot V1.7 : la Guilde des aventuriers (rangs, contrats, épreuves, portes, boutique).
             GuildLoadResult guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, definition, zones.Zones, catalog, merchantBook);
-            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, Need(crafting.Book, "métiers", () => crafting.Report),
-                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings);
+            CraftingBook craftingBook = Need(crafting.Book, "métiers", () => crafting.Report);
+            // Saisons : le contenu saisonnier (nœuds de saison, Échos de la brume, lac gelé et île).
+            // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
+            string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
+            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
+                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
+                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -359,6 +370,9 @@ namespace EdS.Runtime
 
         private void Commit(WorldSession world)
         {
+            // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
+            world.UseSeasons(_seasons);
+            if (_civilUtc is long utc) world.SetCivilTime(utc);
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
@@ -1463,8 +1477,12 @@ namespace EdS.Runtime
         }
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
+        /// <remarks>
+        /// Saisons (revue Codex de la PR #168) : tous les nœuds, de saison ou non, toujours dans le même ordre (l'affichage les crée une fois) ;
+        /// un nœud hors de sa saison est absent (<see cref="WorldMarker.Present"/> faux) et jamais prêt, il revient quand sa saison arrive.
+        /// </remarks>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
-            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.IsNodeReady(n.Id))).ToList()
+            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.IsNodeReady(n.Id), World.NodeInSeason(n.Id))).ToList()
             : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
         public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Where(s => !World.IsSecret(s.Id)).Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();   // V2.7 : la planque secrète reste cachée
@@ -1654,7 +1672,7 @@ namespace EdS.Runtime
             list.AddRange(Npcs().Select(n => new MapMarker(MapMarkerKind.Npc, n.Name, n.X, n.Z)));
             list.AddRange(SafePoints().Select(s => new MapMarker(MapMarkerKind.SafePoint, s.Name, s.X, s.Z)));
             list.AddRange(Workshops().Select(w => new MapMarker(MapMarkerKind.Workshop, w.Name, w.X, w.Z)));
-            list.AddRange(Nodes().Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));
+            list.AddRange(Nodes().Where(n => n.Present).Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));   // saisons (revue Codex de la PR #168) : pas les nœuds hors saison
             list.AddRange(Doors().Select(d => new MapMarker(MapMarkerKind.Door, d.Name, d.X, d.Z)));
             if (Me is GroundVector me) list.Add(new MapMarker(MapMarkerKind.Player, Text("text.ui.map.you"), Meters(me.X), Meters(me.Z)));
             if (Objective is MapMarker objective) list.Add(objective);
@@ -1762,14 +1780,31 @@ namespace EdS.Runtime
         /// Sous-lot V2.10 (demande du 8 novembre 2026) : saison des tenues des villageois, celle du calendrier du jeu (affichage seulement ;
         /// le cœur reste maître du temps du monde).
         /// </summary>
-        public WardrobeSeason WardrobeSeason => (WardrobeSeason)EdS.Data.Story.WorldCalendar.SeasonIndexOf(World.Zone.Time.Day);
+        public WardrobeSeason WardrobeSeason => (WardrobeSeason)World.SeasonIndex;   // saisons : la saison réelle quand l'hôte fournit la date
+
+        /// <summary>
+        /// Saisons (décision de Damien du 15 novembre 2026 : le serveur fait foi) : l'hôte (ou le serveur) fournit l'instant UTC
+        /// <paramref name="unixSeconds"/> ; le cœur n'en lit jamais. Gardé pour les sessions suivantes (portes, voyages, reprises).
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Instant hors bornes : rien ne change.</exception>
+        public void SetCivilTime(long unixSeconds)
+        {
+            World.SetCivilTime(unixSeconds);
+            _civilUtc = unixSeconds;
+        }
+
+        /// <summary>Saisons : état de la saison réelle (transition, glace) pour le rendu, ou null sans date fournie.</summary>
+        public SeasonState? CivilSeason => World.CivilSeason;
+
+        /// <summary>Saisons : paramètres de rendu de la saison (teinte, neige, glace), affichage seulement.</summary>
+        public SeasonLook SeasonShown => World.CivilSeason is SeasonState s ? SeasonLook.Of(s) : SeasonLook.Steady(World.SeasonIndex);
 
         /// <summary>Sous-lot V2.10 : une fête bat son plein (les villageois sortent leurs beaux habits).</summary>
         public bool Festive => World.Festival != null;
 
         /// <summary>Sous-lot V2.10 : saison et jour de la saison (« automne, jour 8 de la saison »).</summary>
         public string CalendarText => string.Format(CultureInfo.InvariantCulture, Text("text.ui.calendar"), Text("text.ui.season." + World.Season),
-            EdS.Data.Story.WorldCalendar.DayOfSeason(World.Zone.Time.Day) + 1);
+            World.CivilSeason is SeasonState civil ? civil.Day + 1 : EdS.Data.Story.WorldCalendar.DayOfSeason(World.Zone.Time.Day) + 1);
 
         /// <summary>
         /// Sous-lot V2.10 : la fête pour l'affichage : en cours (« Fête au bourg : la fête des moissons. »), sinon celle du jour et ses heures,

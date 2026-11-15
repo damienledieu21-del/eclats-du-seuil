@@ -20,11 +20,20 @@ namespace EdS.Net
         private readonly Thread _thread;
         private volatile bool _running;
         private Exception? _error;
+        private readonly Func<long>? _civilClock;
 
-        public RoomHost(CombatRoom room, INetListener listener)
+        /// <summary>Intervalle entre deux instants UTC pris à l'horloge civile de l'hôte (secondes).</summary>
+        public const double CivilClockIntervalSeconds = 30;
+
+        /// <param name="civilClock">
+        /// Saisons (le serveur fait foi) : horloge civile de l'hôte du serveur (instant UTC en secondes), lue au démarrage puis toutes les
+        /// <see cref="CivilClockIntervalSeconds"/> s et donnée à la salle (<see cref="CombatRoom.SetCivilTime"/>) ; null : aucune.
+        /// </param>
+        public RoomHost(CombatRoom room, INetListener listener, Func<long>? civilClock = null)
         {
             _room = room ?? throw new ArgumentNullException(nameof(room));
             _listener = listener ?? throw new ArgumentNullException(nameof(listener));
+            _civilClock = civilClock;
             _thread = new Thread(Loop) { IsBackground = true, Name = "EdS.Net salle" };
         }
 
@@ -52,7 +61,7 @@ namespace EdS.Net
         private void Loop()
         {
             var clock = Stopwatch.StartNew();
-            double last = 0;
+            double last = 0, civilAt = double.NegativeInfinity;
             try
             {
                 while (_running)
@@ -60,6 +69,11 @@ namespace EdS.Net
                     double now = clock.Elapsed.TotalSeconds;
                     lock (_gate)
                     {
+                        if (_civilClock != null && now - civilAt >= CivilClockIntervalSeconds)
+                        {
+                            civilAt = now;
+                            _room.SetCivilTime(_civilClock());
+                        }
                         while (_listener.TryAccept(out INetConnection connection)) _room.Accept(connection);
                         _room.Advance(now - last);
                     }

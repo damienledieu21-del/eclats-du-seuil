@@ -1390,6 +1390,38 @@
         "stack": 20
       },
       {
+        "id": "item.primevere_argentee",
+        "name": "Primevère argentée",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "rare",
+        "stack": 20
+      },
+      {
+        "id": "item.sauge_de_pluie",
+        "name": "Sauge de pluie",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "rare",
+        "stack": 20
+      },
+      {
+        "id": "item.cepe",
+        "name": "Cèpe",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.trompette_du_sous_bois",
+        "name": "Trompette du sous-bois",
+        "icon": "herbe_de_l_aube",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
         "id": "item.herbe_de_l_aube",
         "name": "Herbe de l'aube",
         "type": "material",

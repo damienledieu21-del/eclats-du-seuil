@@ -223,7 +223,8 @@ namespace EdS.World
         /// (<see cref="Zone.WorldTick"/>), l'horloge commune à toutes les sessions de secteur : une session qui repart de zéro (secteur rouvert,
         /// passage) ne les décale pas.
         /// </summary>
-        public bool IsNodeReady(string node) => (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).IsReady(node, Zone.WorldTick);
+        public bool IsNodeReady(string node) => (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).IsReady(node, Zone.WorldTick)
+            && NodeInSeason(node);   // saisons : un nœud hors de sa saison n'est jamais prêt
 
         /// <summary>Sous-lot V2.28b (2) : population d'une créature, dans le secteur où elle vit.</summary>
         private Population? PopulationOf(string combatant) => _host != null ? _host.PopulationOf(combatant) : _populations?.Of(combatant);
@@ -522,9 +523,13 @@ namespace EdS.World
         }
 
         /// <summary>Sous-lot 12.6 : récolte un nœud à portée (3 m), s'il a repoussé et que l'objet tient.</summary>
-        public CraftRefusal Gather(string node, out CraftEvent? done) =>
-            (Workshop ?? throw new InvalidOperationException("Partie sans métiers.")).Gather(node, Zone.WorldTick, Zone.Engine.TickMilliseconds,
-                ((INarrativeWorld)this).PlayerPosition, Inventory, out done);
+        public CraftRefusal Gather(string node, out CraftEvent? done)
+        {
+            Workshop w = Workshop ?? throw new InvalidOperationException("Partie sans métiers.");
+            // Saisons : un nœud saisonnier hors de sa saison (ou sans date fournie) refuse, sans rien changer.
+            if (node != null && w.Book.Nodes.Any(n => n.Id == node) && !NodeInSeason(node)) { done = null; return CraftRefusal.OutOfSeason; }
+            return w.Gather(node!, Zone.WorldTick, Zone.Engine.TickMilliseconds, ((INarrativeWorld)this).PlayerPosition, Inventory, out done);
+        }
 
         /// <summary>Sous-lot 12.6 : fabrique une recette dans son atelier (lieu de la zone) ; une recette à qualité attend ses frappes (V1.4).</summary>
         public CraftRefusal Craft(string recipe, out CraftEvent? done) => Craft(recipe, null, out done);

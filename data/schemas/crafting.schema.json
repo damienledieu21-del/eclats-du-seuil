@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "kind": {
       "const": "crafting"
@@ -219,6 +219,15 @@
                 "items": {
                   "type": "number"
                 }
+              },
+              "seasons": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "enum": ["spring", "summer", "autumn", "winter"]
+                },
+                "description": "Saisons (version 4) : saisons où le nœud se récolte ; absent : toute l'année."
               },
               "respawnMs": {
                 "type": "integer",
