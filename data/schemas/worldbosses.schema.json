@@ -1,0 +1,429 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/worldbosses.schema.json",
+  "title": "Éclats du Seuil — boss du monde",
+  "description": "Grand Solitaire (15 novembre 2026), version 1 : vie (base et par joueur), joueurs, planification en temps serveur, signes, limite, annonce de la cible, marche, phases, attaques annoncées au sol, emplacements d'apparition, cibles villageoises, compagnons, butin. Documentation. La validation qui fait foi est celle du programme (WorldBossValidator), avec les textes, la zone et le catalogue des objets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "worldBosses"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bosses"
+      ],
+      "properties": {
+        "bosses": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "radius",
+              "healthBase",
+              "healthPerPlayer",
+              "minPlayers",
+              "maxPlayers",
+              "windowMinutes",
+              "chancePercent",
+              "signsMs",
+              "limitMs",
+              "announceMs",
+              "objectiveMs",
+              "walkSpeed",
+              "clearance",
+              "phases",
+              "attacks",
+              "sites",
+              "targets",
+              "companionsInCombat",
+              "fallback",
+              "loot"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$",
+                "maxLength": 64
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$",
+                "maxLength": 200
+              },
+              "radius": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "healthBase": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000000
+              },
+              "healthPerPlayer": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "minPlayers": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "maxPlayers": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "windowMinutes": {
+                "type": "integer",
+                "minimum": 60,
+                "maximum": 10080
+              },
+              "chancePercent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "signsMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1800000
+              },
+              "limitMs": {
+                "type": "integer",
+                "minimum": 60000,
+                "maximum": 86400000
+              },
+              "announceMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86400000
+              },
+              "objectiveMs": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 1800000
+              },
+              "walkSpeed": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 20
+              },
+              "clearance": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 200
+              },
+              "phases": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "fromPercent",
+                    "attacks"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64
+                    },
+                    "fromPercent": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100
+                    },
+                    "attacks": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 16,
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$",
+                        "maxLength": 64
+                      }
+                    }
+                  }
+                }
+              },
+              "attacks": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "shape",
+                    "announceMs",
+                    "lockMs",
+                    "recoveryMs"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64
+                    },
+                    "shape": {
+                      "enum": [
+                        "cone",
+                        "line",
+                        "ring",
+                        "circles"
+                      ]
+                    },
+                    "range": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "angle": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 180
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "radius": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "inner": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "outer": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "countMin": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 16
+                    },
+                    "countMax": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 16
+                    },
+                    "staggerMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 60000
+                    },
+                    "anchor": {
+                      "enum": [
+                        "front",
+                        "targets"
+                      ]
+                    },
+                    "announceMs": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 60000
+                    },
+                    "lockMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 60000
+                    },
+                    "recoveryMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 60000
+                    }
+                  }
+                }
+              },
+              "sites": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "kind",
+                    "position"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64
+                    },
+                    "kind": {
+                      "enum": [
+                        "meadow",
+                        "clearing",
+                        "ford",
+                        "plateau"
+                      ]
+                    },
+                    "position": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              },
+              "targets": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "place",
+                    "route",
+                    "objectives"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64
+                    },
+                    "place": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 64
+                    },
+                    "route": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 32,
+                      "items": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "objectives": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 8,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "position"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]*$",
+                            "maxLength": 64
+                          },
+                          "position": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "companionsInCombat": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "fallback": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              "loot": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "trophy",
+                  "appearance",
+                  "mount",
+                  "mountChanceBasisPoints"
+                ],
+                "properties": {
+                  "trophy": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "appearance": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "mount": {
+                    "type": "string",
+                    "pattern": "^item(\\.[a-z0-9_]+)+$",
+                    "maxLength": 200
+                  },
+                  "mountChanceBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
