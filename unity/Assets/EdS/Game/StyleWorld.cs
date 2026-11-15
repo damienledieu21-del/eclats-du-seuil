@@ -371,7 +371,7 @@ namespace EdS.Game
         private const float TerrainBase = 3f;
 
         /// <summary>Hauteur totale (m) que le terrain peut décrire.</summary>
-        private const float TerrainHeight = 420f;   // V2.24 : collines et falaises hors de l'aire ; V2.28c (3) : relief de la région, jusqu'à 320 m au-dessus du cœur (au millimètre près sur 16 bits)
+        private const float TerrainHeight = 420f;   // V2.24 : collines et falaises hors de l'aire ; V2.28c (3) : relief de la région, jusqu'à 320 m au-dessus du cœur (heightmap de 16 bits : pas de 6 à 13 mm selon la précision réelle de Unity)
 
         /// <summary>
         /// Sol réaliste d'un combat positionné : un terrain (hauteur 0 où l'on marche, comme le sol du moteur) qui couvre l'aire et
