@@ -101,6 +101,8 @@ namespace EdS.Data.Saves
 
         /// <summary>Compagnons (version 20) : la troupe du personnage (facultative : absente quand il n'a recruté personne).</summary>
         public SavedCompanionsData? Companions { get; set; }
+        /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises, facultatif.</summary>
+        public SavedFishingData? Fishing { get; set; }
 
         /// <summary>Sous-lot V2.28d (2b) (version 22) : identifiant de la monture du personnage (facultatif : absent sans monture).</summary>
         public string? Mount { get; set; }

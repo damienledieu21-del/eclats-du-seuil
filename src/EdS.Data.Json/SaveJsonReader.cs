@@ -267,6 +267,26 @@ namespace EdS.Data.Json
                     });
                     if (lok) c.Look = lk;
                 },
+                ["fishing"] = (v, p) =>   // pêche et carnet (version 21), facultatif
+                {
+                    c.Present.Add("fishing");
+                    var fd = new SavedFishingData();
+                    bool fok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["casts"] = (ev2, ep) => fd.Casts = input.Int64(ev2, ep),
+                        ["log"] = (ev2, ep) => fd.Log = input.ReadLimitedList(ev2, ep, SavedFishing.MaxLog, n => $"{n} espèces, au plus {SavedFishing.MaxLog}.", (e3, ip3) =>
+                        {
+                            var cd = new SavedCatchData();
+                            return input.ReadFields(e3, ip3, new Dictionary<string, Action<JsonElement, string>>
+                            {
+                                ["fish"] = (e4, p4) => cd.Fish = input.Text(e4, p4),
+                                ["count"] = (e4, p4) => cd.Count = input.Int64(e4, p4),
+                                ["best"] = (e4, p4) => cd.Best = input.Int32(e4, p4),
+                            }) ? cd : null;
+                        }),
+                    });
+                    if (fok) c.Fishing = fd;
+                },
             });
             return ok ? c : null;
         }
@@ -600,7 +620,8 @@ namespace EdS.Data.Json
             }
             // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.
             bool companions = !c.Companions.IsEmpty;   // compagnons (version 20) : la troupe, absente quand vide
-            string afterScars = c.Stock.Count == 0 && c.Look == null && !companions ? "\n" : ",\n";
+            bool fishing = c.Fishing.Casts > 0 || c.Fishing.Log.Count > 0;   // pêche et carnet (version 21) : absente tant que le personnage n'a pas pêché
+            string afterScars = c.Stock.Count == 0 && c.Look == null && !companions && !fishing ? "\n" : ",\n";
             if (c.Scars.Count == 0) b.Append("      \"scars\": []").Append(afterScars);
             else
             {
@@ -627,7 +648,7 @@ namespace EdS.Data.Json
                         .Append(", \"resold\": ").Append(x.Resold.ToString(CultureInfo.InvariantCulture)).Append(", \"day\": ").Append(x.Day.ToString(CultureInfo.InvariantCulture))
                         .Append(i + 1 < c.Stock.Count ? "},\n" : "}\n");
                 }
-                b.Append("      ]").Append(c.Look == null && !companions ? "\n" : ",\n");
+                b.Append("      ]").Append(c.Look == null && !companions && !fishing ? "\n" : ",\n");
             }
             // Sous-lot V2.16 (version 17) : aspect du héros, absent tant que le joueur n'a rien choisi.
             if (c.Look != null)
@@ -636,7 +657,7 @@ namespace EdS.Data.Json
                 b.Append("      \"look\": {\"body\": \"").Append(l.Body).Append("\", \"hair\": ").Append(l.Hair.ToString(CultureInfo.InvariantCulture))
                     .Append(", \"beard\": ").Append(l.Beard ? "true" : "false").Append(", \"dark\": ").Append(l.DarkSkin ? "true" : "false")
                     .Append(", \"hairTone\": ").Append(l.HairTone.ToString(CultureInfo.InvariantCulture)).Append(", \"palette\": ").Append(l.Palette.ToString(CultureInfo.InvariantCulture))
-                    .Append(companions ? "},\n" : "}\n");
+                    .Append(companions || fishing ? "},\n" : "}\n");
             }
             // Compagnons (version 20) : la troupe (places, recrutés rangés par identifiant, actifs dans l'ordre des places).
             if (companions)
@@ -664,7 +685,19 @@ namespace EdS.Data.Json
                     }
                     b.Append("\n      ]");
                 }
-                b.Append("}\n");
+                b.Append(fishing ? "},\n" : "}\n");
+            }
+            if (fishing)
+            {
+                b.Append("      \"fishing\": {\"casts\": ").Append(c.Fishing.Casts.ToString(CultureInfo.InvariantCulture)).Append(", \"log\": [");
+                for (int i = 0; i < c.Fishing.Log.Count; i++)
+                {
+                    SavedCatch x = c.Fishing.Log[i];
+                    if (!SavedFishing.IsFish(x.Fish)) throw new ArgumentException($"Poisson « {x.Fish} » hors du format des sauvegardes.", nameof(c));
+                    b.Append(i == 0 ? "\n" : ",\n").Append("        {\"fish\": \"").Append(x.Fish).Append("\", \"count\": ").Append(x.Count.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"best\": ").Append(x.BestCm.ToString(CultureInfo.InvariantCulture)).Append('}');
+                }
+                b.Append(c.Fishing.Log.Count == 0 ? "]}\n" : "\n      ]}\n");
             }
             b.Append("    },\n");
         }

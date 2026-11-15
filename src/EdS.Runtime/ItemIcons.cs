@@ -89,6 +89,11 @@ namespace EdS.Runtime
             ("bobine", new[] { "thread", "spool", "yarn" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
             ("carnet", new[] { "notebook", "book" }), ("sac", new[] { "bag", "sack" }), ("bourse", new[] { "pouch", "purse", "bag" }), ("corde", new[] { "rope" }),
             ("seau", new[] { "bucket" }), ("cor", new[] { "horn" }), ("poussiere", new[] { "dust", "powder" }),
+            // Pêche et carnet : les poissons.
+            ("gardon", new[] { "fish" }), ("perche", new[] { "fish", "perch" }), ("truite", new[] { "fish", "trout" }), ("brochet", new[] { "fish", "pike" }),
+            ("carpe", new[] { "fish", "carp" }),
+            // Pêche et carnet : les appâts (décision de Damien du 15 novembre 2026).
+            ("ver", new[] { "worm", "bait" }), ("mouche", new[] { "fly", "insect", "bait" }),
             // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
             ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
             ("trompette", new[] { "mushroom" }),
