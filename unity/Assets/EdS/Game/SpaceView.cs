@@ -1491,6 +1491,26 @@ namespace EdS.Game
         {
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             IReadOnlyList<StyleLog> logs = StyleRules.Palisade(x0, z0, x1, z1, id);
+            // Sous-lot V2.30 (relecture de la PR #188) : un long pan qui suit le sol (la palissade du Bourg fortifié, sans replat) a chaque
+            // rondin posé sur le sol affiché, et il est découpé en tronçons de 150 m au plus (un maillage reste sous 65 535 sommets).
+            bool drape = StyleWorld.HasRelief && GroundRelief.FollowsGround(id);
+            bool alongX = x1 - x0 >= z1 - z0;
+            float from = alongX ? x0 : z0;
+            int pieces = drape ? Mathf.Max(1, Mathf.CeilToInt(((alongX ? x1 - x0 : z1 - z0)) / PalisadePiece)) : 1;
+            for (int k = 0; k < pieces; k++)
+            {
+                float a = from + k * PalisadePiece, b = k == pieces - 1 ? float.MaxValue : a + PalisadePiece;
+                var part = pieces == 1 ? logs : logs.Where(l => { float t = (float)(alongX ? l.X : l.Z); return t >= a && t < b; }).ToList();
+                if (part.Count > 0) PalisadePart(pieces == 1 ? id : id + " " + k, id, part, drape);
+            }
+            if (drape) _draped = true;   // posée rondin par rondin : pas de relèvement d'ensemble (Obstacle)
+        }
+
+        /// <summary>Sous-lot V2.30 : longueur (m) d'un tronçon de palissade posé sur le sol.</summary>
+        private const float PalisadePiece = 150f;
+
+        private void PalisadePart(string name, string id, IReadOnlyList<StyleLog> logs, bool drape)
+        {
             Material bark = StyleWorld.Surface(StyleSurface.Bark, out float tile) ?? Built(StyleSurface.Wood, new Color(0.4f, 0.3f, 0.2f), out tile);
             const int Sides = 10;
             const float Tip = 0.38f;
@@ -1498,11 +1518,16 @@ namespace EdS.Game
             var uvs = new List<Vector2>();
             var triangles = new List<int>();
             float scale = 1f / Mathf.Max(0.1f, tile);
-            float top = 0f;
+            float top = 0f, low = float.MaxValue, high = float.MinValue;
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
             foreach (StyleLog log in logs)
             {
                 float r = (float)log.Radius, h = (float)log.Height, cx = (float)log.X, cz = (float)log.Z;
+                float g = drape ? Ground(cx, cz, r) : 0f;
                 top = Mathf.Max(top, h);
+                low = Mathf.Min(low, g);
+                high = Mathf.Max(high, g + h);
+                minX = Mathf.Min(minX, cx - r); maxX = Mathf.Max(maxX, cx + r); minZ = Mathf.Min(minZ, cz - r); maxZ = Mathf.Max(maxZ, cz + r);
                 // Chaque rondin tourné autrement, pour que l'écorce ne se répète pas d'un rondin à l'autre.
                 float turn = StyleRules.Variant(id + "/" + vertices.Count, 360) * Mathf.Deg2Rad;
                 // Fût : anneaux du bas (sous le sol) et du haut, couture doublée pour la texture.
@@ -1512,7 +1537,7 @@ namespace EdS.Game
                     {
                         float a = 2f * Mathf.PI * s / Sides + turn;
                         float y = ring == 0 ? -0.2f : h - Tip;
-                        vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, y, cz + Mathf.Sin(a) * r));
+                        vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, g + y, cz + Mathf.Sin(a) * r));
                         uvs.Add(new Vector2(2f * Mathf.PI * r * s / Sides * scale, y * scale));
                     }
                 for (int s = 0; s < Sides; s++)
@@ -1523,13 +1548,13 @@ namespace EdS.Game
                 }
                 // Pointe taillée : un cône de l'anneau du haut jusqu'au sommet.
                 int apex = vertices.Count;
-                vertices.Add(new Vector3(cx, h, cz));
+                vertices.Add(new Vector3(cx, g + h, cz));
                 uvs.Add(new Vector2(Mathf.PI * r * scale, h * scale));
                 int ringTop = vertices.Count;
                 for (int s = 0; s <= Sides; s++)
                 {
                     float a = 2f * Mathf.PI * s / Sides + turn;
-                    vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, h - Tip, cz + Mathf.Sin(a) * r));
+                    vertices.Add(new Vector3(cx + Mathf.Cos(a) * r, g + h - Tip, cz + Mathf.Sin(a) * r));
                     uvs.Add(new Vector2(2f * Mathf.PI * r * s / Sides * scale, (h - Tip) * scale));
                 }
                 for (int s = 0; s < Sides; s++) triangles.AddRange(new[] { ringTop + s, apex, ringTop + s + 1 });
@@ -1542,12 +1567,13 @@ namespace EdS.Game
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour) : le relief de l'écorce, comme celui des prismes
             mesh.RecalculateBounds();
-            var go = new GameObject(id + " (palissade)");
+            var go = new GameObject(name + " (palissade)");
             go.transform.SetParent(_root.transform, false);
             go.AddComponent<MeshFilter>().mesh = mesh;
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = bark;
-            _occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });
+            _occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true,
+                Min = new Vector3(minX, drape ? low : 0f, minZ), Max = new Vector3(maxX, drape ? high : top, maxZ) });
         }
 
         /// <summary>

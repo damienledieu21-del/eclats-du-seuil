@@ -190,7 +190,9 @@ namespace EdS.Runtime
                 if (_s.CalmPlaces.Contains(p.Id)) _calm.Add((p.MinX, p.MinZ, p.MaxX, p.MaxZ));
             foreach ((string prefix, double height, double fall) in _s.Buttes)
             {
-                var stones = map.Obstacles.Where(o => o.Id.StartsWith(prefix, StringComparison.Ordinal)).Select(Points).ToList();
+                // Relecture de la PR #188 : la butte de la tour de guet du cœur (« tour ») ne prend pas les tours du Bourg fortifié.
+                var stones = map.Obstacles.Where(o => o.Id.StartsWith(prefix, StringComparison.Ordinal) && !o.Id.Contains("_ville", StringComparison.Ordinal))
+                    .Select(Points).ToList();
                 if (stones.Count == 0) continue;
                 double cx = stones.Average(s => s.Average(p => p.X)), cz = stones.Average(s => s.Average(p => p.Z));
                 double plateau = stones.SelectMany(s => s).Max(p => Distance(p.X - cx, p.Z - cz)) + _s.PadCore + 1;
@@ -230,8 +232,14 @@ namespace EdS.Runtime
             return !o.Low && !key.StartsWith("arbre", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) != StyleBuilding.Woods
                 && StyleRules.FenceFor(o.Id) != StyleFence.Hedge && !key.StartsWith("eboulement", StringComparison.Ordinal)
                 && !key.StartsWith("falaise", StringComparison.Ordinal)
-                && !o.Id.StartsWith("palissade_ville", StringComparison.Ordinal);   // sous-lot V2.30 : les pans de 500 m de la ville suivent le sol
+                && !FollowsGround(o.Id);   // sous-lot V2.30 : les pans de 500 m de la ville suivent le sol
         }
+
+        /// <summary>
+        /// Sous-lot V2.30 : obstacle long qui suit le sol, sans replat (les pans de la palissade du Bourg fortifié) ; Unity pose chacun de ses
+        /// rondins sur le sol affiché.
+        /// </summary>
+        public static bool FollowsGround(string id) => (id ?? throw new ArgumentNullException(nameof(id))).StartsWith("palissade_ville", StringComparison.Ordinal);
 
         /// <summary>Hauteur du sol affiché (m) en (x, z), à l'étage <paramref name="floor"/> (0 : la surface ; les autres restent plats).</summary>
         public double Height(double x, double z, int floor = 0)

@@ -3,8 +3,11 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Runtime;
+using EdS.Simulation.Engine;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -103,5 +106,80 @@ public class V230BourgFortifieTests
         V228b2PassageTests.WalkTo(w, -860, -60);
         V228b2PassageTests.WalkTo(w, -1008, -79);
         Assert.True(w.Registered("zone.vallons/safe/place_du_marche_de_la_ville"));
+    }
+
+    // --- Relecture indépendante de la PR #188 ---------------------------------------------------------------------------
+
+    private static WorldSession OpenAt(string safePoint, SavedCharacter? hero = null)
+    {
+        CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        ItemCatalog items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        hero ??= Inventory.Outfit(PlayerCharacters.Create("heros", AdventureSession.PlayerClass, progression), items);
+        return V228b2PassageTests.Open(Vallons.Value, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), safePoint: safePoint);
+    }
+
+    [Fact]
+    public void Par_la_porte_de_l_Ouest_et_par_la_poterne_a_pied()
+    {
+        WorldSession w = OpenAt("place_du_marche_de_la_ville");
+        V228b2PassageTests.WalkTo(w, -1160, -82);   // rue vers l'ouest, au bord de la route d'Ambre
+        V228b2PassageTests.WalkTo(w, -1290, -89);   // avant la porte
+        V228b2PassageTests.WalkTo(w, -1330, -91);   // dehors, par la porte de l'Ouest
+        V228b2PassageTests.WalkTo(w, -1290, -89);
+        V228b2PassageTests.WalkTo(w, -1160, -82);
+        V228b2PassageTests.WalkTo(w, -1010, -77);
+        // Poterne sud : le long du chemin des vignes.
+        V228b2PassageTests.WalkTo(w, -1080, -185);
+        V228b2PassageTests.WalkTo(w, -1150, -300);
+        V228b2PassageTests.WalkTo(w, -1170, -340);   // dehors, par la poterne
+    }
+
+    [Fact]
+    public void A_cheval_par_la_porte_de_l_Ouest()
+    {
+        CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        ItemCatalog items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        // Fin du chapitre 1 : le cheval (V2.28d (2b)).
+        SavedCharacter hero = Inventory.Outfit(PlayerCharacters.Create("heros", AdventureSession.PlayerClass, progression), items)
+            .WithStory(new SavedStory(quests: new Dictionary<string, QuestProgress> { [PlayerCharacters.HorseQuest] = new QuestProgress(QuestProgress.Done) }));
+        WorldSession w = OpenAt("place_du_marche_de_la_ville", hero);
+        Assert.True(w.CanCallMount);
+        CombatEngine e = w.Zone.Engine;
+        e.Submit(new CombatCommand(e.CurrentTick * e.TickMilliseconds, w.CombatantId, CombatAction.Mount));
+        w.Step();
+        w.Step();
+        Assert.True(w.Zone.Engine.View(w.CombatantId).Mounted);
+        V228b2PassageTests.WalkTo(w, -1160, -82);
+        V228b2PassageTests.WalkTo(w, -1330, -91);   // dehors, en selle
+        Assert.True(w.Zone.Engine.View(w.CombatantId).Mounted);
+    }
+
+    [Fact]
+    public void Le_relief_du_coeur_ne_change_pas_avec_la_ville()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "eds_v230_relief_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(folder, "partie.json"));
+            a.Advance(0.05);
+            AdventureMap map = a.RegionMap;
+            var without = new AdventureMap(new CombatSpace(map.Space.Min, map.Space.Max, map.Space.Obstacles.Where(o => !o.Id.Contains("_ville", StringComparison.Ordinal))),
+                map.Places, map.Roads, map.Clearings, map.Doors, map.Indoor, map.Speakers, map.Gates, map.Region);
+            GroundRelief with = GroundRelief.For(map), plain = GroundRelief.For(without);
+            for (double x = -100; x <= 140; x += 4)
+                for (double z = -70; z <= 100; z += 4)
+                    Assert.True(Math.Abs(with.Height(x, z) - plain.Height(x, z)) < 1e-9, $"cœur changé en ({x}, {z}) : {with.Height(x, z) - plain.Height(x, z):0.000} m");
+            // La palissade suit le sol (pas de replat), et ce sol varie le long d'un pan (d'où des rondins posés un à un dans Unity).
+            Assert.True(GroundRelief.FollowsGround("palissade_ville_nord"));
+            Assert.False(GroundRelief.FollowsGround("tour_ville_nord_est"));
+            Assert.False(GroundRelief.Builds(map.Space.Obstacles.Single(o => o.Id == "palissade_ville_nord")));
+            double lo = double.MaxValue, hi = double.MinValue;
+            for (double x = W; x <= E; x += 10) { double h = with.Height(x, N); lo = Math.Min(lo, h); hi = Math.Max(hi, h); }
+            Assert.True(hi - lo > 1, $"sol de {lo:0.0} à {hi:0.0} m le long du pan nord");
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
     }
 }
