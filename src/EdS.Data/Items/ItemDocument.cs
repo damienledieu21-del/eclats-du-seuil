@@ -218,6 +218,12 @@ namespace EdS.Data.Items
         /// <summary>Sous-lot V1.3 (version 4) : objet nommé fait à la main (boss, quête, légendaire) : il ne tire aucune propriété.</summary>
         public bool? Named { get; set; }
 
+        /// <summary>
+        /// Concours de pâtisserie (version 8) : objet de soin qui prend une qualité de fabrication (normale, supérieure, chef-d'œuvre) et la
+        /// marque du personnage qui l'a cuit (pâtisserie de concours) ; facultatif, consommables seulement.
+        /// </summary>
+        public bool? CraftQuality { get; set; }
+
         /// <summary>Sous-lot V1.3 (version 4) : ensemble dont l'objet est une pièce (« set.… ») ; facultatif.</summary>
         public string? Set { get; set; }
 

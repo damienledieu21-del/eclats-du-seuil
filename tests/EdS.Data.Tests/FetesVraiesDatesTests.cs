@@ -113,10 +113,11 @@ public class FetesVraiesDatesTests
         Assert.Equal(g + ".calendarOnly", First(Mutated(r => Fest(r, "festival.givre")["guests"] = JsonNode.Parse("[{\"npc\": \"npc.lison\", \"position\": [-10, -5], \"activity\": \"fete\"}]"))));
         Assert.Equal(g + ".date", First(Mutated(r => Fest(r, "festival.givre").Remove("date"))));
         // Une histoire en version 13 ne connaît pas les dates ; sans elles, elle reste lue.
-        Assert.Equal(p, First(Mutated(r => r["schemaVersion"] = 13)));
+        Assert.Equal(p, First(Mutated(r => { r["schemaVersion"] = 13; V215TestData.WithoutPastryContest(r); })));
         StoryLoadResult old = Mutated(r =>
         {
             r["schemaVersion"] = 13;
+            V215TestData.WithoutPastryContest(r);   // concours de pâtisserie (version 15)
             JsonArray all = r["data"]!["festivals"]!.AsArray();
             for (int i = all.Count - 1; i >= 0; i--)
                 if (all[i]!["calendarOnly"] != null) all.RemoveAt(i);

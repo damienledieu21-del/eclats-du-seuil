@@ -31,8 +31,8 @@
 
 | Élément | Version | Où (grep) |
 |---|---|---|
-| Sauvegarde | v23 (v22 et antérieures encore lues ; cases explorées `character.explored`, V2.29 (2) ; v22 : monture `character.mount`, V2.28d (2b) ; v21 : pêche et carnet `character.fishing`, vague 4 ; v20 : troupe des compagnons `character.companions`, compagnons ; v19 : point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
-| Catalogue d'objets | v7 | `ItemValidator.cs` |
+| Sauvegarde | v24 (v23 et antérieures encore lues ; marque du pâtissier `signedBy` à toute qualité, concours de pâtisserie ; v23 : cases explorées `character.explored`, V2.29 (2) ; v22 : monture `character.mount`, V2.28d (2b) ; v21 : pêche et carnet `character.fishing`, vague 4 ; v20 : troupe des compagnons `character.companions`, compagnons ; v19 : point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
+| Catalogue d'objets | v8 (`craftQuality` : pâtisserie de concours) | `ItemValidator.cs` |
 | Règles (contenu) | 0.18.0 (écrit « 0.18.0-provisoire » ; esquive `combat.dodge`) | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.34.0 (monture, sous-lot V2.28d (2) ; 0.33.0 : compagnons ; 0.32.0 : esquive) | `CombatEngine.cs` (`Version`) |
 | Journal | 28 (monture ; 27 : compagnons) | `CombatEngine.cs` (`LogFormatVersion`) |
@@ -41,7 +41,7 @@
 | Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v14 (v4 à v13 encore lues ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
+| Histoire (schéma) | v15 (v4 à v14 encore lues ; `hasSigned` et `present`, concours de pâtisserie, en v15 ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Compagnons (catalogue) | 1 | `Allies/CompanionModel.cs` (`CompanionValidator`) |
 | Saisons (schéma) | v1 (Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
 | Boss du monde (schéma) | v2 (Grand Solitaire : scénario des formes, une forme par phase ; v1 encore lue ; `EdS.World/WorldBoss.cs`, `WorldSession.WorldBoss.cs`) | `WorldBosses/WorldBossModel.cs` (`CurrentSchemaVersion`) |

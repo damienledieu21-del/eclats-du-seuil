@@ -164,10 +164,17 @@ namespace EdS.Data.Crafting
         /// <summary>Sous-lot V1.4 : recette à qualité : le petit jeu de forge, puis le tirage de la qualité (normale, supérieure, chef-d'œuvre).</summary>
         public bool Quality { get; }
 
+        /// <summary>
+        /// Concours de pâtisserie : le produit porte la marque du personnage qui l'a fait à toute qualité (pâtisserie de concours, catalogue
+        /// <c>craftQuality</c>) ; sinon, seul un chef-d'œuvre est signé.
+        /// </summary>
+        public bool Signed { get; }
+
         internal Recipe(string id, string name, string profession, int requiredLevel, string place, IEnumerable<(string, int)> inputs, (string, int) output, long xp,
-            bool quality = false)
+            bool quality = false, bool signed = false)
         {
             Quality = quality;
+            Signed = signed;
             Id = id;
             Name = name;
             Profession = profession;
@@ -538,14 +545,16 @@ namespace EdS.Data.Crafting
                     (string, int)? output = Stack(x.Output, p + ".output");
                     if (output is null) ok = false;
                     if (x.Xp is null || x.Xp < 1 || x.Xp > MaxGainXp) { r.Add(p + ".xp", ValidationCode.OutOfRange, $"expérience de métier hors de [1, {MaxGainXp}]."); ok = false; }
-                    // Sous-lot V1.4 : une recette à qualité donne un seul équipement qui prend une qualité de fabrication.
+                    // Sous-lot V1.4 : une recette à qualité donne un seul équipement qui prend une qualité de fabrication ; concours de pâtisserie
+                    // (catalogue version 8) : ou une seule pâtisserie de concours.
                     bool quality = x.Quality ?? false;
                     if (quality && output is { } o && (o.Item2 != 1 || !items.TakesQuality(items.Item(o.Item1))))
                     {
-                        r.Add(p + ".quality", ValidationCode.InvalidValue, $"« {o.Item1} » ×{o.Item2} : une recette à qualité donne un seul équipement des places du combat, non nommé.");
+                        r.Add(p + ".quality", ValidationCode.InvalidValue, $"« {o.Item1} » ×{o.Item2} : une recette à qualité donne un seul équipement des places du combat, non nommé, ou une seule pâtisserie de concours.");
                         ok = false;
                     }
-                    if (ok) recipes.Add(new Recipe(x.Id!, x.Name!, x.Profession!, x.RequiredLevel!.Value, x.Place!, inputs, output!.Value, x.Xp!.Value, quality));
+                    if (ok) recipes.Add(new Recipe(x.Id!, x.Name!, x.Profession!, x.RequiredLevel!.Value, x.Place!, inputs, output!.Value, x.Xp!.Value, quality,
+                        quality && items.TryGetItem(output!.Value.Item1, out ItemDefinition made) && items.SignsAlways(made)));
                 }
             }
 

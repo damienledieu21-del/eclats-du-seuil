@@ -271,7 +271,7 @@ namespace EdS.World
             if (count < 1 || count > Market.MaxCount || (stack.IsUnique && count != 1)) return TradeRefusal.InvalidCount;
             if (count > stack.Count) return TradeRefusal.NotEnough;
             if (!market.Book.TryGetValue(stack.Item, out _)) return TradeRefusal.NoValue;
-            if (Inventory.Available(stack.Item) < count) return TradeRefusal.Reserved;
+            if (Inventory.AvailableAt(place) < count) return TradeRefusal.Reserved;   // relecture indépendante de la PR #186 : la réserve ne porte que sur les copies de base
             long paid = checked(WornPrice(SellUnit(merchant, stack.Item), stack) * count);   // sous-lot V2.7 : selon la réputation   // sous-lot V1.8 : pièce usée moins chère
             if (!Coins.TryAdd(Money, paid, out long after)) return TradeRefusal.PurseFull;
             Inventory trial = Inventory.Clone();

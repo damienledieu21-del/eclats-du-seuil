@@ -662,6 +662,9 @@ namespace EdS.Runtime
                 case StoryEventKind.ItemTaken:
                     Say("text.ui.item_taken", ItemName(e.Id), e.Value);
                     break;
+                case StoryEventKind.ItemPresented:   // concours de pâtisserie : la pâtisserie de sa main, présentée au juge
+                    Say("text.ui.item_presented", ItemName(e.Id));
+                    break;
                 case StoryEventKind.XpGiven:
                     Say("text.ui.xp", e.Value);
                     break;
@@ -1096,6 +1099,7 @@ namespace EdS.Runtime
             else if (refusal == DialogueRefusal.PurseFull) Say("text.ui.purse_full");
             else if (refusal == DialogueRefusal.NotEnoughMoney) Say("text.ui.not_enough_money");   // sous-lot V1.6
             else if (refusal == DialogueRefusal.Locked) Say("text.ui.quest_locked");
+            else if (refusal == DialogueRefusal.NothingToPresent) Say("text.ui.nothing_to_present");   // concours de pâtisserie
             else if (refusal == DialogueRefusal.TooFar) Say("text.ui.too_far");
             return refusal;
         }
