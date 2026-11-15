@@ -281,7 +281,7 @@ namespace EdS.World
         /// <summary>Le personnage, arrivant à l'instant <paramref name="atMs"/>.</summary>
         /// <remarks>Relecture indépendante de la PR #150 : l'état emporté (<see cref="CombatantSetup.Carried"/>, passage d'un secteur) est gardé.</remarks>
         private static CharacterSetup Arriving(CharacterSetup c, long atMs) =>
-            new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, atMs, c.Gear, c.Consumables, c.Shield, c.Equipment, c.Carried);
+            new CharacterSetup(c.Id, c.Team, c.Class, c.Build, c.Initiative, c.Placement, atMs, c.Gear, c.Consumables, c.Shield, c.Equipment, c.Carried, c.Mount);
 
         /// <summary>Fait sortir un combattant (commande <c>leave</c> au tick courant, effective en fin de tick).</summary>
         /// <exception cref="ArgumentException">Commande refusée par le pilote (combattant inconnu, plafond de commandes).</exception>

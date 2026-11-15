@@ -1899,7 +1899,10 @@ namespace EdS.Runtime
             get
             {
                 if (World.Festival is EdS.Data.Story.Festival now) return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.now"), Text(now.Name));
-                if (!(World.FestivalToday is EdS.Data.Story.Festival today) || World.Zone.Time.Minute >= today.To) return null;
+                if (!(World.FestivalToday is EdS.Data.Story.Festival today) || World.Zone.Time.Minute >= today.To)
+                    // Fêtes aux vraies dates : la fête du calendrier du moment, dont le contenu reste à écrire, montre seulement son nom.
+                    return World.CalendarFestival is EdS.Data.Story.Festival season && season.CalendarOnly
+                        ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.calendar"), Text(season.Name)) : null;
                 string Hour(int m) => $"{m / 60:00} h {m % 60:00}";
                 return string.Format(CultureInfo.InvariantCulture, Text("text.ui.festival.today"), Text(today.Name), Hour(today.From), Hour(today.To));
             }
