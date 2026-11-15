@@ -98,7 +98,7 @@ public class CompagnonsContenuTests
     [Fact]
     public void La_quete_de_lien_finie_ouvre_la_deuxieme_place_au_niveau_12()
     {
-        SavedCompanions roster = CompanionRules.Recruit(Catalog, SavedCompanions.Empty, "companion.nyx", new RecruitContext(true, null, 0, 1)).Roster;
+        SavedCompanions roster = CompanionRules.Recruit(Catalog, SavedCompanions.Empty, "companion.nyx", new RecruitContext(true, null, 0, CompagnonsProgressionTests.Rng(1))).Roster;
         var done = new SavedStory(quests: new System.Collections.Generic.Dictionary<string, QuestProgress>
             { ["quest.compagnons.lien_au_feu"] = new QuestProgress(QuestProgress.Done) });
         Assert.Equal("bondQuestNotDone", CompanionRules.OpenSecondSlot(Catalog, roster, 20, SavedStory.Empty).Reason);
@@ -108,7 +108,7 @@ public class CompagnonsContenuTests
         Assert.Empty(CompanionRules.Check(Catalog, two, done, 12));
         // Recrues de la Guilde : chaque mercenaire reçoit un des quatre traits.
         foreach (CompanionSheet m in Catalog.Companions.Where(c => c.Kind == CompanionKind.Mercenary))
-            Assert.NotNull(Catalog.Trait(CompanionRules.Recruit(Catalog, two, m.Id, new RecruitContext(false, "s", 1_000_000, 9)).Roster.Find(m.Id)!.Trait));
+            Assert.NotNull(Catalog.Trait(CompanionRules.Recruit(Catalog, two, m.Id, new RecruitContext(false, "s", 1_000_000, CompagnonsProgressionTests.Rng(9))).Roster.Find(m.Id)!.Trait));
     }
 
     [Fact]

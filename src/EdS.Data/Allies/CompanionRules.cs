@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using EdS.Data.Saves;
 using EdS.Domain.Combat;
 using EdS.Domain.Space;
@@ -45,15 +44,19 @@ namespace EdS.Data.Allies
         /// <summary>Bourse du personnage, en cuivre.</summary>
         public long Money { get; }
 
-        /// <summary>Graine du tirage du trait d'un mercenaire (par exemple le temps du monde) : même graine, même trait.</summary>
-        public ulong Seed { get; }
+        /// <summary>
+        /// Tirage borné du générateur injecté (revue Codex de la PR #172 : le <c>NextBounded</c> d'un <c>Pcg32</c> fourni par l'appelant,
+        /// entier uniforme dans [0, borne)). Appelé une seule fois, et seulement quand un mercenaire jamais renvoyé est réellement recruté :
+        /// un refus ou un réembauchage ne consomme rien.
+        /// </summary>
+        public Func<uint, uint> NextBounded { get; }
 
-        public RecruitContext(bool available, string? guildRank, long money, ulong seed)
+        public RecruitContext(bool available, string? guildRank, long money, Func<uint, uint> nextBounded)
         {
             Available = available;
             GuildRank = guildRank;
             Money = money;
-            Seed = seed;
+            NextBounded = nextBounded ?? throw new ArgumentNullException(nameof(nextBounded));
         }
     }
 
@@ -62,7 +65,7 @@ namespace EdS.Data.Allies
     /// opération contrôle d'abord, sans rien modifier, puis rend une nouvelle troupe (refus atomique : motif et troupe inchangée).
     /// <list type="bullet">
     /// <item><b>Recrutement</b> : un héros ou une bête quand l'histoire l'amène, un mercenaire à la Guilde selon le rang et contre sa paie ; le
-    /// trait d'un mercenaire est tiré au hasard (déterministe, d'après une graine) parmi les traits du catalogue. Un nouveau compagnon prend
+    /// trait d'un mercenaire est tiré au hasard (Pcg32 injecté par l'appelant, un tirage borné) parmi les traits du catalogue. Un nouveau compagnon prend
     /// une place libre s'il y en a une.</item>
     /// <item><b>Places</b> : une au départ, la deuxième s'ouvre par la quête de lien au feu de camp de la fin du chapitre 1, à partir du niveau
     /// minimum doux (environ 12) ; pendant le boss du monde, un seul compagnon au combat (le second attend au point de repli).</item>
@@ -121,17 +124,17 @@ namespace EdS.Data.Allies
         /// <summary>Niveau d'un compagnon : celui du personnage, borné à [1, <see cref="CompanionCombat.MaxLevel"/>].</summary>
         public static int LevelOf(int characterLevel) => Math.Max(1, Math.Min(CompanionCombat.MaxLevel, characterLevel));
 
-        /// <summary>Trait tiré pour un mercenaire : FNV-1a 64 de la graine et de son identifiant, modulo le nombre de traits (même graine, même trait).</summary>
-        public static string DrawTrait(CompanionCatalog catalog, string companionId, ulong seed)
+        /// <summary>
+        /// Trait tiré pour un mercenaire par le générateur injecté (revue Codex de la PR #172 : un tirage borné du <c>Pcg32</c> de l'appelant,
+        /// un seul appel) parmi les traits du catalogue, dans leur ordre.
+        /// </summary>
+        public static string DrawTrait(CompanionCatalog catalog, Func<uint, uint> nextBounded)
         {
             if (catalog is null) throw new ArgumentNullException(nameof(catalog));
-            ulong hash = 14695981039346656037UL;
-            unchecked
-            {
-                for (int i = 0; i < 8; i++) hash = (hash ^ (byte)(seed >> (8 * i))) * 1099511628211UL;
-                foreach (byte b in Encoding.UTF8.GetBytes(companionId ?? throw new ArgumentNullException(nameof(companionId)))) hash = (hash ^ b) * 1099511628211UL;
-            }
-            return catalog.Traits[(int)(hash % (ulong)catalog.Traits.Count)].Id;
+            if (nextBounded is null) throw new ArgumentNullException(nameof(nextBounded));
+            uint count = checked((uint)catalog.Traits.Count), index = nextBounded(count);
+            if (index >= count) throw new InvalidOperationException($"tirage {index} hors de [0, {count}).");
+            return catalog.Traits[(int)index].Id;
         }
 
         public static RosterResult Recruit(CompanionCatalog catalog, SavedCompanions roster, string companionId, RecruitContext context)
@@ -153,7 +156,7 @@ namespace EdS.Data.Allies
             else if (!context.Available) return RosterResult.Refused("notAvailable", roster);
             // Décision de Damien du 15 novembre 2026 : un mercenaire renvoyé puis réembauché garde son estime et son trait (jauge à 0).
             SavedCompanion? former = roster.FindFormer(sheet.Id);
-            string? trait = former != null ? former.Trait : sheet.RandomTrait ? DrawTrait(catalog, sheet.Id, context.Seed) : null;
+            string? trait = former != null ? former.Trait : sheet.RandomTrait ? DrawTrait(catalog, context.NextBounded) : null;
             var recruited = roster.Recruited.Append(new SavedCompanion(sheet.Id, 0, former?.Approval ?? 0, trait, false));
             IEnumerable<string> active = roster.Active.Count < roster.Slots ? roster.Active.Append(sheet.Id) : roster.Active;
             return RosterResult.Ok(new SavedCompanions(roster.Slots, recruited, active, roster.Former.Where(f => f.Id != sheet.Id)), cost);
