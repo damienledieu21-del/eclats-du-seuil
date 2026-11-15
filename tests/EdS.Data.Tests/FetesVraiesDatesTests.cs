@@ -377,4 +377,24 @@ public class FetesVraiesDatesTests
         });
         Assert.True(r.IsValid, r.Report.ToString());
     }
+
+    [Fact]
+    public void Revue_Codex_cle_trop_longue_pour_le_registre_rien_n_est_garde_et_rien_ne_leve()
+    {
+        string longId = "festival.moissons_" + new string('a', 115);
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)).Replace("\"festival.moissons\"", $"\"{longId}\""))!.AsObject();
+        ZoneDefinition zone = Zone();
+        StoryLoadResult r = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, zone, ItemsCatalog, V16TestData.Interiors);
+        Assert.True(r.IsValid, r.Report.ToString());
+        Assert.True($"zone.vallons/{longId}".Length > SavedEvent.MaxKeyLength);
+        var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
+        var w = new WorldSession(new WorldSave("zone.vallons", TickAt(100, 12 * 60) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
+            Progression, ItemsCatalog, r.Story!, market: new Market(ShippedMerchants));
+        w.Step();
+        w.SetCivilTime(Utc(2027, 9, 20, 10));
+        Assert.Equal(longId, w.FestivalToday?.Id);
+        w.ContestHeld(longId);   // ne lève pas
+        Assert.DoesNotContain(w.EventRegistry, x => x.Id.Contains(longId));
+        Assert.False(w.ContestOpen(longId, 100));   // le jour du monde du concours sert alors
+    }
 }
