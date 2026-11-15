@@ -1422,6 +1422,30 @@
         "stack": 20
       },
       {
+        "id": "item.trophee_des_trois_bornes",
+        "name": "Trophée des Trois Bornes",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "very_rare",
+        "stack": 1
+      },
+      {
+        "id": "item.mantelet_des_trois_bornes",
+        "name": "Mantelet des Trois Bornes",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "very_rare",
+        "stack": 1
+      },
+      {
+        "id": "item.appel_de_l_aurochs",
+        "name": "Appel de l'aurochs",
+        "icon": "quete",
+        "type": "material",
+        "rarity": "mythic",
+        "stack": 1
+      },
+      {
         "id": "item.herbe_de_l_aube",
         "name": "Herbe de l'aube",
         "type": "material",
