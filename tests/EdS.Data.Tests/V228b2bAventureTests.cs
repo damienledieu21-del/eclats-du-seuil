@@ -472,6 +472,10 @@ public class V228b2bAventureTests : IDisposable
         string zonePath = Path.Combine(data, "world", "zones", "vallons.json");
         JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
         ZoneBefore(zone);   // relecture de la PR #167 : sans les passages de la surface
+        string storyPath = Path.Combine(data, "world", "story.json");
+        JsonNode storyBefore = JsonNode.Parse(File.ReadAllText(storyPath))!;
+        StoryBefore(storyBefore);   // sous-lot V2.28c (4) : sans la quête des passages de la vallée
+        File.WriteAllText(storyPath, storyBefore.ToJsonString());
         foreach (string key in new[] { "events", "boss", "chiefs" }) zone["data"]!.AsObject().Remove(key);
         zone["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "seuil_est", ["name"] = "Seuil de l'est", ["position"] = new JsonArray(124, 0) });
         File.WriteAllText(zonePath, zone.ToJsonString());
