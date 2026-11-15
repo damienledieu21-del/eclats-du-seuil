@@ -374,6 +374,22 @@
         "value": 25
       },
       {
+        "item": "item.primevere_argentee",
+        "value": 60
+      },
+      {
+        "item": "item.sauge_de_pluie",
+        "value": 60
+      },
+      {
+        "item": "item.cepe",
+        "value": 20
+      },
+      {
+        "item": "item.trompette_du_sous_bois",
+        "value": 20
+      },
+      {
         "item": "item.poussiere_d_echo",
         "value": 30
       },

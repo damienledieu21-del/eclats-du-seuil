@@ -486,6 +486,54 @@
         ],
         "respawnMs": 60000,
         "xp": 8
+      },
+      {
+        "id": "primevere_ruisseau",
+        "profession": "herboristerie",
+        "item": "item.primevere_argentee",
+        "count": 1,
+        "position": [
+          -4,
+          -20
+        ],
+        "respawnMs": 600000,
+        "xp": 20
+      },
+      {
+        "id": "sauge_verger",
+        "profession": "herboristerie",
+        "item": "item.sauge_de_pluie",
+        "count": 1,
+        "position": [
+          58,
+          -46
+        ],
+        "respawnMs": 600000,
+        "xp": 20
+      },
+      {
+        "id": "cepes_foret",
+        "profession": "herboristerie",
+        "item": "item.cepe",
+        "count": 1,
+        "position": [
+          -70,
+          42
+        ],
+        "respawnMs": 120000,
+        "xp": 10
+      },
+      {
+        "id": "trompettes_foret",
+        "profession": "herboristerie",
+        "item": "item.trompette_du_sous_bois",
+        "count": 1,
+        "position": [
+          -60,
+          30
+        ],
+        "respawnMs": 120000,
+        "xp": 10
       }
     ],
     "forge": {

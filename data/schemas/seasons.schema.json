@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/seasons.schema.json",
+  "title": "Éclats du Seuil — contenu saisonnier",
+  "description": "Saisons (décisions de Damien du 14 et du 15 novembre 2026), version 1 : nœuds de récolte de saison, taux de présence des Échos dans la brume par saison, passages et verrous saisonniers (lac gelé, île secrète). Documentation. La validation qui fait foi est celle du programme (SeasonValidator), avec les métiers et la zone (nœuds connus, automne plus fort que les autres saisons, point d'accroche dans l'aire).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "contentVersion", "data"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "seasons" },
+    "contentVersion": { "type": "string" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "mistEchoes", "passages", "locks"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["node", "seasons"],
+            "properties": {
+              "node": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+              "seasons": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": { "enum": ["spring", "summer", "autumn", "winter"] }
+              }
+            }
+          }
+        },
+        "mistEchoes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["presence", "maxPerVolume"],
+          "properties": {
+            "presence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["spring", "summer", "autumn", "winter"],
+              "properties": {
+                "spring": { "type": "number", "minimum": 0, "maximum": 0.5 },
+                "summer": { "type": "number", "minimum": 0, "maximum": 0.5 },
+                "autumn": { "type": "number", "minimum": 0, "maximum": 0.5 },
+                "winter": { "type": "number", "minimum": 0, "maximum": 0.5 }
+              }
+            },
+            "maxPerVolume": { "type": "integer", "minimum": 1, "maximum": 8 }
+          }
+        },
+        "passages": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "requires"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+              "requires": { "enum": ["ice"] }
+            }
+          }
+        },
+        "locks": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "passage"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+              "passage": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+              "anchor": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}
