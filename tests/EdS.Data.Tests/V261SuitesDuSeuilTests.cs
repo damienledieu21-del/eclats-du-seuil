@@ -132,7 +132,7 @@ public class V261SuitesDuSeuilTests
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(19, SaveValidator.CurrentSchemaVersion);   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
-        Assert.Equal(("0.31.0", 25, 19), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.32.0", 26, 20), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
 
     [Fact]

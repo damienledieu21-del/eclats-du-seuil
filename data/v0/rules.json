@@ -1,8 +1,8 @@
 {
   "$schema": "../schemas/rules.schema.json",
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "kind": "rules",
-  "contentVersion": "0.17.0-provisoire",
+  "contentVersion": "0.18.0-provisoire",
   "data": {
     "stats": {
       "base": {
@@ -145,6 +145,13 @@
       "wander": {
         "maxRadius": 30,
         "calmMs": 15000
+      },
+      "dodge": {
+        "distance": 3,
+        "durationMs": 150,
+        "invulnerableMs": 300,
+        "enduranceCost": 20,
+        "cooldownMs": 1000
       }
     },
     "statuses": [

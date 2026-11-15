@@ -321,15 +321,15 @@ public class V18ProgressionTests : IDisposable
     {
         // Réponse de Damien du 31 octobre 2026 : le protocole accepte huit actives (0 à 7) et l'ultime à l'emplacement 8, sans changer de
         // numéro (le protocole 4 n'est pas encore fusionné).
-        Assert.Equal(4, Protocol.Version);
+        Assert.Equal(5, Protocol.Version);   // esquive : protocole 5 (huit actives et ultime inchangés)
         foreach (int slot in new[] { 0, 4, 5, 6, 7, 8 })
         {
-            string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}}";
+            string json = $"{{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":{slot},\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false,\"dodge\":false}}";
             NetMessage? m = MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(json), MessageDirection.ClientToServer, out string? error);
             Assert.True(error is null, error);
             Assert.Equal(slot, Assert.IsType<InputMessage>(m).Slot);
         }
-        string nine = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false}";
+        string nine = "{\"type\":\"input\",\"guard\":false,\"parry\":false,\"slot\":9,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":false,\"dodge\":false}";
         Assert.Null(MessageCodec.Decode(System.Text.Encoding.UTF8.GetBytes(nine), MessageDirection.ClientToServer, out string? refused));
         Assert.Contains("hors de [0, 8]", refused);
     }
@@ -358,7 +358,7 @@ public class V18ProgressionTests : IDisposable
         // Sous-lot V1.8d : moteur 0.27.0 (format 21) : la référence des règles 0.15.0 du moteur 0.26.0 reste figée et est refusée au rejeu à
         // son tour ; la nouvelle référence (reference-0.27.0-contenu-0.6.0-regles-0.15.0) a le même corps et se rejoue à l'identique.
         Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(current, ShippedData).Status);
-        string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.31.0-contenu-0.6.0-regles-0.17.0", name + ".jsonl"));
+        string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "reference-0.32.0-contenu-0.6.0-regles-0.18.0", name + ".jsonl"));
         Assert.Equal(current.Skip(1), latest.Skip(1));
         Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(latest, ShippedData).Status);
     }

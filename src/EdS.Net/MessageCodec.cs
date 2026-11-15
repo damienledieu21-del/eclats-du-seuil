@@ -45,7 +45,8 @@ namespace EdS.Net
                     break;
                 case InputMessage m:
                     w.Field("guard", m.Guard).Field("parry", m.Parry).Field("slot", (long?)m.Slot).Field("target", m.Target).Field("ally", m.Ally)
-                        .Field("heading", (long?)m.Heading).Field("backward", m.Backward);   // sous-lot 11.9 (protocole 3)
+                        .Field("heading", (long?)m.Heading).Field("backward", m.Backward)   // sous-lot 11.9 (protocole 3)
+                        .Field("dodge", m.Dodge);   // esquive (protocole 5)
                     break;
                 case PingMessage m:
                     w.Field("clientTime", m.ClientTime);
@@ -114,6 +115,10 @@ namespace EdS.Net
                 w.BeginObject().Field("atMs", c.AtMs).Field("actor", c.Actor).Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else if (c.Action == CombatAction.Select) w.Field("target", c.Target);
+                else if (c.Action == CombatAction.Dodge)   // esquive (protocole 5) : direction seulement si elle est donnée
+                {
+                    if (c.Direction is { } dd) w.Name("direction").BeginArray().Value(dd.X).Value(dd.Z).EndArray();
+                }
                 else if (c.Action == CombatAction.Move)
                 {
                     w.Name("direction").BeginArray().Value(c.Direction!.Value.X).Value(c.Direction.Value.Z).EndArray();
@@ -456,7 +461,7 @@ namespace EdS.Net
 
             private NetMessage? ReadInput(JsonElement root)
             {
-                bool? guard = null, parry = null, backward = null;
+                bool? guard = null, parry = null, backward = null, dodge = null;
                 int? slot = null, heading = null;
                 string? target = null, ally = null;
                 bool hasSlot = false, hasTarget = false, hasAlly = false, hasHeading = false;
@@ -470,6 +475,7 @@ namespace EdS.Net
                     ["guard"] = (v, p) => guard = _in.Boolean(v, p),
                     ["parry"] = (v, p) => parry = _in.Boolean(v, p),
                     ["backward"] = (v, p) => backward = _in.Boolean(v, p),   // sous-lot 11.9 (protocole 3)
+                    ["dodge"] = (v, p) => dodge = _in.Boolean(v, p),   // esquive (protocole 5)
                     ["slot"] = (v, p) =>
                     {
                         hasSlot = true;
@@ -486,11 +492,11 @@ namespace EdS.Net
                         ally = Id(v, p, nullable: true);
                     },
                 })) return null;
-                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly || !hasHeading || backward is null)
+                if (guard is null || parry is null || !hasSlot || !hasTarget || !hasAlly || !hasHeading || backward is null || dodge is null)
                 {
                     if (_in.Report.IsValid)
                         Missing("$", guard is null ? "guard" : parry is null ? "parry" : !hasSlot ? "slot" : !hasTarget ? "target" : !hasAlly ? "ally"
-                            : !hasHeading ? "heading" : "backward");
+                            : !hasHeading ? "heading" : backward is null ? "backward" : "dodge");
                     return null;
                 }
                 if (slot == -1 || heading == -1 || !_in.Report.IsValid) return null;
@@ -500,7 +506,7 @@ namespace EdS.Net
                     Fail("$.backward", ValidationCode.InvalidValue, "« backward » seulement avec un cap de marche (heading).");
                     return null;
                 }
-                return new InputMessage(guard.Value, parry.Value, slot, target, ally, heading, backward.Value);
+                return new InputMessage(guard.Value, parry.Value, slot, target, ally, heading, backward.Value, dodge.Value);
             }
 
             private NetMessage? ReadPing(JsonElement root)
@@ -683,12 +689,23 @@ namespace EdS.Net
                     if (!_in.Report.IsValid) return null;
                     return move ? (direction is { } d ? new CombatCommand(atMs.Value, actor, d, backward) : null) : CombatCommand.SelectTarget(atMs.Value, actor, target);
                 }
+                // Esquive (protocole 5) : direction facultative, rien d'autre.
+                if (action == CombatActionIds.Dodge)
+                {
+                    if (hasSkill || hasTarget || hasBackward)
+                    {
+                        Fail(path, ValidationCode.UnknownField, "« dodge » ne prend que sa direction (facultative).");
+                        return null;
+                    }
+                    if (!_in.Report.IsValid || (hasDirection && direction is null)) return null;
+                    return CombatCommand.DodgeToward(atMs.Value, actor, direction);
+                }
                 CombatAction plain;
                 if (action == CombatActionIds.Stop) plain = CombatAction.Stop;
                 else if (action == CombatActionIds.Leave) plain = CombatAction.Leave;
                 else if (!CombatActionIds.TryParseDefensive(action, out plain))
                 {
-                    Fail(path + ".action", ValidationCode.UnknownReference, "action inconnue (skill, guardStart, guardStop, parry, move, stop, select, leave).");
+                    Fail(path + ".action", ValidationCode.UnknownReference, "action inconnue (skill, guardStart, guardStop, parry, move, stop, select, leave, dodge).");
                     return null;
                 }
                 if (hasSkill || hasTarget || hasDirection || hasBackward)

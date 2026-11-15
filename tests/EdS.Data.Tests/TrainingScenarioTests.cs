@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "493cae308c8eba8f377791fa9ab53d2f27d29cb509554410b861d530f52d259c")]
-    [InlineData("entrainement_rupture", "512b667c3c46478602a7c7d42bcd6c3693decec6c709da206018e6d1ee1835cc")]
-    [InlineData("entrainement_alterations", "757009b8d2e877fcb10ef8c49363c875a58db924e21440638594b476791c28e5")]
-    [InlineData("entrainement_declencheurs", "d97c0ffea8484d9126df604599973861c6eb00ec13e28fbff7eb3557b4c703a0")]
+    [InlineData("entrainement_garde_parade", "99bfed9c04762f6d3a6541b8755c7c26445b9493a00e350d6709759bd1e37bf1")]
+    [InlineData("entrainement_rupture", "6f8aba3215976266864b57b330a92c2c53d774e40b09b95022e2239767bd3c0b")]
+    [InlineData("entrainement_alterations", "6af812d496cae5b49eb847b7ed306b3686b16f704303fcb9b593ea409c361bc4")]
+    [InlineData("entrainement_declencheurs", "624b1377ddc1c08802433b654e94ccdd2c225c8f62ff560e13a0f96c5ecb7782")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -156,7 +156,7 @@ public class TrainingScenarioTests
         // qui erre : seul l'en-tête change ; référence dans Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0.
         // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; sans espace : seul l'en-tête change ; référence dans
         // Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0. Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénarios en schéma
-        // 18 ; sans état emporté : seul l'en-tête change ; référence dans Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0.
+        // 18 ; sans état emporté : seul l'en-tête change ; référence dans Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.Equal(expected, hash);
     }

@@ -189,6 +189,20 @@ namespace EdS.Simulation.Engine
                 Fighter f = _fightersById[i];
                 Body b = f.Body!;
                 MovePlan plan = new MovePlan { X = b.X, Z = b.Z, FacingX = b.FacingX, FacingZ = b.FacingZ };
+                // Esquive (décision de Damien du 14/11/2026) : pendant le bond, son pas remplace la marche ; l'orientation ne change pas.
+                long dash = DashStep(f, tick);
+                if (dash >= 0)
+                {
+                    if (DashAdvances(i, x, z, f.DodgeDirectionX, f.DodgeDirectionZ, dash, out long bx, out long bz))
+                    {
+                        x[i] = bx;
+                        z[i] = bz;
+                        plan.X = bx;
+                        plan.Z = bz;
+                    }
+                    plans[i] = plan;
+                    continue;
+                }
                 bool moving = intentions[i] is { } intention ? intention.Moving : b.Moving;
                 long directionX = intentions[i]?.DirectionX ?? b.DirectionX, directionZ = intentions[i]?.DirectionZ ?? b.DirectionZ;
                 if (!f.Out && moving)

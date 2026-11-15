@@ -87,7 +87,7 @@ public class Lot101ProtocolTests
     [Fact]
     public void Champs_des_messages_relus()
     {
-        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null,\"heading\":17,\"backward\":true}", MessageDirection.ClientToServer);
+        var input = (InputMessage)Decode("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":2,\"target\":\"loup_a\",\"ally\":null,\"heading\":17,\"backward\":true,\"dodge\":false}", MessageDirection.ClientToServer);
         Assert.Equal((true, false, 2, "loup_a", (string?)null, (int?)17, true), (input.Guard, input.Parry, input.Slot, input.Target, input.Ally, input.Heading, input.Backward));
         // Sous-lot 11.7 : les commandes de marche, d'arrêt, de sélection et de départ sont relues telles quelles.
         var spatial = (TickMessage)Decode(MessageCodec.EncodeText(new TickMessage(new TickCommands(11, SpatialCommands), Hash)), MessageDirection.ServerToClient);
@@ -141,7 +141,7 @@ public class Lot101ProtocolTests
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":64}", "hors de [0, 63]")]
     // Sous-lot 11.9 (protocole 3) : la marche à reculons est obligatoire dans les intentions, et seulement avec un cap.
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":3}", "« backward » obligatoire")]
-    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":true}", "seulement avec un cap")]
+    [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":null,\"backward\":true,\"dodge\":false}", "seulement avec un cap")]
     [InlineData("{\"type\":\"input\",\"guard\":true,\"parry\":false,\"slot\":null,\"target\":null,\"ally\":null,\"heading\":3,\"backward\":1}", "backward")]
     [InlineData("{\"type\":\"ready\",\"ready\":1}", "")]
     [InlineData("{\"type\":\"resyncRequest\",\"x\":1}", "champ inconnu")]

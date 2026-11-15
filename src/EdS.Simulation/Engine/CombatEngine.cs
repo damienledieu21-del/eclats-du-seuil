@@ -31,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.31.0";
+        public const string Version = "0.32.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -120,10 +120,15 @@ namespace EdS.Simulation.Engine
         /// <c>rampartCharges</c>, <c>globalCooldownMs</c>, <c>cooldowns</c>, <c>consumableCooldownMs</c>), appliqué à son arrivée (sa ligne
         /// <c>combatantJoined</c> écrit ses PV et ressources d'arrivée) ; dans une zone, une arrivée sans place libre est refusée
         /// (<c>arrivalRefused</c>, raison <c>full</c> ; un mort ou un parti libère sa place, l'identité n'est jamais réutilisée) ; coordonnées
-        /// jusqu'à ±4 096 m et 256 obstacles. Sans état emporté ni arrivée sans place : mêmes lignes d'événements qu'au format 24. Un journal
-        /// d'un autre format est refusé au rejeu.
+        /// jusqu'à ±4 096 m et 256 obstacles. Sans état emporté ni arrivée sans place : mêmes lignes d'événements qu'au format 24. 26 (esquive,
+        /// décision de Damien du 14 novembre 2026, qui revient sur L11-D4) : commande <c>dodge</c> (en-tête : <c>action</c> <c>dodge</c>,
+        /// <c>direction</c> facultative) ; nouvelles lignes <c>dodgeStarted</c> (<c>actor</c>, <c>command</c>, <c>direction</c>, <c>endurance</c>,
+        /// <c>endTick</c>, <c>invulnerableUntilTick</c>, <c>readyTick</c>) et <c>evaded</c> (<c>source</c>, <c>target</c>, <c>skill</c>,
+        /// <c>attack</c> : impact ou application esquivé) ; nouveaux refus <c>actorCannotDodge</c>, <c>dodgeCooldown</c>, <c>dodgeBlocked</c> ;
+        /// <c>pushBlocked</c> de raison <c>evaded</c>. Sans esquive : mêmes lignes d'événements qu'au format 25. Un journal d'un autre format
+        /// est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 25;
+        public const int LogFormatVersion = 26;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -191,6 +196,15 @@ namespace EdS.Simulation.Engine
             public long ParryEndTick;             // fenêtre [début, fin[
             public bool ParrySucceeded;
             public long ParryRecoveryUntilTick;   // nouvelle parade refusée tant que tick < valeur
+
+            /// <summary>
+            /// Esquive (décision de Damien du 14 novembre 2026) : tick du début de la dernière esquive, null s'il n'y en a pas eu. Le bond, la
+            /// fenêtre d'invulnérabilité et la recharge s'en déduisent (<c>combat.dodge</c>), voir CombatEngine.Dodge.cs.
+            /// </summary>
+            public long? DodgeStartTick;
+
+            /// <summary>Esquive : direction unitaire du dernier bond (longueur <c>Planar.Unit</c>).</summary>
+            public long DodgeDirectionX, DodgeDirectionZ;
 
             /// <summary>
             /// Altérations actives (lot 7.2), une instance par clé : (altération, source) pour un cumul par source, (altération) sinon ;
@@ -864,6 +878,8 @@ namespace EdS.Simulation.Engine
                     return Cost.Line.If(CheckLeave(actor) != null);
                 case CombatAction.Consume:   // sous-lot 12.6 : consumed ou refus
                     return Cost.Line;
+                case CombatAction.Dodge:   // esquive : dodgeStarted ou refus
+                    return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
                 default:
@@ -963,6 +979,15 @@ namespace EdS.Simulation.Engine
                     if (Reject(tick, item, actor, CheckLeave(actor))) return null;
                     actor.LeaveCommand = item.Index;
                     return null;
+
+                // Esquive (décision de Damien du 14/11/2026) : contrôles sans rien modifier, puis endurance, recharge et invulnérabilité ; le
+                // bond lui-même avance dans la phase « movement » de ce tick et des suivants.
+                case CombatAction.Dodge:
+                {
+                    if (Reject(tick, item, actor, CheckDodge(tick, actor, command.Direction, out long dodgeX, out long dodgeZ))) return null;
+                    StartDodge(tick, item, actor, root, dodgeX, dodgeZ);
+                    return null;
+                }
 
                 // Sous-lot 12.6 : soin d'un objet emporté, immédiat ; la recharge partagée démarre.
                 case CombatAction.Consume:
@@ -1305,12 +1330,16 @@ namespace EdS.Simulation.Engine
             System.Action? afterResolve = null)
         {
             bool damaging = action.Damaging;
-            bool resonance = damaging && targets.Count > 0 && action.Actor.Character != null && action.GeneratesResonance;
+            // Esquive (décision de Damien du 14 novembre 2026, vers 23 h 58) : un coup esquivé ne donne aucune Résonance ; il en faut au moins un
+            // qui porte.
+            bool resonance = damaging && targets.Any(t => !Evades(tick, action.Actor, t)) && action.Actor.Character != null && action.GeneratesResonance;
             var postures = new Postures();
             Cost cost = prefix + (resonance ? GainCost(action.Actor, action.Actor.Rules.ResonancePerDirectHit) : Cost.None);
             foreach (Fighter target in targets)
                 cost += damaging ? HitCost(tick, action, target, postures) : SupportCost(tick, action, target, postures);
-            var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets).Select(a => (Application: a, Targets: OwnTargets(action.Actor, a))).ToList();
+            // Esquive : une application de groupe hostile ne touche pas un ennemi invulnérable (sans ligne).
+            var own = action.Applies.Where(a => a.Target != ApplicationTarget.Targets)
+                .Select(a => (Application: a, Targets: (IReadOnlyList<Fighter>)OwnTargets(action.Actor, a).Where(t => !Evades(tick, action.Actor, t)).ToArray())).ToList();
             foreach (var (application, ownTargets) in own)
                 foreach (Fighter target in ownTargets) cost += ApplicationCost(tick, action, application, target, postures);
             TraceReservation(dequeue ? "impact" : "action", tick, cost, removing: dequeue ? 1 : 0);
@@ -1335,10 +1364,12 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost HitCost(long tick, PendingAction action, Fighter target, Postures? postures = null)
         {
+            // Esquive : un impact d'un ennemi pendant l'invulnérabilité de la cible n'écrit que « evaded » (et ne change aucune posture).
+            if (Evades(tick, action.Actor, target)) return Cost.Op + Cost.Line;
             Cost cost = Cost.Op + Observable(TriggerEvent.HitDealt, TriggerEvent.HitTaken);   // impact, ligne « damage »
             // Sous-lot 8.3 (X6) : une protection active sur la cible transfère une part de l'impact : ligne « damageTransferred », non
             // notifiée, même si la part est nulle (le coût ne dépend jamais du montant des dégâts).
-            cost += Cost.Line.If(ActiveProtection(target) != null);
+            cost += Cost.Line.If(TransferringProtection(tick, action.Actor, target) != null);   // esquive : pas vers un protecteur invulnérable
             bool guarding = target.Guarding, parryOpen = target.ParryOpen;
             Defense applicable = DefenseOf(action, target, target.ParryOpen, target.Guarding);
             bool parried = false;
@@ -1383,6 +1414,7 @@ namespace EdS.Simulation.Engine
         /// </summary>
         private Cost SupportCost(long tick, PendingAction action, Fighter target, Postures postures)
         {
+            if (Evades(tick, action.Actor, target)) return Cost.Line;   // esquive : une application hostile ciblée est esquivée
             Cost cost = Cost.None;
             foreach (StatusApplication application in action.TargetApplies) cost += ApplicationCost(tick, action, application, target, postures);
             return cost;
@@ -1407,6 +1439,11 @@ namespace EdS.Simulation.Engine
         /// <summary>Sous-lot 8.3 (X5) : compétence de soutien sur une cible : ses applications, dans l'ordre, causées par le lancer.</summary>
         private void Support(long tick, PendingAction action, Fighter target)
         {
+            if (Evades(tick, action.Actor, target))
+            {
+                Evaded(tick, CombatPhase.Resolution, action, target);
+                return;
+            }
             foreach (StatusApplication application in action.TargetApplies) Apply(tick, CombatPhase.Resolution, action, application, target, action.Origin);
         }
 
@@ -1438,6 +1475,11 @@ namespace EdS.Simulation.Engine
         private void Hit(long tick, CombatPhase phase, PendingAction action, Fighter target)
         {
             Charge(1);
+            if (Evades(tick, action.Actor, target))
+            {
+                Evaded(tick, phase, action, target);
+                return;
+            }
             target.Struck = true;
             Fighter actor = action.Actor;
             Provenance origin = action.Origin;
@@ -1535,7 +1577,7 @@ namespace EdS.Simulation.Engine
             // Correctif 7.3.1 (A73-M01) : nouvelles valeurs préparées et vérifiées avant toute affectation ; un débordement arrête
             // le combat sans impact à moitié appliqué. Sous-lot 8.2 (X4) : les boucliers absorbent après la défense, avant les PV.
             // Sous-lot 8.3 (X6) : une protection active transfère d'abord sa part au protecteur ; les boucliers de la cible absorbent le reste.
-            Transfer transfer = PlanTransfer(target, amount);
+            Transfer transfer = PlanTransfer(tick, actor, target, amount);
             Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
             DamageUpdate update = PrepareDamage(target, actor, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
@@ -1594,6 +1636,11 @@ namespace EdS.Simulation.Engine
                     shieldAmount: ShieldAmount(actor, definition, application.Coefficient));
             }
         }
+
+        /// <summary>Esquive : ligne <c>evaded</c> d'un impact ou d'une application esquivé (ni dégâts, ni altération, ni gain).</summary>
+        private void Evaded(long tick, CombatPhase phase, PendingAction action, Fighter target) =>
+            Emit(tick, phase, "evaded", action.Origin, w => w.Field("source", action.Actor.Id).Field("target", target.Id)
+                .Field("skill", action.Skill?.Id).Field("attack", action.Attack?.Id));
 
         /// <summary>Sous-lot 8.6 (X10) : part d'un impact retirée par sa réduction (garde, parade, dégâts subis) ; 0 sans réduction.</summary>
         private long Unmitigated(DamageInput input, Fixed mitigation, long amount)
@@ -2182,9 +2229,9 @@ namespace EdS.Simulation.Engine
         /// quand la garde tient sans pouvoir payer un blocage (<c>guard.noUpkeepBreak</c>) ; sans ce drapeau, un transfert ne paie rien
         /// et ne brise pas la garde : réduction pleine.
         /// </summary>
-        private Transfer PlanTransfer(Fighter target, long amount)
+        private Transfer PlanTransfer(long tick, Fighter? source, Fighter target, long amount)
         {
-            if (ActiveProtection(target) is not { } protection) return default;
+            if (TransferringProtection(tick, source, target) is not { } protection) return default;
             Fighter protector = _byId[protection.Source!];
             Fixed ratio = protector.Rules.RedirectRatio(protection.Definition);
             long part = amount <= 0 ? 0 : (Fixed.FromInt(amount) * ratio).RoundToInt(RoundingMode.Floor);
@@ -2347,6 +2394,22 @@ namespace EdS.Simulation.Engine
             w.EndArray();
         }
 
+        /// <summary>
+        /// Esquive (relecture indépendante de la PR #164) : protection qui transfère vraiment un coup de <paramref name="source"/> à ce tick :
+        /// celle de <see cref="ActiveProtection"/>, sauf si son protecteur est invulnérable (esquive) face à cette source (ennemi du protecteur,
+        /// ou source inconnue) ; la cible prend alors tout le coup, sans ligne <c>damageTransferred</c>. Même réponse pour le coût et l'effet.
+        /// </summary>
+        private StatusInstance? TransferringProtection(long tick, Fighter? source, Fighter target)
+        {
+            if (ActiveProtection(target) is not { } protection) return null;
+            Fighter protector = _byId[protection.Source!];
+            if (Invulnerable(protector, tick) && (source is null || (!ReferenceEquals(source, protector) && Enemies(source, protector)))) return null;
+            return protection;
+        }
+
+        private Fighter? SourceOf(StatusInstance status) =>
+            status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
+
         /// <summary>Le tick en cours est-il le dernier de l'instance (le suivant dépasserait sa fin) ?</summary>
         private static bool IsLastDotTick(long tick, StatusInstance status) => tick >= status.UntilTick;
 
@@ -2357,7 +2420,7 @@ namespace EdS.Simulation.Engine
         private Cost DotTickCost(long tick, DotTick dot)
         {
             if (!IsCurrent(dot, out StatusInstance? status)) return Cost.None;
-            return Cost.Op + Observable(TriggerEvent.DotTick) + Cost.Line.If(ActiveProtection(dot.Fighter) != null)   // 8.3 : transfert
+            return Cost.Op + Observable(TriggerEvent.DotTick) + Cost.Line.If(TransferringProtection(tick, SourceOf(status), dot.Fighter) != null)   // 8.3 : transfert
                 + (IsLastDotTick(tick, status) ? EndStatusCost(tick, status) : Cost.Enqueue);
         }
 
@@ -2391,7 +2454,7 @@ namespace EdS.Simulation.Engine
             Fighter? source = status.Source != null && _byId.TryGetValue(status.Source, out Fighter? s) ? s : null;
             amount = InfightingCap(source, target, amount);   // relecture de la PR #104 : jamais mortel entre bêtes
             // Sous-lot 8.3 (X6) : une protection transfère aussi sa part d'un tick de DOT.
-            Transfer transfer = PlanTransfer(target, amount);
+            Transfer transfer = PlanTransfer(tick, source, target, amount);
             Absorption absorption = PlanAbsorption(target, amount - transfer.Amount);
             DamageUpdate update = PrepareDamage(target, source, amount, absorption.Total, transfer.Amount);
             TransferUpdate received = PrepareTransfer(transfer);
