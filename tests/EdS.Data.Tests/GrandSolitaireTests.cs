@@ -112,6 +112,14 @@ public class GrandSolitaireTests
         Assert.Equal("$.data.bosses[0].fallback", First(Mutated(r => B(r)["fallback"] = new JsonArray(9999, 0))));
         Assert.Equal("$.data.bosses[0].radio", First(Mutated(r => B(r)["radio"] = 3)));   // champ inconnu, refusé à la lecture
         Assert.Equal("$.schemaVersion", First(Mutated(r => r["schemaVersion"] = 2)));
+        // Revue Codex de la PR #171 : valeurs extrêmes refusées avec leur chemin, sans débordement dans les calculs croisés.
+        Assert.Equal("$.data.bosses[0].signsMs", First(Mutated(r => B(r)["signsMs"] = long.MaxValue)));
+        Assert.Equal("$.data.bosses[0].objectiveMs", First(Mutated(r => B(r)["objectiveMs"] = long.MaxValue)));
+        Assert.Equal("$.data.bosses[0].limitMs", First(Mutated(r => B(r)["limitMs"] = long.MaxValue)));
+        Assert.Equal("$.data.bosses[0].announceMs", First(Mutated(r => B(r)["announceMs"] = long.MaxValue)));
+        Assert.Equal("$.data.bosses[0].healthPerPlayer", First(Mutated(r => B(r)["healthPerPlayer"] = long.MaxValue)));
+        Assert.Equal("$.data.bosses[0].maxPlayers", First(Mutated(r => B(r)["maxPlayers"] = int.MaxValue)));
+        Assert.Equal("$.data.bosses[0].walkSpeed", First(Mutated(r => B(r)["walkSpeed"] = 1000)));
     }
 
     [Fact]

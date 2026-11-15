@@ -472,23 +472,27 @@ namespace EdS.Data.WorldBosses
             if (b.Radius is null) Missing(r, p + ".radius", "rayon de l'emprise du boss (m)");
             else if (b.Radius.Value < Fixed.One || b.Radius.Value > Fixed.FromInt(10)) r.Add(p + ".radius", ValidationCode.OutOfRange, "rayon hors de [1, 10] m.");
             else radius = b.Radius.Value;
-            Long(b.HealthBase, p + ".healthBase", 1, MaxHealth, "vie de base", r);
-            Long(b.HealthPerPlayer, p + ".healthPerPlayer", 0, MaxHealth, "vie par joueur", r);
+            // Revue Codex de la PR #171 : les calculs croisés ne se font qu'avec des valeurs déjà reconnues dans leurs bornes (aucun débordement
+            // avant que le champ fautif soit signalé avec son chemin).
+            bool healthOk = Long(b.HealthBase, p + ".healthBase", 1, MaxHealth, "vie de base", r);
+            healthOk &= Long(b.HealthPerPlayer, p + ".healthPerPlayer", 0, MaxHealth, "vie par joueur", r);
             Int(b.MinPlayers, p + ".minPlayers", PlayersFloor, PlayersCeiling, "joueurs au moins", r);
-            Int(b.MaxPlayers, p + ".maxPlayers", PlayersFloor, PlayersCeiling, "joueurs au plus", r);
+            bool maxOk = Int(b.MaxPlayers, p + ".maxPlayers", PlayersFloor, PlayersCeiling, "joueurs au plus", r);
             if (b.MinPlayers is int mn && b.MaxPlayers is int mx && mn > mx) r.Add(p + ".maxPlayers", ValidationCode.InvalidValue, "moins que minPlayers.");
-            if (b.HealthBase is long hb && b.HealthPerPlayer is long hp && b.MaxPlayers is int top && hb + hp * top > MaxHealth)
+            if (healthOk && maxOk && checked(b.HealthBase!.Value + b.HealthPerPlayer!.Value * b.MaxPlayers!.Value) > MaxHealth)
                 r.Add(p + ".healthPerPlayer", ValidationCode.OutOfRange, $"vie au plus fort au-delà de {MaxHealth}.");
-            Int(b.WindowMinutes, p + ".windowMinutes", 60, 7 * 24 * 60, "fenêtre de planification (minutes de temps serveur)", r);
+            bool windowOk = Int(b.WindowMinutes, p + ".windowMinutes", 60, 7 * 24 * 60, "fenêtre de planification (minutes de temps serveur)", r);
             Int(b.ChancePercent, p + ".chancePercent", 0, 100, "chance par fenêtre (pour cent)", r);
-            Long(b.SignsMs, p + ".signsMs", 0, 30L * 60 * 1000, "signes avant l'apparition (ms)", r);
-            Long(b.LimitMs, p + ".limitMs", 60_000, MaxDurationMs, "temps pour l'arrêter (ms)", r);
-            Long(b.AnnounceMs, p + ".announceMs", 0, MaxDurationMs, "annonce de la cible (ms après l'apparition)", r);
-            if (b.AnnounceMs is long an && b.LimitMs is long lim && an >= lim) r.Add(p + ".announceMs", ValidationCode.InvalidValue, "l'annonce de la cible vient avant la limite.");
-            Long(b.ObjectiveMs, p + ".objectiveMs", 1000, 30L * 60 * 1000, "préparation de la charge contre un objectif (ms)", r);
+            bool signsOk = Long(b.SignsMs, p + ".signsMs", 0, 30L * 60 * 1000, "signes avant l'apparition (ms)", r);
+            bool limitOk = Long(b.LimitMs, p + ".limitMs", 60_000, MaxDurationMs, "temps pour l'arrêter (ms)", r);
+            if (Long(b.AnnounceMs, p + ".announceMs", 0, MaxDurationMs, "annonce de la cible (ms après l'apparition)", r) && limitOk && b.AnnounceMs >= b.LimitMs)
+                r.Add(p + ".announceMs", ValidationCode.InvalidValue, "l'annonce de la cible vient avant la limite.");
+            bool objectiveOk = Long(b.ObjectiveMs, p + ".objectiveMs", 1000, 30L * 60 * 1000, "préparation de la charge contre un objectif (ms)", r);
+            bool speedOk = false;
             if (b.WalkSpeed is null) Missing(r, p + ".walkSpeed", "vitesse de marche (m/s)");
             else if (b.WalkSpeed.Value < SpaceLimits.MinSpeed || b.WalkSpeed.Value > SpaceLimits.MaxSpeed)
                 r.Add(p + ".walkSpeed", ValidationCode.OutOfRange, $"vitesse hors de [{SpaceLimits.MinSpeed}, {SpaceLimits.MaxSpeed}] m/s.");
+            else speedOk = true;
             if (b.Clearance is null) Missing(r, p + ".clearance", "distance des joueurs au point d'émergence (m)");
             else if (b.Clearance.Value < Fixed.Zero || b.Clearance.Value > Fixed.FromInt(200)) r.Add(p + ".clearance", ValidationCode.OutOfRange, "distance hors de [0, 200] m.");
 
@@ -559,9 +563,10 @@ namespace EdS.Data.WorldBosses
 
             // Relecture indépendante de la PR #171 : la fenêtre contient les signes, la limite et l'assaut entier, marche comprise (deux
             // occurrences ne se chevauchent jamais : la mémoire du vainqueur garde chaque issue).
-            if (b.WindowMinutes is int w && b.SignsMs is long sg && b.LimitMs is long lm && b.ObjectiveMs is long om && b.WalkSpeed is Fixed speed
-                && speed >= SpaceLimits.MinSpeed && sites.Count == (b.Sites?.Count ?? -1) && targets.Count == (b.Targets?.Count ?? -1) && targets.Count > 0
-                && checked(sg + lm + WorldBossDefinition.AssaultMsFor(sites, targets, speed, om)) >= w * 60_000L)
+            if (windowOk && signsOk && limitOk && objectiveOk && speedOk
+                && sites.Count == (b.Sites?.Count ?? -1) && targets.Count == (b.Targets?.Count ?? -1) && targets.Count > 0
+                && checked(b.SignsMs!.Value + b.LimitMs!.Value + WorldBossDefinition.AssaultMsFor(sites, targets, b.WalkSpeed!.Value, b.ObjectiveMs!.Value))
+                    >= b.WindowMinutes!.Value * 60_000L)
                 r.Add(p + ".windowMinutes", ValidationCode.InvalidValue, "la fenêtre doit contenir les signes, la limite et l'assaut entier, marche comprise.");
             Int(b.CompanionsInCombat, p + ".companionsInCombat", 0, 1, "compagnons au combat par joueur (décision du 14 novembre 2026 : un seul)", r);
             GroundVector? fallback = Point(b.Fallback, p + ".fallback", Fixed.FromRatio(1, 2), space, r);
