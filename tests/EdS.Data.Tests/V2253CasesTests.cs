@@ -261,7 +261,7 @@ public class V2253CasesTests
         // Sous-lot V2.28 (sauvegarde v19) : même point de reprise ; seule la zone à région écrit son secteur.
         Assert.Equal(("place_du_village", "s07_06", "place_du_village", (string?)null),
             (wa.Save().Resume!.SafePoint, wa.Save().Resume!.Sector, wb.Save().Resume!.SafePoint, wb.Save().Resume!.Sector));
-        Assert.Equal(SaveJsonReader.Write(wa.Save().WithResume(null)), SaveJsonReader.Write(wb.Save().WithResume(null)));
+        Assert.Equal(SaveVersion.WithoutExplored(SaveJsonReader.Write(wa.Save().WithResume(null))), SaveVersion.WithoutExplored(SaveJsonReader.Write(wb.Save().WithResume(null))));
         // Les bornes d'avant restent celles d'une zone sans région.
         JsonObject many = Schema12();
         JsonArray places = many["data"]!["places"]!.AsArray();

@@ -863,7 +863,7 @@ public class V228b2cChefsTests
         trace.Append("renouvellements ").Append(w.Renewals).Append('\n');
         CombatantView end = w.Zone.Engine.View(w.CombatantId);
         trace.Append("fin ").Append(end.Position).Append(' ').Append(end.MoveDirection).Append(' ').Append(end.Health).Append(' ').Append(end.IsDead).Append(' ').Append(end.Counters.CommandsRejected).Append('\n');
-        trace.Append(SaveJsonReader.Write(w.Save().WithResume(null)));
+        trace.Append(SaveVersion.WithoutExplored(SaveJsonReader.Write(w.Save().WithResume(null))));
         return (trace.ToString(), log.ToString(), open);
     }
 

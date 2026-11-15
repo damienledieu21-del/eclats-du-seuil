@@ -404,6 +404,7 @@ namespace EdS.Runtime
             long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
             if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
             World = world;
+            _explored = -1;   // sous-lot V2.29 (2) : nouvelle session, relevé repris
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
             GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
@@ -449,6 +450,8 @@ namespace EdS.Runtime
         /// Avance de <paramref name="seconds"/> secondes de temps réel (le pont simule les ticks échus) ; sauvegarde si quelque chose a changé
         /// et que la dernière sauvegarde date d'au moins <see cref="AutosaveSeconds"/>. Rend le nombre de ticks simulés.
         /// </summary>
+        private int _explored = -1;   // sous-lot V2.29 (2) : cases vues au dernier pas (−1 : pas encore relevé)
+
         public int Advance(double seconds)
         {
             // Remarque de Codex sur la PR #84 : le temps des bonus actifs baisse à chaque tick simulé sans autre événement ; il est gardé à la
@@ -460,6 +463,13 @@ namespace EdS.Runtime
             // Pêche et carnet : la touche s'annonce une fois.
             if (World.IsBiting && !_biteAnnounced) { _biteAnnounced = true; Say("text.ui.fishing.bite"); }
             if (boons && steps > 0) _dirty = true;
+            // Sous-lot V2.29 (2), relecture de la PR #185 : de nouvelles cases vues vont à la prochaine sauvegarde automatique.
+            int explored = World.Explored?.Count ?? 0;
+            if (explored != _explored)
+            {
+                if (_explored >= 0) _dirty = true;
+                _explored = explored;
+            }
             _sinceSave += seconds;
             // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
             // (World.Save garde l'expérience, les objets, l'histoire ; jamais les PV du combat).
