@@ -353,6 +353,7 @@ public class ConcoursPatisserieTests
         WorldSession w = Oven(Signed(Couronne, ItemQuality.Masterwork), new ItemStack(Couronne, 2));
         JsonObject root = JsonNode.Parse(SaveJsonReader.Write(w.Save()))!.AsObject();
         root["schemaVersion"] = 21;   // un chef-d'œuvre signé se lisait déjà en version 21
+        root["data"]!["character"]!.AsObject().Remove("explored");   // cases explorées : version 23 (brouillard)
         SaveLoadResult old = SaveJsonReader.Read(root.ToJsonString());
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.True(old.Save!.Migrated);
