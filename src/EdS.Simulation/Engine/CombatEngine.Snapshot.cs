@@ -33,9 +33,10 @@ namespace EdS.Simulation.Engine
         /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires), 6 depuis le sous-lot V2.4.1 (bête
         /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois, frappée par un personnage depuis son dernier calme
         /// <c>characterHitSinceCalm</c> ; le reste de l'errance se déduit du tick et des places), 7 depuis l'esquive (décision de Damien du
-        /// 14 novembre 2026 : <c>dodgeStartTick</c>, <c>dodgeDirectionX</c>, <c>dodgeDirectionZ</c> ; bond, invulnérabilité et recharge s'en déduisent).
+        /// 14 novembre 2026 : <c>dodgeStartTick</c>, <c>dodgeDirectionX</c>, <c>dodgeDirectionZ</c> ; bond, invulnérabilité et recharge s'en déduisent),
+        /// 8 depuis les compagnons, 9 depuis la monture (sous-lot V2.28d (2) : <c>mounted</c>, en selle).
         /// </summary>
-        public const int FormatVersion = 8;
+        public const int FormatVersion = 9;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -228,6 +229,7 @@ namespace EdS.Simulation.Engine
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("dodgeStartTick", f.DodgeStartTick).Field("dodgeDirectionX", f.DodgeDirectionX).Field("dodgeDirectionZ", f.DodgeDirectionZ)   // esquive (format 7)
+                .Field("mounted", f.Mounted).Field("mountedTick", f.MountedTick)   // sous-lot V2.28d (2), monture (format 9)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
@@ -930,6 +932,16 @@ namespace EdS.Simulation.Engine
                 }
                 else Require(f.DodgeDirectionX == 0 && f.DodgeDirectionZ == 0, $"Direction d'esquive de {who} sans esquive.");
                 if (f.Companion is { } companion && CompanionProblem(f, companion) is { } problem) Require(false, $"Compagnon {who} : {problem}.");   // compagnons (format 8)
+                // Sous-lot V2.28d (2), monture (format 9) : en selle, seulement un personnage qui a une monture, arrivé en selle ou qui a donné
+                // une commande mount à un tick passé.
+                // Relecture de la PR #180 : le tick où il est monté est celui d'une commande mount de ce personnage (passé), ou celui de son
+                // arrivée en selle.
+                if (f.Mounted)
+                    Require(f.Character?.Mount != null && _spatial && f.MountedTick is long mountedAt && mountedAt >= 0 && mountedAt <= Math.Max(0, previous)
+                        && ((f.Setup.Carried?.Mounted == true && f.ArrivedTick == mountedAt)
+                            || _setup.Commands.Any(c => c.Action == CombatAction.Mount && c.Actor == f.Id && c.AtMs / _tickMs == mountedAt)),
+                        $"{who} en selle sans monture ou sans commande mount à son tick.");
+                else Require(f.MountedTick is null, $"{who} à pied avec un tick de mise en selle.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                 {
@@ -1652,7 +1664,9 @@ namespace EdS.Simulation.Engine
             Fixed boost = Fixed.One;
             foreach (StatusDefinition d in _statuses.Definitions)
                 if (d.MovementSpeedModifier > Fixed.Zero) boost += d.MovementSpeedModifier;
-            long step = Fixed.Multiply(Fixed.FromRaw(Domain.Numerics.IntMath.MulDiv(g.Body!.Speed, _tickMs, 1000, Domain.Numerics.RoundingMode.Floor)), boost,
+            // Sous-lot V2.28d (2) : la plus grande des vitesses, à pied ou en selle.
+            long speed = Math.Max(g.Body!.Speed, g.Character?.Mount?.Speed.Raw ?? 0);
+            long step = Fixed.Multiply(Fixed.FromRaw(Domain.Numerics.IntMath.MulDiv(speed, _tickMs, 1000, Domain.Numerics.RoundingMode.Floor)), boost,
                 Domain.Numerics.RoundingMode.Ceiling).Raw;
             return checked(2 * Math.Min(step, _maxStep) + 16);
         }
@@ -2090,6 +2104,8 @@ namespace EdS.Simulation.Engine
             f.DodgeStartTick = n["dodgeStartTick"].NullableLong;   // esquive (format 7)
             f.DodgeDirectionX = n["dodgeDirectionX"].Long;
             f.DodgeDirectionZ = n["dodgeDirectionZ"].Long;
+            f.Mounted = n["mounted"].Bool;   // sous-lot V2.28d (2), monture (format 9)
+            f.MountedTick = n["mountedTick"].NullableLong;
             f.Resonance = n["resonance"].Int;
             f.RampartCharges = n["rampartCharges"].Int;
             f.NextTurn = n["nextTurn"].Long;
