@@ -820,6 +820,7 @@ namespace EdS.World
             // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
             _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
+            StartExploration();   // sous-lot V2.29 (2) : brouillard de carte de la région
             NoteRecruitedCompanions();   // compagnons : une troupe déjà recrutée apprend son fait (sauvegarde d'avant la quête de lien)
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
@@ -1438,6 +1439,8 @@ namespace EdS.World
             TrackSafePoint();
             // Sous-lot V1.9.6 : gestes du joueur depuis le tick précédent (coups portés, coups bloqués, parades parfaites), pour le tutoriel.
             Practice(me);
+            // Sous-lot V2.29 (2) : cases vues et points de vue, avant les quêtes (une découverte peut servir de condition).
+            Explore(story);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
@@ -1655,6 +1658,7 @@ namespace EdS.World
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
             character = PlayerCharacters.GiveHorse(character, character.Story);   // sous-lot V2.28d (2b) : le cheval, donné à la fin du chapitre 1
+            character = WithExploration(character);   // sous-lot V2.29 (2) : cases vues de la région
             // Sous-lot V2.28b (2) : sur une aire à plusieurs secteurs, la sauvegarde est celle du monde : session du monde, registre du monde et
             // de chaque session ouverte, dernière session de chaque secteur.
             if (_host != null && !_host.Map.HomeHoldsArea)

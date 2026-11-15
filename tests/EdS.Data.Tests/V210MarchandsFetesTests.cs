@@ -65,7 +65,7 @@ public class V210MarchandsFetesTests
     {
         Assert.Equal((14, 12, 14), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // fêtes aux vraies dates : schéma 14
         Assert.Equal((6, 4, "0.11.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
-        Assert.Equal((22, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
+        Assert.Equal((23, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi",
             "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil", "festival.grand_tournoi",
             "festival.etoiles_filantes", "festival.nuit_des_echos", "festival.givre" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi ; fêtes aux vraies dates : les neuf fêtes du calendrier seulement
@@ -769,6 +769,7 @@ public class V210MarchandsFetesTests
         // Sous-lot V2.28c : les Vallons couvrent toute la région, la sauvegarde garde le registre des secteurs (version 18), retiré ici.
         var plainNode = System.Text.Json.Nodes.JsonNode.Parse(SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save().WithResume(null)))!;
         plainNode["data"]!.AsObject().Remove("sectors");
+        plainNode["data"]!["character"]!.AsObject().Remove("explored");   // V2.29 (2) : cases explorées en version 23
         plainNode["schemaVersion"] = 15;
         string plain = plainNode.ToJsonString();
         SaveLoadResult old = SaveJsonReader.Read(plain);

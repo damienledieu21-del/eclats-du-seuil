@@ -562,6 +562,31 @@ namespace EdS.World
         public bool IsShunnedBy(string npc) =>
             npc != null && _book.HasNpc(npc) && _book.Npc(npc).Faction is string f && _book.Reputation.Shun.Contains(f) && StandingIndex(f) == 0;
         public bool Knows(string fact) => _facts.Contains(fact);
+
+        /// <summary>A trouvé la découverte <paramref name="discovery"/> (journal des découvertes).</summary>
+        public bool HasDiscovered(string discovery) => _discoveries.Contains(discovery);
+
+        /// <summary>
+        /// Sous-lot V2.29 (2) : découverte d'un point de vue, hors dialogue : la découverte au carnet (avec les points de guilde d'une
+        /// découverte), puis <paramref name="xp"/> points d'expérience. Rend faux, sans rien changer, si elle est déjà faite.
+        /// </summary>
+        /// <exception cref="ArgumentException">Découverte absente de l'histoire.</exception>
+        public bool Discover(string discovery, long xp, List<StoryEvent> events)
+        {
+            if (events is null) throw new ArgumentNullException(nameof(events));
+            if (xp < 0) throw new ArgumentOutOfRangeException(nameof(xp));
+            if (!_book.Discoveries.Any(d => d.Id == discovery)) throw new ArgumentException($"Découverte « {discovery} » absente de l'histoire.", nameof(discovery));
+            if (!_discoveries.Add(discovery)) return false;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.Discovered, discovery));
+            if (_guild != null) Award(_guild.DiscoveryPoints, discovery, events);
+            if (xp > 0)
+            {
+                _world.GiveXp(xp);
+                events.Add(new StoryEvent(StoryEventKind.XpGiven, "xp", null, xp));
+            }
+            return true;
+        }
         public bool IsDone(string quest) => _quests.TryGetValue(quest, out var q) && q.Step < 0;
         public bool IsActive(string quest) => _quests.TryGetValue(quest, out var q) && q.Step >= 0;
 

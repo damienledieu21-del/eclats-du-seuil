@@ -1032,12 +1032,13 @@ Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity
 - les **Crêtes de Fer** au nord-est, centrées sur 45°, sur 38° de part et d'autre : pics nets jusqu'à 900 m, enneigés au-dessus de 560 m ;
 - la **Forêt des Murmures** au nord-ouest, centrée sur 315° (plan, § 4.0 bis), sur 42° de part et d'autre : cimes géantes de 120 à 190 m ;
 - des collines basses ailleurs (40 à 82 m).
+- **la mer** à l'ouest (sous-lot V2.29 (2) : la Côte des Brumes, au-delà d'Havre d'Ambre, à la place des collines), centrée sur 245°, sur 32° de part et d'autre : un horizon plat à 2 m, gris-bleu (`HorizonLayer.Sea`).
 
 Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra, qui la suit à chaque image (`EdsGame.LateUpdate`) en gardant les angles du profil de référence (hauteur réduite autour de l’altitude de la caméra). Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
 
 **À venir** :
 - les **cartes peintes** du ciel, à demander à ChatGPT ; ces silhouettes les remplacent en attendant ;
-- le **brouillard à dissiper** et le **point de vue du sommet** (sujet 30), qui demandent une sauvegarde des cases explorées : V2.29, deuxième partie.
+- le tour de caméra du point de vue du sommet. Le **brouillard à dissiper** et le **point de vue du sommet** sont faits au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) : brouillard posé sur la grande carte du livre d'aventure.
 
 Essais : `V229HorizonTests`.
 

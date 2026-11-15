@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 22
+      "const": 23
     },
     "kind": {
       "const": "save"
@@ -551,6 +551,18 @@
                     "maxLength": 64
                   },
                   "maxProperties": 64
+                },
+                "explored": {
+                  "type": "object",
+                  "maxProperties": 16,
+                  "propertyNames": {
+                    "pattern": "^zone\\.[a-z][a-z0-9_]*$"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "pattern": "^([0-9a-f]{2}){1,512}$"
+                  },
+                  "description": "Sous-lot V2.29 (2) (version 23) : cases explorées de la carte par zone à région (bit colonne + rangée × colonnes, bit de poids faible d'abord) ; absent quand rien n'est exploré."
                 },
                 "mount": {
                   "enum": [

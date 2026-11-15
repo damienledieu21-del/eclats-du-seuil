@@ -105,6 +105,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.28d (2b) (version 22) : identifiant de la monture du personnage (facultatif : absent sans monture).</summary>
         public string? Mount { get; set; }
 
+        /// <summary>Sous-lot V2.29 (2) (version 23) : cases explorées par zone (facultatives).</summary>
+        public Dictionary<string, string?>? Explored { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

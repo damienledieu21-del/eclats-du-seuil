@@ -13,12 +13,16 @@ namespace EdS.Runtime
 
         /// <summary>Les Crêtes de Fer, au nord-est : pics enneigés.</summary>
         Mountains = 2,
+
+        /// <summary>Sous-lot V2.29 (2) : la mer, à l'ouest (la Côte des Brumes, au-delà d'Havre d'Ambre) : un horizon plat.</summary>
+        Sea = 3,
     }
 
     /// <summary>
     /// Sous-lot V2.29 (horizon, plan de la grande carte § 6.3) : la silhouette des terres lointaines autour des Vallons, qui ne se charge
     /// jamais comme des cases. Les <b>Crêtes de Fer</b> au nord-est (pics enneigés, jusqu'à <see cref="MountainPeak"/> m), la
-    /// <b>Forêt des Murmures</b> au nord-ouest (cimes géantes, comme les Vallons dans Orsédia, plan § 4.0 bis, Retenu, voilées de brume), des collines basses ailleurs. La silhouette est donnée pour un
+    /// <b>Forêt des Murmures</b> au nord-ouest (cimes géantes, comme les Vallons dans Orsédia, plan § 4.0 bis, Retenu, voilées de brume), la <b>mer</b> à l'ouest (Côte des Brumes,
+    /// sous-lot V2.29 (2) : un horizon plat à la place des collines), des collines basses ailleurs. La silhouette est donnée pour un
     /// anneau de <see cref="Radius"/> m autour du joueur, en <see cref="Samples"/> points d'azimut (0 : le nord, +z ; 90 : l'est, +x),
     /// raccordés en douceur d'une nature à l'autre. Calcul déterministe (hachage entier), sans Unity : la vue Unity l'étire à sa propre
     /// distance (<c>HorizonView</c>). Affichage seulement. Les « cartes peintes » du plan restent à demander à ChatGPT : ces silhouettes
@@ -41,6 +45,9 @@ namespace EdS.Runtime
         /// <summary>Centres et demi-largeurs (degrés d'azimut) des Crêtes de Fer et de la Forêt des Murmures.</summary>
         public const double MountainsAt = 45, MountainsHalfWidth = 38, ForestAt = 315, ForestHalfWidth = 42;
 
+        /// <summary>Sous-lot V2.29 (2) : centre et demi-largeur (degrés) de la mer, à l'ouest ; hauteur de sa ligne (m, au rayon de référence).</summary>
+        public const double SeaAt = 245, SeaHalfWidth = 32, SeaLevel = 2;
+
         private readonly double[] _height = new double[Samples];
         private readonly HorizonLayer[] _layer = new HorizonLayer[Samples];
 
@@ -52,15 +59,17 @@ namespace EdS.Runtime
                 double hills = HillsBase + 30 * Smooth(i, 24, 11) + 12 * Smooth(i, 8, 23);   // périodes qui divisent 720 (relecture de la PR #182)
                 double mountains = Window(azimuth, MountainsAt, MountainsHalfWidth);
                 double forest = Window(azimuth, ForestAt, ForestHalfWidth);
+                double sea = Window(azimuth, SeaAt, SeaHalfWidth);
                 // Crêtes : des pics nets (un tous les 4 à 5 degrés) sur un socle, la crête la plus haute au milieu de la chaîne.
                 double ridge = 260 + 340 * Smooth(i, 36, 5) + 300 * Peaks(i);
                 double canopy = 120 + 45 * Smooth(i, 10, 7) + 25 * Smooth(i, 3, 13);
                 double h = hills;
                 h = Math.Max(h, hills + (Math.Min(MountainPeak, ridge) - hills) * mountains);
                 h = Math.Max(h, hills + (canopy - hills) * forest);
+                h += (SeaLevel - h) * sea;   // la mer remplace la terre (raccord doux vers la côte)
                 _height[i] = Math.Min(MountainPeak, h);
                 _layer[i] = mountains > 0.35 && _height[i] > hills + 80 ? HorizonLayer.Mountains
-                    : forest > 0.35 ? HorizonLayer.Forest : HorizonLayer.Hills;
+                    : forest > 0.35 ? HorizonLayer.Forest : sea > 0.5 ? HorizonLayer.Sea : HorizonLayer.Hills;
             }
         }
 

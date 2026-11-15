@@ -30,7 +30,7 @@ public class V229HorizonTests
     {
         for (int i = 0; i < HorizonProfile.Samples; i++)
         {
-            Assert.InRange(P.Height(i), HorizonProfile.HillsBase, HorizonProfile.MountainPeak);
+            Assert.InRange(P.Height(i), HorizonProfile.SeaLevel, HorizonProfile.MountainPeak);   // V2.29 (2) : la mer, à l'ouest, au plus bas
             double step = Math.Abs(P.Height(i + 1) - P.Height(i));
             // Hors de la chaîne des Crêtes (et de ses piémonts), la silhouette est douce.
             double fromRange = Math.Abs(((HorizonProfile.Azimuth(i) - HorizonProfile.MountainsAt) % 360 + 540) % 360 - 180);
@@ -52,5 +52,17 @@ public class V229HorizonTests
         Assert.Same(HorizonProfile.Vallons, P);
         double sum = Enumerable.Range(0, HorizonProfile.Samples).Sum(P.Height);
         Assert.InRange(sum / HorizonProfile.Samples, HorizonProfile.HillsBase, 400);
+    }
+
+    /// <summary>Sous-lot V2.29 (2) : la mer de la Côte des Brumes à l'ouest, à la place des collines ; la forêt reste au nord-ouest.</summary>
+    [Fact]
+    public void La_mer_a_l_ouest_la_foret_au_nord_ouest()
+    {
+        Assert.Equal(HorizonLayer.Sea, P.Layer(At(HorizonProfile.SeaAt)));
+        Assert.Equal(HorizonLayer.Sea, P.Layer(At(250)));
+        Assert.InRange(P.Height(At(HorizonProfile.SeaAt)), HorizonProfile.SeaLevel - 0.5, HorizonProfile.SeaLevel + 0.5);
+        Assert.Equal(HorizonLayer.Forest, P.Layer(At(315)));
+        Assert.Equal(HorizonLayer.Hills, P.Layer(At(180)));
+        Assert.False(P.Snow(At(HorizonProfile.SeaAt)));
     }
 }

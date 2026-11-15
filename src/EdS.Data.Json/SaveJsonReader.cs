@@ -208,6 +208,18 @@ namespace EdS.Data.Json
                         return kok ? sk : null;
                     });
                 },
+                ["explored"] = (v, p) =>   // sous-lot V2.29 (2) (version 23) : cases explorées par zone, facultatives
+                {
+                    c.Present.Add("explored");
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « zone : cases explorées »")) return;
+                    var map = new Dictionary<string, string?>(StringComparer.Ordinal);
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (map.Count >= SaveValidator.MaxExploredZones) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SaveValidator.MaxExploredZones} zones."); return; }
+                        map[property.Name] = input.Text(property.Value, p + "." + property.Name);
+                    }
+                    c.Explored = map;
+                },
                 ["mount"] = (v, p) =>   // sous-lot V2.28d (2b) (version 22) : la monture, facultative
                 {
                     c.Present.Add("mount");
@@ -573,7 +585,9 @@ namespace EdS.Data.Json
             // Sous-lot V1.1 (version 6) : bourse en pièces de cuivre, un seul nombre.
             if (!Coins.IsValid(c.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(c));
             b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append(",\n");
-            if (c.Mount != null) b.Append("      \"mount\": \"").Append(c.Mount).Append("\",\n");   // sous-lot V2.28d (2b) (version 22) : identifiant déjà validé
+            if (c.Mount != null) b.Append("      \"mount\": \"").Append(c.Mount).Append("\",\n");
+            if (c.Explored.Count > 0)   // sous-lot V2.29 (2) (version 23) : zones et chaînes déjà validées (aucun échappement nécessaire)
+                b.Append("      \"explored\": {").Append(string.Join(", ", c.Explored.Select(e => "\"" + e.Key + "\": \"" + e.Value + "\""))).Append("},\n");   // sous-lot V2.28d (2b) (version 22) : identifiant déjà validé
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
             b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append(",\n");
