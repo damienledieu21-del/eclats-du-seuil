@@ -336,6 +336,19 @@ public class CompagnonsMoteurTests
     }
 
     [Fact]
+    public void Une_bete_qui_erre_s_engage_contre_un_compagnon_a_1_PV()
+    {
+        // Revue Codex de la PR #169 (5e tour) : un compagnon à 1 PV, seul ennemi à distance d'engagement, n'est pas une « bête à bout ».
+        var wander = new WanderBehavior(WanderStyle.Graze, Fixed.FromInt(3), Fixed.Parse("0.5"), 2000, 500, 1000);
+        var wolf = new AssailantSetup("loup", "meute", Fixed.Zero, Fixed.Zero, null, 600_000, 1500, new[] { Seax(raw: 30, range: "1") }, health: 500,
+            placement: At("4", "0", "0.6"), behavior: new AssailantBehavior(Fixed.Parse("0.5"), aggroRange: Fixed.FromInt(4), wander: wander));
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("bastion", At("-9", "0")), Companion(At("2", "0", "0.45"), health: 1, firstMs: 600_000), wolf },
+            durationMs: 500));
+        JsonElement engaged = Assert.Single(Lines(log, "engaged"));
+        Assert.Equal((0L, "loup", "aggro"), (engaged.Tick(), engaged.Str("actor"), engaged.Str("reason")));
+    }
+
+    [Fact]
     public void Ses_coups_sur_une_creature_ne_sont_ni_reduits_ni_plafonnes_entre_betes()
     {
         CombatRules rules = new() { GuardUpkeepPerSecond = 0, TelegraphMinReactionMs = 0, InfightingDamageReduction = Fixed.Parse("0.5") };

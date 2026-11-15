@@ -284,7 +284,8 @@ namespace EdS.Simulation.Engine
         }
 
         /// <summary>Une créature à bout (1 PV) : les bêtes ne la visent plus et ne s'en soucient plus (une bête n'en tue jamais une autre).</summary>
-        private static bool SpentBeast(Fighter g) => g.Character is null && g.Assailant != null && g.Health is long h && h <= 1;
+        // Revue Codex de la PR #169 (5e tour) : un compagnon à 1 PV n'est pas une bête à bout (il peut tomber : on l'attaque).
+        private static bool SpentBeast(Fighter g) => g.Character is null && g.Assailant != null && g.Companion is null && g.Health is long h && h <= 1;
 
         /// <summary>
         /// Sous-lot V2.4.1 : état d'errance affiché (vue) ; null si la bête n'erre pas. Relecture de la PR #111 : les états de toutes les bêtes
