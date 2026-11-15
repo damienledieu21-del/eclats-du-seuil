@@ -334,12 +334,13 @@ namespace EdS.Game
             foreach ((double x, double z) in poly) vertices.Add(new Vector3((float)x, (drape ? (float)_relief.Height(x, z) : 0f) + lift, (float)z));
             for (int i = 1; i + 1 < poly.Count; i++)
             {
-                // Vers le haut quel que soit le sens du polygone.
+                // Vers le haut quel que soit le sens du polygone. Revue Codex de la PR #173 : dans Unity, la face avant de (a, b, c) a pour
+                // normale Cross(b − a, c − a) ; on garde l'ordre quand elle monte, on l'inverse sinon (Eau.shader : Cull Back).
                 Vector3 a = vertices[start], b = vertices[start + i], c = vertices[start + i + 1];
                 bool up = Vector3.Cross(b - a, c - a).y > 0f;
                 triangles.Add(start);
-                triangles.Add(up ? start + i + 1 : start + i);
                 triangles.Add(up ? start + i : start + i + 1);
+                triangles.Add(up ? start + i + 1 : start + i);
             }
         }
 
@@ -369,9 +370,10 @@ namespace EdS.Game
             for (int k = 0; k + 1 < samples.Count; k++)
             {
                 int a = start + 2 * k;
-                // Normale vers le haut : (gauche, droite) le long de la route, la gauche à +normale.
-                triangles.Add(a); triangles.Add(a + 2); triangles.Add(a + 1);
-                triangles.Add(a + 1); triangles.Add(a + 2); triangles.Add(a + 3);
+                // Normale vers le haut (revue Codex de la PR #173 : Cross(b − a, c − a) monte) : a et a + 2 du côté −normale, a + 1 et a + 3
+                // du côté +normale, la normale étant la perpendiculaire à gauche de la route.
+                triangles.Add(a); triangles.Add(a + 1); triangles.Add(a + 2);
+                triangles.Add(a + 1); triangles.Add(a + 3); triangles.Add(a + 2);
             }
         }
 
