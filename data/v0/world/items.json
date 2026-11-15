@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 7,
   "kind": "items",
-  "contentVersion": "0.18.0-provisoire",
+  "contentVersion": "0.19.0-provisoire",
   "data": {
     "slots": [
       {
@@ -2027,6 +2027,154 @@
         "type": "material",
         "rarity": "common",
         "stack": 20
+      },
+      {
+        "id": "item.farine_de_ble",
+        "name": "Farine de blé",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.farine_de_seigle",
+        "name": "Farine de seigle",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.levain",
+        "name": "Levain chef",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 10
+      },
+      {
+        "id": "item.beurre_de_baratte",
+        "name": "Beurre de baratte",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.oeufs_frais",
+        "name": "Œufs frais",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.lait_cru",
+        "name": "Lait cru",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.sucre_roux",
+        "name": "Sucre roux",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.pomme_du_verger",
+        "name": "Pomme du verger",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.pate_feuilletee",
+        "name": "Pâte feuilletée",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 10
+      },
+      {
+        "id": "item.tarte_renversee_aux_pommes",
+        "name": "Tarte renversée aux pommes",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "common",
+        "stack": 5,
+        "heal": 160,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.couronne_des_moissons",
+        "name": "Couronne des moissons",
+        "icon": "sac",
+        "type": "consumable",
+        "rarity": "rare",
+        "stack": 3,
+        "heal": 200,
+        "cooldownMs": 20000
+      },
+      {
+        "id": "item.friture_du_lac",
+        "name": "Friture du lac",
+        "icon": "sac",
+        "type": "boon",
+        "rarity": "common",
+        "stack": 5,
+        "boon": "meal",
+        "quality": "normal",
+        "bonus": {
+          "maxHealth": 25
+        }
+      },
+      {
+        "id": "item.truite_meuniere",
+        "name": "Truite meunière",
+        "icon": "sac",
+        "type": "boon",
+        "rarity": "common",
+        "stack": 5,
+        "boon": "meal",
+        "quality": "normal",
+        "bonus": {
+          "maxHealth": 30,
+          "maxEndurance": 5
+        }
+      },
+      {
+        "id": "item.quenelles_de_brochet",
+        "name": "Quenelles de brochet",
+        "icon": "sac",
+        "type": "boon",
+        "rarity": "rare",
+        "stack": 5,
+        "boon": "meal",
+        "quality": "superior",
+        "bonus": {
+          "maxHealth": 40,
+          "armor": 15
+        }
+      },
+      {
+        "id": "item.matelote_de_carpe_doree",
+        "name": "Matelote de carpe dorée au cidre",
+        "icon": "sac",
+        "type": "boon",
+        "rarity": "very_rare",
+        "stack": 3,
+        "boon": "meal",
+        "quality": "masterwork",
+        "bonus": {
+          "maxHealth": 60,
+          "maxEndurance": 10,
+          "statusResistance": 10
+        }
       }
     ],
     "loot": [

@@ -1117,7 +1117,10 @@ namespace EdS.Runtime
             }
         }
 
-        /// <summary>Recettes de l'atelier, avec ce qu'il faut et le refus qu'aurait leur fabrication maintenant.</summary>
+        /// <summary>
+        /// Recettes de l'atelier, avec ce qu'il faut et le refus qu'aurait leur fabrication maintenant. Revue Codex de la PR #183 : celles de
+        /// l'atelier où se tient le personnage d'abord (four de Firmin, feu de camp, forge…), puis les autres, chacune dans l'ordre du catalogue.
+        /// </summary>
         public IReadOnlyList<RecipeEntry> Recipes()
         {
             var list = new List<RecipeEntry>();
@@ -1131,7 +1134,7 @@ namespace EdS.Runtime
                     $"{ItemName(r.Output.Item)} ×{r.Output.Count}", refusal, r.Quality, shop.LevelGap(r),
                     (shop.Chances(r, 0).Fail, r.Quality ? shop.Chances(r, 100).Fail : shop.Chances(r, 0).Fail)));
             }
-            return list;
+            return list.Where(e => e.Refusal != CraftRefusal.NotHere).Concat(list.Where(e => e.Refusal == CraftRefusal.NotHere)).ToList();
         }
 
         /// <summary>Fabrique une recette ; un message dit le résultat ou le refus.</summary>

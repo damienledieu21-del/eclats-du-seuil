@@ -324,6 +324,17 @@ Décision de Damien du 15 novembre 2026, vers 14 h 25, rapportée par la session
 | Appâts | La pêche demande des **appâts** : chaque lancer en consomme **un**, acheté chez un marchand ou ramassé (vers, mouches…). Sans appât, le lancer est **refusé** (refus atomique, avec un message). | Retenu (Damien, 15 novembre 2026, 14 h 25) |
 | Prix et sources | Vers de terre 2 cuivre et mouches de mai 3 cuivre à l'épicerie du bourg ; vers à ramasser au gué du moulin, mouches au bord du lac (métier de récolte « pêche »). | Recommandation de Claude (PR #181), valeurs provisoires |
 
+## 7 nonies. Cuisine et boulangerie (Retenu)
+
+Réponses de Damien du 15 novembre 2026, vers 15 h 30, rapportées par la session principale (questions de la PR #183).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Où cuisiner | Au **four de la boulangerie de Firmin** pour les pains et les pâtisseries, et au **feu de camp** pour les poissons et les plats simples. | Retenu (Damien, 15 novembre 2026, 15 h 30) ; répartition des recettes : Claude (pains, viennoiseries, pâtisseries au four ; friture, truite meunière, quenelles, matelote au feu de camp de Gaspard) |
+| Concours de pâtisserie | Le joueur présente **sa** couronne des moissons ou **sa** tarte renversée à Firmin ; la **qualité** du plat (normale, supérieure, chef-d'œuvre) décide du prix ; **un concours par fête et par an**. | Retenu (Damien, 15 novembre 2026, 15 h 30) ; à faire dans la 2e partie |
+| Recettes | Les **treize recettes** sont gardées telles quelles. | Retenu (Damien, 15 novembre 2026, 15 h 30) |
+| Valeurs des plats et prix des ingrédients | Valeurs provisoires de Claude, à ajuster à l'essai. | Recommandation (question non posée) |
+
 ## 7 decies. Cartes à la taverne (Retenu)
 
 Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la session principale (PR #187, vague 4 « la vie à côté du combat »). Détail : [MONDE.md](MONDE.md#cartes-à-la-taverne-vague-4-3e-partie).

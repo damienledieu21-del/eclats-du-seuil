@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.8.0-provisoire",
+  "contentVersion": "0.9.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -33,6 +33,10 @@
       {
         "id": "peche",
         "name": "text.profession.peche"
+      },
+      {
+        "id": "cuisine",
+        "name": "text.profession.cuisine"
       }
     ],
     "recipes": [
@@ -332,6 +336,364 @@
           "count": 1
         },
         "xp": 45
+      },
+      {
+        "id": "recipe.cuisine.levain",
+        "name": "text.recipe.cuisine.levain",
+        "profession": "cuisine",
+        "requiredLevel": 1,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_seigle",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.levain",
+          "count": 2
+        },
+        "xp": 15
+      },
+      {
+        "id": "recipe.cuisine.pain_de_campagne",
+        "name": "text.recipe.cuisine.pain_de_campagne",
+        "profession": "cuisine",
+        "requiredLevel": 1,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 3
+          },
+          {
+            "item": "item.levain",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.pain_de_campagne",
+          "count": 3
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.cuisine.friture_du_lac",
+        "name": "text.recipe.cuisine.friture_du_lac",
+        "profession": "cuisine",
+        "requiredLevel": 1,
+        "place": "feu_de_camp",
+        "inputs": [
+          {
+            "item": "item.gardon",
+            "count": 3
+          },
+          {
+            "item": "item.farine_de_ble",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.friture_du_lac",
+          "count": 1
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.cuisine.miche_de_seigle",
+        "name": "text.recipe.cuisine.miche_de_seigle",
+        "profession": "cuisine",
+        "requiredLevel": 2,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_seigle",
+            "count": 3
+          },
+          {
+            "item": "item.levain",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.miche_de_seigle",
+          "count": 2
+        },
+        "xp": 25
+      },
+      {
+        "id": "recipe.cuisine.pate_feuilletee",
+        "name": "text.recipe.cuisine.pate_feuilletee",
+        "profession": "cuisine",
+        "requiredLevel": 2,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 2
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.pate_feuilletee",
+          "count": 2
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.cuisine.truite_meuniere",
+        "name": "text.recipe.cuisine.truite_meuniere",
+        "profession": "cuisine",
+        "requiredLevel": 2,
+        "place": "feu_de_camp",
+        "inputs": [
+          {
+            "item": "item.truite",
+            "count": 1
+          },
+          {
+            "item": "item.farine_de_ble",
+            "count": 1
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.truite_meuniere",
+          "count": 1
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.cuisine.croissant_au_beurre",
+        "name": "text.recipe.cuisine.croissant_au_beurre",
+        "profession": "cuisine",
+        "requiredLevel": 3,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 2
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 2
+          },
+          {
+            "item": "item.lait_cru",
+            "count": 1
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 1
+          },
+          {
+            "item": "item.levain",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.croissant_au_beurre",
+          "count": 4
+        },
+        "xp": 35
+      },
+      {
+        "id": "recipe.cuisine.chausson_aux_pommes",
+        "name": "text.recipe.cuisine.chausson_aux_pommes",
+        "profession": "cuisine",
+        "requiredLevel": 3,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.pate_feuilletee",
+            "count": 1
+          },
+          {
+            "item": "item.pomme_du_verger",
+            "count": 2
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.chausson_aux_pommes",
+          "count": 2
+        },
+        "xp": 30
+      },
+      {
+        "id": "recipe.cuisine.brioche_doree",
+        "name": "text.recipe.cuisine.brioche_doree",
+        "profession": "cuisine",
+        "requiredLevel": 4,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 2
+          },
+          {
+            "item": "item.oeufs_frais",
+            "count": 3
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 2
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 1
+          },
+          {
+            "item": "item.levain",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.brioche_doree",
+          "count": 2
+        },
+        "xp": 40
+      },
+      {
+        "id": "recipe.cuisine.tarte_renversee_aux_pommes",
+        "name": "text.recipe.cuisine.tarte_renversee_aux_pommes",
+        "profession": "cuisine",
+        "requiredLevel": 5,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.pate_feuilletee",
+            "count": 1
+          },
+          {
+            "item": "item.pomme_du_verger",
+            "count": 4
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 2
+          }
+        ],
+        "output": {
+          "item": "item.tarte_renversee_aux_pommes",
+          "count": 1
+        },
+        "xp": 45
+      },
+      {
+        "id": "recipe.cuisine.quenelles_de_brochet",
+        "name": "text.recipe.cuisine.quenelles_de_brochet",
+        "profession": "cuisine",
+        "requiredLevel": 6,
+        "place": "feu_de_camp",
+        "inputs": [
+          {
+            "item": "item.brochet",
+            "count": 1
+          },
+          {
+            "item": "item.oeufs_frais",
+            "count": 2
+          },
+          {
+            "item": "item.farine_de_ble",
+            "count": 1
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          },
+          {
+            "item": "item.lait_cru",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.quenelles_de_brochet",
+          "count": 1
+        },
+        "xp": 60
+      },
+      {
+        "id": "recipe.cuisine.couronne_des_moissons",
+        "name": "text.recipe.cuisine.couronne_des_moissons",
+        "profession": "cuisine",
+        "requiredLevel": 7,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 1
+          },
+          {
+            "item": "item.oeufs_frais",
+            "count": 4
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 2
+          },
+          {
+            "item": "item.lait_cru",
+            "count": 2
+          },
+          {
+            "item": "item.miel_de_bruyere",
+            "count": 1
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.couronne_des_moissons",
+          "count": 1
+        },
+        "xp": 80
+      },
+      {
+        "id": "recipe.cuisine.matelote_de_carpe_doree",
+        "name": "text.recipe.cuisine.matelote_de_carpe_doree",
+        "profession": "cuisine",
+        "requiredLevel": 8,
+        "place": "feu_de_camp",
+        "inputs": [
+          {
+            "item": "item.carpe_doree",
+            "count": 1
+          },
+          {
+            "item": "item.cidre_du_verger",
+            "count": 2
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          },
+          {
+            "item": "item.farine_de_ble",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.matelote_de_carpe_doree",
+          "count": 1
+        },
+        "xp": 100
       }
     ],
     "nodes": [
@@ -574,6 +936,30 @@
         ],
         "respawnMs": 60000,
         "xp": 5
+      },
+      {
+        "id": "pommes_verger",
+        "profession": "cuisine",
+        "item": "item.pomme_du_verger",
+        "count": 2,
+        "position": [
+          57,
+          -42
+        ],
+        "respawnMs": 60000,
+        "xp": 6
+      },
+      {
+        "id": "pommier_du_bourg",
+        "profession": "cuisine",
+        "item": "item.pomme_du_verger",
+        "count": 2,
+        "position": [
+          -28,
+          -20
+        ],
+        "respawnMs": 60000,
+        "xp": 6
       }
     ],
     "forge": {

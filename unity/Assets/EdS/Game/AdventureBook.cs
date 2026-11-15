@@ -95,6 +95,10 @@ namespace EdS.Game
         private UiText _craftProfessions;
         private IReadOnlyList<RecipeEntry> _recipeData = new RecipeEntry[0];
 
+        // Revue Codex de la PR #183 : plus de recettes que de cartes (cuisine) : l'atelier se feuillette, huit recettes par page.
+        private int _recipeOffset;
+        private UiButton _recipesPrevious, _recipesNext;
+
         // Carte.
         private RawImage _map;
         private RectTransform _mapMarkers;
@@ -683,12 +687,25 @@ namespace EdS.Game
                 UiKit.Place(craft.Rect, new Vector2(660f, 132f), new Vector2(170f, 42f), new Vector2(1f, 1f));
                 _recipes.Add((card, icon, name, kind, recipe, state, craft));
             }
-            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 836f, 1060f, 22f, 0f, 0.5f, 6f);
+            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 220f, 836f, 900f, 22f, 0f, 0.5f, 6f);
+            _recipesPrevious = UiKit.Button(page, "Précédentes", "bouton_sobre", "‹", UiFace.Bold, 22f, UiKit.Ink, () => TurnRecipes(-1));
+            UiKit.Place(_recipesPrevious.Rect, new Vector2(60f, 815f), new Vector2(70f, 42f), Vector2.zero);   // revue Codex de la PR #183 (2e tour) : à gauche, loin du bouton « Réparer » (x 1140 à 1440)
+            _recipesNext = UiKit.Button(page, "Suivantes", "bouton_sobre", "›", UiFace.Bold, 22f, UiKit.Ink, () => TurnRecipes(1));
+            UiKit.Place(_recipesNext.Rect, new Vector2(140f, 815f), new Vector2(70f, 42f), Vector2.zero);
             BuildForge(page);   // sous-lot V1.4 : le petit jeu de forge et la réparation (AdventureBook.Forge.cs)
+        }
+
+        private void TurnRecipes(int step)
+        {
+            int next = _recipeOffset + step * _recipes.Count;
+            if (next < 0 || next >= _recipeData.Count) return;
+            _recipeOffset = next;
+            if (_session != null) RefreshCrafting(_session);
         }
 
         private void Craft(int index)
         {
+            index += _recipeOffset;
             if (_session == null || index >= _recipeData.Count) return;
             // Sous-lot V1.4 : une recette à qualité se forge par le petit jeu (trois frappes) ; les autres se fabriquent tout de suite.
             if (_recipeData[index].Quality) OpenForge(_recipeData[index].Id);
@@ -698,12 +715,15 @@ namespace EdS.Game
         private void RefreshCrafting(AdventureSession a)
         {
             _recipeData = a.Recipes();
+            if (_recipeOffset >= _recipeData.Count) _recipeOffset = 0;
+            _recipesPrevious.Enable(_recipeOffset > 0);
+            _recipesNext.Enable(_recipeOffset + _recipes.Count < _recipeData.Count);
             for (int i = 0; i < _recipes.Count; i++)
             {
-                bool used = i < _recipeData.Count;
+                bool used = _recipeOffset + i < _recipeData.Count;
                 UiKit.Show(_recipes[i].Card, used);
                 if (!used) continue;
-                RecipeEntry r = _recipeData[i];
+                RecipeEntry r = _recipeData[_recipeOffset + i];
                 bool possible = r.Refusal == CraftRefusal.None;
                 var card = _recipes[i];
                 card.Name.Value = r.Name;
