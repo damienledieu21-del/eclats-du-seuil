@@ -31,7 +31,7 @@
 
 | Élément | Version | Où (grep) |
 |---|---|---|
-| Sauvegarde | v21 (v20 et antérieures encore lues ; pêche et carnet `character.fishing`, vague 4 ; v20 : troupe des compagnons `character.companions`, compagnons ; v19 : point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
+| Sauvegarde | v22 (v21 et antérieures encore lues ; monture `character.mount`, V2.28d (2b) ; v21 : pêche et carnet `character.fishing`, vague 4 ; v20 : troupe des compagnons `character.companions`, compagnons ; v19 : point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.18.0 (écrit « 0.18.0-provisoire » ; esquive `combat.dodge`) | `data/v0/rules.json` (`contentVersion`) |
 | Moteur | 0.34.0 (monture, sous-lot V2.28d (2) ; 0.33.0 : compagnons ; 0.32.0 : esquive) | `CombatEngine.cs` (`Version`) |

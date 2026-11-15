@@ -104,6 +104,9 @@ namespace EdS.Data.Saves
         /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises, facultatif.</summary>
         public SavedFishingData? Fishing { get; set; }
 
+        /// <summary>Sous-lot V2.28d (2b) (version 22) : identifiant de la monture du personnage (facultatif : absent sans monture).</summary>
+        public string? Mount { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

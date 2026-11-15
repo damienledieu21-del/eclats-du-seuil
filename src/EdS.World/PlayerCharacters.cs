@@ -341,9 +341,11 @@ namespace EdS.World
         /// <param name="gear">Sous-lot 12.3 : bonus de l'équipement porté (<see cref="Inventory.Gear"/>) ; aucun par défaut.</param>
         /// <param name="shield">Sous-lot V1.2 : garde du bouclier porté (<see cref="Inventory.Shield"/>) ; aucune par défaut (celle des règles).</param>
         /// <param name="equipment">Sous-lot V1.3 : effets de l'équipement porté (<see cref="Inventory.Effects"/>) ; aucun par défaut.</param>
+        /// <param name="withMount">Sous-lot V2.28d (2b) : transmet la monture du personnage (<see cref="MountOf"/>) ; à donner seulement pour
+        /// un combat positionné hors d'un intérieur (le moteur refuse une monture sans espace).</param>
         public static CharacterSetup Setup(SavedCharacter character, CharacterProgression progression, GameData data, CombatantPlacement placement,
             string team = "joueurs", GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null,
-            IEnumerable<EquipmentEffect>? equipment = null)
+            IEnumerable<EquipmentEffect>? equipment = null, bool withMount = false)
         {
             if (data is null) throw new ArgumentNullException(nameof(data));
             if (!data.TryGetClass(character.ClassId, out LoadedClass loaded))
@@ -352,7 +354,43 @@ namespace EdS.World
             IReadOnlyList<BuildViolation> violations = BuildValidator.Validate(build, loaded.Definition, data.Rules.Progression);
             if (violations.Count > 0)
                 throw new ArgumentException($"Build du personnage invalide au niveau {build.Level} : {violations[0].Subject} : {violations[0].Message}", nameof(character));
-            return new CharacterSetup(character.Id, team, loaded.Definition, build, 0, placement, null, gear, consumables, shield, equipment);
+            return new CharacterSetup(character.Id, team, loaded.Definition, build, 0, placement, null, gear, consumables, shield, equipment,
+                mount: withMount ? MountOf(character) : null);
+        }
+
+        /// <summary>Sous-lot V2.28d (2b) : identifiant du cheval des Vallons dans la sauvegarde (<see cref="SavedCharacter.Mount"/>).</summary>
+        public const string Horse = "mount.cheval";
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) (recommandation de Claude, en attendant une vraie quête du cheval) : quête dont la fin donne le cheval, la
+        /// mission du chapitre 1 (Gaspard envoie au bourg).
+        /// </summary>
+        public const string HorseQuest = "quest.traces_sous_le_moulin";
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : monture du moteur pour le personnage (le cheval, <see cref="MountSetup.HorseSpeed"/>), ou null sans monture.
+        /// </summary>
+        /// <exception cref="ArgumentException">Monture inconnue (la sauvegarde validée n'en contient jamais).</exception>
+        public static MountSetup? MountOf(SavedCharacter character)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            switch (character.Mount)
+            {
+                case null: return null;
+                case Horse: return new MountSetup(MountSetup.HorseSpeed);
+                default: throw new ArgumentException($"Monture « {character.Mount} » inconnue.", nameof(character));
+            }
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : le personnage avec son cheval s'il a fini la mission du chapitre 1 (<see cref="HorseQuest"/>, d'après son
+        /// histoire <paramref name="story"/>) et n'a pas encore de monture ; tel quel sinon. Idempotente.
+        /// </summary>
+        public static SavedCharacter GiveHorse(SavedCharacter character, SavedStory story)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (story is null) throw new ArgumentNullException(nameof(story));
+            return character.Mount is null && story.Quests.TryGetValue(HorseQuest, out QuestProgress q) && q.IsDone ? character.WithMount(Horse) : character;
         }
     }
 }
