@@ -5,6 +5,7 @@ using System.Linq;
 using EdS.Data.Scenarios;
 using EdS.Domain.Collections;
 using EdS.Domain.Space;
+using EdS.Domain.Time;
 
 namespace EdS.Data.Story
 {
@@ -109,11 +110,84 @@ namespace EdS.Data.Story
         }
 
         /// <summary>La fête a lieu le jour <paramref name="day"/> du monde (à ses heures).</summary>
-        public bool OnDay(long day) => Weekday is int w ? WorldCalendar.WeekdayOf(day) == w
+        public bool OnDay(long day) => CalendarOnly ? false : Weekday is int w ? WorldCalendar.WeekdayOf(day) == w
             : WorldCalendar.SeasonIndexOf(day) == Season && WorldCalendar.DayOfSeason(day) == Day;
 
         /// <summary>La fête bat son plein au jour <paramref name="day"/>, à la minute <paramref name="minute"/>.</summary>
         public bool At(long day, int minute) => OnDay(day) && minute >= From && minute < To;
+
+        /// <summary>Fêtes aux vraies dates (histoire en version 14) : mois et jour du premier jour réel, et durée en jours réels ; null sans date.</summary>
+        public int? Month { get; private set; }
+        public int? StartDay { get; private set; }
+        public int? Days { get; private set; }
+
+        public bool HasDate => Month != null;
+
+        /// <summary>
+        /// Fêtes aux vraies dates : fête du calendrier seulement (son contenu reste à écrire) : son nom s'affiche au calendrier pendant sa
+        /// fenêtre de dates, mais elle ne met pas le monde en fête (ni invités, ni conditions, ni habits de fête).
+        /// </summary>
+        public bool CalendarOnly { get; private set; }
+
+        internal Festival AsCalendarOnly()
+        {
+            CalendarOnly = true;
+            return this;
+        }
+
+        internal Festival WithDate(int? month, int? day, int? days)
+        {
+            if (month is null || day is null || days is null) return this;
+            Month = month;
+            StartDay = day;
+            Days = days;
+            return this;
+        }
+
+        /// <summary>Premier jour réel de la fête de l'année <paramref name="year"/>.</summary>
+        public CivilDate StartIn(int year) => new CivilDate(year, Month ?? throw new InvalidOperationException("Fête sans date réelle."), StartDay!.Value);
+
+        /// <summary>Premier jour réel de l'occurrence qui contient <paramref name="date"/> (elle peut avoir commencé l'année d'avant), ou null.</summary>
+        public CivilDate? OccurrenceOf(CivilDate date)
+        {
+            if (!HasDate) return null;
+            foreach (int year in new[] { date.Year, date.Year - 1 })
+            {
+                if (year < CivilDate.MinYear) continue;
+                CivilDate start = StartIn(year);
+                if (date >= start && date.DayNumber < checked(start.DayNumber + Days!.Value)) return start;
+            }
+            return null;
+        }
+
+        /// <summary>La fête datée a lieu le jour réel <paramref name="date"/> (heure de Paris).</summary>
+        public bool OnCivil(CivilDate date) => OccurrenceOf(date) != null;
+
+        /// <summary>
+        /// Fêtes aux vraies dates : la fête a lieu le jour du monde <paramref name="day"/>, dont le jour réel (heure de Paris, à midi du monde)
+        /// est <paramref name="civil"/> : une fête datée suit la date réelle quand elle est connue ; sinon (ou fête de la semaine, ou fête
+        /// sans date), le calendrier du jeu.
+        /// </summary>
+        public bool OnDay(long day, CivilDate? civil) => !CalendarOnly && (Weekday is null && HasDate && civil is CivilDate c ? OnCivil(c) : OnDay(day));
+
+        public bool At(long day, int minute, CivilDate? civil) => OnDay(day, civil) && minute >= From && minute < To;
+
+        /// <summary>Tour de la rotation des concours : par année réelle pour une fête datée dont la date est connue.</summary>
+        public int RoundOn(long day, CivilDate? civil) =>
+            Weekday is null && HasDate && civil is CivilDate c && OccurrenceOf(c) is CivilDate start ? start.Year % Rounds : RoundOn(day);
+
+        /// <summary>Deux fêtes datées partagent au moins un jour réel (sur une année non bissextile et à cheval sur deux années).</summary>
+        public static bool DatesOverlap(Festival a, Festival b)
+        {
+            for (int ya = 2027; ya <= 2028; ya++)
+                for (int yb = 2027; yb <= 2028; yb++)
+                {
+                    long sa = a.StartIn(ya).DayNumber, sb = b.StartIn(yb).DayNumber;
+                    if (sa < sb + b.Days!.Value && sb < sa + a.Days!.Value) return true;
+                }
+            return false;
+        }
+
 
         /// <summary>Invité <paramref name="npc"/>, ou null.</summary>
         public FestivalGuest? Guest(string npc) => Guests.FirstOrDefault(g => g.Npc == npc);
@@ -131,6 +205,19 @@ namespace EdS.Data.Story
         public string? To { get; set; }
         public int? Rounds { get; set; }
         public List<FestivalGuestData?>? Guests { get; set; }
+
+        /// <summary>Fêtes aux vraies dates (version 14) : date réelle facultative d'une fête annuelle.</summary>
+        public FestivalDateData? Date { get; set; }
+
+        /// <summary>Fêtes aux vraies dates (version 14) : fête du calendrier seulement (nom et date, contenu à écrire).</summary>
+        public bool? CalendarOnly { get; set; }
+    }
+
+    public sealed class FestivalDateData
+    {
+        public int? Month { get; set; }
+        public int? Day { get; set; }
+        public int? Days { get; set; }
     }
 
     public sealed class FestivalGuestData
