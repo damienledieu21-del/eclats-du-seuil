@@ -194,6 +194,33 @@ public class V226SecteursMondeTests
     }
 
     [Fact]
+    public void Cavalier_qui_passe_arrive_en_selle_avec_sa_monture()
+    {
+        // Sous-lot V2.28d (2), relecture indépendante de la PR #180 : la monture passe avec le personnage (Sectors.Arriving), et il arrive en
+        // selle, à la vitesse de son cheval.
+        CharacterSetup hero = Hero("alice", 200, 128);
+        hero = new CharacterSetup(hero.Id, hero.Team, hero.Class, hero.Build, 0, hero.Placement, mount: new MountSetup(MountSetup.HorseSpeed));
+        SectorWorld w = World(Map());
+        w.Enter(hero);
+        w.Step();
+        CombatEngine west = w.EngineOf("alice");
+        west.Submit(new CombatCommand(west.CurrentTick * 50, "alice", CombatAction.Mount));
+        w.Step();
+        Assert.True(west.View("alice").Mounted);
+        Walk(w, "alice", 1, 0);
+        List<SectorEvent> events = Run(w, 200, e => e.Kind == SectorEventKind.Arrived);
+        Assert.Contains(events, e => e.Kind == SectorEventKind.Arrived);
+        w.Step();
+        CombatantView after = w.ViewOf("alice");
+        Assert.True(after.IsPresent);
+        Assert.True(after.Mounted);
+        Assert.Equal(MountSetup.HorseSpeed, after.MountSpeed);
+        Fixed x = after.Position!.Value.X;
+        w.Step();
+        Assert.Equal(Fixed.Parse("0.65"), w.ViewOf("alice").Position!.Value.X - x);   // 13 m/s : 0,65 m par tick
+    }
+
+    [Fact]
     public void Pas_de_depart_sans_place_dans_le_secteur_d_arrivee()
     {
         // Relecture indépendante de la PR #150 : secteur est plein (deux places, deux loups au calme) : le joueur ne part pas, il reste dans

@@ -34,7 +34,7 @@ namespace EdS.Data.Tests;
 public class V241PromenadeMoteurTests
 {
     private const string Promenade = "espace_promenade";
-    private const string Latest = "reference-0.33.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
+    private const string Latest = "reference-0.34.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.28.0-contenu-0.6.0-regles-0.16.0";
     private static readonly string[] Deer = { "cerf2", "cerf3", "cerf_chef" };
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
@@ -72,7 +72,7 @@ public class V241PromenadeMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.33.0", 27, 21, 8), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.34.0", 28, 22, 9), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal((Fixed.FromInt(30), 15_000L), (ShippedData.Rules.Combat.WanderMaxRadius, ShippedData.Rules.Combat.WanderCalmMs));
     }
@@ -213,7 +213,7 @@ public class V241PromenadeMoteurTests
         var engine = new CombatEngine(setup, log);
         while (engine.CurrentTick < 560) engine.Step();
         CombatSnapshot quiet = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":8,", quiet.Text);
+        Assert.StartsWith("{\"snapshot\":9,", quiet.Text);
         Assert.Contains("\"quietSince\":", quiet.Text.Split('\n').Single(l => l.StartsWith("{\"fighter\":\"cerf_chef\",\"presence\"", StringComparison.Ordinal)).Replace("\"quietSince\":null", ""));
         var resumedLog = new MemoryCombatLog();
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), quiet, resumedLog);
@@ -344,7 +344,7 @@ public class V241PromenadeMoteurTests
     public void Schemas_JSON_du_sous_lot()
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(21, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(22, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         JsonNode wander = scenario["$defs"]!["combatant"]!["properties"]!["behavior"]!["properties"]!["wander"]!;
         Assert.Equal(new[] { "style", "radius", "pace", "legMs", "pauseMs" }, wander["required"]!.AsArray().Select(v => v!.GetValue<string>()));
         Assert.Equal(new[] { "graze", "hop", "patrol", "root" }, wander["properties"]!["style"]!["enum"]!.AsArray().Select(v => v!.GetValue<string>()));
@@ -521,8 +521,8 @@ public class V241PromenadeMoteurTests
         var engine = new CombatEngine(Load(), new MemoryCombatLog());
         for (int i = 0; i < 20; i++) engine.Step();
         string text = engine.Snapshot().Text;
-        Assert.StartsWith("{\"snapshot\":8,", text);   // esquive : format 7 ; compagnons : 8
-        string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":8,".Length);
+        Assert.StartsWith("{\"snapshot\":9,", text);   // esquive : format 7 ; compagnons : 8
+        string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":9,".Length);
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(old), new MemoryCombatLog()));
     }
 

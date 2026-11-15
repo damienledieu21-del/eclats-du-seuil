@@ -42,9 +42,16 @@ namespace EdS.Domain.Combat
         /// <summary>Recharge partagée restante des objets de soin, en ms (0 : prête).</summary>
         public long ConsumableCooldownMs { get; }
 
+        /// <summary>
+        /// Sous-lot V2.28d (2), monture (scénarios en schéma 22, journal 28) : le personnage passe en selle (il arrive monté) ; faux par défaut.
+        /// Seulement pour un personnage qui a une monture (<see cref="CharacterSetup.Mount"/>).
+        /// </summary>
+        public bool Mounted { get; }
+
         public CarriedState(long? health = null, long? endurance = null, long enduranceRegenMs = 0, int resonance = 0, int rampartCharges = 0,
-            long globalCooldownMs = 0, IEnumerable<KeyValuePair<string, long>>? cooldowns = null, long consumableCooldownMs = 0)
+            long globalCooldownMs = 0, IEnumerable<KeyValuePair<string, long>>? cooldowns = null, long consumableCooldownMs = 0, bool mounted = false)
         {
+            Mounted = mounted;
             Health = health;
             Endurance = endurance;
             EnduranceRegenMs = enduranceRegenMs;
@@ -64,7 +71,7 @@ namespace EdS.Domain.Combat
 
         /// <summary>Rien d'emporté : l'arrivée est celle d'un combattant plein.</summary>
         public bool IsEmpty => Health is null && Endurance is null && EnduranceRegenMs == 0 && Resonance == 0 && RampartCharges == 0
-            && GlobalCooldownMs == 0 && Cooldowns.Count == 0 && ConsumableCooldownMs == 0;
+            && GlobalCooldownMs == 0 && Cooldowns.Count == 0 && ConsumableCooldownMs == 0 && !Mounted;
 
         /// <summary>Recharges de compétence au plus (borne de validation, au-delà des compétences d'une classe).</summary>
         public const int MaxCooldowns = 32;

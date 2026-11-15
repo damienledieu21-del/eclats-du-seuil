@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Globalization;
 using EdS.Data.Zones;
 using EdS.Runtime;
@@ -28,7 +29,7 @@ namespace EdS.Game
         private readonly Dictionary<RegionCell, MeshRenderer> _cells = new Dictionary<RegionCell, MeshRenderer>();
         private readonly Stack<MeshRenderer> _pool = new Stack<MeshRenderer>();
         private readonly Dictionary<int, MeshRenderer> _far = new Dictionary<int, MeshRenderer>();
-        private readonly List<Mesh> _meshes = new List<Mesh>();
+        private readonly HashSet<Mesh> _meshes = new HashSet<Mesh>();
         private readonly Stopwatch _watch = new Stopwatch();
         private Vector3[] _vertices = new Vector3[0];
         private Vector3[] _normals = new Vector3[0];
@@ -36,12 +37,30 @@ namespace EdS.Game
         private float _worstMs, _lastMs;
         private int _frames;
 
-        private CellStreamView(string key, RegionGrid grid, StreamingProfile profile, GroundRelief relief, Rect covered)
+        // Sous-lot V2.28d (1) : décor de la région par cases (CellDecor), pour les cases de l'anneau de détail (0) seulement.
+        private readonly AdventureMap _whole;
+        private readonly RegionGrid _grid;
+        private readonly GroundRelief _relief;
+        private readonly (double, double, double, double)? _hole;
+        private readonly Dictionary<RegionCell, GameObject> _decor = new Dictionary<RegionCell, GameObject>();
+        private readonly Material _water, _ravine, _road, _trunk, _leaves, _needles;
+
+        private CellStreamView(string key, AdventureMap whole, RegionGrid grid, StreamingProfile profile, GroundRelief relief, Rect covered)
         {
             _key = key;
             _root = new GameObject("Terrain de la région");
             (double, double, double, double)? hole = null;
             if (covered.width > 0f && covered.height > 0f) hole = (covered.x, covered.y, covered.x + covered.width, covered.y + covered.height);
+            _whole = whole;
+            _grid = grid;
+            _relief = relief;
+            _hole = hole;
+            _water = StyleWorld.Water() ?? ArenaView.MakeMaterial(new Color(0.18f, 0.36f, 0.62f));
+            _ravine = ArenaView.MakeMaterial(new Color(0.22f, 0.2f, 0.18f));
+            _road = ArenaView.MakeMaterial(new Color(0.48f, 0.4f, 0.28f));
+            _trunk = ArenaView.MakeMaterial(new Color(0.3f, 0.21f, 0.13f));
+            _leaves = ArenaView.MakeMaterial(new Color(0.22f, 0.36f, 0.16f));
+            _needles = ArenaView.MakeMaterial(new Color(0.13f, 0.26f, 0.15f));
             _terrain = new RegionTerrain(grid, profile, (x, z) => relief.Height(x, z), hole);
             _material = ArenaView.MakeMaterial(new Color(0.36f, 0.45f, 0.26f));
             StyleCatalog catalog = StyleCatalog.Loaded;
@@ -79,7 +98,7 @@ namespace EdS.Game
             }
             if (_current == null)
             {
-                _current = new CellStreamView(key, map.Region, profile, relief, covered);
+                _current = new CellStreamView(key, map.Whole, map.Region, profile, relief, covered);
                 // Chargement de la zone (l'écran se construit déjà) : terrain lointain et anneaux autour du centre de l'aire, sans budget.
                 _current._terrain.Update((map.MinX + map.MaxX) / 2, (map.MinZ + map.MaxZ) / 2, Time.unscaledTime);
                 _current._terrain.Warm(_current);
@@ -172,6 +191,11 @@ namespace EdS.Game
         private readonly List<(bool Far, RegionCell Cell, int Block, MeshRenderer Renderer, bool Visible)> _staged =
             new List<(bool, RegionCell, int, MeshRenderer, bool)>();
 
+        // Sous-lot V2.28d (1) : décor préparé avec sa case (calculé et construit, inactif, pendant la préparation de la case), montré à la
+        // publication ; null : la case n'a plus de décor (quittée, déchargée ou hors de l'anneau de détail). Relecture de la PR #173 : la
+        // publication n'échange que des objets déjà faits (rien qui puisse échouer) ; un échec de préparation est rattrapé par Discard.
+        private readonly Dictionary<RegionCell, GameObject> _stagedDecor = new Dictionary<RegionCell, GameObject>();
+
         private MeshRenderer Spare() => _pool.Count > 0 ? _pool.Pop() : Make("Terrain");
 
         void ITerrainSink.StageCell(RegionCell cell, int ring, TerrainPatch patch)
@@ -186,8 +210,17 @@ namespace EdS.Game
                 bool shadows = ring == 0 && _terrain.Profile.DetailShadows;
                 renderer.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
                 renderer.receiveShadows = ring == 0;
+                // Sous-lot V2.28d (1) : le décor des cases de détail, calculé et construit ici, inactif (pendant la préparation de la case : le
+                // budget de l'image est compté entre deux préparations, une case de forêt peut le dépasser de quelques millisecondes).
+                if (ring == 0 && !_decor.ContainsKey(cell)) StageDecor(cell, BuildDecor(CellDecor.For(_whole, _grid, cell, _hole)));
+                else if (ring == 0) StageDecor(cell, null, keep: true);
+                else StageDecor(cell, null);
             }
-            else _staged.Add((false, cell, 0, null, false));
+            else
+            {
+                _staged.Add((false, cell, 0, null, false));
+                StageDecor(cell, null);
+            }
         }
 
         void ITerrainSink.StageFarBlock(int column, int row, TerrainPatch patch)
@@ -220,10 +253,213 @@ namespace EdS.Game
                 }
             }
             _staged.Clear();
+            // Sous-lot V2.28d (1) : décor montré avec sa case de détail, retiré quand la case quitte l'anneau de détail ou se décharge.
+            foreach (KeyValuePair<RegionCell, GameObject> d in _stagedDecor)
+            {
+                _decor.TryGetValue(d.Key, out GameObject old);
+                if (old != null) DestroyDecor(old);
+                if (d.Value == null) _decor.Remove(d.Key);
+                else
+                {
+                    d.Value.SetActive(true);
+                    _decor[d.Key] = d.Value;
+                }
+            }
+            _stagedDecor.Clear();
+        }
+
+        /// <summary>Décor préparé d'une case (inactif) ; <paramref name="keep"/> : la case garde son décor actuel (rien à préparer).</summary>
+        private void StageDecor(RegionCell cell, GameObject decor, bool keep = false)
+        {
+            if (_stagedDecor.TryGetValue(cell, out GameObject previous) && previous != null) DestroyDecor(previous);
+            if (keep) _stagedDecor.Remove(cell);
+            else _stagedDecor[cell] = decor;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28d (1) : objets du décor d'une case : eau et ravins (plats, posés sur le relief), routes (rubans drapés sur le relief),
+        /// arbres (un maillage de troncs et un de houppiers par case : cônes pour la forêt des Loups, boules taillées pour les feuillus),
+        /// rochers des parois (modèles de l'atelier). Affichage seulement.
+        /// </summary>
+        private GameObject BuildDecor(CellDecorSet set)
+        {
+            var root = new GameObject("Décor " + set.Cell.Name);
+            root.SetActive(false);   // préparé, pas encore montré
+            root.transform.SetParent(_root.transform, false);
+            if (set.IsEmpty) return root;
+            var flat = new List<Vector3>();
+            var flatTris = new List<int>();
+            foreach (IReadOnlyList<(double X, double Z)> poly in set.Water) Fan(poly, 0.03f, false, flat, flatTris);
+            AddMesh(root, "Eau", flat, flatTris, _water, false);
+            flat = new List<Vector3>();
+            flatTris = new List<int>();
+            foreach (IReadOnlyList<(double X, double Z)> poly in set.Ravines) Fan(poly, 0.1f, true, flat, flatTris);
+            AddMesh(root, "Ravins", flat, flatTris, _ravine, false);
+            var road = new List<Vector3>();
+            var roadTris = new List<int>();
+            foreach (CellRoad r in set.Roads) Ribbon(r, road, roadTris);
+            AddMesh(root, "Routes", road, roadTris, _road, false);
+            var trunks = new List<Vector3>();
+            var trunkTris = new List<int>();
+            var crowns = new List<Vector3>();
+            var crownTris = new List<int>();
+            var needles = new List<Vector3>();
+            var needleTris = new List<int>();
+            foreach (CellTree t in set.Trees)
+            {
+                float y = (float)_relief.Height(t.X, t.Z), s = (float)t.Scale;
+                var foot = new Vector3((float)t.X, y, (float)t.Z);
+                Pyramid(foot, 0.25f * s, 2.2f * s, trunks, trunkTris);
+                if (t.Wolves) Pyramid(foot + Vector3.up * 1.6f * s, 2.0f * s, 7.5f * s, needles, needleTris);
+                else
+                {
+                    Pyramid(foot + Vector3.up * 1.8f * s, 2.6f * s, 3.4f * s, crowns, crownTris);
+                    Pyramid(foot + Vector3.up * (5.2f * s), 2.6f * s, -2.2f * s, crowns, crownTris);
+                }
+            }
+            AddMesh(root, "Troncs", trunks, trunkTris, _trunk, true);
+            AddMesh(root, "Feuillus", crowns, crownTris, _leaves, true);
+            AddMesh(root, "Résineux", needles, needleTris, _needles, true);
+            foreach (CellRock rock in set.Rocks)
+            {
+                var at = new Vector3((float)rock.X, (float)_relief.Height(rock.X, rock.Z), (float)rock.Z);
+                StyleLook.Decor(root.transform, StyleSlot.Rock, rock.Id, at, 0f, (float)rock.Size * (1.0f + 0.003f * StyleRules.Variant(rock.Id + "/taille", 100)));
+            }
+            return root;
+        }
+
+        /// <summary>Pas de la subdivision des polygones drapés (m) : revue Codex de la PR #173, le ravin suit le relief au lieu de le couper.</summary>
+        private const double DrapeStep = 4.0;
+
+        private void Fan(IReadOnlyList<(double X, double Z)> poly, float lift, bool drape, List<Vector3> vertices, List<int> triangles)
+        {
+            if (poly.Count < 3) return;
+            // Revue Codex de la PR #173 : un polygone drapé est subdivisé (même nombre de pas pour tous ses triangles, donc sans fente entre
+            // eux), chaque sommet posé sur le relief ; l'eau, plate, garde ses grands triangles.
+            int steps = 1;
+            if (drape)
+            {
+                double longest = 0;
+                for (int i = 0; i < poly.Count; i++)
+                    for (int k = i + 1; k < poly.Count; k++)
+                    {
+                        double dx = poly[k].X - poly[i].X, dz = poly[k].Z - poly[i].Z;
+                        longest = System.Math.Max(longest, dx * dx + dz * dz);
+                    }
+                steps = Mathf.Clamp(Mathf.CeilToInt((float)(System.Math.Sqrt(longest) / DrapeStep)), 1, 64);
+            }
+            (double X, double Z) o = poly[0];
+            for (int i = 1; i + 1 < poly.Count; i++)
+            {
+                (double X, double Z) p1 = poly[i], p2 = poly[i + 1];
+                // Vers le haut quel que soit le sens du polygone. Revue Codex de la PR #173 : dans Unity, la face avant de (a, b, c) a pour
+                // normale Cross(b − a, c − a) ; on garde l'ordre quand elle monte, on l'inverse sinon (Eau.shader : Cull Back).
+                bool up = (p1.Z - o.Z) * (p2.X - o.X) - (p1.X - o.X) * (p2.Z - o.Z) > 0;
+                int start = vertices.Count;
+                // Grille barycentrique : rangée r (0 à steps), colonne c (0 à steps − r) ; sommet = o + (p1 − o)·c/n + (p2 − o)·r/n.
+                for (int r = 0; r <= steps; r++)
+                    for (int c = 0; c <= steps - r; c++)
+                    {
+                        double x = o.X + (p1.X - o.X) * c / steps + (p2.X - o.X) * r / steps;
+                        double z = o.Z + (p1.Z - o.Z) * c / steps + (p2.Z - o.Z) * r / steps;
+                        vertices.Add(new Vector3((float)x, (drape ? (float)_relief.Height(x, z) : 0f) + lift, (float)z));
+                    }
+                int Index(int r, int c) => start + r * (steps + 1) - r * (r - 1) / 2 + c;
+                void Tri(int a, int b, int c)
+                {
+                    triangles.Add(a);
+                    triangles.Add(up ? b : c);
+                    triangles.Add(up ? c : b);
+                }
+                for (int r = 0; r < steps; r++)
+                    for (int c = 0; c < steps - r; c++)
+                    {
+                        Tri(Index(r, c), Index(r, c + 1), Index(r + 1, c));
+                        if (c + 1 < steps - r) Tri(Index(r, c + 1), Index(r + 1, c + 1), Index(r + 1, c));
+                    }
+            }
+        }
+
+        private void Ribbon(CellRoad road, List<Vector3> vertices, List<int> triangles)
+        {
+            float half = (float)road.Width / 2f;
+            var samples = new List<(double X, double Z, double Nx, double Nz)>();
+            for (int i = 0; i + 1 < road.Points.Count; i++)
+            {
+                var a = road.Points[i];
+                var b = road.Points[i + 1];
+                double len = System.Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Z - a.Z) * (b.Z - a.Z));
+                if (len < 1e-6) continue;
+                double nx = -(b.Z - a.Z) / len, nz = (b.X - a.X) / len;
+                int n = Mathf.Max(1, Mathf.CeilToInt((float)(len / 4.0)));
+                for (int k = i == 0 ? 0 : 1; k <= n; k++) samples.Add((a.X + (b.X - a.X) * k / n, a.Z + (b.Z - a.Z) * k / n, nx, nz));
+            }
+            if (samples.Count < 2) return;
+            int start = vertices.Count;
+            foreach ((double x, double z, double nx, double nz) in samples)
+                for (int k = 0; k < 2; k++)
+                {
+                    float side = k == 0 ? -half : half;
+                    double px = x + nx * side, pz = z + nz * side;
+                    vertices.Add(new Vector3((float)px, (float)_relief.Height(px, pz) + 0.06f, (float)pz));
+                }
+            for (int k = 0; k + 1 < samples.Count; k++)
+            {
+                int a = start + 2 * k;
+                // Normale vers le haut (revue Codex de la PR #173 : Cross(b − a, c − a) monte) : a et a + 2 du côté −normale, a + 1 et a + 3
+                // du côté +normale, la normale étant la perpendiculaire à gauche de la route.
+                triangles.Add(a); triangles.Add(a + 1); triangles.Add(a + 2);
+                triangles.Add(a + 1); triangles.Add(a + 3); triangles.Add(a + 2);
+            }
+        }
+
+        /// <summary>Pyramide à base carrée (pointe en haut si <paramref name="height"/> > 0, en bas sinon) : quatre faces, sans fond.</summary>
+        private static void Pyramid(Vector3 foot, float half, float height, List<Vector3> vertices, List<int> triangles)
+        {
+            Vector3 tip = foot + Vector3.up * height;
+            var corners = new[] { foot + new Vector3(-half, 0f, -half), foot + new Vector3(half, 0f, -half), foot + new Vector3(half, 0f, half), foot + new Vector3(-half, 0f, half) };
+            for (int i = 0; i < 4; i++)
+            {
+                int start = vertices.Count;
+                vertices.Add(corners[i]);
+                vertices.Add(corners[(i + 1) % 4]);
+                vertices.Add(tip);
+                bool up = height > 0f;
+                triangles.Add(start);
+                triangles.Add(up ? start + 2 : start + 1);
+                triangles.Add(up ? start + 1 : start + 2);
+            }
+        }
+
+        private void AddMesh(GameObject parent, string name, List<Vector3> vertices, List<int> triangles, Material material, bool shadows)
+        {
+            if (vertices.Count == 0 || triangles.Count == 0) return;
+            var go = new GameObject(name);
+            go.transform.SetParent(parent.transform, false);
+            var mesh = new Mesh { name = parent.name + " " + name };
+            if (vertices.Count > 65000) mesh.indexFormat = IndexFormat.UInt32;
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            _meshes.Add(mesh);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = shadows && _terrain.Profile.DetailShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+        }
+
+        private void DestroyDecor(GameObject root)
+        {
+            foreach (MeshFilter f in root.GetComponentsInChildren<MeshFilter>(true))
+                if (f.sharedMesh != null && _meshes.Remove(f.sharedMesh)) Object.Destroy(f.sharedMesh);
+            Object.Destroy(root);
         }
 
         void ITerrainSink.Discard()
         {
+            foreach (GameObject decor in _stagedDecor.Values) if (decor != null) DestroyDecor(decor);
+            _stagedDecor.Clear();
             foreach ((bool far, RegionCell cell, int block, MeshRenderer renderer, bool visible) in _staged)
                 if (renderer != null)
                 {
@@ -251,11 +487,15 @@ namespace EdS.Game
             foreach (Mesh mesh in _meshes) if (mesh != null) Object.Destroy(mesh);   // objets recyclés (inactifs) compris
             _meshes.Clear();
             _staged.Clear();
+            _stagedDecor.Clear();
+            _decor.Clear();   // leurs objets sont sous la racine, détruite ci-dessous ; leurs maillages, avec les autres
             _cells.Clear();
             _far.Clear();
             _pool.Clear();
             if (_root != null) Object.Destroy(_root);
             if (_material != null) Object.Destroy(_material);
+            foreach (Material m in new[] { _ravine, _road, _trunk, _leaves, _needles }) if (m != null) Object.Destroy(m);
+            if (_water != null && _water != StyleWorld.Water()) Object.Destroy(_water);
         }
     }
 }
