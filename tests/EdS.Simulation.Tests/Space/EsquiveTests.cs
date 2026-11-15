@@ -388,4 +388,27 @@ public class EsquiveTests
         string tampered = snapshot.Text.Replace("\"dodgeStartTick\":19", "\"dodgeStartTick\":18");
         Assert.ThrowsAny<Exception>(() => CombatEngine.Restore(setup, CombatSnapshot.Parse(tampered), new MemoryCombatLog()));
     }
+
+    [Fact]
+    public void Instantane_apres_des_bonds_loin_d_une_creature_engagee_restaure()
+    {
+        // Revue Codex de la PR #164 (2e tour) : une créature immobile (portée de 20 m) engagée par proximité, puis le personnage, qui n'a jamais
+        // marché, s'éloigne de deux bonds : la borne d'engagement de l'instantané compte les bonds, la reprise est admise et exacte.
+        var bear = new AssailantSetup("ours", "cibles", Fixed.Zero, Fixed.Zero, "bastion", 600_000, 2000, new[] { Blow() },
+            placement: At("5", "0", speed: "0.1"), behavior: new AssailantBehavior(Fixed.FromInt(20), aggroRange: Fixed.Parse("4.5")));   // lente : sa propre borne reste petite
+        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), bear }, new[] { Dodge(100, "-1", "0"), Dodge(1200, "-1", "0") },
+            durationMs: 3000);
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log);
+        while (engine.CurrentTick < 40) engine.Step();
+        Assert.True(engine.View("ours").Engaged);
+        Assert.Equal(V("-6", "0"), engine.View("bastion").Position);
+        CombatSnapshot snapshot = engine.Snapshot();
+        var resumedLog = new MemoryCombatLog();
+        CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, resumedLog);
+        Assert.NotNull(CombatEngine.Restore(engine.CompletedSetup(), snapshot, new MemoryCombatLog()));
+        while (resumed.Step()) { }
+        while (engine.Step()) { }
+        Assert.Equal(log.Lines.Skip(log.Lines.Count - resumedLog.Lines.Count + 1), resumedLog.Lines.Skip(1));
+    }
 }

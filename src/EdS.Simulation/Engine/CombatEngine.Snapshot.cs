@@ -1636,6 +1636,13 @@ namespace EdS.Simulation.Engine
             return total;
         }
 
+        /// <summary>
+        /// Borne de la distance parcourue par <paramref name="g"/> depuis <paramref name="from"/> : pas de marche (<see cref="MovingTicks"/> ×
+        /// <see cref="StepBound"/>) plus bonds d'esquive (<see cref="DodgeTravelBound"/> ; revue Codex de la PR #164 : la même borne partout,
+        /// places, engagement et axe des zones). Nulle seulement s'il n'a pas pu bouger.
+        /// </summary>
+        private long TravelBound(Fighter g, long from) => checked(MovingTicks(g, from) * StepBound(g) + DodgeTravelBound(g, from));
+
         private long StepBound(Fighter g)
         {
             Fixed boost = Fixed.One;
@@ -1661,12 +1668,12 @@ namespace EdS.Simulation.Engine
             if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null
                 && (a.EngagedTick is long at && at <= tick || a.Calms > 0))) return true;
             if (f.Body is null || FreeMover(f)) return true;
-            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
+            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = TravelBound(f, tick);
             foreach (Fighter g in _fightersById)
             {
                 if (g.Team == f.Team || g.Body is null || !PresentAtCommands(g, tick)) continue;
                 if (FreeMover(g)) return true;
-                long reach = checked(aggro + own + MovingTicks(g, tick) * StepBound(g));
+                long reach = checked(aggro + own + TravelBound(g, tick));   // revue Codex de la PR #164 : bonds compris
                 if (EdgeDistance(f.Body, g.Body) <= reach) return true;
             }
             return false;
@@ -1752,7 +1759,7 @@ namespace EdS.Simulation.Engine
         private bool Reachable(Fighter g, long from, long x, long z)
         {
             if (FreeMover(g)) return true;
-            long travel = checked(MovingTicks(g, from) * StepBound(g) + DodgeTravelBound(g, from));
+            long travel = TravelBound(g, from);
             long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
             return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
         }
@@ -1771,8 +1778,8 @@ namespace EdS.Simulation.Engine
             if (impact.Attack.Center == ShapeCenter.Target && zone.Shape is AttackShape.Circle or AttackShape.Persistent)
                 return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && Reachable(g, turnTick, zone.OriginX, zone.OriginZ));
             if (!Reachable(a, turnTick, zone.OriginX, zone.OriginZ)) return false;
-            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || MovingTicks(a, turnTick) > 0) return true;
-            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || MovingTicks(g, turnTick) > 0
+            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || TravelBound(a, turnTick) > 0) return true;
+            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || TravelBound(g, turnTick) > 0
                 || (Planar.TryNormalize(checked(g.Body.X - zone.OriginX), checked(g.Body.Z - zone.OriginZ), out long ux, out long uz)
                     ? ux == zone.AxisX && uz == zone.AxisZ
                     : a.Body!.FacingX == zone.AxisX && a.Body.FacingZ == zone.AxisZ)));
