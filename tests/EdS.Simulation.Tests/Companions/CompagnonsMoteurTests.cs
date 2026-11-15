@@ -112,6 +112,21 @@ public class CompagnonsMoteurTests
         Assert.Equal(new[] { "targetNotEnemy", "companionDead" }, Lines(log, "commandRejected").Select(e => e.Str("reason")));
     }
 
+    [Fact]
+    public void La_vue_montre_la_cible_de_l_ordre_et_aucune_en_revenant()
+    {
+        // Revue Codex de la PR #169 : la cible exposée par View est celle que le compagnon attaque vraiment.
+        var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Companion(At("0", "6", "0.45")),
+            Wolf("proche", At("1.5", "6", "0.6"), health: 100_000), Wolf("cible", At("-4", "0", "0.6"), health: 100_000) },
+            new[] { Order(0, CompanionOrder.Target, "cible"), Order(100, CompanionOrder.Return) }), new MemoryCombatLog());
+        Assert.Equal("proche", engine.View("nyx").CurrentTarget);   // suivre : le plus proche
+        engine.Step();
+        Assert.Equal("cible", engine.View("nyx").CurrentTarget);
+        engine.Step();
+        engine.Step();
+        Assert.Null(engine.View("nyx").CurrentTarget);   // revenir : aucune cible
+    }
+
     // --- Attendre ----------------------------------------------------------------------------------------------------
 
     [Fact]
