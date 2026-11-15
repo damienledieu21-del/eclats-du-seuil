@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 22
+      "const": 24
     },
     "kind": {
       "const": "save"
@@ -236,7 +236,7 @@
                         "type": "string",
                         "pattern": "^[a-z][a-z0-9_]*$",
                         "maxLength": 64,
-                        "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 22 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
+                        "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 24 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
                       },
                       "wear": {
                         "type": "integer",
@@ -306,7 +306,7 @@
                             "type": "string",
                             "pattern": "^[a-z][a-z0-9_]*$",
                             "maxLength": 64,
-                            "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 22 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
+                            "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 24 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
                           },
                           "wear": {
                             "type": "integer",
@@ -605,6 +605,12 @@
                     "maxLength": 64
                   },
                   "maxProperties": 64
+                },
+                "mount": {
+                  "enum": [
+                    "mount.cheval"
+                  ],
+                  "description": "Sous-lot V2.28d (2b) (version 22) : monture du personnage (le cheval des Vallons, donné à la fin du chapitre 1) ; absente sans monture. Être en selle n'est pas gardé."
                 },
                 "money": {
                   "type": "integer",

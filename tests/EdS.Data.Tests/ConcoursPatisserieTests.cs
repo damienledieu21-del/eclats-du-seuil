@@ -15,7 +15,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Cuisine (2), concours de pâtisserie aux fêtes (décision de Damien du 15 novembre 2026, CADRAGE § 7 nonies) : le joueur présente SA
 /// couronne des moissons ou SA tarte renversée à Firmin ; la qualité du plat (normale, supérieure, chef-d'œuvre) décide du prix ; un concours
-/// par fête et par an. Formats : catalogue des objets v8 (<c>craftQuality</c>), sauvegarde v22 (marque du pâtissier), histoire en schéma 15
+/// par fête et par an. Formats : catalogue des objets v8 (<c>craftQuality</c>), sauvegarde v24 (marque du pâtissier), histoire en schéma 15
 /// (<c>hasSigned</c>, <c>present</c>).
 /// </summary>
 [Trait("Category", "World")]
@@ -125,17 +125,17 @@ public class ConcoursPatisserieTests
         Assert.All(tartes, t => Assert.Equal((1, Me), (t.Count, t.SignedBy)));
         Assert.Equal(qualities.OrderBy(q => q), tartes.Select(t => t.Quality).OrderBy(q => q));
         Assert.Contains(qualities, q => q != ItemQuality.Normal);   // gestes parfaits, métier au plus haut
-        // La sauvegarde (version 22) garde la marque et la qualité.
+        // La sauvegarde (version 24) garde la marque et la qualité.
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
         Assert.Equal(tartes, saved.Character!.Inventory.Where(s => s.Item == Tarte));
     }
 
-    // --- Sauvegarde (version 22) -----------------------------------------------------------------------------------------------------
+    // --- Sauvegarde (version 24) -----------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void Sauvegarde_v22_marque_du_patissier_relue_et_refusee_en_version_21()
+    public void Sauvegarde_v24_marque_du_patissier_relue_et_refusee_avant()
     {
-        Assert.Equal((22, 22), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
+        Assert.Equal((24, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
         WorldSession w = Oven(Signed(Tarte, ItemQuality.Normal), Signed(Couronne, ItemQuality.Superior), Signed(Couronne, ItemQuality.Masterwork),
             new ItemStack(Couronne, 2));
         string json = SaveJsonReader.Write(w.Save());
@@ -144,9 +144,9 @@ public class ConcoursPatisserieTests
         WorldSave back = SaveJsonReader.Read(json).Save!;
         Assert.Equal(new[] { (ItemQuality.Normal, (string?)Me), (ItemQuality.Superior, Me), (ItemQuality.Masterwork, Me), (ItemQuality.Normal, null) },
             back.Character!.Inventory.Where(s => s.Item == Tarte || s.Item == Couronne).Select(s => (s.Quality, s.SignedBy)));
-        // En version 21, seul un chef-d'œuvre est signé.
+        // En version 22 (monture) et avant, seul un chef-d'œuvre est signé.
         JsonObject root = JsonNode.Parse(json)!.AsObject();
-        root["schemaVersion"] = 21;
+        root["schemaVersion"] = 22;
         SaveLoadResult old = SaveJsonReader.Read(root.ToJsonString());
         Assert.False(old.IsValid);
         Assert.Contains(old.Report.Errors, e => e.Path.EndsWith(".signedBy", StringComparison.Ordinal));

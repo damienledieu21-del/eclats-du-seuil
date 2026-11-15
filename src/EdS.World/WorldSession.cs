@@ -232,6 +232,18 @@ namespace EdS.World
         /// <summary>Personnage tel qu'il sera sauvegardé (expérience à jour).</summary>
         public SavedCharacter Character => _character;
 
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : le personnage peut appeler sa monture dans cette session (il en a une, combat positionné, pas un intérieur).
+        /// Une monture donnée en cours de session (fin du chapitre 1) répond dès la prochaine entrée dans une zone.
+        /// </summary>
+        public bool CanCallMount => Zone.Engine.View(CombatantId).MountSpeed != null;
+
+        /// <summary>
+        /// Relecture indépendante de la PR #184 : le personnage a une monture, même si elle n'est pas encore dans cette session (donnée à la
+        /// fin du chapitre 1 pendant la session : elle le rejoint à la prochaine entrée dans une zone, halte comprise).
+        /// </summary>
+        public bool OwnsMount => _character.Mount != null || Narrative?.IsDone(PlayerCharacters.HorseQuest) == true;
+
         /// <summary>Niveau du personnage d'après son expérience (celui de son entrée dans la zone peut être plus bas).</summary>
         public int Level => _progression.LevelFor(_character.Xp);
 
@@ -481,9 +493,13 @@ namespace EdS.World
             EnteredBoons = ActiveBoons;
             // Sous-lot V1.8d : bonus de l'équipement porté à l'entrée, base fixe de la session à laquelle s'ajoutent les bonus actifs.
             _entryEquipmentGear = Inventory.Gear();
+            // Sous-lot V2.28d (2b) : le cheval est donné à la fin du chapitre 1 (sauvegarde d'avant comprise) ; il suit le personnage dans
+            // un combat positionné hors des intérieurs (on n'entre pas à cheval dans une maison).
+            _character = PlayerCharacters.GiveHorse(_character, _character.Story);
             CharacterSetup setup = PlayerCharacters.Setup(_character, progression, data, placement, gear: BoonGear(_entryEquipmentGear, items, EnteredBoons), consumables: carried,
                 shield: Inventory.ShieldFor(data.Rules.Combat),   // sous-lot V1.2 : garde du bouclier porté ; V1.4 : jamais meilleure s'il est usé à zéro
-                equipment: Inventory.Effects());   // sous-lot V1.3 : effets des objets nommés et des ensembles
+                equipment: Inventory.Effects(),   // sous-lot V1.3 : effets des objets nommés et des ensembles
+                withMount: zoneSetup.Space != null && hosted?.Indoor != true);
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.
@@ -1649,6 +1665,7 @@ namespace EdS.World
             if (Workshop != null) character = character.WithProfessions(Workshop.Professions);
             character = character.WithBoons(ActiveBoons);   // sous-lot V1.8c : bonus actifs et temps qui leur reste, tel quel
             if (Market != null) character = character.WithStock(StockToSave(character.Stock));   // sous-lot V2.10 : les lignes revenues à rien ne sont plus écrites
+            character = PlayerCharacters.GiveHorse(character, character.Story);   // sous-lot V2.28d (2b) : le cheval, donné à la fin du chapitre 1
             // Sous-lot V2.28b (2) : sur une aire à plusieurs secteurs, la sauvegarde est celle du monde : session du monde, registre du monde et
             // de chaque session ouverte, dernière session de chaque secteur.
             if (_host != null && !_host.Map.HomeHoldsArea)

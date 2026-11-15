@@ -270,6 +270,7 @@ namespace EdS.Game
             try
             {
                 _adventure = AdventureSession.Load(Path.Combine(_repoRoot, "data", "v0"), Path.Combine(_repoRoot, "scenarios"), SavePath);
+                _ownedMountKnown = false;   // relecture de la PR #184 : pas d'annonce du cheval au chargement
             }
             catch (Exception e)
             {
@@ -621,6 +622,7 @@ namespace EdS.Game
             else
             {
                 ReadCombatInput();
+                ReadMountInput();
                 Move(player);
                 a.Advance(Time.deltaTime);
                 // Sous-lot V2.28b (3) : un passage fait à cette image est suivi avant l'affichage de cette image (sinon une image montrait
@@ -1029,6 +1031,35 @@ namespace EdS.Game
             if (result.Winner != null) return "Défaite.";
             return result.EndReason == CombatEndReason.DurationReached ? "Temps écoulé : fin de la séance." : "Combat terminé, sans vainqueur.";
         }
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : U appelle la monture (montée de 1 s, immobile ; décision de Damien du 15 novembre 2026) ou la renvoie
+        /// (descente immédiate, ou montée annulée). Annonce la mise en selle et la descente.
+        /// </summary>
+        private void ReadMountInput()
+        {
+            if (!(_combat is RealtimeCombat rider)) return;
+            AdventureSession a = _adventure;
+            bool owns = a != null && a.World.OwnsMount;
+            // Relecture indépendante de la PR #184 : le cheval donné en cours de session est annoncé ; il rejoint le personnage à la
+            // prochaine halte (ou porte), et U le dit au lieu de « pas de monture ici ».
+            if (owns && !_ownedMount && _ownedMountKnown) Say("Tu as maintenant un cheval ! Il te rejoindra à la prochaine halte (U pour l'appeler).");
+            _ownedMount = owns;
+            _ownedMountKnown = a != null;
+            if (Input.GetKeyDown(KeyCode.U))
+            {
+                if (rider.Mounted || rider.Mounting) rider.SendMountAway();
+                else if (!rider.HasMount && owns)
+                    Say(a.World.Definition != null && a.World.Definition.Indoor ? "Pas de cheval à l'intérieur." : "Ton cheval te rejoindra à la prochaine halte.");
+                else if (rider.CallMount()) Say("Vous sifflez votre cheval…");
+            }
+            bool mounted = rider.Mounted;
+            if (mounted != _wasMounted) Say(mounted ? "En selle." : "Pied à terre.");
+            _wasMounted = mounted;
+        }
+
+        private bool _wasMounted;   // sous-lot V2.28d (2b) : état de selle à l'image précédente (annonces)
+        private bool _ownedMount, _ownedMountKnown;   // relecture de la PR #184 : cheval possédé à l'image précédente (annonce du don)
 
         /// <summary>Compagnons : menu des ordres et compagnon choisi (O, Maj + O, 1 à 5, Y ; panneau et cases au doigt).</summary>
         private readonly CompanionControls _companionControls = new CompanionControls();
@@ -1645,6 +1676,8 @@ namespace EdS.Game
         /// </summary>
         private void LateUpdate()
         {
+            // Sous-lot V2.29 (revue Codex de la PR #182) : l'horizon suit la caméra à chaque image, après son placement ; seulement dehors.
+            if (_camera != null) HorizonView.Follow(_camera.Camera, StyleWorld.Active && !StyleWorld.Indoors && !StyleWorld.Memory);
             if (_hud == null) return;
             bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null
                 && !TalentsOpen;
