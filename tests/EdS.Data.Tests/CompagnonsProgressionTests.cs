@@ -11,6 +11,7 @@ using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
+using EdS.Simulation.Randomness;
 using Xunit;
 
 namespace EdS.Data.Tests;
@@ -26,18 +27,21 @@ public class CompagnonsProgressionTests
 {
     private static readonly CompanionCatalog Catalog = CompanionJsonReader.Read(CompagnonsCatalogueTests.Catalogue).Catalog!;
 
-    private static readonly RecruitContext Story = new(true, null, 0, 7);
+    private static readonly RecruitContext Story = new(true, null, 0, Rng(7));
 
     /// <summary>Histoire sauvegardée où la quête de lien au feu de camp est finie.</summary>
     internal static readonly SavedStory QuestDone = new(quests: new Dictionary<string, QuestProgress>
         { ["quest.vallons.lien_au_feu"] = new QuestProgress(QuestProgress.Done) });
+
+    /// <summary>Tirage borné d'un Pcg32 neuf de graine <paramref name="seed"/> (générateur injecté du recrutement).</summary>
+    internal static Func<uint, uint> Rng(ulong seed) => new Pcg32(seed).NextBounded;
 
     private static SavedCompanions With(params string[] ids)
     {
         SavedCompanions roster = SavedCompanions.Empty;
         foreach (string id in ids)
         {
-            RosterResult r = CompanionRules.Recruit(Catalog, roster, id, new RecruitContext(true, "s", 1_000_000, 7));
+            RosterResult r = CompanionRules.Recruit(Catalog, roster, id, new RecruitContext(true, "s", 1_000_000, Rng(7)));
             Assert.True(r.Accepted, r.Reason);
             roster = r.Roster;
         }
@@ -50,16 +54,16 @@ public class CompagnonsProgressionTests
     public void Heros_et_bete_par_l_histoire_mercenaire_a_la_Guilde_selon_le_rang_et_la_paie()
     {
         SavedCompanions empty = SavedCompanions.Empty;
-        Assert.Equal("notAvailable", CompanionRules.Recruit(Catalog, empty, "companion.nyx", new RecruitContext(false, "s", 0, 1)).Reason);
+        Assert.Equal("notAvailable", CompanionRules.Recruit(Catalog, empty, "companion.nyx", new RecruitContext(false, "s", 0, Rng(1))).Reason);
         RosterResult nyx = CompanionRules.Recruit(Catalog, empty, "companion.nyx", Story);
         Assert.True(nyx.Accepted);
         Assert.Equal(new[] { "companion.nyx" }, nyx.Roster.Active);   // il prend la place libre
         Assert.Equal(("alreadyRecruited", "unknownCompanion"), (CompanionRules.Recruit(Catalog, nyx.Roster, "companion.nyx", Story).Reason,
             CompanionRules.Recruit(Catalog, nyx.Roster, "companion.inconnu", Story).Reason));
-        Assert.Equal("guildRankTooLow", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, "f", 1000, 1)).Reason);
-        Assert.Equal("guildRankTooLow", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, null, 1000, 1)).Reason);
-        Assert.Equal("notEnoughMoney", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, "e", 119, 1)).Reason);
-        RosterResult aveline = CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(false, "d", 120, 1));
+        Assert.Equal("guildRankTooLow", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, "f", 1000, Rng(1))).Reason);
+        Assert.Equal("guildRankTooLow", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, null, 1000, Rng(1))).Reason);
+        Assert.Equal("notEnoughMoney", CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(true, "e", 119, Rng(1))).Reason);
+        RosterResult aveline = CompanionRules.Recruit(Catalog, nyx.Roster, "companion.aveline", new RecruitContext(false, "d", 120, Rng(1)));
         Assert.True(aveline.Accepted);
         Assert.Equal(120, aveline.Cost);
         Assert.Equal(new[] { "companion.nyx" }, aveline.Roster.Active);   // une seule place : elle attend
@@ -71,15 +75,31 @@ public class CompagnonsProgressionTests
     [Fact]
     public void Trait_tire_au_hasard_deterministe_et_parmi_les_traits_du_catalogue()
     {
+        // Revue Codex de la PR #172 : le trait vient du Pcg32 injecté (un tirage borné), même graine, même trait.
         var drawn = new HashSet<string>();
         for (ulong seed = 0; seed < 64; seed++)
         {
-            string trait = CompanionRules.DrawTrait(Catalog, "companion.aveline", seed);
-            Assert.Equal(trait, CompanionRules.DrawTrait(Catalog, "companion.aveline", seed));
+            string trait = CompanionRules.DrawTrait(Catalog, Rng(seed));
+            Assert.Equal(trait, CompanionRules.DrawTrait(Catalog, Rng(seed)));
+            Assert.Equal(Catalog.Traits[(int)new Pcg32(seed).NextBounded((uint)Catalog.Traits.Count)].Id, trait);
             Assert.NotNull(Catalog.Trait(trait));
             drawn.Add(trait);
         }
         Assert.Equal(Catalog.Traits.Count, drawn.Count);   // tous les traits sortent
+        Assert.Throws<InvalidOperationException>(() => CompanionRules.DrawTrait(Catalog, _ => (uint)Catalog.Traits.Count));
+        // Un seul tirage, et seulement pour un mercenaire réellement recruté : un refus, un héros ou un réembauchage ne consomment rien.
+        int calls = 0;
+        uint Counting(uint bound) { calls++; return 0; }
+        SavedCompanions empty = SavedCompanions.Empty;
+        Assert.False(CompanionRules.Recruit(Catalog, empty, "companion.aveline", new RecruitContext(false, "c", 0, Counting)).Accepted);
+        Assert.False(CompanionRules.Recruit(Catalog, empty, "companion.aveline", new RecruitContext(false, null, 1_000, Counting)).Accepted);
+        SavedCompanions nyx = CompanionRules.Recruit(Catalog, empty, "companion.nyx", new RecruitContext(true, null, 0, Counting)).Roster;
+        Assert.Equal(0, calls);
+        SavedCompanions hired = CompanionRules.Recruit(Catalog, nyx, "companion.aveline", new RecruitContext(false, "c", 1_000, Counting)).Roster;
+        Assert.Equal(1, calls);
+        SavedCompanions gone = CompanionRules.Dismiss(Catalog, hired, "companion.aveline").Roster;
+        Assert.True(CompanionRules.Recruit(Catalog, gone, "companion.aveline", new RecruitContext(false, "c", 1_000, Counting)).Accepted);
+        Assert.Equal(1, calls);
     }
 
     [Fact]
@@ -176,7 +196,7 @@ public class CompagnonsProgressionTests
     public void Mercenaire_renvoye_puis_reembauche_garde_son_estime_et_son_trait()
     {
         // Décision de Damien du 15 novembre 2026 : seule la jauge de lien revient à 0.
-        var guild = new RecruitContext(false, "c", 1_000, 7);
+        var guild = new RecruitContext(false, "c", 1_000, Rng(7));
         SavedCompanions hired = CompanionRules.Recruit(Catalog, SavedCompanions.Empty, "companion.aveline", guild).Roster;
         hired = CompanionRules.React(CompanionRules.AfterCombat(hired, new[] { ("companion.aveline", 60, false) }), "companion.aveline", -35).Roster;
         SavedCompanion before = hired.Find("companion.aveline")!;
@@ -193,7 +213,7 @@ public class CompagnonsProgressionTests
         // Réembauché avec une autre graine : le même trait, la même estime, la jauge à 0 ; il quitte les anciens et paie de nouveau.
         foreach (ulong seed in new ulong[] { 1, 2, 3, 99, 12345 })
         {
-            RosterResult back = CompanionRules.Recruit(Catalog, gone, "companion.aveline", new RecruitContext(false, "c", 1_000, seed));
+            RosterResult back = CompanionRules.Recruit(Catalog, gone, "companion.aveline", new RecruitContext(false, "c", 1_000, Rng(seed)));
             Assert.True(back.Accepted);
             Assert.True(Catalog.TryGet("companion.aveline", out CompanionSheet sheet));
             Assert.Equal(sheet.Recruit.Price, back.Cost);
@@ -245,7 +265,7 @@ public class CompagnonsProgressionTests
             string id = ids[random.Next(ids.Length)];
             RosterResult r = random.Next(8) switch
             {
-                0 => CompanionRules.Recruit(Catalog, roster, id, new RecruitContext(random.Next(2) == 0, "c", random.Next(300), (ulong)step)),
+                0 => CompanionRules.Recruit(Catalog, roster, id, new RecruitContext(random.Next(2) == 0, "c", random.Next(300), Rng((ulong)step))),
                 1 => CompanionRules.Dismiss(Catalog, roster, id),
                 2 => CompanionRules.SetActive(roster, ids.Where(_ => random.Next(3) == 0).ToArray()),
                 3 => CompanionRules.OpenSecondSlot(Catalog, roster, random.Next(1, 30), random.Next(2) == 0 ? QuestDone : SavedStory.Empty),
