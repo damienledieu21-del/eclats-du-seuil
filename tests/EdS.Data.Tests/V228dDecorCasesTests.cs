@@ -139,4 +139,20 @@ public sealed class V228dDecorCasesTests : IDisposable
         Assert.Empty(CellDecor.For(whole, grid, deep, null, 0).Trees);
         Assert.Throws<ArgumentOutOfRangeException>(() => CellDecor.For(whole, grid, deep, null, -1));
     }
+
+    [Fact]
+    public void Nappes_de_foret_gardees_sous_la_fenetre_de_la_zone()
+    {
+        // Revue Codex de la PR #173 (3e tour) : la vue de la zone ne construit pas les nappes des lieux de forêt ; une case de la forêt
+        // profonde couverte par la fenêtre garde ses arbres (et rien d'autre de ce que la fenêtre construit).
+        AdventureMap whole = Whole();
+        RegionGrid grid = whole.Region!;
+        RegionCell deep = grid.Cells.Single(c => c.Name == "c8_r19");
+        CellDecorSet free = CellDecor.For(whole, grid, deep);
+        CellDecorSet covered = CellDecor.For(whole, grid, deep, (free.MinX - 1, free.MinZ - 1, free.MaxX + 1, free.MaxZ + 1));
+        Assert.NotEmpty(covered.Trees);
+        Assert.Empty(covered.Roads);
+        Assert.Empty(covered.Water);
+        Assert.All(covered.Trees, t => Assert.Contains(free.Trees, f => f.X == t.X && f.Z == t.Z));
+    }
 }
