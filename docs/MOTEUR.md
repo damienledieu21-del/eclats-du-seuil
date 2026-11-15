@@ -580,10 +580,20 @@ Sujet 11 de la [feuille de route](FEUILLE_DE_ROUTE.md) et [CADRAGE.md § 7 bis](
 - **Sans compagnon, mêmes lignes d'événements qu'au format 26** : nouvelle référence figée `Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0` (corps identiques aux journaux 0.32.0) et `scenarios/espace_compagnon.json` (Nyx et le Bastion contre deux loups : « cibler », coups coordonnés, attaque à deux refusée puis lancée, « cibler » fini par la mort de la cible, « protéger », « revenir » qui annule une annonce, « attendre », « suivre » ; empreinte e1d2e0c7…).
 - **Catalogue** (`kind: "companions"`, schéma 1, [DONNEES.md](DONNEES.md#versions-de-format)) : fiches de compagnons (héros, mercenaires, bêtes), stades par niveau, valeurs qui croissent avec le niveau, attaque à deux, don, traits ; `CompanionCombat.Build` fait d'une fiche à un niveau un assaillant compagnon.
 
+**Progression des compagnons** (`Allies/CompanionRules.cs`, sauvegarde en **version 20**) : règles pures sur la troupe sauvegardée (`SavedCompanions`), chaque opération contrôlée sans rien modifier puis appliquée (motif de refus, troupe inchangée).
+
+- **Recrutement** : un héros ou une bête quand l'histoire l'amène ; un mercenaire à la Guilde, au rang demandé, contre sa paie ; le trait d'un mercenaire est tiré au hasard (FNV-1a 64 d'une graine et de son identifiant : même graine, même trait) parmi les traits du catalogue ; il prend une place libre s'il y en a une. Seul un mercenaire se renvoie.
+- **Places** : une au départ ; la deuxième s'ouvre quand la quête de lien au feu de camp est finie, à partir du niveau minimum doux du catalogue (environ 12) ; pendant le boss du monde, seul le premier compagnon actif se bat, le second attend au point de repli.
+- **Niveau** : celui du personnage (`LevelOf`), le stade et les valeurs en découlent (`CompanionCombat.Build`).
+- **Hors combat sans mort** : après un combat, la jauge de fin de chaque compagnon qui s'est battu est gardée et un compagnon tombé passe hors combat (`down`) ; il reste dans la troupe et ne se bat plus jusqu'à la halte au feu de camp, qui relève tout le monde et donne le gain de halte aux compagnons actifs.
+- **Estime** (de −100 à 100) : il aime ou déteste les choix du joueur ; elle ne change jamais son obéissance.
+- **Vue** : `CombatantView` d'un compagnon donne son Éveillé, son ordre, sa jauge, la fin d'une attaque à deux et si une attaque à deux serait admise (pour l'interface).
+
 **Limites connues des compagnons** :
 
 - Pas encore de commandes de compagnon dans le protocole réseau (5) ni dans le pont temps réel : elles arrivent avec l'interface (PR « Unity » des compagnons) ; le pilote (`Submit`) les admet déjà.
 - L'état d'un compagnon (ordre, jauge, attaque à deux en cours) n'est pas emporté d'un secteur à l'autre (`CarriedState` inchangé) ; la jauge se garde par la sauvegarde (progression).
+- La troupe n'entre pas encore dans les sessions du monde (`WorldSession`) : les compagnons de la sauvegarde n'apparaissent dans les Vallons qu'avec la PR de l'interface (Unity) des compagnons.
 - Un compagnon n'a ni garde, ni parade, ni esquive, ni compétences propres : ses attaques sont celles de sa fiche, en boucle ; ses dons (trésors, carte, sacoches…) sont hors combat.
 - Pendant le boss du monde, la règle « un seul compagnon au combat » est appliquée par la progression (emplacements), pas par le moteur (qui en admet deux).
 

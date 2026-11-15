@@ -290,7 +290,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 : même personnage avec un autre registre des événements.</summary>
         public SavedCharacter WithEvents(IEnumerable<SavedEvent> events) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look);
+                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.</summary>
         public IReadOnlyList<SavedScar> Scars { get; }
@@ -298,7 +298,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.6 : même personnage avec d'autres cicatrices.</summary>
         public SavedCharacter WithScars(IEnumerable<SavedScar> scars) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look);
+                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look, Companions);
 
         /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (lignes non vides, rangées par identifiant).</summary>
         public IReadOnlyList<SavedStock> Stock { get; }
@@ -306,20 +306,27 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 : même personnage avec un autre stock des marchands.</summary>
         public SavedCharacter WithStock(IEnumerable<SavedStock> stock) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look);
+                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look, Companions);
 
         /// <summary>Sous-lot V2.16 (version 17) : aspect choisi pour le héros dans le créateur de personnage ; null tant que rien n'est choisi.</summary>
         public SavedLook? Look { get; }
 
+        /// <summary>Compagnons (version 20) : la troupe du personnage (places, recrutés, actifs) ; vide par défaut.</summary>
+        public SavedCompanions Companions { get; }
+
+        public SavedCharacter WithCompanions(SavedCompanions companions) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                Boons, Events, Scars, Stock, Look, companions ?? throw new ArgumentNullException(nameof(companions)));
+
         /// <summary>Sous-lot V2.16 : même personnage avec un autre aspect (null : l'aspect par défaut du jeu).</summary>
         public SavedCharacter WithLook(SavedLook? look) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, look);
+                Boons, Events, Scars, Stock, look, Companions);
 
         /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
         public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look);
+                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
@@ -333,8 +340,10 @@ namespace EdS.Data.Saves
             IReadOnlyDictionary<string, string>? equipment = null, SavedStory? story = null, IReadOnlyDictionary<string, long>? professions = null,
             long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null,
             IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null,
-            IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null, IEnumerable<SavedStock>? stock = null, SavedLook? look = null)
+            IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null, IEnumerable<SavedStock>? stock = null, SavedLook? look = null,
+            SavedCompanions? companions = null)
         {
+            Companions = companions ?? SavedCompanions.Empty;
             Look = look;
             Stock = SavedStock.Canonical(stock);
             Events = SavedEvent.Canonical(events);
@@ -383,7 +392,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -392,7 +401,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts, Boons, Events, Scars, Stock, Look);
+                null, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -401,15 +410,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts, Boons, Events, Scars, Stock, Look);
+                null, worn, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -417,15 +426,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -433,7 +442,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions);
     }
 
     /// <summary>
@@ -590,7 +599,16 @@ namespace EdS.Data.Saves
         /// local, <see cref="IsSafePointId"/>) et, pour une zone à région, son secteur de simulation (« s07_06 », facultatif). La partie y
         /// reprend ; sans lui, à l'entrée de la zone. Une sauvegarde de version 18 ou antérieure est lue telle quelle (reprise à l'entrée) et
         /// mise à jour ; elle n'a pas de <c>resume</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 19;
+        /// <remarks>Version 20 (compagnons, <see cref="CompanionsSince"/>, décisions de Damien du 14 novembre 2026) : <c>companions</c> facultatif
+        /// dans le personnage (absent quand il n'a recruté personne) : <c>{ "slots", "recruited", "active" }</c> ; places ouvertes (1 ou 2),
+        /// compagnons recrutés <c>{ "id", "bond", "approval", "trait", "down" }</c> rangés par identifiant (au plus
+        /// <see cref="SavedCompanions.MaxRecruited"/>), actifs dans l'ordre des places (au plus les places, recrutés, distincts). Voir
+        /// <see cref="SavedCompanions"/>. Migration : une sauvegarde de version 19 ou antérieure est lue telle quelle (aucun compagnon, une
+        /// place) et mise à jour ; elle n'a pas de <c>companions</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 20;
+
+        /// <summary>Compagnons : version où la troupe du personnage (<c>companions</c>) entre dans la sauvegarde.</summary>
+        public const int CompanionsSince = 20;
 
         /// <summary>Sous-lot V2.28 : version où le point de reprise (<c>resume</c>) entre dans la sauvegarde.</summary>
         public const int ResumeSince = 19;
@@ -1041,6 +1059,13 @@ namespace EdS.Data.Saves
                     report.Add(path + ".look", ValidationCode.UnknownField, $"champ inconnu en version {version} (aspect du héros : version {LookSince}).");
             }
             else if (c.Look != null) CheckLook(c.Look, path + ".look", report);
+            // Compagnons (version 20) : la troupe, facultative ; une sauvegarde antérieure n'en a pas.
+            if (version < CompanionsSince)
+            {
+                if (c.Present.Contains("companions") || c.Companions != null)
+                    report.Add(path + ".companions", ValidationCode.UnknownField, $"champ inconnu en version {version} (compagnons : version {CompanionsSince}).");
+            }
+            else if (c.Companions != null) CheckCompanions(c.Companions, path + ".companions", report);
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -1056,7 +1081,60 @@ namespace EdS.Data.Saves
                     (EventOutcome)SavedEvent.OutcomeNames.ToList().IndexOf(e.Outcome!), e.Owed ?? false)),
                 version < ScarsSince ? null : c.Scars!.Select(x => new SavedScar(x!.Id!, x.Stage!.Value, x.Since!.Value, x.Born!.Value)),
                 c.Stock?.Select(x => new SavedStock(x!.Id!, x.Bought!.Value, x.Resold!.Value, x.Day!.Value)),
-                c.Look is null ? null : new SavedLook(c.Look.Body!, c.Look.Hair!.Value, c.Look.Beard!.Value, c.Look.Dark!.Value, c.Look.HairTone!.Value, c.Look.Palette!.Value));
+                c.Look is null ? null : new SavedLook(c.Look.Body!, c.Look.Hair!.Value, c.Look.Beard!.Value, c.Look.Dark!.Value, c.Look.HairTone!.Value, c.Look.Palette!.Value),
+                c.Companions is null ? null : new SavedCompanions(c.Companions.Slots!.Value,
+                    c.Companions.Recruited!.Select(x => new SavedCompanion(x!.Id!, x.Bond!.Value, x.Approval!.Value, x.Trait, x.Down!.Value)),
+                    c.Companions.Active!.Select(a => a!)));
+        }
+
+        /// <summary>
+        /// Compagnons (version 20) : forme de la troupe : places 1 ou 2 ; recrutés uniques, rangés par identifiant, identifiant « companion.… »,
+        /// jauge de 0 à 100, estime de −100 à 100, trait facultatif bien nommé, hors combat vrai ou faux ; actifs au plus les places, distincts,
+        /// recrutés. L'accord avec le catalogue des compagnons est vu au chargement de la partie (CompanionRules.Check).
+        /// </summary>
+        private static void CheckCompanions(SavedCompanionsData x, string path, ValidationReport report)
+        {
+            if (x.Slots is null) Missing(report, path + ".slots", "places ouvertes, 1 ou 2");
+            else if (x.Slots < 1 || x.Slots > SavedCompanions.MaxSlots) report.Add(path + ".slots", ValidationCode.OutOfRange, $"hors de [1, {SavedCompanions.MaxSlots}].");
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (x.Recruited is null) Missing(report, path + ".recruited", "compagnons recrutés, éventuellement aucun");
+            else
+            {
+                if (x.Recruited.Count > SavedCompanions.MaxRecruited)
+                    report.Add(path + ".recruited", ValidationCode.LimitExceeded, $"{x.Recruited.Count} compagnons, au plus {SavedCompanions.MaxRecruited}.");
+                string? previous = null;
+                for (int i = 0; i < x.Recruited.Count; i++)
+                {
+                    string p = $"{path}.recruited[{i}]";
+                    if (x.Recruited[i] is not { } r) { Missing(report, p, "compagnon recruté"); continue; }
+                    if (r.Id is null) Missing(report, p + ".id", "identifiant « companion.… »");
+                    else if (!SavedCompanion.IsId(r.Id)) report.Add(p + ".id", ValidationCode.InvalidValue, $"compagnon « {r.Id} » hors du format « companion.… ».");
+                    else if (!ids.Add(r.Id)) report.Add(p + ".id", ValidationCode.DuplicateId, $"compagnon « {r.Id} » recruté deux fois.");
+                    else if (previous != null && string.CompareOrdinal(previous, r.Id) > 0) report.Add(p + ".id", ValidationCode.InvalidValue, "compagnons rangés par identifiant.");
+                    if (r.Id != null) previous = r.Id;
+                    if (r.Bond is null) Missing(report, p + ".bond", "jauge de lien, de 0 à 100");
+                    else if (r.Bond < 0 || r.Bond > SavedCompanion.MaxBond) report.Add(p + ".bond", ValidationCode.OutOfRange, $"hors de [0, {SavedCompanion.MaxBond}].");
+                    if (r.Approval is null) Missing(report, p + ".approval", "estime, de −100 à 100");
+                    else if (r.Approval < -SavedCompanion.MaxApproval || r.Approval > SavedCompanion.MaxApproval)
+                        report.Add(p + ".approval", ValidationCode.OutOfRange, $"hors de [−{SavedCompanion.MaxApproval}, {SavedCompanion.MaxApproval}].");
+                    if (r.Trait != null && !SavedCompanion.IsTrait(r.Trait)) report.Add(p + ".trait", ValidationCode.InvalidValue, $"trait « {r.Trait} » mal nommé.");
+                    if (r.Down is null) Missing(report, p + ".down", "hors combat : vrai ou faux");
+                }
+            }
+            if (x.Active is null) Missing(report, path + ".active", "compagnons actifs, dans l'ordre des places, éventuellement aucun");
+            else
+            {
+                if (x.Slots is int slots && x.Active.Count > slots)
+                    report.Add(path + ".active", ValidationCode.LimitExceeded, $"{x.Active.Count} compagnons actifs pour {slots} place(s).");
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                for (int i = 0; i < x.Active.Count; i++)
+                {
+                    string p = $"{path}.active[{i}]";
+                    if (x.Active[i] is not { } id) Missing(report, p, "identifiant d'un compagnon recruté");
+                    else if (!seen.Add(id)) report.Add(p, ValidationCode.DuplicateId, $"compagnon « {id} » actif deux fois.");
+                    else if (x.Recruited != null && !ids.Contains(id)) report.Add(p, ValidationCode.UnknownReference, $"compagnon actif « {id} » qui n'est pas recruté.");
+                }
+            }
         }
 
         /// <summary>

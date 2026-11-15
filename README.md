@@ -237,6 +237,8 @@ Esquive (décision de Damien du 14 novembre 2026, qui revient sur L11-D4, [docs/
 
 Compagnons, partie moteur et données (décisions de Damien du 14 novembre 2026, [docs/MOTEUR.md](docs/MOTEUR.md#compagnons-décisions-de-damien-du-14-novembre-2026)) : un **compagnon** est un allié guidé par l'ordinateur, attaché à son Éveillé (au plus deux) ; **ordres simples** (suivre, attendre, cibler, protéger, revenir), sinon il se débrouille seul ; **jauge de lien** (0 à 100) remplie par les coups coordonnés et la protection ; **attaque à deux** quand elle est pleine, jamais automatique ; à 0 PV, il est hors combat. Catalogue des compagnons (schéma 1, validateur unique). Moteur 0.33.0, journal 27, scénarios en schéma 21, instantané 8 ; règles et protocole inchangés.
 
+Compagnons, progression : recrutement (héros et bêtes par l'histoire, mercenaires à la Guilde selon le rang et contre une paie, **trait tiré au hasard**), **une place puis deux** (quête de lien au feu de camp, niveau doux 12), le compagnon **monte de niveau avec le personnage**, **hors combat sans mort** jusqu'à la halte au feu de camp, estime du compagnon, **un seul compagnon au combat pendant le boss du monde**. Sauvegarde en **version 20** (les versions antérieures sont lues sans compagnon).
+
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)

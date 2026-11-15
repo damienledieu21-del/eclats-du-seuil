@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 19
+      "const": 20
     },
     "kind": {
       "const": "save"
@@ -712,6 +712,32 @@
                     "palette": { "type": "integer", "minimum": 0, "maximum": 12 }
                   },
                   "description": "Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur de personnage (corps male, female ou made.<nom> d'un personnage de MakeHuman ; coiffure, couleur des cheveux et tenue en indices). Absent tant que le joueur n'a rien choisi."
+                },
+                "companions": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [ "slots", "recruited", "active" ],
+                  "properties": {
+                    "slots": { "type": "integer", "minimum": 1, "maximum": 2 },
+                    "recruited": {
+                      "type": "array",
+                      "maxItems": 64,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [ "id", "bond", "approval", "trait", "down" ],
+                        "properties": {
+                          "id": { "type": "string", "pattern": "^companion\\.[a-z][a-z0-9_]*$", "maxLength": 64 },
+                          "bond": { "type": "integer", "minimum": 0, "maximum": 100 },
+                          "approval": { "type": "integer", "minimum": -100, "maximum": 100 },
+                          "trait": { "anyOf": [ { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, { "type": "null" } ] },
+                          "down": { "type": "boolean" }
+                        }
+                      }
+                    },
+                    "active": { "type": "array", "maxItems": 2, "items": { "type": "string" } }
+                  },
+                  "description": "Compagnons (version 20) : places ouvertes (1, puis 2 par la quête de lien), compagnons recrutés rangés par identifiant (jauge de lien, estime, trait d'un mercenaire, hors combat jusqu'à la halte), actifs dans l'ordre des places. Absent quand le personnage n'a recruté personne."
                 }
               }
             }

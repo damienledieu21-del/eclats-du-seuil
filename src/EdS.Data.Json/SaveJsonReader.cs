@@ -208,6 +208,32 @@ namespace EdS.Data.Json
                         return kok ? sk : null;
                     });
                 },
+                ["companions"] = (v, p) =>   // compagnons (version 20) : la troupe du personnage, facultative
+                {
+                    c.Present.Add("companions");
+                    var cp = new SavedCompanionsData();
+                    bool cok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["slots"] = (ev2, ep) => cp.Slots = input.Int32(ev2, ep),
+                        ["recruited"] = (ev2, ep) => cp.Recruited = input.ReadLimitedList(ev2, ep, SavedCompanions.MaxRecruited,
+                            n => $"{n} compagnons, au plus {SavedCompanions.MaxRecruited}.", (e, ip) =>
+                            {
+                                var r = new SavedCompanionData();
+                                bool rok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                                {
+                                    ["id"] = (ev3, ep3) => r.Id = input.Text(ev3, ep3),
+                                    ["bond"] = (ev3, ep3) => r.Bond = input.Int32(ev3, ep3),
+                                    ["approval"] = (ev3, ep3) => r.Approval = input.Int32(ev3, ep3),
+                                    ["trait"] = (ev3, ep3) => r.Trait = input.NullableText(ev3, ep3),
+                                    ["down"] = (ev3, ep3) => r.Down = input.Boolean(ev3, ep3),
+                                });
+                                return rok ? r : null;
+                            }),
+                        ["active"] = (ev2, ep) => cp.Active = input.ReadLimitedList(ev2, ep, SavedCompanions.MaxSlots,
+                            n => $"{n} compagnons actifs, au plus {SavedCompanions.MaxSlots}.", (e, ip) => input.Text(e, ip)),
+                    });
+                    if (cok) c.Companions = cp;
+                },
                 ["look"] = (v, p) =>   // sous-lot V2.16 (version 17) : aspect du héros, facultatif
                 {
                     c.Present.Add("look");
@@ -554,7 +580,8 @@ namespace EdS.Data.Json
                 b.Append("      ],\n");
             }
             // Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.
-            string afterScars = c.Stock.Count == 0 && c.Look == null ? "\n" : ",\n";
+            bool companions = !c.Companions.IsEmpty;   // compagnons (version 20) : la troupe, absente quand vide
+            string afterScars = c.Stock.Count == 0 && c.Look == null && !companions ? "\n" : ",\n";
             if (c.Scars.Count == 0) b.Append("      \"scars\": []").Append(afterScars);
             else
             {
@@ -581,7 +608,7 @@ namespace EdS.Data.Json
                         .Append(", \"resold\": ").Append(x.Resold.ToString(CultureInfo.InvariantCulture)).Append(", \"day\": ").Append(x.Day.ToString(CultureInfo.InvariantCulture))
                         .Append(i + 1 < c.Stock.Count ? "},\n" : "}\n");
                 }
-                b.Append("      ]").Append(c.Look == null ? "\n" : ",\n");
+                b.Append("      ]").Append(c.Look == null && !companions ? "\n" : ",\n");
             }
             // Sous-lot V2.16 (version 17) : aspect du héros, absent tant que le joueur n'a rien choisi.
             if (c.Look != null)
@@ -590,7 +617,22 @@ namespace EdS.Data.Json
                 b.Append("      \"look\": {\"body\": \"").Append(l.Body).Append("\", \"hair\": ").Append(l.Hair.ToString(CultureInfo.InvariantCulture))
                     .Append(", \"beard\": ").Append(l.Beard ? "true" : "false").Append(", \"dark\": ").Append(l.DarkSkin ? "true" : "false")
                     .Append(", \"hairTone\": ").Append(l.HairTone.ToString(CultureInfo.InvariantCulture)).Append(", \"palette\": ").Append(l.Palette.ToString(CultureInfo.InvariantCulture))
-                    .Append("}\n");
+                    .Append(companions ? "},\n" : "}\n");
+            }
+            // Compagnons (version 20) : la troupe (places, recrutés rangés par identifiant, actifs dans l'ordre des places).
+            if (companions)
+            {
+                SavedCompanions t = c.Companions;
+                b.Append("      \"companions\": {\"slots\": ").Append(t.Slots.ToString(CultureInfo.InvariantCulture)).Append(", \"recruited\": [");
+                for (int i = 0; i < t.Recruited.Count; i++)
+                {
+                    SavedCompanion r = t.Recruited[i];
+                    b.Append(i == 0 ? "\n" : ",\n").Append("        {\"id\": \"").Append(r.Id).Append("\", \"bond\": ").Append(r.Bond.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"approval\": ").Append(r.Approval.ToString(CultureInfo.InvariantCulture))
+                        .Append(", \"trait\": ").Append(r.Trait is null ? "null" : "\"" + r.Trait + "\"").Append(", \"down\": ").Append(r.Down ? "true" : "false").Append('}');
+                }
+                b.Append(t.Recruited.Count == 0 ? "]" : "\n      ]").Append(", \"active\": [")
+                    .Append(string.Join(", ", t.Active.Select(a => "\"" + a + "\""))).Append("]}\n");
             }
             b.Append("    },\n");
         }
