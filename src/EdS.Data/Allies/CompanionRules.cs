@@ -1,0 +1,276 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using EdS.Data.Saves;
+using EdS.Domain.Combat;
+using EdS.Domain.Space;
+
+namespace EdS.Data.Allies
+{
+    /// <summary>Issue d'une opération sur la troupe : acceptée (nouvelle troupe) ou refusée (motif, troupe inchangée).</summary>
+    public sealed class RosterResult
+    {
+        public bool Accepted => Reason is null;
+
+        /// <summary>Motif du refus (identifiant stable, pour l'interface) ; null si l'opération est acceptée.</summary>
+        public string? Reason { get; }
+
+        /// <summary>La troupe après l'opération (la même instance si elle est refusée).</summary>
+        public SavedCompanions Roster { get; }
+
+        /// <summary>Recrutement d'un mercenaire : paie due (cuivre) ; 0 sinon.</summary>
+        public long Cost { get; }
+
+        private RosterResult(string? reason, SavedCompanions roster, long cost)
+        {
+            Reason = reason;
+            Roster = roster;
+            Cost = cost;
+        }
+
+        public static RosterResult Ok(SavedCompanions roster, long cost = 0) => new RosterResult(null, roster, cost);
+        public static RosterResult Refused(string reason, SavedCompanions unchanged) => new RosterResult(reason, unchanged, 0);
+    }
+
+    /// <summary>Ce que le jeu sait au moment d'un recrutement.</summary>
+    public sealed class RecruitContext
+    {
+        /// <summary>L'histoire a amené ce compagnon (héros, Cendre) ou le dressage est fait (bête apprivoisée).</summary>
+        public bool Available { get; }
+
+        /// <summary>Rang de Guilde du personnage (mercenaires) ; null s'il n'est pas inscrit.</summary>
+        public string? GuildRank { get; }
+
+        /// <summary>Bourse du personnage, en cuivre.</summary>
+        public long Money { get; }
+
+        /// <summary>
+        /// Tirage borné du générateur injecté (revue Codex de la PR #172 : le <c>NextBounded</c> d'un <c>Pcg32</c> fourni par l'appelant,
+        /// entier uniforme dans [0, borne)). Appelé une seule fois, et seulement quand un mercenaire jamais renvoyé est réellement recruté :
+        /// un refus ou un réembauchage ne consomme rien.
+        /// </summary>
+        public Func<uint, uint> NextBounded { get; }
+
+        public RecruitContext(bool available, string? guildRank, long money, Func<uint, uint> nextBounded)
+        {
+            Available = available;
+            GuildRank = guildRank;
+            Money = money;
+            NextBounded = nextBounded ?? throw new ArgumentNullException(nameof(nextBounded));
+        }
+    }
+
+    /// <summary>
+    /// Compagnons : règles de progression de la troupe (décisions de Damien du 14 novembre 2026), fonctions pures sur la sauvegarde. Toute
+    /// opération contrôle d'abord, sans rien modifier, puis rend une nouvelle troupe (refus atomique : motif et troupe inchangée).
+    /// <list type="bullet">
+    /// <item><b>Recrutement</b> : un héros ou une bête quand l'histoire l'amène, un mercenaire à la Guilde selon le rang et contre sa paie ; le
+    /// trait d'un mercenaire est tiré au hasard (Pcg32 injecté par l'appelant, un tirage borné) parmi les traits du catalogue. Un nouveau compagnon prend
+    /// une place libre s'il y en a une.</item>
+    /// <item><b>Places</b> : une au départ, la deuxième s'ouvre par la quête de lien au feu de camp de la fin du chapitre 1, à partir du niveau
+    /// minimum doux (environ 12) ; pendant le boss du monde, un seul compagnon au combat (le second attend au point de repli).</item>
+    /// <item><b>Niveau</b> : celui du personnage (le compagnon monte de niveau avec lui).</item>
+    /// <item><b>Hors combat sans mort</b> : un compagnon tombé reste dans la troupe, hors combat, jusqu'à la prochaine halte au feu de camp,
+    /// qui le relève et rapproche (jauge de lien) les compagnons actifs.</item>
+    /// <item><b>Estime</b> : il aime ou déteste les choix du joueur (de −100 à 100) ; elle ne change jamais son obéissance au combat.</item>
+    /// </list>
+    /// </summary>
+    public static class CompanionRules
+    {
+        /// <summary>Accord d'une troupe relue avec le catalogue : compagnons connus, traits connus et seulement chez les mercenaires, places au plus celles du catalogue.</summary>
+        public static IReadOnlyList<string> Check(CompanionCatalog catalog, SavedCompanions roster)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            var problems = new List<string>();
+            if (roster.Slots > catalog.Slots.Max) problems.Add($"{roster.Slots} places, au plus {catalog.Slots.Max}.");
+            foreach (SavedCompanion c in roster.Recruited)
+            {
+                if (!catalog.TryGet(c.Id, out CompanionSheet sheet)) { problems.Add($"compagnon inconnu « {c.Id} »."); continue; }
+                if (sheet.RandomTrait != (c.Trait != null)) problems.Add($"« {c.Id} » : trait {(sheet.RandomTrait ? "manquant" : "en trop")}.");
+                if (c.Trait != null && catalog.Trait(c.Trait) is null) problems.Add($"« {c.Id} » : trait inconnu « {c.Trait} ».");
+            }
+            foreach (SavedCompanion f in roster.Former)
+            {
+                if (!catalog.TryGet(f.Id, out CompanionSheet sheet)) { problems.Add($"ancien mercenaire inconnu « {f.Id} »."); continue; }
+                if (sheet.Kind != CompanionKind.Mercenary) problems.Add($"« {f.Id} » renvoyé, mais ce n'est pas un mercenaire.");
+                if (sheet.RandomTrait != (f.Trait != null)) problems.Add($"« {f.Id} » : trait {(sheet.RandomTrait ? "manquant" : "en trop")}.");
+                if (f.Trait != null && catalog.Trait(f.Trait) is null) problems.Add($"« {f.Id} » : trait inconnu « {f.Trait} ».");
+            }
+            return problems;
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #172 : accord complet d'une troupe relue avec le catalogue et la partie, à faire au chargement :
+        /// celui de <see cref="Check(CompanionCatalog, SavedCompanions)"/>, plus la deuxième place, qui n'existe que si la quête de lien est
+        /// finie dans l'histoire sauvegardée et que le personnage a le niveau minimum doux.
+        /// </summary>
+        public static IReadOnlyList<string> Check(CompanionCatalog catalog, SavedCompanions roster, SavedStory story, int characterLevel)
+        {
+            if (story is null) throw new ArgumentNullException(nameof(story));
+            var problems = new List<string>(Check(catalog, roster));
+            if (roster.Slots > catalog.Slots.Initial)
+            {
+                if (!BondQuestDone(catalog, story)) problems.Add($"deuxième place ouverte sans la quête « {catalog.Slots.SecondSlotQuest} » finie.");
+                if (characterLevel < catalog.Slots.SecondSlotLevel) problems.Add($"deuxième place ouverte au niveau {characterLevel}, avant le niveau {catalog.Slots.SecondSlotLevel}.");
+            }
+            return problems;
+        }
+
+        /// <summary>La quête de lien au feu de camp du catalogue est-elle finie dans l'histoire sauvegardée ?</summary>
+        public static bool BondQuestDone(CompanionCatalog catalog, SavedStory story) =>
+            story.Quests.TryGetValue(catalog.Slots.SecondSlotQuest, out QuestProgress progress) && progress.IsDone;
+
+        /// <summary>Niveau d'un compagnon : celui du personnage, borné à [1, <see cref="CompanionCombat.MaxLevel"/>].</summary>
+        public static int LevelOf(int characterLevel) => Math.Max(1, Math.Min(CompanionCombat.MaxLevel, characterLevel));
+
+        /// <summary>
+        /// Trait tiré pour un mercenaire par le générateur injecté (revue Codex de la PR #172 : un tirage borné du <c>Pcg32</c> de l'appelant,
+        /// un seul appel) parmi les traits du catalogue, dans leur ordre.
+        /// </summary>
+        public static string DrawTrait(CompanionCatalog catalog, Func<uint, uint> nextBounded)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (nextBounded is null) throw new ArgumentNullException(nameof(nextBounded));
+            uint count = checked((uint)catalog.Traits.Count), index = nextBounded(count);
+            if (index >= count) throw new InvalidOperationException($"tirage {index} hors de [0, {count}).");
+            return catalog.Traits[(int)index].Id;
+        }
+
+        public static RosterResult Recruit(CompanionCatalog catalog, SavedCompanions roster, string companionId, RecruitContext context)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (context is null) throw new ArgumentNullException(nameof(context));
+            if (!catalog.TryGet(companionId, out CompanionSheet sheet)) return RosterResult.Refused("unknownCompanion", roster);
+            if (roster.Find(companionId) != null) return RosterResult.Refused("alreadyRecruited", roster);
+            if (roster.Recruited.Count >= SavedCompanions.MaxRecruited) return RosterResult.Refused("rosterFull", roster);
+            long cost = 0;
+            if (sheet.Kind == CompanionKind.Mercenary)
+            {
+                int need = Guild.GuildRanks.IndexOf(sheet.Recruit.GuildRank), have = Guild.GuildRanks.IndexOf(context.GuildRank);
+                if (have < 0 || have < need) return RosterResult.Refused("guildRankTooLow", roster);
+                cost = sheet.Recruit.Price;
+                if (context.Money < cost) return RosterResult.Refused("notEnoughMoney", roster);
+            }
+            else if (!context.Available) return RosterResult.Refused("notAvailable", roster);
+            // Décision de Damien du 15 novembre 2026 : un mercenaire renvoyé puis réembauché garde son estime et son trait (jauge à 0).
+            SavedCompanion? former = roster.FindFormer(sheet.Id);
+            string? trait = former != null ? former.Trait : sheet.RandomTrait ? DrawTrait(catalog, context.NextBounded) : null;
+            var recruited = roster.Recruited.Append(new SavedCompanion(sheet.Id, 0, former?.Approval ?? 0, trait, false));
+            IEnumerable<string> active = roster.Active.Count < roster.Slots ? roster.Active.Append(sheet.Id) : roster.Active;
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, recruited, active, roster.Former.Where(f => f.Id != sheet.Id)), cost);
+        }
+
+        /// <summary>
+        /// Renvoyer un mercenaire (un héros ou une bête reste : leur histoire continue) ; il quitte sa place. Il garde son estime et son trait
+        /// parmi les anciens mercenaires (décision de Damien du 15 novembre 2026) ; sa jauge de lien revient à 0.
+        /// </summary>
+        public static RosterResult Dismiss(CompanionCatalog catalog, SavedCompanions roster, string companionId)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (roster.Find(companionId) is null) return RosterResult.Refused("notRecruited", roster);
+            if (!catalog.TryGet(companionId, out CompanionSheet sheet) || sheet.Kind != CompanionKind.Mercenary) return RosterResult.Refused("notMercenary", roster);
+            SavedCompanion leaving = roster.Find(companionId)!;
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Where(c => c.Id != companionId), roster.Active.Where(a => a != companionId),
+                roster.Former.Append(new SavedCompanion(leaving.Id, 0, leaving.Approval, leaving.Trait, false))));
+        }
+
+        /// <summary>Choisir les compagnons actifs, dans l'ordre des places : recrutés, distincts, au plus les places ouvertes.</summary>
+        public static RosterResult SetActive(SavedCompanions roster, IReadOnlyList<string> active)
+        {
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (active is null) throw new ArgumentNullException(nameof(active));
+            if (active.Count > roster.Slots) return RosterResult.Refused("noFreeSlot", roster);
+            if (active.Distinct(StringComparer.Ordinal).Count() != active.Count) return RosterResult.Refused("duplicate", roster);
+            if (active.Any(a => roster.Find(a) is null)) return RosterResult.Refused("notRecruited", roster);
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited, active, roster.Former));
+        }
+
+        /// <summary>
+        /// Ouvrir la deuxième place (décision de Damien du 14 novembre 2026, 23 h 43) : la quête de lien au feu de camp est finie dans l'histoire
+        /// sauvegardée (relecture indépendante de la PR #172 : lue, pas affirmée par l'appelant) et le personnage a au moins le niveau minimum
+        /// doux du catalogue.
+        /// </summary>
+        public static RosterResult OpenSecondSlot(CompanionCatalog catalog, SavedCompanions roster, int characterLevel, SavedStory story)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (story is null) throw new ArgumentNullException(nameof(story));
+            if (roster.Slots >= catalog.Slots.Max) return RosterResult.Refused("allSlotsOpen", roster);
+            if (!BondQuestDone(catalog, story)) return RosterResult.Refused("bondQuestNotDone", roster);
+            if (characterLevel < catalog.Slots.SecondSlotLevel) return RosterResult.Refused("levelTooLow", roster);
+            return RosterResult.Ok(new SavedCompanions(roster.Slots + 1, roster.Recruited, roster.Active, roster.Former));
+        }
+
+        /// <summary>
+        /// Compagnons qui se battent : les actifs qui ne sont pas hors combat, dans l'ordre des places ; pendant le boss du monde, au plus
+        /// <see cref="SlotRules.WorldBossInCombat"/> (les autres attendent au point de repli de l'événement).
+        /// </summary>
+        public static IReadOnlyList<SavedCompanion> Fighters(CompanionCatalog catalog, SavedCompanions roster, bool worldBoss)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            IEnumerable<SavedCompanion> ready = roster.Active.Select(a => roster.Find(a)!).Where(c => !c.Down);
+            return (worldBoss ? ready.Take(catalog.Slots.WorldBossInCombat) : ready).ToArray();
+        }
+
+        /// <summary>Identifiant de combattant d'un compagnon : son identifiant sans « companion. » (« companion.nyx » → « nyx »).</summary>
+        public static string CombatantId(string companionId) =>
+            companionId != null && companionId.StartsWith("companion.", StringComparison.Ordinal) ? companionId.Substring("companion.".Length)
+                : throw new ArgumentException($"Compagnon « {companionId} » hors du format.", nameof(companionId));
+
+        /// <summary>
+        /// Les compagnons qui se battent, en assaillants compagnons de <paramref name="owner"/> au niveau du personnage, jauge de lien de la
+        /// sauvegarde ; <paramref name="placement"/> donne la place de départ du i-ème.
+        /// </summary>
+        public static IReadOnlyList<AssailantSetup> Combatants(CompanionCatalog catalog, SavedCompanions roster, int characterLevel, string owner, string team,
+            bool worldBoss, Func<int, CombatantPlacement> placement, long? arrivalMs = null)
+        {
+            if (placement is null) throw new ArgumentNullException(nameof(placement));
+            IReadOnlyList<SavedCompanion> fighters = Fighters(catalog, roster, worldBoss);
+            var result = new List<AssailantSetup>();
+            for (int i = 0; i < fighters.Count; i++)
+            {
+                SavedCompanion c = fighters[i];
+                if (!catalog.TryGet(c.Id, out CompanionSheet sheet)) throw new ArgumentException($"Compagnon inconnu « {c.Id} ».", nameof(roster));
+                result.Add(CompanionCombat.Build(catalog, sheet, LevelOf(characterLevel), CombatantId(c.Id), owner, team, c.Bond, placement(i), arrivalMs));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Après un combat : la jauge de lien de fin de combat de chaque compagnon qui s'est battu (bornée), et hors combat ceux qui sont tombés
+        /// (jamais retirés de la troupe). Un compagnon absent des issues ne change pas.
+        /// </summary>
+        public static SavedCompanions AfterCombat(SavedCompanions roster, IEnumerable<(string Id, int Bond, bool Fallen)> outcomes)
+        {
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            Dictionary<string, (int Bond, bool Fallen)> byId = (outcomes ?? throw new ArgumentNullException(nameof(outcomes)))
+                .GroupBy(o => o.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => (g.Last().Bond, g.Last().Fallen), StringComparer.Ordinal);
+            var recruited = roster.Recruited.Select(c => byId.TryGetValue(c.Id, out var o)
+                ? c.With(bond: Math.Max(0, Math.Min(SavedCompanion.MaxBond, o.Bond)), down: c.Down || o.Fallen) : c);
+            return new SavedCompanions(roster.Slots, recruited, roster.Active, roster.Former);
+        }
+
+        /// <summary>Halte au feu de camp : chaque compagnon hors combat se relève ; chaque compagnon actif gagne le lien d'une halte (borné).</summary>
+        public static SavedCompanions Camp(CompanionCatalog catalog, SavedCompanions roster)
+        {
+            if (catalog is null) throw new ArgumentNullException(nameof(catalog));
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            var recruited = roster.Recruited.Select(c => c.With(
+                bond: roster.Active.Contains(c.Id) ? Math.Min(SavedCompanion.MaxBond, c.Bond + catalog.Bond.CampGain) : c.Bond, down: false));
+            return new SavedCompanions(roster.Slots, recruited, roster.Active, roster.Former);
+        }
+
+        /// <summary>Un choix du joueur que le compagnon aime (delta positif) ou déteste (négatif) : estime bornée à [−100, 100].</summary>
+        public static RosterResult React(SavedCompanions roster, string companionId, int delta)
+        {
+            if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (roster.Find(companionId) is not { } c) return RosterResult.Refused("notRecruited", roster);
+            long approval = Math.Max(-SavedCompanion.MaxApproval, Math.Min(SavedCompanion.MaxApproval, (long)c.Approval + delta));
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Select(x => x.Id == companionId ? x.With(approval: (int)approval) : x), roster.Active, roster.Former));
+        }
+    }
+}

@@ -66,7 +66,7 @@ namespace EdS.World
     /// ou trop tard, le lancer est perdu. L'espèce (parmi celles du poste qui mordent en cette saison et à ce moment de la journée, selon
     /// leur poids) et la taille sont tirées par un <c>Pcg32</c> initialisé par la clé (personnage, numéro du lancer) : le même lancer donne
     /// toujours la même chose ; chaque lancer réglé (prise, trop tôt, trop tard, ligne ramenée) fait avancer le compteur, gardé dans la
-    /// sauvegarde (v20) avec le carnet. Les temps sont des ticks du monde, jamais une horloge réelle.
+    /// sauvegarde (v21) avec le carnet. Les temps sont des ticks du monde, jamais une horloge réelle.
     /// </summary>
     public sealed partial class WorldSession
     {

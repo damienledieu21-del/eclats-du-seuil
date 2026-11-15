@@ -187,6 +187,7 @@ namespace EdS.Simulation.Engine
             if (impact.Assailant.Out) return OutReason(impact.Assailant, "actor");
             if (impact.Zone is null && impact.Target!.Out) return OutReason(impact.Target, "target");
             if (impact.Pulse == 0 && BlockReason(impact.Assailant, StatusBlocks.AssailantAttacks) is { } blocked) return blocked;
+            if (RecalledBefore(impact)) return "recalled";   // compagnons : « revenir » annule une annonce qui n'a pas encore frappé
             return null;
         }
 

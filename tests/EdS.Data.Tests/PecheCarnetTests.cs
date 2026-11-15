@@ -14,7 +14,7 @@ namespace EdS.Data.Tests;
 /// <summary>
 /// Vague 4 du plan des Vallons (« la vie à côté du combat ») : la pêche et son carnet. Données (<c>fishing.json</c>, schéma 1, validateur
 /// unique), petit jeu (lancer, touche après un délai tiré au sort, ferrer pendant la fenêtre), espèces selon le poste, la saison et le
-/// moment de la journée, carnet des prises (nombre, plus grande) dans la sauvegarde (v20).
+/// moment de la journée, carnet des prises (nombre, plus grande) dans la sauvegarde (v21).
 /// </summary>
 [Trait("Category", "World")]
 public class PecheCarnetTests
@@ -147,7 +147,7 @@ public class PecheCarnetTests
         var first = Enumerable.Range(0, 6).Select(_ => Catch(a)).ToList();
         Assert.Equal(first, Enumerable.Range(0, 6).Select(_ => Catch(b)).ToList());   // déterministe (personnage, numéro du lancer)
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(a.Save())).Save!;
-        Assert.Equal(20, SaveValidator.CurrentSchemaVersion);
+        Assert.Equal(21, SaveValidator.CurrentSchemaVersion);   // pêche et carnet : 21 ;
         Assert.Equal(a.Fishing, saved.Character!.Fishing);
         Assert.Equal(6L, saved.Character.Fishing.Casts);
         foreach (var g in first.GroupBy(c => c.Fish))
@@ -158,7 +158,7 @@ public class PecheCarnetTests
     }
 
     [Fact]
-    public void Sauvegarde_v20_pecheur_facultatif_et_refuse_avant()
+    public void Sauvegarde_v21_peche_facultative_et_refusee_avant()
     {
         WorldSession w = Open();
         string text = SaveJsonReader.Write(w.Save());
@@ -169,8 +169,8 @@ public class PecheCarnetTests
         Assert.Contains("\"fishing\": {\"casts\": 1, \"log\": []}", text);
         Assert.True(SaveJsonReader.Read(text).IsValid);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(System.Text.Json.JsonDocument.Parse(text).RootElement));
-        string v19 = text.Replace("\"schemaVersion\": 20", "\"schemaVersion\": 19");
-        SaveLoadResult old = SaveJsonReader.Read(v19);
+        string v20 = text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 20");
+        SaveLoadResult old = SaveJsonReader.Read(v20);
         Assert.False(old.IsValid);
         Assert.EndsWith(".fishing", old.Report.Errors[0].Path);
     }

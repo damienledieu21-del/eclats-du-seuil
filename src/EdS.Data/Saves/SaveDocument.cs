@@ -99,7 +99,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur (facultatif).</summary>
         public SavedLookData? Look { get; set; }
 
-        /// <summary>Pêche et carnet (version 20) : lancers et carnet des prises, facultatif.</summary>
+        /// <summary>Compagnons (version 20) : la troupe du personnage (facultative : absente quand il n'a recruté personne).</summary>
+        public SavedCompanionsData? Companions { get; set; }
+        /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises, facultatif.</summary>
         public SavedFishingData? Fishing { get; set; }
 
         /// <summary>Champs effectivement présents (selon la version).</summary>

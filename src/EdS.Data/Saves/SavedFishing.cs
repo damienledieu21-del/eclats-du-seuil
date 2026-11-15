@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace EdS.Data.Saves
 {
-    /// <summary>Pêche et carnet (sauvegarde v20) : une ligne du carnet des prises : l'espèce (son objet), le nombre de prises et la plus grande (cm).</summary>
+    /// <summary>Pêche et carnet (sauvegarde v21) : une ligne du carnet des prises : l'espèce (son objet), le nombre de prises et la plus grande (cm).</summary>
     public sealed class SavedCatch
     {
         public string Fish { get; }
@@ -30,7 +30,7 @@ namespace EdS.Data.Saves
     }
 
     /// <summary>
-    /// Pêche et carnet (sauvegarde v20, <c>character.fishing</c>) : lancers faits (compteur des tirages déterministes de la pêche : chaque
+    /// Pêche et carnet (sauvegarde v21, <c>character.fishing</c>) : lancers faits (compteur des tirages déterministes de la pêche : chaque
     /// lancer, réussi ou manqué, le fait avancer) et carnet des prises, une ligne par espèce, rangée par objet.
     /// </summary>
     public sealed class SavedFishing
