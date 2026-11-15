@@ -89,6 +89,9 @@ namespace EdS.Runtime
             ("bobine", new[] { "thread", "spool", "yarn" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
             ("carnet", new[] { "notebook", "book" }), ("sac", new[] { "bag", "sack" }), ("bourse", new[] { "pouch", "purse", "bag" }), ("corde", new[] { "rope" }),
             ("seau", new[] { "bucket" }), ("cor", new[] { "horn" }), ("poussiere", new[] { "dust", "powder" }),
+            // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
+            ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
+            ("trompette", new[] { "mushroom" }),
             // Grand Solitaire : butin du boss du monde (trophée, mantelet, appel de la monture).
             ("trophee", new[] { "trophy", "plaque" }), ("mantelet", new[] { "cloak", "cape", "mantle" }), ("appel", new[] { "horn", "whistle" }),
         };

@@ -41,6 +41,17 @@ Shader "EdS/Herbe"
             half _Translucency;
         CBUFFER_END
 
+        // Saisons : teinte de saison et neige posées par SeasonView (globales ; jamais posées, elles valent 0 et rien ne change).
+        half4 _EdsSeasonTint;
+        half _EdsSnow;
+
+        half3 EdsSeason(half3 albedo, half up)
+        {
+            albedo = lerp(albedo, albedo * _EdsSeasonTint.rgb * 2.0h, _EdsSeasonTint.a);
+            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(_EdsSnow * saturate(up * 1.5h - 0.3h)));
+        }
+
+
         float Hash(float2 p)
         {
             return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
@@ -146,7 +157,7 @@ Shader "EdS/Herbe"
                 // (moins noir qu'avant).
                 half3 halfDir = normalize(sun.direction + view);
                 half sheen = pow(saturate(dot(normalWS, halfDir)), 24.0h) * _Sheen * input.height;
-                half3 color = input.color * light * lerp(0.62h, 1.0h, input.height) + sun.color * sun.shadowAttenuation * sheen * 0.35h;
+                half3 color = EdsSeason(input.color, normalWS.y * input.height) * light * lerp(0.62h, 1.0h, input.height) + sun.color * sun.shadowAttenuation * sheen * 0.35h;
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0h);
             }
