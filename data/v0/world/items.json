@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/items.schema.json",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.19.0-provisoire",
+  "contentVersion": "0.20.0-provisoire",
   "data": {
     "slots": [
       {
@@ -2108,7 +2108,8 @@
         "rarity": "common",
         "stack": 5,
         "heal": 160,
-        "cooldownMs": 20000
+        "cooldownMs": 20000,
+        "craftQuality": true
       },
       {
         "id": "item.couronne_des_moissons",
@@ -2118,7 +2119,8 @@
         "rarity": "rare",
         "stack": 3,
         "heal": 200,
-        "cooldownMs": 20000
+        "cooldownMs": 20000,
+        "craftQuality": true
       },
       {
         "id": "item.friture_du_lac",

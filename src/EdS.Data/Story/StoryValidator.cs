@@ -148,7 +148,21 @@ namespace EdS.Data.Story
         /// l'hôte fournit la date réelle, la fête a lieu du jour dit, pendant <c>days</c> jours (heure de Paris), chaque jour du monde de
         /// <c>from</c> à <c>to</c> ; sans date fournie, elle garde son jour du calendrier du jeu. Deux fêtes datées ne se chevauchent pas.
         /// La version 13 reste lue telle quelle.</remarks>
-        public const int CurrentSchemaVersion = 14;
+        /// <remarks>Version 15 (concours de pâtisserie, décision de Damien du 15 novembre 2026) : condition <c>hasSigned</c> (<c>id</c> une
+        /// pâtisserie de concours du catalogue, <c>quality</c> facultative « normal », « superior » ou « masterwork » : le personnage en a une
+        /// de sa main, de cette qualité, ou de toute qualité sans <c>quality</c>) et effet <c>present</c> (<c>id</c> et <c>quality</c>
+        /// obligatoire : il en présente une de sa main, de cette qualité exacte ; dans une réponse de dialogue seulement, qui demande
+        /// <c>hasSigned</c> du même objet et de la même qualité). La version 14 reste lue telle quelle.</remarks>
+        public const int CurrentSchemaVersion = 15;
+
+        /// <summary>Fêtes aux vraies dates : version 14, encore lue (sans <c>hasSigned</c> ni <c>present</c>).</summary>
+        public const int Schema14 = 14;
+
+        /// <summary>Concours de pâtisserie (schéma 15) : qualités exactes d'une condition <c>hasSigned</c> ou d'un effet <c>present</c>.</summary>
+        public static IReadOnlyDictionary<string, ItemQuality> ExactQualities { get; } = new ReadOnlyDictionary<string, ItemQuality>(new Dictionary<string, ItemQuality>(StringComparer.Ordinal)
+        {
+            ["normal"] = ItemQuality.Normal, ["superior"] = ItemQuality.Superior, ["masterwork"] = ItemQuality.Masterwork,
+        });
 
         /// <summary>Version 13 (sous-lot V2.10) : fêtes du bourg.</summary>
         public const int Schema13 = 13;
@@ -242,6 +256,7 @@ namespace EdS.Data.Story
             ["standing"] = ConditionKind.Standing, ["standingAtLeast"] = ConditionKind.StandingAtLeast,
             ["festival"] = ConditionKind.Festival, ["contestOpen"] = ConditionKind.ContestOpen,   // sous-lot V2.10 (schéma 13)
             ["contestRound"] = ConditionKind.ContestRound,
+            ["hasSigned"] = ConditionKind.HasSigned,   // concours de pâtisserie (schéma 15)
         });
 
         public static IReadOnlyDictionary<string, EffectKind> Effects { get; } = new ReadOnlyDictionary<string, EffectKind>(new Dictionary<string, EffectKind>(StringComparer.Ordinal)
@@ -253,6 +268,7 @@ namespace EdS.Data.Story
             ["skipQuest"] = EffectKind.SkipQuest,   // sous-lot V1.9.7 (schéma 7)
             ["reputation"] = EffectKind.Reputation,   // sous-lot V2.7 (schéma 12)
             ["contest"] = EffectKind.Contest,   // sous-lot V2.10 (schéma 13)
+            ["present"] = EffectKind.Present,   // concours de pâtisserie (schéma 15)
         });
 
         public static IReadOnlyDictionary<string, ObjectiveKind> Objectives { get; } = new ReadOnlyDictionary<string, ObjectiveKind>(new Dictionary<string, ObjectiveKind>(StringComparer.Ordinal)
@@ -322,6 +338,7 @@ namespace EdS.Data.Story
                 || document.SchemaVersion == Schema11   // sous-lot V2.7
                 || document.SchemaVersion == Schema12   // sous-lot V2.10
                 || document.SchemaVersion == Schema13   // fêtes aux vraies dates
+                || document.SchemaVersion == Schema14   // concours de pâtisserie
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -808,6 +825,16 @@ namespace EdS.Data.Story
                                             $"concours « {effects[e].Id} » : la réponse doit demander « contestOpen » de la même fête.");
                                         chOk = false;
                                     }
+                            // Concours de pâtisserie (schéma 15) : présenter une pâtisserie demande de l'avoir, de cette qualité exacte.
+                            if (effects != null && conditions != null)
+                                for (int e = 0; e < effects.Count; e++)
+                                    if (effects[e].Kind == EffectKind.Present
+                                        && !conditions.Any(c => c.Kind == ConditionKind.HasSigned && c.Id == effects[e].Id && c.Quality == effects[e].Quality))
+                                    {
+                                        _r.Add($"{cp}.effects[{e}].id", ValidationCode.InvalidValue,
+                                            $"pâtisserie « {effects[e].Id} » présentée : la réponse doit demander « hasSigned » du même objet et de la même qualité.");
+                                        chOk = false;
+                                    }
                             if (!ch.HasNext) { TextsValidator.Missing(_r, cp + ".next", "nœud suivant, ou null pour finir"); chOk = false; }
                             else if (ch.Next != null && !nodeIds.Contains(ch.Next)) { _r.Add(cp + ".next", ValidationCode.UnknownReference, $"nœud inconnu « {ch.Next} »."); chOk = false; }
                             if (chOk && conditions != null && effects != null) choices.Add(new DialogueChoice(ch.Text!, conditions, effects, ch.Next));
@@ -931,7 +958,16 @@ namespace EdS.Data.Story
                         _r.Add(p + ".if", ValidationCode.UnknownReference, $"condition inconnue « {t.Kind} » ; possibles : {string.Join(", ", Conditions.Keys)}.");
                         continue;
                     }
-                    if (!NoNpc(t, p) || !NoQuality(t, p)) continue;
+                    if (!NoNpc(t, p)) continue;
+                    if (kind == ConditionKind.HasSigned)   // concours de pâtisserie (schéma 15)
+                    {
+                        if (!Since15(t.Kind, p + ".if")) continue;
+                        bool any = !t.Present.Contains("quality") && t.Quality is null;
+                        if (SignedItemRef(t, p) & (any || ExactQualityRef(t, p)) & NoValue(t, p) & NoStep(t, p))
+                            list.Add(new StoryCondition(kind, t.Id!, 0, null, any ? (ItemQuality?)null : ExactQualities[t.Quality!]));
+                        continue;
+                    }
+                    if (!NoQuality(t, p)) continue;
                     bool ok = kind switch
                     {
                         ConditionKind.LevelAtLeast => NoId(t, p) && Value(t, p, 1, MaxLevel) && NoStep(t, p) && CapWarning(t, p),
@@ -989,7 +1025,16 @@ namespace EdS.Data.Story
                         _r.Add(p + ".do", ValidationCode.UnknownReference, $"effet inconnu « {t.Kind} » ; possibles : {string.Join(", ", Effects.Keys)}.");
                         continue;
                     }
-                    if (!NoStep(t, p) || !NoNpc(t, p) || !NoQuality(t, p)) continue;
+                    if (!NoStep(t, p) || !NoNpc(t, p)) continue;
+                    if (kind == EffectKind.Present)   // concours de pâtisserie (schéma 15)
+                    {
+                        if (!Since15("present", p + ".do")) continue;
+                        if (!contest) { _r.Add(p + ".do", ValidationCode.InvalidValue, "effet « present » permis seulement dans une réponse de dialogue."); continue; }
+                        if (SignedItemRef(t, p) & ExactQualityRef(t, p) & NoValue(t, p))
+                            list.Add(new StoryEffect(kind, t.Id!, 0, ExactQualities[t.Quality!]));
+                        continue;
+                    }
+                    if (!NoQuality(t, p)) continue;
                     // Sous-lot V1.9.7 : skipQuest est nouveau en version 7.
                     if (kind == EffectKind.SkipQuest && _schema < Schema7)
                     {
@@ -1234,6 +1279,33 @@ namespace EdS.Data.Story
 
             /// <summary>Sous-lot V2.7 : <paramref name="what"/> (réputation) demande la version 12.</summary>
             /// <summary>Sous-lot V2.10 : <paramref name="what"/> demande la version 13 (fêtes).</summary>
+            /// <summary>Concours de pâtisserie : <paramref name="what"/> est connu depuis la version 15.</summary>
+            private bool Since15(string what, string p)
+            {
+                if (_schema >= CurrentSchemaVersion) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                return false;
+            }
+
+            /// <summary>Concours de pâtisserie : qualité exacte connue (« normal », « superior » ou « masterwork »), obligatoire.</summary>
+            private bool ExactQualityRef(TermData t, string p)
+            {
+                if (t.Quality is null) { TextsValidator.Missing(_r, p + ".quality", $"qualité ({string.Join(", ", ExactQualities.Keys)})"); return false; }
+                if (ExactQualities.ContainsKey(t.Quality)) return true;
+                _r.Add(p + ".quality", ValidationCode.UnknownReference, $"qualité inconnue « {t.Quality} » ; possibles : {string.Join(", ", ExactQualities.Keys)}.");
+                return false;
+            }
+
+            /// <summary>Concours de pâtisserie : une pâtisserie de concours du catalogue (objet de soin marqué <c>craftQuality</c>).</summary>
+            private bool SignedItemRef(TermData t, string p)
+            {
+                if (!ItemRef(t, p)) return false;
+                _items.TryGetItem(t.Id!, out ItemDefinition item);
+                if (_items.SignsAlways(item)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » n'est pas une pâtisserie de concours (objet de soin marqué craftQuality).");
+                return false;
+            }
+
             private bool Since13(string what, string p)
             {
                 if (_schema >= Schema13) return true;
@@ -1288,8 +1360,8 @@ namespace EdS.Data.Story
                     if (f.CalendarOnly == true)
                     {
                         string cp = path + ".calendarOnly";
-                        if (_schema < CurrentSchemaVersion)
-                        { _r.Add(cp, ValidationCode.InvalidValue, $"« calendarOnly » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée."); continue; }
+                        if (_schema < Schema14)
+                        { _r.Add(cp, ValidationCode.InvalidValue, $"« calendarOnly » inconnu en version {_schema} du format : version {Schema14} demandée."); continue; }
                         if (f.Weekday != null || f.Season != null || f.Day != null || f.From != null || f.To != null || f.Rounds != null || (f.Guests != null && f.Guests.Count > 0))
                         { _r.Add(cp, ValidationCode.InvalidValue, "une fête du calendrier seulement n'a que son nom et sa date (ni weekday, season, day, from, to, rounds, ni invités)."); continue; }
                         if (f.Date is null) { TextsValidator.Missing(_r, path + ".date", "date réelle d'une fête du calendrier"); continue; }
@@ -1323,8 +1395,8 @@ namespace EdS.Data.Story
                     if (f.Date != null)
                     {
                         string dp = path + ".date";
-                        if (_schema < CurrentSchemaVersion)
-                        { _r.Add(dp, ValidationCode.InvalidValue, $"« date » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
+                        if (_schema < Schema14)
+                        { _r.Add(dp, ValidationCode.InvalidValue, $"« date » inconnue en version {_schema} du format : version {Schema14} demandée."); ok = false; }
                         else if (f.Weekday != null) { _r.Add(dp, ValidationCode.InvalidValue, "une date réelle seulement pour une fête annuelle (pas « weekday »)."); ok = false; }
                         else if (CheckDate(f.Date, dp) is (int m, int d, int n)) { month = m; startDay = d; days = n; }
                         else ok = false;

@@ -652,6 +652,9 @@ namespace EdS.Runtime
                 case StoryEventKind.ItemTaken:
                     Say("text.ui.item_taken", ItemName(e.Id), e.Value);
                     break;
+                case StoryEventKind.ItemPresented:   // concours de pâtisserie : la pâtisserie de sa main, présentée au juge
+                    Say("text.ui.item_taken", ItemName(e.Id), e.Value);
+                    break;
                 case StoryEventKind.XpGiven:
                     Say("text.ui.xp", e.Value);
                     break;

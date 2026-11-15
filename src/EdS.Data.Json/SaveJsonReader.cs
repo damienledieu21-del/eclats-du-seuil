@@ -704,14 +704,12 @@ namespace EdS.Data.Json
         {
             var b = new StringBuilder();
             if (stack.IsRolled) b.Append(", \"properties\": ").Append(Properties(stack.Properties));
-            if (stack.Quality != ItemQuality.Normal)
+            if (stack.Quality != ItemQuality.Normal) b.Append(", \"quality\": \"").Append(SaveValidator.QualityId(stack.Quality)).Append('"');
+            // Concours de pâtisserie (version 22) : la signature s'écrit aussi hors chef-d'œuvre (marque du pâtissier).
+            if (stack.SignedBy is string signer)
             {
-                b.Append(", \"quality\": \"").Append(SaveValidator.QualityId(stack.Quality)).Append('"');
-                if (stack.SignedBy is string signer)
-                {
-                    if (!SaveValidator.IsCharacterId(signer)) throw new ArgumentException($"Signature « {signer} » hors du format des sauvegardes.", nameof(stack));
-                    b.Append(", \"signedBy\": \"").Append(signer).Append('"');
-                }
+                if (!SaveValidator.IsCharacterId(signer)) throw new ArgumentException($"Signature « {signer} » hors du format des sauvegardes.", nameof(stack));
+                b.Append(", \"signedBy\": \"").Append(signer).Append('"');
             }
             if (stack.Wear is int wear)
             {

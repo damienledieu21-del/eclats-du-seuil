@@ -162,10 +162,17 @@ namespace EdS.Data.Items
         /// <summary>Sous-lot V1.8c : qualité d'un objet de bonus, qui fixe sa durée (<see cref="ItemCatalog.BoonTicks"/>) ; normale sinon.</summary>
         public ItemQuality BoonQuality { get; }
 
+        /// <summary>
+        /// Concours de pâtisserie (catalogue version 8) : objet de soin cuit à une qualité de fabrication et marqué du nom de son pâtissier
+        /// (<see cref="ItemStack.SignedBy"/>, à toute qualité) : la pâtisserie que le joueur présente au concours de Firmin.
+        /// </summary>
+        public bool CraftQuality { get; }
+
         internal ItemDefinition(string id, string name, ItemType type, ItemRarity rarity, int stack, string? slot, int requiredLevel, GearBonus bonus,
             long heal = 0, long cooldownMs = 0, ShieldGuard? guard = null, IEnumerable<string>? fits = null, string? icon = null, bool named = false,
-            string? set = null, ItemEffect? effect = null, BoonKind? boon = null, ItemQuality boonQuality = ItemQuality.Normal)
+            string? set = null, ItemEffect? effect = null, BoonKind? boon = null, ItemQuality boonQuality = ItemQuality.Normal, bool craftQuality = false)
         {
+            CraftQuality = craftQuality;
             Boon = boon;
             BoonQuality = boonQuality;
             Named = named;
@@ -510,7 +517,14 @@ namespace EdS.Data.Items
         /// nommé (un objet nommé est fait à la main, il ne sort pas de la forge).
         /// </summary>
         public bool TakesQuality(ItemDefinition item) =>
-            item is { Type: ItemType.Equipment, Named: false } && PlacesFor(item.Slot).FirstOrDefault() is { Group: PlaceGroup.Combat };
+            item is { Type: ItemType.Equipment, Named: false } && PlacesFor(item.Slot).FirstOrDefault() is { Group: PlaceGroup.Combat }
+            || item is { Type: ItemType.Consumable, CraftQuality: true };   // concours de pâtisserie (version 8)
+
+        /// <summary>
+        /// Concours de pâtisserie (version 8) : l'objet porte la marque de son pâtissier à toute qualité (une pâtisserie de concours) ; un autre
+        /// objet n'est signé que chef-d'œuvre.
+        /// </summary>
+        public bool SignsAlways(ItemDefinition item) => item is { Type: ItemType.Consumable, CraftQuality: true };
 
         /// <summary>
         /// Sous-lot V1.4 : l'objet s'use au combat : tout équipement des places du combat (nommé compris) ; ni l'Éclat du Seuil, ni l'outil de
@@ -616,6 +630,8 @@ namespace EdS.Data.Items
             if (stack.Count != 1) return $"« {item.Id} » unique (propriétés tirées, qualité ou usure) : quantité 1 (il ne s'empile pas).";
             if (stack.Quality != ItemQuality.Normal && !TakesQuality(item)) return $"« {item.Id} » ne prend pas de qualité de fabrication (objet nommé, ou hors des places du combat).";
             if (stack.SignedBy != null && !SaveValidator.IsCharacterId(stack.SignedBy)) return $"signature « {stack.SignedBy} » mal formée.";
+            if (stack.SignedBy != null && stack.Quality != ItemQuality.Masterwork && !SignsAlways(item))
+                return $"« {item.Id} » n'est signé que chef-d'œuvre (seule une pâtisserie de concours porte la marque de son pâtissier).";
             if (stack.Wear is int wear)
             {
                 if (!Wears(item)) return $"« {item.Id} » ne s'use pas (hors des places du combat).";
@@ -659,6 +675,12 @@ namespace EdS.Data.Items
             {
                 notes.Add($"{item.Name} : ne prend plus de qualité de fabrication, redevenu de qualité normale.");
                 stack = stack.WithQuality(ItemQuality.Normal, null);
+            }
+            // Concours de pâtisserie : une marque de pâtissier sur un objet qui n'en porte plus est retirée (règle sûre, sans partie perdue).
+            if (stack.SignedBy != null && stack.Quality != ItemQuality.Masterwork && !SignsAlways(item))
+            {
+                notes.Add($"{item.Name} : ne porte plus la marque de son pâtissier, marque retirée.");
+                stack = stack.WithQuality(stack.Quality, null);
             }
             if (stack.Wear is int wear && (!Wears(item) || wear >= WearMax))
             {
@@ -752,10 +774,12 @@ namespace EdS.Data.Items
         /// maximaux). Version 6 (sous-lot V1.8) : <c>wear.levelResistPercent</c> et <c>wear.rarityResistPercent</c> (résistance à l'usure par
         /// niveau requis et par rareté : réponse de Damien du 31 octobre 2026). Version 7 (sous-lot V1.8c) : type <c>boon</c> (objet de bonus :
         /// <c>stack</c>, <c>boon</c> « meal », « elixir » ou « weapon », <c>quality</c> « normal », « superior » ou « masterwork », <c>bonus</c>
-        /// aux statistiques) et <c>boons</c> (durée d'un objet de bonus de chaque qualité, en minutes de jeu, de 30 à 60). Une version antérieure
+        /// aux statistiques) et <c>boons</c> (durée d'un objet de bonus de chaque qualité, en minutes de jeu, de 30 à 60). Version 8 (concours de
+        /// pâtisserie, décision de Damien du 15 novembre 2026) : <c>craftQuality</c> facultatif sur un objet de soin (pâtisserie de concours :
+        /// elle prend une qualité de fabrication, normale, supérieure ou chef-d'œuvre, et la marque de son pâtissier). Une version antérieure
         /// est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
 
         /// <summary>Sous-lot V1.4 : part du bonus de base ajoutée par une qualité, au plus (le bonus de qualité ne dépasse jamais le bonus de base).</summary>
         public const int MaxQualityPercent = 100;
@@ -857,12 +881,13 @@ namespace EdS.Data.Items
             "effects" => item.Effects != null,
             "boon" => item.Boon != null,
             "quality" => item.Quality != null,
+            "craftQuality" => item.CraftQuality != null,
             _ => false,
         };
 
         private static readonly string[] EquipmentFields = { "slot", "requiredLevel", "bonus", "guard", "fits", "named", "set", "effects" };
         private static readonly string[] MaterialFields = { "stack" };
-        private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs" };
+        private static readonly string[] ConsumableFields = { "stack", "heal", "cooldownMs", "craftQuality" };   // craftQuality : version 8
         private static readonly string[] BoonFields = { "stack", "boon", "quality", "bonus" };   // sous-lot V1.8c
 
         public static ItemCatalogLoadResult Validate(ItemCatalogDocument document, GameData data, ValidationReport? report = null)
@@ -1391,7 +1416,8 @@ namespace EdS.Data.Items
                     { report.Add(path + ".cooldownMs", ValidationCode.OutOfRange, $"recharge hors de [0, {MaxCooldownMs}] ms ou pas un multiple de {TickMs} ms."); ok = false; }
                     else cooldown = item.CooldownMs.Value;
                 }
-                return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, item.Stack!.Value, null, 1, GearBonus.None, heal, cooldown, icon: item.Icon) : null;
+                return ok ? new ItemDefinition(item.Id!, item.Name!, type, rarity, item.Stack!.Value, null, 1, GearBonus.None, heal, cooldown, icon: item.Icon,
+                    craftQuality: item.CraftQuality ?? false) : null;
             }
             EquipmentPlace? place = null;
             string kinds = string.Join(", ", places.Select(p => p.Accepts).Distinct());

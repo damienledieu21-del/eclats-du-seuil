@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 14,
+  "schemaVersion": 15,
   "kind": "story",
-  "contentVersion": "0.27.0-provisoire",
+  "contentVersion": "0.28.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -11334,6 +11334,32 @@
           {
             "conditions": [
               {
+                "if": "contestOpen",
+                "id": "festival.moissons"
+              },
+              {
+                "if": "hasSigned",
+                "id": "item.couronne_des_moissons"
+              }
+            ],
+            "node": "v215_concours"
+          },
+          {
+            "conditions": [
+              {
+                "if": "contestOpen",
+                "id": "festival.moissons"
+              },
+              {
+                "if": "hasSigned",
+                "id": "item.tarte_renversee_aux_pommes"
+              }
+            ],
+            "node": "v215_concours"
+          },
+          {
+            "conditions": [
+              {
                 "if": "festival",
                 "id": "festival.moissons"
               }
@@ -13450,6 +13476,409 @@
           {
             "id": "v210_marche_gagne",
             "text": "text.v210.boulanger.marche.gagne",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v215_concours",
+            "text": "text.v215.boulanger.concours",
+            "choices": [
+              {
+                "text": "text.v215.boulanger.couronne",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.couronne_des_moissons"
+                  }
+                ],
+                "effects": [],
+                "next": "v215_couronne"
+              },
+              {
+                "text": "text.v215.boulanger.tarte",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.tarte_renversee_aux_pommes"
+                  }
+                ],
+                "effects": [],
+                "next": "v215_tarte"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.boulanger.croc_mort.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "quest.chat_de_rosalie",
+                    "if": "questDone"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.chat",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre",
+                "text": "text.ch1.boulanger.chat_rentre.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.secret",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.moque",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "text": "text.v215.boulanger.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "v210_moissons"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v215_couronne",
+            "text": "text.v215.boulanger.couronne.choisir",
+            "choices": [
+              {
+                "text": "text.v215.boulanger.couronne.masterwork",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "masterwork"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "masterwork"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 600
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 20
+                  }
+                ],
+                "next": "v215_chef"
+              },
+              {
+                "text": "text.v215.boulanger.couronne.superior",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "superior"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "superior"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 300
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 12
+                  }
+                ],
+                "next": "v215_superieure"
+              },
+              {
+                "text": "text.v215.boulanger.couronne.normal",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "normal"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.couronne_des_moissons",
+                    "quality": "normal"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 6
+                  }
+                ],
+                "next": "v215_normale"
+              },
+              {
+                "text": "text.v215.boulanger.retour",
+                "conditions": [],
+                "effects": [],
+                "next": "v215_concours"
+              }
+            ]
+          },
+          {
+            "id": "v215_tarte",
+            "text": "text.v215.boulanger.tarte.choisir",
+            "choices": [
+              {
+                "text": "text.v215.boulanger.tarte.masterwork",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "masterwork"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "masterwork"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 300
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 15
+                  }
+                ],
+                "next": "v215_chef"
+              },
+              {
+                "text": "text.v215.boulanger.tarte.superior",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "superior"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "superior"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 9
+                  }
+                ],
+                "next": "v215_superieure"
+              },
+              {
+                "text": "text.v215.boulanger.tarte.normal",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "normal"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.tarte_renversee_aux_pommes",
+                    "quality": "normal"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.moissons"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 80
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 4
+                  }
+                ],
+                "next": "v215_normale"
+              },
+              {
+                "text": "text.v215.boulanger.retour",
+                "conditions": [],
+                "effects": [],
+                "next": "v215_concours"
+              }
+            ]
+          },
+          {
+            "id": "v215_chef",
+            "text": "text.v215.boulanger.verdict.masterwork",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v215_superieure",
+            "text": "text.v215.boulanger.verdict.superior",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v215_normale",
+            "text": "text.v215.boulanger.verdict.normal",
             "choices": [
               {
                 "text": "text.v210.au_revoir",

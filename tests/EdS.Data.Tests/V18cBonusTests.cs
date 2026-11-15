@@ -104,7 +104,7 @@ public class V18cBonusTests : IDisposable
     public void Catalogue_en_version_7_objets_de_bonus_livres()
     {
         ItemCatalog items = ItemsCatalog;
-        Assert.Equal((7, 7, "0.19.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
+        Assert.Equal((8, 8, "0.20.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal(new[] { 30, 45, 60 }, items.BoonMinutes);
         // La qualité décide de la durée : 30, 45, 60 minutes de jeu, en ticks logiques de 50 ms.
         Assert.Equal((36_000, 54_000, 72_000), (items.BoonTicks(items.Item(Vigueur)), items.BoonTicks(items.Item(Garde)), items.BoonTicks(items.Item(Seuil))));
@@ -132,7 +132,7 @@ public class V18cBonusTests : IDisposable
     {
         // Choix le plus petit et cohérent : la forge et l'herboristerie (qui fait déjà les potions) existent : des recettes, pas de marchand.
         CraftingBook book = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Vallons, ItemsCatalog).Book!;
-        Assert.Equal((4, "0.9.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((4, "0.10.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         foreach (ItemDefinition boon in ItemsCatalog.Items.Where(i => i.Type == ItemType.Boon))
         {
             Recipe r = Assert.Single(book.Recipes, x => x.Output.Item == boon.Id);
@@ -568,7 +568,7 @@ public class V18cBonusTests : IDisposable
     [Fact]
     public void Sauvegarde_en_version_12_ecrite_et_relue_a_l_identique()
     {
-        Assert.Equal((21, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.26 : 18 (registre purgé, secteurs) ; V2.16 : 17 (aspect du héros) ; V2.10 : 16 (stock) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal((22, 12), (SaveValidator.CurrentSchemaVersion, SaveValidator.BoonsSince));   // V2.26 : 18 (registre purgé, secteurs) ; V2.16 : 17 (aspect du héros) ; V2.10 : 16 (stock) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         string text = Written(new SavedBoon(BoonKind.Weapon, Pierre, 1), new SavedBoon(BoonKind.Meal, Ragout, BoonKinds.MaxTicks));
         Assert.Contains(SaveVersion.Current + ",", text, StringComparison.Ordinal);   // V2.5 : 13
         Assert.Contains("      \"boons\": [{\"kind\": \"meal\", \"item\": \"item.test_ragout\", \"ticks\": 72000}, {\"kind\": \"weapon\", \"item\": \"item.pierre_a_aiguiser\", \"ticks\": 1}],\n",

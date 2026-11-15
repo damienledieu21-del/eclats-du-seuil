@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 21
+      "const": 22
     },
     "kind": {
       "const": "save"
@@ -236,7 +236,7 @@
                         "type": "string",
                         "pattern": "^[a-z][a-z0-9_]*$",
                         "maxLength": 64,
-                        "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre, interdit sinon)."
+                        "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 22 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
                       },
                       "wear": {
                         "type": "integer",
@@ -306,7 +306,7 @@
                             "type": "string",
                             "pattern": "^[a-z][a-z0-9_]*$",
                             "maxLength": 64,
-                            "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre, interdit sinon)."
+                            "description": "Sous-lot V1.4 (version 11) : personnage qui a signé ce chef-d'œuvre (obligatoire pour un chef-d'œuvre). Version 22 (concours de pâtisserie) : aussi la marque du pâtissier d'une pâtisserie de concours, à toute qualité (catalogue : craftQuality)."
                           },
                           "wear": {
                             "type": "integer",

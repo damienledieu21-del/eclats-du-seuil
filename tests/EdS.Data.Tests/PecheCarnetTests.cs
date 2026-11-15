@@ -150,7 +150,7 @@ public class PecheCarnetTests
         var first = Enumerable.Range(0, 6).Select(_ => Catch(a)).ToList();
         Assert.Equal(first, Enumerable.Range(0, 6).Select(_ => Catch(b)).ToList());   // déterministe (personnage, numéro du lancer)
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(a.Save())).Save!;
-        Assert.Equal(21, SaveValidator.CurrentSchemaVersion);   // pêche et carnet : 21 ;
+        Assert.Equal(22, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 22 ; pêche et carnet : 21 ;
         Assert.Equal(a.Fishing, saved.Character!.Fishing);
         Assert.Equal(6L, saved.Character.Fishing.Casts);
         foreach (var g in first.GroupBy(c => c.Fish))
@@ -172,7 +172,7 @@ public class PecheCarnetTests
         Assert.Contains("\"fishing\": {\"casts\": 1, \"log\": []}", text);
         Assert.True(SaveJsonReader.Read(text).IsValid);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(System.Text.Json.JsonDocument.Parse(text).RootElement));
-        string v20 = text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 20");
+        string v20 = text.Replace("\"schemaVersion\": 22", "\"schemaVersion\": 20");
         SaveLoadResult old = SaveJsonReader.Read(v20);
         Assert.False(old.IsValid);
         Assert.EndsWith(".fishing", old.Report.Errors[0].Path);
@@ -309,10 +309,10 @@ public class PecheCarnetTests
     }
 
     [Fact]
-    public void Relecture_sauvegarde_v22_refusee()
+    public void Relecture_sauvegarde_de_version_suivante_refusee()
     {
         string text = SaveJsonReader.Write(Open().Save());
-        Assert.False(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 22")).IsValid);
+        Assert.False(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 22", "\"schemaVersion\": 23")).IsValid);
     }
 
     [Fact]

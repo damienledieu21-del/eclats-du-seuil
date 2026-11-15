@@ -377,6 +377,27 @@ namespace EdS.World
                 + _equipped.Values.Where(s => s.Item == item && s.Quality >= minimum).Sum(s => s.Count));
 
         /// <summary>
+        /// Concours de pâtisserie : nombre de <paramref name="item"/> du sac signés de <paramref name="signer"/> (de sa main), de la qualité
+        /// <paramref name="quality"/> exacte, ou de toute qualité si elle est nulle.
+        /// </summary>
+        public int CountSigned(string item, string signer, ItemQuality? quality) =>
+            checked(_stacks.Where(s => s.Item == item && s.SignedBy == signer && (quality is null || s.Quality == quality)).Sum(s => s.Count));
+
+        /// <summary>
+        /// Concours de pâtisserie : retire un <paramref name="item"/> du sac signé de <paramref name="signer"/>, de la qualité
+        /// <paramref name="quality"/> exacte (la dernière place qui convient d'abord). Tout ou rien : refusé s'il n'y en a pas, ou si le retrait
+        /// entamerait la réserve (<see cref="InventoryRefusal.NotEnough"/>).
+        /// </summary>
+        public InventoryRefusal RemoveSigned(string item, string signer, ItemQuality quality)
+        {
+            if (Available(item) < 1) return InventoryRefusal.NotEnough;
+            for (int i = _stacks.Count - 1; i >= 0; i--)
+                if (_stacks[i].Item == item && _stacks[i].SignedBy == signer && _stacks[i].Quality == quality)
+                    return RemoveAt(i, 1, out _);
+            return InventoryRefusal.NotEnough;
+        }
+
+        /// <summary>
         /// Sous-lot 12.6 : quantité réservée (objets de soin emportés au combat) : elle reste dans l'inventaire et la sauvegarde, mais
         /// <see cref="Remove"/> ne peut pas la prendre ; seul le moteur l'use, quand le personnage boit.
         /// </summary>

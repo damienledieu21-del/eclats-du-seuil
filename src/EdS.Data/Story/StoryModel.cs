@@ -98,6 +98,13 @@ namespace EdS.Data.Story
         /// des concours (<see cref="Festival.RoundOn"/>).
         /// </summary>
         ContestRound = 25,
+
+        /// <summary>
+        /// Concours de pâtisserie (schéma 15) : le personnage a dans son sac une pâtisserie de concours <c>id</c> (catalogue <c>craftQuality</c>)
+        /// <b>de sa main</b> (signée de son nom), de la qualité <c>quality</c> (« normal », « superior », « masterwork ») ; sans
+        /// <c>quality</c> : de toute qualité.
+        /// </summary>
+        HasSigned = 26,
     }
 
     /// <summary>Sous-lot V1.6 (histoire en schéma 3) : onglet du journal où se range une quête.</summary>
@@ -158,6 +165,12 @@ namespace EdS.Data.Story
         /// le concours se referme jusqu'à la prochaine fois. Seulement dans une réponse qui demande <c>contestOpen</c> de la même fête.
         /// </summary>
         Contest = 13,
+
+        /// <summary>
+        /// Concours de pâtisserie (schéma 15) : le personnage présente (et laisse) une pâtisserie de concours <c>id</c> de sa main, de la qualité
+        /// <c>quality</c> exacte. Seulement dans une réponse de dialogue qui demande <c>hasSigned</c> du même objet et de la même qualité.
+        /// </summary>
+        Present = 14,
     }
 
     public enum ObjectiveKind
@@ -226,8 +239,12 @@ namespace EdS.Data.Story
         public long Value { get; }
         public string? Step { get; }
 
-        internal StoryCondition(ConditionKind kind, string id, long value, string? step)
+        /// <summary>Concours de pâtisserie (schéma 15) : qualité demandée par <c>hasSigned</c> ; null : toute qualité (et pour les autres conditions).</summary>
+        public EdS.Data.Saves.ItemQuality? Quality { get; }
+
+        internal StoryCondition(ConditionKind kind, string id, long value, string? step, EdS.Data.Saves.ItemQuality? quality = null)
         {
+            Quality = quality;
             Kind = kind;
             Id = id;
             Value = value;
@@ -244,8 +261,12 @@ namespace EdS.Data.Story
 
         public long Value { get; }
 
-        internal StoryEffect(EffectKind kind, string id, long value)
+        /// <summary>Concours de pâtisserie (schéma 15) : qualité exacte de la pâtisserie présentée (<c>present</c>) ; null pour les autres effets.</summary>
+        public EdS.Data.Saves.ItemQuality? Quality { get; }
+
+        internal StoryEffect(EffectKind kind, string id, long value, EdS.Data.Saves.ItemQuality? quality = null)
         {
+            Quality = quality;
             Kind = kind;
             Id = id;
             Value = value;

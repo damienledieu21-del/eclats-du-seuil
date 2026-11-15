@@ -469,7 +469,10 @@ namespace EdS.World
             foreach (string id in Inventory.Stacks.Select(st => st.Item).Distinct().OrderBy(i => i, StringComparer.Ordinal))
                 if (items.Item(id) is { Type: ItemType.Consumable } potion)
                 {
-                    int count = Math.Min(Inventory.Count(id), potion.Stack);
+                    // Concours de pâtisserie : une pâtisserie de sa main (signée) se garde pour le juge : elle ne part pas au combat, seules
+                    // les copies sans marque (achetées) sont emportées ; elle reste donc toujours libre d'être présentée.
+                    int count = Math.Min(Inventory.Stacks.Where(st => st.Item == id && st.SignedBy == null).Sum(st => st.Count), potion.Stack);
+                    if (count == 0) continue;
                     carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
                     _carried[id] = count;
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
