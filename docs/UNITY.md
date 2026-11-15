@@ -1026,6 +1026,21 @@ Affichage seulement ([plan de la grande carte](PLAN_GRANDE_CARTE.md#7-sous-lots)
 - **Passage sans saut** (`PassageGlide`) : le personnage arrive dans le secteur voisin au tick qui suit son départ ; pendant ce tick, son nouveau combattant n'est pas encore présent. Il est montré à sa place d'arrivée et son glissement continue d'un moteur à l'autre ; une place d'arrivée inconnue est prédite en prolongeant le dernier pas (deux ticks au plus, puis caché) ; un combattant parti est caché tout de suite. Son corps est gardé sous sa nouvelle identité (même modèle, même pas, arme et cape). `EdsGame.FollowRebind`, dans l'ordre : **relever** (places montrées des créatures de la session quittée, reprises parmi celles des autres secteurs), **propager** (corps et glissement du personnage), **remplacer** (corps de la session d'arrivée, partis des places où ils étaient montrés). Il est fait juste après l'avance du temps de l'image, avant l'affichage (avant : une image montrait le nouveau moteur avec les corps de l'ancien).
 - **Pas encore** : les créatures lointaines n'ont ni écho fantôme, ni oursons, ni voix (elles les ont dès que le personnage entre dans leur secteur) ; le décor est l'aire tirée à l'ouverture de l'hôte (une porte ouverte pendant le monde reste dans le décor jusqu'à la halte suivante) ; décor par cases au V2.28d. **Rien n'a été vérifié dans Unity** : seuls la compilation (`EdS.Unity.CompileCheck`) et les tests portables le sont.
 
+## Horizon lointain (sous-lot V2.29, première partie)
+
+Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity, déterministe) donne la silhouette des terres lointaines en 720 points d'azimut (0 : le nord, +z), pour un anneau de 6 000 m :
+- les **Crêtes de Fer** au nord-est, centrées sur 45°, sur 38° de part et d'autre : pics nets jusqu'à 900 m, enneigés au-dessus de 560 m ;
+- la **Forêt des Murmures** au nord-ouest, centrée sur 315° (plan, § 4.0 bis), sur 42° de part et d'autre : cimes géantes de 120 à 190 m ;
+- des collines basses ailleurs (40 à 82 m).
+
+Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra, qui la suit à chaque image (`EdsGame.LateUpdate`) en gardant les angles du profil de référence (hauteur réduite autour de l’altitude de la caméra). Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
+
+**À venir** :
+- les **cartes peintes** du ciel, à demander à ChatGPT ; ces silhouettes les remplacent en attendant ;
+- le **brouillard à dissiper** et le **point de vue du sommet** (sujet 30), qui demandent une sauvegarde des cases explorées : V2.29, deuxième partie.
+
+Essais : `V229HorizonTests`.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
