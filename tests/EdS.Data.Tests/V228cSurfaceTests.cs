@@ -18,9 +18,10 @@ public class V228cSurfaceTests
     /// Cases de 0,5 m d'un rectangle, libres pour un personnage (0,5 m d'emprise) : hors de tout obstacle de <paramref name="obstacles"/>
     /// et à plus de 0,5 m de chacun ; rend les cases atteintes depuis <paramref name="from"/> et si le bord du rectangle l'a été.
     /// </summary>
-    private static (HashSet<(int, int)> Reached, bool Edge) Flood(IEnumerable<SpaceObstacle> obstacles, (double X, double Z) min, (double X, double Z) max, (double X, double Z) from)
+    private static (HashSet<(int, int)> Reached, bool Edge) Flood(IEnumerable<SpaceObstacle> obstacles, (double X, double Z) min, (double X, double Z) max, (double X, double Z) from,
+        double step = 0.5)
     {
-        const double step = 0.5, radius = 0.5;
+        const double radius = 0.5;
         var shapes = obstacles.Select(o => o.Points.Select(p => (X: p.X.Raw / 1e4, Z: p.Z.Raw / 1e4)).ToList())
             .Where(p => p.Max(q => q.X) >= min.X - 1 && p.Min(q => q.X) <= max.X + 1 && p.Max(q => q.Z) >= min.Z - 1 && p.Min(q => q.Z) <= max.Z + 1)
             .Select(p => (Points: (IReadOnlyList<(double X, double Z)>)p, MinX: p.Min(q => q.X), MaxX: p.Max(q => q.X), MinZ: p.Min(q => q.Z), MaxZ: p.Max(q => q.Z))).ToList();
@@ -53,8 +54,8 @@ public class V228cSurfaceTests
         return (seen, edge);
     }
 
-    private static bool Reaches(HashSet<(int, int)> reached, (double X, double Z) min, (double X, double Z) at) =>
-        reached.Contains(((int)((at.X - min.X) / 0.5), (int)((at.Z - min.Z) / 0.5)));
+    private static bool Reaches(HashSet<(int, int)> reached, (double X, double Z) min, (double X, double Z) at, double step = 0.5) =>
+        reached.Contains(((int)((at.X - min.X) / step), (int)((at.Z - min.Z) / step)));
 
     [Fact]
     public void Aire_de_toute_la_region()
@@ -64,7 +65,8 @@ public class V228cSurfaceTests
         RegionGrid region = zone.Region!;
         Assert.Equal((region.Min, region.Max), (area.Min, area.Max));
         Assert.False(SectorMap.For(zone).HomeHoldsArea);
-        foreach (string id in new[] { "riviere_grand_lac", "riviere_gorge_ouest", "haie_ronces_sud", "haie_ronces_est", "eboulement_nord", "falaise_collines", "falaise_cascade" })
+        foreach (string id in new[] { "riviere_grand_lac", "gorge_ouest", "ravin_ronces_sud", "ravin_ronces_est", "eboulement_nord", "falaise_collines", "falaise_cascade", "falaise_crete",
+            "riviere_vallee_gue_sud", "riviere_vallee_gue_nord" })
             Assert.Contains(area.Obstacles, o => o.Id == id);
         Assert.True(area.Obstacles.Count(o => o.Id.StartsWith("riviere_vallee", StringComparison.Ordinal)) >= 5);
         Assert.True(area.Obstacles.Count(o => o.Id.StartsWith("riviere_champs", StringComparison.Ordinal)) >= 4);
@@ -86,20 +88,53 @@ public class V228cSurfaceTests
         Assert.True(Reaches(closed.Reached, min, (-20, 250)));    // la vallée jusqu'à l'éboulement aussi
         Assert.False(Reaches(closed.Reached, min, (-20, 300)));   // au-delà de l'éboulement, non
         // Chaque pièce de l'enclos compte : sans l'éboulement, ou sans le ravin de l'est, le pré s'échappe.
-        foreach (string piece in new[] { "eboulement_nord", "haie_ronces_est" })
+        foreach (string piece in new[] { "eboulement_nord", "ravin_ronces_est" })
             Assert.True(Flood(obstacles.Where(o => o.Id != piece), min, max, pre).Edge, piece);
         var open = Flood(obstacles.Where(o => o.Id != "porte_moulin"), min, max, pre);
         Assert.True(Reaches(open.Reached, min, village));
     }
 
+    /// <summary>Gués de la vallée fermés tant que l'éboulement l'est (passages de la zone, comme la porte du moulin).</summary>
+    private static readonly string[] ValleyGates = { "eboulement_nord", "riviere_vallee_gue_sud", "riviere_vallee_gue_nord" };
+
+    [Fact]
+    public void Verrou_de_la_vallee_depuis_le_village_eboulement_et_gues_fermes()
+    {
+        // Relecture indépendante de la PR #167 : on contournait l'éboulement par la berge est et le gué de la vallée. La rive ouest au nord de
+        // l'éboulement (vallée, forêt profonde, bergerie) est fermée par l'éboulement, la rivière et ses gués fermés, la cascade, la crête, la
+        // falaise des collines, la gorge et le ravin des Ronces : depuis elle, ni le village, ni la berge est, ni le reste de la région (remplissage
+        // de toute la région, cases de 2 m ; la rivière, 3 m de large et 0,5 m d'emprise de chaque côté, ne laisse passer aucune case).
+        ZoneDefinition zone = Zone();
+        foreach (string gate in ValleyGates) Assert.Contains(zone.Passages, p => p.Obstacle == gate);
+        var obstacles = zone.Setup.Space!.Obstacles;
+        RegionGrid region = zone.Region!;
+        (double X, double Z) min = (region.Min.X.Raw / 1e4, region.Min.Z.Raw / 1e4), max = (region.Max.X.Raw / 1e4, region.Max.Z.Raw / 1e4);
+        const double step = 2;
+        var locked = Flood(obstacles, min, max, (-20, 300), step);
+        Assert.False(locked.Edge, "la rive ouest touche le bord de la région");
+        foreach (var outside in new[] { (-18.0, -12.0), (300.0, 420.0), (1000.0, 145.0), (700.0, 1300.0), (-1010.0, -70.0) })
+            Assert.False(Reaches(locked.Reached, min, outside, step), $"({outside.Item1}, {outside.Item2}) atteint depuis la rive ouest");
+        foreach (var inside in new[] { (250.0, 600.0), (-830.0, 780.0), (-130.0, 1080.0) })
+            Assert.True(Reaches(locked.Reached, min, inside, step), $"({inside.Item1}, {inside.Item2}) hors de la rive ouest");
+        // Chaque gué, ouvert, rend la berge est (et par elle le village) accessible.
+        foreach (string ford in new[] { "riviere_vallee_gue_sud", "riviere_vallee_gue_nord" })
+        {
+            (double X, double Z) fmin = (150, 380), fmax = (650, 1060);
+            var open = Flood(obstacles.Where(o => o.Id != ford), fmin, fmax, (250, 600));
+            Assert.True(Reaches(open.Reached, fmin, (300, 420)), ford);
+        }
+    }
+
     [Fact]
     public void Gues_de_la_riviere_on_la_traverse_au_dela_de_l_eboulement_et_vers_le_lac()
     {
-        // La rivière (obstacle bas) se traverse à ses gués : au nord de l'éboulement (vallée), et entre l'étang et le grand lac (champs).
+        // La rivière (obstacle bas) se traverse à ses gués : au nord de l'éboulement (vallée, une fois ses gués ouverts), et entre l'étang et le
+        // grand lac (champs, toujours ouverts).
         ZoneDefinition zone = Zone();
         var obstacles = zone.Setup.Space!.Obstacles;
         (double X, double Z) min = (150, 380), max = (650, 1060);
-        var north = Flood(obstacles, min, max, (300, 420));   // rive est de la vallée, au nord de l'éboulement
+        Assert.False(Reaches(Flood(obstacles, min, max, (300, 420)).Reached, min, (250, 600)), "gués de la vallée ouverts");
+        var north = Flood(obstacles.Where(o => !ValleyGates.Contains(o.Id)), min, max, (300, 420));   // rive est de la vallée, au nord de l'éboulement
         Assert.True(Reaches(north.Reached, min, (250, 600)), "pas de gué dans la vallée");   // rive ouest
         (double X, double Z) smin = (-120, -840), smax = (260, -210);
         var south = Flood(obstacles, smin, smax, (100, -300));   // rive est des champs

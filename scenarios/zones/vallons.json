@@ -1500,6 +1500,28 @@
           "low": true
         },
         {
+          "id": "riviere_vallee_gue_sud",
+          "points": [
+            [
+              331.9,
+              647.6
+            ],
+            [
+              334.5,
+              646.1
+            ],
+            [
+              338.1,
+              652.4
+            ],
+            [
+              335.5,
+              653.9
+            ]
+          ],
+          "low": true
+        },
+        {
           "id": "riviere_vallee5",
           "points": [
             [
@@ -1539,6 +1561,28 @@
             [
               501.16,
               937.21
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "riviere_vallee_gue_nord",
+          "points": [
+            [
+              500.9,
+              936.7
+            ],
+            [
+              503.5,
+              935.1
+            ],
+            [
+              507.1,
+              941.3
+            ],
+            [
+              504.5,
+              942.9
             ]
           ],
           "low": true
@@ -1761,7 +1805,7 @@
           ]
         },
         {
-          "id": "riviere_gorge_ouest",
+          "id": "gorge_ouest",
           "points": [
             [
               -1908,
@@ -1783,7 +1827,7 @@
           "low": true
         },
         {
-          "id": "haie_ronces_sud",
+          "id": "ravin_ronces_sud",
           "points": [
             [
               -1502.0,
@@ -1805,7 +1849,7 @@
           "low": true
         },
         {
-          "id": "haie_ronces_est",
+          "id": "ravin_ronces_est",
           "points": [
             [
               -158.28,
@@ -1864,6 +1908,27 @@
             ],
             [
               -199.0,
+              1283.0
+            ]
+          ]
+        },
+        {
+          "id": "falaise_crete",
+          "points": [
+            [
+              -200.6,
+              1277.2
+            ],
+            [
+              560.4,
+              1082.0
+            ],
+            [
+              561.9,
+              1087.8
+            ],
+            [
+              -199.1,
               1283.0
             ]
           ]

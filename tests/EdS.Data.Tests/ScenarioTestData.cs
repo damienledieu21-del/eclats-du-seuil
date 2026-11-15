@@ -15,10 +15,11 @@ internal static class ScenarioTestData
 
     /// <summary>
     /// Sous-lot V2.28c (surface étendue) : obstacles ajoutés à l'aire des Vallons quand elle a été portée à toute la région (rivière de la
-    /// vallée et des champs, grand lac, gorge, ravin des Ronces, éboulement, falaises).
+    /// vallée et des champs avec les gués fermés de la vallée, grand lac, gorge, ravin des Ronces, éboulement, falaises).
     /// </summary>
     public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
-        || id is "riviere_grand_lac" or "riviere_gorge_ouest" or "haie_ronces_sud" or "haie_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade";
+        || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
+            or "falaise_crete";
 
     /// <summary>
     /// Sous-lot V2.28c : remet un scénario des Vallons (racine du fichier) à l'aire d'avant la surface étendue, de [−100, −70] à [140, 100],
@@ -33,16 +34,26 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
-    /// Sous-lot V2.28c : espace des Vallons d'avant la surface étendue (le bourg et ses alentours). Les trajets des PNJ se calculent dans
-    /// l'espace du secteur simulé (AdventureSession.Paths) ; sur l'aire de toute la région, la grille de navigation passerait à 8 m.
+    /// Relecture indépendante de la PR #167 : la zone des Vallons d'avant la surface étendue (racine du fichier de zone), avec
+    /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
     /// </summary>
-    public static EdS.Domain.Space.CombatSpace VallonsBeforeSpace()
+    public static void ZoneBefore(JsonObject zone)
     {
-        var s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
-        VallonsBefore(s);
-        ScenarioLoadResult result = ScenarioJsonReader.Read(s.ToJsonString(), ShippedData);
-        if (!result.IsValid) throw new InvalidOperationException(result.Report.ToString());
-        return result.Setup!.Space!;
+        var passages = zone["data"]!["passages"]!.AsArray();
+        foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #167 : espace réel de la session du secteur du cœur (s07_06 et sa marge de 32 m, de [−148, −110] à
+    /// [172, 210]), découpé par l'hôte des secteurs dans l'aire de toute la région : celui où le jeu calcule les trajets des PNJ du bourg.
+    /// </summary>
+    public static EdS.Domain.Space.CombatSpace HomeSectorSpace()
+    {
+        var items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        var zone = EdS.Data.Json.ZoneJsonReader.ReadFile(EdS.Data.Json.ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+            Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, items).Zone!;
+        var sectors = EdS.World.SectorMap.For(zone);
+        return sectors.SetupFor(sectors.HomeSector, 0).Space!;
     }
 
     /// <summary>

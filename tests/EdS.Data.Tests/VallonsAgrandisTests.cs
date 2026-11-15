@@ -48,7 +48,7 @@ public class VallonsAgrandisTests
         {
             bool dressed = TownRules.BuildingFor(id) != StyleBuilding.None || id.StartsWith("riviere", StringComparison.Ordinal)
                 || StyleRules.FenceFor(id) != StyleFence.None || StyleRules.ForObstacle(id) != null || id.StartsWith("moulin", StringComparison.Ordinal)
-                || id.StartsWith("pilier", StringComparison.Ordinal) || StyleRules.RockFace(id);   // V2.28c : éboulement, falaises
+                || id.StartsWith("pilier", StringComparison.Ordinal) || StyleRules.RockFace(id) || StyleRules.Ravine(id);   // V2.28c : éboulement, falaises ; gorge et ravins
             Assert.True(dressed, $"{id} sans habit");
         }
     }

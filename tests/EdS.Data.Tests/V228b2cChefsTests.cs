@@ -780,6 +780,7 @@ public class V228b2cChefsTests
     private static ZoneDefinition Vallons(Shape shape, bool events = false, long? durationMs = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        ZoneBefore(root);   // relecture de la PR #167 : sans les passages de la surface
         if (!events) root["data"]!.AsObject().Remove("events");   // V2.28b (2c), suite : avec eux, chacun lié au secteur de son lieu
         root["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "essai_croc", ["name"] = "Essai", ["position"] = new JsonArray(1, 34) });
         if (shape == Shape.ZoneSession)

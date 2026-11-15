@@ -471,6 +471,7 @@ public class V228b2bAventureTests : IDisposable
         File.WriteAllText(scenarioPath, scenario.ToJsonString());
         string zonePath = Path.Combine(data, "world", "zones", "vallons.json");
         JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
+        ZoneBefore(zone);   // relecture de la PR #167 : sans les passages de la surface
         foreach (string key in new[] { "events", "boss", "chiefs" }) zone["data"]!.AsObject().Remove(key);
         zone["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "seuil_est", ["name"] = "Seuil de l'est", ["position"] = new JsonArray(124, 0) });
         File.WriteAllText(zonePath, zone.ToJsonString());

@@ -341,8 +341,9 @@ public class V2252DecorTests : IDisposable
     public void La_barriere_suit_le_passage_ouvert_par_la_quete()
     {
         AdventureSession a = Vallons();
-        Assert.Equal(new[] { "porte_moulin" }, a.Map.Gates.Select(g => g.Id));
-        Assert.Equal(Box(a.Map.Obstacles.Single(o => o.Id == "porte_moulin")), Box(a.Map.Gates[0]));
+        // Relecture de la PR #167 : l'éboulement et les gués de la vallée sont aussi des passages (fermés, hors de la fenêtre du cœur).
+        Assert.Contains("porte_moulin", a.Map.Gates.Select(g => g.Id));
+        Assert.Equal(Box(a.Map.Obstacles.Single(o => o.Id == "porte_moulin")), Box(a.Map.Gates.Single(g => g.Id == "porte_moulin")));
         Assert.False(a.GateOpen("porte_moulin"));
         Assert.False(a.GateOpen("haie_est"));
         Assert.True(a.World.OpenPassage("moulin"));
@@ -568,7 +569,7 @@ public class V2252DecorTests : IDisposable
     public void La_barriere_ouverte_garde_son_replat()
     {
         AdventureMap map = Vallons().Map;
-        SpaceObstacle gate = map.Gates.Single();
+        SpaceObstacle gate = map.Gates.Single(g => g.Id == "porte_moulin");   // relecture de la PR #167 : les passages de la surface aussi
         var space = new CombatSpace(G(map.MinX, map.MinZ), G(map.MaxX, map.MaxZ), map.Obstacles.Where(o => o.Id != gate.Id));
         var open = new AdventureMap(space, map.Places, map.Roads, map.Clearings, map.Doors, false, null, map.Gates);
         Assert.DoesNotContain(open.Obstacles, o => o.Id == gate.Id);

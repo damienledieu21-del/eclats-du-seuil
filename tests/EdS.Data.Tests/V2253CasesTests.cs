@@ -35,13 +35,31 @@ public class V2253CasesTests
         CopyMissingZoneScenarios(directory);
         return directory;
     });
+    /// <summary>Relecture de la PR #167 : données livrées, zone des Vallons d'avant la surface (sans ses passages de surface), pour l'outil.</summary>
+    private static readonly Lazy<string> BeforeData = new(() =>
+    {
+        string data = Path.Combine(Path.GetTempPath(), "eds_v2253_data_" + Guid.NewGuid().ToString("N"));
+        foreach (string file in Directory.GetFiles(DataDirectory, "*", SearchOption.AllDirectories))
+        {
+            string target = Path.Combine(data, Path.GetRelativePath(DataDirectory, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, true);
+        }
+        File.WriteAllText(ZoneJsonReader.PathIn(data, "zone.vallons"), ZoneJson().ToJsonString());
+        return data;
+    });
     private static ItemCatalog Items { get; } = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
     private static readonly Lazy<ZoneDefinition> Shipped = new(() => Read(ZoneJson()).Zone!);
     private static ZoneDefinition Vallons => Shipped.Value;
 
     private static readonly string[] CoreCells = { "c14_r12", "c15_r12", "c14_r13", "c15_r13" };
 
-    private static JsonObject ZoneJson() => JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+    private static JsonObject ZoneJson()
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        ZoneBefore(root);   // relecture de la PR #167 : sans les passages de la surface
+        return root;
+    }
     private static ZoneLoadResult Read(JsonObject root) => ZoneJsonReader.Read(root.ToJsonString(), Scenarios, ShippedData, Items);
     private static ZoneLoadResult Mutated(Action<JsonObject> mutate)
     {
@@ -360,7 +378,7 @@ public class V2253CasesTests
     {
         var output = new StringWriter();
         var error = new StringWriter();
-        var all = args.Concat(new[] { "--data", DataDirectory, "--scenarios", Scenarios }).ToArray();
+        var all = args.Concat(new[] { "--data", BeforeData.Value, "--scenarios", Scenarios }).ToArray();
         int code = RegionMap.Run(all, output, error);
         return (code, output.ToString(), error.ToString());
     }

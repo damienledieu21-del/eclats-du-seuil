@@ -644,8 +644,8 @@ public class V28CheminsGrilleTests
 [Trait("Category", "World")]
 public class V28CheminsMondeTests
 {
-    // Sous-lot V2.28c : le bourg dans l'espace des Vallons d'avant la surface étendue (celui d'un secteur, pas de toute la région).
-    private static CombatSpace Vallons() => VallonsBeforeSpace();
+    // Sous-lot V2.28c : le bourg dans l'espace réel du secteur du cœur (relecture de la PR #167), pas dans celui de toute la région.
+    private static CombatSpace Vallons() => HomeSectorSpace();
 
     [Fact]
     public void PNJ_du_bourg_contournent_les_maisons()

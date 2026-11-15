@@ -1268,6 +1268,21 @@
         "id": "moulin",
         "name": "Passage du moulin",
         "obstacle": "porte_moulin"
+      },
+      {
+        "id": "eboulement",
+        "name": "Éboulement du nord",
+        "obstacle": "eboulement_nord"
+      },
+      {
+        "id": "gue_vallee_sud",
+        "name": "Gué de la vallée (sud)",
+        "obstacle": "riviere_vallee_gue_sud"
+      },
+      {
+        "id": "gue_vallee_nord",
+        "name": "Gué de la vallée (nord)",
+        "obstacle": "riviere_vallee_gue_nord"
       }
     ],
     "roads": [
