@@ -1151,15 +1151,32 @@ Source : dossier ChatGPT « Grand Solitaire et compagnons », p. 3 à 33 (règle
 
 **Pas encore** (parties suivantes) : le boss dans le moteur et dans son secteur (forme de 12 m, attaques réelles ; l'anneau et les disques multiples demandent des formes nouvelles du moteur, donc un journal et une référence nouveaux), le chemin le long du terrain (aujourd'hui en ligne droite entre les points de données, qui évitent les obstacles), les points faibles (sutures, plaque, joint de la crête), les signes et le marqueur dans Unity, la quête de mémoire de l'apparence, les dégâts locaux au village et leur quête de réparation.
 
-## Cartes à la taverne (vague 4, 3e partie) : proposition en attente de l'arbitrage de Damien
+## Pêche et carnet (vague 4 du plan des Vallons)
 
-Recommandation de Claude (non retenue tant que Damien n'a pas tranché) : le jeu des **Trois Feux**, contre un PNJ de la taverne (`EdS.World.CardMatch`, cœur seulement, sans dialogue ni interface pour l'instant).
+Vague 4, « la vie à côté du combat » (découpage du 29 octobre 2026, [PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md) § 7 ; « pêche et carnet » des Vallons en très grand, [feuille de route](FEUILLE_DE_ROUTE.md)) : une PR par système ; la pêche d'abord. Valeurs proposées par Claude, à régler par Damien.
 
-- Paquet de **27 cartes** : trois couleurs (soleil, lune, brume), valeurs 1 à 9, mêlé par `Pcg32` sur une clé stable (personnage, PNJ, jour du monde, numéro de la partie du jour) : la même donne pour les mêmes choix.
+**Données** (`data/v0/world/fishing.json`, schéma 1, facultatif : absent, pas de pêche ; validateur unique `FishingValidator`, schéma documentaire `data/schemas/fishing.schema.json`) : délai de la touche tiré entre `biteMinMs` et `biteMaxMs` (3 à 12 s), fenêtre pour ferrer `windowMs` (1,5 s, plus courte que le délai le plus court), distance au poste `range` (3 m) ; **postes** (`spots` : ponton de l'ouest et rive est du lac, gué du moulin ; place dans l'aire, espèces du poste) ; **espèces** (`fish` : objet matériau du catalogue, poids du tirage, tailles en cm, `seasons` et `phases` facultatives) : gardon, perche, truite (gué), brochet (aube et crépuscule), carpe dorée (la nuit, rare). Objets 0.18.0 (cinq poissons), marchands 0.12.0 (leur valeur : 8, 12, 18, 60, 250 cuivre), textes 0.28.0.
+
+**Le petit jeu** (`WorldSession.Fishing.cs`, en ticks du monde, jamais d'horloge) : à un poste (à 3 m), on **lance** (`Cast`) ; la touche vient après le délai tiré au sort ; on **ferre** (`Strike`) pendant la fenêtre : **prise** (au sac et au carnet) ; trop tôt ou trop tard, le lancer est perdu ; on peut **ramener** sa ligne (`CancelCast`). Chaque lancer consomme **un appât** (décision de Damien du 15 novembre 2026 ; voir plus bas). L'espèce (parmi celles du poste qui mordent en cette saison et à ce moment de la journée, selon leur poids ; le validateur exige dans chaque poste une espèce qui mord toute l'année et à toute heure) et la taille sont tirées **dès le lancer** (saison et moment du lancer, pas du ferrage) par un `Pcg32` initialisé par la clé (personnage, numéro du lancer) : le même lancer donne toujours la même prise, et la partie reprise continue la suite. Refus sans rien changer : pas de pêche ou poste inconnu, trop loin, ligne déjà à l'eau, aucune ligne, **en combat**, **sac plein** pendant la fenêtre (la ligne reste à l'eau : on fait de la place et on ferre). Dans l'aventure (`AdventureSession`), la touche d'interaction lance à un poste, puis ferre ; « Ça mord ! » s'annonce une fois ; une ligne à l'eau ne passe pas d'une session à l'autre.
+
+**Appâts** (décision de Damien du 15 novembre 2026, vers 14 h 25) : chaque lancer consomme **un appât** du sac (`baits` dans `fishing.json`, pris dans cet ordre : **vers de terre**, puis **mouches de mai**) ; sans appât, le lancer est **refusé** sans rien changer, avec un message. Un lancer manqué, trop tôt, trop tard ou ramené perd son appât. Sources (proposition de Claude, valeurs provisoires) : l'**épicerie du bourg** (vers de terre 2 cuivre, toujours en stock, 40 par jour ; mouches de mai 3 cuivre, 30, pas toujours) et deux nœuds à **ramasser** (vers près du gué du moulin, 3 par récolte ; mouches au bord du lac, 2), qui forment un nouveau métier de récolte, la **pêche** (`crafting.json`, contenu 0.8.0). Une prise vaut bien plus qu'un appât : la pêche reste rentable sans être illimitée (chaque lancer coûte).
+
+**Carnet des prises** : pour chaque espèce, le nombre de prises et la plus grande (cm) ; un nouveau record se dit. Il est gardé dans la **sauvegarde v21** (`character.fishing` : `casts`, lancers réglés, et `log` : `fish`, `count`, `best`, rangé par objet ; absent tant que le personnage n'a pas pêché ; refusé en version 20, celle des compagnons).
+
+**Limites** : Unity ne montre pas encore de canne, de bouchon ni de carnet (compilation seulement ; messages de l'aventure) ; pas encore de pêche sous la glace ni de concours de pêche ; les prises ne servent pas encore à la cuisine (PR suivante de la vague 4).
+
+## Cartes à la taverne (vague 4, 3e partie)
+
+Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) § 7 decies), sur la proposition de Claude (PR #187) : le jeu des **Trois Feux**, contre Mathurin et les PNJ de la taverne le soir (`EdS.World.CardMatch` ; cœur seulement, sans dialogue ni interface pour l'instant).
+
+- Paquet de **27 cartes** : trois couleurs (soleil, lune, brume), valeurs 1 à 9, mêlé par `Pcg32` sur une clé stable : **graine secrète du personnage**, personnage, PNJ, jour du monde, numéro de la partie du jour (0 à 2) ; champs texte préfixés de leur longueur. Sans la graine, la donne ne se calcule pas d'avance (relecture indépendante de la PR #187).
 - **Cinq cartes** chacun, **cinq manches** : le joueur pose une carte, le PNJ la sienne **sans voir** celle du joueur, on retourne.
 - Force d'une carte : sa valeur, **+3** si sa couleur l'emporte (le soleil dissipe la brume, la brume voile la lune, la lune éclipse le soleil ; même couleur : rien). La plus forte prend la manche ; égalité : personne. Le plus de manches gagne la partie ; égalité : nulle.
 - Trois manières de PNJ : **prudent** (sa plus faible d'abord), **hardi** (sa plus forte), **rusé** (sa plus forte quand il est mené, sa plus faible sinon).
-- Mise (à trancher) : 5, 10 ou 25 cuivre, rendue doublée si l'on gagne, rendue si nulle ; au plus trois parties par PNJ et par jour du monde.
+- **Mises** : 5, 10 ou 25 cuivre, rendues doublées si l'on gagne ; **au plus 3 parties par PNJ et par jour**. Partie nulle : mise rendue (recommandation de la relecture, à confirmer).
+- **Récompense** : après **10 victoires**, un **jeu de cartes rare** (objet décoratif) et le titre **« As des Trois Feux »**.
+- **Avant les mises** (partie suivante) : graine secrète gardée dans la sauvegarde du personnage, numéro de partie pris dès la mise, partie en cours sauvegardée (quitter = abandon, mise perdue), compteur de victoires ; nouvelle version de la sauvegarde, avec ses tests.
+
 
 ## Sauvegarde
 

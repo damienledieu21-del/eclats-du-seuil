@@ -32,6 +32,9 @@ namespace EdS.World
             Value = value;
         }
 
+        /// <summary>Relecture indépendante de la PR #187 : <c>default(Card)</c> (valeur 0) n'est pas une carte du jeu.</summary>
+        public bool IsValid => Value >= 1 && Value <= CardMatch.MaxValue && Enum.IsDefined(typeof(CardSuit), Suit);
+
         public bool Equals(Card other) => other.Suit == Suit && other.Value == Value;
         public override bool Equals(object? obj) => obj is Card c && Equals(c);
         public override int GetHashCode() => (int)Suit * 16 + Value;
@@ -71,7 +74,7 @@ namespace EdS.World
         public int NpcScore { get; }
         public int Winner { get; }
 
-        internal CardRound(Card player, Card npc)
+        public CardRound(Card player, Card npc)
         {
             Player = player;
             Npc = npc;
@@ -82,9 +85,9 @@ namespace EdS.World
     }
 
     /// <summary>
-    /// Vague 4 (3), cartes à la taverne (proposition de Claude, en attente de l'arbitrage de Damien) : le jeu des <b>Trois Feux</b>, une
-    /// partie contre un PNJ. Paquet de 27 cartes (trois couleurs, valeurs 1 à 9), mêlé par <see cref="Pcg32"/> sur une clé stable (personnage,
-    /// PNJ, jour du monde, compteur : <see cref="Key"/>) ; cinq cartes chacun ; cinq manches : le joueur choisit une carte, le PNJ la sienne selon
+    /// Vague 4 (3), cartes à la taverne (règles retenues par Damien le 15 novembre 2026, vers 18 h 45) : le jeu des <b>Trois Feux</b>, une
+    /// partie contre un PNJ. Paquet de 27 cartes (trois couleurs, valeurs 1 à 9), mêlé par <see cref="Pcg32"/> sur une clé stable (graine
+    /// secrète du personnage, personnage, PNJ, jour du monde, numéro de la partie du jour : <see cref="Key"/>) ; cinq cartes chacun ; cinq manches : le joueur choisit une carte, le PNJ la sienne selon
     /// sa manière (<see cref="CardStyle"/>, sans voir celle du joueur), puis on les retourne. Force d'une carte : sa valeur, plus
     /// <see cref="SuitBonus"/> si sa couleur l'emporte sur l'autre (soleil sur brume, brume sur lune, lune sur soleil ; même couleur : rien).
     /// La plus forte prend la manche, égalité : personne. Au bout des cinq manches, celui qui en a pris le plus gagne la partie (égalité :
@@ -93,6 +96,15 @@ namespace EdS.World
     public sealed class CardMatch
     {
         public const int MaxValue = 9, HandSize = 5, SuitBonus = 3;
+
+        /// <summary>Décision de Damien du 15 novembre 2026 : mises possibles, en cuivre (rendues doublées si l'on gagne).</summary>
+        public static readonly IReadOnlyList<int> Stakes = Array.AsReadOnly(new[] { 5, 10, 25 });
+
+        /// <summary>Décision de Damien du 15 novembre 2026 : parties au plus par PNJ et par jour du monde.</summary>
+        public const int MaxGamesPerDay = 3;
+
+        /// <summary>Décision de Damien du 15 novembre 2026 : victoires qui donnent le jeu de cartes rare et le titre « As des Trois Feux ».</summary>
+        public const int VictoriesForReward = 10;
 
         /// <summary>Nombre de cartes du paquet (trois couleurs de <see cref="MaxValue"/> cartes).</summary>
         public const int DeckSize = 3 * MaxValue;
@@ -114,6 +126,18 @@ namespace EdS.World
         /// <summary>Issue d'une partie finie : +1 le joueur gagne, −1 le PNJ, 0 nulle (et 0 tant qu'elle n'est pas finie).</summary>
         public int Outcome => IsOver ? Math.Sign(PlayerWins - NpcWins) : 0;
 
+        /// <summary>Partie aux mains données (essais seulement : une partie du jeu vient toujours d'une donne).</summary>
+        internal static CardMatch ForTest(CardStyle style, IEnumerable<Card> player, IEnumerable<Card> npc) => new CardMatch(style, player, npc);
+
+        private CardMatch(CardStyle style, IEnumerable<Card> player, IEnumerable<Card> npc)
+        {
+            Style = style;
+            _player = player.ToList();
+            _npc = npc.ToList();
+            if (_player.Count != HandSize || _npc.Count != HandSize || _player.Concat(_npc).Any(c => !c.IsValid))
+                throw new ArgumentException($"Deux mains de {HandSize} cartes du jeu.");
+        }
+
         public CardMatch(string key, CardStyle style)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
@@ -124,8 +148,22 @@ namespace EdS.World
             _npc = deck.Skip(HandSize).Take(HandSize).ToList();
         }
 
-        /// <summary>Clé stable d'une partie : le personnage, le PNJ, le jour du monde et le nombre de parties déjà jouées ce jour-là.</summary>
-        public static string Key(string character, string npc, long day, int counter) => $"cards:{character}:{npc}:{day}:{counter}";
+        /// <summary>
+        /// Clé stable d'une partie : la graine <paramref name="secret"/> du personnage (gardée dans sa sauvegarde, jamais montrée : sans elle,
+        /// la donne se calculerait d'avance ; relecture indépendante de la PR #187), le personnage, le PNJ, le jour du monde et le numéro de la
+        /// partie du jour (de 0 à <see cref="MaxGamesPerDay"/> − 1). Chaque champ texte est préfixé de sa longueur : deux clés différentes ne
+        /// s'écrivent jamais pareil.
+        /// </summary>
+        /// <exception cref="ArgumentOutOfRangeException">Jour négatif ou numéro hors de [0, <see cref="MaxGamesPerDay"/>[.</exception>
+        public static string Key(ulong secret, string character, string npc, long day, int counter)
+        {
+            if (character is null) throw new ArgumentNullException(nameof(character));
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (day < 0) throw new ArgumentOutOfRangeException(nameof(day), day, "Jour négatif.");
+            if (counter < 0 || counter >= MaxGamesPerDay)
+                throw new ArgumentOutOfRangeException(nameof(counter), counter, $"Partie du jour de 0 à {MaxGamesPerDay - 1}.");
+            return $"cards:{secret}:{character.Length}:{character}:{npc.Length}:{npc}:{day}:{counter}";
+        }
 
         /// <summary>Le paquet entier, mêlé (Fisher-Yates) par <see cref="Pcg32"/> sur la clé.</summary>
         public static IReadOnlyList<Card> Shuffled(string key)
@@ -148,7 +186,13 @@ namespace EdS.World
             (a == CardSuit.Sun && b == CardSuit.Mist) || (a == CardSuit.Mist && b == CardSuit.Moon) || (a == CardSuit.Moon && b == CardSuit.Sun);
 
         /// <summary>Force de <paramref name="mine"/> face à <paramref name="theirs"/>.</summary>
-        public static int Score(Card mine, Card theirs) => mine.Value + (Beats(mine.Suit, theirs.Suit) ? SuitBonus : 0);
+        /// <exception cref="ArgumentException">Une carte hors du jeu (<c>default(Card)</c>).</exception>
+        public static int Score(Card mine, Card theirs)
+        {
+            if (!mine.IsValid) throw new ArgumentException("Carte hors du jeu.", nameof(mine));
+            if (!theirs.IsValid) throw new ArgumentException("Carte hors du jeu.", nameof(theirs));
+            return mine.Value + (Beats(mine.Suit, theirs.Suit) ? SuitBonus : 0);
+        }
 
         /// <summary>
         /// Joue la carte de la place <paramref name="index"/> de la main du joueur ; le PNJ joue la sienne (<see cref="NpcChoice"/>, choisie
@@ -176,6 +220,8 @@ namespace EdS.World
         public static int NpcChoice(IReadOnlyList<Card> hand, CardStyle style, int lead)
         {
             if (hand is null || hand.Count == 0) throw new ArgumentException("Main vide.", nameof(hand));
+            if (!Enum.IsDefined(typeof(CardStyle), style)) throw new ArgumentOutOfRangeException(nameof(style));
+            if (hand.Any(c => !c.IsValid)) throw new ArgumentException("Carte hors du jeu dans la main.", nameof(hand));
             bool high = style == CardStyle.Bold || (style == CardStyle.Cunning && lead < 0);
             int best = 0;
             for (int i = 1; i < hand.Count; i++)

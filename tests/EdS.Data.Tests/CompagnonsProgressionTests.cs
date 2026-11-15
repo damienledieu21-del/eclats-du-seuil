@@ -245,7 +245,7 @@ public class CompagnonsProgressionTests
             e => e.Path == "$.data.character.companions.former[0].approval");
         Assert.Contains(SaveJsonReader.Read(text.Replace("\"approval\": -35", "\"approval\": -35, \"bond\": 3")).Report.Errors,
             e => e.Path == "$.data.character.companions.former[0].bond");
-        Assert.Contains(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 20", "\"schemaVersion\": 19")).Report.Errors, e => e.Path == "$.data.character.companions");
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 19")).Report.Errors, e => e.Path == "$.data.character.companions");
         // Accord avec le catalogue : un héros ne peut pas être un ancien mercenaire.
         Assert.Contains(CompanionRules.Check(Catalog, new SavedCompanions(1, null, null, new[] { new SavedCompanion("companion.nyx") })),
             p => p.Contains("pas un mercenaire"));
@@ -296,7 +296,7 @@ public class CompagnonsProgressionTests
     [Fact]
     public void Sauvegarde_version_20_aller_retour_absente_quand_vide_et_migration()
     {
-        Assert.Equal((20, 20), (SaveValidator.CurrentSchemaVersion, SaveValidator.CompanionsSince));
+        Assert.Equal((21, 20), (SaveValidator.CurrentSchemaVersion, SaveValidator.CompanionsSince));
         SavedCompanions roster = CompanionRules.React(CompanionRules.AfterCombat(With("companion.nyx", "companion.aveline"),
             new[] { ("companion.nyx", 55, true) }).WithSecond(), "companion.aveline", -20).Roster;
         string text = Saved(roster);
@@ -309,11 +309,11 @@ public class CompagnonsProgressionTests
         string empty = Saved(SavedCompanions.Empty);
         Assert.DoesNotContain("companions", empty);
         // Migration : une sauvegarde de version 19 se lit (aucun compagnon) ; elle ne peut pas en porter.
-        SaveLoadResult old = SaveJsonReader.Read(empty.Replace("\"schemaVersion\": 20", "\"schemaVersion\": 19"));
+        SaveLoadResult old = SaveJsonReader.Read(empty.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 19"));
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.True(old.Save!.Character!.Companions.IsEmpty);
         Assert.True(old.Save.Migrated);
-        SaveLoadResult refused = SaveJsonReader.Read(text.Replace("\"schemaVersion\": 20", "\"schemaVersion\": 19"));
+        SaveLoadResult refused = SaveJsonReader.Read(text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 19"));
         Assert.Contains(refused.Report.Errors, e => e.Path == "$.data.character.companions");
     }
 
@@ -341,12 +341,12 @@ public class CompagnonsProgressionTests
     public void Migration_depuis_la_version_15_sans_compagnon()
     {
         // Une sauvegarde de version 15 (réputation, sans stock, aspect, secteurs, reprise ni compagnons) se lit et se met à jour.
-        string v15 = Saved(SavedCompanions.Empty).Replace("\"schemaVersion\": 20", "\"schemaVersion\": 15");
+        string v15 = Saved(SavedCompanions.Empty).Replace("\"schemaVersion\": 21", "\"schemaVersion\": 15");
         SaveLoadResult old = SaveJsonReader.Read(v15);
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.True(old.Save!.Migrated);
         Assert.True(old.Save.Character!.Companions.IsEmpty);
-        Assert.Contains("\"schemaVersion\": 20", SaveJsonReader.Write(old.Save));
+        Assert.Contains("\"schemaVersion\": 21", SaveJsonReader.Write(old.Save));
     }
 
     [Theory]
