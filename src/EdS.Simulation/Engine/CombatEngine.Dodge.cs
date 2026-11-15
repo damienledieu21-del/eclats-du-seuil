@@ -56,6 +56,7 @@ namespace EdS.Simulation.Engine
             ux = uz = 0;
             if (actor.Out) return OutReason(actor, "actor");
             if (actor.Character is null || !_spatial) return "actorCannotDodge";
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2)
             if (BlockReason(actor, StatusBlocks.Movement) is { } blocked) return blocked;
             if (actor.Guarding) return "guardActive";
             if (tick < DodgeReadyTick(actor)) return "dodgeCooldown";

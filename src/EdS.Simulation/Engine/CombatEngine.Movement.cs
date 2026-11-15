@@ -322,7 +322,8 @@ namespace EdS.Simulation.Engine
         {
             // Décision de Damien du 20/10/2026 : une altération qui bloque le déplacement (étourdissement) immobilise ; l'intention reste.
             if (BlockReason(f, StatusBlocks.Movement) != null) return 0;
-            long step = IntMath.MulDiv(f.Body!.Speed, _tickMs, 1000, RoundingMode.Floor);
+            // Sous-lot V2.28d (2) : en selle, la vitesse de la monture remplace la vitesse de marche.
+            long step = IntMath.MulDiv(f.Mounted ? f.Character!.Mount!.Speed.Raw : f.Body!.Speed, _tickMs, 1000, RoundingMode.Floor);
             if (f.Guarding) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.GuardSpeedFactor, RoundingMode.Floor).Raw;
             Fixed modifier = MovementSpeedModifier(f);
             if (modifier != Fixed.Zero)

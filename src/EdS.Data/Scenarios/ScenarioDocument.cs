@@ -92,6 +92,9 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot V1.2 (schéma 13) : garde du bouclier porté par un personnage ; facultative (absente : celle des règles).</summary>
         public ShieldData? Shield { get; set; }
 
+        /// <summary>Sous-lot V2.28d (2) (schéma 22) : monture d'un personnage (<c>mount</c> : <c>speed</c> en m/s) ; facultative.</summary>
+        public MountData? Mount { get; set; }
+
         /// <summary>Sous-lot V1.3 (schéma 14) : effets de l'équipement porté par un personnage (objets nommés, ensembles) ; facultatifs.</summary>
         public List<Equipment.EquipmentEffectData?>? Equipment { get; set; }
 
@@ -318,6 +321,15 @@ namespace EdS.Data.Scenarios
         public long? GlobalCooldownMs { get; set; }
         public List<KeyValuePair<string, int?>>? Cooldowns { get; set; }
         public long? ConsumableCooldownMs { get; set; }
+
+        /// <summary>Sous-lot V2.28d (2) (schéma 22) : arrivée en selle ; facultatif (faux).</summary>
+        public bool? Mounted { get; set; }
+    }
+
+    /// <summary>Sous-lot V2.28d (2) (schéma 22) : monture d'un personnage ; <c>speed</c> obligatoire (m/s).</summary>
+    public sealed class MountData
+    {
+        public Fixed? Speed { get; set; }
     }
 
     /// <summary>Sous-lot 12.6 : objet de soin emporté (identifiant, soin, charges, recharge partagée en ms).</summary>
