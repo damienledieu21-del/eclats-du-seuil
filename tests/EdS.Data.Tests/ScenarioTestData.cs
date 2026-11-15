@@ -57,6 +57,28 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
+    /// Sous-lot V2.28c (4) : l'histoire des Vallons d'avant la surface étendue (racine du fichier d'histoire), pour une zone passée par
+    /// <see cref="ZoneBefore"/> : sans la quête des passages de la vallée (ses passages n'y existent pas), ni ses répliques (<c>v228_</c>) ni
+    /// les réponses qui y mènent.
+    /// </summary>
+    public static void StoryBefore(JsonNode story)
+    {
+        var data = story["data"]!;
+        var quests = data["quests"]!.AsArray();
+        foreach (var q in quests.Where(q => (string?)q!["id"] == "quest.passages_de_la_vallee").ToList()) quests.Remove(q);
+        foreach (var d in data["dialogues"]!.AsArray())
+        {
+            var entries = d!["entries"]!.AsArray();
+            var nodes = d["nodes"]!.AsArray();
+            foreach (var e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
+            foreach (var n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            foreach (var n in nodes)
+                if (n!["choices"] is JsonArray choices)
+                    foreach (var c in choices.Where(c => ((string?)c!["next"])?.StartsWith("v228_", StringComparison.Ordinal) == true).ToList()) choices.Remove(c);
+        }
+    }
+
+    /// <summary>
     /// Relecture indépendante de la PR #167 : espace réel de la session du secteur du cœur (s07_06 et sa marge de 32 m, de [−148, −110] à
     /// [172, 210]), découpé par l'hôte des secteurs dans l'aire de toute la région : celui où le jeu calcule les trajets des PNJ du bourg.
     /// </summary>
