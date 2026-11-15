@@ -164,7 +164,7 @@ Décision de Damien du 14 novembre 2026 (vraie esquive, [MOTEUR.md](MOTEUR.md#es
 
 | Changement | Détail |
 |---|---|
-| `input.dodge` | booléen **obligatoire** : demande ponctuelle d'esquive (vidée une fois envoyée, comme `parry`). Le serveur bondit dans le cap `heading` reçu avec elle, ou vers l'arrière sans cap ; en garde, il quitte la garde dans le même groupe (`IntentionPlanner`), puis la reprend au tick suivant si elle est tenue |
+| `input.dodge` | booléen **obligatoire** : demande ponctuelle d'esquive (vidée une fois envoyée, comme `parry`). Le serveur bondit dans le cap `heading` reçu avec elle (gardé même si un message suivant change le cap avant le tick, revue Codex de la PR #164), ou vers l'arrière sans cap ; en garde, il quitte la garde dans le même groupe (`IntentionPlanner`), puis la reprend au tick suivant si elle est tenue |
 | commandes (`tick`) | action `dodge`, `direction` facultative (absente : vers l'arrière) ; ni `skill`, ni `target`, ni `backward` |
 | état courant (`state`) | instantané au format 7 (état d'esquive de chaque personnage) |
 
