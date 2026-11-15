@@ -102,6 +102,11 @@ public sealed class V228c3RegionTests : IDisposable
         // Les collines montent jusqu'au sommet (≈ 320 m au-dessus du cœur), le lac reste au plus bas, le Bourg sur le plateau.
         Assert.True(relief.Base(180, 1360) > 250, $"sommet {relief.Base(180, 1360):0}");
         Assert.True(relief.Base(2100, 1220) > 250, $"col {relief.Base(2100, 1220):0}");
+        // Sous la hauteur du terrain de Unity (StyleWorld.TerrainHeight, 420 m, base de 3 m), sur toute la région et sa bordure de collines.
+        double top = 0;
+        for (double x = -1990; x <= 2270; x += 40)
+            for (double z = -1690; z <= 1540; z += 40) top = Math.Max(top, relief.Height(x, z));
+        Assert.InRange(top, 250, 410);
         Assert.InRange(relief.Region(-1010, -70), 0, 30);
         Assert.InRange(relief.Height(425, -1105), 0, 0.001);   // dans le grand lac
         // L'eau reste à 0 (le relief de la région s'y raccorde) : milieu de chaque bras de la rivière de la vallée.

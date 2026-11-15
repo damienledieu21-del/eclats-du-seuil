@@ -84,7 +84,7 @@ public class MapPainterTests
         var fields = map.Places.Where(p => TownRules.Farmland(p.Id))
             .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, map.Obstacles.Select(Box).ToList(), map.Roads, map.Clearings,
                 (map.MinX, map.MinZ, map.MaxX, map.MaxZ))).ToList();
-        Assert.InRange(fields.Count, 4, 30);
+        Assert.InRange(fields.Count, 4, 80);   // V2.28c (3) : et ceux des champs du sud, dans la fenêtre
         StyleField wheat = fields.First(f => f.Crop == 0);
         var ripe = Enumerable.Range(0, 25).Select(i => At(image, width, height, map, wheat.MinX + 2 + i % 5 * 0.9, wheat.MinZ + 2 + i / 5 * 0.37)).ToList();
         Assert.True(ripe.Average(p => p.R - p.B) > 0.2, "blé mûr");

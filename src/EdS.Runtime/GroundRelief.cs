@@ -78,7 +78,7 @@ namespace EdS.Runtime
         public IReadOnlyList<(double X, double Z, double Height)> RegionHeights { get; set; } = new[]
         {
             (20.0, 15.0, 0.0), (-1010.0, -70.0, 5.0), (-1900.0, -240.0, 10.0), (-1240.0, -1000.0, 50.0), (-1330.0, -680.0, 60.0),
-            (-830.0, 780.0, 40.0), (-1700.0, 790.0, 20.0), (300.0, 600.0, 50.0), (590.0, 1150.0, 110.0), (-130.0, 1080.0, 150.0),
+            (-830.0, 780.0, 40.0), (-1700.0, 790.0, 20.0), (300.0, 600.0, 20.0), (590.0, 1150.0, 110.0), (-130.0, 1080.0, 150.0),
             (190.0, 1220.0, 250.0), (180.0, 1360.0, 320.0), (1200.0, 1350.0, 250.0), (1170.0, 990.0, 150.0), (1740.0, 820.0, 170.0),
             (2100.0, 1220.0, 320.0), (1050.0, 275.0, 65.0), (1710.0, 145.0, 60.0), (425.0, -1105.0, 0.0), (60.0, -450.0, 0.0),
             (720.0, -450.0, 5.0), (1740.0, -730.0, 15.0), (2100.0, -1500.0, 30.0), (-1900.0, -1550.0, 60.0),
@@ -92,7 +92,7 @@ namespace EdS.Runtime
         /// <summary>Distance (m) de lissage des repères (évite les pointes) ; raccord (m) du relief de la région à l'eau, qui reste à 0.</summary>
         public double RegionSoften { get; set; } = 100.0;
 
-        public double RegionWaterRamp { get; set; } = 120.0;
+        public double RegionWaterRamp { get; set; } = 250.0;
     }
 
     /// <summary>Un replat : emprise (polygone, ou un point pour une place dégagée), marge horizontale, hauteur, groupe.</summary>

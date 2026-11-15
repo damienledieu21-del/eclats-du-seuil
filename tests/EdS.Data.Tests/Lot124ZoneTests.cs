@@ -92,7 +92,7 @@ public class Lot124ZoneTests
         Assert.Equal("place_du_village", z.Entry.Id);
         Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge",
             "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
-            z.Places.Select(p => p.Id));   // Vallons agrandis : dix lieux de plus ; V1.9.5 : le cœur du Seuil (Gardien au niveau 23 au moins)
+            z.Places.Select(p => p.Id).Take(19));   // V2.28c (3) : puis les quinze lieux de la région ; Vallons agrandis : dix lieux de plus ; V1.9.5 : le cœur du Seuil (Gardien au niveau 23 au moins)
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
         Assert.Equal(66, z.Populations.Count);   // V2.9.2 : l'ours (crépuscule et nuit), l'ourse, le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
