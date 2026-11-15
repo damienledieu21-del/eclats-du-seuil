@@ -2539,21 +2539,45 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Relecture indépendante de la PR #167 : les rochers d'une paroi (<see cref="RockFace"/>, un tous les <see cref="RockFaceStep"/> m le
-        /// long du grand côté de l'emprise) qui tombent à moins de <paramref name="margin"/> m du rectangle donné (l'espace ou la carte du
-        /// moment) : une falaise de 1,3 km ne pose que ceux de la fenêtre. Mêmes rangs et mêmes places d'une fenêtre à l'autre (aucune couture).
+        /// long de son grand axe) qui tombent à moins de <paramref name="margin"/> m du rectangle donné (l'espace ou la carte du moment) : une
+        /// falaise de 1,3 km ne pose que ceux de la fenêtre. Mêmes rangs et mêmes places d'une fenêtre à l'autre (aucune couture). Revue Codex
+        /// de la PR #167 : le grand axe est celui du plus long côté du polygone (une bande en biais, comme la crête, garde son orientation et
+        /// son épaisseur) ; pour un rectangle droit, les places sont celles d'avant. <c>Dir</c> : sens du grand axe (x croissant, sinon z
+        /// croissant) ; <c>Normal</c> : perpendiculaire, vers les x ou les z croissants ; <c>Depth</c> : épaisseur de la paroi.
         /// </summary>
-        public static IEnumerable<(int Index, int Count, double X, double Z, double Depth, bool AlongX)> RockFaceSpots(double x0, double z0, double x1, double z1,
-            double clipMinX, double clipMinZ, double clipMaxX, double clipMaxZ, double margin)
+        public static IEnumerable<(int Index, int Count, double X, double Z, double Depth, double DirX, double DirZ, double NormalX, double NormalZ)> RockFaceSpots(
+            IReadOnlyList<(double X, double Z)> points, double clipMinX, double clipMinZ, double clipMaxX, double clipMaxZ, double margin)
         {
-            bool alongX = x1 - x0 >= z1 - z0;
-            double length = alongX ? x1 - x0 : z1 - z0, depth = alongX ? z1 - z0 : x1 - x0;
+            if (points is null) throw new ArgumentNullException(nameof(points));
+            if (points.Count == 0) yield break;
+            double dx = 1, dz = 0, best = -1;
+            for (int k = 0; k < points.Count; k++)
+            {
+                var a = points[k];
+                var b = points[(k + 1) % points.Count];
+                double ex = b.X - a.X, ez = b.Z - a.Z, l = ex * ex + ez * ez;
+                if (l > best + 1e-9) { best = l; dx = ex; dz = ez; }
+            }
+            double len = Math.Sqrt(Math.Max(best, 0));
+            if (len < 1e-9) { dx = 1; dz = 0; }
+            else { dx /= len; dz /= len; }
+            if (dx < -1e-12 || Math.Abs(dx) <= 1e-12 && dz < 0) { dx = -dx; dz = -dz; }
+            double nx = -dz, nz = dx;
+            if (nx + nz < 0) { nx = -nx; nz = -nz; }
+            double a0 = double.MaxValue, a1 = double.MinValue, b0 = double.MaxValue, b1 = double.MinValue;
+            foreach ((double x, double z) in points)
+            {
+                double u = x * dx + z * dz, v = x * nx + z * nz;
+                a0 = Math.Min(a0, u); a1 = Math.Max(a1, u); b0 = Math.Min(b0, v); b1 = Math.Max(b1, v);
+            }
+            double length = a1 - a0, depth = b1 - b0, mid = (b0 + b1) / 2;
             int count = Math.Max(1, (int)Math.Ceiling(length / RockFaceStep));
             for (int i = 0; i < count; i++)
             {
-                double s = (i + 0.5) / count * length;
-                double x = alongX ? x0 + s : (x0 + x1) / 2, z = alongX ? (z0 + z1) / 2 : z0 + s;
+                double u = a0 + (i + 0.5) / count * length;
+                double x = u * dx + mid * nx, z = u * dz + mid * nz;
                 if (x < clipMinX - margin || x > clipMaxX + margin || z < clipMinZ - margin || z > clipMaxZ + margin) continue;
-                yield return (i, count, x, z, depth, alongX);
+                yield return (i, count, x, z, depth, dx, dz, nx, nz);
             }
         }
 
