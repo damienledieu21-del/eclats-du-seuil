@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "99bfed9c04762f6d3a6541b8755c7c26445b9493a00e350d6709759bd1e37bf1")]
-    [InlineData("entrainement_rupture", "6f8aba3215976266864b57b330a92c2c53d774e40b09b95022e2239767bd3c0b")]
-    [InlineData("entrainement_alterations", "6af812d496cae5b49eb847b7ed306b3686b16f704303fcb9b593ea409c361bc4")]
-    [InlineData("entrainement_declencheurs", "624b1377ddc1c08802433b654e94ccdd2c225c8f62ff560e13a0f96c5ecb7782")]
+    [InlineData("entrainement_garde_parade", "3ce4b5f8d76a214e4c122657d13b94edad1feabb9e13e1df9cc11929f4a16589")]
+    [InlineData("entrainement_rupture", "16802e2722af07eb86baf898b80174dc7e1c090c2a2a17b96985e5bc86f93103")]
+    [InlineData("entrainement_alterations", "77265aa2946de0a2d1aa7fd2a4c49177d668444bbaebd913bd94c462dd5dda67")]
+    [InlineData("entrainement_declencheurs", "af304fddf10e44ad1188c876a09b1515ae170e1465915be5fca6b5598fb466ff")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -156,9 +156,10 @@ public class TrainingScenarioTests
         // qui erre : seul l'en-tête change ; référence dans Fixtures/reference-0.29.0-contenu-0.6.0-regles-0.17.0.
         // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; sans espace : seul l'en-tête change ; référence dans
         // Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0. Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénarios en schéma
-        // 18 ; sans état emporté : seul l'en-tête change ; référence dans Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0.
+        // 18 ; sans état emporté : seul l'en-tête change. Compagnons : moteur 0.33.0, format 27, scénarios en schéma 21 ; sans compagnon : seul
+        // l'en-tête change ; référence dans Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
-        Assert.Equal(expected, hash);
+        Assert.True(hash == expected, $"empreinte {hash}, attendue {expected}");
     }
 
     [Fact]

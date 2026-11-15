@@ -215,7 +215,7 @@ public class V228cObstaclesTests
         // Pré-alpha : une version antérieure est refusée entière (aucune migration) ; les scénarios livrés passent en schéma 19 (20 depuis l'esquive).
         ZoneLoadResult loaded = Read(21, 11, 21, 7, schema: 18);
         Assert.False(loaded.IsValid);
-        Assert.Contains("version de format 18 antérieure à la version 20", loaded.Report.ToString(), StringComparison.Ordinal);
+        Assert.Contains("version de format 18 antérieure à la version 22", loaded.Report.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]

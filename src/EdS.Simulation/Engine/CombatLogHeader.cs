@@ -58,6 +58,9 @@ namespace EdS.Simulation.Engine
                 if (c.Action == CombatAction.UseSkill) w.Field("skill", c.Skill).Field("target", c.Target);
                 else w.Field("action", CombatActionIds.Of(c.Action));
                 if (c.Action == CombatAction.Select && c.Target != null) w.Field("target", c.Target);   // sous-lot 11.4c
+                if (c.Companion != null) w.Field("companion", c.Companion);   // compagnons (format 27) : ordre et attaque à deux
+                if (c.Order is { } order) w.Field("order", CompanionOrderIds.Of(order));
+                if ((c.Action == CombatAction.Order || c.Action == CombatAction.Duo) && c.Target != null) w.Field("target", c.Target);
                 if (c.Direction is { } direction) WritePoint(w.Name("direction"), direction);   // sous-lot 11.4 : telle que donnée
                 if (c.Backward) w.Field("backward", true);   // sous-lot 11.9 (format 15) : seulement à reculons
                 if (c.Item != null) w.Field("item", c.Item);   // sous-lot 12.6 (format 18) : objet de soin d'un consume
@@ -357,6 +360,17 @@ namespace EdS.Simulation.Engine
                             w.Field("spacing", wander.Spacing).Field("points", (long)wander.Points);
                             w.EndObject();
                         }
+                        w.EndObject();
+                    }
+                    // Compagnons (format 27) : seulement pour un compagnon, sous la forme du fichier de scénario (tous les champs).
+                    if (assailant.Companion is { } companion)
+                    {
+                        w.Name("companion").BeginObject().Field("owner", companion.Owner).Field("bond", (long)companion.Bond)
+                            .Field("followDistance", companion.FollowDistance).Field("leash", companion.Leash).Field("bondWindowMs", companion.BondWindowMs)
+                            .Field("coordinatedGain", (long)companion.CoordinatedGain).Field("protectGain", (long)companion.ProtectGain);
+                        if (companion.Duo is { } duo)
+                            w.Name("duo").BeginObject().Field("id", duo.Id).Field("rawDamage", duo.RawDamage).Field("damageType", DamageTypeId(duo.DamageType))
+                                .Field("telegraphMs", duo.TelegraphMs).Field("recoveryMs", duo.RecoveryMs).Field("range", duo.Range).EndObject();
                         w.EndObject();
                     }
                     break;

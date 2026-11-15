@@ -422,6 +422,35 @@
           "minimum": 0,
           "description": "Sous-lot 11.4d : arrivée en cours de combat, en millisecondes (multiple du tick, avant la fin) ; absente : présent dès le départ. Avant son arrivée, le combattant n'agit pas et n'est pas ciblé ; arrivée refusée si une emprise solide occupe sa place (ou, dans une zone, sans place libre : V2.26)."
         },
+        "companion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["owner", "bond", "followDistance", "leash", "bondWindowMs", "coordinatedGain", "protectGain"],
+          "description": "Compagnons (schéma 21, décisions de Damien du 14 novembre 2026) : assaillant allié guidé par l'ordinateur, attaché à son Éveillé (owner, personnage de la même équipe). Combat positionné ; comportement obligatoire sans aggroRange, wander ni flee ; PV obligatoires ; pas de target. Au plus deux compagnons par Éveillé.",
+          "properties": {
+            "owner": { "$ref": "#/$defs/name" },
+            "bond": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Jauge de lien au départ (0 à 100)." },
+            "followDistance": { "type": "number", "exclusiveMinimum": 0, "maximum": 20, "description": "Suivre et revenir : distance (bords) jusqu'à laquelle il rejoint l'Éveillé, en mètres." },
+            "leash": { "type": "number", "minimum": 0, "maximum": 100, "description": "Laisse : il ne prend de lui-même que les ennemis à cette distance de l'Éveillé (de lui pour attendre), au moins followDistance." },
+            "bondWindowMs": { "type": "integer", "minimum": 1, "maximum": 60000, "description": "Fenêtre de coordination : deux coups des partenaires sur la même cible à au plus cette durée d'écart (multiple du tick)." },
+            "coordinatedGain": { "type": "integer", "minimum": 0, "maximum": 25 },
+            "protectGain": { "type": "integer", "minimum": 0, "maximum": 25 },
+            "duo": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "rawDamage", "damageType", "telegraphMs", "recoveryMs", "range"],
+              "description": "Attaque à deux, jauge pleine (commande duo, jamais automatique) : annonce puis coup du compagnon ; l'Éveillé ne lance rien jusqu'à la fin de la récupération (comptée depuis le départ).",
+              "properties": {
+                "id": { "$ref": "#/$defs/name" },
+                "rawDamage": { "type": "integer", "minimum": 0 },
+                "damageType": { "enum": ["physique", "magique"] },
+                "telegraphMs": { "type": "integer", "minimum": 1, "maximum": 10000 },
+                "recoveryMs": { "type": "integer", "minimum": 1, "maximum": 10000 },
+                "range": { "type": "number", "minimum": 0.1, "maximum": 100 }
+              }
+            }
+          }
+        },
         "carried": {
           "type": "object",
           "additionalProperties": false,
@@ -642,10 +671,12 @@
             "consume",
             "gear",
             "dodge",
+            "order",
+            "duo",
             "mount",
             "dismount"
           ],
-          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage. Bonus modifié (gear, sous-lot V1.8d) : le bonus d'équipement du personnage devient gear au début du tick (effet immédiat d'un bonus consommé, remplacé ou fini). Esquive (dodge, schéma 20, décision de Damien du 14 novembre 2026) : un personnage d'un combat positionné bondit dans direction, ou vers l'arrière sans direction (combat.dodge des règles). Monture (mount, dismount, schéma 22, sous-lot V2.28d (2)) : un personnage qui a une monture monte en selle hors combat, ou en descend."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage. Bonus modifié (gear, sous-lot V1.8d) : le bonus d'équipement du personnage devient gear au début du tick (effet immédiat d'un bonus consommé, remplacé ou fini). Esquive (dodge, schéma 20, décision de Damien du 14 novembre 2026) : un personnage d'un combat positionné bondit dans direction, ou vers l'arrière sans direction (combat.dodge des règles). Ordre (order, schéma 21) : companion reçoit order (follow, wait, target, protect, return ; target pour « target »). Attaque à deux (duo, schéma 21) : le personnage et companion frappent target, jauge de lien pleine. Monture (mount, dismount, schéma 22, sous-lot V2.28d (2)) : un personnage qui a une monture monte en selle hors combat, ou en descend."
         },
         "direction": {
           "$ref": "#/$defs/direction",
@@ -654,6 +685,14 @@
         "backward": {
           "type": "boolean",
           "description": "Sous-lot 11.9 (schéma 9) : action move à reculons, le combattant garde son orientation au lieu de se tourner vers sa marche (faux par défaut)."
+        },
+        "companion": {
+          "$ref": "#/$defs/name",
+          "description": "Schéma 21 : compagnon d'une action order ou duo, et d'elles seules."
+        },
+        "order": {
+          "enum": ["follow", "wait", "target", "protect", "return"],
+          "description": "Schéma 21 : ordre d'une action order, et d'elle seule."
         },
         "item": {
           "type": "string",
@@ -790,7 +829,7 @@
             "not": {
               "properties": {
                 "action": {
-                  "const": "select"
+                  "enum": ["select", "order", "duo"]
                 }
               }
             }

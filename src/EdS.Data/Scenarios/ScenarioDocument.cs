@@ -137,8 +137,35 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot 11.5 (schéma 8) : comportement d'un assaillant dans un combat positionné ; facultatif.</summary>
         public BehaviorData? Behavior { get; set; }
 
+        /// <summary>Compagnons (schéma 21) : ce qui fait de l'assaillant un compagnon.</summary>
+        public CompanionData? Companion { get; set; }
+
         /// <summary>Champs effectivement présents dans le fichier, pour refuser ceux qui ne conviennent pas au type.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Compagnons (schéma 21) : Éveillé, jauge, distances, gains et attaque à deux d'un compagnon (voir <c>CompanionSetup</c>).</summary>
+    public sealed class CompanionData
+    {
+        public string? Owner { get; set; }
+        public long? Bond { get; set; }
+        public Domain.Numerics.Fixed? FollowDistance { get; set; }
+        public Domain.Numerics.Fixed? Leash { get; set; }
+        public long? BondWindowMs { get; set; }
+        public long? CoordinatedGain { get; set; }
+        public long? ProtectGain { get; set; }
+        public DuoData? Duo { get; set; }
+    }
+
+    /// <summary>Compagnons (schéma 21) : attaque à deux (voir <c>CompanionDuo</c>).</summary>
+    public sealed class DuoData
+    {
+        public string? Id { get; set; }
+        public long? RawDamage { get; set; }
+        public string? DamageType { get; set; }
+        public long? TelegraphMs { get; set; }
+        public long? RecoveryMs { get; set; }
+        public Domain.Numerics.Fixed? Range { get; set; }
     }
 
     public sealed class BuildData
@@ -261,6 +288,12 @@ namespace EdS.Data.Scenarios
 
         /// <summary>Sous-lot V1.8d (schéma 15) : nouveau bonus d'équipement (total) d'un « gear » (bonus modifié), champs absents à 0.</summary>
         public List<KeyValuePair<string, int?>>? Gear { get; set; }
+
+        /// <summary>Compagnons (schéma 21) : compagnon d'un ordre ou d'une attaque à deux.</summary>
+        public string? Companion { get; set; }
+
+        /// <summary>Compagnons (schéma 21) : ordre (follow, wait, target, protect, return).</summary>
+        public string? Order { get; set; }
 
         /// <summary>Champs effectivement présents dans le fichier.</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();

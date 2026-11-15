@@ -34,7 +34,7 @@ namespace EdS.Simulation.Engine
         /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois, frappée par un personnage depuis son dernier calme
         /// <c>characterHitSinceCalm</c> ; le reste de l'errance se déduit du tick et des places), 7 depuis l'esquive (décision de Damien du
         /// 14 novembre 2026 : <c>dodgeStartTick</c>, <c>dodgeDirectionX</c>, <c>dodgeDirectionZ</c> ; bond, invulnérabilité et recharge s'en déduisent),
-        /// 8 réservé aux compagnons (PR #169), 9 depuis la monture (sous-lot V2.28d (2) : <c>mounted</c>, en selle).
+        /// 8 depuis les compagnons, 9 depuis la monture (sous-lot V2.28d (2) : <c>mounted</c>, en selle).
         /// </summary>
         public const int FormatVersion = 9;
 
@@ -236,6 +236,7 @@ namespace EdS.Simulation.Engine
                 .Field("hurtByCharacter", f.HurtByCharacter).Field("noticed", f.Noticed)   // sous-lot V2.4 (format 5)
                 .Field("quietSince", f.QuietSince).Field("calms", f.Calms)   // sous-lot V2.4.1 (format 6)
                 .Field("characterHitSinceCalm", f.CharacterHitSinceCalm);   // relecture de la PR #111
+            if (f.Companion is { } companion) WriteCompanion(w, companion);   // compagnons (format 8) : seulement pour un compagnon
             WriteProvenance(w, "lethalCause", f.LethalCause);
             Pcg32State random = f.Random.Capture();
             w.Name("random").BeginArray().Value(random.State.ToString("x16", CultureInfo.InvariantCulture))
@@ -901,7 +902,7 @@ namespace EdS.Simulation.Engine
                 // 5e tour : une échéance ne tombe pas plus loin que sa durée à partir du tick précédent (recharge globale ou d'une compétence,
                 // récupération d'une parade ratée, recharge d'un déclencheur) ; une fenêtre de parade ouverte a sa durée.
                 long previous = CurrentTick - 1;
-                Require(f.GlobalCooldownReadyTick <= Math.Max(0, previous + _globalCooldownTicks)
+                Require(f.GlobalCooldownReadyTick <= Math.Max(0, previous + Math.Max(_globalCooldownTicks, DuoRecoveryTicks(f)))   // compagnons : récupération d'une attaque à deux
                     && f.ParryRecoveryUntilTick <= Math.Max(0, previous + f.Rules.ParryFailureRecoveryMs / _tickMs)
                     && (!f.ParryOpen || f.ParryEndTick == f.ParryStartTick + f.Rules.ParryWindowMs / _tickMs),
                     $"Recharge globale ou parade de {who} au-delà de sa durée.");
@@ -930,6 +931,7 @@ namespace EdS.Simulation.Engine
                         $"Esquive de {who} incohérente avec ses commandes ou sa direction.");
                 }
                 else Require(f.DodgeDirectionX == 0 && f.DodgeDirectionZ == 0, $"Direction d'esquive de {who} sans esquive.");
+                if (f.Companion is { } companion && CompanionProblem(f, companion) is { } problem) Require(false, $"Compagnon {who} : {problem}.");   // compagnons (format 8)
                 // Sous-lot V2.28d (2), monture (format 9) : en selle, seulement un personnage qui a une monture, arrivé en selle ou qui a donné
                 // une commande mount à un tick passé.
                 if (f.Mounted)
@@ -965,9 +967,11 @@ namespace EdS.Simulation.Engine
                 bool carriedGcd = carriedState is { GlobalCooldownMs: > 0 } && f.GlobalCooldownReadyTick == checked(arrivedAt + carriedState.GlobalCooldownMs / _tickMs);
                 bool CarriedCooldown(string skill, long ready) => carriedState != null && carriedState.Cooldowns.TryGetValue(skill, out long ms)
                     && ready == checked(arrivedAt + ms / _tickMs);
+                // Compagnons : une attaque à deux porte la recharge globale de l'Éveillé à la fin de sa récupération.
+                bool duoGcd = DuoSetsGlobalCooldown(f, previous);
                 Require(f.Result.SkillsCast == 0
-                    ? (f.GlobalCooldownReadyTick == 0 || carriedGcd) && f.CooldownReadyTick.All(c => CarriedCooldown(c.Key, c.Value))
-                    : f.Character != null && casts.Any(c => c.Tick == lastCast), $"Recharge globale de {who} sans lancer à son origine.");
+                    ? (f.GlobalCooldownReadyTick == 0 || carriedGcd || duoGcd) && f.CooldownReadyTick.All(c => CarriedCooldown(c.Key, c.Value))
+                    : f.Character != null && (casts.Any(c => c.Tick == lastCast) || duoGcd), $"Recharge globale de {who} sans lancer à son origine.");
                 foreach (var cooldown in f.CooldownReadyTick)
                 {
                     long cooldownTicks = f.Character != null && f.Character.Class.TryGetSkill(cooldown.Key, out SkillDefinition skill) && skill.Combat is { } combat
@@ -2114,6 +2118,9 @@ namespace EdS.Simulation.Engine
             f.QuietSince = n["quietSince"].NullableLong;   // sous-lot V2.4.1 (format 6)
             f.Calms = n["calms"].Long;
             f.CharacterHitSinceCalm = n["characterHitSinceCalm"].Bool;   // relecture de la PR #111
+            // Compagnons (format 8) : l'état d'un compagnon, présent pour un compagnon et lui seul.
+            if (n.Has("companion") != (f.Companion != null)) throw new FormatException($"État de compagnon de « {f.Id} » incohérent avec le combat.");
+            if (f.Companion != null) LoadCompanion(f, n["companion"]);
             f.LethalCause = ReadProvenance(n["lethalCause"]);
             IReadOnlyList<SnapshotNode> random = n["random"].Items;
             f.Random = Pcg32.Restore(new Pcg32State(ulong.Parse(random[0].String, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture),

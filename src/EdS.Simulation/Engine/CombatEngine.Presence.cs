@@ -303,6 +303,7 @@ namespace EdS.Simulation.Engine
             _byId[f.Id] = f;
             int at = _fightersById.FindIndex(x => string.CompareOrdinal(x.Id, f.Id) > 0);
             _fightersById.Insert(at < 0 ? _fightersById.Count : at, f);
+            LinkCompanion(f);   // compagnons : un compagnon qui arrive avec (ou après) son Éveillé
             _fightersByInitiative = _fighters.OrderByDescending(x => x.Setup.Initiative).ThenBy(x => x.Id, StringComparer.Ordinal).ToList();
             f.Triggers = PermanentSlots(f);
             _joined.Add(combatant);

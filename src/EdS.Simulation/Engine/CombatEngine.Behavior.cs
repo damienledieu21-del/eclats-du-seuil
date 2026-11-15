@@ -60,7 +60,7 @@ namespace EdS.Simulation.Engine
                 // Relecture de la PR #104 : un joueur au loin, seulement s'il l'a remarqué.
                 if (f.Character != null && !hasNoticed && sight is long seen && d > seen) continue;
                 // Relecture de la PR #104 : une bête à bout (1 PV) n'est plus visée par les bêtes (elles ne peuvent pas l'achever) : le combat cesse.
-                if (f.Character is null && f.Assailant != null && assailant.Assailant != null && f.Health is long h && h <= 1) continue;
+                if (f.Character is null && f.Assailant != null && f.Companion is null && assailant.Assailant != null && f.Health is long h && h <= 1) continue;
                 if (best is null || d < bestDistance)
                 {
                     best = f;
@@ -237,6 +237,12 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 int j = targets[i];
+                // Compagnons : suivre, attendre, revenir, attaque à deux ; null : approche ordinaire de sa cible.
+                if (f.Companion != null && !announcing.Contains(f) && CompanionIntention(i, tick, x, z, j) is { } companionIntention)
+                {
+                    intentions[i] = companionIntention;
+                    continue;
+                }
                 if (j < 0 || announcing.Contains(f))
                 {
                     intentions[i] = j < 0 ? Intention.Hold : new Intention(false, 0, 0, j);

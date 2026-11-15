@@ -100,7 +100,7 @@ public class Lot119ReglagesDataTests
     [Fact]
     public void Schema_9_et_schema_JSON()
     {
-        Assert.Equal(22, ScenarioValidator.CurrentSchemaVersion);   // esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // sous-lot 12.1 : 10 (zone) ; 12.3 : 11 (équipement) ; 12.6 : 12 ; V1.2 : 13 (bouclier)
+        Assert.Equal(22, ScenarioValidator.CurrentSchemaVersion);   // compagnons : 21 ; esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // sous-lot 12.1 : 10 (zone) ; 12.3 : 11 (équipement) ; 12.6 : 12 ; V1.2 : 13 (bouclier)
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         Assert.Equal(22, schema["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Equal("boolean", schema["$defs"]!["combatant"]!["properties"]!["behavior"]!["properties"]!["pack"]!["type"]!.GetValue<string>());

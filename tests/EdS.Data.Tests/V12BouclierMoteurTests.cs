@@ -60,7 +60,7 @@ public class V12BouclierMoteurTests
         Assert.Equal(("0.34.0", 28), (CombatEngine.Version, CombatEngine.LogFormatVersion));   // V2.4.1 : bêtes qui se promènent
         // Sous-lot V1.8 : règles 0.15.0 (barre « 4 + ultime dès le début »), schéma inchangé.
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion));   // V2.4 : schéma 15, contenu 0.16.0
-        Assert.Equal(20, ScenarioValidator.CurrentSchemaVersion);   // esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
+        Assert.Equal(22, ScenarioValidator.CurrentSchemaVersion);   // compagnons : 21 ; esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; sous-lot V1.8d : 15 (bonus modifié), moteur 0.27.0, format 21
         Assert.Equal("0.18.0-provisoire", ShippedData.Rules.ContentVersion);
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.Parse("0.45"), Fixed.Parse("0.7"), 4, 20, 50L), (rules.ShieldMinDamageReduction, rules.ShieldMaxDamageReduction,

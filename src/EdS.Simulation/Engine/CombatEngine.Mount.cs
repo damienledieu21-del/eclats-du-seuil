@@ -7,7 +7,7 @@ namespace EdS.Simulation.Engine
     /// Sous-lot V2.28d (2), monture (sujet 7 de la feuille de route : « en général on descend pour combattre ») : un personnage d'un combat
     /// positionné qui a une monture (<see cref="CharacterSetup.Mount"/>, le cheval à 13 m/s) monte en selle (<c>mount</c>) ou en descend
     /// (<c>dismount</c>). En selle, il se déplace à la vitesse de sa monture et n'a aucune action de combat (compétence, garde, parade,
-    /// esquive, soin : refus <c>mounted</c>) ; il peut marcher, s'arrêter, sélectionner une cible et partir (passage d'un secteur à l'autre :
+    /// esquive, soin, attaque à deux avec un compagnon : refus <c>mounted</c> ; un ordre reste possible) ; il peut marcher, s'arrêter, sélectionner une cible et partir (passage d'un secteur à l'autre :
     /// il arrive en selle, <see cref="CarriedState.Mounted"/>). Être frappé ne le fait pas descendre (choix de Claude, question posée à Damien).
     /// Refus atomiques pour monter, dans cet ordre : <c>actorDead</c>/<c>actorAbsent</c>, <c>actorCannotMount</c> (pas de monture, ou combat
     /// sans espace), <c>alreadyMounted</c>, contrôle qui bloque le déplacement (raison du contrôle), <c>guardActive</c>, <c>dodgeActive</c>

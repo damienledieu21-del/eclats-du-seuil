@@ -105,8 +105,9 @@ public class ReproducibilityTests
     // qui se promènent) ; sans bête qui erre : seul l'en-tête change (ancienne empreinte 4f4c8fb1…). Sous-lot V2.8 : moteur 0.30.0, format 24
     // (recherche de chemin) ; sans espace : seul l'en-tête change (ancienne empreinte 1ba20e03…). Sous-lot V2.26 : moteur 0.31.0, format 25
     // (état emporté, places recyclées, ±4 096 m, 256 obstacles) ; sans état emporté : seul l'en-tête change (ancienne empreinte 56468226…). Esquive : moteur 0.32.0,
-    // format 26 ; sans esquive : seul l'en-tête change (ancienne empreinte 4dffbe01…). Sous-lot V2.28d (2), monture : moteur 0.34.0,
-    // format 28 ; sans monture : seul l'en-tête change (ancienne empreinte e6eacb98…).
+    // format 26 ; sans esquive : seul l'en-tête change (ancienne empreinte 4dffbe01…). Compagnons : moteur 0.33.0, format 27 ; sans
+    // compagnon : seul l'en-tête change (ancienne empreinte e6eacb98…). Sous-lot V2.28d (2), monture : moteur 0.34.0, format 28 ; sans
+    // monture : seul l'en-tête change (ancienne empreinte 92e480c0…).
     internal const string ReferenceHash = "9e32e7b946e14c4b519a50ca298f715e72fcd7260530940cbc80ea94fe5da4af";
 
     [Fact]

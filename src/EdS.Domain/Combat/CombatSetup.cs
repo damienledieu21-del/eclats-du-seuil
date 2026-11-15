@@ -572,12 +572,19 @@ namespace EdS.Domain.Combat
         /// <summary>Sous-lot 11.5 : comportement dans un combat positionné ; null : il ne bouge que par les commandes du scénario.</summary>
         public AssailantBehavior? Behavior { get; }
 
+        /// <summary>
+        /// Compagnons (décisions de Damien du 14 novembre 2026) : assaillant allié guidé par l'ordinateur, attaché à un personnage de son
+        /// équipe (voir <see cref="CompanionSetup"/>) ; null pour un assaillant ordinaire.
+        /// </summary>
+        public CompanionSetup? Companion { get; }
+
         public AssailantSetup(string id, string team, Fixed armor, Fixed magicResistance, string? target, long firstAttackMs, long intervalMs,
             IEnumerable<AssailantAttack> attacks, int initiative = 0, Fixed statusResistance = default, IEnumerable<TriggerDefinition>? triggers = null,
             long? health = null, CombatantPlacement? placement = null, long? arrivalMs = null, AssailantBehavior? behavior = null,
-            CarriedState? carried = null)
+            CarriedState? carried = null, CompanionSetup? companion = null)
             : base(id, team, initiative, placement, arrivalMs, carried)
         {
+            Companion = companion;
             Behavior = behavior;
             Health = health;
             Triggers = Frozen.ListOrEmpty(triggers, nameof(triggers));
@@ -642,14 +649,25 @@ namespace EdS.Domain.Combat
         Dodge = 10,
 
         /// <summary>
+        /// Compagnons : ordre simple d'un personnage à l'un de ses compagnons (<see cref="CombatCommand.Companion"/>,
+        /// <see cref="CombatCommand.Order"/>, cible pour « cibler »). Combat positionné seulement.
+        /// </summary>
+        Order = 11,
+
+        /// <summary>
+        /// Compagnons : attaque à deux d'un personnage et de l'un de ses compagnons sur une cible commune, jauge de lien pleine ; jamais
+        /// déclenchée automatiquement. Combat positionné seulement.
+        /// </summary>
+        Duo = 12,
+
         /// Sous-lot V2.28d (2), monture : le personnage monte en selle (sa monture, <see cref="CharacterSetup.Mount"/>, le porte à sa vitesse).
         /// Hors combat seulement : refusé si un combattant d'une autre équipe est à moins de <see cref="CombatRules.MountSafeDistance"/>.
         /// En selle, ni compétence, ni garde, ni parade, ni esquive, ni soin (refus <c>mounted</c>) : on descend pour combattre.
         /// </summary>
-        Mount = 11,
+        Mount = 13,
 
         /// <summary>Sous-lot V2.28d (2), monture : le personnage descend de sa monture.</summary>
-        Dismount = 12,
+        Dismount = 14,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -666,6 +684,8 @@ namespace EdS.Domain.Combat
         public const string Consume = "consume";
         public const string Gear = "gear";
         public const string Dodge = "dodge";
+        public const string Order = "order";   // compagnons
+        public const string Duo = "duo";       // compagnons
         public const string Mount = "mount";
         public const string Dismount = "dismount";
 
@@ -691,6 +711,8 @@ namespace EdS.Domain.Combat
             CombatAction.Consume => Consume,
             CombatAction.Gear => Gear,
             CombatAction.Dodge => Dodge,
+            CombatAction.Order => Order,
+            CombatAction.Duo => Duo,
             CombatAction.Mount => Mount,
             CombatAction.Dismount => Dismount,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
@@ -776,6 +798,8 @@ namespace EdS.Domain.Combat
             if (action == CombatAction.Consume) throw new ArgumentException("Un soin se donne avec CombatCommand.Use, qui nomme l'objet.", nameof(action));
             if (action == CombatAction.Gear) throw new ArgumentException("Un bonus modifié se donne avec CombatCommand.SetGear, qui porte le bonus.", nameof(action));
             if (action == CombatAction.Dodge) throw new ArgumentException("Une esquive se donne avec CombatCommand.DodgeToward.", nameof(action));
+            if (action == CombatAction.Order || action == CombatAction.Duo)
+                throw new ArgumentException("Un ordre ou une attaque à deux se donne avec CombatCommand.GiveOrder ou CombatCommand.DuoAttack.", nameof(action));
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = action;
@@ -838,6 +862,31 @@ namespace EdS.Domain.Combat
         /// Sous-lot V1.8d : commande « bonus modifié » : le bonus d'équipement de <paramref name="actor"/> devient <paramref name="gear"/>
         /// (total : équipement de l'entrée et bonus actifs), au début du tick de <paramref name="atMs"/>.
         /// </summary>
+        /// <summary>Compagnons : compagnon visé par un ordre ou une attaque à deux ; null pour toute autre commande.</summary>
+        public string? Companion { get; }
+
+        /// <summary>Compagnons : ordre donné (<see cref="CombatAction.Order"/>) ; null pour toute autre commande.</summary>
+        public CompanionOrder? Order { get; }
+
+        /// <summary>Compagnons : ordre <paramref name="order"/> de <paramref name="actor"/> à son compagnon (cible seulement pour « cibler »).</summary>
+        public static CombatCommand GiveOrder(long atMs, string actor, string companion, CompanionOrder order, string? target = null) =>
+            new CombatCommand(atMs, actor, companion ?? throw new ArgumentNullException(nameof(companion)), CombatAction.Order, order, target);
+
+        /// <summary>Compagnons : attaque à deux de <paramref name="actor"/> et de son compagnon sur <paramref name="target"/>.</summary>
+        public static CombatCommand DuoAttack(long atMs, string actor, string companion, string target) =>
+            new CombatCommand(atMs, actor, companion ?? throw new ArgumentNullException(nameof(companion)), CombatAction.Duo, null,
+                target ?? throw new ArgumentNullException(nameof(target)));
+
+        private CombatCommand(long atMs, string actor, string companion, CombatAction action, CompanionOrder? order, string? target)
+        {
+            AtMs = atMs;
+            Actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            Action = action;
+            Companion = companion;
+            Order = order;
+            Target = target;
+        }
+
         public static CombatCommand SetGear(long atMs, string actor, GearBonus gear) => new CombatCommand(atMs, actor, gear ?? throw new ArgumentNullException(nameof(gear)));
 
         private CombatCommand(long atMs, string actor, GearBonus gear)
@@ -902,7 +951,7 @@ namespace EdS.Domain.Combat
     /// Tout ce qui définit un combat : règles, participants, commandes, graine et identité des données.
     /// Immuable ; le moteur n'en modifie rien, si bien qu'un même objet peut servir à plusieurs combats.
     /// </summary>
-    public sealed class CombatSetup
+    public sealed partial class CombatSetup
     {
         /// <summary>Sous-lot 12.6 : objets de soin emportés par un personnage, au plus.</summary>
         public const int MaxConsumables = 16;
@@ -1125,6 +1174,7 @@ namespace EdS.Domain.Combat
                 }
             }
             ValidateWanderGroups(errors);   // sous-lot V2.4.1
+            ValidateCompanions(ids, errors);   // compagnons
             for (int i = 0; i < Combatants.Count; i++)
                 if (Combatants[i] is AssailantSetup { Target: { } targetId } assailant)
                 {
@@ -1175,7 +1225,7 @@ namespace EdS.Domain.Combat
                 else
                 {
                     if (command.Skill != null) errors.Add(new RuleViolation("une garde, une parade, un déplacement, une sélection ou un départ ne nomme pas de compétence.", path + ".skill"));
-                    if (command.Target != null && command.Action != CombatAction.Select)
+                    if (command.Target != null && command.Action != CombatAction.Select && command.Action != CombatAction.Order && command.Action != CombatAction.Duo)
                         errors.Add(new RuleViolation("une garde, une parade, un déplacement ou un départ n'a pas de cible.", path + ".target"));
                 }
                 // Sous-lot 11.4 : déplacement seulement dans un combat positionné ; une direction seulement pour un déplacement. Sous-lot
@@ -1241,6 +1291,7 @@ namespace EdS.Domain.Combat
                 }
                 else if (command.Direction != null)
                     errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
+                ValidateCompanionCommand(command, path, ids, errors);   // compagnons
             }
             ValidateInitialQueue(errors);
             if (queueBound && errors.Count == 0) ValidateQueueSaturation(errors);
@@ -1930,7 +1981,11 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation($"Résonance {carried.Resonance} hors de [0, {Combat.ResonanceMax}].", cp + ".resonance"));
                     if (carried.RampartCharges < 0 || carried.RampartCharges > rules.RampartChargesMax)
                         errors.Add(new RuleViolation($"Charges {carried.RampartCharges} hors de [0, {rules.RampartChargesMax}].", cp + ".rampartCharges"));
-                    Duration(carried.GlobalCooldownMs, Combat.GlobalCooldownMs, "globalCooldownMs");
+                    // Revue Codex de la PR #169 (6e tour) : une attaque à deux porte la recharge globale de l'Éveillé jusqu'à la fin de sa
+                    // récupération (au plus CompanionDuo.MaxPhaseMs), au-delà de la recharge globale ordinaire : un Éveillé qui change de secteur
+                    // pendant cette récupération l'emporte. L'état du compagnon, lui, ne voyage pas (limite connue) : la borne ne dépend donc pas
+                    // des compagnons présents à l'arrivée.
+                    Duration(carried.GlobalCooldownMs, Math.Max(Combat.GlobalCooldownMs, CompanionDuo.MaxPhaseMs), "globalCooldownMs");
                     if (carried.Cooldowns.Count > CarriedState.MaxCooldowns)
                         errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{carried.Cooldowns.Count} recharges, au plus {CarriedState.MaxCooldowns}.", cp + ".cooldowns"));
                     var castable = new HashSet<string>(character.Build.ActiveSkills, StringComparer.Ordinal);
@@ -2249,6 +2304,10 @@ namespace EdS.Domain.Combat
                                     CombatantStats.PowerOf(attack.DamageType), attack.DamageType, Fixed.One, false));
                                 AddDotOffenses(offenses[i], $"attaque « {attack.Id} »", attackStats, attack.Applies);
                             }
+                            // Compagnons : l'attaque à deux part du compagnon, comme une attaque sans forme de ses dégâts bruts.
+                            if (assailant.Companion?.Duo is { } duo)
+                                offenses[i].Add(new Offense($"attaque à deux « {duo.Id} »", CombatantStats.ForAssailantAttack(Stats, duo.RawDamage),
+                                    CombatantStats.PowerOf(duo.DamageType), duo.DamageType, Fixed.One, false));
                             // Lot 7.3 : déclencheurs de l'assaillant et des altérations qu'il peut porter, à sa puissance de base.
                             for (int k = 0; k < assailant.Triggers.Count; k++)
                                 AddTriggerOffenses(offenses[i], $"déclencheur « {assailant.TriggerDefinitionId}/{k} »", defenses[i]!, assailant.Triggers[k], 1);

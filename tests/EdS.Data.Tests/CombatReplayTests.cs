@@ -139,7 +139,7 @@ public class CombatReplayTests
     {
         // Référence du journal de scenarios/mannequin.json avec data/v0 : à mettre à jour sciemment si les données ou le moteur changent.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate().ToString()))).ToLowerInvariant();
-        Assert.Equal(MannequinLogHash, hash);
+        Assert.True(hash == MannequinLogHash, $"empreinte {hash}, attendue {MannequinLogHash}");
     }
 
     // Sous-lot 8.7 : la Provocation (lancée sur le mannequin, provocation refusée notApplicable) inflige désormais 0,8 : 461 dégâts au
@@ -164,5 +164,7 @@ public class CombatReplayTests
     // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; seul l'en-tête change (ancienne empreinte 3f088709…).
     // Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénario en schéma 18 ; seul l'en-tête change (ancienne empreinte df3226ad…).
     // Esquive : moteur 0.32.0, format 26, règles 0.18.0, scénario en schéma 19 ; seul l'en-tête change (ancienne empreinte 272e2eac…).
-    internal const string MannequinLogHash = "14b4d4c64f2bbbf9a805cc38a68078c6d7c8ff91e2e3aa565476338b12be99c5";
+    // Compagnons : moteur 0.33.0, format 27 ; seul l'en-tête change (ancienne empreinte 14b4d4c6…).
+    // Monture (sous-lot V2.28d (2)) : moteur 0.34.0, format 28 ; seul l'en-tête change (ancienne empreinte dcbdbe3f…).
+    internal const string MannequinLogHash = "05aed4401adb53491afea8fddd3bdd685b3e7d976a42ab95c103c6c19ea3dd05";
 }

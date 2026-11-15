@@ -521,7 +521,7 @@ public class V241PromenadeMoteurTests
         var engine = new CombatEngine(Load(), new MemoryCombatLog());
         for (int i = 0; i < 20; i++) engine.Step();
         string text = engine.Snapshot().Text;
-        Assert.StartsWith("{\"snapshot\":9,", text);   // esquive : format 7
+        Assert.StartsWith("{\"snapshot\":9,", text);   // esquive : format 7 ; compagnons : 8
         string old = "{\"snapshot\":5," + text.Substring("{\"snapshot\":9,".Length);
         Assert.Throws<FormatException>(() => CombatEngine.Restore(engine.CompletedSetup(), CombatSnapshot.Parse(old), new MemoryCombatLog()));
     }

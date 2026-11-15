@@ -85,8 +85,11 @@ public sealed class V228c3RegionTests : IDisposable
             Assert.DoesNotContain(zone.Populations, q => zone.Setup.Combatants.Any(c => c.Id == q.Creature && c.Placement is { } at && p.Contains(at.Position)));
         }
         Assert.Equal(1, zone.MinLevelAt(G(-18, -12)));
-        Assert.Equal(16, zone.MinLevelAt(G(-850, 780)));   // forêt des Loups profonde
-        Assert.Equal(24, zone.MinLevelAt(G(1170, 990)));   // fort des bandits
+        Assert.Equal(15, zone.MinLevelAt(G(-850, 780)));   // forêt des Loups profonde
+        Assert.Equal(21, zone.MinLevelAt(G(1170, 990)));   // fort des bandits
+        // Décision de Damien du 15 novembre 2026 : les lieux de la région restent sous le Gardien du Seuil (niveau 23, fin du chapitre 5),
+        // entre 1 et 22.
+        Assert.All(region, p => Assert.InRange(p.MinLevel, 1, 22));
         // Relecture de la PR #170 : aucun trou de niveau sur les routes de la région (chaque mètre hors du cœur est dans un lieu), ni aux
         // points sûrs de la région.
         foreach (Road road in zone.Roads)
@@ -105,7 +108,7 @@ public sealed class V228c3RegionTests : IDisposable
         foreach (string id in new[] { "porte_est_du_bourg", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie",
             "lisiere_des_terres_grises", "chateau_viticole" })
             Assert.NotEmpty(zone.PlacesAt(zone.SafePoints.Single(p => p.Id == id).Position));
-        Assert.Equal(22, zone.MinLevelAt(zone.SafePoints.Single(p => p.Id == "pied_du_fort").Position));
+        Assert.Equal(20, zone.MinLevelAt(zone.SafePoints.Single(p => p.Id == "pied_du_fort").Position));
     }
 
     [Fact]

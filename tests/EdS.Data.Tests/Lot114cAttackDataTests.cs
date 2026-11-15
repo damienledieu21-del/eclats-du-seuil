@@ -116,7 +116,7 @@ public class Lot114cAttackDataTests
     [Fact]
     public void Schema_6_et_schemas_JSON()
     {
-        Assert.Equal(20, ScenarioValidator.CurrentSchemaVersion);   // esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // sous-lot 11.4d : 7 (arrivées, départ) ; 11.5 : 8 (comportements) ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
+        Assert.Equal(22, ScenarioValidator.CurrentSchemaVersion);   // compagnons : 21 ; esquive : 20 ; V2.28c : 19 ;   // V2.26 : 18 (état emporté, secteurs) ; V2.4.1 : 17 (bêtes qui se promènent) ; V2.4 : 16 (bêtes qui fuient) ; V1.8d : 15 (bonus modifié) ; V1.3 : 14 (équipement) ;   // sous-lot 11.4d : 7 (arrivées, départ) ; 11.5 : 8 (comportements) ; 11.9 : 9 ; 12.1 : 10 ; 12.3 : 11 ; 12.6 : 12
         Assert.Equal(("$.schemaVersion", ValidationCode.UnsupportedSchemaVersion), (Error(Mutated(root => root["schemaVersion"] = 5)).Path, Error(Mutated(root => root["schemaVersion"] = 5)).Code));
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         Assert.Equal(22, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());

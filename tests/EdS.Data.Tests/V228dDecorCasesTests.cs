@@ -113,4 +113,30 @@ public sealed class V228dDecorCasesTests : IDisposable
         Assert.True(CellDecor.For(whole, grid, village, hole).IsEmpty);
         Assert.NotEmpty(CellDecor.For(whole, grid, village).Roads);
     }
+
+    [Fact]
+    public void Arbres_sans_double_entre_cases_meme_resultat_dans_tout_ordre_et_plafond_reparti()
+    {
+        // Relecture de la PR #173 : aucun arbre en double d'une case à l'autre (ni entre deux lieux de forêt qui se chevauchent) ; même décor
+        // quel que soit l'ordre de chargement des cases ; le plafond garde un sous-échantillon uniforme (toute la case reste boisée).
+        AdventureMap whole = Whole();
+        RegionGrid grid = whole.Region!;
+        var forward = grid.Cells.Select(c => CellDecor.For(whole, grid, c)).ToList();
+        var backward = grid.Cells.Reverse().Select(c => CellDecor.For(whole, grid, c)).Reverse().ToList();
+        var all = forward.SelectMany(s => s.Trees).Select(t => (Math.Round(t.X, 6), Math.Round(t.Z, 6))).ToList();
+        Assert.Equal(all.Count, all.Distinct().Count());
+        for (int i = 0; i < forward.Count; i++)
+            Assert.Equal(forward[i].Trees.Select(t => (t.X, t.Z, t.Scale, t.Wolves)), backward[i].Trees.Select(t => (t.X, t.Z, t.Scale, t.Wolves)));
+        // Plafond : une case de la forêt profonde réduite à 60 arbres en garde 60, dans chacun de ses quatre quarts.
+        RegionCell deep = grid.Cells.Single(c => c.Name == "c8_r19");
+        CellDecorSet full = CellDecor.For(whole, grid, deep), capped = CellDecor.For(whole, grid, deep, null, 60);
+        Assert.True(full.Trees.Count > 60);
+        Assert.Equal(60, capped.Trees.Count);
+        Assert.All(capped.Trees, t => Assert.Contains(full.Trees, f => f.X == t.X && f.Z == t.Z));
+        double mx = (capped.MinX + capped.MaxX) / 2, mz = (capped.MinZ + capped.MaxZ) / 2;
+        foreach ((bool east, bool north) in new[] { (false, false), (true, false), (false, true), (true, true) })
+            Assert.Contains(capped.Trees, t => (t.X >= mx) == east && (t.Z >= mz) == north);
+        Assert.Empty(CellDecor.For(whole, grid, deep, null, 0).Trees);
+        Assert.Throws<ArgumentOutOfRangeException>(() => CellDecor.For(whole, grid, deep, null, -1));
+    }
 }
