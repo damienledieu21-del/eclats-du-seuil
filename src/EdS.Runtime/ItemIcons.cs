@@ -89,6 +89,8 @@ namespace EdS.Runtime
             ("bobine", new[] { "thread", "spool", "yarn" }), ("pommes", new[] { "apple" }), ("lettre", new[] { "letter", "scroll" }), ("registre", new[] { "book", "ledger" }),
             ("carnet", new[] { "notebook", "book" }), ("sac", new[] { "bag", "sack" }), ("bourse", new[] { "pouch", "purse", "bag" }), ("corde", new[] { "rope" }),
             ("seau", new[] { "bucket" }), ("cor", new[] { "horn" }), ("poussiere", new[] { "dust", "powder" }),
+            // Grand Solitaire : butin du boss du monde (trophée, mantelet, appel de la monture).
+            ("trophee", new[] { "trophy", "plaque" }), ("mantelet", new[] { "cloak", "cape", "mantle" }), ("appel", new[] { "horn", "whistle" }),
         };
 
         /// <summary>Mots anglais cherchés pour l'objet <paramref name="itemId"/> (« item.epee_de_garde » → sword), le meilleur d'abord ; vide sinon.</summary>
