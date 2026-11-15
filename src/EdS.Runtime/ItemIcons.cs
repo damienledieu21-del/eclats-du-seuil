@@ -92,6 +92,8 @@ namespace EdS.Runtime
             // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
             ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
             ("trompette", new[] { "mushroom" }),
+            // Grand Solitaire : butin du boss du monde (trophée, mantelet, appel de la monture).
+            ("trophee", new[] { "trophy", "plaque" }), ("mantelet", new[] { "cloak", "cape", "mantle" }), ("appel", new[] { "horn", "whistle" }),
         };
 
         /// <summary>Mots anglais cherchés pour l'objet <paramref name="itemId"/> (« item.epee_de_garde » → sword), le meilleur d'abord ; vide sinon.</summary>
