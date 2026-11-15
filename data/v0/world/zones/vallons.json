@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.17.0-provisoire",
+  "contentVersion": "0.18.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -71,6 +71,14 @@
         "position": [
           -710,
           -44
+        ]
+      },
+      {
+        "id": "place_du_marche_de_la_ville",
+        "name": "Place du marché du Bourg",
+        "position": [
+          -1010,
+          -95
         ]
       },
       {
@@ -395,6 +403,32 @@
         "max": [
           -710,
           230
+        ],
+        "minLevel": 1
+      },
+      {
+        "id": "place_du_marche_de_la_ville",
+        "name": "Place du marché",
+        "min": [
+          -1050,
+          -110
+        ],
+        "max": [
+          -970,
+          -30
+        ],
+        "minLevel": 1
+      },
+      {
+        "id": "eglise_de_la_ville",
+        "name": "Église du Bourg",
+        "min": [
+          -915,
+          0
+        ],
+        "max": [
+          -880,
+          52
         ],
         "minLevel": 1
       },

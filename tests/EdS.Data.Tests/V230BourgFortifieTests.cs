@@ -1,0 +1,107 @@
+using EdS.Data.Characters;
+using EdS.Data.Items;
+using EdS.Data.Json;
+using EdS.Data.Saves;
+using EdS.Data.Zones;
+using EdS.Domain.Space;
+using EdS.Runtime;
+using EdS.World;
+using static EdS.Data.Tests.ScenarioTestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lot V2.30 : le Bourg d'Aube fortifié (surface), d'après son plan illustré (validé par Damien le 11 novembre 2026) : palissade de
+/// 600 × 500 m autour de (−1 010, −70), tours d'angle et de portes, portes est et ouest sur la route d'Ambre, poterne sud sur le chemin
+/// des vignes, grande maison, église et clocher, halle, puits et étals de la place du marché, écurie, maisons serrées ; un point sûr sur la
+/// place. Le déménagement des boutiques reste au V2.30.1.
+/// </summary>
+[Trait("Category", "World")]
+public class V230BourgFortifieTests
+{
+    private static readonly Lazy<ZoneDefinition> Vallons = new(() => ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+        Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!).Zone!);
+
+    private const double W = -1310, E = -710, S = -320, N = 180;
+
+    private static (double X, double Z) P(GroundVector v) => (v.X.Raw / 1e4, v.Z.Raw / 1e4);
+
+    /// <summary>Boîtes des obstacles de la ville (palissade, tours, bâtiments), en mètres.</summary>
+    private static List<(string Id, double X0, double Z0, double X1, double Z1)> Town() => Vallons.Value.Setup.Space!.Obstacles
+        .Where(o => o.Id.Contains("_ville", StringComparison.Ordinal))
+        .Select(o => (o.Id, o.Points.Min(p => P(p).X), o.Points.Min(p => P(p).Z), o.Points.Max(p => P(p).X), o.Points.Max(p => P(p).Z))).ToList();
+
+    private static bool Blocked(List<(string Id, double X0, double Z0, double X1, double Z1)> town, double x, double z, double margin) =>
+        town.Any(b => x > b.X0 - margin && x < b.X1 + margin && z > b.Z0 - margin && z < b.Z1 + margin);
+
+    [Fact]
+    public void Palissade_fermee_sauf_les_trois_portes()
+    {
+        var town = Town();
+        Assert.Equal(7, town.Count(b => b.Id.StartsWith("palissade_ville", StringComparison.Ordinal)));
+        Assert.Equal(10, town.Count(b => b.Id.StartsWith("tour_ville", StringComparison.Ordinal)));   // 4 d'angle, 4 de portes, poterne, clocher
+        Assert.InRange(town.Count(b => b.Id.StartsWith("maison_ville", StringComparison.Ordinal)), 60, 160);
+        // Tour du périmètre, tous les 0,5 m : chaque point est dans la palissade ou une tour, sauf dans les trois ouvertures.
+        var gaps = new List<(double X, double Z)>();
+        void Walk(double x0, double z0, double x1, double z1)
+        {
+            double len = Math.Max(Math.Abs(x1 - x0), Math.Abs(z1 - z0));
+            for (double t = 0; t <= len; t += 0.5)
+            {
+                double x = x0 + (x1 - x0) * t / len, z = z0 + (z1 - z0) * t / len;
+                if (!Blocked(town, x, z, 0.01)) gaps.Add((x, z));
+            }
+        }
+        Walk(W, N, E, N);
+        Walk(E, N, E, S);
+        Walk(E, S, W, S);
+        Walk(W, S, W, N);
+        Assert.All(gaps, g => Assert.True(
+            (g.X == E && g.Z > -57 && g.Z < -43) || (g.X == W && g.Z > -97 && g.Z < -83) || (g.Z == S && g.X > -1163.5 && g.X < -1156.5),
+            $"brèche en ({g.X}, {g.Z})"));
+        Assert.Contains(gaps, g => g.X == E);
+        Assert.Contains(gaps, g => g.X == W);
+        Assert.Contains(gaps, g => g.Z == S);
+    }
+
+    [Fact]
+    public void Routes_libres_a_travers_la_ville_et_points_surs_degages()
+    {
+        var town = Town();
+        ZoneDefinition zone = Vallons.Value;
+        foreach (string id in new[] { "route_d_ambre_ouest", "chemin_des_vignes" })
+        {
+            var pts = zone.Roads.Single(r => r.Id == id).Points.Select(P).ToList();
+            for (int i = 0; i + 1 < pts.Count; i++)
+            {
+                double len = Math.Sqrt(Math.Pow(pts[i + 1].X - pts[i].X, 2) + Math.Pow(pts[i + 1].Z - pts[i].Z, 2));
+                for (double t = 0; t <= len; t += 1)
+                {
+                    double x = pts[i].X + (pts[i + 1].X - pts[i].X) * t / len, z = pts[i].Z + (pts[i + 1].Z - pts[i].Z) * t / len;
+                    Assert.False(Blocked(town, x, z, 1.5), $"{id} bouchée en ({x:0.0}, {z:0.0})");
+                }
+            }
+        }
+        SafePoint market = zone.SafePoints.Single(s => s.Id == "place_du_marche_de_la_ville");
+        Assert.Equal((-1010.0, -95.0), P(market.Position));
+        Assert.False(Blocked(town, -1010, -95, 3));
+        Assert.Contains(zone.Places, p => p.Id == "place_du_marche_de_la_ville");
+        Assert.Contains(zone.Places, p => p.Id == "eglise_de_la_ville");
+        // Rien d'autre de la région dans l'enceinte (le cœur, ses quêtes et ses portes ne bougent pas avant le V2.30.1).
+        Assert.DoesNotContain(zone.Setup.Space!.Obstacles, o => !o.Id.Contains("_ville", StringComparison.Ordinal)
+            && o.Points.All(p => P(p).X > W && P(p).X < E && P(p).Z > S && P(p).Z < N));
+    }
+
+    [Fact]
+    public void De_la_porte_de_l_est_a_la_place_du_marche_a_pied()
+    {
+        CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        ItemCatalog items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        SavedCharacter hero = Inventory.Outfit(PlayerCharacters.Create("heros", AdventureSession.PlayerClass, progression), items);
+        WorldSession w = V228b2PassageTests.Open(Vallons.Value, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero),
+            safePoint: "porte_est_du_bourg");
+        V228b2PassageTests.WalkTo(w, -860, -60);
+        V228b2PassageTests.WalkTo(w, -1008, -92);
+        Assert.True(w.Registered("zone.vallons/safe/place_du_marche_de_la_ville"));
+    }
+}

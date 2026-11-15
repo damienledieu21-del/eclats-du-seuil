@@ -337,6 +337,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 ### Étape 2 : les lieux un par un
 
+**Avancement V2.30** (15 novembre 2026, en PR) : le Bourg fortifié en surface (palissade, dix tours, portes est et ouest, poterne sud, grande maison, église, halle, place du marché, écurie, 121 maisons, point sûr de la place ; [MONDE.md](MONDE.md)). Écart au plan : pas de porte nord (le plan illustré n'en a pas ; le chemin du pont des Murmures n'est pas tracé), une poterne sud sur le chemin des vignes à la place.
+
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
 | **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |

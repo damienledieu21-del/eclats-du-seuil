@@ -89,7 +89,7 @@ public class Lot129MapTests : IDisposable
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
         Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric", "Renart", "Lison", "Colombe", "Maître Josse", "Aubine", "Achille", "Garance", "Mahaut", "Thibaut", "Le capitaine Bérenger", "Colin", "Ysarn", "Gaut le receleur" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
-        Assert.Equal(13, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau ; V2.28c (3) : huit carrefours de la région
+        Assert.Equal(14, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // V2.30 : place du marché de la ville ;   // Vallons agrandis : bourg, ferme, hameau ; V2.28c (3) : huit carrefours de la région
         MapMarker forge = Assert.Single(markers, m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));
         Assert.Contains(markers, m => m.Kind == MapMarkerKind.Node);

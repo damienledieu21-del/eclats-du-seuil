@@ -220,7 +220,8 @@ namespace EdS.Runtime
         /// Obstacle posé sur un replat : tout ce qui est bâti (bâtiments, puits, étals, tentes, palissades, murs, porte, blocs, pierres, piliers,
         /// moulin). Restent sur la pente : l'eau (dans le creux), les arbres et les bois, les haies (muret qui suit le sol) ; relecture
         /// indépendante de la PR #170 : l'éboulement et les falaises de la surface (parois de rochers longues de centaines de mètres, posées sur le
-        /// sol : un replat commun imposait le niveau le plus bas sur toute leur longueur et creusait une tranchée).
+        /// sol : un replat commun imposait le niveau le plus bas sur toute leur longueur et creusait une tranchée) ; de même les pans de la
+        /// palissade du Bourg fortifié (sous-lot V2.30).
         /// </summary>
         public static bool Builds(SpaceObstacle o)
         {
@@ -228,7 +229,8 @@ namespace EdS.Runtime
             string key = StyleRules.Key(o.Id);
             return !o.Low && !key.StartsWith("arbre", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) != StyleBuilding.Woods
                 && StyleRules.FenceFor(o.Id) != StyleFence.Hedge && !key.StartsWith("eboulement", StringComparison.Ordinal)
-                && !key.StartsWith("falaise", StringComparison.Ordinal);
+                && !key.StartsWith("falaise", StringComparison.Ordinal)
+                && !o.Id.StartsWith("palissade_ville", StringComparison.Ordinal);   // sous-lot V2.30 : les pans de 500 m de la ville suivent le sol
         }
 
         /// <summary>Hauteur du sol affiché (m) en (x, z), à l'étage <paramref name="floor"/> (0 : la surface ; les autres restent plats).</summary>
