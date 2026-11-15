@@ -38,6 +38,8 @@ public class V229HorizonTests
             Assert.True(step < 160, $"saut de {step:0.0} m en {i}");
         }
         Assert.Equal(P.Height(0), P.Height(HorizonProfile.Samples));
+        // Relecture de la PR #182 : pas de marche au nord, entre le dernier point et le premier.
+        Assert.True(Math.Abs(P.Height(HorizonProfile.Samples - 1) - P.Height(0)) < 5, $"{P.Height(HorizonProfile.Samples - 1) - P.Height(0):0.0} m au nord");
         Assert.Equal(P.Height(-1), P.Height(HorizonProfile.Samples - 1));
         (double x, double z) north = HorizonProfile.Direction(0), east = HorizonProfile.Direction(At(90));
         Assert.Equal((0.0, 1.0), (Math.Round(north.x, 9), Math.Round(north.z, 9)));

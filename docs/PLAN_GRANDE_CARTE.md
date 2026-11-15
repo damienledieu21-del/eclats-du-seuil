@@ -292,7 +292,7 @@ Principe déjà en place (V2.3, V2.5, V2.6) : **ce qui n'est pas vu est calculé
 
 ### 6.3 Horizon lointain
 
-Trois **cartes peintes** sur le ciel, qui ne se chargent jamais comme des cases : les **Crêtes de Fer** au nord-est (pics enneigés, fumées des forges), la **brume de la Forêt des Murmures** à l'ouest (cimes géantes dans le brouillard), et la **lune fendue** la nuit (déjà dans le ciel, sujet 32). Le **point de vue du sommet** dissipe le brouillard de toute la région (sujet 30) et fait un tour de caméra.
+Trois **cartes peintes** sur le ciel, qui ne se chargent jamais comme des cases : les **Crêtes de Fer** au nord-est (pics enneigés, fumées des forges), la **brume de la Forêt des Murmures** au nord-ouest (§ 4.0 bis) (cimes géantes dans le brouillard), et la **lune fendue** la nuit (déjà dans le ciel, sujet 32). Le **point de vue du sommet** dissipe le brouillard de toute la région (sujet 30) et fait un tour de caméra.
 
 ## 7. Sous-lots
 
@@ -335,7 +335,7 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 | **V2.28** Surface de 4 × 3 km | Toute la région praticable : relief d'affichage, rivière jusqu'à la cascade, lac et marais, nappes de forêt, collines, routes, ravins et falaises en obstacles, points sûrs aux carrefours, cheval à 13 m/s ; **reprise d'une partie au dernier point sûr** (sauvegarde : secteur et point sûr ; section 3) ; lieux en emplacements vides | M | V2.26, V2.27 | pont de pierre long, ponton, gué, bornes et panneaux, murets, clôtures, haies |
 | **V2.29** Horizon | Cartes peintes du ciel, silhouettes lointaines, point de vue du sommet | S | V2.28 | silhouettes basses des Crêtes de Fer ; imposteurs des grands lieux (au fil des lieux) |
 
-**Avancement V2.29** (15 novembre 2026) : première partie en PR : silhouettes de l'horizon lointain (Crêtes de Fer au nord-est, Forêt des Murmures à l'ouest, collines ; `HorizonProfile`, `HorizonView`, [UNITY.md](UNITY.md#horizon-lointain-sous-lot-v229-première-partie)). À faire : cartes peintes (modèles et textures à demander), brouillard à dissiper et point de vue du sommet (sauvegarde des cases explorées).
+**Avancement V2.29** (15 novembre 2026) : première partie en PR : silhouettes de l'horizon lointain (Crêtes de Fer au nord-est, Forêt des Murmures au nord-ouest, collines ; `HorizonProfile`, `HorizonView`, [UNITY.md](UNITY.md#horizon-lointain-sous-lot-v229-première-partie)). À faire : cartes peintes (modèles et textures à demander), brouillard à dissiper et point de vue du sommet (sauvegarde des cases explorées).
 
 ### Étape 2 : les lieux un par un
 

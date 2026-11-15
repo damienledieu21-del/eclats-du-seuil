@@ -1023,7 +1023,7 @@ Affichage seulement ([plan de la grande carte](PLAN_GRANDE_CARTE.md#7-sous-lots)
 
 Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity, déterministe) donne la silhouette des terres lointaines en 720 points d'azimut (0 : le nord, +z), pour un anneau de 6 000 m :
 - les **Crêtes de Fer** au nord-est, centrées sur 45°, sur 38° de part et d'autre : pics nets jusqu'à 900 m, enneigés au-dessus de 560 m ;
-- la **Forêt des Murmures** à l'ouest, centrée sur 270°, sur 42° de part et d'autre : cimes géantes de 120 à 190 m ;
+- la **Forêt des Murmures** au nord-ouest, centrée sur 315° (plan, § 4.0 bis), sur 42° de part et d'autre : cimes géantes de 120 à 190 m ;
 - des collines basses ailleurs (40 à 82 m).
 
 Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra et qui la suit. Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.

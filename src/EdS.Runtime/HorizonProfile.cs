@@ -8,7 +8,7 @@ namespace EdS.Runtime
         /// <summary>Collines basses d'Orsédia, tout autour.</summary>
         Hills = 0,
 
-        /// <summary>La Forêt des Murmures, à l'ouest : cimes géantes dans la brume.</summary>
+        /// <summary>La Forêt des Murmures, au nord-ouest : cimes géantes dans la brume.</summary>
         Forest = 1,
 
         /// <summary>Les Crêtes de Fer, au nord-est : pics enneigés.</summary>
@@ -18,7 +18,7 @@ namespace EdS.Runtime
     /// <summary>
     /// Sous-lot V2.29 (horizon, plan de la grande carte § 6.3) : la silhouette des terres lointaines autour des Vallons, qui ne se charge
     /// jamais comme des cases. Les <b>Crêtes de Fer</b> au nord-est (pics enneigés, jusqu'à <see cref="MountainPeak"/> m), la
-    /// <b>Forêt des Murmures</b> à l'ouest (cimes géantes, voilées de brume), des collines basses ailleurs. La silhouette est donnée pour un
+    /// <b>Forêt des Murmures</b> au nord-ouest (cimes géantes, comme les Vallons dans Orsédia, plan § 4.0 bis, Retenu, voilées de brume), des collines basses ailleurs. La silhouette est donnée pour un
     /// anneau de <see cref="Radius"/> m autour du joueur, en <see cref="Samples"/> points d'azimut (0 : le nord, +z ; 90 : l'est, +x),
     /// raccordés en douceur d'une nature à l'autre. Calcul déterministe (hachage entier), sans Unity : la vue Unity l'étire à sa propre
     /// distance (<c>HorizonView</c>). Affichage seulement. Les « cartes peintes » du plan restent à demander à ChatGPT : ces silhouettes
@@ -39,7 +39,7 @@ namespace EdS.Runtime
         public const double SnowLine = 560;
 
         /// <summary>Centres et demi-largeurs (degrés d'azimut) des Crêtes de Fer et de la Forêt des Murmures.</summary>
-        public const double MountainsAt = 45, MountainsHalfWidth = 38, ForestAt = 270, ForestHalfWidth = 42;
+        public const double MountainsAt = 45, MountainsHalfWidth = 38, ForestAt = 315, ForestHalfWidth = 42;
 
         private readonly double[] _height = new double[Samples];
         private readonly HorizonLayer[] _layer = new HorizonLayer[Samples];
@@ -49,7 +49,7 @@ namespace EdS.Runtime
             for (int i = 0; i < Samples; i++)
             {
                 double azimuth = i * 360.0 / Samples;
-                double hills = HillsBase + 30 * Smooth(i, 24, 11) + 12 * Smooth(i, 7, 23);
+                double hills = HillsBase + 30 * Smooth(i, 24, 11) + 12 * Smooth(i, 8, 23);   // périodes qui divisent 720 (relecture de la PR #182)
                 double mountains = Window(azimuth, MountainsAt, MountainsHalfWidth);
                 double forest = Window(azimuth, ForestAt, ForestHalfWidth);
                 // Crêtes : des pics nets (un tous les 4 à 5 degrés) sur un socle, la crête la plus haute au milieu de la chaîne.
@@ -94,9 +94,11 @@ namespace EdS.Runtime
             return d >= halfWidth ? 0 : 0.5 + 0.5 * Math.Cos(Math.PI * d / halfWidth);
         }
 
-        /// <summary>Bruit lisse dans [0, 1] : valeurs hachées tous les <paramref name="period"/> points, raccordées en cosinus, périodique.</summary>
+        /// <summary>Bruit lisse dans [0, 1] : valeurs hachées tous les <paramref name="period"/> points, raccordées en cosinus, périodique
+        /// (<paramref name="period"/> divise <see cref="Samples"/>).</summary>
         private static double Smooth(int index, int period, int salt)
         {
+            if (Samples % period != 0) throw new ArgumentOutOfRangeException(nameof(period));
             int knots = Samples / period;
             int k = index / period;
             double t = (index % period) / (double)period;

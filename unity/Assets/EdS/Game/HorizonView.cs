@@ -5,7 +5,7 @@ namespace EdS.Game
 {
     /// <summary>
     /// Sous-lot V2.29 (horizon, plan de la grande carte § 6.3) : anneau des terres lointaines autour de la caméra (<see cref="HorizonProfile"/>) :
-    /// les Crêtes de Fer enneigées au nord-est, la Forêt des Murmures voilée à l'ouest, des collines basses ailleurs. Un seul maillage, posé
+    /// les Crêtes de Fer enneigées au nord-est, la Forêt des Murmures voilée au nord-ouest, des collines basses ailleurs. Un seul maillage, posé
     /// juste en deçà du plan lointain de la caméra et qui la suit (jamais chargé par cases) ; dessiné après le ciel, sans écrire la profondeur :
     /// tout le décor proche passe devant. Les couleurs se fondent dans celle de la brume du moment (jour, nuit, météo).
     /// </summary>
@@ -38,17 +38,26 @@ namespace EdS.Game
             Vector3 at = camera.transform.position;
             _root.transform.position = new Vector3(at.x, 0f, at.z);
             Color fog = RenderSettings.fogColor;
-            if (fog.r != _fog.r || fog.g != _fog.g || fog.b != _fog.b)
+            // Relecture de la PR #182 : recalculé seulement si la brume change de plus d'un 255e.
+            if (Mathf.Abs(fog.r - _fog.r) > 1f / 255f || Mathf.Abs(fog.g - _fog.g) > 1f / 255f || Mathf.Abs(fog.b - _fog.b) > 1f / 255f)
             {
                 _fog = fog;
                 // Plus c'est bas, plus c'est voilé ; la forêt des Murmures dans sa brume, les neiges plus nettes.
-                for (int i = 0; i < _base.Length; i++) _colors[i] = Color.Lerp(_base[i], fog, _base[i].a);
+                // Relecture de la PR #182 : l'alpha de la couleur de base porte la part de brume ; la couleur affichée reste opaque.
+                for (int i = 0; i < _base.Length; i++)
+                {
+                    Color c = Color.Lerp(_base[i], fog, _base[i].a);
+                    c.a = 1f;
+                    _colors[i] = c;
+                }
                 _mesh.colors = _colors;
             }
         }
 
         private static void Build()
         {
+            _radius = -1f;   // relecture de la PR #182 : échelle et couleurs reprises à la reconstruction
+            _fog = new Color(-1f, 0f, 0f, 0f);
             HorizonProfile profile = HorizonProfile.Vallons;
             int n = HorizonProfile.Samples;
             var vertices = new Vector3[2 * (n + 1)];
