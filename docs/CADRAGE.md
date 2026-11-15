@@ -335,6 +335,18 @@ Réponses de Damien du 15 novembre 2026, vers 15 h 30, rapportées par la sessio
 | Recettes | Les **treize recettes** sont gardées telles quelles. | Retenu (Damien, 15 novembre 2026, 15 h 30) |
 | Valeurs des plats et prix des ingrédients | Valeurs provisoires de Claude, à ajuster à l'essai. | Recommandation (question non posée) |
 
+## 7 decies. Cartes à la taverne (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la session principale (PR #187, vague 4 « la vie à côté du combat »). Détail : [MONDE.md](MONDE.md#cartes-à-la-taverne-vague-4-3e-partie).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Règles | Le jeu des **Trois Feux**, tel que proposé : 27 cartes (soleil, lune, brume ; 1 à 9), cinq cartes et cinq manches, **+3** à la couleur qui l'emporte (soleil sur brume, brume sur lune, lune sur soleil), le plus de manches gagne ; PNJ prudent, hardi ou rusé. | Retenu (Damien, 15 novembre 2026, 18 h 45) |
+| Mises | **5, 10 ou 25 cuivre**, rendues **doublées** si l'on gagne ; **au plus 3 parties par PNJ et par jour**. | Retenu (Damien, 15 novembre 2026, 18 h 45) |
+| Récompense rare | Après **10 victoires** : un **jeu de cartes rare** (objet décoratif) et le titre **« As des Trois Feux »**. | Retenu (Damien, 15 novembre 2026, 18 h 45) |
+| Adversaires | **Mathurin** et les PNJ présents à la taverne le soir. | Retenu (Damien, 15 novembre 2026, 18 h 45, sur la proposition de Claude) |
+| Partie nulle, plafond de gains | Mise rendue sur une partie nulle ; plafond de gains de la taverne par jour (par exemple 150 cuivre). | Recommandation (relecture indépendante de la PR #187), à confirmer |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
