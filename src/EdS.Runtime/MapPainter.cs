@@ -182,11 +182,11 @@ namespace EdS.Runtime
                 else if (o.Id.StartsWith("pierre_seuil", StringComparison.Ordinal)) blobs.Add(new Blob { X = cx, Z = cz, Radius = size * 0.7, Height = 0.5, Kind = 2, Id = o.Id });
                 else if (StyleRules.RockFace(o.Id))   // V2.28c : front de taille, éboulement, falaises ; seuls les rochers de l'image (relecture de la PR #167)
                 {
-                    foreach (var r in StyleRules.RockFaceSpots(b.MinX, b.MinZ, b.MaxX, b.MaxZ, x0, z0, x0 + w, z0 + d, 12))
+                    foreach (var r in StyleRules.RockFaceSpots(o.Points, x0, z0, x0 + w, z0 + d, 12))
                     {
-                        (int i, double rx, double rz, double depth, bool alongX) = (r.Index, r.X, r.Z, r.Depth, r.AlongX);
-                        blobs.Add(new Blob { X = rx, Z = rz, Radius = depth * 0.62, Height = 0.6, Kind = 1, Id = o.Id + "/" + i });
-                        blobs.Add(new Blob { X = rx + (alongX ? 1.6 : -depth * 0.3), Z = rz + (alongX ? -depth * 0.3 : 1.6), Radius = depth * 0.3, Height = 0.35, Kind = 1, Id = o.Id + "/pied/" + i });
+                        blobs.Add(new Blob { X = r.X, Z = r.Z, Radius = r.Depth * 0.62, Height = 0.6, Kind = 1, Id = o.Id + "/" + r.Index });
+                        blobs.Add(new Blob { X = r.X + r.DirX * 1.6 - r.NormalX * r.Depth * 0.3, Z = r.Z + r.DirZ * 1.6 - r.NormalZ * r.Depth * 0.3, Radius = r.Depth * 0.3,
+                            Height = 0.35, Kind = 1, Id = o.Id + "/pied/" + r.Index });
                     }
                 }
                 else if (StyleRules.ForObstacle(o.Id) == StyleSlot.Rock) blobs.Add(new Blob { X = cx, Z = cz, Radius = size * 0.62, Height = 0.5, Kind = 1, Id = o.Id });

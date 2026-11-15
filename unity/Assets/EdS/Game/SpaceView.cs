@@ -1572,18 +1572,19 @@ namespace EdS.Game
         /// </summary>
         private bool QuarryFace(string id, List<Vector3> points)
         {
-            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             int placed = 0;
             // Relecture indépendante de la PR #167 : seuls les rochers de l'espace du moment (et 8 m autour) ; une falaise de 1,3 km n'en pose
-            // plus 400. Mêmes rangs et mêmes places d'un espace à l'autre.
-            foreach (var spot in StyleRules.RockFaceSpots(x0, z0, x1, z1, Raw(_space.Min.X.Raw), Raw(_space.Min.Z.Raw), Raw(_space.Max.X.Raw), Raw(_space.Max.Z.Raw), 8))
+            // plus 400. Mêmes rangs et mêmes places d'un espace à l'autre. Revue Codex : le long du grand axe du polygone (la crête en biais).
+            var outline = points.Select(p => ((double)p.x, (double)p.z)).ToList();
+            foreach (var spot in StyleRules.RockFaceSpots(outline, Raw(_space.Min.X.Raw), Raw(_space.Min.Z.Raw), Raw(_space.Max.X.Raw), Raw(_space.Max.Z.Raw), 8))
             {
                 int i = spot.Index;
-                bool alongX = spot.AlongX;
                 float depth = (float)spot.Depth;
+                var dir = new Vector3((float)spot.DirX, 0f, (float)spot.DirZ);
+                var normal = new Vector3((float)spot.NormalX, 0f, (float)spot.NormalZ);
                 string part = id + "/" + i;
                 float jitter = (StyleRules.Variant(part, 100) - 50) * 0.008f;
-                Vector3 at = alongX ? new Vector3((float)spot.X, 0f, (float)spot.Z + jitter) : new Vector3((float)spot.X + jitter, 0f, (float)spot.Z);
+                Vector3 at = new Vector3((float)spot.X, 0f, (float)spot.Z) + normal * jitter;
                 GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, part, at, 0f, depth * (1.0f + 0.003f * StyleRules.Variant(part + "/taille", 100)));
                 if (rock == null) continue;
                 AddModelOccluders(rock);
@@ -1591,13 +1592,13 @@ namespace EdS.Game
                 // Second rang, plus petit, et un bloc tombé de temps en temps, dans l'emprise (côté de l'aire : vers le plus petit x ou z) :
                 // aucun rocher du décor ne fait croire à un obstacle là où l'on peut marcher.
                 string low = part + "/pied";
-                Vector3 foot = at + (alongX ? new Vector3(1.6f, 0f, -depth * 0.3f) : new Vector3(-depth * 0.3f, 0f, 1.6f));
+                Vector3 foot = at + dir * 1.6f - normal * (depth * 0.3f);
                 GameObject small = StyleLook.Decor(_root.transform, StyleSlot.Rock, low, foot, 0f, depth * (0.45f + 0.003f * StyleRules.Variant(low, 100)));
                 if (small != null) AddModelOccluders(small);
                 if (i % 3 == 1)
                 {
                     string fallen = part + "/eboulis";
-                    Vector3 front = at + (alongX ? new Vector3(-0.8f, 0f, -depth * 0.4f) : new Vector3(-depth * 0.4f, 0f, -0.8f));
+                    Vector3 front = at - dir * 0.8f - normal * (depth * 0.4f);
                     GameObject block = StyleLook.Decor(_root.transform, StyleSlot.Rock, fallen, front, 0f, 0.9f + 0.006f * StyleRules.Variant(fallen, 100));
                     if (block != null) AddModelOccluders(block);
                 }

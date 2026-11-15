@@ -140,4 +140,27 @@ public class V228cSurfaceTests
         var south = Flood(obstacles, smin, smax, (100, -300));   // rive est des champs
         Assert.True(Reaches(south.Reached, smin, (-50, -500)), "pas de gué dans les champs");   // rive ouest
     }
+
+    [Fact]
+    public void Rochers_des_parois_le_long_du_polygone_et_coupes_a_la_fenetre()
+    {
+        // Revue Codex de la PR #167 : la crête est une bande en biais de 6 m : ses rochers sont sur elle (pas sur la boîte englobante de
+        // 761 × 201 m), de son épaisseur ; un rectangle droit garde les places d'avant ; seuls ceux de la fenêtre sont rendus.
+        ZoneDefinition zone = Zone();
+        SpaceObstacle crest = zone.Setup.Space!.Obstacles.Single(o => o.Id == "falaise_crete");
+        var outline = crest.Points.Select(p => (X: p.X.Raw / 1e4, Z: p.Z.Raw / 1e4)).ToList();
+        var all = StyleRules.RockFaceSpots(outline, -5000, -5000, 5000, 5000, 0).ToList();
+        Assert.InRange(all[0].Depth, 5.5, 6.5);
+        Assert.Equal((int)Math.Ceiling(Math.Sqrt(Math.Pow(560.4 + 200.6, 2) + Math.Pow(1277.2 - 1082.0, 2)) / StyleRules.RockFaceStep), all.Count);   // 246 rochers
+        Assert.All(all, r => Assert.True(GroundRelief.PolygonDistance(outline, r.X, r.Z) == 0, $"rocher {r.Index} hors de la crête en ({r.X:0.0}, {r.Z:0.0})"));
+        var window = StyleRules.RockFaceSpots(outline, 0, 1000, 200, 1300, 8).ToList();
+        Assert.InRange(window.Count, 1, all.Count / 2);
+        Assert.All(window, r => Assert.InRange(r.X, -8, 208));
+        // Rectangle droit (front de taille) : même pas et mêmes places qu'avant (le long de x, au milieu en z).
+        var box = new List<(double X, double Z)> { (0, 0), (32, 0), (32, 4), (0, 4) };
+        var spots = StyleRules.RockFaceSpots(box, -100, -100, 100, 100, 0).ToList();
+        Assert.Equal(10, spots.Count);
+        Assert.Equal((1.6, 2.0, 4.0), (spots[0].X, spots[0].Z, spots[0].Depth));
+        Assert.Equal((1.0, 0.0, 0.0, 1.0), (spots[0].DirX, spots[0].DirZ, spots[0].NormalX, spots[0].NormalZ));
+    }
 }
