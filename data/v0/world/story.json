@@ -4518,6 +4518,23 @@
           {
             "conditions": [
               {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.passages_de_la_vallee"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v228.vallee.plus_tard"
+              }
+            ],
+            "node": "v228_vallee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "questNotStarted",
                 "id": "quest.le_loup_blanc"
               },
@@ -5535,6 +5552,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -5622,6 +5654,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -5724,6 +5771,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -6036,6 +6098,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -6142,6 +6219,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -6578,6 +6670,21 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -7206,6 +7313,21 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -7315,6 +7437,21 @@
                   }
                 ],
                 "next": "ch1_aldric_moque"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -7531,6 +7668,21 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ]
           },
@@ -7670,8 +7822,94 @@
               {
                 "text": "text.v228.gaspard.vallee.plus_tard",
                 "conditions": [],
-                "effects": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v228.vallee.plus_tard"
+                  }
+                ],
                 "next": null
+              },
+              {
+                "text": "text.ch1.gaspard.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
+              },
+              {
+                "text": "text.ch1.gaspard.poussiere.dire",
+                "conditions": [
+                  {
+                    "if": "hasItem",
+                    "id": "item.poussiere_d_echo",
+                    "value": 1
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.poussiere"
+                  }
+                ],
+                "next": "ch1_poussiere"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.secret"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret"
+              },
+              {
+                "text": "text.ch1.gaspard.aldric.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.ch1.aldric.moque"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.gaspard.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque"
               }
             ]
           }
