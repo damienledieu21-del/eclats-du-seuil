@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "a39939ec6b0723a8e7afcc6334c11de3fa6fdcbc3f19f6bffd4cfcff70ee3930")]
-    [InlineData("entrainement_rupture", "fc4cdf3becc2206e69ec6b760c0d2c8cd744dc6ecae4c93350e45b59ce4515cf")]
-    [InlineData("entrainement_alterations", "19c5f14140ec08e6f84d501f7a0628da3603702128bed220a3425d09a53cabb0")]
-    [InlineData("entrainement_declencheurs", "554ceb87b1151c7dc528e20a82c935283ced508b46a96c1bac156dc9c3ae1275")]
+    [InlineData("entrainement_garde_parade", "3ce4b5f8d76a214e4c122657d13b94edad1feabb9e13e1df9cc11929f4a16589")]
+    [InlineData("entrainement_rupture", "16802e2722af07eb86baf898b80174dc7e1c090c2a2a17b96985e5bc86f93103")]
+    [InlineData("entrainement_alterations", "77265aa2946de0a2d1aa7fd2a4c49177d668444bbaebd913bd94c462dd5dda67")]
+    [InlineData("entrainement_declencheurs", "af304fddf10e44ad1188c876a09b1515ae170e1465915be5fca6b5598fb466ff")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -157,9 +157,9 @@ public class TrainingScenarioTests
         // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; sans espace : seul l'en-tête change ; référence dans
         // Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0. Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénarios en schéma
         // 18 ; sans état emporté : seul l'en-tête change. Compagnons : moteur 0.33.0, format 27, scénarios en schéma 21 ; sans compagnon : seul
-        // l'en-tête change ; référence dans Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0.
+        // l'en-tête change ; référence dans Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
-        Assert.Equal(expected, hash);
+        Assert.True(hash == expected, $"empreinte {hash}, attendue {expected}");
     }
 
     [Fact]

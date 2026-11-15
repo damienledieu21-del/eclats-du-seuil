@@ -1202,7 +1202,7 @@ namespace EdS.World
         /// changé en jeu par une commande gear) ; null : celui du personnage.</param>
         private static CharacterSetup Arriving(CharacterSetup c, string id, CombatantPlacement placement, long atMs, IReadOnlyList<ConsumableSetup>? consumables,
             CarriedState? carried, GearBonus? gear = null) =>
-            new CharacterSetup(id, c.Team, c.Class, c.Build, c.Initiative, placement, atMs, gear ?? c.Gear, consumables ?? c.Consumables, c.Shield, c.Equipment, carried);
+            new CharacterSetup(id, c.Team, c.Class, c.Build, c.Initiative, placement, atMs, gear ?? c.Gear, consumables ?? c.Consumables, c.Shield, c.Equipment, carried, c.Mount);   // V2.28d (2) : la monture passe avec lui
 
         private static bool Leave(Zone zone, string combatant)
         {

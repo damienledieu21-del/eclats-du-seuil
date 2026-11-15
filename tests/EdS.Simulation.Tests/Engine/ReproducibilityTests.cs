@@ -77,7 +77,7 @@ public class ReproducibilityTests
         // (à mettre à jour sciemment, avec une hausse de CombatEngine.Version si le comportement change).
         string log = Run(Setup(Rotation(20_000), seed: 2026, durationMs: 20_000)).Log.ToString();
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(log))).ToLowerInvariant();
-        Assert.Equal(ReferenceHash, hash);
+        Assert.True(hash == ReferenceHash, $"empreinte {hash}, attendue {ReferenceHash}");
     }
 
     // Sous-lot 8.1 : moteur 0.10.0, format 5 ; le journal 0.9.1 (ancienne empreinte a67e3671…) est figé dans Fixtures/logs-0.9.1 et
@@ -106,8 +106,9 @@ public class ReproducibilityTests
     // (recherche de chemin) ; sans espace : seul l'en-tête change (ancienne empreinte 1ba20e03…). Sous-lot V2.26 : moteur 0.31.0, format 25
     // (état emporté, places recyclées, ±4 096 m, 256 obstacles) ; sans état emporté : seul l'en-tête change (ancienne empreinte 56468226…). Esquive : moteur 0.32.0,
     // format 26 ; sans esquive : seul l'en-tête change (ancienne empreinte 4dffbe01…). Compagnons : moteur 0.33.0, format 27 ; sans
-    // compagnon : seul l'en-tête change (ancienne empreinte e6eacb98…).
-    internal const string ReferenceHash = "92e480c0bb49c01d4eeeeb56585fcf64aa4c9fac8e1ce1b1e3f065904c1e1d01";
+    // compagnon : seul l'en-tête change (ancienne empreinte e6eacb98…). Sous-lot V2.28d (2), monture : moteur 0.34.0, format 28 ; sans
+    // monture : seul l'en-tête change (ancienne empreinte 92e480c0…).
+    internal const string ReferenceHash = "9e32e7b946e14c4b519a50ca298f715e72fcd7260530940cbc80ea94fe5da4af";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

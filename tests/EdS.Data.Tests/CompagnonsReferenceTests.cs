@@ -53,7 +53,7 @@ public class CompagnonsReferenceTests
     [Fact]
     public void Versions_du_lot()
     {
-        Assert.Equal(("0.33.0", 27, 21, 8), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.34.0", 28, 22, 9), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));   // règles inchangées
     }
 
@@ -62,8 +62,8 @@ public class CompagnonsReferenceTests
     {
         string path = Fixture(Latest, Compagnon);
         string[] frozen = File.ReadAllLines(path);
-        Assert.Equal(frozen, Simulate(Compagnon));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
+        Assert.Equal(frozen.Skip(1), Simulate(Compagnon).Skip(1));   // monture (moteur 0.34.0) : corps seulement
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(frozen, ShippedData).Status);   // monture : autre version du moteur
         Assert.Equal(CompagnonFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         JsonElement[] events = Events(frozen);
         string Kind(JsonElement e) => e.GetProperty("event").GetString()!;
@@ -101,8 +101,8 @@ public class CompagnonsReferenceTests
         string[] old = File.ReadAllLines(Fixture(Previous, name)), latest = File.ReadAllLines(Fixture(Latest, name));
         Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(old, ShippedData).Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate(name));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(latest, ShippedData).Status);
+        Assert.Equal(latest.Skip(1), Simulate(name).Skip(1));   // monture (moteur 0.34.0) : corps seulement
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(latest, ShippedData).Status);
         string Header(string line) => line.Replace("\"formatVersion\":26,\"engineVersion\":\"0.32.0\"", "\"formatVersion\":27,\"engineVersion\":\"0.33.0\"", StringComparison.Ordinal);
         Assert.Equal(latest[0], Header(old[0]));
     }
@@ -113,7 +113,7 @@ public class CompagnonsReferenceTests
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.32.0-regles-0.18.0", "evenement_hameau.jsonl"));
         string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.33.0-regles-0.18.0", "evenement_hameau.jsonl"));
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate("evenement_hameau"));
+        Assert.Equal(latest.Skip(1), Simulate("evenement_hameau").Skip(1));   // monture : corps seulement
     }
 
     // --- Données du scénario (schéma 21) -------------------------------------------------------------------------
