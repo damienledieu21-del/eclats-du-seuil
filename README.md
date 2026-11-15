@@ -241,6 +241,8 @@ Compagnons, progression : recrutement (héros et bêtes par l'histoire, mercenai
 
 Compagnons, contenu : les **14 compagnons du dossier** en données (`data/v0/world/companions.json` : 4 héros, 6 mercenaires de la Guilde, 4 bêtes dont Cendre en trois stades ; dons, traits, attaques à deux nommées) et la **quête de lien au feu de camp** qui ouvre la deuxième place.
 
+Compagnons, interface (HUD V2.1, compilation de contrôle seulement) : panneau du compagnon avec sa **jauge de lien**, menu des **ordres** (O puis 1 à 5 au clavier, cases au doigt) et **attaque à deux** (Y ou case « À deux »), envoyés au moteur par le pont temps réel.
+
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)

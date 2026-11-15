@@ -629,6 +629,74 @@ namespace EdS.Game
         /// <summary>Cache toute l'interface en jeu (menus, salle d'attente, écran des talents, erreurs).</summary>
         public void Hide() => UiKit.Show(_canvas, false);
 
+        // --- Compagnons ------------------------------------------------------------------------------------------------------------
+
+        private RectTransform _companion;
+        private UiText _companionName, _companionOrder;
+        private Image _bondTrack, _bondBar;
+        private readonly Image[] _companionCases = new Image[6];
+        private readonly UiText[] _companionLabels = new UiText[6];
+        private int _companionPlaced = -1;
+
+        /// <summary>
+        /// Compagnons : panneau du compagnon choisi (nom, ordre en cours en toutes lettres, jauge de lien) et, menu ouvert, les six cases (cinq
+        /// ordres et l'attaque à deux, chacune avec son mot ; « À deux » s'allume quand la jauge est pleine). Rien sans compagnon.
+        /// </summary>
+        public void Companions(IReadOnlyList<CompanionState> companions, int selected, bool menuOpen)
+        {
+            bool shown = _layout != null && _layout.CompanionShown && companions != null && companions.Count > 0;
+            if (_companion == null)
+            {
+                if (!shown) return;
+                _companion = UiKit.Node(_screen, "Compagnon");
+                UiKit.Fill(Panel(_companion, "Cuir").rectTransform);
+                _companionName = Text(_companion, "Nom", UiFace.Bold, UiV21Art.BrightGold, TextAnchor.MiddleLeft);
+                _companionOrder = Text(_companion, "Ordre", UiFace.Body, UiV21Art.Parchment, TextAnchor.MiddleRight);
+                _bondTrack = UiKit.Image(_companion, "Rail du lien", UiV21Art.Track, Color.white, Image.Type.Sliced);
+                _bondBar = Filled(_bondTrack.transform, "Lien", UiV21Art.Gold, Image.FillMethod.Horizontal);
+                UiKit.Fill(_bondBar.rectTransform, 2f);
+                for (int i = 0; i < 6; i++)
+                {
+                    _companionCases[i] = UiKit.Image(_screen, "Ordre " + (i + 1), UiV21Art.ButtonSprite, Color.white, Image.Type.Sliced);
+                    _companionLabels[i] = Text(_companionCases[i].rectTransform, "Mot", UiFace.Bold, UiV21Art.Parchment, TextAnchor.MiddleCenter);
+                    _companionLabels[i].Value = UiTexts.Get(HudTextsV21.CompanionActions[i]);
+                    UiKit.Fill(_companionLabels[i].Rect, 2f);
+                }
+            }
+            UiKit.Show(_companion, shown);
+            for (int i = 0; i < 6; i++) UiKit.Show(_companionCases[i], shown && menuOpen);
+            if (!shown) return;
+            if (_companionPlaced != _layout.Version)
+            {
+                _companionPlaced = _layout.Version;
+                HudLayoutV21 l = _layout;
+                UiBox panel = l[HudPart.Companion], first = l.CompanionAction(0);
+                float header = Mathf.Max(1f, first.Y - panel.Y - HudLayoutV21.Spacing * l.Unit * 0.5f), pad = 6f * l.Unit;
+                At(_companion, panel.X, panel.Y, panel.W, header);
+                float text = l.Font(HudFont.Meta);
+                _companionName.Size = text;
+                _companionOrder.Size = text;
+                At(_companionName.Rect, pad, 0f, panel.W * 0.55f, header * 0.6f);
+                At(_companionOrder.Rect, panel.W * 0.45f, 0f, panel.W * 0.55f - pad, header * 0.6f);
+                At(_bondTrack, pad, header * 0.65f, panel.W - 2f * pad, Mathf.Max(3f, header * 0.25f));
+                for (int i = 0; i < 6; i++)
+                {
+                    At(_companionCases[i], l.CompanionAction(i));
+                    _companionLabels[i].Size = l.LabelFont(l.CompanionAction(i)) * 0.8f;
+                }
+            }
+            CompanionState c = companions[Mathf.Clamp(selected, 0, companions.Count - 1)];
+            // Deux compagnons : le nom dit lequel est choisi (« 1/2 ») ; au doigt, le toucher passe au suivant (revue Codex de la PR #176).
+            _companionName.Value = companions.Count >= 2
+                ? c.Id + " " + (Mathf.Clamp(selected, 0, companions.Count - 1) + 1) + "/" + companions.Count
+                : c.Id;
+            _companionOrder.Value = UiTexts.Get(c.Down ? HudTextsV21.CompanionDown : HudTextsV21.CompanionActions[(int)c.Order]);
+            _bondBar.fillAmount = (float)c.Bond;
+            // La jauge pleine se lit aussi par le mot de la case « À deux », jamais par la couleur seule.
+            _companionLabels[5].Value = UiTexts.Get(c.DuoReady ? HudTextsV21.CompanionDuoReady : HudTextsV21.CompanionActions[5]);
+            _companionCases[5].color = c.DuoReady ? UiKit.Dawn : Color.white;
+        }
+
         /// <summary>Clé de comparaison d'une liste d'altérations (sans allocation) : nombre et empreinte des identifiants.</summary>
         private static int StatesKey(IReadOnlyList<string> states)
         {
