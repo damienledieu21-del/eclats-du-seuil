@@ -599,6 +599,18 @@ Sujet 11 de la [feuille de route](FEUILLE_DE_ROUTE.md) et [CADRAGE.md § 7 bis](
 - Un compagnon n'a ni garde, ni parade, ni esquive, ni compétences propres : ses attaques sont celles de sa fiche, en boucle ; ses dons (trésors, carte, sacoches…) sont hors combat.
 - Pendant le boss du monde, la règle « un seul compagnon au combat » est appliquée par la progression (emplacements), pas par le moteur (qui en admet deux).
 
+## Monture (sous-lot V2.28d (2))
+
+Sujet 7 de la feuille de route (« en général on descend pour combattre ») et plan de la grande carte (cheval à 13 m/s, la région traversée en 5 minutes). Moteur **0.34.0**, journal au **format 28**, scénarios en **schéma 22**, instantané au **format 9**.
+
+- **Monture d'un personnage** : `mount` (`speed` en m/s, dans les bornes techniques de 0,1 à 20 ; le cheval des Vallons : 13, `MountSetup.HorseSpeed`), seulement dans un combat positionné. En-tête du journal : `mount` avec `speed`.
+- **Commandes** `mount` et `dismount` (personnage qui a une monture). En selle, la vitesse de la monture remplace la vitesse de marche dès la phase de déplacement du tick (pas d'autre facteur : on ne garde pas en selle). Lignes `mounted` (`actor`, `command`, `speed`) et `dismounted` (`actor`, `command`).
+- **Hors combat seulement** : monter est refusé, dans cet ordre, par `actorDead`/`actorAbsent`, `actorCannotMount` (pas de monture, ou combat sans espace), `alreadyMounted`, un contrôle qui bloque le déplacement, `guardActive`, `dodgeActive` (bond en cours), `parryActive`, `parryRecovery`, `duoInProgress` (attaque à deux en cours), `enemyNear` (un combattant vivant et présent d'une autre équipe à moins de 12 m, `CombatRules.MountSafeDistance`, constante du moteur hors du fichier de règles). Descendre : `actorDead`/`actorAbsent`, `notMounted`.
+- **On descend pour combattre** : en selle, une compétence, une garde, une parade, une esquive, un soin ou une attaque à deux avec un compagnon sont refusés (`mounted`, refus atomique). Un ordre à un compagnon reste possible. Être frappé ne fait pas descendre (choix de Claude, question posée à Damien dans la PR).
+- **Secteurs** : l'état emporté porte `mounted` (`CarriedState.Mounted`, `carried.mounted` dans un scénario, seulement pour un personnage qui a une monture) : un cavalier qui passe d'un secteur à l'autre arrive en selle, avec sa monture (l'hôte des secteurs, la zone, la salle réseau et l'entraînement gardent la monture du personnage) ; un assaillant n'arrive jamais en selle.
+- **Instantané** : `mounted` et `mountedTick` par combattant ; à la reprise, un combattant en selle doit avoir une monture, et son tick de mise en selle doit être celui d'une commande `mount` de ce personnage ou celui de son arrivée en selle. La borne des pas de l'instantané prend la plus grande des vitesses, à pied ou en selle.
+- **Sans monture, mêmes lignes d'événements qu'au format 27** : nouvelle référence figée `Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0` (les journaux de la référence 0.33.0 y ont le même corps) et `Fixtures/evenements-0.34.0-regles-0.18.0`. Scénario de référence `scenarios/espace_monture.json` (CI : simulation, comparaison, rejeu), empreinte SHA-256 du journal figé `2ebc1000…` (`MontureReferenceTests`).
+
 ## Compteurs de mesure et pilotage (sous-lot 8.6)
 
 **Aucun changement du journal** (moteur 0.14.0, format 8) : les journaux de référence se rejouent à l'identique. Ajouts au résultat et à l'API :

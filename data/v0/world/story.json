@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "kind": "story",
-  "contentVersion": "0.26.0-provisoire",
+  "contentVersion": "0.27.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -25020,6 +25020,7 @@
         "day": 7,
         "from": "10:00",
         "to": "22:00",
+        "date": {"month": 9, "day": 15, "days": 14},
         "guests": [
           {
             "npc": "npc.boulanger",
@@ -25070,6 +25071,7 @@
         "day": 21,
         "from": "18:00",
         "to": "23:59",
+        "date": {"month": 11, "day": 15, "days": 14},
         "guests": [
           {
             "npc": "npc.pretre",
@@ -25112,6 +25114,7 @@
         "day": 14,
         "from": "08:00",
         "to": "20:00",
+        "date": {"month": 4, "day": 10, "days": 14},
         "guests": [
           {
             "npc": "npc.archer_garde",
@@ -25213,6 +25216,60 @@
             "activity": "colporteur"
           }
         ]
+      },
+      {
+        "id": "festival.lanternes",
+        "name": "text.fete.lanternes",
+        "date": {"month": 1, "day": 1, "days": 7},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.liens",
+        "name": "text.fete.liens",
+        "date": {"month": 2, "day": 10, "days": 7},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.carnaval",
+        "name": "text.fete.carnaval",
+        "date": {"month": 3, "day": 1, "days": 10},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.artisans",
+        "name": "text.fete.artisans",
+        "date": {"month": 5, "day": 1, "days": 10},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.feux_du_seuil",
+        "name": "text.fete.feux_du_seuil",
+        "date": {"month": 6, "day": 20, "days": 11},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.grand_tournoi",
+        "name": "text.fete.grand_tournoi",
+        "date": {"month": 7, "day": 10, "days": 14},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.etoiles_filantes",
+        "name": "text.fete.etoiles_filantes",
+        "date": {"month": 8, "day": 8, "days": 10},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.nuit_des_echos",
+        "name": "text.fete.nuit_des_echos",
+        "date": {"month": 10, "day": 25, "days": 10},
+        "calendarOnly": true
+      },
+      {
+        "id": "festival.givre",
+        "name": "text.fete.givre",
+        "date": {"month": 12, "day": 18, "days": 14},
+        "calendarOnly": true
       }
     ]
   }

@@ -143,7 +143,18 @@ namespace EdS.Data.Story
         /// (PNJ de passage, là seulement pendant ces fêtes) ; conditions <c>festival</c> (<c>id</c> une fête ou « any ») et <c>contestOpen</c>
         /// (<c>id</c> une fête) ; effet <c>contest</c> (<c>id</c> une fête, dans une réponse qui demande <c>contestOpen</c> de cette fête). Les
         /// versions 4 à 12 restent lues telles quelles.</remarks>
-        public const int CurrentSchemaVersion = 13;
+        /// <remarks>Version 14 (fêtes aux vraies dates ; décision de Damien du 29 octobre 2026, sujet 12, et saisons du 15 novembre 2026) :
+        /// <c>date</c> facultative d'une fête annuelle (<c>month</c> de 1 à 12, <c>day</c> valable toute année, <c>days</c> de 7 à 14) : quand
+        /// l'hôte fournit la date réelle, la fête a lieu du jour dit, pendant <c>days</c> jours (heure de Paris), chaque jour du monde de
+        /// <c>from</c> à <c>to</c> ; sans date fournie, elle garde son jour du calendrier du jeu. Deux fêtes datées ne se chevauchent pas.
+        /// La version 13 reste lue telle quelle.</remarks>
+        public const int CurrentSchemaVersion = 14;
+
+        /// <summary>Version 13 (sous-lot V2.10) : fêtes du bourg.</summary>
+        public const int Schema13 = 13;
+
+        /// <summary>Fêtes aux vraies dates : durée d'une fête datée, en jours réels (décision : de 1 à 2 semaines).</summary>
+        public const int MinFestivalDays = 7, MaxFestivalDays = 14;
 
         /// <summary>Sous-lot V2.10 : version 12, encore lue (sans fêtes).</summary>
         public const int Schema12 = 12;
@@ -310,6 +321,7 @@ namespace EdS.Data.Story
                 || document.SchemaVersion == Schema10   // sous-lot V2.6.1
                 || document.SchemaVersion == Schema11   // sous-lot V2.7
                 || document.SchemaVersion == Schema12   // sous-lot V2.10
+                || document.SchemaVersion == Schema13   // fêtes aux vraies dates
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -339,6 +351,8 @@ namespace EdS.Data.Story
 
             /// <summary>Sous-lot V2.10 : fêtes déclarées (conditions <c>festival</c>, <c>contestOpen</c>, effet <c>contest</c>, PNJ de passage).</summary>
             private readonly HashSet<string> _festivals = new HashSet<string>(StringComparer.Ordinal);
+            // Revue Codex de la PR #174 (4e tour) : fêtes du calendrier seulement (affichage) : jamais au jour du jeu, donc refusées dans le gameplay.
+            private readonly HashSet<string> _calendarOnly = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
@@ -381,6 +395,9 @@ namespace EdS.Data.Story
                 // Sous-lot V2.10 (schéma 13) : les fêtes.
                 if (_d.Festivals != null && Since13("festivals", "$.data.festivals"))
                     Declare(_d.Festivals, "$.data.festivals", MaxFestivals, x => x?.Id, FestivalId, _festivals);
+                    if (_d.Festivals != null)
+                        foreach (FestivalData? f in _d.Festivals)
+                            if (f?.Id != null && f.CalendarOnly == true) _calendarOnly.Add(f.Id);
                 // Relecture de la PR #81 : le signe d'une créature rare de la nuit (zones en schéma 6) est un texte du jeu : il doit exister,
                 // comme les autres clés de texte. La zone est validée sans les textes ; l'histoire, qui les a, vérifie ses signes (chemin dans
                 // le fichier de la zone, précédé de son identifiant).
@@ -935,9 +952,9 @@ namespace EdS.Data.Story
                         ConditionKind.Standing or ConditionKind.StandingAtLeast =>
                             Since12(t.Kind, p + ".if") && FactionRef(t, p) && TierRef(t, p) && NoValue(t, p),
                         ConditionKind.Festival =>   // sous-lot V2.10 (schéma 13)
-                            Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoStep(t, p)
+                            Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && Playable(t, p) && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoStep(t, p)
                             && Value(t, p, 0, (_d.Festivals?.FirstOrDefault(f => f?.Id == t.Id)?.Rounds ?? 1) - 1),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
@@ -1003,7 +1020,7 @@ namespace EdS.Data.Story
                         EffectKind.GiveGuildPoints => NoId(t, p) && Value(t, p, 1, GuildRanks.MaxAward),   // sous-lot V1.7
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         EffectKind.Reputation => FactionRef(t, p) && Value(t, p, -Reputations.MaxEffect, Reputations.MaxEffect) && NonZero(t, p),   // sous-lot V2.7
-                        EffectKind.Contest => Ref(t, p, _festivals, "fête") && NoValue(t, p),   // sous-lot V2.10
+                        EffectKind.Contest => Ref(t, p, _festivals, "fête") && Playable(t, p) && NoValue(t, p),   // sous-lot V2.10
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
@@ -1073,6 +1090,14 @@ namespace EdS.Data.Story
                 if (!IsFactId(t.Id)) { _r.Add(p + ".id", ValidationCode.InvalidValue, $"fait « {t.Id} » mal formé : « fact.… »."); return false; }
                 if (needed) _factsNeeded.Add((t.Id!, p + ".id"));
                 return true;
+            }
+
+            /// <summary>Revue Codex de la PR #174 (4e tour) : une fête du calendrier seulement ne se tient jamais au jeu : refusée dans une condition ou un effet.</summary>
+            private bool Playable(TermData t, string p)
+            {
+                if (t.Id is null || !_calendarOnly.Contains(t.Id)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » est une fête du calendrier seulement (affichée, jamais tenue au jeu).");
+                return false;
             }
 
             private bool Ref(TermData t, string p, IEnumerable<string> known, string what)
@@ -1211,8 +1236,8 @@ namespace EdS.Data.Story
             /// <summary>Sous-lot V2.10 : <paramref name="what"/> demande la version 13 (fêtes).</summary>
             private bool Since13(string what, string p)
             {
-                if (_schema >= CurrentSchemaVersion) return true;
-                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                if (_schema >= Schema13) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {Schema13} demandée.");
                 return false;
             }
 
@@ -1234,6 +1259,8 @@ namespace EdS.Data.Story
                     string p = $"{path}[{i}]";
                     string? id = n.Festivals[i];
                     if (id is null || !_festivals.Contains(id)) { _r.Add(p, ValidationCode.UnknownReference, $"fête inconnue « {id} »."); ok = false; }
+                    // Revue Codex de la PR #174 (5e tour) : un PNJ de passage à une fête du calendrier seulement ne viendrait jamais.
+                    else if (_calendarOnly.Contains(id)) { _r.Add(p, ValidationCode.InvalidValue, $"« {id} » est une fête du calendrier seulement (affichée, jamais tenue au jeu)."); ok = false; }
                     else if (list.Contains(id)) { _r.Add(p, ValidationCode.DuplicateId, $"fête « {id} » déjà donnée."); ok = false; }
                     else list.Add(id);
                 }
@@ -1249,13 +1276,30 @@ namespace EdS.Data.Story
             private List<Festival> CheckFestivals(List<Npc> npcs)
             {
                 var festivals = new List<Festival>();
-                if (_d.Festivals is null || _schema < CurrentSchemaVersion) return festivals;
+                if (_d.Festivals is null || _schema < Schema13) return festivals;
                 for (int i = 0; i < _d.Festivals.Count; i++)
                 {
                     string path = $"$.data.festivals[{i}]";
                     if (_d.Festivals[i] is not FestivalData f) { TextsValidator.Missing(_r, path, "fête"); continue; }
                     bool ok = f.Id != null && _festivals.Contains(f.Id) && _d.Festivals.Take(i).All(x => x?.Id != f.Id);
                     ok &= Text(f.Name, path + ".name");
+                    // Fêtes aux vraies dates (version 14) : fête du calendrier seulement (son contenu reste à écrire) : une date, un nom, rien
+                    // d'autre ; elle s'affiche au calendrier et ne met pas le monde en fête (option prudente).
+                    if (f.CalendarOnly == true)
+                    {
+                        string cp = path + ".calendarOnly";
+                        if (_schema < CurrentSchemaVersion)
+                        { _r.Add(cp, ValidationCode.InvalidValue, $"« calendarOnly » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée."); continue; }
+                        if (f.Weekday != null || f.Season != null || f.Day != null || f.From != null || f.To != null || f.Rounds != null || (f.Guests != null && f.Guests.Count > 0))
+                        { _r.Add(cp, ValidationCode.InvalidValue, "une fête du calendrier seulement n'a que son nom et sa date (ni weekday, season, day, from, to, rounds, ni invités)."); continue; }
+                        if (f.Date is null) { TextsValidator.Missing(_r, path + ".date", "date réelle d'une fête du calendrier"); continue; }
+                        if (!(CheckDate(f.Date, path + ".date") is (int cm, int cd, int cn)) || !ok) continue;
+                        var only = new Festival(f.Id!, f.Name!, null, null, null, 0, 0, Array.Empty<FestivalGuest>()).WithDate(cm, cd, cn).AsCalendarOnly();
+                        if (festivals.FirstOrDefault(other => other.HasDate && Festival.DatesOverlap(other, only)) is Festival over)
+                        { _r.Add(path + ".date", ValidationCode.InvalidValue, $"« {only.Id} » chevauche « {over.Id} » dans l'année : une seule fête datée à la fois."); continue; }
+                        festivals.Add(only);
+                        continue;
+                    }
                     int? season = null;
                     if (f.Weekday != null)
                     {
@@ -1273,6 +1317,17 @@ namespace EdS.Data.Story
                         if (f.Day is null) { TextsValidator.Missing(_r, path + ".day", "jour de la saison"); ok = false; }
                         else if (f.Day < 0 || f.Day >= WorldCalendar.DaysPerSeason)
                         { _r.Add(path + ".day", ValidationCode.OutOfRange, $"jour de la saison hors de [0, {WorldCalendar.DaysPerSeason - 1}]."); ok = false; }
+                    }
+                    // Fêtes aux vraies dates (version 14) : date réelle facultative d'une fête annuelle.
+                    int? month = null, startDay = null, days = null;
+                    if (f.Date != null)
+                    {
+                        string dp = path + ".date";
+                        if (_schema < CurrentSchemaVersion)
+                        { _r.Add(dp, ValidationCode.InvalidValue, $"« date » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
+                        else if (f.Weekday != null) { _r.Add(dp, ValidationCode.InvalidValue, "une date réelle seulement pour une fête annuelle (pas « weekday »)."); ok = false; }
+                        else if (CheckDate(f.Date, dp) is (int m, int d, int n)) { month = m; startDay = d; days = n; }
+                        else ok = false;
                     }
                     int from = -1, to = -1;
                     if (f.From is null) { TextsValidator.Missing(_r, path + ".from", "heure de début « HH:MM »"); ok = false; }
@@ -1304,9 +1359,16 @@ namespace EdS.Data.Story
                     if (!ok) continue;
                     if (f.Rounds != null && (f.Rounds < 1 || f.Rounds > MaxRounds))
                     { _r.Add(path + ".rounds", ValidationCode.OutOfRange, $"tours de la rotation des concours hors de [1, {MaxRounds}]."); continue; }
-                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests).WithRounds(f.Rounds ?? 1);
+                    var festival = new Festival(f.Id!, f.Name!, f.Weekday, season, f.Weekday is null ? f.Day : null, from, to, guests).WithRounds(f.Rounds ?? 1)
+                        .WithDate(month, startDay, days);
+                    // Fêtes aux vraies dates : deux fêtes datées ne se chevauchent jamais (une fête par mois au plus, sur une année quelconque).
+                    if (festival.HasDate && festivals.FirstOrDefault(other => other.HasDate && Festival.DatesOverlap(other, festival)) is Festival dated)
+                    {
+                        _r.Add(path + ".date", ValidationCode.InvalidValue, $"« {festival.Id} » chevauche « {dated.Id} » dans l'année : une seule fête datée à la fois.");
+                        continue;
+                    }
                     // Relecture de la PR #120 : deux fêtes ne se chevauchent jamais (même jour possible et heures croisées) : une seule fête à la fois.
-                    if (festivals.FirstOrDefault(other => SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)
+                    if (festivals.FirstOrDefault(other => !other.CalendarOnly && SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)   // revue Codex de la PR #174 : une fête du calendrier seulement n'a pas de jour du jeu
                     {
                         _r.Add(path + ".from", ValidationCode.InvalidValue,
                             $"« {festival.Id} » chevauche « {clash.Id} » (même jour possible, de {clash.From / 60:00}:{clash.From % 60:00} à {clash.To / 60:00}:{clash.To % 60:00}) : une seule fête à la fois.");
@@ -1315,6 +1377,25 @@ namespace EdS.Data.Story
                     festivals.Add(festival);
                 }
                 return festivals;
+            }
+
+            /// <summary>Fêtes aux vraies dates : mois, jour (qui existe chaque année) et durée (de 7 à 14 jours) ; null si refusée.</summary>
+            private (int, int, int)? CheckDate(FestivalDateData date, string dp)
+            {
+                bool ok = true;
+                int month = 0, day = 0, days = 0;
+                if (date.Month is null) { TextsValidator.Missing(_r, dp + ".month", "mois (1 à 12)"); ok = false; }
+                else if (date.Month < 1 || date.Month > 12) { _r.Add(dp + ".month", ValidationCode.OutOfRange, "mois hors de [1, 12]."); ok = false; }
+                else month = date.Month.Value;
+                int last = month > 0 ? EdS.Domain.Time.CivilDate.DaysInMonth(2027, month) : 31;   // un jour qui existe chaque année (pas de 29 février)
+                if (date.Day is null) { TextsValidator.Missing(_r, dp + ".day", "jour du mois"); ok = false; }
+                else if (date.Day < 1 || date.Day > last) { _r.Add(dp + ".day", ValidationCode.OutOfRange, $"jour hors de [1, {last}] (il existe chaque année)."); ok = false; }
+                else day = date.Day.Value;
+                if (date.Days is null) { TextsValidator.Missing(_r, dp + ".days", "durée en jours réels"); ok = false; }
+                else if (date.Days < MinFestivalDays || date.Days > MaxFestivalDays)
+                { _r.Add(dp + ".days", ValidationCode.OutOfRange, $"durée hors de [{MinFestivalDays}, {MaxFestivalDays}] jours (une à deux semaines)."); ok = false; }
+                else days = date.Days.Value;
+                return ok ? (month, day, days) : ((int, int, int)?)null;
             }
 
             /// <summary>

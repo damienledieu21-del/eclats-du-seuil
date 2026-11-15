@@ -42,7 +42,7 @@ public class V228b2PassageTests
         }
         var s = new JsonObject
         {
-            ["schemaVersion"] = 21,
+            ["schemaVersion"] = 22,
             ["kind"] = "scenario",
             ["contentVersion"] = "0.1.0-provisoire",
             ["data"] = new JsonObject

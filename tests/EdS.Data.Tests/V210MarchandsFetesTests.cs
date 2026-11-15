@@ -63,10 +63,12 @@ public class V210MarchandsFetesTests
     [Fact]
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
-        Assert.Equal((13, 12, 13), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));
+        Assert.Equal((14, 12, 14), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // fêtes aux vraies dates : schéma 14
         Assert.Equal((6, 4, "0.13.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
         Assert.Equal((21, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
-        Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi
+        Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi",
+            "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil", "festival.grand_tournoi",
+            "festival.etoiles_filantes", "festival.nuit_des_echos", "festival.givre" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi ; fêtes aux vraies dates : les neuf fêtes du calendrier seulement
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
             .IsValid(JsonDocument.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory))).RootElement));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
@@ -138,7 +140,7 @@ public class V210MarchandsFetesTests
         Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == $"$.data.dialogues[{d}].nodes[{n}].choices[0].effects[1].id" && e.Code == ValidationCode.InvalidValue);
         // Une fête inconnue, un invité inconnu, un invité de passage, un PNJ de passage dans un intérieur.
         JsonObject other = StoryJson();
-        other["data"]!["dialogues"]![d]!["entries"]!.AsArray().First(e => (string?)e!["node"] == "v210_moissons")!["conditions"]![0]!["id"] = "festival.carnaval";
+        other["data"]!["dialogues"]![d]!["entries"]!.AsArray().First(e => (string?)e!["node"] == "v210_moissons")!["conditions"]![0]!["id"] = "festival.inconnue";
         Assert.Contains(ReadStory(other).Report.Errors, e => e.Path.EndsWith(".conditions[0].id", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownReference);
         JsonObject guest = StoryJson();
         guest["data"]!["festivals"]![0]!["guests"]![0]!["npc"] = "npc.colporteur";
@@ -154,7 +156,7 @@ public class V210MarchandsFetesTests
     [InlineData("$.data.merchants[1].offers[0].stock", "0", ValidationCode.OutOfRange)]
     [InlineData("$.data.merchants[1].restock", "0", ValidationCode.OutOfRange)]
     [InlineData("$.data.merchants[1].resale", "99", ValidationCode.OutOfRange)]
-    [InlineData("$.data.merchants[1].festivals", "[\"festival.carnaval\"]", ValidationCode.UnknownReference)]
+    [InlineData("$.data.merchants[1].festivals", "[\"festival.inconnue\"]", ValidationCode.UnknownReference)]
     [InlineData("$.data.prices[0].percent", "400", ValidationCode.OutOfRange)]
     [InlineData("$.data.prices[0].season", "\"mousson\"", ValidationCode.UnknownReference)]
     [InlineData("$.data.shocks[0].days", "29", ValidationCode.OutOfRange)]
