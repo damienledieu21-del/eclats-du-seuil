@@ -631,8 +631,13 @@ public class V228b2bAventureTests : IDisposable
         Walk(a, 175, 0, () => a.World.Passages == 1 && AdventureX(a) > 160);
         Assert.Equal("s08_06", a.World.Sector);
         Assert.Same(west, a.Map);   // passé, mais à moins de 40 m de l'ouest : même fenêtre
+        int changes = a.MapChanges, rebinds = a.Combat.Rebinds;
         Walk(a, 230, 0, () => AdventureX(a) > 185);
         AdventureMap east = a.Map;
+        // Revue Codex de la PR #166 (1er tour) : la fenêtre change sans rebranchement du moteur ; le compte des cartes le dit à l'affichage
+        // (EdsGame.FollowRebind refait alors le décor).
+        Assert.Equal(rebinds, a.Combat.Rebinds);
+        Assert.Equal(changes + 1, a.MapChanges);
         Assert.Equal(76.0, east.MinX);
         // Enseignes et cheminées des boutiques (le bourg, à l'ouest) : lues sur l'aire entière, pas sur la fenêtre de l'est.
         Assert.DoesNotContain(east.Obstacles, ob => ob.Id == "auberge");

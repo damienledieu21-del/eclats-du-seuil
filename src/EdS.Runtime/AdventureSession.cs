@@ -1549,6 +1549,7 @@ namespace EdS.Runtime
                     _mapSession = Opened;
                     _mapSpace = space;
                     _mapSector = sector;
+                    MapChanges++;
                 }
                 return _map;
             }
@@ -1579,6 +1580,12 @@ namespace EdS.Runtime
         }
 
         private string? _mapSector;
+
+        /// <summary>
+        /// Revue Codex de la PR #166 (1er tour) : nombre de cartes faites (une nouvelle session, une nouvelle fenêtre). L'affichage refait son
+        /// décor quand il change, même sans rebranchement du moteur (la fenêtre change passé l'hystérésis, après le passage).
+        /// </summary>
+        public int MapChanges { get; private set; }
 
         /// <summary>
         /// Sous-lot V2.28c : secteur de la fenêtre de la carte. Relecture indépendante de la PR #166 : celui de la fenêtre en cours n'est
