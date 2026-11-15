@@ -311,6 +311,15 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+## 7 octies. Pêche : appâts (Retenu)
+
+Décision de Damien du 15 novembre 2026, vers 14 h 25, rapportée par la session principale (relecture indépendante de la PR #181, revenu illimité de la pêche).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Appâts | La pêche demande des **appâts** : chaque lancer en consomme **un**, acheté chez un marchand ou ramassé (vers, mouches…). Sans appât, le lancer est **refusé** (refus atomique, avec un message). | Retenu (Damien, 15 novembre 2026, 14 h 25) |
+| Prix et sources | Vers de terre 2 cuivre et mouches de mai 3 cuivre à l'épicerie du bourg ; vers à ramasser au gué du moulin, mouches au bord du lac (métier de récolte « pêche »). | Recommandation de Claude (PR #181), valeurs provisoires |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
