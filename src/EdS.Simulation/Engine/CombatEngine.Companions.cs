@@ -321,6 +321,7 @@ namespace EdS.Simulation.Engine
             if (actor.Character is null) return;
             foreach (Fighter c in CompanionsOf(actor))
             {
+                if (c.Absent) continue;   // revue Codex de la PR #169 (4e tour) : un compagnon pas encore arrivé (ou refusé, ou parti) ne garde aucune trace
                 CompanionState s = c.Companion!;
                 long window = s.Setup.BondWindowMs / _tickMs;
                 if (s.SelfHits.TryGetValue(target.Id, out long selfHit) && checked(tick - selfHit) <= window) s.CoordinatedThisTick = true;
