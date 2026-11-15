@@ -721,6 +721,7 @@ namespace EdS.Game
                 SetRelief(null);
                 return;
             }
+            map = map.Whole;   // sous-lot V2.28c : le relief de l'aire entière, même quand la carte est une fenêtre (aucune couture)
             if (_reliefKey == map.Signature) return;
             SetRelief(GroundRelief.For(map));
             _reliefKey = map.Signature;

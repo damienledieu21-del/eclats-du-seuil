@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -27,40 +26,62 @@ namespace EdS.Game
     /// </summary>
     public static class PaintedMap
     {
-        private static AdventureMap _source;
-        private static Task<byte[]> _work;
-        private static Texture2D _texture;
-        private static int _width, _height;
+        /// <summary>
+        /// Sous-lot V2.28c, relecture indépendante de la PR #166 : images gardées selon les règles du cœur (<see cref="MapImages"/>, testées) :
+        /// l'aire entière en priorité, la fenêtre précédente montrée jusqu'à ce que la nouvelle soit prête, les calculs oubliés annulés.
+        /// </summary>
+        private static MapImages _images;
 
-        /// <summary>Texture de la carte <paramref name="map"/>, ou null si elle n'est pas encore prête (ou impossible).</summary>
+        private static MapImages Images
+        {
+            get
+            {
+                if (_images == null)
+                {
+                    _images = new MapImages();
+                    _images.Evicted += e =>
+                    {
+                        if (e.Tag is Texture2D t) UnityEngine.Object.Destroy(t);
+                    };
+                }
+                return _images;
+            }
+        }
+
+        /// <summary>Texture de l'image <paramref name="e"/>, faite une fois ses pixels prêts (puis les pixels sont libérés).</summary>
+        private static Texture2D Texture(MapImages.Entry e)
+        {
+            if (e == null) return null;
+            if (e.Tag is Texture2D done) return done;
+            if (e.Pixels == null) return null;
+            var texture = new Texture2D(e.Width, e.Height, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.LoadRawTextureData(e.Pixels);
+            texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image gardée en mémoire
+            e.Release(texture);
+            return texture;
+        }
+
+        /// <summary>Texture de la carte <paramref name="map"/>, ou null si elle n'est pas encore prête (la grande carte).</summary>
         public static Texture2D For(AdventureMap map)
         {
             if (map == null) return null;
-            // Vallons agrandis : une nouvelle carte de même signature (une halte) garde l'image ; une porte ouverte la fait repeindre.
-            if (!ReferenceEquals(map, _source) && _source != null && map.Signature == _source.Signature) _source = map;
-            if (!ReferenceEquals(map, _source))
-            {
-                _source = map;
-                if (_texture != null) UnityEngine.Object.Destroy(_texture);
-                _texture = null;
-                (_width, _height) = MapPainter.Size(map);
-                int w = _width, h = _height;
-                _work = Task.Run(() => MapPainter.Paint(map, w, h));
-            }
-            if (_texture == null && _work != null && _work.IsCompleted)
-            {
-                if (_work.Exception != null) Debug.LogException(_work.Exception.GetBaseException());
-                else
-                {
-                    _texture = new Texture2D(_width, _height, TextureFormat.RGBA32, false);
-                    _texture.filterMode = FilterMode.Bilinear;
-                    _texture.wrapMode = TextureWrapMode.Clamp;
-                    _texture.LoadRawTextureData(_work.Result);
-                    _texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image (7 Mo) gardée en mémoire
-                }
-                _work = null;
-            }
-            return _texture;
+            return Texture(Images.For(map));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c : texture à montrer pour <paramref name="map"/> (la petite carte) : la sienne, sinon, pendant qu'elle se peint, la
+        /// fenêtre précédente ou l'aire entière ; <paramref name="shown"/> est la carte de l'image rendue (pour la placer).
+        /// </summary>
+        public static Texture2D Shown(AdventureMap map, out AdventureMap shown)
+        {
+            shown = map;
+            if (map == null) return null;
+            MapImages.Entry e = Images.Shown(map);
+            if (e == null) return null;
+            shown = e.Source;
+            return Texture(e);
         }
 
         /// <summary>
@@ -81,13 +102,10 @@ namespace EdS.Game
             return new Rect((float)(m / w), (float)(m / d), (float)(map.Width / w), (float)(map.Depth / d));
         }
 
-        /// <summary>Oublie la carte (nouvelle aventure).</summary>
+        /// <summary>Oublie les cartes (nouvelle aventure).</summary>
         public static void Forget()
         {
-            _source = null;
-            _work = null;
-            if (_texture != null) UnityEngine.Object.Destroy(_texture);
-            _texture = null;
+            _images?.Clear();
         }
     }
 }

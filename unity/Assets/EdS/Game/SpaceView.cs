@@ -99,6 +99,12 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.27 : rectangle couvert par le sol de la zone (x, z) ; vide dans une pièce.</summary>
         public Rect Covered { get; private set; }
 
+        /// <summary>Sous-lot V2.28c : bornes de l'aire entière (celles de l'espace, sauf pour une fenêtre de l'aire).</summary>
+        private (double MinX, double MinZ, double MaxX, double MaxZ) _whole;
+
+        /// <summary>Sous-lot V2.28c : le décor est-il celui d'une fenêtre de l'aire (carte plus petite que son aire entière) ?</summary>
+        private bool _window;
+
         /// <summary>Clé du décor d'un espace et d'une carte (<see cref="Key"/>).</summary>
         public static string KeyOf(CombatSpace space, AdventureMap map)
         {
@@ -122,10 +128,10 @@ namespace EdS.Game
             _spots = new SpotGrid(Spots(space));
             if (map != null)
             {
-                var boxes = space.Obstacles.Select(o => ((double)Raw(o.Points.Min(p => p.X.Raw)), (double)Raw(o.Points.Min(p => p.Z.Raw)),
-                    (double)Raw(o.Points.Max(p => p.X.Raw)), (double)Raw(o.Points.Max(p => p.Z.Raw)))).ToList();
-                _fields = map.Places.Where(p => TownRules.Farmland(p.Id))
-                    .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, boxes, _roads, map.Clearings, (map.MinX, map.MinZ, map.MaxX, map.MaxZ))).ToList();
+                // Relecture indépendante de la PR #166 : champs placés d'après l'aire entière (mêmes champs d'une fenêtre à l'autre, aucune
+                // couture), une fois par aire (gardés d'une fenêtre à l'autre) ; revue Codex (2e tour) : seuls ceux qui touchent la fenêtre sont
+                // construits.
+                _fields = map.WindowFields(_roads).ToList();
             }
             else _fields = new List<StyleField>();
             _root = new GameObject("Décor");
@@ -172,10 +178,13 @@ namespace EdS.Game
             }
             // Bord de l'aire : quatre murets bas (on ne sort pas de l'aire, le moteur l'interdit). Essai réaliste : en pavés.
             Material border = Built(StyleSurface.Cobble, new Color(0.3f, 0.27f, 0.22f), out float borderTile);
-            Border("Bord ouest", new Vector3(minX - 0.15f, 0f, minZ - 0.3f), new Vector3(minX - 0.15f, 0f, maxZ + 0.3f), border, borderTile);
-            Border("Bord est", new Vector3(maxX + 0.15f, 0f, minZ - 0.3f), new Vector3(maxX + 0.15f, 0f, maxZ + 0.3f), border, borderTile);
-            Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
-            Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
+            // Sous-lot V2.28c : décor d'une fenêtre de l'aire (surface étendue) : seuls les vrais bords de l'aire ont leur muret.
+            _whole = map != null ? (map.Whole.MinX, map.Whole.MinZ, map.Whole.MaxX, map.Whole.MaxZ) : (minX, minZ, maxX, maxZ);
+            _window = map != null && !ReferenceEquals(map.Whole, map);
+            if (minX <= _whole.MinX) Border("Bord ouest", new Vector3(minX - 0.15f, 0f, minZ - 0.3f), new Vector3(minX - 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            if (maxX >= _whole.MaxX) Border("Bord est", new Vector3(maxX + 0.15f, 0f, minZ - 0.3f), new Vector3(maxX + 0.15f, 0f, maxZ + 0.3f), border, borderTile);
+            if (minZ <= _whole.MinZ) Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
+            if (maxZ >= _whole.MaxZ) Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
@@ -472,6 +481,11 @@ namespace EdS.Game
             StyleCatalog catalog = StyleCatalog.Loaded;
             if (catalog == null || catalog.Plants == null || catalog.Plants.Length == 0) return;
             float minX = Raw(space.Min.X.Raw), minZ = Raw(space.Min.Z.Raw), maxX = Raw(space.Max.X.Raw), maxZ = Raw(space.Max.Z.Raw);
+            if (_window)
+            {
+                WindowPlants(catalog, minX, minZ, maxX, maxZ);
+                return;
+            }
             uint seed = 12345;
             float Next()
             {
@@ -495,6 +509,38 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Relecture indépendante de la PR #166 : les plantes d'une fenêtre de l'aire, tirées par case de 32 m du monde (graine de la case) :
+        /// une case garde les mêmes plantes d'une fenêtre à l'autre (aucune couture au passage). Même densité qu'une aire entière.
+        /// </summary>
+        private void WindowPlants(StyleCatalog catalog, float minX, float minZ, float maxX, float maxZ)
+        {
+            const float Cell = 32f;
+            bool phone = Application.isMobilePlatform;
+            float perCell = (phone ? catalog.PlantCount / 2 : catalog.PlantCount) / 4872f * Cell * Cell;
+            int placed = 0;
+            for (int cx = Mathf.FloorToInt(minX / Cell); cx <= Mathf.FloorToInt(maxX / Cell); cx++)
+                for (int cz = Mathf.FloorToInt(minZ / Cell); cz <= Mathf.FloorToInt(maxZ / Cell); cz++)
+                {
+                    uint seed = unchecked((uint)(cx * 73856093) ^ (uint)(cz * 19349663) ^ 12345u);
+                    float Next()
+                    {
+                        seed = seed * 1664525u + 1013904223u;
+                        return (seed >> 8) / 16777216f;
+                    }
+                    int wanted = Mathf.RoundToInt(perCell);
+                    for (int i = 0, here = 0; i < wanted * 8 && here < wanted; i++)
+                    {
+                        float x = (cx + Next()) * Cell, z = (cz + Next()) * Cell, size = 0.6f + 0.4f * Next();
+                        if (x < minX + 1f || x > maxX - 1f || z < minZ + 1f || z > maxZ - 1f) continue;
+                        if (InObstacle(x, z, 1f) || InField(x, z, 1f) || TownRules.RoadAt(x, z, _roads).Edge < 0.6) continue;
+                        StyleLook.Decor(_root.transform, StyleSlot.Plant, "plante_" + cx + "_" + cz + "_" + here, new Vector3(x, Ground(x, z, 0.3f), z), size, 0f, true);
+                        here++;
+                        placed++;
+                    }
+                }
+        }
+
+        /// <summary>
         /// Essai réaliste : la forêt autour de l'aire (hors de l'aire : le moteur ne la connaît pas, elle n'arrête rien), sur le terrain qui
         /// déborde de l'aire ; le tiers des arbres sur téléphone. Places fixes (<see cref="StyleRules.Forest"/>).
         /// </summary>
@@ -504,13 +550,20 @@ namespace EdS.Game
             bool atelier = catalog != null && catalog.HasAtelierTrees;   // V2.25.4
             if (catalog == null || (catalog.Trees == null || catalog.Trees.Length == 0) && !atelier) return;
             // Vallons agrandis : le nombre d'arbres suit le tour de l'aire (celui des premiers Vallons, 284 m, porte le nombre du catalogue).
-            float perimeter = 2f * (Raw(space.Max.X.Raw) - Raw(space.Min.X.Raw) + Raw(space.Max.Z.Raw) - Raw(space.Min.Z.Raw));
+            // Relecture indépendante de la PR #166 : la lisière d'après l'aire entière (mêmes arbres d'une fenêtre à l'autre, aucune couture) ;
+            // une fenêtre ne pose que ceux qui la bordent.
+            float perimeter = 2f * (float)(_whole.MaxX - _whole.MinX + _whole.MaxZ - _whole.MinZ);
             bool phone = Application.isMobilePlatform;
             int count = Mathf.RoundToInt((phone ? catalog.ForestTrees / 3 : catalog.ForestTrees) * Mathf.Clamp(perimeter / 284f, 1f, phone ? 2f : 3.5f));
-            var spots = StyleRules.Forest(Raw(space.Min.X.Raw), Raw(space.Min.Z.Raw), Raw(space.Max.X.Raw), Raw(space.Max.Z.Raw), catalog.ForestMargin, count);
+            var spots = StyleRules.Forest(_whole.MinX, _whole.MinZ, _whole.MaxX, _whole.MaxZ, catalog.ForestMargin, count);
+            float near = catalog.ForestMargin + 2f;
+            float sx0 = Raw(space.Min.X.Raw) - near, sz0 = Raw(space.Min.Z.Raw) - near, sx1 = Raw(space.Max.X.Raw) + near, sz1 = Raw(space.Max.Z.Raw) + near;
             bool debris = catalog.Debris != null && catalog.Debris.Length > 0;
             for (int i = 0; i < spots.Count; i++)
             {
+                // Sous-lot V2.28c : la lisière n'est plantée qu'au-delà des vrais bords de l'aire (pas au bord d'une fenêtre, en plein monde).
+                if (spots[i].X >= _whole.MinX && spots[i].X <= _whole.MaxX && spots[i].Z >= _whole.MinZ && spots[i].Z <= _whole.MaxZ) continue;
+                if (spots[i].X < sx0 || spots[i].X > sx1 || spots[i].Z < sz0 || spots[i].Z > sz1) continue;   // loin de la fenêtre
                 string id = "lisiere" + i;
                 var at = new Vector3((float)spots[i].X, Ground((float)spots[i].X, (float)spots[i].Z, 0.4f), (float)spots[i].Z);   // V2.24 : sur les collines
                 // Une place sur quatre : du bois mort (souche, tronc couché) à sa taille réelle, s'il y en a.

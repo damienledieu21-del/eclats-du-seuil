@@ -741,7 +741,7 @@ namespace EdS.Game
 
         private void RefreshMap(AdventureSession a, IReadOnlyList<MapEnemy> enemies)
         {
-            AdventureMap map = a.Map;
+            AdventureMap map = a.RegionMap;   // sous-lot V2.28c : la grande carte montre l'aire entière (la petite, la fenêtre du secteur)
             Texture2D painted = PaintedMap.For(map);
             float ratio = (float)(map.Width / map.Depth), w = MapW, h = w / ratio;
             if (h > MapH)

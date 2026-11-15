@@ -130,7 +130,7 @@ namespace EdS.Runtime
             {
                 if (!(m.Shop is Shop shop) || shop.Building is null) continue;
                 Door? door = _zone.Doors.FirstOrDefault(d => d.Building == shop.Building);
-                SpaceObstacle? house = Map.Obstacles.FirstOrDefault(o => o.Id == shop.Building);
+                SpaceObstacle? house = RegionMap.Obstacles.FirstOrDefault(o => o.Id == shop.Building);   // V2.28c : l'aire entière (la carte peut être une fenêtre)
                 if (door is null || house is null) continue;
                 double dx = door.Position.X.Raw / 10000.0, dz = door.Position.Z.Raw / 10000.0;
                 double hx = (house.Points.Min(p => p.X.Raw) + house.Points.Max(p => p.X.Raw)) / 20000.0, hz = (house.Points.Min(p => p.Z.Raw) + house.Points.Max(p => p.Z.Raw)) / 20000.0;
@@ -185,7 +185,7 @@ namespace EdS.Runtime
             foreach (Merchant m in market.Book.Merchants)
             {
                 if (!(m.Shop is Shop shop) || shop.Building is null || m.Bakes.Count == 0) continue;
-                SpaceObstacle? house = Map.Obstacles.FirstOrDefault(o => o.Id == shop.Building);
+                SpaceObstacle? house = RegionMap.Obstacles.FirstOrDefault(o => o.Id == shop.Building);   // V2.28c : l'aire entière (la carte peut être une fenêtre)
                 if (house is null) continue;
                 double hx = (house.Points.Min(p => p.X.Raw) + house.Points.Max(p => p.X.Raw)) / 20000.0, hz = (house.Points.Min(p => p.Z.Raw) + house.Points.Max(p => p.Z.Raw)) / 20000.0;
                 bool lit = !shop.Rest.Contains(weekday) && minute >= Math.Max(0, m.Bakes[0].At - OvenBefore) && minute < m.Bakes[m.Bakes.Count - 1].At + OvenAfter;
@@ -210,7 +210,7 @@ namespace EdS.Runtime
             foreach (Merchant m in market.Book.Merchants)
             {
                 if (!(m.Shop is Shop shop) || shop.Building is null || !(HearthPrefix(shop.Kind) is string prefix)) continue;
-                SpaceObstacle? house = Map.Obstacles.FirstOrDefault(o => o.Id == shop.Building);
+                SpaceObstacle? house = RegionMap.Obstacles.FirstOrDefault(o => o.Id == shop.Building);   // V2.28c : l'aire entière (la carte peut être une fenêtre)
                 if (house is null) continue;
                 double hx = (house.Points.Min(p => p.X.Raw) + house.Points.Max(p => p.X.Raw)) / 20000.0, hz = (house.Points.Min(p => p.Z.Raw) + house.Points.Max(p => p.Z.Raw)) / 20000.0;
                 list.Add(new ShopChimney(prefix + m.Id, hx, hz, prefix == TisanePrefix || World.ShopStateOf(m.Id) == ShopState.Open));

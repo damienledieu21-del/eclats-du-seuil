@@ -1038,3 +1038,22 @@ Affichage seulement ([plan de la grande carte](PLAN_GRANDE_CARTE.md#7-sous-lots)
 ## Ce qui est provisoire
 
 Graphismes en formes simples, écrans en IMGUI (l'interface en jeu est en uGUI depuis l'essai réaliste 6), une seule touche par compétence. Le déplacement n'est simulé que dans la scène des Vallons (les autres séances et la coopération en réseau n'ont pas de décor ; le réseau dans l'espace vient au 11.7). Détail : [LIMITES_LOT_9.md](LIMITES_LOT_9.md#sous-lot-93--projet-unity) et [LIMITES_LOT_11.md](LIMITES_LOT_11.md#sous-lot-116--scène-de-démonstration-des-vallons).
+
+
+### Carte et décor d'une fenêtre (sous-lot V2.28c (2a))
+
+Avant la surface étendue des Vallons (4 096 × 3 072 m), la carte et le décor ne portent plus sur toute l'aire quand elle est plus large que **deux fenêtres (768 m)** :
+
+- **Fenêtre** (`AdventureMap.WindowOf`) : le carré du secteur du personnage et **64 m** autour, coupés à l'aire, soit au plus 384 m de côté. Elle contient toute la session du secteur (marge de 32 m, hystérésis de 8 m) et la petite carte (20 m autour du personnage). `AdventureSession.Map` est cette fenêtre. Elle change quand le personnage passe dans un autre secteur : petite carte repeinte, décor refait (`ArenaView.Populate`, nouvelle clé de `SpaceView`). Le coût de ce passage est borné par la taille d'une fenêtre.
+- **Grande carte** : `AdventureSession.RegionMap`, l'aire entière.
+- **Images** : `PaintedMap` en garde **deux au plus** (la petite carte et la grande, une seule quand c'est la même carte), chacune d'au plus 2 048 pixels de côté (`MapPainter.Size`), soit 32 Mo au plus en RVBA.
+- **Relief d'affichage et ombrage de l'image** : calculés sur l'aire entière (`AdventureMap.Whole`), pour éviter toute couture d'une fenêtre à l'autre.
+- **Décor d'une fenêtre** : seuls les vrais bords de l'aire ont leur muret et leur lisière d'arbres. Les bords de la fenêtre, en plein monde, n'en ont pas ; le terrain de la région chargé par cases (V2.27) continue au-delà.
+- **Relecture indépendante de la PR #166** :
+  - **hystérésis** : la fenêtre d'un secteur reste tant que le personnage est à moins de 40 m de son carré (`AdventureMap.WindowKeepMeters`). Passé chez le voisin à 8 m du bord, la fenêtre ne change qu'une fois le personnage bien avancé, et le changement ne tombe pas sur l'image du passage. Après un voyage, une halte ou une reprise, la fenêtre est celle du secteur d'arrivée (le secteur gardé est lié à sa session) ;
+  - **images** (`MapImages`, dans le cœur, testé) : l'aire entière, la plus chère, est gardée en priorité. La fenêtre précédente reste montrée sur la petite carte (`PaintedMap.Shown`, placée d'après sa propre carte) jusqu'à ce que la nouvelle soit prête, puis elle est oubliée. Une image oubliée en cours de calcul est annulée. Trois images au plus pendant un passage (48 Mo), deux sinon (32 Mo) ;
+  - **ombrage de l'image** : grille de relief d'au plus 512 cases de côté (`MapPainter.ReliefStep`, 9 m pour toute la région) ;
+  - **sans couture** : champs, lisière d'arbres et ombrage sont calculés d'après l'aire entière. Les plantes d'une fenêtre sont tirées par case de 32 m du monde (graine de la case) : une case garde les mêmes plantes d'une fenêtre à l'autre ;
+  - **lus sur l'aire entière** (`RegionMap`) : enseignes et cheminées des boutiques, `ShopsView`, décor lointain et de la vague 5 (`WorldMarkers`), repères de l'histoire (`StoryStage`). Aucune boutique d'un autre secteur ne disparaît ;
+  - **limite** : au changement de fenêtre, le décor (`SpaceView`) et le terrain (`CellStreamView.Warm`) sont encore refaits dans la même image. L'étalement sous un budget n'est pas fait ; il reste au V2.28d (décor par cases).
+- **Aires plus petites** : une aire d'au plus 768 m (les Vallons livrés d'aujourd'hui, les zones d'essai à deux secteurs) garde la carte et le décor de l'aire entière, gardés d'un passage à l'autre, comme au V2.28b (3).

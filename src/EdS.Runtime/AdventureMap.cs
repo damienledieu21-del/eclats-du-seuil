@@ -91,6 +91,100 @@ namespace EdS.Runtime
     /// </summary>
     public sealed class AdventureMap
     {
+        /// <summary>
+        /// Sous-lot V2.28c : marge d'une fenêtre autour du carré d'un secteur (m). Elle couvre la session du secteur, marge de 32 m et
+        /// hystérésis de 8 m comprises, et la petite carte (20 m autour du personnage) qui y reste toujours.
+        /// </summary>
+        public const int WindowMarginMeters = 64;
+
+        /// <summary>
+        /// Sous-lot V2.28c : la carte de l'aire entière dont celle-ci est une fenêtre (elle-même sinon). Le relief d'affichage et l'ombrage
+        /// de l'image peinte se calculent sur elle : aucune couture d'une fenêtre à l'autre.
+        /// </summary>
+        public AdventureMap Whole
+        {
+            get => _whole ?? this;
+            set => _whole = value is null || ReferenceEquals(value, this) ? null : value;
+        }
+
+        private AdventureMap? _whole;
+
+        private string? _fieldsKey;
+        private IReadOnlyList<StyleField>? _fields;
+
+        /// <summary>
+        /// Revue Codex de la PR #166 (2e tour) : les champs cultivés de l'aire entière (<see cref="TownRules.Fields"/> d'après l'aire entière :
+        /// les mêmes d'une fenêtre à l'autre, aucune couture), calculés une fois et gardés par la carte de l'aire entière (clé : routes et places
+        /// dégagées).
+        /// </summary>
+        public IReadOnlyList<StyleField> AreaFields(IReadOnlyList<StyleRoad> roads)
+        {
+            if (roads is null) throw new ArgumentNullException(nameof(roads));
+            AdventureMap whole = Whole;
+            if (!ReferenceEquals(whole, this)) return whole.AreaFields(roads);
+            long key = 17;
+            foreach ((double cx, double cz) in Clearings) key = unchecked(key * 31 + (long)Math.Round(cx * 10) * 131 + (long)Math.Round(cz * 10));
+            foreach (StyleRoad r in roads) key = unchecked(key * 31 + r.Id.GetHashCode());
+            string k = key.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/" + roads.Count;
+            if (_fields != null && _fieldsKey == k) return _fields;
+            var boxes = Obstacles.Select(o => (o.Points.Min(p => p.X.Raw) / 10000.0, o.Points.Min(p => p.Z.Raw) / 10000.0,
+                o.Points.Max(p => p.X.Raw) / 10000.0, o.Points.Max(p => p.Z.Raw) / 10000.0)).ToList();
+            _fields = Places.Where(p => TownRules.Farmland(p.Id))
+                .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, boxes, roads, Clearings, (MinX, MinZ, MaxX, MaxZ))).ToList();
+            _fieldsKey = k;
+            return _fields;
+        }
+
+        /// <summary>Revue Codex de la PR #166 (2e tour) : les champs de l'aire entière qui touchent cette carte (une fenêtre ne construit que les siens).</summary>
+        public IEnumerable<StyleField> WindowFields(IReadOnlyList<StyleRoad> roads) =>
+            AreaFields(roads).Where(f => f.MaxX >= MinX && f.MinX <= MaxX && f.MaxZ >= MinZ && f.MinZ <= MaxZ);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #166 : hystérésis de la fenêtre (m). La fenêtre d'un secteur reste tant que le personnage est à moins
+        /// de cette distance de son carré : la petite carte (20 m autour de lui) y tient encore, et elle ne change qu'une fois le personnage
+        /// bien avancé dans le secteur voisin (pas au passage, à 8 m du bord).
+        /// </summary>
+        public const int WindowKeepMeters = 40;
+
+        /// <summary>Le point <paramref name="p"/> est-il à moins de <paramref name="meters"/> m du rectangle <paramref name="rect"/> (bornes brutes) ?</summary>
+        public static bool Within((long MinX, long MinZ, long MaxX, long MaxZ) rect, GroundVector p, int meters)
+        {
+            long m = checked((long)meters * 10_000);
+            return p.X.Raw >= rect.MinX - m && p.X.Raw <= rect.MaxX + m && p.Z.Raw >= rect.MinZ - m && p.Z.Raw <= rect.MaxZ + m;
+        }
+
+        /// <summary>Sous-lot V2.28c : côté d'une fenêtre (un secteur de 256 m et sa marge des deux côtés).</summary>
+        public const int WindowMeters = RegionGrid.SectorMeters + 2 * WindowMarginMeters;
+
+        /// <summary>
+        /// Sous-lot V2.28c : l'aire dépasse-t-elle deux fenêtres (768 m) de côté ? La carte et le décor sont alors limités à la fenêtre du
+        /// secteur du personnage (la surface étendue des Vallons) ; en deçà, ceux de l'aire entière, gardés d'un passage à l'autre (V2.28b (3)).
+        /// </summary>
+        public static bool Wide(CombatSpace area)
+        {
+            if (area is null) throw new ArgumentNullException(nameof(area));
+            long side = checked(2L * WindowMeters * 10_000);
+            return checked(area.Max.X.Raw - area.Min.X.Raw) > side || checked(area.Max.Z.Raw - area.Min.Z.Raw) > side;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c : fenêtre de l'aire autour du rectangle d'un secteur (bornes brutes) : le rectangle et
+        /// <see cref="WindowMarginMeters"/> m autour, coupés aux bornes de l'aire ; les obstacles de l'aire dont la boîte la touche, dans leur
+        /// ordre. Au plus <see cref="WindowMeters"/> m de côté : l'image peinte et le décor sont bornés quelle que soit l'aire.
+        /// </summary>
+        public static CombatSpace WindowOf(CombatSpace area, (long MinX, long MinZ, long MaxX, long MaxZ) sector)
+        {
+            if (area is null) throw new ArgumentNullException(nameof(area));
+            long m = checked((long)WindowMarginMeters * 10_000);
+            long minX = Math.Max(checked(sector.MinX - m), area.Min.X.Raw), minZ = Math.Max(checked(sector.MinZ - m), area.Min.Z.Raw);
+            long maxX = Math.Min(checked(sector.MaxX + m), area.Max.X.Raw), maxZ = Math.Min(checked(sector.MaxZ + m), area.Max.Z.Raw);
+            if (minX >= maxX || minZ >= maxZ) throw new ArgumentException("Secteur hors de l'aire.", nameof(sector));
+            var obstacles = area.Obstacles.Where(o =>
+                o.Points.Max(p => p.X.Raw) >= minX && o.Points.Min(p => p.X.Raw) <= maxX && o.Points.Max(p => p.Z.Raw) >= minZ && o.Points.Min(p => p.Z.Raw) <= maxZ);
+            return new CombatSpace(new GroundVector(EdS.Domain.Numerics.Fixed.FromRaw(minX), EdS.Domain.Numerics.Fixed.FromRaw(minZ)),
+                new GroundVector(EdS.Domain.Numerics.Fixed.FromRaw(maxX), EdS.Domain.Numerics.Fixed.FromRaw(maxZ)), obstacles);
+        }
+
         public double MinX { get; }
         public double MinZ { get; }
         public double MaxX { get; }

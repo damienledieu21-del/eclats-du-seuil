@@ -108,6 +108,7 @@ namespace EdS.Game
         /// identités du moteur d'arrivée, sans fondu (même zone, même partie).
         /// </summary>
         private int _shownRebinds;
+        private int _shownMapChanges = -1;   // V2.28c : carte (fenêtre) dont le décor est montré
 
         // Sous-lot V2.28b (3) : créatures des autres secteurs ouverts, secteur montré (pour le passage), chef ou non (délégué gardé).
         private readonly SectorCrowd _sectorCrowd = new SectorCrowd();
@@ -330,6 +331,7 @@ namespace EdS.Game
             }
             HumanBodies.HeroLook = look;
             _arena.Populate(_combat, _adventure.Map);   // le héros reprend son corps avec le nouvel aspect
+            _shownMapChanges = _adventure.MapChanges;
             _paused = false;
         }
 
@@ -356,6 +358,7 @@ namespace EdS.Game
                 : _stage?.Paint(id) ?? (_adventure.IsBoss(id) ? new Color(0.55f, 0.2f, 0.75f) : (Color?)null);
             EchoContext(_adventure);   // revue Codex de la PR #115 : avant Populate, qui habille les échos une seule fois
             _arena.Populate(_combat, _adventure.Map);   // Vallons agrandis : routes et champs du décor
+            _shownMapChanges = _adventure.MapChanges;
             // Sous-lot V1.9.8 : entrer dans le souvenir ou en sortir passe par un fondu blanc (la mise en scène), pas par le noir des portes.
             if (_stage != null && _stage.ZoneChanged(_adventure)) _fade = 0f;
             _shownSession = _adventure.Opened;
@@ -1538,11 +1541,22 @@ namespace EdS.Game
         /// </summary>
         private void FollowRebind(AdventureSession a)
         {
-            if (a.Combat.Rebinds == _shownRebinds) return;
+            if (a.Combat.Rebinds == _shownRebinds)
+            {
+                // Revue Codex de la PR #166 (1er tour) : la fenêtre de l'aire change après le passage (hystérésis) : décor refait sans rebranchement.
+                AdventureMap map = a.Map;
+                if (a.MapChanges != _shownMapChanges && _combat != null)
+                {
+                    _arena.Populate(_combat, map, true);
+                    _shownMapChanges = a.MapChanges;
+                }
+                return;
+            }
             string from = _shownSector, to = a.World.Sector;
             if (from != null && to != null && from != to) _arena.HandOver(a.World, _sectorCrowd, from);
             _combat = a.Combat;
             _arena.Populate(_combat, a.Map, true);
+            _shownMapChanges = a.MapChanges;
             if (from != null && to != null && from != to) _arena.Carry(_combat, _sectorCrowd, to);
             _shownRebinds = a.Combat.Rebinds;
             _shownSector = to;

@@ -159,8 +159,9 @@ public class Lot129MapTests : IDisposable
         Assert.NotSame(first, again.Map);
         // Essai réaliste 6 : la carte peinte (PaintedMap) remplace l'image du plan ; même clé (la carte elle-même).
         string script = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "PaintedMap.cs"));
-        Assert.Contains("if (!ReferenceEquals(map, _source))", script, StringComparison.Ordinal);
-        Assert.Contains("map.Signature == _source.Signature", script, StringComparison.Ordinal);
+        // Sous-lot V2.28c : deux images au plus (petite carte, grande carte), chacune gardée par sa carte ou sa signature.
+        // Sous-lot V2.28c : images gardées par les règles du cœur (MapImages : même carte ou même signature, testées à part).
+        Assert.Contains("_images = new MapImages();", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Opened", script, StringComparison.Ordinal);
     }
 }
