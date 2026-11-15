@@ -116,6 +116,10 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.10 : le personnage a concouru à une fête (identifiant : la fête ; valeur : le jour du monde).</summary>
         ContestEntered = 31,
+
+        /// <summary>Concours de pâtisserie : le personnage a présenté une pâtisserie de sa main (identifiant : l'objet ; étape : sa qualité,
+        /// « normal », « superior » ou « masterwork » ; valeur : 1).</summary>
+        ItemPresented = 32,
     }
 
     /// <summary>Événement narratif (journal de quête, journal des découvertes, confiance des PNJ).</summary>
@@ -177,6 +181,12 @@ namespace EdS.World
         /// (<see cref="ReputationRules.Shun"/> : la garde).
         /// </summary>
         Shunned = 8,
+
+        /// <summary>
+        /// Concours de pâtisserie (relecture indépendante de la PR #186) : la pâtisserie de sa main à présenter (objet et qualité exacte)
+        /// n'est plus dans le sac : rien n'a changé.
+        /// </summary>
+        NothingToPresent = 9,
     }
 
     /// <summary>
@@ -314,6 +324,9 @@ namespace EdS.World
 
         /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
         bool NpcAway(Npc npc);
+
+        /// <summary>Concours de pâtisserie : identifiant du personnage (sa signature sur ce qu'il fabrique), ou null hors d'une partie.</summary>
+        string? CharacterId { get; }
     }
 
     /// <summary>
@@ -1388,8 +1401,13 @@ namespace EdS.World
             ConditionKind.Festival => c.Id == StoryValidator.AnyFestival ? _world.Festival != null : _world.Festival == c.Id,   // sous-lot V2.10
             ConditionKind.ContestOpen => _world.Festival == c.Id && _world.ContestOpen(c.Id, ContestDay(c.Id)),
             ConditionKind.ContestRound => _world.Festival == c.Id && _world.FestivalRound(c.Id) == c.Value,   // sous-lot V2.10 : la rotation des concours
+            // Concours de pâtisserie : une pâtisserie de sa main (signée de son nom), de la qualité demandée.
+            ConditionKind.HasSigned => _world.CharacterId is string me && _world.Inventory.CountSigned(c.Id, me, c.Quality) > 0,
             _ => _world.IsPassageOpen(c.Id),
         };
+
+        /// <summary>Concours de pâtisserie : nom écrit d'une qualité (« normal », « superior », « masterwork »).</summary>
+        private static string SaveQualityName(ItemQuality quality) => StoryValidator.ExactQualities.First(q => q.Value == quality).Key;
 
         public static string PhaseId(DayPhase phase) => phase switch
         {
@@ -1445,6 +1463,9 @@ namespace EdS.World
             foreach (StoryEffect e in effects)
             {
                 if (e.Kind == EffectKind.TakeItem && trial.Remove(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
+                // Concours de pâtisserie : la pâtisserie présentée est celle de sa main, de la qualité exacte (tout ou rien, comme un retrait).
+                if (e.Kind == EffectKind.Present
+                    && (!(_world.CharacterId is string me) || trial.RemoveSigned(e.Id, me, e.Quality!.Value) != InventoryRefusal.None)) return DialogueRefusal.NothingToPresent;
                 if (e.Kind == EffectKind.GiveItem && trial.Add(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
             }
             _world.Inventory.CopyFrom(trial);
@@ -1509,6 +1530,9 @@ namespace EdS.World
                         break;
                     case EffectKind.Reputation:   // sous-lot V2.7 : jamais refusé (bornée), factions liées comprises
                         ReputationEffect(e.Id, e.Value, events);
+                        break;
+                    case EffectKind.Present:   // concours de pâtisserie : retirée plus haut avec l'inventaire d'essai
+                        events.Add(new StoryEvent(StoryEventKind.ItemPresented, e.Id, SaveQualityName(e.Quality!.Value), 1));
                         break;
                     case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
                         _contests[e.Id] = Math.Min(SavedEvent.MaxDay, _world.Day);

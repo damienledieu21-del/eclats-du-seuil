@@ -77,7 +77,7 @@ namespace EdS.Data.Saves
         /// Sous-lot V1.4 : l'instance diffère de l'objet de base (propriétés tirées, qualité, usure entamée) : elle ne s'empile pas et ne part
         /// jamais à la place d'une copie de base (vente ou retrait par identifiant).
         /// </summary>
-        public bool IsUnique => IsRolled || Quality != ItemQuality.Normal || Wear != null;
+        public bool IsUnique => IsRolled || Quality != ItemQuality.Normal || SignedBy != null || Wear != null;
 
         public ItemStack(string item, int count, IEnumerable<RolledProperty>? properties = null, ItemQuality quality = ItemQuality.Normal, string? signedBy = null,
             int? wear = null)
@@ -86,8 +86,10 @@ namespace EdS.Data.Saves
             Count = count;
             Properties = Frozen.ListOrEmpty(properties, nameof(properties));
             if (!Enum.IsDefined(typeof(ItemQuality), quality)) throw new ArgumentOutOfRangeException(nameof(quality));
-            if ((quality == ItemQuality.Masterwork) != (signedBy != null))
-                throw new ArgumentException("Un chef-d'œuvre est signé, et seul un chef-d'œuvre l'est.", nameof(signedBy));
+            // Concours de pâtisserie (sauvegarde version 24) : un chef-d'œuvre est toujours signé ; une pâtisserie de concours (catalogue :
+            // craftQuality) porte la marque de son pâtissier à toute qualité. L'accord avec le catalogue est vérifié par ItemCatalog.CheckInstance.
+            if (quality == ItemQuality.Masterwork && signedBy is null)
+                throw new ArgumentException("Un chef-d'œuvre est signé.", nameof(signedBy));
             if (wear < 0) throw new ArgumentOutOfRangeException(nameof(wear), wear, "Usure négative.");
             Quality = quality;
             SignedBy = signedBy;
@@ -116,6 +118,7 @@ namespace EdS.Data.Saves
             var parts = new List<string>();
             if (Properties.Count > 0) parts.Add(string.Join(", ", Properties));
             if (Quality != ItemQuality.Normal) parts.Add(Quality == ItemQuality.Superior ? "supérieure" : $"chef-d'œuvre de {SignedBy}");
+            if (SignedBy != null && Quality != ItemQuality.Masterwork) parts.Add($"de la main de {SignedBy}");
             if (Wear is int w) parts.Add($"usure {w.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
             return parts.Count == 0 ? $"{Item} ×{Count}" : $"{Item} ×{Count} [{string.Join("; ", parts)}]";
         }
@@ -659,7 +662,6 @@ namespace EdS.Data.Saves
         /// personnage : <c>{ "zone.…": "hex" }</c>, au plus <see cref="MaxExploredZones"/> zones, chaîne hexadécimale en minuscules, de longueur
         /// paire, de 2 à <see cref="MaxExploredHex"/> caractères (bits des cases vues, voir <see cref="SavedCharacter.Explored"/>). Une sauvegarde
         /// de version 22 ou antérieure est lue telle quelle (rien d'exploré) et mise à jour ; elle n'a pas d'<c>explored</c> (champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 23;
 
         /// <summary>Sous-lot V2.29 (2) : version où les cases explorées (<c>explored</c>) entrent dans la sauvegarde.</summary>
         public const int ExploredSince = 23;
@@ -675,6 +677,16 @@ namespace EdS.Data.Saves
 
         /// <summary>Sous-lot V2.28d (2b) : montures connues (une seule pour l'instant : le cheval des Vallons, 13 m/s).</summary>
         public static readonly IReadOnlyList<string> Mounts = Array.AsReadOnly(new[] { "mount.cheval" });
+        /// <remarks>Version 24 (concours de pâtisserie ; la version 23 est celle du brouillard de carte, PR #185, <see cref="BakerMarkSince"/>, décision de Damien du 15 novembre 2026) : la signature
+        /// <c>signedBy</c> d'une instance n'est plus réservée au chef-d'œuvre : une pâtisserie de concours (objet du catalogue marqué
+        /// <c>craftQuality</c>) porte la marque du personnage qui l'a cuite à toute qualité (normale : <c>{ "item", "signedBy" }</c> ;
+        /// supérieure : <c>{ "item", "quality": "superior", "signedBy" }</c>). Un chef-d'œuvre reste toujours signé ; l'accord avec le
+        /// catalogue (seule une pâtisserie de concours est signée hors chef-d'œuvre) est vérifié quand la partie reprend. Une sauvegarde de
+        /// version 23 ou antérieure est lue telle quelle et mise à jour ; une signature hors chef-d'œuvre y est refusée.</remarks>
+        public const int CurrentSchemaVersion = 24;
+
+        /// <summary>Concours de pâtisserie : version où une instance de qualité normale ou supérieure peut porter une signature (marque du pâtissier).</summary>
+        public const int BakerMarkSince = 24;
 
         /// <summary>Pêche et carnet : version où la pêche du personnage (<c>fishing</c>) entre dans la sauvegarde.</summary>
         public const int FishingSince = 21;
@@ -796,10 +808,8 @@ namespace EdS.Data.Saves
             if (stack.Quality != null && !Qualities.TryGetValue(stack.Quality, out quality))
                 report.Add(path + ".quality", ValidationCode.InvalidValue, $"qualité « {stack.Quality} » inconnue : « superior » ou « masterwork » (normale : champ absent).");
             if (quality == ItemQuality.Masterwork && stack.SignedBy is null) Missing(report, path + ".signedBy", "personnage qui a signé le chef-d'œuvre");
-            else if (stack.SignedBy != null && stack.Quality != null && quality != ItemQuality.Masterwork)
-                report.Add(path + ".signedBy", ValidationCode.InvalidValue, "seul un chef-d'œuvre est signé.");
-            else if (stack.SignedBy != null && stack.Quality is null)
-                report.Add(path + ".signedBy", ValidationCode.InvalidValue, "seul un chef-d'œuvre est signé.");
+            else if (stack.SignedBy != null && quality != ItemQuality.Masterwork && version < BakerMarkSince)
+                report.Add(path + ".signedBy", ValidationCode.InvalidValue, $"seul un chef-d'œuvre est signé en version {version} (marque du pâtissier : version {BakerMarkSince}).");
             else if (stack.SignedBy != null && !IsCharacterId(stack.SignedBy))
                 report.Add(path + ".signedBy", ValidationCode.InvalidValue, $"signature « {stack.SignedBy} » invalide : identifiant de personnage.");
             if (stack.Wear is int wear && (wear < 0 || wear > MaxWear)) report.Add(path + ".wear", ValidationCode.OutOfRange, $"usure hors de [0, {MaxWear}].");
@@ -814,7 +824,7 @@ namespace EdS.Data.Saves
         private static ItemStack Instance(string item, int count, ItemStackData stack, int version) => version < ItemStateSince
             ? new ItemStack(item, count, stack.Properties?.Select(r => new RolledProperty(r!.Id!, r.Value!.Value)))
             : new ItemStack(item, count, stack.Properties?.Select(r => new RolledProperty(r!.Id!, r.Value!.Value)), QualityOf(stack),
-                QualityOf(stack) == ItemQuality.Masterwork ? stack.SignedBy : null, stack.Wear);
+                QualityOf(stack) == ItemQuality.Masterwork || version >= BakerMarkSince ? stack.SignedBy : null, stack.Wear);
 
         /// <summary>Plus ancienne version lue (et mise à jour).</summary>
         public const int OldestSchemaVersion = 1;

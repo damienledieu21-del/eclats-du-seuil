@@ -13,6 +13,7 @@ internal static class V210TestData
 {
     public static void WithoutFestivals(JsonObject root)
     {
+        V215TestData.WithoutPastryContest(root);   // concours de pâtisserie : d'abord ce qui demande la version 15
         JsonObject data = root["data"]!.AsObject();
         data.Remove("festivals");
         JsonArray npcs = data["npcs"]!.AsArray();

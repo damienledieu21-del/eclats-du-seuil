@@ -52,7 +52,7 @@ public class CuisineBoulangerieTests
     public void Metier_de_cuisine_treize_recettes_au_four_de_Firmin_et_au_feu_de_camp()
     {
         CraftingBook book = Shipped.Value;
-        Assert.Equal("0.9.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.10.0-provisoire", book.ContentVersion);
         Assert.Contains(book.Professions, p => p.Id == "cuisine");
         Assert.Equal("Cuisine et boulangerie", Texts.Get("text.profession.cuisine"));
         Assert.Equal(13, Cuisine.Count());
@@ -92,7 +92,7 @@ public class CuisineBoulangerieTests
     public void Quatre_plats_pour_la_place_du_plat_et_deux_patisseries()
     {
         ItemCatalog c = Items.Value;
-        Assert.Equal("0.19.0-provisoire", c.ContentVersion);
+        Assert.Equal("0.20.0-provisoire", c.ContentVersion);
         string[] meals = { "item.friture_du_lac", "item.truite_meuniere", "item.quenelles_de_brochet", "item.matelote_de_carpe_doree" };
         Assert.Equal(meals, c.Items.Where(i => i.Boon == BoonKind.Meal).Select(i => i.Id));
         Assert.Equal(new[] { ItemQuality.Normal, ItemQuality.Normal, ItemQuality.Superior, ItemQuality.Masterwork }, meals.Select(m => c.Item(m).BoonQuality));

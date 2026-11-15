@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.30.0-provisoire",
+  "contentVersion": "0.31.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1961,7 +1961,26 @@
       "text.v228.gaspard.vallee": "Les carriers l'ont étayé la lune dernière. On n'en disait rien : avec la meute sur le pré, personne n'avait à monter là-haut. Croc-Gris mort, la vallée se rouvre. Aldric, au gué, connaît les passages de la rivière plus haut. Va le voir.",
       "text.v228.gaspard.vallee.accepter": "J'y vais.",
       "text.v228.archer_garde.vallee": "La vallée ? Enfin quelqu'un qui demande ! Le sentier passe à gauche de l'éboulis, là où les carriers ont posé leurs étais. Plus haut, deux gués : un au sud, sous les saules, un au nord, avant les rapides. Des pierres plates, de l'eau aux genoux. Et ne compte pas sur moi pour te repêcher.",
-      "text.v228.archer_garde.vallee.merci": "Merci, Aldric."
+      "text.v228.archer_garde.vallee.merci": "Merci, Aldric.",
+      "text.v215.boulanger.concours": "Tu as fait une pâtisserie toi-même ? Ça se voit à ta tête : on a tous cette tête-là, la première fois. Pose-la sur la table. Au concours de Firmin, on ne juge que ce qui sort de tes mains, et une seule fois par fête.",
+      "text.v215.boulanger.couronne.masterwork": "Celle-ci, mon chef-d'œuvre.",
+      "text.v215.boulanger.couronne.superior": "Celle-ci, ma plus belle réussite.",
+      "text.v215.boulanger.couronne.normal": "Celle-ci, honnête et sans prétention.",
+      "text.v215.boulanger.tarte.masterwork": "Celle-ci, mon chef-d'œuvre.",
+      "text.v215.boulanger.tarte.superior": "Celle-ci, ma plus belle réussite.",
+      "text.v215.boulanger.tarte.normal": "Celle-ci, honnête et sans prétention.",
+      "text.v215.boulanger.autre": "Parlons d'autre chose.",
+      "text.v215.boulanger.verdict.masterwork": "… Je goûte encore. Non, laisse-moi. La pâte, le feu, la crème : il n'y a rien à reprendre. Trente ans que je juge ce concours, et c'est la première fois que je pose la cuillère sans rien dire. Le grand prix est à toi. Mon père aurait voulu te serrer la main.",
+      "text.v215.boulanger.verdict.superior": "Belle cuisson, belle main. Il y a un rien de trop au four sur le bord, et tu le sais, je l'ai vu dans tes yeux. Le bourg en parlera jusqu'aux Semailles. Le deuxième prix, et bien gagné.",
+      "text.v215.boulanger.verdict.normal": "C'est bon. C'est honnête. On sent qu'on l'a faite toi-même, et c'est ça que je juge. Reviens l'an prochain avec une main plus sûre : voilà le prix de l'apprenti, et n'en rougis pas, j'ai eu le même.",
+      "text.ui.quality.baker": "De la main de {0}",
+      "text.v215.boulanger.couronne": "[Concours] Présenter ta couronne des moissons.",
+      "text.v215.boulanger.tarte": "[Concours] Présenter ta tarte renversée aux pommes.",
+      "text.v215.boulanger.couronne.choisir": "Une couronne ! Le plus beau pain de la fête, et le plus traître : trop de beurre, elle s'effondre ; pas assez, elle sèche. Laquelle tu me montres ?",
+      "text.v215.boulanger.tarte.choisir": "La tarte renversée. Tout se joue au moment de la retourner : on ne triche pas avec un caramel. Laquelle tu me montres ?",
+      "text.v215.boulanger.retour": "Finalement, pas celle-là.",
+      "text.ui.item_presented": "Présenté : {0}",
+      "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main."
     }
   }
 }

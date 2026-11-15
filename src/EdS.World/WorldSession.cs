@@ -481,7 +481,11 @@ namespace EdS.World
             foreach (string id in Inventory.Stacks.Select(st => st.Item).Distinct().OrderBy(i => i, StringComparer.Ordinal))
                 if (items.Item(id) is { Type: ItemType.Consumable } potion)
                 {
-                    int count = Math.Min(Inventory.Count(id), potion.Stack);
+                    // Concours de pâtisserie : une pâtisserie de sa main (signée) se garde pour le juge : elle ne part pas au combat, seules
+                    // les copies sans marque (achetées) sont emportées ; elle reste donc toujours libre d'être présentée.
+                    // Revue Codex de la PR #186 : même règle que la réserve (copies de base seulement : ni marquée, ni de qualité).
+                    int count = Math.Min(Inventory.Stacks.Where(st => st.Item == id && !st.IsUnique).Sum(st => st.Count), potion.Stack);
+                    if (count == 0) continue;
                     carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
                     _carried[id] = count;
                     Inventory.Reserve(id, count);   // revue Codex de la PR #47 : emportés, ils ne se retirent plus de l'inventaire avant d'être bus
@@ -1624,7 +1628,9 @@ namespace EdS.World
 
         /// <summary>Relecture de la PR #94 : il reste un objet de soin à boire (emporté et pas bu, ou dans le sac pour la session suivante).</summary>
         private bool HasHealing() =>
-            _carried.Values.Any(n => n > 0) || Inventory.Stacks.Any(s => _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
+            _carried.Values.Any(n => n > 0)
+            // Relecture indépendante de la PR #186 : une pâtisserie marquée ne se boit pas au combat : elle ne compte pas.
+            || Inventory.Stacks.Any(s => s.SignedBy == null && _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
 
         /// <summary>Sous-lot V1.9.6 : scène à jouer (voir <see cref="Scene"/>), ou null.</summary>
         public Scene? PendingScene => Narrative?.PendingScene;

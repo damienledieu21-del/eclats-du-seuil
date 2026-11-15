@@ -57,6 +57,9 @@ namespace EdS.Runtime
             if (stack.Quality == ItemQuality.Masterwork)
                 lines.Add(string.Format(CultureInfo.InvariantCulture, Text("text.ui.quality.signed"), QualityName(stack.Quality), DisplayNames.Of(stack.SignedBy ?? "")));
             else if (stack.Quality == ItemQuality.Superior) lines.Add(QualityName(stack.Quality));
+            // Concours de pâtisserie : la marque du pâtissier, à toute qualité.
+            if (stack.SignedBy != null && stack.Quality != ItemQuality.Masterwork)
+                lines.Add(string.Format(CultureInfo.InvariantCulture, Text("text.ui.quality.baker"), DisplayNames.Of(stack.SignedBy)));
             if (_items.Wears(item))
             {
                 int left = _items.WearLeft(stack);

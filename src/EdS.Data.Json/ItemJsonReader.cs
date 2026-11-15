@@ -200,6 +200,7 @@ namespace EdS.Data.Json
                 ["effects"] = Track("effects", (v, p) => item.Effects = EquipmentEffectJsonReader.Read(input, v, p, withId: false)),
                 ["boon"] = Track("boon", (v, p) => item.Boon = input.Text(v, p)),   // sous-lot V1.8c (version 7)
                 ["quality"] = Track("quality", (v, p) => item.Quality = input.Text(v, p)),
+                ["craftQuality"] = Track("craftQuality", (v, p) => item.CraftQuality = input.Boolean(v, p)),   // concours de pâtisserie (version 8)
             });
             return ok ? item : null;
         }

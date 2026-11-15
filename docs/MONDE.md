@@ -1178,6 +1178,15 @@ Vague 4 (2) : un **métier de cuisine** (« Cuisine et boulangerie », `crafting
 
 **Suite prévue** (2e partie, retenue par Damien le 15 novembre 2026) : le **concours de pâtisserie** de Firmin : le joueur présente **sa** couronne des moissons ou **sa** tarte renversée, la qualité du plat décide du prix, un concours par fête et par an ; après la fusion des fêtes aux vraies dates (PR #174).
 
+## Concours de pâtisserie (cuisine 2)
+
+Décision de Damien du 15 novembre 2026 ([CADRAGE](CADRAGE.md) § 7 nonies) : le joueur présente **sa** couronne des moissons ou **sa** tarte renversée aux pommes à Firmin ; la **qualité** du plat décide du prix ; **un concours par fête et par an**.
+
+- **Qualité au four** : les deux pâtisseries deviennent des **recettes à qualité** (`crafting.json` 0.10.0, `"quality": true`) : le même petit jeu que la forge (trois gestes, ici pétrir, façonner, enfourner), puis le tirage normale, supérieure ou chef-d'œuvre selon l'adresse et l'avance du métier (chances de la forge, inchangées). Catalogue des objets **v8** (contenu 0.20.0) : `craftQuality` sur ces deux objets de soin.
+- **« Sa » pâtisserie** : chaque pâtisserie cuite porte la **marque de son pâtissier** (`signedBy`, à toute qualité ; sauvegarde **v24**) ; une couronne **achetée** chez Firmin n'en porte pas et ne concourt pas. Une pâtisserie marquée ne s'empile pas et **ne part pas au combat** (elle se garde pour le juge ; les copies achetées restent des soins emportés).
+- **Le concours** : à la **Fête des Moissons**, quand le concours de Firmin est ouvert et que le joueur a une pâtisserie de sa main, Firmin l'accueille au nœud `v215_concours` (histoire **schéma 15** : condition `hasSigned`, effet `present`) ; il y choisit la pâtisserie et la qualité qu'il présente ; « Parlons d'autre chose » ramène à l'accueil de la fête (les tourtes). C'est **le** concours de Firmin de la fête : un seul par fête et par an (§ 7 septies), tourte ou pâtisserie.
+- **Prix** (recommandation de Claude, valeurs provisoires) : couronne 150 / 300 / 600 cuivre et réputation des villageois +6 / +12 / +20 (normale, supérieure, chef-d'œuvre) ; tarte 80 / 150 / 300 cuivre et +4 / +9 / +15.
+
 ## Cartes à la taverne (vague 4, 3e partie)
 
 Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) § 7 decies), sur la proposition de Claude (PR #187) : le jeu des **Trois Feux**, contre Mathurin et les PNJ de la taverne le soir (`EdS.World.CardMatch` ; cœur seulement, sans dialogue ni interface pour l'instant).

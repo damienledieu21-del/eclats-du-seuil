@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 7
+      "const": 8
     },
     "kind": {
       "const": "items"
@@ -474,6 +474,10 @@
           "minimum": 1,
           "maximum": 1000000,
           "description": "Objet de soin seulement (sous-lot 12.6) : PV rendus."
+        },
+        "craftQuality": {
+          "type": "boolean",
+          "description": "Objet de soin seulement (version 8, concours de pâtisserie) : pâtisserie de concours, cuite à une qualité de fabrication (normale, supérieure, chef-d'œuvre) et marquée du nom de son pâtissier."
         },
         "cooldownMs": {
           "type": "integer",

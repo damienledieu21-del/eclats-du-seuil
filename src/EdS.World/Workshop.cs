@@ -260,7 +260,8 @@ namespace EdS.World
                 return CraftRefusal.None;
             }
             ItemQuality quality = !r.Quality ? ItemQuality.Normal : roll < master ? ItemQuality.Masterwork : roll < master + superior ? ItemQuality.Superior : ItemQuality.Normal;
-            ItemStack product = new ItemStack(r.Output.Item, r.Output.Count, null, quality, quality == ItemQuality.Masterwork ? character : null);
+            // Concours de pâtisserie : une pâtisserie de concours porte la marque de son pâtissier à toute qualité.
+            ItemStack product = new ItemStack(r.Output.Item, r.Output.Count, null, quality, quality == ItemQuality.Masterwork || r.Signed ? character : null);
             if (trial.Add(product) != InventoryRefusal.None) return CraftRefusal.Full;
             inventory.CopyFrom(trial);
             int gapAbove = Level(r.Profession) - r.RequiredLevel;

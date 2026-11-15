@@ -139,6 +139,9 @@ namespace EdS.World
 
         bool INarrativeWorld.ContestOpen(string festival, long lastDay) => ContestOpen(festival, lastDay);
 
+        /// <summary>Concours de pâtisserie : le personnage signe ce qu'il fabrique de son identifiant (comme à la forge).</summary>
+        string? INarrativeWorld.CharacterId => _character.Id;
+
         /// <summary>Clé de la ligne du registre des événements qui garde l'occurrence réelle du dernier concours d'une fête (« zone.…/festival.… »).</summary>
         private string? ContestKey(string festival) => Definition is null ? null : $"{Definition.Id}/{festival}";
 
