@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 1
+      "enum": [1, 2]
     },
     "kind": {
       "const": "worldBosses"
@@ -66,6 +66,10 @@
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9_]*$",
                 "maxLength": 64
+              },
+              "scenario": {
+                "description": "Schéma 2 : scénario des formes (dans scenarios/, sans extension), une forme par phase.",
+                "type": "string"
               },
               "name": {
                 "type": "string",
@@ -154,6 +158,10 @@
                       "type": "string",
                       "pattern": "^[a-z][a-z0-9_]*$",
                       "maxLength": 64
+                    },
+                    "form": {
+                      "description": "Schéma 2 : assaillant du scénario des formes qui joue cette phase dans le moteur.",
+                      "type": "string"
                     },
                     "fromPercent": {
                       "type": "integer",
