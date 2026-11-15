@@ -1061,8 +1061,51 @@ namespace EdS.Game
         private bool _wasMounted;   // sous-lot V2.28d (2b) : état de selle à l'image précédente (annonces)
         private bool _ownedMount, _ownedMountKnown;   // relecture de la PR #184 : cheval possédé à l'image précédente (annonce du don)
 
+        /// <summary>Compagnons : menu des ordres et compagnon choisi (O, Maj + O, 1 à 5, Y ; panneau et cases au doigt).</summary>
+        private readonly CompanionControls _companionControls = new CompanionControls();
+
+        /// <summary>
+        /// Compagnons : ordres et attaque à deux. Rend vrai quand le menu des ordres est ouvert : les touches 1 à 5 lui vont, pas aux
+        /// compétences.
+        /// </summary>
+        private bool ReadCompanionInput()
+        {
+            var companions = _combat as ICompanionCommands;
+            if (companions == null || companions.Companions().Count == 0)
+            {
+                _companionControls.CloseMenu();
+                _touch.CompanionMenuOpen = false;
+                _touch.CompanionCount = 0;
+                return false;
+            }
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (Input.GetKeyDown(KeyCode.O))
+            {
+                if (shift) _companionControls.NextCompanion(companions.Companions().Count);
+                else _companionControls.ToggleMenu();
+            }
+            _touch.CompanionCount = companions.Companions().Count;
+            if (_touch.CompanionSwitchPressed) _companionControls.NextCompanion(companions.Companions().Count);   // au doigt : le nom du panneau
+            if (_touch.CompanionPanelPressed) _companionControls.ToggleMenu();
+            if (Input.GetKeyDown(KeyCode.Y)) _companionControls.Perform(companions, CompanionAction.Duo);
+            int touched = _touch.CompanionActionPressed;
+            if (touched >= 0) _companionControls.Perform(companions, (CompanionAction)touched);
+            bool menu = _companionControls.MenuOpen;
+            if (menu)
+            {
+                KeyCode[] digits = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5 };
+                KeyCode[] numpad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4, KeyCode.Keypad5 };
+                for (int i = 0; i < digits.Length; i++)
+                    if ((Input.GetKeyDown(digits[i]) || Input.GetKeyDown(numpad[i])) && _companionControls.DigitAction(i + 1) is CompanionAction action)
+                        _companionControls.Perform(companions, action);
+            }
+            _touch.CompanionMenuOpen = _companionControls.MenuOpen;
+            return menu;
+        }
+
         private void ReadCombatInput()
         {
+            bool companionMenu = ReadCompanionInput();   // compagnons : avant les compétences (menu ouvert, les chiffres lui vont)
             // Essai du 12.9 (Damien, 25 octobre 2026) : sur le téléphone, deux doigts posés (stick et Agir) font un « clic droit » simulé
             // par Unity, qui levait la garde. Le clic droit ne compte que sans doigt sur l'écran ; au doigt, seul le bouton Garde garde.
             _combat.SetGuard(PointerInput.Guard(Input.touchCount, Input.GetMouseButton(1),
@@ -1082,7 +1125,7 @@ namespace EdS.Game
             // touches 7 et 8 ne servent pas encore (aucune règle n'ouvre la 7e ni la 8e place) ; R reste l'ultime.
             KeyCode[] slots = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4, KeyCode.Alpha5, KeyCode.Alpha6 };
             KeyCode[] pad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3, KeyCode.Keypad4, KeyCode.Keypad5, KeyCode.Keypad6 };
-            for (int i = 0; i < slots.Length && i < RealtimeCombat.MaxActiveSlots; i++)
+            for (int i = 0; i < slots.Length && i < RealtimeCombat.MaxActiveSlots && !companionMenu; i++)
                 if ((Input.GetKeyDown(slots[i]) || Input.GetKeyDown(pad[i])) && _combat.UseSlot(i)) StrikeSlot(i);
             if (Input.GetKeyDown(KeyCode.R) && _combat.UseSlot(RealtimeCombat.UltimateSlot)) StrikeSlot(RealtimeCombat.UltimateSlot);
             if (Input.GetKeyDown(KeyCode.Tab)) _combat.NextTarget();
@@ -1535,7 +1578,8 @@ namespace EdS.Game
             HudMode mode = Network ? HudMode.Network : _adventure != null ? HudMode.Adventure : HudMode.Training;
             // Esquive : le bouton est montré dans un combat positionné (la règle existe depuis le moteur 0.32.0) ; la garde monte alors à
             // gauche de la parade (HudLayoutV21).
-            _hudLayout.Update(UiKit.Width, UiKit.ReferenceHeight, insets, _touch.Active, mode, dodge: HudLayoutV21.DodgeFor(_combat));
+            _hudLayout.Update(UiKit.Width, UiKit.ReferenceHeight, insets, _touch.Active, mode, dodge: HudLayoutV21.DodgeFor(_combat),
+                companion: _combat is ICompanionCommands withCompanions && withCompanions.Companions().Count > 0);   // compagnons : panneau et menu
         }
 
         /// <summary>Essai réaliste 6, étape 2 : écrans et dialogue de l'aventure (uGUI) ; un onglet peut ouvrir l'arbre des Éclats.</summary>
@@ -1674,6 +1718,8 @@ namespace EdS.Game
             if (_adventure != null && _arena.Player != null && overhead != null)
                 _hud.Label(camera.WorldToScreenPoint(_arena.Player.position + Vector3.up * 2.4f), overhead, UiKit.Dawn);
             _hud.Player(player, deltaTime);
+            // Compagnons : panneau, jauge de lien et menu des ordres (rien sans compagnon).
+            _hud.Companions(_combat is ICompanionCommands withCompanions ? withCompanions.Companions() : null, _companionControls.Selected, _companionControls.MenuOpen);
             // Revue Codex de la PR #34 : la fiche (nom, PV, annonce) apparaît et disparaît avec le corps de la cible, vue jugée à l'écran.
             _hud.Target(_combat.Others().FirstOrDefault(o => o.Id == player.TargetId && o.View.IsPresent && _arena.Shown(o.Id)), deltaTime);
             _messages.RemoveAll(m => Time.time - m.Key > MessageSeconds);
