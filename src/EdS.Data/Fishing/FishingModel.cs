@@ -33,6 +33,7 @@ namespace EdS.Data.Fishing
         public Fixed? Range { get; set; }
         public List<FishingSpotData?>? Spots { get; set; }
         public List<FishData?>? Fish { get; set; }
+        public List<string?>? Baits { get; set; }
     }
 
     public sealed class FishingSpotData
@@ -116,9 +117,13 @@ namespace EdS.Data.Fishing
         public IReadOnlyList<FishingSpot> Spots { get; }
         public IReadOnlyList<FishKind> Fish { get; }
 
+        /// <summary>Appâts acceptés, dans l'ordre où on les prend dans le sac (décision de Damien du 15 novembre 2026 : un appât par lancer).</summary>
+        public IReadOnlyList<string> Baits { get; }
+
         internal FishingBook(int schemaVersion, string contentVersion, long biteMin, long biteMax, long window, Fixed range, IEnumerable<FishingSpot> spots,
-            IEnumerable<FishKind> fish)
+            IEnumerable<FishKind> fish, IEnumerable<string> baits)
         {
+            Baits = Frozen.List(baits, nameof(baits));
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
             BiteMinMs = biteMin;
@@ -150,7 +155,8 @@ namespace EdS.Data.Fishing
     /// Pêche et carnet : validateur unique (<c>kind: "fishing"</c>), contre les textes (noms des postes), la zone (postes dans l'aire, hors des
     /// obstacles : on s'y tient) et le catalogue (espèces : des objets de type matériau) : délais bornés, fenêtre plus courte que le délai
     /// le plus court ; espèces distinctes, poids de 1 à 1 000, tailles croissantes de 1 à <see cref="EdS.Data.Saves.SavedFishing.MaxCm"/> cm ;
-    /// postes d'identifiants uniques, chacun avec au moins une espèce connue.
+    /// postes d'identifiants uniques, chacun avec au moins une espèce connue et une espèce qui mord toute l'année et à toute heure ; appâts
+    /// (matériaux distincts, qui ne sont pas des espèces), un par lancer.
     /// </summary>
     public static class FishingValidator
     {
@@ -159,7 +165,7 @@ namespace EdS.Data.Fishing
         /// <summary>Version 1 (pêche et carnet, 15 novembre 2026).</summary>
         public const int CurrentSchemaVersion = 1;
 
-        public const int MaxSpots = 32, MaxFish = 32, MaxWeight = 1000;
+        public const int MaxSpots = 32, MaxFish = 32, MaxWeight = 1000, MaxBaits = 8;
         public const long MaxWaitMs = 60_000;
 
         public static readonly IReadOnlyList<string> PhaseIds = Array.AsReadOnly(new[] { "dawn", "day", "dusk", "night" });
@@ -182,7 +188,7 @@ namespace EdS.Data.Fishing
             bool maxOk = Long(d.BiteMaxMs, "$.data.biteMaxMs", 500, MaxWaitMs, "délai le plus long avant la touche (ms)", r);
             if (minOk && maxOk && d.BiteMaxMs < d.BiteMinMs) r.Add("$.data.biteMaxMs", ValidationCode.InvalidValue, "plus court que biteMinMs.");
             if (Long(d.WindowMs, "$.data.windowMs", 200, MaxWaitMs, "fenêtre pour ferrer (ms)", r) && minOk && d.WindowMs >= d.BiteMinMs)
-                r.Add("$.data.windowMs", ValidationCode.InvalidValue, "la fenêtre pour ferrer est plus courte que le délai le plus court.");
+                r.Add("$.data.windowMs", ValidationCode.InvalidValue, "la fenêtre pour ferrer doit être plus courte que le délai le plus court (biteMinMs).");
             if (d.Range is null) Missing(r, "$.data.range", "distance au poste (m)");
             else if (d.Range.Value < Fixed.One || d.Range.Value > Fixed.FromInt(10)) r.Add("$.data.range", ValidationCode.OutOfRange, "distance hors de [1, 10] m.");
 
@@ -226,9 +232,29 @@ namespace EdS.Data.Fishing
                     if (r.Errors.Count == before) fish.Add(new FishKind(x.Item!, x.Weight!.Value, x.MinCm!.Value, x.MaxCm!.Value, seasons.OrderBy(s => s), phases));
                 }
 
+            // Décision de Damien du 15 novembre 2026 : chaque lancer consomme un appât (objets de type matériau, distincts).
+            var baits = new List<string>();
+            if (d.Baits is null || d.Baits.Count == 0) Missing(r, "$.data.baits", "appâts acceptés");
+            else if (d.Baits.Count > MaxBaits) r.Add("$.data.baits", ValidationCode.LimitExceeded, $"au plus {MaxBaits} appâts.");
+            else
+                for (int i = 0; i < d.Baits.Count; i++)
+                {
+                    string p = $"$.data.baits[{i}]";
+                    string? b = d.Baits[i];
+                    if (b is null) Missing(r, p, "appât");
+                    else if (baits.Contains(b) || d.Baits.Take(i).Contains(b)) r.Add(p, ValidationCode.DuplicateId, $"« {b} » en double.");
+                    else if (!(items.Items.FirstOrDefault(it => it.Id == b) is ItemDefinition def)) r.Add(p, ValidationCode.UnknownReference, $"objet « {b} » inconnu du catalogue.");
+                    else if (def.Type != ItemType.Material) r.Add(p, ValidationCode.InvalidValue, $"« {b} » n'est pas un matériau.");
+                    else if (d.Fish?.Any(f => f?.Item == b) ?? false) r.Add(p, ValidationCode.InvalidValue, $"« {b} » est une espèce pêchée.");
+                    else baits.Add(b);
+                }
+
             var spots = new List<FishingSpot>();
-            CombatSpace space = zone.Setup.Space!;
-            if (d.Spots is null || d.Spots.Count == 0) Missing(r, "$.data.spots", "postes de pêche");
+            // Relecture indépendante de la PR #181 : une zone sans espace est signalée avec son chemin, sans planter.
+            CombatSpace? space = zone.Setup.Space;
+            if (space is null) r.Add("$.data.spots", ValidationCode.InvalidValue, $"la zone « {zone.Id} » n'a pas d'espace : aucun poste n'y tient.");
+            if (space is null) { }
+            else if (d.Spots is null || d.Spots.Count == 0) Missing(r, "$.data.spots", "postes de pêche");
             else if (d.Spots.Count > MaxSpots) r.Add("$.data.spots", ValidationCode.LimitExceeded, $"au plus {MaxSpots} postes.");
             else
                 for (int i = 0; i < d.Spots.Count; i++)
@@ -258,12 +284,15 @@ namespace EdS.Data.Fishing
                             else if (kinds.Contains(x.Fish[j]!)) r.Add(fp, ValidationCode.DuplicateId, $"« {x.Fish[j]} » en double.");
                             else kinds.Add(x.Fish[j]!);
                         }
+                    // Relecture indépendante de la PR #181 : au moins une espèce qui mord toute l'année et à toute heure (jamais de poste vide).
+                    if (r.Errors.Count == before && !kinds.Any(k => fish.FirstOrDefault(f => f.Item == k) is FishKind f && f.Seasons.Count == 0 && f.Phases.Count == 0))
+                        r.Add(p + ".fish", ValidationCode.InvalidValue, "au moins une espèce qui mord toute l'année et à toute heure (sans seasons ni phases).");
                     if (r.Errors.Count == before) spots.Add(new FishingSpot(x.Id!, x.Name!, at, kinds));
                 }
 
             if (!r.IsValid || document.ContentVersion is null) return new FishingLoadResult(r, null);
             return new FishingLoadResult(r, new FishingBook(document.SchemaVersion!.Value, document.ContentVersion, d.BiteMinMs!.Value, d.BiteMaxMs!.Value,
-                d.WindowMs!.Value, d.Range!.Value, spots, fish));
+                d.WindowMs!.Value, d.Range!.Value, spots, fish, baits));
         }
 
         private static bool Int(int? v, string path, int min, int max, string what, ValidationReport r)

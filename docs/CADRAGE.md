@@ -275,6 +275,15 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
 | Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
 
+## 7 octies. Pêche : appâts (Retenu)
+
+Décision de Damien du 15 novembre 2026, vers 14 h 25, rapportée par la session principale (relecture indépendante de la PR #181, revenu illimité de la pêche).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Appâts | La pêche demande des **appâts** : chaque lancer en consomme **un**, acheté chez un marchand ou ramassé (vers, mouches…). Sans appât, le lancer est **refusé** (refus atomique, avec un message). | Retenu (Damien, 15 novembre 2026, 14 h 25) |
+| Prix et sources | Vers de terre 2 cuivre et mouches de mai 3 cuivre à l'épicerie du bourg ; vers à ramasser au gué du moulin, mouches au bord du lac (métier de récolte « pêche »). | Recommandation de Claude (PR #181), valeurs provisoires |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

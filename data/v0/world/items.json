@@ -1486,6 +1486,22 @@
         "stack": 10
       },
       {
+        "id": "item.ver_de_terre",
+        "name": "Vers de terre",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
+        "id": "item.mouche_de_mai",
+        "name": "Mouches de mai",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
         "id": "item.herbe_de_l_aube",
         "name": "Herbe de l'aube",
         "type": "material",

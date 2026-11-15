@@ -500,6 +500,14 @@
       {
         "item": "item.bobine_de_fil",
         "value": 12
+      },
+      {
+        "item": "item.ver_de_terre",
+        "value": 1
+      },
+      {
+        "item": "item.mouche_de_mai",
+        "value": 2
       }
     ],
     "merchants": [
@@ -721,6 +729,18 @@
             "price": 320,
             "always": true,
             "stock": 2
+          },
+          {
+            "item": "item.ver_de_terre",
+            "price": 2,
+            "always": true,
+            "stock": 40
+          },
+          {
+            "item": "item.mouche_de_mai",
+            "price": 3,
+            "always": false,
+            "stock": 30
           }
         ],
         "faction": "villagers",
