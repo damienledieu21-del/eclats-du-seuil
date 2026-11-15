@@ -181,7 +181,7 @@ public class V191Chapitre1Tests
         // Rythme « rapide jusqu'au niveau 5 » : la mission seule, sans les loups ni les quêtes secondaires, mène au niveau 3 ; depuis V1.9.6, au
         // niveau 4 avec la récompense de Croc-Gris (120 points).
         Assert.Equal(4, Progression.LevelFor(w.Character.Xp));
-        Say(w, "npc.gaspard", "garde");   // ensuite, Gaspard reprend ses conseils
+        Say(w, "npc.gaspard", "v228_vallee");   // V2.28c (4) : ensuite, Gaspard propose la quête des passages de la vallée
     }
 
     [Fact]

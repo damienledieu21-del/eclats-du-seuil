@@ -1927,7 +1927,13 @@
       "text.compagnons.lien_au_feu.offre": "Le chef des bandits est tombé, et tu ne marches plus seul. Ce soir, au feu du camp des rôdeurs, prends le temps de parler avec ton compagnon. Un lien, ça se noue autour des braises.",
       "text.compagnons.lien_au_feu.accepter": "J'irai au feu ce soir.",
       "text.compagnons.lien_au_feu.plus_tard": "Pas maintenant.",
-      "text.compagnons.lien_au_feu.reprendre": "Le feu de camp dont tu parlais…"
+      "text.compagnons.lien_au_feu.reprendre": "Le feu de camp dont tu parlais…",
+      "text.v228.quest.vallee.name": "Les passages de la vallée",
+      "text.v228.quest.vallee.aldric": "Gaspard dit que l'éboulis du nord est dégagé. Va voir Aldric, au gué du moulin : il connaît les gués de la vallée.",
+      "text.v228.gaspard.vallee": "Les carriers l'ont étayé la lune dernière. On n'en disait rien : avec la meute sur le pré, personne n'avait à monter là-haut. Croc-Gris mort, la vallée se rouvre. Aldric, au gué, connaît les passages de la rivière plus haut. Va le voir.",
+      "text.v228.gaspard.vallee.accepter": "J'y vais.",
+      "text.v228.archer_garde.vallee": "La vallée ? Enfin quelqu'un qui demande ! Le sentier passe à gauche de l'éboulis, là où les carriers ont posé leurs étais. Plus haut, deux gués : un au sud, sous les saules, un au nord, avant les rapides. Des pierres plates, de l'eau aux genoux. Et ne compte pas sur moi pour te repêcher.",
+      "text.v228.archer_garde.vallee.merci": "Merci, Aldric."
     }
   }
 }
