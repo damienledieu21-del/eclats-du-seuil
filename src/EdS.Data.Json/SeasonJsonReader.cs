@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using EdS.Data.Crafting;
 using EdS.Data.Json.Text;
 using EdS.Data.Seasons;
 using EdS.Data.Validation;
@@ -17,16 +16,16 @@ namespace EdS.Data.Json
     {
         public static string PathIn(string dataDirectory) => System.IO.Path.Combine(dataDirectory, "world", "seasons.json");
 
-        public static SeasonLoadResult ReadFile(string path, CraftingBook crafting, ZoneDefinition zone)
+        public static SeasonLoadResult ReadFile(string path, ZoneDefinition zone)
         {
             var report = new ValidationReport();
-            return SeasonValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), crafting, zone, report);
+            return SeasonValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), zone, report);
         }
 
-        public static SeasonLoadResult Read(string json, CraftingBook crafting, ZoneDefinition zone)
+        public static SeasonLoadResult Read(string json, ZoneDefinition zone)
         {
             var report = new ValidationReport();
-            return SeasonValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), crafting, zone, report);
+            return SeasonValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), zone, report);
         }
 
         /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>
@@ -39,8 +38,6 @@ namespace EdS.Data.Json
                 var d = new SeasonData();
                 bool ok = input.ReadFields(element, "$.data", new Dictionary<string, Action<JsonElement, string>>
                 {
-                    ["nodes"] = (v, p) => d.Nodes = input.ReadLimitedList(v, p, SeasonValidator.MaxSeasonalNodes,
-                        n => $"{n} nœuds saisonniers, au plus {SeasonValidator.MaxSeasonalNodes}.", (e, ip) => ReadNode(input, e, ip)),
                     ["mistEchoes"] = (v, p) => d.MistEchoes = ReadMistEchoes(input, v, p),
                     ["passages"] = (v, p) => d.Passages = input.ReadLimitedList(v, p, SeasonValidator.MaxPassages,
                         n => $"{n} passages, au plus {SeasonValidator.MaxPassages}.", (e, ip) => ReadPassage(input, e, ip)),
@@ -53,16 +50,6 @@ namespace EdS.Data.Json
             document.Kind = header.Kind;
             document.ContentVersion = header.ContentVersion;
             return document;
-        }
-
-        private static SeasonalNodeData? ReadNode(JsonInput input, JsonElement element, string path)
-        {
-            var x = new SeasonalNodeData();
-            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
-            {
-                ["node"] = (v, p) => x.Node = input.Text(v, p),
-                ["seasons"] = (v, p) => x.Seasons = input.ReadLimitedList(v, p, 4, n => $"{n} saisons, au plus 4.", (e, ip) => input.Text(e, ip)),
-            }) ? x : null;
         }
 
         private static MistEchoesData? ReadMistEchoes(JsonInput input, JsonElement element, string path)

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using EdS.Data.Crafting;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
@@ -26,18 +25,9 @@ namespace EdS.Data.Seasons
 
     public sealed class SeasonData
     {
-        /// <summary>Nœuds de récolte saisonniers (ceux qui n'y sont pas se récoltent toute l'année).</summary>
-        public List<SeasonalNodeData?>? Nodes { get; set; }
-
         public MistEchoesData? MistEchoes { get; set; }
         public List<SeasonPassageData?>? Passages { get; set; }
         public List<SeasonLockData?>? Locks { get; set; }
-    }
-
-    public sealed class SeasonalNodeData
-    {
-        public string? Node { get; set; }
-        public List<string?>? Seasons { get; set; }
     }
 
     public sealed class MistEchoesData
@@ -107,13 +97,12 @@ namespace EdS.Data.Seasons
     }
 
     /// <summary>
-    /// Saisons : contenu saisonnier validé, immuable : nœuds de récolte de saison, taux de présence des Échos dans la brume par saison,
-    /// passages et verrous saisonniers. Les questions prennent la saison (ou la glace) du moment, null si l'hôte n'a pas fourni de date :
-    /// alors rien de saisonnier n'est ouvert (option prudente).
+    /// Saisons : contenu saisonnier validé, immuable : taux de présence des Échos dans la brume par saison, passages et verrous saisonniers
+    /// (les nœuds de récolte de saison sont dans les métiers, version 4). Les questions prennent la glace du moment, null si l'hôte n'a pas
+    /// fourni de date : alors rien de saisonnier n'est ouvert (option prudente).
     /// </summary>
     public sealed class SeasonBook
     {
-        private readonly IReadOnlyDictionary<string, IReadOnlyList<Season>> _nodes;
         private readonly Fixed[] _presence;
 
         public int SchemaVersion { get; }
@@ -125,33 +114,16 @@ namespace EdS.Data.Seasons
         public IReadOnlyList<SeasonalPassage> Passages { get; }
         public IReadOnlyList<SeasonalLock> Locks { get; }
 
-        internal SeasonBook(int schemaVersion, string contentVersion, IEnumerable<KeyValuePair<string, IReadOnlyList<Season>>> nodes, Fixed[] presence,
-            int maxPerVolume, IEnumerable<SeasonalPassage> passages, IEnumerable<SeasonalLock> locks)
+        internal SeasonBook(int schemaVersion, string contentVersion, Fixed[] presence, int maxPerVolume, IEnumerable<SeasonalPassage> passages,
+            IEnumerable<SeasonalLock> locks)
         {
             SchemaVersion = schemaVersion;
             ContentVersion = contentVersion;
-            _nodes = Frozen.Dictionary(nodes, nameof(nodes));
             _presence = (Fixed[])presence.Clone();
             MaxEchoesPerVolume = maxPerVolume;
             Passages = Frozen.List(passages, nameof(passages));
             Locks = Frozen.List(locks, nameof(locks));
         }
-
-        /// <summary>Nœuds saisonniers, triés par identifiant.</summary>
-        public IEnumerable<string> SeasonalNodes => _nodes.Keys.OrderBy(k => k, StringComparer.Ordinal);
-
-        public bool IsSeasonal(string node) => _nodes.ContainsKey(node ?? throw new ArgumentNullException(nameof(node)));
-
-        /// <summary>Saisons d'un nœud saisonnier (vide pour un nœud de toute l'année).</summary>
-        public IReadOnlyList<Season> SeasonsOf(string node) =>
-            _nodes.TryGetValue(node ?? throw new ArgumentNullException(nameof(node)), out IReadOnlyList<Season>? s) ? s : Array.Empty<Season>();
-
-        /// <summary>
-        /// Le nœud se récolte pendant la saison <paramref name="season"/> : toujours pour un nœud de toute l'année ; pour un nœud saisonnier,
-        /// seulement pendant ses saisons (saison inconnue : non).
-        /// </summary>
-        public bool NodeInSeason(string node, Season? season) =>
-            !_nodes.TryGetValue(node ?? throw new ArgumentNullException(nameof(node)), out IReadOnlyList<Season>? s) || season is Season x && s.Contains(x);
 
         /// <summary>Taux de présence d'un Écho dans la brume pendant la saison <paramref name="season"/> (de 0 à <see cref="SeasonValidator.MaxEchoPresence"/>).</summary>
         public Fixed MistEchoPresence(Season season) => _presence[(int)season];
@@ -180,8 +152,8 @@ namespace EdS.Data.Seasons
     }
 
     /// <summary>
-    /// Saisons : validateur unique du contenu saisonnier (<c>kind: "seasons"</c>), contre les métiers (nœuds connus) et la zone (points
-    /// d'accroche dans l'aire praticable) : nœuds saisonniers connus et uniques, d'une à trois saisons distinctes ; présence des Échos dans la
+    /// Saisons : validateur unique du contenu saisonnier (<c>kind: "seasons"</c>), contre la zone (points d'accroche dans l'aire
+    /// praticable) : présence des Échos dans la
     /// brume donnée pour les quatre saisons, dans [0, <see cref="MaxEchoPresence"/>], plus forte en automne que dans toute autre saison
     /// (décision de Damien du 14 novembre 2026) ; passages d'identifiants uniques, à condition connue (<c>ice</c>) ; verrous liés à un passage
     /// connu.
@@ -190,10 +162,10 @@ namespace EdS.Data.Seasons
     {
         public const string Kind = "seasons";
 
-        /// <summary>Version 1 (saisons, 15 novembre 2026) : <c>nodes</c>, <c>mistEchoes</c>, <c>passages</c>, <c>locks</c>.</summary>
+        /// <summary>Version 1 (saisons, 15 novembre 2026) : <c>mistEchoes</c>, <c>passages</c>, <c>locks</c> (les nœuds de saison sont dans les métiers, version 4).</summary>
         public const int CurrentSchemaVersion = 1;
 
-        public const int MaxSeasonalNodes = 256, MaxPassages = 16, MaxLocks = 16, MinPerVolume = 1, MaxPerVolume = 8;
+        public const int MaxPassages = 16, MaxLocks = 16, MinPerVolume = 1, MaxPerVolume = 8;
 
         /// <summary>Taux de présence d'un Écho dans la brume, au plus (borne de sûreté : une chance sur deux à chaque essai).</summary>
         public static readonly Fixed MaxEchoPresence = Fixed.FromRatio(1, 2);
@@ -202,45 +174,15 @@ namespace EdS.Data.Seasons
 
         public static bool IsLocalId(string? id) => id != null && id.Length <= 64 && LocalId.IsMatch(id);
 
-        public static SeasonLoadResult Validate(SeasonDocument document, CraftingBook crafting, ZoneDefinition zone, ValidationReport? report = null)
+        public static SeasonLoadResult Validate(SeasonDocument document, ZoneDefinition zone, ValidationReport? report = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
-            if (crafting is null) throw new ArgumentNullException(nameof(crafting));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             ValidationReport r = report ?? new ValidationReport();
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
                 return new SeasonLoadResult(r, null);
             SeasonData? d = document.Data;
-            if (d is null) { Missing(r, "$.data", "nodes, mistEchoes, passages, locks"); return new SeasonLoadResult(r, null); }
-
-            var nodes = new List<KeyValuePair<string, IReadOnlyList<Season>>>();
-            var nodeIds = new HashSet<string>(StringComparer.Ordinal);
-            if (d.Nodes is null) Missing(r, "$.data.nodes", "nœuds de récolte saisonniers");
-            else if (d.Nodes.Count > MaxSeasonalNodes) r.Add("$.data.nodes", ValidationCode.LimitExceeded, $"au plus {MaxSeasonalNodes} nœuds saisonniers.");
-            else
-                for (int i = 0; i < d.Nodes.Count; i++)
-                {
-                    string p = $"$.data.nodes[{i}]";
-                    if (d.Nodes[i] is not SeasonalNodeData x) { Missing(r, p, "nœud saisonnier"); continue; }
-                    bool ok = true;
-                    if (x.Node is null) { Missing(r, p + ".node", "identifiant du nœud de récolte"); ok = false; }
-                    else if (!nodeIds.Add(x.Node)) { r.Add(p + ".node", ValidationCode.DuplicateId, $"nœud « {x.Node} » déjà décrit."); ok = false; }
-                    else if (!crafting.Nodes.Any(n => n.Id == x.Node)) { r.Add(p + ".node", ValidationCode.UnknownReference, $"nœud de récolte « {x.Node} » inconnu des métiers."); ok = false; }
-                    var seasons = new List<Season>();
-                    if (x.Seasons is null) { Missing(r, p + ".seasons", "saisons du nœud"); ok = false; }
-                    else if (x.Seasons.Count < 1 || x.Seasons.Count > 3)
-                    { r.Add(p + ".seasons", ValidationCode.InvalidValue, "de une à trois saisons (un nœud de toute l'année n'est pas saisonnier)."); ok = false; }
-                    else
-                        for (int j = 0; j < x.Seasons.Count; j++)
-                        {
-                            string sp = $"{p}.seasons[{j}]";
-                            if (!(SeasonCalendar.Parse(x.Seasons[j]) is Season s))
-                            { r.Add(sp, ValidationCode.UnknownReference, $"saison inconnue « {x.Seasons[j]} » ; possibles : spring, summer, autumn, winter."); ok = false; }
-                            else if (seasons.Contains(s)) { r.Add(sp, ValidationCode.DuplicateId, $"saison « {x.Seasons[j]} » en double."); ok = false; }
-                            else seasons.Add(s);
-                        }
-                    if (ok) nodes.Add(new KeyValuePair<string, IReadOnlyList<Season>>(x.Node!, seasons.OrderBy(s => s).ToArray()));
-                }
+            if (d is null) { Missing(r, "$.data", "mistEchoes, passages, locks"); return new SeasonLoadResult(r, null); }
 
             var presence = new Fixed[4];
             int perVolume = 0;
@@ -327,7 +269,7 @@ namespace EdS.Data.Seasons
                 }
 
             if (!r.IsValid || document.ContentVersion is null) return new SeasonLoadResult(r, null);
-            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, nodes, presence, perVolume, passages, locks));
+            return new SeasonLoadResult(r, new SeasonBook(document.SchemaVersion!.Value, document.ContentVersion, presence, perVolume, passages, locks));
         }
 
         private static void Missing(ValidationReport report, string path, string what)

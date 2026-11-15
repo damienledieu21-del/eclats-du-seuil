@@ -40,9 +40,9 @@
 | Instantané (format) | 7 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
-| Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
+| Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
-| Saisons (schéma) | v1 (nœuds de saison, Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
+| Saisons (schéma) | v1 (Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0` (esquive : `scenarios/espace_esquive.json`, `EdS.Simulation/Engine/CombatEngine.Dodge.cs` ; la précédente, `reference-0.31.0-…-regles-0.17.0`, V2.26, reste figée).

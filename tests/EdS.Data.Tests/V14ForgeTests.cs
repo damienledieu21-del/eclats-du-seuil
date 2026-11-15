@@ -205,7 +205,7 @@ public class V14ForgeTests
     public void Metiers_en_version_2_forge_echec_et_reparation()
     {
         CraftingBook book = Crafting(Zone());
-        Assert.Equal(3, book.SchemaVersion);   // sous-lot V1.8 : version 3 (expérience d'un échec)
+        Assert.Equal(4, book.SchemaVersion);   // sous-lot V1.8 : version 3 (expérience d'un échec) ; saisons : version 4 (nœuds de saison)
         Assert.Equal(5, book.Recipes.Count(r => r.Quality));
         Assert.All(book.Recipes.Where(r => r.Quality), r => Assert.Equal(("forge", "forge", 1), (r.Profession, r.Place, r.Output.Count)));
         Assert.Equal(3, book.Forge.Strikes);

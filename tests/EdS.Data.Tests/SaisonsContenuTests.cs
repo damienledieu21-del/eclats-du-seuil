@@ -5,6 +5,7 @@ using EdS.Data.Crafting;
 using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Saves;
+using EdS.Data.Scenarios;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.Validation;
@@ -40,7 +41,18 @@ public class SaisonsContenuTests
 
     private static CraftingBook Crafting(ZoneDefinition zone) => CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, Items).Book!;
 
-    private static SeasonBook Book(ZoneDefinition zone) => SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), Crafting(zone), zone).Book!;
+    private static SeasonBook Book(ZoneDefinition zone) => SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone).Book!;
+
+    private static CraftingLoadResult CraftingMutated(Action<JsonObject> mutate)
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
+        mutate(root);
+        ZoneDefinition zone = Zone();
+        return CraftingJsonReader.Read(root.ToJsonString(), Texts, zone, Items);
+    }
+
+    private static JsonObject NodeOf(JsonObject root, string id) =>
+        root["data"]!["nodes"]!.AsArray().Select(n => n!.AsObject()).Single(n => (string)n["id"]! == id);
 
     private static long Utc(int y, int mo, int d, int h = 12) => new DateTimeOffset(y, mo, d, h, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds();
 
@@ -48,8 +60,7 @@ public class SaisonsContenuTests
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(SeasonJsonReader.PathIn(DataDirectory)))!.AsObject();
         mutate(root);
-        ZoneDefinition zone = Zone();
-        return SeasonJsonReader.Read(root.ToJsonString(), Crafting(zone), zone);
+        return SeasonJsonReader.Read(root.ToJsonString(), Zone());
     }
 
     private static JsonObject Data(JsonObject root) => root["data"]!.AsObject();
@@ -72,19 +83,23 @@ public class SaisonsContenuTests
     [Fact]
     public void Contenu_livre_valide()
     {
-        SeasonLoadResult r = SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), Crafting(Zone()), Zone());
+        SeasonLoadResult r = SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), Zone());
         Assert.True(r.IsValid, r.Report.ToString());
         SeasonBook b = r.Book!;
         Assert.Equal(SeasonValidator.CurrentSchemaVersion, b.SchemaVersion);
-        Assert.Equal(new[] { "cepes_foret", "primevere_ruisseau", "sauge_verger", "trompettes_foret" }, b.SeasonalNodes);
-        Assert.True(b.NodeInSeason("primevere_ruisseau", Season.Spring));
-        Assert.False(b.NodeInSeason("primevere_ruisseau", Season.Summer));
-        Assert.False(b.NodeInSeason("primevere_ruisseau", null));
-        Assert.True(b.NodeInSeason("cepes_foret", Season.Autumn));
-        Assert.False(b.NodeInSeason("cepes_foret", Season.Winter));
+        // Nœuds de saison : dans les métiers (version 4).
+        CraftingBook c = Crafting(Zone());
+        Assert.Equal(CraftingValidator.CurrentSchemaVersion, c.SchemaVersion);
+        Assert.Equal(new[] { "cepes_foret", "primevere_ruisseau", "sauge_verger", "trompettes_foret" },
+            c.Nodes.Where(n => n.IsSeasonal).Select(n => n.Id).OrderBy(id => id, StringComparer.Ordinal));
+        Assert.True(c.Node("primevere_ruisseau").InSeason(Season.Spring));
+        Assert.False(c.Node("primevere_ruisseau").InSeason(Season.Summer));
+        Assert.False(c.Node("primevere_ruisseau").InSeason(null));
+        Assert.True(c.Node("cepes_foret").InSeason(Season.Autumn));
+        Assert.False(c.Node("cepes_foret").InSeason(Season.Winter));
         // Les nœuds d'avant (herbes, champignons des quêtes, filons) restent de toute l'année, même sans date.
-        Assert.True(b.NodeInSeason("herbes_village", null));
-        Assert.True(b.NodeInSeason("champignons_pre", Season.Winter));
+        Assert.True(c.Node("herbes_village").InSeason(null));
+        Assert.True(c.Node("champignons_pre").InSeason(Season.Winter));
         foreach (Season s in new[] { Season.Spring, Season.Summer, Season.Winter })
             Assert.True(b.MistEchoPresence(Season.Autumn) > b.MistEchoPresence(s));
         Assert.Equal(Fixed.Parse("0.4"), b.MistEchoPresence(Season.Autumn));
@@ -103,12 +118,15 @@ public class SaisonsContenuTests
     [Fact]
     public void Contenu_invalide_refuse_avec_son_chemin()
     {
-        Assert.Equal("$.data.nodes[0].node", First(Mutated(r => Data(r)["nodes"]![0]!["node"] = "inconnu")));
-        Assert.Equal("$.data.nodes[1].node", First(Mutated(r => Data(r)["nodes"]![1]!["node"] = "primevere_ruisseau")));
-        Assert.Equal("$.data.nodes[0].seasons[0]", First(Mutated(r => Data(r)["nodes"]![0]!["seasons"]![0] = "printemps")));
-        Assert.Equal("$.data.nodes[0].seasons", First(Mutated(r => Data(r)["nodes"]![0]!["seasons"] = new JsonArray())));
-        Assert.Equal("$.data.nodes[0].seasons", First(Mutated(r => Data(r)["nodes"]![0]!["seasons"] = new JsonArray("spring", "summer", "autumn", "winter"))));
-        Assert.Equal("$.data.nodes[0].seasons[1]", First(Mutated(r => Data(r)["nodes"]![0]!["seasons"] = new JsonArray("spring", "spring"))));
+        // Nœuds de saison, dans les métiers (version 4).
+        static string FirstCrafting(CraftingLoadResult r) { Assert.False(r.IsValid); return r.Report.Errors[0].Path; }
+        int i = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!["data"]!["nodes"]!.AsArray()
+            .Select((n, k) => ((string)n!["id"]!, k)).Single(x => x.Item1 == "primevere_ruisseau").k;
+        Assert.Equal($"$.data.nodes[{i}].seasons[0]", FirstCrafting(CraftingMutated(r => NodeOf(r, "primevere_ruisseau")["seasons"]![0] = "printemps")));
+        Assert.Equal($"$.data.nodes[{i}].seasons", FirstCrafting(CraftingMutated(r => NodeOf(r, "primevere_ruisseau")["seasons"] = new JsonArray())));
+        Assert.Equal($"$.data.nodes[{i}].seasons", FirstCrafting(CraftingMutated(r => NodeOf(r, "primevere_ruisseau")["seasons"] = new JsonArray("spring", "summer", "autumn", "winter"))));
+        Assert.Equal($"$.data.nodes[{i}].seasons[1]", FirstCrafting(CraftingMutated(r => NodeOf(r, "primevere_ruisseau")["seasons"] = new JsonArray("spring", "spring"))));
+        Assert.Equal("$.schemaVersion", FirstCrafting(CraftingMutated(r => r["schemaVersion"] = 3)));
         Assert.Equal("$.data.mistEchoes.presence.autumn", First(Mutated(r => Data(r)["mistEchoes"]!["presence"]!["autumn"] = 0.6)));
         Assert.Equal("$.data.mistEchoes.presence.winter", First(Mutated(r => Data(r)["mistEchoes"]!["presence"]!["winter"] = -0.1)));
         Assert.Equal("$.data.mistEchoes.presence.autumn", First(Mutated(r => Data(r)["mistEchoes"]!["presence"]!["summer"] = 0.4)));   // l'automne doit dépasser
@@ -145,11 +163,18 @@ public class SaisonsContenuTests
         Assert.False(w.LockOpen("ile_des_saules_dormants"));
         Assert.Null(w.MistEchoPresence);
         Assert.Equal(CraftRefusal.Unknown, w.Gather("filon_nord", out _));
-        // Sans contenu saisonnier du tout : tout se récolte comme avant.
+        Assert.Throws<ArgumentException>(() => w.PassageOpen("pont"));
+        // Sans contenu saisonnier (seasons.json) : les nœuds de saison restent fermés sans date (ils sont dans les métiers), les passages
+        // fermés même avec une date (option prudente).
         WorldSession bare = Play(Zone(-4, -20), seasons: false);
-        Assert.True(bare.NodeInSeason("primevere_ruisseau"));
+        Assert.False(bare.NodeInSeason("primevere_ruisseau"));
+        Assert.Equal(CraftRefusal.OutOfSeason, bare.Gather("primevere_ruisseau", out _));
+        Assert.False(bare.PassageOpen("glace_du_lac"));
+        bare.SetCivilTime(Utc(2027, 1, 10));
+        Assert.False(bare.PassageOpen("glace_du_lac"));
+        Assert.False(bare.LockOpen("ile_des_saules_dormants"));
+        bare.SetCivilTime(Utc(2027, 4, 10));
         Assert.Equal(CraftRefusal.None, bare.Gather("primevere_ruisseau", out _));
-        Assert.Throws<InvalidOperationException>(() => bare.PassageOpen("glace_du_lac"));
     }
 
     [Fact]
@@ -218,6 +243,32 @@ public class SaisonsContenuTests
         Assert.Throws<ArgumentOutOfRangeException>(() => w.SetCivilTime(long.MaxValue));
         Assert.Equal(before, w.CivilSeason!.Value);
         Assert.Equal(Utc(2027, 1, 10), w.CivilUtcSeconds);
+    }
+
+    [Fact]
+    public void Le_serveur_recoit_l_instant_de_son_hote()
+    {
+        ScenarioLoadResult duo = ScenarioJsonReader.ReadFile(Path.Combine(ScenariosDirectory, "coop", "duo_meute.json"), ShippedData);
+        var room = new EdS.Net.CombatRoom(ShippedData, duo.Setup!);
+        Assert.Null(room.CivilSeason);
+        room.SetCivilTime(Utc(2026, 12, 8));
+        Assert.Equal((Season.Winter, IcePhase.Walkable), (room.CivilSeason!.Value.Season, room.CivilSeason.Value.Ice));
+        Assert.Throws<ArgumentOutOfRangeException>(() => room.SetCivilTime(-1));
+        Assert.Equal(Utc(2026, 12, 8), room.CivilUtcSeconds);
+        // L'hôte des salles lit l'horloge civile qu'on lui donne (le serveur dédié : l'horloge du système, en UTC), dès le démarrage.
+        var hosted = new EdS.Net.CombatRoom(ShippedData, duo.Setup!);
+        using var listener = new EdS.Net.TcpNetListener(System.Net.IPAddress.Loopback, 0);
+        using (var host = new EdS.Net.RoomHost(hosted, listener, () => Utc(2027, 4, 2)))
+        {
+            host.Start();
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (host.Read(r => r.CivilSeason) is null)
+            {
+                Assert.True(watch.Elapsed.TotalSeconds < 10, "instant attendu");
+                Thread.Sleep(5);
+            }
+            Assert.Equal(Season.Spring, host.Read(r => r.CivilSeason)!.Value.Season);
+        }
     }
 
     [Fact]

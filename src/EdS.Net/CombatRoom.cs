@@ -216,6 +216,24 @@ namespace EdS.Net
             Trace?.Invoke($"connexion de {connection.RemoteAddress}");
         }
 
+        /// <summary>
+        /// Saisons (décision de Damien du 15 novembre 2026 : le serveur fait foi) : instant UTC (secondes) fourni par l'hôte du serveur, ou
+        /// null. La salle ne lit jamais d'horloge ; aucune règle de combat ne lit la saison (affichage et monde seulement).
+        /// </summary>
+        public long? CivilUtcSeconds { get; private set; }
+
+        /// <summary>Saison réelle (heure de Paris) au dernier instant fourni par l'hôte du serveur, ou null.</summary>
+        public EdS.Domain.Time.SeasonState? CivilSeason { get; private set; }
+
+        /// <summary>L'hôte du serveur fournit l'instant UTC <paramref name="unixSeconds"/> ; hors bornes : refusé, rien ne change.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">Instant hors bornes.</exception>
+        public void SetCivilTime(long unixSeconds)
+        {
+            EdS.Domain.Time.SeasonState state = EdS.Domain.Time.SeasonCalendar.AtUtc(unixSeconds);   // lève avant toute mutation
+            CivilSeason = state;
+            CivilUtcSeconds = unixSeconds;
+        }
+
         /// <summary>Avance le temps de la salle : messages reçus, délais, ticks du combat.</summary>
         public void Advance(double seconds)
         {

@@ -347,9 +347,12 @@ namespace EdS.Runtime
             GuildLoadResult guild = GuildJsonReader.ReadFile(GuildJsonReader.PathIn(dataDirectory), catalogTexts, storyBook, definition, zones.Zones, catalog, merchantBook);
             CraftingBook craftingBook = Need(crafting.Book, "métiers", () => crafting.Report);
             // Saisons : le contenu saisonnier (nœuds de saison, Échos de la brume, lac gelé et île).
-            SeasonLoadResult seasons = SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(dataDirectory), craftingBook, definition);
+            // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
+            string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
+            SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
-                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings, Need(seasons.Book, "saisons", () => seasons.Report));
+                merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
+                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>

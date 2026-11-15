@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/crafting.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "crafting",
   "contentVersion": "0.7.0-provisoire",
   "data": {
@@ -497,7 +497,10 @@
           -20
         ],
         "respawnMs": 600000,
-        "xp": 20
+        "xp": 20,
+        "seasons": [
+          "spring"
+        ]
       },
       {
         "id": "sauge_verger",
@@ -509,7 +512,10 @@
           -46
         ],
         "respawnMs": 600000,
-        "xp": 20
+        "xp": 20,
+        "seasons": [
+          "spring"
+        ]
       },
       {
         "id": "cepes_foret",
@@ -521,7 +527,10 @@
           42
         ],
         "respawnMs": 120000,
-        "xp": 10
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
       },
       {
         "id": "trompettes_foret",
@@ -533,7 +542,10 @@
           30
         ],
         "respawnMs": 120000,
-        "xp": 10
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
       }
     ],
     "forge": {

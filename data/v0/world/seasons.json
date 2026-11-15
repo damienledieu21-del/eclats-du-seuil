@@ -3,24 +3,6 @@
   "kind": "seasons",
   "contentVersion": "0.1.0-provisoire",
   "data": {
-    "nodes": [
-      {
-        "node": "primevere_ruisseau",
-        "seasons": ["spring"]
-      },
-      {
-        "node": "sauge_verger",
-        "seasons": ["spring"]
-      },
-      {
-        "node": "cepes_foret",
-        "seasons": ["autumn"]
-      },
-      {
-        "node": "trompettes_foret",
-        "seasons": ["autumn"]
-      }
-    ],
     "mistEchoes": {
       "presence": {
         "spring": 0.15,
