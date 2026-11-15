@@ -97,8 +97,9 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(13, a.Nodes().Count);   // Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune
-        Assert.All(a.Nodes(), n => Assert.True(n.Ready));
+        Assert.Equal(17, a.Nodes().Count);   // Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
+        Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
+        Assert.Equal(13, a.Nodes().Count(n => n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
