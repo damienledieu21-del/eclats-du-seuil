@@ -318,7 +318,7 @@ public class V18bTests
     public void Metiers_en_version_3_un_quart_de_l_experience_pour_un_echec()
     {
         CraftingBook book = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Vallons, ItemsCatalog).Book!;
-        Assert.Equal((3, "0.7.0-provisoire", 25), (book.SchemaVersion, book.ContentVersion, book.Failure.XpPercent));
+        Assert.Equal((4, "0.7.0-provisoire", 25), (book.SchemaVersion, book.ContentVersion, book.Failure.XpPercent));
         Assert.Equal((15L, 1L, 0L, 1L), (book.Failure.FailedXp(60), book.Failure.FailedXp(2), book.Failure.FailedXp(0), book.Failure.FailedXp(4)));
         JsonObject root = JsonNode.Parse(File.ReadAllText(CraftingJsonReader.PathIn(DataDirectory)))!.AsObject();
         root["data"]!["failure"]!["xpPercent"] = 101;

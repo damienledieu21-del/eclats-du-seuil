@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "seasons",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "mistEchoes": {
+      "presence": {
+        "spring": 0.15,
+        "summer": 0.15,
+        "autumn": 0.4,
+        "winter": 0.15
+      },
+      "maxPerVolume": 2
+    },
+    "passages": [
+      {
+        "id": "glace_du_lac",
+        "requires": "ice"
+      }
+    ],
+    "locks": [
+      {
+        "id": "ile_des_saules_dormants",
+        "passage": "glace_du_lac"
+      }
+    ]
+  }
+}

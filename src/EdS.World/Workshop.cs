@@ -36,6 +36,9 @@ namespace EdS.World
         /// (<see cref="ForgeRules.Strikes"/>), chacune de 0 à <see cref="ForgeStrikes.Perfect"/> ; une autre recette n'en prend pas.
         /// </summary>
         BadStrikes = 7,
+
+        /// <summary>Saisons : nœud saisonnier hors de sa saison (ou date non fournie par l'hôte).</summary>
+        OutOfSeason = 8,
     }
 
     public enum CraftEventKind
