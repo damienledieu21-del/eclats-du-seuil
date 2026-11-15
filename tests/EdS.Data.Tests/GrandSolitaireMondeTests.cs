@@ -175,7 +175,7 @@ public class GrandSolitaireMondeTests
         WorldBossLoadResult r = Load();
         Assert.True(r.IsValid, r.Report.ToString());
         WorldBossDefinition b = r.Book!.Boss("grand_solitaire");
-        Assert.Equal((2, 2, "0.2.0-provisoire"), (r.Book.SchemaVersion, WorldBossValidator.CurrentSchemaVersion, r.Book.ContentVersion));
+        Assert.Equal((2, 2, "0.3.0-provisoire"), (r.Book.SchemaVersion, WorldBossValidator.CurrentSchemaVersion, r.Book.ContentVersion));
         Assert.True(b.Fightable);
         Assert.Equal(new[] { "grand_solitaire_calme", "grand_solitaire_blesse", "grand_solitaire_enrage" }, b.Phases.Select(p => p.Form!.Id));
         // Chaque forme n'a que des attaques de sa phase, annoncées au sol (l'anneau attend une forme nouvelle du moteur).
@@ -322,5 +322,133 @@ public class GrandSolitaireMondeTests
         Assert.Equal(e.MaxHealth - 1000, next.WorldBossNow("grand_solitaire")!.Health);
         var fresh = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         Assert.Throws<ArgumentException>(() => fresh.UseWorldBosses(Book.Value, new WorldBossEvent?[] { null, null }));
+    }
+
+    /// <summary>Partie engagée contre le boss, près d'un point sûr sur son chemin (forme de la phase calme dans le moteur).</summary>
+    private static (WorldSession W, WorldBossEvent E, long T) Engaged()
+    {
+        (WorldBossOccurrence occ, string safePoint) = OnHisWay();
+        WorldSession w = Open(safePoint: safePoint);
+        At(w, occ.SignsStartMs + 1000);
+        WorldBossEvent e = w.WorldBossNow("grand_solitaire")!;
+        long t = e.AppearMs;
+        while (w.WorldBossForm("grand_solitaire") is null && t < e.LimitAtMs) At(w, t += 1000);
+        Assert.NotNull(w.WorldBossForm("grand_solitaire"));
+        return (w, e, t);
+    }
+
+    [Fact]
+    public void Relecture_degagement_quand_le_personnage_est_vaincu_et_bornes_des_entrees()
+    {
+        (WorldSession w, WorldBossEvent e, long t) = Engaged();
+        string form = w.WorldBossForm("grand_solitaire")!;
+        // Le personnage tombe : la forme quitte le moteur, le boss reprend sa marche (sa vie et sa participation restent).
+        long hp = e.Health;
+        for (int k = 0; k < 20000 && !w.Zone.Engine.View(w.CombatantId).IsDead; k++) w.Step();   // la forme le frappe sans qu'il riposte
+        Assert.True(w.Zone.Engine.View(w.CombatantId).IsDead);
+        w.Step();
+        Assert.Null(w.WorldBossForm("grand_solitaire"));
+        Assert.False(e.Engaged);
+        Assert.Equal(hp, e.Health);
+        w.Step();
+        Assert.True(w.Zone.Engine.View(form).HasLeft);
+    }
+
+    [Fact]
+    public void Relecture_entrees_de_formes_bornees_par_session()
+    {
+        (WorldBossOccurrence occ, string safePoint) = OnHisWay();
+        WorldSession w = Open(safePoint: safePoint);
+        w.SetWorldBossJoinsForTest(WorldSession.MaxWorldBossJoins);
+        At(w, occ.SignsStartMs + 1000);
+        WorldBossEvent e = w.WorldBossNow("grand_solitaire")!;
+        for (long t = e.AppearMs; t < e.LimitAtMs; t += 1000) At(w, t);
+        Assert.Null(w.WorldBossForm("grand_solitaire"));   // plus d'entrée dans cette session : il ne s'engage pas
+        Assert.False(e.Engaged);
+    }
+
+    [Fact]
+    public void Relecture_changement_de_phase_refuse_il_se_degage_puis_reprend()
+    {
+        (WorldSession w, WorldBossEvent e, long _) = Engaged();
+        w.SetWorldBossJoinsForTest(WorldSession.MaxWorldBossJoins);   // la forme suivante ne pourra pas entrer
+        e.Damage(w.CombatantId, e.Health - e.MaxHealth * 69 / 100);
+        w.Step();
+        w.Step();
+        Assert.Contains(WorldBossNoticeKind.Disengaged, Kinds(w));
+        Assert.Null(w.WorldBossForm("grand_solitaire"));
+        Assert.False(e.Engaged);
+        Assert.Equal("blesse", e.PhaseNow.Id);
+    }
+
+    [Fact]
+    public void Relecture_reprise_d_une_occurrence_engagee_degagee_dans_la_session_suivante()
+    {
+        (WorldSession w, WorldBossEvent e, long _) = Engaged();
+        Assert.True(e.Engaged);
+        ZoneDefinition zone = Zone();
+        var next = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        next.UseWorldBosses(Book.Value, w.WorldBossEvents);
+        Assert.False(e.Engaged);
+        Assert.Null(next.WorldBossForm("grand_solitaire"));
+    }
+
+    [Fact]
+    public void Relecture_butin_du_jamais_ecrase_et_registre_plein()
+    {
+        // Victoire avec un butin d'une victoire d'avant encore dû : le règlement attend, le butin d'avant n'est pas perdu.
+        WorldBossOccurrence occ = FirstOccurrence();
+        WorldSession w = Open();
+        string key = "zone.vallons/worldboss.grand_solitaire";
+        WorldBossOccurrence before = FirstOccurrence(occ.Window - 40);
+        var owed = new SavedEvent(key, 1, 0, before.Window, EventOutcome.Won, owed: true);
+        // Sac plein pour que le butin dû ne puisse pas être donné.
+        foreach (ItemDefinition item in ItemsCatalog.Items.Where(i => i.Type == ItemType.Material))
+            for (int n = 0; n < 10_000 && w.Inventory.Add(item.Id, 1) == InventoryRefusal.None; n++) { }
+        WorldSave full = w.Save();
+        var withOwed = new WorldSave(full.Zone, full.WorldTick, full.Sessions, full.Consumed, full.Character!.WithEvents(new[] { owed }));
+        WorldSession x = Open(withOwed);
+        At(x, occ.SignsStartMs + Boss.SignsMs + 2000);
+        WorldBossEvent e = x.WorldBossNow("grand_solitaire")!;
+        e.Damage(x.CombatantId, e.Health);
+        At(x, e.NowMs + 1000);
+        SavedEvent still = x.EventRegistry.Single(r => r.Id == key);
+        Assert.Equal((before.Window, true, 1L), (still.Last, still.Owed, still.Won));   // rien n'est écrasé
+        Assert.Same(e, x.WorldBossEvents[0]);   // le règlement attend
+        // Place faite : le butin d'avant est donné, puis la victoire nouvelle est réglée (et son butin donné, s'il y a la place).
+        foreach (ItemStack stack in x.Inventory.Stacks.ToList()) x.Inventory.Remove(stack.Item, stack.Count);
+        At(x, e.NowMs + 2000);
+        At(x, e.NowMs + 3000);
+        SavedEvent done = x.EventRegistry.Single(r => r.Id == key);
+        Assert.Equal((occ.Window, 2L, false), (done.Last, done.Won, done.Owed));
+        // Registre plein : l'issue n'est pas gardée, mais l'occurrence ne revient pas dans sa fenêtre.
+        WorldSave base0 = Open().Save();
+        var many = Enumerable.Range(0, SavedEvent.MaxEntries).Select(n => new SavedEvent($"zone.vallons/autre{n:D2}", 0, 0, -1, EventOutcome.None)).ToList();
+        WorldSession y = Open(new WorldSave(base0.Zone, base0.WorldTick, base0.Sessions, base0.Consumed, base0.Character!.WithEvents(many)));
+        At(y, occ.SignsStartMs + Boss.SignsMs + 2000);
+        WorldBossEvent f = y.WorldBossNow("grand_solitaire")!;
+        f.Damage(y.CombatantId, f.Health);
+        At(y, f.NowMs + 1000);
+        At(y, f.NowMs + 60_000);
+        Assert.Same(f, y.WorldBossEvents[0]);   // la même, finie : pas une nouvelle occurrence
+        Assert.Null(y.WorldBossNow("grand_solitaire"));
+        Assert.DoesNotContain(WorldBossNoticeKind.Signs, Kinds(y));
+        Assert.DoesNotContain(y.EventRegistry, r => r.Id == key);
+    }
+
+    [Fact]
+    public void Relecture_phases_et_formes_disent_la_meme_chose()
+    {
+        string First(Action<JsonObject> m) { WorldBossLoadResult x = Load(m); Assert.False(x.IsValid); return x.Report.Errors[0].Path; }
+        // La portée du balayage changée dans la phase seulement : refusé.
+        Assert.Equal("$.data.bosses[0].phases[0].form", First(root => B(root)["attacks"]![0]!["range"] = 15));
+        // L'annonce du piétinement changée : refusé.
+        Assert.Equal("$.data.bosses[0].phases[0].form", First(root => B(root)["attacks"]![1]!["announceMs"] = 2900));
+        // Une attaque de la phase absente de la forme (sauf l'anneau) : refusé.
+        Assert.Equal("$.data.bosses[0].phases[1].form", First(root => B(root)["phases"]![1]!["attacks"]!.AsArray().Add("eclats")));
+        WorldBossDefinition b = Boss;
+        WorldBossPhase enrage = b.Phases.Single(p => p.Id == "enrage");
+        Assert.Contains("anneau", enrage.Attacks);
+        Assert.DoesNotContain(enrage.Form!.Attacks, a => a.Id == "anneau");
     }
 }

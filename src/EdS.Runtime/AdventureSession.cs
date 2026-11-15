@@ -235,6 +235,7 @@ namespace EdS.Runtime
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private long? _civilUtc;   // saisons : dernier instant UTC fourni par l'hôte (ou le serveur)
         private readonly List<string> _messages = new List<string>();
@@ -382,9 +383,18 @@ namespace EdS.Runtime
             world.UseSeasons(_seasons);
             // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
             // cours continue d'une session à l'autre de cette zone.
+            // Relecture indépendante de la PR #178 : elle continue aussi à travers un intérieur (boulangerie, auberge…) : gardée à la sortie
+            // de la zone de départ, reprise au retour.
+            if (World?.WorldBosses != null) _bossCarry = World.WorldBossEvents;
             if (_worldBosses != null && world.Definition?.Id == _zones[0].Id)
-                world.UseWorldBosses(_worldBosses, World?.Definition?.Id == _zones[0].Id && World.WorldBosses != null ? World.WorldBossEvents : null);
-            if (_civilUtc is long utc) world.SetCivilTime(utc);
+            {
+                world.UseWorldBosses(_worldBosses, _bossCarry);
+                _bossCarry = null;
+            }
+            // Relecture indépendante de la PR #178 : l'instant fourni par l'hôte est projeté par les ticks de la session qui se termine
+            // (arrondi à la seconde au-dessus), pour que le temps serveur de la nouvelle ne recule pas sous celui d'une occurrence reprise.
+            long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
+            if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;

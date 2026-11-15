@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "kind": "worldBosses",
-  "contentVersion": "0.2.0-provisoire",
+  "contentVersion": "0.3.0-provisoire",
   "data": {
     "bosses": [
       {
@@ -9,8 +9,8 @@
         "scenario": "zones/grand_solitaire",
         "name": "text.worldboss.grand_solitaire",
         "radius": 3,
-        "healthBase": 200000,
-        "healthPerPlayer": 40000,
+        "healthBase": 2000,
+        "healthPerPlayer": 400,
         "minPlayers": 5,
         "maxPlayers": 100,
         "windowMinutes": 360,

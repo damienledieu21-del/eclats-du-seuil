@@ -742,10 +742,44 @@ namespace EdS.Data.WorldBosses
                     else if (form.Placement is null) r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme « {x.Form} » sans place : un scénario positionné est attendu.");
                     else if (form.Attacks.FirstOrDefault(a => !ids.Contains(a.Id)) is { } stray)
                         r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme « {x.Form} » : attaque « {stray.Id} » hors des attaques de la phase.");
+                    else if (Mismatch(form, ids, attacks) is string why)
+                        r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme « {x.Form} » : {why}");
                 }
                 if (r.Errors.Count == before) phases.Add(new WorldBossPhase(x.Id!, x.FromPercent!.Value, ids, form));
             }
             return phases;
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #178 : la forme d'une phase et les attaques de la phase disent la même chose (une seule vérité) :
+        /// chaque attaque de la phase est dans la forme, sauf l'anneau, qui attend une forme nouvelle du moteur ; même forme au sol et mêmes
+        /// dimensions (cône : portée et ouverture ; couloir : longueur et largeur ; disques devant lui : cercle autour de lui ; disques sur
+        /// les cibles : cercle sur la cible ; même rayon) et annonce de la même durée. Rend le motif d'un désaccord, ou null.
+        /// </summary>
+        private static string? Mismatch(AssailantSetup form, List<string> ids, List<WorldBossAttack> attacks)
+        {
+            foreach (string id in ids)
+            {
+                WorldBossAttack w = attacks.First(a => a.Id == id);
+                AssailantAttack? f = form.Attacks.FirstOrDefault(a => a.Id == id);
+                if (w.Shape == WorldBossShape.Ring)
+                {
+                    if (f != null) return $"attaque « {id} » : l'anneau n'a pas de forme dans le moteur (il attend une forme nouvelle).";
+                    continue;
+                }
+                if (f is null) return $"attaque « {id} » de la phase absente de la forme.";
+                if (f.TelegraphMs != w.AnnounceMs) return $"attaque « {id} » : annonce de {f.TelegraphMs} ms, {w.AnnounceMs} ms dans la phase.";
+                bool same = w.Shape switch
+                {
+                    WorldBossShape.Cone => f.Shape == AttackShape.Cone && f.Range == w.Range && f.Angle == w.Angle,
+                    WorldBossShape.Line => f.Shape == AttackShape.Line && f.Range == w.Range && f.Width == w.Width,
+                    WorldBossShape.Circles => f.Shape == AttackShape.Circle && f.Radius == w.Radius
+                        && f.Center == (w.Anchor == CircleAnchor.Front ? ShapeCenter.Self : ShapeCenter.Target),
+                    _ => false,
+                };
+                if (!same) return $"attaque « {id} » : forme ou dimensions différentes de celles de la phase.";
+            }
+            return null;
         }
 
         private static GroundVector? Point(PointData? point, string path, Fixed radius, CombatSpace space, ValidationReport r, bool obstacles = true)

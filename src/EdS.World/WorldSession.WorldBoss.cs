@@ -95,8 +95,26 @@ namespace EdS.World
         }
 
         private BossFormSlot?[] _worldBossForms = Array.Empty<BossFormSlot?>();
+        private bool[] _worldBossUnsaved = Array.Empty<bool>();
+
+        /// <summary>
+        /// Relecture indépendante de la PR #178 : entrées de formes de boss du monde au plus par session de zone (engagement, changement de
+        /// phase) : chaque entrée prend une identité de combattant à la session, bornée par le moteur ; au-delà, le boss ne s'y engage plus
+        /// (il le fera dans la session suivante). Il ne s'engage pas non plus s'il ne reste pas assez d'identités pour les places réservées
+        /// (chefs, événements) et la réserve des quêtes.
+        /// </summary>
+        public const int MaxWorldBossJoins = 16;
+
+        private Zone? _worldBossJoinZone;
+        private int _worldBossJoinCount;
+
+        /// <summary>Pour les essais : entrées de formes déjà faites dans la session du personnage.</summary>
+        internal void SetWorldBossJoinsForTest(int joins)
+        {
+            _worldBossJoinZone = Zone;
+            _worldBossJoinCount = joins;
+        }
         private readonly HashSet<string> _worldBossFormIds = new HashSet<string>(StringComparer.Ordinal);
-        private int _worldBossJoins;
 
         /// <summary>Distance du personnage au boss sous laquelle sa forme entre dans le moteur (celle du point d'émergence, 30 m).</summary>
         public static Fixed EngageDistance(WorldBossDefinition boss) => boss.Clearance;
@@ -133,6 +151,7 @@ namespace EdS.World
             _worldBosses = book;
             _worldBossEvents = new WorldBossEvent?[book.Bosses.Count];
             _worldBossForms = new BossFormSlot?[book.Bosses.Count];
+            _worldBossUnsaved = new bool[book.Bosses.Count];
             for (int k = 0; carried != null && k < carried.Count; k++)
             {
                 carried[k]?.Disengage();
@@ -161,8 +180,9 @@ namespace EdS.World
         /// <exception cref="ArgumentException">Boss inconnu.</exception>
         public WorldBossEvent? WorldBossNow(string boss)
         {
-            int i = WorldBossIndex(boss);
-            return _worldBossEvents[i];
+            WorldBossEvent? e = _worldBossEvents[WorldBossIndex(boss)];
+            // Finie (vaincu ou reparti), elle reste gardée jusqu'à la fin de sa fenêtre (sans revenir), mais n'est plus en cours.
+            return e != null && (e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated) ? null : e;
         }
 
         /// <summary>Ce qui est arrivé aux boss du monde au dernier pas.</summary>
@@ -217,6 +237,18 @@ namespace EdS.World
                 // Butin dû (sac plein à la victoire) : redonné dès qu'il y a la place.
                 if (entry != null && entry.Owed) GiveWorldBossSpoils(b, key, entry, ref notices);
                 WorldBossEvent? e = _worldBossEvents[i];
+                if (e != null && e.Outcome != WorldBossOutcome.None && (e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated))
+                {
+                    // Occurrence finie : son issue est réglée une seule fois (relecture indépendante de la PR #178 : un butin dû d'avant n'est
+                    // jamais écrasé, le règlement attend qu'il soit donné) ; elle reste là, sans revenir, jusqu'à la fin de sa fenêtre, même si
+                    // le registre plein n'a pas pu garder son issue.
+                    if (memory.LastWindow < e.Window && !_worldBossUnsaved[i] && SettleWorldBoss(b, key, e, ref notices) == false) continue;
+                    if (WorldBossSchedule.WindowOf(b, now) <= e.Window) continue;
+                    _worldBossEvents[i] = null;   // sa fenêtre est passée : l'occurrence suivante peut venir dès ce pas
+                    _worldBossUnsaved[i] = false;
+                    e = null;
+                    memory = WorldBossMemory.FromEvent(_character.Events.FirstOrDefault(x => x.Id == key));
+                }
                 if (e is null)
                 {
                     long window = WorldBossSchedule.WindowOf(b, now);
@@ -238,12 +270,8 @@ namespace EdS.World
                 e.Advance(now, players);
                 if (e.Stage >= WorldBossStage.Assault && _worldBossForms[i] != null) Release(i, e, ref notices);
                 Noticed(e, before, destroyed, ref notices);
-                if (e.Outcome != WorldBossOutcome.None && memory.LastWindow < e.Window) SettleWorldBoss(b, key, e, memory, ref notices);
-                if (e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated)
-                {
-                    if (_worldBossForms[i] != null) Release(i, e, ref notices);
-                    _worldBossEvents[i] = null;
-                }
+                if ((e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated) && _worldBossForms[i] != null) Release(i, e, ref notices);
+                if (e.Outcome != WorldBossOutcome.None && memory.LastWindow < e.Window) SettleWorldBoss(b, key, e, ref notices);
             }
             _worldBossNotices = (IReadOnlyList<WorldBossNotice>?)notices ?? Array.Empty<WorldBossNotice>();
         }
@@ -322,6 +350,13 @@ namespace EdS.World
         /// <summary>Fait entrer la forme de la phase du moment, vie maximale et restante de l'événement ; faux si le moteur la refuse (rien ne change).</summary>
         private bool JoinForm(int i, WorldBossEvent e, CombatantPlacement place)
         {
+            if (!ReferenceEquals(_worldBossJoinZone, Zone))
+            {
+                _worldBossJoinZone = Zone;
+                _worldBossJoinCount = 0;
+            }
+            if (_worldBossJoinCount >= MaxWorldBossJoins
+                || Zone.Engine.IdentitiesLeft <= checked(ReservedPlaces + ZonePopulations.QuestReserve + 1)) return false;
             AssailantSetup t = e.PhaseNow.Form!;
             string id = t.Id;
             for (int n = 2; Zone.Engine.CombatantIds.Contains(id); n++) id = $"{t.Id}_v{n}";
@@ -338,7 +373,7 @@ namespace EdS.World
             }
             Zone.Transient(id);   // aucune clé de mort au registre : l'issue est celle de l'événement
             _worldBossFormIds.Add(id);
-            _worldBossJoins++;
+            _worldBossJoinCount++;
             _worldBossForms[i] = new BossFormSlot { Id = id, Session = Zone, Health = e.Health, Phase = e.Phase };
             return true;
         }
@@ -387,19 +422,27 @@ namespace EdS.World
         }
 
         /// <summary>
-        /// Issue de l'occurrence réglée une seule fois : mémoire du vainqueur dans le registre (si le registre a la place) ; victoire des
-        /// joueurs avec le personnage parmi les participants : butin (dû si le sac est plein).
+        /// Issue de l'occurrence réglée une seule fois : mémoire du vainqueur dans le registre ; victoire des joueurs avec le personnage parmi
+        /// les participants : butin (dû si le sac est plein). Rend vrai si c'est réglé ; faux si un butin dû d'une victoire d'avant attend
+        /// encore sa place (relecture indépendante de la PR #178 : il n'est jamais écrasé ; le règlement est retenté au pas suivant) ; null si
+        /// le registre est plein (l'issue n'est pas gardée ; l'occurrence ne revient pas dans sa fenêtre).
         /// </summary>
-        private void SettleWorldBoss(WorldBossDefinition b, string key, WorldBossEvent e, WorldBossMemory memory, ref List<WorldBossNotice>? notices)
+        private bool? SettleWorldBoss(WorldBossDefinition b, string key, WorldBossEvent e, ref List<WorldBossNotice>? notices)
         {
-            bool has = _character.Events.Any(x => x.Id == key);
-            if (!has && _character.Events.Count >= SavedEvent.MaxEntries) return;   // registre plein : l'issue n'est pas gardée (limite connue)
-            WorldBossMemory after = memory.After(e.Window, e.Outcome);
+            SavedEvent? entry = _character.Events.FirstOrDefault(x => x.Id == key);
+            if (entry != null && entry.Owed) return false;
+            if (entry is null && _character.Events.Count >= SavedEvent.MaxEntries)
+            {
+                _worldBossUnsaved[Array.IndexOf(_worldBossEvents, e)] = true;
+                return null;
+            }
+            WorldBossMemory after = WorldBossMemory.FromEvent(entry).After(e.Window, e.Outcome);
             bool earned = e.Outcome == WorldBossOutcome.PlayersWon && e.Contributions.Any(c => c.Key == CombatantId && c.Value > 0);
             SavedEvent saved = after.ToEvent(key);
             if (earned) saved = new SavedEvent(key, saved.Won, saved.Lost, saved.Last, saved.Outcome, owed: true);
             _character = _character.WithEvents(_character.Events.Where(x => x.Id != key).Concat(new[] { saved }));
             if (earned) GiveWorldBossSpoils(b, key, saved, ref notices);
+            return true;
         }
 
         /// <summary>

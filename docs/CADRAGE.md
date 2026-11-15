@@ -276,6 +276,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Mode solo | Tant que le monde n'est pas partagé, **sa vie compte pour 1 joueur** (base + par joueur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Apparence | **Donnée à la première victoire**, en attendant sa quête de mémoire. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Emplacements tous occupés | **Il apparaît quand même**, à l'emplacement le moins mauvais (le plus loin des joueurs). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Vie du boss | Les PV passent à l'**échelle 1/100** : 2 000 + 400 par joueur, soit **2 400 PV en solo**, pour un combat d'environ **5 à 8 minutes**. | Retenu (Damien, 15 novembre 2026) |
 
 ## 8. Points ouverts
 
