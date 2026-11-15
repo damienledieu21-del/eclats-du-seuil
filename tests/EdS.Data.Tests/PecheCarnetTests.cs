@@ -330,4 +330,13 @@ public class PecheCarnetTests
         Assert.Null(none);
         Assert.Equal((casts, true), (w.Fishing.Casts, w.CastSpot != null));
     }
+
+    [Fact]
+    public void Revue_Codex_espece_hors_du_format_du_carnet_refusee()
+    {
+        string id = "item." + new string('a', SavedFishing.MaxFishLength);
+        FishingLoadResult r = Load(root => D(root)["fish"]![0]!["item"] = id);
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.fish[0].item" && e.Message.Contains("carnet"));
+    }
 }

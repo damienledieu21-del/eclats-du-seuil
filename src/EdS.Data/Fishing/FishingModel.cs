@@ -202,6 +202,9 @@ namespace EdS.Data.Fishing
                     if (d.Fish[i] is not FishData x) { Missing(r, p, "espèce"); continue; }
                     int before = r.Errors.Count;
                     if (x.Item is null) Missing(r, p + ".item", "objet de l'espèce");
+                    // Revue Codex de la PR #181 : l'identifiant doit tenir dans le carnet de la sauvegarde (une prise ne doit jamais lever).
+                    else if (!Saves.SavedFishing.IsFish(x.Item))
+                        r.Add(p + ".item", ValidationCode.InvalidValue, $"« {x.Item} » hors du format du carnet (« item.… », au plus {Saves.SavedFishing.MaxFishLength} caractères).");
                     else if (fish.Any(f => f.Item == x.Item) || d.Fish.Take(i).Any(f => f?.Item == x.Item)) r.Add(p + ".item", ValidationCode.DuplicateId, $"« {x.Item} » déjà décrit.");
                     else if (!(items.Items.FirstOrDefault(it => it.Id == x.Item) is ItemDefinition def)) r.Add(p + ".item", ValidationCode.UnknownReference, $"objet « {x.Item} » inconnu du catalogue.");
                     else if (def.Type != ItemType.Material) r.Add(p + ".item", ValidationCode.InvalidValue, $"« {x.Item} » n'est pas un matériau.");
