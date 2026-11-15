@@ -37,7 +37,7 @@ public class FetesVraiesDatesTests
         ZoneDefinition zone = Zone();
         var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, minute) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
-            Progression, ItemsCatalog, Book(zone));
+            Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         session.Step();
         return session;
     }
@@ -171,6 +171,17 @@ public class FetesVraiesDatesTests
         WorldSession w = Open(3, 12 * 60);
         w.SetCivilTime(Utc(2027, 9, 1, 10));
         Assert.NotNull(w.NextFestival());
+        // Relecture de la PR #174 : le calcul direct donne exactement ce que donne la recherche jour par jour, à plusieurs dates.
+        foreach (long utc in new[] { Utc(2027, 9, 1, 10), Utc(2027, 9, 13, 10), Utc(2027, 11, 14, 22), Utc(2028, 1, 2, 3), Utc(2027, 6, 30, 12) })
+        {
+            WorldSession x = Open(3, 12 * 60);
+            x.SetCivilTime(utc);
+            (Festival, long)? expected = null;
+            for (long d = 3; d < 3 + 3000; d++)
+                if (x.FestivalOnDay(d) is Festival f && (d > 3 || 12 * 60 < f.To)) { expected = (f, d); break; }
+            Assert.Equal(expected?.Item1.Id, x.NextFestival()?.Festival.Id);
+            Assert.Equal(expected?.Item2, x.NextFestival()?.Day);
+        }
         // La veillée de l'Aube (rattachée à la Veillée des Contes) : le premier jour du monde où elle tombe est le 15 novembre (heure de Paris).
         long day = 3;
         while (w.FestivalOnDay(day)?.Id != "festival.veillee") day++;
@@ -194,5 +205,106 @@ public class FetesVraiesDatesTests
         w.SetCivilTime(Utc(2027, 9, 5, 10));
         Assert.Null(w.CalendarFestival);
         Assert.Null(Open(3, 12 * 60).CalendarFestival);
+    }
+
+    [Fact]
+    public void Le_marche_de_la_semaine_se_tient_pendant_une_fete_datee()
+    {
+        // Relecture de la PR #174 : pendant les 14 jours de la fête des moissons, le marché du vendredi et celui du mercredi ont toujours lieu.
+        WorldSession w = Open(3, 8 * 60);
+        w.SetCivilTime(Utc(2027, 9, 20, 6));   // en pleine fête des moissons
+        Assert.Equal("festival.moissons", w.FestivalToday?.Id);
+        Assert.NotNull(w.NextMarketDay());
+        long friday = 3;
+        while (WorldCalendar.WeekdayOf(friday) != Story.Value.Festival("festival.marche").Weekday) friday++;
+        Assert.Equal(("festival.marche", "festival.moissons"), (w.NextMarketDay()?.Festival.Id, w.FestivalOnDay(friday)?.Id));
+        // Le jour du marché, à 8 h du monde (avant la fête, de 10 h à 22 h) : le marché bat son plein, et c'est bien le marché du jour.
+        WorldSession market = Open(friday, 8 * 60);
+        market.SetCivilTime(Utc(2027, 9, 20, 6));
+        Assert.Equal("festival.marche", market.MarketFestivalToday?.Id);
+        Assert.NotEqual(EdS.Data.Merchants.MarketPhase.Calm, market.MarketPhase);
+        Assert.Equal("festival.marche", market.Festival?.Id);
+    }
+
+    [Fact]
+    public void Un_seul_concours_par_occurrence_d_une_fete_datee()
+    {
+        WorldSession w = Open(100, 12 * 60);
+        w.SetCivilTime(Utc(2027, 9, 20, 10));   // jour 100 : le 20 septembre (une journée du monde : 3 h, 8 par jour réel)
+        Assert.True(w.ContestOpen("festival.moissons", -1));
+        Assert.False(w.ContestOpen("festival.moissons", 100));
+        Assert.Equal(new CivilDate(2027, 9, 17), w.CivilDateOfDay(76));
+        Assert.False(w.ContestOpen("festival.moissons", 76));   // trois jours réels plus tôt, même occurrence : un seul concours
+        Assert.Equal(new CivilDate(2027, 9, 14), w.CivilDateOfDay(52));
+        Assert.True(w.ContestOpen("festival.moissons", 52));   // la veille du début : une autre occurrence
+        // Sans date fournie : un concours par jour du monde, comme avant.
+        WorldSession old = Open(30, 12 * 60);
+        Assert.False(old.ContestOpen("festival.moissons", 30));
+        Assert.True(old.ContestOpen("festival.moissons", 29));
+    }
+
+    [Fact]
+    public void Meme_entrees_meme_calendrier_et_frontiere_de_minuit_a_Paris()
+    {
+        WorldSession a = Open(3, 12 * 60), b = Open(3, 12 * 60);
+        a.SetCivilTime(Utc(2027, 9, 10, 9));
+        b.SetCivilTime(Utc(2027, 9, 10, 9));
+        for (long d = 3; d < 3 + 400; d++) Assert.Equal(a.FestivalOnDay(d)?.Id, b.FestivalOnDay(d)?.Id);
+        // La veille du début, 23 h 30 UTC : déjà le 15 septembre à Paris (1 h 30, heure d'été) : la fête a commencé.
+        WorldSession late = Open(3, 12 * 60);
+        late.SetCivilTime(new DateTimeOffset(2027, 9, 14, 23, 30, 0, TimeSpan.Zero).ToUnixTimeSeconds());
+        Assert.Equal(new CivilDate(2027, 9, 15), late.CivilDateOfDay(3));
+        Assert.Equal("festival.moissons", late.FestivalToday?.Id);
+        WorldSession before = Open(3, 12 * 60);
+        before.SetCivilTime(new DateTimeOffset(2027, 9, 14, 21, 30, 0, TimeSpan.Zero).ToUnixTimeSeconds());   // 23 h 30 à Paris, le 14
+        Assert.Equal(new CivilDate(2027, 9, 14), before.CivilDateOfDay(3));
+        Assert.NotEqual("festival.moissons", before.FestivalToday?.Id);
+    }
+
+    [Fact]
+    public void Rejeu_depuis_la_sauvegarde_meme_calendrier_et_memes_concours()
+    {
+        // Relecture de la PR #174 : le jour réel d'un jour du monde est pris à midi du monde ; il ne bascule jamais en pleine journée du monde.
+        // Une partie sauvegardée puis rouverte, avec l'instant réel correspondant, retrouve le même calendrier, la même fête et les mêmes concours.
+        long t0 = new DateTimeOffset(2027, 9, 14, 21, 30, 0, TimeSpan.Zero).ToUnixTimeSeconds();   // 23 h 30 à Paris, la veille des moissons
+        WorldSession a = Open(3, 12 * 60);
+        a.SetCivilTime(t0);
+        for (int i = 0; i < 2000; i++) a.Step();   // 100 s réelles : minuit passe à Paris
+        WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(a.Save())).Save!;
+        ZoneDefinition zone = Zone();
+        var b = new WorldSession(saved, zone, ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+        b.SetCivilTime(t0 + 2000 * 50 / 1000);
+        for (long d = 0; d < 3 + 200; d++)
+        {
+            Assert.Equal(a.CivilDateOfDay(d), b.CivilDateOfDay(d));
+            Assert.Equal(a.FestivalOnDay(d)?.Id, b.FestivalOnDay(d)?.Id);
+            Assert.Equal(a.ContestOpen("festival.moissons", d), b.ContestOpen("festival.moissons", d));
+        }
+        Assert.Equal((a.Festival?.Id, a.FestivalToday?.Id, a.NextFestival()?.Day), (b.Festival?.Id, b.FestivalToday?.Id, b.NextFestival()?.Day));
+        // Dans la journée du monde en cours, le jour réel reste celui de son midi, quel que soit le tick.
+        Assert.Equal(new CivilDate(2027, 9, 14), a.CivilDateOfDay(a.Zone.Time.Day));
+    }
+
+    [Fact]
+    public void Vingt_neuf_fevrier_et_occurrence_commencee_l_annee_d_avant()
+    {
+        StoryLoadResult r = Mutated(root =>
+        {
+            Fest(root, "festival.givre")["date"] = JsonNode.Parse("{\"month\": 12, \"day\": 10, \"days\": 14}");
+            Fest(root, "festival.lanternes")["date"] = JsonNode.Parse("{\"month\": 12, \"day\": 29, \"days\": 7}");
+            Fest(root, "festival.liens")["date"] = JsonNode.Parse("{\"month\": 2, \"day\": 24, \"days\": 7}");
+            Fest(root, "festival.carnaval")["date"] = JsonNode.Parse("{\"month\": 3, \"day\": 5, \"days\": 7}");
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+        Festival lanternes = r.Story!.Festival("festival.lanternes");
+        Assert.Equal(new CivilDate(2027, 12, 29), lanternes.OccurrenceOf(new CivilDate(2028, 1, 2)));   // commencée l'année d'avant
+        Assert.Equal(new CivilDate(2027, 12, 29), lanternes.OccurrenceOf(new CivilDate(2028, 1, 4)));   // 7e jour
+        Assert.Null(lanternes.OccurrenceOf(new CivilDate(2028, 1, 5)));
+        Festival liens = r.Story.Festival("festival.liens");
+        Assert.True(liens.OnCivil(new CivilDate(2028, 2, 29)));   // année bissextile : le 29 février compte
+        Assert.True(liens.OnCivil(new CivilDate(2028, 3, 1)));    // 24 au 1er mars : 7 jours
+        Assert.False(liens.OnCivil(new CivilDate(2028, 3, 2)));
+        Assert.True(liens.OnCivil(new CivilDate(2027, 3, 2)));    // année ordinaire : jusqu'au 2 mars
+        Assert.False(liens.OnCivil(new CivilDate(2027, 3, 3)));
     }
 }

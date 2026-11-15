@@ -126,7 +126,19 @@ namespace EdS.World
         public MarketDay? MarketDay => Market?.Book.Market;
 
         /// <summary>Sous-lot V2.14 : la fête du marché d'aujourd'hui (un jour de marché), ou null.</summary>
-        public Festival? MarketFestivalToday => MarketDay is MarketDay md && FestivalToday is Festival f && md.Festivals.Contains(f.Id) ? f : null;
+        public Festival? MarketFestivalToday => MarketFestivalOn(Zone.Time.Day);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #174 : la fête du marché du jour du monde <paramref name="day"/>, cherchée parmi les fêtes du marché
+        /// seulement : une fête datée de 14 jours réels n'efface plus le marché de la semaine (ils se tiennent tous deux ; aux heures où ils se
+        /// croisent, la fête du moment est la première dans l'ordre des données).
+        /// </summary>
+        private Festival? MarketFestivalOn(long day)
+        {
+            if (!(MarketDay is MarketDay md) || !(Narrative is Narrative n)) return null;
+            EdS.Domain.Time.CivilDate? civil = CivilDateOfDay(day);
+            return n.Book.Festivals.FirstOrDefault(f => md.Festivals.Contains(f.Id) && f.OnDay(day, civil));
+        }
 
         /// <summary>
         /// Sous-lot V2.14 : le marchand de passage (ses fêtes) vient au marché d'aujourd'hui et le marché est là (installation, marché ou
@@ -147,7 +159,7 @@ namespace EdS.World
         {
             if (!(MarketDay is MarketDay md) || !(Narrative is Narrative n)) return null;
             for (long day = Zone.Time.Day; day <= Zone.Time.Day + 2 * WorldCalendar.DaysPerWeek; day++)
-                if (FestivalOnDay(day) is Festival f && md.Festivals.Contains(f.Id) && (day > Zone.Time.Day || Zone.Time.Minute < md.Teardown)) return (day, f);
+                if (MarketFestivalOn(day) is Festival f && (day > Zone.Time.Day || Zone.Time.Minute < md.Teardown)) return (day, f);
             return null;
         }
 

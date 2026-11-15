@@ -299,6 +299,12 @@ namespace EdS.World
         /// <summary>Fêtes aux vraies dates : tour de la rotation des concours de la fête <paramref name="festival"/> aujourd'hui.</summary>
         int FestivalRound(string festival);
 
+        /// <summary>
+        /// Relecture indépendante de la PR #174 : le concours de la fête <paramref name="festival"/> est ouvert au personnage, dont le dernier
+        /// concours de cette fête a eu lieu le jour du monde <paramref name="lastDay"/> (-1 : jamais).
+        /// </summary>
+        bool ContestOpen(string festival, long lastDay);
+
         /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
         bool NpcAway(Npc npc);
     }
@@ -1352,7 +1358,7 @@ namespace EdS.World
             ConditionKind.Standing => StandingIndex(c.Id) == Reputations.TierIndex(c.Step!),
             ConditionKind.StandingAtLeast => StandingIndex(c.Id) >= Reputations.TierIndex(c.Step!),
             ConditionKind.Festival => c.Id == StoryValidator.AnyFestival ? _world.Festival != null : _world.Festival == c.Id,   // sous-lot V2.10
-            ConditionKind.ContestOpen => _world.Festival == c.Id && ContestDay(c.Id) != _world.Day,
+            ConditionKind.ContestOpen => _world.Festival == c.Id && _world.ContestOpen(c.Id, ContestDay(c.Id)),
             ConditionKind.ContestRound => _world.Festival == c.Id && _world.FestivalRound(c.Id) == c.Value,   // sous-lot V2.10 : la rotation des concours
             _ => _world.IsPassageOpen(c.Id),
         };

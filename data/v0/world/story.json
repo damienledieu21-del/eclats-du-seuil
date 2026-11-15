@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 14,
   "kind": "story",
-  "contentVersion": "0.25.0-provisoire",
+  "contentVersion": "0.26.0-provisoire",
   "data": {
     "npcs": [
       {

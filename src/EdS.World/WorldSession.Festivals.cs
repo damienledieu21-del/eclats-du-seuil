@@ -54,12 +54,32 @@ namespace EdS.World
         public (Festival Festival, long Day)? NextFestival()
         {
             if (!(Narrative is Narrative n) || n.Book.Festivals.Count == 0) return null;
-            long horizon = CivilUtcSeconds is null ? WorldCalendar.DaysPerYear : checked(366L * 86_400_000 / Zone.Clock.DayLengthMs + 1);
-            for (long day = Zone.Time.Day; day <= Zone.Time.Day + horizon; day++)
+            // Relecture indépendante de la PR #174 : la semaine qui vient jour par jour (fêtes de la semaine, fête en cours), puis la prochaine
+            // occurrence de chaque fête datée calculée directement (plus de recherche sur toute une année de jours du monde).
+            (Festival Festival, long Day)? best = null;
+            long near = CivilUtcSeconds is null ? WorldCalendar.DaysPerYear : WorldCalendar.DaysPerWeek;
+            for (long day = Zone.Time.Day; day <= Zone.Time.Day + near; day++)
+                if (FestivalOnDay(day) is Festival f && (day > Zone.Time.Day || Zone.Time.Minute < f.To)) { best = (f, day); break; }
+            if (CivilUtcSeconds is null || !(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return best;
+            foreach (Festival f in n.Book.Festivals)
             {
-                if (!(FestivalOnDay(day) is Festival f)) continue;
-                if (day > Zone.Time.Day || Zone.Time.Minute < f.To) return (f, day);
+                if (!f.HasDate || f.CalendarOnly || f.Weekday != null) continue;
+                CivilDate start = f.StartIn(today.Year);
+                if (start <= today) start = f.StartIn(today.Year + 1);
+                if (!(FirstDayOn(start) is long day) || (best != null && best.Value.Day <= day)) continue;
+                if (FestivalOnDay(day) == f) best = (f, day);
             }
+            return best;
+        }
+
+        /// <summary>Premier jour du monde (à partir d'aujourd'hui) dont le jour réel est <paramref name="date"/> ou après, ou null.</summary>
+        private long? FirstDayOn(CivilDate date)
+        {
+            if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return null;
+            long perReal = Math.Max(1, 86_400_000 / Zone.Clock.DayLengthMs);   // jours du monde par jour réel (8 pour des journées de 3 h)
+            long day = Math.Max(Zone.Time.Day, checked(Zone.Time.Day + (date.DayNumber - today.DayNumber - 1) * perReal));
+            for (int guard = 0; guard < 4 * perReal + 4; guard++, day++)
+                if (CivilDateOfDay(day) is CivilDate d && d >= date) return day;
             return null;
         }
 
@@ -80,6 +100,22 @@ namespace EdS.World
         private FestivalGuest? GuestNow(Npc npc) => Festival?.Guest(npc.Id);
 
         /// <summary>Sous-lot V2.10 : le personnage a déjà concouru à la fête <paramref name="festival"/> aujourd'hui.</summary>
-        public bool Contested(string festival) => Narrative is Narrative n && n.ContestDay(festival) == Zone.Time.Day;
+        public bool Contested(string festival) => Narrative is Narrative n && !ContestOpen(festival, n.ContestDay(festival));
+
+        /// <summary>
+        /// Relecture indépendante de la PR #174 (option prudente, question posée à Damien) : un concours par jour du monde pour une fête du
+        /// calendrier du jeu, comme avant ; pour une fête datée dont la date réelle est connue, <b>un seul concours par occurrence</b> de la
+        /// fête (ses 7 à 14 jours réels) et par personnage.
+        /// </summary>
+        public bool ContestOpen(string festival, long lastDay)
+        {
+            if (lastDay < 0) return true;
+            if (Narrative is Narrative n && n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f && f.HasDate
+                && CivilDateOfDay(Zone.Time.Day) is CivilDate today && f.OccurrenceOf(today) is CivilDate start)
+                return !(CivilDateOfDay(lastDay) is CivilDate then) || f.OccurrenceOf(then) != start;
+            return lastDay != Zone.Time.Day;
+        }
+
+        bool INarrativeWorld.ContestOpen(string festival, long lastDay) => ContestOpen(festival, lastDay);
     }
 }

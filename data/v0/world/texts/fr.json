@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.25.0-provisoire",
+  "contentVersion": "0.26.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
