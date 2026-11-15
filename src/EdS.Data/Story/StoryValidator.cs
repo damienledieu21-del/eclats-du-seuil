@@ -351,6 +351,8 @@ namespace EdS.Data.Story
 
             /// <summary>Sous-lot V2.10 : fêtes déclarées (conditions <c>festival</c>, <c>contestOpen</c>, effet <c>contest</c>, PNJ de passage).</summary>
             private readonly HashSet<string> _festivals = new HashSet<string>(StringComparer.Ordinal);
+            // Revue Codex de la PR #174 (4e tour) : fêtes du calendrier seulement (affichage) : jamais au jour du jeu, donc refusées dans le gameplay.
+            private readonly HashSet<string> _calendarOnly = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
@@ -393,6 +395,9 @@ namespace EdS.Data.Story
                 // Sous-lot V2.10 (schéma 13) : les fêtes.
                 if (_d.Festivals != null && Since13("festivals", "$.data.festivals"))
                     Declare(_d.Festivals, "$.data.festivals", MaxFestivals, x => x?.Id, FestivalId, _festivals);
+                    if (_d.Festivals != null)
+                        foreach (FestivalData? f in _d.Festivals)
+                            if (f?.Id != null && f.CalendarOnly == true) _calendarOnly.Add(f.Id);
                 // Relecture de la PR #81 : le signe d'une créature rare de la nuit (zones en schéma 6) est un texte du jeu : il doit exister,
                 // comme les autres clés de texte. La zone est validée sans les textes ; l'histoire, qui les a, vérifie ses signes (chemin dans
                 // le fichier de la zone, précédé de son identifiant).
@@ -947,9 +952,9 @@ namespace EdS.Data.Story
                         ConditionKind.Standing or ConditionKind.StandingAtLeast =>
                             Since12(t.Kind, p + ".if") && FactionRef(t, p) && TierRef(t, p) && NoValue(t, p),
                         ConditionKind.Festival =>   // sous-lot V2.10 (schéma 13)
-                            Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoValue(t, p) && NoStep(t, p),
-                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && NoStep(t, p)
+                            Since13(t.Kind, p + ".if") && Ref(t, p, _festivals.Append(AnyFestival), "fête") && Playable(t, p) && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestOpen => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoValue(t, p) && NoStep(t, p),
+                        ConditionKind.ContestRound => Since13(t.Kind, p + ".if") && Ref(t, p, _festivals, "fête") && Playable(t, p) && NoStep(t, p)
                             && Value(t, p, 0, (_d.Festivals?.FirstOrDefault(f => f?.Id == t.Id)?.Rounds ?? 1) - 1),
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
@@ -1015,7 +1020,7 @@ namespace EdS.Data.Story
                         EffectKind.GiveGuildPoints => NoId(t, p) && Value(t, p, 1, GuildRanks.MaxAward),   // sous-lot V1.7
                         EffectKind.OpenPassage => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p),
                         EffectKind.Reputation => FactionRef(t, p) && Value(t, p, -Reputations.MaxEffect, Reputations.MaxEffect) && NonZero(t, p),   // sous-lot V2.7
-                        EffectKind.Contest => Ref(t, p, _festivals, "fête") && NoValue(t, p),   // sous-lot V2.10
+                        EffectKind.Contest => Ref(t, p, _festivals, "fête") && Playable(t, p) && NoValue(t, p),   // sous-lot V2.10
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
@@ -1085,6 +1090,14 @@ namespace EdS.Data.Story
                 if (!IsFactId(t.Id)) { _r.Add(p + ".id", ValidationCode.InvalidValue, $"fait « {t.Id} » mal formé : « fact.… »."); return false; }
                 if (needed) _factsNeeded.Add((t.Id!, p + ".id"));
                 return true;
+            }
+
+            /// <summary>Revue Codex de la PR #174 (4e tour) : une fête du calendrier seulement ne se tient jamais au jeu : refusée dans une condition ou un effet.</summary>
+            private bool Playable(TermData t, string p)
+            {
+                if (t.Id is null || !_calendarOnly.Contains(t.Id)) return true;
+                _r.Add(p + ".id", ValidationCode.InvalidValue, $"« {t.Id} » est une fête du calendrier seulement (affichée, jamais tenue au jeu).");
+                return false;
             }
 
             private bool Ref(TermData t, string p, IEnumerable<string> known, string what)
