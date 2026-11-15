@@ -686,8 +686,9 @@ public class V1ReponsesTests : IDisposable
         // Bertille garde de quoi vendre chaque jour : les potions de soin (et, depuis le sous-lot V1.2, la pioche du carrier), plus une
         // offre tirée parmi deux.
         Merchant bertille = ShippedMerchants.Merchant("merchant.epicier");
-        Assert.Equal(new[] { "item.potion_de_soin", "item.pioche_du_carrier" }, bertille.Offers.Where(o => o.Always).Select(o => o.Item));
-        Assert.Equal((1, 2), (bertille.Daily, bertille.Offers.Count(o => !o.Always)));
+        // Pêche et carnet (décision de Damien du 15 novembre 2026) : les vers de terre toujours, les mouches de mai parmi les offres tirées.
+        Assert.Equal(new[] { "item.potion_de_soin", "item.pioche_du_carrier", "item.ver_de_terre" }, bertille.Offers.Where(o => o.Always).Select(o => o.Item));
+        Assert.Equal((1, 3), (bertille.Daily, bertille.Offers.Count(o => !o.Always)));
     }
 
     // --- Outils ------------------------------------------------------------------------------------------------------------------
