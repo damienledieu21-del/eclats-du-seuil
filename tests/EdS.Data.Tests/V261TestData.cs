@@ -18,15 +18,21 @@ internal static class V261TestData
         V27TestData.WithoutReputation(root);   // sous-lot V2.7 : la réputation demande la version 12
         JsonObject data = root["data"]!.AsObject();
         JsonArray quests = data["quests"]!.AsArray();
-        foreach (JsonNode? q in quests.Where(q => (string?)q!["id"] == Quest).ToList()) quests.Remove(q);
+        // Sous-lot V2.28c (4) : sans la quête des passages de la vallée (une réplique de plus pour Aldric, 32 répliques au plus en version 11).
+        foreach (JsonNode? q in quests.Where(q => (string?)q!["id"] == Quest || (string?)q!["id"] == "quest.passages_de_la_vallee").ToList()) quests.Remove(q);
         foreach (JsonNode? d in data["dialogues"]!.AsArray())
         {
             JsonArray entries = d!["entries"]!.AsArray(), nodes = d["nodes"]!.AsArray();
             // Sous-lot V2.9.2 : sans les deux répliques de Gaspard sur le vieux Brunot (32 répliques au plus ne vient qu'avec la version 11).
             foreach (JsonNode? e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v261_", StringComparison.Ordinal)
-                || ((string?)e!["node"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
+                || ((string?)e!["node"])!.StartsWith("v292_", StringComparison.Ordinal)
+                || ((string?)e!["node"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
             foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v261_", StringComparison.Ordinal)
-                || ((string?)n!["id"])!.StartsWith("v292_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+                || ((string?)n!["id"])!.StartsWith("v292_", StringComparison.Ordinal)
+                || ((string?)n!["id"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            foreach (JsonNode? n in nodes)
+                if (n!["choices"] is JsonArray choices)
+                    foreach (JsonNode? c in choices.Where(c => ((string?)c!["next"])?.StartsWith("v228_", StringComparison.Ordinal) == true).ToList()) choices.Remove(c);
             foreach (JsonNode? n in nodes)
                 if (n!["lines"] is JsonArray lines)
                 {

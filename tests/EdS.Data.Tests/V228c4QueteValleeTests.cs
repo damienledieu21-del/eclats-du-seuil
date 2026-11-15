@@ -1,0 +1,110 @@
+using EdS.Data.Crafting;
+using EdS.Data.Json;
+using EdS.Data.Saves;
+using EdS.Data.Story;
+using EdS.Data.Zones;
+using EdS.World;
+using static EdS.Data.Tests.ScenarioTestData;
+using static EdS.Data.Tests.V11TestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lot V2.28c (4), décision de Damien du 15 novembre 2026 : l'éboulement et les gués de la vallée s'ouvrent par une quête à la fin du
+/// chapitre 1, comme la porte du moulin. Quête minimale « Les passages de la vallée » : Gaspard la propose une fois le chapitre 1 fini (une
+/// réponse de son dialogue ordinaire, donc aussi dans une ancienne partie déjà plus loin), Aldric, au gué, la termine ; ses effets ouvrent
+/// les trois passages, en entier ou pas du tout (registre réservé avant toute mutation, comme la porte du moulin).
+/// </summary>
+[Trait("Category", "World")]
+public class V228c4QueteValleeTests
+{
+    private const string Mission = "quest.traces_sous_le_moulin", Vallee = "quest.passages_de_la_vallee";
+    private static readonly string[] Passages = { "eboulement", "gue_vallee_sud", "gue_vallee_nord" };
+    private static readonly (double X, double Z) Gaspard = (26, -13), Archer = (1, -1.5);
+
+    private static WorldSession Open((double X, double Z) at, SavedCharacter hero, IEnumerable<string>? consumed = null)
+    {
+        ZoneDefinition zone = Zone(at.X, at.Z);
+        CraftingBook crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, ItemsCatalog).Book!;
+        var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, (consumed ?? Array.Empty<string>()).Append(PlayerCharacters.PlacesKey)
+            .Distinct(StringComparer.Ordinal), hero), zone, ShippedData, Progression, ItemsCatalog, Book(zone), crafting, market: new Market(ShippedMerchants));
+        session.Step();
+        Ticks(session);
+        return session;
+    }
+
+    private static WorldSession Go(WorldSession from, (double X, double Z) at)
+    {
+        WorldSave save = SaveJsonReader.Read(SaveJsonReader.Write(from.Save())).Save!;
+        return Open(at, save.Character!, save.Consumed);
+    }
+
+    private static List<string> Ticks(WorldSession w, int ticks = 3)
+    {
+        var events = new List<string>();
+        for (int i = 0; i < ticks; i++) events.AddRange(w.Step().Story.Where(e => e.Kind != StoryEventKind.ReputationChanged && e.Kind != StoryEventKind.StandingChanged).Select(e => e.ToString()));
+        return events;
+    }
+
+    private static DialogueView Say(WorldSession w, string npc, string node)
+    {
+        Assert.Equal(DialogueRefusal.None, w.Talk(npc, out DialogueView? view));
+        Assert.Equal(node, view!.Node);
+        return view;
+    }
+
+    private static IReadOnlyList<string> Choose(WorldSession w, int index, string? next = null)
+    {
+        Assert.Equal(DialogueRefusal.None, w.Choose(index, out DialogueView? view, out IReadOnlyList<StoryEvent> events));
+        Assert.Equal(next, view?.Node);
+        return events.Select(e => e.ToString()).ToList();
+    }
+
+    private static SavedCharacter Hero(SavedStory story) => V11TestData.Hero(0).WithStory(story);
+
+    [Fact]
+    public void Quete_livree_apres_le_chapitre_1_et_ouvrant_les_trois_passages()
+    {
+        ZoneDefinition zone = Zone();
+        StoryBook book = Book(zone);
+        Quest q = book.Quest(Vallee);
+        Assert.Equal(QuestCategory.Side, q.Category);
+        Assert.Equal(new[] { "aldric" }, q.Steps.Select(s => s.Id));
+        Assert.Equal(Passages, q.Effects.Where(e => e.Kind == EffectKind.OpenPassage).Select(e => e.Id));
+        Assert.All(Passages, p => Assert.Contains(zone.Passages, x => x.Id == p));
+        // Ajoutée à la fin : les quêtes d'avant gardent leur rang.
+        Assert.Equal(Vallee, book.Quests[^1].Id);
+    }
+
+    [Fact]
+    public void Gaspard_la_propose_a_la_fin_du_chapitre_1_et_Aldric_ouvre_les_passages()
+    {
+        // Avant la fin du chapitre 1 : pas de réponse pour la vallée, les passages restent fermés.
+        WorldSession w = Open(Gaspard, Hero(SavedStory.Empty));
+        Assert.DoesNotContain(Say(w, "npc.gaspard", "garde").Options, o => o.Text == "text.v228.gaspard.vallee.dire");
+        Assert.All(Passages, p => Assert.False(w.IsPassageOpen(p)));
+        // Chapitre 1 fini (une partie déjà plus loin aussi) : la réponse, puis l'offre.
+        var done = new SavedStory(new[] { "fact.traces.recit", "fact.moulin.porte_ouverte" },
+            new Dictionary<string, QuestProgress> { [Mission] = new QuestProgress(QuestProgress.Done) });
+        w = Open(Gaspard, Hero(done));
+        DialogueView garde = Say(w, "npc.gaspard", "garde");
+        Choose(w, garde.Options.Single(o => o.Text == "text.v228.gaspard.vallee.dire").Index, "v228_vallee");
+        Assert.Contains($"QuestStarted {Vallee}/aldric", Choose(w, 0));
+        Assert.DoesNotContain(Say(w, "npc.gaspard", "garde").Options, o => o.Text == "text.v228.gaspard.vallee.dire");
+        Assert.All(Passages, p => Assert.False(w.IsPassageOpen(p)));
+        // Aldric, au gué : les trois passages s'ouvrent, gardés dans la sauvegarde.
+        w = Go(w, Archer);
+        Say(w, "npc.archer_garde", "v228_vallee");
+        Choose(w, 0);
+        long xp = w.Character.Xp;
+        List<string> end = Ticks(w);
+        Assert.Contains($"QuestCompleted {Vallee}", end);
+        Assert.All(Passages, p => Assert.Contains($"PassageOpened {p}", end));
+        Assert.Equal(xp + 60, w.Character.Xp);
+        w = Go(w, Archer);
+        Assert.All(Passages, p => Assert.True(w.IsPassageOpen(p)));
+        Assert.True(w.Narrative!.IsDone(Vallee));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.archer_garde", out DialogueView? after));
+        Assert.NotEqual("v228_vallee", after!.Node);
+    }
+}

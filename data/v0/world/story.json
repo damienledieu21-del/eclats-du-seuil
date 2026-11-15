@@ -4842,6 +4842,21 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.v228.gaspard.vallee.dire",
+                "conditions": [
+                  {
+                    "if": "questDone",
+                    "id": "quest.traces_sous_le_moulin"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [],
+                "next": "v228_vallee"
               }
             ],
             "lines": [
@@ -7629,6 +7644,34 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              }
+            ]
+          },
+          {
+            "id": "v228_vallee",
+            "text": "text.v228.gaspard.vallee",
+            "choices": [
+              {
+                "text": "text.v228.gaspard.vallee.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.passages_de_la_vallee"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v228.gaspard.vallee.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
               }
             ]
           }
@@ -13297,6 +13340,16 @@
           {
             "conditions": [
               {
+                "if": "questAt",
+                "id": "quest.passages_de_la_vallee",
+                "step": "aldric"
+              }
+            ],
+            "node": "v228_vallee"
+          },
+          {
+            "conditions": [
+              {
                 "if": "levelAtLeast",
                 "value": 4
               },
@@ -14525,6 +14578,38 @@
                 "conditions": [],
                 "effects": [],
                 "next": null
+              }
+            ]
+          },
+          {
+            "id": "v228_vallee",
+            "text": "text.v228.archer_garde.vallee",
+            "choices": [
+              {
+                "text": "text.v228.archer_garde.vallee.merci",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              },
+              {
+                "text": "text.ch1.archer_garde.croc_mort.dire",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.croc_gris.vaincu"
+                  },
+                  {
+                    "if": "notFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.archer_garde.croc"
+                  }
+                ],
+                "next": "ch1_croc_mort"
               }
             ]
           }
@@ -24498,6 +24583,46 @@
             "do": "giveItem",
             "id": "item.cape_du_vieux_brunot",
             "value": 1
+          }
+        ]
+      },
+      {
+        "id": "quest.passages_de_la_vallee",
+        "name": "text.v228.quest.vallee.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "questDone",
+            "id": "quest.traces_sous_le_moulin"
+          }
+        ],
+        "steps": [
+          {
+            "id": "aldric",
+            "text": "text.v228.quest.vallee.aldric",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.archer_garde"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "openPassage",
+            "id": "eboulement"
+          },
+          {
+            "do": "openPassage",
+            "id": "gue_vallee_sud"
+          },
+          {
+            "do": "openPassage",
+            "id": "gue_vallee_nord"
+          },
+          {
+            "do": "giveXp",
+            "value": 60
           }
         ]
       }
