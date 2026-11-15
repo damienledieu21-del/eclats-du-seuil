@@ -172,6 +172,65 @@ public class CompagnonsProgressionTests
         Assert.Null(left.Find("companion.aveline"));
     }
 
+    [Fact]
+    public void Mercenaire_renvoye_puis_reembauche_garde_son_estime_et_son_trait()
+    {
+        // Décision de Damien du 15 novembre 2026 : seule la jauge de lien revient à 0.
+        var guild = new RecruitContext(false, "c", 1_000, 7);
+        SavedCompanions hired = CompanionRules.Recruit(Catalog, SavedCompanions.Empty, "companion.aveline", guild).Roster;
+        hired = CompanionRules.React(CompanionRules.AfterCombat(hired, new[] { ("companion.aveline", 60, false) }), "companion.aveline", -35).Roster;
+        SavedCompanion before = hired.Find("companion.aveline")!;
+        Assert.Equal((60, -35), (before.Bond, before.Approval));
+
+        SavedCompanions gone = CompanionRules.Dismiss(Catalog, hired, "companion.aveline").Roster;
+        Assert.Null(gone.Find("companion.aveline"));
+        Assert.Empty(gone.Active);
+        Assert.False(gone.IsEmpty);
+        SavedCompanion former = gone.FindFormer("companion.aveline")!;
+        Assert.Equal((0, -35, before.Trait, false), (former.Bond, former.Approval, former.Trait, former.Down));
+        Assert.Empty(CompanionRules.Check(Catalog, gone));
+
+        // Réembauché avec une autre graine : le même trait, la même estime, la jauge à 0 ; il quitte les anciens et paie de nouveau.
+        foreach (ulong seed in new ulong[] { 1, 2, 3, 99, 12345 })
+        {
+            RosterResult back = CompanionRules.Recruit(Catalog, gone, "companion.aveline", new RecruitContext(false, "c", 1_000, seed));
+            Assert.True(back.Accepted);
+            Assert.True(Catalog.TryGet("companion.aveline", out CompanionSheet sheet));
+            Assert.Equal(sheet.Recruit.Price, back.Cost);
+            SavedCompanion again = back.Roster.Find("companion.aveline")!;
+            Assert.Equal((0, -35, before.Trait, false), (again.Bond, again.Approval, again.Trait, again.Down));
+            Assert.Null(back.Roster.FindFormer("companion.aveline"));
+            Assert.Empty(back.Roster.Former);
+        }
+
+        // Aller-retour par la sauvegarde, schéma documentaire compris.
+        string text = Saved(gone);
+        Assert.Contains("\"former\": [", text);
+        SaveLoadResult read = SaveJsonReader.Read(text);
+        Assert.True(read.IsValid, read.Report.ToString());
+        Assert.Equal(gone, read.Save!.Character!.Companions);
+        Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(JsonDocument.Parse(text).RootElement));
+        Assert.DoesNotContain("former", Saved(hired));
+
+        // Formes impossibles : refusées à la construction et à la lecture, avec chemin.
+        SavedCompanion aveline = new("companion.aveline", 0, 5, before.Trait);
+        Assert.Throws<ArgumentException>(() => new SavedCompanions(1, new[] { aveline }, null, new[] { aveline }));
+        Assert.Throws<ArgumentException>(() => new SavedCompanions(1, null, null, new[] { aveline.With(bond: 10) }));
+        Assert.Throws<ArgumentException>(() => new SavedCompanions(1, null, null, new[] { aveline.With(down: true) }));
+        Assert.Throws<ArgumentException>(() => new SavedCompanions(1, null, null, new[] { aveline, aveline }));
+        string both = text.Replace("\"recruited\": []", $"\"recruited\": [{{\"id\": \"companion.aveline\", \"bond\": 0, \"approval\": 0, \"trait\": \"{before.Trait}\", \"down\": false}}]");
+        Assert.NotEqual(text, both);
+        Assert.Contains(SaveJsonReader.Read(both).Report.Errors, e => e.Path == "$.data.character.companions.former[0].id");
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"approval\": -35", "\"approval\": 101")).Report.Errors,
+            e => e.Path == "$.data.character.companions.former[0].approval");
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"approval\": -35", "\"approval\": -35, \"bond\": 3")).Report.Errors,
+            e => e.Path == "$.data.character.companions.former[0].bond");
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 20", "\"schemaVersion\": 19")).Report.Errors, e => e.Path == "$.data.character.companions");
+        // Accord avec le catalogue : un héros ne peut pas être un ancien mercenaire.
+        Assert.Contains(CompanionRules.Check(Catalog, new SavedCompanions(1, null, null, new[] { new SavedCompanion("companion.nyx") })),
+            p => p.Contains("pas un mercenaire"));
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

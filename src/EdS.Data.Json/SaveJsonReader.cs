@@ -231,6 +231,19 @@ namespace EdS.Data.Json
                             }),
                         ["active"] = (ev2, ep) => cp.Active = input.ReadLimitedList(ev2, ep, SavedCompanions.MaxSlots,
                             n => $"{n} compagnons actifs, au plus {SavedCompanions.MaxSlots}.", (e, ip) => input.Text(e, ip)),
+                        // Décision de Damien du 15 novembre 2026 : anciens mercenaires (estime et trait gardés), facultatif.
+                        ["former"] = (ev2, ep) => cp.Former = input.ReadLimitedList(ev2, ep, SavedCompanions.MaxRecruited,
+                            n => $"{n} anciens mercenaires, au plus {SavedCompanions.MaxRecruited}.", (e, ip) =>
+                            {
+                                var r = new SavedCompanionData();
+                                bool rok = input.ReadFields(e, ip, new Dictionary<string, Action<JsonElement, string>>
+                                {
+                                    ["id"] = (ev3, ep3) => r.Id = input.Text(ev3, ep3),
+                                    ["approval"] = (ev3, ep3) => r.Approval = input.Int32(ev3, ep3),
+                                    ["trait"] = (ev3, ep3) => r.Trait = input.NullableText(ev3, ep3),
+                                });
+                                return rok ? r : null;
+                            }),
                     });
                     if (cok) c.Companions = cp;
                 },
@@ -632,7 +645,20 @@ namespace EdS.Data.Json
                         .Append(", \"trait\": ").Append(r.Trait is null ? "null" : "\"" + r.Trait + "\"").Append(", \"down\": ").Append(r.Down ? "true" : "false").Append('}');
                 }
                 b.Append(t.Recruited.Count == 0 ? "]" : "\n      ]").Append(", \"active\": [")
-                    .Append(string.Join(", ", t.Active.Select(a => "\"" + a + "\""))).Append("]}\n");
+                    .Append(string.Join(", ", t.Active.Select(a => "\"" + a + "\""))).Append(']');
+                // Anciens mercenaires (décision de Damien du 15 novembre 2026) : écrits seulement s'il y en a.
+                if (t.Former.Count > 0)
+                {
+                    b.Append(", \"former\": [");
+                    for (int i = 0; i < t.Former.Count; i++)
+                    {
+                        SavedCompanion f = t.Former[i];
+                        b.Append(i == 0 ? "\n" : ",\n").Append("        {\"id\": \"").Append(f.Id).Append("\", \"approval\": ").Append(f.Approval.ToString(CultureInfo.InvariantCulture))
+                            .Append(", \"trait\": ").Append(f.Trait is null ? "null" : "\"" + f.Trait + "\"").Append('}');
+                    }
+                    b.Append("\n      ]");
+                }
+                b.Append("}\n");
             }
             b.Append("    },\n");
         }

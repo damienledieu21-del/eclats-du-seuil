@@ -735,7 +735,22 @@
                         }
                       }
                     },
-                    "active": { "type": "array", "maxItems": 2, "items": { "type": "string" } }
+                    "active": { "type": "array", "maxItems": 2, "items": { "type": "string" } },
+                    "former": {
+                      "type": "array",
+                      "maxItems": 64,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [ "id", "approval", "trait" ],
+                        "properties": {
+                          "id": { "type": "string", "pattern": "^companion\\.[a-z][a-z0-9_]*$", "maxLength": 64 },
+                          "approval": { "type": "integer", "minimum": -100, "maximum": 100 },
+                          "trait": { "anyOf": [ { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, { "type": "null" } ] }
+                        }
+                      },
+                      "description": "Anciens mercenaires renvoyés (décision de Damien du 15 novembre 2026) : estime et trait gardés pour un réembauchage (la jauge de lien repart de 0), rangés par identifiant. Absent quand il n'y en a aucun."
+                    }
                   },
                   "description": "Compagnons (version 20) : places ouvertes (1, puis 2 par la quête de lien), compagnons recrutés rangés par identifiant (jauge de lien, estime, trait d'un mercenaire, hors combat jusqu'à la halte), actifs dans l'ordre des places. Absent quand le personnage n'a recruté personne."
                 }

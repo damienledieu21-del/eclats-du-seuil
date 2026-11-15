@@ -87,6 +87,13 @@ namespace EdS.Data.Allies
                 if (sheet.RandomTrait != (c.Trait != null)) problems.Add($"« {c.Id} » : trait {(sheet.RandomTrait ? "manquant" : "en trop")}.");
                 if (c.Trait != null && catalog.Trait(c.Trait) is null) problems.Add($"« {c.Id} » : trait inconnu « {c.Trait} ».");
             }
+            foreach (SavedCompanion f in roster.Former)
+            {
+                if (!catalog.TryGet(f.Id, out CompanionSheet sheet)) { problems.Add($"ancien mercenaire inconnu « {f.Id} »."); continue; }
+                if (sheet.Kind != CompanionKind.Mercenary) problems.Add($"« {f.Id} » renvoyé, mais ce n'est pas un mercenaire.");
+                if (sheet.RandomTrait != (f.Trait != null)) problems.Add($"« {f.Id} » : trait {(sheet.RandomTrait ? "manquant" : "en trop")}.");
+                if (f.Trait != null && catalog.Trait(f.Trait) is null) problems.Add($"« {f.Id} » : trait inconnu « {f.Trait} ».");
+            }
             return problems;
         }
 
@@ -144,20 +151,27 @@ namespace EdS.Data.Allies
                 if (context.Money < cost) return RosterResult.Refused("notEnoughMoney", roster);
             }
             else if (!context.Available) return RosterResult.Refused("notAvailable", roster);
-            string? trait = sheet.RandomTrait ? DrawTrait(catalog, sheet.Id, context.Seed) : null;
-            var recruited = roster.Recruited.Append(new SavedCompanion(sheet.Id, 0, 0, trait, false));
+            // Décision de Damien du 15 novembre 2026 : un mercenaire renvoyé puis réembauché garde son estime et son trait (jauge à 0).
+            SavedCompanion? former = roster.FindFormer(sheet.Id);
+            string? trait = former != null ? former.Trait : sheet.RandomTrait ? DrawTrait(catalog, sheet.Id, context.Seed) : null;
+            var recruited = roster.Recruited.Append(new SavedCompanion(sheet.Id, 0, former?.Approval ?? 0, trait, false));
             IEnumerable<string> active = roster.Active.Count < roster.Slots ? roster.Active.Append(sheet.Id) : roster.Active;
-            return RosterResult.Ok(new SavedCompanions(roster.Slots, recruited, active), cost);
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, recruited, active, roster.Former.Where(f => f.Id != sheet.Id)), cost);
         }
 
-        /// <summary>Renvoyer un mercenaire (un héros ou une bête reste : leur histoire continue) ; il quitte sa place.</summary>
+        /// <summary>
+        /// Renvoyer un mercenaire (un héros ou une bête reste : leur histoire continue) ; il quitte sa place. Il garde son estime et son trait
+        /// parmi les anciens mercenaires (décision de Damien du 15 novembre 2026) ; sa jauge de lien revient à 0.
+        /// </summary>
         public static RosterResult Dismiss(CompanionCatalog catalog, SavedCompanions roster, string companionId)
         {
             if (catalog is null) throw new ArgumentNullException(nameof(catalog));
             if (roster is null) throw new ArgumentNullException(nameof(roster));
             if (roster.Find(companionId) is null) return RosterResult.Refused("notRecruited", roster);
             if (!catalog.TryGet(companionId, out CompanionSheet sheet) || sheet.Kind != CompanionKind.Mercenary) return RosterResult.Refused("notMercenary", roster);
-            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Where(c => c.Id != companionId), roster.Active.Where(a => a != companionId)));
+            SavedCompanion leaving = roster.Find(companionId)!;
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Where(c => c.Id != companionId), roster.Active.Where(a => a != companionId),
+                roster.Former.Append(new SavedCompanion(leaving.Id, 0, leaving.Approval, leaving.Trait, false))));
         }
 
         /// <summary>Choisir les compagnons actifs, dans l'ordre des places : recrutés, distincts, au plus les places ouvertes.</summary>
@@ -168,7 +182,7 @@ namespace EdS.Data.Allies
             if (active.Count > roster.Slots) return RosterResult.Refused("noFreeSlot", roster);
             if (active.Distinct(StringComparer.Ordinal).Count() != active.Count) return RosterResult.Refused("duplicate", roster);
             if (active.Any(a => roster.Find(a) is null)) return RosterResult.Refused("notRecruited", roster);
-            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited, active));
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited, active, roster.Former));
         }
 
         /// <summary>
@@ -184,7 +198,7 @@ namespace EdS.Data.Allies
             if (roster.Slots >= catalog.Slots.Max) return RosterResult.Refused("allSlotsOpen", roster);
             if (!BondQuestDone(catalog, story)) return RosterResult.Refused("bondQuestNotDone", roster);
             if (characterLevel < catalog.Slots.SecondSlotLevel) return RosterResult.Refused("levelTooLow", roster);
-            return RosterResult.Ok(new SavedCompanions(roster.Slots + 1, roster.Recruited, roster.Active));
+            return RosterResult.Ok(new SavedCompanions(roster.Slots + 1, roster.Recruited, roster.Active, roster.Former));
         }
 
         /// <summary>
@@ -234,7 +248,7 @@ namespace EdS.Data.Allies
                 .GroupBy(o => o.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => (g.Last().Bond, g.Last().Fallen), StringComparer.Ordinal);
             var recruited = roster.Recruited.Select(c => byId.TryGetValue(c.Id, out var o)
                 ? c.With(bond: Math.Max(0, Math.Min(SavedCompanion.MaxBond, o.Bond)), down: c.Down || o.Fallen) : c);
-            return new SavedCompanions(roster.Slots, recruited, roster.Active);
+            return new SavedCompanions(roster.Slots, recruited, roster.Active, roster.Former);
         }
 
         /// <summary>Halte au feu de camp : chaque compagnon hors combat se relève ; chaque compagnon actif gagne le lien d'une halte (borné).</summary>
@@ -244,7 +258,7 @@ namespace EdS.Data.Allies
             if (roster is null) throw new ArgumentNullException(nameof(roster));
             var recruited = roster.Recruited.Select(c => c.With(
                 bond: roster.Active.Contains(c.Id) ? Math.Min(SavedCompanion.MaxBond, c.Bond + catalog.Bond.CampGain) : c.Bond, down: false));
-            return new SavedCompanions(roster.Slots, recruited, roster.Active);
+            return new SavedCompanions(roster.Slots, recruited, roster.Active, roster.Former);
         }
 
         /// <summary>Un choix du joueur que le compagnon aime (delta positif) ou déteste (négatif) : estime bornée à [−100, 100].</summary>
@@ -253,7 +267,7 @@ namespace EdS.Data.Allies
             if (roster is null) throw new ArgumentNullException(nameof(roster));
             if (roster.Find(companionId) is not { } c) return RosterResult.Refused("notRecruited", roster);
             long approval = Math.Max(-SavedCompanion.MaxApproval, Math.Min(SavedCompanion.MaxApproval, (long)c.Approval + delta));
-            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Select(x => x.Id == companionId ? x.With(approval: (int)approval) : x), roster.Active));
+            return RosterResult.Ok(new SavedCompanions(roster.Slots, roster.Recruited.Select(x => x.Id == companionId ? x.With(approval: (int)approval) : x), roster.Active, roster.Former));
         }
     }
 }
