@@ -1477,8 +1477,12 @@ namespace EdS.Runtime
         }
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>
+        /// <remarks>
+        /// Saisons (revue Codex de la PR #168) : tous les nœuds, de saison ou non, toujours dans le même ordre (l'affichage les crée une fois) ;
+        /// un nœud hors de sa saison est absent (<see cref="WorldMarker.Present"/> faux) et jamais prêt, il revient quand sa saison arrive.
+        /// </remarks>
         public IReadOnlyList<WorldMarker> Nodes() => World.InStoryZone
-            ? _crafting.Nodes.Where(n => World.NodeInSeason(n.Id)).Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.IsNodeReady(n.Id))).ToList()
+            ? _crafting.Nodes.Select(n => new WorldMarker(n.Id, ItemName(n.Item), n.Position, n.Profession, World.IsNodeReady(n.Id), World.NodeInSeason(n.Id))).ToList()
             : (IReadOnlyList<WorldMarker>)Array.Empty<WorldMarker>();
 
         public IReadOnlyList<WorldMarker> SafePoints() => _zone.SafePoints.Where(s => !World.IsSecret(s.Id)).Select(s => new WorldMarker(s.Id, s.Name, s.Position)).ToList();   // V2.7 : la planque secrète reste cachée

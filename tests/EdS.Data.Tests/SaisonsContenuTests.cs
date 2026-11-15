@@ -301,13 +301,20 @@ public class SaisonsContenuTests
             a.DrainMessages();
             a.Advance(0.05);
             Assert.Null(a.CivilSeason);
-            Assert.DoesNotContain(a.Nodes(), n => n.Id == "primevere_ruisseau");   // sans date : rien de saisonnier
+            Assert.False(a.Nodes().Single(n => n.Id == "primevere_ruisseau").Present);   // sans date : rien de saisonnier
+            Assert.False(a.Nodes().Single(n => n.Id == "primevere_ruisseau").Ready);
+            IReadOnlyList<string> order = a.Nodes().Select(n => n.Id).ToList();   // revue Codex de la PR #168 : toujours tous, dans le même ordre
             Assert.Contains(a.Nodes(), n => n.Id == "herbes_village");
             a.SetCivilTime(Utc(2027, 4, 2));
             Assert.Equal(Season.Spring, a.CivilSeason!.Value.Season);
             Assert.Equal(WardrobeSeason.Spring, a.WardrobeSeason);
-            Assert.Contains(a.Nodes(), n => n.Id == "primevere_ruisseau");
-            Assert.DoesNotContain(a.Nodes(), n => n.Id == "cepes_foret");
+            Assert.True(a.Nodes().Single(n => n.Id == "primevere_ruisseau").Present);
+            Assert.True(a.Nodes().Single(n => n.Id == "primevere_ruisseau").Ready);
+            Assert.False(a.Nodes().Single(n => n.Id == "cepes_foret").Present);
+            Assert.Equal(order, a.Nodes().Select(n => n.Id));
+            // L'affichage crée les repères une fois, puis montre ceux qui sont prêts : un nœud qui entre dans sa saison apparaît.
+            string markers = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "WorldMarkers.cs"));
+            Assert.Contains("m.Body.SetActive(node.Ready);   // saisons", markers, StringComparison.Ordinal);
             Assert.Equal(SeasonLook.Of(a.CivilSeason!.Value), a.SeasonShown);
             a.SetCivilTime(Utc(2027, 1, 20));
             Assert.Equal(WardrobeSeason.Winter, a.WardrobeSeason);

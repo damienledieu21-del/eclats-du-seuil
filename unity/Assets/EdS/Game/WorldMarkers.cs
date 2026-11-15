@@ -159,6 +159,7 @@ namespace EdS.Game
                     herb ? 0.25f : 0.35f, herb ? new Color(0.35f, 0.8f, 0.35f) : new Color(0.55f, 0.55f, 0.6f), 1.2f, NodeLabelRange);
                 if (herb) Herb(m);
                 else Ore(m);
+                m.Body.SetActive(node.Ready);   // saisons : un nœud hors de sa saison (jamais prêt) reste caché jusqu'à sa saison
                 _nodes[node.Id] = m;
             }
             foreach (WorldMarker safe in adventure.SafePoints())
