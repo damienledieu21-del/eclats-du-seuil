@@ -26,9 +26,10 @@
         10,
         11,
         12,
-        13
+        13,
+        14
       ],
-      "description": "Version 13 (sous-lot V2.10) : fêtes du bourg (section festivals ; festivals d'un PNJ de passage ; conditions festival et contestOpen ; effet contest). Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
+      "description": "Version 14 (fêtes aux vraies dates) : date facultative d'une fête annuelle (month, day, days de 7 à 14). Version 13 (sous-lot V2.10) : fêtes du bourg (section festivals ; festivals d'un PNJ de passage ; conditions festival et contestOpen ; effet contest). Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
     },
     "kind": {
       "const": "story"
@@ -454,7 +455,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "name", "from", "to", "guests"],
+            "required": ["id", "name"],
             "properties": {
               "id": { "type": "string", "pattern": "^festival(\\.[a-z0-9_]+)+$", "maxLength": 200 },
               "name": { "type": "string", "pattern": "^text(\\.[a-z0-9_]+)+$" },
@@ -463,6 +464,8 @@
               "day": { "type": "integer", "minimum": 0, "maximum": 27 },
               "from": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
               "to": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+              "calendarOnly": { "type": "boolean", "description": "Fêtes aux vraies dates (schéma 14) : fête du calendrier seulement (nom et date ; contenu à écrire) : ni weekday, season, day, from, to, rounds, ni invités ; elle s'affiche au calendrier sans mettre le monde en fête. Les autres fêtes demandent from, to et guests (validateur)." },
+              "date": { "type": "object", "additionalProperties": false, "required": ["month", "day", "days"], "properties": { "month": { "type": "integer", "minimum": 1, "maximum": 12 }, "day": { "type": "integer", "minimum": 1, "maximum": 31 }, "days": { "type": "integer", "minimum": 7, "maximum": 14 } }, "description": "Fêtes aux vraies dates (schéma 14) : premier jour réel et durée en jours réels (heure de Paris), utilisés quand l'hôte fournit la date ; sinon, le jour du calendrier du jeu." },
               "rounds": { "type": "integer", "minimum": 1, "maximum": 8, "description": "Tours de la rotation des concours (le tour d'une occurrence : son rang modulo ce nombre ; condition contestRound)." },
               "guests": {
                 "type": "array",

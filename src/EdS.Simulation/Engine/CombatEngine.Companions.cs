@@ -137,6 +137,7 @@ namespace EdS.Simulation.Engine
         private string? CheckDuo(long tick, Fighter actor, CombatCommand command)
         {
             if (actor.Out) return OutReason(actor, "actor");
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2) : on descend pour combattre (un ordre reste possible en selle)
             if (BlockReason(actor, StatusBlocks.Skills) is { } blocked) return blocked;
             if (tick < actor.GlobalCooldownReadyTick) return "globalCooldown";
             Fighter companion = _byId[command.Companion!];

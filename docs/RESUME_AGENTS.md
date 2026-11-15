@@ -34,20 +34,20 @@
 | Sauvegarde | v20 (v19 et antérieures encore lues ; troupe des compagnons `character.companions`, compagnons ; v19 : point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
 | Règles (contenu) | 0.18.0 (écrit « 0.18.0-provisoire » ; esquive `combat.dodge`) | `data/v0/rules.json` (`contentVersion`) |
-| Moteur | 0.33.0 (compagnons, décisions de Damien du 14 novembre 2026 ; 0.32.0 : esquive) | `CombatEngine.cs` (`Version`) |
-| Journal | 27 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 21 (`companion`, actions `order` et `duo`, compagnons ; 20 : action `dodge`, esquive ; 19 : aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
-| Instantané (format) | 8 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
+| Moteur | 0.34.0 (monture, sous-lot V2.28d (2) ; 0.33.0 : compagnons ; 0.32.0 : esquive) | `CombatEngine.cs` (`Version`) |
+| Journal | 28 (monture ; 27 : compagnons) | `CombatEngine.cs` (`LogFormatVersion`) |
+| Scénarios (schéma) | 22 (`mount`, `carried.mounted`, actions `mount` et `dismount`, monture ; 21 : `companion`, actions `order` et `duo`, compagnons ; 20 : action `dodge`, esquive ; 19 : aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
+| Instantané (format) | 9 (`mounted`, monture ; 8 : compagnons) | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
 | Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
-| Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
+| Histoire (schéma) | v14 (v4 à v13 encore lues ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Compagnons (catalogue) | 1 | `Allies/CompanionModel.cs` (`CompanionValidator`) |
 | Saisons (schéma) | v1 (Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
 | Boss du monde (schéma) | v2 (Grand Solitaire : scénario des formes, une forme par phase ; v1 encore lue ; `EdS.World/WorldBoss.cs`, `WorldSession.WorldBoss.cs`) | `WorldBosses/WorldBossModel.cs` (`CurrentSchemaVersion`) |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
-Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0` (compagnons : `scenarios/espace_compagnon.json`, `EdS.Simulation/Engine/CombatEngine.Companions.cs` ; la précédente, `reference-0.32.0-…-regles-0.18.0`, esquive, reste figée).
+Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0` (monture : `scenarios/espace_monture.json`, `EdS.Simulation/Engine/CombatEngine.Mount.cs` ; la précédente, `reference-0.33.0-…`, compagnons : `scenarios/espace_compagnon.json`, `EdS.Simulation/Engine/CombatEngine.Companions.cs` ; la précédente, `reference-0.32.0-…-regles-0.18.0`, esquive, reste figée).
 À ne pas confondre : version du contenu des règles (0.18.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 17).
 
 ## 5. Où chercher

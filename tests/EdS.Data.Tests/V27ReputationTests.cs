@@ -67,13 +67,13 @@ public class V27ReputationTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal((13, 11), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema11));
+        Assert.Equal((14, 11), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema11));
         Assert.Equal((20, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
-        Assert.Equal((13, "0.26.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
+        Assert.Equal((14, "0.27.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
         Assert.Equal(new[] { "villagers", "guard", "rangers", "bandits" }, Reputations.Factions);
         Assert.Equal(7, Reputations.Tiers.Count);
         // Ni le moteur, ni le journal, ni les scénarios.
-        Assert.Equal(("0.33.0", 27, 21), (EdS.Simulation.Engine.CombatEngine.Version, EdS.Simulation.Engine.CombatEngine.LogFormatVersion, EdS.Data.Scenarios.ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.34.0", 28, 22), (EdS.Simulation.Engine.CombatEngine.Version, EdS.Simulation.Engine.CombatEngine.LogFormatVersion, EdS.Data.Scenarios.ScenarioValidator.CurrentSchemaVersion));
     }
 
     // --- Données livrées -----------------------------------------------------------------------------------------------
