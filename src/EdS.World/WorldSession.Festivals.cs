@@ -63,7 +63,18 @@ namespace EdS.World
             if (CivilUtcSeconds is null || !(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return best;
             foreach (Festival f in n.Book.Festivals)
             {
-                if (!f.HasDate || f.CalendarOnly || f.Weekday != null) continue;
+                if (f.CalendarOnly || f.Weekday != null) continue;
+                if (!f.HasDate)
+                {
+                    // Revue Codex de la PR #174 (3e tour) : une fête annuelle sans date garde le calendrier du jeu, même quand l'heure civile est
+                    // fournie : son prochain jour du monde, calculé directement dans l'année du jeu.
+                    if (!(f.Season is int season) || !(f.Day is int d)) continue;
+                    long today0 = Zone.Time.Day;
+                    long next = checked(today0 - today0 % WorldCalendar.DaysPerYear + season * WorldCalendar.DaysPerSeason + d);
+                    if (next < today0 || (next == today0 && Zone.Time.Minute >= f.To)) next = checked(next + WorldCalendar.DaysPerYear);
+                    if ((best is null || next < best.Value.Day) && FestivalOnDay(next) == f) best = (f, next);
+                    continue;
+                }
                 CivilDate start = f.StartIn(today.Year);
                 if (start <= today) start = f.StartIn(today.Year + 1);
                 if (!(FirstDayOn(start) is long day) || (best != null && best.Value.Day <= day)) continue;

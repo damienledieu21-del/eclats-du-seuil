@@ -397,4 +397,38 @@ public class FetesVraiesDatesTests
         Assert.DoesNotContain(w.EventRegistry, x => x.Id.Contains(longId));
         Assert.False(w.ContestOpen(longId, 100));   // le jour du monde du concours sert alors
     }
+
+    [Fact]
+    public void Revue_Codex_fete_annuelle_sans_date_trouvee_meme_avec_l_heure_civile_et_sans_marche()
+    {
+        // Ni marché de la semaine (devenus fêtes annuelles du jeu), ni date réelle pour les moissons : la prochaine fête est quand même trouvée,
+        // au jour du calendrier du jeu, comme la recherche jour par jour.
+        StoryLoadResult r = Mutated(root =>
+        {
+            JsonObject m = Fest(root, "festival.marche");
+            m.Remove("weekday");
+            m["season"] = "summer";
+            m["day"] = 3;
+            JsonObject w = Fest(root, "festival.marche_mercredi");
+            w.Remove("weekday");
+            w["season"] = "summer";
+            w["day"] = 9;
+            Fest(root, "festival.moissons").Remove("date");
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+        ZoneDefinition zone = Zone();
+        foreach ((long day, long utc) in new[] { (3L, Utc(2027, 1, 10, 10)), (40L, Utc(2027, 2, 1, 10)), (120L, Utc(2027, 9, 30, 10)) })
+        {
+            var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
+            var w = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 12 * 60) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
+                Progression, ItemsCatalog, r.Story!);
+            w.Step();
+            w.SetCivilTime(utc);
+            (string?, long?) expected = (null, null);
+            for (long d = day; d < day + 3000; d++)
+                if (w.FestivalOnDay(d) is Festival f && (d > day || 12 * 60 < f.To)) { expected = (f.Id, d); break; }
+            Assert.NotNull(expected.Item1);
+            Assert.Equal(expected, (w.NextFestival()?.Festival.Id, w.NextFestival()?.Day));
+        }
+    }
 }
