@@ -128,6 +128,21 @@ public class V228c4QueteValleeTests
     }
 
     [Fact]
+    public void Replique_d_Aldric_prioritaire_meme_avec_ses_quetes_en_cours()
+    {
+        // Revue Codex de la PR #179 : parler à Aldric finit la quête ; ses indications passent donc avant ses autres répliques (flèches,
+        // garde de nuit en cours).
+        Assert.Equal("v228_vallee", Book(Zone()).Dialogue("dialogue.archer_garde").Entries[0].Node);
+        var story = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress>
+        {
+            [Mission] = new QuestProgress(QuestProgress.Done),
+            [Vallee] = new QuestProgress("aldric"),
+            ["quest.fleches_perdues"] = new QuestProgress("fleches"),
+        });
+        Say(Open(Archer, Hero(story)), "npc.archer_garde", "v228_vallee");
+    }
+
+    [Fact]
     public void Sauvegarde_a_l_etape_d_Aldric_reprise()
     {
         var story = new SavedStory(new[] { "fact.traces.recit" }, new Dictionary<string, QuestProgress>

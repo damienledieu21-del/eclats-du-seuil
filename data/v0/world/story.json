@@ -13584,6 +13584,16 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.passages_de_la_vallee",
+                "step": "aldric"
+              }
+            ],
+            "node": "v228_vallee"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.garde_de_nuit",
                 "step": "nuit"
               },
@@ -13654,16 +13664,6 @@
               }
             ],
             "node": "en_cours"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questAt",
-                "id": "quest.passages_de_la_vallee",
-                "step": "aldric"
-              }
-            ],
-            "node": "v228_vallee"
           },
           {
             "conditions": [
