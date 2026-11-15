@@ -14,16 +14,17 @@ namespace EdS.Data.Json
     {
         public static string PathIn(string dataDirectory) => System.IO.Path.Combine(dataDirectory, "world", "companions.json");
 
-        public static CompanionLoadResult ReadFile(string path)
+        /// <param name="story">Histoire du monde : la quête de lien doit y exister ; null : non vérifiée.</param>
+        public static CompanionLoadResult ReadFile(string path, EdS.Data.Story.StoryBook? story = null)
         {
             var report = new ValidationReport();
-            return CompanionValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), report);
+            return CompanionValidator.Validate(ReadDocument(JsonInput.ReadFile(path, report), report), report, story);
         }
 
-        public static CompanionLoadResult Read(string json)
+        public static CompanionLoadResult Read(string json, EdS.Data.Story.StoryBook? story = null)
         {
             var report = new ValidationReport();
-            return CompanionValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), report);
+            return CompanionValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), report, story);
         }
 
         internal static CompanionDocument ReadDocument(byte[]? json, ValidationReport report)
