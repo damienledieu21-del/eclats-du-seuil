@@ -315,7 +315,8 @@ public sealed class V228b3CarteTests : IDisposable
     [Fact]
     public void Vallons_livres_rien_ne_change()
     {
-        // Les Vallons tiennent dans le secteur du cœur : décor et carte de la session (AreaSpace nul), aucune créature d'un autre secteur.
+        // Le cœur des Vallons d'avant la surface étendue (V2.28c) tient dans un secteur : décor et carte de la session (AreaSpace nul), aucune
+        // créature d'un autre secteur.
         WorldSession w = Open(V228bSoloSecteursTests.Vallons(true));
         Assert.True(w.OnSectors);
         Assert.Null(w.AreaSpace);
