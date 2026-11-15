@@ -68,16 +68,18 @@ namespace EdS.Data.Scenarios
         /// est refusée sans migration : le fichier se met à jour à la main. Version 19 (sous-lot V2.28c, surface étendue) : l'aire d'une zone
         /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun. Version 20 (esquive,
         /// décision de Damien du 14 novembre 2026) : action <c>dodge</c> d'un personnage d'un combat positionné, <c>direction</c> facultative
-        /// (vers l'arrière sans elle).
+        /// (vers l'arrière sans elle). Version 21 : réservée aux compagnons (PR #169). Version 22 (sous-lot V2.28d (2), monture) :
+        /// <c>mount</c> facultatif sur un personnage d'un combat positionné (<c>speed</c> en m/s, obligatoire), <c>carried.mounted</c>
+        /// facultatif (arrivée en selle, avec une monture), actions <c>mount</c> et <c>dismount</c> d'un personnage qui a une monture.
         /// </summary>
-        public const int CurrentSchemaVersion = 20;
+        public const int CurrentSchemaVersion = 22;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
         /// <summary>Champs propres à chaque type de combattant ; un champ d'un autre type est refusé.</summary>
         private static readonly Dictionary<string, string[]> TypeFields = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment", "carried" },
+            ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment", "carried", "mount" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
             ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior", "carried" },
         };
@@ -90,6 +92,7 @@ namespace EdS.Data.Scenarios
             "gear" => c.Gear != null,
             "consumables" => c.Consumables != null,
             "shield" => c.Shield != null,
+            "mount" => c.Mount != null,
             "equipment" => c.Equipment != null,
             "armor" => c.Armor != null,
             "magicResistance" => c.MagicResistance != null,
@@ -112,7 +115,7 @@ namespace EdS.Data.Scenarios
         /// <summary>Sous-lot V2.26 (schéma 18) : état emporté du fichier (bornes vérifiées par la validation du combat, avec chemin).</summary>
         private static CarriedState? Carried(CarriedData? c) => c is null ? null : new CarriedState(c.Health, c.Endurance, c.EnduranceRegenMs ?? 0,
             c.Resonance ?? 0, c.RampartCharges ?? 0, c.GlobalCooldownMs ?? 0,
-            c.Cooldowns?.Select(k => new KeyValuePair<string, long>(k.Key, k.Value ?? 0)), c.ConsumableCooldownMs ?? 0);
+            c.Cooldowns?.Select(k => new KeyValuePair<string, long>(k.Key, k.Value ?? 0)), c.ConsumableCooldownMs ?? 0, c.Mounted == true);
 
         public static ScenarioLoadResult Validate(ScenarioDocument document, GameData data, ValidationReport? report = null) => Validate(document, data, report, area: false);
 
@@ -190,7 +193,8 @@ namespace EdS.Data.Scenarios
                     combatants.Add(new CharacterSetup(c.Id!, c.Team!, loaded.Definition, build, c.Initiative!.Value, placement, c.ArrivalMs, Gear(c.Gear),
                         c.Consumables?.Select(x => new ConsumableSetup(x!.Id!, x.Heal!.Value, x.Charges!.Value, x.CooldownMs!.Value)),
                         c.Shield is { } shield ? new ShieldGuard(shield.DamageReduction!.Value, shield.CostPerBlock!.Value, shield.ParryWindowMs!.Value) : null,
-                        c.Equipment?.Select(e => Equipment.EquipmentEffectShape.Build(e!)), Carried(c.Carried)));
+                        c.Equipment?.Select(e => Equipment.EquipmentEffectShape.Build(e!)), Carried(c.Carried),
+                        c.Mount is { Speed: { } mountSpeed } ? new MountSetup(mountSpeed) : null));   // sous-lot V2.28d (2)
                 }
                 else if (c.Type == "assailant")
                 {
@@ -377,6 +381,7 @@ namespace EdS.Data.Scenarios
                             });
                         // Sous-lot V1.2 : garde du bouclier, trois valeurs présentes ; leurs bornes (combat.shield des règles) sont vérifiées par la
                         // validation du combat.
+                        if (c.Mount is { } mount) Present(mount.Speed, path + ".mount.speed", "vitesse de la monture en m/s");   // sous-lot V2.28d (2)
                         if (c.Shield is { } shield)
                         {
                             Present(shield.DamageReduction, path + ".shield." + ShieldGuard.DamageReductionId, "part des dégâts bloquée, de 0 à 1");

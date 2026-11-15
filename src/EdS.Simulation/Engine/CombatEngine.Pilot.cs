@@ -119,6 +119,12 @@ namespace EdS.Simulation.Engine
         /// <summary>Esquive : personnage présent et vivant d'un combat positionné, pas bloqué dans son déplacement (sans tenir compte de la garde, de la recharge ni de l'endurance).</summary>
         public bool CanDodge { get; internal set; }
 
+        /// <summary>Sous-lot V2.28d (2) : en selle (vitesse de la monture, aucune action de combat).</summary>
+        public bool Mounted { get; internal set; }
+
+        /// <summary>Sous-lot V2.28d (2) : vitesse de la monture du personnage (m/s), null sans monture.</summary>
+        public Fixed? MountSpeed { get; internal set; }
+
         /// <summary>
         /// Esquive (relecture indépendante de la PR #164) : une esquive serait admise à ce tick hors garde et hors mur : <see cref="CanDodge"/>,
         /// recharge passée et endurance suffisante (le mur, qui dépend de la direction, reste jugé par le moteur).
@@ -352,6 +358,9 @@ namespace EdS.Simulation.Engine
                 }
                 view.CanDodge = !f.Out && _spatial && !Blocked(StatusBlocks.Movement);
                 view.DodgeAvailable = view.CanDodge && tick >= DodgeReadyTick(f) && f.Endurance >= _rules.DodgeEnduranceCost;
+                view.Mounted = f.Mounted;   // sous-lot V2.28d (2)
+                view.MountSpeed = f.Character?.Mount?.Speed;
+                if (f.Mounted) view.CanCast = view.CanGuard = view.CanParry = view.CanDodge = view.DodgeAvailable = false;
             }
             if (f.Body is { } body)
             {
@@ -448,6 +457,13 @@ namespace EdS.Simulation.Engine
                         throw new ArgumentException("Direction d'esquive : composantes dans [−1, 1], non toutes deux nulles.", nameof(commands));
                     if (_setup.Space is null) throw new ArgumentException("Esquive dans un combat sans espace (bloc space absent).", nameof(commands));
                     if (_byId[command.Actor].Character is null) throw new ArgumentException($"Esquive de « {command.Actor} », qui n'est pas un personnage.", nameof(commands));
+                }
+                else if (command.Action == CombatAction.Mount || command.Action == CombatAction.Dismount)
+                {
+                    // Sous-lot V2.28d (2) : mêmes contrôles que CombatSetup.Validate.
+                    if (command.Direction != null) throw new ArgumentException("Seul un déplacement (move) ou une esquive (dodge) a une direction.", nameof(commands));
+                    if (_setup.Space is null) throw new ArgumentException("Monture dans un combat sans espace (bloc space absent).", nameof(commands));
+                    if (_byId[command.Actor].Character?.Mount is null) throw new ArgumentException($"« {command.Actor} » n'a pas de monture.", nameof(commands));
                 }
                 else if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
                     throw new ArgumentException(command.Action == CombatAction.Move

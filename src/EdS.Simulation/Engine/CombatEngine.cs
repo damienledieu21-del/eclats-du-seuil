@@ -31,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.32.0";
+        public const string Version = "0.34.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -125,10 +125,15 @@ namespace EdS.Simulation.Engine
         /// <c>direction</c> facultative) ; nouvelles lignes <c>dodgeStarted</c> (<c>actor</c>, <c>command</c>, <c>direction</c>, <c>endurance</c>,
         /// <c>endTick</c>, <c>invulnerableUntilTick</c>, <c>readyTick</c>) et <c>evaded</c> (<c>source</c>, <c>target</c>, <c>skill</c>,
         /// <c>attack</c> : impact ou application esquivé) ; nouveaux refus <c>actorCannotDodge</c>, <c>dodgeCooldown</c>, <c>dodgeBlocked</c> ;
-        /// <c>pushBlocked</c> de raison <c>evaded</c>. Sans esquive : mêmes lignes d'événements qu'au format 25. Un journal d'un autre format
-        /// est refusé au rejeu.
+        /// <c>pushBlocked</c> de raison <c>evaded</c>. Sans esquive : mêmes lignes d'événements qu'au format 25. 27 : réservé aux compagnons
+        /// (PR #169). 28 (sous-lot V2.28d (2), monture) : un personnage peut avoir une monture (en-tête : <c>mount</c> avec <c>speed</c>) et
+        /// arriver en selle (<c>carried.mounted</c>) ; commandes <c>mount</c> et <c>dismount</c> ; nouvelles lignes <c>mounted</c>
+        /// (<c>actor</c>, <c>command</c>, <c>speed</c>) et <c>dismounted</c> (<c>actor</c>, <c>command</c>) ; nouveaux refus
+        /// <c>actorCannotMount</c>, <c>alreadyMounted</c>, <c>dodgeActive</c>, <c>enemyNear</c>, <c>notMounted</c> et <c>mounted</c> (compétence,
+        /// garde, parade, esquive ou soin en selle). Sans monture : mêmes lignes d'événements qu'au format 26. Un journal d'un autre format est
+        /// refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 26;
+        public const int LogFormatVersion = 28;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -205,6 +210,9 @@ namespace EdS.Simulation.Engine
 
             /// <summary>Esquive : direction unitaire du dernier bond (longueur <c>Planar.Unit</c>).</summary>
             public long DodgeDirectionX, DodgeDirectionZ;
+
+            /// <summary>Sous-lot V2.28d (2) : en selle (vitesse de sa monture, aucune action de combat) ; personnage qui a une monture seulement.</summary>
+            public bool Mounted;
 
             /// <summary>
             /// Altérations actives (lot 7.2), une instance par clé : (altération, source) pour un cumul par source, (altération) sinon ;
@@ -879,6 +887,8 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Consume:   // sous-lot 12.6 : consumed ou refus
                     return Cost.Line;
                 case CombatAction.Dodge:   // esquive : dodgeStarted ou refus
+                case CombatAction.Mount:   // sous-lot V2.28d (2) : mounted ou refus
+                case CombatAction.Dismount:   // dismounted ou refus
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -988,6 +998,19 @@ namespace EdS.Simulation.Engine
                     StartDodge(tick, item, actor, root, dodgeX, dodgeZ);
                     return null;
                 }
+
+                // Sous-lot V2.28d (2) : monter en selle (hors combat) ou descendre ; la vitesse change dès la phase « movement » de ce tick.
+                case CombatAction.Mount:
+                    if (Reject(tick, item, actor, CheckMount(tick, actor))) return null;
+                    actor.Mounted = true;
+                    Emit(tick, CombatPhase.Commands, "mounted", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("speed", actor.Character!.Mount!.Speed));
+                    return null;
+
+                case CombatAction.Dismount:
+                    if (Reject(tick, item, actor, actor.Out ? OutReason(actor, "actor") : actor.Mounted ? null : "notMounted")) return null;
+                    actor.Mounted = false;
+                    Emit(tick, CombatPhase.Commands, "dismounted", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
+                    return null;
 
                 // Sous-lot 12.6 : soin d'un objet emporté, immédiat ; la recharge partagée démarre.
                 case CombatAction.Consume:
@@ -1110,6 +1133,7 @@ namespace EdS.Simulation.Engine
         private string? CheckConsume(long tick, Fighter actor, ConsumableSetup? consumable)
         {
             if (CheckAlive(actor) is { } reason) return reason;
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2) : on descend pour combattre
             if (consumable is null) return "itemNotCarried";
             if (BlockReason(actor, StatusBlocks.Skills) is { } blocked) return blocked;
             if (actor.ConsumableCharges[consumable.Id] <= 0) return "noCharges";
@@ -1121,6 +1145,7 @@ namespace EdS.Simulation.Engine
         private string? CheckGuardStart(long tick, Fighter actor)
         {
             if (CheckAlive(actor) is { } reason) return reason;
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2)
             if (BlockReason(actor, StatusBlocks.Guard) is { } blocked) return blocked;
             if (actor.Guarding) return "guardAlreadyActive";
             return null;
@@ -1129,6 +1154,7 @@ namespace EdS.Simulation.Engine
         private string? CheckParry(long tick, Fighter actor)
         {
             if (CheckAlive(actor) is { } reason) return reason;
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2)
             if (BlockReason(actor, StatusBlocks.Parry) is { } blocked) return blocked;
             if (actor.ParryOpen) return "parryActive";
             if (tick < actor.ParryRecoveryUntilTick) return "parryRecovery";
@@ -1139,6 +1165,7 @@ namespace EdS.Simulation.Engine
         private string? CheckSkill(long tick, Fighter actor, SkillDefinition? skill, Fighter? target, int resonanceCost)
         {
             if (CheckAlive(actor) is { } reason) return reason;
+            if (actor.Mounted) return "mounted";   // sous-lot V2.28d (2)
             if (BlockReason(actor, StatusBlocks.Skills) is { } blocked) return blocked;
             if (skill is null || !actor.Castable.Contains(skill.Id)) return "skillNotEquipped";
             if (skill.Combat is not { } combat) return "skillNotImplemented";

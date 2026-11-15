@@ -39,7 +39,7 @@ internal static class V24Numbers
 public class V24AnimauxMoteurTests
 {
     private const string Betes = "espace_betes";
-    private const string Latest = "reference-0.32.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.27.0-contenu-0.6.0-regles-0.15.0";
+    private const string Latest = "reference-0.34.0-contenu-0.6.0-regles-0.18.0", Previous = "reference-0.27.0-contenu-0.6.0-regles-0.15.0";
 
     private static string Fixture(string set, string name) => Path.Combine(AppContext.BaseDirectory, "Fixtures", set, name + ".jsonl");
 
@@ -69,7 +69,7 @@ public class V24AnimauxMoteurTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.34.0", 28, 22, 9), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire", "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, DataFormat.ProvisionalRulesContentVersion, ShippedData.Rules.ContentVersion));
         Assert.Equal(Fixed.Parse("0.5"), ShippedData.Rules.Combat.InfightingDamageReduction);
         Assert.Equal((14, 8, 7), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.PreviousSchemaVersion, ZoneValidator.OldestSchemaVersion));
@@ -104,7 +104,7 @@ public class V24AnimauxMoteurTests
         Assert.Equal(ReplayStatus.Refused, outcome.Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
         JsonElement before = JsonDocument.Parse(old[0]).RootElement, after = JsonDocument.Parse(latest[0]).RootElement;
-        Assert.Equal((21, "0.27.0", 26, "0.32.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
+        Assert.Equal((21, "0.27.0", 28, "0.34.0"), (before.GetProperty("formatVersion").GetInt32(), before.GetProperty("engineVersion").GetString(),
             after.GetProperty("formatVersion").GetInt32(), after.GetProperty("engineVersion").GetString()));
     }
 
@@ -195,7 +195,7 @@ public class V24AnimauxMoteurTests
         Assert.True(engine.View("cerf").HurtByCharacter);
         Assert.False(engine.View("sanglier").HurtByCharacter);   // mordu par le loup seulement
         CombatSnapshot snapshot = engine.Snapshot();
-        Assert.StartsWith("{\"snapshot\":7,", snapshot.Text);
+        Assert.StartsWith("{\"snapshot\":9,", snapshot.Text);
         Assert.Contains("\"hurtByCharacter\":true", snapshot.Text);
         CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, new MemoryCombatLog());
         Assert.True(resumed.View("cerf").HurtByCharacter);
@@ -260,7 +260,7 @@ public class V24AnimauxMoteurTests
     public void Schemas_JSON_du_sous_lot()
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
-        Assert.Equal(20, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(22, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.NotNull(scenario["properties"]!["data"]!["properties"]!["truces"]);
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // esquive : 17

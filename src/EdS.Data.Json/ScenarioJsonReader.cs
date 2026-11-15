@@ -105,6 +105,7 @@ namespace EdS.Data.Json
                 ["consumables"] = Track("consumables", (v, p) => c.Consumables = input.ReadLimitedList(v, p, CombatSetup.MaxConsumables,   // 12.6 (schéma 12)
                     n => $"{n} objets de soin, au plus {CombatSetup.MaxConsumables}.", (e, ip) => ReadConsumable(input, e, ip))),
                 ["shield"] = Track("shield", (v, p) => c.Shield = ReadShield(input, v, p)),   // sous-lot V1.2 (schéma 13)
+                ["mount"] = Track("mount", (v, p) => c.Mount = ReadMount(input, v, p)),   // sous-lot V2.28d (2) (schéma 22)
                 ["equipment"] = Track("equipment", (v, p) => c.Equipment = input.ReadLimitedList(v, p, EquipmentEffect.MaxPerCharacter,   // V1.3 (schéma 14)
                     n => $"{n} sources d'effets, au plus {EquipmentEffect.MaxPerCharacter}.", (e, ip) => EquipmentEffectJsonReader.Read(input, e, ip, withId: true))),
                 ["armor"] = Track("armor", (v, p) => c.Armor = input.Decimal(v, p)),
@@ -142,6 +143,7 @@ namespace EdS.Data.Json
                 ["globalCooldownMs"] = (v, p) => c.GlobalCooldownMs = input.Int64(v, p),
                 ["cooldowns"] = (v, p) => c.Cooldowns = ReadIntegerMap(input, v, p),
                 ["consumableCooldownMs"] = (v, p) => c.ConsumableCooldownMs = input.Int64(v, p),
+                ["mounted"] = (v, p) => c.Mounted = input.Boolean(v, p),   // sous-lot V2.28d (2) (schéma 22)
             });
             return ok ? c : null;
         }
@@ -328,6 +330,17 @@ namespace EdS.Data.Json
         }
 
         /// <summary>Sous-lot V1.2 : garde du bouclier porté par un personnage.</summary>
+        /// <summary>Sous-lot V2.28d (2) (schéma 22) : monture d'un personnage.</summary>
+        private static MountData? ReadMount(JsonInput input, JsonElement element, string path)
+        {
+            var m = new MountData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["speed"] = (v, p) => m.Speed = input.Decimal(v, p),
+            });
+            return ok ? m : null;
+        }
+
         private static ShieldData? ReadShield(JsonInput input, JsonElement element, string path)
         {
             var s = new ShieldData();

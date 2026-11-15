@@ -84,6 +84,20 @@ namespace EdS.Domain.Combat
     }
 
     /// <summary>Personnage joué : sa classe et son build (attributs explicites, talents, compétences équipées).</summary>
+    /// <summary>
+    /// Sous-lot V2.28d (2) : monture d'un personnage. Seule la vitesse compte pour le moteur (en selle, elle remplace la vitesse de marche) ;
+    /// dans [<see cref="Space.SpaceLimits.MinSpeed"/>, <see cref="Space.SpaceLimits.MaxSpeed"/>] m/s (validé par <see cref="CombatSetup"/>).
+    /// </summary>
+    public sealed class MountSetup
+    {
+        public Fixed Speed { get; }
+
+        public MountSetup(Fixed speed) => Speed = speed;
+
+        /// <summary>Vitesse du cheval des Vallons (plan de la grande carte : 13 m/s, la région traversée en 5 minutes).</summary>
+        public static Fixed HorseSpeed => Fixed.FromInt(13);
+    }
+
     public sealed class CharacterSetup : CombatantSetup
     {
         public ClassDefinition Class { get; }
@@ -110,11 +124,18 @@ namespace EdS.Domain.Combat
         /// </summary>
         public IReadOnlyList<EquipmentEffect> Equipment { get; }
 
+        /// <summary>
+        /// Sous-lot V2.28d (2) : monture du personnage (le cheval, 13 m/s), qu'il peut monter hors combat (<see cref="CombatAction.Mount"/>) ;
+        /// null sans monture.
+        /// </summary>
+        public MountSetup? Mount { get; }
+
         public CharacterSetup(string id, string team, ClassDefinition definition, CharacterBuild build, int initiative = 0, CombatantPlacement? placement = null,
             long? arrivalMs = null, GearBonus? gear = null, IEnumerable<ConsumableSetup>? consumables = null, ShieldGuard? shield = null,
-            IEnumerable<EquipmentEffect>? equipment = null, CarriedState? carried = null)
+            IEnumerable<EquipmentEffect>? equipment = null, CarriedState? carried = null, MountSetup? mount = null)
             : base(id, team, initiative, placement, arrivalMs, carried)
         {
+            Mount = mount;
             Class = definition ?? throw new ArgumentNullException(nameof(definition));
             Build = build ?? throw new ArgumentNullException(nameof(build));
             Gear = gear ?? GearBonus.None;
@@ -619,6 +640,16 @@ namespace EdS.Domain.Combat
         /// d'endurance et recharge (<c>combat.dodge</c> des règles). Personnage d'un combat positionné seulement.
         /// </summary>
         Dodge = 10,
+
+        /// <summary>
+        /// Sous-lot V2.28d (2), monture : le personnage monte en selle (sa monture, <see cref="CharacterSetup.Mount"/>, le porte à sa vitesse).
+        /// Hors combat seulement : refusé si un combattant d'une autre équipe est à moins de <see cref="CombatRules.MountSafeDistance"/>.
+        /// En selle, ni compétence, ni garde, ni parade, ni esquive, ni soin (refus <c>mounted</c>) : on descend pour combattre.
+        /// </summary>
+        Mount = 11,
+
+        /// <summary>Sous-lot V2.28d (2), monture : le personnage descend de sa monture.</summary>
+        Dismount = 12,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -635,6 +666,8 @@ namespace EdS.Domain.Combat
         public const string Consume = "consume";
         public const string Gear = "gear";
         public const string Dodge = "dodge";
+        public const string Mount = "mount";
+        public const string Dismount = "dismount";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -643,7 +676,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge, Mount, Dismount }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -658,6 +691,8 @@ namespace EdS.Domain.Combat
             CombatAction.Consume => Consume,
             CombatAction.Gear => Gear,
             CombatAction.Dodge => Dodge,
+            CombatAction.Mount => Mount,
+            CombatAction.Dismount => Dismount,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -671,6 +706,8 @@ namespace EdS.Domain.Combat
                 case Select: action = CombatAction.Select; return true;
                 case Leave: action = CombatAction.Leave; return true;
                 case Dodge: action = CombatAction.Dodge; return true;
+                case Mount: action = CombatAction.Mount; return true;
+                case Dismount: action = CombatAction.Dismount; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -1191,6 +1228,16 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation("esquive dans un combat sans espace (bloc space absent).", path + ".action"));
                     if (ids.TryGetValue(command.Actor, out int dodger) && !(Combatants[dodger] is CharacterSetup))
                         errors.Add(new RuleViolation("seul un personnage esquive.", path + ".actor"));
+                }
+                else if (command.Action == CombatAction.Mount || command.Action == CombatAction.Dismount)
+                {
+                    // Sous-lot V2.28d (2) : monture d'un personnage d'un combat positionné ; monter demande une monture.
+                    if (command.Direction != null)
+                        errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
+                    if (Space is null)
+                        errors.Add(new RuleViolation("monture dans un combat sans espace (bloc space absent).", path + ".action"));
+                    if (ids.TryGetValue(command.Actor, out int rider) && !(Combatants[rider] is CharacterSetup { Mount: not null }))
+                        errors.Add(new RuleViolation("seul un personnage qui a une monture monte ou descend.", path + ".actor"));
                 }
                 else if (command.Direction != null)
                     errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
@@ -1898,6 +1945,9 @@ namespace EdS.Domain.Combat
                     }
                     long consumableSpan = character.Consumables.Select(x => x.CooldownMs).DefaultIfEmpty(0).Max();
                     Duration(carried.ConsumableCooldownMs, consumableSpan, "consumableCooldownMs");
+                    // Sous-lot V2.28d (2) : arriver en selle demande une monture.
+                    if (carried.Mounted && character.Mount is null)
+                        errors.Add(new RuleViolation("arrivée en selle d'un personnage sans monture.", cp + ".mounted"));
                     break;
                 }
                 default:
@@ -1908,6 +1958,13 @@ namespace EdS.Domain.Combat
 
         private void ValidateCharacter(CharacterSetup character, string path, long tick, List<RuleViolation> errors)
         {
+            // Sous-lot V2.28d (2) : une monture, dans un combat positionné, à une vitesse dans les bornes techniques.
+            if (character.Mount is { } mount)
+            {
+                if (Space is null) errors.Add(new RuleViolation("monture dans un combat sans espace (bloc space absent).", path + ".mount"));
+                if (mount.Speed < SpaceLimits.MinSpeed || mount.Speed > SpaceLimits.MaxSpeed)
+                    errors.Add(new RuleViolation($"vitesse de la monture hors de [{SpaceLimits.MinSpeed}, {SpaceLimits.MaxSpeed}] m/s (borne technique).", path + ".mount.speed"));
+            }
             IReadOnlyList<RuleViolation> classViolations = character.Class.Validate(Progression);
             foreach (RuleViolation v in classViolations)
                 errors.Add(new RuleViolation(v.Kind, $"classe « {character.Class.Id} » incohérente : {v.Message}", v.Fields.Select(f => path + ".class:" + f).ToArray()));
