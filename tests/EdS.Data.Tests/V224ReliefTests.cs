@@ -141,7 +141,7 @@ public class V224ReliefTests : IDisposable
             foreach ((double dx, double dz) in new[] { (0.0, 0.0), (1.5, 0.0), (0.0, -1.5), (-1.2, 1.2) })
                 Assert.True(shore ? r.Slope(x + dx, z + dz) <= 0.15 : r.Slope(x + dx, z + dz) < 1e-9, "place dégagée en pente en " + x + ", " + z);
         }
-        Assert.InRange(nearWater, 0, 5);   // cuisine et boulangerie : le four de Firmin et le feu de camp de Gaspard, deux lieux de plus
+        Assert.InRange(nearWater, 0, 5);   // pêche : les nœuds d'appâts (vers au gué du moulin, mouches au bord du lac) sont au bord de l'eau
     }
 
     /// <summary>
