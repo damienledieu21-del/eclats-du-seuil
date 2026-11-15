@@ -2523,10 +2523,9 @@ namespace EdS.Runtime
             return -1;
         }
 
-        /// <summary>Ce qu'habille un obstacle du décor : arbres, blocs de la carrière et pierres du Seuil. Null : il garde sa forme.</summary>
         /// <summary>
         /// Sous-lot V2.28c (surface étendue) : obstacle habillé d'une paroi de rochers le long de son emprise : le front de taille de la carrière,
-        /// l'éboulement au nord du cœur et les falaises (collines, cascade).
+        /// l'éboulement au nord du cœur et les falaises (collines, cascade, crête).
         /// </summary>
         public static bool RockFace(string id)
         {
@@ -2535,6 +2534,41 @@ namespace EdS.Runtime
                 || key.StartsWith("falaise", StringComparison.Ordinal);
         }
 
+        /// <summary>Sous-lot V2.28c : écart (m) entre deux rochers d'une paroi (<see cref="RockFace"/>), le long de son grand côté.</summary>
+        public const double RockFaceStep = 3.2;
+
+        /// <summary>
+        /// Relecture indépendante de la PR #167 : les rochers d'une paroi (<see cref="RockFace"/>, un tous les <see cref="RockFaceStep"/> m le
+        /// long du grand côté de l'emprise) qui tombent à moins de <paramref name="margin"/> m du rectangle donné (l'espace ou la carte du
+        /// moment) : une falaise de 1,3 km ne pose que ceux de la fenêtre. Mêmes rangs et mêmes places d'une fenêtre à l'autre (aucune couture).
+        /// </summary>
+        public static IEnumerable<(int Index, int Count, double X, double Z, double Depth, bool AlongX)> RockFaceSpots(double x0, double z0, double x1, double z1,
+            double clipMinX, double clipMinZ, double clipMaxX, double clipMaxZ, double margin)
+        {
+            bool alongX = x1 - x0 >= z1 - z0;
+            double length = alongX ? x1 - x0 : z1 - z0, depth = alongX ? z1 - z0 : x1 - x0;
+            int count = Math.Max(1, (int)Math.Ceiling(length / RockFaceStep));
+            for (int i = 0; i < count; i++)
+            {
+                double s = (i + 0.5) / count * length;
+                double x = alongX ? x0 + s : (x0 + x1) / 2, z = alongX ? (z0 + z1) / 2 : z0 + s;
+                if (x < clipMinX - margin || x > clipMaxX + margin || z < clipMinZ - margin || z > clipMaxZ + margin) continue;
+                yield return (i, count, x, z, depth, alongX);
+            }
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #167 : gorge et ravins de la surface étendue (« gorge… », « ravin… ») : obstacles bas, ni eau ni haie,
+        /// rendus en creux de roche sombre (vue : prisme bas ; carte : roche ombrée). Leur vrai creux dans le terrain viendra avec le décor par
+        /// cases (V2.28d).
+        /// </summary>
+        public static bool Ravine(string id)
+        {
+            string key = Key(id);
+            return key.StartsWith("gorge", StringComparison.Ordinal) || key.StartsWith("ravin", StringComparison.Ordinal);
+        }
+
+        /// <summary>Ce qu'habille un obstacle du décor : arbres, blocs de la carrière et pierres du Seuil. Null : il garde sa forme.</summary>
         public static StyleSlot? ForObstacle(string id)
         {
             string key = Key(id);
