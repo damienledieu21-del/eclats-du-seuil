@@ -53,7 +53,7 @@ public class V226SecteursReferenceTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));   // esquive (V2.26 : 0.31.0, 25, 18, 6)
+        Assert.Equal(("0.33.0", 27, 21, 8), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));   // esquive (V2.26 : 0.31.0, 25, 18, 6)
         JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement;
         Assert.Equal(ScenarioValidator.CurrentSchemaVersion, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
