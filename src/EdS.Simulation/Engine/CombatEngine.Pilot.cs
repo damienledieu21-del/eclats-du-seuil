@@ -389,6 +389,8 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && status.UntilTick > tick && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
             if (taunt?.Source is { } source) return source;
+            // Revue Codex de la PR #169 : la cible d'un compagnon suit son ordre, comme en combat (aucune sous « revenir »).
+            if (assailant.Companion != null) return CompanionTarget(assailant)?.Id;
             AssailantSetup setup = assailant.Assailant!;
             // Sous-lot 11.5 : cible de scénario là et vivante, sinon l'ennemi le plus proche.
             if (setup.Behavior is null || (setup.Target != null && !_byId[setup.Target].Out)) return setup.Target;
@@ -439,8 +441,13 @@ namespace EdS.Simulation.Engine
                 // Sous-lot 11.4c : sélection seulement dans un combat positionné ; une cible seulement pour une compétence ou une sélection.
                 if (command.Action == CombatAction.Select && _setup.Space is null)
                     throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
-                if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select)
+                if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select
+                    && command.Action != CombatAction.Order && command.Action != CombatAction.Duo)
                     throw new ArgumentException("Une garde, une parade ou un déplacement n'a pas de cible.", nameof(commands));
+                // Compagnons : ordre et attaque à deux, mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).
+                if (CombatSetup.CheckCompanionCommand(command, id => _byId.TryGetValue(id, out Fighter? known) ? known.Setup : null, _setup.Space != null)
+                    is { Count: > 0 } companionProblems)
+                    throw new ArgumentException($"Commande de compagnon refusée : {companionProblems[0].Message}", nameof(commands));
                 if (command.Action == CombatAction.Dodge)
                 {
                     // Esquive : mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).

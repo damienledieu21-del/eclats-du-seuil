@@ -68,9 +68,13 @@ namespace EdS.Data.Scenarios
         /// est refusée sans migration : le fichier se met à jour à la main. Version 19 (sous-lot V2.28c, surface étendue) : l'aire d'une zone
         /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun. Version 20 (esquive,
         /// décision de Damien du 14 novembre 2026) : action <c>dodge</c> d'un personnage d'un combat positionné, <c>direction</c> facultative
-        /// (vers l'arrière sans elle).
+        /// (vers l'arrière sans elle). Version 21 (compagnons, décisions de Damien du 14 novembre 2026) : <c>companion</c> facultatif sur un
+        /// assaillant (<c>owner</c>, <c>bond</c>, <c>followDistance</c>, <c>leash</c>, <c>bondWindowMs</c>, <c>coordinatedGain</c>,
+        /// <c>protectGain</c> obligatoires ; <c>duo</c> facultatif : <c>id</c>, <c>rawDamage</c>, <c>damageType</c>, <c>telegraphMs</c>,
+        /// <c>recoveryMs</c>, <c>range</c>) ; actions <c>order</c> (<c>companion</c>, <c>order</c>, <c>target</c> pour « target ») et
+        /// <c>duo</c> (<c>companion</c>, <c>target</c>).
         /// </summary>
-        public const int CurrentSchemaVersion = 20;
+        public const int CurrentSchemaVersion = 21;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -79,7 +83,7 @@ namespace EdS.Data.Scenarios
         {
             ["character"] = new[] { "class", "build", "gear", "consumables", "shield", "equipment", "carried" },
             ["dummy"] = new[] { "armor", "magicResistance", "statusResistance" },
-            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior", "carried" },
+            ["assailant"] = new[] { "health", "armor", "magicResistance", "statusResistance", "target", "firstAttackMs", "intervalMs", "attacks", "triggers", "speed", "behavior", "carried", "companion" },
         };
 
         /// <summary>Le champ propre à un type est-il renseigné dans l'objet (indépendamment du lecteur JSON) ? Une cible nulle vaut absente.</summary>
@@ -103,6 +107,7 @@ namespace EdS.Data.Scenarios
             "speed" => c.Speed != null,
             "behavior" => c.Behavior != null,
             "carried" => c.Carried != null,   // sous-lot V2.26 (schéma 18)
+            "companion" => c.Companion != null,   // compagnons (schéma 21)
             _ => false,
         };
 
@@ -203,7 +208,7 @@ namespace EdS.Data.Scenarios
                         c.FirstAttackMs!.Value, c.IntervalMs!.Value, attacks, c.Initiative!.Value, c.StatusResistance ?? Fixed.Zero,
                         Triggers.TriggerShape.Build(c.Triggers), c.Health, placement, c.ArrivalMs,
                         c.Behavior is { } b ? new AssailantBehavior(b.MaxRange!.Value, b.MinRange, b.AggroRange, b.Encircle ?? false, b.Pack ?? true, b.Flee ?? false,
-                            b.Wander is { } w ? BuildWander(w) : null) : null, Carried(c.Carried)));
+                            b.Wander is { } w ? BuildWander(w) : null) : null, Carried(c.Carried), Companion(c.Companion)));
                 }
                 else
                 {
@@ -213,6 +218,10 @@ namespace EdS.Data.Scenarios
             }
             var commands = scenario.Commands!.Select(c => c!.Action == CombatActionIds.Consume
                 ? CombatCommand.Use(c.AtMs!.Value, c.Actor!, c.Item!)   // sous-lot 12.6
+                : c.Action == CombatActionIds.Order   // compagnons (schéma 21)
+                ? CombatCommand.GiveOrder(c.AtMs!.Value, c.Actor!, c.Companion!, ParseOrder(c.Order!), c.Target)
+                : c.Action == CombatActionIds.Duo
+                ? CombatCommand.DuoAttack(c.AtMs!.Value, c.Actor!, c.Companion!, c.Target!)
                 : c.Action == CombatActionIds.Gear
                 ? CombatCommand.SetGear(c.AtMs!.Value, c.Actor!, Gear(c.Gear))   // sous-lot V1.8d
                 : !CombatActionIds.TryParseNamed(c.Action, out CombatAction action)
@@ -236,6 +245,14 @@ namespace EdS.Data.Scenarios
         }
 
         private static GroundVector Point(PointData p) => new GroundVector(p.X!.Value, p.Z!.Value);
+
+        /// <summary>Compagnons (schéma 21) : ordre déjà vérifié par la forme.</summary>
+        private static CompanionOrder ParseOrder(string id) => CompanionOrderIds.TryParse(id, out CompanionOrder order) ? order : throw new ArgumentException(id);
+
+        /// <summary>Compagnons (schéma 21) : champs présents et entiers bornés vérifiés par la forme ; le reste par la validation du combat.</summary>
+        private static CompanionSetup? Companion(CompanionData? c) => c is null ? null : new CompanionSetup(c.Owner!, (int)c.Bond!.Value,
+            c.FollowDistance!.Value, c.Leash!.Value, c.BondWindowMs!.Value, (int)c.CoordinatedGain!.Value, (int)c.ProtectGain!.Value,
+            c.Duo is { } d ? new CompanionDuo(d.Id!, d.RawDamage!.Value, ClassValidator.DamageTypes[d.DamageType!], d.TelegraphMs!.Value, d.RecoveryMs!.Value, d.Range!.Value) : null);
 
         private sealed class ShapeChecker
         {
@@ -407,9 +424,37 @@ namespace EdS.Data.Scenarios
                         Items(c.Attacks, path + ".attacks", "liste des attaques, jouées dans l'ordre puis en boucle", CheckAttack);
                         if (c.Behavior is { } behavior) Present(behavior.MaxRange, path + ".behavior.maxRange", "distance maximale à la cible, en mètres");   // sous-lot 11.5
                         if (c.Behavior?.Wander is { } wander) CheckWander(wander, path + ".behavior.wander");   // sous-lot V2.4.1
+                        if (c.Companion is { } companion) CheckCompanion(companion, path + ".companion");   // compagnons (schéma 21)
                         Triggers.TriggerShape.Check(c.Triggers, path + ".triggers", _report);
                         break;
                 }
+            }
+
+            /// <summary>Compagnons (schéma 21) : champs obligatoires, entiers dans [0, 100] (jauge et gains), attaque à deux complète.</summary>
+            private void CheckCompanion(CompanionData c, string path)
+            {
+                Present(c.Owner, path + ".owner", "identifiant de l'Éveillé (personnage de la même équipe)");
+                void Small(long? value, string field, string description)
+                {
+                    if (Present(value, $"{path}.{field}", description) && (value < 0 || value > CompanionSetup.BondMax) && !_report.HasErrorAtOrAbove($"{path}.{field}"))
+                        _report.Add($"{path}.{field}", ValidationCode.OutOfRange, $"{value} hors de [0, {CompanionSetup.BondMax}].");
+                }
+                Small(c.Bond, "bond", "jauge de lien au départ, de 0 à 100");
+                Present(c.FollowDistance, path + ".followDistance", "distance de suite, en mètres");
+                Present(c.Leash, path + ".leash", "laisse, en mètres");
+                Present(c.BondWindowMs, path + ".bondWindowMs", "fenêtre de coordination, en millisecondes");
+                Small(c.CoordinatedGain, "coordinatedGain", "gain d'un coup coordonné, de 0 à 100");
+                Small(c.ProtectGain, "protectGain", "gain d'un coup qui protège l'Éveillé, de 0 à 100");
+                if (c.Duo is not { } d) return;
+                string at = path + ".duo";
+                Present(d.Id, at + ".id", "identifiant de l'attaque à deux");
+                Present(d.RawDamage, at + ".rawDamage", "dégâts bruts entiers, avant défense");
+                if (Present(d.DamageType, at + ".damageType", "physique ou magique") && !ClassValidator.DamageTypes.ContainsKey(d.DamageType!))
+                    _report.Add(at + ".damageType", ValidationCode.UnknownReference,
+                        $"valeur inconnue « {d.DamageType} » ; valeurs possibles : {string.Join(", ", ClassValidator.DamageTypes.Keys)}.");
+                Present(d.TelegraphMs, at + ".telegraphMs", "annonce, en millisecondes");
+                Present(d.RecoveryMs, at + ".recoveryMs", "récupération depuis le départ, en millisecondes");
+                Present(d.Range, at + ".range", "portée commune, en mètres");
             }
 
             private void CheckAttack(AttackData a, string path)
@@ -455,7 +500,31 @@ namespace EdS.Data.Scenarios
             {
                 Present(c.AtMs, path + ".atMs", "instant en millisecondes");
                 Present(c.Actor, path + ".actor", "identifiant du combattant");
-                string actions = string.Join(", ", CombatActionIds.Named.Concat(new[] { CombatActionIds.Consume, CombatActionIds.Gear }));
+                string actions = string.Join(", ", CombatActionIds.Named.Concat(new[] { CombatActionIds.Consume, CombatActionIds.Gear, CombatActionIds.Order, CombatActionIds.Duo }));
+                // Compagnons (schéma 21) : un ordre nomme son compagnon et un ordre connu (cible pour « target ») ; une attaque à deux, son
+                // compagnon et sa cible ; rien d'autre. Les références et la cohérence sont jugées par la validation du combat.
+                if (c.Action == CombatActionIds.Order || c.Action == CombatActionIds.Duo)
+                {
+                    Present(c.Companion, path + ".companion", "identifiant du compagnon");
+                    if (c.Action == CombatActionIds.Order)
+                    {
+                        if (Present(c.Order, path + ".order", string.Join(", ", CompanionOrderIds.All)) && !CompanionOrderIds.TryParse(c.Order, out _))
+                            _report.Add(path + ".order", ValidationCode.UnknownReference,
+                                $"ordre inconnu « {c.Order} » ; valeurs possibles : {string.Join(", ", CompanionOrderIds.All)}.");
+                    }
+                    else
+                    {
+                        Present(c.Target, path + ".target", "cible commune");
+                        if (c.Present.Contains("order")) _report.Add(path + ".order", ValidationCode.InvalidValue, "une attaque à deux ne porte pas d'ordre.");
+                    }
+                    foreach (string field in new[] { "skill", "direction", "backward", "item", "gear" }.Where(c.Present.Contains))
+                        _report.Add($"{path}.{field}", ValidationCode.InvalidValue, "un ordre ou une attaque à deux ne prend que son compagnon, son ordre et sa cible.");
+                    return;
+                }
+                if (c.Present.Contains("companion"))
+                    _report.Add(path + ".companion", ValidationCode.InvalidValue, "seul un ordre (action order) ou une attaque à deux (action duo) nomme un compagnon.");
+                if (c.Present.Contains("order"))
+                    _report.Add(path + ".order", ValidationCode.InvalidValue, "seul un ordre (action order) nomme un ordre.");
                 if (!c.Present.Contains("action"))
                 {
                     Present(c.Skill, path + ".skill", "identifiant de compétence, ou champ action (" + actions + ")");
