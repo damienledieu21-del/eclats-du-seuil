@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.18.0-provisoire",
+  "contentVersion": "0.19.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -691,6 +691,32 @@
           -600
         ],
         "minLevel": 8
+      },
+      {
+        "id": "four_de_firmin",
+        "name": "Four de la boulangerie de Firmin",
+        "min": [
+          -45.5,
+          0.5
+        ],
+        "max": [
+          -41.5,
+          4
+        ],
+        "minLevel": 1
+      },
+      {
+        "id": "feu_de_camp",
+        "name": "Feu de camp de Gaspard",
+        "min": [
+          24.5,
+          -16
+        ],
+        "max": [
+          28,
+          -11
+        ],
+        "minLevel": 1
       }
     ],
     "populations": [

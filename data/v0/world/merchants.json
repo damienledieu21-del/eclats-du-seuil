@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "values": [
       {
@@ -508,6 +508,66 @@
       {
         "item": "item.mouche_de_mai",
         "value": 2
+      },
+      {
+        "item": "item.farine_de_ble",
+        "value": 4
+      },
+      {
+        "item": "item.farine_de_seigle",
+        "value": 5
+      },
+      {
+        "item": "item.levain",
+        "value": 6
+      },
+      {
+        "item": "item.beurre_de_baratte",
+        "value": 10
+      },
+      {
+        "item": "item.oeufs_frais",
+        "value": 3
+      },
+      {
+        "item": "item.lait_cru",
+        "value": 3
+      },
+      {
+        "item": "item.sucre_roux",
+        "value": 7
+      },
+      {
+        "item": "item.pomme_du_verger",
+        "value": 3
+      },
+      {
+        "item": "item.pate_feuilletee",
+        "value": 12
+      },
+      {
+        "item": "item.tarte_renversee_aux_pommes",
+        "value": 60
+      },
+      {
+        "item": "item.couronne_des_moissons",
+        "value": 120
+      },
+      {
+        "item": "item.friture_du_lac",
+        "value": 30
+      },
+      {
+        "item": "item.truite_meuniere",
+        "value": 45
+      },
+      {
+        "item": "item.quenelles_de_brochet",
+        "value": 110
+      },
+      {
+        "item": "item.matelote_de_carpe_doree",
+        "value": 260
       }
     ],
     "merchants": [
@@ -741,6 +801,30 @@
             "price": 3,
             "always": false,
             "stock": 30
+          },
+          {
+            "item": "item.farine_de_ble",
+            "price": 6,
+            "always": true,
+            "stock": 60
+          },
+          {
+            "item": "item.farine_de_seigle",
+            "price": 7,
+            "always": true,
+            "stock": 40
+          },
+          {
+            "item": "item.sucre_roux",
+            "price": 10,
+            "always": true,
+            "stock": 30
+          },
+          {
+            "item": "item.oeufs_frais",
+            "price": 4,
+            "always": true,
+            "stock": 36
           }
         ],
         "faction": "villagers",
@@ -1230,6 +1314,18 @@
             "price": 11,
             "always": false,
             "stock": 10
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "price": 14,
+            "always": true,
+            "stock": 20
+          },
+          {
+            "item": "item.lait_cru",
+            "price": 5,
+            "always": true,
+            "stock": 20
           }
         ]
       },
