@@ -104,18 +104,18 @@ public class V18cBonusTests : IDisposable
     public void Catalogue_en_version_7_objets_de_bonus_livres()
     {
         ItemCatalog items = ItemsCatalog;
-        Assert.Equal((7, 7, "0.18.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
+        Assert.Equal((7, 7, "0.19.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal(new[] { 30, 45, 60 }, items.BoonMinutes);
         // La qualité décide de la durée : 30, 45, 60 minutes de jeu, en ticks logiques de 50 ms.
         Assert.Equal((36_000, 54_000, 72_000), (items.BoonTicks(items.Item(Vigueur)), items.BoonTicks(items.Item(Garde)), items.BoonTicks(items.Item(Seuil))));
         Assert.Equal(0, items.BoonTicks(items.Item("item.potion_de_soin")));
         Assert.Equal(BoonKinds.MaxTicks, items.BoonTicks(items.Item(Seuil)));
-        var boons = items.Items.Where(i => i.Type == ItemType.Boon).ToList();
+        var boons = items.Items.Where(i => i.Type == ItemType.Boon && i.Boon != BoonKind.Meal).ToList();   // cuisine et boulangerie : les plats (CuisineBoulangerieTests)
         Assert.Equal(new[] { Pierre, Huile, Vigueur, Garde, Seuil }, boons.Select(i => i.Id));
         Assert.Equal(new BoonKind?[] { BoonKind.Weapon, BoonKind.Weapon, BoonKind.Elixir, BoonKind.Elixir, BoonKind.Elixir }, boons.Select(i => i.Boon));
         Assert.Equal(new[] { ItemQuality.Normal, ItemQuality.Superior, ItemQuality.Normal, ItemQuality.Superior, ItemQuality.Masterwork }, boons.Select(i => i.BoonQuality));
-        // Plats : la cuisine arrive après l'ouverture de l'alpha ; aucun n'est livré.
-        Assert.DoesNotContain(items.Items, i => i.Boon == BoonKind.Meal);
+        // Plats : livrés avec la cuisine et la boulangerie (vague 4, 2e partie) : quatre (CuisineBoulangerieTests).
+        Assert.Equal(4, items.Items.Count(i => i.Boon == BoonKind.Meal));
         // Effets modestes, accordés aux statistiques de l'équipement des premiers niveaux.
         Assert.Equal(new GearBonus(physicalPower: 4), items.Item(Pierre).Bonus);
         Assert.Equal(new GearBonus(physicalPower: 7), items.Item(Huile).Bonus);
@@ -132,11 +132,11 @@ public class V18cBonusTests : IDisposable
     {
         // Choix le plus petit et cohérent : la forge et l'herboristerie (qui fait déjà les potions) existent : des recettes, pas de marchand.
         CraftingBook book = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Vallons, ItemsCatalog).Book!;
-        Assert.Equal((4, "0.7.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((4, "0.8.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         foreach (ItemDefinition boon in ItemsCatalog.Items.Where(i => i.Type == ItemType.Boon))
         {
             Recipe r = Assert.Single(book.Recipes, x => x.Output.Item == boon.Id);
-            Assert.Equal(boon.Boon == BoonKind.Weapon ? "forge" : "herboristerie", r.Profession);
+            Assert.Equal(boon.Boon == BoonKind.Weapon ? "forge" : boon.Boon == BoonKind.Meal ? "cuisine" : "herboristerie", r.Profession);   // cuisine et boulangerie : les plats
             Assert.False(r.Quality);   // pas de petit jeu : la qualité est celle de l'objet
             Assert.NotEqual(r.Name, Texts.Get(r.Name));   // nom traduit (une clé absente se rend elle-même)
         }
@@ -253,8 +253,9 @@ public class V18cBonusTests : IDisposable
     {
         ItemCatalog items = WithMeal;
         int health = GearBonus.FieldIndex("maxHealth"), endurance = GearBonus.FieldIndex("maxEndurance"), physical = GearBonus.FieldIndex("physicalPower");
-        // Une place par sorte : le plus fort de chaque place (élixir du Seuil 60 PV ; ragoût 6 + élixir du Seuil 10 d'endurance ; huile 7).
-        Assert.Equal((60L, 16L, 7L), (items.BoonBound(health), items.BoonBound(endurance), items.BoonBound(physical)));
+        // Une place par sorte : le plus fort de chaque place (cuisine et boulangerie : matelote 60 PV + élixir du Seuil 60 PV ; matelote 10 + élixir du Seuil 10
+        // d'endurance ; huile 7).
+        Assert.Equal((120L, 20L, 7L), (items.BoonBound(health), items.BoonBound(endurance), items.BoonBound(physical)));
         for (int stat = 0; stat < GearBonus.Fields.Count; stat++)
         {
             (long b, long r, long s) = items.WornBound(stat);

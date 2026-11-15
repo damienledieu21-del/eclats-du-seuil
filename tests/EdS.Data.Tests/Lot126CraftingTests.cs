@@ -255,11 +255,11 @@ public class Lot126CraftingTests
         CraftingLoadResult loaded = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Zone(), Items);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         CraftingBook book = loaded.Book!;
-        Assert.Equal(new[] { "forge", "herboristerie", "minage" }, book.Professions.Select(p => p.Id));
+        Assert.Equal(new[] { "forge", "herboristerie", "minage", "cuisine" }, book.Professions.Select(p => p.Id));
         Assert.Equal((1, 2, 10), (book.LevelFor(39), book.LevelFor(40), book.LevelFor(5000)));
         Assert.Equal(("forge", "forge", 3, "item.ferrure"), (book.Recipe("recipe.ferrure").Profession, book.Recipe("recipe.ferrure").Place,
             book.Recipe("recipe.ferrure").Inputs[0].Count, book.Recipe("recipe.ferrure").Output.Item));
-        Assert.Equal(17, book.Nodes.Count);   // Saisons : quatre nœuds de saison (herbes rares, champignons) ; Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour ; V1.9.7 : deux ronds de chapeaux-de-lune au pré
+        Assert.Equal(18, book.Nodes.Count);   // cuisine : les pommes du verger ; Saisons : quatre nœuds de saison (herbes rares, champignons) ; Vallons agrandis : herbes de la forêt, du lac, du verger ; filons des hautes pierres et de la tour ; V1.9.7 : deux ronds de chapeaux-de-lune au pré
         ItemDefinition potion = Items.Item("item.potion_de_soin");
         Assert.Equal((ItemType.Consumable, 300L, 20_000L, 5), (potion.Type, potion.Heal, potion.CooldownMs, potion.Stack));
         MiniJsonSchema Schema(string name) => MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", name));
@@ -275,7 +275,7 @@ public class Lot126CraftingTests
         Assert.Equal("$.data.xpToLevel[2]", First(Mutated(r => D(r)["xpToLevel"]![2] = 40)));
         Assert.Equal("$.data.professions[1].id", First(Mutated(r => D(r)["professions"]![1]!["id"] = "forge")));
         Assert.Equal("$.data.professions[0].name", First(Mutated(r => D(r)["professions"]![0]!["name"] = "text.inconnu")));
-        Assert.Equal("$.data.recipes[0].profession", First(Mutated(r => D(r)["recipes"]![0]!["profession"] = "cuisine")));
+        Assert.Equal("$.data.recipes[0].profession", First(Mutated(r => D(r)["recipes"]![0]!["profession"] = "couture")));
         Assert.Equal("$.data.recipes[0].place", First(Mutated(r => D(r)["recipes"]![0]!["place"] = "chateau")));
         Assert.Equal("$.data.recipes[0].requiredLevel", First(Mutated(r => D(r)["recipes"]![0]!["requiredLevel"] = 11)));
         Assert.Equal("$.data.recipes[0].inputs[0].item", First(Mutated(r => D(r)["recipes"]![0]!["inputs"]![0]!["item"] = "item.inconnu")));
@@ -394,7 +394,7 @@ public class Lot126CraftingTests
         }
         Refused(Hero(new Dictionary<string, long> { ["minage"] = -5 }));
         Refused(Hero(new Dictionary<string, long> { ["minage"] = long.MaxValue }));
-        Refused(Hero(new Dictionary<string, long> { ["cuisine"] = 10 }));
+        Refused(Hero(new Dictionary<string, long> { ["couture"] = 10 }));
         Refused(Hero().WithStory(new SavedStory(null, new Dictionary<string, QuestProgress> { ["quest.inconnue"] = new QuestProgress("x") })));
         // Au plafond, l'expérience annoncée est celle réellement ajoutée.
         WorldSession capped = Play(Zone(Forge.X, Forge.Z), Hero(new Dictionary<string, long> { ["forge"] = CraftingValidator.MaxXp }, new ItemStack("item.minerai_de_fer", 3)));
@@ -424,6 +424,6 @@ public class Lot126CraftingTests
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("\"forge\": 30", "\"forge\": 0")).Report.Errors[0].Path);
         Assert.Equal("$.data.character.professions.forge", SaveJsonReader.Read(text.Replace("{\"forge\": 30, \"minage\": 24}", "{\"minage\": 24, \"forge\": 30}")).Report.Errors[0].Path);
         // Un métier sauvegardé doit exister dans les données.
-        Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(new Dictionary<string, long> { ["cuisine"] = 5 })));
+        Assert.Throws<ArgumentException>(() => Play(Zone(), Hero(new Dictionary<string, long> { ["couture"] = 5 })));
     }
 }
