@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using EdS.Data.Allies;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Simulation.Randomness;
 
 namespace EdS.World
 {
@@ -18,13 +19,17 @@ namespace EdS.World
 
         /// <summary>
         /// Recruter le compagnon <paramref name="companionId"/> : un mercenaire selon le rang de Guilde et la bourse (sa paie est retirée), un
-        /// héros ou une bête si l'histoire l'a amené (<paramref name="available"/>). Le trait d'un mercenaire est tiré avec le temps du monde
-        /// pour graine. Rend null, ou le motif du refus (rien ne change alors).
+        /// héros ou une bête si l'histoire l'a amené (<paramref name="available"/>). Le trait d'un mercenaire est tiré par un Pcg32
+        /// initialisé par la clé du recrutement (personnage, compagnon, temps du monde). Rend null, ou le motif du refus (rien ne change alors).
         /// </summary>
         public string? RecruitCompanion(CompanionCatalog catalog, string companionId, bool available, List<StoryEvent>? events = null)
         {
             if (catalog is null) throw new ArgumentNullException(nameof(catalog));
-            var context = new RecruitContext(available, Narrative?.GuildRankId, _character.Money, unchecked((ulong)Zone.WorldTick));
+            // Revue Codex de la PR #172 : le trait est tiré par un Pcg32 injecté, initialisé par la clé stable du recrutement (personnage,
+            // compagnon, temps du monde), comme les autres tirages du monde (Loot, Guild, Workshop).
+            string key = string.Concat(_character.Id, "/", companionId, "/", Zone.WorldTick.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var random = new Pcg32(Loot.Fnv1a(key), Loot.Fnv1a("companion:trait"));
+            var context = new RecruitContext(available, Narrative?.GuildRankId, _character.Money, random.NextBounded);
             RosterResult result = CompanionRules.Recruit(catalog, _character.Companions, companionId, context);
             if (!result.Accepted) return result.Reason;
             _character = _character.WithCompanions(result.Roster).WithMoney(checked(_character.Money - result.Cost));
