@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "kind": "worldBosses",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "bosses": [
+      {
+        "id": "grand_solitaire",
+        "name": "text.worldboss.grand_solitaire",
+        "radius": 3,
+        "healthBase": 200000,
+        "healthPerPlayer": 40000,
+        "minPlayers": 5,
+        "maxPlayers": 100,
+        "windowMinutes": 360,
+        "chancePercent": 50,
+        "signsMs": 180000,
+        "limitMs": 3600000,
+        "announceMs": 3000000,
+        "objectiveMs": 30000,
+        "walkSpeed": 1.4,
+        "clearance": 30,
+        "phases": [
+          {
+            "id": "calme",
+            "fromPercent": 100,
+            "attacks": [
+              "balayage",
+              "pietinement"
+            ]
+          },
+          {
+            "id": "blesse",
+            "fromPercent": 70,
+            "attacks": [
+              "balayage",
+              "pietinement",
+              "charge"
+            ]
+          },
+          {
+            "id": "enrage",
+            "fromPercent": 35,
+            "attacks": [
+              "balayage",
+              "pietinement",
+              "charge",
+              "anneau",
+              "eclats"
+            ]
+          }
+        ],
+        "attacks": [
+          {
+            "id": "balayage",
+            "shape": "cone",
+            "range": 14,
+            "angle": 120,
+            "announceMs": 2400,
+            "lockMs": 1000,
+            "recoveryMs": 2500
+          },
+          {
+            "id": "pietinement",
+            "shape": "circles",
+            "radius": 6,
+            "countMin": 2,
+            "countMax": 2,
+            "staggerMs": 800,
+            "anchor": "front",
+            "announceMs": 2800,
+            "lockMs": 1300,
+            "recoveryMs": 3500
+          },
+          {
+            "id": "charge",
+            "shape": "line",
+            "range": 42,
+            "width": 10,
+            "announceMs": 3500,
+            "lockMs": 1500,
+            "recoveryMs": 4000
+          },
+          {
+            "id": "anneau",
+            "shape": "ring",
+            "inner": 9,
+            "outer": 26,
+            "announceMs": 3200,
+            "lockMs": 1500,
+            "recoveryMs": 4000
+          },
+          {
+            "id": "eclats",
+            "shape": "circles",
+            "radius": 4,
+            "countMin": 3,
+            "countMax": 8,
+            "staggerMs": 0,
+            "anchor": "targets",
+            "announceMs": 3000,
+            "lockMs": 1400,
+            "recoveryMs": 3000
+          }
+        ],
+        "sites": [
+          {
+            "id": "pre_des_loups",
+            "kind": "meadow",
+            "position": [
+              -10,
+              30
+            ]
+          },
+          {
+            "id": "plaine_est",
+            "kind": "meadow",
+            "position": [
+              90,
+              -60
+            ]
+          },
+          {
+            "id": "hautes_pierres",
+            "kind": "plateau",
+            "position": [
+              100,
+              40
+            ]
+          },
+          {
+            "id": "champs_du_sud",
+            "kind": "meadow",
+            "position": [
+              -60,
+              -40
+            ]
+          }
+        ],
+        "targets": [
+          {
+            "id": "bourg",
+            "place": "bourg",
+            "route": [
+              [
+                -40,
+                -30
+              ],
+              [
+                -32,
+                -24
+              ]
+            ],
+            "objectives": [
+              {
+                "id": "palissade",
+                "position": [
+                  -30,
+                  -22
+                ]
+              },
+              {
+                "id": "porte",
+                "position": [
+                  -28,
+                  -20
+                ]
+              },
+              {
+                "id": "auvent_du_grenier",
+                "position": [
+                  -26,
+                  -18
+                ]
+              }
+            ]
+          },
+          {
+            "id": "hameau",
+            "place": "hameau",
+            "route": [
+              [
+                70,
+                -50
+              ],
+              [
+                75,
+                -40
+              ]
+            ],
+            "objectives": [
+              {
+                "id": "palissade",
+                "position": [
+                  72,
+                  -36
+                ]
+              },
+              {
+                "id": "porte",
+                "position": [
+                  78,
+                  -32
+                ]
+              },
+              {
+                "id": "auvent_du_grenier",
+                "position": [
+                  84,
+                  -28
+                ]
+              }
+            ]
+          }
+        ],
+        "companionsInCombat": 1,
+        "fallback": [
+          -30,
+          30
+        ],
+        "loot": {
+          "trophy": "item.trophee_des_trois_bornes",
+          "appearance": "item.mantelet_des_trois_bornes",
+          "mount": "item.appel_de_l_aurochs",
+          "mountChanceBasisPoints": 100
+        }
+      }
+    ]
+  }
+}

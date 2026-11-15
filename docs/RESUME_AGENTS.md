@@ -43,6 +43,7 @@
 | Fabrication (schéma) | v4 (`seasons` facultatif sur un nœud : nœuds de saison, saisons du 15 novembre 2026) | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v14 (v4 à v13 encore lues ; fêtes aux vraies dates en v14 ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Saisons (schéma) | v1 (Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
+| Boss du monde (schéma) | v1 (Grand Solitaire : règles et données, `EdS.World/WorldBoss.cs`) | `WorldBosses/WorldBossModel.cs` (`CurrentSchemaVersion`) |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0` (esquive : `scenarios/espace_esquive.json`, `EdS.Simulation/Engine/CombatEngine.Dodge.cs` ; la précédente, `reference-0.31.0-…-regles-0.17.0`, V2.26, reste figée).
