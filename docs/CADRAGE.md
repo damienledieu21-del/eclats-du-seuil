@@ -265,6 +265,18 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 |---|---|---|
 | Dates des saisons | Les saisons changent le **1er mars, le 1er juin, le 1er septembre et le 1er décembre**, à l'heure de Paris (saisons météorologiques, hémisphère Nord), avec une **transition visuelle de 7 jours**. Le **serveur fait foi**. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
 | Glace du lac | Praticable **du 8 décembre à la fin février inclus**, après une première semaine où on la voit se former sans pouvoir y marcher. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
+| Fonte du lac gelé | L'accès à la glace **se ferme un peu avant la fonte** ; les joueurs encore dessus sont **ramenés sur la berge sans rien perdre**. À coder dès que le passage existe sur la carte ; pour l'instant, la règle est consignée. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Récolte de saison | On garde la **repousse rapide** des récoltes de saison : **10 min** au printemps (primevère argentée, sauge de pluie), **2 min** en automne (cèpes, trompettes). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+
+## 7 quinquies. L'âme du jeu (Retenu)
+
+Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session principale. Elle précise le sujet 13 « L'âme du jeu » de la [feuille de route](FEUILLE_DE_ROUTE.md).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Devise du jeu | **« Ce qui est brisé peut encore briller. »**, choisie parmi les six devises du dossier ChatGPT « L'âme du jeu ». | Retenu (Damien, 15 novembre 2026, 9 h 50) |
 
 ## 7 quater. Grande carte des Vallons (Retenu)
 
