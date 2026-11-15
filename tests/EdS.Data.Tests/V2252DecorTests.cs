@@ -500,7 +500,7 @@ public class V2252DecorTests : IDisposable
             }
         string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
         int own = view.IndexOf("OwnPiece(id, points)) return;", StringComparison.Ordinal);
-        Assert.True(own > 0 && own < view.IndexOf("QuarryFace(id, points)) return;", StringComparison.Ordinal)
+        Assert.True(own > 0 && own < view.IndexOf("QuarryFace(id, points, ", StringComparison.Ordinal)
             && own < view.IndexOf("Wave5Role.Menhir", StringComparison.Ordinal), "les modèles de l'atelier avant le front, les menhirs et les rochers faits par le code");
     }
 

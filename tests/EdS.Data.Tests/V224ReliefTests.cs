@@ -60,7 +60,9 @@ public class V224ReliefTests : IDisposable
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
         double high = 0, steep = 0;
-        foreach ((double x, double z) in Grid(map, 2))
+        // V2.28c (3) : dans le cœur (hors de lui, le relief de la région monte : V228c3RegionTests).
+        (double fx0, double fz0, double fx1, double fz1) = r.Settings.RegionFlat;
+        foreach ((double x, double z) in Grid(map, 2).Where(p => p.X >= fx0 && p.X <= fx1 && p.Z >= fz0 && p.Z <= fz1))
         {
             double h = r.Height(x, z);
             Assert.InRange(h, 0, 5);
@@ -69,8 +71,11 @@ public class V224ReliefTests : IDisposable
         }
         Assert.InRange(high, 1.5, 5);   // il y a vraiment des vallons
         Assert.InRange(steep, 0.05, 0.45);   // 24° au plus (talus au nord du front de taille)
-        // Hors de l'aire : collines (et falaises) qui montent, sans dépasser la hauteur du terrain de Unity (40 m, base 3 m).
-        double outside = Enumerable.Range(0, 40).Max(i => r.Height(map.MinX - 40, map.MinZ + i * map.Depth / 40));
+        // Hors de l'aire : collines (et falaises) qui montent, sans dépasser la hauteur du terrain de Unity (40 m, base 3 m ; 420 m depuis le relief de la région, V2.28c (3)).
+        // V2.28c (3) : hors de l'aire entière (la fenêtre est dans la région), sans le relief de la région (V228c3RegionTests), qui s'y ajoute.
+        AdventureMap whole = map.Whole;
+        GroundRelief rw = GroundRelief.For(whole);
+        double outside = Enumerable.Range(0, 40).Max(i => rw.Height(whole.MinX - 40, whole.MinZ + i * whole.Depth / 40) - rw.Region(whole.MinX - 40, whole.MinZ + i * whole.Depth / 40));
         Assert.InRange(outside, 8, 30);
         // Raccord continu au bord de l'aire (les collines partent d'une pente nulle).
         for (double z = map.MinZ; z <= map.MaxZ; z += 5)
@@ -114,7 +119,9 @@ public class V224ReliefTests : IDisposable
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
         double worst = 0;
-        foreach (StyleRoad road in map.Roads)
+        // V2.28c (3) : les routes du cœur (celles de la région : V228c3RegionTests).
+        (double fx0, double fz0, double fx1, double fz1) = r.Settings.RegionFlat;
+        foreach (StyleRoad road in map.Roads.Where(road => road.Points.All(p => p.X >= fx0 && p.X <= fx1 && p.Z >= fz0 && p.Z <= fz1)))
             for (int i = 0; i + 1 < road.Points.Count; i++)
             {
                 (double ax, double az) = road.Points[i];
