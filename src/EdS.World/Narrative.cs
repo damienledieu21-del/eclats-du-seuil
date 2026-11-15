@@ -575,6 +575,27 @@ namespace EdS.World
         public bool IsShunnedBy(string npc) =>
             npc != null && _book.HasNpc(npc) && _book.Npc(npc).Faction is string f && _book.Reputation.Shun.Contains(f) && StandingIndex(f) == 0;
         public bool Knows(string fact) => _facts.Contains(fact);
+
+        /// <summary>A trouvé la découverte <paramref name="discovery"/> (journal des découvertes).</summary>
+        public bool HasDiscovered(string discovery) => _discoveries.Contains(discovery);
+
+        /// <summary>Sous-lot V2.29 (2) : l'histoire a la découverte <paramref name="discovery"/> (journal des découvertes).</summary>
+        public bool HasDiscovery(string discovery) => _book.Discoveries.Any(d => d.Id == discovery);
+
+        /// <summary>
+        /// Sous-lot V2.29 (2) : découverte d'un point de vue, hors dialogue : la découverte au carnet, avec les points de guilde d'une
+        /// découverte. Rend faux, sans rien changer, si elle est déjà faite ou absente de l'histoire (relecture de la PR #185 : jamais
+        /// d'exception au milieu d'un tick ; le point de vue est alors ignoré). L'expérience est donnée par la session du monde.
+        /// </summary>
+        public bool Discover(string discovery, List<StoryEvent> events)
+        {
+            if (events is null) throw new ArgumentNullException(nameof(events));
+            if (!HasDiscovery(discovery) || !_discoveries.Add(discovery)) return false;
+            Revision++;
+            events.Add(new StoryEvent(StoryEventKind.Discovered, discovery));
+            if (_guild != null) Award(_guild.DiscoveryPoints, discovery, events);
+            return true;
+        }
         public bool IsDone(string quest) => _quests.TryGetValue(quest, out var q) && q.Step < 0;
         public bool IsActive(string quest) => _quests.TryGetValue(quest, out var q) && q.Step >= 0;
 

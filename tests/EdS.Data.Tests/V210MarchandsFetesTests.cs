@@ -769,6 +769,7 @@ public class V210MarchandsFetesTests
         // Sous-lot V2.28c : les Vallons couvrent toute la région, la sauvegarde garde le registre des secteurs (version 18), retiré ici.
         var plainNode = System.Text.Json.Nodes.JsonNode.Parse(SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save().WithResume(null)))!;
         plainNode["data"]!.AsObject().Remove("sectors");
+        plainNode["data"]!["character"]!.AsObject().Remove("explored");   // V2.29 (2) : cases explorées en version 23
         plainNode["schemaVersion"] = 15;
         string plain = plainNode.ToJsonString();
         SaveLoadResult old = SaveJsonReader.Read(plain);

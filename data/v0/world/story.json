@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 15,
   "kind": "story",
-  "contentVersion": "0.28.0-provisoire",
+  "contentVersion": "0.29.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -25410,6 +25410,10 @@
       {
         "id": "discovery.traces_griffues",
         "text": "text.discovery.traces_griffues"
+      },
+      {
+        "id": "discovery.point_de_vue_du_sommet",
+        "text": "text.discovery.point_de_vue_du_sommet"
       },
       {
         "id": "discovery.eclats_dans_le_pre",

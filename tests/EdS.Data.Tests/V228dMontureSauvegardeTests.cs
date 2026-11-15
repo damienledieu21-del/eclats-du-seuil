@@ -86,7 +86,7 @@ public class V228dMontureSauvegardeTests : IDisposable
         string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithMount(PlayerCharacters.Horse)));
         SaveLoadResult unknown = SaveJsonReader.Read(text.Replace("\"mount.cheval\"", "\"mount.licorne\""));
         Assert.Contains(unknown.Report.Errors, e => e.Path == "$.data.character.mount");
-        SaveLoadResult early = SaveJsonReader.Read(text.Replace(SaveVersion.Current, "\"schemaVersion\": 21"));
+        SaveLoadResult early = SaveJsonReader.Read(text.Replace(SaveVersion.Current, "\"schemaVersion\": 21"));   // V2.29 (2) : la version courante est 23
         Assert.Contains(early.Report.Errors, e => e.Path == "$.data.character.mount" && e.Message.Contains("version 22"));
         // Une sauvegarde de version 20 sans monture est lue et mise à jour.
         string old = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero())).Replace(SaveVersion.Current, "\"schemaVersion\": 20");

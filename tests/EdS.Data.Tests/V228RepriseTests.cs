@@ -317,7 +317,7 @@ public class V228RepriseTests : IDisposable
         WalkToBourg(a);
         a.Save();
         // La même partie telle qu'une version 18 l'aurait écrite : sans point de reprise.
-        EditSave(data => data.Remove("resume"), version: 18);
+        EditSave(data => { data.Remove("resume"); data["character"]!.AsObject().Remove("explored"); }, version: 18);   // V2.29 (2) : cases explorées en version 23
         Assert.True(SaveStore.Read(SavePath).Save!.Migrated);
         AdventureSession again = Adventure(SavePath);
         Assert.Null(again.SaveProblem);

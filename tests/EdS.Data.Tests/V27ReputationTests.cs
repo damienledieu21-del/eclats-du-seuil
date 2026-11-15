@@ -69,7 +69,7 @@ public class V27ReputationTests
     {
         Assert.Equal((15, 11), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema11));
         Assert.Equal((24, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
-        Assert.Equal((15, "0.28.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
+        Assert.Equal((15, "0.29.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
         Assert.Equal(new[] { "villagers", "guard", "rangers", "bandits" }, Reputations.Factions);
         Assert.Equal(7, Reputations.Tiers.Count);
         // Ni le moteur, ni le journal, ni les scénarios.

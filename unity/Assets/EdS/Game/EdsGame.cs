@@ -468,6 +468,7 @@ namespace EdS.Game
             StyleWorld.SetWeather(null);
             _talentView?.Close();
             PaintedMap.Forget();
+            _book?.ForgetFog();   // relecture de la PR #185 : la texture du brouillard ne survit pas à l'aventure
             _screens.Close();
             _stage?.Reset();   // sous-lot V1.9.8 : décor, sons et ambiance du souvenir rendus
             _touch.Highlight = null;
