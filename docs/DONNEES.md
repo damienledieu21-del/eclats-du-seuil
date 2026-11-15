@@ -308,7 +308,7 @@ Sujet 30 (« brouillard à dissiper ») ; décision de Damien du 15 novembre 202
 - **Sous le brouillard, tout est caché** (décision de Damien du 15 novembre 2026, vers 21 h 15) : sur la grande carte, noms de lieux, créatures, PNJ, points sûrs, portes et ateliers ne s'affichent que sur une case vue (`MapFog.Visible`) ; le joueur et l'objectif de la quête suivie restent.
 - **Robustesse** (relecture de la PR #185) : `SavedCharacter` refuse des cases explorées hors format (`SaveValidator.IsExploredEntry`, zone de 64 caractères au plus) ; une chaîne d'une autre longueur que la grille (région redécoupée : la largeur n'est pas gardée) est ignorée tout entière (`ExploredCells.Discarded`), jamais décalée ; de nouvelles cases vues déclenchent la sauvegarde automatique ; un point de vue dont la découverte manque à l'histoire est ignoré (jamais d'exception pendant un tick) ; l'expérience annoncée est celle réellement ajoutée (au plafond, moins).
 - **Carte** : `MapFog.Rgba` (une texel par case, parchemin presque opaque sur une case jamais vue, transparente sur une case vue) ; Unity la pose, filtrée, sur la grande carte du livre d'aventure (`AdventureBook.RefreshFog`). La petite carte du coin de l'écran n'a pas de brouillard (elle montre les environs, déjà vus).
-- **Contenu** : histoire 0.28.0 (la découverte), textes 0.29.0 (0.28.0 est pris par la pêche, PR #181).
+- **Contenu** : histoire 0.28.0 (la découverte), textes 0.30.0 (0.28.0 : pêche, PR #181 ; 0.29.0 : cuisine, PR #183).
 - **Limites** : un seul point de vue (les autres viendront avec les lieux, § 4.5 du plan : gabarit « point de vue ») ; le tour de caméra du sommet (plan § 6.3) n'est pas fait.
 
 ## Monture dans la partie solo (sous-lot V2.28d (2b))

@@ -1165,6 +1165,31 @@ Vague 4, « la vie à côté du combat » (découpage du 29 octobre 2026, [PLAN_
 
 **Limites** : Unity ne montre pas encore de canne, de bouchon ni de carnet (compilation seulement ; messages de l'aventure) ; pas encore de pêche sous la glace ni de concours de pêche ; les prises ne servent pas encore à la cuisine (PR suivante de la vague 4).
 
+## Cuisine et boulangerie (vague 4 du plan des Vallons, 1re partie)
+
+Vague 4 (2) : un **métier de cuisine** (« Cuisine et boulangerie », `crafting.json`, contenu 0.9.0), sur le modèle de la forge, de l'herboristerie et du minage : expérience et niveaux à part, recettes qu'on tente jusqu'à deux niveaux au-dessus du métier, rien pour le combat. On cuisine en deux postes (réponse de Damien du 15 novembre 2026, vers 15 h 30) : le **four de la boulangerie de Firmin** (lieu `four_de_firmin`, devant la porte de la boulangerie) pour les pains, viennoiseries et pâtisseries, et le **feu de camp** de Gaspard (lieu `feu_de_camp`, près de son poste) pour les poissons et les plats simples. Zone des Vallons en contenu 0.18.0 (deux lieux de plus).
+
+**Ingrédients** (objets 0.19.0, matériaux) : farine de blé et farine de seigle, œufs frais et sucre roux (**épicerie** : 6, 7, 4 et 10 cuivre), beurre de baratte et lait cru (**fromagère** : 14 et 5 cuivre), **pommes du verger** (nœud à cueillir aux vergers, expérience de cuisine), les **poissons de la pêche** ; deux préparations de base : le **levain chef** (nourri à la farine de seigle) et la **pâte feuilletée** (six tours simples), qui servent ensuite.
+
+**Treize recettes** (niveaux 1 à 8) : levain chef, pain de campagne au levain (×3), friture du lac (niveau 1) ; miche de seigle au levain, pâte feuilletée, truite meunière (2) ; croissants au beurre (×4), chaussons aux pommes du verger (3) ; brioche dorée (4) ; tarte renversée aux pommes (5) ; quenelles de brochet (6) ; **couronne des moissons** (pâte à choux, crème au miel de bruyère ; 7) ; matelote de carpe dorée au cidre (8). Pains et viennoiseries sont ceux que vend déjà la boulangerie de Firmin (mêmes objets, mêmes soins).
+
+**Les plats** : les quatre premiers objets de la **place du plat** (prête depuis le sous-lot V1.8c) : friture du lac (normale, +25 PV max), truite meunière (normale, +30 PV, +5 endurance), quenelles de brochet (supérieure, +40 PV, +15 armure), matelote de carpe dorée (chef-d'œuvre, +60 PV, +10 endurance, +10 résistance). Durées : celles des objets de bonus (30, 45, 60 minutes de jeu).
+
+**Suite prévue** (2e partie, retenue par Damien le 15 novembre 2026) : le **concours de pâtisserie** de Firmin : le joueur présente **sa** couronne des moissons ou **sa** tarte renversée, la qualité du plat décide du prix, un concours par fête et par an ; après la fusion des fêtes aux vraies dates (PR #174).
+
+## Cartes à la taverne (vague 4, 3e partie)
+
+Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) § 7 decies), sur la proposition de Claude (PR #187) : le jeu des **Trois Feux**, contre Mathurin et les PNJ de la taverne le soir (`EdS.World.CardMatch` ; cœur seulement, sans dialogue ni interface pour l'instant).
+
+- Paquet de **27 cartes** : trois couleurs (soleil, lune, brume), valeurs 1 à 9, mêlé par `Pcg32` sur une clé stable : **graine secrète du personnage**, personnage, PNJ, jour du monde, numéro de la partie du jour (0 à 2) ; champs texte préfixés de leur longueur. Sans la graine, la donne ne se calcule pas d'avance (relecture indépendante de la PR #187).
+- **Cinq cartes** chacun, **cinq manches** : le joueur pose une carte, le PNJ la sienne **sans voir** celle du joueur, on retourne.
+- Force d'une carte : sa valeur, **+3** si sa couleur l'emporte (le soleil dissipe la brume, la brume voile la lune, la lune éclipse le soleil ; même couleur : rien). La plus forte prend la manche ; égalité : personne. Le plus de manches gagne la partie ; égalité : nulle.
+- Trois manières de PNJ : **prudent** (sa plus faible d'abord), **hardi** (sa plus forte), **rusé** (sa plus forte quand il est mené, sa plus faible sinon).
+- **Mises** : 5, 10 ou 25 cuivre, rendues doublées si l'on gagne ; **au plus 3 parties par PNJ et par jour**. Partie nulle : mise rendue (recommandation de la relecture, à confirmer).
+- **Récompense** : après **10 victoires**, un **jeu de cartes rare** (objet décoratif) et le titre **« As des Trois Feux »**.
+- **Avant les mises** (partie suivante) : graine secrète gardée dans la sauvegarde du personnage, numéro de partie pris dès la mise, partie en cours sauvegardée (quitter = abandon, mise perdue), compteur de victoires ; nouvelle version de la sauvegarde, avec ses tests.
+
+
 ## Sauvegarde
 
 Version 16 depuis le sous-lot V2.10 (stock des marchands `character.stock`, concours des fêtes `character.story.festivals`, tous deux facultatifs, [ci-dessus](#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210)) ; version 15 depuis le sous-lot V2.7 (réputation `character.story.reputation`, [ci-dessus](#réputation-sous-lot-v27)) ; version 14 depuis le sous-lot V2.6 (cicatrices des failles restées ouvertes `character.scars`, [ci-dessus](#le-seuil-qui-grandit-sous-lot-v26)) ; version 13 depuis le sous-lot V2.5 (registre des événements du monde `character.events`, [ci-dessus](#événements-du-monde-sous-lot-v25)) ; version 12 depuis le sous-lot V1.8c (bonus actifs). Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 10 depuis le sous-lot V1.7 (carte d'aventurier `story.guild`, facultative : absente tant que le personnage n'est pas inscrit ; créatures rares déjà vaincues `story.hunted`, facultatif : absent s'il n'y en a aucune) ; version 9 au sous-lot V1.3 (instances d'objets) ; version 8 au sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Les versions 9 et plus anciennes se relisent sans carte (`guild` y est refusé, champ inconnu). Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :
