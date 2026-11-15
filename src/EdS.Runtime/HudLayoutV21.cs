@@ -59,6 +59,9 @@ namespace EdS.Runtime
 
         /// <summary>Revue Codex de la PR #161 : état du monde (événement, cicatrice), sur sa ligne, entre la boussole et les annonces.</summary>
         WorldState,
+
+        /// <summary>Compagnons : panneau du compagnon (nom, ordre, jauge de lien) ; vide sans compagnon.</summary>
+        Companion,
     }
 
     /// <summary>Boutons des commandes au doigt (téléphone), dans l'ordre de priorité de leur rangée.</summary>
@@ -128,6 +131,17 @@ namespace EdS.Runtime
         private bool _phone;
         private HudMode _mode;
         private bool _dodge;
+        private bool _companion;
+        private readonly UiBox[] _companionActions = new UiBox[6];
+
+        /// <summary>Compagnons : le panneau et les six cases (cinq ordres, puis l'attaque à deux) sont disposés.</summary>
+        public bool CompanionShown => _companion;
+
+        /// <summary>
+        /// Compagnons : case <paramref name="index"/> du menu des ordres (0 à 4 : suivre, attendre, cibler, protéger, revenir ; 5 : attaque à
+        /// deux), une rangée sous le panneau du compagnon ; vide sans compagnon.
+        /// </summary>
+        public UiBox CompanionAction(int index) => _companion && index >= 0 && index < _companionActions.Length ? _companionActions[index] : default;
 
         /// <summary>Change à chaque nouvelle disposition (format, zone sûre, mode) : l'affichage ne replace ses éléments qu'alors.</summary>
         public int Version { get; private set; }
@@ -212,9 +226,9 @@ namespace EdS.Runtime
         /// Refait la disposition pour un canevas de <paramref name="width"/> × <paramref name="height"/>, la zone sûre <paramref name="safe"/>,
         /// commandes au doigt ou non, et le mode de jeu. Rien ne change (ni la version) si rien n'a changé.
         /// </summary>
-        public void Update(float width, float height, UiInsets safe, bool phone, HudMode mode, bool dodge = false)
+        public void Update(float width, float height, UiInsets safe, bool phone, HudMode mode, bool dodge = false, bool companion = false)
         {
-            if (width == _width && height == _height && phone == _phone && mode == _mode && dodge == _dodge && safe.Left == _safe.Left && safe.Top == _safe.Top
+            if (width == _width && height == _height && phone == _phone && mode == _mode && dodge == _dodge && companion == _companion && safe.Left == _safe.Left && safe.Top == _safe.Top
                 && safe.Right == _safe.Right && safe.Bottom == _safe.Bottom) return;
             if (!(width > 0f) || !(height > 0f)) throw new ArgumentOutOfRangeException(nameof(width), "canevas vide.");
             _width = width;
@@ -223,6 +237,8 @@ namespace EdS.Runtime
             _phone = phone;
             _mode = mode;
             _dodge = dodge;
+            _companion = companion;
+            Array.Clear(_companionActions, 0, _companionActions.Length);
             Version++;
             Safe = new UiBox(safe.Left, safe.Top, Math.Max(1f, width - safe.Left - safe.Right), Math.Max(1f, height - safe.Top - safe.Bottom));
             Array.Clear(_used, 0, _used.Length);
@@ -295,7 +311,7 @@ namespace EdS.Runtime
 
         // --- PC -------------------------------------------------------------------------------------------------------------------------
 
-        private static readonly HudPart[] PcSides = { HudPart.Vitals, HudPart.Signal, HudPart.Effects, HudPart.MiniMap, HudPart.Quests, HudPart.Group };
+        private static readonly HudPart[] PcSides = { HudPart.Vitals, HudPart.Signal, HudPart.Effects, HudPart.MiniMap, HudPart.Quests, HudPart.Group, HudPart.Companion };
 
         private void LayoutPc()
         {
@@ -308,7 +324,14 @@ namespace EdS.Runtime
             Set(HudPart.Vitals, Anchor(64, 64, 400, 100, H.Left, V.Top));
             Set(HudPart.Signal, Anchor(484, 64, 76, 76, H.Left, V.Top));
             Set(HudPart.Effects, Anchor(64, 180, 400, 44, H.Left, V.Top));
-            Set(HudPart.Group, Anchor(64, 310, 360, 550, H.Left, V.Top));
+            // Compagnons : panneau sous les effets, rangée des six cases (60 au pas de 68) dessous ; le groupe descend d'autant.
+            if (_companion)
+            {
+                Set(HudPart.Companion, Anchor(64, 232, 400, 132, H.Left, V.Top));   // panneau (64 de haut) et rangée des cases
+                for (int i = 0; i < 6; i++) _companionActions[i] = Anchor(64 + i * 68, 304, 60, 60, H.Left, V.Top);
+                Set(HudPart.Group, Anchor(64, 380, 360, 480, H.Left, V.Top));
+            }
+            else Set(HudPart.Group, Anchor(64, 310, 360, 550, H.Left, V.Top));
             Set(HudPart.MiniMap, Anchor(1616, 64, 240, 200, H.Right, V.Top));
             Set(HudPart.Quests, Anchor(1456, 300, 400, 210, H.Right, V.Top));
             Set(HudPart.Joystick, default);
@@ -331,7 +354,7 @@ namespace EdS.Runtime
 
         // --- Téléphone ------------------------------------------------------------------------------------------------------------------
 
-        private static readonly HudPart[] PhoneSides = { HudPart.Vitals, HudPart.Signal, HudPart.Effects, HudPart.MiniMap, HudPart.Quests, HudPart.Group };
+        private static readonly HudPart[] PhoneSides = { HudPart.Vitals, HudPart.Signal, HudPart.Effects, HudPart.MiniMap, HudPart.Quests, HudPart.Group, HudPart.Companion };
 
         private void LayoutPhone()
         {
@@ -345,7 +368,15 @@ namespace EdS.Runtime
             Set(HudPart.Vitals, Anchor(32, 16, 226, 54, H.Left, V.Top));
             Set(HudPart.Signal, Anchor(272, 16, 48, 48, H.Left, V.Top));
             Set(HudPart.Effects, Anchor(32, 80, 226, 28, H.Left, V.Top));
-            Set(HudPart.Group, Anchor(32, 120, 160, 88, H.Left, V.Top));
+            // Compagnons : panneau à la place du groupe (on le touche pour ouvrir le menu ; en solo, le compagnon tient lieu de groupe) ; les six
+            // cases de 48 au pas de 52, en deux rangées de trois dessous, jusqu'au haut du joystick (la colonne du milieu garde sa largeur).
+            if (_companion)
+            {
+                Set(HudPart.Companion, Anchor(32, 120, 152, 136, H.Left, V.Top));   // panneau (32 de haut) et deux rangées de cases
+                for (int i = 0; i < 6; i++) _companionActions[i] = Anchor(32 + (i % 3) * 52, 156 + (i / 3) * 52, 48, 48, H.Left, V.Top);
+                Set(HudPart.Group, default);
+            }
+            else Set(HudPart.Group, Anchor(32, 120, 160, 88, H.Left, V.Top));
             Set(HudPart.MiniMap, Anchor(824, 16, 104, 88, H.Right, V.Top));
             Set(HudPart.Quests, Anchor(680, 112, 248, 76, H.Right, V.Top));
             // Joystick : la zone de 144 autour du cercle de 128 (le stick suit le pouce posé dans la moitié gauche).

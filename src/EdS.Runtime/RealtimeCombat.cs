@@ -17,7 +17,7 @@ namespace EdS.Runtime
     /// (<see cref="DrainFeedback"/>). Le moteur reste seul juge : une commande refusée l'est par lui, et le combat complété des commandes
     /// soumises (<see cref="CompletedSetup"/>) se rejoue à l'identique.
     /// </summary>
-    public sealed class RealtimeCombat : ICombatClient
+    public sealed class RealtimeCombat : ICombatClient, ICompanionCommands
     {
         /// <summary>
         /// Sous-lot V1.8 : places actives de la barre (0 à 7), autant que les règles en permettent au plus
@@ -259,6 +259,47 @@ namespace EdS.Runtime
             _dismountRequested = _engine.View(PlayerId).Mounted;   // relecture de la PR #184 : seulement en selle
         }
 
+        // --- Compagnons -------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Compagnons : commandes demandées pour le prochain tick (ordre et attaque à deux), dans l'ordre des demandes. Revue Codex de la PR
+        /// #176 : une demande qui ne trouve pas de place au tick (plafond de commandes par acteur) attend le tick suivant, jamais perdue sans
+        /// retour ; la file est bornée (<see cref="MaxCompanionRequests"/>) : au-delà, la demande est refusée tout de suite (faux).
+        /// </summary>
+        private readonly List<CombatCommand> _companionRequests = new List<CombatCommand>();
+
+        /// <summary>Demandes de compagnon en attente au plus (deux compagnons, quelques ordres d'avance).</summary>
+        public const int MaxCompanionRequests = 8;
+
+        /// <summary>Demandes de compagnon en attente d'une place au tick.</summary>
+        public int PendingCompanionRequests => _companionRequests.Count;
+
+        /// <summary>Compagnons du joueur (vue au début du prochain tick), dans l'ordre des identifiants.</summary>
+        public IReadOnlyList<CompanionState> Companions() => _engine.CombatantIds.OrderBy(id => id, StringComparer.Ordinal)
+            .Select(id => _engine.View(id)).Where(v => v.CompanionOwner == PlayerId).Select(v => new CompanionState(v)).ToArray();
+
+        /// <summary>Ordre simple à un compagnon du joueur au prochain tick ; « cibler » vise la cible sélectionnée (faux sans elle).</summary>
+        public bool Order(string companion, CompanionOrder order)
+        {
+            CompanionState? c = Companions().FirstOrDefault(x => x.Id == companion);
+            if (c is null || c.Down) return false;
+            string? target = order == CompanionOrder.Target ? TargetId : null;
+            if (order == CompanionOrder.Target && target is null) return false;
+            if (_companionRequests.Count >= MaxCompanionRequests) return false;
+            _companionRequests.Add(CombatCommand.GiveOrder(0, PlayerId, companion, order, target));
+            return true;
+        }
+
+        /// <summary>Attaque à deux au prochain tick sur la cible sélectionnée ; faux sans cible ou sans attaque à deux admissible (vue).</summary>
+        public bool Duo(string companion)
+        {
+            CompanionState? c = Companions().FirstOrDefault(x => x.Id == companion);
+            if (c is null || !c.DuoReady || TargetId is null) return false;
+            if (_companionRequests.Count >= MaxCompanionRequests) return false;
+            _companionRequests.Add(CombatCommand.DuoAttack(0, PlayerId, companion, TargetId));
+            return true;
+        }
+
         /// <summary>
         /// Compétence d'un emplacement du build (0 à 7 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
         /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
@@ -390,11 +431,34 @@ namespace EdS.Runtime
             _dodgeRequested = false;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
+            // Compagnons : ordres et attaques à deux demandés, chacun seul (un refus n'empêche pas les autres), dans la place qui reste au tick ;
+            // ceux qui n'y tiennent pas attendent le tick suivant, dans le même ordre (revue Codex de la PR #176).
+            long now = checked(_engine.CurrentTick * _tickMs);
+            int handled = 0;
+            foreach (CombatCommand request in _companionRequests)
+            {
+                // Place au tick lue dans le moteur : les commandes du scénario au même tick comptent aussi.
+                if (Math.Max(used, _engine.CommandsThisTick(PlayerId)) >= _setup.Combat.MaxCommandsPerActorPerTick) break;
+                handled++;
+                CombatCommand command = request.Action == CombatAction.Duo
+                    ? CombatCommand.DuoAttack(now, request.Actor, request.Companion!, request.Target!)
+                    : CombatCommand.GiveOrder(now, request.Actor, request.Companion!, request.Order!.Value, request.Target);
+                try
+                {
+                    _engine.SubmitAll(new[] { command });
+                    used++;
+                }
+                catch (Exception e) when (e is InvalidOperationException || e is ArgumentException)
+                {
+                    AddFeedback(new CombatFeedback(FeedbackKind.Rejected, PlayerId, 0, e.Message));
+                }
+            }
+            _companionRequests.RemoveRange(0, handled);
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
             // celles du moteur (revue Codex de la PR #34 : une commande du scénario peut les avoir changées depuis le dernier envoi), dans la
             // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
             // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
-            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
+            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, Math.Max(0, _setup.Combat.MaxCommandsPerActorPerTick - Math.Max(used, _engine.CommandsThisTick(PlayerId))), TrySubmit);
         }
 
         /// <summary>
