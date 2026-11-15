@@ -281,7 +281,7 @@ public class Lot126CraftingTests
         Assert.Equal("$.data.recipes[0].inputs[0].item", First(Mutated(r => D(r)["recipes"]![0]!["inputs"]![0]!["item"] = "item.inconnu")));
         Assert.Equal("$.data.recipes[0].output.count", First(Mutated(r => D(r)["recipes"]![0]!["output"]!["count"] = 6)));
         Assert.Equal("$.data.recipes[1].id", First(Mutated(r => D(r)["recipes"]![1]!["id"] = "recipe.ferrure")));
-        Assert.Equal("$.data.nodes[0].position", First(Mutated(r => D(r)["nodes"]![0]!["position"] = new JsonArray(150, 0))));   // Vallons agrandis : hors de l'aire (x jusqu'à 140)
+        Assert.Equal("$.data.nodes[0].position", First(Mutated(r => D(r)["nodes"]![0]!["position"] = new JsonArray(2300, 0))));   // hors de l'aire (V2.28c : de toute la région)
         Assert.Equal("$.data.nodes[0].respawnMs", First(Mutated(r => D(r)["nodes"]![0]!["respawnMs"] = 10)));
     }
 

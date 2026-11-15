@@ -44,12 +44,12 @@ public class Lot129MapTests : IDisposable
     public void Image_du_decor_nord_en_haut()
     {
         AdventureMap map = this.At(null).Map;
-        // Vallons agrandis (28 octobre 2026) : 240 × 170 m.
-        Assert.Equal((-100.0, -70.0, 140.0, 100.0), (map.MinX, map.MinZ, map.MaxX, map.MaxZ));
-        // 240 × 170 m en 240 × 170 pixels : un pixel par mètre, la première ligne au sud.
-        byte[] image = map.Render(240, 170);
-        Assert.Equal(240 * 170 * 4, image.Length);
-        byte[] Cell(double x, double z) => Pixel(image, 240, (int)Math.Floor(x) + 100, (int)Math.Floor(z) + 70);
+        // Sous-lot V2.28c : la fenêtre du secteur du cœur, 384 × 384 m (avant : les Vallons agrandis, 240 × 170 m).
+        Assert.Equal((-180.0, -142.0, 204.0, 242.0), (map.MinX, map.MinZ, map.MaxX, map.MaxZ));
+        // 384 × 384 m en 384 × 384 pixels : un pixel par mètre, la première ligne au sud.
+        byte[] image = map.Render(384, 384);
+        Assert.Equal(384 * 384 * 4, image.Length);
+        byte[] Cell(double x, double z) => Pixel(image, 384, (int)Math.Floor(x) + 180, (int)Math.Floor(z) + 142);
         Assert.Equal(AdventureMap.Solid, Cell(-3, 9));            // le moulin, de [−6, 6] à [0, 12]
         Assert.Equal(AdventureMap.Water, Cell(5, 20));            // la rivière du nord
         Assert.Equal(AdventureMap.Ground, Cell(-18, -12));        // la place du village
@@ -59,8 +59,8 @@ public class Lot129MapTests : IDisposable
         Assert.Equal(AdventureMap.Water, Cell(5, -54));           // le lac
         Assert.Equal(AdventureMap.Ground, Cell(-58, -5));         // la place pavée du bourg
         // Coordonnées de la carte : 0 à 1, nord en haut.
-        Assert.Equal((0.0, 0.0), map.ToMap(-100, 100));
-        Assert.Equal((1.0, 1.0), map.ToMap(140, -70));
+        Assert.Equal((0.0, 0.0), map.ToMap(-180, 242));
+        Assert.Equal((1.0, 1.0), map.ToMap(204, -142));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(0, 10));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(10, 2049));
         Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac", "vergers",

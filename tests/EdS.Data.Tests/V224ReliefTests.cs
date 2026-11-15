@@ -182,9 +182,15 @@ public class V224ReliefTests : IDisposable
     {
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
-        foreach (SpaceObstacle water in map.Obstacles.Where(o => o.Low))
+        foreach (SpaceObstacle water in map.Obstacles.Where(o => o.Low && o.Id.StartsWith("riviere", StringComparison.Ordinal)))   // V2.28c : l'eau (le ravin des Ronces est bas, mais pas de l'eau)
         {
             var pts = Points(water);
+            // V2.28c : la carte est une fenêtre ; une rivière de la surface qui la traverse y a des sommets hors du relief de la fenêtre.
+            if (pts.Any(p => p.X < map.MinX || p.X > map.MaxX || p.Z < map.MinZ || p.Z > map.MaxZ))
+            {
+                foreach ((double x, double z) in pts.Where(p => p.X >= map.MinX && p.X <= map.MaxX && p.Z >= map.MinZ && p.Z <= map.MaxZ)) Assert.Equal(0, r.Height(x, z));
+                continue;
+            }
             foreach ((double x, double z) in pts) Assert.Equal(0, r.Height(x, z));
             Assert.Equal(0, r.Height(pts.Average(p => p.X), pts.Average(p => p.Z)));
         }
@@ -313,10 +319,12 @@ public class V224ReliefTests : IDisposable
     public void La_camera_ne_passe_jamais_sous_le_relief()
     {
         AdventureMap map = Vallons();
-        GroundRelief r = GroundRelief.For(map);
+        // Sous-lot V2.28c : le relief affiché est celui de l'aire entière (Unity : StyleWorld.UseRelief(map.Whole)) ; son bord ouest est
+        // désormais celui de la région (x = −1 908), au sud de la gorge.
+        GroundRelief r = GroundRelief.For(map.Whole);
         Func<double, double, double> ground = (x, z) => r.Height(x, z);
-        // Le cas de la revue : depuis (-99, 70), 24 m vers l'ouest, basse.
-        (double X, double Y, double Z) target = (-99, r.Height(-99, 70) + CameraRules.TargetHeight(CameraRules.MaxDistance), 70);
+        // Le cas de la revue, au bord de l'aire : depuis (−1 907, 0), 24 m vers l'ouest, basse.
+        (double X, double Y, double Z) target = (-1907, r.Height(-1907, 0) + CameraRules.TargetHeight(CameraRules.MaxDistance), 0);
         var dir = CameraRules.Offset(90, 5, 1);
         Assert.True(dir.X < -0.9);   // la caméra est à l'ouest du personnage
         double far = target.Y + dir.Y * CameraRules.MaxDistance;
