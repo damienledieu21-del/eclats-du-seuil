@@ -7,6 +7,7 @@ using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
+using EdS.Data.WorldBosses;
 using EdS.Data.Zones;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -353,6 +354,35 @@ public class InterieursTests : IDisposable
         Assert.Equal(8, a.Map.Doors.Count);   // V2.14 : et les quatre boutiques
         Assert.NotEmpty(a.Npcs());
         Assert.False(a.Mood().Indoors);
+    }
+
+    [Fact]
+    public void Grand_Solitaire_l_occurrence_continue_a_travers_un_interieur()
+    {
+        // Relecture indépendante de la PR #178 : passer une porte (auberge) et revenir ne rend pas au boss sa vie pleine, et le temps
+        // serveur de la session nouvelle ne recule pas sous celui de l'occurrence reprise.
+        (string data, string scenarios) = Copy(EntryAtInn);
+        AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
+        WorldBossDefinition boss = a.World.WorldBosses!.Boss("grand_solitaire");
+        long w = WorldBossSchedule.WindowOf(boss, new DateTimeOffset(2027, 9, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds());
+        WorldBossOccurrence occ;
+        while (true) { if (WorldBossSchedule.InWindow(boss, w) is WorldBossOccurrence o) { occ = o; break; } w++; }
+        a.SetCivilTime((occ.SignsStartMs + boss.SignsMs) / 1000 + 5);
+        a.Advance(0.05);
+        WorldBossEvent e = a.World.WorldBossNow("grand_solitaire")!;
+        Assert.True(e.Damage("personne", 100));
+        Assert.True(a.Interact());   // la porte de l'auberge
+        Assert.True(a.Indoors);
+        Assert.Null(a.World.WorldBosses);
+        a.Advance(1);
+        Assert.True(a.UseDoor());
+        Assert.False(a.Indoors);
+        Assert.Same(e, a.World.WorldBossNow("grand_solitaire"));
+        Assert.Equal(e.MaxHealth - 100, e.Health);
+        long before = e.NowMs;
+        a.Advance(0.2);
+        Assert.True(a.World.ServerMs >= before);
+        Assert.True(e.NowMs > before);   // il avance tout de suite, sans attendre l'hôte
     }
 
     [Fact]
