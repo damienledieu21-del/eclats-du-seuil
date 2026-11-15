@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Domain.Time;
 
 namespace EdS.World
 {
@@ -28,6 +29,12 @@ namespace EdS.World
 
         /// <summary>La fête du jour (à n'importe quelle heure), ou null : l'annonce du matin, l'affichage.</summary>
         public Festival? FestivalToday => FestivalOnDay(Zone.Time.Day);
+
+        /// <summary>
+        /// Fêtes aux vraies dates : la fête du calendrier au jour réel d'aujourd'hui (fête du calendrier seulement comprise), pour
+        /// l'affichage ; null sans date fournie ou hors de toute fenêtre.
+        /// </summary>
+        public Festival? CalendarFestival => Narrative is Narrative n && CivilDateOfDay(Zone.Time.Day) is CivilDate d ? n.Book.CalendarFestivalOn(d) : null;
 
         /// <summary>Fêtes aux vraies dates : la fête du jour du monde <paramref name="day"/> (date réelle de ce jour si l'hôte l'a fournie), ou null.</summary>
         public Festival? FestivalOnDay(long day) => Narrative?.Book.FestivalOn(day, CivilDateOfDay(day));

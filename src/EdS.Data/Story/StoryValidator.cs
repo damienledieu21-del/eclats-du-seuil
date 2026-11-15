@@ -1256,6 +1256,23 @@ namespace EdS.Data.Story
                     if (_d.Festivals[i] is not FestivalData f) { TextsValidator.Missing(_r, path, "fête"); continue; }
                     bool ok = f.Id != null && _festivals.Contains(f.Id) && _d.Festivals.Take(i).All(x => x?.Id != f.Id);
                     ok &= Text(f.Name, path + ".name");
+                    // Fêtes aux vraies dates (version 14) : fête du calendrier seulement (son contenu reste à écrire) : une date, un nom, rien
+                    // d'autre ; elle s'affiche au calendrier et ne met pas le monde en fête (option prudente).
+                    if (f.CalendarOnly == true)
+                    {
+                        string cp = path + ".calendarOnly";
+                        if (_schema < CurrentSchemaVersion)
+                        { _r.Add(cp, ValidationCode.InvalidValue, $"« calendarOnly » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée."); continue; }
+                        if (f.Weekday != null || f.Season != null || f.Day != null || f.From != null || f.To != null || f.Rounds != null || (f.Guests != null && f.Guests.Count > 0))
+                        { _r.Add(cp, ValidationCode.InvalidValue, "une fête du calendrier seulement n'a que son nom et sa date (ni weekday, season, day, from, to, rounds, ni invités)."); continue; }
+                        if (f.Date is null) { TextsValidator.Missing(_r, path + ".date", "date réelle d'une fête du calendrier"); continue; }
+                        if (!(CheckDate(f.Date, path + ".date") is (int cm, int cd, int cn)) || !ok) continue;
+                        var only = new Festival(f.Id!, f.Name!, null, null, null, 0, 0, Array.Empty<FestivalGuest>()).WithDate(cm, cd, cn).AsCalendarOnly();
+                        if (festivals.FirstOrDefault(other => other.HasDate && Festival.DatesOverlap(other, only)) is Festival over)
+                        { _r.Add(path + ".date", ValidationCode.InvalidValue, $"« {only.Id} » chevauche « {over.Id} » dans l'année : une seule fête datée à la fois."); continue; }
+                        festivals.Add(only);
+                        continue;
+                    }
                     int? season = null;
                     if (f.Weekday != null)
                     {
@@ -1282,21 +1299,8 @@ namespace EdS.Data.Story
                         if (_schema < CurrentSchemaVersion)
                         { _r.Add(dp, ValidationCode.InvalidValue, $"« date » inconnue en version {_schema} du format : version {CurrentSchemaVersion} demandée."); ok = false; }
                         else if (f.Weekday != null) { _r.Add(dp, ValidationCode.InvalidValue, "une date réelle seulement pour une fête annuelle (pas « weekday »)."); ok = false; }
-                        else
-                        {
-                            if (f.Date.Month is null) { TextsValidator.Missing(_r, dp + ".month", "mois (1 à 12)"); ok = false; }
-                            else if (f.Date.Month < 1 || f.Date.Month > 12) { _r.Add(dp + ".month", ValidationCode.OutOfRange, "mois hors de [1, 12]."); ok = false; }
-                            else month = f.Date.Month;
-                            // Un jour qui existe chaque année (pas de 29 février).
-                            int last = month is int m ? EdS.Domain.Time.CivilDate.DaysInMonth(2027, m) : 31;
-                            if (f.Date.Day is null) { TextsValidator.Missing(_r, dp + ".day", "jour du mois"); ok = false; }
-                            else if (f.Date.Day < 1 || f.Date.Day > last) { _r.Add(dp + ".day", ValidationCode.OutOfRange, $"jour hors de [1, {last}] (il existe chaque année)."); ok = false; }
-                            else startDay = f.Date.Day;
-                            if (f.Date.Days is null) { TextsValidator.Missing(_r, dp + ".days", "durée en jours réels"); ok = false; }
-                            else if (f.Date.Days < MinFestivalDays || f.Date.Days > MaxFestivalDays)
-                            { _r.Add(dp + ".days", ValidationCode.OutOfRange, $"durée hors de [{MinFestivalDays}, {MaxFestivalDays}] jours (une à deux semaines)."); ok = false; }
-                            else days = f.Date.Days;
-                        }
+                        else if (CheckDate(f.Date, dp) is (int m, int d, int n)) { month = m; startDay = d; days = n; }
+                        else ok = false;
                     }
                     int from = -1, to = -1;
                     if (f.From is null) { TextsValidator.Missing(_r, path + ".from", "heure de début « HH:MM »"); ok = false; }
@@ -1346,6 +1350,25 @@ namespace EdS.Data.Story
                     festivals.Add(festival);
                 }
                 return festivals;
+            }
+
+            /// <summary>Fêtes aux vraies dates : mois, jour (qui existe chaque année) et durée (de 7 à 14 jours) ; null si refusée.</summary>
+            private (int, int, int)? CheckDate(FestivalDateData date, string dp)
+            {
+                bool ok = true;
+                int month = 0, day = 0, days = 0;
+                if (date.Month is null) { TextsValidator.Missing(_r, dp + ".month", "mois (1 à 12)"); ok = false; }
+                else if (date.Month < 1 || date.Month > 12) { _r.Add(dp + ".month", ValidationCode.OutOfRange, "mois hors de [1, 12]."); ok = false; }
+                else month = date.Month.Value;
+                int last = month > 0 ? EdS.Domain.Time.CivilDate.DaysInMonth(2027, month) : 31;   // un jour qui existe chaque année (pas de 29 février)
+                if (date.Day is null) { TextsValidator.Missing(_r, dp + ".day", "jour du mois"); ok = false; }
+                else if (date.Day < 1 || date.Day > last) { _r.Add(dp + ".day", ValidationCode.OutOfRange, $"jour hors de [1, {last}] (il existe chaque année)."); ok = false; }
+                else day = date.Day.Value;
+                if (date.Days is null) { TextsValidator.Missing(_r, dp + ".days", "durée en jours réels"); ok = false; }
+                else if (date.Days < MinFestivalDays || date.Days > MaxFestivalDays)
+                { _r.Add(dp + ".days", ValidationCode.OutOfRange, $"durée hors de [{MinFestivalDays}, {MaxFestivalDays}] jours (une à deux semaines)."); ok = false; }
+                else days = date.Days.Value;
+                return ok ? (month, day, days) : ((int, int, int)?)null;
             }
 
             /// <summary>

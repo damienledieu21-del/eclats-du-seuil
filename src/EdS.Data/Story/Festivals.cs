@@ -110,7 +110,7 @@ namespace EdS.Data.Story
         }
 
         /// <summary>La fête a lieu le jour <paramref name="day"/> du monde (à ses heures).</summary>
-        public bool OnDay(long day) => Weekday is int w ? WorldCalendar.WeekdayOf(day) == w
+        public bool OnDay(long day) => CalendarOnly ? false : Weekday is int w ? WorldCalendar.WeekdayOf(day) == w
             : WorldCalendar.SeasonIndexOf(day) == Season && WorldCalendar.DayOfSeason(day) == Day;
 
         /// <summary>La fête bat son plein au jour <paramref name="day"/>, à la minute <paramref name="minute"/>.</summary>
@@ -122,6 +122,18 @@ namespace EdS.Data.Story
         public int? Days { get; private set; }
 
         public bool HasDate => Month != null;
+
+        /// <summary>
+        /// Fêtes aux vraies dates : fête du calendrier seulement (son contenu reste à écrire) : son nom s'affiche au calendrier pendant sa
+        /// fenêtre de dates, mais elle ne met pas le monde en fête (ni invités, ni conditions, ni habits de fête).
+        /// </summary>
+        public bool CalendarOnly { get; private set; }
+
+        internal Festival AsCalendarOnly()
+        {
+            CalendarOnly = true;
+            return this;
+        }
 
         internal Festival WithDate(int? month, int? day, int? days)
         {
@@ -156,7 +168,7 @@ namespace EdS.Data.Story
         /// est <paramref name="civil"/> : une fête datée suit la date réelle quand elle est connue ; sinon (ou fête de la semaine, ou fête
         /// sans date), le calendrier du jeu.
         /// </summary>
-        public bool OnDay(long day, CivilDate? civil) => Weekday is null && HasDate && civil is CivilDate c ? OnCivil(c) : OnDay(day);
+        public bool OnDay(long day, CivilDate? civil) => !CalendarOnly && (Weekday is null && HasDate && civil is CivilDate c ? OnCivil(c) : OnDay(day));
 
         public bool At(long day, int minute, CivilDate? civil) => OnDay(day, civil) && minute >= From && minute < To;
 
@@ -196,6 +208,9 @@ namespace EdS.Data.Story
 
         /// <summary>Fêtes aux vraies dates (version 14) : date réelle facultative d'une fête annuelle.</summary>
         public FestivalDateData? Date { get; set; }
+
+        /// <summary>Fêtes aux vraies dates (version 14) : fête du calendrier seulement (nom et date, contenu à écrire).</summary>
+        public bool? CalendarOnly { get; set; }
     }
 
     public sealed class FestivalDateData

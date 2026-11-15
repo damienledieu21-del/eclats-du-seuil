@@ -150,6 +150,7 @@ namespace EdS.Data.Json
                 ["season"] = (v, p) => f.Season = input.Text(v, p),
                 ["day"] = (v, p) => f.Day = input.Int32(v, p),
                 ["date"] = (v, p) => f.Date = ReadFestivalDate(input, v, p),   // fêtes aux vraies dates (schéma 14)
+                ["calendarOnly"] = (v, p) => f.CalendarOnly = input.Boolean(v, p),
                 ["from"] = (v, p) => f.From = input.Text(v, p),
                 ["to"] = (v, p) => f.To = input.Text(v, p),
                 ["rounds"] = (v, p) => f.Rounds = input.Int32(v, p),

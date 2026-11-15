@@ -66,19 +66,28 @@ public class FetesVraiesDatesTests
     {
         StoryBook b = Story.Value;
         Assert.Equal(StoryValidator.CurrentSchemaVersion, b.SchemaVersion);
-        Assert.Equal((9, 20, 14), (b.Festival("festival.moissons").Month, b.Festival("festival.moissons").StartDay, b.Festival("festival.moissons").Days));
-        Assert.Equal((12, 18, 14), (b.Festival("festival.veillee").Month, b.Festival("festival.veillee").StartDay, b.Festival("festival.veillee").Days));
+        Assert.Equal((9, 15, 14), (b.Festival("festival.moissons").Month, b.Festival("festival.moissons").StartDay, b.Festival("festival.moissons").Days));
+        Assert.Equal((11, 15, 14), (b.Festival("festival.veillee").Month, b.Festival("festival.veillee").StartDay, b.Festival("festival.veillee").Days));
         Assert.Equal((4, 10, 14), (b.Festival("festival.foire").Month, b.Festival("festival.foire").StartDay, b.Festival("festival.foire").Days));
         Assert.False(b.Festival("festival.marche").HasDate);   // les marchés restent sur la semaine du monde
         Festival moissons = b.Festival("festival.moissons");
-        Assert.False(moissons.OnCivil(new CivilDate(2027, 9, 19)));
-        Assert.True(moissons.OnCivil(new CivilDate(2027, 9, 20)));
-        Assert.True(moissons.OnCivil(new CivilDate(2027, 10, 3)));   // 14e jour
-        Assert.False(moissons.OnCivil(new CivilDate(2027, 10, 4)));
-        Festival veillee = b.Festival("festival.veillee");
-        Assert.True(veillee.OnCivil(new CivilDate(2027, 12, 31)));
-        Assert.False(veillee.OnCivil(new CivilDate(2028, 1, 1)));
-        Assert.Equal(new CivilDate(2027, 12, 18), veillee.OccurrenceOf(new CivilDate(2027, 12, 25)));
+        Assert.False(moissons.OnCivil(new CivilDate(2027, 9, 14)));
+        Assert.True(moissons.OnCivil(new CivilDate(2027, 9, 15)));
+        Assert.True(moissons.OnCivil(new CivilDate(2027, 9, 28)));   // 14e jour
+        Assert.False(moissons.OnCivil(new CivilDate(2027, 9, 29)));
+        Festival givre = b.Festival("festival.givre");
+        Assert.True(givre.CalendarOnly);
+        Assert.True(givre.OnCivil(new CivilDate(2027, 12, 31)));
+        Assert.False(givre.OnCivil(new CivilDate(2028, 1, 1)));
+        Assert.Equal(new CivilDate(2027, 12, 18), givre.OccurrenceOf(new CivilDate(2027, 12, 25)));
+        // Le calendrier décidé le 29 octobre 2026 : douze fêtes, une qui commence chaque mois, de 7 à 14 jours, jamais deux à la fois.
+        Festival[] dated = b.Festivals.Where(f => f.HasDate).ToArray();
+        Assert.Equal(Enumerable.Range(1, 12), dated.Select(f => f.Month!.Value).OrderBy(m => m));
+        Assert.All(dated, f => Assert.InRange(f.Days!.Value, 7, 14));
+        Assert.Equal(new[] { "festival.foire", "festival.moissons", "festival.veillee" }, dated.Where(f => !f.CalendarOnly).Select(f => f.Id).OrderBy(x => x, StringComparer.Ordinal));
+        for (CivilDate d = new CivilDate(2027, 1, 1); d.Year == 2027; d = d.AddDays(1))
+            Assert.True(dated.Count(f => f.OnCivil(d)) <= 1, d.ToString());
+        Assert.Equal((4, 9, 11), (b.Festival("festival.foire").Month!.Value, moissons.Month!.Value, b.Festival("festival.veillee").Month!.Value));
     }
 
     [Fact]
@@ -93,15 +102,25 @@ public class FetesVraiesDatesTests
         Assert.Equal(m, First(Mutated(r => Fest(r, "festival.marche")["date"] = JsonNode.Parse("{\"month\": 5, \"day\": 1, \"days\": 7}"))));   // fête de la semaine
         // Deux fêtes datées qui se chevauchent : refusé (une seule fête datée à la fois), même à cheval sur deux années.
         string f = $"$.data.festivals[{Index("festival.foire")}].date";
-        Assert.Equal(f, First(Mutated(r => Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 12, \"day\": 28, \"days\": 7}"))));
-        Assert.Equal(f, First(Mutated(r => Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 10, \"day\": 3, \"days\": 7}"))));
+        Assert.Equal(f, First(Mutated(r => Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 11, \"day\": 20, \"days\": 7}"))));   // la veillée
+        Assert.Equal(f, First(Mutated(r => Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 9, \"day\": 25, \"days\": 7}"))));   // les moissons
+        Assert.Equal($"$.data.festivals[{Index("festival.lanternes")}].date",   // à cheval sur deux années : la foire du 28 décembre gêne les Lanternes
+            First(Mutated(r => { Fest(r, "festival.givre")["date"] = JsonNode.Parse("{\"month\": 12, \"day\": 1, \"days\": 7}"); Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 12, \"day\": 28, \"days\": 7}"); })));
         Assert.True(Mutated(r => Fest(r, "festival.foire")["date"] = JsonNode.Parse("{\"month\": 10, \"day\": 4, \"days\": 7}")).IsValid);
+        // Fête du calendrier seulement : son nom et sa date, rien d'autre.
+        string g = $"$.data.festivals[{Index("festival.givre")}]";
+        Assert.Equal(g + ".calendarOnly", First(Mutated(r => Fest(r, "festival.givre")["from"] = "10:00")));
+        Assert.Equal(g + ".calendarOnly", First(Mutated(r => Fest(r, "festival.givre")["guests"] = JsonNode.Parse("[{\"npc\": \"npc.lison\", \"position\": [-10, -5], \"activity\": \"fete\"}]"))));
+        Assert.Equal(g + ".date", First(Mutated(r => Fest(r, "festival.givre").Remove("date"))));
         // Une histoire en version 13 ne connaît pas les dates ; sans elles, elle reste lue.
         Assert.Equal(p, First(Mutated(r => r["schemaVersion"] = 13)));
         StoryLoadResult old = Mutated(r =>
         {
             r["schemaVersion"] = 13;
-            foreach (JsonNode? x in r["data"]!["festivals"]!.AsArray()) x!.AsObject().Remove("date");
+            JsonArray all = r["data"]!["festivals"]!.AsArray();
+            for (int i = all.Count - 1; i >= 0; i--)
+                if (all[i]!["calendarOnly"] != null) all.RemoveAt(i);
+                else all[i]!.AsObject().Remove("date");
         });
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.Equal(3, old.Story!.Festivals.Count(x => x.Weekday is null));
@@ -152,10 +171,28 @@ public class FetesVraiesDatesTests
         WorldSession w = Open(3, 12 * 60);
         w.SetCivilTime(Utc(2027, 9, 1, 10));
         Assert.NotNull(w.NextFestival());
-        // La veillée de l'Aube : le premier jour du monde où elle tombe est le 18 décembre (heure de Paris).
+        // La veillée de l'Aube (rattachée à la Veillée des Contes) : le premier jour du monde où elle tombe est le 15 novembre (heure de Paris).
         long day = 3;
         while (w.FestivalOnDay(day)?.Id != "festival.veillee") day++;
-        Assert.Equal(new CivilDate(2027, 12, 18), w.CivilDateOfDay(day));
-        Assert.Equal(new CivilDate(2027, 12, 17), w.CivilDateOfDay(day - 1));
+        Assert.Equal(new CivilDate(2027, 11, 15), w.CivilDateOfDay(day));
+        Assert.Equal(new CivilDate(2027, 11, 14), w.CivilDateOfDay(day - 1));
+    }
+
+    [Fact]
+    public void Fete_du_calendrier_seulement_affichee_sans_mettre_le_monde_en_fete()
+    {
+        WorldSession w = Open(3, 12 * 60);
+        w.SetCivilTime(Utc(2027, 1, 3, 11));   // Nuit des Lanternes (contenu à écrire)
+        Assert.Equal("festival.lanternes", w.CalendarFestival?.Id);
+        Assert.Null(w.Festival);   // ni invités, ni conditions, ni habits de fête
+        Assert.Null(w.FestivalToday);
+        Assert.NotEqual("festival.lanternes", w.FestivalOnDay(3)?.Id);
+        // Une fête qui a son contenu : la fête et le calendrier disent la même.
+        w.SetCivilTime(Utc(2027, 9, 20, 10));
+        Assert.Equal(("festival.moissons", "festival.moissons"), (w.CalendarFestival?.Id, w.Festival?.Id));
+        // Hors de toute fenêtre, ou sans date fournie : rien.
+        w.SetCivilTime(Utc(2027, 9, 5, 10));
+        Assert.Null(w.CalendarFestival);
+        Assert.Null(Open(3, 12 * 60).CalendarFestival);
     }
 }
