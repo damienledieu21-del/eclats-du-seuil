@@ -44,6 +44,7 @@
 | Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Compagnons (catalogue) | 1 | `Allies/CompanionModel.cs` (`CompanionValidator`) |
 | Saisons (schéma) | v1 (Échos de la brume, lac gelé, île ; calendrier `EdS.Domain/Time/SeasonCalendar.cs`) | `Seasons/SeasonModel.cs` (`CurrentSchemaVersion`) |
+| Boss du monde (schéma) | v1 (Grand Solitaire : règles et données, `EdS.World/WorldBoss.cs`) | `WorldBosses/WorldBossModel.cs` (`CurrentSchemaVersion`) |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
 Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0` (compagnons : `scenarios/espace_compagnon.json`, `EdS.Simulation/Engine/CombatEngine.Companions.cs` ; la précédente, `reference-0.32.0-…-regles-0.18.0`, esquive, reste figée).
