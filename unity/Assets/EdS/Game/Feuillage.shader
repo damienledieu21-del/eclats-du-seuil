@@ -56,6 +56,17 @@ Shader "EdS/Feuillage"
             half4 _GlowColor;
         CBUFFER_END
 
+        // Saisons : teinte de saison et neige posées par SeasonView (globales ; jamais posées, elles valent 0 et rien ne change).
+        half4 _EdsSeasonTint;
+        half _EdsSnow;
+
+        half3 EdsSeason(half3 albedo, half up)
+        {
+            albedo = lerp(albedo, albedo * _EdsSeasonTint.rgb * 2.0h, _EdsSeasonTint.a);
+            return lerp(albedo, half3(0.93h, 0.93h, 0.91h), saturate(_EdsSnow * saturate(up * 1.5h - 0.3h)));
+        }
+
+
         // Vent : balancement de tout le modèle (croît avec la hauteur au-dessus de son pied) et frémissement des feuilles.
         float3 Windy(float3 positionWS)
         {
@@ -159,7 +170,7 @@ Shader "EdS/Feuillage"
                 inputData.shadowMask = half4(1, 1, 1, 1);
 
                 SurfaceData surface = (SurfaceData)0;
-                surface.albedo = albedo.rgb;
+                surface.albedo = EdsSeason(albedo.rgb, normalWS.y);   // saisons : teinte et neige sur le dessus
                 surface.alpha = 1.0h;
                 surface.metallic = 0.0h;
                 surface.smoothness = _Smoothness;
