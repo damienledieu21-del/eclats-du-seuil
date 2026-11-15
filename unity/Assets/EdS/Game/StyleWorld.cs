@@ -90,6 +90,8 @@ namespace EdS.Game
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
             // Sous-lot V1.9.8 : le souvenir de la Rupture a sa propre ambiance, avant celle des pièces.
+            // Sous-lot V2.29 : l'horizon lointain, seulement dehors (ni souvenir, ni pièce).
+            HorizonView.Follow(_camera, !Memory && !Indoors && Active);
             if (Memory)
             {
                 MemoryLight(catalog);
