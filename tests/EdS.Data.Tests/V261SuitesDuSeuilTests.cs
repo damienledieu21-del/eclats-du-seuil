@@ -128,7 +128,7 @@ public class V261SuitesDuSeuilTests
         Assert.Equal((14, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
         Assert.Equal((14, "0.28.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.29.0-provisoire", Texts.ContentVersion);
-        Assert.Equal("0.17.0-provisoire", ItemsCatalog.ContentVersion);
+        Assert.Equal("0.18.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(23, SaveValidator.CurrentSchemaVersion);   // brouillard : 23 ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).

@@ -54,17 +54,31 @@
         "sectors": {
           "type": "object",
           "maxProperties": 1024,
-          "propertyNames": { "pattern": "^s[0-9]{2}_[0-9]{2}$" },
-          "additionalProperties": { "type": "integer", "minimum": 1 },
+          "propertyNames": {
+            "pattern": "^s[0-9]{2}_[0-9]{2}$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          },
           "description": "Sous-lot V2.26 (version 18) : dernière session de chaque secteur de simulation autre que celui du cœur, ordre ordinal ; facultatif."
         },
         "resume": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["safePoint"],
+          "required": [
+            "safePoint"
+          ],
           "properties": {
-            "safePoint": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
-            "sector": { "type": "string", "pattern": "^s[0-9]{2}_[0-9]{2}$" }
+            "safePoint": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "maxLength": 64
+            },
+            "sector": {
+              "type": "string",
+              "pattern": "^s[0-9]{2}_[0-9]{2}$"
+            }
           },
           "description": "Sous-lot V2.28 (version 19) : où la partie reprend dans la zone de la sauvegarde : dernier point sûr approché, et son secteur de simulation pour une zone à région (le point sûr fait foi, le secteur est recalculé des données) ; facultatif (absent : entrée de la zone)."
         },
@@ -382,18 +396,53 @@
                       "type": "object",
                       "description": "Sous-lot V2.10 (version 16) : dernier jour du monde où le personnage a concouru à chaque fête (son concours est fermé ce jour-là) ; absent quand il n'a jamais concouru.",
                       "maxProperties": 16,
-                      "propertyNames": { "pattern": "^festival(\\.[a-z0-9_]+)+$", "maxLength": 200 },
-                      "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 100000000 }
+                      "propertyNames": {
+                        "pattern": "^festival(\\.[a-z0-9_]+)+$",
+                        "maxLength": 200
+                      },
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
                     },
                     "reputation": {
                       "type": "object",
                       "description": "Sous-lot V2.7 (version 15) : réputation auprès des factions (villageois, garde, rôdeurs, bandits), non nulle, de -1000 à 1000 ; une réputation nulle (neutre) n'est pas écrite.",
                       "additionalProperties": false,
                       "properties": {
-                        "villagers": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
-                        "guard": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
-                        "rangers": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } },
-                        "bandits": { "type": "integer", "minimum": -1000, "maximum": 1000, "not": { "const": 0 } }
+                        "villagers": {
+                          "type": "integer",
+                          "minimum": -1000,
+                          "maximum": 1000,
+                          "not": {
+                            "const": 0
+                          }
+                        },
+                        "guard": {
+                          "type": "integer",
+                          "minimum": -1000,
+                          "maximum": 1000,
+                          "not": {
+                            "const": 0
+                          }
+                        },
+                        "rangers": {
+                          "type": "integer",
+                          "minimum": -1000,
+                          "maximum": 1000,
+                          "not": {
+                            "const": 0
+                          }
+                        },
+                        "bandits": {
+                          "type": "integer",
+                          "minimum": -1000,
+                          "maximum": 1000,
+                          "not": {
+                            "const": 0
+                          }
+                        }
                       }
                     },
                     "trust": {
@@ -707,12 +756,33 @@
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": [ "id", "bought", "resold", "day" ],
+                    "required": [
+                      "id",
+                      "bought",
+                      "resold",
+                      "day"
+                    ],
                     "properties": {
-                      "id": { "type": "string", "pattern": "^merchant(\\.[a-z0-9_]+)+/item(\\.[a-z0-9_]+)+$", "maxLength": 128 },
-                      "bought": { "type": "integer", "minimum": 0, "maximum": 999 },
-                      "resold": { "type": "integer", "minimum": 0, "maximum": 999 },
-                      "day": { "type": "integer", "minimum": 0, "maximum": 100000000 }
+                      "id": {
+                        "type": "string",
+                        "pattern": "^merchant(\\.[a-z0-9_]+)+/item(\\.[a-z0-9_]+)+$",
+                        "maxLength": 128
+                      },
+                      "bought": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 999
+                      },
+                      "resold": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 999
+                      },
+                      "day": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
                     }
                   },
                   "description": "Sous-lot V2.10 (version 16) : stock des marchands (merchant.herboriste/item.potion_de_soin…), rangé par identifiant : au jour day, unités qui manquaient au stock plein (achetées) et unités revendues par le personnage que le marchand gardait ; absent quand tous les marchands sont pleins."
@@ -720,57 +790,195 @@
                 "look": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [ "body", "hair", "beard", "dark", "hairTone", "palette" ],
+                  "required": [
+                    "body",
+                    "hair",
+                    "beard",
+                    "dark",
+                    "hairTone",
+                    "palette"
+                  ],
                   "properties": {
-                    "body": { "type": "string", "pattern": "^(male|female|made\\.[a-z0-9]{1,40})$", "maxLength": 48 },
-                    "hair": { "type": "integer", "minimum": 0, "maximum": 5 },
-                    "beard": { "type": "boolean" },
-                    "dark": { "type": "boolean" },
-                    "hairTone": { "type": "integer", "minimum": 0, "maximum": 5 },
-                    "palette": { "type": "integer", "minimum": 0, "maximum": 12 }
+                    "body": {
+                      "type": "string",
+                      "pattern": "^(male|female|made\\.[a-z0-9]{1,40})$",
+                      "maxLength": 48
+                    },
+                    "hair": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 5
+                    },
+                    "beard": {
+                      "type": "boolean"
+                    },
+                    "dark": {
+                      "type": "boolean"
+                    },
+                    "hairTone": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 5
+                    },
+                    "palette": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 12
+                    }
                   },
                   "description": "Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur de personnage (corps male, female ou made.<nom> d'un personnage de MakeHuman ; coiffure, couleur des cheveux et tenue en indices). Absent tant que le joueur n'a rien choisi."
                 },
                 "companions": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [ "slots", "recruited", "active" ],
+                  "required": [
+                    "slots",
+                    "recruited",
+                    "active"
+                  ],
                   "properties": {
-                    "slots": { "type": "integer", "minimum": 1, "maximum": 2 },
+                    "slots": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2
+                    },
                     "recruited": {
                       "type": "array",
                       "maxItems": 64,
                       "items": {
                         "type": "object",
                         "additionalProperties": false,
-                        "required": [ "id", "bond", "approval", "trait", "down" ],
+                        "required": [
+                          "id",
+                          "bond",
+                          "approval",
+                          "trait",
+                          "down"
+                        ],
                         "properties": {
-                          "id": { "type": "string", "pattern": "^companion\\.[a-z][a-z0-9_]*$", "maxLength": 64 },
-                          "bond": { "type": "integer", "minimum": 0, "maximum": 100 },
-                          "approval": { "type": "integer", "minimum": -100, "maximum": 100 },
-                          "trait": { "anyOf": [ { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, { "type": "null" } ] },
-                          "down": { "type": "boolean" }
+                          "id": {
+                            "type": "string",
+                            "pattern": "^companion\\.[a-z][a-z0-9_]*$",
+                            "maxLength": 64
+                          },
+                          "bond": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100
+                          },
+                          "approval": {
+                            "type": "integer",
+                            "minimum": -100,
+                            "maximum": 100
+                          },
+                          "trait": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "down": {
+                            "type": "boolean"
+                          }
                         }
                       }
                     },
-                    "active": { "type": "array", "maxItems": 2, "items": { "type": "string" } },
+                    "active": {
+                      "type": "array",
+                      "maxItems": 2,
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "former": {
                       "type": "array",
                       "maxItems": 64,
                       "items": {
                         "type": "object",
                         "additionalProperties": false,
-                        "required": [ "id", "approval", "trait" ],
+                        "required": [
+                          "id",
+                          "approval",
+                          "trait"
+                        ],
                         "properties": {
-                          "id": { "type": "string", "pattern": "^companion\\.[a-z][a-z0-9_]*$", "maxLength": 64 },
-                          "approval": { "type": "integer", "minimum": -100, "maximum": 100 },
-                          "trait": { "anyOf": [ { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, { "type": "null" } ] }
+                          "id": {
+                            "type": "string",
+                            "pattern": "^companion\\.[a-z][a-z0-9_]*$",
+                            "maxLength": 64
+                          },
+                          "approval": {
+                            "type": "integer",
+                            "minimum": -100,
+                            "maximum": 100
+                          },
+                          "trait": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
                         }
                       },
                       "description": "Anciens mercenaires renvoyés (décision de Damien du 15 novembre 2026) : estime et trait gardés pour un réembauchage (la jauge de lien repart de 0), rangés par identifiant. Absent quand il n'y en a aucun."
                     }
                   },
                   "description": "Compagnons (version 20) : places ouvertes (1, puis 2 par la quête de lien), compagnons recrutés rangés par identifiant (jauge de lien, estime, trait d'un mercenaire, hors combat jusqu'à la halte), actifs dans l'ordre des places. Absent quand le personnage n'a recruté personne."
+                },
+                "fishing": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "casts",
+                    "log"
+                  ],
+                  "properties": {
+                    "casts": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000000
+                    },
+                    "log": {
+                      "type": "array",
+                      "maxItems": 64,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "fish",
+                          "count",
+                          "best"
+                        ],
+                        "properties": {
+                          "fish": {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000000
+                          },
+                          "best": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "Pêche et carnet (version 21) : lancers réglés (numéro du prochain lancer) et carnet des prises, rangé par espèce (objet) : nombre de prises et plus grande taille (cm). Absent tant que le personnage n'a pas pêché."
                 }
               }
             }

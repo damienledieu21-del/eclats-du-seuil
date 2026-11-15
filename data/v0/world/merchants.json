@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "values": [
       {
@@ -374,6 +374,26 @@
         "value": 25
       },
       {
+        "item": "item.gardon",
+        "value": 8
+      },
+      {
+        "item": "item.perche",
+        "value": 12
+      },
+      {
+        "item": "item.truite",
+        "value": 18
+      },
+      {
+        "item": "item.brochet",
+        "value": 60
+      },
+      {
+        "item": "item.carpe_doree",
+        "value": 250
+      },
+      {
         "item": "item.primevere_argentee",
         "value": 60
       },
@@ -480,6 +500,14 @@
       {
         "item": "item.bobine_de_fil",
         "value": 12
+      },
+      {
+        "item": "item.ver_de_terre",
+        "value": 1
+      },
+      {
+        "item": "item.mouche_de_mai",
+        "value": 2
       }
     ],
     "merchants": [
@@ -701,6 +729,18 @@
             "price": 320,
             "always": true,
             "stock": 2
+          },
+          {
+            "item": "item.ver_de_terre",
+            "price": 2,
+            "always": true,
+            "stock": 40
+          },
+          {
+            "item": "item.mouche_de_mai",
+            "price": 3,
+            "always": false,
+            "stock": 30
           }
         ],
         "faction": "villagers",
