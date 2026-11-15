@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.25.0-provisoire",
+  "contentVersion": "0.26.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1913,7 +1913,11 @@
       "text.ui.hud.companion.return": "Revenir",
       "text.ui.hud.companion.duo": "À deux",
       "text.ui.hud.companion.down": "Hors combat",
-      "text.ui.hud.companion.duo_ready": "À deux !"
+      "text.ui.hud.companion.duo_ready": "À deux !",
+      "text.compagnons.lien_au_feu.offre": "Le chef des bandits est tombé, et tu ne marches plus seul. Ce soir, au feu du camp des rôdeurs, prends le temps de parler avec ton compagnon. Un lien, ça se noue autour des braises.",
+      "text.compagnons.lien_au_feu.accepter": "J'irai au feu ce soir.",
+      "text.compagnons.lien_au_feu.plus_tard": "Pas maintenant.",
+      "text.compagnons.lien_au_feu.reprendre": "Le feu de camp dont tu parlais…"
     }
   }
 }

@@ -368,12 +368,12 @@
             "name": "Aveline Dorne",
             "fromLevel": 1,
             "health": {
-              "base": 330,
-              "perLevel": 30
+              "base": 300,
+              "perLevel": 26
             },
             "armor": {
-              "base": 14,
-              "perLevel": 3
+              "base": 10,
+              "perLevel": 2
             },
             "magicResistance": {
               "base": 6,
@@ -383,15 +383,15 @@
             "speed": 5,
             "maxRange": 0.6,
             "firstAttackMs": 500,
-            "intervalMs": 1100,
+            "intervalMs": 1000,
             "followDistance": 1.5,
             "leash": 12,
             "attacks": [
               {
                 "id": "taille",
                 "damage": {
-                  "base": 22,
-                  "perLevel": 3
+                  "base": 26,
+                  "perLevel": 4
                 },
                 "damageType": "physique",
                 "range": 1.3
@@ -399,8 +399,8 @@
               {
                 "id": "taille_descendante",
                 "damage": {
-                  "base": 36,
-                  "perLevel": 5
+                  "base": 42,
+                  "perLevel": 6
                 },
                 "damageType": "physique",
                 "range": 1.4,
@@ -446,11 +446,11 @@
             "name": "Hadrien Fosse",
             "fromLevel": 1,
             "health": {
-              "base": 420,
-              "perLevel": 36
+              "base": 440,
+              "perLevel": 38
             },
             "armor": {
-              "base": 22,
+              "base": 24,
               "perLevel": 4
             },
             "magicResistance": {
@@ -461,14 +461,14 @@
             "speed": 4,
             "maxRange": 0.6,
             "firstAttackMs": 500,
-            "intervalMs": 1400,
+            "intervalMs": 1500,
             "followDistance": 1.5,
             "leash": 12,
             "attacks": [
               {
                 "id": "coup_de_masse",
                 "damage": {
-                  "base": 18,
+                  "base": 14,
                   "perLevel": 2
                 },
                 "damageType": "physique",
@@ -477,8 +477,8 @@
               {
                 "id": "poussee_du_bouclier",
                 "damage": {
-                  "base": 28,
-                  "perLevel": 4
+                  "base": 22,
+                  "perLevel": 3
                 },
                 "damageType": "physique",
                 "range": 1.3,
@@ -524,11 +524,11 @@
             "name": "Ysée Vaucreux",
             "fromLevel": 1,
             "health": {
-              "base": 260,
-              "perLevel": 24
+              "base": 230,
+              "perLevel": 20
             },
             "armor": {
-              "base": 6,
+              "base": 4,
               "perLevel": 1
             },
             "magicResistance": {
@@ -547,7 +547,7 @@
               {
                 "id": "fleche",
                 "damage": {
-                  "base": 20,
+                  "base": 22,
                   "perLevel": 3
                 },
                 "damageType": "physique",
@@ -556,7 +556,7 @@
               {
                 "id": "tir_appuye",
                 "damage": {
-                  "base": 34,
+                  "base": 36,
                   "perLevel": 5
                 },
                 "damageType": "physique",
@@ -603,12 +603,12 @@
             "name": "Nahla Serein",
             "fromLevel": 1,
             "health": {
-              "base": 300,
-              "perLevel": 26
+              "base": 280,
+              "perLevel": 24
             },
             "armor": {
-              "base": 8,
-              "perLevel": 2
+              "base": 6,
+              "perLevel": 1
             },
             "magicResistance": {
               "base": 14,
@@ -619,14 +619,14 @@
             "maxRange": 1.2,
             "minRange": 0.5,
             "firstAttackMs": 500,
-            "intervalMs": 1400,
+            "intervalMs": 1500,
             "followDistance": 1.5,
             "leash": 12,
             "attacks": [
               {
                 "id": "baton_noueux",
                 "damage": {
-                  "base": 15,
+                  "base": 10,
                   "perLevel": 2
                 },
                 "damageType": "physique",
@@ -635,8 +635,8 @@
               {
                 "id": "fiole_brulante",
                 "damage": {
-                  "base": 28,
-                  "perLevel": 4
+                  "base": 20,
+                  "perLevel": 3
                 },
                 "damageType": "magique",
                 "range": 4,
@@ -682,12 +682,12 @@
             "name": "Silvère Paille",
             "fromLevel": 1,
             "health": {
-              "base": 270,
-              "perLevel": 25
+              "base": 250,
+              "perLevel": 22
             },
             "armor": {
-              "base": 8,
-              "perLevel": 2
+              "base": 6,
+              "perLevel": 1
             },
             "magicResistance": {
               "base": 6,
@@ -697,15 +697,15 @@
             "speed": 6,
             "maxRange": 1.2,
             "firstAttackMs": 500,
-            "intervalMs": 1000,
+            "intervalMs": 900,
             "followDistance": 1.5,
             "leash": 12,
             "attacks": [
               {
                 "id": "lance_courte",
                 "damage": {
-                  "base": 19,
-                  "perLevel": 3
+                  "base": 16,
+                  "perLevel": 2
                 },
                 "damageType": "physique",
                 "range": 1.6
@@ -713,8 +713,8 @@
               {
                 "id": "coup_bas",
                 "damage": {
-                  "base": 30,
-                  "perLevel": 5
+                  "base": 26,
+                  "perLevel": 4
                 },
                 "damageType": "physique",
                 "range": 1.6,
@@ -760,12 +760,12 @@
             "name": "Odran Massepierre",
             "fromLevel": 1,
             "health": {
-              "base": 450,
-              "perLevel": 38
+              "base": 400,
+              "perLevel": 34
             },
             "armor": {
-              "base": 16,
-              "perLevel": 3
+              "base": 12,
+              "perLevel": 2
             },
             "magicResistance": {
               "base": 6,
@@ -775,15 +775,15 @@
             "speed": 4,
             "maxRange": 0.7,
             "firstAttackMs": 500,
-            "intervalMs": 1600,
+            "intervalMs": 1700,
             "followDistance": 1.5,
             "leash": 12,
             "attacks": [
               {
                 "id": "marteau",
                 "damage": {
-                  "base": 30,
-                  "perLevel": 4
+                  "base": 32,
+                  "perLevel": 5
                 },
                 "damageType": "physique",
                 "range": 1.6
@@ -791,8 +791,8 @@
               {
                 "id": "coup_de_carriere",
                 "damage": {
-                  "base": 50,
-                  "perLevel": 7
+                  "base": 52,
+                  "perLevel": 8
                 },
                 "damageType": "physique",
                 "range": 1.8,
@@ -1122,12 +1122,12 @@
             "name": "Ronce",
             "fromLevel": 1,
             "health": {
-              "base": 520,
-              "perLevel": 42
+              "base": 400,
+              "perLevel": 34
             },
             "armor": {
-              "base": 20,
-              "perLevel": 4
+              "base": 18,
+              "perLevel": 3
             },
             "magicResistance": {
               "base": 10,
@@ -1144,8 +1144,8 @@
               {
                 "id": "coup_de_patte",
                 "damage": {
-                  "base": 28,
-                  "perLevel": 4
+                  "base": 22,
+                  "perLevel": 3
                 },
                 "damageType": "physique",
                 "range": 1.4
@@ -1153,8 +1153,8 @@
               {
                 "id": "charge_d_ours",
                 "damage": {
-                  "base": 45,
-                  "perLevel": 7
+                  "base": 34,
+                  "perLevel": 5
                 },
                 "damageType": "physique",
                 "range": 1.6,
@@ -1165,8 +1165,8 @@
               "id": "a_l_abri_des_griffes",
               "name": "À l'abri des griffes",
               "damage": {
-                "base": 90,
-                "perLevel": 13
+                "base": 80,
+                "perLevel": 12
               },
               "damageType": "physique",
               "telegraphMs": 800,

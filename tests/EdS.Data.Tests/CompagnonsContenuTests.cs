@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -11,6 +12,7 @@ using EdS.Domain.Combat;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Simulation.Engine;
+using EdS.World;
 using Xunit;
 using static EdS.Data.Tests.ScenarioTestData;
 using static EdS.Data.Tests.V11TestData;
@@ -31,7 +33,7 @@ public class CompagnonsContenuTests
 
     private static CompanionCatalog Load()
     {
-        CompanionLoadResult result = CompanionJsonReader.ReadFile(CompanionJsonReader.PathIn(DataDirectory));
+        CompanionLoadResult result = CompanionJsonReader.ReadFile(CompanionJsonReader.PathIn(DataDirectory), Book(Zone()));
         Assert.True(result.IsValid, result.Report.ToString());
         return result.Catalog!;
     }
@@ -72,10 +74,25 @@ public class CompagnonsContenuTests
         string quest = File.ReadAllText(Path.Combine(DataDirectory, "world", "story.json"));
         JsonElement q = JsonDocument.Parse(quest).RootElement.GetProperty("data").GetProperty("quests").EnumerateArray()
             .Single(e => e.GetProperty("id").GetString() == Catalog.Slots.SecondSlotQuest);
-        // Ouverte à la fin du chapitre 1 (chef des bandits vaincu), elle apprend le fait de la deuxième place.
-        Assert.Equal("fact.chef_des_bandits.vaincu", q.GetProperty("requires")[0].GetProperty("id").GetString());
-        Assert.Contains(q.GetProperty("effects").EnumerateArray(), e => e.GetProperty("do").GetString() == "setFact"
-            && e.GetProperty("id").GetString() == "fact.compagnons.deuxieme_place");
+        // Ouverte à la fin du chapitre 1 (chef des bandits vaincu), avec au moins un compagnon recruté (fait appris par le cœur) ; aucun fait
+        // posé que personne ne lirait : la deuxième place se lit dans la quête finie (CompanionRules.BondQuestDone).
+        Assert.Equal(new[] { "fact.chef_des_bandits.vaincu", StoryValidator.CompanionRecruitedFact },
+            q.GetProperty("requires").EnumerateArray().Select(e => e.GetProperty("id").GetString()));
+        Assert.DoesNotContain(q.GetProperty("effects").EnumerateArray(), e => e.GetProperty("do").GetString() == "setFact");
+        Assert.True(story.CanLearn(StoryValidator.CompanionRecruitedFact));
+    }
+
+    [Fact]
+    public void La_quete_de_lien_doit_exister_dans_l_histoire()
+    {
+        StoryBook story = Book(Zone());
+        string json = File.ReadAllText(CompanionJsonReader.PathIn(DataDirectory));
+        Assert.True(CompanionJsonReader.Read(json, story).IsValid);
+        CompanionLoadResult missing = CompanionJsonReader.Read(json.Replace("\"quest.compagnons.lien_au_feu\"", "\"quest.compagnons.inconnue\"", StringComparison.Ordinal), story);
+        Assert.False(missing.IsValid);
+        Assert.Contains(missing.Report.Errors, e => e.Path == "$.data.slots.secondSlotQuest" && e.Code == EdS.Data.Validation.ValidationCode.UnknownReference);
+        // Sans histoire, la référence n'est pas vérifiée (catalogue lu seul, par exemple par les outils).
+        Assert.True(CompanionJsonReader.Read(json.Replace("\"quest.compagnons.lien_au_feu\"", "\"quest.compagnons.inconnue\"", StringComparison.Ordinal)).IsValid);
     }
 
     [Fact]
@@ -92,6 +109,55 @@ public class CompagnonsContenuTests
         // Recrues de la Guilde : chaque mercenaire reçoit un des quatre traits.
         foreach (CompanionSheet m in Catalog.Companions.Where(c => c.Kind == CompanionKind.Mercenary))
             Assert.NotNull(Catalog.Trait(CompanionRules.Recruit(Catalog, two, m.Id, new RecruitContext(false, "s", 1_000_000, 9)).Roster.Find(m.Id)!.Trait));
+    }
+
+    [Fact]
+    public void La_quete_de_lien_de_bout_en_bout_dans_la_partie()
+    {
+        const string Quest = "quest.compagnons.lien_au_feu";
+        SavedCharacter hero = Hero().WithXp(Progression.XpToLevel[11]).WithStory(new SavedStory(new[] { "fact.chef_des_bandits.vaincu" }));
+
+        // Chef des bandits vaincu, mais aucun compagnon recruté : la quête n'est pas ouverte, Gaspard ne la propose pas.
+        WorldSession alone = Play(Zone(27, -12), hero);
+        Assert.False(alone.Narrative!.IsOpen(Quest));
+        Assert.Equal(DialogueRefusal.None, alone.Talk("npc.gaspard", out DialogueView? view));
+        Assert.NotEqual("compagnons_lien", view!.Node);
+
+        // Recruter Nyx (amenée par l'histoire) apprend le fait du recrutement ; refus atomique sans elle.
+        WorldSession w = Play(Zone(27, -12), hero);
+        Assert.Equal("notAvailable", w.RecruitCompanion(Catalog, "companion.nyx", available: false));
+        Assert.False(w.Narrative!.Knows(StoryValidator.CompanionRecruitedFact));
+        Assert.True(w.Companions.IsEmpty);
+        Assert.Null(w.RecruitCompanion(Catalog, "companion.nyx", available: true));
+        Assert.True(w.Narrative.Knows(StoryValidator.CompanionRecruitedFact));
+        Assert.True(w.Narrative.IsOpen(Quest));
+        Assert.Equal("bondQuestNotDone", w.OpenSecondCompanionSlot(Catalog));
+
+        // Gaspard la propose ; « Pas maintenant » la laisse ouverte, et on peut y revenir.
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.gaspard", out view));
+        Assert.Equal("compagnons_lien", view!.Node);
+        Assert.Equal(DialogueRefusal.None, w.Choose(1, out _, out _));
+        Assert.True(w.Narrative.IsOpen(Quest));
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.gaspard", out view));
+        DialogueOption back = view!.Options.Single(o => o.Text == "text.compagnons.lien_au_feu.reprendre");
+        Assert.Equal(DialogueRefusal.None, w.Choose(back.Index, out DialogueView? offer, out _));
+        Assert.Equal("compagnons_lien", offer!.Node);
+        Assert.Equal(DialogueRefusal.None, w.Choose(0, out _, out IReadOnlyList<StoryEvent> started));
+        Assert.Contains(started, e => e.Kind == StoryEventKind.QuestStarted && e.Id == Quest);
+
+        // Au feu du camp des rôdeurs : la quête se termine, puis la deuxième place s'ouvre (niveau 12 atteint).
+        WorldSession camp = Play(Zone(100, 70), w.Save().Character!);
+        var events = new List<StoryEvent>();
+        for (int i = 0; i < 4 && !camp.Narrative!.IsDone(Quest); i++) events.AddRange(camp.Step().Story);
+        Assert.True(camp.Narrative!.IsDone(Quest));
+        Assert.Null(camp.OpenSecondCompanionSlot(Catalog));
+        Assert.Equal(2, camp.Companions.Slots);
+        Assert.Equal("allSlotsOpen", camp.OpenSecondCompanionSlot(Catalog));
+        Assert.Equal(2, camp.Save().Character!.Companions.Slots);
+
+        // Une sauvegarde déjà dotée d'un compagnon, sans le fait (troupe recrutée avant la quête) : le fait est appris au chargement.
+        WorldSession old = Play(Zone(27, -12), hero.WithCompanions(w.Companions));
+        Assert.True(old.Narrative!.Knows(StoryValidator.CompanionRecruitedFact));
     }
 
     [Theory]
@@ -113,8 +179,65 @@ public class CompagnonsContenuTests
             Assert.Empty(setup.Validate());
             var log = new MemoryCombatLog();
             CombatEngine.Run(setup, log);
-            Assert.Contains(log.Lines, l => l.Contains($"\"source\":\"{companion.Id}\"", StringComparison.Ordinal));
+            // Des dégâts réellement infligés (montant positif), pas seulement une ligne qui le nomme.
+            long dealt = log.Lines.Where(l => l.Contains("\"event\":\"damage\"", StringComparison.Ordinal))
+                .Select(l => JsonDocument.Parse(l).RootElement)
+                .Where(e => e.GetProperty("source").GetString() == companion.Id)
+                .Sum(e => e.GetProperty("amount").GetInt64());
+            Assert.True(dealt > 0, $"{sheet.Id} au niveau {level} n'inflige aucun dégât.");
         }
+    }
+
+    [Fact]
+    public void Cendre_grandit_d_un_stade_a_l_autre_sans_jamais_reculer()
+    {
+        CompanionSheet cendre = Sheet("companion.cendre");
+        for (int i = 1; i < cendre.Stages.Count; i++)
+        {
+            CompanionStage before = cendre.Stages[i - 1], after = cendre.Stages[i];
+            Assert.True(after.FromLevel > before.FromLevel);
+            // Au niveau où le stade suivant arrive, et à tous les niveaux après : jamais moins de PV, d'armure, de résistance, de dégâts.
+            for (int level = after.FromLevel; level <= CompanionCombat.MaxLevel; level++)
+            {
+                Assert.True(after.Health.At(level) >= before.Health.At(level), $"PV, stade {after.Id}, niveau {level}");
+                Assert.True(after.Armor.At(level) >= before.Armor.At(level), $"armure, stade {after.Id}, niveau {level}");
+                Assert.True(after.MagicResistance.At(level) >= before.MagicResistance.At(level), $"résistance, stade {after.Id}, niveau {level}");
+                Assert.True(after.Attacks.Max(a => a.Damage.At(level)) >= before.Attacks.Max(a => a.Damage.At(level)), $"dégâts, stade {after.Id}, niveau {level}");
+            }
+            Assert.True(after.Attacks.Count >= before.Attacks.Count);
+            Assert.True(after.IntervalMs <= before.IntervalMs);
+            Assert.True(before.Duo is null || after.Duo != null);
+        }
+    }
+
+    [Fact]
+    public void Chaque_mercenaire_tient_son_role()
+    {
+        // Relecture de la PR #175 : les six mercenaires se distinguent par leur rôle (fourchettes provisoires, question posée à Damien).
+        CompanionStage Stage(string id) => Sheet(id).Stages.Single();
+        long Hp(string id) => Stage(id).Health.At(20);
+        long Armor(string id) => Stage(id).Armor.At(20);
+        long Dps(string id) => Stage(id).Attacks.Max(a => a.Damage.At(20)) * 1000 / Stage(id).IntervalMs;
+        string[] mercenaries = Catalog.Companions.Where(c => c.Kind == CompanionKind.Mercenary).Select(c => c.Id).ToArray();
+        // Le bouclier : le plus de PV et d'armure, le moins de dégâts.
+        Assert.All(mercenaries.Where(m => m != "companion.hadrien"), m => Assert.True(Armor("companion.hadrien") > Armor(m), m));
+        Assert.All(mercenaries.Where(m => m != "companion.hadrien"), m => Assert.True(Hp("companion.hadrien") > Hp(m), m));
+        Assert.All(mercenaries.Where(m => m != "companion.hadrien" && m != "companion.nahla"), m => Assert.True(Dps(m) > Dps("companion.hadrien"), m));
+        // La brute et la lame : les plus gros dégâts ; l'archère frappe de loin, avec le moins de PV et d'armure.
+        Assert.Equal(new[] { "companion.aveline", "companion.odran" }, mercenaries.OrderByDescending(Dps).Take(2).OrderBy(m => m, StringComparer.Ordinal));
+        Assert.Equal("companion.ysee", mercenaries.OrderBy(Hp).First());
+        Assert.Equal("companion.ysee", mercenaries.OrderBy(Armor).First());
+        Assert.All(mercenaries.Where(m => m != "companion.ysee"), m => Assert.True(Stage("companion.ysee").MaxRange > Stage(m).MaxRange, m));
+        // L'éclaireur : le plus rapide et le plus vif ; la soigneuse : les plus petits dégâts.
+        Assert.All(mercenaries.Where(m => m != "companion.silvere"), m => Assert.True(Stage("companion.silvere").Speed > Stage(m).Speed, m));
+        Assert.Equal("companion.silvere", mercenaries.OrderBy(m => Stage(m).IntervalMs).First());
+        Assert.Equal("companion.nahla", mercenaries.OrderBy(m => Stage(m).Attacks.Max(a => a.Damage.At(20))).First());
+        // Ronce, l'ours protecteur : solide, mais jamais au-dessus du bouclier de la Guilde ni des héros de l'histoire.
+        CompanionStage ronce = Stage("companion.ronce");
+        Assert.True(ronce.Health.At(20) <= Hp("companion.hadrien") && ronce.Armor.At(20) <= Armor("companion.hadrien"));
+        Assert.True(ronce.Attacks.Max(a => a.Damage.At(20)) <= Stage("companion.odran").Attacks.Max(a => a.Damage.At(20)));
+        Assert.All(Catalog.Companions.Where(c => c.Kind == CompanionKind.Hero),
+            h => Assert.True(ronce.Duo!.Damage.At(20) <= h.Stages[0].Duo!.Damage.At(20), h.Id));
     }
 
     [Fact]

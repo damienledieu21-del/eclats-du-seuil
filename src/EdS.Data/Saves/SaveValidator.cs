@@ -603,7 +603,8 @@ namespace EdS.Data.Saves
         /// dans le personnage (absent quand il n'a recruté personne) : <c>{ "slots", "recruited", "active" }</c> ; places ouvertes (1 ou 2),
         /// compagnons recrutés <c>{ "id", "bond", "approval", "trait", "down" }</c> rangés par identifiant (au plus
         /// <see cref="SavedCompanions.MaxRecruited"/>), actifs dans l'ordre des places (au plus les places, recrutés, distincts). Voir
-        /// <see cref="SavedCompanions"/>. Migration : une sauvegarde de version 19 ou antérieure est lue telle quelle (aucun compagnon, une
+        /// <see cref="SavedCompanions"/> ; <c>former</c> facultatif (anciens mercenaires : <c>id</c>, <c>approval</c>, <c>trait</c> ; décision de
+        /// Damien du 15 novembre 2026). Migration : une sauvegarde de version 19 ou antérieure est lue telle quelle (aucun compagnon, une
         /// place) et mise à jour ; elle n'a pas de <c>companions</c> (refusé, champ inconnu).</remarks>
         public const int CurrentSchemaVersion = 20;
 
@@ -1084,7 +1085,8 @@ namespace EdS.Data.Saves
                 c.Look is null ? null : new SavedLook(c.Look.Body!, c.Look.Hair!.Value, c.Look.Beard!.Value, c.Look.Dark!.Value, c.Look.HairTone!.Value, c.Look.Palette!.Value),
                 c.Companions is null ? null : new SavedCompanions(c.Companions.Slots!.Value,
                     c.Companions.Recruited!.Select(x => new SavedCompanion(x!.Id!, x.Bond!.Value, x.Approval!.Value, x.Trait, x.Down!.Value)),
-                    c.Companions.Active!.Select(a => a!)));
+                    c.Companions.Active!.Select(a => a!),
+                    c.Companions.Former?.Select(x => new SavedCompanion(x!.Id!, 0, x.Approval!.Value, x.Trait, false))));
         }
 
         /// <summary>
@@ -1135,6 +1137,30 @@ namespace EdS.Data.Saves
                     if (x.Active[i] is not { } id) Missing(report, p, "identifiant d'un compagnon recruté");
                     else if (!seen.Add(id)) report.Add(p, ValidationCode.DuplicateId, $"compagnon « {id} » actif deux fois.");
                     else if (x.Recruited != null && !ids.Contains(id)) report.Add(p, ValidationCode.UnknownReference, $"compagnon actif « {id} » qui n'est pas recruté.");
+                }
+            }
+            // Anciens mercenaires (décision de Damien du 15 novembre 2026, facultatif) : estime et trait gardés, rangés par identifiant,
+            // uniques, jamais recrutés en même temps.
+            if (x.Former != null)
+            {
+                if (x.Former.Count > SavedCompanions.MaxRecruited)
+                    report.Add(path + ".former", ValidationCode.LimitExceeded, $"{x.Former.Count} anciens mercenaires, au plus {SavedCompanions.MaxRecruited}.");
+                var formers = new HashSet<string>(StringComparer.Ordinal);
+                string? previous = null;
+                for (int i = 0; i < x.Former.Count; i++)
+                {
+                    string p = $"{path}.former[{i}]";
+                    if (x.Former[i] is not { } f) { Missing(report, p, "ancien mercenaire"); continue; }
+                    if (f.Id is null) Missing(report, p + ".id", "identifiant « companion.… »");
+                    else if (!SavedCompanion.IsId(f.Id)) report.Add(p + ".id", ValidationCode.InvalidValue, $"compagnon « {f.Id} » hors du format « companion.… ».");
+                    else if (!formers.Add(f.Id)) report.Add(p + ".id", ValidationCode.DuplicateId, $"ancien mercenaire « {f.Id} » deux fois.");
+                    else if (ids.Contains(f.Id)) report.Add(p + ".id", ValidationCode.InvalidValue, $"compagnon « {f.Id} » à la fois recruté et renvoyé.");
+                    else if (previous != null && string.CompareOrdinal(previous, f.Id) > 0) report.Add(p + ".id", ValidationCode.InvalidValue, "anciens mercenaires rangés par identifiant.");
+                    if (f.Id != null) previous = f.Id;
+                    if (f.Approval is null) Missing(report, p + ".approval", "estime, de −100 à 100");
+                    else if (f.Approval < -SavedCompanion.MaxApproval || f.Approval > SavedCompanion.MaxApproval)
+                        report.Add(p + ".approval", ValidationCode.OutOfRange, $"hors de [−{SavedCompanion.MaxApproval}, {SavedCompanion.MaxApproval}].");
+                    if (f.Trait != null && !SavedCompanion.IsTrait(f.Trait)) report.Add(p + ".trait", ValidationCode.InvalidValue, $"trait « {f.Trait} » mal nommé.");
                 }
             }
         }
