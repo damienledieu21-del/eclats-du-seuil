@@ -1259,6 +1259,8 @@ namespace EdS.Data.Story
                     string p = $"{path}[{i}]";
                     string? id = n.Festivals[i];
                     if (id is null || !_festivals.Contains(id)) { _r.Add(p, ValidationCode.UnknownReference, $"fête inconnue « {id} »."); ok = false; }
+                    // Revue Codex de la PR #174 (5e tour) : un PNJ de passage à une fête du calendrier seulement ne viendrait jamais.
+                    else if (_calendarOnly.Contains(id)) { _r.Add(p, ValidationCode.InvalidValue, $"« {id} » est une fête du calendrier seulement (affichée, jamais tenue au jeu)."); ok = false; }
                     else if (list.Contains(id)) { _r.Add(p, ValidationCode.DuplicateId, $"fête « {id} » déjà donnée."); ok = false; }
                     else list.Add(id);
                 }

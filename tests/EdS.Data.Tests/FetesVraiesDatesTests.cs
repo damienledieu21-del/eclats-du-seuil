@@ -387,6 +387,14 @@ public class FetesVraiesDatesTests
     }
 
     [Fact]
+    public void Revue_Codex_fete_du_calendrier_refusee_pour_un_pnj_de_passage()
+    {
+        StoryLoadResult r = Mutated(root => root["data"]!["npcs"]![29]!["festivals"] = new JsonArray("festival.lanternes"));
+        Assert.False(r.IsValid);
+        Assert.Contains(r.Report.Errors, e => e.Path == "$.data.npcs[29].festivals[0]" && e.Message.Contains("calendrier seulement"));
+    }
+
+    [Fact]
     public void Revue_Codex_cle_trop_longue_pour_le_registre_rien_n_est_garde_et_rien_ne_leve()
     {
         string longId = "festival.moissons_" + new string('a', 115);

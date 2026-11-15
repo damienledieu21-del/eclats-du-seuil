@@ -87,8 +87,12 @@ namespace EdS.World
         private long? FirstDayOn(CivilDate date)
         {
             if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return null;
-            long perReal = Math.Max(1, 86_400_000 / Zone.Clock.DayLengthMs);   // jours du monde par jour réel (8 pour des journées de 3 h)
-            long day = Math.Max(Zone.Time.Day, checked(Zone.Time.Day + (date.DayNumber - today.DayNumber - 1) * perReal));
+            // Revue Codex de la PR #174 (5e tour) : le décalage se calcule sur les durées exactes (pas sur un nombre entier de jours du monde
+            // par jour réel, tronqué : 4 au lieu de 4,8 pour des journées de 5 h) ; la recherche ne rattrape plus qu'un arrondi.
+            long length = Zone.Clock.DayLengthMs;
+            long perReal = Math.Max(1, (86_400_000 + length - 1) / length);   // jours du monde par jour réel, arrondi au-dessus (8 pour 3 h)
+            long realDays = date.DayNumber - today.DayNumber - 1;
+            long day = Math.Max(Zone.Time.Day, checked(Zone.Time.Day + realDays * 86_400_000 / length));
             for (int guard = 0; guard < 4 * perReal + 4; guard++, day++)
                 if (CivilDateOfDay(day) is CivilDate d && d >= date) return day;
             return null;
