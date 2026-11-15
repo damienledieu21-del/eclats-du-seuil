@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using EdS.Data.Allies;
 using EdS.Data.Json;
+using EdS.Data.Saves;
 using EdS.Data.Scenarios;
 using EdS.Data.Story;
 using EdS.Domain.Combat;
@@ -75,6 +76,22 @@ public class CompagnonsContenuTests
         Assert.Equal("fact.chef_des_bandits.vaincu", q.GetProperty("requires")[0].GetProperty("id").GetString());
         Assert.Contains(q.GetProperty("effects").EnumerateArray(), e => e.GetProperty("do").GetString() == "setFact"
             && e.GetProperty("id").GetString() == "fact.compagnons.deuxieme_place");
+    }
+
+    [Fact]
+    public void La_quete_de_lien_finie_ouvre_la_deuxieme_place_au_niveau_12()
+    {
+        SavedCompanions roster = CompanionRules.Recruit(Catalog, SavedCompanions.Empty, "companion.nyx", new RecruitContext(true, null, 0, 1)).Roster;
+        var done = new SavedStory(quests: new System.Collections.Generic.Dictionary<string, QuestProgress>
+            { ["quest.compagnons.lien_au_feu"] = new QuestProgress(QuestProgress.Done) });
+        Assert.Equal("bondQuestNotDone", CompanionRules.OpenSecondSlot(Catalog, roster, 20, SavedStory.Empty).Reason);
+        Assert.Equal("levelTooLow", CompanionRules.OpenSecondSlot(Catalog, roster, 11, done).Reason);
+        SavedCompanions two = CompanionRules.OpenSecondSlot(Catalog, roster, 12, done).Roster;
+        Assert.Equal(2, two.Slots);
+        Assert.Empty(CompanionRules.Check(Catalog, two, done, 12));
+        // Recrues de la Guilde : chaque mercenaire reçoit un des quatre traits.
+        foreach (CompanionSheet m in Catalog.Companions.Where(c => c.Kind == CompanionKind.Mercenary))
+            Assert.NotNull(Catalog.Trait(CompanionRules.Recruit(Catalog, two, m.Id, new RecruitContext(false, "s", 1_000_000, 9)).Roster.Find(m.Id)!.Trait));
     }
 
     [Theory]

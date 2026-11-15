@@ -239,6 +239,8 @@ Compagnons, partie moteur et données (décisions de Damien du 14 novembre 2026,
 
 Compagnons, progression : recrutement (héros et bêtes par l'histoire, mercenaires à la Guilde selon le rang et contre une paie, **trait tiré au hasard**), **une place puis deux** (quête de lien au feu de camp, niveau doux 12), le compagnon **monte de niveau avec le personnage**, **hors combat sans mort** jusqu'à la halte au feu de camp, estime du compagnon, **un seul compagnon au combat pendant le boss du monde**. Sauvegarde en **version 20** (les versions antérieures sont lues sans compagnon).
 
+Compagnons, contenu : les **14 compagnons du dossier** en données (`data/v0/world/companions.json` : 4 héros, 6 mercenaires de la Guilde, 4 bêtes dont Cendre en trois stades ; dons, traits, attaques à deux nommées) et la **quête de lien au feu de camp** qui ouvre la deuxième place.
+
 ## Avancement
 
 - [x] Lot 0 — socle (solution, projets, CI)
