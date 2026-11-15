@@ -778,7 +778,9 @@ public class StyleRulesTests
         Assert.Contains("mesh.RecalculateTangents();   // revue Codex de la PR #58 (3e tour)", view, StringComparison.Ordinal);
         Assert.Contains("DryStoneWall(id, points);", view, StringComparison.Ordinal);
         Assert.Contains("StyleLook.Building(_root.transform, StyleProp.Mill, id, Center(points), 0f, side);", view, StringComparison.Ordinal);
-        Assert.Contains("_occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true, Min = new Vector3(x0, 0f, z0), Max = new Vector3(x1, top, z1) });", view, StringComparison.Ordinal);
+        // Sous-lot V2.30 (relecture de la PR #188) : un tronçon de palissade a son occulteur (posé sur le sol s'il suit le relief).
+        Assert.Contains("_occluders.Add(new Occluder { Transform = go.transform, Renderer = renderer, Lower = true,", view, StringComparison.Ordinal);
+        Assert.Contains("Min = new Vector3(minX, drape ? low : 0f, minZ), Max = new Vector3(maxX, drape ? high : top, maxZ) });", view, StringComparison.Ordinal);
         // Forge, herbe de l'Aube, filons ; les PNJ se tournent vers le joueur.
         Assert.Contains("StyleProp.FirePit", markers, StringComparison.Ordinal);
         Assert.Contains("StyleLook.Prop(holder, StyleProp.Herb, m.Data.Id, holder.position,", markers, StringComparison.Ordinal);
