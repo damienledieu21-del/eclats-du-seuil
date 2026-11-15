@@ -253,6 +253,9 @@ Décisions de Damien rapportées par la session principale ; elles précisent le
 |---|---|---|
 | Deuxième place de compagnon | Elle s'ouvre **par l'histoire**, à la **fin du chapitre 1 des Vallons**, après le Grand Solitaire ou le chef des bandits, par une **quête de lien au feu de camp** : le premier compagnon présente quelqu'un, ou ramène Cendre assez grand. Un **niveau minimum doux, d'environ 12**, évite qu'elle s'ouvre trop tôt (valeur exacte à équilibrer). | Retenu (Damien, 14 novembre 2026, 23 h 43 : « Ok on fait ça », sur la recommandation de Claude) |
 | Compagnons pendant le Grand Solitaire (boss du monde, de 5 à 100 joueurs) | Chaque joueur garde **un seul compagnon au combat** ; le second **attend au point de repli** de l'événement. La proposition « tous au repli » n'est pas retenue. Source : dossier ChatGPT « Grand Solitaire et compagnons », p. 34. | Retenu (Damien, 14 novembre 2026, 23 h 45) |
+| Attaque à deux et jauge de lien | Les coups de l'attaque à deux **ne rechargent pas** la jauge de lien (elle est dépensée au départ et ne se remplit que par les actions coordonnées ordinaires). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) |
+| Mercenaire renvoyé puis réembauché | Il **garde son estime et son trait** ; seule sa **jauge de lien revient à 0**. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) |
+| Ronce, l'ours | Ramené au niveau des autres compagnons de son rôle : **gros protecteur, mais pas supérieur à tout** (valeurs exactes à équilibrer à l'essai). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) |
 
 ## 7 ter. Saisons (Retenu)
 

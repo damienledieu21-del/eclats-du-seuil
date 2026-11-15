@@ -36,19 +36,25 @@ jobs:
       # Revue de la PR #73 : la catégorie Time, déclarée dans les tests et connue du script, est désormais contrôlée aussi.
       - name: Rapprochement des catégories, tests du script (hors ligne)
         run: python3 -m unittest discover -s scripts -p 'test_category_results.py' -v
-      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World Sector
+      - run: bash scripts/test-category.sh -c Release --resultats "$RUNNER_TEMP/resultats-release" Numeric Formula Data Build Engine Resources Regression Limits Status Trigger Modifier Shield Support Bastion Scenario Runtime Network Time Space Presence Behavior Scene Duo World Sector Companion
       # Correctif 7.3.1 (D4) : scénario de référence avec déclencheurs, simulé par la CLI, comparé octet par octet au journal figé, puis rejoué.
       - name: Scénario entrainement_declencheurs (simulation, comparaison, rejeu)
         run: |
           dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/entrainement_declencheurs.json --out "$RUNNER_TEMP/declencheurs.jsonl"
-          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0/entrainement_declencheurs.jsonl
+          cmp "$RUNNER_TEMP/declencheurs.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0/entrainement_declencheurs.jsonl
           dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/declencheurs.jsonl"
       # Esquive (décision de Damien du 14 novembre 2026) : scénario de référence de l'esquive, même chaîne.
       - name: Scénario espace_esquive (simulation, comparaison, rejeu)
         run: |
           dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/espace_esquive.json --out "$RUNNER_TEMP/esquive.jsonl"
-          cmp "$RUNNER_TEMP/esquive.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0/espace_esquive.jsonl
+          cmp "$RUNNER_TEMP/esquive.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0/espace_esquive.jsonl
           dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/esquive.jsonl"
+      # Compagnons (décisions de Damien du 14 novembre 2026) : scénario de référence des compagnons (ordres, lien, attaque à deux), même chaîne.
+      - name: Scénario espace_compagnon (simulation, comparaison, rejeu)
+        run: |
+          dotnet run --no-build -c Release --project src/EdS.Cli -- simulate scenarios/espace_compagnon.json --out "$RUNNER_TEMP/compagnon.jsonl"
+          cmp "$RUNNER_TEMP/compagnon.jsonl" tests/EdS.Data.Tests/Fixtures/reference-0.33.0-contenu-0.6.0-regles-0.18.0/espace_compagnon.jsonl
+          dotnet run --no-build -c Release --project src/EdS.Cli -- replay "$RUNNER_TEMP/compagnon.jsonl"
 
   # Correctif 7.3.1 : Debug aussi, où les réserves de budget sont vérifiées exactes à chaque traitement.
   # CI plus rapide : le cas « zones/vallons.json » de Lot114dSnapshotDataTests prend à lui seul l'essentiel du temps ; il tourne sur sa

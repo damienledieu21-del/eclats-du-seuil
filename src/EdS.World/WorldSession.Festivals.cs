@@ -135,7 +135,7 @@ namespace EdS.World
         {
             if (!(Narrative is Narrative n) || !(n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f) || !f.HasDate) return;
             if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today) || !(f.OccurrenceOf(today) is CivilDate start)) return;
-            if (!(ContestKey(festival) is string key) || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
+            if (!(ContestKey(festival) is string key) || key.Length > SavedEvent.MaxKeyLength || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
             bool has = _character.Events.Any(x => x.Id == key);
             if (!has && _character.Events.Count >= SavedEvent.MaxEntries) return;
             var entry = new SavedEvent(key, 0, 0, start.DayNumber, EventOutcome.None);
