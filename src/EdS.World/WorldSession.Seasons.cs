@@ -42,6 +42,24 @@ namespace EdS.World
             SeasonState state = SeasonCalendar.AtUtc(unixSeconds);   // lève avant toute mutation
             _civilSeason = state;
             CivilUtcSeconds = unixSeconds;
+            _civilTick = Zone.WorldTick;
+        }
+
+        private long _civilTick;
+
+        /// <summary>
+        /// Fêtes aux vraies dates : jour réel (heure de Paris) du jour du monde <paramref name="day"/>, pris à midi du monde, projeté depuis le
+        /// dernier instant fourni par l'hôte et le tick du monde où il l'a été (une journée du monde dure <see cref="WorldClock.DayLengthMs"/>
+        /// de jeu) ; null sans date fournie ou hors du calendrier.
+        /// </summary>
+        public CivilDate? CivilDateOfDay(long day)
+        {
+            if (!(CivilUtcSeconds is long utc) || day < 0) return null;
+            long noon = WorldEventSchedule.TickAt(Zone.Clock, checked(day * WorldClock.MinutesPerDay + WorldClock.MinutesPerDay / 2));
+            long ms = checked((noon - _civilTick) * Zone.Clock.TickMilliseconds);
+            long seconds = checked(utc + (ms >= 0 ? ms / 1000 : -((-ms + 999) / 1000)));
+            if (seconds < ParisTime.MinUnixSeconds || seconds > ParisTime.MaxUnixSeconds) return null;
+            return ParisTime.ToLocal(seconds).Date;
         }
 
         /// <summary>Rang de la saison du monde (0 : printemps … 3 : hiver) : la saison réelle si une date est fournie, sinon celle du calendrier du jeu.</summary>
