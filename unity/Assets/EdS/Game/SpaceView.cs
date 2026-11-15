@@ -283,6 +283,9 @@ namespace EdS.Game
             ObstacleShape(obstacle);
             if (!StyleWorld.HasRelief || obstacle.Low || TownRules.BuildingFor(obstacle.Id) == StyleBuilding.Woods
                 || StyleRules.FenceFor(obstacle.Id) == StyleFence.Hedge) return;
+            // Revue Codex de la PR #170 : l'éboulement et les falaises (sans replat) ont chaque rocher posé sur son sol (QuarryFace) : pas de
+            // déplacement d'ensemble.
+            if (StyleRules.RockFace(obstacle.Id) && !GroundRelief.Builds(obstacle)) return;
             float cx = Raw((obstacle.Points.Min(p => p.X.Raw) + obstacle.Points.Max(p => p.X.Raw)) / 2);
             float cz = Raw((obstacle.Points.Min(p => p.Z.Raw) + obstacle.Points.Max(p => p.Z.Raw)) / 2);
             Lift(children, occluders, boxes, Ground(cx, cz, 0.4f));
@@ -451,7 +454,7 @@ namespace EdS.Game
             // Essai réaliste 5 (« le gros bloc en brique, je ne sais pas à quoi il sert » : c'est le front de taille de la carrière) : une
             // paroi de gros rochers sur son emprise.
             // Sous-lot V2.28c : l'éboulement et les falaises de la surface étendue, de même (une paroi de rochers sur leur emprise).
-            if (StyleRules.RockFace(id) && QuarryFace(id, points)) return;
+            if (StyleRules.RockFace(id) && QuarryFace(id, points, StyleWorld.HasRelief && !GroundRelief.Builds(obstacle))) return;
             // Sous-lot V2.11 (5e vague) : les pierres du Seuil sont les menhirs aux runes lumineuses de DragonJojo, sur leur emprise ; sans
             // eux, un rocher des packs comme avant.
             if (StyleRules.Key(id).StartsWith("pierreseuil", System.StringComparison.Ordinal) && Wave5View.Has(Wave5Role.Menhir))
@@ -1570,7 +1573,7 @@ namespace EdS.Game
         /// Essai réaliste 5 : front de taille de la carrière en paroi de gros rochers du catalogue, serrés le long de son grand côté, un
         /// second rang plus bas au pied et quelques blocs tombés devant. False sans rocher dans le catalogue (le bloc simple reste).
         /// </summary>
-        private bool QuarryFace(string id, List<Vector3> points)
+        private bool QuarryFace(string id, List<Vector3> points, bool drape)
         {
             int placed = 0;
             // Relecture indépendante de la PR #167 : seuls les rochers de l'espace du moment (et 8 m autour) ; une falaise de 1,3 km n'en pose
@@ -1585,6 +1588,8 @@ namespace EdS.Game
                 string part = id + "/" + i;
                 float jitter = (StyleRules.Variant(part, 100) - 50) * 0.008f;
                 Vector3 at = new Vector3((float)spot.X, 0f, (float)spot.Z) + normal * jitter;
+                // Revue Codex de la PR #170 : sans replat (éboulement, falaises), chaque rocher sur le sol affiché sous lui.
+                if (drape) at.y = Ground(at.x, at.z, 0.4f);
                 GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, part, at, 0f, depth * (1.0f + 0.003f * StyleRules.Variant(part + "/taille", 100)));
                 if (rock == null) continue;
                 AddModelOccluders(rock);
@@ -1593,12 +1598,14 @@ namespace EdS.Game
                 // aucun rocher du décor ne fait croire à un obstacle là où l'on peut marcher.
                 string low = part + "/pied";
                 Vector3 foot = at + dir * 1.6f - normal * (depth * 0.3f);
+                if (drape) foot.y = Ground(foot.x, foot.z, 0.4f);
                 GameObject small = StyleLook.Decor(_root.transform, StyleSlot.Rock, low, foot, 0f, depth * (0.45f + 0.003f * StyleRules.Variant(low, 100)));
                 if (small != null) AddModelOccluders(small);
                 if (i % 3 == 1)
                 {
                     string fallen = part + "/eboulis";
                     Vector3 front = at - dir * 0.8f - normal * (depth * 0.4f);
+                    if (drape) front.y = Ground(front.x, front.z, 0.4f);
                     GameObject block = StyleLook.Decor(_root.transform, StyleSlot.Rock, fallen, front, 0f, 0.9f + 0.006f * StyleRules.Variant(fallen, 100));
                     if (block != null) AddModelOccluders(block);
                 }
