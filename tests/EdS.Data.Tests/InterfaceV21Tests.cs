@@ -432,7 +432,7 @@ public class InterfaceV21Tests
         positioned.Dodge();
         positioned.StepOnce();
         Assert.Contains(positioned.SubmittedCommands, c => c.Action == CombatAction.Dodge && c.Direction is null);
-        Assert.Contains("dodge: HudLayoutV21.DodgeFor(_combat));", Script("EdsGame.cs"), StringComparison.Ordinal);
+        Assert.Contains("dodge: HudLayoutV21.DodgeFor(_combat),", Script("EdsGame.cs"), StringComparison.Ordinal);
         Assert.Contains("if (Input.GetKeyDown(KeyCode.LeftControl) || _touch.DodgePressed) _combat.Dodge();", Script("EdsGame.cs"), StringComparison.Ordinal);
         Assert.Contains(HelpKeys.Training, k => k.Key == "Ctrl" && k.Action == "Esquive");
     }

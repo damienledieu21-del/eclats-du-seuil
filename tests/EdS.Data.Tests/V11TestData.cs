@@ -53,7 +53,16 @@ internal static class V11TestData
         }
     }
 
-    public static StoryBook Book(ZoneDefinition zone) => StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, ItemsCatalog, V16TestData.Interiors).Story!;
+    public static StoryBook Book(ZoneDefinition zone)
+    {
+        // Sous-lot V2.28c (4) : une zone d'avant la surface étendue (ZoneBefore) n'a pas les passages de la vallée : l'histoire d'avant.
+        if (zone.Passages.Any(p => p.Id == "eboulement"))
+            return StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(DataDirectory), Texts, zone, ItemsCatalog, V16TestData.Interiors).Story!;
+        JsonNode story = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!;
+        StoryBefore(story);
+        StoryLoadResult result = StoryJsonReader.ReadStory(story.ToJsonString(), Texts, zone, ItemsCatalog, V16TestData.Interiors);
+        return result.Story ?? throw new InvalidDataException(result.Report.ToString());
+    }
 
     public static JsonObject MerchantsJson() => JsonNode.Parse(File.ReadAllText(MerchantsPath))!.AsObject();
 

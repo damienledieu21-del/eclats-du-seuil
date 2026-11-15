@@ -238,6 +238,13 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal("Forge", ferrure.Profession);
         Assert.Equal(CraftRefusal.NotEnough, ferrure.Refusal);
         Assert.Equal("Minerai de fer 0/3", ferrure.Inputs);
+        // Revue Codex de la PR #183 : les recettes de l'atelier où l'on se tient d'abord (l'écran en montre huit par page).
+        IReadOnlyList<RecipeEntry> listed = a.Recipes();
+        int firstElsewhere = listed.ToList().FindIndex(r => r.Refusal == CraftRefusal.NotHere);
+        Assert.True(firstElsewhere > 0);
+        Assert.All(listed.Take(firstElsewhere), r => Assert.NotEqual(CraftRefusal.NotHere, r.Refusal));
+        Assert.Contains(listed.Take(firstElsewhere), r => r.Id == "recipe.ferrure");
+        Assert.All(listed.Skip(firstElsewhere), r => Assert.Equal(CraftRefusal.NotHere, r.Refusal));
         Assert.Equal(CraftRefusal.NotEnough, a.Craft("recipe.ferrure"));
         Assert.Equal(new[] { "Il te manque des matériaux." }, a.DrainMessages());
         // Herbes du village : récoltées, puis épuisées.
