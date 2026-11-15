@@ -27,6 +27,7 @@ public class V228bSoloSecteursTests
     internal static ZoneDefinition Vallons(bool region, Action<JsonObject>? scenario = null)
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+        ZoneBefore(root);
         if (!region)
         {
             root["schemaVersion"] = 12;

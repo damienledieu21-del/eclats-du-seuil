@@ -34,6 +34,16 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
+    /// Relecture indépendante de la PR #167 : la zone des Vallons d'avant la surface étendue (racine du fichier de zone), avec
+    /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
+    /// </summary>
+    public static void ZoneBefore(JsonObject zone)
+    {
+        var passages = zone["data"]!["passages"]!.AsArray();
+        foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
+    }
+
+    /// <summary>
     /// Relecture indépendante de la PR #167 : espace réel de la session du secteur du cœur (s07_06 et sa marge de 32 m, de [−148, −110] à
     /// [172, 210]), découpé par l'hôte des secteurs dans l'aire de toute la région : celui où le jeu calcule les trajets des PNJ du bourg.
     /// </summary>
