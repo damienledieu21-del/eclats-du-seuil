@@ -687,11 +687,11 @@ namespace EdS.Game
                 UiKit.Place(craft.Rect, new Vector2(660f, 132f), new Vector2(170f, 42f), new Vector2(1f, 1f));
                 _recipes.Add((card, icon, name, kind, recipe, state, craft));
             }
-            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 60f, 836f, 1060f, 22f, 0f, 0.5f, 6f);
+            _craftProfessions = Text(page, UiFace.Bold, 16f, UiKit.Muted, TextAnchor.MiddleLeft, 220f, 836f, 900f, 22f, 0f, 0.5f, 6f);
             _recipesPrevious = UiKit.Button(page, "Précédentes", "bouton_sobre", "‹", UiFace.Bold, 22f, UiKit.Ink, () => TurnRecipes(-1));
-            UiKit.Place(_recipesPrevious.Rect, new Vector2(1140f, 820f), new Vector2(70f, 42f), Vector2.zero);
+            UiKit.Place(_recipesPrevious.Rect, new Vector2(60f, 815f), new Vector2(70f, 42f), Vector2.zero);   // revue Codex de la PR #183 (2e tour) : à gauche, loin du bouton « Réparer » (x 1140 à 1440)
             _recipesNext = UiKit.Button(page, "Suivantes", "bouton_sobre", "›", UiFace.Bold, 22f, UiKit.Ink, () => TurnRecipes(1));
-            UiKit.Place(_recipesNext.Rect, new Vector2(1220f, 820f), new Vector2(70f, 42f), Vector2.zero);
+            UiKit.Place(_recipesNext.Rect, new Vector2(140f, 815f), new Vector2(70f, 42f), Vector2.zero);
             BuildForge(page);   // sous-lot V1.4 : le petit jeu de forge et la réparation (AdventureBook.Forge.cs)
         }
 
