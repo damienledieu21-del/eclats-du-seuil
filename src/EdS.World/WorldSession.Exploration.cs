@@ -33,11 +33,17 @@ namespace EdS.World
             if (!me.IsPresent || me.IsDead || !(me.Position is GroundVector p)) return;
             _explored.Reveal(p, ExploredCells.SightMeters);
             if (Narrative is null) return;
-            foreach (Viewpoint v in Viewpoint.All)
+            for (int i = 0; i < Viewpoint.All.Count; i++)   // relecture de la PR #185 : sans allocation à chaque tick
             {
+                Viewpoint v = Viewpoint.All[i];
                 if (v.Zone != Definition!.Id || Narrative.HasDiscovered(v.Discovery)) continue;
                 if (ZonePopulations.Beyond(p, Domain.Numerics.Fixed.Zero, v.Position, Domain.Numerics.Fixed.Zero, Domain.Numerics.Fixed.FromInt(Viewpoint.Range))) continue;
-                if (!Narrative.Discover(v.Discovery, v.Xp, story)) continue;
+                if (!Narrative.Discover(v.Discovery, story)) continue;
+                // Relecture de la PR #185 : l'expérience réellement ajoutée (au plafond, moins que les 200 promis), annoncée telle quelle.
+                long before = _character.Xp;
+                _character = _character.WithXp(Math.Min(SaveValidator.MaxXp, checked(before + v.Xp)));
+                long added = _character.Xp - before;
+                if (added > 0) story.Add(new StoryEvent(StoryEventKind.XpGiven, "xp", null, added));
                 _explored.Reveal(v.Position, v.RevealMeters);
             }
         }

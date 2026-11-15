@@ -381,6 +381,9 @@ namespace EdS.Data.Saves
             Mount = mount;
             Explored = new SortedDictionary<string, string>(explored?.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal)
                 ?? new Dictionary<string, string>(StringComparer.Ordinal), StringComparer.Ordinal);
+            // Relecture indépendante de la PR #185 : seulement des cases explorées au format (l'écrivain les recopie telles quelles).
+            if (Explored.Count > SaveValidator.MaxExploredZones || Explored.Any(e => !SaveValidator.IsExploredEntry(e.Key, e.Value)))
+                throw new ArgumentException("Cases explorées hors du format des sauvegardes.", nameof(explored));
             Look = look;
             Stock = SavedStock.Canonical(stock);
             Events = SavedEvent.Canonical(events);
@@ -1165,7 +1168,7 @@ namespace EdS.Data.Saves
                     report.Add(path + ".explored", ValidationCode.OutOfRange, $"{c.Explored.Count} zones, au plus {MaxExploredZones}.");
                 foreach (KeyValuePair<string, string?> e in c.Explored)
                 {
-                    if (!ZoneId.IsMatch(e.Key)) report.Add(path + ".explored." + e.Key, ValidationCode.InvalidValue, "identifiant de zone mal formé.");
+                    if (!IsZoneId(e.Key)) report.Add(path + ".explored." + e.Key, ValidationCode.InvalidValue, "identifiant de zone mal formé (« zone.<nom> », 64 caractères au plus).");
                     else if (e.Value is null || e.Value.Length < 2 || e.Value.Length > MaxExploredHex || e.Value.Length % 2 != 0 || !ExploredHex.IsMatch(e.Value))
                         report.Add(path + ".explored." + e.Key, ValidationCode.InvalidValue,
                             $"cases explorées : chaîne hexadécimale en minuscules, de longueur paire, de 2 à {MaxExploredHex} caractères.");
@@ -1196,6 +1199,10 @@ namespace EdS.Data.Saves
         }
 
         private static readonly Regex ExploredHex = new Regex(@"^[0-9a-f]+\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Sous-lot V2.29 (2) : une entrée de <c>explored</c> au format (zone, chaîne hexadécimale minuscule paire de 2 à <see cref="MaxExploredHex"/>).</summary>
+        public static bool IsExploredEntry(string? zone, string? hex) => IsZoneId(zone) && hex != null && hex.Length >= 2 && hex.Length <= MaxExploredHex
+            && hex.Length % 2 == 0 && ExploredHex.IsMatch(hex);
 
 
         /// <summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using EdS.Data.Zones;
 using EdS.Domain.Numerics;
@@ -32,14 +33,21 @@ namespace EdS.World
             Grid = grid ?? throw new ArgumentNullException(nameof(grid));
             _seen = new bool[grid.CellCount];
             if (string.IsNullOrEmpty(hex)) return;
-            // Une chaîne d'une autre taille (région redécoupée) est lue jusqu'où elle va : les bits en trop sont ignorés, les manquants à zéro.
-            for (int i = 0; i + 1 < hex!.Length && i / 2 * 8 < _seen.Length; i += 2)
+            // Relecture indépendante de la PR #185 : la sauvegarde ne garde pas la largeur de la grille. Une chaîne d'une autre longueur que
+            // celle de cette grille (région redécoupée), ou qui n'est pas en hexadécimal minuscule, est ignorée tout entière (rien n'est vu,
+            // Discarded), plutôt que de décaler les cases sans rien dire.
+            if (hex!.Length != HexLength(grid) || hex.Any(c => !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f')))
             {
-                int b = int.Parse(hex.Substring(i, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                Discarded = true;
+                return;
+            }
+            for (int i = 0; i < hex.Length; i += 2)
+            {
+                int b = Digit(hex[i]) * 16 + Digit(hex[i + 1]);
                 for (int bit = 0; bit < 8; bit++)
                 {
                     int index = i / 2 * 8 + bit;
-                    if (index < _seen.Length && (b & (1 << bit)) != 0 && !_seen[index])
+                    if (index < _seen.Length && (b & (1 << bit)) != 0)
                     {
                         _seen[index] = true;
                         Count++;
@@ -47,6 +55,14 @@ namespace EdS.World
                 }
             }
         }
+
+        /// <summary>La chaîne lue n'avait pas la longueur de cette grille (ou n'était pas hexadécimale) : elle a été ignorée.</summary>
+        public bool Discarded { get; }
+
+        /// <summary>Longueur (caractères) de la chaîne des cases d'une grille : deux par octet de huit cases.</summary>
+        public static int HexLength(RegionGrid grid) => (grid ?? throw new ArgumentNullException(nameof(grid))).CellCount / 8 * 2 + (grid.CellCount % 8 == 0 ? 0 : 2);
+
+        private static int Digit(char c) => c <= '9' ? c - '0' : c - 'a' + 10;
 
         public bool IsSeen(int column, int row) =>
             column >= 0 && column < Grid.Columns && row >= 0 && row < Grid.Rows && _seen[column + row * Grid.Columns];
@@ -126,7 +142,7 @@ namespace EdS.World
 
         /// <summary>
         /// Points de vue connus. Le sommet (180, 1 360), au bout du chemin des cairns : 200 XP (Damien), brouillard dissipé à 1 024 m autour
-        /// (valeur de Claude : « autour », soit huit cases ; la moitié nord des Vallons environ).
+        /// (valeur de Claude : « autour », soit huit cases ; environ un cinquième des Vallons).
         /// </summary>
         public static readonly IReadOnlyList<Viewpoint> All = Array.AsReadOnly(new[]
         {

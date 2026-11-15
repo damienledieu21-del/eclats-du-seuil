@@ -7,6 +7,7 @@ using EdS.Domain.Numerics;
 using EdS.Domain.Space;
 using EdS.Runtime;
 using EdS.World;
+using System.Linq;
 using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
@@ -168,9 +169,123 @@ public class V229BrouillardTests : IDisposable
         Assert.True(a.World.Character.Xp >= xp + 200);
         Assert.True(a.World.Explored!.Count >= seen + 100);
         Assert.Contains("discovery.point_de_vue_du_sommet", a.World.Save().Character!.Story.Discoveries);
-        // Une seule fois.
+        // Une seule fois, même après une sauvegarde, un rechargement et un retour au sommet.
         long after = a.World.Character.Xp;
         for (int i = 0; i < 40; i++) a.Advance(0.05);
         Assert.Equal(after, a.World.Character.Xp);
+        a.Save();
+        AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        again.Advance(0.05);
+        Assert.True(again.World.Narrative!.HasDiscovered("discovery.point_de_vue_du_sommet"));
+        long before = again.World.Character.Xp;
+        Assert.True(again.Combat.CallMount());
+        for (int i = 0; i < 22; i++) again.Advance(0.05);
+        Assert.True(Ride(again, (500.0, 1290.0), (190.0, 1225.0), (180.0, 1360.0)), "sommet non atteint au retour");
+        for (int i = 0; i < 40; i++) again.Advance(0.05);
+        Assert.Equal(before, again.World.Character.Xp);   // la découverte, sauvegardée, marque la visite : pas de seconde récompense
+    }
+
+    // --- Relecture indépendante de la PR #185 -----------------------------------------------------------------------------
+
+    [Fact]
+    public void Chaines_mal_formees_ignorees_ou_refusees()
+    {
+        var grid = RegionGrid.Vallons();
+        Assert.Equal(192, ExploredCells.HexLength(grid));
+        string ok = new string('0', 190) + "01";
+        Assert.Equal(1, new ExploredCells(grid, ok).Count);
+        foreach (string bad in new[] { "0", "abc", new string('0', 191), new string('0', 190) + "0G", new string('0', 190) + "0F", new string('0', 194), "ff" })
+        {
+            var cells = new ExploredCells(grid, bad);
+            Assert.True(cells.Discarded, bad);
+            Assert.Equal(0, cells.Count);
+        }
+        Assert.False(new ExploredCells(grid, null).Discarded);
+        // Le personnage refuse des cases hors format (l'écrivain les recopierait telles quelles).
+        Assert.Throws<ArgumentException>(() => Hero().WithExplored(new Dictionary<string, string> { ["zone.vallons"] = "0\"" }));
+        Assert.Throws<ArgumentException>(() => Hero().WithExplored(new Dictionary<string, string> { ["Vallons"] = "00" }));
+        Assert.Throws<ArgumentException>(() => Hero().WithExplored(new Dictionary<string, string> { ["zone." + new string('a', 60)] = "00" }));
+        Assert.Throws<ArgumentException>(() => Hero().WithExplored(Enumerable.Range(0, 17).ToDictionary(k => "zone.z" + k, _ => "00")));
+    }
+
+    [Fact]
+    public void Sauvegarde_refuse_trop_de_zones_trop_long_et_null()
+    {
+        string text = SaveJsonReader.Write(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero().WithExplored(new Dictionary<string, string> { ["zone.vallons"] = "01" })));
+        string zones = "\"explored\": {" + string.Join(", ", Enumerable.Range(0, 17).Select(k => "\"zone.z" + k + "\": \"01\"")) + "}";
+        Assert.False(SaveJsonReader.Read(text.Replace("\"explored\": {\"zone.vallons\": \"01\"}", zones)).IsValid);
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"01\"", "\"" + new string('0', 1026) + "\"")).Report.Errors, e => e.Path == "$.data.character.explored.zone.vallons");
+        Assert.False(SaveJsonReader.Read(text.Replace("\"01\"", "null")).IsValid);
+        Assert.False(SaveJsonReader.Read(text.Replace("\"explored\": {\"zone.vallons\": \"01\"}", "\"explored\": null")).IsValid);
+        Assert.False(SaveJsonReader.Read(text.Replace("\"zone.vallons\": \"01\"", "\"zone." + new string('a', 60) + "\": \"01\"")).IsValid);
+    }
+
+    [Fact]
+    public void Migration_d_un_vrai_fichier_v22()
+    {
+        AdventureSession a = Start(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero()));
+        a.Save();
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(SavePath))!.AsObject();
+        root["schemaVersion"] = 22;
+        root["data"]!["character"]!.AsObject().Remove("explored");
+        File.WriteAllText(SavePath, root.ToJsonString());
+        SaveReadResult read = SaveStore.Read(SavePath);
+        Assert.False(read.Unreadable, read.Problem);
+        Assert.True(read.Save!.Migrated);
+        AdventureSession again = AdventureSession.Load(DataDirectory, Scenarios, SavePath);
+        again.Advance(0.05);
+        Assert.True(again.World.Explored!.Count > 0);
+        again.Save();
+        Assert.Contains(SaveVersion.Current, File.ReadAllText(SavePath));
+        Assert.Contains("\"explored\": {\"zone.vallons\"", File.ReadAllText(SavePath));
+    }
+
+    [Fact]
+    public void Interieur_sans_brouillard_et_repere_toujours_visible()
+    {
+        AdventureSession inside = Start(new WorldSave("zone.auberge", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero()));
+        Assert.Null(inside.World.Explored);
+        Assert.True(MapFog.Visible(null, 0, 0));
+        var cells = new ExploredCells(RegionGrid.Vallons());
+        cells.Reveal(At(-18, -12), 1);
+        Assert.True(MapFog.Visible(cells, -18, -12));
+        Assert.False(MapFog.Visible(cells, 1000, 1000));   // sous le brouillard : caché (décision du 15 novembre 2026, 21 h 15)
+        Assert.True(MapFog.Visible(cells, 9000, 0));       // hors de la grille
+    }
+
+    [Fact]
+    public void Points_de_vue_coherents_avec_les_donnees()
+    {
+        AdventureSession a = Start(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero()));
+        foreach (Viewpoint v in Viewpoint.All)
+        {
+            Assert.True(a.World.Narrative!.HasDiscovery(v.Discovery), v.Discovery);
+            Assert.True(RegionGrid.Vallons().Contains(v.Position));
+            Assert.Equal("zone.vallons", v.Zone);
+        }
+        Assert.False(a.World.Narrative!.Discover("discovery.inconnue", new List<StoryEvent>()));   // jamais d'exception pendant un tick
+    }
+
+    /// <summary>Va de point en point (à moins de 3 m de chacun) ; rend vrai si le dernier est atteint.</summary>
+    private static bool Ride(AdventureSession a, params (double X, double Z)[] points)
+    {
+        foreach ((double x, double z) in points)
+        {
+            bool reached = false;
+            for (int i = 0; i < 3000 && !reached; i++)
+            {
+                GroundVector p = a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value;
+                double dx = x - p.X.Raw / 1e4, dz = z - p.Z.Raw / 1e4;
+                if (Math.Sqrt(dx * dx + dz * dz) < 3) reached = true;
+                else
+                {
+                    a.Combat.SetMove(dx, dz);
+                    a.Advance(0.05);
+                }
+            }
+            if (!reached) return false;
+        }
+        a.Combat.SetMove(0, 0);
+        return true;
     }
 }

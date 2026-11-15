@@ -101,6 +101,16 @@ namespace EdS.Game
         private RawImage _mapFog;   // sous-lot V2.29 (2) : brouillard des cases jamais vues
         private Texture2D _fogTexture;
         private int _fogCount = -1;
+        private ExploredCells _fogCells;
+
+        /// <summary>Relecture de la PR #185 : détruit la texture du brouillard (fin d'une aventure).</summary>
+        public void ForgetFog()
+        {
+            if (_fogTexture != null) UnityEngine.Object.Destroy(_fogTexture);
+            _fogTexture = null;
+            _fogCells = null;
+            _fogCount = -1;
+        }
         private RectTransform _mapMarkers;
         private Image _mapYou;
         private readonly List<Image> _markerPool = new List<Image>();
@@ -757,7 +767,14 @@ namespace EdS.Game
                 return;
             }
             _mapFog.gameObject.SetActive(true);
-            if (_fogTexture == null || _fogCount != cells.Count)
+            // Relecture de la PR #185 : la texture suit l'objet des cases (nouvelle session, autre grille) et leur nombre ; une texture
+            // d'une autre taille est détruite et refaite.
+            if (_fogTexture != null && (_fogTexture.width != cells.Grid.Columns || _fogTexture.height != cells.Grid.Rows))
+            {
+                UnityEngine.Object.Destroy(_fogTexture);
+                _fogTexture = null;
+            }
+            if (_fogTexture == null || !ReferenceEquals(_fogCells, cells) || _fogCount != cells.Count)
             {
                 if (_fogTexture == null)
                 {
@@ -768,6 +785,7 @@ namespace EdS.Game
                 _fogTexture.LoadRawTextureData(MapFog.Rgba(cells));
                 _fogTexture.Apply(false);
                 _fogCount = cells.Count;
+                _fogCells = cells;
             }
             _mapFog.texture = _fogTexture;
             double minX = cells.Grid.OriginX, maxZ = cells.Grid.OriginZ + cells.Grid.Rows * RegionGrid.CellMeters;
@@ -810,12 +828,17 @@ namespace EdS.Game
             if (Input.touchCount == 0 && RectTransformUtility.ScreenPointToLocalPointInRectangle(_mapMarkers,
                 new Vector2(Input.mousePosition.x, Input.mousePosition.y), null, out Vector2 local))
                 pointer = new Vector2(local.x, -local.y);
-            foreach (MapPlace place in map.Places) MapName(At(place.CenterX, place.CenterZ), place.Name, 18f, UiKit.Alpha(Color.white, 0.7f), 0f, 2.0, null);
+            // Décision de Damien du 15 novembre 2026 (vers 21 h 15) : sous le brouillard, tout est caché (lieux, créatures, PNJ, points sûrs,
+            // portes) ; le joueur et l'objectif de la quête suivie restent.
+            ExploredCells seen = a.World.Explored;
+            foreach (MapPlace place in map.Places)
+                if (MapFog.Visible(seen, place.CenterX, place.CenterZ)) MapName(At(place.CenterX, place.CenterZ), place.Name, 18f, UiKit.Alpha(Color.white, 0.7f), 0f, 2.0, null);
             foreach (MapEnemy e in enemies)
-                Marker("repere_ennemi", At(e.X, e.Z), e.Boss ? 20f : 14f, e.Boss ? new Color(0.78f, 0.45f, 1f) : Color.white);
+                if (MapFog.Visible(seen, e.X, e.Z)) Marker("repere_ennemi", At(e.X, e.Z), e.Boss ? 20f : 14f, e.Boss ? new Color(0.78f, 0.45f, 1f) : Color.white);
             MapMarker me = null;
             foreach (MapMarker m in a.MapMarkers())
             {
+                if (m.Kind != MapMarkerKind.Player && m.Kind != MapMarkerKind.Objective && !MapFog.Visible(seen, m.X, m.Z)) continue;
                 Vector2 p = At(m.X, m.Z);
                 switch (m.Kind)
                 {
