@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.7.0-provisoire",
+  "contentVersion": "0.8.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -29,6 +29,10 @@
       {
         "id": "minage",
         "name": "text.profession.minage"
+      },
+      {
+        "id": "peche",
+        "name": "text.profession.peche"
       }
     ],
     "recipes": [
@@ -546,6 +550,30 @@
         "seasons": [
           "autumn"
         ]
+      },
+      {
+        "id": "vers_du_moulin",
+        "profession": "peche",
+        "item": "item.ver_de_terre",
+        "count": 3,
+        "position": [
+          10,
+          -16
+        ],
+        "respawnMs": 60000,
+        "xp": 4
+      },
+      {
+        "id": "mouches_du_lac",
+        "profession": "peche",
+        "item": "item.mouche_de_mai",
+        "count": 2,
+        "position": [
+          -2,
+          -49
+        ],
+        "respawnMs": 60000,
+        "xp": 5
       }
     ],
     "forge": {

@@ -101,6 +101,8 @@ namespace EdS.Data.Saves
 
         /// <summary>Compagnons (version 20) : la troupe du personnage (facultative : absente quand il n'a recruté personne).</summary>
         public SavedCompanionsData? Companions { get; set; }
+        /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises, facultatif.</summary>
+        public SavedFishingData? Fishing { get; set; }
 
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
