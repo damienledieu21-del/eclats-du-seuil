@@ -686,7 +686,10 @@ namespace EdS.Game
                 }
             }
             CompanionState c = companions[Mathf.Clamp(selected, 0, companions.Count - 1)];
-            _companionName.Value = c.Id;
+            // Deux compagnons : le nom dit lequel est choisi (« 1/2 ») ; au doigt, le toucher passe au suivant (revue Codex de la PR #176).
+            _companionName.Value = companions.Count >= 2
+                ? c.Id + " " + (Mathf.Clamp(selected, 0, companions.Count - 1) + 1) + "/" + companions.Count
+                : c.Id;
             _companionOrder.Value = UiTexts.Get(c.Down ? HudTextsV21.CompanionDown : HudTextsV21.CompanionActions[(int)c.Order]);
             _bondBar.fillAmount = (float)c.Bond;
             // La jauge pleine se lit aussi par le mot de la case « À deux », jamais par la couleur seule.

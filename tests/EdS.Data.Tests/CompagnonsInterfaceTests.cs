@@ -136,4 +136,32 @@ public class CompagnonsInterfaceTests
         // Un compagnon inconnu : refusé sans commande.
         Assert.False(combat.Order("loup_a", CompanionOrder.Follow));
     }
+
+    [Fact]
+    public void Les_ordres_au_dela_du_plafond_du_tick_attendent_le_tick_suivant()
+    {
+        // Revue Codex de la PR #176 : un ordre accepté par le pont n'est jamais perdu sans retour quand le tick est plein ; la file est bornée.
+        CombatSetup setup = ScenarioJsonReader.ReadFile(ScenarioTestData.ScenarioPath("espace_compagnon"), ScenarioTestData.ShippedData).Setup!;
+        var combat = new RealtimeCombat(setup, "bastion");
+        int cap = setup.Combat.MaxCommandsPerActorPerTick;
+        CompanionOrder[] orders = { CompanionOrder.Wait, CompanionOrder.Follow, CompanionOrder.Protect, CompanionOrder.Wait, CompanionOrder.Follow, CompanionOrder.Protect };
+        Assert.True(orders.Length > cap);
+        foreach (CompanionOrder o in orders) Assert.True(combat.Order("nyx", o));
+        for (int i = orders.Length; i < RealtimeCombat.MaxCompanionRequests; i++) Assert.True(combat.Order("nyx", CompanionOrder.Wait));
+        Assert.False(combat.Order("nyx", CompanionOrder.Follow));   // file pleine : refusé tout de suite
+        Assert.Equal(RealtimeCombat.MaxCompanionRequests, combat.PendingCompanionRequests);
+        // Au premier tick, les commandes du scénario prennent déjà une partie de la place : au plus le plafond part, le reste attend.
+        combat.StepOnce();
+        Assert.InRange(combat.PendingCompanionRequests, RealtimeCombat.MaxCompanionRequests - cap, RealtimeCombat.MaxCompanionRequests);
+        for (int t = 0; t < 10 && combat.PendingCompanionRequests > 0; t++) combat.StepOnce();
+        Assert.Equal(0, combat.PendingCompanionRequests);
+        // Aucun ordre perdu sur le plafond : pas plus de refus « plus de … commandes » que le même combat sans ordre (marche du pont).
+        static int CapRefusals(IEnumerable<CombatFeedback> feedback) =>
+            feedback.Count(f => f.Kind == FeedbackKind.Rejected && (f.Detail ?? "").Contains("commandes de", StringComparison.Ordinal));
+        var control = new RealtimeCombat(setup, "bastion");
+        while (control.Tick < combat.Tick) control.StepOnce();
+        Assert.Equal(CapRefusals(control.DrainFeedback()), CapRefusals(combat.DrainFeedback()));
+        combat.StepOnce();
+        Assert.Equal(CompanionOrder.Wait, combat.Companions()[0].Order);   // le dernier ordre demandé est passé
+    }
 }

@@ -87,9 +87,31 @@ namespace EdS.Game
         // --- Compagnons -------------------------------------------------------------------------------------------------------
 
         /// <summary>Compagnons : identifiants des zones du panneau (hors des boutons du HUD) et des six cases du menu.</summary>
-        private const int CompanionPanelZone = 1000, CompanionActionZone = 1001;
+        private const int CompanionPanelZone = 1000, CompanionActionZone = 1001, CompanionSwitchZone = 1010;
+
+        /// <summary>Part gauche de l'en-tête du panneau (le nom) qui change de compagnon quand il y en a deux (revue Codex de la PR #176).</summary>
+        public const float CompanionSwitchShare = 0.45f;
 
         private bool _companionMenu;
+        private bool _companionSwitch;
+
+        /// <summary>
+        /// Compagnons : le jeu dit combien de compagnons sont au combat ; à partir de deux, toucher le nom du panneau passe au suivant (revue
+        /// Codex de la PR #176 : au doigt, le second compagnon doit pouvoir être choisi sans clavier).
+        /// </summary>
+        public int CompanionCount
+        {
+            set
+            {
+                bool two = value >= 2;
+                if (_companionSwitch == two) return;
+                _companionSwitch = two;
+                _zonesVersion = -1;   // les zones changent
+            }
+        }
+
+        /// <summary>Compagnons : le nom du panneau touché (passer au compagnon suivant), seulement avec deux compagnons.</summary>
+        public bool CompanionSwitchPressed => _gestures.WasTapped(CompanionSwitchZone);
 
         /// <summary>Compagnons : le jeu dit si le menu des ordres est ouvert (ses cases ne sont touchables que s'il l'est).</summary>
         public bool CompanionMenuOpen
@@ -195,7 +217,14 @@ namespace EdS.Game
             if (_layout.CompanionShown)
             {
                 UiBox panel = _layout[HudPart.Companion], first = _layout.CompanionAction(0);
-                _zones.Add(new GestureButton(CompanionPanelZone, panel.X, panel.Y, panel.W, Mathf.Max(1f, first.Y - panel.Y)));
+                float header = Mathf.Max(1f, first.Y - panel.Y);
+                if (_companionSwitch)
+                {
+                    float split = panel.W * CompanionSwitchShare;
+                    _zones.Add(new GestureButton(CompanionSwitchZone, panel.X, panel.Y, split, header));
+                    _zones.Add(new GestureButton(CompanionPanelZone, panel.X + split, panel.Y, panel.W - split, header));
+                }
+                else _zones.Add(new GestureButton(CompanionPanelZone, panel.X, panel.Y, panel.W, header));
                 if (_companionMenu)
                     for (int i = 0; i < 6; i++)
                     {

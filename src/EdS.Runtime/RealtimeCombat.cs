@@ -213,8 +213,18 @@ namespace EdS.Runtime
 
         // --- Compagnons -------------------------------------------------------------------------------------------------------
 
-        /// <summary>Compagnons : commandes demandées pour le prochain tick (ordre et attaque à deux), dans l'ordre des demandes.</summary>
+        /// <summary>
+        /// Compagnons : commandes demandées pour le prochain tick (ordre et attaque à deux), dans l'ordre des demandes. Revue Codex de la PR
+        /// #176 : une demande qui ne trouve pas de place au tick (plafond de commandes par acteur) attend le tick suivant, jamais perdue sans
+        /// retour ; la file est bornée (<see cref="MaxCompanionRequests"/>) : au-delà, la demande est refusée tout de suite (faux).
+        /// </summary>
         private readonly List<CombatCommand> _companionRequests = new List<CombatCommand>();
+
+        /// <summary>Demandes de compagnon en attente au plus (deux compagnons, quelques ordres d'avance).</summary>
+        public const int MaxCompanionRequests = 8;
+
+        /// <summary>Demandes de compagnon en attente d'une place au tick.</summary>
+        public int PendingCompanionRequests => _companionRequests.Count;
 
         /// <summary>Compagnons du joueur (vue au début du prochain tick), dans l'ordre des identifiants.</summary>
         public IReadOnlyList<CompanionState> Companions() => _engine.CombatantIds.OrderBy(id => id, StringComparer.Ordinal)
@@ -227,6 +237,7 @@ namespace EdS.Runtime
             if (c is null || c.Down) return false;
             string? target = order == CompanionOrder.Target ? TargetId : null;
             if (order == CompanionOrder.Target && target is null) return false;
+            if (_companionRequests.Count >= MaxCompanionRequests) return false;
             _companionRequests.Add(CombatCommand.GiveOrder(0, PlayerId, companion, order, target));
             return true;
         }
@@ -236,6 +247,7 @@ namespace EdS.Runtime
         {
             CompanionState? c = Companions().FirstOrDefault(x => x.Id == companion);
             if (c is null || !c.DuoReady || TargetId is null) return false;
+            if (_companionRequests.Count >= MaxCompanionRequests) return false;
             _companionRequests.Add(CombatCommand.DuoAttack(0, PlayerId, companion, TargetId));
             return true;
         }
@@ -369,11 +381,15 @@ namespace EdS.Runtime
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
-            // Compagnons : ordres et attaques à deux demandés, chacun seul (un refus n'empêche pas les autres), dans la place qui reste au tick.
+            // Compagnons : ordres et attaques à deux demandés, chacun seul (un refus n'empêche pas les autres), dans la place qui reste au tick ;
+            // ceux qui n'y tiennent pas attendent le tick suivant, dans le même ordre (revue Codex de la PR #176).
             long now = checked(_engine.CurrentTick * _tickMs);
+            int handled = 0;
             foreach (CombatCommand request in _companionRequests)
             {
-                if (used >= _setup.Combat.MaxCommandsPerActorPerTick) break;
+                // Place au tick lue dans le moteur : les commandes du scénario au même tick comptent aussi.
+                if (Math.Max(used, _engine.CommandsThisTick(PlayerId)) >= _setup.Combat.MaxCommandsPerActorPerTick) break;
+                handled++;
                 CombatCommand command = request.Action == CombatAction.Duo
                     ? CombatCommand.DuoAttack(now, request.Actor, request.Companion!, request.Target!)
                     : CombatCommand.GiveOrder(now, request.Actor, request.Companion!, request.Order!.Value, request.Target);
@@ -387,12 +403,12 @@ namespace EdS.Runtime
                     AddFeedback(new CombatFeedback(FeedbackKind.Rejected, PlayerId, 0, e.Message));
                 }
             }
-            _companionRequests.Clear();
+            _companionRequests.RemoveRange(0, handled);
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
             // celles du moteur (revue Codex de la PR #34 : une commande du scénario peut les avoir changées depuis le dernier envoi), dans la
             // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
             // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
-            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
+            _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, Math.Max(0, _setup.Combat.MaxCommandsPerActorPerTick - Math.Max(used, _engine.CommandsThisTick(PlayerId))), TrySubmit);
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>

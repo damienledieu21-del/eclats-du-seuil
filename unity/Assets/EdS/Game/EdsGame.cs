@@ -1044,6 +1044,7 @@ namespace EdS.Game
             {
                 _companionControls.CloseMenu();
                 _touch.CompanionMenuOpen = false;
+                _touch.CompanionCount = 0;
                 return false;
             }
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -1052,6 +1053,8 @@ namespace EdS.Game
                 if (shift) _companionControls.NextCompanion(companions.Companions().Count);
                 else _companionControls.ToggleMenu();
             }
+            _touch.CompanionCount = companions.Companions().Count;
+            if (_touch.CompanionSwitchPressed) _companionControls.NextCompanion(companions.Companions().Count);   // au doigt : le nom du panneau
             if (_touch.CompanionPanelPressed) _companionControls.ToggleMenu();
             if (Input.GetKeyDown(KeyCode.Y)) _companionControls.Perform(companions, CompanionAction.Duo);
             int touched = _touch.CompanionActionPressed;

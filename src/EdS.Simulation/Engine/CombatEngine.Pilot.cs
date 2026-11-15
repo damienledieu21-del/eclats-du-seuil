@@ -242,6 +242,12 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         private readonly Dictionary<(string Actor, long Tick), int> _commandsPerActorTick = new Dictionary<(string, long), int>();
+
+        /// <summary>
+        /// Commandes de <paramref name="actor"/> déjà admises pour le tick courant (celles du scénario comprises), à comparer au plafond par
+        /// acteur : un client garde pour le tick suivant ce qui n'y tient plus (revue Codex de la PR #176). Lecture seule.
+        /// </summary>
+        public int CommandsThisTick(string actor) => actor != null && _commandsPerActorTick.TryGetValue((actor, CurrentTick), out int n) ? n : 0;
         private readonly List<CombatCommand> _submitted = new List<CombatCommand>();
         private int _commandCount;
         private long _initialEvents = -1;
