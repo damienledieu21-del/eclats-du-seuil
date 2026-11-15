@@ -144,7 +144,7 @@ public class V228bSoloSecteursTests
             Assert.Contains("Respawned", a.Trace, StringComparison.Ordinal);   // le loup est revenu : les populations ont tourné sur l'hôte
         }
         // Même sauvegarde ; seule la zone à région écrit le secteur du point de reprise.
-        Assert.Equal(SaveJsonReader.Write(b.Save.WithResume(null)), SaveJsonReader.Write(a.Save.WithResume(null)));
+        Assert.Equal(SaveVersion.WithoutExplored(SaveJsonReader.Write(b.Save.WithResume(null))), SaveVersion.WithoutExplored(SaveJsonReader.Write(a.Save.WithResume(null))));
         Assert.Equal((b.Save.Resume!.SafePoint, (string?)null, "s07_06"), (a.Save.Resume!.SafePoint, b.Save.Resume.Sector, a.Save.Resume.Sector));
         Assert.Equal((b.Session.Zone.Session, b.Session.Zone.WorldTick, b.Session.Zone.ConsumedCount), (a.Session.Zone.Session, a.Session.Zone.WorldTick, a.Session.Zone.ConsumedCount));
     }
@@ -163,7 +163,7 @@ public class V228bSoloSecteursTests
         Assert.Equal(b.Log, a.Log);
         Assert.Equal(b.Trace, a.Trace);
         Assert.Equal((1L, 100L), (a.Session.Zone.Session, a.Session.Zone.WorldTick));
-        Assert.Equal(SaveJsonReader.Write(b.Save.WithResume(null)), SaveJsonReader.Write(a.Save.WithResume(null)));
+        Assert.Equal(SaveVersion.WithoutExplored(SaveJsonReader.Write(b.Save.WithResume(null))), SaveVersion.WithoutExplored(SaveJsonReader.Write(a.Save.WithResume(null))));
         for (int i = 0; i < 40; i++) a.Session.Step();
         Assert.Equal(1, a.Session.Renewals);
         Assert.Equal(140L, a.Session.Zone.WorldTick);
@@ -210,7 +210,7 @@ public class V228bSoloSecteursTests
             Assert.Equal((2L, 130L), (next.Zone.Session, next.Zone.WorldTick));
             Assert.True(next.Zone.Engine.View("bastion").IsPresent);
             logs[region] = ended + nextLog;
-            saves[region] = SaveJsonReader.Write(save.WithResume(null)) + SaveJsonReader.Write(next.Save().WithResume(null));
+            saves[region] = SaveVersion.WithoutExplored(SaveJsonReader.Write(save.WithResume(null)) + SaveJsonReader.Write(next.Save().WithResume(null)));
         }
         Assert.Equal(logs[false], logs[true]);
         Assert.Equal(saves[false], saves[true]);
@@ -288,7 +288,7 @@ public class V228bSoloSecteursTests
         void Close(WorldSession session, string why)
         {
             save = SaveJsonReader.Read(SaveJsonReader.Write(session.Save())).Save!;
-            saves.Append(why).Append('\n').Append(SaveJsonReader.Write(save.WithResume(null)));
+            saves.Append(why).Append('\n').Append(SaveVersion.WithoutExplored(SaveJsonReader.Write(save.WithResume(null))));
             trace.Append(why).Append(" tick ").Append(session.Zone.Engine.CurrentTick).Append(" reprise ").Append(save.Resume!.SafePoint).Append('\n');
         }
         // 1. Au Bourg, la nuit : le couvre-feu tombe ; le personnage est reconduit au point sûr du couvre-feu.

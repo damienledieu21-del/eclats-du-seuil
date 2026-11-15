@@ -18,4 +18,11 @@ internal static class SaveVersion
     /// <summary>Remplace « {current} » et « {future} » (données de théorie, qui ne peuvent pas lire une constante calculée).</summary>
     public static string Expand(string text) => text.Replace("{current}", SaveValidator.CurrentSchemaVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))
         .Replace("{future}", (SaveValidator.CurrentSchemaVersion + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// Sous-lot V2.29 (2) : sauvegarde écrite sans les cases explorées (<c>character.explored</c>), pour les essais de parité entre une zone
+    /// sans région (pas de brouillard) et la même zone sur l'hôte des secteurs (qui en a un) : le reste doit être identique.
+    /// </summary>
+    public static string WithoutExplored(string text) =>
+        System.Text.RegularExpressions.Regex.Replace(text, "      \"explored\": \\{[^}]*\\},\n", string.Empty);
 }
