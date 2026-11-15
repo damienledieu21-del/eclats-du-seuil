@@ -1158,7 +1158,7 @@ Vague 4, « la vie à côté du combat » (découpage du 29 octobre 2026, [PLAN_
 
 ## Cuisine et boulangerie (vague 4 du plan des Vallons, 1re partie)
 
-Vague 4 (2) : un **métier de cuisine** (« Cuisine et boulangerie », `crafting.json`, contenu 0.9.0), sur le modèle de la forge, de l'herboristerie et du minage : expérience et niveaux à part, recettes qu'on tente jusqu'à deux niveaux au-dessus du métier, rien pour le combat. On cuisine **au four du bourg** (lieu `bourg` de la zone des Vallons, pour l'instant : voir les questions).
+Vague 4 (2) : un **métier de cuisine** (« Cuisine et boulangerie », `crafting.json`, contenu 0.9.0), sur le modèle de la forge, de l'herboristerie et du minage : expérience et niveaux à part, recettes qu'on tente jusqu'à deux niveaux au-dessus du métier, rien pour le combat. On cuisine en deux postes (réponse de Damien du 15 novembre 2026, vers 15 h 30) : le **four de la boulangerie de Firmin** (lieu `four_de_firmin`, devant la porte de la boulangerie) pour les pains, viennoiseries et pâtisseries, et le **feu de camp** de Gaspard (lieu `feu_de_camp`, près de son poste) pour les poissons et les plats simples. Zone des Vallons en contenu 0.18.0 (deux lieux de plus).
 
 **Ingrédients** (objets 0.19.0, matériaux) : farine de blé et farine de seigle, œufs frais et sucre roux (**épicerie** : 6, 7, 4 et 10 cuivre), beurre de baratte et lait cru (**fromagère** : 14 et 5 cuivre), **pommes du verger** (nœud à cueillir aux vergers, expérience de cuisine), les **poissons de la pêche** ; deux préparations de base : le **levain chef** (nourri à la farine de seigle) et la **pâte feuilletée** (six tours simples), qui servent ensuite.
 
@@ -1166,7 +1166,7 @@ Vague 4 (2) : un **métier de cuisine** (« Cuisine et boulangerie », `crafting
 
 **Les plats** : les quatre premiers objets de la **place du plat** (prête depuis le sous-lot V1.8c) : friture du lac (normale, +25 PV max), truite meunière (normale, +30 PV, +5 endurance), quenelles de brochet (supérieure, +40 PV, +15 armure), matelote de carpe dorée (chef-d'œuvre, +60 PV, +10 endurance, +10 résistance). Durées : celles des objets de bonus (30, 45, 60 minutes de jeu).
 
-**Suite prévue** (2e partie) : le **concours de pâtisserie** des fêtes avec les pâtisseries du joueur (couronne des moissons, tarte renversée), après la fusion des fêtes aux vraies dates (PR #174).
+**Suite prévue** (2e partie, retenue par Damien le 15 novembre 2026) : le **concours de pâtisserie** de Firmin : le joueur présente **sa** couronne des moissons ou **sa** tarte renversée, la qualité du plat décide du prix, un concours par fête et par an ; après la fusion des fêtes aux vraies dates (PR #174).
 
 ## Sauvegarde
 

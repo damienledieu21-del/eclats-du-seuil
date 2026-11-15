@@ -342,7 +342,7 @@
         "name": "text.recipe.cuisine.levain",
         "profession": "cuisine",
         "requiredLevel": 1,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_seigle",
@@ -360,7 +360,7 @@
         "name": "text.recipe.cuisine.pain_de_campagne",
         "profession": "cuisine",
         "requiredLevel": 1,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_ble",
@@ -382,7 +382,7 @@
         "name": "text.recipe.cuisine.friture_du_lac",
         "profession": "cuisine",
         "requiredLevel": 1,
-        "place": "bourg",
+        "place": "feu_de_camp",
         "inputs": [
           {
             "item": "item.gardon",
@@ -404,7 +404,7 @@
         "name": "text.recipe.cuisine.miche_de_seigle",
         "profession": "cuisine",
         "requiredLevel": 2,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_seigle",
@@ -426,7 +426,7 @@
         "name": "text.recipe.cuisine.pate_feuilletee",
         "profession": "cuisine",
         "requiredLevel": 2,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_ble",
@@ -448,7 +448,7 @@
         "name": "text.recipe.cuisine.truite_meuniere",
         "profession": "cuisine",
         "requiredLevel": 2,
-        "place": "bourg",
+        "place": "feu_de_camp",
         "inputs": [
           {
             "item": "item.truite",
@@ -474,7 +474,7 @@
         "name": "text.recipe.cuisine.croissant_au_beurre",
         "profession": "cuisine",
         "requiredLevel": 3,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_ble",
@@ -508,7 +508,7 @@
         "name": "text.recipe.cuisine.chausson_aux_pommes",
         "profession": "cuisine",
         "requiredLevel": 3,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.pate_feuilletee",
@@ -534,7 +534,7 @@
         "name": "text.recipe.cuisine.brioche_doree",
         "profession": "cuisine",
         "requiredLevel": 4,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_ble",
@@ -568,7 +568,7 @@
         "name": "text.recipe.cuisine.tarte_renversee_aux_pommes",
         "profession": "cuisine",
         "requiredLevel": 5,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.pate_feuilletee",
@@ -598,7 +598,7 @@
         "name": "text.recipe.cuisine.quenelles_de_brochet",
         "profession": "cuisine",
         "requiredLevel": 6,
-        "place": "bourg",
+        "place": "feu_de_camp",
         "inputs": [
           {
             "item": "item.brochet",
@@ -632,7 +632,7 @@
         "name": "text.recipe.cuisine.couronne_des_moissons",
         "profession": "cuisine",
         "requiredLevel": 7,
-        "place": "bourg",
+        "place": "four_de_firmin",
         "inputs": [
           {
             "item": "item.farine_de_ble",
@@ -670,7 +670,7 @@
         "name": "text.recipe.cuisine.matelote_de_carpe_doree",
         "profession": "cuisine",
         "requiredLevel": 8,
-        "place": "bourg",
+        "place": "feu_de_camp",
         "inputs": [
           {
             "item": "item.carpe_doree",

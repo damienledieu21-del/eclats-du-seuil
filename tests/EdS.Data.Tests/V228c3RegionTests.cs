@@ -75,7 +75,7 @@ public sealed class V228c3RegionTests : IDisposable
         }
         // Lieux de la région : hors du cœur (le niveau de chaque lieu du cœur ne change pas), sans créature.
         var core = new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac",
-            "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" };
+            "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups", "four_de_firmin", "feu_de_camp" };   // cuisine : deux postes
         var region = zone.Places.Where(p => !core.Contains(p.Id)).ToList();
         Assert.Equal(21, region.Count);   // relecture de la PR #170 : six lieux de transition
         foreach (Place p in region)
