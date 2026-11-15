@@ -156,6 +156,7 @@
       "text.ui.craft.notenough": "Il te manque des matériaux.",
       "text.ui.craft.full": "Inventaire plein.",
       "text.ui.craft.badstrikes": "Le petit jeu de forge n'est pas fini : donne tes trois frappes.",
+      "text.ui.craft.outofseason": "Ce n'est pas la saison : cette plante ne pousse pas en ce moment.",
       "text.ui.craft_failed": "Raté : {0} n'est pas sorti de la forge. Matériaux rendus : {1}.",
       "text.ui.craft_nothing_back": "aucun",
       "text.ui.crafted_superior": "Belle frappe : {0} de qualité supérieure !",

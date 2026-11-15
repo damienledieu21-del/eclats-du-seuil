@@ -132,7 +132,7 @@ public class V18cBonusTests : IDisposable
     {
         // Choix le plus petit et cohérent : la forge et l'herboristerie (qui fait déjà les potions) existent : des recettes, pas de marchand.
         CraftingBook book = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Vallons, ItemsCatalog).Book!;
-        Assert.Equal((3, "0.7.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((4, "0.7.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         foreach (ItemDefinition boon in ItemsCatalog.Items.Where(i => i.Type == ItemType.Boon))
         {
             Recipe r = Assert.Single(book.Recipes, x => x.Output.Item == boon.Id);

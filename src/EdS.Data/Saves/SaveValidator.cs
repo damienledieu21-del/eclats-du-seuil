@@ -1090,7 +1090,9 @@ namespace EdS.Data.Saves
         /// <summary>
         /// Compagnons (version 20) : forme de la troupe : places 1 ou 2 ; recrutés uniques, rangés par identifiant, identifiant « companion.… »,
         /// jauge de 0 à 100, estime de −100 à 100, trait facultatif bien nommé, hors combat vrai ou faux ; actifs au plus les places, distincts,
-        /// recrutés. L'accord avec le catalogue des compagnons est vu au chargement de la partie (CompanionRules.Check).
+        /// recrutés. L'accord avec le catalogue et la partie (compagnons et traits connus, trait seulement chez un mercenaire, deuxième place
+        /// seulement avec la quête de lien finie et le niveau minimum doux) est vu au chargement de la partie (CompanionRules.Check), qui connaît
+        /// le catalogue et la progression.
         /// </summary>
         private static void CheckCompanions(SavedCompanionsData x, string path, ValidationReport report)
         {

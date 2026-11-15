@@ -272,10 +272,12 @@ namespace EdS.Simulation.Engine
                 return new Intention(false, 0, 0, face);
             }
             if (state.Order == CompanionOrder.Wait) return new Intention(false, 0, 0, j);
-            if (j >= 0 && state.Order != CompanionOrder.Return) return null;
-            // Rejoindre l'Éveillé jusqu'à la distance de suite (bords) ; Éveillé hors du combat : garder sa place.
+            // Revue Codex de la PR #169 (3e tour) : Éveillé hors du combat, il garde sa place (tourné vers sa cible), quel que soit l'ordre ; il
+            // ne poursuit personne.
             Fighter owner = state.Owner;
-            if (owner.Out || owner.Body is null) return Intention.Hold;
+            if (owner.Out || owner.Body is null) return new Intention(false, 0, 0, j);
+            if (j >= 0 && state.Order != CompanionOrder.Return) return null;
+            // Rejoindre l'Éveillé jusqu'à la distance de suite (bords).
             int o = _fightersById.IndexOf(owner);
             long vx = checked(x[o] - x[i]), vz = checked(z[o] - z[i]);
             long d = IntMath.Sqrt(Planar.LengthSquared(vx, vz));
