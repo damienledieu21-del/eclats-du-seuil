@@ -54,11 +54,12 @@ namespace EdS.Simulation.Engine
             /// <summary>Tick du dernier ordre « revenir » accepté (annule les annonces antérieures) ; null s'il n'y en a pas eu.</summary>
             public long? RecalledTick;
 
-            /// <summary>Dernier coup de l'Éveillé et dernier coup du compagnon : cible et tick (coordination).</summary>
-            public string? OwnerHitTarget;
-            public long OwnerHitTick;
-            public string? SelfHitTarget;
-            public long SelfHitTick;
+            /// <summary>
+            /// Revue Codex de la PR #169 : dernier coup de l'Éveillé et dernier coup du compagnon sur <b>chaque</b> cible (tick), pour la
+            /// coordination ; bornés par la fenêtre (une trace plus vieille est retirée au coup suivant) et par le nombre de combattants.
+            /// </summary>
+            public readonly SortedDictionary<string, long> OwnerHits = new SortedDictionary<string, long>(StringComparer.Ordinal);
+            public readonly SortedDictionary<string, long> SelfHits = new SortedDictionary<string, long>(StringComparer.Ordinal);
 
             /// <summary>Gains notés pendant le tick, versés en fin de tick (toujours faux entre deux ticks).</summary>
             public bool CoordinatedThisTick, ProtectedThisTick;
@@ -309,11 +310,10 @@ namespace EdS.Simulation.Engine
             if (actor.Companion is { } state)
             {
                 long window = state.Setup.BondWindowMs / _tickMs;
-                if (state.OwnerHitTarget == target.Id && checked(tick - state.OwnerHitTick) <= window) state.CoordinatedThisTick = true;
+                if (state.OwnerHits.TryGetValue(target.Id, out long ownerHit) && checked(tick - ownerHit) <= window) state.CoordinatedThisTick = true;
                 if (state.Order == CompanionOrder.Protect && !state.Owner.Out && target.Assailant != null && SingleTarget(target) == state.Owner)
                     state.ProtectedThisTick = true;
-                state.SelfHitTarget = target.Id;
-                state.SelfHitTick = tick;
+                Trace(state.SelfHits, target.Id, tick, window);
                 return;
             }
             if (actor.Character is null) return;
@@ -321,10 +321,19 @@ namespace EdS.Simulation.Engine
             {
                 CompanionState s = c.Companion!;
                 long window = s.Setup.BondWindowMs / _tickMs;
-                if (s.SelfHitTarget == target.Id && checked(tick - s.SelfHitTick) <= window) s.CoordinatedThisTick = true;
-                s.OwnerHitTarget = target.Id;
-                s.OwnerHitTick = tick;
+                if (s.SelfHits.TryGetValue(target.Id, out long selfHit) && checked(tick - selfHit) <= window) s.CoordinatedThisTick = true;
+                Trace(s.OwnerHits, target.Id, tick, window);
             }
+        }
+
+        /// <summary>Note un coup sur <paramref name="target"/> à <paramref name="tick"/> et retire les traces sorties de la fenêtre.</summary>
+        private static void Trace(SortedDictionary<string, long> hits, string target, long tick, long window)
+        {
+            hits[target] = tick;
+            List<string>? old = null;
+            foreach (KeyValuePair<string, long> h in hits)
+                if (checked(tick - h.Value) > window) (old ??= new List<string>()).Add(h.Key);
+            if (old != null) foreach (string k in old) hits.Remove(k);
         }
 
         /// <summary>Fin de tick : gains de lien du tick, une ligne <c>bondGained</c> par compagnon qui gagne réellement, jauge bornée.</summary>
@@ -396,12 +405,33 @@ namespace EdS.Simulation.Engine
         {
             w.Name("companion").BeginObject().Field("order", CompanionOrderIds.Of(c.Order)).Field("orderTarget", c.OrderTarget?.Id)
                 .Field("bond", (long)c.Bond).Field("recalledTick", c.RecalledTick)
-                .Field("ownerHitTarget", c.OwnerHitTarget).Field("ownerHitTick", c.OwnerHitTick)
-                .Field("selfHitTarget", c.SelfHitTarget).Field("selfHitTick", c.SelfHitTick)
+
                 .Field("duoTarget", c.DuoTarget?.Id).Field("duoImpactTick", c.DuoImpactTick).Field("duoReadyTick", c.DuoReadyTick)
                 .Field("duosStarted", c.DuosStarted);
+            WriteHits(w, "ownerHits", c.OwnerHits);   // revue Codex de la PR #169 : une trace par cible
+            WriteHits(w, "selfHits", c.SelfHits);
             WriteProvenance(w, "duoOrigin", c.DuoOrigin);
             w.EndObject();
+        }
+
+        private static void WriteHits(JsonLineWriter w, string name, SortedDictionary<string, long> hits)
+        {
+            w.Name(name).BeginArray();
+            foreach (KeyValuePair<string, long> h in hits) w.BeginArray().Value(h.Key).Value(h.Value).EndArray();
+            w.EndArray();
+        }
+
+        private void LoadHits(SortedDictionary<string, long> hits, SnapshotNode n, string who)
+        {
+            hits.Clear();
+            IReadOnlyList<SnapshotNode> items = n.Items;
+            if (items.Count > _byId.Count) throw new FormatException($"Traces de coup de « {who} » plus nombreuses que les combattants.");
+            foreach (SnapshotNode h in items)
+            {
+                string id = h.Items[0].String;
+                if (hits.ContainsKey(id)) throw new FormatException($"Trace de coup de « {who} » en double sur « {id} ».");
+                hits[id] = h.Items[1].Long;
+            }
         }
 
         private Fighter? KnownFighter(SnapshotNode id, string what)
@@ -418,10 +448,8 @@ namespace EdS.Simulation.Engine
             c.OrderTarget = KnownFighter(n["orderTarget"], "cible de l'ordre");
             c.Bond = n["bond"].Int;
             c.RecalledTick = n["recalledTick"].NullableLong;
-            c.OwnerHitTarget = n["ownerHitTarget"].NullableString;
-            c.OwnerHitTick = n["ownerHitTick"].Long;
-            c.SelfHitTarget = n["selfHitTarget"].NullableString;
-            c.SelfHitTick = n["selfHitTick"].Long;
+            LoadHits(c.OwnerHits, n["ownerHits"], f.Id);
+            LoadHits(c.SelfHits, n["selfHits"], f.Id);
             c.DuoTarget = KnownFighter(n["duoTarget"], "cible de l'attaque à deux");
             c.DuoImpactTick = n["duoImpactTick"].NullableLong;
             c.DuoReadyTick = n["duoReadyTick"].Long;
@@ -468,10 +496,11 @@ namespace EdS.Simulation.Engine
             if (c.OrderTarget != null && !Enemies(f, c.OrderTarget)) return "cible de l'ordre qui n'est pas un ennemi";
             if (c.Bond < 0 || c.Bond > CompanionSetup.BondMax) return "jauge de lien hors de [0, 100]";
             if (c.RecalledTick is long recalled && (recalled < 0 || recalled > previous)) return "rappel à un tick à venir";
-            if (c.OwnerHitTick < 0 || c.OwnerHitTick > Math.Max(0, previous) || c.SelfHitTick < 0 || c.SelfHitTick > Math.Max(0, previous))
-                return "trace de coup à un tick à venir";
-            if ((c.OwnerHitTarget != null && !_byId.ContainsKey(c.OwnerHitTarget)) || (c.SelfHitTarget != null && !_byId.ContainsKey(c.SelfHitTarget)))
-                return "trace de coup sur un combattant inconnu";
+            foreach (KeyValuePair<string, long> h in c.OwnerHits.Concat(c.SelfHits))
+            {
+                if (h.Value < 0 || h.Value > Math.Max(0, previous)) return "trace de coup à un tick à venir";
+                if (!_byId.ContainsKey(h.Key)) return "trace de coup sur un combattant inconnu";
+            }
             long duos = _setup.Commands.LongCount(cmd => cmd.Action == CombatAction.Duo && cmd.Companion == f.Id && cmd.AtMs / _tickMs <= previous);
             if (c.DuosStarted < 0 || c.DuosStarted > duos) return "plus d'attaques à deux que de commandes";
             if (c.Setup.Duo is not { } duo)

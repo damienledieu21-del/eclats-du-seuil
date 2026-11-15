@@ -152,6 +152,21 @@ public class CompagnonsMoteurTests
         Assert.Equal("coordinated", gains[0].Str("reason"));
     }
 
+    [Fact]
+    public void Coup_de_zone_de_l_Eveille_puis_coup_du_compagnon_sur_l_une_des_cibles_coordonne()
+    {
+        // Revue Codex de la PR #169 : l'onde de l'Éveillé touche a_loup puis b_loup ; le compagnon frappe ensuite a_loup : la trace de a_loup
+        // n'est pas écrasée par b_loup, le coup est coordonné.
+        var (_, log) = Run(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Companion(At("0", "1.2", "0.45")),
+            Wolf("a_loup", At("1.2", "0", "0.6"), health: 100_000), Wolf("b_loup", At("0", "-1.2", "0.6"), health: 100_000) },
+            new[] { Cmd(0, Onde, target: null) }, durationMs: 1500));
+        Assert.Equal(new[] { "a_loup", "b_loup" }, Lines(log, "damage").Where(d => d.Str("source") == "bastion").Select(d => d.Str("target")));
+        JsonElement hit = Hits(log, "nyx").First();
+        Assert.Equal("a_loup", hit.Str("target"));
+        JsonElement gain = Assert.Single(Lines(log, "bondGained"), g => g.Tick() == hit.Tick());
+        Assert.Equal("coordinated", gain.Str("reason"));
+    }
+
     // --- Revenir -----------------------------------------------------------------------------------------------------
 
     [Fact]
