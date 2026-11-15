@@ -610,11 +610,82 @@ public class V228b2bAventureTests : IDisposable
         Assert.Equal((76.0, 460.0), (east.MinX, east.MaxX));   // s08_06 : x de 140 à 396, 64 m autour
         Assert.Same(region, a.RegionMap);
         Assert.Same(region, east.Whole);
+        // Revue Codex de la PR #166 (2e tour) : les champs sont placés une fois pour l'aire entière (mêmes champs dans chaque fenêtre) ; une
+        // fenêtre ne construit que ceux qui la touchent (les champs, à l'ouest, ne touchent pas la fenêtre de l'est).
+        IReadOnlyList<StyleField> all = region.AreaFields(region.Roads);
+        Assert.NotEmpty(all);
+        Assert.Same(all, east.AreaFields(east.Roads));
+        Assert.Same(all, west.AreaFields(west.Roads));
+        Assert.Empty(east.WindowFields(east.Roads));
+        Assert.All(west.WindowFields(west.Roads), f => Assert.Contains(f, all));
+        Assert.NotEmpty(west.WindowFields(west.Roads));
         // Coût borné : la fenêtre d'un secteur tient en 2 048 pixels à plus de 5 pixels par mètre ; l'aire entière, en 2 048 aussi.
         (int w, int h) = MapPainter.Size(east);
         Assert.True(w <= 2048 && h <= 2048 && w >= (east.Width + 2 * MapPainter.Margin) * 5, $"{w} × {h}");
         Assert.True(MapPainter.Size(region).Width <= 2048);
         Assert.Equal(w * h * 4, MapPainter.Paint(east, w, h).Length);
+    }
+
+    [Fact]
+    public void Fenetre_hysteresis_au_passage_puis_voyage_halte_reprise_et_personnage_sans_combattant()
+    {
+        // Relecture indépendante de la PR #166 : passé à l'est, la fenêtre de l'ouest reste tant que le personnage est à moins de 40 m de son
+        // secteur (x < 180) ; plus loin, celle de l'est. Après un voyage, une halte ou une reprise, la fenêtre est celle du secteur d'arrivée
+        // (aucun secteur périmé d'une session précédente). Sans secteur (reprise d'un passage), la fenêtre en cours reste.
+        (string data, string scenarios) = TwoSectorVallons(maxX: 1000);
+        AdventureSession a = AtEastThreshold(data, scenarios);
+        AdventureMap west = a.Map;
+        int signs = a.ShopSigns().Count, chimneys = a.Chimneys().Count + a.KitchenChimneys().Count;
+        Assert.True(signs > 0);
+        Walk(a, 175, 0, () => a.World.Passages == 1 && AdventureX(a) > 160);
+        Assert.Equal("s08_06", a.World.Sector);
+        Assert.Same(west, a.Map);   // passé, mais à moins de 40 m de l'ouest : même fenêtre
+        int changes = a.MapChanges, rebinds = a.Combat.Rebinds;
+        Walk(a, 230, 0, () => AdventureX(a) > 185);
+        AdventureMap east = a.Map;
+        // Revue Codex de la PR #166 (1er tour) : la fenêtre change sans rebranchement du moteur ; le compte des cartes le dit à l'affichage
+        // (EdsGame.FollowRebind refait alors le décor).
+        Assert.Equal(rebinds, a.Combat.Rebinds);
+        Assert.Equal(changes + 1, a.MapChanges);
+        Assert.Equal(76.0, east.MinX);
+        // Enseignes et cheminées des boutiques (le bourg, à l'ouest) : lues sur l'aire entière, pas sur la fenêtre de l'est.
+        Assert.DoesNotContain(east.Obstacles, ob => ob.Id == "auberge");
+        Assert.Equal(signs, a.ShopSigns().Count);
+        Assert.Equal(chimneys, a.Chimneys().Count + a.KitchenChimneys().Count);
+        // Voyage vers la place du village (le cœur) : fenêtre de l'ouest.
+        TravelDestination? village = a.TravelDestinations().FirstOrDefault(d => d.SafePoint == "place_du_village");
+        Assert.True(village != null, string.Join(", ", a.TravelDestinations().Select(d => d.SafePoint)));
+        Assert.Equal(TravelRefusal.None, a.Travel(village!.Zone, village.SafePoint));
+        Assert.Equal("s07_06", a.World.Sector);
+        Assert.Equal(-100.0, a.Map.MinX);
+        Assert.Equal(204.0, a.Map.MaxX);
+        // Halte au village, puis reprise de la partie : toujours la fenêtre du cœur.
+        for (int i = 0; i < 20 && !a.CanRest; i++) a.Advance(0.05);
+        Assert.True(a.CanRest, $"{a.Combat.Player().View.Position} {a.Dialogue is null}");
+        Assert.True(a.Rest());
+        Assert.Equal(204.0, a.Map.MaxX);
+        a.Save();
+        AdventureSession again = Adventure(SavePath, data, scenarios);
+        Assert.Equal("s07_06", again.World.Sector);
+        Assert.Equal((-100.0, 204.0), (again.Map.MinX, again.Map.MaxX));
+        Assert.Same(again.RegionMap, again.Map.Whole);
+        // Sans combattant (reprise d'un passage, pour l'essai : aucune position, secteur en attente) : la fenêtre en cours reste, rien ne lève.
+        AdventureMap kept = again.Map;
+        again.World.Host!.ResumeForTest(again.World.CombatantId);
+        Assert.Same(kept, again.Map);
+        again.Advance(0.05);
+        Assert.Same(kept, again.Map);
+    }
+
+    [Fact]
+    public void Aire_qui_tient_dans_deux_fenetres_grande_carte_egale_a_la_carte()
+    {
+        // Une aire d'au plus 768 m (ici 400 m) : carte et grande carte sont la même, l'aire entière, gardée au passage.
+        (string data, string scenarios) = TwoSectorVallons();
+        AdventureSession a = AtEastThreshold(data, scenarios);
+        Assert.Same(a.Map, a.RegionMap);
+        Assert.Same(a.Map, a.Map.Whole);
+        Assert.Equal((-100.0, 300.0), (a.Map.MinX, a.Map.MaxX));
     }
 
     [Fact]
@@ -638,8 +709,14 @@ public class V228b2bAventureTests : IDisposable
         var whole = new AdventureMap(area, Array.Empty<MapPlace>());
         Assert.Equal(2048, MapPainter.Size(whole).Width);
         Assert.True(MapPainter.Size(whole).Height <= 2048);
-        // Une aire d'au plus deux fenêtres garde la carte de l'aire entière (V2.28b (3)).
+        // Une aire d'au plus deux fenêtres garde la carte de l'aire entière (V2.28b (3)) ; un mètre de plus, ou une aire étroite mais longue,
+        // a ses fenêtres.
         Assert.False(AdventureMap.Wide(new CombatSpace(V228b2PassageTests.At(0, 0), V228b2PassageTests.At(768, 768))));
+        Assert.True(AdventureMap.Wide(new CombatSpace(V228b2PassageTests.At(0, 0), V228b2PassageTests.At(769, 100))));
+        var narrow = new CombatSpace(V228b2PassageTests.At(0, 0), V228b2PassageTests.At(200, 900));
+        Assert.True(AdventureMap.Wide(narrow));
+        CombatSpace cut = AdventureMap.WindowOf(narrow, (0, 256 * 10_000L, 256 * 10_000L, 512 * 10_000L));
+        Assert.Equal((0L, 192L, 200L, 576L), (cut.Min.X.Raw / 10_000, cut.Min.Z.Raw / 10_000, cut.Max.X.Raw / 10_000, cut.Max.Z.Raw / 10_000));   // coupée à l'aire en x
     }
 
     [Fact]

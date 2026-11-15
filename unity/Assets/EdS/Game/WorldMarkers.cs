@@ -194,9 +194,9 @@ namespace EdS.Game
             if (!adventure.Indoors && catalog != null) Wave5Decor(adventure, byDay, catalog);
             // Sous-lot V2.14 : enseignes des boutiques (leur nom et leur état en étiquette), fumée du fournil, étals du grand jour de marché,
             // atelier couvert de la forge.
-            if (!adventure.Indoors && adventure.Map != null)
+            if (!adventure.Indoors && adventure.RegionMap != null)
             {
-                _shops = new ShopsView(_root.transform, adventure, Wave5View.Polygons(adventure.Map.Obstacles));
+                _shops = new ShopsView(_root.transform, adventure, Wave5View.Polygons(adventure.RegionMap.Obstacles));
                 foreach (WorldMarker sign in adventure.ShopSigns())
                 {
                     Marker m = Add(sign, PrimitiveType.Cube, new Vector3(0.05f, 0.05f, 0.05f), 2.55f, new Color(0.95f, 0.85f, 0.55f), 3.3f, SignLabelRange);
@@ -216,7 +216,7 @@ namespace EdS.Game
         /// </summary>
         private void Wave5Decor(AdventureSession adventure, Dictionary<string, WorldMarker> byDay, StyleCatalog catalog)
         {
-            AdventureMap map = adventure.Map;
+            AdventureMap map = adventure.RegionMap;
             if (map == null) return;
             List<IReadOnlyList<(double X, double Z)>> obstacles = Wave5View.Polygons(map.Obstacles);
             Transform root = _root.transform;
@@ -341,7 +341,7 @@ namespace EdS.Game
         /// </summary>
         private void StoreDecor(AdventureSession adventure, Transform root, List<IReadOnlyList<(double X, double Z)>> obstacles, StyleCatalog catalog)
         {
-            AdventureMap map = adventure.Map;
+            AdventureMap map = adventure.RegionMap;
             MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
             foreach (WorldMarker w in adventure.Workshops())
             {

@@ -466,6 +466,7 @@ namespace EdS.Simulation.Engine
                         cost += HitCost(tick, StrikeAction(slot, effect, origin), target);
                         break;
                     case TriggerEffectKind.ApplyStatus:
+                        if (Evades(tick, slot.Bearer, target)) break;   // esquive : rien, sans ligne
                         StatusDefinition definition = _statuses[effect.Status!];
                         cost += ApplyCost(Plan(tick, target, definition, slot.Bearer.Id, null, slot.Bearer, shieldAmount: ReactionShield(slot, effect, definition)),
                             definition, target.Guarding, target.ParryOpen);
@@ -569,6 +570,7 @@ namespace EdS.Simulation.Engine
                             Hit(tick, phase, StrikeAction(slot, effect, item.Origin), target);
                             break;
                         case TriggerEffectKind.ApplyStatus:
+                            if (Evades(tick, slot.Bearer, target)) break;   // esquive : rien, sans ligne
                             StatusDefinition definition = _statuses[effect.Status!];
                             Domain.Numerics.Fixed power = definition.IsDot
                                 ? DotPower(slot.Bearer.Stats, definition, new StatusApplication(definition.Id, effect.Coefficient!.Value.At(slot.Rank)))

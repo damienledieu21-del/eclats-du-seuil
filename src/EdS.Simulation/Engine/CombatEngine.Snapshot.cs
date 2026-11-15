@@ -32,9 +32,10 @@ namespace EdS.Simulation.Engine
         /// d'un personnage, <c>gear</c>, et variation de ses PV manquants due aux bonus modifiés, <c>gearHealthShift</c>), 5 depuis le sous-lot V2.4
         /// (créature frappée par un personnage, <c>hurtByCharacter</c> : le monde ne compte que ses victoires), 6 depuis le sous-lot V2.4.1 (bête
         /// qui erre : au calme depuis <c>quietSince</c>, calmée <c>calms</c> fois, frappée par un personnage depuis son dernier calme
-        /// <c>characterHitSinceCalm</c> ; le reste de l'errance se déduit du tick et des places).
+        /// <c>characterHitSinceCalm</c> ; le reste de l'errance se déduit du tick et des places), 7 depuis l'esquive (décision de Damien du
+        /// 14 novembre 2026 : <c>dodgeStartTick</c>, <c>dodgeDirectionX</c>, <c>dodgeDirectionZ</c> ; bond, invulnérabilité et recharge s'en déduisent).
         /// </summary>
-        public const int FormatVersion = 6;
+        public const int FormatVersion = 7;
 
         /// <summary>Prochain tick à simuler.</summary>
         public long Tick { get; }
@@ -226,6 +227,7 @@ namespace EdS.Simulation.Engine
             w.Field("guarding", f.Guarding).Field("upkeepDue", f.GuardUpkeepDue).Field("upkeepRemainder", f.GuardUpkeepRemainder).Field("upkeepPaid", f.GuardUpkeepPaid)
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
+                .Field("dodgeStartTick", f.DodgeStartTick).Field("dodgeDirectionX", f.DodgeDirectionX).Field("dodgeDirectionZ", f.DodgeDirectionZ)   // esquive (format 7)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
@@ -914,6 +916,18 @@ namespace EdS.Simulation.Engine
                     && (f.ParryRecoveryUntilTick == 0 || f.ParryRecoveryUntilTick == checked(f.ParryEndTick + recovery) || f.ParryStartTick >= f.ParryRecoveryUntilTick)
                     && checked(f.Result.PerfectParries + f.Result.FailedParries) <= parryCommands,
                     $"Parade de {who} incohérente avec ses commandes ou sa fenêtre.");
+                // Esquive (format 7) : une esquive commence à un tick passé, par une commande dodge de ce personnage d'un combat positionné,
+                // avec une direction unitaire ; sans esquive, tout est à 0.
+                if (f.DodgeStartTick is long dodged)
+                {
+                    bool commanded = _setup.Commands.Any(c => c.Action == CombatAction.Dodge && c.Actor == f.Id && c.AtMs / _tickMs == dodged);
+                    long unit = Planar.LengthSquared(f.DodgeDirectionX, f.DodgeDirectionZ), expected = checked(Planar.Unit * Planar.Unit);
+                    Require(f.Character != null && _spatial && commanded && dodged >= 0 && dodged <= Math.Max(0, previous)
+                        && Math.Abs(f.DodgeDirectionX) <= Planar.Unit && Math.Abs(f.DodgeDirectionZ) <= Planar.Unit
+                        && Math.Abs(checked(unit - expected)) <= checked(4 * Planar.Unit),
+                        $"Esquive de {who} incohérente avec ses commandes ou sa direction.");
+                }
+                else Require(f.DodgeDirectionX == 0 && f.DodgeDirectionZ == 0, $"Direction d'esquive de {who} sans esquive.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                 {
@@ -1603,6 +1617,32 @@ namespace EdS.Simulation.Engine
         /// durée du tick, × 1 + les accélérations positives du catalogue, chacune une fois, plafonné par la vitesse technique), deux fois
         /// pour les dégagements le long du décor et des emprises, plus une marge d'arrondi.
         /// </summary>
+        /// <summary>
+        /// Esquive : borne de la distance parcourue par les bonds de <paramref name="g"/> depuis <paramref name="from"/> : chaque commande dodge
+        /// dont le bond a pu avancer après ce tick (au plus au tick précédent) compte deux fois la distance du bond, plus une marge d'arrondi
+        /// par tick (comme <see cref="StepBound"/>). Une commande refusée est comptée aussi : la borne reste large, jamais trop courte.
+        /// </summary>
+        private long DodgeTravelBound(Fighter g, long from)
+        {
+            if (g.Character is null || g.Body is null) return 0;
+            long duration = DodgeDurationTicks, total = 0;
+            foreach (CombatCommand c in _setup.Commands)
+            {
+                if (c.Action != CombatAction.Dodge || c.Actor != g.Id) continue;
+                long tick = c.AtMs / _tickMs;
+                if (tick > CurrentTick - 1 || checked(tick + duration) <= from) continue;
+                total = checked(total + 2 * _rules.DodgeDistance.Raw + 16 * duration);
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Borne de la distance parcourue par <paramref name="g"/> depuis <paramref name="from"/> : pas de marche (<see cref="MovingTicks"/> ×
+        /// <see cref="StepBound"/>) plus bonds d'esquive (<see cref="DodgeTravelBound"/> ; revue Codex de la PR #164 : la même borne partout,
+        /// places, engagement et axe des zones). Nulle seulement s'il n'a pas pu bouger.
+        /// </summary>
+        private long TravelBound(Fighter g, long from) => checked(MovingTicks(g, from) * StepBound(g) + DodgeTravelBound(g, from));
+
         private long StepBound(Fighter g)
         {
             Fixed boost = Fixed.One;
@@ -1628,12 +1668,12 @@ namespace EdS.Simulation.Engine
             if (f.Behavior!.Pack && _fightersById.Any(a => a != f && a.Team == f.Team && a.Behavior != null
                 && (a.EngagedTick is long at && at <= tick || a.Calms > 0))) return true;
             if (f.Body is null || FreeMover(f)) return true;
-            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = checked(MovingTicks(f, tick) * StepBound(f));
+            long aggro = f.Behavior!.AggroRange!.Value.Raw, own = TravelBound(f, tick);
             foreach (Fighter g in _fightersById)
             {
                 if (g.Team == f.Team || g.Body is null || !PresentAtCommands(g, tick)) continue;
                 if (FreeMover(g)) return true;
-                long reach = checked(aggro + own + MovingTicks(g, tick) * StepBound(g));
+                long reach = checked(aggro + own + TravelBound(g, tick));   // revue Codex de la PR #164 : bonds compris
                 if (EdgeDistance(f.Body, g.Body) <= reach) return true;
             }
             return false;
@@ -1719,7 +1759,7 @@ namespace EdS.Simulation.Engine
         private bool Reachable(Fighter g, long from, long x, long z)
         {
             if (FreeMover(g)) return true;
-            long travel = checked(MovingTicks(g, from) * StepBound(g));
+            long travel = TravelBound(g, from);
             long dx = checked(x - g.Body!.X), dz = checked(z - g.Body.Z);
             return travel == 0 ? dx == 0 && dz == 0 : (decimal)dx * dx + (decimal)dz * dz <= (decimal)travel * travel;
         }
@@ -1738,8 +1778,8 @@ namespace EdS.Simulation.Engine
             if (impact.Attack.Center == ShapeCenter.Target && zone.Shape is AttackShape.Circle or AttackShape.Persistent)
                 return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && Reachable(g, turnTick, zone.OriginX, zone.OriginZ));
             if (!Reachable(a, turnTick, zone.OriginX, zone.OriginZ)) return false;
-            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || MovingTicks(a, turnTick) > 0) return true;
-            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || MovingTicks(g, turnTick) > 0
+            if (zone.Shape is AttackShape.Circle or AttackShape.Persistent || FreeMover(a) || TravelBound(a, turnTick) > 0) return true;
+            return _fightersById.Any(g => g.Team != a.Team && g.Body != null && PresentAtCommands(g, turnTick) && (FreeMover(g) || TravelBound(g, turnTick) > 0
                 || (Planar.TryNormalize(checked(g.Body.X - zone.OriginX), checked(g.Body.Z - zone.OriginZ), out long ux, out long uz)
                     ? ux == zone.AxisX && uz == zone.AxisZ
                     : a.Body!.FacingX == zone.AxisX && a.Body.FacingZ == zone.AxisZ)));
@@ -2043,6 +2083,9 @@ namespace EdS.Simulation.Engine
             f.ParryEndTick = n["parryEndTick"].Long;
             f.ParrySucceeded = n["parrySucceeded"].Bool;
             f.ParryRecoveryUntilTick = n["parryRecoveryUntilTick"].Long;
+            f.DodgeStartTick = n["dodgeStartTick"].NullableLong;   // esquive (format 7)
+            f.DodgeDirectionX = n["dodgeDirectionX"].Long;
+            f.DodgeDirectionZ = n["dodgeDirectionZ"].Long;
             f.Resonance = n["resonance"].Int;
             f.RampartCharges = n["rampartCharges"].Int;
             f.NextTurn = n["nextTurn"].Long;

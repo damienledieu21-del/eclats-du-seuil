@@ -104,8 +104,9 @@ public class ReproducibilityTests
     // créatures de deux équipes : seul l'en-tête change (ancienne empreinte 1cb5f862…). Sous-lot V2.4.1 : moteur 0.29.0, format 23 (bêtes
     // qui se promènent) ; sans bête qui erre : seul l'en-tête change (ancienne empreinte 4f4c8fb1…). Sous-lot V2.8 : moteur 0.30.0, format 24
     // (recherche de chemin) ; sans espace : seul l'en-tête change (ancienne empreinte 1ba20e03…). Sous-lot V2.26 : moteur 0.31.0, format 25
-    // (état emporté, places recyclées, ±4 096 m, 256 obstacles) ; sans état emporté : seul l'en-tête change (ancienne empreinte 56468226…).
-    internal const string ReferenceHash = "4dffbe0179b2ec142ffd577b90c7e10e3dd6453e93a1cebe406318a5ffc04815";
+    // (état emporté, places recyclées, ±4 096 m, 256 obstacles) ; sans état emporté : seul l'en-tête change (ancienne empreinte 56468226…). Esquive : moteur 0.32.0,
+    // format 26 ; sans esquive : seul l'en-tête change (ancienne empreinte 4dffbe01…).
+    internal const string ReferenceHash = "e6eacb980c28b1340449f9364a3c0a3941ad0dfd3df55c188317f3b88ab6e042";
 
     [Fact]
     public void Ajouter_un_combattant_ne_decale_pas_les_tirages_des_autres()

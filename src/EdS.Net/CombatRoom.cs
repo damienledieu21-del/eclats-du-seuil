@@ -88,6 +88,10 @@ namespace EdS.Net
             public bool Abandoned;
             public bool Guard;
             public bool Parry;
+            public bool Dodge;   // esquive (protocole 5)
+
+            /// <summary>Revue Codex de la PR #164 : cap reçu avec la demande d'esquive (null : vers l'arrière), gardé jusqu'au tick qui la joue.</summary>
+            public int? DodgeHeading;
             public int? Slot;
             public string? Target;
             public string? Ally;
@@ -104,6 +108,8 @@ namespace EdS.Net
             {
                 Guard = false;
                 Parry = false;
+                Dodge = false;
+                DodgeHeading = null;
                 Slot = null;
                 Movement.Wished = null;   // sous-lot 11.7 : un joueur coupé s'arrête
             }
@@ -488,6 +494,11 @@ namespace EdS.Net
                     if (Phase != RoomPhase.Combat) break;
                     seat.Guard = input.Guard;
                     if (input.Parry) seat.Parry = true;
+                    if (input.Dodge)   // esquive (protocole 5) : bond dans le cap reçu avec la demande, même si un message suivant le change
+                    {
+                        seat.Dodge = true;
+                        seat.DodgeHeading = input.Heading;
+                    }
                     if (input.Slot != null) seat.Slot = input.Slot;
                     seat.Target = input.Target;
                     seat.Ally = input.Ally;
@@ -664,11 +675,21 @@ namespace EdS.Net
             int before = engine.SubmittedCommands.Count;
             foreach (Seat seat in _seats)
             {
-                if (!seat.InCombat) continue;   // sous-lot 11.7 : place libre, personnage hors du combat
+                if (!seat.InCombat)
+                {
+                    // Relecture indépendante de la PR #164 : une esquive demandée hors du combat ne part pas à l'arrivée (demande périmée).
+                    seat.Dodge = false;
+                    seat.DodgeHeading = null;
+                    continue;   // sous-lot 11.7 : place libre, personnage hors du combat
+                }
                 CombatantView me = engine.View(seat.Id);
                 int? slot = Available(engine, seat, me, tick);
-                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill));
+                // Esquive : bond dans le cap de marche reçu avec la demande (ou vers l'arrière), combat positionné seulement.
+                IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, atMs, seat.Guard, seat.Parry, slot, skill => TargetFor(engine, seat, me, skill),
+                    seat.Dodge && engine.Setup.Space != null, seat.DodgeHeading is int heading ? MoveInput.Direction(heading) : (GroundVector?)null);
                 seat.Parry = false;
+                seat.Dodge = false;
+                seat.DodgeHeading = null;
                 seat.Slot = null;
                 bool TrySubmit(CombatCommand[] group)
                 {

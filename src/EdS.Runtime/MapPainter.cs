@@ -83,7 +83,19 @@ namespace EdS.Runtime
         /// Image peinte, <paramref name="width"/> × <paramref name="height"/> pixels (1 à 2048), en RVBA 8 bits, lignes du sud au nord (comme
         /// une texture Unity), couvrant l'aire et <paramref name="margin"/> mètres de forêt autour.
         /// </summary>
-        public static byte[] Paint(AdventureMap map, int width, int height, double margin = Margin)
+        public static byte[] Paint(AdventureMap map, int width, int height, double margin = Margin) => Paint(map, width, height, margin, default);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #166 : côté de la grille de relief de l'ombrage (au plus <see cref="ReliefCells"/> cases de côté,
+        /// au moins un mètre) : la grille d'une carte de toute la région reste bornée.
+        /// </summary>
+        public const int ReliefCells = 512;
+
+        /// <summary>Pas de la grille de relief (m) pour une carte de <paramref name="width"/> × <paramref name="depth"/> m.</summary>
+        public static double ReliefStep(double width, double depth) => Math.Max(1, Math.Ceiling(Math.Max(width, depth) / ReliefCells));
+
+        /// <summary>Même image ; <paramref name="cancel"/> l'interrompt (une image qui n'est plus voulue : <see cref="OperationCanceledException"/>).</summary>
+        public static byte[] Paint(AdventureMap map, int width, int height, double margin, System.Threading.CancellationToken cancel)
         {
             if (map is null) throw new ArgumentNullException(nameof(map));
             if (width < 1 || width > 2048) throw new ArgumentOutOfRangeException(nameof(width));
@@ -152,10 +164,10 @@ namespace EdS.Runtime
             var woods = obstacles.Where(o => TownRules.BuildingFor(o.Id) == StyleBuilding.Woods).Select(o => (o.Id, o.Points, Box: Box(o.Points))).ToList();
 
             // Champs cultivés des lieux de culture.
-            var obstacleBoxes = obstacles.Select(o => Box(o.Points)).ToList();
-            var fields = map.Places.Where(p => TownRules.Farmland(p.Id))
-                .SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ, obstacleBoxes, roads, map.Clearings, (map.MinX, map.MinZ, map.MaxX, map.MaxZ)))
-                .ToList();
+            // Relecture indépendante de la PR #166 : champs et lisière d'après l'aire entière (une fenêtre a les mêmes que ses voisines : aucune
+            // couture d'une fenêtre à l'autre).
+            AdventureMap whole = map.Whole;
+            var fields = map.AreaFields(roads).ToList();   // revue Codex de la PR #166 (2e tour) : placés une fois par aire
 
             // Objets posés : arbres, rochers, pierres du Seuil, front de taille (rochers serrés), bois, forêt de la lisière.
             var blobs = new List<Blob>();
@@ -184,8 +196,9 @@ namespace EdS.Runtime
                 foreach (StyleWoodTree tree in TownRules.WoodTrees(wood.Points, wood.Id, WoodSpacing))
                     blobs.Add(new Blob { X = tree.X, Z = tree.Z, Radius = 2.5 * tree.Scale, Height = 1, Kind = 0, Id = wood.Id });
             // Lisière : autant d'arbres que la bande en porte (un tous les 12 m² environ), quelle que soit la taille de l'aire.
-            double band = (map.Width + 2 * (margin + 6)) * (map.Depth + 2 * (margin + 6)) - (map.Width + 6) * (map.Depth + 6);
-            foreach (var (fx, fz) in StyleRules.Forest(map.MinX, map.MinZ, map.MaxX, map.MaxZ, margin + 6, Math.Max(1, (int)(band / 12)), 3.0, 3.0))
+            double band = (whole.Width + 2 * (margin + 6)) * (whole.Depth + 2 * (margin + 6)) - (whole.Width + 6) * (whole.Depth + 6);
+            foreach (var (fx, fz) in StyleRules.Forest(whole.MinX, whole.MinZ, whole.MaxX, whole.MaxZ, margin + 6, Math.Max(1, (int)(band / 12)), 3.0, 3.0))
+                if (fx >= x0 - 6 && fx <= x0 + w + 6 && fz >= z0 - 6 && fz <= z0 + d + 6)   // ceux que l'image montre
                 blobs.Add(new Blob { X = fx, Z = fz, Radius = 2.4 + 0.012 * StyleRules.Variant("lisiere" + fx.ToString("F1") + fz.ToString("F1"), 80), Height = 1, Kind = 0, Id = "lisiere" });
             // Grille des objets (cases de 4 m) pour ne tester que les voisins.
             const double Cell = 4.0;
@@ -248,25 +261,30 @@ namespace EdS.Runtime
                 return h;
             }
 
-            // Sous-lot V2.24 : léger ombrage du relief affiché (lumière du nord-ouest), lu sur une grille d'un mètre calculée une fois.
-            GroundRelief relief = GroundRelief.For(map.Whole);   // sous-lot V2.28c : relief de l'aire entière (fenêtre sans couture)
-            int gw = (int)Math.Ceiling(w) + 2, gd = (int)Math.Ceiling(d) + 2;
+            // Sous-lot V2.24 : léger ombrage du relief affiché (lumière du nord-ouest), lu sur une grille calculée une fois. Sous-lot V2.28c :
+            // relief de l'aire entière (fenêtre sans couture) ; relecture indépendante de la PR #166 : grille bornée (au plus
+            // ReliefCells cases de côté, pas d'un mètre ou plus : une carte de toute la région ne calcule pas 12 millions de hauteurs).
+            GroundRelief relief = GroundRelief.For(map.Whole);
+            double step = ReliefStep(w, d);
+            int gw = (int)Math.Ceiling(w / step) + 2, gd = (int)Math.Ceiling(d / step) + 2;
             double[,]? ground = relief.IsFlat ? null : new double[gw, gd];
             if (ground != null)
-                for (int i = 0; i < gw; i++)
-                    for (int j = 0; j < gd; j++) ground[i, j] = relief.Height(x0 + i, z0 + j);
+                System.Threading.Tasks.Parallel.For(0, gw, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancel }, i =>
+                {
+                    for (int j = 0; j < gd; j++) ground[i, j] = relief.Height(x0 + i * step, z0 + j * step);
+                });
             double Shade(double x, double z)
             {
                 if (ground == null) return 1;
-                int i = Math.Max(0, Math.Min(gw - 2, (int)(x - x0))), j = Math.Max(0, Math.Min(gd - 2, (int)(z - z0)));
-                double gx = ground[i + 1, j] - ground[i, j], gz = ground[i, j + 1] - ground[i, j];
+                int i = Math.Max(0, Math.Min(gw - 2, (int)((x - x0) / step))), j = Math.Max(0, Math.Min(gd - 2, (int)((z - z0) / step)));
+                double gx = (ground[i + 1, j] - ground[i, j]) / step, gz = (ground[i, j + 1] - ground[i, j]) / step;
                 return Math.Max(0.8, Math.Min(1.2, 1 + 0.6 * (0.7 * gx - 0.7 * gz)));
             }
 
             var pixels = new byte[checked(width * height * 4)];
             // Vallons agrandis : une ligne par tâche (chaque pixel ne dépend que de sa place : mêmes pixels, quel que soit l'ordre).
             // Relecture : la moitié des cœurs au plus (la carte se peint pendant qu'on joue).
-            var options = new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2) };
+            var options = new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2), CancellationToken = cancel };
             System.Threading.Tasks.Parallel.For(0, height, options, row =>
             {
                 var c = new double[3];
@@ -274,7 +292,7 @@ namespace EdS.Runtime
                 for (int col = 0; col < width; col++)
                 {
                     double x = x0 + (col + 0.5) * w / width;
-                    bool outside = x < map.MinX || x > map.MaxX || z < map.MinZ || z > map.MaxZ;
+                    bool outside = x < whole.MinX || x > whole.MaxX || z < whole.MinZ || z > whole.MaxZ;   // V2.28c : hors de l'aire entière seulement
                     double fine = 0.88 + 0.24 * StyleRules.Noise(x * 1.9, z * 1.9) + 0.06 * (Hash(col, row) - 0.5);
 
                     // 1. Sol : herbe des prés (même bruit que les touffes), taches de terre, roche ; sous-bois sombre hors de l'aire.

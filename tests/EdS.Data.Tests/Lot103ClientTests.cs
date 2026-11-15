@@ -587,7 +587,7 @@ public class Lot103ClientTests
         game.RunUntil(() => a.Status == ClientStatus.Failed, 2);
         Assert.Equal(ClientStatus.Failed, a.Status);
         Assert.Contains($"protocole 3 du serveur, version {Protocol.Version} attendue", a.Error);
-        Assert.Equal(4, Protocol.Version);
+        Assert.Equal(5, Protocol.Version);   // esquive : protocole 5
         Assert.Null(a.Combat);
     }
 

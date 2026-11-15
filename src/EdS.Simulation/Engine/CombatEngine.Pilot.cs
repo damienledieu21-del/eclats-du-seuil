@@ -107,6 +107,24 @@ namespace EdS.Simulation.Engine
         public IReadOnlyDictionary<string, int> ConsumableCharges { get; internal set; } = new Dictionary<string, int>();
         public long ConsumableReadyTick { get; internal set; }
 
+        /// <summary>Esquive : tick à partir duquel une nouvelle esquive est possible (0 si jamais esquivé).</summary>
+        public long DodgeReadyTick { get; internal set; }
+
+        /// <summary>Esquive : invulnérable jusqu'à ce tick exclu (0 si jamais esquivé).</summary>
+        public long InvulnerableUntilTick { get; internal set; }
+
+        /// <summary>Esquive : bond en cours jusqu'à ce tick exclu (0 si jamais esquivé).</summary>
+        public long DodgeEndTick { get; internal set; }
+
+        /// <summary>Esquive : personnage présent et vivant d'un combat positionné, pas bloqué dans son déplacement (sans tenir compte de la garde, de la recharge ni de l'endurance).</summary>
+        public bool CanDodge { get; internal set; }
+
+        /// <summary>
+        /// Esquive (relecture indépendante de la PR #164) : une esquive serait admise à ce tick hors garde et hors mur : <see cref="CanDodge"/>,
+        /// recharge passée et endurance suffisante (le mur, qui dépend de la direction, reste jugé par le moteur).
+        /// </summary>
+        public bool DodgeAvailable { get; internal set; }
+
         /// <summary>Compétences, garde et parade non bloquées par une altération encore active à ce tick ; faux pour un absent ou un mort.</summary>
         public bool CanCast { get; internal set; }
         public bool CanGuard { get; internal set; }
@@ -326,6 +344,14 @@ namespace EdS.Simulation.Engine
                 view.CanCast = !f.Out && !Blocked(StatusBlocks.Skills);
                 view.CanGuard = !f.Out && !Blocked(StatusBlocks.Guard);
                 view.CanParry = !f.Out && !Blocked(StatusBlocks.Parry);
+                if (f.DodgeStartTick is long dodged)   // esquive
+                {
+                    view.DodgeReadyTick = DodgeReadyTick(f);
+                    view.InvulnerableUntilTick = checked(dodged + DodgeInvulnerableTicks);
+                    view.DodgeEndTick = checked(dodged + DodgeDurationTicks);
+                }
+                view.CanDodge = !f.Out && _spatial && !Blocked(StatusBlocks.Movement);
+                view.DodgeAvailable = view.CanDodge && tick >= DodgeReadyTick(f) && f.Endurance >= _rules.DodgeEnduranceCost;
             }
             if (f.Body is { } body)
             {
@@ -415,10 +441,18 @@ namespace EdS.Simulation.Engine
                     throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
                 if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select)
                     throw new ArgumentException("Une garde, une parade ou un déplacement n'a pas de cible.", nameof(commands));
-                if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
+                if (command.Action == CombatAction.Dodge)
+                {
+                    // Esquive : mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).
+                    if (command.Direction is { } dodgeDirection && !SpaceLimits.IsDirection(dodgeDirection))
+                        throw new ArgumentException("Direction d'esquive : composantes dans [−1, 1], non toutes deux nulles.", nameof(commands));
+                    if (_setup.Space is null) throw new ArgumentException("Esquive dans un combat sans espace (bloc space absent).", nameof(commands));
+                    if (_byId[command.Actor].Character is null) throw new ArgumentException($"Esquive de « {command.Actor} », qui n'est pas un personnage.", nameof(commands));
+                }
+                else if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
                     throw new ArgumentException(command.Action == CombatAction.Move
                         ? "Direction de déplacement : composantes dans [−1, 1], non toutes deux nulles."
-                        : "Seul un déplacement (move) a une direction.", nameof(commands));
+                        : "Seul un déplacement (move) ou une esquive (dodge) a une direction.", nameof(commands));
                 // Revue Codex de la PR #47 : même contrôle de l'objet d'un soin que CombatSetup.Validate, pour que le scénario complété reste
                 // valide (rejeu, restauration) : un soin nomme un objet de soin emporté par son personnage ; seule cette commande nomme un objet.
                 if (command.Action == CombatAction.Consume)

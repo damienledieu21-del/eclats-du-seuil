@@ -1533,7 +1533,7 @@ namespace EdS.Runtime
             {
                 CombatSpace? area = World.AreaSpace;
                 CombatSpace space = area ?? World.Zone.Setup.Space ?? throw new InvalidOperationException("Zone sans espace.");
-                string? sector = area != null && AdventureMap.Wide(area) ? World.Sector ?? _mapSector ?? World.HomeSector : null;
+                string? sector = area != null && AdventureMap.Wide(area) ? WindowSector() : null;
                 if (_map is null || _mapSession != Opened || _mapSector != sector || !CombatDisplay.SameSpace(_mapSpace, space))   // sous-lot V2.28b (2b) : comme Paths
                 {
                     if (sector != null && World.SectorRect(sector) is { } rect)
@@ -1541,10 +1541,15 @@ namespace EdS.Runtime
                         _map = BuildMap(AdventureMap.WindowOf(space, rect));
                         _map.Whole = WholeMap(space);   // relief et ombrage d'après l'aire entière : sans couture d'une fenêtre à l'autre
                     }
-                    else _map = BuildMap(space);
+                    else
+                    {
+                        _map = BuildMap(space);
+                        sector = null;   // relecture de la PR #166 : aucun secteur gardé sans fenêtre
+                    }
                     _mapSession = Opened;
                     _mapSpace = space;
                     _mapSector = sector;
+                    MapChanges++;
                 }
                 return _map;
             }
@@ -1575,6 +1580,27 @@ namespace EdS.Runtime
         }
 
         private string? _mapSector;
+
+        /// <summary>
+        /// Revue Codex de la PR #166 (1er tour) : nombre de cartes faites (une nouvelle session, une nouvelle fenêtre). L'affichage refait son
+        /// décor quand il change, même sans rebranchement du moteur (la fenêtre change passé l'hystérésis, après le passage).
+        /// </summary>
+        public int MapChanges { get; private set; }
+
+        /// <summary>
+        /// Sous-lot V2.28c : secteur de la fenêtre de la carte. Relecture indépendante de la PR #166 : celui de la fenêtre en cours n'est
+        /// gardé que dans la même session (après un voyage, une halte ou une reprise, il est recalculé) ; hystérésis : il reste tant que le
+        /// personnage est à moins de <see cref="AdventureMap.WindowKeepMeters"/> m de son carré (passé dans le secteur voisin, la fenêtre ne
+        /// change qu'une fois le personnage bien avancé). Sans secteur (reprise d'un passage), celui de la fenêtre, sinon celui du cœur.
+        /// </summary>
+        private string? WindowSector()
+        {
+            string? kept = _mapSession == Opened ? _mapSector : null;
+            string? sector = World.Sector ?? kept ?? World.HomeSector;
+            if (kept != null && sector != kept && Me is GroundVector me && World.SectorRect(kept) is { } k
+                && AdventureMap.Within(k, me, AdventureMap.WindowKeepMeters)) sector = kept;
+            return sector != null && World.SectorRect(sector) is not null ? sector : null;
+        }
         private AdventureMap? _regionMap;
         private int _regionSession = -1;
         private CombatSpace? _regionSpace;

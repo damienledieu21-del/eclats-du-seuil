@@ -37,6 +37,12 @@ namespace EdS.Runtime
 
         void Parry();
 
+        /// <summary>
+        /// Esquive au prochain tick (décision de Damien du 14 novembre 2026) : bond dans la direction de marche voulue, ou vers l'arrière au
+        /// repos ; sans effet hors combat positionné.
+        /// </summary>
+        void Dodge();
+
         /// <summary>Compétence d'un emplacement (0 à 7 : actives, <see cref="RealtimeCombat.UltimateSlot"/> : ultime) au prochain tick.</summary>
         bool UseSlot(int slot);
 

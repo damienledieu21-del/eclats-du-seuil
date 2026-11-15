@@ -612,6 +612,13 @@ namespace EdS.Domain.Combat
         /// <c>gear</c>, juste après les arrivées et avant tout le reste) : tout le tick voit les nouvelles statistiques.
         /// </summary>
         Gear = 9,
+
+        /// <summary>
+        /// Esquive (décision de Damien du 14 novembre 2026, qui revient sur L11-D4) : un bond rapide dans <see cref="CombatCommand.Direction"/>
+        /// (la direction du joystick), ou vers l'arrière de l'orientation sans direction ; courte invulnérabilité au début du bond, coût
+        /// d'endurance et recharge (<c>combat.dodge</c> des règles). Personnage d'un combat positionné seulement.
+        /// </summary>
+        Dodge = 10,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -627,6 +634,7 @@ namespace EdS.Domain.Combat
         public const string Leave = "leave";
         public const string Consume = "consume";
         public const string Gear = "gear";
+        public const string Dodge = "dodge";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -635,7 +643,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -649,6 +657,7 @@ namespace EdS.Domain.Combat
             CombatAction.Leave => Leave,
             CombatAction.Consume => Consume,
             CombatAction.Gear => Gear,
+            CombatAction.Dodge => Dodge,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -661,6 +670,7 @@ namespace EdS.Domain.Combat
                 case Stop: action = CombatAction.Stop; return true;
                 case Select: action = CombatAction.Select; return true;
                 case Leave: action = CombatAction.Leave; return true;
+                case Dodge: action = CombatAction.Dodge; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -728,6 +738,7 @@ namespace EdS.Domain.Combat
             if (action == CombatAction.Move) throw new ArgumentException("Un déplacement se donne avec le constructeur qui porte sa direction.", nameof(action));
             if (action == CombatAction.Consume) throw new ArgumentException("Un soin se donne avec CombatCommand.Use, qui nomme l'objet.", nameof(action));
             if (action == CombatAction.Gear) throw new ArgumentException("Un bonus modifié se donne avec CombatCommand.SetGear, qui porte le bonus.", nameof(action));
+            if (action == CombatAction.Dodge) throw new ArgumentException("Une esquive se donne avec CombatCommand.DodgeToward.", nameof(action));
             AtMs = atMs;
             Actor = actor ?? throw new ArgumentNullException(nameof(actor));
             Action = action;
@@ -756,6 +767,20 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot 11.4c : commande « sélectionner <paramref name="target"/> » ; null efface la sélection.</summary>
         public static CombatCommand SelectTarget(long atMs, string actor, string? target) => new(atMs, actor, target, CombatAction.Select);
+
+        /// <summary>
+        /// Esquive (décision de Damien du 14 novembre 2026) : bond dans la direction <paramref name="direction"/> (composantes dans [−1, 1],
+        /// non toutes deux nulles ; le moteur la normalise), ou vers l'arrière de l'orientation du personnage si elle est null (joystick au repos).
+        /// </summary>
+        public static CombatCommand DodgeToward(long atMs, string actor, GroundVector? direction) => new CombatCommand(atMs, actor, direction);
+
+        private CombatCommand(long atMs, string actor, GroundVector? direction)
+        {
+            AtMs = atMs;
+            Actor = actor ?? throw new ArgumentNullException(nameof(actor));
+            Action = CombatAction.Dodge;
+            Direction = direction;
+        }
 
         /// <summary>Sous-lot 12.6 : commande « utiliser l'objet de soin <paramref name="item"/> ».</summary>
         public static CombatCommand Use(long atMs, string actor, string item)
@@ -1156,8 +1181,19 @@ namespace EdS.Domain.Combat
                     if (command.Direction is not { } direction || !SpaceLimits.IsDirection(direction))
                         errors.Add(new RuleViolation("direction obligatoire : composantes dans [−1, 1], non toutes deux nulles.", path + ".direction"));
                 }
+                else if (command.Action == CombatAction.Dodge)
+                {
+                    // Esquive (décision de Damien du 14/11/2026) : direction facultative (vers l'arrière sans elle), combat positionné,
+                    // personnage seulement (les créatures n'esquivent pas).
+                    if (command.Direction is { } dodgeDirection && !SpaceLimits.IsDirection(dodgeDirection))
+                        errors.Add(new RuleViolation("direction d'esquive : composantes dans [−1, 1], non toutes deux nulles (ou aucune : vers l'arrière).", path + ".direction"));
+                    if (Space is null)
+                        errors.Add(new RuleViolation("esquive dans un combat sans espace (bloc space absent).", path + ".action"));
+                    if (ids.TryGetValue(command.Actor, out int dodger) && !(Combatants[dodger] is CharacterSetup))
+                        errors.Add(new RuleViolation("seul un personnage esquive.", path + ".actor"));
+                }
                 else if (command.Direction != null)
-                    errors.Add(new RuleViolation("seul un déplacement (move) a une direction.", path + ".direction"));
+                    errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
             }
             ValidateInitialQueue(errors);
             if (queueBound && errors.Count == 0) ValidateQueueSaturation(errors);

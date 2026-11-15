@@ -1000,7 +1000,8 @@ namespace EdS.Game
             if (!quest) UiKit.Show(_quest, false);
             if (!on) return;
             AdventureMap map = a.Map;
-            Texture2D painted = PaintedMap.For(map);
+            // Sous-lot V2.28c : pendant qu'une nouvelle fenêtre se peint, l'image précédente reste montrée (placée d'après sa propre carte).
+            Texture2D painted = PaintedMap.Shown(map, out AdventureMap paintedMap);
             // Centre de la carte à chaque image sans liste ; les repères (liste construite par la session) sont relus 4 fois par seconde.
             if (!a.TryPlayerPosition(out double cx, out double cz))
             {
@@ -1015,7 +1016,7 @@ namespace EdS.Game
             }
             _mapImage.texture = painted;
             _mapImage.color = painted != null ? Color.white : UiKit.Night;
-            _mapImage.uvRect = PaintedMap.Window(map, cx, cz, MapRadius);
+            _mapImage.uvRect = PaintedMap.Window(paintedMap, cx, cz, MapRadius);
             _you.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -(float)facingYaw);
             for (int i = 0; i < enemies.Count; i++)
             {

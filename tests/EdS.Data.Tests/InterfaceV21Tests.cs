@@ -1,5 +1,6 @@
 using EdS.Data.Json;
 using EdS.Data.Story;
+using EdS.Domain.Combat;
 using EdS.Runtime;
 
 namespace EdS.Data.Tests;
@@ -409,6 +410,31 @@ public class InterfaceV21Tests
         foreach (System.Reflection.FieldInfo f in typeof(HudTextsV21).GetFields().Where(f => f.IsLiteral && f.FieldType == typeof(string) && ((string)f.GetValue(null)!).StartsWith("text.", StringComparison.Ordinal)))
             Assert.Contains("HudTextsV21." + f.Name, Script("HudView.cs") + Script("TouchControls.cs"), StringComparison.Ordinal);
         Assert.Contains("HudTextsV21.Compass", all, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Esquive_montree_dans_un_combat_positionne_et_la_garde_monte()
+    {
+        // Esquive (décision de Damien du 14 novembre 2026, 21 h 05, qui remplace L11-D4) : comportement de la disposition selon le combat
+        // réel (solo) ; Unity ne fait que passer HudLayoutV21.DodgeFor(_combat) à Update (seule vérification de texte restante).
+        var positioned = new RealtimeCombat(ScenarioJsonReader.ReadFile(ScenarioTestData.ScenarioPath("espace_esquive"), ScenarioTestData.ShippedData).Setup!, "bastion");
+        var flat = new RealtimeCombat(ScenarioJsonReader.ReadFile(ScenarioTestData.ScenarioPath("mannequin"), ScenarioTestData.ShippedData).Setup!, "bastion");
+        Assert.True(HudLayoutV21.DodgeFor(positioned));
+        Assert.False(HudLayoutV21.DodgeFor(flat));
+        Assert.False(HudLayoutV21.DodgeFor(null));
+        var l = new HudLayoutV21();
+        l.Update(2400f, 1080f, UiInsets.None, true, HudMode.Adventure, HudLayoutV21.DodgeFor(positioned));
+        Assert.True(l.Has(HudButton.Dodge));
+        Assert.Equal(new UiBox(784f * 2.5f, 200f * 2.5f, 64f * 2.5f, 64f * 2.5f), l.Button(HudButton.Guard));   // la garde monte à gauche de la parade
+        l.Update(2400f, 1080f, UiInsets.None, true, HudMode.Adventure, HudLayoutV21.DodgeFor(flat));
+        Assert.False(l.Has(HudButton.Dodge));
+        // Le bouton (ou Ctrl gauche) demande l'esquive au combat : bond vers l'arrière au tick suivant.
+        positioned.Dodge();
+        positioned.StepOnce();
+        Assert.Contains(positioned.SubmittedCommands, c => c.Action == CombatAction.Dodge && c.Direction is null);
+        Assert.Contains("dodge: HudLayoutV21.DodgeFor(_combat));", Script("EdsGame.cs"), StringComparison.Ordinal);
+        Assert.Contains("if (Input.GetKeyDown(KeyCode.LeftControl) || _touch.DodgePressed) _combat.Dodge();", Script("EdsGame.cs"), StringComparison.Ordinal);
+        Assert.Contains(HelpKeys.Training, k => k.Key == "Ctrl" && k.Action == "Esquive");
     }
 
     [Fact]

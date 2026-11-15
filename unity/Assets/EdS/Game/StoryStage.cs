@@ -554,7 +554,7 @@ namespace EdS.Game
 
             // La porte de lumière, à la place de l'obstacle (le fond de la salle).
             _gate = new Vector3(0f, 0f, 5.5f);
-            foreach (SpaceObstacle o in a.Map.Obstacles)
+            foreach (SpaceObstacle o in a.RegionMap.Obstacles)
             {
                 if (!IsLightGate(o.Id)) continue;
                 float x0 = o.Points.Min(p => p.X.Raw) / 10000f, x1 = o.Points.Max(p => p.X.Raw) / 10000f;
@@ -772,7 +772,7 @@ namespace EdS.Game
 
         private void BuildVallons(AdventureSession a)
         {
-            MapPlace meadow = a.Map.Places.FirstOrDefault(p => p.Id == MeadowPlace);
+            MapPlace meadow = a.RegionMap.Places.FirstOrDefault(p => p.Id == MeadowPlace);
             if (meadow == null) return;
             _vallons = new GameObject("Chapitre 1 (V1.9.8)");
             // La pierre gravée, au milieu du rond de champignons (près de la porte cachée du souvenir) : trop usée pour être lue.
@@ -839,7 +839,7 @@ namespace EdS.Game
 
         private void ShowSilhouette(AdventureSession a, ArenaView arena, float now)
         {
-            MapPlace meadow = a.Map.Places.FirstOrDefault(p => p.Id == MeadowPlace);
+            MapPlace meadow = a.RegionMap.Places.FirstOrDefault(p => p.Id == MeadowPlace);
             if (meadow == null || _vallons == null) return;
             float x = arena.Player != null ? Mathf.Clamp(arena.Player.position.x, (float)meadow.MinX + 2f, (float)meadow.MaxX - 2f) : (float)meadow.CenterX;
             if (_silhouette != null) Object.Destroy(_silhouette);
