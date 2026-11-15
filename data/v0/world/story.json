@@ -4658,6 +4658,27 @@
           {
             "conditions": [
               {
+                "if": "questNotStarted",
+                "id": "quest.compagnons.lien_au_feu"
+              },
+              {
+                "if": "fact",
+                "id": "fact.chef_des_bandits.vaincu"
+              },
+              {
+                "if": "fact",
+                "id": "fact.compagnons.recrute"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.compagnons.lien_plus_tard"
+              }
+            ],
+            "node": "compagnons_lien"
+          },
+          {
+            "conditions": [
+              {
                 "if": "phase",
                 "id": "night"
               }
@@ -4704,27 +4725,6 @@
               }
             ],
             "node": "v292_brunot"
-          },
-          {
-            "conditions": [
-              {
-                "if": "questNotStarted",
-                "id": "quest.compagnons.lien_au_feu"
-              },
-              {
-                "if": "fact",
-                "id": "fact.chef_des_bandits.vaincu"
-              },
-              {
-                "if": "fact",
-                "id": "fact.compagnons.recrute"
-              },
-              {
-                "if": "notFact",
-                "id": "fact.compagnons.lien_plus_tard"
-              }
-            ],
-            "node": "compagnons_lien"
           },
           {
             "conditions": [],
@@ -6603,6 +6603,25 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.compagnons.lien_au_feu.reprendre",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.compagnons.lien_plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.compagnons.lien_au_feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  }
+                ],
+                "effects": [],
+                "next": "compagnons_lien"
               }
             ]
           },
@@ -7231,6 +7250,25 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.compagnons.lien_au_feu.reprendre",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.compagnons.lien_plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.compagnons.lien_au_feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  }
+                ],
+                "effects": [],
+                "next": "compagnons_lien"
               }
             ]
           },
@@ -7556,6 +7594,25 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.compagnons.lien_au_feu.reprendre",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.compagnons.lien_plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.compagnons.lien_au_feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  }
+                ],
+                "effects": [],
+                "next": "compagnons_lien"
               }
             ]
           },
@@ -7669,6 +7726,25 @@
                 ],
                 "effects": [],
                 "next": "v27_gaspard_offre"
+              },
+              {
+                "text": "text.compagnons.lien_au_feu.reprendre",
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.compagnons.lien_plus_tard"
+                  },
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.compagnons.lien_au_feu"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.chef_des_bandits.vaincu"
+                  }
+                ],
+                "effects": [],
+                "next": "compagnons_lien"
               }
             ]
           },

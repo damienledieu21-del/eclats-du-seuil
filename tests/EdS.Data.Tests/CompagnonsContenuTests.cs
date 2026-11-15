@@ -83,6 +83,20 @@ public class CompagnonsContenuTests
     }
 
     [Fact]
+    public void L_offre_de_Gaspard_n_est_jamais_masquee_par_un_accueil_durable()
+    {
+        // Revue Codex de la PR #175 : la première entrée satisfaite gagne ; l'offre passe avant l'accueil de nuit et l'accueil froid (cicatrices
+        // du Seuil), et chaque accueil qui peut durer propose la reprise, comme celle de la piste des rôdeurs.
+        StoryBook story = Book(Zone());
+        Dialogue gaspard = story.Dialogues.Single(d => d.Id == "dialogue.gaspard");
+        var order = gaspard.Entries.Select(e => e.Node).ToList();
+        int offer = order.IndexOf("compagnons_lien");
+        Assert.All(new[] { "ch1_nuit", "v261_froid", "v292_brunot", "v292_brunot_retour", "garde" }, n => Assert.True(order.IndexOf(n) > offer, n));
+        Assert.All(gaspard.Nodes.Where(n => n.Id != "compagnons_lien" && n.Choices.Any(c => c.Text == "text.v27.gaspard.encore")),
+            n => Assert.Contains(n.Choices, c => c.Text == "text.compagnons.lien_au_feu.reprendre" && c.Next == "compagnons_lien"));
+    }
+
+    [Fact]
     public void La_quete_de_lien_doit_exister_dans_l_histoire()
     {
         StoryBook story = Book(Zone());
