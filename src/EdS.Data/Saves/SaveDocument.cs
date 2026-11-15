@@ -99,6 +99,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur (facultatif).</summary>
         public SavedLookData? Look { get; set; }
 
+        /// <summary>Compagnons (version 20) : la troupe du personnage (facultative : absente quand il n'a recruté personne).</summary>
+        public SavedCompanionsData? Companions { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

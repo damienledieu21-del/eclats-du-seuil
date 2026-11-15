@@ -107,6 +107,23 @@ namespace EdS.Simulation.Engine
         public IReadOnlyDictionary<string, int> ConsumableCharges { get; internal set; } = new Dictionary<string, int>();
         public long ConsumableReadyTick { get; internal set; }
 
+        /// <summary>Compagnons : Éveillé d'un compagnon (null pour tout autre combattant).</summary>
+        public string? CompanionOwner { get; internal set; }
+
+        /// <summary>Compagnons : ordre en cours, sa cible (« cibler »), jauge de lien (0 à 100).</summary>
+        public CompanionOrder? CompanionOrder { get; internal set; }
+        public string? CompanionOrderTarget { get; internal set; }
+        public int CompanionBond { get; internal set; }
+
+        /// <summary>Compagnons : une attaque à deux est en cours jusqu'à ce tick exclu (fin de la récupération ; 0 sinon).</summary>
+        public long DuoReadyTick { get; internal set; }
+
+        /// <summary>
+        /// Compagnons : une attaque à deux serait admise maintenant hors cible (jauge pleine, compagnon et Éveillé présents et libres, pas
+        /// d'attaque à deux en cours, recharge globale de l'Éveillé passée) ; la portée de la cible reste jugée par le moteur.
+        /// </summary>
+        public bool DuoAvailable { get; internal set; }
+
         /// <summary>Esquive : tick à partir duquel une nouvelle esquive est possible (0 si jamais esquivé).</summary>
         public long DodgeReadyTick { get; internal set; }
 
@@ -376,6 +393,17 @@ namespace EdS.Simulation.Engine
                 view.Wander = WanderState(f, tick);   // sous-lot V2.4.1
                 view.AttacksBlocked = Blocked(StatusBlocks.AssailantAttacks);
             }
+            if (f.Companion is { } companion)   // compagnons
+            {
+                view.CompanionOwner = companion.Owner.Id;
+                view.CompanionOrder = companion.Order;
+                view.CompanionOrderTarget = companion.OrderTarget?.Id;
+                view.CompanionBond = companion.Bond;
+                view.DuoReadyTick = companion.DuoReadyTick > tick ? companion.DuoReadyTick : 0;
+                view.DuoAvailable = companion.Setup.Duo != null && companion.Bond >= CompanionSetup.DuoCost && tick >= companion.DuoReadyTick && !f.Out
+                    && !companion.Owner.Out && BlockReason(f, StatusBlocks.AssailantAttacks) is null && BlockReason(companion.Owner, StatusBlocks.Skills) is null
+                    && tick >= companion.Owner.GlobalCooldownReadyTick;
+            }
             return view;
         }
 
@@ -389,6 +417,8 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && status.UntilTick > tick && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
             if (taunt?.Source is { } source) return source;
+            // Revue Codex de la PR #169 : la cible d'un compagnon suit son ordre, comme en combat (aucune sous « revenir »).
+            if (assailant.Companion != null) return CompanionTarget(assailant)?.Id;
             AssailantSetup setup = assailant.Assailant!;
             // Sous-lot 11.5 : cible de scénario là et vivante, sinon l'ennemi le plus proche.
             if (setup.Behavior is null || (setup.Target != null && !_byId[setup.Target].Out)) return setup.Target;
@@ -439,8 +469,13 @@ namespace EdS.Simulation.Engine
                 // Sous-lot 11.4c : sélection seulement dans un combat positionné ; une cible seulement pour une compétence ou une sélection.
                 if (command.Action == CombatAction.Select && _setup.Space is null)
                     throw new ArgumentException("Sélection de cible dans un combat sans espace (bloc space absent).", nameof(commands));
-                if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select)
+                if (command.Target != null && command.Action != CombatAction.UseSkill && command.Action != CombatAction.Select
+                    && command.Action != CombatAction.Order && command.Action != CombatAction.Duo)
                     throw new ArgumentException("Une garde, une parade ou un déplacement n'a pas de cible.", nameof(commands));
+                // Compagnons : ordre et attaque à deux, mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).
+                if (CombatSetup.CheckCompanionCommand(command, id => _byId.TryGetValue(id, out Fighter? known) ? known.Setup : null, _setup.Space != null)
+                    is { Count: > 0 } companionProblems)
+                    throw new ArgumentException($"Commande de compagnon refusée : {companionProblems[0].Message}", nameof(commands));
                 if (command.Action == CombatAction.Dodge)
                 {
                     // Esquive : mêmes contrôles que CombatSetup.Validate (le scénario complété reste valide).
