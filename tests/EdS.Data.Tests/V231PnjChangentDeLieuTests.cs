@@ -409,7 +409,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         foreach (Npc npc in Shipped.Value.Npcs)
             Assert.Equal((a.NpcZone(npc), a.NpcPosition(npc), a.NpcActivity(npc)), (b.NpcZone(npc), b.NpcPosition(npc), b.NpcActivity(npc)));
         string text = SaveJsonReader.Write(a.Save());
-        Assert.Equal(20, SaveValidator.CurrentSchemaVersion);   // compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
+        Assert.Equal(22, SaveValidator.CurrentSchemaVersion);   // monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; rien n'est sauvegardé : la zone de chacun se recalcule de l'heure
         Assert.DoesNotContain("zone.auberge", text, StringComparison.Ordinal);
         var back = new WorldSession(SaveJsonReader.Read(text).Save!, Vallons, ShippedData, Progression, ItemsCatalog, Shipped.Value, market: new Market(ShippedMerchants));
         back.Step();

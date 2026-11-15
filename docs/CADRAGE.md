@@ -280,12 +280,16 @@ Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session 
 
 ## 7 quater. Grande carte des Vallons (Retenu)
 
-Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale. Elles précisent le [plan de la grande carte](PLAN_GRANDE_CARTE.md) (§ 3 et § 4.4).
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, point de vue du sommet, Forêt des Murmures), rapportées par la session principale. Elles précisent le [plan de la grande carte](PLAN_GRANDE_CARTE.md) (§ 3 et § 4.4).
 
 | Sujet | Ce qui est retenu | Statut |
 |---|---|---|
 | Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
 | Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
+| Monture : coup reçu en selle | Être frappé en selle **ne fait pas descendre**. | Retenu (Damien, 15 novembre 2026, vers 17 h) ; c'était déjà la règle du moteur 0.34.0 ([MOTEUR.md](MOTEUR.md#monture-sous-lot-v228d-2)) |
+| Monture : temps de montée | **Monter prend 1 seconde.** Règle d'un coup reçu pendant la montée, laissée à Claude (« la plus simple ») : **un coup ne l'annule pas** ; il faut être à l'arrêt, et marcher ou agir (garde, parade, esquive, compétence) l'annule ; au bout de la seconde, le moteur juge comme avant (ennemi à moins de 12 m : refus). | Retenu (Damien, 15 novembre 2026, vers 17 h) ; règle du coup : choix de Claude ; réalisé au V2.28d (2b) ([DONNEES.md](DONNEES.md#monture-dans-la-partie-solo-sous-lot-v228d-2b)) |
+| Point de vue du sommet | À la **première visite** : **200 XP**, une **entrée au carnet**, et le **brouillard de carte dissipé** autour. | Retenu (Damien, 15 novembre 2026, vers 17 h) ; à réaliser au V2.29 (2) |
+| Forêt des Murmures | **Au nord-ouest**, comme sur la carte d'Orsédia retenue (déjà aligné : pont des Murmures à l'ouest côté nord, [PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md#40-bis-les-vallons-dans-orsédia-retenu)). | Retenu (Damien, 15 novembre 2026, vers 17 h) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 

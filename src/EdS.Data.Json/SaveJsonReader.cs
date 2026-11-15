@@ -208,6 +208,11 @@ namespace EdS.Data.Json
                         return kok ? sk : null;
                     });
                 },
+                ["mount"] = (v, p) =>   // sous-lot V2.28d (2b) (version 22) : la monture, facultative
+                {
+                    c.Present.Add("mount");
+                    c.Mount = input.Text(v, p);
+                },
                 ["companions"] = (v, p) =>   // compagnons (version 20) : la troupe du personnage, facultative
                 {
                     c.Present.Add("companions");
@@ -568,6 +573,7 @@ namespace EdS.Data.Json
             // Sous-lot V1.1 (version 6) : bourse en pièces de cuivre, un seul nombre.
             if (!Coins.IsValid(c.Money)) throw new ArgumentException($"Bourse hors de [0, {Coins.Max}] cuivre.", nameof(c));
             b.Append("      \"money\": ").Append(c.Money.ToString(CultureInfo.InvariantCulture)).Append(",\n");
+            if (c.Mount != null) b.Append("      \"mount\": \"").Append(c.Mount).Append("\",\n");   // sous-lot V2.28d (2b) (version 22) : identifiant déjà validé
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
             b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append(",\n");

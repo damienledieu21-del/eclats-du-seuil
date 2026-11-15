@@ -102,6 +102,9 @@ namespace EdS.Data.Saves
         /// <summary>Compagnons (version 20) : la troupe du personnage (facultative : absente quand il n'a recruté personne).</summary>
         public SavedCompanionsData? Companions { get; set; }
 
+        /// <summary>Sous-lot V2.28d (2b) (version 22) : identifiant de la monture du personnage (facultatif : absent sans monture).</summary>
+        public string? Mount { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

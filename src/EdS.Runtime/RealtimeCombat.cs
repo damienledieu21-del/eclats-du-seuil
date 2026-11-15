@@ -43,6 +43,8 @@ namespace EdS.Runtime
         private bool _parryRequested;
         private bool _dodgeRequested;   // esquive (décision de Damien du 14/11/2026)
         private int? _slotRequested;
+        private long? _mountAtTick;   // sous-lot V2.28d (2b) : tick où la mise en selle part au moteur (montée en cours), null sinon
+        private bool _dismountRequested;
 
         // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
         // partagées avec la salle du serveur).
@@ -211,6 +213,51 @@ namespace EdS.Runtime
         /// </summary>
         public void Dodge() => _dodgeRequested = true;
 
+        /// <summary>Sous-lot V2.28d (2b) : durée de la montée (décision de Damien du 15 novembre 2026 : « monter prend 1 seconde »).</summary>
+        public const long MountDelayMs = 1000;
+
+        /// <summary>Sous-lot V2.28d (2b) : le personnage a une monture dans ce combat (positionné, hors des intérieurs).</summary>
+        public bool HasMount => _engine.View(PlayerId).MountSpeed != null;
+
+        /// <summary>Sous-lot V2.28d (2b) : le personnage est en selle.</summary>
+        public bool Mounted => _engine.View(PlayerId).Mounted;
+
+        /// <summary>Sous-lot V2.28d (2b) : montée en cours (la seconde n'est pas écoulée).</summary>
+        public bool Mounting => _mountAtTick != null;
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : appelle la monture et monte en selle en <see cref="MountDelayMs"/> (1 s), immobile. Règle de la montée (la
+        /// plus simple, choisie par Claude, décision de Damien du 15 novembre 2026) : le joueur doit être à l'arrêt ; marcher, garder, parer,
+        /// esquiver ou lancer une compétence pendant la seconde l'annule. <b>Un coup reçu ne l'annule pas</b> : au bout de la seconde, la
+        /// commande <c>mount</c> part au moteur, qui reste seul juge (ennemi à moins de 12 m, contrôle, mort : refus, sans mise en selle).
+        /// Rend false, avec un retour <see cref="FeedbackKind.Unavailable"/>, sans monture, en selle, montée déjà en cours ou en marche.
+        /// </summary>
+        public bool CallMount()
+        {
+            CombatantView me = _engine.View(PlayerId);
+            string? why = me.MountSpeed is null ? "pas de monture ici" : me.Mounted ? "déjà en selle" : _mountAtTick != null ? "montée en cours"
+                : _movement.Wished != null ? "arrêtez-vous pour monter" : null;
+            if (why != null)
+            {
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, why));
+                return false;
+            }
+            _dismountRequested = false;
+            _mountAtTick = checked(_engine.CurrentTick + (MountDelayMs + _tickMs - 1) / _tickMs);
+            return true;
+        }
+
+        /// <summary>Sous-lot V2.28d (2b) : descend de selle et renvoie la monture au prochain tick (immédiat) ; annule une montée en cours.</summary>
+        public void SendMountAway()
+        {
+            if (_mountAtTick != null)
+            {
+                _mountAtTick = null;
+                return;
+            }
+            _dismountRequested = true;
+        }
+
         /// <summary>
         /// Compétence d'un emplacement du build (0 à 7 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
         /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
@@ -322,6 +369,7 @@ namespace EdS.Runtime
             _feedback.Forget(PlayerId);
             _targets.Reset();
             TargetId = null;
+            _mountAtTick = null;   // sous-lot V2.28d (2b) : une montée ne passe pas d'une session à l'autre (le joueur la relance)
             Rebinds = checked(Rebinds + 1);
         }
 
@@ -332,12 +380,12 @@ namespace EdS.Runtime
             // le moteur ne prend aucune commande de lui ; les demandes ponctuelles (compétence, parade) sont gardées pour le premier tick où il
             // est présent, au lieu d'être perdues sans retour. Une demande plus récente remplace l'ancienne, comme avant.
             if (!me.IsPresent && !me.IsDead) return;
+            int used = MountIntentions(me);
             IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
                 _slotRequested, TargetFor, _dodgeRequested && _setup.Space != null, _movement.Wished is int wished ? MoveInput.Direction(wished) : (GroundVector?)null);
             _slotRequested = null;
             _parryRequested = false;
             _dodgeRequested = false;
-            int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;
             // Sous-lot 11.6 : marche et cible sélectionnée (le personnage en garde se tourne vers elle), seulement quand elles diffèrent de
@@ -345,6 +393,36 @@ namespace EdS.Runtime
             // place qui reste au tick (plafond de commandes par acteur) : sinon elles partent au tick suivant. Une cible perdue de vue sans
             // remplaçante est désélectionnée (sélection vide) : la garde ne se tourne pas vers un ennemi caché.
             _movement.Submit(me, _setup.Space != null, checked(_engine.CurrentTick * _tickMs), TargetId, _setup.Combat.MaxCommandsPerActorPerTick - used, TrySubmit);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28d (2b) : montée et descente. Une action ou une marche demandée annule la montée (retour « montée annulée ») ; la
+        /// seconde écoulée, <c>mount</c> part au moteur. Rend le nombre de commandes soumises.
+        /// </summary>
+        private int MountIntentions(CombatantView me)
+        {
+            long atMs = checked(_engine.CurrentTick * _tickMs);
+            if (_dismountRequested)
+            {
+                _dismountRequested = false;
+                if (me.Mounted && TrySubmit(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Dismount) })) return 1;
+                return 0;
+            }
+            if (!(_mountAtTick is long at)) return 0;
+            if (me.IsDead || me.Mounted)
+            {
+                _mountAtTick = null;
+                return 0;
+            }
+            if (_movement.Wished != null || _guardHeld || _parryRequested || _dodgeRequested || _slotRequested != null)
+            {
+                _mountAtTick = null;
+                AddFeedback(new CombatFeedback(FeedbackKind.Unavailable, PlayerId, 0, "montée annulée"));
+                return 0;
+            }
+            if (_engine.CurrentTick < at) return 0;
+            _mountAtTick = null;
+            return TrySubmit(new[] { new CombatCommand(atMs, PlayerId, CombatAction.Mount) }) ? 1 : 0;
         }
 
         /// <summary>Soumet un groupe tout ou rien ; plafond de commandes ou file pleine : abandonné en entier, le combat continue.</summary>
