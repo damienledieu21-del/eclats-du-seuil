@@ -84,6 +84,61 @@ namespace EdS.Game
 
         private bool Tapped(HudButton id) => _gestures.WasTapped((int)id);
 
+        // --- Compagnons -------------------------------------------------------------------------------------------------------
+
+        /// <summary>Compagnons : identifiants des zones du panneau (hors des boutons du HUD) et des six cases du menu.</summary>
+        private const int CompanionPanelZone = 1000, CompanionActionZone = 1001, CompanionSwitchZone = 1010;
+
+        /// <summary>Part gauche de l'en-tête du panneau (le nom) qui change de compagnon quand il y en a deux (revue Codex de la PR #176).</summary>
+        public const float CompanionSwitchShare = 0.45f;
+
+        private bool _companionMenu;
+        private bool _companionSwitch;
+
+        /// <summary>
+        /// Compagnons : le jeu dit combien de compagnons sont au combat ; à partir de deux, toucher le nom du panneau passe au suivant (revue
+        /// Codex de la PR #176 : au doigt, le second compagnon doit pouvoir être choisi sans clavier).
+        /// </summary>
+        public int CompanionCount
+        {
+            set
+            {
+                bool two = value >= 2;
+                if (_companionSwitch == two) return;
+                _companionSwitch = two;
+                _zonesVersion = -1;   // les zones changent
+            }
+        }
+
+        /// <summary>Compagnons : le nom du panneau touché (passer au compagnon suivant), seulement avec deux compagnons.</summary>
+        public bool CompanionSwitchPressed => _gestures.WasTapped(CompanionSwitchZone);
+
+        /// <summary>Compagnons : le jeu dit si le menu des ordres est ouvert (ses cases ne sont touchables que s'il l'est).</summary>
+        public bool CompanionMenuOpen
+        {
+            get => _companionMenu;
+            set
+            {
+                if (_companionMenu == value) return;
+                _companionMenu = value;
+                _zonesVersion = -1;   // les zones changent
+            }
+        }
+
+        /// <summary>Compagnons : le panneau du compagnon touché (ouvre ou ferme le menu des ordres).</summary>
+        public bool CompanionPanelPressed => _gestures.WasTapped(CompanionPanelZone);
+
+        /// <summary>Compagnons : case du menu touchée (0 à 4 : un ordre, 5 : l'attaque à deux) ; −1 sinon.</summary>
+        public int CompanionActionPressed
+        {
+            get
+            {
+                for (int i = 0; i < 6; i++)
+                    if (_gestures.WasTapped(CompanionActionZone + i)) return i;
+                return -1;
+            }
+        }
+
         /// <summary>
         /// Sous-lot V1.9.8 : bouton mis en valeur pour l'étape du tutoriel, désigné par son ancien libellé (« Garde », « Parade », « Potion »,
         /// « 1 », « Agir ») ; ou null.
@@ -157,6 +212,25 @@ namespace EdS.Game
                 string key = HudTextsV21.Button(b, _layout.Mode);
                 _labels[i] = key != null ? UiTexts.Get(key) : b >= HudButton.Skill1 && b <= HudButton.Skill6 ? (b - HudButton.Skill1 + 1).ToString() : null;
                 _labelSizes[i] = _layout.LabelFont(box);
+            }
+            // Compagnons : le haut du panneau ouvre le menu ; ses six cases, seulement menu ouvert.
+            if (_layout.CompanionShown)
+            {
+                UiBox panel = _layout[HudPart.Companion], first = _layout.CompanionAction(0);
+                float header = Mathf.Max(1f, first.Y - panel.Y);
+                if (_companionSwitch)
+                {
+                    float split = panel.W * CompanionSwitchShare;
+                    _zones.Add(new GestureButton(CompanionSwitchZone, panel.X, panel.Y, split, header));
+                    _zones.Add(new GestureButton(CompanionPanelZone, panel.X + split, panel.Y, panel.W - split, header));
+                }
+                else _zones.Add(new GestureButton(CompanionPanelZone, panel.X, panel.Y, panel.W, header));
+                if (_companionMenu)
+                    for (int i = 0; i < 6; i++)
+                    {
+                        UiBox a = _layout.CompanionAction(i);
+                        _zones.Add(new GestureButton(CompanionActionZone + i, a.X, a.Y, a.W, a.H));
+                    }
             }
         }
 
