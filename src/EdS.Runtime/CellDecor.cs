@@ -101,7 +101,7 @@ namespace EdS.Runtime
     /// Sous-lot V2.28d (1) (docs/PLAN_GRANDE_CARTE.md, § 6.1) : le décor de la région construit par cases, comme son terrain (V2.27) :
     /// eau des rivières et du lac, gorge et ravins, routes, parois de rochers, nappes de forêt (lieux « foret… ») et bois. Tout est tiré de la
     /// carte de l'aire entière, coupé à la case et au-dehors du sol déjà couvert par le décor de la zone (<c>hole</c> : la fenêtre que
-    /// <c>SpaceView</c> construit) : d'une case à l'autre, rien n'est en double ni ne manque (bords partagés, grille des arbres fixée au monde).
+    /// <c>SpaceView</c> construit ; sauf les nappes des lieux de forêt qui débordent la fenêtre, que seule la case construit : revue Codex de la PR #173) : d'une case à l'autre, rien n'est en double ni ne manque (bords partagés, grille des arbres fixée au monde).
     /// Au-delà de <see cref="MaxTreesPerCell"/> arbres, la case garde ceux dont la clé de tirage (fixée au monde) est la plus petite : un
     /// sous-échantillonnage uniforme et déterministe.
     /// Sans Unity ; affichage seulement (le moteur ne voit que les obstacles).
@@ -133,7 +133,6 @@ namespace EdS.Runtime
             var roads = new List<CellRoad>();
             var rocks = new List<CellRock>();
             var trees = new List<CellTree>();
-            if (rects.Count == 0) return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees);
 
             // Obstacles qui touchent la case (boîtes, pour les arbres).
             // Relecture de la PR #173 : « est un bois » calculé une fois par obstacle (pas pour chaque arbre candidat).
@@ -163,9 +162,11 @@ namespace EdS.Runtime
                         roads.Add(new CellRoad(road.Id, road.Width, road.Paved, piece));
 
             // Arbres : bois (obstacles « bois… », leurs arbres comme dans la vue de la zone), puis nappes des lieux de forêt.
-            bool Free(double x, double z)
+            // Revue Codex de la PR #173 (3e tour) : les nappes des lieux de forêt ne sont construites que par les cases (SpaceView ne les fait
+            // pas dans l'aire entière) : elles ignorent le sol couvert par la fenêtre de la zone (anyHole), les bois et le reste non.
+            bool Free(double x, double z, bool anyHole = false)
             {
-                if (!InAny(rects, x, z) || !Owns(x, z, x0, z0, x1, z1)) return false;
+                if ((!anyHole && !InAny(rects, x, z)) || !Owns(x, z, x0, z0, x1, z1)) return false;
                 if (TownRules.RoadAt(x, z, whole.Roads).Edge < RoadGap) return false;
                 foreach (var o in near)
                 {
@@ -205,14 +206,17 @@ namespace EdS.Runtime
                         double x = (c + 0.15 + 0.7 * ((h >> 3) % 1000u) / 1000.0) * ForestSpacing;
                         double z = (r + 0.15 + 0.7 * ((h >> 13) % 1000u) / 1000.0) * ForestSpacing;
                         MapPlace? inside = null;
-                        bool wolves = false;
+                        bool wolves = false, beyond = false;
                         foreach (MapPlace p in forests)
                             if (x >= p.MinX && x <= p.MaxX && z >= p.MinZ && z <= p.MaxZ)
                             {
                                 inside ??= p;
                                 wolves |= StyleRules.Key(p.Id).Contains("loup");
+                                beyond |= !Within(p, hole);
                             }
-                        if (inside is null || !Free(x, z)) continue;
+                        // Sous la fenêtre de la zone, seulement les nappes d'un lieu qui la déborde (les grandes forêts de la région) : un lieu tout
+                        // entier dans la fenêtre (la forêt des Loups du cœur) garde le décor de la vue de la zone, comme avant.
+                        if (inside is null || !Free(x, z, anyHole: beyond)) continue;
                         // Un bois de la zone a déjà ses arbres : pas de nappe par-dessus.
                         if (near.Any(o => o.Wood && x >= o.MinX && x <= o.MaxX && z >= o.MinZ && z <= o.MaxZ && StyleRules.InsideDistance(x, z, o.Points) > 0)) continue;
                         candidates.Add((h, new CellTree(x, z, 0.8 + 0.5 * ((h >> 23) % 100u) / 100.0, wolves)));
@@ -223,6 +227,10 @@ namespace EdS.Runtime
             trees.AddRange(candidates.Select(t => t.Tree));
             return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees);
         }
+
+        /// <summary>Le lieu tient-il tout entier dans la fenêtre <paramref name="hole"/> (faux sans fenêtre) ?</summary>
+        private static bool Within(MapPlace p, (double MinX, double MinZ, double MaxX, double MaxZ)? hole) =>
+            hole is (double hx0, double hz0, double hx1, double hz1) && p.MinX >= hx0 && p.MaxX <= hx1 && p.MinZ >= hz0 && p.MaxZ <= hz1;
 
         /// <summary>Le point appartient-il à la case (bord ouest et sud compris, est et nord exclus : chaque point dans une seule case) ?</summary>
         private static bool Owns(double x, double z, double x0, double z0, double x1, double z1) => x >= x0 && x < x1 && z >= z0 && z < z1;
