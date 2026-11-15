@@ -319,6 +319,46 @@ namespace EdS.Data.WorldBosses
             CompanionsInCombat = companionsInCombat;
             Fallback = fallback;
             Loot = loot;
+            AssaultMs = AssaultMsFor(Sites, Targets, walkSpeed, objectiveMs);
+        }
+
+        /// <summary>
+        /// Relecture indépendante de la PR #171 : durée la plus longue de l'assaut, marche comprise : du point le plus éloigné de l'errance
+        /// (un emplacement) au début de la route, la route, chaque objectif, puis le retour par la route, à sa vitesse, plus la préparation
+        /// de chaque charge et une seconde par étape (le pas de la grille du temps serveur).
+        /// </summary>
+        public long AssaultMs { get; }
+
+        /// <summary>Longueur (unités brutes, par excès) d'une ligne brisée.</summary>
+        public static long PathLength(IReadOnlyList<GroundVector> points)
+        {
+            long total = 0;
+            for (int i = 1; i < points.Count; i++)
+            {
+                long dx = checked(points[i].X.Raw - points[i - 1].X.Raw), dz = checked(points[i].Z.Raw - points[i - 1].Z.Raw);
+                total = checked(total + IntMath.Sqrt(checked(dx * dx + dz * dz)) + 1);
+            }
+            return total;
+        }
+
+        public static long AssaultMsFor(IReadOnlyList<WorldBossSite> sites, IReadOnlyList<WorldBossTarget> targets, Fixed walkSpeed, long objectiveMs)
+        {
+            if (walkSpeed <= Fixed.Zero) throw new ArgumentOutOfRangeException(nameof(walkSpeed));
+            long worst = 0;
+            foreach (WorldBossTarget t in targets)
+            {
+                long approach = 0;
+                foreach (WorldBossSite s in sites) approach = Math.Max(approach, PathLength(new[] { s.Position, t.Route[0] }));
+                var go = new List<GroundVector>(t.Route);
+                go.AddRange(t.Objectives.Select(o => o.Position));
+                var back = new List<GroundVector> { t.Objectives[t.Objectives.Count - 1].Position };
+                back.AddRange(t.Route.Reverse());
+                long length = checked(approach + PathLength(go) + PathLength(back));
+                long legs = checked(1 + go.Count + back.Count);
+                long ms = checked((length * 1000 + walkSpeed.Raw - 1) / walkSpeed.Raw + legs * 1000 + t.Objectives.Count * (objectiveMs + 1000));
+                worst = Math.Max(worst, ms);
+            }
+            return worst;
         }
 
         public WorldBossAttack Attack(string id) => Attacks.FirstOrDefault(a => a.Id == id) ?? throw new ArgumentException($"Attaque « {id} » inconnue.", nameof(id));
@@ -380,7 +420,10 @@ namespace EdS.Data.WorldBosses
 
         public const int MaxBosses = 16, MaxPhases = 8, MaxAttacks = 16, MaxSites = 32, MaxTargets = 8, MaxRoute = 32, MaxObjectives = 8, MaxCircles = 16;
 
-        /// <summary>Bornes des joueurs (décision : de 5 à 100 joueurs).</summary>
+        /// <summary>
+        /// Bornes techniques des joueurs comptés : 100 au plus (décision : de 5 à 100 joueurs) ; plancher technique de 1, gardé pour un futur
+        /// mode solo (question posée à Damien dans la PR #171) : les données livrées comptent de 5 à 100.
+        /// </summary>
         public const int PlayersFloor = 1, PlayersCeiling = 100;
 
         public const long MaxHealth = 1_000_000_000_000, MaxDurationMs = 24L * 3600 * 1000, MaxAttackMs = 60_000;
@@ -443,9 +486,6 @@ namespace EdS.Data.WorldBosses
             Long(b.AnnounceMs, p + ".announceMs", 0, MaxDurationMs, "annonce de la cible (ms après l'apparition)", r);
             if (b.AnnounceMs is long an && b.LimitMs is long lim && an >= lim) r.Add(p + ".announceMs", ValidationCode.InvalidValue, "l'annonce de la cible vient avant la limite.");
             Long(b.ObjectiveMs, p + ".objectiveMs", 1000, 30L * 60 * 1000, "préparation de la charge contre un objectif (ms)", r);
-            if (b.WindowMinutes is int w && b.SignsMs is long sg && b.LimitMs is long lm && b.ObjectiveMs is long om
-                && checked(sg + lm + om * MaxObjectives) >= w * 60_000L)
-                r.Add(p + ".windowMinutes", ValidationCode.InvalidValue, "la fenêtre doit contenir les signes, la limite et l'assaut entier.");
             if (b.WalkSpeed is null) Missing(r, p + ".walkSpeed", "vitesse de marche (m/s)");
             else if (b.WalkSpeed.Value < SpaceLimits.MinSpeed || b.WalkSpeed.Value > SpaceLimits.MaxSpeed)
                 r.Add(p + ".walkSpeed", ValidationCode.OutOfRange, $"vitesse hors de [{SpaceLimits.MinSpeed}, {SpaceLimits.MaxSpeed}] m/s.");
@@ -517,6 +557,12 @@ namespace EdS.Data.WorldBosses
                 }
             }
 
+            // Relecture indépendante de la PR #171 : la fenêtre contient les signes, la limite et l'assaut entier, marche comprise (deux
+            // occurrences ne se chevauchent jamais : la mémoire du vainqueur garde chaque issue).
+            if (b.WindowMinutes is int w && b.SignsMs is long sg && b.LimitMs is long lm && b.ObjectiveMs is long om && b.WalkSpeed is Fixed speed
+                && speed >= SpaceLimits.MinSpeed && sites.Count == (b.Sites?.Count ?? -1) && targets.Count == (b.Targets?.Count ?? -1) && targets.Count > 0
+                && checked(sg + lm + WorldBossDefinition.AssaultMsFor(sites, targets, speed, om)) >= w * 60_000L)
+                r.Add(p + ".windowMinutes", ValidationCode.InvalidValue, "la fenêtre doit contenir les signes, la limite et l'assaut entier, marche comprise.");
             Int(b.CompanionsInCombat, p + ".companionsInCombat", 0, 1, "compagnons au combat par joueur (décision du 14 novembre 2026 : un seul)", r);
             GroundVector? fallback = Point(b.Fallback, p + ".fallback", Fixed.FromRatio(1, 2), space, r);
 

@@ -147,9 +147,11 @@ namespace EdS.World
             return serverMs / WindowMs(boss);
         }
 
-        /// <summary>Durée la plus longue d'une occurrence : signes, limite, puis chaque objectif chargé.</summary>
-        public static long LongestMs(WorldBossDefinition boss) =>
-            checked(boss.SignsMs + boss.LimitMs + boss.ObjectiveMs * WorldBossValidator.MaxObjectives);
+        /// <summary>
+        /// Durée la plus longue d'une occurrence : signes, limite, puis l'assaut entier, marche comprise (<see cref="WorldBossDefinition.AssaultMs"/>,
+        /// relecture indépendante de la PR #171).
+        /// </summary>
+        public static long LongestMs(WorldBossDefinition boss) => checked(boss.SignsMs + boss.LimitMs + boss.AssaultMs);
 
         public static WorldBossOccurrence? InWindow(WorldBossDefinition boss, long window)
         {
@@ -158,8 +160,65 @@ namespace EdS.World
             var random = new Pcg32(Loot.Fnv1a($"worldboss:{boss.Id}:{window}"), Loot.Fnv1a("worldboss:" + boss.Id));
             if (!random.RollBasisPoints(boss.ChancePercent * 100)) return null;
             long room = WindowMs(boss) - LongestMs(boss);   // positif : vérifié par le validateur
-            long offset = (long)(((ulong)random.NextUInt() << 32 | random.NextUInt()) % (ulong)room);
+            // Début sur la seconde entière (grille du temps serveur de l'événement).
+            long offset = (long)(((ulong)random.NextUInt() << 32 | random.NextUInt()) % (ulong)(room / WorldBossEvent.StepMs + 1)) * WorldBossEvent.StepMs;
             return new WorldBossOccurrence(window, checked(window * WindowMs(boss) + offset));
+        }
+    }
+
+    /// <summary>
+    /// Grand Solitaire (relecture indépendante de la PR #171) : état complet d'un événement, pour le reprendre tel quel (serveur relancé,
+    /// session renouvelée) : temps, étape, issue, place, emplacement et cible, chemin, objectifs, vie, phase, joueurs, participation et les
+    /// trois flux <c>Pcg32</c> (emplacement, errance, cible). Valeur immuable, en mémoire : son format de fichier viendra avec le serveur du monde.
+    /// </summary>
+    public sealed class WorldBossSnapshot
+    {
+        public long Window { get; }
+        public long SignsStartMs { get; }
+        public WorldBossMemory Memory { get; }
+        public long NowMs { get; }
+        public long GridMs { get; }
+        public WorldBossStage Stage { get; }
+        public WorldBossOutcome Outcome { get; }
+        public string Site { get; }
+        public GroundVector Position { get; }
+        public string? Target { get; }
+        public IReadOnlyList<GroundVector> Path { get; }
+        public int ObjectivesDestroyed { get; }
+        public long ObjectiveSince { get; }
+        public long Health { get; }
+        public long MaxHealth { get; }
+        public int Plate { get; }
+        public int Players { get; }
+        public IReadOnlyList<KeyValuePair<string, long>> Contributions { get; }
+        public Pcg32State SiteStream { get; }
+        public Pcg32State RoamStream { get; }
+        public Pcg32State TargetStream { get; }
+
+        internal WorldBossSnapshot(WorldBossEvent e, long gridMs, IReadOnlyList<GroundVector> path, long objectiveSince, int plate, Pcg32State site,
+            Pcg32State roam, Pcg32State target)
+        {
+            Window = e.Window;
+            SignsStartMs = e.SignsStartMs;
+            Memory = e.Memory;
+            NowMs = e.NowMs;
+            GridMs = gridMs;
+            Stage = e.Stage;
+            Outcome = e.Outcome;
+            Site = e.Site.Id;
+            Position = e.Position;
+            Target = e.Target?.Id;
+            Path = path.ToList().AsReadOnly();
+            ObjectivesDestroyed = e.ObjectivesDestroyed;
+            ObjectiveSince = objectiveSince;
+            Health = e.Health;
+            MaxHealth = e.MaxHealth;
+            Plate = plate;
+            Players = e.Players;
+            Contributions = e.Contributions;
+            SiteStream = site;
+            RoamStream = roam;
+            TargetStream = target;
         }
     }
 
@@ -170,17 +229,23 @@ namespace EdS.World
     /// villageoise annoncée à <see cref="WorldBossDefinition.AnnounceMs"/> ; à la limite, assaut : il rejoint sa cible à pied (jamais de
     /// téléportation : chaque pas reste dans sa vitesse), puis charge ses objectifs l'un après l'autre ; trois phases selon sa vie (sauf
     /// mémoire du vainqueur : enragé d'emblée, à 100 % de vie, sans bonus de dégâts) ; vie selon les joueurs (jamais les compagnons), figée
-    /// au début de chaque phase. Tout est entier et déterministe.
+    /// au début de chaque phase. Tout est entier et déterministe. Relecture indépendante de la PR #171 : le monde avance sur une grille
+    /// absolue d'une seconde de temps serveur (<see cref="StepMs"/>), quelle que soit la cadence des appels ; trois flux <c>Pcg32</c> séparés
+    /// (emplacement, errance, cible) ; état restaurable (<see cref="Capture"/>, <see cref="Restore"/>).
     /// </summary>
     public sealed class WorldBossEvent
     {
+        /// <summary>Pas de la grille du temps serveur de l'événement (ms).</summary>
+        public const long StepMs = 1000;
+
         private readonly WorldBossDefinition _boss;
-        private readonly Pcg32 _random;
+        private readonly Pcg32 _siteRandom, _roamRandom, _targetRandom;
         private readonly Dictionary<string, long> _contributions = new Dictionary<string, long>(StringComparer.Ordinal);
         private readonly List<GroundVector> _path = new List<GroundVector>();
         private int _players;
         private int _plate;
         private long _objectiveSince = -1;
+        private long _gridMs;
 
         public WorldBossDefinition Boss => _boss;
         public long Window { get; }
@@ -195,7 +260,10 @@ namespace EdS.World
         public long NowMs { get; private set; }
         public WorldBossStage Stage { get; private set; }
         public WorldBossOutcome Outcome { get; private set; }
-        public WorldBossSite Site { get; }
+
+        /// <summary>Emplacement d'apparition : provisoire pendant les signes (direction), revérifié à l'apparition.</summary>
+        public WorldBossSite Site { get; private set; }
+
         public GroundVector Position { get; private set; }
 
         /// <summary>Cible villageoise, choisie avant le terme et annoncée à 50 minutes ; null avant.</summary>
@@ -205,22 +273,75 @@ namespace EdS.World
         public long Health { get; private set; }
         public long MaxHealth { get; private set; }
 
-        /// <summary>Aucun bonus de dégâts permanent, même après une victoire du boss (mémoire du vainqueur) : toujours 100 %.</summary>
+        /// <summary>Aucun bonus de dégâts permanent, même après des victoires du boss (mémoire du vainqueur) : toujours 100 %.</summary>
         public int DamagePercent => 100;
 
+        private static Pcg32 Stream(WorldBossDefinition boss, long window, string name) =>
+            new Pcg32(Loot.Fnv1a($"worldboss:{boss.Id}:{window}:{name}"), Loot.Fnv1a($"worldboss-{name}:{boss.Id}"));
+
+        /// <exception cref="ArgumentException">Mémoire d'une occurrence égale ou postérieure à celle-ci (relecture de la PR #171).</exception>
         public WorldBossEvent(WorldBossDefinition boss, WorldBossMemory memory, WorldBossOccurrence occurrence, IReadOnlyList<GroundVector> playersAtSigns)
         {
             _boss = boss ?? throw new ArgumentNullException(nameof(boss));
             if (playersAtSigns is null) throw new ArgumentNullException(nameof(playersAtSigns));
+            if (memory.LastWindow >= occurrence.Window)
+                throw new ArgumentException($"Mémoire de la fenêtre {memory.LastWindow}, pas antérieure à cette occurrence ({occurrence.Window}).", nameof(memory));
             Memory = memory;
             Window = occurrence.Window;
             SignsStartMs = occurrence.SignsStartMs;
             NowMs = SignsStartMs;
-            _random = new Pcg32(Loot.Fnv1a($"worldboss:{boss.Id}:{Window}:route"), Loot.Fnv1a("worldboss-route:" + boss.Id));
-            Site = ChooseSite(boss, playersAtSigns, _random);
+            _gridMs = SignsStartMs - SignsStartMs % StepMs;
+            _siteRandom = Stream(boss, Window, "site");
+            _roamRandom = Stream(boss, Window, "roam");
+            _targetRandom = Stream(boss, Window, "target");
+            Site = ChooseSite(boss, playersAtSigns, _siteRandom);
             Position = Site.Position;
             Stage = WorldBossStage.Signs;
         }
+
+        private WorldBossEvent(WorldBossDefinition boss, WorldBossSnapshot s)
+        {
+            _boss = boss;
+            Memory = s.Memory;
+            Window = s.Window;
+            SignsStartMs = s.SignsStartMs;
+            NowMs = s.NowMs;
+            _gridMs = s.GridMs;
+            Stage = s.Stage;
+            Outcome = s.Outcome;
+            Site = boss.Sites.FirstOrDefault(x => x.Id == s.Site) ?? throw new ArgumentException($"Emplacement « {s.Site} » inconnu.", nameof(s));
+            Position = s.Position;
+            Target = s.Target is null ? null : boss.Target(s.Target);
+            _path.AddRange(s.Path);
+            ObjectivesDestroyed = s.ObjectivesDestroyed;
+            _objectiveSince = s.ObjectiveSince;
+            Health = s.Health;
+            MaxHealth = s.MaxHealth;
+            _plate = s.Plate;
+            _players = s.Players;
+            foreach (KeyValuePair<string, long> c in s.Contributions) _contributions[c.Key] = c.Value;
+            _siteRandom = Pcg32.Restore(s.SiteStream);
+            _roamRandom = Pcg32.Restore(s.RoamStream);
+            _targetRandom = Pcg32.Restore(s.TargetStream);
+        }
+
+        /// <summary>État complet, pour reprendre l'événement tel quel (<see cref="Restore"/>).</summary>
+        public WorldBossSnapshot Capture() => new WorldBossSnapshot(this, _gridMs, _path, _objectiveSince, _plate, _siteRandom.Capture(),
+            _roamRandom.Capture(), _targetRandom.Capture());
+
+        /// <summary>Reprend un événement capturé (même définition) : il continue exactement comme l'original.</summary>
+        public static WorldBossEvent Restore(WorldBossDefinition boss, WorldBossSnapshot snapshot)
+        {
+            if (boss is null) throw new ArgumentNullException(nameof(boss));
+            if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
+            return new WorldBossEvent(boss, snapshot);
+        }
+
+        private static long Nearest(WorldBossSite s, IReadOnlyList<GroundVector> players) => players.Count == 0 ? long.MaxValue
+            : players.Min(p => Planar.LengthSquared(checked(p.X.Raw - s.Position.X.Raw), checked(p.Z.Raw - s.Position.Z.Raw)));
+
+        private static bool Crowded(WorldBossDefinition boss, WorldBossSite s, IReadOnlyList<GroundVector> players) =>
+            Nearest(s, players) <= checked(boss.Clearance.Raw * boss.Clearance.Raw);
 
         /// <summary>
         /// Emplacement d'apparition : tiré au sort parmi les admissibles qui n'ont aucun joueur à moins de <see cref="WorldBossDefinition.Clearance"/>
@@ -228,13 +349,10 @@ namespace EdS.World
         /// </summary>
         public static WorldBossSite ChooseSite(WorldBossDefinition boss, IReadOnlyList<GroundVector> players, Pcg32 random)
         {
-            long clearance = boss.Clearance.Raw;
-            long Nearest(WorldBossSite s) => players.Count == 0 ? long.MaxValue
-                : players.Min(p => Planar.LengthSquared(checked(p.X.Raw - s.Position.X.Raw), checked(p.Z.Raw - s.Position.Z.Raw)));
-            var free = boss.Sites.Where(s => Nearest(s) > checked(clearance * clearance)).ToList();
+            var free = boss.Sites.Where(s => !Crowded(boss, s, players)).ToList();
             if (free.Count > 0) return free[(int)random.NextBounded((uint)free.Count)];
-            long best = boss.Sites.Max(Nearest);
-            return boss.Sites.First(s => Nearest(s) == best);
+            long best = boss.Sites.Max(s => Nearest(s, players));
+            return boss.Sites.First(s => Nearest(s, players) == best);
         }
 
         /// <summary>Signe d'arrivée du moment (aucun hors des signes).</summary>
@@ -272,7 +390,7 @@ namespace EdS.World
 
         /// <summary>
         /// Joueurs actifs de l'événement (les compagnons ne comptent jamais). La vie suit ce nombre au début de chaque phase (dans les
-        /// bornes de 5 à 100 joueurs), pas en cours de phase.
+        /// bornes des données), pas en cours de phase.
         /// </summary>
         public void SetPlayers(int players)
         {
@@ -283,48 +401,43 @@ namespace EdS.World
         public int Players => _players;
 
         /// <summary>
-        /// Avance l'événement jusqu'au temps serveur <paramref name="serverMs"/> (jamais en arrière : refusé, rien ne change). Le boss
-        /// marche à sa vitesse vers sa destination ; il ne saute jamais.
+        /// Avance l'événement jusqu'au temps serveur <paramref name="serverMs"/> (jamais en arrière : refusé, rien ne change). Le monde
+        /// avance par secondes entières de temps serveur (grille absolue) : le résultat ne dépend pas de la cadence des appels. Le boss marche
+        /// à sa vitesse vers sa destination ; il ne saute jamais. <paramref name="players"/> : places des joueurs, utilisées à l'apparition
+        /// pour revérifier que personne n'est sur le point d'émergence (relecture de la PR #171) ; null : celles des signes.
         /// </summary>
-        public void Advance(long serverMs)
+        public void Advance(long serverMs, IReadOnlyList<GroundVector>? players = null)
         {
             if (serverMs < NowMs) throw new ArgumentOutOfRangeException(nameof(serverMs), serverMs, "le temps serveur ne recule pas.");
-            while (NowMs < serverMs && Stage != WorldBossStage.Gone && Stage != WorldBossStage.Defeated)
+            while (checked(_gridMs + StepMs) <= serverMs && Stage != WorldBossStage.Gone && Stage != WorldBossStage.Defeated)
             {
-                long next = NextMilestone(serverMs);
-                Walk(next - NowMs);
-                NowMs = next;
-                Settle();
+                _gridMs += StepMs;
+                Walk();
+                Settle(players);
             }
-            if (NowMs < serverMs) NowMs = serverMs;
+            NowMs = serverMs;
         }
 
-        private long NextMilestone(long serverMs)
+        private void Settle(IReadOnlyList<GroundVector>? players)
         {
-            long next = serverMs;
-            foreach (long m in new[] { AppearMs, AnnounceAtMs, LimitAtMs })
-                if (m > NowMs && m < next) next = m;
-            if (_objectiveSince >= 0 && checked(_objectiveSince + _boss.ObjectiveMs) is long done && done > NowMs && done < next) next = done;
-            // Pas d'au plus une seconde : chaque arrivée à destination est vue à temps (la marche se fait par petits pas).
-            return Math.Min(next, checked(NowMs + 1000));
-        }
-
-        private void Settle()
-        {
-            if (Stage == WorldBossStage.Signs && NowMs >= AppearMs)
+            long t = _gridMs;
+            if (Stage == WorldBossStage.Signs && t >= AppearMs)
             {
+                // Personne sur le point d'émergence : sinon, nouveau tirage (même flux, donc déterministe) parmi les emplacements libres.
+                if (players != null && Crowded(_boss, Site, players)) Site = ChooseSite(_boss, players, _siteRandom);
+                Position = Site.Position;
                 Stage = WorldBossStage.Roaming;
                 MaxHealth = _boss.MaxHealthFor(_players);
                 Health = MaxHealth;   // mémoire du vainqueur : enragé d'emblée, mais à 100 % de vie
                 _plate = 0;
                 PickNextSite();
             }
-            if (Stage == WorldBossStage.Roaming && NowMs >= AnnounceAtMs)
+            if (Stage == WorldBossStage.Roaming && t >= AnnounceAtMs)
             {
-                Target = _boss.Targets[(int)_random.NextBounded((uint)_boss.Targets.Count)];
+                Target = _boss.Targets[(int)_targetRandom.NextBounded((uint)_boss.Targets.Count)];
                 Stage = WorldBossStage.Announced;
             }
-            if (Stage == WorldBossStage.Announced && NowMs >= LimitAtMs)
+            if (Stage == WorldBossStage.Announced && t >= LimitAtMs)
             {
                 Stage = WorldBossStage.Assault;
                 _path.Clear();
@@ -334,8 +447,8 @@ namespace EdS.World
             if ((Stage == WorldBossStage.Roaming || Stage == WorldBossStage.Announced) && _path.Count == 0) PickNextSite();
             if (Stage == WorldBossStage.Assault && _path.Count == 0)
             {
-                if (_objectiveSince < 0) _objectiveSince = NowMs;   // arrivé devant l'objectif : il prépare sa charge
-                else if (NowMs >= checked(_objectiveSince + _boss.ObjectiveMs))
+                if (_objectiveSince < 0) _objectiveSince = t;   // arrivé devant l'objectif : il prépare sa charge
+                else if (t >= checked(_objectiveSince + _boss.ObjectiveMs))
                 {
                     ObjectivesDestroyed++;
                     _objectiveSince = -1;
@@ -356,14 +469,14 @@ namespace EdS.World
         {
             var others = _boss.Sites.Where(s => s.Position != Position).ToList();
             if (others.Count == 0) return;   // un seul emplacement : il reste sur place
-            _path.Add(others[(int)_random.NextBounded((uint)others.Count)].Position);
+            _path.Add(others[(int)_roamRandom.NextBounded((uint)others.Count)].Position);
         }
 
-        /// <summary>Marche de <paramref name="ms"/> le long du chemin, à sa vitesse ; le reste d'un pas continue vers le point suivant.</summary>
-        private void Walk(long ms)
+        /// <summary>Marche d'un pas de la grille le long du chemin, à sa vitesse ; le reste du pas continue vers le point suivant.</summary>
+        private void Walk()
         {
-            if (!IsPresent || ms <= 0) return;
-            long budget = checked(_boss.WalkSpeed.Raw * ms / 1000);   // unités brutes
+            if (!IsPresent) return;
+            long budget = checked(_boss.WalkSpeed.Raw * StepMs / 1000);   // unités brutes
             while (budget > 0 && _path.Count > 0)
             {
                 GroundVector to = _path[0];
@@ -394,8 +507,8 @@ namespace EdS.World
             if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
             if (!IsFightable) return false;
             long dealt = Math.Min(amount, Health);
+            Contribute(player, WorldBossContribution.Damage, dealt);   // relecture de la PR #171 : la participation d'abord, puis la vie
             Health -= dealt;
-            Contribute(player, WorldBossContribution.Damage, dealt);
             if (Health == 0)
             {
                 Stage = WorldBossStage.Defeated;

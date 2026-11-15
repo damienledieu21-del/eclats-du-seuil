@@ -79,9 +79,18 @@ public class GrandSolitaireTests
     public void Donnees_invalides_refusees_avec_leur_chemin()
     {
         Assert.Equal("$.data.bosses[0].maxPlayers", First(Mutated(r => B(r)["maxPlayers"] = 101)));
-        Assert.Equal("$.data.bosses[0].maxPlayers", First(Mutated(r => B(r)["maxPlayers"] = 4)));
+        WorldBossLoadResult fewer = Mutated(r => B(r)["maxPlayers"] = 4);   // moins que minPlayers (5)
+        Assert.Equal(("$.data.bosses[0].maxPlayers", EdS.Data.Validation.ValidationCode.InvalidValue), (First(fewer), fewer.Report.Errors[0].Code));
+        Assert.Equal("$.data.bosses[0].minPlayers", First(Mutated(r => B(r)["minPlayers"] = 0)));   // plancher technique : 1
         Assert.Equal("$.data.bosses[0].announceMs", First(Mutated(r => B(r)["announceMs"] = 3_600_000)));
         Assert.Equal("$.data.bosses[0].windowMinutes", First(Mutated(r => B(r)["windowMinutes"] = 60)));
+        // Relecture de la PR #171 : la fenêtre contient l'assaut entier, marche comprise (la vraie borne, à la minute près).
+        WorldBossDefinition b = Boss;
+        long needed = b.SignsMs + b.LimitMs + b.AssaultMs;
+        Assert.True(b.AssaultMs > b.Targets.Max(t => t.Objectives.Count) * b.ObjectiveMs + 60_000);   // la marche compte
+        int tight = (int)(needed / Minute);
+        Assert.Equal("$.data.bosses[0].windowMinutes", First(Mutated(r => B(r)["windowMinutes"] = tight)));
+        Assert.True(Mutated(r => B(r)["windowMinutes"] = tight + 1).IsValid);
         Assert.Equal("$.data.bosses[0].companionsInCombat", First(Mutated(r => B(r)["companionsInCombat"] = 2)));
         Assert.Equal("$.data.bosses[0].name", First(Mutated(r => B(r)["name"] = "text.inconnu")));
         Assert.Equal("$.data.bosses[0].phases[0].fromPercent", First(Mutated(r => B(r)["phases"]![0]!["fromPercent"] = 90)));
@@ -167,8 +176,8 @@ public class GrandSolitaireTests
     public void Assaut_a_pied_sans_teleportation_puis_victoire_du_boss_et_depart()
     {
         WorldBossEvent e = Start();
-        long step = 250;   // un pas de temps serveur
-        long maxStep = Boss.WalkSpeed.Raw * step / 1000 + 1;
+        long step = 250;   // un pas d'appel ; le monde avance par secondes entières
+        long maxStep = Boss.WalkSpeed.Raw * WorldBossEvent.StepMs / 1000 + 1;
         GroundVector last = e.Position;
         long now = e.SignsStartMs;
         int objectives = 0;
@@ -184,6 +193,7 @@ public class GrandSolitaireTests
             Assert.True(now < e.AppearMs + 4 * 60 * Minute, "l'assaut doit finir");
         }
         Assert.Equal(WorldBossOutcome.BossWon, e.Outcome);
+        Assert.True(now <= e.SignsStartMs + WorldBossSchedule.LongestMs(Boss), $"assaut fini à {now - e.SignsStartMs} ms, borne {WorldBossSchedule.LongestMs(Boss)}");
         Assert.Equal(e.Target!.Objectives.Count, e.ObjectivesDestroyed);
         Assert.Equal(e.Target.Route[0], e.Position);   // reparti par sa route
         Assert.False(e.Damage("p1", 10));   // vainqueur : plus de combat
@@ -364,5 +374,96 @@ public class GrandSolitaireTests
         Assert.Equal(WorldBossMemory.None, WorldBossMemory.FromEvent(null));
         Assert.Throws<ArgumentException>(() => new WorldBossMemory(0, 0, -1, WorldBossOutcome.PlayersWon));
         Assert.Throws<ArgumentException>(() => m.After(50, WorldBossOutcome.None));
+    }
+
+    [Fact]
+    public void Assaut_le_plus_long_dans_la_borne_pour_chaque_cible_et_emplacement()
+    {
+        // Relecture de la PR #171 : quel que soit l'emplacement de départ et la cible tirés, l'occurrence finit dans LongestMs.
+        long longest = WorldBossSchedule.LongestMs(Boss);
+        var targets = new HashSet<string>();
+        for (long w = 0; w < 40; w++)
+        {
+            var e = new WorldBossEvent(Boss, WorldBossMemory.None, new WorldBossOccurrence(w, 0), Array.Empty<GroundVector>());
+            long t = 0;
+            while (e.Stage != WorldBossStage.Gone) { t += 7_000; e.Advance(t); Assert.True(t <= longest + 7_000, $"fenêtre {w}"); }
+            targets.Add(e.Target!.Id);
+        }
+        Assert.Equal(2, targets.Count);
+    }
+
+    [Fact]
+    public void Meme_resultat_quelle_que_soit_la_cadence_des_appels()
+    {
+        WorldBossEvent fine = Start(players: 12), coarse = Start(players: 12), uneven = Start(players: 12);
+        long t0 = fine.SignsStartMs, end = fine.AppearMs + 75 * Minute;
+        long[] gaps = { 37, 999, 1001, 4_321, 12_000, 250, 60_000 };
+        long u = t0;
+        int k = 0;
+        for (long t = t0 + 10_000; t <= end; t += 10_000)
+        {
+            for (long f = t - 9_750; f <= t; f += 250) fine.Advance(f);
+            coarse.Advance(t);
+            while (u < t) { u = Math.Min(t, u + gaps[k++ % gaps.Length]); uneven.Advance(u); }
+            foreach (WorldBossEvent x in new[] { coarse, uneven })
+                Assert.Equal((fine.Stage, fine.Position, fine.Site.Id, fine.Target?.Id, fine.ObjectivesDestroyed), (x.Stage, x.Position, x.Site.Id, x.Target?.Id, x.ObjectivesDestroyed));
+        }
+        Assert.Equal(WorldBossStage.Gone, fine.Stage);
+    }
+
+    [Fact]
+    public void Etat_restaurable_qui_continue_comme_l_original()
+    {
+        WorldBossEvent e = Start(players: 30);
+        e.Advance(e.AppearMs + 20 * Minute + 333);
+        e.Damage("p1", e.MaxHealth / 2);   // phase blessé
+        e.Contribute("p2", WorldBossContribution.Healing, 42);
+        WorldBossSnapshot snap = e.Capture();
+        WorldBossEvent back = WorldBossEvent.Restore(Boss, snap);
+        Assert.Equal((e.Stage, e.Position, e.Site.Id, e.Health, e.MaxHealth, e.PhaseNow.Id, e.NowMs), (back.Stage, back.Position, back.Site.Id, back.Health, back.MaxHealth, back.PhaseNow.Id, back.NowMs));
+        Assert.Equal(e.Contributions, back.Contributions);
+        for (long t = e.NowMs; t <= e.AppearMs + 80 * Minute; t += 3_100)
+        {
+            e.Advance(t);
+            back.Advance(t);
+            Assert.Equal((e.Stage, e.Position, e.Target?.Id, e.ObjectivesDestroyed), (back.Stage, back.Position, back.Target?.Id, back.ObjectivesDestroyed));
+        }
+        Assert.Equal(e.MemoryAfter, back.MemoryAfter);
+    }
+
+    [Fact]
+    public void Point_d_emergence_reverifie_a_l_apparition()
+    {
+        for (long w = 0; w < 20; w++)
+        {
+            var e = new WorldBossEvent(Boss, WorldBossMemory.None, new WorldBossOccurrence(w, 0), Array.Empty<GroundVector>());
+            WorldBossSite provisional = e.Site;
+            e.Advance(e.AppearMs - 1);
+            Assert.Equal(provisional, e.Site);
+            e.Advance(e.AppearMs, new[] { provisional.Position });   // un joueur s'est posté sur le point d'émergence pendant les signes
+            Assert.NotEqual(provisional.Id, e.Site.Id);
+            Assert.Equal(e.Site.Position, e.Position);
+        }
+    }
+
+    [Fact]
+    public void Memoire_du_vainqueur_sans_cumul_et_jamais_d_une_occurrence_future()
+    {
+        WorldBossMemory m = WorldBossMemory.None;
+        for (long w = 1; w <= 5; w++)
+        {
+            var e = new WorldBossEvent(Boss, m, new WorldBossOccurrence(w * 10, 0), Array.Empty<GroundVector>());
+            e.SetPlayers(10);
+            e.Advance(e.AppearMs);
+            // Après chaque victoire du boss : enragé, 100 % de vie, la même vie maximale, aucun bonus de dégâts qui s'accumule.
+            Assert.Equal((Boss.MaxHealthFor(10), Boss.MaxHealthFor(10), 100), (e.Health, e.MaxHealth, e.DamagePercent));
+            Assert.Equal(w > 1, e.PhaseNow.Id == "enrage");
+            long t = e.NowMs;
+            while (e.Stage != WorldBossStage.Gone) { t += 10_000; e.Advance(t); }
+            m = e.MemoryAfter;
+            Assert.Equal((w, true), (m.BossWins, m.Raged));
+        }
+        Assert.Throws<ArgumentException>(() => new WorldBossEvent(Boss, m, new WorldBossOccurrence(m.LastWindow, 0), Array.Empty<GroundVector>()));
+        Assert.Throws<ArgumentException>(() => new WorldBossEvent(Boss, m, new WorldBossOccurrence(m.LastWindow - 1, 0), Array.Empty<GroundVector>()));
     }
 }
