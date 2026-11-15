@@ -457,6 +457,34 @@ public class CompagnonsMoteurTests
     }
 
     [Fact]
+    public void Eveille_qui_change_de_secteur_pendant_la_recuperation_d_une_attaque_a_deux_l_emporte()
+    {
+        // Revue Codex de la PR #169 (6e tour) : la récupération de l'attaque à deux (1 500 ms) dépasse la recharge globale ordinaire ;
+        // l'état emporté qui la porte doit être admis à l'arrivée dans un autre secteur, et l'Éveillé y reste empêché jusqu'au bout.
+        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Companion(At("0", "1.2", "0.45"), bond: 100, duo: ContreJour),
+            Wolf("loup", At("1.2", "0", "0.6"), health: 100_000) }, new[] { Duo(1000, "loup") }, durationMs: 4000);
+        var engine = new CombatEngine(setup, NullCombatLog.Instance);
+        while (engine.CurrentTick < 21) engine.Step();   // attaque à deux partie au tick 20, récupération jusqu'au tick 50
+        CarriedState carried = engine.Carried("bastion");
+        Assert.True(carried.GlobalCooldownMs > Rules.GlobalCooldownMs, carried.GlobalCooldownMs.ToString());
+        Assert.Equal((50 - engine.CurrentTick) * 50, carried.GlobalCooldownMs);
+
+        CharacterSetup bastion = Player("bastion", At("0", "0"));
+        var arriving = new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, bastion.Build, bastion.Initiative, bastion.Placement, 500,
+            bastion.Gear, bastion.Consumables, bastion.Shield, bastion.Equipment, carried);
+        CombatSetup other = Fight(new CombatantSetup[] { arriving, Wolf("loup", At("1.2", "0", "0.6"), health: 100_000) },
+            new[] { Cmd(500, Gratuite, target: "loup"), Cmd(500 + carried.GlobalCooldownMs, Gratuite, target: "loup") }, durationMs: 4000);
+        Assert.Empty(Problems(other));
+        var (_, log) = Run(other);
+        Assert.Equal("globalCooldown", Assert.Single(Lines(log, "commandRejected")).Str("reason"));
+        Assert.Contains(Lines(log, "skillCast"), e => e.Tick() == (500 + carried.GlobalCooldownMs) / 50);
+        // Au-delà de la plus longue récupération possible d'une attaque à deux : refusé au chemin précis.
+        var tooLong = new CharacterSetup(bastion.Id, bastion.Team, bastion.Class, bastion.Build, bastion.Initiative, bastion.Placement, 500,
+            bastion.Gear, bastion.Consumables, bastion.Shield, bastion.Equipment, new CarriedState(globalCooldownMs: CompanionDuo.MaxPhaseMs + 50));
+        Assert.Contains(Problems(Fight(new CombatantSetup[] { tooLong, Wolf("loup", At("1.2", "0", "0.6")) })), f => f.EndsWith("carried.globalCooldownMs", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Instantane_pendant_une_attaque_a_deux_reprend_a_l_identique_et_refuse_une_jauge_trafiquee()
     {
         CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Companion(At("0", "1.2", "0.45"), bond: 100, duo: ContreJour),

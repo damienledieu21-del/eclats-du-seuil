@@ -1935,7 +1935,11 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation($"Résonance {carried.Resonance} hors de [0, {Combat.ResonanceMax}].", cp + ".resonance"));
                     if (carried.RampartCharges < 0 || carried.RampartCharges > rules.RampartChargesMax)
                         errors.Add(new RuleViolation($"Charges {carried.RampartCharges} hors de [0, {rules.RampartChargesMax}].", cp + ".rampartCharges"));
-                    Duration(carried.GlobalCooldownMs, Combat.GlobalCooldownMs, "globalCooldownMs");
+                    // Revue Codex de la PR #169 (6e tour) : une attaque à deux porte la recharge globale de l'Éveillé jusqu'à la fin de sa
+                    // récupération (au plus CompanionDuo.MaxPhaseMs), au-delà de la recharge globale ordinaire : un Éveillé qui change de secteur
+                    // pendant cette récupération l'emporte. L'état du compagnon, lui, ne voyage pas (limite connue) : la borne ne dépend donc pas
+                    // des compagnons présents à l'arrivée.
+                    Duration(carried.GlobalCooldownMs, Math.Max(Combat.GlobalCooldownMs, CompanionDuo.MaxPhaseMs), "globalCooldownMs");
                     if (carried.Cooldowns.Count > CarriedState.MaxCooldowns)
                         errors.Add(new RuleViolation(RuleViolationKind.LimitExceeded, $"{carried.Cooldowns.Count} recharges, au plus {CarriedState.MaxCooldowns}.", cp + ".cooldowns"));
                     var castable = new HashSet<string>(character.Build.ActiveSkills, StringComparer.Ordinal);
