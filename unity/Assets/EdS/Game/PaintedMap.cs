@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -27,70 +26,62 @@ namespace EdS.Game
     /// </summary>
     public static class PaintedMap
     {
-        /// <summary>Une image peinte : sa carte, son calcul en cours, sa texture.</summary>
-        private sealed class Slot
+        /// <summary>
+        /// Sous-lot V2.28c, relecture indépendante de la PR #166 : images gardées selon les règles du cœur (<see cref="MapImages"/>, testées) :
+        /// l'aire entière en priorité, la fenêtre précédente montrée jusqu'à ce que la nouvelle soit prête, les calculs oubliés annulés.
+        /// </summary>
+        private static MapImages _images;
+
+        private static MapImages Images
         {
-            public AdventureMap Source;
-            public Task<byte[]> Work;
-            public Texture2D Texture;
-            public int Width, Height;
-            public int Used;
+            get
+            {
+                if (_images == null)
+                {
+                    _images = new MapImages();
+                    _images.Evicted += e =>
+                    {
+                        if (e.Tag is Texture2D t) UnityEngine.Object.Destroy(t);
+                    };
+                }
+                return _images;
+            }
         }
 
-        /// <summary>
-        /// Sous-lot V2.28c : au plus deux images à la fois (la fenêtre du secteur pour la petite carte, l'aire entière pour la grande ; une
-        /// seule quand elles sont la même carte), chacune d'au plus 2 048 pixels de côté (<see cref="MapPainter.Size"/>) : 32 Mo au plus.
-        /// </summary>
-        private const int MaxSlots = 2;
+        /// <summary>Texture de l'image <paramref name="e"/>, faite une fois ses pixels prêts (puis les pixels sont libérés).</summary>
+        private static Texture2D Texture(MapImages.Entry e)
+        {
+            if (e == null) return null;
+            if (e.Tag is Texture2D done) return done;
+            if (e.Pixels == null) return null;
+            var texture = new Texture2D(e.Width, e.Height, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.LoadRawTextureData(e.Pixels);
+            texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image gardée en mémoire
+            e.Release(texture);
+            return texture;
+        }
 
-        private static readonly System.Collections.Generic.List<Slot> _slots = new System.Collections.Generic.List<Slot>();
-        private static int _clock;
-
-        /// <summary>Texture de la carte <paramref name="map"/>, ou null si elle n'est pas encore prête (ou impossible).</summary>
+        /// <summary>Texture de la carte <paramref name="map"/>, ou null si elle n'est pas encore prête (la grande carte).</summary>
         public static Texture2D For(AdventureMap map)
         {
             if (map == null) return null;
-            _clock++;
-            Slot slot = null;
-            // Vallons agrandis : une nouvelle carte de même signature (une halte) garde l'image ; une porte ouverte la fait repeindre.
-            foreach (Slot s in _slots)
-                if (ReferenceEquals(s.Source, map) || s.Source.Signature == map.Signature)
-                {
-                    s.Source = map;
-                    slot = s;
-                    break;
-                }
-            if (slot == null)
-            {
-                if (_slots.Count >= MaxSlots)
-                {
-                    Slot oldest = _slots[0];
-                    foreach (Slot s in _slots)
-                        if (s.Used < oldest.Used) oldest = s;
-                    if (oldest.Texture != null) UnityEngine.Object.Destroy(oldest.Texture);
-                    _slots.Remove(oldest);
-                }
-                slot = new Slot { Source = map };
-                (slot.Width, slot.Height) = MapPainter.Size(map);
-                int w = slot.Width, h = slot.Height;
-                slot.Work = Task.Run(() => MapPainter.Paint(map, w, h));
-                _slots.Add(slot);
-            }
-            slot.Used = _clock;
-            if (slot.Texture == null && slot.Work != null && slot.Work.IsCompleted)
-            {
-                if (slot.Work.Exception != null) Debug.LogException(slot.Work.Exception.GetBaseException());
-                else
-                {
-                    slot.Texture = new Texture2D(slot.Width, slot.Height, TextureFormat.RGBA32, false);
-                    slot.Texture.filterMode = FilterMode.Bilinear;
-                    slot.Texture.wrapMode = TextureWrapMode.Clamp;
-                    slot.Texture.LoadRawTextureData(slot.Work.Result);
-                    slot.Texture.Apply(false, true);   // relecture des Vallons agrandis : pas de copie de l'image (7 Mo) gardée en mémoire
-                }
-                slot.Work = null;
-            }
-            return slot.Texture;
+            return Texture(Images.For(map));
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c : texture à montrer pour <paramref name="map"/> (la petite carte) : la sienne, sinon, pendant qu'elle se peint, la
+        /// fenêtre précédente ou l'aire entière ; <paramref name="shown"/> est la carte de l'image rendue (pour la placer).
+        /// </summary>
+        public static Texture2D Shown(AdventureMap map, out AdventureMap shown)
+        {
+            shown = map;
+            if (map == null) return null;
+            MapImages.Entry e = Images.Shown(map);
+            if (e == null) return null;
+            shown = e.Source;
+            return Texture(e);
         }
 
         /// <summary>
@@ -114,9 +105,7 @@ namespace EdS.Game
         /// <summary>Oublie les cartes (nouvelle aventure).</summary>
         public static void Forget()
         {
-            foreach (Slot s in _slots)
-                if (s.Texture != null) UnityEngine.Object.Destroy(s.Texture);
-            _slots.Clear();
+            _images?.Clear();
         }
     }
 }

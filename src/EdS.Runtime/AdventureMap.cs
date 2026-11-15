@@ -109,6 +109,20 @@ namespace EdS.Runtime
 
         private AdventureMap? _whole;
 
+        /// <summary>
+        /// Relecture indépendante de la PR #166 : hystérésis de la fenêtre (m). La fenêtre d'un secteur reste tant que le personnage est à moins
+        /// de cette distance de son carré : la petite carte (20 m autour de lui) y tient encore, et elle ne change qu'une fois le personnage
+        /// bien avancé dans le secteur voisin (pas au passage, à 8 m du bord).
+        /// </summary>
+        public const int WindowKeepMeters = 40;
+
+        /// <summary>Le point <paramref name="p"/> est-il à moins de <paramref name="meters"/> m du rectangle <paramref name="rect"/> (bornes brutes) ?</summary>
+        public static bool Within((long MinX, long MinZ, long MaxX, long MaxZ) rect, GroundVector p, int meters)
+        {
+            long m = checked((long)meters * 10_000);
+            return p.X.Raw >= rect.MinX - m && p.X.Raw <= rect.MaxX + m && p.Z.Raw >= rect.MinZ - m && p.Z.Raw <= rect.MaxZ + m;
+        }
+
         /// <summary>Sous-lot V2.28c : côté d'une fenêtre (un secteur de 256 m et sa marge des deux côtés).</summary>
         public const int WindowMeters = RegionGrid.SectorMeters + 2 * WindowMarginMeters;
 

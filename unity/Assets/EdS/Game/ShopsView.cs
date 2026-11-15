@@ -121,12 +121,12 @@ namespace EdS.Game
             chimney = null;
             StyleCatalog catalog = StyleCatalog.Loaded;
             own = catalog != null && building != null ? catalog.OwnBuilding(building) : null;
-            if (own == null || adventure.Map == null) return false;
-            var house = adventure.Map.Obstacles.FirstOrDefault(o => o.Id == building);
+            if (own == null || adventure.RegionMap == null) return false;
+            var house = adventure.RegionMap.Obstacles.FirstOrDefault(o => o.Id == building);
             if (house == null) return false;
             double x0 = house.Points.Min(p => p.X.Raw) / 10000.0, x1 = house.Points.Max(p => p.X.Raw) / 10000.0;
             double z0 = house.Points.Min(p => p.Z.Raw) / 10000.0, z1 = house.Points.Max(p => p.Z.Raw) / 10000.0;
-            (int X, int Z) facing = TownRules.FacingOf(building, x0, z0, x1, z1, adventure.Map.Roads, adventure.Map.Doors);
+            (int X, int Z) facing = TownRules.FacingOf(building, x0, z0, x1, z1, adventure.RegionMap.Roads, adventure.RegionMap.Doors);
             // V2.18 : posé à l'échelle 1, pivot au centre de l'emprise (TownModels.OwnFit), comme SpaceView.OwnBuilding.
             (double X, double Y, double Z)? local = TownModels.OwnChimney(own.Model.name);
             if (local.HasValue)
