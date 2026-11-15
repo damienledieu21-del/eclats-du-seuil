@@ -287,18 +287,6 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
 | Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
 
-## 7 quinquies. Fêtes aux vraies dates (Retenu)
-
-Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale (PR #174). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#fêtes-aux-vraies-dates-histoire-en-schéma-14).
-
-| Sujet | Ce qui est retenu | Statut |
-|---|---|---|
-| Noms des trois fêtes existantes | **Semailles** (l'ancienne foire de printemps), **Fête des Moissons**, **Veillée des Contes** (l'ancienne veillée de l'Aube). La réplique « la nuit la plus longue » est retouchée (la veillée tombe en novembre). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
-| Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
-| Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
-| Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
-| Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
-
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
 Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale. Elles règlent les valeurs de la première partie (PR #171) avant le boss dans le moteur ; le détail est dans [MONDE.md](MONDE.md#le-grand-solitaire-boss-du-monde-première-partie--règles-et-données).
@@ -310,6 +298,18 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Apparence | **Donnée à la première victoire**, en attendant sa quête de mémoire. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Emplacements tous occupés | **Il apparaît quand même**, à l'emplacement le moins mauvais (le plus loin des joueurs). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Vie du boss | Les PV passent à l'**échelle 1/100** : 2 000 + 400 par joueur, soit **2 400 PV en solo**, pour un combat d'environ **5 à 8 minutes**. | Retenu (Damien, 15 novembre 2026) |
+
+## 7 septies. Fêtes aux vraies dates (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale (PR #174). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#fêtes-aux-vraies-dates-histoire-en-schéma-14).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Noms des trois fêtes existantes | **Semailles** (l'ancienne foire de printemps), **Fête des Moissons**, **Veillée des Contes** (l'ancienne veillée de l'Aube). La réplique « la nuit la plus longue » est retouchée (la veillée tombe en novembre). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
 ## 8. Points ouverts
 
