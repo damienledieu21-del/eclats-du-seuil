@@ -89,15 +89,15 @@ public class V228cImagesTests
         Assert.True((map.Width + 20) / step <= MapPainter.ReliefCells);
         (int w, int h) = MapPainter.Size(map);
         Assert.True(w <= 2048 && h <= 2048);
-        long before = GC.GetTotalAllocatedBytes(true);
+        // Mémoire gardée par la peinture (l'image elle-même, et rien d'autre une fois finie) : les essais tournent en parallèle, les
+        // allocations cumulées des autres ne sont pas mesurables ici ; la grille de relief est bornée par son pas (ci-dessus).
+        long before = GC.GetTotalMemory(true);
         var clock = Stopwatch.StartNew();
         byte[] pixels = MapPainter.Paint(map, w, h);
         clock.Stop();
-        long allocated = GC.GetTotalAllocatedBytes(true) - before;
+        long kept = GC.GetTotalMemory(true) - before;
         Assert.Equal(w * h * 4, pixels.Length);
-        // Allocations cumulées de la peinture (déchets par pixel compris ; mesuré : environ 520 Mo). Ce qui reste en mémoire est l'image
-        // (16 Mo au plus) et la grille de relief (au plus 514 × 514 hauteurs).
-        Assert.True(allocated < 768L * 1024 * 1024, $"{allocated / (1024 * 1024)} Mo");
+        Assert.True(kept < 64L * 1024 * 1024, $"{kept / (1024 * 1024)} Mo gardés");
         Assert.True(clock.Elapsed < TimeSpan.FromMinutes(3), clock.Elapsed.ToString());
     }
 }
