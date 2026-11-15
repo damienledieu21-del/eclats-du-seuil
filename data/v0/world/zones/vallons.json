@@ -662,12 +662,12 @@
         "id": "four_de_firmin",
         "name": "Four de la boulangerie de Firmin",
         "min": [
-          -44,
-          2
+          -45.5,
+          0.5
         ],
         "max": [
-          -38.5,
-          8
+          -41.5,
+          4
         ],
         "minLevel": 1
       },

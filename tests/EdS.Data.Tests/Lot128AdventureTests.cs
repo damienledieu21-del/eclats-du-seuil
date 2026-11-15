@@ -97,9 +97,9 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(20, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger ; pêche : les deux nœuds d'appâts ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
+        Assert.Equal(21, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger et le pommier du bourg ; pêche : les deux nœuds d'appâts ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
         Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
-        Assert.Equal(16, a.Nodes().Count(n => n.Ready));
+        Assert.Equal(17, a.Nodes().Count(n => n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere",
             "porte_est_du_bourg", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole" },
             a.SafePoints().Select(s => s.Id));   // V2.28c (3) : les carrefours de la région
@@ -225,7 +225,7 @@ public class Lot128AdventureTests : IDisposable
         // Essai du 12.9 : on fabrique à la forge de Maëlle, visible dans la zone ; ailleurs, l'atelier dit où aller.
         Assert.Equal(CraftRefusal.NotHere, a.Recipes().Single(r => r.Id == "recipe.ferrure").Refusal);
         Assert.Equal(CraftRefusal.NotHere, a.Craft("recipe.ferrure"));
-        Assert.Equal(new[] { "Pas ici : approche-toi (forge de Maëlle, ou à 3 m du nœud)." }, a.DrainMessages());
+        Assert.Equal(new[] { "Pas ici : approche-toi de l'atelier (forge de Maëlle, four de Firmin ou feu de camp de Gaspard), ou à 3 m du nœud." }, a.DrainMessages());
         Assert.Null(a.WorkshopHere);
         Assert.Equal(new[] { "forge", "four_de_firmin", "feu_de_camp" }, a.Workshops().Select(w => w.Id));   // cuisine et boulangerie (réponse de Damien du 15 novembre 2026) : four de Firmin, feu de camp
         WorldMarker forge = a.Workshops()[0];

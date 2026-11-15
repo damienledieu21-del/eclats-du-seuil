@@ -817,7 +817,7 @@
           {
             "item": "item.sucre_roux",
             "price": 10,
-            "always": false,
+            "always": true,
             "stock": 30
           },
           {

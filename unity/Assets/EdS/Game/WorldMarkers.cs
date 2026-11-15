@@ -174,9 +174,26 @@ namespace EdS.Game
                 r.sharedMaterial.EnableKeyword("_EMISSION");
                 r.sharedMaterial.SetColor("_EmissionColor", new Color(0.12f, 0.24f, 0.45f));
             }
-            // Essai du 12.9 : la forge (enclume sombre au centre de l'atelier), où l'on fabrique.
+            // Essai du 12.9 : la forge (enclume sombre au centre de l'atelier), où l'on fabrique. Cuisine et boulangerie (relecture de la
+            // PR #183) : un marqueur par sorte d'atelier : le four de Firmin (voûte de briques), le feu de camp (braises).
             foreach (WorldMarker workshop in adventure.Workshops())
             {
+                if (workshop.Id == "four_de_firmin")
+                {
+                    Marker oven = Add(workshop, PrimitiveType.Sphere, new Vector3(1.4f, 1.0f, 1.4f), 0.5f, new Color(0.62f, 0.3f, 0.18f), 1.6f, NpcLabelRange);
+                    oven.Rank = 2;
+                    continue;
+                }
+                if (workshop.Id == "feu_de_camp")
+                {
+                    Marker fire = Add(workshop, PrimitiveType.Cylinder, new Vector3(1.0f, 0.12f, 1.0f), 0.12f, new Color(0.95f, 0.45f, 0.12f), 1.2f, NpcLabelRange);
+                    fire.Rank = 2;
+                    Material embers = Made(new Color(0.4f, 0.12f, 0.04f));
+                    embers.EnableKeyword("_EMISSION");
+                    embers.SetColor("_EmissionColor", new Color(0.95f, 0.4f, 0.1f));
+                    fire.Body.GetComponent<Renderer>().sharedMaterial = embers;
+                    continue;
+                }
                 Marker w = Add(workshop, PrimitiveType.Cube, new Vector3(1.2f, 0.8f, 0.7f), 0.4f, new Color(0.3f, 0.3f, 0.34f), 1.6f, NpcLabelRange);
                 w.Rank = 2;
                 Forge(w);

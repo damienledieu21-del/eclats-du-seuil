@@ -948,6 +948,18 @@
         ],
         "respawnMs": 60000,
         "xp": 6
+      },
+      {
+        "id": "pommier_du_bourg",
+        "profession": "cuisine",
+        "item": "item.pomme_du_verger",
+        "count": 2,
+        "position": [
+          -28,
+          -20
+        ],
+        "respawnMs": 60000,
+        "xp": 6
       }
     ],
     "forge": {

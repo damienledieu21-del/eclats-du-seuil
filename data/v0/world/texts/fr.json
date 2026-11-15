@@ -152,7 +152,7 @@
       "text.ui.profession_level": "{0} : niveau {1} !",
       "text.ui.craft.none": "C'est possible.",
       "text.ui.craft.unknown": "Recette ou nœud inconnu.",
-      "text.ui.craft.nothere": "Pas ici : approche-toi (forge de Maëlle, ou à 3 m du nœud).",
+      "text.ui.craft.nothere": "Pas ici : approche-toi de l'atelier (forge de Maëlle, four de Firmin ou feu de camp de Gaspard), ou à 3 m du nœud.",
       "text.worldboss.grand_solitaire": "Le Grand Solitaire",
       "text.fishing.spot.ponton_ouest": "le ponton de l'ouest du lac",
       "text.fishing.spot.rive_est": "la rive est du lac",

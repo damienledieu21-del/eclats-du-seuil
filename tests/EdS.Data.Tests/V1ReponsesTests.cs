@@ -687,10 +687,10 @@ public class V1ReponsesTests : IDisposable
         // offre tirée parmi deux.
         Merchant bertille = ShippedMerchants.Merchant("merchant.epicier");
         // Pêche et carnet (décision de Damien du 15 novembre 2026) : les vers de terre toujours, les mouches de mai parmi les offres tirées.
-        // Cuisine et boulangerie : farines et œufs toujours, le sucre roux parmi les offres tirées.
-        Assert.Equal(new[] { "item.potion_de_soin", "item.pioche_du_carrier", "item.ver_de_terre", "item.farine_de_ble", "item.farine_de_seigle", "item.oeufs_frais" },
-            bertille.Offers.Where(o => o.Always).Select(o => o.Item));
-        Assert.Equal((1, 4), (bertille.Daily, bertille.Offers.Count(o => !o.Always)));
+        // Cuisine et boulangerie : farines, sucre roux et œufs toujours (relecture de la PR #183 : le sucre aussi).
+        Assert.Equal(new[] { "item.potion_de_soin", "item.pioche_du_carrier", "item.ver_de_terre", "item.farine_de_ble", "item.farine_de_seigle", "item.sucre_roux",
+            "item.oeufs_frais" }, bertille.Offers.Where(o => o.Always).Select(o => o.Item));
+        Assert.Equal((1, 3), (bertille.Daily, bertille.Offers.Count(o => !o.Always)));
     }
 
     // --- Outils ------------------------------------------------------------------------------------------------------------------
