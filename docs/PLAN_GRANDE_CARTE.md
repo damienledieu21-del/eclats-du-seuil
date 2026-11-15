@@ -129,6 +129,7 @@ En solo (aujourd'hui), l'`AdventureSession` joue le rôle de l'hôte : même rè
 - **Créature d'événement qui suit le joueur hors de son secteur** — **Retenu (Damien, 14 novembre 2026, 17 h 18 : « AAA », 3e question de la PR #160)** : elle le lâche au bout de la marge de 32 m, revient à sa place et **reprend tous ses PV**, comme un chef. Réalisé au V2.28b (2c), suite (essai dédié).
 - **Créature qui atteint le bout de la marge avant le joueur** — **Retenu (Damien, 14 novembre 2026, 21 h 03 : « oui », question de la PR #163, rapporté par la session principale)** : une créature qui poursuit le joueur hors de son secteur **lâche dès qu'elle atteint elle-même le bout de la marge**, même si le joueur n'y est pas encore. Réalisé au V2.28b (4).
 - **Voyage rapide vers un point sûr bloqué** — **Retenu (Damien, 13 novembre 2026, 19 h 51 : « Non 2 pardon », rapporté par la session principale)** : quand aucune place n'est libre à 8 m de la destination (créatures sur le point sûr), le voyage est **refusé** et le personnage ne bouge pas, avec un message. L'autre choix (arriver à l'entrée de la zone) est écarté. Le couvre-feu, où le joueur ne choisit pas sa destination, garde le repli sur l'entrée de la zone. Réalisé au V2.28b (2) ([DONNEES.md](DONNEES.md#règle-darrivée-à-un-point-sûr-sous-lot-v228b)).
+- **Niveaux des lieux de la région** — **Retenu (Damien, 15 novembre 2026, vers 9 h 45, rapporté par la session principale)** : ils restent sous le Gardien du Seuil (23, fin du chapitre 5) ; toute la région est entre 1 et 22, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). Appliqué au V2.28c (3) (PR #170, liste dans [MONDE.md](MONDE.md)).
 
 ## 4. Le plan de la région
 
@@ -228,7 +229,7 @@ Les sous-lots de ces lieux (V2.30, V2.33, V2.35, V2.36, V2.37, V2.38, V2.47, V2.
 ### 4.4 Ne rien casser au cœur (Recommandation)
 
 - **Exception retenue : le bourg déménage** (V2.30.1, ci-dessous). Pour le reste : mêmes coordonnées, mêmes identifiants de lieux, de points sûrs, de portes, de populations ; les grands lieux ont des **identifiants nouveaux** (`foret_des_loups_profonde`, `ville_du_bourg`, `grand_lac`…) ; `PlacesAt` en rend déjà plusieurs.
-- **Le chapitre 1 garde sa porte** : aujourd'hui le pré et la forêt ne s'atteignent que par la porte du moulin. La grande carte garde ce verrou par le décor : un **ravin des Ronces** borde la forêt au sud et à l'est, de la gorge jusqu'à la rivière, et la vallée de la rivière est fermée par un éboulement au nord du cœur, jusqu'à la fin du chapitre 1 (la quête l'ouvre, comme la porte du moulin).
+- **Le chapitre 1 garde sa porte** : aujourd'hui le pré et la forêt ne s'atteignent que par la porte du moulin. La grande carte garde ce verrou par le décor : un **ravin des Ronces** borde la forêt au sud et à l'est, de la gorge jusqu'à la rivière, et la vallée de la rivière est fermée par un éboulement au nord du cœur, jusqu'à la fin du chapitre 1. **Retenu (Damien, 15 novembre 2026, vers 9 h 45)** : l'éboulement et les gués de la vallée s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin (quête minimale : petite PR après la PR #170).
 - Les bords actuels du cœur (rivière jusqu'au bord nord, haie jusqu'au bord ouest) deviennent des passages tenus par l'histoire, pas des murs.
 
 ### 4.4 bis Le déménagement du bourg (V2.30.1, Recommandation sur le Retenu)

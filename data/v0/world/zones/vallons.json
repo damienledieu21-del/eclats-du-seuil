@@ -409,7 +409,7 @@
           -1310,
           -60
         ],
-        "minLevel": 8
+        "minLevel": 7
       },
       {
         "id": "coteaux_du_chateau",
@@ -422,7 +422,7 @@
           -780,
           -370
         ],
-        "minLevel": 14
+        "minLevel": 13
       },
       {
         "id": "foret_des_loups_profonde",
@@ -435,7 +435,7 @@
           -160,
           1276
         ],
-        "minLevel": 16
+        "minLevel": 15
       },
       {
         "id": "gorge_du_pont",
@@ -448,7 +448,7 @@
           -1501,
           1300
         ],
-        "minLevel": 20
+        "minLevel": 18
       },
       {
         "id": "vallee_de_la_riviere",
@@ -461,7 +461,7 @@
           620,
           1092
         ],
-        "minLevel": 11
+        "minLevel": 10
       },
       {
         "id": "hautes_collines",
@@ -474,7 +474,7 @@
           2188,
           1458
         ],
-        "minLevel": 18
+        "minLevel": 17
       },
       {
         "id": "fort_des_bandits",
@@ -487,7 +487,7 @@
           1300,
           1090
         ],
-        "minLevel": 24
+        "minLevel": 21
       },
       {
         "id": "route_du_col",
@@ -500,7 +500,7 @@
           2188,
           1092
         ],
-        "minLevel": 26
+        "minLevel": 22
       },
       {
         "id": "grande_carriere",
@@ -513,7 +513,7 @@
           1250,
           400
         ],
-        "minLevel": 20
+        "minLevel": 18
       },
       {
         "id": "abbaye_en_ruine",
@@ -526,7 +526,7 @@
           1820,
           230
         ],
-        "minLevel": 22
+        "minLevel": 20
       },
       {
         "id": "grand_lac",
@@ -539,7 +539,7 @@
           1150,
           -850
         ],
-        "minLevel": 12
+        "minLevel": 11
       },
       {
         "id": "terres_corrompues",
@@ -552,7 +552,7 @@
           2188,
           -110
         ],
-        "minLevel": 25
+        "minLevel": 22
       },
       {
         "id": "champs_du_sud",
@@ -565,7 +565,7 @@
           40,
           -70.0001
         ],
-        "minLevel": 6
+        "minLevel": 5
       },
       {
         "id": "vergers_du_sud",
@@ -578,7 +578,7 @@
           860,
           -340
         ],
-        "minLevel": 8
+        "minLevel": 7
       },
       {
         "id": "plaine_de_l_ouest",
@@ -604,7 +604,7 @@
           1010,
           155
         ],
-        "minLevel": 10
+        "minLevel": 9
       },
       {
         "id": "route_du_fort",
@@ -617,7 +617,7 @@
           1300,
           1092
         ],
-        "minLevel": 22
+        "minLevel": 20
       },
       {
         "id": "epaulement_est",
@@ -630,7 +630,7 @@
           1600,
           500
         ],
-        "minLevel": 21
+        "minLevel": 19
       },
       {
         "id": "landes_du_seuil",
@@ -643,7 +643,7 @@
           1290,
           -111
         ],
-        "minLevel": 18
+        "minLevel": 17
       },
       {
         "id": "rives_du_lac",
@@ -656,7 +656,7 @@
           849,
           -600
         ],
-        "minLevel": 9
+        "minLevel": 8
       }
     ],
     "populations": [
