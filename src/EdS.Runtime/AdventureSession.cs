@@ -14,6 +14,7 @@ using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
+using EdS.Data.WorldBosses;
 using EdS.Data.Zones;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
@@ -234,6 +235,7 @@ namespace EdS.Runtime
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private long? _civilUtc;   // saisons : dernier instant UTC fourni par l'hôte (ou le serveur)
         private readonly List<string> _messages = new List<string>();
         private readonly Dictionary<string, int> _drunk = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -256,8 +258,10 @@ namespace EdS.Runtime
         public bool IsNewGame { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
+            WorldBossBook? worldBosses = null)
         {
+            _worldBosses = worldBosses;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
                 throw new ArgumentOutOfRangeException(nameof(arrivalRings), arrivalRings, $"Anneaux de la règle d'arrivée hors de [0, {WorldSession.ArrivalRings}].");
             _arrivalRings = arrivalRings;
@@ -350,9 +354,13 @@ namespace EdS.Runtime
             // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
             string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
             SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            // Grand Solitaire, 2e partie : les boss du monde (fichier absent, données d'essai réduites : aucun ; présent, il doit être valide).
+            string bossesPath = WorldBossJsonReader.PathIn(dataDirectory);
+            WorldBossLoadResult? worldBosses = File.Exists(bossesPath) ? WorldBossJsonReader.ReadFile(bossesPath, catalogTexts, definition, catalog, scenariosDirectory, data) : null;
+            if (worldBosses != null) Need(worldBosses.Book, "boss du monde", () => worldBosses.Report);
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
-                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report));
+                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null);
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -372,6 +380,10 @@ namespace EdS.Runtime
         {
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
+            // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
+            // cours continue d'une session à l'autre de cette zone.
+            if (_worldBosses != null && world.Definition?.Id == _zones[0].Id)
+                world.UseWorldBosses(_worldBosses, World?.Definition?.Id == _zones[0].Id && World.WorldBosses != null ? World.WorldBossEvents : null);
             if (_civilUtc is long utc) world.SetCivilTime(utc);
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.

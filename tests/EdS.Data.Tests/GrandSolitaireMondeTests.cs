@@ -290,4 +290,37 @@ public class GrandSolitaireMondeTests
         w.Step();   // le départ prend effet au tick suivant
         Assert.True(w.Zone.Engine.View(blesse).HasLeft);
     }
+
+    [Fact]
+    public void Aventure_charge_les_boss_du_monde_et_l_occurrence_continue_d_une_session_a_l_autre()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "eds_gs2_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            EdS.Runtime.AdventureSession a = EdS.Runtime.AdventureSession.Load(DataDirectory, ScenariosDirectory, Path.Combine(folder, "partie.json"));
+            Assert.NotNull(a.World.WorldBosses);
+            Assert.True(a.World.WorldBosses!.Boss("grand_solitaire").Fightable);
+            WorldBossOccurrence occ = FirstOccurrence();
+            a.SetCivilTime((occ.SignsStartMs + Boss.SignsMs) / 1000 + 5);
+            a.World.Step();
+            Assert.NotNull(a.World.WorldBossNow("grand_solitaire"));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+        // Reprise dans une session suivante de la partie : la même occurrence continue (vie, participation), dégagée du moteur.
+        WorldBossOccurrence o = FirstOccurrence();
+        WorldSession w = Open();
+        At(w, o.SignsStartMs + Boss.SignsMs + 2000);
+        WorldBossEvent e = w.WorldBossNow("grand_solitaire")!;
+        e.Damage(w.CombatantId, 1000);
+        ZoneDefinition zone = Zone();
+        var next = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        next.UseWorldBosses(Book.Value, w.WorldBossEvents);
+        Assert.Same(e, next.WorldBossNow("grand_solitaire"));
+        Assert.Equal(e.MaxHealth - 1000, next.WorldBossNow("grand_solitaire")!.Health);
+        var fresh = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        Assert.Throws<ArgumentException>(() => fresh.UseWorldBosses(Book.Value, new WorldBossEvent?[] { null, null }));
+    }
 }

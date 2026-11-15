@@ -115,15 +115,33 @@ namespace EdS.World
         /// sont dans son aire). Une seule fois par partie.
         /// </summary>
         /// <exception cref="InvalidOperationException">Boss du monde déjà en jeu, ou partie sans définition de zone.</exception>
-        public void UseWorldBosses(WorldBossBook book)
+        public void UseWorldBosses(WorldBossBook book) => UseWorldBosses(book, null);
+
+        /// <summary>
+        /// Comme <see cref="UseWorldBosses(WorldBossBook)"/>, en reprenant les occurrences en cours <paramref name="carried"/> d'une session
+        /// précédente de la même partie (<see cref="WorldBossEvents"/> : passage, porte, halte, même livre) : elles continuent telles quelles
+        /// (vie, participation, place), dégagées du moteur (leur forme est restée dans l'ancienne session).
+        /// </summary>
+        /// <exception cref="ArgumentException">Occurrences d'un autre nombre de boss que le livre.</exception>
+        public void UseWorldBosses(WorldBossBook book, IReadOnlyList<WorldBossEvent?>? carried)
         {
             if (book is null) throw new ArgumentNullException(nameof(book));
             if (_worldBosses != null) throw new InvalidOperationException("Boss du monde déjà en jeu.");
             if (Definition is null) throw new InvalidOperationException("Partie sans définition de zone : aucun boss du monde.");
+            if (carried != null && (carried.Count != book.Bosses.Count || carried.Where((e, k) => e != null && !ReferenceEquals(e.Boss, book.Bosses[k])).Any()))
+                throw new ArgumentException("Occurrences d'un autre livre de boss du monde.", nameof(carried));
             _worldBosses = book;
             _worldBossEvents = new WorldBossEvent?[book.Bosses.Count];
             _worldBossForms = new BossFormSlot?[book.Bosses.Count];
+            for (int k = 0; carried != null && k < carried.Count; k++)
+            {
+                carried[k]?.Disengage();
+                _worldBossEvents[k] = carried[k];
+            }
         }
+
+        /// <summary>Occurrences en cours de chaque boss (dans l'ordre du livre), à reprendre dans la session suivante de la partie.</summary>
+        public IReadOnlyList<WorldBossEvent?> WorldBossEvents => _worldBossEvents;
 
         /// <summary>Boss du monde en jeu, ou null.</summary>
         public WorldBossBook? WorldBosses => _worldBosses;
