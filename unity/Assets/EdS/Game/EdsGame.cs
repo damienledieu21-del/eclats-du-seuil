@@ -1645,6 +1645,8 @@ namespace EdS.Game
         /// </summary>
         private void LateUpdate()
         {
+            // Sous-lot V2.29 (revue Codex de la PR #182) : l'horizon suit la caméra à chaque image, après son placement ; seulement dehors.
+            if (_camera != null) HorizonView.Follow(_camera.Camera, StyleWorld.Active && !StyleWorld.Indoors && !StyleWorld.Memory);
             if (_hud == null) return;
             bool shown = _ready && _startupError == null && !(_error != null && !Network) && !_menuOpen && !LobbyShown && _talents == null && _combat != null
                 && !TalentsOpen;
