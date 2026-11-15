@@ -206,7 +206,7 @@ public sealed class V21JourNuitTests : IDisposable
     [InlineData("odile", -4, 4.8, ".npc", ValidationCode.InvalidValue)]
     [InlineData("npc.maelle", -4, 4.8, ".npc", ValidationCode.DuplicateId)]
     [InlineData("npc.odile", -3, 9, ".position", ValidationCode.InvalidValue)]      // dans le moulin
-    [InlineData("npc.odile", 500, 0, ".position", ValidationCode.OutOfRange)]      // hors de l'aire
+    [InlineData("npc.odile", 2300, 0, ".position", ValidationCode.OutOfRange)]     // hors de l'aire (V2.28c : de toute la région)
     public void Places_de_nuit_mal_formees_refusees(string npc, double x, double z, string suffix, ValidationCode code)
     {
         ValidationError e = Error(ZoneMutated(root =>

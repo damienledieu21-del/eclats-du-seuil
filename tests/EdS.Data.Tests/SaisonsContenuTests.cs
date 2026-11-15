@@ -100,6 +100,15 @@ public class SaisonsContenuTests
         // Les nœuds d'avant (herbes, champignons des quêtes, filons) restent de toute l'année, même sans date.
         Assert.True(c.Node("herbes_village").InSeason(null));
         Assert.True(c.Node("champignons_pre").InSeason(Season.Winter));
+        // Relecture de la PR #168 (point 3, après la grande carte #167) : chaque nœud de saison est dans l'aire et praticable : un personnage
+        // peut se tenir dessus (point sûr posé au nœud : ni obstacle, ni hors de l'aire).
+        foreach (GatheringNode n in c.Nodes.Where(n => n.IsSeasonal))
+        {
+            JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
+            root["data"]!["safePoints"]![0]!["position"] = new JsonArray((double)n.Position.X.Raw / 10000, (double)n.Position.Z.Raw / 10000);
+            ZoneLoadResult probe = ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, Items);
+            Assert.True(probe.Zone != null, $"{n.Id} : {probe.Report}");
+        }
         foreach (Season s in new[] { Season.Spring, Season.Summer, Season.Winter })
             Assert.True(b.MistEchoPresence(Season.Autumn) > b.MistEchoPresence(s));
         Assert.Equal(Fixed.Parse("0.4"), b.MistEchoPresence(Season.Autumn));

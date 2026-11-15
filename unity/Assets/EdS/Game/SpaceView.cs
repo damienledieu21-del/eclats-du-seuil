@@ -347,6 +347,12 @@ namespace EdS.Game
         {
             string id = obstacle.Id;
             List<Vector3> points = obstacle.Points.Select(p => new Vector3(Raw(p.X.Raw), 0f, Raw(p.Z.Raw))).ToList();
+            // Relecture indépendante de la PR #167 : gorge et ravins de la surface étendue, en creux de roche sombre (prisme bas, non occultant).
+            if (StyleRules.Ravine(id))
+            {
+                Prism(id, points, 0.08f, Built(StyleSurface.Stone, new Color(0.22f, 0.2f, 0.18f), out float ravineTile), false, ravineTile);
+                return;
+            }
             if (id.StartsWith("riviere"))
             {
                 // Essai réaliste (27 octobre 2026) : la vraie eau coule sous le sol, entre ses berges (le lit est creusé dans le terrain).
@@ -444,7 +450,8 @@ namespace EdS.Game
             if (id.StartsWith("pilier")) return;
             // Essai réaliste 5 (« le gros bloc en brique, je ne sais pas à quoi il sert » : c'est le front de taille de la carrière) : une
             // paroi de gros rochers sur son emprise.
-            if (id.StartsWith("front_de_taille") && QuarryFace(id, points)) return;
+            // Sous-lot V2.28c : l'éboulement et les falaises de la surface étendue, de même (une paroi de rochers sur leur emprise).
+            if (StyleRules.RockFace(id) && QuarryFace(id, points)) return;
             // Sous-lot V2.11 (5e vague) : les pierres du Seuil sont les menhirs aux runes lumineuses de DragonJojo, sur leur emprise ; sans
             // eux, un rocher des packs comme avant.
             if (StyleRules.Key(id).StartsWith("pierreseuil", System.StringComparison.Ordinal) && Wave5View.Has(Wave5Role.Menhir))
@@ -1565,17 +1572,19 @@ namespace EdS.Game
         /// </summary>
         private bool QuarryFace(string id, List<Vector3> points)
         {
-            float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
-            bool alongX = x1 - x0 >= z1 - z0;
-            float length = alongX ? x1 - x0 : z1 - z0, depth = alongX ? z1 - z0 : x1 - x0;
-            int count = Mathf.Max(1, Mathf.CeilToInt(length / 3.2f));
             int placed = 0;
-            for (int i = 0; i < count; i++)
+            // Relecture indépendante de la PR #167 : seuls les rochers de l'espace du moment (et 8 m autour) ; une falaise de 1,3 km n'en pose
+            // plus 400. Mêmes rangs et mêmes places d'un espace à l'autre. Revue Codex : le long du grand axe du polygone (la crête en biais).
+            var outline = points.Select(p => ((double)p.x, (double)p.z)).ToList();
+            foreach (var spot in StyleRules.RockFaceSpots(outline, Raw(_space.Min.X.Raw), Raw(_space.Min.Z.Raw), Raw(_space.Max.X.Raw), Raw(_space.Max.Z.Raw), 8))
             {
-                float s = (i + 0.5f) / count * length;
+                int i = spot.Index;
+                float depth = (float)spot.Depth;
+                var dir = new Vector3((float)spot.DirX, 0f, (float)spot.DirZ);
+                var normal = new Vector3((float)spot.NormalX, 0f, (float)spot.NormalZ);
                 string part = id + "/" + i;
                 float jitter = (StyleRules.Variant(part, 100) - 50) * 0.008f;
-                Vector3 at = alongX ? new Vector3(x0 + s, 0f, (z0 + z1) / 2f + jitter) : new Vector3((x0 + x1) / 2f + jitter, 0f, z0 + s);
+                Vector3 at = new Vector3((float)spot.X, 0f, (float)spot.Z) + normal * jitter;
                 GameObject rock = StyleLook.Decor(_root.transform, StyleSlot.Rock, part, at, 0f, depth * (1.0f + 0.003f * StyleRules.Variant(part + "/taille", 100)));
                 if (rock == null) continue;
                 AddModelOccluders(rock);
@@ -1583,13 +1592,13 @@ namespace EdS.Game
                 // Second rang, plus petit, et un bloc tombé de temps en temps, dans l'emprise (côté de l'aire : vers le plus petit x ou z) :
                 // aucun rocher du décor ne fait croire à un obstacle là où l'on peut marcher.
                 string low = part + "/pied";
-                Vector3 foot = at + (alongX ? new Vector3(1.6f, 0f, -depth * 0.3f) : new Vector3(-depth * 0.3f, 0f, 1.6f));
+                Vector3 foot = at + dir * 1.6f - normal * (depth * 0.3f);
                 GameObject small = StyleLook.Decor(_root.transform, StyleSlot.Rock, low, foot, 0f, depth * (0.45f + 0.003f * StyleRules.Variant(low, 100)));
                 if (small != null) AddModelOccluders(small);
                 if (i % 3 == 1)
                 {
                     string fallen = part + "/eboulis";
-                    Vector3 front = at + (alongX ? new Vector3(-0.8f, 0f, -depth * 0.4f) : new Vector3(-depth * 0.4f, 0f, -0.8f));
+                    Vector3 front = at - dir * 0.8f - normal * (depth * 0.4f);
                     GameObject block = StyleLook.Decor(_root.transform, StyleSlot.Rock, fallen, front, 0f, 0.9f + 0.006f * StyleRules.Variant(fallen, 100));
                     if (block != null) AddModelOccluders(block);
                 }

@@ -43,12 +43,12 @@ public class V18dEffetImmediatTests
 
     private static WorldSave SaveOf(SavedCharacter hero) => new("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero);
 
-    private static WorldSession Reopen(WorldSave save, ItemCatalog? items = null, ICombatLog? log = null) =>
-        new(save, Vallons, ShippedData, Progression, items ?? ItemsCatalog, log: log);
+    private static WorldSession Reopen(WorldSave save, ItemCatalog? items = null, ICombatLog? log = null, ZoneDefinition? zone = null) =>
+        new(save, zone ?? Vallons, ShippedData, Progression, items ?? ItemsCatalog, log: log);
 
-    private static WorldSession Open(SavedCharacter hero, ItemCatalog? items = null, ICombatLog? log = null)
+    private static WorldSession Open(SavedCharacter hero, ItemCatalog? items = null, ICombatLog? log = null, ZoneDefinition? zone = null)
     {
-        WorldSession w = Reopen(SaveOf(hero), items, log);
+        WorldSession w = Reopen(SaveOf(hero), items, log, zone);
         w.Step();
         return w;
     }
@@ -160,7 +160,9 @@ public class V18dEffetImmediatTests
     public void Journal_de_la_zone_rejoue_octet_par_octet()
     {
         var log = new MemoryCombatLog();
-        WorldSession w = Open(Hero(0, new ItemStack(Vigueur, 1), new ItemStack(Garde, 1)).WithBoons(new[] { new SavedBoon(BoonKind.Weapon, Pierre, 30) }), log: log);
+        // Sous-lot V2.28c : le cœur d'avant la surface étendue (une seule session : le journal est le sien, sans ceux des secteurs voisins).
+        WorldSession w = Open(Hero(0, new ItemStack(Vigueur, 1), new ItemStack(Garde, 1)).WithBoons(new[] { new SavedBoon(BoonKind.Weapon, Pierre, 30) }), log: log,
+            zone: V228bSoloSecteursTests.Vallons(true));
         Assert.Equal(BoonRefusal.None, w.UseBoon(Vigueur));
         for (int i = 0; i < 40; i++) w.Step();
         Assert.Equal(BoonRefusal.None, w.UseBoon(Garde));

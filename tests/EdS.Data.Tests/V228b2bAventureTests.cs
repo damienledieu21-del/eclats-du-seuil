@@ -463,6 +463,7 @@ public class V228b2bAventureTests : IDisposable
             }
         string scenarioPath = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject scenario = JsonNode.Parse(File.ReadAllText(scenarioPath))!.AsObject();
+        VallonsBefore(scenario);   // sous-lot V2.28c : le cœur d'avant la surface étendue, agrandi vers l'est seulement
         scenario["data"]!["space"]!["bounds"]!["max"]![0] = maxX;
         if (durationMs is long d) scenario["data"]!["durationMs"] = d;
         // Le bord du secteur du cœur (x = 140) passe à 6 m d'un archer bandit : il est reculé de 8 m (une population part de l'intérieur).
@@ -470,6 +471,7 @@ public class V228b2bAventureTests : IDisposable
         File.WriteAllText(scenarioPath, scenario.ToJsonString());
         string zonePath = Path.Combine(data, "world", "zones", "vallons.json");
         JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
+        ZoneBefore(zone);   // relecture de la PR #167 : sans les passages de la surface
         foreach (string key in new[] { "events", "boss", "chiefs" }) zone["data"]!.AsObject().Remove(key);
         zone["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "seuil_est", ["name"] = "Seuil de l'est", ["position"] = new JsonArray(124, 0) });
         File.WriteAllText(zonePath, zone.ToJsonString());

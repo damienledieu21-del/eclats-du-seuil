@@ -109,10 +109,10 @@ public class Lot124ZoneTests
     public void Zone_invalide_refusee_avec_son_chemin()
     {
         Assert.Equal("$.data.entry", FirstError(Zone(z => Data(z)["entry"] = "nulle_part")));
-        Assert.Equal("$.data.safePoints[1].position", FirstError(Zone(z => Data(z)["safePoints"]![1]!["position"] = new JsonArray(150, 0))));
+        Assert.Equal("$.data.safePoints[1].position", FirstError(Zone(z => Data(z)["safePoints"]![1]!["position"] = new JsonArray(2300, 0))));
         Assert.Equal("$.data.safePoints[1].id", FirstError(Zone(z => Data(z)["safePoints"]![1]!["id"] = "place_du_village")));
         Assert.Equal("$.data.places[0].max", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(-30, 4))));
-        Assert.Equal("$.data.places[0]", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(150, 4))));
+        Assert.Equal("$.data.places[0]", FirstError(Zone(z => Data(z)["places"]![0]!["max"] = new JsonArray(2300, 4))));
         Assert.Equal("$.data.populations[0].creature", FirstError(Zone(z => Population(z, "loup1")["creature"] = "ours_inconnu")));
         Assert.Equal("$.data.populations[1].creature", FirstError(Zone(z => Population(z, "loup2")["creature"] = "loup1")));
         Assert.Equal("$.data.populations[0].respawnMs", FirstError(Zone(z => Population(z, "loup1")["respawnMs"] = 1025)));
@@ -306,9 +306,9 @@ public class Lot124ZoneTests
         // des créatures de départ ne comptent que si elles lui sont solides : pas dans les Vallons, contact traversable).
         JsonArray At(double x, double z) => new(x, z);
         Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-3, 9))));        // dans le moulin
-        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-99.75, -12))));  // au bord
+        Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-1907.75, -12))));  // au bord (V2.28c : celui de la région)
         Assert.Equal("$.data.safePoints[0].position", FirstError(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-6.25, 9))));     // contre le moulin
-        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-99.5, -12)).IsValid);                                        // bord exact
+        Assert.True(Zone(r => Data(r)["safePoints"]![0]!["position"] = At(-1907.5, -12)).IsValid);                                    // bord exact
     }
 
     [Fact]
