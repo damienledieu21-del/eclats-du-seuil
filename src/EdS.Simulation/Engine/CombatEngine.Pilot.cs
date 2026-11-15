@@ -107,6 +107,23 @@ namespace EdS.Simulation.Engine
         public IReadOnlyDictionary<string, int> ConsumableCharges { get; internal set; } = new Dictionary<string, int>();
         public long ConsumableReadyTick { get; internal set; }
 
+        /// <summary>Compagnons : Éveillé d'un compagnon (null pour tout autre combattant).</summary>
+        public string? CompanionOwner { get; internal set; }
+
+        /// <summary>Compagnons : ordre en cours, sa cible (« cibler »), jauge de lien (0 à 100).</summary>
+        public CompanionOrder? CompanionOrder { get; internal set; }
+        public string? CompanionOrderTarget { get; internal set; }
+        public int CompanionBond { get; internal set; }
+
+        /// <summary>Compagnons : une attaque à deux est en cours jusqu'à ce tick exclu (fin de la récupération ; 0 sinon).</summary>
+        public long DuoReadyTick { get; internal set; }
+
+        /// <summary>
+        /// Compagnons : une attaque à deux serait admise maintenant hors cible (jauge pleine, compagnon et Éveillé présents et libres, pas
+        /// d'attaque à deux en cours, recharge globale de l'Éveillé passée) ; la portée de la cible reste jugée par le moteur.
+        /// </summary>
+        public bool DuoAvailable { get; internal set; }
+
         /// <summary>Esquive : tick à partir duquel une nouvelle esquive est possible (0 si jamais esquivé).</summary>
         public long DodgeReadyTick { get; internal set; }
 
@@ -384,6 +401,17 @@ namespace EdS.Simulation.Engine
                 view.Flees = f.Behavior?.Flee == true;
                 view.Wander = WanderState(f, tick);   // sous-lot V2.4.1
                 view.AttacksBlocked = Blocked(StatusBlocks.AssailantAttacks);
+            }
+            if (f.Companion is { } companion)   // compagnons
+            {
+                view.CompanionOwner = companion.Owner.Id;
+                view.CompanionOrder = companion.Order;
+                view.CompanionOrderTarget = companion.OrderTarget?.Id;
+                view.CompanionBond = companion.Bond;
+                view.DuoReadyTick = companion.DuoReadyTick > tick ? companion.DuoReadyTick : 0;
+                view.DuoAvailable = companion.Setup.Duo != null && companion.Bond >= CompanionSetup.DuoCost && tick >= companion.DuoReadyTick && !f.Out
+                    && !companion.Owner.Out && BlockReason(f, StatusBlocks.AssailantAttacks) is null && BlockReason(companion.Owner, StatusBlocks.Skills) is null
+                    && tick >= companion.Owner.GlobalCooldownReadyTick;
             }
             return view;
         }
