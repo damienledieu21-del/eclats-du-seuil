@@ -110,6 +110,7 @@ namespace EdS.Simulation.Engine
                 w.EndObject();
             }
             if (c.ConsumableCooldownMs != 0) w.Field("consumableCooldownMs", c.ConsumableCooldownMs);
+            if (c.Mounted) w.Field("mounted", true);   // sous-lot V2.28d (2) (format 28)
             w.EndObject();
         }
 
@@ -291,6 +292,8 @@ namespace EdS.Simulation.Engine
                     w.Name("passiveSkills").BeginArray();
                     foreach (string skill in build.PassiveSkills) w.Value(skill);
                     w.EndArray().EndObject();
+                    // Sous-lot V2.28d (2) (format 28) : monture, seulement s'il y en a une.
+                    if (character.Mount is { } mount) w.Name("mount").BeginObject().Field("speed", mount.Speed).EndObject();
                     // Sous-lot 12.6 (format 18) : objets de soin emportés, seulement s'il y en a.
                     if (character.Consumables.Count > 0)
                     {

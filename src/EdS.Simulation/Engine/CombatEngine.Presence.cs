@@ -109,6 +109,8 @@ namespace EdS.Simulation.Engine
                 Schedule(ready, CombatPhase.Expirations, new CooldownExpiry { Fighter = f, Skill = cooldown.Key });
             }
             if (carried.ConsumableCooldownMs > 0) f.ConsumableReadyTick = checked(tick + carried.ConsumableCooldownMs / _tickMs);
+            f.Mounted = carried.Mounted;   // sous-lot V2.28d (2) : arrivée en selle
+            if (carried.Mounted) f.MountedTick = tick;
         }
 
         /// <summary>
@@ -137,7 +139,8 @@ namespace EdS.Simulation.Engine
             bool hasConsumables = consumableSpanMs > 0 || f.ConsumableCharges.Any(c => c.Value > 0);
             return new CarriedState(health, tired ? f.Endurance : (long?)null,
                 tired && f.RegenFromTick is long regen ? Remaining(regen) : 0, f.Resonance, f.RampartCharges,
-                Remaining(f.GlobalCooldownReadyTick), cooldowns, hasConsumables ? Math.Min(Remaining(f.ConsumableReadyTick), consumableSpanMs) : 0);
+                Remaining(f.GlobalCooldownReadyTick), cooldowns, hasConsumables ? Math.Min(Remaining(f.ConsumableReadyTick), consumableSpanMs) : 0,
+                f.Mounted);   // sous-lot V2.28d (2) : en selle, il arrive en selle
         }
 
         /// <summary>
