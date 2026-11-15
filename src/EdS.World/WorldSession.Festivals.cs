@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Domain.Time;
 
 namespace EdS.World
 {
@@ -24,23 +25,76 @@ namespace EdS.World
         public int Weekday => WorldCalendar.WeekdayOf(Zone.Time.Day);
 
         /// <summary>La fête qui bat son plein maintenant, ou null (sans histoire : jamais).</summary>
-        public Festival? Festival => Narrative?.Book.FestivalAt(Zone.Time.Day, Zone.Time.Minute);
+        public Festival? Festival => Narrative?.Book.FestivalAt(Zone.Time.Day, Zone.Time.Minute, CivilDateOfDay(Zone.Time.Day));
 
         /// <summary>La fête du jour (à n'importe quelle heure), ou null : l'annonce du matin, l'affichage.</summary>
-        public Festival? FestivalToday => Narrative?.Book.FestivalOn(Zone.Time.Day);
+        public Festival? FestivalToday => FestivalOnDay(Zone.Time.Day);
+
+        /// <summary>
+        /// Fêtes aux vraies dates : la fête du calendrier au jour réel d'aujourd'hui (fête du calendrier seulement comprise), pour
+        /// l'affichage ; null sans date fournie ou hors de toute fenêtre.
+        /// </summary>
+        public Festival? CalendarFestival => Narrative is Narrative n && CivilDateOfDay(Zone.Time.Day) is CivilDate d ? n.Book.CalendarFestivalOn(d) : null;
+
+        /// <summary>Fêtes aux vraies dates : la fête du jour du monde <paramref name="day"/> (date réelle de ce jour si l'hôte l'a fournie), ou null.</summary>
+        public Festival? FestivalOnDay(long day) => Narrative?.Book.FestivalOn(day, CivilDateOfDay(day));
+
+        /// <summary>Fêtes aux vraies dates : tour de la rotation des concours de la fête <paramref name="festival"/> aujourd'hui.</summary>
+        public int FestivalRound(string festival) =>
+            (Narrative ?? throw new InvalidOperationException("Partie sans histoire.")).Book.Festival(festival).RoundOn(Zone.Time.Day, CivilDateOfDay(Zone.Time.Day));
+
+        int INarrativeWorld.FestivalRound(string festival) => FestivalRound(festival);
 
         string? INarrativeWorld.Festival => Festival?.Id;
 
         /// <summary>
         /// Prochaine fête à partir d'aujourd'hui (aujourd'hui compris si elle n'est pas finie), et son jour du monde ; null sans fête. Cherchée
-        /// sur une année au plus.
+        /// sur une année au plus : une année du jeu, ou une année réelle (en jours du monde) quand la date est fournie.
         /// </summary>
         public (Festival Festival, long Day)? NextFestival()
         {
             if (!(Narrative is Narrative n) || n.Book.Festivals.Count == 0) return null;
-            for (long day = Zone.Time.Day; day <= Zone.Time.Day + WorldCalendar.DaysPerYear; day++)
-                foreach (Festival f in n.Book.Festivals)
-                    if (f.OnDay(day) && (day > Zone.Time.Day || Zone.Time.Minute < f.To) && n.Book.FestivalOn(day) == f) return (f, day);
+            // Relecture indépendante de la PR #174 : la semaine qui vient jour par jour (fêtes de la semaine, fête en cours), puis la prochaine
+            // occurrence de chaque fête datée calculée directement (plus de recherche sur toute une année de jours du monde).
+            (Festival Festival, long Day)? best = null;
+            long near = CivilUtcSeconds is null ? WorldCalendar.DaysPerYear : WorldCalendar.DaysPerWeek;
+            for (long day = Zone.Time.Day; day <= Zone.Time.Day + near; day++)
+                if (FestivalOnDay(day) is Festival f && (day > Zone.Time.Day || Zone.Time.Minute < f.To)) { best = (f, day); break; }
+            if (CivilUtcSeconds is null || !(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return best;
+            foreach (Festival f in n.Book.Festivals)
+            {
+                if (f.CalendarOnly || f.Weekday != null) continue;
+                if (!f.HasDate)
+                {
+                    // Revue Codex de la PR #174 (3e tour) : une fête annuelle sans date garde le calendrier du jeu, même quand l'heure civile est
+                    // fournie : son prochain jour du monde, calculé directement dans l'année du jeu.
+                    if (!(f.Season is int season) || !(f.Day is int d)) continue;
+                    long today0 = Zone.Time.Day;
+                    long next = checked(today0 - today0 % WorldCalendar.DaysPerYear + season * WorldCalendar.DaysPerSeason + d);
+                    if (next < today0 || (next == today0 && Zone.Time.Minute >= f.To)) next = checked(next + WorldCalendar.DaysPerYear);
+                    if ((best is null || next < best.Value.Day) && FestivalOnDay(next) == f) best = (f, next);
+                    continue;
+                }
+                CivilDate start = f.StartIn(today.Year);
+                if (start <= today) start = f.StartIn(today.Year + 1);
+                if (!(FirstDayOn(start) is long day) || (best != null && best.Value.Day <= day)) continue;
+                if (FestivalOnDay(day) == f) best = (f, day);
+            }
+            return best;
+        }
+
+        /// <summary>Premier jour du monde (à partir d'aujourd'hui) dont le jour réel est <paramref name="date"/> ou après, ou null.</summary>
+        private long? FirstDayOn(CivilDate date)
+        {
+            if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today)) return null;
+            // Revue Codex de la PR #174 (5e tour) : le décalage se calcule sur les durées exactes (pas sur un nombre entier de jours du monde
+            // par jour réel, tronqué : 4 au lieu de 4,8 pour des journées de 5 h) ; la recherche ne rattrape plus qu'un arrondi.
+            long length = Zone.Clock.DayLengthMs;
+            long perReal = Math.Max(1, (86_400_000 + length - 1) / length);   // jours du monde par jour réel, arrondi au-dessus (8 pour 3 h)
+            long realDays = date.DayNumber - today.DayNumber - 1;
+            long day = Math.Max(Zone.Time.Day, checked(Zone.Time.Day + realDays * 86_400_000 / length));
+            for (int guard = 0; guard < 4 * perReal + 4; guard++, day++)
+                if (CivilDateOfDay(day) is CivilDate d && d >= date) return day;
             return null;
         }
 
@@ -61,6 +115,46 @@ namespace EdS.World
         private FestivalGuest? GuestNow(Npc npc) => Festival?.Guest(npc.Id);
 
         /// <summary>Sous-lot V2.10 : le personnage a déjà concouru à la fête <paramref name="festival"/> aujourd'hui.</summary>
-        public bool Contested(string festival) => Narrative is Narrative n && n.ContestDay(festival) == Zone.Time.Day;
+        public bool Contested(string festival) => Narrative is Narrative n && !ContestOpen(festival, n.ContestDay(festival));
+
+        /// <summary>
+        /// Relecture indépendante de la PR #174 (option prudente, question posée à Damien) : un concours par jour du monde pour une fête du
+        /// calendrier du jeu, comme avant ; pour une fête datée dont la date réelle est connue, <b>un seul concours par occurrence</b> de la
+        /// fête (ses 7 à 14 jours réels) et par personnage.
+        /// </summary>
+        public bool ContestOpen(string festival, long lastDay)
+        {
+            if (lastDay < 0) return true;
+            if (Narrative is Narrative n && n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f && f.HasDate
+                && CivilDateOfDay(Zone.Time.Day) is CivilDate today && f.OccurrenceOf(today) is CivilDate start)
+            {
+                // Revue Codex de la PR #174 : l'occurrence réelle du dernier concours, gardée au registre, fait foi ; sans elle (registre plein),
+                // le jour du monde du dernier concours, projeté depuis l'instant fourni.
+                if (ContestKey(festival) is string key && _character.Events.FirstOrDefault(x => x.Id == key) is SavedEvent held)
+                    return held.Last != start.DayNumber;
+                return !(CivilDateOfDay(lastDay) is CivilDate then) || f.OccurrenceOf(then) != start;
+            }
+            return lastDay != Zone.Time.Day;
+        }
+
+        bool INarrativeWorld.ContestOpen(string festival, long lastDay) => ContestOpen(festival, lastDay);
+
+        /// <summary>Clé de la ligne du registre des événements qui garde l'occurrence réelle du dernier concours d'une fête (« zone.…/festival.… »).</summary>
+        private string? ContestKey(string festival) => Definition is null ? null : $"{Definition.Id}/{festival}";
+
+        /// <summary>
+        /// Revue Codex de la PR #174 : garde l'occurrence réelle (jour de son début) du concours que le personnage vient de faire, pour une fête
+        /// datée dont la date réelle est connue ; registre plein : rien n'est gardé (le jour du monde du concours sert alors). Ne lève pas.
+        /// </summary>
+        public void ContestHeld(string festival)
+        {
+            if (!(Narrative is Narrative n) || !(n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f) || !f.HasDate) return;
+            if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today) || !(f.OccurrenceOf(today) is CivilDate start)) return;
+            if (!(ContestKey(festival) is string key) || key.Length > SavedEvent.MaxKeyLength || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
+            bool has = _character.Events.Any(x => x.Id == key);
+            if (!has && _character.Events.Count >= SavedEvent.MaxEntries) return;
+            var entry = new SavedEvent(key, 0, 0, start.DayNumber, EventOutcome.None);
+            _character = _character.WithEvents(_character.Events.Where(x => x.Id != key).Concat(new[] { entry }));
+        }
     }
 }
