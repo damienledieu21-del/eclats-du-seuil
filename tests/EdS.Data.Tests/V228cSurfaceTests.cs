@@ -18,7 +18,7 @@ public class V228cSurfaceTests
     /// Cases de 0,5 m d'un rectangle, libres pour un personnage (0,5 m d'emprise) : hors de tout obstacle de <paramref name="obstacles"/>
     /// et à plus de 0,5 m de chacun ; rend les cases atteintes depuis <paramref name="from"/> et si le bord du rectangle l'a été.
     /// </summary>
-    private static (HashSet<(int, int)> Reached, bool Edge) Flood(IEnumerable<SpaceObstacle> obstacles, (double X, double Z) min, (double X, double Z) max, (double X, double Z) from,
+    internal static (HashSet<(int, int)> Reached, bool Edge) Flood(IEnumerable<SpaceObstacle> obstacles, (double X, double Z) min, (double X, double Z) max, (double X, double Z) from,
         double step = 0.5)
     {
         const double radius = 0.5;
@@ -54,7 +54,7 @@ public class V228cSurfaceTests
         return (seen, edge);
     }
 
-    private static bool Reaches(HashSet<(int, int)> reached, (double X, double Z) min, (double X, double Z) at, double step = 0.5) =>
+    internal static bool Reaches(HashSet<(int, int)> reached, (double X, double Z) min, (double X, double Z) at, double step = 0.5) =>
         reached.Contains(((int)((at.X - min.X) / step), (int)((at.Z - min.Z) / step)));
 
     [Fact]

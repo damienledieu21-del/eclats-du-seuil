@@ -406,8 +406,8 @@
           -320
         ],
         "max": [
-          -1311,
-          -120
+          -1310,
+          -60
         ],
         "minLevel": 8
       },
@@ -420,7 +420,7 @@
         ],
         "max": [
           -780,
-          -500
+          -370
         ],
         "minLevel": 14
       },
@@ -455,7 +455,7 @@
         "name": "Vallée de la rivière",
         "min": [
           -158,
-          101
+          100.0001
         ],
         "max": [
           620,
@@ -468,7 +468,7 @@
         "name": "Hautes collines",
         "min": [
           -200,
-          1093
+          1092
         ],
         "max": [
           2188,
@@ -493,7 +493,7 @@
         "id": "route_du_col",
         "name": "Route du col",
         "min": [
-          1301,
+          1300,
           800
         ],
         "max": [
@@ -563,7 +563,7 @@
         ],
         "max": [
           40,
-          -71
+          -70.0001
         ],
         "minLevel": 6
       },
@@ -579,6 +579,84 @@
           -340
         ],
         "minLevel": 8
+      },
+      {
+        "id": "plaine_de_l_ouest",
+        "name": "Plaine de l'ouest",
+        "min": [
+          -710,
+          -400
+        ],
+        "max": [
+          -100.0001,
+          276
+        ],
+        "minLevel": 3
+      },
+      {
+        "id": "plaine_de_l_est",
+        "name": "Plaine de l'est",
+        "min": [
+          140.0001,
+          -600
+        ],
+        "max": [
+          1010,
+          155
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "route_du_fort",
+        "name": "Route du fort",
+        "min": [
+          700,
+          400
+        ],
+        "max": [
+          1300,
+          1092
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "epaulement_est",
+        "name": "Épaulement de l'est",
+        "min": [
+          1250,
+          60
+        ],
+        "max": [
+          1600,
+          500
+        ],
+        "minLevel": 21
+      },
+      {
+        "id": "landes_du_seuil",
+        "name": "Landes du Seuil",
+        "min": [
+          1001,
+          -849
+        ],
+        "max": [
+          1290,
+          -111
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "rives_du_lac",
+        "name": "Rives du lac",
+        "min": [
+          -300,
+          -850
+        ],
+        "max": [
+          849,
+          -600
+        ],
+        "minLevel": 9
       }
     ],
     "populations": [

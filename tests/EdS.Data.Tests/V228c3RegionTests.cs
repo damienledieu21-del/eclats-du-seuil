@@ -77,7 +77,7 @@ public sealed class V228c3RegionTests : IDisposable
         var core = new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac",
             "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" };
         var region = zone.Places.Where(p => !core.Contains(p.Id)).ToList();
-        Assert.Equal(15, region.Count);
+        Assert.Equal(21, region.Count);   // relecture de la PR #170 : six lieux de transition
         foreach (Place p in region)
         {
             Assert.False(p.Min.X.Raw < Fixed.FromInt(140).Raw && p.Max.X.Raw > Fixed.FromInt(-100).Raw && p.Min.Z.Raw < Fixed.FromInt(100).Raw
@@ -87,6 +87,66 @@ public sealed class V228c3RegionTests : IDisposable
         Assert.Equal(1, zone.MinLevelAt(G(-18, -12)));
         Assert.Equal(16, zone.MinLevelAt(G(-850, 780)));   // forêt des Loups profonde
         Assert.Equal(24, zone.MinLevelAt(G(1170, 990)));   // fort des bandits
+        // Relecture de la PR #170 : aucun trou de niveau sur les routes de la région (chaque mètre hors du cœur est dans un lieu), ni aux
+        // points sûrs de la région.
+        foreach (Road road in zone.Roads)
+            for (int i = 0; i + 1 < road.Points.Count; i++)
+            {
+                (double ax, double az) = P(road.Points[i]);
+                (double bx, double bz) = P(road.Points[i + 1]);
+                int n = (int)Math.Ceiling(Math.Sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az)));
+                for (int k = 0; k <= n; k++)
+                {
+                    double x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n;
+                    if (x >= -100 && x <= 140 && z >= -70 && z <= 100) continue;
+                    Assert.True(zone.PlacesAt(G(x, z)).Any(), $"{road.Id} hors de tout lieu en ({x:0.0}, {z:0.0})");
+                }
+            }
+        foreach (string id in new[] { "porte_est_du_bourg", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie",
+            "lisiere_des_terres_grises", "chateau_viticole" })
+            Assert.NotEmpty(zone.PlacesAt(zone.SafePoints.Single(p => p.Id == id).Position));
+        Assert.Equal(22, zone.MinLevelAt(zone.SafePoints.Single(p => p.Id == "pied_du_fort").Position));
+    }
+
+    [Fact]
+    public void Aucune_route_ne_franchit_le_verrou_du_chapitre_1_hors_d_un_passage()
+    {
+        // Relecture de la PR #170 : une route passe de la rive ouest fermée (vallée, forêt profonde, bergerie) au reste de la région seulement
+        // par un passage fermé (le chemin de la bergerie par le gué sud), jamais à travers un obstacle ni par un trou.
+        ZoneDefinition zone = Zone();
+        var obstacles = zone.Setup.Space!.Obstacles;
+        (double X, double Z) min = P(zone.Region!.Min), max = P(zone.Region.Max);
+        const double step = 2;
+        var locked = V228cSurfaceTests.Flood(obstacles, min, max, (-20, 300), step);
+        bool In(double x, double z) => V228cSurfaceTests.Reaches(locked.Reached, min, (x, z), step);
+        var gates = zone.Passages.Select(p => obstacles.Single(o => o.Id == p.Obstacle).Points.Select(P).ToList()).ToList();
+        var shapes = obstacles.Select(o => o.Points.Select(P).ToList()).Select(p => (Points: p, MinX: p.Min(q => q.X), MinZ: p.Min(q => q.Z), MaxX: p.Max(q => q.X), MaxZ: p.Max(q => q.Z))).ToList();
+        int crossings = 0;
+        foreach (Road road in zone.Roads)
+        {
+            bool? side = null;
+            for (int i = 0; i + 1 < road.Points.Count; i++)
+            {
+                (double ax, double az) = P(road.Points[i]);
+                (double bx, double bz) = P(road.Points[i + 1]);
+                int n = (int)Math.Ceiling(Math.Sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az)) / step);
+                for (int k = 0; k <= n; k++)
+                {
+                    double x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n;
+                    // Une case occupée (obstacle ou bord) ne dit rien : seules les cases libres comptent.
+                    if (shapes.Any(o => x >= o.MinX - 1 && x <= o.MaxX + 1 && z >= o.MinZ - 1 && z <= o.MaxZ + 1 && GroundRelief.PolygonDistance(o.Points, x, z) < 1))
+                        continue;
+                    bool here = In(x, z);
+                    if (side is bool before && before != here)
+                    {
+                        Assert.True(gates.Any(g => GroundRelief.PolygonDistance(g, x, z) < 6), $"{road.Id} franchit le verrou en ({x:0.0}, {z:0.0}) hors d'un passage");
+                        crossings++;
+                    }
+                    side = here;
+                }
+            }
+        }
+        Assert.Equal(1, crossings);   // le chemin de la bergerie, au gué sud
     }
 
     [Fact]
@@ -129,5 +189,43 @@ public sealed class V228c3RegionTests : IDisposable
             }
         }
         Assert.True(worst < 2, $"marche de {worst:0.00} m sur la route d'Ambre");
+        // Relecture de la PR #170 : pente des routes de la région, le long de la route, au plus 25° (tan 25° ≈ 0,47) ; celles du cœur ont la leur (V224ReliefTests).
+        foreach (StyleRoad r in whole.Roads.Where(r => r.Points.Any(p => p.X < -100 || p.X > 140 || p.Z < -70 || p.Z > 100)))
+        {
+            double steep = 0, sx = 0, sz = 0;
+            for (int i = 0; i + 1 < r.Points.Count; i++)
+            {
+                var (a, b) = (r.Points[i], r.Points[i + 1]);
+                double len = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Z - a.Z) * (b.Z - a.Z));
+                for (double t = 0; t + 2 <= len; t += 1)
+                {
+                    // Pente le long de la route (celle de la marche), sur 2 m.
+                    double x = a.X + (b.X - a.X) * t / len, z = a.Z + (b.Z - a.Z) * t / len;
+                    double x2 = a.X + (b.X - a.X) * (t + 2) / len, z2 = a.Z + (b.Z - a.Z) * (t + 2) / len;
+                    double slope = Math.Abs(relief.Height(x2, z2) - relief.Height(x, z)) / 2;
+                    if (slope > steep) (steep, sx, sz) = (slope, x, z);
+                }
+            }
+            // Les sentiers de montagne (bergerie, cairns) montent plus raide, jusqu'à 35° (limite : le relief ne suit pas encore leurs lacets ;
+            // le moteur reste plat, la marche n'en dépend pas).
+            double limit = r.Id is "chemin_des_cairns" or "chemin_de_la_bergerie" ? 35 : 25;
+            Assert.True(steep <= Math.Tan(limit * Math.PI / 180), $"{r.Id} : pente {steep:0.00} en ({sx:0}, {sz:0})");
+        }
+        // Relecture de la PR #170 : ni tranchée ni marche en travers de l'éboulement et des falaises (aucun replat sous elles) : profils de
+        // 40 m, au mètre, sans saut de plus de 1 m, et le sol y suit le relief (aucun replat ne l'abaisse).
+        foreach ((double cx, double cz, double nx, double nz) in new[] { (190.0, 1180.0, 0.25, 0.97), (-800.0, 1280.0, 0.0, 1.0), (-20.0, 280.0, 0.0, 1.0) })
+        {
+            double previous = relief.Height(cx - 20 * nx, cz - 20 * nz);
+            for (int k = -19; k <= 20; k++)
+            {
+                double x = cx + k * nx, z = cz + k * nz, h = relief.Height(x, z);
+                Assert.True(Math.Abs(h - previous) < 1, $"saut de {Math.Abs(h - previous):0.00} m en ({x:0}, {z:0})");
+                Assert.True(Math.Abs(h - relief.Base(x, z)) < 0.5, $"tranchée en ({x:0}, {z:0}) : {h:0.0} m pour un sol de {relief.Base(x, z):0.0} m");
+                previous = h;
+            }
+        }
+        // Le relief de la région est propre au repère des Vallons : une autre grande aire n'en a pas.
+        var other = new ReliefSettings { RegionGrid = (0, 0, 32, 24) };
+        Assert.Equal(0, GroundRelief.For(whole, other).Region(180, 1360));
     }
 }
