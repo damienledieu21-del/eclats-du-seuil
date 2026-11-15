@@ -103,7 +103,8 @@ public static class Program
         }
 
         using var listener = new TcpNetListener(local ? IPAddress.Loopback : IPAddress.Any, port);
-        using var host = new RoomHost(room, listener);
+        // Saisons (le serveur fait foi) : l'hôte du serveur donne son horloge civile, en UTC, à la salle.
+        using var host = new RoomHost(room, listener, () => DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         host.Start();
         Console.WriteLine($"Serveur Éclats du Seuil : {Path.GetFileNameWithoutExtension(scenarioPath)}, places {string.Join(", ", room.SeatIds)}, " +
             $"port {listener.Port}{(local ? " (ce poste seulement)" : "")}. Ctrl+C pour arrêter.");

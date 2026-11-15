@@ -413,6 +413,9 @@ namespace EdS.Game
         /// <summary>Sous-lot V2.6 : cicatrices du Seuil (couleurs fanées, brume froide, pointes sombres).</summary>
         private ScarsView _scars;
 
+        /// <summary>Saisons : date fournie au cœur et saison exposée au rendu (teinte, neige, glace).</summary>
+        private SeasonView _seasonView;
+
         /// <summary>Relecture de la PR #102 : liste des compagnons à montrer, réutilisée à chaque image.</summary>
         private readonly List<CompanionDefinition> _companionList = new List<CompanionDefinition>();
 
@@ -458,6 +461,8 @@ namespace EdS.Game
             _worldEvents = null;
             _scars?.Destroy();   // sous-lot V2.6
             _scars = null;
+            _seasonView = null;   // saisons
+            SeasonView.Clear();
             _weatherFx = null;
             StyleWorld.SetWeather(null);
             _talentView?.Close();
@@ -653,6 +658,8 @@ namespace EdS.Game
             // Essai réaliste (27 octobre 2026) : les PNJ se tournent vers le joueur qui approche.
             if (_arena.Player != null) _markers.Face(_arena.Player.position, Time.deltaTime);
             _camera.Indoors = a.Indoors;   // essai réaliste 9 : dans une pièce, la caméra reste dans la maison
+            if (_seasonView == null) _seasonView = new SeasonView();
+            _seasonView.Sync(a, Time.deltaTime);   // saisons : l'hôte fournit la date, puis teinte, neige et glace pour le rendu
             HumanBodies.GameSeason = a.WardrobeSeason;   // sous-lot V2.10 : les tenues suivent la saison du calendrier
             HumanBodies.Festival = a.Festive;   // sous-lot V2.10 : jour de fête, beaux habits
             _arena.Village(a.World.Zone.Time.Minute);   // sous-lot V2.3 : les villageois du décor font leurs courses (avant SyncSpace, qui les fait marcher)

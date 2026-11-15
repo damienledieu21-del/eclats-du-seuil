@@ -175,6 +175,7 @@ namespace EdS.Data.Json
                 ["position"] = (v, p) => x.Position = ScenarioJsonReader.ReadPoint(input, v, p),
                 ["respawnMs"] = (v, p) => x.RespawnMs = input.Int64(v, p),
                 ["xp"] = (v, p) => x.Xp = input.Int64(v, p),
+                ["seasons"] = (v, p) => x.Seasons = input.ReadLimitedList(v, p, 4, n => $"{n} saisons, au plus 4.", (e, ip) => input.Text(e, ip)),   // saisons (version 4)
             }) ? x : null;
         }
     }

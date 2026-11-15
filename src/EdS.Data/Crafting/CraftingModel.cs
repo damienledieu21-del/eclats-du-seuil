@@ -9,6 +9,7 @@ using EdS.Data.Validation;
 using EdS.Data.Zones;
 using EdS.Domain.Collections;
 using EdS.Domain.Space;
+using EdS.Domain.Time;
 
 namespace EdS.Data.Crafting
 {
@@ -130,6 +131,9 @@ namespace EdS.Data.Crafting
         public PointData? Position { get; set; }
         public long? RespawnMs { get; set; }
         public long? Xp { get; set; }
+
+        /// <summary>Saisons (version 4) : saisons où le nœud se récolte (une à trois), ou null : toute l'année.</summary>
+        public List<string?>? Seasons { get; set; }
     }
 
     // --- Modèle validé ---------------------------------------------------------------------------------
@@ -185,8 +189,21 @@ namespace EdS.Data.Crafting
         public long RespawnMs { get; }
         public long Xp { get; }
 
-        internal GatheringNode(string id, string profession, string item, int count, GroundVector position, long respawnMs, long xp)
+        /// <summary>Saisons (version 4) : saisons où le nœud se récolte, triées ; vide pour un nœud de toute l'année.</summary>
+        public IReadOnlyList<Season> Seasons { get; }
+
+        public bool IsSeasonal => Seasons.Count > 0;
+
+        /// <summary>
+        /// Le nœud se récolte pendant la saison <paramref name="season"/> : toujours pour un nœud de toute l'année ; pour un nœud saisonnier,
+        /// seulement pendant ses saisons, et jamais quand la saison réelle est inconnue (date non fournie : option prudente).
+        /// </summary>
+        public bool InSeason(Season? season) => !IsSeasonal || season is Season s && Seasons.Contains(s);
+
+        internal GatheringNode(string id, string profession, string item, int count, GroundVector position, long respawnMs, long xp,
+            IEnumerable<Season>? seasons = null)
         {
+            Seasons = Frozen.List(seasons ?? Array.Empty<Season>(), nameof(seasons));
             Id = id;
             Profession = profession;
             Item = item;
@@ -402,10 +419,11 @@ namespace EdS.Data.Crafting
         /// V1.4) : <c>quality</c> sur une recette (petit jeu de forge et qualité de fabrication ; produit : un seul équipement qui prend une
         /// qualité), <c>forge</c> (frappes, chances de la qualité supérieure et du chef-d'œuvre), <c>failure</c> (recette au-dessus de son
         /// niveau : niveaux tentés au plus, chance de rater, matériaux rendus) et <c>repair</c> (prix, lieux et marchands de la réparation).
-        /// Version 3 (sous-lot V1.8) : <c>failure.xpPercent</c> (part de l'expérience gagnée par une recette ratée). Une version antérieure
-        /// est refusée : le fichier se met à jour à la main.
+        /// Version 3 (sous-lot V1.8) : <c>failure.xpPercent</c> (part de l'expérience gagnée par une recette ratée). Version 4 (saisons, 15
+        /// novembre 2026) : <c>seasons</c> facultatif sur un nœud (une à trois saisons distinctes ; absent : toute l'année). Une version
+        /// antérieure est refusée : le fichier se met à jour à la main.
         /// </summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         /// <summary>Sous-lot V1.4 : frappes du petit jeu, au plus ; niveaux tentés au-dessus du sien, au plus ; marchands et lieux de réparation, au plus.</summary>
         public const int MaxStrikes = 5, MaxOverLevels = 10, MaxRepairSpots = 16;
@@ -559,8 +577,24 @@ namespace EdS.Data.Crafting
                     if (x.RespawnMs is null || x.RespawnMs < MinRespawnMs || x.RespawnMs > MaxRespawnMs || x.RespawnMs % tickMs != 0)
                     { r.Add(p + ".respawnMs", ValidationCode.OutOfRange, $"repousse hors de [{MinRespawnMs}, {MaxRespawnMs}] ms (multiple du tick, {tickMs} ms)."); ok = false; }
                     if (x.Xp is null || x.Xp < 1 || x.Xp > MaxGainXp) { r.Add(p + ".xp", ValidationCode.OutOfRange, $"expérience de métier hors de [1, {MaxGainXp}]."); ok = false; }
+                    // Saisons (version 4) : une à trois saisons distinctes (un nœud de toute l'année n'en donne pas).
+                    var seasons = new List<Season>();
+                    if (x.Seasons != null)
+                    {
+                        if (x.Seasons.Count < 1 || x.Seasons.Count > 3)
+                        { r.Add(p + ".seasons", ValidationCode.InvalidValue, "de une à trois saisons (un nœud de toute l'année n'en donne pas)."); ok = false; }
+                        else
+                            for (int j = 0; j < x.Seasons.Count; j++)
+                            {
+                                string sp = $"{p}.seasons[{j}]";
+                                if (!(SeasonCalendar.Parse(x.Seasons[j]) is Season s))
+                                { r.Add(sp, ValidationCode.UnknownReference, $"saison inconnue « {x.Seasons[j]} » ; possibles : spring, summer, autumn, winter."); ok = false; }
+                                else if (seasons.Contains(s)) { r.Add(sp, ValidationCode.DuplicateId, $"saison « {x.Seasons[j]} » en double."); ok = false; }
+                                else seasons.Add(s);
+                            }
+                    }
                     if (ok) nodes.Add(new GatheringNode(x.Id!, x.Profession!, st!.Value.Item1, st.Value.Item2,
-                        new GroundVector(x.Position!.X!.Value, x.Position.Z!.Value), x.RespawnMs!.Value, x.Xp!.Value));
+                        new GroundVector(x.Position!.X!.Value, x.Position.Z!.Value), x.RespawnMs!.Value, x.Xp!.Value, seasons.OrderBy(s => s)));
                 }
             }
             ForgeRules? forge = CheckForge(d.Forge, r);
