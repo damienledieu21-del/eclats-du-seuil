@@ -1672,7 +1672,7 @@ namespace EdS.Runtime
             list.AddRange(Npcs().Select(n => new MapMarker(MapMarkerKind.Npc, n.Name, n.X, n.Z)));
             list.AddRange(SafePoints().Select(s => new MapMarker(MapMarkerKind.SafePoint, s.Name, s.X, s.Z)));
             list.AddRange(Workshops().Select(w => new MapMarker(MapMarkerKind.Workshop, w.Name, w.X, w.Z)));
-            list.AddRange(Nodes().Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));
+            list.AddRange(Nodes().Where(n => n.Present).Select(n => new MapMarker(MapMarkerKind.Node, n.Name, n.X, n.Z)));   // saisons (revue Codex de la PR #168) : pas les nœuds hors saison
             list.AddRange(Doors().Select(d => new MapMarker(MapMarkerKind.Door, d.Name, d.X, d.Z)));
             if (Me is GroundVector me) list.Add(new MapMarker(MapMarkerKind.Player, Text("text.ui.map.you"), Meters(me.X), Meters(me.Z)));
             if (Objective is MapMarker objective) list.Add(objective);
