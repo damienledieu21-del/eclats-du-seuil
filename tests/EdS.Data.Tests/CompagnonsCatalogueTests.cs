@@ -23,7 +23,7 @@ namespace EdS.Data.Tests;
 [Trait("Category", "Data")]
 public class CompagnonsCatalogueTests
 {
-    private const string Catalogue = """
+    internal const string Catalogue = """
     {
       "schemaVersion": 1, "kind": "companions", "contentVersion": "0.1.0-test",
       "data": {
