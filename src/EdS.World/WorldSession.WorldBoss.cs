@@ -114,6 +114,15 @@ namespace EdS.World
             _worldBossJoinZone = Zone;
             _worldBossJoinCount = joins;
         }
+        /// <summary>Pour les essais : la partie passe dans une autre session alors que l'ancienne reste ouverte (passage de secteur sur l'hôte).</summary>
+        internal void PassToForTest(Zone other)
+        {
+            Zone = other;
+            _heldForTest = true;   // l'hôte garde le personnage dans l'ancien secteur : la partie ne l'y suit plus
+        }
+
+        private bool _heldForTest;
+
         private readonly HashSet<string> _worldBossFormIds = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>Distance du personnage au boss sous laquelle sa forme entre dans le moteur (celle du point d'émergence, 30 m).</summary>
@@ -292,8 +301,14 @@ namespace EdS.World
             {
                 if (!ReferenceEquals(f.Session, Zone) || f.Session.IsOver)
                 {
-                    // Session remplacée ou finie (passage, renouvellement) : la forme est partie avec elle ; il reprend sa marche d'où il était.
+                    // Session remplacée ou finie (passage, renouvellement) : il reprend sa marche d'où il était. Revue Codex de la PR #178 :
+                    // l'ancien secteur peut rester ouvert et simulé (SectorWorld.Step) ; la forme le quitte avant d'être oubliée.
                     _worldBossForms[i] = null;
+                    if (f.Swap is null && !f.Session.IsOver)
+                    {
+                        CombatantView old = f.Session.Engine.View(f.Id);
+                        if (old.IsPresent && !old.IsDead) f.Session.Leave(f.Id);
+                    }
                     e.Disengage();
                     Add(ref notices, WorldBossNoticeKind.Disengaged, e);
                     return;
@@ -358,6 +373,8 @@ namespace EdS.World
             if (_worldBossJoinCount >= MaxWorldBossJoins
                 || Zone.Engine.IdentitiesLeft <= checked(ReservedPlaces + ZonePopulations.QuestReserve + 1)) return false;
             AssailantSetup t = e.PhaseNow.Form!;
+            // Revue Codex de la PR #178 : la vitesse propre de la forme (données) est gardée à chaque placement.
+            place = new CombatantPlacement(place.Position, place.Radius, place.Facing, t.Placement?.Speed);
             string id = t.Id;
             for (int n = 2; Zone.Engine.CombatantIds.Contains(id); n++) id = $"{t.Id}_v{n}";
             var form = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, null, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,

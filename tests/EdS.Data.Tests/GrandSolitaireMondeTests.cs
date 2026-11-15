@@ -394,6 +394,40 @@ public class GrandSolitaireMondeTests
     }
 
     [Fact]
+    public void Revue_codex_passage_vers_une_autre_session_la_forme_quitte_l_ancienne_encore_ouverte()
+    {
+        (WorldSession w, WorldBossEvent e, long t) = Engaged();
+        string form = w.WorldBossForm("grand_solitaire")!;
+        Zone old = w.Zone;
+        ZoneDefinition zone = Zone();
+        var other = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        w.PassToForTest(other.Zone);
+        At(w, t + 1000);   // le temps serveur repart de la nouvelle session (sur l'hôte, les secteurs partagent le tick du monde)
+        Assert.Null(w.WorldBossForm("grand_solitaire"));
+        Assert.False(e.Engaged);
+        Assert.Contains(WorldBossNoticeKind.Disengaged, Kinds(w));
+        Assert.False(old.IsOver);
+        w.Step();   // l'ancienne session, encore simulée par l'hôte : le départ prend effet en fin de tick
+        Assert.True(old.Engine.View(form).HasLeft);
+    }
+
+    [Fact]
+    public void Revue_codex_la_forme_garde_sa_vitesse_propre_a_l_engagement_et_au_changement_de_phase()
+    {
+        (WorldSession w, WorldBossEvent e, long _) = Engaged();
+        string form = w.WorldBossForm("grand_solitaire")!;
+        Fixed? Speed(string id) => w.Zone.Engine.JoinedCombatants.Single(c => c.Id == id).Placement!.Speed;
+        Assert.NotNull(e.PhaseNow.Form!.Placement!.Speed);
+        Assert.Equal(e.PhaseNow.Form.Placement.Speed, Speed(form));
+        e.Damage(w.CombatantId, e.Health - e.MaxHealth * 69 / 100);
+        w.Step();
+        w.Step();
+        string blesse = w.WorldBossForm("grand_solitaire")!;
+        Assert.NotEqual(form, blesse);
+        Assert.Equal(e.PhaseNow.Form!.Placement!.Speed, Speed(blesse));
+    }
+
+    [Fact]
     public void Relecture_butin_du_jamais_ecrase_et_registre_plein()
     {
         // Victoire avec un butin d'une victoire d'avant encore dû : le règlement attend, le butin d'avant n'est pas perdu.

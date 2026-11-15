@@ -639,6 +639,7 @@ namespace EdS.World
             // Relecture indépendante de la PR #157 : en attente d'une place, en reprise d'un passage, refusé pour de bon ou mort dans une session
             // terminée, le personnage n'a pas de combattant à suivre : la partie garde sa dernière session et sa dernière identité (vues de
             // son combattant parti), sans lever ; elle le retrouve au tick où l'hôte le replace.
+            if (_heldForTest) return;
             if (!_host!.IsFollowed(_character.Id) || !(_host.SectorOf(_character.Id) is string sector) || !(_host.SectorZone(sector) is Zone zone)) return;
             string id = _host.CombatantOf(_character.Id);
             if (ReferenceEquals(zone, Zone) && id == CombatantId) return;
