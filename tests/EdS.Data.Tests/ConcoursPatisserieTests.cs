@@ -374,4 +374,15 @@ public class ConcoursPatisserieTests
         Assert.Single(s);
         Assert.Null(without.CheckInstance(normal));
     }
+
+    [Fact]
+    public void Une_patisserie_de_qualite_sans_marque_se_charge_et_ne_part_pas_au_combat()
+    {
+        // Revue Codex de la PR #186 : une tarte supérieure sans marque (admise par le catalogue) ne fait pas échouer l'entrée en session.
+        var odd = new ItemStack(Tarte, 1, null, ItemQuality.Superior);
+        Assert.Null(ItemsCatalog.CheckInstance(odd));
+        WorldSession w = AtFestival(Baker(odd, new ItemStack(Tarte, 2)));
+        Assert.Equal((2, 1, 3), (w.Inventory.Reserved(Tarte), w.Inventory.Available(Tarte), w.Inventory.Count(Tarte)));
+        Assert.Equal(0, AtFestival(Baker(odd)).Inventory.Reserved(Tarte));
+    }
 }

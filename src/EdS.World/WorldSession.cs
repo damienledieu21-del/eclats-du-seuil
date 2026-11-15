@@ -483,7 +483,8 @@ namespace EdS.World
                 {
                     // Concours de pâtisserie : une pâtisserie de sa main (signée) se garde pour le juge : elle ne part pas au combat, seules
                     // les copies sans marque (achetées) sont emportées ; elle reste donc toujours libre d'être présentée.
-                    int count = Math.Min(Inventory.Stacks.Where(st => st.Item == id && st.SignedBy == null).Sum(st => st.Count), potion.Stack);
+                    // Revue Codex de la PR #186 : même règle que la réserve (copies de base seulement : ni marquée, ni de qualité).
+                    int count = Math.Min(Inventory.Stacks.Where(st => st.Item == id && !st.IsUnique).Sum(st => st.Count), potion.Stack);
                     if (count == 0) continue;
                     carried.Add(new ConsumableSetup(id, potion.Heal, count, potion.CooldownMs));
                     _carried[id] = count;
