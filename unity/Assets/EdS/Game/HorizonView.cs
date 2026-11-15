@@ -36,7 +36,10 @@ namespace EdS.Game
                 _root.transform.localScale = new Vector3(radius, radius / (float)HorizonProfile.Radius, radius);
             }
             Vector3 at = camera.transform.position;
-            _root.transform.position = new Vector3(at.x, 0f, at.z);
+            // Revue Codex de la PR #182 : l'anneau réduit garde les angles du profil de référence vus depuis la caméra (sa hauteur réduite
+            // autour de l'altitude de la caméra, pas autour de 0) : y0 = altitude × (1 − échelle).
+            float scale = radius / (float)HorizonProfile.Radius;
+            _root.transform.position = new Vector3(at.x, at.y * (1f - scale), at.z);
             Color fog = RenderSettings.fogColor;
             // Relecture de la PR #182 : recalculé seulement si la brume change de plus d'un 255e.
             if (Mathf.Abs(fog.r - _fog.r) > 1f / 255f || Mathf.Abs(fog.g - _fog.g) > 1f / 255f || Mathf.Abs(fog.b - _fog.b) > 1f / 255f)

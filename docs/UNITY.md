@@ -1026,7 +1026,7 @@ Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity
 - la **Forêt des Murmures** au nord-ouest, centrée sur 315° (plan, § 4.0 bis), sur 42° de part et d'autre : cimes géantes de 120 à 190 m ;
 - des collines basses ailleurs (40 à 82 m).
 
-Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra et qui la suit. Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
+Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra, qui la suit à chaque image (`EdsGame.LateUpdate`) en gardant les angles du profil de référence (hauteur réduite autour de l’altitude de la caméra). Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
 
 **À venir** :
 - les **cartes peintes** du ciel, à demander à ChatGPT ; ces silhouettes les remplacent en attendant ;
