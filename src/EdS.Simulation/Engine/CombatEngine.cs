@@ -31,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.32.0";
+        public const string Version = "0.33.0";
 
         public const string LogFormat = "eds-combat-log";
 
@@ -125,10 +125,17 @@ namespace EdS.Simulation.Engine
         /// <c>direction</c> facultative) ; nouvelles lignes <c>dodgeStarted</c> (<c>actor</c>, <c>command</c>, <c>direction</c>, <c>endurance</c>,
         /// <c>endTick</c>, <c>invulnerableUntilTick</c>, <c>readyTick</c>) et <c>evaded</c> (<c>source</c>, <c>target</c>, <c>skill</c>,
         /// <c>attack</c> : impact ou application esquivé) ; nouveaux refus <c>actorCannotDodge</c>, <c>dodgeCooldown</c>, <c>dodgeBlocked</c> ;
-        /// <c>pushBlocked</c> de raison <c>evaded</c>. Sans esquive : mêmes lignes d'événements qu'au format 25. Un journal d'un autre format
-        /// est refusé au rejeu.
+        /// <c>pushBlocked</c> de raison <c>evaded</c>. Sans esquive : mêmes lignes d'événements qu'au format 25. 27 (compagnons, décisions de
+        /// Damien du 14 novembre 2026) : un assaillant de l'en-tête peut porter <c>companion</c> (<c>owner</c>, <c>bond</c>, <c>followDistance</c>,
+        /// <c>leash</c>, <c>bondWindowMs</c>, <c>coordinatedGain</c>, <c>protectGain</c>, <c>duo</c> facultatif), et les commandes <c>order</c>
+        /// (<c>companion</c>, <c>order</c>, <c>target</c>) et <c>duo</c> (<c>companion</c>, <c>target</c>) ; nouvelles lignes <c>orderGiven</c>,
+        /// <c>orderEnded</c>, <c>bondGained</c> (phase <c>endOfTick</c>), <c>duoStarted</c>, <c>duoLanded</c> et <c>duoCancelled</c> ; raisons
+        /// <c>recalled</c> et <c>duo</c> (<c>attackSkipped</c>, <c>attackCancelled</c>, <c>duoCancelled</c>), <c>ownerDead</c> et <c>ownerAbsent</c>
+        /// (<c>orderEnded</c>) ; refus <c>companionDead</c>, <c>companionAbsent</c>, <c>companion</c> suivi du motif d'un contrôle (<c>companionStunned</c>…),
+        /// <c>targetNotEnemy</c>, <c>bondNotFull</c>, <c>duoInProgress</c>, <c>globalCooldown</c>, <c>targetOutOfRange</c>. Sans compagnon : mêmes lignes d'événements qu'au format 26. Un journal
+        /// d'un autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 26;
+        public const int LogFormatVersion = 27;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -319,6 +326,9 @@ namespace EdS.Simulation.Engine
 
             public AssailantBehavior? Behavior => Assailant?.Behavior;
 
+            /// <summary>Compagnons : état d'un compagnon (ordre, jauge de lien, attaque à deux) ; null pour tout autre combattant.</summary>
+            public CompanionState? Companion;
+
             /// <summary>Hors du combat : mort ou absent. Remplace « mort » partout où un combattant ne doit plus compter.</summary>
             public bool Out => IsDead || Presence != Presence.Present;
 
@@ -485,6 +495,9 @@ namespace EdS.Simulation.Engine
             public TriggerEffect? Strike;
             public int StrikeRank = 1;
 
+            /// <summary>Compagnons : impact d'une attaque à deux (ses coups ne remplissent pas la jauge de lien).</summary>
+            public bool Duo;
+
             public SkillTargeting Targeting => Combat?.Targeting ?? Attack?.Targeting ?? SkillTargeting.Enemy;
 
             /// <summary>Sous-lot 11.4b : portée ou rayon de la compétence ; les attaques d'assaillant n'en ont pas encore (11.4c).</summary>
@@ -638,6 +651,7 @@ namespace EdS.Simulation.Engine
             _fighters = setup.Combatants.Select(CreateFighter).ToList();
             _fightersById = _fighters.OrderBy(f => f.Id, StringComparer.Ordinal).ToList();
             _byId = _fighters.ToDictionary(f => f.Id, StringComparer.Ordinal);
+            LinkCompanions();   // compagnons
             BuildTriggerIndex();
             InitSpace();
             if (snapshot != null)
@@ -746,6 +760,7 @@ namespace EdS.Simulation.Engine
                 RunGear(tick);       // sous-lot V1.8d : bonus modifiés, après toutes les arrivées
                 RunExpirations(tick);
                 RunEngagements(tick);   // sous-lot 11.5 : ennemis qui s'engagent
+                RunCompanionOrders(tick);   // compagnons : « cibler » et « revenir » qui prennent fin
                 List<PendingAction> actions = RunCommands(tick);
                 RunMovement(tick);   // sous-lot 11.4 : combat positionné seulement
                 RunResolution(tick, actions);
@@ -879,6 +894,8 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Consume:   // sous-lot 12.6 : consumed ou refus
                     return Cost.Line;
                 case CombatAction.Dodge:   // esquive : dodgeStarted ou refus
+                case CombatAction.Order:   // compagnons : orderGiven ou refus
+                case CombatAction.Duo:     // compagnons : duoStarted ou refus
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -901,7 +918,7 @@ namespace EdS.Simulation.Engine
             AssailantSetup setup = assailant.Assailant!;
             AssailantAttack attack = setup.Attacks[assailant.NextAttack];
             Fighter? target = attack.Targeting == SkillTargeting.Enemy ? SingleTarget(assailant) : null;
-            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || IdleReason(assailant, attack, target) != null
+            bool skipped = BlockReason(assailant, StatusBlocks.AssailantAttacks) != null || CompanionIdle(tick, assailant) != null || IdleReason(assailant, attack, target) != null
                 || (target is { Out: true } && UsesTarget(attack)) || DirectedReach(assailant, attack, target) != null;
             // Sous-lot 11.4c : une attaque annoncée (ou une zone) programme son impact, s'il tombe avant la fin.
             bool impact = !skipped && Deferred(attack) && ImpactTickOf(tick, attack) < _durationTicks;
@@ -982,6 +999,16 @@ namespace EdS.Simulation.Engine
 
                 // Esquive (décision de Damien du 14/11/2026) : contrôles sans rien modifier, puis endurance, recharge et invulnérabilité ; le
                 // bond lui-même avance dans la phase « movement » de ce tick et des suivants.
+                // Compagnons : ordre simple et attaque à deux, contrôlés sans rien modifier, puis appliqués.
+                case CombatAction.Order:
+                    if (Reject(tick, item, actor, CheckOrder(actor, command))) return null;
+                    GiveOrder(tick, item, actor, root);
+                    return null;
+                case CombatAction.Duo:
+                    if (Reject(tick, item, actor, CheckDuo(tick, actor, command))) return null;
+                    StartDuo(tick, item, actor, root);
+                    return null;
+
                 case CombatAction.Dodge:
                 {
                     if (Reject(tick, item, actor, CheckDodge(tick, actor, command.Direction, out long dodgeX, out long dodgeZ))) return null;
@@ -1192,6 +1219,13 @@ namespace EdS.Simulation.Engine
                     .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id).Field("reason", blocked));
                 return null;
             }
+            // Compagnons : en revenant, ou pendant une attaque à deux, il saute son attaque.
+            if (CompanionIdle(tick, assailant) is { } waiting)
+            {
+                EmitDiagnostic(tick, CombatPhase.Commands, "attackSkipped", w => w
+                    .Field("actor", assailant.Id).Field("attack", attack.Id).Field("target", target?.Id).Field("reason", waiting));
+                return null;
+            }
             // Sous-lot 11.5 : un ennemi qui a un comportement attend d'être engagé, et n'attaque pas sans cible.
             if (IdleReason(assailant, attack, target) is { } idle)
             {
@@ -1254,6 +1288,7 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
             if (taunt != null) return _byId[taunt.Source!];
+            if (assailant.Companion != null) return CompanionTarget(assailant);   // compagnons : selon l'ordre reçu
             AssailantSetup setup = assailant.Assailant!;
             Fighter? scripted = setup.Target is null ? null : _byId[setup.Target];
             // Sous-lot 11.5 : un ennemi qui a un comportement vise sa cible de scénario si elle est là et vivante, sinon l'ennemi le plus proche.
@@ -1275,6 +1310,7 @@ namespace EdS.Simulation.Engine
         private long InfightingCap(Fighter? source, Fighter target, long amount)
         {
             if (source?.Assailant is null || target.Assailant is null || !Enemies(source, target) || target.Health is not long health) return amount;
+            if (source.Companion != null || target.Companion != null) return amount;   // compagnons : un compagnon n'est pas une bête entre bêtes
             return Math.Min(amount, Math.Max(0, health - 1));
         }
 
@@ -1313,6 +1349,7 @@ namespace EdS.Simulation.Engine
         {
             foreach (PendingAction action in actions)
                 ResolveAction(tick, action, ActionTargets(action), Cost.None, dequeue: false, null);
+            ResolveDuos(tick);   // compagnons : impacts des attaques à deux de ce tick
             // Lot 7.3 : puis les notifications et réactions de la phase, dans l'ordre de la file (réactions reportées du tick
             // précédent d'abord, puis celles de ce tick). Sous-lot 11.4c : les impacts des attaques annoncées y sont, à leur rang.
             DrainTriggers(tick, CombatPhase.Resolution);
@@ -1551,7 +1588,8 @@ namespace EdS.Simulation.Engine
             // Sous-lot V2.4 (bêtes qui se battent, règles en schéma 15) : une créature qui frappe une créature d'une autre équipe frappe moins
             // fort (combat.infighting.damageReduction), réduction combinée aux autres comme un modificateur de dégâts subis (B2, même plafond).
             // Jamais sur un impact paré (une créature ne pare pas) ; sans créature des deux côtés, rien ne change.
-            if (defense != "parry" && actor.Assailant != null && target.Assailant != null && _rules.InfightingDamageReduction != Fixed.Zero)
+            if (defense != "parry" && actor.Assailant != null && target.Assailant != null && actor.Companion is null && target.Companion is null
+                && _rules.InfightingDamageReduction != Fixed.Zero)
                 mitigation = target.Rules.TotalReduction(mitigation, Fixed.Zero - _rules.InfightingDamageReduction);
             // Sous-lot V1.3 : condition targetStunned, lue sur l'état de la cible de cet impact (sans ligne, sans coût).
             Fixed dealt = actor.Rules.DamageDealtAt(actor.Guarding, actor.RampartCharges, actor.Resonance, Stunned(target));
@@ -1583,7 +1621,9 @@ namespace EdS.Simulation.Engine
             TransferUpdate received = PrepareTransfer(transfer);
             long overkill = update.Overkill;
             // Sous-lot V2.4 (revue Codex de la PR #104, tour 2) : avec les autres affectations de l'impact, après les calculs vérifiés.
-            if (actor.Character != null) target.HurtByCharacter = target.CharacterHitSinceCalm = true;   // V2.4.1 : depuis son dernier calme
+            // Compagnons : le coup d'un compagnon compte comme celui d'un personnage (butin, expérience, objectifs).
+            if (actor.Character != null || actor.Companion != null) target.HurtByCharacter = target.CharacterHitSinceCalm = true;   // V2.4.1 : depuis son dernier calme
+            if (!action.Duo) NoteCompanionHit(tick, actor, target);   // compagnons : coordination et protection (pas l'attaque à deux), versées en fin de tick
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;
@@ -2541,8 +2581,11 @@ namespace EdS.Simulation.Engine
                 RunDepartures(tick);
             }
 
-            // Sous-lot 11.4d : une équipe compte tant qu'elle a un combattant présent vivant ou une arrivée encore attendue.
-            var aliveTeams = _fighters.Where(f => !f.IsDead && (f.Presence == Presence.Present || f.Presence == Presence.Pending))
+            RunBond(tick);   // compagnons : gains de lien du tick
+
+            // Sous-lot 11.4d : une équipe compte tant qu'elle a un combattant présent vivant ou une arrivée encore attendue. Compagnons : un
+            // compagnon ne la garde pas seul en vie.
+            var aliveTeams = _fighters.Where(f => !f.IsDead && f.Companion is null && (f.Presence == Presence.Present || f.Presence == Presence.Pending))
                 .Select(f => f.Team).Distinct(StringComparer.Ordinal).ToList();
             // Sous-lot 12.1 : une zone ne s'arrête pas quand une équipe tombe (ARCHITECTURE_MONDE.md, section 4), seulement au bout de sa durée.
             if (aliveTeams.Count <= 1 && !_setup.Zone)

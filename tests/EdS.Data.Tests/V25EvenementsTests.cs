@@ -155,7 +155,7 @@ public class V25EvenementsTests
         Assert.Equal((19, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.EventsSince));
         Assert.Equal((14, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
         // Ni le moteur, ni les règles, ni le journal ne changent.
-        Assert.Equal(("0.32.0", 26, 20), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.33.0", 27, 21), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
 
     [Fact]
@@ -961,7 +961,7 @@ public class V25EvenementsTests
 [Trait("Category", "Regression")]
 public class V25EvenementScenarioTests
 {
-    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.32.0-regles-0.18.0", "evenement_hameau.jsonl");
+    private static string Frozen => Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.33.0-regles-0.18.0", "evenement_hameau.jsonl");
 
     [Fact]
     public void Scenario_d_evenement_fige_identique_et_rejoue()

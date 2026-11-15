@@ -124,6 +124,7 @@ namespace EdS.Data.Json
                 ["arrivalMs"] = Track("arrivalMs", (v, p) => c.ArrivalMs = input.Int64(v, p)),   // sous-lot 11.4d (schéma 7)
                 ["behavior"] = Track("behavior", (v, p) => c.Behavior = ReadBehavior(input, v, p)),   // sous-lot 11.5 (schéma 8)
                 ["carried"] = Track("carried", (v, p) => c.Carried = ReadCarried(input, v, p)),   // sous-lot V2.26 (schéma 18)
+                ["companion"] = Track("companion", (v, p) => c.Companion = ReadCompanion(input, v, p)),   // compagnons (schéma 21)
             });
             return ok ? c : null;
         }
@@ -144,6 +145,40 @@ namespace EdS.Data.Json
                 ["consumableCooldownMs"] = (v, p) => c.ConsumableCooldownMs = input.Int64(v, p),
             });
             return ok ? c : null;
+        }
+
+        /// <summary>Compagnons (schéma 21) : ce qui fait d'un assaillant un compagnon.</summary>
+        private static CompanionData? ReadCompanion(JsonInput input, JsonElement element, string path)
+        {
+            var c = new CompanionData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["owner"] = (v, p) => c.Owner = input.Text(v, p),
+                ["bond"] = (v, p) => c.Bond = input.Int64(v, p),
+                ["followDistance"] = (v, p) => c.FollowDistance = input.Decimal(v, p),
+                ["leash"] = (v, p) => c.Leash = input.Decimal(v, p),
+                ["bondWindowMs"] = (v, p) => c.BondWindowMs = input.Int64(v, p),
+                ["coordinatedGain"] = (v, p) => c.CoordinatedGain = input.Int64(v, p),
+                ["protectGain"] = (v, p) => c.ProtectGain = input.Int64(v, p),
+                ["duo"] = (v, p) => c.Duo = ReadDuo(input, v, p),
+            });
+            return ok ? c : null;
+        }
+
+        /// <summary>Compagnons (schéma 21) : attaque à deux.</summary>
+        private static DuoData? ReadDuo(JsonInput input, JsonElement element, string path)
+        {
+            var d = new DuoData();
+            bool ok = input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["id"] = (v, p) => d.Id = input.Text(v, p),
+                ["rawDamage"] = (v, p) => d.RawDamage = input.Int64(v, p),
+                ["damageType"] = (v, p) => d.DamageType = input.Text(v, p),
+                ["telegraphMs"] = (v, p) => d.TelegraphMs = input.Int64(v, p),
+                ["recoveryMs"] = (v, p) => d.RecoveryMs = input.Int64(v, p),
+                ["range"] = (v, p) => d.Range = input.Decimal(v, p),
+            });
+            return ok ? d : null;
         }
 
         /// <summary>Sous-lot 11.5 : comportement d'un assaillant.</summary>
@@ -323,6 +358,8 @@ namespace EdS.Data.Json
                 ["backward"] = Track("backward", (v, p) => c.Backward = input.Boolean(v, p)),       // sous-lot 11.9 (schéma 9)
                 ["item"] = Track("item", (v, p) => c.Item = input.Text(v, p)),                     // sous-lot 12.6 (schéma 12)
                 ["gear"] = Track("gear", (v, p) => c.Gear = ReadIntegerMap(input, v, p)),          // sous-lot V1.8d (schéma 15)
+                ["companion"] = Track("companion", (v, p) => c.Companion = input.Text(v, p)),      // compagnons (schéma 21)
+                ["order"] = Track("order", (v, p) => c.Order = input.Text(v, p)),                  // compagnons (schéma 21)
             });
             return ok ? c : null;
         }

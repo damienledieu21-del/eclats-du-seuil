@@ -1,0 +1,465 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/companions.schema.json",
+  "title": "Éclats du Seuil — catalogue des compagnons",
+  "description": "Documentation et aide à la saisie. La validation qui fait foi est celle du programme (CompanionValidator). Compagnons : décisions de Damien du 14 novembre 2026 (un compagnon, puis deux ; héros, mercenaires de la Guilde, bêtes ; traits au hasard des mercenaires ; dons des bêtes).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "companions"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bond",
+        "slots",
+        "traits",
+        "companions"
+      ],
+      "properties": {
+        "bond": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "windowMs",
+            "coordinatedGain",
+            "protectGain",
+            "campGain"
+          ],
+          "properties": {
+            "windowMs": {
+              "type": "integer",
+              "minimum": 50,
+              "maximum": 60000,
+              "description": "Fenêtre de coordination (multiple du tick)."
+            },
+            "coordinatedGain": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "protectGain": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "campGain": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25,
+              "description": "Gain d'une halte au feu de camp (hors combat)."
+            }
+          }
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "initial",
+            "max",
+            "secondSlotLevel",
+            "secondSlotQuest",
+            "worldBossInCombat"
+          ],
+          "properties": {
+            "initial": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "secondSlotLevel": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Niveau minimum doux de la deuxième place (environ 12, à équilibrer)."
+            },
+            "secondSlotQuest": {
+              "type": "string",
+              "description": "Quête de lien au feu de camp qui ouvre la deuxième place (fin du chapitre 1)."
+            },
+            "worldBossInCombat": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Compagnons au combat pendant le boss du monde (1)."
+            }
+          }
+        },
+        "traits": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "gesture",
+              "line"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "gesture": {
+                "type": "string"
+              },
+              "line": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "companions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/companion"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "scaled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "perLevel"
+      ],
+      "properties": {
+        "base": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "perLevel": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Valeur au niveau 1 (base) et gain par niveau : base + perLevel × (niveau − 1)."
+    },
+    "companion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "role",
+        "summary",
+        "recruit",
+        "gift",
+        "stages"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^companion\\.[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "hero",
+            "mercenary",
+            "beast"
+          ]
+        },
+        "role": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "recruit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "enum": [
+                "story",
+                "guild",
+                "tame"
+              ]
+            },
+            "guildRank": {
+              "enum": [
+                "g",
+                "f",
+                "e",
+                "d",
+                "c",
+                "b",
+                "a",
+                "s",
+                "ss",
+                "sss"
+              ]
+            },
+            "price": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          },
+          "description": "Un mercenaire, et lui seul, se recrute à la Guilde (rang, paie)."
+        },
+        "randomTrait": {
+          "type": "boolean",
+          "description": "Mercenaires seulement : trait tiré au hasard au recrutement (gestes et répliques, jamais l'obéissance)."
+        },
+        "gift": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "name",
+            "effect",
+            "description"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "effect": {
+              "enum": [
+                "treasure",
+                "map",
+                "saddlebags",
+                "track",
+                "flank",
+                "rescue",
+                "appraisal",
+                "ambush",
+                "steadfast",
+                "anchor",
+                "retreat",
+                "lastPinch",
+                "trap",
+                "meal"
+              ]
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "fromLevel",
+        "health",
+        "armor",
+        "magicResistance",
+        "radius",
+        "speed",
+        "maxRange",
+        "firstAttackMs",
+        "intervalMs",
+        "followDistance",
+        "leash",
+        "attacks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "fromLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "health": {
+          "$ref": "#/$defs/scaled"
+        },
+        "armor": {
+          "$ref": "#/$defs/scaled"
+        },
+        "magicResistance": {
+          "$ref": "#/$defs/scaled"
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 20
+        },
+        "maxRange": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minRange": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "firstAttackMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 60000
+        },
+        "followDistance": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 20
+        },
+        "leash": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "attacks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "damage",
+              "damageType",
+              "range"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "damage": {
+                "$ref": "#/$defs/scaled"
+              },
+              "damageType": {
+                "enum": [
+                  "physique",
+                  "magique"
+                ]
+              },
+              "telegraphMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "range": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 100
+              }
+            }
+          }
+        },
+        "duo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "name",
+            "damage",
+            "damageType",
+            "telegraphMs",
+            "recoveryMs",
+            "range"
+          ],
+          "description": "Attaque à deux à ce stade (absente : pas encore, comme Cendre louveteau).",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            "name": {
+              "type": "string"
+            },
+            "damage": {
+              "$ref": "#/$defs/scaled"
+            },
+            "damageType": {
+              "enum": [
+                "physique",
+                "magique"
+              ]
+            },
+            "telegraphMs": {
+              "type": "integer",
+              "minimum": 50,
+              "maximum": 10000
+            },
+            "recoveryMs": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 10000
+            },
+            "range": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    }
+  }
+}
