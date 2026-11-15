@@ -217,6 +217,17 @@ public class CompagnonsMoteurTests
     }
 
     [Fact]
+    public void Eveille_hors_du_combat_le_compagnon_garde_sa_place_meme_avec_une_cible()
+    {
+        // Revue Codex de la PR #169 (3e tour) : l'Éveillé part (leave) ; un autre joueur garde l'équipe en vie ; le loup reste à portée de laisse.
+        var (track, _, _) = Trace(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Player("autre", At("-8", "-8")), Companion(At("0", "2", "0.45")),
+            Wolf("loup", At("6", "2", "0.6"), health: 100_000, behavior: new AssailantBehavior(Fixed.FromInt(20))) },
+            new[] { new CombatCommand(0, "bastion", CombatAction.Leave) }, durationMs: 2000));
+        GroundVector start = track.After("nyx", 1);
+        Assert.All(track["nyx"].Skip(1), p => Assert.Equal(start, p));
+    }
+
+    [Fact]
     public void Pilote_admet_les_ordres_d_un_personnage_et_d_un_compagnon_arrives_par_Join()
     {
         // Relecture indépendante de la PR #169 : les contrôles du pilote connaissent les arrivées (pas seulement les combattants du scénario).
