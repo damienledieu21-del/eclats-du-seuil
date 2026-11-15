@@ -764,7 +764,11 @@ public class V210MarchandsFetesTests
         SaveLoadResult refused = SaveJsonReader.Read(v15);
         Assert.Contains(refused.Report.Errors, e => e.Path.EndsWith(".stock", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownField);
         Assert.Contains(refused.Report.Errors, e => e.Path.EndsWith(".festivals", StringComparison.Ordinal) && e.Code == ValidationCode.UnknownField);
-        string plain = SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save().WithResume(null)).Replace($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", "\"schemaVersion\": 15");
+        // Sous-lot V2.28c : les Vallons couvrent toute la région, la sauvegarde garde le registre des secteurs (version 18), retiré ici.
+        var plainNode = System.Text.Json.Nodes.JsonNode.Parse(SaveJsonReader.Write(AtHerboriste(Hero(5), 1).Save().WithResume(null)))!;
+        plainNode["data"]!.AsObject().Remove("sectors");
+        plainNode["schemaVersion"] = 15;
+        string plain = plainNode.ToJsonString();
         SaveLoadResult old = SaveJsonReader.Read(plain);
         Assert.True(old.IsValid, old.Report.ToString());
         Assert.Empty(old.Save!.Character!.Stock);

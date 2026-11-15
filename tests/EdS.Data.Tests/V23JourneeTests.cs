@@ -171,7 +171,7 @@ public sealed class V23JourneeTests : IDisposable
         Refused(firmin + "[0].at", ValidationCode.MissingField, r => S(r, 0).Remove("at"));
         Refused(firmin + "[1].activity", ValidationCode.InvalidValue, r => S(r, 1)["activity"] = "Marché");
         Refused(firmin + "[1].activity", ValidationCode.UnknownReference, r => S(r, 1)["activity"] = "danse");   // pas de texte « text.activity.danse »
-        Refused(firmin + "[1].position", ValidationCode.OutOfRange, r => S(r, 1)["position"] = new JsonArray(-500, 0));
+        Refused(firmin + "[1].position", ValidationCode.OutOfRange, r => S(r, 1)["position"] = new JsonArray(-2300, 0));
         Refused(firmin + "[1].position", ValidationCode.InvalidValue, r => S(r, 1)["position"] = new JsonArray(-42, 10));   // dans la maison du fournil
         Refused(firmin + "[1].rain.position", ValidationCode.InvalidValue, r => S(r, 1)["rain"]!["position"] = new JsonArray(-69, 9));   // dans l'auberge
         Refused(firmin + "[1].rain.activity", ValidationCode.MissingField, r => S(r, 1)["rain"]!.AsObject().Remove("activity"));

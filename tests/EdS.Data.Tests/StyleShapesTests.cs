@@ -221,7 +221,7 @@ public class StyleShapesTests
         Assert.Contains("var min = new Vector3((float)shelter.X0, 3f, (float)shelter.Z0);", view, StringComparison.Ordinal);
         // Muret de pierres sèches à la place des haies, front de taille en rochers.
         Assert.Contains("StyleMesh wall = StyleShapes.DryStoneWall(x0, z0, x1, z1, id, tile);", view, StringComparison.Ordinal);
-        Assert.Contains("if (id.StartsWith(\"front_de_taille\") && QuarryFace(id, points)) return;", view, StringComparison.Ordinal);
+        Assert.Contains("if (StyleRules.RockFace(id) && QuarryFace(id, points)) return;", view, StringComparison.Ordinal);
         // Pont cintré : les personnages montent avec le tablier, et redescendent hors du pont.
         Assert.Contains("StyleWorld.Deck(x0, z0, x1, z1, BridgeRise);", view, StringComparison.Ordinal);
         Assert.Contains("StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);", view, StringComparison.Ordinal);

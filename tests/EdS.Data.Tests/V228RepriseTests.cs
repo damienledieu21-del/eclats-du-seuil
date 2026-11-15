@@ -643,7 +643,7 @@ public class V228RepriseTests : IDisposable
         Assert.Equal(((string?)null, (GroundVector?)null), WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression, null, null, rings: 0));
         // La règle seule : une place hors de l'aire à plus de 8 m n'a aucune place libre ; une place libre est rendue telle quelle.
         Fixed r = WorldSession.CharacterRadius;
-        Assert.Null(WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-120, 0), r));
+        Assert.Null(WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-1920, 0), r));   // V2.28c : hors de la région
         Assert.Equal(At(-58, -6), WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-58, -6), r));
         Assert.Throws<ArgumentNullException>(() => WorldSession.ResumeArrival(Save(calm, null), calm, null!));
         // La session n'accepte une place d'arrivée qu'autour de son point sûr (8 m), jamais avec une porte.

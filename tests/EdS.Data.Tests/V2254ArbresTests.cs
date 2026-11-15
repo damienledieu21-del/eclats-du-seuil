@@ -154,9 +154,11 @@ public class V2254ArbresTests : IDisposable
         // Autres bois (nord-est, sud-est) : bosquet de feuillus.
         SpaceObstacle se = map.Obstacles.Single(o => o.Id == "bois_se1");
         Assert.Contains(AtelierTrees.Spot(Center(se).X, Center(se).Z, TreeSource.Woods, map, map.Obstacles).Essence, AtelierTrees.Mix("bosquet"));
-        // Lisière au nord de la forêt des Loups (hors de l'aire) : essences de la forêt ; au sud des vergers : fruitiers.
-        Assert.Contains(AtelierTrees.Spot(-50, 108, TreeSource.Edge, map, map.Obstacles).Essence, AtelierTrees.Mix("foret"));
-        Assert.Contains(AtelierTrees.Spot(45, -78, TreeSource.Edge, map, map.Obstacles).Essence, AtelierTrees.Mix("verger"));
+        // Lisière au nord de la forêt des Loups : essences de la forêt ; au sud des vergers : fruitiers. Sous-lot V2.28c : le nord de la
+        // forêt est maintenant dans l'aire (toute la région) et hors du lieu, qui s'arrête en z = 100 (les lieux de la région viennent
+        // avec la troisième partie) ; l'arbre de lisière est pris au bord nord du lieu, et au bord sud de celui des vergers.
+        Assert.Contains(AtelierTrees.Spot(-50, 99, TreeSource.Edge, map, map.Obstacles).Essence, AtelierTrees.Mix("foret"));
+        Assert.Contains(AtelierTrees.Spot(45, -69, TreeSource.Edge, map, map.Obstacles).Essence, AtelierTrees.Mix("verger"));
         // Près du Seuil : corrompu, quelle que soit l'origine ; aucun arbre corrompu loin du Seuil.
         Assert.Equal(TreeEssence.Corrompu, AtelierTrees.Spot(62, 30, TreeSource.Obstacle, map, map.Obstacles).Essence);
         Assert.DoesNotContain(decor, s => s.Essence == TreeEssence.Corrompu && s.Source != TreeSource.Seuil);
