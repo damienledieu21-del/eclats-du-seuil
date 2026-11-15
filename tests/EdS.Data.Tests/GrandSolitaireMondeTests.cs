@@ -428,6 +428,77 @@ public class GrandSolitaireMondeTests
     }
 
     [Fact]
+    public void Revue_codex_2_forme_en_attente_d_arrivee_retiree_des_qu_elle_arrive()
+    {
+        (WorldSession w, WorldBossEvent e, long t) = Engaged();
+        string form = w.WorldBossForm("grand_solitaire")!;
+        Zone old = w.Zone;
+        Assert.False(old.Engine.View(form).IsPresent);   // l'arrivée est programmée au tick suivant
+        ZoneDefinition zone = Zone();
+        var other = new WorldSession(w.Save(), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        w.PassToForTest(other.Zone);
+        At(w, t + 1000);
+        Assert.Null(w.WorldBossForm("grand_solitaire"));
+        for (int k = 0; k < 4 && !old.Engine.View(form).HasLeft; k++) w.Step();
+        Assert.True(old.Engine.View(form).HasLeft);   // arrivée, puis partie : elle ne combat pas sans être suivie
+    }
+
+    [Fact]
+    public void Revue_codex_2_degats_recus_pendant_le_depart_comptes_avant_la_forme_suivante()
+    {
+        // Le personnage s'approche de la forme et la frappe (même conduite que l'essai du combat) ; partie déterministe : la même suite
+        // deux fois. La première dit au bout de combien de pas le premier coup porte.
+        static void Act(WorldSession w, string form, int k)
+        {
+            if (k % 10 != 0) return;
+            CombatantView hero = w.Zone.Engine.View(w.CombatantId), boss = w.Zone.Engine.View(form);
+            if (!boss.IsPresent) return;
+            long ms = w.Zone.Engine.CurrentTick * w.Zone.Engine.TickMilliseconds;
+            long dx = boss.Position!.Value.X.Raw - hero.Position!.Value.X.Raw, dz = boss.Position.Value.Z.Raw - hero.Position.Value.Z.Raw;
+            if (Planar.LengthSquared(dx, dz) > 4L * Fixed.One.Raw * 4L * Fixed.One.Raw)
+            {
+                Planar.TryNormalize(dx, dz, out long ax, out long az);
+                w.Zone.Engine.Submit(new CombatCommand(ms, w.CombatantId, GroundVector.FromRaw(ax, az)));
+            }
+            else
+            {
+                w.Zone.Engine.Submit(new CombatCommand(ms, w.CombatantId, CombatAction.Stop));
+                w.Zone.Engine.Submit(new CombatCommand(ms, w.CombatantId, "skill.bastion.frappe_du_rempart", form));
+            }
+        }
+        (WorldSession a, WorldBossEvent ea, long _) = Engaged();
+        string fa = a.WorldBossForm("grand_solitaire")!;
+        int hit = 0;
+        for (; hit < 1200 && ea.Health == ea.MaxHealth; hit++)
+        {
+            Act(a, fa, hit);
+            a.Step();
+        }
+        Assert.True(hit >= 3 && hit < 1200, $"coup au pas {hit}");
+        // Même partie : le changement de phase est décidé deux pas avant le coup ; l'ancienne forme part au tick du coup.
+        (WorldSession w, WorldBossEvent e, long _) = Engaged();
+        string form = w.WorldBossForm("grand_solitaire")!;
+        for (int k = 0; k < hit - 2; k++)
+        {
+            Act(w, form, k);
+            w.Step();
+        }
+        e.Damage(w.CombatantId, e.Health - e.MaxHealth * 69 / 100);
+        Act(w, form, hit - 2);
+        w.Step();   // départ soumis
+        long before = e.Health, formBefore = w.Zone.Engine.View(form).Health!.Value;
+        Act(w, form, hit - 1);
+        w.Step();   // le coup porte pendant le tick du départ ; la forme suivante est décidée après le relevé
+        long dealt = formBefore - w.Zone.Engine.View(form).Health!.Value;
+        Assert.True(dealt > 0, "la frappe n'a pas porté pendant le départ");
+        Assert.Equal(before - dealt, e.Health);
+        string? next = w.WorldBossForm("grand_solitaire");
+        Assert.Equal("grand_solitaire_blesse", next);
+        w.Step();
+        Assert.Equal(e.Health, w.Zone.Engine.View(next!).Health);
+    }
+
+    [Fact]
     public void Relecture_butin_du_jamais_ecrase_et_registre_plein()
     {
         // Victoire avec un butin d'une victoire d'avant encore dû : le règlement attend, le butin d'avant n'est pas perdu.

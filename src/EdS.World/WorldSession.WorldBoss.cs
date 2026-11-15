@@ -95,6 +95,33 @@ namespace EdS.World
         }
 
         private BossFormSlot?[] _worldBossForms = Array.Empty<BossFormSlot?>();
+
+        // Revue Codex de la PR #178 (2e tour) : formes oubliées dont l'arrivée était encore en attente (un départ ne se soumet qu'à un
+        // combattant présent) ; elles quittent leur session dès qu'elles y sont arrivées. Au plus une par entrée de forme (bornée).
+        private readonly List<(Zone Session, string Id)> _worldBossDoomed = new List<(Zone Session, string Id)>();
+
+        /// <summary>Retire la forme <paramref name="id"/> de <paramref name="session"/> : départ si elle est là, plus tard si son arrivée est en attente.</summary>
+        private void Dismiss(Zone session, string id)
+        {
+            if (session.IsOver) return;
+            CombatantView v = session.Engine.View(id);
+            if (v.IsPresent && !v.IsDead) session.Leave(id);
+            else if (!v.IsPresent && !v.IsDead && !v.HasLeft && _worldBossDoomed.Count < checked(MaxWorldBossJoins * 4)) _worldBossDoomed.Add((session, id));
+        }
+
+        /// <summary>Fait partir les formes oubliées arrivées depuis ; oublie celles dont la session est finie, mortes ou parties.</summary>
+        private void DismissDoomed()
+        {
+            for (int k = _worldBossDoomed.Count - 1; k >= 0; k--)
+            {
+                (Zone session, string id) = _worldBossDoomed[k];
+                if (session.IsOver) { _worldBossDoomed.RemoveAt(k); continue; }
+                CombatantView v = session.Engine.View(id);
+                if (v.IsDead || v.HasLeft) _worldBossDoomed.RemoveAt(k);
+                else if (v.IsPresent) { session.Leave(id); _worldBossDoomed.RemoveAt(k); }
+                else if (!(v.ArrivalTick is long due) || due < session.Engine.CurrentTick) _worldBossDoomed.RemoveAt(k);   // arrivée refusée : rien à retirer
+            }
+        }
         private bool[] _worldBossUnsaved = Array.Empty<bool>();
 
         /// <summary>
@@ -235,6 +262,7 @@ namespace EdS.World
                 _worldBossNotices = Array.Empty<WorldBossNotice>();
                 return;
             }
+            DismissDoomed();
             List<WorldBossNotice>? notices = null;
             IReadOnlyList<GroundVector>? players = null;
             for (int i = 0; i < _worldBosses.Bosses.Count; i++)
@@ -304,17 +332,17 @@ namespace EdS.World
                     // Session remplacée ou finie (passage, renouvellement) : il reprend sa marche d'où il était. Revue Codex de la PR #178 :
                     // l'ancien secteur peut rester ouvert et simulé (SectorWorld.Step) ; la forme le quitte avant d'être oubliée.
                     _worldBossForms[i] = null;
-                    if (f.Swap is null && !f.Session.IsOver)
-                    {
-                        CombatantView old = f.Session.Engine.View(f.Id);
-                        if (old.IsPresent && !old.IsDead) f.Session.Leave(f.Id);
-                    }
+                    if (f.Swap is null) Dismiss(f.Session, f.Id);
                     e.Disengage();
                     Add(ref notices, WorldBossNoticeKind.Disengaged, e);
                     return;
                 }
                 if (f.Swap is CombatantPlacement swap)
                 {
+                    // Revue Codex de la PR #178 (2e tour) : les dégâts reçus par l'ancienne forme pendant son départ comptent (un coup mortel
+                    // compris) avant de décider de la suivante.
+                    CombatantView gone = f.Session.Engine.View(f.Id);
+                    if (gone.Health is long last && last < f.Health && e.IsFightable) e.Damage(CombatantId, f.Health - last);
                     _worldBossForms[i] = null;
                     if (e.IsFightable && JoinForm(i, e, swap)) Add(ref notices, WorldBossNoticeKind.PhaseChanged, e);
                     else { e.Disengage(); Add(ref notices, WorldBossNoticeKind.Disengaged, e); }
@@ -400,11 +428,7 @@ namespace EdS.World
         {
             if (!(_worldBossForms[i] is BossFormSlot f)) return;
             _worldBossForms[i] = null;
-            if (f.Swap is null && ReferenceEquals(f.Session, Zone) && !f.Session.IsOver)
-            {
-                CombatantView v = f.Session.Engine.View(f.Id);
-                if (v.IsPresent && !v.IsDead) f.Session.Leave(f.Id);
-            }
+            if (f.Swap is null && ReferenceEquals(f.Session, Zone)) Dismiss(f.Session, f.Id);
             bool was = e.Engaged;
             e.Disengage();
             if (was || e.IsFightable) Add(ref notices, WorldBossNoticeKind.Disengaged, e);
