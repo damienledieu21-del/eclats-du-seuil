@@ -79,7 +79,7 @@ public sealed class V1910DejaRencontreTests
         w.Narrative!.Close();
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains("fact.met.renart", text, StringComparison.Ordinal);
-        Assert.Equal(21, SaveValidator.CurrentSchemaVersion);   // pêche et carnet : 21 ;   // compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal(22, SaveValidator.CurrentSchemaVersion);   // monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         WorldSave back = SaveJsonReader.Read(text).Save!;
 
         WorldSession again = Near("renart", back);

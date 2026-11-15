@@ -432,7 +432,7 @@ public class V195Chapitre5Tests
         Assert.All(Chapters1To4.Append(Main), q => Assert.True(w.Narrative!.IsDone(q), q));
         Assert.DoesNotContain(Story.Value.Quests.Where(q => q.Category == QuestCategory.Main), q => w.Narrative!.IsActive(q.Id));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
-        Assert.Equal(21, SaveValidator.CurrentSchemaVersion);   // pêche et carnet : 21 ;   // compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
+        Assert.Equal(22, SaveValidator.CurrentSchemaVersion);   // monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // la structure de la sauvegarde ne change pas
         Assert.Equal(new QuestProgress(QuestProgress.Done), saved.Character!.Story.Quests[Main]);
     }
 

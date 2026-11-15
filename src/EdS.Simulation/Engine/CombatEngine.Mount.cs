@@ -8,7 +8,7 @@ namespace EdS.Simulation.Engine
     /// positionné qui a une monture (<see cref="CharacterSetup.Mount"/>, le cheval à 13 m/s) monte en selle (<c>mount</c>) ou en descend
     /// (<c>dismount</c>). En selle, il se déplace à la vitesse de sa monture et n'a aucune action de combat (compétence, garde, parade,
     /// esquive, soin, attaque à deux avec un compagnon : refus <c>mounted</c> ; un ordre reste possible) ; il peut marcher, s'arrêter, sélectionner une cible et partir (passage d'un secteur à l'autre :
-    /// il arrive en selle, <see cref="CarriedState.Mounted"/>). Être frappé ne le fait pas descendre (choix de Claude, question posée à Damien).
+    /// il arrive en selle, <see cref="CarriedState.Mounted"/>). Être frappé ne le fait pas descendre (retenu par Damien le 15 novembre 2026).
     /// Refus atomiques pour monter, dans cet ordre : <c>actorDead</c>/<c>actorAbsent</c>, <c>actorCannotMount</c> (pas de monture, ou combat
     /// sans espace), <c>alreadyMounted</c>, contrôle qui bloque le déplacement (raison du contrôle), <c>guardActive</c>, <c>dodgeActive</c>
     /// (bond en cours), <c>parryActive</c>, <c>parryRecovery</c>, <c>duoInProgress</c> (attaque à deux avec un compagnon en cours), <c>enemyNear</c> (un combattant vivant et présent d'une autre équipe à moins de

@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 21
+      "const": 22
     },
     "kind": {
       "const": "save"
@@ -600,6 +600,12 @@
                     "maxLength": 64
                   },
                   "maxProperties": 64
+                },
+                "mount": {
+                  "enum": [
+                    "mount.cheval"
+                  ],
+                  "description": "Sous-lot V2.28d (2b) (version 22) : monture du personnage (le cheval des Vallons, donné à la fin du chapitre 1) ; absente sans monture. Être en selle n'est pas gardé."
                 },
                 "money": {
                   "type": "integer",
