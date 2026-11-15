@@ -470,6 +470,26 @@ public class CompagnonsMoteurTests
     }
 
     [Fact]
+    public void Coup_de_l_Eveille_avant_l_arrivee_du_compagnon_instantane_restaurable()
+    {
+        // Revue Codex de la PR #169 (4e tour) : le compagnon arrive à 1 s ; l'Éveillé frappe avant ; l'instantané pris avant l'arrivée se restaure.
+        AssailantSetup c = Companion(At("0", "1.2", "0.45"));
+        var late = new AssailantSetup(c.Id, c.Team, c.Armor, c.MagicResistance, null, c.FirstAttackMs, c.IntervalMs, c.Attacks, health: c.Health,
+            placement: c.Placement, arrivalMs: 1000, behavior: c.Behavior, companion: c.Companion);
+        CombatSetup setup = Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), late, Wolf("loup", At("1.2", "0", "0.6"), health: 100_000) },
+            new[] { Cmd(0, Gratuite, target: "loup") }, durationMs: 3000);
+        var log = new MemoryCombatLog();
+        var engine = new CombatEngine(setup, log);
+        while (engine.CurrentTick < 5) engine.Step();
+        CombatSnapshot snapshot = engine.Snapshot();
+        var resumedLog = new MemoryCombatLog();
+        CombatEngine resumed = CombatEngine.RestoreVerified(engine.CompletedSetup(), snapshot, resumedLog);
+        while (resumed.Step()) { }
+        while (engine.Step()) { }
+        Assert.Equal(log.Lines.Skip(log.Lines.Count - resumedLog.Lines.Count + 1), resumedLog.Lines.Skip(1));
+    }
+
+    [Fact]
     public void Sans_compagnon_rien_ne_change_dans_l_instantane()
     {
         var engine = new CombatEngine(Fight(new CombatantSetup[] { Player("bastion", At("0", "0")), Wolf("loup", At("5", "0")) }), new MemoryCombatLog());
