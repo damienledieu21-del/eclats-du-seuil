@@ -390,7 +390,7 @@ namespace EdS.World
         /// </summary>
         public InventoryRefusal RemoveSigned(string item, string signer, ItemQuality quality)
         {
-            if (Available(item) < 1) return InventoryRefusal.NotEnough;
+            // Relecture indépendante de la PR #186 : une pâtisserie marquée n'est jamais réservée (seules les copies de base partent au combat).
             for (int i = _stacks.Count - 1; i >= 0; i--)
                 if (_stacks[i].Item == item && _stacks[i].SignedBy == signer && _stacks[i].Quality == quality)
                     return RemoveAt(i, 1, out _);
@@ -404,13 +404,29 @@ namespace EdS.World
         public int Reserved(string item) => item != null && _reserved.TryGetValue(item, out int n) ? n : 0;
 
         /// <summary>Quantité que <see cref="Remove"/> peut prendre (hors réserve).</summary>
-        public int Available(string item) => Count(item) - Reserved(item);
+        /// <remarks>Relecture indépendante de la PR #186 : une pâtisserie de sa main (marquée) ne compte pas : elle ne part que présentée
+        /// (<see cref="RemoveSigned"/>) ou par sa place (<see cref="RemoveAt(int, out ItemStack?)"/>), jamais à la place d'une copie de base.</remarks>
+        public int Available(string item) => Count(item) - Reserved(item) - _stacks.Where(s => s.Item == item && Kept(s)).Sum(s => s.Count);
+
+        /// <summary>Pâtisserie de concours marquée de son pâtissier : elle ne part jamais par un retrait par identifiant.</summary>
+        private bool Kept(ItemStack s) => s.SignedBy != null && _catalog.TryGetItem(s.Item, out ItemDefinition d) && _catalog.SignsAlways(d);
+
+        /// <summary>
+        /// Relecture indépendante de la PR #186 : copies de base (sans propriété, qualité, marque ni usure) de <paramref name="item"/> que
+        /// <see cref="Remove"/> peut prendre : la réserve ne porte que sur elles (une pâtisserie marquée ne part pas au combat).
+        /// </summary>
+        public int BaseAvailable(string item) => Math.Max(0, _stacks.Where(s => s.Item == item && !s.IsUnique).Sum(s => s.Count) - Reserved(item));
+
+        /// <summary>Relecture indépendante de la PR #186 : objets de la place <paramref name="place"/> que l'on peut retirer (hors réserve).</summary>
+        public int AvailableAt(int place) =>
+            place < 0 || place >= _stacks.Count ? 0 : _stacks[place].IsUnique ? _stacks[place].Count : Math.Min(_stacks[place].Count, BaseAvailable(_stacks[place].Item));
 
         /// <summary>Réserve <paramref name="count"/> <paramref name="item"/> déjà dans l'inventaire et non réservés.</summary>
         /// <exception cref="ArgumentException">Quantité non positive ou absente (hors réserve).</exception>
         internal void Reserve(string item, int count)
         {
-            if (count < 1 || Available(item) < count) throw new ArgumentException($"Réserve de {count} « {item} » impossible.", nameof(count));
+            // Relecture indépendante de la PR #186 : la réserve ne porte que sur les copies de base.
+            if (count < 1 || BaseAvailable(item) < count) throw new ArgumentException($"Réserve de {count} « {item} » impossible.", nameof(count));
             _reserved[item] = checked(Reserved(item) + count);
         }
 
@@ -422,7 +438,7 @@ namespace EdS.World
             if (count < 1 || count > reserved) throw new ArgumentException($"{count} « {item} » à user, {reserved} réservés.", nameof(count));
             if (count == reserved) _reserved.Remove(item);
             else _reserved[item] = reserved - count;
-            Take(item, count);
+            Take(item, count, int.MaxValue);   // des copies de base : la réserve ne porte que sur elles
         }
 
         /// <summary>Peut-on ranger <paramref name="count"/> <paramref name="item"/> en entier ?</summary>
@@ -488,7 +504,7 @@ namespace EdS.World
         {
             removed = Array.Empty<ItemStack>();
             if (count < 1 || Available(item) < count) return InventoryRefusal.NotEnough;
-            removed = Take(item, count);
+            removed = Take(item, count, BaseAvailable(item));
             return InventoryRefusal.None;
         }
 
@@ -514,7 +530,7 @@ namespace EdS.World
             removed = null;
             if (place < 0 || place >= _stacks.Count) return InventoryRefusal.NothingThere;
             ItemStack stack = _stacks[place];
-            if (count < 1 || count > stack.Count || Available(stack.Item) < count) return InventoryRefusal.NotEnough;
+            if (count < 1 || count > stack.Count || AvailableAt(place) < count) return InventoryRefusal.NotEnough;
             if (count == stack.Count) _stacks.RemoveAt(place);
             else _stacks[place] = stack.WithCount(stack.Count - count);
             removed = count == stack.Count ? stack : stack.WithCount(count);   // la pile entière : la même instance (suivi par identité)
@@ -523,15 +539,17 @@ namespace EdS.World
 
         // Relecture de la PR #78 : deux passes, des dernières places vers les premières : les copies de base d'abord, puis seulement s'il en
         // manque les instances aux propriétés tirées (une instance tirée ne part jamais quand les copies de base suffisent).
-        private IReadOnlyList<ItemStack> Take(string item, int count)
+        // Relecture indépendante de la PR #186 : au plus baseLimit copies de base (celles hors de la réserve), puis les instances uniques.
+        private IReadOnlyList<ItemStack> Take(string item, int count, int baseLimit)
         {
             var removed = new List<ItemStack>();
             int left = count;
             foreach (bool rolled in new[] { false, true })
-                for (int i = _stacks.Count - 1; i >= 0 && left > 0; i--)
-                    if (_stacks[i].Item == item && _stacks[i].IsUnique == rolled)
+                for (int i = _stacks.Count - 1; i >= 0 && left > 0 && (rolled || baseLimit > 0); i--)
+                    if (_stacks[i].Item == item && _stacks[i].IsUnique == rolled && !Kept(_stacks[i]))
                     {
-                        int take = Math.Min(left, _stacks[i].Count);
+                        int take = Math.Min(rolled ? left : Math.Min(left, baseLimit), _stacks[i].Count);
+                        if (!rolled) baseLimit -= take;
                         removed.Add(take == _stacks[i].Count ? _stacks[i] : _stacks[i].WithCount(take));   // pile entière : même instance
                         if (take == _stacks[i].Count) _stacks.RemoveAt(i);
                         else _stacks[i] = _stacks[i].WithCount(_stacks[i].Count - take);

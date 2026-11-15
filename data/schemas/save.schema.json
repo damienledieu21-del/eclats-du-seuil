@@ -330,6 +330,11 @@
                             "required": [
                               "wear"
                             ]
+                          },
+                          {
+                            "required": [
+                              "signedBy"
+                            ]
                           }
                         ]
                       }

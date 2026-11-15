@@ -835,6 +835,16 @@ namespace EdS.Data.Story
                                             $"pâtisserie « {effects[e].Id} » présentée : la réponse doit demander « hasSigned » du même objet et de la même qualité.");
                                         chOk = false;
                                     }
+                            // Relecture indépendante de la PR #186 : on ne présente qu'au concours d'une fête, qui se referme : sans cela, la
+                            // réponse se rejouerait à volonté (et ses prix avec).
+                            if (effects != null && conditions != null && effects.Any(x => x.Kind == EffectKind.Present)
+                                && !effects.Any(x => x.Kind == EffectKind.Contest && conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.Id == x.Id)))
+                            {
+                                int e = effects.FindIndex(x => x.Kind == EffectKind.Present);
+                                _r.Add($"{cp}.effects[{e}].do", ValidationCode.InvalidValue,
+                                    "effet « present » : la réponse doit aussi concourir (« contest ») à une fête dont elle demande « contestOpen ».");
+                                chOk = false;
+                            }
                             if (!ch.HasNext) { TextsValidator.Missing(_r, cp + ".next", "nœud suivant, ou null pour finir"); chOk = false; }
                             else if (ch.Next != null && !nodeIds.Contains(ch.Next)) { _r.Add(cp + ".next", ValidationCode.UnknownReference, $"nœud inconnu « {ch.Next} »."); chOk = false; }
                             if (chOk && conditions != null && effects != null) choices.Add(new DialogueChoice(ch.Text!, conditions, effects, ch.Next));

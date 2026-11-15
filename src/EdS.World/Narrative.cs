@@ -181,6 +181,12 @@ namespace EdS.World
         /// (<see cref="ReputationRules.Shun"/> : la garde).
         /// </summary>
         Shunned = 8,
+
+        /// <summary>
+        /// Concours de pâtisserie (relecture indépendante de la PR #186) : la pâtisserie de sa main à présenter (objet et qualité exacte)
+        /// n'est plus dans le sac : rien n'a changé.
+        /// </summary>
+        NothingToPresent = 9,
     }
 
     /// <summary>
@@ -1438,7 +1444,7 @@ namespace EdS.World
                 if (e.Kind == EffectKind.TakeItem && trial.Remove(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
                 // Concours de pâtisserie : la pâtisserie présentée est celle de sa main, de la qualité exacte (tout ou rien, comme un retrait).
                 if (e.Kind == EffectKind.Present
-                    && (!(_world.CharacterId is string me) || trial.RemoveSigned(e.Id, me, e.Quality!.Value) != InventoryRefusal.None)) return DialogueRefusal.NoRoom;
+                    && (!(_world.CharacterId is string me) || trial.RemoveSigned(e.Id, me, e.Quality!.Value) != InventoryRefusal.None)) return DialogueRefusal.NothingToPresent;
                 if (e.Kind == EffectKind.GiveItem && trial.Add(e.Id, (int)e.Value) != InventoryRefusal.None) return DialogueRefusal.NoRoom;
             }
             _world.Inventory.CopyFrom(trial);

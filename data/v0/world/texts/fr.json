@@ -1977,7 +1977,9 @@
       "text.v215.boulanger.tarte": "[Concours] Présenter ta tarte renversée aux pommes.",
       "text.v215.boulanger.couronne.choisir": "Une couronne ! Le plus beau pain de la fête, et le plus traître : trop de beurre, elle s'effondre ; pas assez, elle sèche. Laquelle tu me montres ?",
       "text.v215.boulanger.tarte.choisir": "La tarte renversée. Tout se joue au moment de la retourner : on ne triche pas avec un caramel. Laquelle tu me montres ?",
-      "text.v215.boulanger.retour": "Finalement, pas celle-là."
+      "text.v215.boulanger.retour": "Finalement, pas celle-là.",
+      "text.ui.item_presented": "Présenté : {0}",
+      "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main."
     }
   }
 }

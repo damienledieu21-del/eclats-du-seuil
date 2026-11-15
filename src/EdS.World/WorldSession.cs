@@ -1608,7 +1608,9 @@ namespace EdS.World
 
         /// <summary>Relecture de la PR #94 : il reste un objet de soin à boire (emporté et pas bu, ou dans le sac pour la session suivante).</summary>
         private bool HasHealing() =>
-            _carried.Values.Any(n => n > 0) || Inventory.Stacks.Any(s => _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
+            _carried.Values.Any(n => n > 0)
+            // Relecture indépendante de la PR #186 : une pâtisserie marquée ne se boit pas au combat : elle ne compte pas.
+            || Inventory.Stacks.Any(s => s.SignedBy == null && _items.Item(s.Item) is { Type: ItemType.Consumable } i && i.Heal > 0);
 
         /// <summary>Sous-lot V1.9.6 : scène à jouer (voir <see cref="Scene"/>), ou null.</summary>
         public Scene? PendingScene => Narrative?.PendingScene;

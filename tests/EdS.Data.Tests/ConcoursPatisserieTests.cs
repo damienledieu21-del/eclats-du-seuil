@@ -303,4 +303,75 @@ public class ConcoursPatisserieTests
         Assert.Contains(old.Report.Errors, e => e.Path == path + ".conditions[1].if");
         Assert.Contains(old.Report.Errors, e => e.Path == path + ".effects[0].do");
     }
+
+    // --- Relecture indépendante de la PR #186 ----------------------------------------------------------------------------------------
+
+    [Fact]
+    public void La_patisserie_marquee_ne_part_pas_au_combat_et_ne_part_jamais_a_la_place_d_une_copie_de_base()
+    {
+        // Trois couronnes achetées (emportées au combat) et une de sa main : seules les trois achetées sont réservées.
+        WorldSession w = AtFestival(Baker(new ItemStack(Couronne, 3), Signed(Couronne, ItemQuality.Masterwork)));
+        Inventory bag = w.Inventory;
+        int basePlace = bag.Stacks.ToList().FindIndex(s => s.Item == Couronne && s.SignedBy is null);
+        int signedPlace = bag.Stacks.ToList().FindIndex(s => s.Item == Couronne && s.SignedBy == Me);
+        Assert.Equal((3, 0, 0), (bag.Reserved(Couronne), bag.Available(Couronne), bag.BaseAvailable(Couronne)));
+        // Ni la vente d'une copie de base réservée, ni un retrait par identifiant (qui prendrait la pâtisserie marquée) : refusés, rien ne change.
+        Assert.Equal((0, 1), (bag.AvailableAt(basePlace), bag.AvailableAt(signedPlace)));
+        Assert.Equal(InventoryRefusal.NotEnough, bag.RemoveAt(basePlace, 1, out _));
+        Assert.Equal(InventoryRefusal.NotEnough, bag.Remove(Couronne, 1));
+        Assert.Equal((4, 1), (bag.Count(Couronne), bag.CountSigned(Couronne, Me, ItemQuality.Masterwork)));
+        // Seule une pâtisserie de sa main dans le sac : rien n'est emporté au combat.
+        Assert.Equal(0, AtFestival(Baker(Signed(Tarte, ItemQuality.Normal))).Inventory.Reserved(Tarte));
+        // Présenter une pâtisserie absente : refusé sans rien changer (le validateur l'empêche dans les données : réponse gardée par hasSigned).
+        Assert.Equal(InventoryRefusal.NotEnough, bag.RemoveSigned(Couronne, Me, ItemQuality.Superior));
+        Assert.Equal(4, bag.Count(Couronne));
+    }
+
+    [Fact]
+    public void Un_seul_concours_de_Firmin_par_fete_tourte_ou_patisserie()
+    {
+        WorldSession w = AtFestival(Baker(Signed(Tarte, ItemQuality.Normal), new ItemStack("item.herbe_de_l_aube", 8)));
+        Present(w, "tarte", "normal", out _);
+        DialogueView after = Talk(w);
+        Assert.Equal("v210_moissons", after.Node);
+        Assert.DoesNotContain(after.Options, o => o.Text == "text.v210.boulanger.tourte");
+        Assert.Equal(80L, w.Money);
+    }
+
+    [Fact]
+    public void Present_refuse_hors_d_un_concours()
+    {
+        var (root, path, choice) = FirstPastryChoice();
+        JsonArray effects = choice["effects"]!.AsArray();
+        effects.Remove(effects.Single(e => (string?)e!["do"] == "contest"));
+        Assert.Contains(ReadStory(root).Report.Errors, e => e.Path == path + ".effects[0].do" && e.Message.Contains("contest", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Sauvegarde_v21_relue_puis_reecrite_en_version_courante()
+    {
+        WorldSession w = Oven(Signed(Couronne, ItemQuality.Masterwork), new ItemStack(Couronne, 2));
+        JsonObject root = JsonNode.Parse(SaveJsonReader.Write(w.Save()))!.AsObject();
+        root["schemaVersion"] = 21;   // un chef-d'œuvre signé se lisait déjà en version 21
+        SaveLoadResult old = SaveJsonReader.Read(root.ToJsonString());
+        Assert.True(old.IsValid, old.Report.ToString());
+        Assert.True(old.Save!.Migrated);
+        string rewritten = SaveJsonReader.Write(old.Save);
+        Assert.Contains($"\"schemaVersion\": {SaveValidator.CurrentSchemaVersion}", rewritten);
+        Assert.Equal(new[] { (ItemQuality.Masterwork, (string?)Me, 1), (ItemQuality.Normal, null, 2) },
+            SaveJsonReader.Read(rewritten).Save!.Character!.Inventory.Where(s => s.Item == Couronne).Select(s => (s.Quality, s.SignedBy, s.Count)));
+    }
+
+    [Fact]
+    public void Settle_retire_la_marque_quand_la_patisserie_n_en_prend_plus()
+    {
+        ItemCatalog without = MutatedItems(r => ItemNode(r, Tarte).Remove("craftQuality")).Catalog!;
+        ItemStack normal = without.Settle(Signed(Tarte, ItemQuality.Normal), out IReadOnlyList<string> n);
+        ItemStack superior = without.Settle(Signed(Tarte, ItemQuality.Superior), out IReadOnlyList<string> s);
+        Assert.Equal((ItemQuality.Normal, (string?)null, false), (normal.Quality, normal.SignedBy, normal.IsUnique));
+        Assert.Equal((ItemQuality.Normal, (string?)null, false), (superior.Quality, superior.SignedBy, superior.IsUnique));
+        Assert.Single(n);
+        Assert.Single(s);
+        Assert.Null(without.CheckInstance(normal));
+    }
 }
