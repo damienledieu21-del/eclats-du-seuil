@@ -28,6 +28,10 @@ public class CompagnonsProgressionTests
 
     private static readonly RecruitContext Story = new(true, null, 0, 7);
 
+    /// <summary>Histoire sauvegardée où la quête de lien au feu de camp est finie.</summary>
+    internal static readonly SavedStory QuestDone = new(quests: new Dictionary<string, QuestProgress>
+        { ["quest.vallons.lien_au_feu"] = new QuestProgress(QuestProgress.Done) });
+
     private static SavedCompanions With(params string[] ids)
     {
         SavedCompanions roster = SavedCompanions.Empty;
@@ -87,7 +91,7 @@ public class CompagnonsProgressionTests
             CompanionRules.Recruit(Catalog, roster, "companion.nyx", Story),
             CompanionRules.Dismiss(Catalog, roster, "companion.nyx"),
             CompanionRules.SetActive(roster, new[] { "companion.nyx", "companion.cendre" }),
-            CompanionRules.OpenSecondSlot(Catalog, roster, 30, bondQuestDone: false),
+            CompanionRules.OpenSecondSlot(Catalog, roster, 30, SavedStory.Empty),
             CompanionRules.React(roster, "companion.cendre", 5),
         })
         {
@@ -104,12 +108,12 @@ public class CompagnonsProgressionTests
     {
         SavedCompanions roster = With("companion.nyx", "companion.cendre");
         Assert.Equal("noFreeSlot", CompanionRules.SetActive(roster, new[] { "companion.nyx", "companion.cendre" }).Reason);
-        Assert.Equal("bondQuestNotDone", CompanionRules.OpenSecondSlot(Catalog, roster, 30, false).Reason);
-        Assert.Equal("levelTooLow", CompanionRules.OpenSecondSlot(Catalog, roster, 11, true).Reason);
-        RosterResult open = CompanionRules.OpenSecondSlot(Catalog, roster, 12, true);
+        Assert.Equal("bondQuestNotDone", CompanionRules.OpenSecondSlot(Catalog, roster, 30, SavedStory.Empty).Reason);
+        Assert.Equal("levelTooLow", CompanionRules.OpenSecondSlot(Catalog, roster, 11, QuestDone).Reason);
+        RosterResult open = CompanionRules.OpenSecondSlot(Catalog, roster, 12, QuestDone);
         Assert.True(open.Accepted);
         Assert.Equal(2, open.Roster.Slots);
-        Assert.Equal("allSlotsOpen", CompanionRules.OpenSecondSlot(Catalog, open.Roster, 12, true).Reason);
+        Assert.Equal("allSlotsOpen", CompanionRules.OpenSecondSlot(Catalog, open.Roster, 12, QuestDone).Reason);
         SavedCompanions two = CompanionRules.SetActive(open.Roster, new[] { "companion.cendre", "companion.nyx" }).Roster;
         Assert.Equal(new[] { "companion.cendre", "companion.nyx" }, two.Active);
         Assert.Equal("duplicate", CompanionRules.SetActive(two, new[] { "companion.nyx", "companion.nyx" }).Reason);
@@ -143,9 +147,9 @@ public class CompagnonsProgressionTests
         var log = new MemoryCombatLog();
         CombatResult result = CombatEngine.Run(Fight(new[] { cub }), log);
         CombatantResult cendre = result.Combatants.Single(c => c.Id == "cendre");
-        var engineOutcome = (Id: "companion.cendre", Bond: 30, Fallen: cendre.DeathTick != null);
-        SavedCompanions after = CompanionRules.AfterCombat(roster, new[] { engineOutcome });
-        Assert.Equal(engineOutcome.Fallen, after.Find("companion.cendre")!.Down);
+        Assert.NotNull(cendre.DeathTick);   // il tombe
+        SavedCompanions after = CompanionRules.AfterCombat(roster, new[] { ("companion.cendre", 30, cendre.DeathTick != null) });
+        Assert.True(after.Find("companion.cendre")!.Down);
         Assert.Single(after.Recruited);   // jamais retiré : hors combat, pas mort
         SavedCompanions down = CompanionRules.AfterCombat(roster, new[] { ("companion.cendre", 30, true) });
         Assert.Empty(CompanionRules.Fighters(Catalog, down, false));   // hors combat : il ne se bat pas avant la halte
@@ -185,7 +189,7 @@ public class CompagnonsProgressionTests
                 0 => CompanionRules.Recruit(Catalog, roster, id, new RecruitContext(random.Next(2) == 0, "c", random.Next(300), (ulong)step)),
                 1 => CompanionRules.Dismiss(Catalog, roster, id),
                 2 => CompanionRules.SetActive(roster, ids.Where(_ => random.Next(3) == 0).ToArray()),
-                3 => CompanionRules.OpenSecondSlot(Catalog, roster, random.Next(1, 30), random.Next(2) == 0),
+                3 => CompanionRules.OpenSecondSlot(Catalog, roster, random.Next(1, 30), random.Next(2) == 0 ? QuestDone : SavedStory.Empty),
                 4 => CompanionRules.React(roster, id, random.Next(-50, 51)),
                 5 => RosterResult.Ok(CompanionRules.AfterCombat(roster, new[] { (id, random.Next(-10, 200), random.Next(2) == 0) })),
                 6 => RosterResult.Ok(CompanionRules.Camp(Catalog, roster)),
@@ -234,6 +238,38 @@ public class CompagnonsProgressionTests
         Assert.Contains(refused.Report.Errors, e => e.Path == "$.data.character.companions");
     }
 
+    [Fact]
+    public void Chargement_deuxieme_place_et_traits_controles_avec_le_catalogue_et_la_partie()
+    {
+        // Relecture indépendante de la PR #172 : une sauvegarde à deux places sans quête ni niveau, ou aux traits incohérents, est relevée.
+        SavedCompanions two = With("companion.nyx", "companion.aveline").WithSecond();
+        Assert.Empty(CompanionRules.Check(Catalog, two, QuestDone, 12));
+        Assert.Contains(CompanionRules.Check(Catalog, two, SavedStory.Empty, 12), p => p.Contains("quest.vallons.lien_au_feu"));
+        Assert.Contains(CompanionRules.Check(Catalog, two, QuestDone, 11), p => p.Contains("niveau 11"));
+        Assert.Empty(CompanionRules.Check(Catalog, SavedCompanions.Empty, SavedStory.Empty, 1));
+        // Fichier retouché : deux places, un héros avec un trait, un mercenaire sans trait, un trait inconnu.
+        string text = Saved(two);
+        SavedCompanions read(string t) => SaveJsonReader.Read(t).Save!.Character!.Companions;
+        string trait = two.Find("companion.aveline")!.Trait!;
+        Assert.Contains(CompanionRules.Check(Catalog, read(text.Replace("\"id\": \"companion.nyx\", \"bond\": 0, \"approval\": 0, \"trait\": null",
+            "\"id\": \"companion.nyx\", \"bond\": 0, \"approval\": 0, \"trait\": \"courageux\"")), QuestDone, 12), p => p.Contains("trait en trop"));
+        Assert.Contains(CompanionRules.Check(Catalog, read(text.Replace($"\"trait\": \"{trait}\"", "\"trait\": null")), QuestDone, 12), p => p.Contains("trait manquant"));
+        Assert.Contains(CompanionRules.Check(Catalog, read(text.Replace($"\"trait\": \"{trait}\"", "\"trait\": \"distrait\"")), QuestDone, 12), p => p.Contains("trait inconnu"));
+        Assert.Contains(CompanionRules.Check(Catalog, read(text), SavedStory.Empty, 30), p => p.Contains("deuxième place"));
+    }
+
+    [Fact]
+    public void Migration_depuis_la_version_15_sans_compagnon()
+    {
+        // Une sauvegarde de version 15 (réputation, sans stock, aspect, secteurs, reprise ni compagnons) se lit et se met à jour.
+        string v15 = Saved(SavedCompanions.Empty).Replace("\"schemaVersion\": 20", "\"schemaVersion\": 15");
+        SaveLoadResult old = SaveJsonReader.Read(v15);
+        Assert.True(old.IsValid, old.Report.ToString());
+        Assert.True(old.Save!.Migrated);
+        Assert.True(old.Save.Character!.Companions.IsEmpty);
+        Assert.Contains("\"schemaVersion\": 20", SaveJsonReader.Write(old.Save));
+    }
+
     [Theory]
     [InlineData("\"slots\": 2", "\"slots\": 3", "$.data.character.companions.slots")]
     [InlineData("\"bond\": 55", "\"bond\": 101", "$.data.character.companions.recruited[1].bond")]
@@ -260,5 +296,6 @@ internal static class CompagnonsTestRoster
 {
     /// <summary>Ouvre la deuxième place (quête finie, niveau 12).</summary>
     public static SavedCompanions WithSecond(this SavedCompanions roster) =>
-        CompanionRules.OpenSecondSlot(CompanionJsonReader.Read(CompagnonsCatalogueTests.Catalogue).Catalog!, roster, 12, true).Roster;
+        CompanionRules.OpenSecondSlot(CompanionJsonReader.Read(CompagnonsCatalogueTests.Catalogue).Catalog!, roster, 12, CompagnonsProgressionTests.QuestDone) is
+            { Accepted: true } open ? open.Roster : throw new InvalidOperationException("deuxième place refusée");
 }

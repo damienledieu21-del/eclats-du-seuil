@@ -90,6 +90,27 @@ namespace EdS.Data.Allies
             return problems;
         }
 
+        /// <summary>
+        /// Relecture indépendante de la PR #172 : accord complet d'une troupe relue avec le catalogue et la partie, à faire au chargement :
+        /// celui de <see cref="Check(CompanionCatalog, SavedCompanions)"/>, plus la deuxième place, qui n'existe que si la quête de lien est
+        /// finie dans l'histoire sauvegardée et que le personnage a le niveau minimum doux.
+        /// </summary>
+        public static IReadOnlyList<string> Check(CompanionCatalog catalog, SavedCompanions roster, SavedStory story, int characterLevel)
+        {
+            if (story is null) throw new ArgumentNullException(nameof(story));
+            var problems = new List<string>(Check(catalog, roster));
+            if (roster.Slots > catalog.Slots.Initial)
+            {
+                if (!BondQuestDone(catalog, story)) problems.Add($"deuxième place ouverte sans la quête « {catalog.Slots.SecondSlotQuest} » finie.");
+                if (characterLevel < catalog.Slots.SecondSlotLevel) problems.Add($"deuxième place ouverte au niveau {characterLevel}, avant le niveau {catalog.Slots.SecondSlotLevel}.");
+            }
+            return problems;
+        }
+
+        /// <summary>La quête de lien au feu de camp du catalogue est-elle finie dans l'histoire sauvegardée ?</summary>
+        public static bool BondQuestDone(CompanionCatalog catalog, SavedStory story) =>
+            story.Quests.TryGetValue(catalog.Slots.SecondSlotQuest, out QuestProgress progress) && progress.IsDone;
+
         /// <summary>Niveau d'un compagnon : celui du personnage, borné à [1, <see cref="CompanionCombat.MaxLevel"/>].</summary>
         public static int LevelOf(int characterLevel) => Math.Max(1, Math.Min(CompanionCombat.MaxLevel, characterLevel));
 
@@ -151,15 +172,17 @@ namespace EdS.Data.Allies
         }
 
         /// <summary>
-        /// Ouvrir la deuxième place (décision de Damien du 14 novembre 2026, 23 h 43) : la quête de lien au feu de camp est finie et le
-        /// personnage a au moins le niveau minimum doux du catalogue.
+        /// Ouvrir la deuxième place (décision de Damien du 14 novembre 2026, 23 h 43) : la quête de lien au feu de camp est finie dans l'histoire
+        /// sauvegardée (relecture indépendante de la PR #172 : lue, pas affirmée par l'appelant) et le personnage a au moins le niveau minimum
+        /// doux du catalogue.
         /// </summary>
-        public static RosterResult OpenSecondSlot(CompanionCatalog catalog, SavedCompanions roster, int characterLevel, bool bondQuestDone)
+        public static RosterResult OpenSecondSlot(CompanionCatalog catalog, SavedCompanions roster, int characterLevel, SavedStory story)
         {
             if (catalog is null) throw new ArgumentNullException(nameof(catalog));
             if (roster is null) throw new ArgumentNullException(nameof(roster));
+            if (story is null) throw new ArgumentNullException(nameof(story));
             if (roster.Slots >= catalog.Slots.Max) return RosterResult.Refused("allSlotsOpen", roster);
-            if (!bondQuestDone) return RosterResult.Refused("bondQuestNotDone", roster);
+            if (!BondQuestDone(catalog, story)) return RosterResult.Refused("bondQuestNotDone", roster);
             if (characterLevel < catalog.Slots.SecondSlotLevel) return RosterResult.Refused("levelTooLow", roster);
             return RosterResult.Ok(new SavedCompanions(roster.Slots + 1, roster.Recruited, roster.Active));
         }
