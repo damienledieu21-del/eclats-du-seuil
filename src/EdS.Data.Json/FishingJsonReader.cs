@@ -67,6 +67,7 @@ namespace EdS.Data.Json
                             ["phases"] = (v2, p2) => f.Phases = Texts(v2, p2, 4),
                         }) ? f : null;
                     }),
+                    ["baits"] = (v, p) => d.Baits = Texts(v, p, FishingValidator.MaxBaits),   // décision de Damien du 15 novembre 2026
                 });
                 document.Data = ok ? d : null;
             });

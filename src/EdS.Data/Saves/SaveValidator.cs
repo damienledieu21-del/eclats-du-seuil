@@ -1118,7 +1118,8 @@ namespace EdS.Data.Saves
         /// <summary>
         /// Pêche et carnet (version 21) : lancers de 0 à <see cref="SavedFishing.MaxCasts"/> ; carnet d'au plus <see cref="SavedFishing.MaxLog"/>
         /// espèces distinctes, chacune un objet (« item.… »), de 1 à <see cref="SavedFishing.MaxCount"/> prises, plus grande de 1 à
-        /// <see cref="SavedFishing.MaxCm"/> cm. L'accord des espèces avec le catalogue est vu au chargement de la partie.
+        /// <see cref="SavedFishing.MaxCm"/> cm. Relecture indépendante de la PR #181 : l'accord des espèces avec le catalogue n'est pas exigé
+        /// (une espèce retirée des données reste au carnet, affichée par son identifiant ; elle ne se pêche plus).
         /// </summary>
         private static void CheckFishing(SavedFishingData x, string path, ValidationReport report)
         {

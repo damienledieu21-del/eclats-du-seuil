@@ -97,16 +97,16 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(AdventureSession.PlayerId, a.Combat.PlayerId);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.gaspard", "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.boulanger", "npc.archer_garde", "npc.renart", "npc.lison", "npc.apprentie", "npc.doyen", "npc.herboriste_hameau", "npc.fermier", "npc.fermiere", "npc.veuve", "npc.thibaut", "npc.capitaine", "npc.deserteur", "npc.ysarn", "npc.receleur" }, a.Npcs().Select(n => n.Id));   // V1.1 : marchands
         Assert.Equal("Odile, la meunière", a.Npcs()[0].Name);
-        Assert.Equal(18, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
+        Assert.Equal(20, a.Nodes().Count);   // cuisine et boulangerie : les pommes du verger ; pêche : les deux nœuds d'appâts ; Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
         Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
-        Assert.Equal(14, a.Nodes().Count(n => n.Ready));
+        Assert.Equal(16, a.Nodes().Count(n => n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere",
             "porte_est_du_bourg", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole" },
             a.SafePoints().Select(s => s.Id));   // V2.28c (3) : les carrefours de la région
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);
-        Assert.Equal(4, a.Professions().Count);   // cuisine et boulangerie
+        Assert.Equal(5, a.Professions().Count);   // pêche (appâts ramassés), cuisine et boulangerie
         Assert.True(a.IsBoss("gardien_du_seuil") && a.IsBoss("gardien_eveille") && !a.IsBoss("loup1"));
         // Les créatures sont loin de l'entrée : aucune cible (la plus proche est à plus de 20 m), alors qu'il y a des ennemis en vue.
         Assert.Null(a.Combat.TargetId);

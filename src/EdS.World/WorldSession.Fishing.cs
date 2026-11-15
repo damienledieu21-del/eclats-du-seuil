@@ -30,6 +30,9 @@ namespace EdS.World
 
         /// <summary>En combat : on ne pêche pas.</summary>
         InCombat = 6,
+
+        /// <summary>Aucun appât dans le sac (décision de Damien du 15 novembre 2026 : chaque lancer consomme un appât).</summary>
+        NoBait = 7,
     }
 
     /// <summary>Pêche et carnet : issue d'un coup de ferrage.</summary>
@@ -73,6 +76,10 @@ namespace EdS.World
         private FishingBook? _fishing;
         private FishingSpot? _castSpot;
         private long _biteTick, _windowEndTick;
+        // Relecture indépendante de la PR #181 : l'espèce et la taille sont figées au lancer (saison et moment du lancer).
+        private FishKind? _castKind;
+        private int _castCm;
+        private string? _castBait;
 
         /// <summary>Pêche en jeu (null : aucune).</summary>
         public FishingBook? FishingBook => _fishing;
@@ -81,6 +88,7 @@ namespace EdS.World
         {
             _fishing = book;
             _castSpot = null;
+            _castKind = null;
         }
 
         /// <summary>Pêche et carnet du personnage (lancers, carnet des prises).</summary>
@@ -91,6 +99,16 @@ namespace EdS.World
 
         /// <summary>Ça mord : la fenêtre pour ferrer est ouverte.</summary>
         public bool IsBiting => _castSpot != null && Zone.WorldTick >= _biteTick && Zone.WorldTick <= _windowEndTick;
+
+        /// <summary>Le personnage est à portée du poste d'où sa ligne est lancée (faux sans ligne à l'eau).</summary>
+        public bool CastInReach => _fishing != null && _castSpot is FishingSpot s && ((INarrativeWorld)this).PlayerPosition is GroundVector p
+            && !ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, _fishing.Range);
+
+        /// <summary>Appât consommé par le lancer en cours (null : aucune ligne à l'eau).</summary>
+        public string? CastBait => _castSpot is null ? null : _castBait;
+
+        /// <summary>Premier appât du sac, dans l'ordre des données (null : aucun).</summary>
+        public string? BaitInBag => _fishing?.Baits.FirstOrDefault(b => Inventory.Count(b) > 0);
 
         /// <summary>Tick du monde où la touche vient (ligne à l'eau seulement).</summary>
         public long? BiteTick => _castSpot is null ? (long?)null : _biteTick;
@@ -109,7 +127,12 @@ namespace EdS.World
 
         private long Ticks(long ms) => (ms + Zone.Engine.TickMilliseconds - 1) / Zone.Engine.TickMilliseconds;
 
-        /// <summary>Lance la ligne depuis le poste <paramref name="spot"/> : la touche viendra après un délai tiré au sort.</summary>
+        /// <summary>
+        /// Lance la ligne depuis le poste <paramref name="spot"/> : un appât est consommé (le premier du sac dans l'ordre des données ;
+        /// décision de Damien du 15 novembre 2026) ; la touche viendra après un délai tiré au sort. L'espèce (parmi celles du poste qui mordent
+        /// en cette saison et à ce moment, selon leur poids) et la taille sont tirées dès le lancer. Refus (rien ne change) : poste inconnu,
+        /// ligne déjà à l'eau, combat, trop loin, aucun appât.
+        /// </summary>
         public FishingRefusal Cast(string spot)
         {
             if (_fishing is null || spot is null || !(_fishing.Spot(spot) is FishingSpot s)) return FishingRefusal.Unknown;
@@ -117,11 +140,30 @@ namespace EdS.World
             if (InCombat) return FishingRefusal.InCombat;
             if (!(((INarrativeWorld)this).PlayerPosition is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, _fishing.Range))
                 return FishingRefusal.NotHere;
+            if (!(BaitInBag is string bait)) return FishingRefusal.NoBait;
+            // Tout est tiré avant de rien changer : délai, espèce, taille (le même flux, initialisé par le numéro du lancer).
             Pcg32 random = FishingRandom();
             long wait = checked(_fishing.BiteMinMs + random.NextBounded((uint)(_fishing.BiteMaxMs - _fishing.BiteMinMs + 1)));
+            string phase = Narrative.PhaseId(Zone.Time.Phase);
+            // Le validateur exige dans chaque poste une espèce qui mord toute l'année et à toute heure : la liste n'est jamais vide.
+            FishKind[] biting = s.Fish.Select(f => _fishing.Kind(f)).Where(f => f.Bites(SeasonIndex, phase)).ToArray();
+            int total = biting.Sum(f => f.Weight);
+            int roll = (int)random.NextBounded((uint)total);
+            FishKind kind = biting[0];
+            foreach (FishKind f in biting)
+            {
+                if (roll < f.Weight) { kind = f; break; }
+                roll -= f.Weight;
+            }
+            int cm = kind.MinCm + (int)random.NextBounded((uint)(kind.MaxCm - kind.MinCm + 1));
+            long bite = checked(Zone.WorldTick + Ticks(wait)), end = checked(bite + Ticks(_fishing.WindowMs));
+            if (Inventory.Remove(bait, 1) != InventoryRefusal.None) return FishingRefusal.NoBait;   // un refus ne retire rien
             _castSpot = s;
-            _biteTick = checked(Zone.WorldTick + Ticks(wait));
-            _windowEndTick = checked(_biteTick + Ticks(_fishing.WindowMs));
+            _castKind = kind;
+            _castCm = cm;
+            _castBait = bait;
+            _biteTick = bite;
+            _windowEndTick = end;
             return FishingRefusal.None;
         }
 
@@ -137,43 +179,47 @@ namespace EdS.World
             if (!(((INarrativeWorld)this).PlayerPosition is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, _fishing.Range))
                 return FishingRefusal.NotHere;
             long now = Zone.WorldTick;
+            // Relecture indépendante de la PR #181 (refus atomiques) : le carnet suivant est calculé avant toute mutation ; les compteurs
+            // saturent à leur plafond (un carnet plein ne fait jamais échouer un geste).
+            SavedFishing cast = Casted(_character.Fishing);
             if (now < _biteTick || now > _windowEndTick)
             {
                 outcome = now < _biteTick ? FishingOutcome.TooEarly : FishingOutcome.TooLate;
-                _character = _character.WithFishing(_character.Fishing.WithCast());
+                _character = _character.WithFishing(cast);
                 _castSpot = null;
                 return FishingRefusal.None;
             }
-            // Le même flux que le délai : l'espèce puis la taille.
-            Pcg32 random = FishingRandom();
-            random.NextBounded((uint)(_fishing.BiteMaxMs - _fishing.BiteMinMs + 1));
-            string phase = Narrative.PhaseId(Zone.Time.Phase);
-            FishKind[] biting = s.Fish.Select(f => _fishing.Kind(f)).Where(f => f.Bites(SeasonIndex, phase)).ToArray();
-            if (biting.Length == 0) biting = new[] { _fishing.Kind(s.Fish[0]) };   // rien ne mord à cette heure : la première espèce du poste
-            int total = biting.Sum(f => f.Weight);
-            int roll = (int)random.NextBounded((uint)total);
-            FishKind kind = biting[0];
-            foreach (FishKind f in biting)
-            {
-                if (roll < f.Weight) { kind = f; break; }
-                roll -= f.Weight;
-            }
-            int cm = kind.MinCm + (int)random.NextBounded((uint)(kind.MaxCm - kind.MinCm + 1));
+            FishKind kind = _castKind!;
+            int cm = _castCm;
             if (!Inventory.CanAdd(kind.Item, 1)) return FishingRefusal.Full;
+            bool record = !(cast.Of(kind.Item) is SavedCatch old) || cm > old.BestCm;
+            SavedFishing next = Caught(cast, kind.Item, cm);
             Inventory.Add(kind.Item, 1);
-            bool record = !(_character.Fishing.Of(kind.Item) is SavedCatch old) || cm > old.BestCm;
-            _character = _character.WithFishing(_character.Fishing.WithCast().WithCatch(kind.Item, cm));
+            _character = _character.WithFishing(next);
             _castSpot = null;
             outcome = FishingOutcome.Caught;
             caught = new FishingCatch(kind.Item, cm, record);
             return FishingRefusal.None;
         }
 
-        /// <summary>Ramène la ligne (le lancer compte, sans prise).</summary>
+        /// <summary>Un lancer de plus, saturé au plafond.</summary>
+        private static SavedFishing Casted(SavedFishing f) => f.Casts >= SavedFishing.MaxCasts ? f : f.WithCast();
+
+        /// <summary>Une prise au carnet ; carnet plein (espèces) ou prises au plafond : la ligne reste telle quelle, sauf la plus grande taille.</summary>
+        private static SavedFishing Caught(SavedFishing f, string fish, int cm)
+        {
+            SavedCatch? old = f.Of(fish);
+            if (old is null && f.Log.Count >= SavedFishing.MaxLog) return f;
+            if (old != null && old.Count >= SavedFishing.MaxCount)
+                return cm <= old.BestCm ? f : new SavedFishing(f.Casts, f.Log.Select(c => c.Fish == fish ? new SavedCatch(fish, c.Count, cm) : c));
+            return f.WithCatch(fish, cm);
+        }
+
+        /// <summary>Ramène la ligne (le lancer compte, sans prise ; l'appât est perdu).</summary>
         public FishingRefusal CancelCast()
         {
             if (_castSpot is null) return FishingRefusal.NotCasting;
-            _character = _character.WithFishing(_character.Fishing.WithCast());
+            _character = _character.WithFishing(Casted(_character.Fishing));
             _castSpot = null;
             return FishingRefusal.None;
         }

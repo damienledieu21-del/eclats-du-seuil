@@ -92,6 +92,8 @@ namespace EdS.Runtime
             // Pêche et carnet : les poissons.
             ("gardon", new[] { "fish" }), ("perche", new[] { "fish", "perch" }), ("truite", new[] { "fish", "trout" }), ("brochet", new[] { "fish", "pike" }),
             ("carpe", new[] { "fish", "carp" }),
+            // Pêche et carnet : les appâts (décision de Damien du 15 novembre 2026).
+            ("ver", new[] { "worm", "bait" }), ("mouche", new[] { "fly", "insect", "bait" }),
             // Saisons : récoltes de saison (herbes rares du printemps, champignons de l'automne).
             ("primevere", new[] { "flower", "herb", "plant" }), ("sauge", new[] { "herb", "plant", "leaf" }), ("cepe", new[] { "mushroom" }),
             ("trompette", new[] { "mushroom" }),

@@ -88,6 +88,10 @@
           "night"
         ]
       }
+    ],
+    "baits": [
+      "item.ver_de_terre",
+      "item.mouche_de_mai"
     ]
   }
 }

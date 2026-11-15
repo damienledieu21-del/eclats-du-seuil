@@ -52,7 +52,7 @@ public class CuisineBoulangerieTests
     public void Metier_de_cuisine_treize_recettes_au_four_du_bourg_et_des_noms_en_francais()
     {
         CraftingBook book = Shipped.Value;
-        Assert.Equal("0.8.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.9.0-provisoire", book.ContentVersion);
         Assert.Contains(book.Professions, p => p.Id == "cuisine");
         Assert.Equal("Cuisine et boulangerie", Texts.Get("text.profession.cuisine"));
         Assert.Equal(13, Cuisine.Count());

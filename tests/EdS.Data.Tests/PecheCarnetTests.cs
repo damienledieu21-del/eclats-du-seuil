@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using EdS.Data.Fishing;
 using EdS.Data.Items;
+using EdS.Data.Merchants;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
@@ -38,10 +39,12 @@ public class PecheCarnetTests
         spot["position"] = new JsonArray(-18, -12);
     }).Book!);
 
-    private static WorldSession Open(FishingBook? book = null, WorldSave? save = null)
+    private static WorldSession Open(FishingBook? book = null, WorldSave? save = null, ItemStack[]? baits = null)
     {
         ZoneDefinition zone = Zone();
-        var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression);
+        // Décision de Damien du 15 novembre 2026 : un appât par lancer ; le personnage d'essai a vingt vers de terre.
+        var hero = PlayerCharacters.Create("bastion", "class.bastion", Progression).WithItems(baits ?? new[] { new ItemStack("item.ver_de_terre", 20) },
+            new Dictionary<string, string>());
         var w = new WorldSession(save ?? new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone, ShippedData, Progression,
             ItemsCatalog, Book(zone));
         w.UseFishing(book ?? AtVillage.Value);
@@ -194,5 +197,120 @@ public class PecheCarnetTests
             Assert.NotNull(w.CastSpot);   // la ligne est toujours à l'eau : on peut faire de la place et ferrer pendant la fenêtre
         }
         else Assert.Equal(FishingRefusal.None, r);   // le poisson s'empile avec un objet déjà là
+    }
+
+    // --- Relecture indépendante de la PR #181 et décision de Damien du 15 novembre 2026 (appâts) -------------------------------------
+
+    [Fact]
+    public void Appats_un_par_lancer_dans_l_ordre_des_donnees_et_refus_sans_appat()
+    {
+        FishingBook b = AtVillage.Value;
+        Assert.Equal(new[] { "item.ver_de_terre", "item.mouche_de_mai" }, b.Baits);
+        // Sans appât : refusé, rien ne change.
+        WorldSession none = Open(baits: Array.Empty<ItemStack>());
+        Assert.Equal(FishingRefusal.NoBait, none.Cast(Spot));
+        Assert.Equal((0L, (FishingSpot?)null, (string?)null), (none.Fishing.Casts, none.CastSpot, none.CastBait));
+        // Vers et mouches : les vers d'abord (ordre des données), un par lancer, même ramené ou manqué.
+        WorldSession w = Open(baits: new[] { new ItemStack("item.ver_de_terre", 1), new ItemStack("item.mouche_de_mai", 2) });
+        Assert.Equal(FishingRefusal.None, w.Cast(Spot));
+        Assert.Equal(("item.ver_de_terre", 0, 2), (w.CastBait, w.Inventory.Count("item.ver_de_terre"), w.Inventory.Count("item.mouche_de_mai")));
+        Assert.Equal(FishingRefusal.AlreadyCasting, w.Cast(Spot));   // refusé : aucun appât de plus
+        Assert.Equal(2, w.Inventory.Count("item.mouche_de_mai"));
+        w.CancelCast();
+        Assert.Equal(FishingRefusal.None, w.Cast(Spot));
+        Assert.Equal(("item.mouche_de_mai", 1), (w.CastBait, w.Inventory.Count("item.mouche_de_mai")));
+        w.Strike(out _, out _);   // trop tôt : l'appât est perdu
+        Assert.Equal(FishingRefusal.None, w.Cast(Spot));
+        Assert.Equal(FishingRefusal.None, w.CancelCast());
+        Assert.Equal(FishingRefusal.NoBait, w.Cast(Spot));
+        Assert.Equal(3L, w.Fishing.Casts);
+        // Les autres refus passent avant celui de l'appât, et ne retirent rien.
+        WorldSession far = Open();
+        Assert.Equal(FishingRefusal.NotHere, far.Cast("ponton_ouest"));
+        Assert.Equal(FishingRefusal.Unknown, far.Cast("inconnu"));
+        Assert.Equal(20, far.Inventory.Count("item.ver_de_terre"));
+    }
+
+    [Fact]
+    public void Appats_en_vente_a_l_epicerie_et_a_ramasser()
+    {
+        MerchantBook m = ShippedMerchants;
+        var epicier = m.Merchants.Single(x => x.Id == "merchant.epicier").Offers;
+        Assert.Equal((2L, 3L), (epicier.Single(o => o.Item == "item.ver_de_terre").Price, epicier.Single(o => o.Item == "item.mouche_de_mai").Price));
+        EdS.Data.Crafting.CraftingBook crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, Zone(), Items.Value).Book!;
+        Assert.Contains(crafting.Professions, p => p.Id == "peche");
+        Assert.Contains(crafting.Nodes, n => n.Item == "item.ver_de_terre" && n.Profession == "peche");
+        Assert.Contains(crafting.Nodes, n => n.Item == "item.mouche_de_mai" && n.Profession == "peche");
+    }
+
+    [Fact]
+    public void Relecture_donnees_des_appats_et_des_postes_refusees_avec_leur_chemin()
+    {
+        string First(Action<JsonObject> m) { FishingLoadResult r = Load(m); Assert.False(r.IsValid); return r.Report.Errors[0].Path; }
+        Assert.Equal("$.data.baits", First(root => D(root).Remove("baits")));
+        Assert.Equal("$.data.baits[0]", First(root => D(root)["baits"]![0] = "item.licorne"));
+        Assert.Equal("$.data.baits[1]", First(root => D(root)["baits"]![1] = "item.ver_de_terre"));
+        Assert.Equal("$.data.baits[0]", First(root => D(root)["baits"]![0] = "item.gardon"));   // une espèce n'est pas un appât
+        Assert.Equal("$.data.baits[0]", First(root => D(root)["baits"]![0] = "item.potion_de_soin"));   // pas un matériau
+        // Un poste sans espèce qui mord toute l'année et à toute heure (ici, seulement le brochet de l'aube et du soir).
+        Assert.Equal("$.data.spots[0].fish", First(root => D(root)["spots"]![0]!["fish"] = new JsonArray("item.brochet")));
+        FishingLoadResult w = Load(root => D(root)["windowMs"] = 5000);
+        Assert.Contains("doit être plus courte", w.Report.Errors[0].Message);
+    }
+
+    [Fact]
+    public void Espece_et_taille_figees_au_lancer()
+    {
+        (string, int) Catch(WorldSession w, long? civil)
+        {
+            Assert.Equal(FishingRefusal.None, w.Cast(Spot));
+            if (civil is long utc) w.SetCivilTime(utc);   // la saison change après le lancer : la prise n'en dépend plus
+            Wait(w, w.BiteTick!.Value);
+            Assert.Equal(FishingRefusal.None, w.Strike(out _, out FishingCatch? c));
+            return (c!.Fish, c.Cm);
+        }
+        WorldSession a = Open(), b = Open();
+        long winterNight = new DateTimeOffset(2027, 1, 15, 23, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds();
+        for (int i = 0; i < 4; i++) Assert.Equal(Catch(a, null), Catch(b, winterNight + i));
+        // Le filtre : saisons et moments de chaque espèce.
+        FishKind brochet = AtVillage.Value.Kind("item.brochet"), gardon = AtVillage.Value.Kind("item.gardon");
+        Assert.True(brochet.Bites(0, "dawn") && brochet.Bites(3, "dusk") && !brochet.Bites(1, "day") && !brochet.Bites(1, "night"));
+        Assert.True(gardon.Bites(2, "night") && gardon.Bites(0, "day"));
+    }
+
+    [Fact]
+    public void Record_et_plafonds_du_carnet_sans_exception()
+    {
+        WorldSession w = Open();
+        var best = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (int i = 0; i < 12; i++)
+        {
+            w.Cast(Spot);
+            Wait(w, w.BiteTick!.Value);
+            w.Strike(out _, out FishingCatch? c);
+            Assert.Equal(!best.TryGetValue(c!.Fish, out int old) || c.Cm > old, c.Record);   // record : plus grand que la plus grande d'avant
+            best[c.Fish] = Math.Max(c.Cm, best.GetValueOrDefault(c.Fish));
+        }
+        Assert.True(best.Count < 12);   // au moins une espèce prise deux fois
+        // Carnet plein (64 espèces) et lancers au plafond : le geste réussit, les compteurs saturent.
+        var log = Enumerable.Range(0, SavedFishing.MaxLog).Select(i => new SavedCatch($"item.poisson_{i}", SavedFishing.MaxCount, 5)).ToList();
+        var full = new SavedFishing(SavedFishing.MaxCasts, log);
+        WorldSave save = new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey },
+            PlayerCharacters.Create("bastion", "class.bastion", Progression).WithItems(new[] { new ItemStack("item.ver_de_terre", 2) }, new Dictionary<string, string>())
+                .WithFishing(full));
+        WorldSession capped = Open(save: save);
+        capped.Cast(Spot);
+        Wait(capped, capped.BiteTick!.Value);
+        Assert.Equal(FishingRefusal.None, capped.Strike(out FishingOutcome outcome, out FishingCatch? fish));
+        Assert.Equal(FishingOutcome.Caught, outcome);
+        Assert.Equal(1, capped.Inventory.Count(fish!.Fish));
+        Assert.Equal(full, capped.Fishing);
+    }
+
+    [Fact]
+    public void Relecture_sauvegarde_v22_refusee()
+    {
+        string text = SaveJsonReader.Write(Open().Save());
+        Assert.False(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 22")).IsValid);
     }
 }
