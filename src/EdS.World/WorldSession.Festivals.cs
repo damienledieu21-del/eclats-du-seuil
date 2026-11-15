@@ -24,23 +24,35 @@ namespace EdS.World
         public int Weekday => WorldCalendar.WeekdayOf(Zone.Time.Day);
 
         /// <summary>La fête qui bat son plein maintenant, ou null (sans histoire : jamais).</summary>
-        public Festival? Festival => Narrative?.Book.FestivalAt(Zone.Time.Day, Zone.Time.Minute);
+        public Festival? Festival => Narrative?.Book.FestivalAt(Zone.Time.Day, Zone.Time.Minute, CivilDateOfDay(Zone.Time.Day));
 
         /// <summary>La fête du jour (à n'importe quelle heure), ou null : l'annonce du matin, l'affichage.</summary>
-        public Festival? FestivalToday => Narrative?.Book.FestivalOn(Zone.Time.Day);
+        public Festival? FestivalToday => FestivalOnDay(Zone.Time.Day);
+
+        /// <summary>Fêtes aux vraies dates : la fête du jour du monde <paramref name="day"/> (date réelle de ce jour si l'hôte l'a fournie), ou null.</summary>
+        public Festival? FestivalOnDay(long day) => Narrative?.Book.FestivalOn(day, CivilDateOfDay(day));
+
+        /// <summary>Fêtes aux vraies dates : tour de la rotation des concours de la fête <paramref name="festival"/> aujourd'hui.</summary>
+        public int FestivalRound(string festival) =>
+            (Narrative ?? throw new InvalidOperationException("Partie sans histoire.")).Book.Festival(festival).RoundOn(Zone.Time.Day, CivilDateOfDay(Zone.Time.Day));
+
+        int INarrativeWorld.FestivalRound(string festival) => FestivalRound(festival);
 
         string? INarrativeWorld.Festival => Festival?.Id;
 
         /// <summary>
         /// Prochaine fête à partir d'aujourd'hui (aujourd'hui compris si elle n'est pas finie), et son jour du monde ; null sans fête. Cherchée
-        /// sur une année au plus.
+        /// sur une année au plus : une année du jeu, ou une année réelle (en jours du monde) quand la date est fournie.
         /// </summary>
         public (Festival Festival, long Day)? NextFestival()
         {
             if (!(Narrative is Narrative n) || n.Book.Festivals.Count == 0) return null;
-            for (long day = Zone.Time.Day; day <= Zone.Time.Day + WorldCalendar.DaysPerYear; day++)
-                foreach (Festival f in n.Book.Festivals)
-                    if (f.OnDay(day) && (day > Zone.Time.Day || Zone.Time.Minute < f.To) && n.Book.FestivalOn(day) == f) return (f, day);
+            long horizon = CivilUtcSeconds is null ? WorldCalendar.DaysPerYear : checked(366L * 86_400_000 / Zone.Clock.DayLengthMs + 1);
+            for (long day = Zone.Time.Day; day <= Zone.Time.Day + horizon; day++)
+            {
+                if (!(FestivalOnDay(day) is Festival f)) continue;
+                if (day > Zone.Time.Day || Zone.Time.Minute < f.To) return (f, day);
+            }
             return null;
         }
 

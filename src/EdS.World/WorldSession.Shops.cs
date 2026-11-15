@@ -147,7 +147,7 @@ namespace EdS.World
         {
             if (!(MarketDay is MarketDay md) || !(Narrative is Narrative n)) return null;
             for (long day = Zone.Time.Day; day <= Zone.Time.Day + 2 * WorldCalendar.DaysPerWeek; day++)
-                if (n.Book.FestivalOn(day) is Festival f && md.Festivals.Contains(f.Id) && (day > Zone.Time.Day || Zone.Time.Minute < md.Teardown)) return (day, f);
+                if (FestivalOnDay(day) is Festival f && md.Festivals.Contains(f.Id) && (day > Zone.Time.Day || Zone.Time.Minute < md.Teardown)) return (day, f);
             return null;
         }
 
