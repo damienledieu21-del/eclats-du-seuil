@@ -29,7 +29,8 @@ namespace EdS.Simulation.Engine
     /// seule ligne <c>bondGained</c> par compagnon et par tick, jauge bornée à 100.</item>
     /// <item><b>Attaque à deux</b> (commande <c>duo</c>, ligne <c>duoStarted</c>) : jauge pleine, deux partenaires présents et disponibles,
     /// cible commune ennemie à portée de chacun ; la jauge est dépensée au départ ; le coup part du compagnon à la fin de l'annonce
-    /// (<c>duoLanded</c> puis l'impact), ou s'annule si un partenaire ou la cible n'est plus là (<c>duoCancelled</c>, sans rendre la jauge).
+    /// (<c>duoLanded</c> puis l'impact), ou s'annule si un partenaire ou la cible n'est plus là, si le compagnon est empêché d'attaquer ou s'il a
+    /// été rappelé depuis le départ (<c>duoCancelled</c>, sans rendre la jauge). Ses coups ne remplissent pas la jauge.
     /// L'Éveillé ne lance aucune compétence jusqu'à la fin de la récupération (temps global de recharge).</item>
     /// <item><b>Hors combat</b> : à 0 PV, un compagnon tombe (<c>died</c>) ; la progression le traite comme hors combat, jamais mort. Un
     /// compagnon ne garde pas seul son équipe en vie : une équipe dont il ne reste que des compagnons est vaincue.</item>
@@ -186,7 +187,10 @@ namespace EdS.Simulation.Engine
                 string? reason = state.Order switch
                 {
                     CompanionOrder.Target when state.OrderTarget!.Out => OutReason(state.OrderTarget, "target"),
-                    CompanionOrder.Return when !state.Owner.Out && EdgeDistance(f.Body!, state.Owner.Body!) <= state.Setup.FollowDistance.Raw => "arrived",
+                    // Relecture indépendante de la PR #169 : arrivé dans la bande où il s'arrête (distance de suite et tolérance) ; Éveillé hors du
+                    // combat : il n'y a plus personne à rejoindre.
+                    CompanionOrder.Return when state.Owner.Out => OutReason(state.Owner, "owner"),
+                    CompanionOrder.Return when EdgeDistance(f.Body!, state.Owner.Body!) <= checked(state.Setup.FollowDistance.Raw + BandTolerance) => "arrived",
                     _ => null,
                 };
                 Reserve(Cost.Op + Cost.Line.If(reason != null));
@@ -356,8 +360,13 @@ namespace EdS.Simulation.Engine
             {
                 if (f.Companion is not { DuoImpactTick: long impactTick } state || impactTick != tick) continue;
                 Fighter target = state.DuoTarget!;
-                string? reason = f.Out ? OutReason(f, "companion") : state.Owner.Out ? OutReason(state.Owner, "actor") : target.Out ? OutReason(target, "target") : null;
                 CompanionDuo duo = state.Setup.Duo!;
+                // Relecture indépendante de la PR #169 : comme une attaque annoncée, un compagnon empêché d'attaquer (étourdi) à l'impact, ou rappelé
+                // (« revenir ») depuis le départ, ne frappe pas.
+                long startTick = checked(impactTick - duo.TelegraphMs / _tickMs);
+                string? reason = f.Out ? OutReason(f, "companion") : state.Owner.Out ? OutReason(state.Owner, "actor") : target.Out ? OutReason(target, "target")
+                    : BlockReason(f, StatusBlocks.AssailantAttacks) is { } blocked ? blocked
+                    : state.RecalledTick is long recalled && recalled >= startTick ? "recalled" : null;
                 Provenance origin = state.DuoOrigin!;
                 if (reason != null)
                 {
@@ -369,7 +378,7 @@ namespace EdS.Simulation.Engine
                     continue;
                 }
                 var attack = new AssailantAttack(duo.Id, duo.RawDamage, duo.DamageType);
-                var action = new PendingAction { Actor = f, Attack = attack, Target = target, GeneratesResonance = false, Origin = origin };
+                var action = new PendingAction { Actor = f, Attack = attack, Target = target, GeneratesResonance = false, Origin = origin, Duo = true };
                 ResolveAction(tick, action, new[] { target }, Cost.Op + Cost.Line, dequeue: false, () =>
                 {
                     Charge(1);

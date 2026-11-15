@@ -53,17 +53,17 @@
             "coordinatedGain": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 100
+              "maximum": 25
             },
             "protectGain": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 100
+              "maximum": 25
             },
             "campGain": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 100,
+              "maximum": 25,
               "description": "Gain d'une halte au feu de camp (hors combat)."
             }
           }

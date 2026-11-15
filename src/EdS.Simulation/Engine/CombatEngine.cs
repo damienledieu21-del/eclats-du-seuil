@@ -130,8 +130,9 @@ namespace EdS.Simulation.Engine
         /// <c>leash</c>, <c>bondWindowMs</c>, <c>coordinatedGain</c>, <c>protectGain</c>, <c>duo</c> facultatif), et les commandes <c>order</c>
         /// (<c>companion</c>, <c>order</c>, <c>target</c>) et <c>duo</c> (<c>companion</c>, <c>target</c>) ; nouvelles lignes <c>orderGiven</c>,
         /// <c>orderEnded</c>, <c>bondGained</c> (phase <c>endOfTick</c>), <c>duoStarted</c>, <c>duoLanded</c> et <c>duoCancelled</c> ; raisons
-        /// <c>recalled</c> et <c>duo</c> (<c>attackSkipped</c>, <c>attackCancelled</c>) ; refus <c>companionDead</c>, <c>companionAbsent</c>,
-        /// <c>targetNotEnemy</c>, <c>bondNotFull</c>, <c>duoInProgress</c>. Sans compagnon : mêmes lignes d'événements qu'au format 26. Un journal
+        /// <c>recalled</c> et <c>duo</c> (<c>attackSkipped</c>, <c>attackCancelled</c>, <c>duoCancelled</c>), <c>ownerDead</c> et <c>ownerAbsent</c>
+        /// (<c>orderEnded</c>) ; refus <c>companionDead</c>, <c>companionAbsent</c>, <c>companion</c> suivi du motif d'un contrôle (<c>companionStunned</c>…),
+        /// <c>targetNotEnemy</c>, <c>bondNotFull</c>, <c>duoInProgress</c>, <c>globalCooldown</c>, <c>targetOutOfRange</c>. Sans compagnon : mêmes lignes d'événements qu'au format 26. Un journal
         /// d'un autre format est refusé au rejeu.
         /// </summary>
         public const int LogFormatVersion = 27;
@@ -493,6 +494,9 @@ namespace EdS.Simulation.Engine
             /// <summary>Lot 7.3 : frappe d'une réaction (effet <c>strike</c>), au rang du déclencheur ; ni compétence ni attaque.</summary>
             public TriggerEffect? Strike;
             public int StrikeRank = 1;
+
+            /// <summary>Compagnons : impact d'une attaque à deux (ses coups ne remplissent pas la jauge de lien).</summary>
+            public bool Duo;
 
             public SkillTargeting Targeting => Combat?.Targeting ?? Attack?.Targeting ?? SkillTargeting.Enemy;
 
@@ -1619,7 +1623,7 @@ namespace EdS.Simulation.Engine
             // Sous-lot V2.4 (revue Codex de la PR #104, tour 2) : avec les autres affectations de l'impact, après les calculs vérifiés.
             // Compagnons : le coup d'un compagnon compte comme celui d'un personnage (butin, expérience, objectifs).
             if (actor.Character != null || actor.Companion != null) target.HurtByCharacter = target.CharacterHitSinceCalm = true;   // V2.4.1 : depuis son dernier calme
-            NoteCompanionHit(tick, actor, target);   // compagnons : coordination et protection, versées en fin de tick
+            if (!action.Duo) NoteCompanionHit(tick, actor, target);   // compagnons : coordination et protection (pas l'attaque à deux), versées en fin de tick
             target.Health = update.Health;
             target.Result.DamageTaken = update.Taken;
             target.Result.DamageAbsorbed = update.Absorbed;

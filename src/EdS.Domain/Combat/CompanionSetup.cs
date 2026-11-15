@@ -125,8 +125,11 @@ namespace EdS.Domain.Combat
         /// <summary>Fenêtre de coordination au plus (borne technique), en millisecondes.</summary>
         public const long MaxBondWindowMs = 60_000;
 
-        /// <summary>Gain de lien d'un événement au plus (borne technique).</summary>
-        public const int MaxGain = BondMax;
+        /// <summary>
+        /// Gain de lien d'un événement au plus : un quart de la jauge (relecture indépendante de la PR #169 : quatre ticks de coups coordonnés
+        /// au moins avant une attaque à deux ; valeur prudente, question posée à Damien).
+        /// </summary>
+        public const int MaxGain = 25;
 
         public string Owner { get; }
 
