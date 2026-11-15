@@ -315,7 +315,7 @@ namespace EdS.Domain.Combat
         /// cette distance (12 m, la distance « hors combat » de la halte, des talents et de la barre du personnage). Constante du moteur, hors
         /// du fichier de règles (aucun changement de leur schéma).
         /// </summary>
-        public Fixed MountSafeDistance { get; init; } = Fixed.FromInt(12);
+        public Fixed MountSafeDistance => Fixed.FromInt(12);   // revue Codex de la PR #180 : constante, non réglable (son carré tient toujours)
 
         /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
