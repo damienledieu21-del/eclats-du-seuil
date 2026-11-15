@@ -7,6 +7,7 @@ using EdS.Data.Scenarios;
 using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
+using EdS.Domain.Combat;
 using EdS.Domain.Collections;
 using EdS.Domain.Numerics;
 using EdS.Domain.Space;
@@ -32,6 +33,9 @@ namespace EdS.Data.WorldBosses
     public sealed class WorldBossData
     {
         public string? Id { get; set; }
+
+        /// <summary>Schéma 2 : scénario des formes (dans <c>scenarios/</c>, sans extension), une forme par phase.</summary>
+        public string? Scenario { get; set; }
         public string? Name { get; set; }
         public Fixed? Radius { get; set; }
         public long? HealthBase { get; set; }
@@ -60,6 +64,9 @@ namespace EdS.Data.WorldBosses
         public string? Id { get; set; }
         public int? FromPercent { get; set; }
         public List<string?>? Attacks { get; set; }
+
+        /// <summary>Schéma 2 : combattant du scénario des formes qui joue cette phase dans le moteur.</summary>
+        public string? Form { get; set; }
     }
 
     public sealed class WorldBossAttackData
@@ -192,11 +199,18 @@ namespace EdS.Data.WorldBosses
 
         public IReadOnlyList<string> Attacks { get; }
 
-        internal WorldBossPhase(string id, int fromPercent, IEnumerable<string> attacks)
+        /// <summary>
+        /// Schéma 2 (Grand Solitaire, 2e partie) : la forme qui joue cette phase dans le moteur (assaillant du scénario des formes, avec ses
+        /// attaques annoncées au sol) ; null en schéma 1 (le boss ne se combat pas dans le moteur).
+        /// </summary>
+        public AssailantSetup? Form { get; }
+
+        internal WorldBossPhase(string id, int fromPercent, IEnumerable<string> attacks, AssailantSetup? form = null)
         {
             Id = id;
             FromPercent = fromPercent;
             Attacks = Frozen.List(attacks, nameof(attacks));
+            Form = form;
         }
     }
 
@@ -285,6 +299,9 @@ namespace EdS.Data.WorldBosses
         public Fixed WalkSpeed { get; }
         public Fixed Clearance { get; }
         public IReadOnlyList<WorldBossPhase> Phases { get; }
+
+        /// <summary>Schéma 2 : chaque phase a sa forme dans le moteur ; le boss se combat dans la partie.</summary>
+        public bool Fightable => Phases.All(ph => ph.Form != null);
         public IReadOnlyList<WorldBossAttack> Attacks { get; }
         public IReadOnlyList<WorldBossSite> Sites { get; }
         public IReadOnlyList<WorldBossTarget> Targets { get; }
@@ -422,7 +439,10 @@ namespace EdS.Data.WorldBosses
         public const string Kind = "worldBosses";
 
         /// <summary>Version 1 (Grand Solitaire, 15 novembre 2026).</summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Schéma 1 (première partie, PR #171) : encore lu, sans scénario des formes.</summary>
+        public const int Schema1 = 1;
 
         public const int MaxBosses = 16, MaxPhases = 8, MaxAttacks = 16, MaxSites = 32, MaxTargets = 8, MaxRoute = 32, MaxObjectives = 8, MaxCircles = 16;
 
@@ -442,13 +462,21 @@ namespace EdS.Data.WorldBosses
         private static bool IsLocalId(string? id) => id != null && id.Length <= 64 && LocalId.IsMatch(id);
 
         public static WorldBossLoadResult Validate(WorldBossDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null)
+            => Validate(document, texts, zone, items, null, report);
+
+        /// <param name="formScenarios">
+        /// Schéma 2 : scénario des formes de chaque boss (dans l'ordre des boss ; null : absent ou refusé, déjà signalé par le lecteur).
+        /// </param>
+        public static WorldBossLoadResult Validate(WorldBossDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items,
+            IReadOnlyList<CombatSetup?>? formScenarios, ValidationReport? report = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
             if (zone is null) throw new ArgumentNullException(nameof(zone));
             if (items is null) throw new ArgumentNullException(nameof(items));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            int supported = document.SchemaVersion == Schema1 ? Schema1 : CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new WorldBossLoadResult(r, null);
             if (document.Data?.Bosses is null) { Missing(r, "$.data.bosses", "boss du monde"); return new WorldBossLoadResult(r, null); }
             List<WorldBossData?> list = document.Data.Bosses;
@@ -460,14 +488,21 @@ namespace EdS.Data.WorldBosses
                 {
                     string p = $"$.data.bosses[{i}]";
                     if (list[i] is not WorldBossData b) { Missing(r, p, "boss du monde"); continue; }
-                    if (Boss(b, p, texts, zone, items, ids, r) is WorldBossDefinition d) bosses.Add(d);
+                    CombatSetup? forms = formScenarios != null && i < formScenarios.Count ? formScenarios[i] : null;
+                    if (Boss(b, p, texts, zone, items, ids, r, supported, forms, formScenarios != null) is WorldBossDefinition d) bosses.Add(d);
                 }
             if (!r.IsValid || document.ContentVersion is null) return new WorldBossLoadResult(r, null);
             return new WorldBossLoadResult(r, new WorldBossBook(document.SchemaVersion!.Value, document.ContentVersion, bosses));
         }
 
-        private static WorldBossDefinition? Boss(WorldBossData b, string p, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, HashSet<string> ids, ValidationReport r)
+        private static WorldBossDefinition? Boss(WorldBossData b, string p, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, HashSet<string> ids, ValidationReport r,
+            int version, CombatSetup? forms, bool resolve)
         {
+            // Schéma 2 : scénario des formes, une forme par phase (absent : le boss ne se combat pas dans le moteur).
+            if (b.Scenario != null && version < CurrentSchemaVersion)
+                r.Add(p + ".scenario", ValidationCode.InvalidValue, $"scénario des formes : schéma {CurrentSchemaVersion} au moins.");
+            // Sans les scénarios (lecture sans dossier des scénarios), les formes ne sont pas résolues ; un scénario introuvable ou refusé est
+            // signalé par le lecteur, au chemin du boss.
             int before = r.Errors.Count;
             CombatSpace space = zone.Setup.Space!;
             if (!IsLocalId(b.Id)) r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {b.Id} » mal formé.");
@@ -503,7 +538,7 @@ namespace EdS.Data.WorldBosses
             else if (b.Clearance.Value < Fixed.Zero || b.Clearance.Value > Fixed.FromInt(200)) r.Add(p + ".clearance", ValidationCode.OutOfRange, "distance hors de [0, 200] m.");
 
             List<WorldBossAttack> attacks = Attacks(b.Attacks, p + ".attacks", r);
-            List<WorldBossPhase> phases = Phases(b.Phases, p + ".phases", attacks, r);
+            List<WorldBossPhase> phases = Phases(b.Phases, p + ".phases", attacks, r, version, resolve && b.Scenario != null ? forms : null, b.Scenario != null);
 
             var sites = new List<WorldBossSite>();
             if (b.Sites is null || b.Sites.Count == 0) Missing(r, p + ".sites", "emplacements d'apparition admissibles");
@@ -661,9 +696,11 @@ namespace EdS.Data.WorldBosses
             return attacks;
         }
 
-        private static List<WorldBossPhase> Phases(List<WorldBossPhaseData?>? list, string p, List<WorldBossAttack> attacks, ValidationReport r)
+        private static List<WorldBossPhase> Phases(List<WorldBossPhaseData?>? list, string p, List<WorldBossAttack> attacks, ValidationReport r,
+            int version, CombatSetup? forms, bool hasScenario)
         {
             var phases = new List<WorldBossPhase>();
+            var formIds = new HashSet<string>(StringComparer.Ordinal);
             if (list is null || list.Count == 0) { Missing(r, p, "phases (calme, blessé, enragé)"); return phases; }
             if (list.Count > MaxPhases) { r.Add(p, ValidationCode.LimitExceeded, $"au plus {MaxPhases} phases."); return phases; }
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -689,7 +726,24 @@ namespace EdS.Data.WorldBosses
                         else if (ids.Contains(id)) r.Add($"{pp}.attacks[{j}]", ValidationCode.DuplicateId, $"attaque « {id} » en double.");
                         else ids.Add(id);
                     }
-                if (r.Errors.Count == before) phases.Add(new WorldBossPhase(x.Id!, x.FromPercent!.Value, ids));
+                // Schéma 2 : la forme de la phase, un assaillant du scénario des formes, une seule fois.
+                AssailantSetup? form = null;
+                if (x.Form != null && version < CurrentSchemaVersion)
+                    r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme de la phase : schéma {CurrentSchemaVersion} au moins.");
+                else if (x.Form != null && !hasScenario)
+                    r.Add(pp + ".form", ValidationCode.InvalidValue, "forme sans scénario des formes (scenario du boss).");
+                else if (x.Form is null && hasScenario)
+                    Missing(r, pp + ".form", "forme de la phase (assaillant du scénario des formes)");
+                else if (x.Form != null && forms != null)
+                {
+                    form = forms.Combatants.OfType<AssailantSetup>().FirstOrDefault(c => c.Id == x.Form);
+                    if (form is null) r.Add(pp + ".form", ValidationCode.UnknownReference, $"forme « {x.Form} » : aucun assaillant de ce nom dans le scénario des formes.");
+                    else if (!formIds.Add(x.Form)) r.Add(pp + ".form", ValidationCode.DuplicateId, $"forme « {x.Form} » déjà prise par une autre phase.");
+                    else if (form.Placement is null) r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme « {x.Form} » sans place : un scénario positionné est attendu.");
+                    else if (form.Attacks.FirstOrDefault(a => !ids.Contains(a.Id)) is { } stray)
+                        r.Add(pp + ".form", ValidationCode.InvalidValue, $"forme « {x.Form} » : attaque « {stray.Id} » hors des attaques de la phase.");
+                }
+                if (r.Errors.Count == before) phases.Add(new WorldBossPhase(x.Id!, x.FromPercent!.Value, ids, form));
             }
             return phases;
         }

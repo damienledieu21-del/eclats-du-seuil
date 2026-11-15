@@ -111,7 +111,7 @@ public class GrandSolitaireTests
         Assert.Equal("$.data.bosses[0].loot.mountChanceBasisPoints", First(Mutated(r => B(r)["loot"]!["mountChanceBasisPoints"] = 10_001)));
         Assert.Equal("$.data.bosses[0].fallback", First(Mutated(r => B(r)["fallback"] = new JsonArray(9999, 0))));
         Assert.Equal("$.data.bosses[0].radio", First(Mutated(r => B(r)["radio"] = 3)));   // champ inconnu, refusé à la lecture
-        Assert.Equal("$.schemaVersion", First(Mutated(r => r["schemaVersion"] = 2)));
+        Assert.Equal("$.schemaVersion", First(Mutated(r => r["schemaVersion"] = 3)));   // Grand Solitaire, 2e partie : schéma 2 (scénario des formes)
         // Revue Codex de la PR #171 : valeurs extrêmes refusées avec leur chemin, sans débordement dans les calculs croisés.
         Assert.Equal("$.data.bosses[0].signsMs", First(Mutated(r => B(r)["signsMs"] = long.MaxValue)));
         Assert.Equal("$.data.bosses[0].objectiveMs", First(Mutated(r => B(r)["objectiveMs"] = long.MaxValue)));

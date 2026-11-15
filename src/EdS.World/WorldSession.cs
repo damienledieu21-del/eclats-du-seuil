@@ -1512,6 +1512,7 @@ namespace EdS.World
                 if (e.Kind != ZoneEventKind.Death || !e.FirstTime || e.Combatant == CombatantId) continue;
                 CombatantView creature = Zone.Engine.View(e.Combatant);
                 if (creature.Kind != CombatantKind.Assailant || creature.MaxHealth is not long maxHealth) continue;
+                if (IsWorldBossForm(e.Combatant)) continue;   // Grand Solitaire : son butin est celui de l'événement, jamais une expérience de créature
                 if (PopulationOf(e.Combatant) is Population rare) NightDefeated(rare, checked(Zone.StartWorldTick + e.Tick));   // réponses du 31 octobre 2026
                 // Le personnage doit être là, et vivant, quand la créature tombe (solo : il est seul à pouvoir l'avoir vaincue).
                 // Sous-lot V2.4 (bêtes qui se battent) : et il doit l'avoir frappée ; une bête tuée par d'autres bêtes ne compte pas (ni

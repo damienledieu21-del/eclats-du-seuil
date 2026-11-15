@@ -193,6 +193,9 @@ namespace EdS.World
 
         /// <summary>Monde partagé (faux : mode solo).</summary>
         public bool Shared { get; }
+
+        /// <summary>Engagé dans le moteur (sa forme y combat).</summary>
+        public bool Engaged { get; }
         public IReadOnlyList<KeyValuePair<string, long>> Contributions { get; }
         public Pcg32State SiteStream { get; }
         public Pcg32State RoamStream { get; }
@@ -219,6 +222,7 @@ namespace EdS.World
             Plate = plate;
             Players = e.Players;
             Shared = e.Shared;
+            Engaged = e.Engaged;
             Contributions = e.Contributions;
             SiteStream = site;
             RoamStream = roam;
@@ -321,6 +325,7 @@ namespace EdS.World
         {
             _boss = boss;
             Shared = s.Shared;
+            Engaged = s.Engaged;
             Memory = s.Memory;
             Window = s.Window;
             SignsStartMs = s.SignsStartMs;
@@ -420,6 +425,40 @@ namespace EdS.World
         public int Players => _players;
 
         /// <summary>
+        /// Grand Solitaire, 2e partie : sa forme combat dans le moteur ; sa place est alors celle de la forme (<see cref="Follow"/>), et il ne
+        /// marche plus de lui-même. Le compte à rebours continue (le combat ne le remet jamais à zéro) ; à l'assaut, il se dégage.
+        /// </summary>
+        public bool Engaged { get; private set; }
+
+        /// <summary>Engage le boss dans le moteur (pendant l'errance ou après l'annonce seulement).</summary>
+        /// <exception cref="InvalidOperationException">Ni en errance, ni annoncé.</exception>
+        public void Engage()
+        {
+            if (Stage != WorldBossStage.Roaming && Stage != WorldBossStage.Announced) throw new InvalidOperationException("Le boss ne s'engage qu'avant l'assaut.");
+            Engaged = true;
+        }
+
+        /// <summary>Place de la forme dans le moteur, qui fait foi tant que le boss est engagé (elle s'y déplace à sa vitesse).</summary>
+        /// <exception cref="InvalidOperationException">Boss pas engagé.</exception>
+        public void Follow(GroundVector position)
+        {
+            if (!Engaged) throw new InvalidOperationException("Le boss n'est pas engagé.");
+            Position = position;
+        }
+
+        /// <summary>Dégage le boss du moteur : il reprend sa marche depuis sa place (vers un autre emplacement, ou le long de sa route d'assaut).</summary>
+        public void Disengage()
+        {
+            if (!Engaged) return;
+            Engaged = false;
+            if (Stage == WorldBossStage.Roaming || Stage == WorldBossStage.Announced)
+            {
+                _path.Clear();
+                PickNextSite();
+            }
+        }
+
+        /// <summary>
         /// Avance l'événement jusqu'au temps serveur <paramref name="serverMs"/> (jamais en arrière : refusé, rien ne change). Le monde
         /// avance par secondes entières de temps serveur (grille absolue) : le résultat ne dépend pas de la cadence des appels. Le boss marche
         /// à sa vitesse vers sa destination ; il ne saute jamais. <paramref name="players"/> : places des joueurs, utilisées à l'apparition
@@ -462,6 +501,7 @@ namespace EdS.World
             if (Stage == WorldBossStage.Announced && t >= LimitAtMs)
             {
                 Stage = WorldBossStage.Assault;
+                Engaged = false;   // l'assaut le dégage du combat : il marche vers sa cible
                 _path.Clear();
                 _path.AddRange(Target!.Route);
                 _path.Add(Target.Objectives[0].Position);
@@ -497,7 +537,7 @@ namespace EdS.World
         /// <summary>Marche d'un pas de la grille le long du chemin, à sa vitesse ; le reste du pas continue vers le point suivant.</summary>
         private void Walk()
         {
-            if (!IsPresent) return;
+            if (!IsPresent || Engaged) return;
             long budget = checked(_boss.WalkSpeed.Raw * StepMs / 1000);   // unités brutes
             while (budget > 0 && _path.Count > 0)
             {

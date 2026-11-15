@@ -1,0 +1,225 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 20,
+  "kind": "scenario",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "seed": 31,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -60,
+          -60
+        ],
+        "max": [
+          100,
+          60
+        ]
+      },
+      "obstacles": []
+    },
+    "combatants": [
+      {
+        "id": "grand_solitaire_calme",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 240000,
+        "armor": 60,
+        "magicResistance": 40,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 3000,
+        "attacks": [
+          {
+            "id": "balayage",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "cone",
+            "telegraphMs": 2400,
+            "range": 14,
+            "angle": 120
+          },
+          {
+            "id": "pietinement",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 2800,
+            "radius": 6,
+            "center": "self",
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          0,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 3,
+        "speed": 3,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 30,
+          "pack": false
+        }
+      },
+      {
+        "id": "grand_solitaire_blesse",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 240000,
+        "armor": 60,
+        "magicResistance": 40,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 2600,
+        "attacks": [
+          {
+            "id": "balayage",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "cone",
+            "telegraphMs": 2400,
+            "range": 14,
+            "angle": 120
+          },
+          {
+            "id": "pietinement",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 2800,
+            "radius": 6,
+            "center": "self",
+            "holdPosition": true
+          },
+          {
+            "id": "charge",
+            "rawDamage": 45,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 3500,
+            "range": 42,
+            "width": 10
+          }
+        ],
+        "position": [
+          20,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 3,
+        "speed": 3,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 30,
+          "pack": false
+        }
+      },
+      {
+        "id": "grand_solitaire_enrage",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 240000,
+        "armor": 60,
+        "magicResistance": 40,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "balayage",
+            "rawDamage": 30,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "cone",
+            "telegraphMs": 2400,
+            "range": 14,
+            "angle": 120
+          },
+          {
+            "id": "pietinement",
+            "rawDamage": 35,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 2800,
+            "radius": 6,
+            "center": "self",
+            "holdPosition": true
+          },
+          {
+            "id": "charge",
+            "rawDamage": 45,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 3500,
+            "range": 42,
+            "width": 10
+          },
+          {
+            "id": "eclats",
+            "rawDamage": 40,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 3000,
+            "radius": 4,
+            "center": "target"
+          }
+        ],
+        "position": [
+          40,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 3,
+        "speed": 3,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 30,
+          "pack": false
+        }
+      }
+    ],
+    "commands": []
+  }
+}

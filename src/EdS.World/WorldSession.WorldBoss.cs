@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Saves;
 using EdS.Data.WorldBosses;
+using EdS.Domain.Combat;
+using EdS.Domain.Numerics;
 using EdS.Domain.Space;
+using EdS.Simulation.Engine;
 
 namespace EdS.World
 {
@@ -36,6 +39,15 @@ namespace EdS.World
 
         /// <summary>Le butin de la victoire est donné au personnage.</summary>
         Rewarded = 8,
+
+        /// <summary>Sa forme entre dans le moteur : le combat commence (ou reprend), dans la phase du moment.</summary>
+        Engaged = 9,
+
+        /// <summary>Changement de phase : la forme de la phase suivante prend la place de la précédente, avec la vie restante.</summary>
+        PhaseChanged = 10,
+
+        /// <summary>Il se dégage du combat (personnage loin, absent ou vaincu ; assaut) et reprend sa marche.</summary>
+        Disengaged = 11,
     }
 
     public sealed class WorldBossNotice
@@ -70,6 +82,34 @@ namespace EdS.World
         private WorldBossEvent?[] _worldBossEvents = Array.Empty<WorldBossEvent?>();
         private IReadOnlyList<WorldBossNotice> _worldBossNotices = Array.Empty<WorldBossNotice>();
 
+        /// <summary>Forme de chaque boss dans le moteur : identité, session, vie lue au dernier pas, phase jouée ; null hors combat.</summary>
+        private sealed class BossFormSlot
+        {
+            public string Id = "";
+            public Zone Session = null!;
+            public long Health;
+            public int Phase;
+
+            /// <summary>Changement de phase en cours : l'ancienne forme part à ce tick, la suivante arrive au pas suivant à cette place.</summary>
+            public CombatantPlacement? Swap;
+        }
+
+        private BossFormSlot?[] _worldBossForms = Array.Empty<BossFormSlot?>();
+        private readonly HashSet<string> _worldBossFormIds = new HashSet<string>(StringComparer.Ordinal);
+        private int _worldBossJoins;
+
+        /// <summary>Distance du personnage au boss sous laquelle sa forme entre dans le moteur (celle du point d'émergence, 30 m).</summary>
+        public static Fixed EngageDistance(WorldBossDefinition boss) => boss.Clearance;
+
+        /// <summary>Distance au-delà de laquelle il se dégage (le double).</summary>
+        public static Fixed LeashDistance(WorldBossDefinition boss) => Fixed.FromRaw(checked(boss.Clearance.Raw * 2));
+
+        /// <summary>Le combattant est une forme d'un boss du monde (ni expérience ni butin de créature à sa mort : son butin est celui de l'événement).</summary>
+        public bool IsWorldBossForm(string combatant) => _worldBossFormIds.Contains(combatant);
+
+        /// <summary>Identité de la forme du boss <paramref name="boss"/> dans le moteur, ou null hors combat.</summary>
+        public string? WorldBossForm(string boss) => _worldBossForms[WorldBossIndex(boss)]?.Id;
+
         /// <summary>
         /// Met en jeu les boss du monde de <paramref name="book"/> (validé contre la zone de cette partie : ses emplacements et ses cibles
         /// sont dans son aire). Une seule fois par partie.
@@ -82,6 +122,7 @@ namespace EdS.World
             if (Definition is null) throw new InvalidOperationException("Partie sans définition de zone : aucun boss du monde.");
             _worldBosses = book;
             _worldBossEvents = new WorldBossEvent?[book.Bosses.Count];
+            _worldBossForms = new BossFormSlot?[book.Bosses.Count];
         }
 
         /// <summary>Boss du monde en jeu, ou null.</summary>
@@ -174,12 +215,141 @@ namespace EdS.World
                 WorldBossStage before = e.Stage;
                 int destroyed = e.ObjectivesDestroyed;
                 players ??= WorldBossPlayers();
+                // Grand Solitaire, 2e partie : le combat dans le moteur d'abord (dégâts du tick, place de la forme), puis le temps serveur.
+                FightWorldBoss(i, e, ref notices);
                 e.Advance(now, players);
+                if (e.Stage >= WorldBossStage.Assault && _worldBossForms[i] != null) Release(i, e, ref notices);
                 Noticed(e, before, destroyed, ref notices);
                 if (e.Outcome != WorldBossOutcome.None && memory.LastWindow < e.Window) SettleWorldBoss(b, key, e, memory, ref notices);
-                if (e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated) _worldBossEvents[i] = null;
+                if (e.Stage == WorldBossStage.Gone || e.Stage == WorldBossStage.Defeated)
+                {
+                    if (_worldBossForms[i] != null) Release(i, e, ref notices);
+                    _worldBossEvents[i] = null;
+                }
             }
             _worldBossNotices = (IReadOnlyList<WorldBossNotice>?)notices ?? Array.Empty<WorldBossNotice>();
+        }
+
+        /// <summary>
+        /// Combat dans le moteur (boss à formes, schéma 2) : les dégâts que sa forme a reçus depuis le dernier pas comptent pour l'événement
+        /// (participation du personnage) ; sa place suit la forme ; à un changement de phase, la forme suivante prend sa place avec la vie
+        /// restante ; il se dégage si le personnage est loin, absent ou vaincu, ou si la session de la forme n'est plus celle du personnage ;
+        /// il s'engage quand le personnage s'approche (avant l'assaut). Une arrivée refusée par le moteur (place prise) est retentée au pas suivant.
+        /// </summary>
+        private void FightWorldBoss(int i, WorldBossEvent e, ref List<WorldBossNotice>? notices)
+        {
+            WorldBossDefinition b = e.Boss;
+            if (!b.Fightable) return;
+            CombatantView me = Zone.Engine.View(CombatantId);
+            bool heroHere = me.IsPresent && !me.IsDead && me.Position is GroundVector;
+            if (_worldBossForms[i] is BossFormSlot f)
+            {
+                if (!ReferenceEquals(f.Session, Zone) || f.Session.IsOver)
+                {
+                    // Session remplacée ou finie (passage, renouvellement) : la forme est partie avec elle ; il reprend sa marche d'où il était.
+                    _worldBossForms[i] = null;
+                    e.Disengage();
+                    Add(ref notices, WorldBossNoticeKind.Disengaged, e);
+                    return;
+                }
+                if (f.Swap is CombatantPlacement swap)
+                {
+                    _worldBossForms[i] = null;
+                    if (e.IsFightable && JoinForm(i, e, swap)) Add(ref notices, WorldBossNoticeKind.PhaseChanged, e);
+                    else { e.Disengage(); Add(ref notices, WorldBossNoticeKind.Disengaged, e); }
+                    return;
+                }
+                CombatantView v = f.Session.Engine.View(f.Id);
+                if (!v.IsPresent && !v.IsDead && !v.HasLeft)
+                {
+                    // Arrivée à venir, ou refusée par le moteur au moment d'arriver (place prise) : on attend, ou l'on se dégage et réessaie.
+                    if (v.ArrivalTick is long due && due >= f.Session.Engine.CurrentTick) return;
+                    _worldBossForms[i] = null;
+                    e.Disengage();
+                    Add(ref notices, WorldBossNoticeKind.Disengaged, e);
+                    return;
+                }
+                if (v.Health is long hp && hp < f.Health && e.IsFightable) e.Damage(CombatantId, f.Health - hp);
+                if (v.Health is long now) f.Health = now;
+                if (v.Position is GroundVector at && e.Engaged) e.Follow(at);
+                if (!e.IsFightable) return;   // vaincu : la forme quitte le moteur après le pas du temps serveur
+                bool far = !heroHere || !(v.Position is GroundVector p) || !Near(me.Position!.Value, p, LeashDistance(b));
+                if (v.IsDead || v.HasLeft || far)
+                {
+                    Release(i, e, ref notices);
+                    return;
+                }
+                if (e.Phase != f.Phase)
+                {
+                    // Changement de phase : la forme suivante, à la même place, avec la vie restante.
+                    CombatantPlacement place = new CombatantPlacement(v.Position!.Value, v.Radius ?? b.Radius, v.Facing);
+                    // Le départ prend effet en fin de tick : la forme suivante entre au pas suivant, à la place libérée.
+                    f.Session.Leave(f.Id);
+                    f.Swap = place;
+                }
+                return;
+            }
+            if (!e.IsFightable || e.Stage >= WorldBossStage.Assault || !heroHere || Zone.IsOver) return;
+            if (_host != null && _host.Map.OwnerOf(e.Position) != _zoneSector) return;   // sur l'hôte des secteurs : dans le secteur du personnage
+            if (!Near(me.Position!.Value, e.Position, EngageDistance(b))) return;
+            // Place libre la plus proche de la sienne (règle d'arrivée : sa marche en ligne droite peut longer un obstacle).
+            if (!(SectorWorld.FreeSpotOf(Zone, e.Position, b.Radius, character: false) is GroundVector free)) return;
+            var spot = new CombatantPlacement(free, b.Radius, Facing(free, me.Position!.Value));
+            if (!JoinForm(i, e, spot)) return;
+            e.Engage();
+            e.Follow(free);
+            Add(ref notices, WorldBossNoticeKind.Engaged, e);
+        }
+
+        /// <summary>Fait entrer la forme de la phase du moment, vie maximale et restante de l'événement ; faux si le moteur la refuse (rien ne change).</summary>
+        private bool JoinForm(int i, WorldBossEvent e, CombatantPlacement place)
+        {
+            AssailantSetup t = e.PhaseNow.Form!;
+            string id = t.Id;
+            for (int n = 2; Zone.Engine.CombatantIds.Contains(id); n++) id = $"{t.Id}_v{n}";
+            var form = new AssailantSetup(id, t.Team, t.Armor, t.MagicResistance, null, t.FirstAttackMs, t.IntervalMs, t.Attacks, t.Initiative, t.StatusResistance,
+                t.Triggers, e.MaxHealth, place, checked(Zone.Engine.CurrentTick * Zone.Engine.TickMilliseconds), t.Behavior,
+                e.Health < e.MaxHealth ? new CarriedState(health: e.Health) : null);
+            try
+            {
+                Zone.Engine.Join(form);
+            }
+            catch (Exception x) when (x is ArgumentException || x is InvalidOperationException)
+            {
+                return false;   // place prise, file pleine : refus atomique, nouvel essai au pas suivant
+            }
+            Zone.Transient(id);   // aucune clé de mort au registre : l'issue est celle de l'événement
+            _worldBossFormIds.Add(id);
+            _worldBossJoins++;
+            _worldBossForms[i] = new BossFormSlot { Id = id, Session = Zone, Health = e.Health, Phase = e.Phase };
+            return true;
+        }
+
+        /// <summary>La forme quitte le moteur (si elle y est encore) et le boss reprend sa marche.</summary>
+        private void Release(int i, WorldBossEvent e, ref List<WorldBossNotice>? notices)
+        {
+            if (!(_worldBossForms[i] is BossFormSlot f)) return;
+            _worldBossForms[i] = null;
+            if (f.Swap is null && ReferenceEquals(f.Session, Zone) && !f.Session.IsOver)
+            {
+                CombatantView v = f.Session.Engine.View(f.Id);
+                if (v.IsPresent && !v.IsDead) f.Session.Leave(f.Id);
+            }
+            bool was = e.Engaged;
+            e.Disengage();
+            if (was || e.IsFightable) Add(ref notices, WorldBossNoticeKind.Disengaged, e);
+        }
+
+        private static void Add(ref List<WorldBossNotice>? notices, WorldBossNoticeKind kind, WorldBossEvent e) =>
+            (notices ??= new List<WorldBossNotice>()).Add(new WorldBossNotice(kind, e.Boss.Id, e.Window));
+
+        private static bool Near(GroundVector a, GroundVector b, Fixed distance) =>
+            Planar.LengthSquared(checked(a.X.Raw - b.X.Raw), checked(a.Z.Raw - b.Z.Raw)) <= checked(distance.Raw * distance.Raw);
+
+        private static GroundVector Facing(GroundVector from, GroundVector to)
+        {
+            long dx = checked(to.X.Raw - from.X.Raw), dz = checked(to.Z.Raw - from.Z.Raw);
+            return Planar.TryNormalize(dx, dz, out long ax, out long az) ? GroundVector.FromRaw(ax, az) : new GroundVector(Fixed.One, Fixed.Zero);
         }
 
         private static void Noticed(WorldBossEvent e, WorldBossStage before, int destroyed, ref List<WorldBossNotice>? notices)
