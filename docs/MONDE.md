@@ -1165,6 +1165,19 @@ Vague 4, « la vie à côté du combat » (découpage du 29 octobre 2026, [PLAN_
 
 **Limites** : Unity ne montre pas encore de canne, de bouchon ni de carnet (compilation seulement ; messages de l'aventure) ; pas encore de pêche sous la glace ni de concours de pêche ; les prises ne servent pas encore à la cuisine (PR suivante de la vague 4).
 
+## Cartes à la taverne (vague 4, 3e partie)
+
+Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) § 7 decies), sur la proposition de Claude (PR #187) : le jeu des **Trois Feux**, contre Mathurin et les PNJ de la taverne le soir (`EdS.World.CardMatch` ; cœur seulement, sans dialogue ni interface pour l'instant).
+
+- Paquet de **27 cartes** : trois couleurs (soleil, lune, brume), valeurs 1 à 9, mêlé par `Pcg32` sur une clé stable : **graine secrète du personnage**, personnage, PNJ, jour du monde, numéro de la partie du jour (0 à 2) ; champs texte préfixés de leur longueur. Sans la graine, la donne ne se calcule pas d'avance (relecture indépendante de la PR #187).
+- **Cinq cartes** chacun, **cinq manches** : le joueur pose une carte, le PNJ la sienne **sans voir** celle du joueur, on retourne.
+- Force d'une carte : sa valeur, **+3** si sa couleur l'emporte (le soleil dissipe la brume, la brume voile la lune, la lune éclipse le soleil ; même couleur : rien). La plus forte prend la manche ; égalité : personne. Le plus de manches gagne la partie ; égalité : nulle.
+- Trois manières de PNJ : **prudent** (sa plus faible d'abord), **hardi** (sa plus forte), **rusé** (sa plus forte quand il est mené, sa plus faible sinon).
+- **Mises** : 5, 10 ou 25 cuivre, rendues doublées si l'on gagne ; **au plus 3 parties par PNJ et par jour**. Partie nulle : mise rendue (recommandation de la relecture, à confirmer).
+- **Récompense** : après **10 victoires**, un **jeu de cartes rare** (objet décoratif) et le titre **« As des Trois Feux »**.
+- **Avant les mises** (partie suivante) : graine secrète gardée dans la sauvegarde du personnage, numéro de partie pris dès la mise, partie en cours sauvegardée (quitter = abandon, mise perdue), compteur de victoires ; nouvelle version de la sauvegarde, avec ses tests.
+
+
 ## Sauvegarde
 
 Version 16 depuis le sous-lot V2.10 (stock des marchands `character.stock`, concours des fêtes `character.story.festivals`, tous deux facultatifs, [ci-dessus](#marchands-vivants-et-fêtes-du-bourg-sous-lot-v210)) ; version 15 depuis le sous-lot V2.7 (réputation `character.story.reputation`, [ci-dessus](#réputation-sous-lot-v27)) ; version 14 depuis le sous-lot V2.6 (cicatrices des failles restées ouvertes `character.scars`, [ci-dessus](#le-seuil-qui-grandit-sous-lot-v26)) ; version 13 depuis le sous-lot V2.5 (registre des événements du monde `character.events`, [ci-dessus](#événements-du-monde-sous-lot-v25)) ; version 12 depuis le sous-lot V1.8c (bonus actifs). Fichier local de la tranche (cadrage Q10), versionné, lu par l'analyseur strict et validé par un seul validateur (`SaveValidator`, chemins d'erreur précis). Version 10 depuis le sous-lot V1.7 (carte d'aventurier `story.guild`, facultative : absente tant que le personnage n'est pas inscrit ; créatures rares déjà vaincues `story.hunted`, facultatif : absent s'il n'y en a aucune) ; version 9 au sous-lot V1.3 (instances d'objets) ; version 8 au sous-lot V1.6 (quête suivie `tracked`, étape réservée `reward` d'une récompense au choix en attente) ; version 7 au sous-lot V1.2 (18 places), version 6 au sous-lot V1.1. Les versions 9 et plus anciennes se relisent sans carte (`guild` y est refusé, champ inconnu). Une version 7 se relit sans quête suivie (l'étoile de la carte revient à la première principale en cours) et n'a pas d'étape `reward` ; les versions 6 et plus anciennes se relisent comme avant :
