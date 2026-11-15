@@ -280,12 +280,13 @@ namespace EdS.Game
         private void Obstacle(SpaceObstacle obstacle)
         {
             int children = _root.transform.childCount, occluders = _occluders.Count, boxes = _cameraBoxes.Count;
+            _draped = false;
             ObstacleShape(obstacle);
             if (!StyleWorld.HasRelief || obstacle.Low || TownRules.BuildingFor(obstacle.Id) == StyleBuilding.Woods
                 || StyleRules.FenceFor(obstacle.Id) == StyleFence.Hedge) return;
             // Revue Codex de la PR #170 : l'éboulement et les falaises (sans replat) ont chaque rocher posé sur son sol (QuarryFace) : pas de
-            // déplacement d'ensemble.
-            if (StyleRules.RockFace(obstacle.Id) && !GroundRelief.Builds(obstacle)) return;
+            // déplacement d'ensemble ; 2e tour : seulement si les rochers ont bien été posés (sinon le prisme de secours est relevé comme avant).
+            if (_draped) return;
             float cx = Raw((obstacle.Points.Min(p => p.X.Raw) + obstacle.Points.Max(p => p.X.Raw)) / 2);
             float cz = Raw((obstacle.Points.Min(p => p.Z.Raw) + obstacle.Points.Max(p => p.Z.Raw)) / 2);
             Lift(children, occluders, boxes, Ground(cx, cz, 0.4f));
@@ -1573,6 +1574,9 @@ namespace EdS.Game
         /// Essai réaliste 5 : front de taille de la carrière en paroi de gros rochers du catalogue, serrés le long de son grand côté, un
         /// second rang plus bas au pied et quelques blocs tombés devant. False sans rocher dans le catalogue (le bloc simple reste).
         /// </summary>
+        /// <summary>Revue Codex de la PR #170 : le dernier obstacle construit a-t-il eu ses rochers posés chacun sur son sol ?</summary>
+        private bool _draped;
+
         private bool QuarryFace(string id, List<Vector3> points, bool drape)
         {
             int placed = 0;
@@ -1610,6 +1614,7 @@ namespace EdS.Game
                     if (block != null) AddModelOccluders(block);
                 }
             }
+            _draped = drape && placed > 0;
             return placed > 0;
         }
 
