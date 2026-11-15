@@ -555,7 +555,7 @@ namespace EdS.Runtime
             if (caught != null)
             {
                 Say("text.ui.fishing.caught", ItemName(caught.Fish), caught.Cm.ToString(CultureInfo.InvariantCulture));
-                if (caught.Record && World.Fishing.Of(caught.Fish)!.Count > 1) Say("text.ui.fishing.record", ItemName(caught.Fish));
+                if (caught.Record && World.Fishing.Of(caught.Fish) is SavedCatch line && line.Count > 1) Say("text.ui.fishing.record", ItemName(caught.Fish));
                 return true;
             }
             Say(outcome == FishingOutcome.TooEarly ? "text.ui.fishing.tooearly" : "text.ui.fishing.toolate");

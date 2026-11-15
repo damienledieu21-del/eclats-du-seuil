@@ -176,6 +176,7 @@ namespace EdS.World
             outcome = FishingOutcome.TooEarly;
             caught = null;
             if (_fishing is null || !(_castSpot is FishingSpot s)) return FishingRefusal.NotCasting;
+            if (InCombat) return FishingRefusal.InCombat;   // revue Codex de la PR #181 : pas de ferrage en combat (rien ne change)
             if (!(((INarrativeWorld)this).PlayerPosition is GroundVector p) || ZonePopulations.Beyond(p, Fixed.Zero, s.Position, Fixed.Zero, _fishing.Range))
                 return FishingRefusal.NotHere;
             long now = Zone.WorldTick;
@@ -192,8 +193,9 @@ namespace EdS.World
             FishKind kind = _castKind!;
             int cm = _castCm;
             if (!Inventory.CanAdd(kind.Item, 1)) return FishingRefusal.Full;
-            bool record = !(cast.Of(kind.Item) is SavedCatch old) || cm > old.BestCm;
             SavedFishing next = Caught(cast, kind.Item, cm);
+            // Revue Codex de la PR #181 : carnet plein, l'espèce n'y entre pas : pas de record.
+            bool record = next.Of(kind.Item) != null && (!(cast.Of(kind.Item) is SavedCatch old) || cm > old.BestCm);
             Inventory.Add(kind.Item, 1);
             _character = _character.WithFishing(next);
             _castSpot = null;

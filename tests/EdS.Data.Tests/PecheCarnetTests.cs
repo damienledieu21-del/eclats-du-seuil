@@ -305,6 +305,7 @@ public class PecheCarnetTests
         Assert.Equal(FishingOutcome.Caught, outcome);
         Assert.Equal(1, capped.Inventory.Count(fish!.Fish));
         Assert.Equal(full, capped.Fishing);
+        Assert.False(fish.Record);   // revue Codex de la PR #181 : hors du carnet plein, pas de record
     }
 
     [Fact]
@@ -312,5 +313,21 @@ public class PecheCarnetTests
     {
         string text = SaveJsonReader.Write(Open().Save());
         Assert.False(SaveJsonReader.Read(text.Replace("\"schemaVersion\": 21", "\"schemaVersion\": 22")).IsValid);
+    }
+
+    [Fact]
+    public void Revue_Codex_pas_de_ferrage_en_combat_rien_ne_change()
+    {
+        WorldSession w = Open();
+        Assert.Equal(FishingRefusal.None, w.Cast(Spot));
+        Wait(w, w.BiteTick!.Value);
+        // Le personnage n'est plus en état de pêcher (parti de la session : la partie le compte en combat) : le ferrage est refusé.
+        w.Zone.Leave(w.CombatantId);
+        w.Step();
+        Assert.True(w.InCombat);
+        long casts = w.Fishing.Casts;
+        Assert.Equal(FishingRefusal.InCombat, w.Strike(out _, out FishingCatch? none));
+        Assert.Null(none);
+        Assert.Equal((casts, true), (w.Fishing.Casts, w.CastSpot != null));
     }
 }
