@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.29.0-provisoire",
+  "contentVersion": "0.30.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -34,6 +34,7 @@
       "text.quest.traces.passage": "La porte est condamnée. Récolte trois minerais de fer à la carrière (à l'est, de l'autre côté de la rivière : passe par le gué), forge une ferrure à la forge de Maëlle, juste au nord de la place du village (K), puis parle à Maëlle pour qu'elle la pose. La porte s'ouvre à ta halte suivante.",
       "text.quest.traces.pre": "Passe la porte du moulin et suis les traces vers le nord, dans le pré des loups. Méfie-toi de la meute.",
       "text.discovery.traces_griffues": "Des traces griffues, trop longues pour un loup, partent de la porte du moulin.",
+      "text.discovery.point_de_vue_du_sommet": "Du sommet des hautes collines, tous les Vallons s'étendent sous vos pieds : le Bourg et sa palissade, le lac des Aubes, la fumée du fort des bandits, et au loin les Crêtes de Fer.",
       "text.discovery.eclats_dans_le_pre": "Dans le pré, de minuscules éclats brillent là où les traces s'arrêtent.",
       "text.discovery.manifestation": "Entre les pierres dressées, l'air se plie : une manifestation du Seuil.",
       "text.profession.forge": "Forge",

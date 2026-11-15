@@ -20,7 +20,8 @@ namespace EdS.Game
         private static float _radius = -1f;
 
         private static readonly Color Hills = new Color(0.36f, 0.43f, 0.47f), Forest = new Color(0.22f, 0.32f, 0.29f),
-            Rock = new Color(0.33f, 0.35f, 0.42f), Snow = new Color(0.9f, 0.93f, 0.97f);
+            Rock = new Color(0.33f, 0.35f, 0.42f), Snow = new Color(0.9f, 0.93f, 0.97f),
+            Sea = new Color(0.30f, 0.42f, 0.50f);   // sous-lot V2.29 (2) : la mer de la Côte des Brumes, à l'ouest
 
         /// <summary>Place l'anneau autour de <paramref name="camera"/> (à chaque image) ; <paramref name="visible"/> faux le cache (intérieurs).</summary>
         public static void Follow(Camera camera, bool visible)
@@ -75,7 +76,8 @@ namespace EdS.Game
                 vertices[2 * i] = new Vector3((float)x, -60f, (float)z);
                 vertices[2 * i + 1] = new Vector3((float)x, h, (float)z);
                 HorizonLayer layer = profile.Layer(i);
-                Color top = layer == HorizonLayer.Mountains ? (profile.Snow(i) ? Snow : Rock) : layer == HorizonLayer.Forest ? Forest : Hills;
+                Color top = layer == HorizonLayer.Mountains ? (profile.Snow(i) ? Snow : Rock) : layer == HorizonLayer.Forest ? Forest
+                    : layer == HorizonLayer.Sea ? Sea : Hills;
                 Color foot = layer == HorizonLayer.Mountains ? Rock : top;
                 // Alpha : part de la brume (0 net, 1 fondu) ; le pied se perd dans la brume.
                 top.a = layer == HorizonLayer.Forest ? 0.6f : layer == HorizonLayer.Mountains ? 0.35f : 0.5f;
