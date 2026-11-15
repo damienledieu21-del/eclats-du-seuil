@@ -177,7 +177,7 @@ namespace EdS.Runtime
                 double cx = (b.MinX + b.MaxX) / 2, cz = (b.MinZ + b.MaxZ) / 2, size = Math.Max(b.MaxX - b.MinX, b.MaxZ - b.MinZ);
                 if (o.Id.StartsWith("arbre", StringComparison.Ordinal)) blobs.Add(new Blob { X = cx, Z = cz, Radius = 2.6, Height = 1, Kind = 0, Id = o.Id });
                 else if (o.Id.StartsWith("pierre_seuil", StringComparison.Ordinal)) blobs.Add(new Blob { X = cx, Z = cz, Radius = size * 0.7, Height = 0.5, Kind = 2, Id = o.Id });
-                else if (o.Id.StartsWith("front_de_taille", StringComparison.Ordinal))
+                else if (StyleRules.RockFace(o.Id))   // V2.28c : front de taille, éboulement, falaises
                 {
                     bool alongX = b.MaxX - b.MinX >= b.MaxZ - b.MinZ;
                     double length = alongX ? b.MaxX - b.MinX : b.MaxZ - b.MinZ, depth = alongX ? b.MaxZ - b.MinZ : b.MaxX - b.MinX;
@@ -232,7 +232,7 @@ namespace EdS.Runtime
                 : ((double, double, double, double)?)null;
             var others = obstacles.Where(o => !o.Low && !o.Id.StartsWith("arbre", StringComparison.Ordinal) && !o.Id.StartsWith("moulin", StringComparison.Ordinal)
                 && !o.Id.StartsWith("pilier", StringComparison.Ordinal) && StyleRules.ForObstacle(o.Id) == null && StyleRules.FenceFor(o.Id) == StyleFence.None
-                && !o.Id.StartsWith("front_de_taille", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) == StyleBuilding.None)
+                && !StyleRules.RockFace(o.Id) && TownRules.BuildingFor(o.Id) == StyleBuilding.None)
                 .Select(o => (Points: o.Points, Box: Box(o.Points))).ToList();
 
             // Hauteur de ce qui dépasse du sol, pour les ombres (soleil au nord-ouest : ombres vers le sud-est).

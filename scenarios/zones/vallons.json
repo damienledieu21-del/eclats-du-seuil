@@ -1590,20 +1590,20 @@
           "id": "riviere_champs1",
           "points": [
             [
-              19.41,
-              -58.88
+              9.31,
+              -69.76
             ],
             [
-              16.42,
-              -59.13
+              6.35,
+              -70.27
             ],
             [
-              28.59,
-              -201.12
+              28.69,
+              -201.24
             ],
             [
-              31.58,
-              -200.87
+              31.65,
+              -200.73
             ]
           ],
           "low": true
@@ -1719,7 +1719,7 @@
           "low": true
         },
         {
-          "id": "grand_lac",
+          "id": "riviere_grand_lac",
           "low": true,
           "points": [
             [
@@ -1761,7 +1761,7 @@
           ]
         },
         {
-          "id": "gorge_ouest",
+          "id": "riviere_gorge_ouest",
           "points": [
             [
               -1908,
@@ -1783,7 +1783,7 @@
           "low": true
         },
         {
-          "id": "ravin_ronces_sud",
+          "id": "haie_ronces_sud",
           "points": [
             [
               -1502.0,
@@ -1805,7 +1805,7 @@
           "low": true
         },
         {
-          "id": "ravin_ronces_est",
+          "id": "haie_ronces_est",
           "points": [
             [
               -158.28,

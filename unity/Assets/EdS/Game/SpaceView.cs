@@ -444,7 +444,8 @@ namespace EdS.Game
             if (id.StartsWith("pilier")) return;
             // Essai réaliste 5 (« le gros bloc en brique, je ne sais pas à quoi il sert » : c'est le front de taille de la carrière) : une
             // paroi de gros rochers sur son emprise.
-            if (id.StartsWith("front_de_taille") && QuarryFace(id, points)) return;
+            // Sous-lot V2.28c : l'éboulement et les falaises de la surface étendue, de même (une paroi de rochers sur leur emprise).
+            if (StyleRules.RockFace(id) && QuarryFace(id, points)) return;
             // Sous-lot V2.11 (5e vague) : les pierres du Seuil sont les menhirs aux runes lumineuses de DragonJojo, sur leur emprise ; sans
             // eux, un rocher des packs comme avant.
             if (StyleRules.Key(id).StartsWith("pierreseuil", System.StringComparison.Ordinal) && Wave5View.Has(Wave5Role.Menhir))

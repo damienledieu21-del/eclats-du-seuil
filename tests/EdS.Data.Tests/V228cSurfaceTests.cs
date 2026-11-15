@@ -64,7 +64,7 @@ public class V228cSurfaceTests
         RegionGrid region = zone.Region!;
         Assert.Equal((region.Min, region.Max), (area.Min, area.Max));
         Assert.False(SectorMap.For(zone).HomeHoldsArea);
-        foreach (string id in new[] { "grand_lac", "gorge_ouest", "ravin_ronces_sud", "ravin_ronces_est", "eboulement_nord", "falaise_collines", "falaise_cascade" })
+        foreach (string id in new[] { "riviere_grand_lac", "riviere_gorge_ouest", "haie_ronces_sud", "haie_ronces_est", "eboulement_nord", "falaise_collines", "falaise_cascade" })
             Assert.Contains(area.Obstacles, o => o.Id == id);
         Assert.True(area.Obstacles.Count(o => o.Id.StartsWith("riviere_vallee", StringComparison.Ordinal)) >= 5);
         Assert.True(area.Obstacles.Count(o => o.Id.StartsWith("riviere_champs", StringComparison.Ordinal)) >= 4);
@@ -86,7 +86,7 @@ public class V228cSurfaceTests
         Assert.True(Reaches(closed.Reached, min, (-20, 250)));    // la vallée jusqu'à l'éboulement aussi
         Assert.False(Reaches(closed.Reached, min, (-20, 300)));   // au-delà de l'éboulement, non
         // Chaque pièce de l'enclos compte : sans l'éboulement, ou sans le ravin de l'est, le pré s'échappe.
-        foreach (string piece in new[] { "eboulement_nord", "ravin_ronces_est" })
+        foreach (string piece in new[] { "eboulement_nord", "haie_ronces_est" })
             Assert.True(Flood(obstacles.Where(o => o.Id != piece), min, max, pre).Edge, piece);
         var open = Flood(obstacles.Where(o => o.Id != "porte_moulin"), min, max, pre);
         Assert.True(Reaches(open.Reached, min, village));

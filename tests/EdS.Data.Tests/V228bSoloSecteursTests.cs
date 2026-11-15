@@ -32,17 +32,15 @@ public class V228bSoloSecteursTests
             root["schemaVersion"] = 12;
             root["data"]!.AsObject().Remove("region");
         }
-        string directory = ScenariosDirectory;
-        string? temporary = null;
-        if (scenario != null)
-        {
-            temporary = directory = Path.Combine(Path.GetTempPath(), "eds_v228b_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path.Combine(directory, "zones"));
-            JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
-            scenario(s);
-            File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
-            CopyMissingZoneScenarios(directory);
-        }
+        // Sous-lot V2.28c : les Vallons d'avant la surface étendue (le cœur seul) : ces essais portent sur l'hôte au cœur seul.
+        string directory = Path.Combine(Path.GetTempPath(), "eds_v228b_" + Guid.NewGuid().ToString("N"));
+        string? temporary = directory;
+        Directory.CreateDirectory(Path.Combine(directory, "zones"));
+        JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+        VallonsBefore(s);
+        scenario?.Invoke(s);
+        File.WriteAllText(Path.Combine(directory, "zones", "vallons.json"), s.ToJsonString());
+        CopyMissingZoneScenarios(directory);
         try
         {
             ZoneLoadResult loaded = ZoneJsonReader.Read(root.ToJsonString(), directory, ShippedData, ItemsCatalog);

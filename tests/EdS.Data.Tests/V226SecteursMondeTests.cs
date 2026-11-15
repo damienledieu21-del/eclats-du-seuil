@@ -118,8 +118,9 @@ public class V226SecteursMondeTests
     [Fact]
     public void Coeur_des_Vallons_exactement_la_zone_d_avant()
     {
-        // Les Vallons tiennent tout entiers dans le secteur du cœur (s07_06) : sa simulation est exactement celle de la zone.
-        ZoneDefinition vallons = V11TestData.Zone();
+        // Les Vallons d'avant la surface étendue (V2.28c) tiennent tout entiers dans le secteur du cœur (s07_06) : sa simulation est exactement
+        // celle de la zone.
+        ZoneDefinition vallons = V228bSoloSecteursTests.Vallons(true);
         SectorMap map = SectorMap.For(vallons);
         Assert.Equal("s07_06", map.HomeSector);
         Assert.True(map.HomeHoldsArea);
@@ -327,9 +328,12 @@ public class V226SecteursMondeTests
         Assert.Contains(Vallons14(r => Mutate13(r)).Report.Errors, e => e.Path.EndsWith(".territory", StringComparison.Ordinal));
         Assert.Contains(Vallons14(r => Population(r, "loup1")["territory"] = 0).Report.Errors, e => e.Path.EndsWith(".territory", StringComparison.Ordinal) && e.Code == ValidationCode.OutOfRange);
         Assert.Contains(Vallons14(r => Population(r, "loup1")["territory"] = 257).Report.Errors, e => e.Path.EndsWith(".territory", StringComparison.Ordinal));
-        // Le cœur des Vallons tient toute l'aire : aucun bord intérieur, le territoire va jusqu'au secteur entier (256 m).
-        Assert.Null(ZoneValidator.InnerEdgeDistance(ok.Zone.Region!, ok.Zone.Setup.Space!, ok.Zone.PopulationOf("loup1")!.Template.Placement!.Position));
-        Assert.True(Vallons14(r => Population(r, "loup1")["territory"] = 256).IsValid);
+        // Sous-lot V2.28c (surface étendue) : le cœur a désormais des bords intérieurs ; le territoire va au plus jusqu'à la distance au bord le
+        // plus proche plus la marge de 32 m.
+        Fixed inset = ZoneValidator.InnerEdgeDistance(ok.Zone.Region!, ok.Zone.Setup.Space!, ok.Zone.PopulationOf("loup1")!.Template.Placement!.Position)!.Value;
+        int most = (int)((inset + ZoneValidator.SectorMargin).Raw / Fixed.Scale);
+        Assert.True(Vallons14(r => Population(r, "loup1")["territory"] = most).IsValid);
+        Assert.Contains(Vallons14(r => Population(r, "loup1")["territory"] = most + 1).Report.Errors, e => e.Path.EndsWith(".territory", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -784,8 +788,9 @@ public class V226SecteursMondeTests
     public void Populations_a_heures_voulues_comme_dans_l_hote_d_une_zone()
     {
         // P2 : le prédicat de présence (heures, temps, nuits) est passé aux populations de chaque secteur, au tick du monde : même journal
-        // que l'hôte d'une zone avec le même prédicat, et les créatures à heures arrivent quand elles sont voulues.
-        ZoneDefinition vallons = V11TestData.Zone();
+        // que l'hôte d'une zone avec le même prédicat, et les créatures à heures arrivent quand elles sont voulues. Sous-lot V2.28c : sur le
+        // cœur d'avant la surface étendue (un seul secteur, comparable à la zone d'un bloc).
+        ZoneDefinition vallons = V228bSoloSecteursTests.Vallons(true);
         Population timed = vallons.Populations.First(x => x.Timed);
         bool Wanted(Population pop, long tick) => tick >= 20;
         var log = new MemoryCombatLog();

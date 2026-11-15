@@ -463,6 +463,7 @@ public class V228b2bAventureTests : IDisposable
             }
         string scenarioPath = Path.Combine(scenarios, "zones", "vallons.json");
         JsonObject scenario = JsonNode.Parse(File.ReadAllText(scenarioPath))!.AsObject();
+        VallonsBefore(scenario);   // sous-lot V2.28c : le cœur d'avant la surface étendue, agrandi vers l'est seulement
         scenario["data"]!["space"]!["bounds"]!["max"]![0] = maxX;
         if (durationMs is long d) scenario["data"]!["durationMs"] = d;
         // Le bord du secteur du cœur (x = 140) passe à 6 m d'un archer bandit : il est reculé de 8 m (une population part de l'intérieur).

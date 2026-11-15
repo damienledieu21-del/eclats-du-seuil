@@ -48,7 +48,7 @@ public class VallonsAgrandisTests
         {
             bool dressed = TownRules.BuildingFor(id) != StyleBuilding.None || id.StartsWith("riviere", StringComparison.Ordinal)
                 || StyleRules.FenceFor(id) != StyleFence.None || StyleRules.ForObstacle(id) != null || id.StartsWith("moulin", StringComparison.Ordinal)
-                || id.StartsWith("pilier", StringComparison.Ordinal) || id.StartsWith("front_de_taille", StringComparison.Ordinal);
+                || id.StartsWith("pilier", StringComparison.Ordinal) || StyleRules.RockFace(id);   // V2.28c : éboulement, falaises
             Assert.True(dressed, $"{id} sans habit");
         }
     }
@@ -421,7 +421,7 @@ public class VallonsAgrandisTests
     [InlineData("width", "0.5", "$.data.roads[0].width", ValidationCode.OutOfRange)]
     [InlineData("width", "20.5", "$.data.roads[0].width", ValidationCode.OutOfRange)]
     [InlineData("points", "[[0, 0]]", "$.data.roads[0].points", ValidationCode.OutOfRange)]
-    [InlineData("points", "[[0, 0], [150, 0]]", "$.data.roads[0].points[1]", ValidationCode.OutOfRange)]
+    [InlineData("points", "[[0, 0], [2300, 0]]", "$.data.roads[0].points[1]", ValidationCode.OutOfRange)]
     [InlineData("points", "[[0, 0], [0, 0]]", "$.data.roads[0].points[1]", ValidationCode.InvalidValue)]
     [InlineData("id", "\"grand_rue\"", "$.data.roads[2].id", ValidationCode.DuplicateId)]
     public void Route_invalide_refusee_avec_son_chemin(string field, string json, string path, ValidationCode code)

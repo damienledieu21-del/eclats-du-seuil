@@ -14,6 +14,25 @@ internal static class ScenarioTestData
     public static string ScenarioPath(string name) => Path.Combine(AppContext.BaseDirectory, "scenarios", name + ".json");
 
     /// <summary>
+    /// Sous-lot V2.28c (surface étendue) : obstacles ajoutés à l'aire des Vallons quand elle a été portée à toute la région (rivière de la
+    /// vallée et des champs, grand lac, gorge, ravin des Ronces, éboulement, falaises).
+    /// </summary>
+    public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
+        || id is "riviere_grand_lac" or "riviere_gorge_ouest" or "haie_ronces_sud" or "haie_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade";
+
+    /// <summary>
+    /// Sous-lot V2.28c : remet un scénario des Vallons (racine du fichier) à l'aire d'avant la surface étendue, de [−100, −70] à [140, 100],
+    /// sans les obstacles de la surface : pour les essais qui portent sur le cœur seul (parités, hôte au cœur seul, secteurs d'essai).
+    /// </summary>
+    public static void VallonsBefore(System.Text.Json.Nodes.JsonObject scenario)
+    {
+        var space = scenario["data"]!["space"]!;
+        space["bounds"] = new System.Text.Json.Nodes.JsonObject { ["min"] = new System.Text.Json.Nodes.JsonArray(-100, -70), ["max"] = new System.Text.Json.Nodes.JsonArray(140, 100) };
+        var obstacles = space["obstacles"]!.AsArray();
+        foreach (var o in obstacles.Where(o => SurfaceObstacle((string)o!["id"]!)).ToList()) obstacles.Remove(o);
+    }
+
+    /// <summary>
     /// Intérieurs (28 octobre 2026) : copie dans <paramref name="scenarios"/> les scénarios de zone livrés qui y manquent (les intérieurs
     /// reliés aux Vallons par leurs portes, que l'aventure lit avec eux).
     /// </summary>

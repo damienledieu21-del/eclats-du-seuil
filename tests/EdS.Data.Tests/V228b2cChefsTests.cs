@@ -792,6 +792,7 @@ public class V228b2cChefsTests
         try
         {
             JsonObject s = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+            VallonsBefore(s);   // sous-lot V2.28c : le cœur d'avant la surface étendue
             s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "bandit_arc1")!["position"] = new JsonArray(126, 68);
             if (shape == Shape.Wide) s["data"]!["space"]!["bounds"]!["max"]![0] = 300;
             if (durationMs is long ms) s["data"]!["durationMs"] = ms;   // relecture indépendante de la PR #160 : parité au-delà d'un renouvellement

@@ -2524,6 +2524,17 @@ namespace EdS.Runtime
         }
 
         /// <summary>Ce qu'habille un obstacle du décor : arbres, blocs de la carrière et pierres du Seuil. Null : il garde sa forme.</summary>
+        /// <summary>
+        /// Sous-lot V2.28c (surface étendue) : obstacle habillé d'une paroi de rochers le long de son emprise : le front de taille de la carrière,
+        /// l'éboulement au nord du cœur et les falaises (collines, cascade).
+        /// </summary>
+        public static bool RockFace(string id)
+        {
+            string key = Key(id);
+            return key.StartsWith("frontdetaille", StringComparison.Ordinal) || key.StartsWith("eboulement", StringComparison.Ordinal)
+                || key.StartsWith("falaise", StringComparison.Ordinal);
+        }
+
         public static StyleSlot? ForObstacle(string id)
         {
             string key = Key(id);
