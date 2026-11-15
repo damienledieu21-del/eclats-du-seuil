@@ -1904,7 +1904,15 @@
       "text.activity.couture": "à la table de coupe",
       "text.v214.bakery.rest": "Jour de repos : le four est éteint, rien de frais aujourd'hui (le pain d'épices se garde).",
       "text.compagnons.lien_au_feu.name": "Le lien au feu de camp",
-      "text.compagnons.lien_au_feu.halte": "Le chef des bandits est tombé. Ton compagnon veut te parler à la halte du camp des rôdeurs : il connaît quelqu'un qui marcherait avec vous (ou Cendre a assez grandi pour courir à vos côtés)."
+      "text.compagnons.lien_au_feu.halte": "Le chef des bandits est tombé. Ton compagnon veut te parler à la halte du camp des rôdeurs : il connaît quelqu'un qui marcherait avec vous (ou Cendre a assez grandi pour courir à vos côtés).",
+      "text.ui.hud.companion.follow": "Suivre",
+      "text.ui.hud.companion.wait": "Attendre",
+      "text.ui.hud.companion.target": "Cibler",
+      "text.ui.hud.companion.protect": "Protéger",
+      "text.ui.hud.companion.return": "Revenir",
+      "text.ui.hud.companion.duo": "À deux",
+      "text.ui.hud.companion.down": "Hors combat",
+      "text.ui.hud.companion.duo_ready": "À deux !"
     }
   }
 }

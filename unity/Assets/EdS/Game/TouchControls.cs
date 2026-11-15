@@ -84,6 +84,39 @@ namespace EdS.Game
 
         private bool Tapped(HudButton id) => _gestures.WasTapped((int)id);
 
+        // --- Compagnons -------------------------------------------------------------------------------------------------------
+
+        /// <summary>Compagnons : identifiants des zones du panneau (hors des boutons du HUD) et des six cases du menu.</summary>
+        private const int CompanionPanelZone = 1000, CompanionActionZone = 1001;
+
+        private bool _companionMenu;
+
+        /// <summary>Compagnons : le jeu dit si le menu des ordres est ouvert (ses cases ne sont touchables que s'il l'est).</summary>
+        public bool CompanionMenuOpen
+        {
+            get => _companionMenu;
+            set
+            {
+                if (_companionMenu == value) return;
+                _companionMenu = value;
+                _zonesVersion = -1;   // les zones changent
+            }
+        }
+
+        /// <summary>Compagnons : le panneau du compagnon touché (ouvre ou ferme le menu des ordres).</summary>
+        public bool CompanionPanelPressed => _gestures.WasTapped(CompanionPanelZone);
+
+        /// <summary>Compagnons : case du menu touchée (0 à 4 : un ordre, 5 : l'attaque à deux) ; −1 sinon.</summary>
+        public int CompanionActionPressed
+        {
+            get
+            {
+                for (int i = 0; i < 6; i++)
+                    if (_gestures.WasTapped(CompanionActionZone + i)) return i;
+                return -1;
+            }
+        }
+
         /// <summary>
         /// Sous-lot V1.9.8 : bouton mis en valeur pour l'étape du tutoriel, désigné par son ancien libellé (« Garde », « Parade », « Potion »,
         /// « 1 », « Agir ») ; ou null.
@@ -157,6 +190,18 @@ namespace EdS.Game
                 string key = HudTextsV21.Button(b, _layout.Mode);
                 _labels[i] = key != null ? UiTexts.Get(key) : b >= HudButton.Skill1 && b <= HudButton.Skill6 ? (b - HudButton.Skill1 + 1).ToString() : null;
                 _labelSizes[i] = _layout.LabelFont(box);
+            }
+            // Compagnons : le haut du panneau ouvre le menu ; ses six cases, seulement menu ouvert.
+            if (_layout.CompanionShown)
+            {
+                UiBox panel = _layout[HudPart.Companion], first = _layout.CompanionAction(0);
+                _zones.Add(new GestureButton(CompanionPanelZone, panel.X, panel.Y, panel.W, Mathf.Max(1f, first.Y - panel.Y)));
+                if (_companionMenu)
+                    for (int i = 0; i < 6; i++)
+                    {
+                        UiBox a = _layout.CompanionAction(i);
+                        _zones.Add(new GestureButton(CompanionActionZone + i, a.X, a.Y, a.W, a.H));
+                    }
             }
         }
 
