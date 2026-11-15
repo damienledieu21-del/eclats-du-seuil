@@ -1,0 +1,1181 @@
+{
+  "$schema": "../../schemas/companions.schema.json",
+  "schemaVersion": 1,
+  "kind": "companions",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "bond": {
+      "windowMs": 3000,
+      "coordinatedGain": 4,
+      "protectGain": 6,
+      "campGain": 10
+    },
+    "slots": {
+      "initial": 1,
+      "max": 2,
+      "secondSlotLevel": 12,
+      "secondSlotQuest": "quest.compagnons.lien_au_feu",
+      "worldBossInCombat": 1
+    },
+    "traits": [
+      {
+        "id": "courageux",
+        "name": "Courageux",
+        "gesture": "Posture tournée vers le danger, regard haut, placement devant un allié.",
+        "line": "Derrière moi, je tiens."
+      },
+      {
+        "id": "peureux",
+        "name": "Peureux",
+        "gesture": "Épaules resserrées, regard vers la sortie, respiration avant l'engagement.",
+        "line": "On ne traîne pas ici, d'accord ?"
+      },
+      {
+        "id": "gourmand",
+        "name": "Gourmand",
+        "gesture": "Poche à pain, attente du repas, partage visible au camp.",
+        "line": "On mange quand, après ça ?"
+      },
+      {
+        "id": "chanceux",
+        "name": "Chanceux",
+        "gesture": "Rituel discret : pièce trouée ou cordon à nœuds touché avant une tâche.",
+        "line": "La pièce dit que ça ira."
+      }
+    ],
+    "companions": [
+      {
+        "id": "companion.nyx",
+        "name": "Nyx",
+        "kind": "hero",
+        "role": "assaut dans l'ombre",
+        "summary": "Ancienne passeuse entre les hameaux ; elle a perdu une nuit entière près des Pierres du Seuil et suit l'Éveillé pour comprendre ce manque.",
+        "recruit": {
+          "source": "story"
+        },
+        "gift": {
+          "id": "pas_feutre",
+          "name": "Pas feutré",
+          "effect": "flank",
+          "description": "Signale une approche latérale praticable ; réduit le bruit, sans invisibilité permanente."
+        },
+        "stages": [
+          {
+            "id": "nyx",
+            "name": "Nyx",
+            "fromLevel": 1,
+            "health": {
+              "base": 300,
+              "perLevel": 28
+            },
+            "armor": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.45,
+            "speed": 5.5,
+            "maxRange": 0.6,
+            "firstAttackMs": 500,
+            "intervalMs": 1000,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "seax",
+                "damage": {
+                  "base": 22,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.2
+              },
+              {
+                "id": "fente",
+                "damage": {
+                  "base": 40,
+                  "perLevel": 6
+                },
+                "damageType": "physique",
+                "range": 1.5,
+                "telegraphMs": 400
+              }
+            ],
+            "duo": {
+              "id": "contre_jour",
+              "name": "Contre-jour",
+              "damage": {
+                "base": 90,
+                "perLevel": 14
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.albe",
+        "name": "Sœur Albe",
+        "kind": "hero",
+        "role": "soin et protection",
+        "summary": "Sœur de la chapelle des Vallons, grave et attentive ; elle veille l'Éveillé une lampe à la main.",
+        "recruit": {
+          "source": "story"
+        },
+        "gift": {
+          "id": "veille_de_l_aube",
+          "name": "Veille de l'Aube",
+          "effect": "rescue",
+          "description": "Rend visible un allié en détresse et stabilise sa relève ; effet pâle et ponctuel."
+        },
+        "stages": [
+          {
+            "id": "albe",
+            "name": "Sœur Albe",
+            "fromLevel": 1,
+            "health": {
+              "base": 340,
+              "perLevel": 30
+            },
+            "armor": {
+              "base": 10,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 14,
+              "perLevel": 3
+            },
+            "radius": 0.45,
+            "speed": 4.5,
+            "maxRange": 1.2,
+            "firstAttackMs": 500,
+            "intervalMs": 1300,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "poussee_de_baton",
+                "damage": {
+                  "base": 16,
+                  "perLevel": 2
+                },
+                "damageType": "physique",
+                "range": 1.6
+              },
+              {
+                "id": "onde_pale",
+                "damage": {
+                  "base": 30,
+                  "perLevel": 5
+                },
+                "damageType": "magique",
+                "range": 2.5,
+                "telegraphMs": 500
+              }
+            ],
+            "duo": {
+              "id": "aube_partagee",
+              "name": "Aube partagée",
+              "damage": {
+                "base": 80,
+                "perLevel": 12
+              },
+              "damageType": "magique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.renart",
+        "name": "Renart",
+        "kind": "hero",
+        "role": "diversion et soutien",
+        "summary": "Marchand mielleux et prudent : il protège d'abord sa sortie, puis exploite une occasion.",
+        "recruit": {
+          "source": "story"
+        },
+        "gift": {
+          "id": "oeil_du_negociant",
+          "name": "Œil du négociant",
+          "effect": "appraisal",
+          "description": "Repère un faux prix ou une cache déjà accessible ; ne crée pas de trésor."
+        },
+        "stages": [
+          {
+            "id": "renart",
+            "name": "Renart",
+            "fromLevel": 1,
+            "health": {
+              "base": 290,
+              "perLevel": 26
+            },
+            "armor": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "radius": 0.45,
+            "speed": 5,
+            "maxRange": 1.0,
+            "firstAttackMs": 500,
+            "intervalMs": 1200,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "coup_de_canne",
+                "damage": {
+                  "base": 18,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.4
+              },
+              {
+                "id": "poussee_de_canne",
+                "damage": {
+                  "base": 30,
+                  "perLevel": 5
+                },
+                "damageType": "physique",
+                "range": 1.6,
+                "telegraphMs": 300
+              }
+            ],
+            "duo": {
+              "id": "marche_de_dupes",
+              "name": "Marché de dupes",
+              "damage": {
+                "base": 85,
+                "perLevel": 13
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.gaspard",
+        "name": "Gaspard",
+        "kind": "hero",
+        "role": "contrôle de passage",
+        "summary": "Vieux garde têtu et soupçonneux, 68 ans ; il économise ses gestes et place sa lance avec expérience.",
+        "recruit": {
+          "source": "story"
+        },
+        "gift": {
+          "id": "memoire_des_chemins",
+          "name": "Mémoire des chemins",
+          "effect": "ambush",
+          "description": "Avertit d'une embuscade ancienne et réduit le recul subi en garde."
+        },
+        "stages": [
+          {
+            "id": "gaspard",
+            "name": "Gaspard",
+            "fromLevel": 1,
+            "health": {
+              "base": 380,
+              "perLevel": 32
+            },
+            "armor": {
+              "base": 16,
+              "perLevel": 3
+            },
+            "magicResistance": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "radius": 0.5,
+            "speed": 4,
+            "maxRange": 1.8,
+            "firstAttackMs": 500,
+            "intervalMs": 1300,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "estoc",
+                "damage": {
+                  "base": 24,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 2.2
+              },
+              {
+                "id": "poussee_de_lance",
+                "damage": {
+                  "base": 38,
+                  "perLevel": 6
+                },
+                "damageType": "physique",
+                "range": 2.4,
+                "telegraphMs": 400
+              }
+            ],
+            "duo": {
+              "id": "la_vieille_lecon",
+              "name": "La vieille leçon",
+              "damage": {
+                "base": 95,
+                "perLevel": 14
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 3
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.aveline",
+        "name": "Aveline Dorne",
+        "kind": "mercenary",
+        "role": "lame",
+        "summary": "Ancienne escorte de convois ; elle paie encore les soins de son frère et préfère un contrat clair à une promesse héroïque.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "g",
+          "price": 300
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "coeur_ferme",
+          "name": "Cœur ferme",
+          "effect": "steadfast",
+          "description": "Maintient son action de protection face à la peur, après une courte hésitation lisible."
+        },
+        "stages": [
+          {
+            "id": "aveline",
+            "name": "Aveline Dorne",
+            "fromLevel": 1,
+            "health": {
+              "base": 330,
+              "perLevel": 30
+            },
+            "armor": {
+              "base": 14,
+              "perLevel": 3
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.45,
+            "speed": 5,
+            "maxRange": 0.6,
+            "firstAttackMs": 500,
+            "intervalMs": 1100,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "taille",
+                "damage": {
+                  "base": 22,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.3
+              },
+              {
+                "id": "taille_descendante",
+                "damage": {
+                  "base": 36,
+                  "perLevel": 5
+                },
+                "damageType": "physique",
+                "range": 1.4,
+                "telegraphMs": 400
+              }
+            ],
+            "duo": {
+              "id": "lame_couverte",
+              "name": "Lame couverte",
+              "damage": {
+                "base": 80,
+                "perLevel": 12
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.hadrien",
+        "name": "Hadrien Fosse",
+        "kind": "mercenary",
+        "role": "bouclier",
+        "summary": "Ancien portier d'un relais incendié ; peu bavard, calme quand les autres crient.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "f",
+          "price": 450
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "point_d_ancrage",
+          "name": "Point d'ancrage",
+          "effect": "anchor",
+          "description": "Protège un allié proche dans le cône du bouclier, sans invulnérabilité complète."
+        },
+        "stages": [
+          {
+            "id": "hadrien",
+            "name": "Hadrien Fosse",
+            "fromLevel": 1,
+            "health": {
+              "base": 420,
+              "perLevel": 36
+            },
+            "armor": {
+              "base": 22,
+              "perLevel": 4
+            },
+            "magicResistance": {
+              "base": 10,
+              "perLevel": 2
+            },
+            "radius": 0.55,
+            "speed": 4,
+            "maxRange": 0.6,
+            "firstAttackMs": 500,
+            "intervalMs": 1400,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "coup_de_masse",
+                "damage": {
+                  "base": 18,
+                  "perLevel": 2
+                },
+                "damageType": "physique",
+                "range": 1.2
+              },
+              {
+                "id": "poussee_du_bouclier",
+                "damage": {
+                  "base": 28,
+                  "perLevel": 4
+                },
+                "damageType": "physique",
+                "range": 1.3,
+                "telegraphMs": 400
+              }
+            ],
+            "duo": {
+              "id": "porte_du_relais",
+              "name": "La porte du relais",
+              "damage": {
+                "base": 75,
+                "perLevel": 11
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.ysee",
+        "name": "Ysée Vaucreux",
+        "kind": "mercenary",
+        "role": "archère",
+        "summary": "Survivante d'une nuit seule dans les ruines ; elle rejoint la Guilde pour ne plus tirer dans le noir sans voix amie.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "f",
+          "price": 400
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "repli_lucide",
+          "name": "Repli lucide",
+          "effect": "retreat",
+          "description": "Signale un chemin sûr après une esquive ; la peur ne lui fait pas quitter le groupe."
+        },
+        "stages": [
+          {
+            "id": "ysee",
+            "name": "Ysée Vaucreux",
+            "fromLevel": 1,
+            "health": {
+              "base": 260,
+              "perLevel": 24
+            },
+            "armor": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.45,
+            "speed": 5,
+            "maxRange": 7,
+            "minRange": 3,
+            "firstAttackMs": 500,
+            "intervalMs": 1300,
+            "followDistance": 1.5,
+            "leash": 14,
+            "attacks": [
+              {
+                "id": "fleche",
+                "damage": {
+                  "base": 20,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 9
+              },
+              {
+                "id": "tir_appuye",
+                "damage": {
+                  "base": 34,
+                  "perLevel": 5
+                },
+                "damageType": "physique",
+                "range": 10,
+                "telegraphMs": 500
+              }
+            ],
+            "duo": {
+              "id": "fleche_de_couverture",
+              "name": "Flèche de couverture",
+              "damage": {
+                "base": 80,
+                "perLevel": 12
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 8
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.nahla",
+        "name": "Nahla Serein",
+        "kind": "mercenary",
+        "role": "soigneuse",
+        "summary": "Soigneuse des routes : elle prépare un pansement dans une charrette en marche ; son bonheur apparent masque une discipline méticuleuse.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "e",
+          "price": 600
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "derniere_pincee",
+          "name": "Dernière pincée",
+          "effect": "lastPinch",
+          "description": "Une préparation de soutien a une chance d'être économisée ; aucune hausse des butins rares."
+        },
+        "stages": [
+          {
+            "id": "nahla",
+            "name": "Nahla Serein",
+            "fromLevel": 1,
+            "health": {
+              "base": 300,
+              "perLevel": 26
+            },
+            "armor": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 14,
+              "perLevel": 3
+            },
+            "radius": 0.4,
+            "speed": 4.5,
+            "maxRange": 1.2,
+            "minRange": 0.5,
+            "firstAttackMs": 500,
+            "intervalMs": 1400,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "baton_noueux",
+                "damage": {
+                  "base": 15,
+                  "perLevel": 2
+                },
+                "damageType": "physique",
+                "range": 1.5
+              },
+              {
+                "id": "fiole_brulante",
+                "damage": {
+                  "base": 28,
+                  "perLevel": 4
+                },
+                "damageType": "magique",
+                "range": 4,
+                "telegraphMs": 500
+              }
+            ],
+            "duo": {
+              "id": "cataplasme",
+              "name": "Cataplasme",
+              "damage": {
+                "base": 70,
+                "perLevel": 10
+              },
+              "damageType": "magique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.silvere",
+        "name": "Silvère Paille",
+        "kind": "mercenary",
+        "role": "éclaireur",
+        "summary": "Messager des cols : il a échappé à trois éboulements en s'arrêtant toujours au même cairn, et jure que sa pièce trouée l'avertit.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "g",
+          "price": 250
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "avant_pas",
+          "name": "Avant-pas",
+          "effect": "trap",
+          "description": "Révèle un piège proche déjà présent, avec un geste au sol et un arrêt net."
+        },
+        "stages": [
+          {
+            "id": "silvere",
+            "name": "Silvère Paille",
+            "fromLevel": 1,
+            "health": {
+              "base": 270,
+              "perLevel": 25
+            },
+            "armor": {
+              "base": 8,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.4,
+            "speed": 6,
+            "maxRange": 1.2,
+            "firstAttackMs": 500,
+            "intervalMs": 1000,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "lance_courte",
+                "damage": {
+                  "base": 19,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.6
+              },
+              {
+                "id": "coup_bas",
+                "damage": {
+                  "base": 30,
+                  "perLevel": 5
+                },
+                "damageType": "physique",
+                "range": 1.6,
+                "telegraphMs": 300
+              }
+            ],
+            "duo": {
+              "id": "croc_en_jambe",
+              "name": "Croc-en-jambe",
+              "damage": {
+                "base": 75,
+                "perLevel": 11
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.odran",
+        "name": "Odran Massepierre",
+        "kind": "mercenary",
+        "role": "brute",
+        "summary": "Ancien porteur de blocs ; il a quitté la carrière après avoir sauvé un apprenti et accepte volontiers sa paie en repas chauds.",
+        "recruit": {
+          "source": "guild",
+          "guildRank": "e",
+          "price": 650
+        },
+        "randomTrait": true,
+        "gift": {
+          "id": "bon_repas",
+          "name": "Bon repas",
+          "effect": "meal",
+          "description": "Prolonge un bonus de halte partagé ; ne mange jamais pendant une attaque."
+        },
+        "stages": [
+          {
+            "id": "odran",
+            "name": "Odran Massepierre",
+            "fromLevel": 1,
+            "health": {
+              "base": 450,
+              "perLevel": 38
+            },
+            "armor": {
+              "base": 16,
+              "perLevel": 3
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.6,
+            "speed": 4,
+            "maxRange": 0.7,
+            "firstAttackMs": 500,
+            "intervalMs": 1600,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "marteau",
+                "damage": {
+                  "base": 30,
+                  "perLevel": 4
+                },
+                "damageType": "physique",
+                "range": 1.6
+              },
+              {
+                "id": "coup_de_carriere",
+                "damage": {
+                  "base": 50,
+                  "perLevel": 7
+                },
+                "damageType": "physique",
+                "range": 1.8,
+                "telegraphMs": 600
+              }
+            ],
+            "duo": {
+              "id": "bloc_de_carriere",
+              "name": "Bloc de carrière",
+              "damage": {
+                "base": 100,
+                "perLevel": 15
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.cendre",
+        "name": "Cendre",
+        "kind": "beast",
+        "role": "pression de flanc",
+        "summary": "Louveteau de la lignée du loup gris des Vallons, petite tache crème en losange sous la gorge ; il grandit avec l'Éveillé.",
+        "recruit": {
+          "source": "story"
+        },
+        "gift": {
+          "id": "piste_partagee",
+          "name": "Piste partagée",
+          "effect": "track",
+          "description": "Renifle puis indique une trace proche ; adulte, signale aussi un ennemi embusqué proche."
+        },
+        "stages": [
+          {
+            "id": "louveteau",
+            "name": "Louveteau",
+            "fromLevel": 1,
+            "health": {
+              "base": 120,
+              "perLevel": 12
+            },
+            "armor": {
+              "base": 2,
+              "perLevel": 1
+            },
+            "magicResistance": {
+              "base": 2,
+              "perLevel": 1
+            },
+            "radius": 0.3,
+            "speed": 5,
+            "maxRange": 0.5,
+            "firstAttackMs": 500,
+            "intervalMs": 1500,
+            "followDistance": 1.0,
+            "leash": 8,
+            "attacks": [
+              {
+                "id": "mordille",
+                "damage": {
+                  "base": 8,
+                  "perLevel": 1
+                },
+                "damageType": "physique",
+                "range": 0.8
+              }
+            ]
+          },
+          {
+            "id": "jeune_loup",
+            "name": "Jeune loup",
+            "fromLevel": 8,
+            "health": {
+              "base": 200,
+              "perLevel": 22
+            },
+            "armor": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "magicResistance": {
+              "base": 4,
+              "perLevel": 1
+            },
+            "radius": 0.45,
+            "speed": 6,
+            "maxRange": 0.5,
+            "firstAttackMs": 500,
+            "intervalMs": 1200,
+            "followDistance": 1.2,
+            "leash": 10,
+            "attacks": [
+              {
+                "id": "morsure",
+                "damage": {
+                  "base": 16,
+                  "perLevel": 2
+                },
+                "damageType": "physique",
+                "range": 1.0
+              }
+            ],
+            "duo": {
+              "id": "appel_de_meute_essai",
+              "name": "Appel de meute (essai)",
+              "damage": {
+                "base": 45,
+                "perLevel": 7
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2
+            }
+          },
+          {
+            "id": "loup_dresse",
+            "name": "Loup dressé",
+            "fromLevel": 18,
+            "health": {
+              "base": 320,
+              "perLevel": 30
+            },
+            "armor": {
+              "base": 10,
+              "perLevel": 2
+            },
+            "magicResistance": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "radius": 0.6,
+            "speed": 6.5,
+            "maxRange": 0.5,
+            "firstAttackMs": 500,
+            "intervalMs": 1000,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "morsure",
+                "damage": {
+                  "base": 24,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.0
+              },
+              {
+                "id": "prise_de_flanc",
+                "damage": {
+                  "base": 36,
+                  "perLevel": 5
+                },
+                "damageType": "physique",
+                "range": 1.2,
+                "telegraphMs": 300
+              }
+            ],
+            "duo": {
+              "id": "appel_de_meute",
+              "name": "Appel de meute",
+              "damage": {
+                "base": 95,
+                "perLevel": 14
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.brisecanne",
+        "name": "Brisecanne",
+        "kind": "beast",
+        "role": "chien de chasse",
+        "summary": "Chien courant rustique à poil dur, robe fauve et selle brune, chaussette blanche à la patte avant gauche.",
+        "recruit": {
+          "source": "tame"
+        },
+        "gift": {
+          "id": "truffe_des_caches",
+          "name": "Truffe des caches",
+          "effect": "treasure",
+          "description": "Renifle, gratte deux fois puis s'assied devant une cache existante ; le joueur déterre, le chien ne crée pas de butin."
+        },
+        "stages": [
+          {
+            "id": "brisecanne",
+            "name": "Brisecanne",
+            "fromLevel": 1,
+            "health": {
+              "base": 260,
+              "perLevel": 24
+            },
+            "armor": {
+              "base": 6,
+              "perLevel": 1
+            },
+            "magicResistance": {
+              "base": 4,
+              "perLevel": 1
+            },
+            "radius": 0.45,
+            "speed": 6.5,
+            "maxRange": 0.5,
+            "firstAttackMs": 500,
+            "intervalMs": 1100,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "morsure",
+                "damage": {
+                  "base": 18,
+                  "perLevel": 3
+                },
+                "damageType": "physique",
+                "range": 1.0
+              }
+            ],
+            "duo": {
+              "id": "prise_et_reprise",
+              "name": "Prise et reprise",
+              "damage": {
+                "base": 70,
+                "perLevel": 10
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.virevent",
+        "name": "Virevent",
+        "kind": "beast",
+        "role": "faucon de reconnaissance",
+        "summary": "Faucon compact aux ailes pointues, dos ardoise et poitrine crème barrée ; il revient toujours au gant.",
+        "recruit": {
+          "source": "tame"
+        },
+        "gift": {
+          "id": "cercle_de_reconnaissance",
+          "name": "Cercle de reconnaissance",
+          "effect": "map",
+          "description": "Révèle le relief et les chemins de la zone survolée sur la carte, jamais les intérieurs fermés ni les secrets souterrains."
+        },
+        "stages": [
+          {
+            "id": "virevent",
+            "name": "Virevent",
+            "fromLevel": 1,
+            "health": {
+              "base": 160,
+              "perLevel": 16
+            },
+            "armor": {
+              "base": 2,
+              "perLevel": 1
+            },
+            "magicResistance": {
+              "base": 4,
+              "perLevel": 1
+            },
+            "radius": 0.25,
+            "speed": 9,
+            "maxRange": 1.0,
+            "firstAttackMs": 500,
+            "intervalMs": 900,
+            "followDistance": 1.5,
+            "leash": 14,
+            "attacks": [
+              {
+                "id": "serres",
+                "damage": {
+                  "base": 14,
+                  "perLevel": 2
+                },
+                "damageType": "physique",
+                "range": 1.2
+              }
+            ],
+            "duo": {
+              "id": "angle_mort",
+              "name": "Angle mort",
+              "damage": {
+                "base": 65,
+                "perLevel": 10
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 3
+            }
+          }
+        ]
+      },
+      {
+        "id": "companion.ronce",
+        "name": "Ronce",
+        "kind": "beast",
+        "role": "ours protecteur",
+        "summary": "Ours brun de huit ans, griffes ivoire usées, petite cicatrice sur le museau ; il porte les sacoches et se place entre l'Éveillé et le danger.",
+        "recruit": {
+          "source": "tame"
+        },
+        "gift": {
+          "id": "sacoches",
+          "name": "Sacoches",
+          "effect": "saddlebags",
+          "description": "Porte des sacoches (place de sac en plus) ; au combat, se place entre un allié et une attaque, sans annuler les grandes zones d'un boss."
+        },
+        "stages": [
+          {
+            "id": "ronce",
+            "name": "Ronce",
+            "fromLevel": 1,
+            "health": {
+              "base": 520,
+              "perLevel": 42
+            },
+            "armor": {
+              "base": 20,
+              "perLevel": 4
+            },
+            "magicResistance": {
+              "base": 10,
+              "perLevel": 2
+            },
+            "radius": 0.9,
+            "speed": 4.5,
+            "maxRange": 0.7,
+            "firstAttackMs": 500,
+            "intervalMs": 1700,
+            "followDistance": 1.5,
+            "leash": 12,
+            "attacks": [
+              {
+                "id": "coup_de_patte",
+                "damage": {
+                  "base": 28,
+                  "perLevel": 4
+                },
+                "damageType": "physique",
+                "range": 1.4
+              },
+              {
+                "id": "charge_d_ours",
+                "damage": {
+                  "base": 45,
+                  "perLevel": 7
+                },
+                "damageType": "physique",
+                "range": 1.6,
+                "telegraphMs": 500
+              }
+            ],
+            "duo": {
+              "id": "a_l_abri_des_griffes",
+              "name": "À l'abri des griffes",
+              "damage": {
+                "base": 90,
+                "perLevel": 13
+              },
+              "damageType": "physique",
+              "telegraphMs": 800,
+              "recoveryMs": 1500,
+              "range": 2.5
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

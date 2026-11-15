@@ -24500,6 +24500,38 @@
             "value": 1
           }
         ]
+      },
+      {
+        "id": "quest.compagnons.lien_au_feu",
+        "name": "text.compagnons.lien_au_feu.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "fact",
+            "id": "fact.chef_des_bandits.vaincu"
+          }
+        ],
+        "steps": [
+          {
+            "id": "halte",
+            "text": "text.compagnons.lien_au_feu.halte",
+            "objective": {
+              "kind": "reach",
+              "id": "camp_des_rodeurs"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "setFact",
+            "id": "fact.compagnons.deuxieme_place"
+          },
+          {
+            "do": "giveXp",
+            "value": 150
+          }
+        ]
       }
     ],
     "discoveries": [
