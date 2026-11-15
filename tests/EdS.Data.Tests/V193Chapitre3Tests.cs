@@ -412,7 +412,7 @@ public class V193Chapitre3Tests
         Say(w, "npc.gaspard", "ch3_pont");
         Choose(w, 0);
         Assert.Contains($"StepCompleted {Pont}/gaspard", Ticks(w));
-        Say(w, "npc.gaspard", "garde");
+        Say(w, "npc.gaspard", "v228_vallee");   // V2.28c (4) : la quête des passages de la vallée, pas encore acceptée
         w = Go(w, Forge);
         Assert.Equal(CraftRefusal.None, w.Craft("recipe.ferrure", out _));
         Assert.DoesNotContain(Ticks(w), e => e.StartsWith("StepCompleted", StringComparison.Ordinal));

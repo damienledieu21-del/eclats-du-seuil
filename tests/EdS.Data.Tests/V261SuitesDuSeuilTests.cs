@@ -223,8 +223,8 @@ public class V261SuitesDuSeuilTests
     public void Histoire_en_schema_11_et_schema_10_encore_lu_avec_seize_repliques()
     {
         StoryBook book = Book(Vallons);
-        Assert.Equal((19, 27, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
-        // Version 10 : 16 répliques au plus ; Gaspard en a 27 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot ; compagnons : la quête de lien) : refusé au chemin précis du dialogue.
+        Assert.Equal((19, 28, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        // Version 10 : 16 répliques au plus ; Gaspard en a 28 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot ; compagnons : la quête de lien ; V2.28c (4) : l'offre de la vallée) : refusé au chemin précis du dialogue.
         JsonObject ten = StoryJson();
         ten["schemaVersion"] = 10;
         int gaspard = ten["data"]!["dialogues"]!.AsArray().Select((d, k) => ((string?)d!["id"], k)).Single(x => x.Item1 == "dialogue.gaspard").k;
