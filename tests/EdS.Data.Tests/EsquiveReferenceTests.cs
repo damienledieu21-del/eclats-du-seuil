@@ -21,7 +21,9 @@ namespace EdS.Data.Tests;
 /// (contenu 0.18.0, bloc <c>combat.dodge</c>), scénarios en schéma 20 (action <c>dodge</c> ; 19 : V2.28c), instantané au format 7. Nouvelle référence
 /// figée <c>Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0</c> : les journaux de la référence 0.31.0 y ont exactement le même corps
 /// (seul l'en-tête change), plus <c>espace_esquive</c> (coup imparable esquivé, coup reçu sans esquive, bond arrêté par un mur, recharge,
-/// mur collé, bord de l'aire, bond vers l'arrière). Les anciennes références restent figées et refusées au rejeu.
+/// mur collé, bord de l'aire, bond vers l'arrière). Les anciennes références restent figées et refusées au rejeu. Depuis les compagnons
+/// (moteur 0.33.0), cette référence est figée à son tour : refusée au rejeu, corps reproduit (la référence courante est vérifiée par
+/// <c>CompagnonsReferenceTests</c>).
 /// </summary>
 [Trait("Category", "Regression")]
 [Trait("Category", "Scenario")]
@@ -54,7 +56,7 @@ public class EsquiveReferenceTests
     [Fact]
     public void Versions_et_regles_livrees()
     {
-        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.33.0", 27, 21, 8), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));
         CombatRules rules = ShippedData.Rules.Combat;
         Assert.Equal((Fixed.FromInt(3), 150L, 300L, 20L, 1000L),
@@ -66,8 +68,9 @@ public class EsquiveReferenceTests
     {
         string path = Fixture(Latest, Esquive);
         string[] frozen = File.ReadAllLines(path);
-        Assert.Equal(frozen, Simulate(Esquive));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
+        // Compagnons (moteur 0.33.0) : la référence 0.32.0 reste figée, refusée au rejeu ; son corps est reproduit octet par octet.
+        Assert.Equal(frozen.Skip(1), Simulate(Esquive).Skip(1));
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(frozen, ShippedData).Status);
         Assert.Equal(EsquiveFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         JsonElement[] events = Events(frozen);
         string Kind(JsonElement e) => e.GetProperty("event").GetString()!;
@@ -98,8 +101,7 @@ public class EsquiveReferenceTests
         string[] old = File.ReadAllLines(Fixture(Previous, name)), latest = File.ReadAllLines(Fixture(Latest, name));
         Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(old, ShippedData).Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate(name));
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(latest, ShippedData).Status);
+        Assert.Equal(latest.Skip(1), Simulate(name).Skip(1));   // compagnons : corps seulement (moteur 0.33.0)
     }
 
     [Fact]
@@ -108,7 +110,7 @@ public class EsquiveReferenceTests
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.31.0-regles-0.17.0", "evenement_hameau.jsonl"));
         string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.32.0-regles-0.18.0", "evenement_hameau.jsonl"));
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate("evenement_hameau"));
+        Assert.Equal(latest.Skip(1), Simulate("evenement_hameau").Skip(1));   // compagnons : corps seulement (moteur 0.33.0)
     }
 
     // --- Données ----------------------------------------------------------------------------------------------
@@ -159,7 +161,7 @@ public class EsquiveReferenceTests
     {
         JsonNode scenario = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")))!;
         JsonNode rules = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "rules.schema.json")))!;
-        Assert.Equal(20, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
+        Assert.Equal(21, scenario["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());   // compagnons : 21 (esquive : 20)
         Assert.Equal(17, rules["properties"]!["schemaVersion"]!["const"]!.GetValue<int>());
         Assert.Contains("dodge", scenario.ToJsonString());
         JsonNode dodge = rules["properties"]!["data"]!["properties"]!["combat"]!["properties"]!["dodge"]!;
