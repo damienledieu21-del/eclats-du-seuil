@@ -68,6 +68,37 @@ namespace EdS.Runtime
         public double CliffAt { get; set; } = 10.0;
 
         public double CliffWidth { get; set; } = 3.0;
+
+        /// <summary>
+        /// Sous-lot V2.28c (3) : relief d'affichage de la région (PLAN_GRANDE_CARTE.md § 4.2 et 4.3), en mètres au-dessus du cœur (30 m) :
+        /// repères (x, z, hauteur) interpolés par l'inverse du carré de la distance. Le Bourg sur le plateau, les coteaux au sud-ouest, la
+        /// forêt, la vallée jusqu'à la cascade, les collines jusqu'à 320 m au-dessus du cœur (350 m), le fort, le col, la mine et l'abbaye
+        /// sur leur épaulement, le lac au plus bas (au niveau de l'eau du cœur : l'eau reste à 0), les terres corrompues en cuvette. Propres
+        /// aux Vallons : seulement pour une aire de plus de 768 m de côté dont le repère est celui de <see cref="RegionGrid"/> (relecture de la
+        /// PR #170 : une autre grande zone n'en hérite pas).
+        /// </summary>
+        public IReadOnlyList<(double X, double Z, double Height)> RegionHeights { get; set; } = new[]
+        {
+            (20.0, 15.0, 0.0), (-1010.0, -70.0, 5.0), (-1900.0, -240.0, 10.0), (-1240.0, -1000.0, 50.0), (-1330.0, -680.0, 60.0),
+            (-830.0, 780.0, 40.0), (-1700.0, 790.0, 20.0), (300.0, 600.0, 20.0), (590.0, 1150.0, 110.0), (-130.0, 1080.0, 120.0), (100.0, 930.0, 60.0),
+            (190.0, 1220.0, 230.0), (350.0, 1260.0, 160.0), (180.0, 1360.0, 320.0), (1200.0, 1350.0, 250.0), (1170.0, 990.0, 150.0), (1740.0, 820.0, 170.0),
+            (2100.0, 1220.0, 320.0), (1950.0, 1050.0, 245.0), (1050.0, 275.0, 65.0), (1710.0, 145.0, 60.0), (425.0, -1105.0, 0.0), (60.0, -450.0, 0.0),
+            (720.0, -450.0, 5.0), (1740.0, -730.0, 15.0), (2100.0, -1500.0, 30.0), (-1900.0, -1550.0, 60.0),
+        };
+
+        /// <summary>Repère de la région à laquelle <see cref="RegionHeights"/> s'applique (origine, colonnes, rangées) : celui des Vallons.</summary>
+        public (int OriginX, int OriginZ, int Columns, int Rows) RegionGrid { get; set; } =
+            (EdS.Data.Zones.RegionGrid.VallonsOriginX, EdS.Data.Zones.RegionGrid.VallonsOriginZ, EdS.Data.Zones.RegionGrid.VallonsColumns, EdS.Data.Zones.RegionGrid.VallonsRows);
+
+        /// <summary>Rectangle du cœur, où le relief de la région est nul (le cœur ne change pas), et raccord (m) au-delà.</summary>
+        public (double MinX, double MinZ, double MaxX, double MaxZ) RegionFlat { get; set; } = (-100, -70, 140, 100);
+
+        public double RegionRamp { get; set; } = 250.0;
+
+        /// <summary>Distance (m) de lissage des repères (évite les pointes) ; raccord (m) du relief de la région à l'eau, qui reste à 0.</summary>
+        public double RegionSoften { get; set; } = 100.0;
+
+        public double RegionWaterRamp { get; set; } = 400.0;
     }
 
     /// <summary>Un replat : emprise (polygone, ou un point pour une place dégagée), marge horizontale, hauteur, groupe.</summary>
@@ -123,6 +154,7 @@ namespace EdS.Runtime
             new List<(double, double, double, double, double)>();
         private readonly List<ReliefPad> _pads = new List<ReliefPad>();
         private readonly double _weights;
+        private readonly bool _regional;
 
         public ReliefSettings Settings => _s;
 
@@ -146,6 +178,12 @@ namespace EdS.Runtime
             _maxX = map.MaxX;
             _maxZ = map.MaxZ;
             _weights = Math.Max(1e-9, _s.Waves.Sum(w => Math.Abs(w.Weight)));
+            // L'aire entière décide (une fenêtre d'une aire de plus de 768 m de côté a le relief de la région, comme l'aire entière).
+            AdventureMap whole = map.Whole;
+            double side = 2.0 * AdventureMap.WindowMeters;
+            var grid = whole.Region;
+            _regional = (whole.MaxX - whole.MinX > side || whole.MaxZ - whole.MinZ > side) && _s.RegionHeights.Count > 0 && grid != null
+                && (grid.OriginX, grid.OriginZ, grid.Columns, grid.Rows) == _s.RegionGrid;
             foreach (SpaceObstacle o in map.Obstacles)
                 if (o.Low && StyleRules.Key(o.Id).StartsWith("riviere", StringComparison.Ordinal)) _water.Add(Points(o));
             foreach (MapPlace p in map.Places)
@@ -180,14 +218,17 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Obstacle posé sur un replat : tout ce qui est bâti (bâtiments, puits, étals, tentes, palissades, murs, porte, blocs, pierres, piliers,
-        /// moulin). Restent sur la pente : l'eau (dans le creux), les arbres et les bois, les haies (muret qui suit le sol).
+        /// moulin). Restent sur la pente : l'eau (dans le creux), les arbres et les bois, les haies (muret qui suit le sol) ; relecture
+        /// indépendante de la PR #170 : l'éboulement et les falaises de la surface (parois de rochers longues de centaines de mètres, posées sur le
+        /// sol : un replat commun imposait le niveau le plus bas sur toute leur longueur et creusait une tranchée).
         /// </summary>
         public static bool Builds(SpaceObstacle o)
         {
             if (o is null) throw new ArgumentNullException(nameof(o));
             string key = StyleRules.Key(o.Id);
             return !o.Low && !key.StartsWith("arbre", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) != StyleBuilding.Woods
-                && StyleRules.FenceFor(o.Id) != StyleFence.Hedge;
+                && StyleRules.FenceFor(o.Id) != StyleFence.Hedge && !key.StartsWith("eboulement", StringComparison.Ordinal)
+                && !key.StartsWith("falaise", StringComparison.Ordinal);
         }
 
         /// <summary>Hauteur du sol affiché (m) en (x, z), à l'étage <paramref name="floor"/> (0 : la surface ; les autres restent plats).</summary>
@@ -248,8 +289,30 @@ namespace EdS.Runtime
                 calm = Math.Min(calm, _s.Calm + (1 - _s.Calm) * Smooth((d - plateau) / _s.CalmRamp));
             }
             b += calm * _s.Amplitude * (0.5 + 0.5 * n);
-            if (_water.Count > 0) b *= Smooth((Water(x, z) - _s.WaterFlat) / _s.WaterRamp);
+            double water = _water.Count > 0 ? Water(x, z) : double.MaxValue;
+            if (_water.Count > 0) b *= Smooth((water - _s.WaterFlat) / _s.WaterRamp);
+            if (_regional) b += Region(x, z) * (_water.Count > 0 ? Smooth((water - _s.WaterFlat) / _s.RegionWaterRamp) : 1);
             return b + Edge(x, z);
+        }
+
+        /// <summary>
+        /// Sous-lot V2.28c (3) : hauteur de la région (m au-dessus du cœur) avant le raccord à l'eau : nulle dans le cœur
+        /// (<see cref="ReliefSettings.RegionFlat"/>), repères interpolés au-delà, raccordés sur <see cref="ReliefSettings.RegionRamp"/> m.
+        /// </summary>
+        public double Region(double x, double z)
+        {
+            if (!_regional) return 0;
+            (double x0, double z0, double x1, double z1) = _s.RegionFlat;
+            double ramp = Smooth(Distance(Math.Max(0, Math.Max(x0 - x, x - x1)), Math.Max(0, Math.Max(z0 - z, z - z1))) / _s.RegionRamp);
+            if (ramp <= 0) return 0;
+            double soft = _s.RegionSoften * _s.RegionSoften, sw = 0, sh = 0;
+            foreach ((double ax, double az, double h) in _s.RegionHeights)
+            {
+                double w = 1 / ((x - ax) * (x - ax) + (z - az) * (z - az) + soft);
+                sw += w;
+                sh += w * h;
+            }
+            return ramp * sh / sw;
         }
 
         /// <summary>Distance (m) hors de l'aire praticable (0 dedans).</summary>

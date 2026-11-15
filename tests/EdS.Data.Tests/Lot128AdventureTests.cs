@@ -100,7 +100,9 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(17, a.Nodes().Count);   // Vallons agrandis ; V1.9.7 : deux ronds de chapeaux-de-lune ; saisons : quatre nœuds de saison
         Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
         Assert.Equal(13, a.Nodes().Count(n => n.Ready));
-        Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere" }, a.SafePoints().Select(s => s.Id));
+        Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere",
+            "porte_est_du_bourg", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole" },
+            a.SafePoints().Select(s => s.Id));   // V2.28c (3) : les carrefours de la région
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);

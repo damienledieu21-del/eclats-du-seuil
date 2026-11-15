@@ -64,10 +64,10 @@ public class Lot129MapTests : IDisposable
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(0, 10));
         Assert.Throws<ArgumentOutOfRangeException>(() => map.Render(10, 2049));
         Assert.Equal(new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac", "vergers",
-            "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id));
+            "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" }, map.Places.Select(p => p.Id).Take(19));   // V2.28c (3) : puis les lieux de la région
         // Les routes viennent des données, dans leur ordre.
         Assert.Equal(new[] { "grand_rue", "chemin_de_la_place", "place_du_bourg", "grand_rue_ouest", "chemin_des_champs", "chemin_du_moulin", "passage_des_ruines", "chemin_de_l_est",
-            "chemin_du_nord", "chemin_du_lac", "chemin_de_la_grange", "aire_de_la_grange" }, map.Roads.Select(r => r.Id));
+            "chemin_du_nord", "chemin_du_lac", "chemin_de_la_grange", "aire_de_la_grange" }, map.Roads.Select(r => r.Id).Take(12));   // V2.28c (3) : puis celles de la région
         Assert.True(Assert.Single(map.Roads, r => r.Paved).Id == "place_du_bourg");
         Assert.Contains(map.Clearings, p => p == (-18.0, -12.0));   // point sûr de la place du village
     }
@@ -89,7 +89,7 @@ public class Lot129MapTests : IDisposable
         AdventureSession a = At(null);
         IReadOnlyList<MapMarker> markers = a.MapMarkers();
         Assert.Equal(new[] { "Odile", "Maëlle", "Gaspard", "Garin", "Sauge", "Bertille", "Firmin", "Aldric", "Renart", "Lison", "Colombe", "Maître Josse", "Aubine", "Achille", "Garance", "Mahaut", "Thibaut", "Le capitaine Bérenger", "Colin", "Ysarn", "Gaut le receleur" }, markers.Where(m => m.Kind == MapMarkerKind.Npc).Select(m => m.Name.Split(',')[0]));   // V1.1 : marchands
-        Assert.Equal(5, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau
+        Assert.Equal(13, markers.Count(m => m.Kind == MapMarkerKind.SafePoint));   // Vallons agrandis : bourg, ferme, hameau ; V2.28c (3) : huit carrefours de la région
         MapMarker forge = Assert.Single(markers, m => m.Kind == MapMarkerKind.Workshop);
         Assert.Equal((-20.0, -4.0), (forge.X, forge.Z));
         Assert.Contains(markers, m => m.Kind == MapMarkerKind.Node);

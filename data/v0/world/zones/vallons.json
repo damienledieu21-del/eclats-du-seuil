@@ -64,6 +64,70 @@
           84,
           58
         ]
+      },
+      {
+        "id": "porte_est_du_bourg",
+        "name": "Porte de l'Est du Bourg",
+        "position": [
+          -710,
+          -44
+        ]
+      },
+      {
+        "id": "pontons_du_lac",
+        "name": "Pontons du lac",
+        "position": [
+          4,
+          -856
+        ]
+      },
+      {
+        "id": "hameau_des_mineurs",
+        "name": "Hameau des mineurs",
+        "position": [
+          1000,
+          151
+        ]
+      },
+      {
+        "id": "pied_du_fort",
+        "name": "Pied du fort",
+        "position": [
+          1170,
+          874
+        ]
+      },
+      {
+        "id": "gue_de_la_vallee",
+        "name": "Gué de la vallée",
+        "position": [
+          376,
+          626
+        ]
+      },
+      {
+        "id": "bergerie",
+        "name": "Bergerie",
+        "position": [
+          -130,
+          1074
+        ]
+      },
+      {
+        "id": "lisiere_des_terres_grises",
+        "name": "Lisière des terres grises",
+        "position": [
+          1300,
+          -566
+        ]
+      },
+      {
+        "id": "chateau_viticole",
+        "name": "Château viticole",
+        "position": [
+          -1326,
+          -656
+        ]
       }
     ],
     "scaling": {
@@ -320,6 +384,279 @@
           100
         ],
         "minLevel": 11
+      },
+      {
+        "id": "ville_du_bourg",
+        "name": "Bourg d'Aube",
+        "min": [
+          -1310,
+          -370
+        ],
+        "max": [
+          -710,
+          230
+        ],
+        "minLevel": 1
+      },
+      {
+        "id": "route_d_havre_d_ambre",
+        "name": "Route d'Havre d'Ambre",
+        "min": [
+          -1908,
+          -320
+        ],
+        "max": [
+          -1310,
+          -60
+        ],
+        "minLevel": 7
+      },
+      {
+        "id": "coteaux_du_chateau",
+        "name": "Coteaux du château",
+        "min": [
+          -1700,
+          -1500
+        ],
+        "max": [
+          -780,
+          -370
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "foret_des_loups_profonde",
+        "name": "Forêt des Loups profonde",
+        "min": [
+          -1500,
+          282
+        ],
+        "max": [
+          -160,
+          1276
+        ],
+        "minLevel": 15
+      },
+      {
+        "id": "gorge_du_pont",
+        "name": "Gorge et pont de pierre",
+        "min": [
+          -1908,
+          280
+        ],
+        "max": [
+          -1501,
+          1300
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "vallee_de_la_riviere",
+        "name": "Vallée de la rivière",
+        "min": [
+          -158,
+          100.0001
+        ],
+        "max": [
+          620,
+          1092
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "hautes_collines",
+        "name": "Hautes collines",
+        "min": [
+          -200,
+          1092
+        ],
+        "max": [
+          2188,
+          1458
+        ],
+        "minLevel": 17
+      },
+      {
+        "id": "fort_des_bandits",
+        "name": "Fort des bandits",
+        "min": [
+          1050,
+          900
+        ],
+        "max": [
+          1300,
+          1090
+        ],
+        "minLevel": 21
+      },
+      {
+        "id": "route_du_col",
+        "name": "Route du col",
+        "min": [
+          1300,
+          800
+        ],
+        "max": [
+          2188,
+          1092
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "grande_carriere",
+        "name": "Grande carrière et mine",
+        "min": [
+          850,
+          150
+        ],
+        "max": [
+          1250,
+          400
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "abbaye_en_ruine",
+        "name": "Abbaye en ruine",
+        "min": [
+          1600,
+          60
+        ],
+        "max": [
+          1820,
+          230
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "grand_lac",
+        "name": "Lac des Aubes",
+        "min": [
+          -300,
+          -1360
+        ],
+        "max": [
+          1150,
+          -850
+        ],
+        "minLevel": 11
+      },
+      {
+        "id": "terres_corrompues",
+        "name": "Terres corrompues du Seuil",
+        "min": [
+          1290,
+          -1350
+        ],
+        "max": [
+          2188,
+          -110
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "champs_du_sud",
+        "name": "Champs du sud",
+        "min": [
+          -100,
+          -600
+        ],
+        "max": [
+          40,
+          -70.0001
+        ],
+        "minLevel": 5
+      },
+      {
+        "id": "vergers_du_sud",
+        "name": "Vergers du sud",
+        "min": [
+          600,
+          -560
+        ],
+        "max": [
+          860,
+          -340
+        ],
+        "minLevel": 7
+      },
+      {
+        "id": "plaine_de_l_ouest",
+        "name": "Plaine de l'ouest",
+        "min": [
+          -710,
+          -400
+        ],
+        "max": [
+          -100.0001,
+          276
+        ],
+        "minLevel": 3
+      },
+      {
+        "id": "plaine_de_l_est",
+        "name": "Plaine de l'est",
+        "min": [
+          140.0001,
+          -600
+        ],
+        "max": [
+          1010,
+          155
+        ],
+        "minLevel": 9
+      },
+      {
+        "id": "route_du_fort",
+        "name": "Route du fort",
+        "min": [
+          700,
+          400
+        ],
+        "max": [
+          1300,
+          1092
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "epaulement_est",
+        "name": "Épaulement de l'est",
+        "min": [
+          1250,
+          60
+        ],
+        "max": [
+          1600,
+          500
+        ],
+        "minLevel": 19
+      },
+      {
+        "id": "landes_du_seuil",
+        "name": "Landes du Seuil",
+        "min": [
+          1001,
+          -849
+        ],
+        "max": [
+          1290,
+          -111
+        ],
+        "minLevel": 17
+      },
+      {
+        "id": "rives_du_lac",
+        "name": "Rives du lac",
+        "min": [
+          -300,
+          -850
+        ],
+        "max": [
+          849,
+          -600
+        ],
+        "minLevel": 8
       }
     ],
     "populations": [
@@ -1348,6 +1685,246 @@
           [
             -83.5,
             -39.3
+          ]
+        ]
+      },
+      {
+        "id": "route_d_ambre_ouest",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -99,
+            -1
+          ],
+          [
+            -300,
+            -20
+          ],
+          [
+            -500,
+            -40
+          ],
+          [
+            -710,
+            -50
+          ],
+          [
+            -1010,
+            -70
+          ],
+          [
+            -1310,
+            -90
+          ],
+          [
+            -1600,
+            -170
+          ],
+          [
+            -1907,
+            -240
+          ]
+        ]
+      },
+      {
+        "id": "route_d_ambre_est",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            126,
+            -40
+          ],
+          [
+            300,
+            -10
+          ],
+          [
+            600,
+            60
+          ],
+          [
+            1000,
+            145
+          ],
+          [
+            1080,
+            500
+          ],
+          [
+            1120,
+            800
+          ],
+          [
+            1170,
+            880
+          ],
+          [
+            1450,
+            860
+          ],
+          [
+            1740,
+            840
+          ],
+          [
+            1950,
+            1050
+          ],
+          [
+            2187,
+            1220
+          ]
+        ]
+      },
+      {
+        "id": "chemin_des_pontons",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -64.5,
+            -50.5
+          ],
+          [
+            -50,
+            -75
+          ],
+          [
+            -30,
+            -300
+          ],
+          [
+            -20,
+            -600
+          ],
+          [
+            0,
+            -860
+          ]
+        ]
+      },
+      {
+        "id": "chemin_des_pierres",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            126,
+            -40
+          ],
+          [
+            450,
+            -300
+          ],
+          [
+            1000,
+            -520
+          ],
+          [
+            1530,
+            -610
+          ]
+        ]
+      },
+      {
+        "id": "chemin_des_vignes",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -1010,
+            -70
+          ],
+          [
+            -1150,
+            -300
+          ],
+          [
+            -1330,
+            -660
+          ]
+        ]
+      },
+      {
+        "id": "chemin_de_l_abbaye",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            1080,
+            500
+          ],
+          [
+            1400,
+            300
+          ],
+          [
+            1710,
+            145
+          ]
+        ]
+      },
+      {
+        "id": "chemin_de_la_bergerie",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            100,
+            80
+          ],
+          [
+            200,
+            300
+          ],
+          [
+            330,
+            520
+          ],
+          [
+            370,
+            630
+          ],
+          [
+            300,
+            670
+          ],
+          [
+            200,
+            850
+          ],
+          [
+            -130,
+            1080
+          ]
+        ]
+      },
+      {
+        "id": "chemin_des_cairns",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            1170,
+            880
+          ],
+          [
+            900,
+            1150
+          ],
+          [
+            500,
+            1290
+          ],
+          [
+            190,
+            1225
+          ],
+          [
+            180,
+            1355
           ]
         ]
       }
