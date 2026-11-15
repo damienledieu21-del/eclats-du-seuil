@@ -284,7 +284,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 
 | Sujet | Ce qui est retenu | Statut |
 |---|---|---|
-| Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
+| Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale « Les passages de la vallée » au V2.28c (4) ([MONDE.md](MONDE.md)) |
 | Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
