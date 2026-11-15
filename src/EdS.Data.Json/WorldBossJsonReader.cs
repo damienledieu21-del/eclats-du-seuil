@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using EdS.Domain.Combat;
 using EdS.Data.Items;
 using EdS.Data.Json.Text;
 using EdS.Data.Scenarios;
@@ -30,6 +32,52 @@ namespace EdS.Data.Json
             return WorldBossValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), texts, zone, items, report);
         }
 
+        /// <summary>
+        /// Schéma 2 (Grand Solitaire, 2e partie) : lit aussi le scénario des formes de chaque boss (<c>scenario</c>, dans
+        /// <paramref name="scenariosDirectory"/>), validé par le validateur des scénarios ; un scénario introuvable ou refusé est signalé au
+        /// chemin du boss.
+        /// </summary>
+        public static WorldBossLoadResult ReadFile(string path, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, string scenariosDirectory, GameData data)
+        {
+            var report = new ValidationReport();
+            return WithForms(ReadDocument(JsonInput.ReadFile(path, report), report), texts, zone, items, scenariosDirectory, data, report);
+        }
+
+        public static WorldBossLoadResult Read(string json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, string scenariosDirectory, GameData data)
+        {
+            var report = new ValidationReport();
+            return WithForms(ReadDocument(JsonInput.Utf8(json, report), report), texts, zone, items, scenariosDirectory, data, report);
+        }
+
+        private static WorldBossLoadResult WithForms(WorldBossDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, string scenariosDirectory,
+            GameData data, ValidationReport report)
+        {
+            if (scenariosDirectory is null) throw new ArgumentNullException(nameof(scenariosDirectory));
+            if (data is null) throw new ArgumentNullException(nameof(data));
+            var forms = new List<CombatSetup?>();
+            List<WorldBossData?>? bosses = document.Data?.Bosses;
+            for (int i = 0; bosses != null && i < bosses.Count && i < WorldBossValidator.MaxBosses; i++)
+            {
+                CombatSetup? setup = null;
+                if (bosses[i]?.Scenario is string name)
+                {
+                    if (!ZoneValidator.IsScenarioPath(name))
+                        report.Add($"$.data.bosses[{i}].scenario", ValidationCode.InvalidValue, $"chemin de scénario « {name} » mal formé.");
+                    else
+                    {
+                        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(System.IO.Path.Combine(scenariosDirectory, name + ".json"), data);
+                        if (loaded.Setup is null)
+                            report.Add($"$.data.bosses[{i}].scenario", ValidationCode.InvalidValue,
+                                $"scénario des formes « {name} » refusé : {loaded.Report.Errors.FirstOrDefault()?.ToString() ?? "illisible"}");
+                        setup = loaded.Setup;
+                    }
+                }
+                forms.Add(setup);
+            }
+            return WorldBossValidator.Validate(document, texts, zone, items, forms, report);
+        }
+
+
         internal static WorldBossDocument ReadDocument(byte[]? json, ValidationReport report)
         {
             var document = new WorldBossDocument();
@@ -59,6 +107,7 @@ namespace EdS.Data.Json
             return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["id"] = (v, p) => x.Id = input.Text(v, p),
+                ["scenario"] = (v, p) => x.Scenario = input.Text(v, p),
                 ["name"] = (v, p) => x.Name = input.Text(v, p),
                 ["radius"] = (v, p) => x.Radius = input.Decimal(v, p),
                 ["healthBase"] = (v, p) => x.HealthBase = input.Int64(v, p),
@@ -90,6 +139,7 @@ namespace EdS.Data.Json
             {
                 ["id"] = (v, p) => x.Id = input.Text(v, p),
                 ["fromPercent"] = (v, p) => x.FromPercent = input.Int32(v, p),
+                ["form"] = (v, p) => x.Form = input.Text(v, p),
                 ["attacks"] = (v, p) => x.Attacks = List(input, v, p, WorldBossValidator.MaxAttacks, "attaques", (e, ip) => input.Text(e, ip)),
             }) ? x : null;
         }

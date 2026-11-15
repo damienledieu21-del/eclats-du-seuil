@@ -287,6 +287,18 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Éboulement et gués de la vallée | Ils s'ouvrent **par une quête à la fin du chapitre 1**, comme la porte du moulin. | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; quête minimale prévue dans une petite PR après la PR #170 |
 | Niveaux des lieux de la région | Ils restent **sous le Gardien du Seuil** (23, fin du chapitre 5) : toute la région entre **1 et 22**, dans un ordre cohérent avec l'existant (camp des rôdeurs 16, Borgne 17). | Retenu (Damien, 15 novembre 2026, vers 9 h 45) ; appliqué dans la PR #170 ([MONDE.md](MONDE.md)) |
 
+## 7 sexies. Grand Solitaire, 2e partie (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale. Elles règlent les valeurs de la première partie (PR #171) avant le boss dans le moteur ; le détail est dans [MONDE.md](MONDE.md#le-grand-solitaire-boss-du-monde-première-partie--règles-et-données).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Planification | **Fenêtres de 6 h**, **une chance sur deux** par fenêtre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Mode solo | Tant que le monde n'est pas partagé, **sa vie compte pour 1 joueur** (base + par joueur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Apparence | **Donnée à la première victoire**, en attendant sa quête de mémoire. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Emplacements tous occupés | **Il apparaît quand même**, à l'emplacement le moins mauvais (le plus loin des joueurs). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Vie du boss | Les PV passent à l'**échelle 1/100** : 2 000 + 400 par joueur, soit **2 400 PV en solo**, pour un combat d'environ **5 à 8 minutes**. | Retenu (Damien, 15 novembre 2026) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
