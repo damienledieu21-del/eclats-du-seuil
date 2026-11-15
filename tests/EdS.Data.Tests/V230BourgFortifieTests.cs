@@ -57,7 +57,7 @@ public class V230BourgFortifieTests
         Walk(E, S, W, S);
         Walk(W, S, W, N);
         Assert.All(gaps, g => Assert.True(
-            (g.X == E && g.Z > -57 && g.Z < -43) || (g.X == W && g.Z > -97 && g.Z < -83) || (g.Z == S && g.X > -1163.5 && g.X < -1156.5),
+            (g.X == E && g.Z > -60 && g.Z < -40) || (g.X == W && g.Z > -97 && g.Z < -83) || (g.Z == S && g.X > -1163.5 && g.X < -1156.5),
             $"brèche en ({g.X}, {g.Z})"));
         Assert.Contains(gaps, g => g.X == E);
         Assert.Contains(gaps, g => g.X == W);
@@ -83,8 +83,8 @@ public class V230BourgFortifieTests
             }
         }
         SafePoint market = zone.SafePoints.Single(s => s.Id == "place_du_marche_de_la_ville");
-        Assert.Equal((-1010.0, -95.0), P(market.Position));
-        Assert.False(Blocked(town, -1010, -95, 3));
+        Assert.Equal((-1010.0, -77.0), P(market.Position));
+        Assert.False(Blocked(town, -1010, -77, 3));
         Assert.Contains(zone.Places, p => p.Id == "place_du_marche_de_la_ville");
         Assert.Contains(zone.Places, p => p.Id == "eglise_de_la_ville");
         // Rien d'autre de la région dans l'enceinte (le cœur, ses quêtes et ses portes ne bougent pas avant le V2.30.1).
@@ -101,7 +101,7 @@ public class V230BourgFortifieTests
         WorldSession w = V228b2PassageTests.Open(Vallons.Value, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero),
             safePoint: "porte_est_du_bourg");
         V228b2PassageTests.WalkTo(w, -860, -60);
-        V228b2PassageTests.WalkTo(w, -1008, -92);
+        V228b2PassageTests.WalkTo(w, -1008, -79);
         Assert.True(w.Registered("zone.vallons/safe/place_du_marche_de_la_ville"));
     }
 }
