@@ -263,6 +263,17 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Dates des saisons | Les saisons changent le **1er mars, le 1er juin, le 1er septembre et le 1er décembre**, à l'heure de Paris (saisons météorologiques, hémisphère Nord), avec une **transition visuelle de 7 jours**. Le **serveur fait foi**. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
 | Glace du lac | Praticable **du 8 décembre à la fin février inclus**, après une première semaine où on la voit se former sans pouvoir y marcher. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
 
+## 7 sexies. Grand Solitaire, 2e partie (Retenu)
+
+Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la session principale. Elles règlent les valeurs de la première partie (PR #171) avant le boss dans le moteur ; le détail est dans [MONDE.md](MONDE.md#le-grand-solitaire-boss-du-monde-première-partie--règles-et-données).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Planification | **Fenêtres de 6 h**, **une chance sur deux** par fenêtre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Mode solo | Tant que le monde n'est pas partagé, **sa vie compte pour 1 joueur** (base + par joueur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Apparence | **Donnée à la première victoire**, en attendant sa quête de mémoire. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Emplacements tous occupés | **Il apparaît quand même**, à l'emplacement le moins mauvais (le plus loin des joueurs). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

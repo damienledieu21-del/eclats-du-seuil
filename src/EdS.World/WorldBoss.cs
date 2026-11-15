@@ -190,6 +190,9 @@ namespace EdS.World
         public long MaxHealth { get; }
         public int Plate { get; }
         public int Players { get; }
+
+        /// <summary>Monde partagé (faux : mode solo).</summary>
+        public bool Shared { get; }
         public IReadOnlyList<KeyValuePair<string, long>> Contributions { get; }
         public Pcg32State SiteStream { get; }
         public Pcg32State RoamStream { get; }
@@ -215,6 +218,7 @@ namespace EdS.World
             MaxHealth = e.MaxHealth;
             Plate = plate;
             Players = e.Players;
+            Shared = e.Shared;
             Contributions = e.Contributions;
             SiteStream = site;
             RoamStream = roam;
@@ -244,6 +248,12 @@ namespace EdS.World
         private readonly List<GroundVector> _path = new List<GroundVector>();
         private int _players;
         private int _plate;
+
+        /// <summary>
+        /// Décision de Damien du 15 novembre 2026 : monde partagé (vrai) ou mode solo (faux : la vie compte pour un seul joueur,
+        /// <see cref="WorldBossDefinition.SoloHealth"/>, tant que le monde n'est pas partagé).
+        /// </summary>
+        public bool Shared { get; }
         private long _objectiveSince = -1;
         private long _gridMs;
 
@@ -281,7 +291,15 @@ namespace EdS.World
 
         /// <exception cref="ArgumentException">Mémoire d'une occurrence égale ou postérieure à celle-ci (relecture de la PR #171).</exception>
         public WorldBossEvent(WorldBossDefinition boss, WorldBossMemory memory, WorldBossOccurrence occurrence, IReadOnlyList<GroundVector> playersAtSigns)
+            : this(boss, memory, occurrence, playersAtSigns, shared: true)
         {
+        }
+
+        /// <param name="shared">Monde partagé ; faux en mode solo (la vie compte pour un seul joueur, décision de Damien du 15 novembre 2026).</param>
+        public WorldBossEvent(WorldBossDefinition boss, WorldBossMemory memory, WorldBossOccurrence occurrence, IReadOnlyList<GroundVector> playersAtSigns,
+            bool shared)
+        {
+            Shared = shared;
             _boss = boss ?? throw new ArgumentNullException(nameof(boss));
             if (playersAtSigns is null) throw new ArgumentNullException(nameof(playersAtSigns));
             if (memory.LastWindow >= occurrence.Window)
@@ -302,6 +320,7 @@ namespace EdS.World
         private WorldBossEvent(WorldBossDefinition boss, WorldBossSnapshot s)
         {
             _boss = boss;
+            Shared = s.Shared;
             Memory = s.Memory;
             Window = s.Window;
             SignsStartMs = s.SignsStartMs;
@@ -418,6 +437,9 @@ namespace EdS.World
             NowMs = serverMs;
         }
 
+        /// <summary>Vie maximale du moment : selon les joueurs actifs dans le monde partagé, celle d'un seul joueur en mode solo.</summary>
+        private long MaxHealthNow => Shared ? _boss.MaxHealthFor(_players) : _boss.SoloHealth;
+
         private void Settle(IReadOnlyList<GroundVector>? players)
         {
             long t = _gridMs;
@@ -427,7 +449,7 @@ namespace EdS.World
                 if (players != null && Crowded(_boss, Site, players)) Site = ChooseSite(_boss, players, _siteRandom);
                 Position = Site.Position;
                 Stage = WorldBossStage.Roaming;
-                MaxHealth = _boss.MaxHealthFor(_players);
+                MaxHealth = MaxHealthNow;
                 Health = MaxHealth;   // mémoire du vainqueur : enragé d'emblée, mais à 100 % de vie
                 _plate = 0;
                 PickNextSite();
@@ -519,7 +541,7 @@ namespace EdS.World
             if (plate != _plate)
             {
                 // Début d'une phase : la vie maximale suit le nombre de joueurs présents, la part de vie restante est gardée.
-                long max = _boss.MaxHealthFor(_players);
+                long max = MaxHealthNow;
                 Health = Math.Max(1, IntMath.MulDiv(Health, max, MaxHealth, RoundingMode.Floor));
                 MaxHealth = max;
                 _plate = plate;
@@ -701,17 +723,30 @@ namespace EdS.World
             foreach (KeyValuePair<string, long> c in e.Contributions)
             {
                 if (c.Value <= 0) continue;
-                var items = new List<string>();
-                if (priorWins(c.Key) == 0)
-                {
-                    items.Add(loot.Trophy);
-                    items.Add(loot.Appearance);
-                }
-                var random = new Pcg32(Loot.Fnv1a($"worldboss:{e.Boss.Id}:{e.Window}:{c.Key}"), Loot.Fnv1a("worldboss-loot:" + e.Boss.Id));
-                if (random.RollBasisPoints(loot.MountChanceBasisPoints)) items.Add(loot.Mount);
-                awards.Add(new WorldBossAward(c.Key, items));
+                awards.Add(For(e.Boss, e.Window, c.Key, priorWins(c.Key)));
             }
             return awards;
+        }
+
+        /// <summary>
+        /// Butin du joueur <paramref name="player"/> pour une victoire de la fenêtre <paramref name="window"/>, ses victoires éligibles d'avant
+        /// étant <paramref name="priorWins"/> (le même que dans <see cref="Award"/> : il se recalcule tel quel, par exemple pour un butin dû).
+        /// Décision de Damien du 15 novembre 2026 : l'apparence est donnée à la première victoire, en attendant sa quête.
+        /// </summary>
+        public static WorldBossAward For(WorldBossDefinition boss, long window, string player, long priorWins)
+        {
+            if (boss is null) throw new ArgumentNullException(nameof(boss));
+            if (player is null) throw new ArgumentNullException(nameof(player));
+            WorldBossLoot loot = boss.Loot;
+            var items = new List<string>();
+            if (priorWins == 0)
+            {
+                items.Add(loot.Trophy);
+                items.Add(loot.Appearance);
+            }
+            var random = new Pcg32(Loot.Fnv1a($"worldboss:{boss.Id}:{window}:{player}"), Loot.Fnv1a("worldboss-loot:" + boss.Id));
+            if (random.RollBasisPoints(loot.MountChanceBasisPoints)) items.Add(loot.Mount);
+            return new WorldBossAward(player, items);
         }
     }
 }

@@ -1387,6 +1387,7 @@ namespace EdS.World
             var story = new List<StoryEvent>();
             // Sous-lot V2.5 : les événements du monde après les populations (même règle de place : réserve des quêtes, places des chefs).
             IReadOnlyList<WorldEventNotice> worldEvents = StepEvents(story);
+            StepWorldBosses();   // Grand Solitaire (2e partie) : les boss du monde, en temps serveur fourni par l'hôte
             CombatantView me = Zone.Engine.View(CombatantId);
             // Sous-lot 12.7 : le chef (formes, victoire, récompenses une seule fois) et la défaite.
             var boss = new List<BossEvent>();

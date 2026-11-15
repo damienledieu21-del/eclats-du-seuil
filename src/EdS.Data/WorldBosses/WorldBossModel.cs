@@ -374,6 +374,12 @@ namespace EdS.Data.WorldBosses
             int n = Math.Min(MaxPlayers, Math.Max(MinPlayers, players));
             return checked(HealthBase + HealthPerPlayer * n);
         }
+
+        /// <summary>
+        /// Décision de Damien du 15 novembre 2026 (Grand Solitaire, 2e partie) : tant que le monde n'est pas partagé (mode solo), la vie compte
+        /// pour <b>un seul joueur</b> (base + par joueur), quel que soit <see cref="MinPlayers"/>.
+        /// </summary>
+        public long SoloHealth => checked(HealthBase + HealthPerPlayer);
     }
 
     public sealed class WorldBossBook

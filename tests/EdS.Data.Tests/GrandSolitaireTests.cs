@@ -474,4 +474,41 @@ public class GrandSolitaireTests
         Assert.Throws<ArgumentException>(() => new WorldBossEvent(Boss, m, new WorldBossOccurrence(m.LastWindow, 0), Array.Empty<GroundVector>()));
         Assert.Throws<ArgumentException>(() => new WorldBossEvent(Boss, m, new WorldBossOccurrence(m.LastWindow - 1, 0), Array.Empty<GroundVector>()));
     }
+
+    [Fact]
+    public void Decisions_du_15_novembre_fenetre_solo_apparence_et_emplacements_occupes()
+    {
+        WorldBossDefinition b = Boss;
+        // Fenêtre de 6 h, une chance sur deux.
+        Assert.Equal((360, 50), (b.WindowMinutes, b.ChancePercent));
+        int occurrences = 0;
+        for (long w = 0; w < 2000; w++) if (WorldBossSchedule.InWindow(b, w) != null) occurrences++;
+        Assert.InRange(occurrences, 900, 1100);
+        // Mode solo : la vie compte pour un seul joueur tant que le monde n'est pas partagé, à chaque début de phase aussi.
+        Assert.Equal(b.HealthBase + b.HealthPerPlayer, b.SoloHealth);
+        var solo = new WorldBossEvent(b, WorldBossMemory.None, new WorldBossOccurrence(7, 1_000_000), Array.Empty<GroundVector>(), shared: false);
+        solo.SetPlayers(1);
+        solo.Advance(solo.AppearMs);
+        Assert.Equal((false, b.SoloHealth), (solo.Shared, solo.MaxHealth));
+        solo.Damage("seul", solo.MaxHealth * 31 / 100);   // phase blessée : toujours la vie d'un joueur
+        Assert.Equal(("blesse", b.SoloHealth), (solo.PhaseNow.Id, solo.MaxHealth));
+        WorldBossEvent back = WorldBossEvent.Restore(b, solo.Capture());
+        Assert.Equal((false, solo.MaxHealth, solo.Health), (back.Shared, back.MaxHealth, back.Health));
+        WorldBossEvent shared = Start(players: 1);   // monde partagé : au moins 5 joueurs comptés
+        shared.Advance(shared.AppearMs);
+        Assert.Equal((true, b.MaxHealthFor(5)), (shared.Shared, shared.MaxHealth));
+        // Apparence donnée à la première victoire (en attendant sa quête), avec le trophée.
+        solo.Damage("seul", solo.Health);
+        Assert.Contains(b.Loot.Appearance, WorldBossSpoils.Award(solo, _ => 0)[0].Items);
+        Assert.DoesNotContain(b.Loot.Appearance, WorldBossSpoils.Award(solo, _ => 1)[0].Items);
+        // Tous les emplacements occupés : il apparaît quand même, à l'emplacement le moins mauvais (le plus loin des joueurs).
+        var everywhere = b.Sites.Select(x => x.Position).ToList();
+        everywhere.Add(GroundVector.FromRaw(b.Sites[0].Position.X.Raw + 1, b.Sites[0].Position.Z.Raw));
+        var crowd = b.Sites.Skip(1).Select(x => x.Position).Concat(new[] { GroundVector.FromRaw(b.Sites[0].Position.X.Raw + 20 * Fixed.One.Raw, b.Sites[0].Position.Z.Raw) }).ToList();
+        WorldBossSite chosen = WorldBossEvent.ChooseSite(b, crowd, new Pcg32(1, 1));
+        Assert.Equal(b.Sites[0].Id, chosen.Id);   // le joueur le plus proche y est à 20 m, partout ailleurs à 0 m
+        WorldBossEvent busy = new WorldBossEvent(b, WorldBossMemory.None, new WorldBossOccurrence(7, 1_000_000), everywhere, shared: false);
+        busy.Advance(busy.AppearMs, everywhere);
+        Assert.True(busy.IsPresent);
+    }
 }
