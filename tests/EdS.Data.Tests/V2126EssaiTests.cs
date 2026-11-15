@@ -329,9 +329,7 @@ public sealed class V2126EssaiTests
     [Fact]
     public void PNJ_du_bourg_entre_leurs_places_sans_traverser_de_maison()
     {
-        ScenarioLoadResult result = ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData);
-        Assert.True(result.IsValid, result.Report.ToString());
-        CombatSpace space = result.Setup!.Space!;
+        CombatSpace space = HomeSectorSpace();   // sous-lot V2.28c : l'espace réel du secteur du cœur, pas celui de toute la région
         var paths = new WalkPaths(space);
         long r = (long)Math.Round(WalkPaths.DefaultRadius * 1e4);
         JsonNode story = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "story.json")))!["data"]!;

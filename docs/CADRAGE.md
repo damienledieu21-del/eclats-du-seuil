@@ -254,6 +254,15 @@ Décisions de Damien rapportées par la session principale ; elles précisent le
 | Deuxième place de compagnon | Elle s'ouvre **par l'histoire**, à la **fin du chapitre 1 des Vallons**, après le Grand Solitaire ou le chef des bandits, par une **quête de lien au feu de camp** : le premier compagnon présente quelqu'un, ou ramène Cendre assez grand. Un **niveau minimum doux, d'environ 12**, évite qu'elle s'ouvre trop tôt (valeur exacte à équilibrer). | Retenu (Damien, 14 novembre 2026, 23 h 43 : « Ok on fait ça », sur la recommandation de Claude) |
 | Compagnons pendant le Grand Solitaire (boss du monde, de 5 à 100 joueurs) | Chaque joueur garde **un seul compagnon au combat** ; le second **attend au point de repli** de l'événement. La proposition « tous au repli » n'est pas retenue. Source : dossier ChatGPT « Grand Solitaire et compagnons », p. 34. | Retenu (Damien, 14 novembre 2026, 23 h 45) |
 
+## 7 ter. Saisons (Retenu)
+
+Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session principale, sur proposition du dossier ChatGPT « Quatre saisons » (AssetLab, `Saisons/`). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) (saisons du monde comme dans la vraie vie).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Dates des saisons | Les saisons changent le **1er mars, le 1er juin, le 1er septembre et le 1er décembre**, à l'heure de Paris (saisons météorologiques, hémisphère Nord), avec une **transition visuelle de 7 jours**. Le **serveur fait foi**. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
+| Glace du lac | Praticable **du 8 décembre à la fin février inclus**, après une première semaine où on la voit se former sans pouvoir y marcher. | Retenu (Damien, 15 novembre 2026, 2 h 27) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

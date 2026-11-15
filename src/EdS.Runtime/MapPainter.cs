@@ -133,6 +133,9 @@ namespace EdS.Runtime
                 }
             }
 
+            // Relecture indépendante de la PR #167 : gorge et ravins, en creux de roche sombre.
+            var ravines = obstacles.Where(o => StyleRules.Ravine(o.Id)).Select(o => (Points: (IReadOnlyList<(double X, double Z)>)o.Points, Box: Box(o.Points))).ToList();
+
             // Bâtiments (Vallons agrandis).
             var buildings = new List<Building>();
             foreach (var o in obstacles)
@@ -177,17 +180,13 @@ namespace EdS.Runtime
                 double cx = (b.MinX + b.MaxX) / 2, cz = (b.MinZ + b.MaxZ) / 2, size = Math.Max(b.MaxX - b.MinX, b.MaxZ - b.MinZ);
                 if (o.Id.StartsWith("arbre", StringComparison.Ordinal)) blobs.Add(new Blob { X = cx, Z = cz, Radius = 2.6, Height = 1, Kind = 0, Id = o.Id });
                 else if (o.Id.StartsWith("pierre_seuil", StringComparison.Ordinal)) blobs.Add(new Blob { X = cx, Z = cz, Radius = size * 0.7, Height = 0.5, Kind = 2, Id = o.Id });
-                else if (o.Id.StartsWith("front_de_taille", StringComparison.Ordinal))
+                else if (StyleRules.RockFace(o.Id))   // V2.28c : front de taille, éboulement, falaises ; seuls les rochers de l'image (relecture de la PR #167)
                 {
-                    bool alongX = b.MaxX - b.MinX >= b.MaxZ - b.MinZ;
-                    double length = alongX ? b.MaxX - b.MinX : b.MaxZ - b.MinZ, depth = alongX ? b.MaxZ - b.MinZ : b.MaxX - b.MinX;
-                    int count = Math.Max(1, (int)Math.Ceiling(length / 3.2));
-                    for (int i = 0; i < count; i++)
+                    foreach (var r in StyleRules.RockFaceSpots(o.Points, x0, z0, x0 + w, z0 + d, 12))
                     {
-                        double s = (i + 0.5) / count * length;
-                        double rx = alongX ? b.MinX + s : cx, rz = alongX ? cz : b.MinZ + s;
-                        blobs.Add(new Blob { X = rx, Z = rz, Radius = depth * 0.62, Height = 0.6, Kind = 1, Id = o.Id + "/" + i });
-                        blobs.Add(new Blob { X = rx + (alongX ? 1.6 : -depth * 0.3), Z = rz + (alongX ? -depth * 0.3 : 1.6), Radius = depth * 0.3, Height = 0.35, Kind = 1, Id = o.Id + "/pied/" + i });
+                        blobs.Add(new Blob { X = r.X, Z = r.Z, Radius = r.Depth * 0.62, Height = 0.6, Kind = 1, Id = o.Id + "/" + r.Index });
+                        blobs.Add(new Blob { X = r.X + r.DirX * 1.6 - r.NormalX * r.Depth * 0.3, Z = r.Z + r.DirZ * 1.6 - r.NormalZ * r.Depth * 0.3, Radius = r.Depth * 0.3,
+                            Height = 0.35, Kind = 1, Id = o.Id + "/pied/" + r.Index });
                     }
                 }
                 else if (StyleRules.ForObstacle(o.Id) == StyleSlot.Rock) blobs.Add(new Blob { X = cx, Z = cz, Radius = size * 0.62, Height = 0.5, Kind = 1, Id = o.Id });
@@ -232,7 +231,7 @@ namespace EdS.Runtime
                 : ((double, double, double, double)?)null;
             var others = obstacles.Where(o => !o.Low && !o.Id.StartsWith("arbre", StringComparison.Ordinal) && !o.Id.StartsWith("moulin", StringComparison.Ordinal)
                 && !o.Id.StartsWith("pilier", StringComparison.Ordinal) && StyleRules.ForObstacle(o.Id) == null && StyleRules.FenceFor(o.Id) == StyleFence.None
-                && !o.Id.StartsWith("front_de_taille", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) == StyleBuilding.None)
+                && !StyleRules.RockFace(o.Id) && TownRules.BuildingFor(o.Id) == StyleBuilding.None)
                 .Select(o => (Points: o.Points, Box: Box(o.Points))).ToList();
 
             // Hauteur de ce qui dépasse du sol, pour les ombres (soleil au nord-ouest : ombres vers le sud-est).
@@ -344,6 +343,13 @@ namespace EdS.Runtime
                         Lighten(c, 0.06 * ripple + glint);
                     }
                     else if (inWater > -0.55) Blend(c, Bank, 0.75 * (1 + inWater / 0.55));
+                    foreach (var ravine in ravines)
+                    {
+                        if (x < ravine.Box.MinX - 1 || x > ravine.Box.MaxX + 1 || z < ravine.Box.MinZ - 1 || z > ravine.Box.MaxZ + 1) continue;
+                        double inside = StyleRules.InsideDistance(x, z, ravine.Points);
+                        if (inside > -0.8) Blend(c, Rock, 0.35 + 0.25 * Math.Min(1, (inside + 0.8) / 1.6));
+                        if (inside > 0) Darken(c, Math.Min(0.6, 0.25 + inside / 8));
+                    }
 
                     // 3. Ombres portées (sud-est).
                     double shadow = 0;

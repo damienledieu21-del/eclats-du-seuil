@@ -14,6 +14,49 @@ internal static class ScenarioTestData
     public static string ScenarioPath(string name) => Path.Combine(AppContext.BaseDirectory, "scenarios", name + ".json");
 
     /// <summary>
+    /// Sous-lot V2.28c (surface étendue) : obstacles ajoutés à l'aire des Vallons quand elle a été portée à toute la région (rivière de la
+    /// vallée et des champs avec les gués fermés de la vallée, grand lac, gorge, ravin des Ronces, éboulement, falaises).
+    /// </summary>
+    public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
+        || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
+            or "falaise_crete";
+
+    /// <summary>
+    /// Sous-lot V2.28c : remet un scénario des Vallons (racine du fichier) à l'aire d'avant la surface étendue, de [−100, −70] à [140, 100],
+    /// sans les obstacles de la surface : pour les essais qui portent sur le cœur seul (parités, hôte au cœur seul, secteurs d'essai).
+    /// </summary>
+    public static void VallonsBefore(System.Text.Json.Nodes.JsonObject scenario)
+    {
+        var space = scenario["data"]!["space"]!;
+        space["bounds"] = new System.Text.Json.Nodes.JsonObject { ["min"] = new System.Text.Json.Nodes.JsonArray(-100, -70), ["max"] = new System.Text.Json.Nodes.JsonArray(140, 100) };
+        var obstacles = space["obstacles"]!.AsArray();
+        foreach (var o in obstacles.Where(o => SurfaceObstacle((string)o!["id"]!)).ToList()) obstacles.Remove(o);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #167 : la zone des Vallons d'avant la surface étendue (racine du fichier de zone), avec
+    /// <see cref="VallonsBefore"/> : sans les passages dont l'obstacle est un obstacle de surface (éboulement, gués de la vallée).
+    /// </summary>
+    public static void ZoneBefore(JsonObject zone)
+    {
+        var passages = zone["data"]!["passages"]!.AsArray();
+        foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
+    }
+
+    /// <summary>
+    /// Relecture indépendante de la PR #167 : espace réel de la session du secteur du cœur (s07_06 et sa marge de 32 m, de [−148, −110] à
+    /// [172, 210]), découpé par l'hôte des secteurs dans l'aire de toute la région : celui où le jeu calcule les trajets des PNJ du bourg.
+    /// </summary>
+    public static EdS.Domain.Space.CombatSpace HomeSectorSpace()
+    {
+        var items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        var zone = EdS.Data.Json.ZoneJsonReader.ReadFile(EdS.Data.Json.ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+            Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, items).Zone!;
+        var sectors = EdS.World.SectorMap.For(zone);
+        return sectors.SetupFor(sectors.HomeSector, 0).Space!;
+    }
+
+    /// <summary>
     /// Intérieurs (28 octobre 2026) : copie dans <paramref name="scenarios"/> les scénarios de zone livrés qui y manquent (les intérieurs
     /// reliés aux Vallons par leurs portes, que l'aventure lit avec eux).
     /// </summary>
