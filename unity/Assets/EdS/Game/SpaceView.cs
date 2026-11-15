@@ -1492,11 +1492,13 @@ namespace EdS.Game
             float x0 = points.Min(p => p.x), x1 = points.Max(p => p.x), z0 = points.Min(p => p.z), z1 = points.Max(p => p.z);
             IReadOnlyList<StyleLog> logs = StyleRules.Palisade(x0, z0, x1, z1, id);
             // Sous-lot V2.30 (relecture de la PR #188) : un long pan qui suit le sol (la palissade du Bourg fortifié, sans replat) a chaque
-            // rondin posé sur le sol affiché, et il est découpé en tronçons de 150 m au plus (un maillage reste sous 65 535 sommets).
+            // rondin posé sur le sol affiché ; tout pan est découpé en tronçons de 150 m au plus (un maillage reste sous 65 535 sommets).
             bool drape = StyleWorld.HasRelief && GroundRelief.FollowsGround(id);
             bool alongX = x1 - x0 >= z1 - z0;
             float from = alongX ? x0 : z0;
-            int pieces = drape ? Mathf.Max(1, Mathf.CeilToInt(((alongX ? x1 - x0 : z1 - z0)) / PalisadePiece)) : 1;
+            // Revue Codex de la PR #188 : le découpage dépend de la longueur seule (aussi sans relief : sol de remplacement), pour que
+            // chaque maillage reste sous la limite des indices de 16 bits.
+            int pieces = Mathf.Max(1, Mathf.CeilToInt((alongX ? x1 - x0 : z1 - z0) / PalisadePiece));
             for (int k = 0; k < pieces; k++)
             {
                 float a = from + k * PalisadePiece, b = k == pieces - 1 ? float.MaxValue : a + PalisadePiece;
