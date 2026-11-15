@@ -14,8 +14,11 @@ namespace EdS.World
     /// </summary>
     public sealed partial class WorldSession
     {
-        /// <summary>Saison du jour du monde (« spring », « summer », « autumn », « winter »).</summary>
-        public string Season => WorldCalendar.SeasonOf(Zone.Time.Day);
+        /// <summary>
+        /// Saison du monde (« spring », « summer », « autumn », « winter ») : la saison réelle si l'hôte a fourni une date (saisons, 15 novembre
+        /// 2026), sinon celle du jour du monde.
+        /// </summary>
+        public string Season => WorldCalendar.Seasons[SeasonIndex];
 
         /// <summary>Jour de la semaine du monde (0 à 6).</summary>
         public int Weekday => WorldCalendar.WeekdayOf(Zone.Time.Day);

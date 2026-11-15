@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/crafting.schema.json",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "kind": "crafting",
   "contentVersion": "0.7.0-provisoire",
   "data": {
@@ -486,6 +486,66 @@
         ],
         "respawnMs": 60000,
         "xp": 8
+      },
+      {
+        "id": "primevere_ruisseau",
+        "profession": "herboristerie",
+        "item": "item.primevere_argentee",
+        "count": 1,
+        "position": [
+          -4,
+          -20
+        ],
+        "respawnMs": 600000,
+        "xp": 20,
+        "seasons": [
+          "spring"
+        ]
+      },
+      {
+        "id": "sauge_verger",
+        "profession": "herboristerie",
+        "item": "item.sauge_de_pluie",
+        "count": 1,
+        "position": [
+          58,
+          -46
+        ],
+        "respawnMs": 600000,
+        "xp": 20,
+        "seasons": [
+          "spring"
+        ]
+      },
+      {
+        "id": "cepes_foret",
+        "profession": "herboristerie",
+        "item": "item.cepe",
+        "count": 1,
+        "position": [
+          -70,
+          42
+        ],
+        "respawnMs": 120000,
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
+      },
+      {
+        "id": "trompettes_foret",
+        "profession": "herboristerie",
+        "item": "item.trompette_du_sous_bois",
+        "count": 1,
+        "position": [
+          -60,
+          30
+        ],
+        "respawnMs": 120000,
+        "xp": 10,
+        "seasons": [
+          "autumn"
+        ]
       }
     ],
     "forge": {
