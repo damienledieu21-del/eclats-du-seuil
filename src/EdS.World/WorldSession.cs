@@ -809,6 +809,7 @@ namespace EdS.World
             // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
             _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
+            NoteRecruitedCompanions();   // compagnons : une troupe déjà recrutée apprend son fait (sauvegarde d'avant la quête de lien)
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
             Market = market;
             // Sous-lot 12.7 : le chef arrive avec la session (sa première forme).
