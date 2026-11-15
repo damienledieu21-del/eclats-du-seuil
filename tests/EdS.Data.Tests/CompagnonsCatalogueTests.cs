@@ -139,6 +139,8 @@ public class CompagnonsCatalogueTests
         AssertError(Mutated(r => Stage(r, 0, 0)["attacks"]![0]!["range"] = 0), "$.data.companions[0].stages[0].attacks[0].range");
         AssertError(Mutated(r => Stage(r, 0, 0)["inconnu"] = 1), "$.data.companions[0].stages[0].inconnu");
         AssertError(Mutated(r => Stage(r, 0, 0)["attacks"] = new JsonArray()), "$.data.companions[0].stages[0].attacks");
+        // Relecture de la PR #175 : un stade qui se tient au-delà de toutes ses portées d'attaque ne frapperait jamais.
+        AssertError(Mutated(r => Stage(r, 0, 0)["maxRange"] = 5), "$.data.companions[0].stages[0].maxRange");
     }
 
     [Theory]

@@ -295,6 +295,12 @@ namespace EdS.Data.Story
         /// <summary>Fait « déjà rencontré » du PNJ <paramref name="npcId"/> (« npc.renart » donne « fact.met.renart »).</summary>
         public static string MetFact(string npcId) => MetFactPrefix + (npcId.StartsWith("npc.", StringComparison.Ordinal) ? npcId.Substring(4) : npcId);
 
+        /// <summary>
+        /// Compagnons (relecture de la PR #175) : fait « au moins un compagnon recruté », appris par le cœur au recrutement (et au chargement
+        /// d'une troupe déjà recrutée), jamais par un effet <c>setFact</c> ; une condition <c>fact</c> peut le lire (quête de lien au feu).
+        /// </summary>
+        public const string CompanionRecruitedFact = "fact.compagnons.recrute";
+
         public static bool IsFactId(string? id) => id != null && id.Length <= 200 && FactId.IsMatch(id);
 
         /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs), où un PNJ peut vivre (<c>zone</c>) ; null : aucune.</param>
@@ -484,6 +490,7 @@ namespace EdS.Data.Story
                 foreach (Boss boss in _zone.Bosses) _factsSet.Add(boss.Fact);   // « fact.met.… » refusé pour un chef par ZoneValidator
                 // Sous-lot V1.9.10 : le premier dialogue avec chaque PNJ apprend son fait « déjà rencontré ».
                 foreach (string npcId in _npcs) _factsSet.Add(MetFact(npcId));
+                _factsSet.Add(CompanionRecruitedFact);   // compagnons : appris au recrutement
                 // Sous-lot V2.5 : la première réussite d'un événement du monde apprend son fait, le premier échec le sien.
                 foreach (WorldEventDefinition e in _zone.Events)
                 {
@@ -1063,6 +1070,11 @@ namespace EdS.Data.Story
 
             private bool NotMetFact(TermData t, string p)
             {
+                if (t.Id == CompanionRecruitedFact)
+                {
+                    _r.Add(p + ".id", ValidationCode.InvalidValue, $"fait « {t.Id} » réservé : il est appris par le cœur au recrutement du premier compagnon.");
+                    return false;
+                }
                 if (t.Id is null || !t.Id.StartsWith(MetFactPrefix, StringComparison.Ordinal)) return true;
                 _r.Add(p + ".id", ValidationCode.InvalidValue, $"fait « {t.Id} » réservé : « {MetFactPrefix}… » est appris par le cœur au premier dialogue avec le PNJ.");
                 return false;

@@ -41,6 +41,19 @@ internal static class ScenarioTestData
     {
         var passages = zone["data"]!["passages"]!.AsArray();
         foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
+        // Sous-lot V2.28c (3) : ni les points sûrs, ni les lieux, ni les routes de la région (hors de l'aire d'avant).
+        static bool Inside(JsonNode? point) => (double)point![0]! >= -100 && (double)point[0]! <= 140 && (double)point[1]! >= -70 && (double)point[1]! <= 100;
+        var data = zone["data"]!;
+        foreach (var (key, keep) in new (string, Func<JsonNode, bool>)[]
+        {
+            ("safePoints", n => Inside(n["position"])),
+            ("places", n => Inside(n["min"]) && Inside(n["max"])),
+            ("roads", n => n["points"]!.AsArray().All(Inside)),
+        })
+        {
+            var list = data[key]!.AsArray();
+            foreach (var n in list.Where(n => !keep(n!)).ToList()) list.Remove(n);
+        }
     }
 
     /// <summary>

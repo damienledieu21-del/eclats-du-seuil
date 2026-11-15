@@ -10,6 +10,7 @@ namespace EdS.Data.Tests;
 /// l'aire entière d'une région, en temps et en mémoire bornés (grille de relief échantillonnée).
 /// </summary>
 [Trait("Category", "Sector")]
+[Collection(MesureMemoireCollection.Name)]
 public class V228cImagesTests
 {
     private static AdventureMap Area(double maxX, double maxZ) => new(new CombatSpace(At(0, 0), At(maxX, maxZ)), Array.Empty<MapPlace>());
@@ -100,4 +101,15 @@ public class V228cImagesTests
         Assert.True(kept < 64L * 1024 * 1024, $"{kept / (1024 * 1024)} Mo gardés");
         Assert.True(clock.Elapsed < TimeSpan.FromMinutes(3), clock.Elapsed.ToString());
     }
+}
+
+/// <summary>
+/// Essais qui mesurent la mémoire gardée (<see cref="GC.GetTotalMemory(bool)"/>, qui compte tout le processus) : ils tournent seuls,
+/// après les essais parallèles, sinon la mémoire gardée au même moment par les autres essais est comptée (97 Mo relevés en CI après
+/// les fusions des saisons et du Grand Solitaire, pour une image de 12 Mo).
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class MesureMemoireCollection
+{
+    public const string Name = "Mesure de mémoire (seule)";
 }

@@ -112,7 +112,7 @@ public class VallonsAgrandisTests
     {
         ZoneDefinition zone = Zone();
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
-        Assert.Equal(12, roads.Count);   // V2.25.1 : chemin et aire de la grange
+        Assert.Equal(20, roads.Count);   // V2.25.1 : chemin et aire de la grange ; V2.28c (3) : huit routes et chemins de la région
         // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
         // V2.7 : sauf la planque des contrebandiers, point sûr secret, loin des routes par nature.
         foreach (SafePoint s in zone.SafePoints.Where(x => x.Id != "planque_des_contrebandiers"))

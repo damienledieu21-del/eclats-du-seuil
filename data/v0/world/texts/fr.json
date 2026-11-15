@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.26.0-provisoire",
+  "contentVersion": "0.27.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1913,7 +1913,13 @@
       "text.v214.commis_mercerie.retrouvailles": "Ah, c'est vous ! Margot a parlé de votre cape toute la semaine. Elle dit que vous la traitez mal. Moi je trouve qu'elle a du caractère.",
       "text.activity.rangement": "range la boutique",
       "text.activity.couture": "à la table de coupe",
-      "text.v214.bakery.rest": "Jour de repos : le four est éteint, rien de frais aujourd'hui (le pain d'épices se garde)."
+      "text.v214.bakery.rest": "Jour de repos : le four est éteint, rien de frais aujourd'hui (le pain d'épices se garde).",
+      "text.compagnons.lien_au_feu.name": "Le lien au feu de camp",
+      "text.compagnons.lien_au_feu.halte": "Le chef des bandits est tombé. Ton compagnon veut te parler à la halte du camp des rôdeurs : il connaît quelqu'un qui marcherait avec vous (ou Cendre a assez grandi pour courir à vos côtés).",
+      "text.compagnons.lien_au_feu.offre": "Le chef des bandits est tombé, et tu ne marches plus seul. Ce soir, au feu du camp des rôdeurs, prends le temps de parler avec ton compagnon. Un lien, ça se noue autour des braises.",
+      "text.compagnons.lien_au_feu.accepter": "J'irai au feu ce soir.",
+      "text.compagnons.lien_au_feu.plus_tard": "Pas maintenant.",
+      "text.compagnons.lien_au_feu.reprendre": "Le feu de camp dont tu parlais…"
     }
   }
 }

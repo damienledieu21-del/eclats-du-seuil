@@ -126,8 +126,8 @@ public class V261SuitesDuSeuilTests
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((14, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((14, "0.17.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((14, "0.26.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.26.0-provisoire", Texts.ContentVersion);
+        Assert.Equal((14, "0.27.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.27.0-provisoire", Texts.ContentVersion);
         Assert.Equal("0.17.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(20, SaveValidator.CurrentSchemaVersion);   // compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
@@ -223,8 +223,8 @@ public class V261SuitesDuSeuilTests
     public void Histoire_en_schema_11_et_schema_10_encore_lu_avec_seize_repliques()
     {
         StoryBook book = Book(Vallons);
-        Assert.Equal((19, 26, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
-        // Version 10 : 16 répliques au plus ; Gaspard en a 26 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot) : refusé au chemin précis du dialogue.
+        Assert.Equal((19, 27, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.gaspard").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
+        // Version 10 : 16 répliques au plus ; Gaspard en a 27 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot ; compagnons : la quête de lien) : refusé au chemin précis du dialogue.
         JsonObject ten = StoryJson();
         ten["schemaVersion"] = 10;
         int gaspard = ten["data"]!["dialogues"]!.AsArray().Select((d, k) => ((string?)d!["id"], k)).Single(x => x.Item1 == "dialogue.gaspard").k;
