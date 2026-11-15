@@ -183,6 +183,12 @@ namespace EdS.Data.Rules
             // Sous-lot V2.4.1 (schéma 16) : bêtes qui se promènent.
             new RuleField("combat.wander.maxRadius", RuleValueKind.Decimal, C, nameof(CombatRules.WanderMaxRadius)),
             new RuleField("combat.wander.calmMs", RuleValueKind.Int64, C, nameof(CombatRules.WanderCalmMs)),
+            // Esquive (schéma 17, décision de Damien du 14 novembre 2026).
+            new RuleField("combat.dodge.distance", RuleValueKind.Decimal, C, nameof(CombatRules.DodgeDistance)),
+            new RuleField("combat.dodge.durationMs", RuleValueKind.Int64, C, nameof(CombatRules.DodgeDurationMs)),
+            new RuleField("combat.dodge.invulnerableMs", RuleValueKind.Int64, C, nameof(CombatRules.DodgeInvulnerableMs)),
+            new RuleField("combat.dodge.enduranceCost", RuleValueKind.Int64, C, nameof(CombatRules.DodgeEnduranceCost)),
+            new RuleField("combat.dodge.cooldownMs", RuleValueKind.Int64, C, nameof(CombatRules.DodgeCooldownMs)),
         });
 
         private static readonly Dictionary<string, RuleField> ByPath = Fields.ToDictionary(f => f.Path, StringComparer.Ordinal);

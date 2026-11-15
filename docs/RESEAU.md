@@ -158,6 +158,18 @@ Décision de Damien (« 4 + ultime dès le début, puis plus en montant jusqu'à
 
 Rien d'autre ne change : le build envoyé reste une référence et des talents, jugé par le serveur avec les règles (au plus six places actives, `ProgressionRules.MaxActiveSlots`). La 7e et la 8e place viendront avec les compétences d'ascension, avec une nouvelle version du protocole.
 
+## Protocole 5 : esquive
+
+Décision de Damien du 14 novembre 2026 (vraie esquive, [MOTEUR.md](MOTEUR.md#esquive-décision-de-damien-du-14-novembre-2026)). Un client d'une autre version est refusé dès la présentation.
+
+| Changement | Détail |
+|---|---|
+| `input.dodge` | booléen **obligatoire** : demande ponctuelle d'esquive (vidée une fois envoyée, comme `parry`). Le serveur bondit dans le cap `heading` reçu avec elle (gardé même si un message suivant change le cap avant le tick, revue Codex de la PR #164), ou vers l'arrière sans cap ; en garde, il quitte la garde dans le même groupe (`IntentionPlanner`), puis la reprend au tick suivant si elle est tenue |
+| commandes (`tick`) | action `dodge`, `direction` facultative (absente : vers l'arrière) ; ni `skill`, ni `target`, ni `backward` |
+| état courant (`state`) | instantané au format 7 (état d'esquive de chaque personnage) |
+
+Le serveur reste seul juge (endurance, recharge, mur, garde) : un refus est écrit dans le journal comme les autres. L'esquive n'est pas prédite chez le client (pas plus que la marche) : son effet arrive avec les commandes du tick ; l'essai de l'esquive en réseau (latence de 0 à 200 ms) reste à faire avec l'interface.
+
 ## Réseau simulé
 
 `SimulatedNetwork` remplace TCP dans les tests et les mesures : temps virtuel avancé par l'appelant, latence d'un sens et gigue par lien (tirage `Pcg32` : même graine, mêmes délais), ordre conservé dans chaque sens comme en TCP, fermeture vue après les messages déjà partis, coupure brutale (`Cut`) qui perd les messages en route, écoute arrêtée qui coupe les connexions pas encore acceptées et libère son adresse, 64 connexions au plus en attente d'acceptation, mêmes limites que TCP (taille des messages ; 4 096 messages et 64 Mio non lus au plus ; 4 096 messages et 64 Mio en route par émetteur, au-delà l'émetteur est fermé « file d'envoi pleine »). Aucun fil, aucune horloge réelle : les tests de réseau sont reproductibles.

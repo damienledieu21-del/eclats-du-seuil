@@ -39,12 +39,13 @@ namespace EdS.Data
     /// refusée (un talent ne la porte pas) ; 15 (règles) = sous-lot V2.4 : bloc <c>combat.infighting</c> (<c>damageReduction</c> : réduction des
     /// dégâts directs d'une créature sur une créature d'une autre équipe, les bêtes qui se battent entre elles). Classes inchangées (9) ; 16 (règles) = sous-lot V2.4.1 : bloc <c>combat.wander</c> (<c>maxRadius</c> :
     /// rayon maximal de l'aire d'errance d'une bête ; <c>calmMs</c> : temps au calme avant qu'une bête qui erre se désengage et rentre). Classes
-    /// inchangées (9).</para>
+    /// inchangées (9) ; 17 (règles) = esquive (décision de Damien du 14 novembre 2026, qui revient sur L11-D4) : bloc <c>combat.dodge</c>
+    /// (<c>distance</c>, <c>durationMs</c>, <c>invulnerableMs</c>, <c>enduranceCost</c>, <c>cooldownMs</c>). Classes inchangées (9).</para>
     /// </summary>
     public static class DataFormat
     {
         /// <summary>Version de schéma courante des fichiers de règles (<c>rules.json</c>).</summary>
-        public const int RulesSchemaVersion = 16;
+        public const int RulesSchemaVersion = 17;
 
         /// <summary>Version de schéma courante des fichiers de classes.</summary>
         public const int ClassSchemaVersion = 9;
@@ -62,8 +63,9 @@ namespace EdS.Data
         /// 1, 1, 1, 1, 10 et 20, place de l'ultime au niveau 1 (schéma inchangé : huit places actives au plus, borne du domaine
         /// <c>ProgressionRules.MaxActiveSlots</c>, comme le plafond des combattants de la version 0.12.0) ; 0.16.0 : bêtes qui se battent
         /// entre elles (sous-lot V2.4, schéma 15) : une créature inflige 50 % de ses dégâts directs à une créature d'une autre équipe ; 0.17.0 :
-        /// bêtes qui se promènent (sous-lot V2.4.1, schéma 16) : aire d'errance de 30 m au plus, 15 s au calme avant de rentrer.
+        /// bêtes qui se promènent (sous-lot V2.4.1, schéma 16) : aire d'errance de 30 m au plus, 15 s au calme avant de rentrer ; 0.18.0 :
+        /// esquive (schéma 17, décision de Damien du 14 novembre 2026) : bond de 3 m en 150 ms, 300 ms d'invulnérabilité, 20 d'endurance, 1 s de recharge.
         /// </summary>
-        public const string ProvisionalRulesContentVersion = "0.17.0-provisoire";
+        public const string ProvisionalRulesContentVersion = "0.18.0-provisoire";
     }
 }

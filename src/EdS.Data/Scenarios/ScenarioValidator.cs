@@ -66,9 +66,11 @@ namespace EdS.Data.Scenarios
         /// assaillant qui arrive en route (état emporté d'un autre secteur) ; coordonnées jusqu'à ±4 096 m et 256 obstacles ; une zone compte ses
         /// places (combattants présents au départ au plus <c>combat.limits.maxCombatants</c>, identités au plus 1 024). Une version antérieure
         /// est refusée sans migration : le fichier se met à jour à la main. Version 19 (sous-lot V2.28c, surface étendue) : l'aire d'une zone
-        /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun.
+        /// (<c>zone</c> vrai) peut avoir jusqu'à 4 096 obstacles, simulée par secteurs d'au plus 256 chacun. Version 20 (esquive,
+        /// décision de Damien du 14 novembre 2026) : action <c>dodge</c> d'un personnage d'un combat positionné, <c>direction</c> facultative
+        /// (vers l'arrière sans elle).
         /// </summary>
-        public const int CurrentSchemaVersion = 19;
+        public const int CurrentSchemaVersion = 20;
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 
@@ -217,6 +219,8 @@ namespace EdS.Data.Scenarios
                 ? new CombatCommand(c.AtMs!.Value, c.Actor!, c.Skill!, c.Target)
                 : action == CombatAction.Move
                     ? new CombatCommand(c.AtMs!.Value, c.Actor!, Point(c.Direction!), c.Backward == true)
+                    : action == CombatAction.Dodge   // esquive (schéma 19)
+                    ? CombatCommand.DodgeToward(c.AtMs!.Value, c.Actor!, c.Direction is null ? (GroundVector?)null : Point(c.Direction))
                     : action == CombatAction.Select   // sous-lot 11.4c
                         ? CombatCommand.SelectTarget(c.AtMs!.Value, c.Actor!, c.Target)
                         : new CombatCommand(c.AtMs!.Value, c.Actor!, action));
@@ -501,8 +505,10 @@ namespace EdS.Data.Scenarios
                 // Sous-lot 11.4 : une direction pour un déplacement, et seulement pour lui.
                 if (c.Action is null) return;
                 if (action == CombatAction.Move) Present(c.Direction, path + ".direction", "direction de marche [x, z], composantes dans [−1, 1]");
+                else if (action == CombatAction.Dodge && c.Present.Contains("direction"))
+                    Present(c.Direction, path + ".direction", "direction du bond [x, z], composantes dans [−1, 1] (ou aucune : vers l'arrière)");
                 else if (c.Present.Contains("direction"))
-                    _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) a une direction.");
+                    _report.Add(path + ".direction", ValidationCode.InvalidValue, "seul un déplacement (action move) ou une esquive (action dodge) a une direction.");
                 // Sous-lot 11.9 : la marche à reculons, seulement pour un déplacement.
                 if (action != CombatAction.Move && c.Present.Contains("backward"))
                     _report.Add(path + ".backward", ValidationCode.InvalidValue, "seul un déplacement (action move) se fait à reculons.");

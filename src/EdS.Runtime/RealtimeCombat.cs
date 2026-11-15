@@ -41,6 +41,7 @@ namespace EdS.Runtime
         private double _accumulated;
         private bool _guardHeld;
         private bool _parryRequested;
+        private bool _dodgeRequested;   // esquive (décision de Damien du 14/11/2026)
         private int? _slotRequested;
 
         // Sous-lot 11.6 : combat positionné. Décor (ligne de vue de l'affichage) ; marche voulue et cible sélectionnée (sous-lot 11.7 :
@@ -205,6 +206,12 @@ namespace EdS.Runtime
         public void Parry() => _parryRequested = true;
 
         /// <summary>
+        /// Esquive au prochain tick (décision de Damien du 14 novembre 2026) : bond dans la direction de marche voulue (le joystick), ou vers
+        /// l'arrière s'il est au repos ; la garde tenue est quittée pour bondir, puis reprise. Le moteur reste seul juge (endurance, recharge, mur).
+        /// </summary>
+        public void Dodge() => _dodgeRequested = true;
+
+        /// <summary>
         /// Compétence d'un emplacement du build (0 à 7 : actives, <see cref="UltimateSlot"/> : ultime) au prochain tick. Un emplacement vide
         /// ou une compétence visiblement indisponible (recharge, ressources, contrôle) donne un retour <see cref="FeedbackKind.Unavailable"/>
         /// sans commande ; le reste est soumis au moteur, qui reste seul juge (un refus donne <see cref="FeedbackKind.Rejected"/>). Seule la
@@ -326,9 +333,10 @@ namespace EdS.Runtime
             // est présent, au lieu d'être perdues sans retour. Une demande plus récente remplace l'ancienne, comme avant.
             if (!me.IsPresent && !me.IsDead) return;
             IReadOnlyList<CombatCommand[]> groups = IntentionPlanner.Plan(me, checked(_engine.CurrentTick * _tickMs), _guardHeld, _parryRequested,
-                _slotRequested, TargetFor);
+                _slotRequested, TargetFor, _dodgeRequested && _setup.Space != null, _movement.Wished is int wished ? MoveInput.Direction(wished) : (GroundVector?)null);
             _slotRequested = null;
             _parryRequested = false;
+            _dodgeRequested = false;
             int used = 0;
             foreach (CombatCommand[] group in groups)
                 if (TrySubmit(group)) used += group.Length;

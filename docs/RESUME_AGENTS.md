@@ -33,19 +33,19 @@
 |---|---|---|
 | Sauvegarde | v19 (v18 et antérieures encore lues ; point de reprise `resume` : dernier point sûr approché et son secteur, V2.28a ; v18 : registre purgé des clés de mort, `sectors`, V2.26 ; v17 : aspect du héros `character.look`, créateur de personnage, V2.16 ; v16 : stock des marchands `character.stock`, concours `story.festivals`, V2.10) | `SaveValidator.cs` (`CurrentSchemaVersion`) |
 | Catalogue d'objets | v7 | `ItemValidator.cs` |
-| Règles (contenu) | 0.17.0 (écrit « 0.17.0-provisoire ») | `data/v0/rules.json` (`contentVersion`) |
-| Moteur | 0.31.0 (secteurs : état emporté, places recyclées, ±4 096 m, 256 obstacles, V2.26) | `CombatEngine.cs` (`Version`) |
-| Journal | 25 | `CombatEngine.cs` (`LogFormatVersion`) |
-| Scénarios (schéma) | 19 (aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; `carried`, V2.26) | `ScenarioValidator.cs` |
-| Instantané (format) | 6 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
-| Protocole réseau | 4 | `src/EdS.Net/Protocol.cs` |
+| Règles (contenu) | 0.18.0 (écrit « 0.18.0-provisoire » ; esquive `combat.dodge`) | `data/v0/rules.json` (`contentVersion`) |
+| Moteur | 0.32.0 (esquive, décision de Damien du 14 novembre 2026 ; 0.31.0 : secteurs, V2.26) | `CombatEngine.cs` (`Version`) |
+| Journal | 26 | `CombatEngine.cs` (`LogFormatVersion`) |
+| Scénarios (schéma) | 20 (action `dodge`, esquive ; 19 : aire d'une zone à région jusqu'à 4 096 obstacles, V2.28c ; 18 : `carried`, V2.26) | `ScenarioValidator.cs` |
+| Instantané (format) | 7 | `CombatEngine.Snapshot.cs` (`FormatVersion`) |
+| Protocole réseau | 5 | `src/EdS.Net/Protocol.cs` |
 | Zones (schéma) | v14 (v13 à v7 encore lues ; territoire des populations, V2.26 ; région : cases de 128 m et secteurs, V2.25.3) | `Zones/ZoneValidator.cs`, `Zones/RegionGrid.cs` |
 | Fabrication (schéma) | v3 | `Crafting/CraftingModel.cs` |
 | Histoire (schéma) | v13 (v4 à v12 encore lues ; fêtes en v13, V2.10 ; réputation en v12, V2.7 ; 32 répliques par dialogue depuis v11, 16 avant) | `Story/StoryValidator.cs` |
 | Marchands (schéma) | v6 (v2 à v5 encore lues ; boutiques à horaires, fournées, grand jour de marché, V2.14 ; stock vivant, prix, contrecoups, étal ambulant, V2.10) | `Merchants/MerchantModel.cs`, `Merchants/ShopRules.cs` |
 
-Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0` (V2.26, secteurs : `scenarios/espace_secteur.json`, `EdS.Domain/Combat/CarriedState.cs`, `EdS.Domain/Space/ObstacleIndex.cs`).
-À ne pas confondre : version du contenu des règles (0.17.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 16).
+Référence figée : `tests/EdS.Data.Tests/Fixtures/reference-0.32.0-contenu-0.6.0-regles-0.18.0` (esquive : `scenarios/espace_esquive.json`, `EdS.Simulation/Engine/CombatEngine.Dodge.cs` ; la précédente, `reference-0.31.0-…-regles-0.17.0`, V2.26, reste figée).
+À ne pas confondre : version du contenu des règles (0.18.0) et version de leur schéma (`DataFormat.RulesSchemaVersion`, actuellement 17).
 
 ## 5. Où chercher
 

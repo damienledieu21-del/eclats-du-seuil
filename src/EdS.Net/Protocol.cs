@@ -12,12 +12,14 @@ namespace EdS.Net
     /// sélections dans les commandes, état courant (<see cref="StateMessage"/>, instantané du moteur) à la place de l'historique. Version 3
     /// depuis le sous-lot 11.9 : marche à reculons (<c>backward</c>) dans les intentions et les commandes de marche. Version 4 depuis le
     /// sous-lot V1.8 : huit places actives et l'ultime (<see cref="MaxSlot"/> 8 : l'emplacement 4 est désormais la 5e active, plus
-    /// l'ultime ; les règles 0.15.0 n'ouvrent que six actives) ; un client d'une autre version est refusé dès la présentation.
+    /// l'ultime ; les règles 0.15.0 n'ouvrent que six actives). Version 5 depuis l'esquive (décision de Damien du 14 novembre 2026) :
+    /// <c>dodge</c> dans les intentions (bond dans le cap de marche, ou vers l'arrière sans cap), action <c>dodge</c> (direction facultative)
+    /// dans les commandes, instantané au format 7 dans l'état courant ; un client d'une autre version est refusé dès la présentation.
     /// Détail : <c>docs/RESEAU.md</c>.
     /// </summary>
     public static class Protocol
     {
-        public const int Version = 4;
+        public const int Version = 5;
 
         /// <summary>Port TCP par défaut du serveur (hôte Unity ou serveur dédié).</summary>
         public const int DefaultPort = 7777;
@@ -198,8 +200,15 @@ namespace EdS.Net
         /// <summary>Sous-lot 11.9 (protocole 3) : marche à reculons (le personnage garde son orientation) ; faux à l'arrêt.</summary>
         public bool Backward { get; }
 
-        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally, int? heading = null, bool backward = false)
+        /// <summary>
+        /// Esquive (protocole 5, décision de Damien du 14 novembre 2026) : demande ponctuelle de bond, dans le cap de marche <see cref="Heading"/>
+        /// (le joystick), ou vers l'arrière sans cap.
+        /// </summary>
+        public bool Dodge { get; }
+
+        public InputMessage(bool guard, bool parry, int? slot, string? target, string? ally, int? heading = null, bool backward = false, bool dodge = false)
         {
+            Dodge = dodge;
             Guard = guard;
             Parry = parry;
             Slot = slot;

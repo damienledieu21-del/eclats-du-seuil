@@ -256,6 +256,11 @@ namespace EdS.Data.Rules
                 InfightingDamageReduction = Dec(d, P(c, nameof(CombatRules.InfightingDamageReduction))),   // sous-lot V2.4 (schéma 15)
                 WanderMaxRadius = Dec(d, P(c, nameof(CombatRules.WanderMaxRadius))),   // sous-lot V2.4.1 (schéma 16)
                 WanderCalmMs = Int(d, P(c, nameof(CombatRules.WanderCalmMs))),
+                DodgeDistance = Dec(d, P(c, nameof(CombatRules.DodgeDistance))),   // esquive (schéma 17)
+                DodgeDurationMs = Int(d, P(c, nameof(CombatRules.DodgeDurationMs))),
+                DodgeInvulnerableMs = Int(d, P(c, nameof(CombatRules.DodgeInvulnerableMs))),
+                DodgeEnduranceCost = Int(d, P(c, nameof(CombatRules.DodgeEnduranceCost))),
+                DodgeCooldownMs = Int(d, P(c, nameof(CombatRules.DodgeCooldownMs))),
                 Statuses = statuses,
             };
         }

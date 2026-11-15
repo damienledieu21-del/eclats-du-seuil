@@ -137,6 +137,12 @@ namespace EdS.Runtime
 
         public HudMode Mode => _mode;
 
+        /// <summary>
+        /// Esquive (décision de Damien du 14 novembre 2026, 21 h 05) : le bouton Esquive est montré pour ce combat, c'est-à-dire un combat
+        /// positionné (le moteur n'admet l'esquive que là) ; argument <c>dodge</c> de <see cref="Update"/>.
+        /// </summary>
+        public static bool DodgeFor(ICombatClient? combat) => combat != null && combat.Space != null;
+
         /// <summary>Le bouton Esquive est montré (la règle d'esquive existe).</summary>
         public bool DodgeShown => _dodge;
 
@@ -345,7 +351,7 @@ namespace EdS.Runtime
             // Joystick : la zone de 144 autour du cercle de 128 (le stick suit le pouce posé dans la moitié gauche).
             Set(HudPart.Joystick, Anchor(40, 256, JoystickZone, JoystickZone, H.Left, V.Bottom));
 
-            // Pouce droit (charte : attaque 72, esquive 64 ; ici la parade et la garde, cadrage L11-D4 : pas d'esquive universelle).
+            // Pouce droit (charte : attaque 72, esquive 64 ; la parade et la garde, plus l'esquive depuis la décision de Damien du 14 novembre 2026, 21 h 05, qui remplace L11-D4).
             Set(HudButton.Parry, Anchor(856, 256, 72, 72, H.Right, V.Bottom));
             // Esquive (réponse de Damien du 14 novembre 2026) : à sa place de la maquette, sous la parade, quand la règle existera ; la garde
             // monte alors à gauche de la parade, au-dessus de la rangée Cible / Agir. Sans esquive, la garde garde cette place.

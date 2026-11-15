@@ -250,11 +250,12 @@ namespace EdS.Simulation.Engine
                     foreach (Fighter t in targets)
                     {
                         // Une cible tombée à 0 PV sous les coups de la bande (elle meurt en fin de tick) n'est pas repoussée.
-                        if (t.Out || t.Health == 0)
+                        // Esquive : un ennemi invulnérable n'est pas repoussé (raison evaded).
+                        if (t.Out || t.Health == 0 || Evades(tick, impact.Assailant, t))
                         {
                             EmitDiagnostic(tick, CombatPhase.Resolution, "pushBlocked", w => w
                                 .Field("actor", impact.Assailant.Id).Field("attack", impact.Attack.Id).Field("target", t.Id)
-                                .Field("reason", t.Out ? OutReason(t, "target") : "targetFallen"));
+                                .Field("reason", t.Out ? OutReason(t, "target") : t.Health == 0 ? "targetFallen" : "evaded"));
                             continue;
                         }
                         var (px, pz) = PushEnd(t, impact.Zone!, distance);

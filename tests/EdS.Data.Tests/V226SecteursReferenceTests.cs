@@ -21,7 +21,8 @@ namespace EdS.Data.Tests;
 /// Nouvelle référence figée <c>Fixtures/reference-0.31.0-contenu-0.6.0-regles-0.17.0</c> : les anciens journaux y ont exactement le même
 /// corps (seul l'en-tête change), et <c>espace_secteur</c> (un secteur de 320 m au coin sud-est des bornes, 195 obstacles, un personnage
 /// qui arrive avec un état emporté, un loup blessé qui arrive avec ses PV). Les anciennes références restent figées : elles sont refusées
-/// au rejeu par ce moteur (autre version) et leur corps est reproduit octet par octet.
+/// au rejeu par ce moteur (autre version) et leur corps est reproduit octet par octet. Depuis l'esquive (moteur 0.32.0), cette référence
+/// est figée à son tour : refusée au rejeu, corps reproduit (la référence courante est vérifiée par <c>EsquiveReferenceTests</c>).
 /// </summary>
 [Trait("Category", "Sector")]
 [Trait("Category", "Regression")]
@@ -52,10 +53,10 @@ public class V226SecteursReferenceTests
     [Fact]
     public void Versions_du_sous_lot()
     {
-        Assert.Equal(("0.31.0", 25, 19, 6), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.32.0", 26, 20, 7), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));   // esquive (V2.26 : 0.31.0, 25, 18, 6)
         JsonDocument schema = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "scenario.schema.json")));
         JsonElement root = schema.RootElement;
-        Assert.Equal(19, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(ScenarioValidator.CurrentSchemaVersion, root.GetProperty("properties").GetProperty("schemaVersion").GetProperty("const").GetInt32());
         Assert.True(root.GetProperty("$defs").GetProperty("combatant").GetProperty("properties").TryGetProperty("carried", out _));
         Assert.Equal(4096, root.GetProperty("$defs").GetProperty("point").GetProperty("items").GetProperty("maximum").GetInt32());
     }
@@ -65,8 +66,9 @@ public class V226SecteursReferenceTests
     {
         string path = Fixture(Latest, Secteur);
         string[] frozen = File.ReadAllLines(path);
-        Assert.Equal(frozen, Simulate(Load(Secteur)).Lines);
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(frozen, ShippedData).Status);
+        // Esquive (moteur 0.32.0) : la référence 0.31.0 reste figée, refusée au rejeu ; son corps est reproduit octet par octet.
+        Assert.Equal(frozen.Skip(1), Simulate(Load(Secteur)).Lines.Skip(1));
+        Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(frozen, ShippedData).Status);
         Assert.Equal(SecteurFingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         // Ce que le journal montre : 195 obstacles, coordonnées au-delà de l'ancienne borne, arrivées avec état.
         JsonElement header = JsonDocument.Parse(frozen[0]).RootElement;
@@ -95,8 +97,7 @@ public class V226SecteursReferenceTests
         string[] old = File.ReadAllLines(Fixture(Previous, name)), latest = File.ReadAllLines(Fixture(Latest, name));
         Assert.Equal(ReplayStatus.Refused, CombatLogReplayer.Replay(old, ShippedData).Status);
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate(Load(name)).Lines);
-        Assert.Equal(ReplayStatus.Identical, CombatLogReplayer.Replay(latest, ShippedData).Status);
+        Assert.Equal(latest.Skip(1), Simulate(Load(name)).Lines.Skip(1));   // esquive : corps seulement (moteur 0.32.0)
         string Header(string line) => line.Replace("\"formatVersion\":24,\"engineVersion\":\"0.30.0\"", "\"formatVersion\":25,\"engineVersion\":\"0.31.0\"", StringComparison.Ordinal);
         Assert.Equal(latest[0], Header(old[0]));
     }
@@ -107,7 +108,7 @@ public class V226SecteursReferenceTests
         string[] old = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.30.0-regles-0.17.0", "evenement_hameau.jsonl"));
         string[] latest = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "evenements-0.31.0-regles-0.17.0", "evenement_hameau.jsonl"));
         Assert.Equal(old.Skip(1), latest.Skip(1));
-        Assert.Equal(latest, Simulate(Load("evenement_hameau")).Lines);
+        Assert.Equal(latest.Skip(1), Simulate(Load("evenement_hameau")).Lines.Skip(1));   // esquive : corps seulement (moteur 0.32.0)
     }
 
     [Fact]
