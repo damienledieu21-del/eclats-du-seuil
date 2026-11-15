@@ -224,7 +224,8 @@ public class StyleShapesTests
         Assert.Contains("if (StyleRules.RockFace(id) && QuarryFace(id, points, StyleWorld.HasRelief && !GroundRelief.Builds(obstacle))) return;", view, StringComparison.Ordinal);
         // Revue Codex de la PR #170 : éboulement et falaises sans replat, chaque rocher posé sur son sol, sans déplacement d'ensemble.
         Assert.Contains("if (drape) at.y = Ground(at.x, at.z, 0.4f);", view, StringComparison.Ordinal);
-        Assert.Contains("if (StyleRules.RockFace(obstacle.Id) && !GroundRelief.Builds(obstacle)) return;", view, StringComparison.Ordinal);
+        Assert.Contains("if (_draped) return;", view, StringComparison.Ordinal);
+        Assert.Contains("_draped = drape && placed > 0;", view, StringComparison.Ordinal);   // 2e tour : le prisme de secours reste relevé
         // Pont cintré : les personnages montent avec le tablier, et redescendent hors du pont.
         Assert.Contains("StyleWorld.Deck(x0, z0, x1, z1, BridgeRise);", view, StringComparison.Ordinal);
         Assert.Contains("StyleWorld.Deck(0f, 0f, 0f, 0f, 0f);", view, StringComparison.Ordinal);
