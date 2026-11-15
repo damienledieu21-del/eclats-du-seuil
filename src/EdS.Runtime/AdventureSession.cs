@@ -15,6 +15,7 @@ using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
+using EdS.Data.WorldBosses;
 using EdS.Data.Zones;
 using EdS.Domain.Builds;
 using EdS.Domain.Combat;
@@ -235,6 +236,8 @@ namespace EdS.Runtime
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
+        private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)
         private long? _civilUtc;   // saisons : dernier instant UTC fourni par l'hôte (ou le serveur)
         private readonly List<string> _messages = new List<string>();
@@ -258,8 +261,10 @@ namespace EdS.Runtime
         public bool IsNewGame { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null, FishingBook? fishing = null)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
+            WorldBossBook? worldBosses = null, FishingBook? fishing = null)
         {
+            _worldBosses = worldBosses;
             _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
                 throw new ArgumentOutOfRangeException(nameof(arrivalRings), arrivalRings, $"Anneaux de la règle d'arrivée hors de [0, {WorldSession.ArrivalRings}].");
@@ -353,12 +358,16 @@ namespace EdS.Runtime
             // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
             string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
             SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            // Grand Solitaire, 2e partie : les boss du monde (fichier absent, données d'essai réduites : aucun ; présent, il doit être valide).
+            string bossesPath = WorldBossJsonReader.PathIn(dataDirectory);
+            WorldBossLoadResult? worldBosses = File.Exists(bossesPath) ? WorldBossJsonReader.ReadFile(bossesPath, catalogTexts, definition, catalog, scenariosDirectory, data) : null;
+            if (worldBosses != null) Need(worldBosses.Book, "boss du monde", () => worldBosses.Report);
             // Pêche et carnet : facultative de même (données d'essai réduites) ; présente, elle doit être valide.
             string fishingPath = FishingJsonReader.PathIn(dataDirectory);
             FishingLoadResult? fishing = File.Exists(fishingPath) ? FishingJsonReader.ReadFile(fishingPath, catalogTexts, definition, catalog) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
-                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report),
+                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report));
         }
 
@@ -380,7 +389,20 @@ namespace EdS.Runtime
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
-            if (_civilUtc is long utc) world.SetCivilTime(utc);
+            // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
+            // cours continue d'une session à l'autre de cette zone.
+            // Relecture indépendante de la PR #178 : elle continue aussi à travers un intérieur (boulangerie, auberge…) : gardée à la sortie
+            // de la zone de départ, reprise au retour.
+            if (World?.WorldBosses != null) _bossCarry = World.WorldBossEvents;
+            if (_worldBosses != null && world.Definition?.Id == _zones[0].Id)
+            {
+                world.UseWorldBosses(_worldBosses, _bossCarry);
+                _bossCarry = null;
+            }
+            // Relecture indépendante de la PR #178 : l'instant fourni par l'hôte est projeté par les ticks de la session qui se termine
+            // (arrondi à la seconde au-dessus), pour que le temps serveur de la nouvelle ne recule pas sous celui d'une occurrence reprise.
+            long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
+            if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
