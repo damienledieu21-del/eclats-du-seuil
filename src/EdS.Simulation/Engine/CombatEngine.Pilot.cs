@@ -417,6 +417,8 @@ namespace EdS.Simulation.Engine
             foreach (StatusInstance status in assailant.Statuses.Values)
                 if (status.Definition.IsTaunt && status.UntilTick > tick && (taunt is null || status.AppliedSeq > taunt.AppliedSeq)) taunt = status;
             if (taunt?.Source is { } source) return source;
+            // Revue Codex de la PR #169 : la cible d'un compagnon suit son ordre, comme en combat (aucune sous « revenir »).
+            if (assailant.Companion != null) return CompanionTarget(assailant)?.Id;
             AssailantSetup setup = assailant.Assailant!;
             // Sous-lot 11.5 : cible de scénario là et vivante, sinon l'ennemi le plus proche.
             if (setup.Behavior is null || (setup.Target != null && !_byId[setup.Target].Out)) return setup.Target;
