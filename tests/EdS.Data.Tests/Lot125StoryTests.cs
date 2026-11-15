@@ -397,7 +397,7 @@ public class Lot125StoryTests
         Assert.Equal("rodeur", rodeur!.Node);
         Assert.Equal(DialogueRefusal.None, gaspard.Choose(rodeur.Options[0].Index, out _, out _));
         gaspard.Talk("npc.gaspard", out DialogueView? garde);
-        Assert.Equal("garde", garde!.Node);
+        Assert.Equal("v228_vallee", garde!.Node);   // V2.28c (4) : chapitre 1 fini, Gaspard propose la quête des passages de la vallée
         Assert.Equal(1, gaspard.Narrative!.Trust("npc.gaspard"));
     }
 
