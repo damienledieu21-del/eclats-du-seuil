@@ -1,0 +1,93 @@
+{
+  "$schema": "../../schemas/fishing.schema.json",
+  "schemaVersion": 1,
+  "kind": "fishing",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "biteMinMs": 3000,
+    "biteMaxMs": 12000,
+    "windowMs": 1500,
+    "range": 3,
+    "spots": [
+      {
+        "id": "ponton_ouest",
+        "name": "text.fishing.spot.ponton_ouest",
+        "position": [
+          -9,
+          -54
+        ],
+        "fish": [
+          "item.gardon",
+          "item.perche",
+          "item.brochet",
+          "item.carpe_doree"
+        ]
+      },
+      {
+        "id": "rive_est",
+        "name": "text.fishing.spot.rive_est",
+        "position": [
+          20,
+          -54
+        ],
+        "fish": [
+          "item.gardon",
+          "item.perche",
+          "item.brochet",
+          "item.carpe_doree"
+        ]
+      },
+      {
+        "id": "gue_du_moulin",
+        "name": "text.fishing.spot.gue_du_moulin",
+        "position": [
+          3,
+          -11
+        ],
+        "fish": [
+          "item.gardon",
+          "item.truite"
+        ]
+      }
+    ],
+    "fish": [
+      {
+        "item": "item.gardon",
+        "weight": 50,
+        "minCm": 10,
+        "maxCm": 30
+      },
+      {
+        "item": "item.perche",
+        "weight": 30,
+        "minCm": 15,
+        "maxCm": 40
+      },
+      {
+        "item": "item.truite",
+        "weight": 25,
+        "minCm": 20,
+        "maxCm": 55
+      },
+      {
+        "item": "item.brochet",
+        "weight": 8,
+        "minCm": 40,
+        "maxCm": 110,
+        "phases": [
+          "dawn",
+          "dusk"
+        ]
+      },
+      {
+        "item": "item.carpe_doree",
+        "weight": 2,
+        "minCm": 30,
+        "maxCm": 80,
+        "phases": [
+          "night"
+        ]
+      }
+    ]
+  }
+}

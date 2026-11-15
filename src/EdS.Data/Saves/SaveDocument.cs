@@ -99,6 +99,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.16 (version 17) : aspect du héros choisi dans le créateur (facultatif).</summary>
         public SavedLookData? Look { get; set; }
 
+        /// <summary>Pêche et carnet (version 20) : lancers et carnet des prises, facultatif.</summary>
+        public SavedFishingData? Fishing { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }

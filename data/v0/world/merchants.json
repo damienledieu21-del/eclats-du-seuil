@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "values": [
       {
@@ -372,6 +372,26 @@
       {
         "item": "item.chapeau_de_lune",
         "value": 25
+      },
+      {
+        "item": "item.gardon",
+        "value": 8
+      },
+      {
+        "item": "item.perche",
+        "value": 12
+      },
+      {
+        "item": "item.truite",
+        "value": 18
+      },
+      {
+        "item": "item.brochet",
+        "value": 60
+      },
+      {
+        "item": "item.carpe_doree",
+        "value": 250
       },
       {
         "item": "item.primevere_argentee",

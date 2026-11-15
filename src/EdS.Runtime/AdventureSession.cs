@@ -7,6 +7,7 @@ using EdS.Data;
 using EdS.Data.Characters;
 using EdS.Data.Classes;
 using EdS.Data.Crafting;
+using EdS.Data.Fishing;
 using EdS.Data.Guild;
 using EdS.Data.Items;
 using EdS.Data.Json;
@@ -233,7 +234,8 @@ namespace EdS.Runtime
         private readonly IReadOnlyList<ZoneDefinition> _zones;
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
-        private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private readonly SeasonBook? _seasons;
+        private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)   // saisons : contenu saisonnier (null : aucun)
         private long? _civilUtc;   // saisons : dernier instant UTC fourni par l'hôte (ou le serveur)
         private readonly List<string> _messages = new List<string>();
         private readonly Dictionary<string, int> _drunk = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -256,8 +258,9 @@ namespace EdS.Runtime
         public bool IsNewGame { get; }
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
-            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null)
+            StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null, FishingBook? fishing = null)
         {
+            _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
                 throw new ArgumentOutOfRangeException(nameof(arrivalRings), arrivalRings, $"Anneaux de la règle d'arrivée hors de [0, {WorldSession.ArrivalRings}].");
             _arrivalRings = arrivalRings;
@@ -350,9 +353,13 @@ namespace EdS.Runtime
             // Fichier absent (données d'essai réduites) : aucun contenu saisonnier, passages fermés (option prudente) ; présent, il doit être valide.
             string seasonsPath = SeasonJsonReader.PathIn(dataDirectory);
             SeasonLoadResult? seasons = File.Exists(seasonsPath) ? SeasonJsonReader.ReadFile(seasonsPath, definition) : null;
+            // Pêche et carnet : facultative de même (données d'essai réduites) ; présente, elle doit être valide.
+            string fishingPath = FishingJsonReader.PathIn(dataDirectory);
+            FishingLoadResult? fishing = File.Exists(fishingPath) ? FishingJsonReader.ReadFile(fishingPath, catalogTexts, definition, catalog) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
-                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report));
+                seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report),
+                fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -372,6 +379,7 @@ namespace EdS.Runtime
         {
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
+            world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
             if (_civilUtc is long utc) world.SetCivilTime(utc);
             World = world;
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
@@ -426,7 +434,9 @@ namespace EdS.Runtime
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
-            if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
+            if (steps > 0) EnforceCurfew();
+            // Pêche et carnet : la touche s'annonce une fois.
+            if (World.IsBiting && !_biteAnnounced) { _biteAnnounced = true; Say("text.ui.fishing.bite"); }   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             if (boons && steps > 0) _dirty = true;
             _sinceSave += seconds;
             // Revue Codex de la PR #49 : la défaite ne perd rien (cadrage Q8) : les acquis d'avant la chute se sauvegardent encore
@@ -489,6 +499,40 @@ namespace EdS.Runtime
         }
 
         private string ItemName(string item) => _items.Items.FirstOrDefault(i => i.Id == item)?.Name ?? item;
+
+        private bool _biteAnnounced;
+
+        /// <summary>Pêche et carnet : poste de pêche à portée (zone de l'histoire seulement), ou null.</summary>
+        public FishingSpot? FishingSpotInReach => World.InStoryZone ? World.FishingSpotNear(Me) : null;
+
+        /// <summary>Pêche et carnet : lance la ligne depuis <paramref name="spot"/> ; un message le dit (ou dit le refus).</summary>
+        public bool CastLine(FishingSpot spot)
+        {
+            FishingRefusal refusal = World.Cast(spot.Id);
+            if (refusal == FishingRefusal.None) { _biteAnnounced = false; Say("text.ui.fishing.cast", Text(spot.Name)); }
+            return refusal == FishingRefusal.None;
+        }
+
+        /// <summary>Pêche et carnet : ferre ; un message dit la prise (et un record), le lancer perdu, ou le sac plein.</summary>
+        public bool StrikeLine()
+        {
+            FishingRefusal refusal = World.Strike(out FishingOutcome outcome, out FishingCatch? caught);
+            if (refusal == FishingRefusal.Full) { Say("text.ui.fishing.full"); return false; }
+            if (refusal != FishingRefusal.None) return false;
+            _dirty = true;
+            if (caught != null)
+            {
+                Say("text.ui.fishing.caught", ItemName(caught.Fish), caught.Cm.ToString(CultureInfo.InvariantCulture));
+                if (caught.Record && World.Fishing.Of(caught.Fish)!.Count > 1) Say("text.ui.fishing.record", ItemName(caught.Fish));
+                return true;
+            }
+            Say(outcome == FishingOutcome.TooEarly ? "text.ui.fishing.tooearly" : "text.ui.fishing.toolate");
+            return false;
+        }
+
+        /// <summary>Pêche et carnet : le carnet des prises (nom de l'espèce, prises, plus grande en cm), rangé par objet.</summary>
+        public IReadOnlyList<(string Name, long Count, int BestCm)> FishingLog() =>
+            World.Fishing.Log.Select(c => (ItemName(c.Fish), c.Count, c.BestCm)).ToList();
 
         /// <summary>Annonce une fois l'arrivée refusée (ou, sous-lot V2.28b (2b), le passage de secteur refusé pour de bon).</summary>
         private void AnnounceStranded()
@@ -727,6 +771,9 @@ namespace EdS.Runtime
                 if (refusal == DialogueRefusal.None && World.Narrative?.LastTalkCold == true) Say("text.ui.shunned.story", Text(npc.Name));   // mais l'histoire continue
                 return refusal == DialogueRefusal.None;
             }
+            // Pêche et carnet : à un poste de pêche, la même touche lance la ligne, puis ferre.
+            if (World.CastSpot != null) return StrikeLine();
+            if (FishingSpotInReach is FishingSpot spot && NodeInReach is null) return CastLine(spot);
             if (NodeInReach is GatheringNode node)
             {
                 CraftRefusal refusal = World.Gather(node.Id, out CraftEvent? done);
