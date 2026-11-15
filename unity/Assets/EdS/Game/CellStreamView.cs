@@ -293,7 +293,7 @@ namespace EdS.Game
             AddMesh(root, "Eau", flat, flatTris, _water, false);
             flat = new List<Vector3>();
             flatTris = new List<int>();
-            foreach (IReadOnlyList<(double X, double Z)> poly in set.Ravines) Fan(poly, 0.03f, true, flat, flatTris);
+            foreach (IReadOnlyList<(double X, double Z)> poly in set.Ravines) Fan(poly, 0.1f, true, flat, flatTris);
             AddMesh(root, "Ravins", flat, flatTris, _ravine, false);
             var road = new List<Vector3>();
             var roadTris = new List<int>();
@@ -328,19 +328,55 @@ namespace EdS.Game
             return root;
         }
 
+        /// <summary>Pas de la subdivision des polygones drapés (m) : revue Codex de la PR #173, le ravin suit le relief au lieu de le couper.</summary>
+        private const double DrapeStep = 4.0;
+
         private void Fan(IReadOnlyList<(double X, double Z)> poly, float lift, bool drape, List<Vector3> vertices, List<int> triangles)
         {
-            int start = vertices.Count;
-            foreach ((double x, double z) in poly) vertices.Add(new Vector3((float)x, (drape ? (float)_relief.Height(x, z) : 0f) + lift, (float)z));
+            if (poly.Count < 3) return;
+            // Revue Codex de la PR #173 : un polygone drapé est subdivisé (même nombre de pas pour tous ses triangles, donc sans fente entre
+            // eux), chaque sommet posé sur le relief ; l'eau, plate, garde ses grands triangles.
+            int steps = 1;
+            if (drape)
+            {
+                double longest = 0;
+                for (int i = 0; i < poly.Count; i++)
+                    for (int k = i + 1; k < poly.Count; k++)
+                    {
+                        double dx = poly[k].X - poly[i].X, dz = poly[k].Z - poly[i].Z;
+                        longest = System.Math.Max(longest, dx * dx + dz * dz);
+                    }
+                steps = Mathf.Clamp(Mathf.CeilToInt((float)(System.Math.Sqrt(longest) / DrapeStep)), 1, 64);
+            }
+            (double X, double Z) o = poly[0];
             for (int i = 1; i + 1 < poly.Count; i++)
             {
+                (double X, double Z) p1 = poly[i], p2 = poly[i + 1];
                 // Vers le haut quel que soit le sens du polygone. Revue Codex de la PR #173 : dans Unity, la face avant de (a, b, c) a pour
                 // normale Cross(b − a, c − a) ; on garde l'ordre quand elle monte, on l'inverse sinon (Eau.shader : Cull Back).
-                Vector3 a = vertices[start], b = vertices[start + i], c = vertices[start + i + 1];
-                bool up = Vector3.Cross(b - a, c - a).y > 0f;
-                triangles.Add(start);
-                triangles.Add(up ? start + i : start + i + 1);
-                triangles.Add(up ? start + i + 1 : start + i);
+                bool up = (p1.Z - o.Z) * (p2.X - o.X) - (p1.X - o.X) * (p2.Z - o.Z) > 0;
+                int start = vertices.Count;
+                // Grille barycentrique : rangée r (0 à steps), colonne c (0 à steps − r) ; sommet = o + (p1 − o)·c/n + (p2 − o)·r/n.
+                for (int r = 0; r <= steps; r++)
+                    for (int c = 0; c <= steps - r; c++)
+                    {
+                        double x = o.X + (p1.X - o.X) * c / steps + (p2.X - o.X) * r / steps;
+                        double z = o.Z + (p1.Z - o.Z) * c / steps + (p2.Z - o.Z) * r / steps;
+                        vertices.Add(new Vector3((float)x, (drape ? (float)_relief.Height(x, z) : 0f) + lift, (float)z));
+                    }
+                int Index(int r, int c) => start + r * (steps + 1) - r * (r - 1) / 2 + c;
+                void Tri(int a, int b, int c)
+                {
+                    triangles.Add(a);
+                    triangles.Add(up ? b : c);
+                    triangles.Add(up ? c : b);
+                }
+                for (int r = 0; r < steps; r++)
+                    for (int c = 0; c < steps - r; c++)
+                    {
+                        Tri(Index(r, c), Index(r, c + 1), Index(r + 1, c));
+                        if (c + 1 < steps - r) Tri(Index(r, c + 1), Index(r + 1, c + 1), Index(r + 1, c));
+                    }
             }
         }
 
