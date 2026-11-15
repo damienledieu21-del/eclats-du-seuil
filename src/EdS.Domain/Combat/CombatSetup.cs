@@ -83,7 +83,6 @@ namespace EdS.Domain.Combat
         }
     }
 
-    /// <summary>Personnage joué : sa classe et son build (attributs explicites, talents, compétences équipées).</summary>
     /// <summary>
     /// Sous-lot V2.28d (2) : monture d'un personnage. Seule la vitesse compte pour le moteur (en selle, elle remplace la vitesse de marche) ;
     /// dans [<see cref="Space.SpaceLimits.MinSpeed"/>, <see cref="Space.SpaceLimits.MaxSpeed"/>] m/s (validé par <see cref="CombatSetup"/>).
@@ -98,6 +97,7 @@ namespace EdS.Domain.Combat
         public static Fixed HorseSpeed => Fixed.FromInt(13);
     }
 
+    /// <summary>Personnage joué : sa classe et son build (attributs explicites, talents, compétences équipées).</summary>
     public sealed class CharacterSetup : CombatantSetup
     {
         public ClassDefinition Class { get; }
@@ -660,9 +660,11 @@ namespace EdS.Domain.Combat
         /// </summary>
         Duo = 12,
 
+        /// <summary>
         /// Sous-lot V2.28d (2), monture : le personnage monte en selle (sa monture, <see cref="CharacterSetup.Mount"/>, le porte à sa vitesse).
         /// Hors combat seulement : refusé si un combattant d'une autre équipe est à moins de <see cref="CombatRules.MountSafeDistance"/>.
-        /// En selle, ni compétence, ni garde, ni parade, ni esquive, ni soin (refus <c>mounted</c>) : on descend pour combattre.
+        /// En selle, ni compétence, ni garde, ni parade, ni esquive, ni soin, ni attaque à deux (refus <c>mounted</c>) : on descend pour
+        /// combattre ; un ordre à un compagnon reste possible.
         /// </summary>
         Mount = 13,
 
@@ -1946,7 +1948,7 @@ namespace EdS.Domain.Combat
             {
                 case AssailantSetup assailant:
                     if (carried.Endurance != null || carried.EnduranceRegenMs != 0 || carried.Resonance != 0 || carried.RampartCharges != 0
-                        || carried.GlobalCooldownMs != 0 || carried.Cooldowns.Count != 0 || carried.ConsumableCooldownMs != 0)
+                        || carried.GlobalCooldownMs != 0 || carried.Cooldowns.Count != 0 || carried.ConsumableCooldownMs != 0 || carried.Mounted)   // V2.28d (2) : relecture de la PR #180
                         errors.Add(new RuleViolation("un assaillant n'emporte que ses points de vie.", cp));
                     if (carried.Health is long hp && (assailant.Health is not long max || hp < 1 || hp > max))
                         errors.Add(new RuleViolation($"points de vie {hp} hors de [1, {assailant.Health?.ToString() ?? "infinis"}].", cp + ".health"));

@@ -229,7 +229,7 @@ namespace EdS.Simulation.Engine
                 .Field("parryOpen", f.ParryOpen).Field("parryStartTick", f.ParryStartTick).Field("parryEndTick", f.ParryEndTick)
                 .Field("parrySucceeded", f.ParrySucceeded).Field("parryRecoveryUntilTick", f.ParryRecoveryUntilTick)
                 .Field("dodgeStartTick", f.DodgeStartTick).Field("dodgeDirectionX", f.DodgeDirectionX).Field("dodgeDirectionZ", f.DodgeDirectionZ)   // esquive (format 7)
-                .Field("mounted", f.Mounted)   // sous-lot V2.28d (2), monture (format 9)
+                .Field("mounted", f.Mounted).Field("mountedTick", f.MountedTick)   // sous-lot V2.28d (2), monture (format 9)
                 .Field("resonance", f.Resonance).Field("rampartCharges", f.RampartCharges)
                 .Field("nextTurn", f.NextTurn).Field("nextAttack", f.NextAttack).Field("nextAttackTick", f.NextAttackTick)
                 .Field("engaged", f.Engaged).Field("engagedTick", f.EngagedTick).Field("charged", f.Charged).Field("announcedToEnd", f.AnnouncedToEnd).Field("struck", f.Struck).Field("taunted", f.Taunted)
@@ -934,10 +934,14 @@ namespace EdS.Simulation.Engine
                 if (f.Companion is { } companion && CompanionProblem(f, companion) is { } problem) Require(false, $"Compagnon {who} : {problem}.");   // compagnons (format 8)
                 // Sous-lot V2.28d (2), monture (format 9) : en selle, seulement un personnage qui a une monture, arrivé en selle ou qui a donné
                 // une commande mount à un tick passé.
+                // Relecture de la PR #180 : le tick où il est monté est celui d'une commande mount de ce personnage (passé), ou celui de son
+                // arrivée en selle.
                 if (f.Mounted)
-                    Require(f.Character?.Mount != null && _spatial && (f.Setup.Carried?.Mounted == true
-                        || _setup.Commands.Any(c => c.Action == CombatAction.Mount && c.Actor == f.Id && c.AtMs / _tickMs <= Math.Max(0, previous))),
-                        $"{who} en selle sans monture ou sans commande mount.");
+                    Require(f.Character?.Mount != null && _spatial && f.MountedTick is long mountedAt && mountedAt >= 0 && mountedAt <= Math.Max(0, previous)
+                        && ((f.Setup.Carried?.Mounted == true && f.ArrivedTick == mountedAt)
+                            || _setup.Commands.Any(c => c.Action == CombatAction.Mount && c.Actor == f.Id && c.AtMs / _tickMs == mountedAt)),
+                        $"{who} en selle sans monture ou sans commande mount à son tick.");
+                else Require(f.MountedTick is null, $"{who} à pied avec un tick de mise en selle.");
                 // 7e tour : les déclencheurs portés par une altération ont les mêmes bornes que les déclencheurs permanents.
                 foreach (TriggerSlot slot in f.Triggers.Concat(f.Statuses.Values.SelectMany(s => s.Slots ?? Array.Empty<TriggerSlot>())))
                 {
@@ -2101,6 +2105,7 @@ namespace EdS.Simulation.Engine
             f.DodgeDirectionX = n["dodgeDirectionX"].Long;
             f.DodgeDirectionZ = n["dodgeDirectionZ"].Long;
             f.Mounted = n["mounted"].Bool;   // sous-lot V2.28d (2), monture (format 9)
+            f.MountedTick = n["mountedTick"].NullableLong;
             f.Resonance = n["resonance"].Int;
             f.RampartCharges = n["rampartCharges"].Int;
             f.NextTurn = n["nextTurn"].Long;

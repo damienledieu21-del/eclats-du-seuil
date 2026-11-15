@@ -220,6 +220,9 @@ namespace EdS.Simulation.Engine
             /// <summary>Sous-lot V2.28d (2) : en selle (vitesse de sa monture, aucune action de combat) ; personnage qui a une monture seulement.</summary>
             public bool Mounted;
 
+            /// <summary>Relecture de la PR #180 : tick où il est monté en selle (commande mount acceptée, ou arrivée en selle) ; null à pied.</summary>
+            public long? MountedTick;
+
             /// <summary>
             /// Altérations actives (lot 7.2), une instance par clé : (altération, source) pour un cumul par source, (altération) sinon ;
             /// voir <see cref="StatusInstance"/>.
@@ -1029,12 +1032,14 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Mount:
                     if (Reject(tick, item, actor, CheckMount(tick, actor))) return null;
                     actor.Mounted = true;
+                    actor.MountedTick = tick;
                     Emit(tick, CombatPhase.Commands, "mounted", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("speed", actor.Character!.Mount!.Speed));
                     return null;
 
                 case CombatAction.Dismount:
                     if (Reject(tick, item, actor, actor.Out ? OutReason(actor, "actor") : actor.Mounted ? null : "notMounted")) return null;
                     actor.Mounted = false;
+                    actor.MountedTick = null;
                     Emit(tick, CombatPhase.Commands, "dismounted", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
                     return null;
 

@@ -165,4 +165,76 @@ public class MontureReferenceTests
         Assert.NotEqual(walker.Snapshot().Text, tampered);
         Assert.Throws<FormatException>(() => CombatEngine.Restore(walker.CompletedSetup(), CombatSnapshot.Parse(tampered), new MemoryCombatLog()));
     }
+
+    private static JsonObject Command(long atMs, string action) => new() { ["atMs"] = atMs, ["actor"] = "bastion", ["action"] = action };
+
+    private static string[] Reasons(JsonObject root) =>
+        Events(Simulate(Load(root))).Where(e => Kind(e) == "commandRejected").Select(e => e.GetProperty("reason").GetString()!).ToArray();
+
+    [Fact]
+    public void Refus_pour_monter_dans_l_ordre()
+    {
+        // Relecture indépendante de la PR #180 : déjà en selle, bond en cours, parade ouverte, absent ; puis rien ne change.
+        JsonObject root = Json();
+        root["data"]!["commands"] = new JsonArray(Command(0, "mount"), Command(50, "mount"), Command(100, "dismount"), Command(150, "dodge"),
+            Command(200, "mount"), Command(500, "parry"), Command(550, "mount"));
+        Assert.Equal(new[] { "alreadyMounted", "dodgeActive", "parryActive" }, Reasons(root));
+        JsonObject late = Json();
+        late["data"]!["combatants"]![0]!["arrivalMs"] = 1000;
+        late["data"]!["commands"] = new JsonArray(Command(500, "mount"), Command(1500, "dismount"));
+        Assert.Equal(new[] { "actorAbsent", "notMounted" }, Reasons(late));
+    }
+
+    [Fact]
+    public void Frappe_en_selle_sans_descendre_soin_refuse_et_vue_du_pilote()
+    {
+        // L'ogre arrive à 2 m après la mise en selle et frappe : le cavalier reste en selle ; son soin est refusé (mounted).
+        JsonObject root = Json();
+        JsonObject ogre = root["data"]!["combatants"]![1]!.AsObject();
+        ogre["position"] = new JsonArray(-48, 0);
+        ogre["arrivalMs"] = 200;
+        root["data"]!["combatants"]![0]!["consumables"] = new JsonArray(new JsonObject { ["id"] = "item.potion", ["heal"] = 100, ["charges"] = 2, ["cooldownMs"] = 1000 });
+        root["data"]!["commands"] = new JsonArray(Command(0, "mount"),
+            new JsonObject { ["atMs"] = 2000, ["actor"] = "bastion", ["action"] = "consume", ["item"] = "item.potion" });
+        CombatSetup setup = Load(root);
+        var engine = new CombatEngine(setup, new MemoryCombatLog());
+        while (engine.CurrentTick < 10) engine.Step();
+        CombatantView view = engine.View("bastion");
+        Assert.True(view.Mounted);
+        Assert.Equal(MountSetup.HorseSpeed, view.MountSpeed);
+        Assert.False(view.CanCast || view.CanGuard || view.CanParry || view.CanDodge || view.DodgeAvailable);
+        string[] lines = Simulate(setup);
+        JsonElement[] events = Events(lines);
+        Assert.Contains(events, e => Kind(e) == "damage" && e.GetProperty("target").GetString() == "bastion");
+        Assert.DoesNotContain(events, e => Kind(e) == "dismounted");
+        Assert.Equal("mounted", Assert.Single(events, e => Kind(e) == "commandRejected").GetProperty("reason").GetString());
+    }
+
+    [Fact]
+    public void Attaque_a_deux_refusee_en_selle()
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("espace_compagnon")))!.AsObject();
+        JsonObject bastion = root["data"]!["combatants"]!.AsArray().Single(c => (string?)c!["id"] == "bastion")!.AsObject();
+        bastion["mount"] = new JsonObject { ["speed"] = 13 };
+        bastion["arrivalMs"] = 50;
+        bastion["carried"] = new JsonObject { ["mounted"] = true };
+        var commands = new JsonArray();
+        foreach (JsonNode? c in root["data"]!["commands"]!.AsArray())
+            if ((string?)c!["action"] == "duo") commands.Add(c.DeepClone());
+        root["data"]!["commands"] = commands;
+        string[] reasons = Reasons(root);
+        Assert.NotEmpty(reasons);
+        Assert.All(reasons, r => Assert.Equal("mounted", r));
+    }
+
+    [Fact]
+    public void Assaillant_jamais_en_selle()
+    {
+        // Relecture indépendante de la PR #180 : un assaillant n'emporte que ses PV, jamais « en selle ».
+        JsonObject root = Json();
+        JsonObject ogre = root["data"]!["combatants"]![1]!.AsObject();
+        ogre["arrivalMs"] = 100;
+        ogre["carried"] = new JsonObject { ["mounted"] = true };
+        Assert.Contains(Read(root).Report.Errors, e => e.Path == "$.data.combatants[1].carried");
+    }
 }

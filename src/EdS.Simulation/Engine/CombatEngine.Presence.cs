@@ -110,6 +110,7 @@ namespace EdS.Simulation.Engine
             }
             if (carried.ConsumableCooldownMs > 0) f.ConsumableReadyTick = checked(tick + carried.ConsumableCooldownMs / _tickMs);
             f.Mounted = carried.Mounted;   // sous-lot V2.28d (2) : arrivée en selle
+            if (carried.Mounted) f.MountedTick = tick;
         }
 
         /// <summary>

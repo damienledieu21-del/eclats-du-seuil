@@ -366,7 +366,6 @@ namespace EdS.Data.Json
             return ok ? c : null;
         }
 
-        /// <summary>Sous-lot V1.2 : garde du bouclier porté par un personnage.</summary>
         /// <summary>Sous-lot V2.28d (2) (schéma 22) : monture d'un personnage.</summary>
         private static MountData? ReadMount(JsonInput input, JsonElement element, string path)
         {
@@ -378,6 +377,7 @@ namespace EdS.Data.Json
             return ok ? m : null;
         }
 
+        /// <summary>Sous-lot V1.2 : garde du bouclier porté par un personnage.</summary>
         private static ShieldData? ReadShield(JsonInput input, JsonElement element, string path)
         {
             var s = new ShieldData();

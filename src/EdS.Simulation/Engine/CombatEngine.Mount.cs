@@ -11,7 +11,7 @@ namespace EdS.Simulation.Engine
     /// il arrive en selle, <see cref="CarriedState.Mounted"/>). Être frappé ne le fait pas descendre (choix de Claude, question posée à Damien).
     /// Refus atomiques pour monter, dans cet ordre : <c>actorDead</c>/<c>actorAbsent</c>, <c>actorCannotMount</c> (pas de monture, ou combat
     /// sans espace), <c>alreadyMounted</c>, contrôle qui bloque le déplacement (raison du contrôle), <c>guardActive</c>, <c>dodgeActive</c>
-    /// (bond en cours), <c>enemyNear</c> (un combattant vivant et présent d'une autre équipe à moins de
+    /// (bond en cours), <c>parryActive</c>, <c>parryRecovery</c>, <c>duoInProgress</c> (attaque à deux avec un compagnon en cours), <c>enemyNear</c> (un combattant vivant et présent d'une autre équipe à moins de
     /// <see cref="CombatRules.MountSafeDistance"/>). Pour descendre : <c>actorDead</c>/<c>actorAbsent</c>, <c>notMounted</c>.
     /// </summary>
     public sealed partial class CombatEngine
@@ -24,6 +24,11 @@ namespace EdS.Simulation.Engine
             if (BlockReason(actor, StatusBlocks.Movement) is { } blocked) return blocked;
             if (actor.Guarding) return "guardActive";
             if (actor.DodgeStartTick is long dodged && tick < checked(dodged + DodgeDurationTicks)) return "dodgeActive";
+            // Relecture de la PR #180 : ni parade ouverte ou en récupération, ni attaque à deux en cours avec un compagnon.
+            if (actor.ParryOpen) return "parryActive";
+            if (tick < actor.ParryRecoveryUntilTick) return "parryRecovery";
+            foreach (Fighter f in _fightersById)
+                if (f.Companion is { } c && ReferenceEquals(c.Owner, actor) && tick < c.DuoReadyTick) return "duoInProgress";
             long safe = _rules.MountSafeDistance.Raw;
             Body body = actor.Body!;
             foreach (Fighter other in _fightersById)
