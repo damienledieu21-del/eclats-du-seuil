@@ -84,16 +84,19 @@ namespace EdS.Domain.Combat
             if (duo.RawDamage < 0 || duo.RawDamage > CombatantStats.MaxRawDamage)
                 errors.Add(new RuleViolation($"dégâts bruts hors de [0, {CombatantStats.MaxRawDamage}].", at + ".rawDamage"));
             if (!Enum.IsDefined(typeof(DamageType), duo.DamageType)) errors.Add(new RuleViolation("type de dégâts inconnu.", at + ".damageType"));
-            void Phase(long ms, string field, long min)
+            bool Phase(long ms, string field, long min)
             {
                 if (ms < min || ms > CompanionDuo.MaxPhaseMs)
                     errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"durée hors de [{min}, {CompanionDuo.MaxPhaseMs}] ms.", $"{at}.{field}"));
                 else if (tick > 0 && ms % tick != 0)
                     errors.Add(new RuleViolation($"{ms} ms n'est pas un multiple de la durée du tick ({tick} ms).", $"{at}.{field}"));
+                else return true;
+                return false;
             }
-            Phase(duo.TelegraphMs, "telegraphMs", tick);
-            // La récupération court depuis le départ : elle couvre au moins l'annonce et un tick de plus (le coup part avant la fin).
-            Phase(duo.RecoveryMs, "recoveryMs", Math.Max(tick, checked(duo.TelegraphMs + tick)));
+            // La récupération court depuis le départ : elle couvre au moins l'annonce et un tick de plus (le coup part avant la fin). Revue Codex de
+            // la PR #169 : la borne n'est calculée qu'une fois l'annonce dans ses bornes (aucun débordement sur une annonce démesurée).
+            bool telegraphOk = Phase(duo.TelegraphMs, "telegraphMs", tick);
+            Phase(duo.RecoveryMs, "recoveryMs", telegraphOk ? duo.TelegraphMs + tick : tick);
             if (!SpaceLimits.IsRange(duo.Range))
                 errors.Add(new RuleViolation(RuleViolationKind.NumericLimit, $"portée hors de [{SpaceLimits.MinRange}, {SpaceLimits.MaxRange}] m (borne technique).", at + ".range"));
         }

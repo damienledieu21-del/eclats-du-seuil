@@ -160,6 +160,8 @@ public class CompagnonsReferenceTests
         AssertError(ReadMutated(r => Cmd(r, 0)["order"] = "wait", scenario: Compagnon), "$.data.commands[0].order");
         AssertError(ReadMutated(r => Cmd(r, 2)["actor"] = "loup_a", scenario: Compagnon), "$.data.commands[2].actor");
         AssertError(ReadMutated(r => r["schemaVersion"] = 20, scenario: Compagnon), "$.schemaVersion");
+        // Revue Codex de la PR #169 : une annonce démesurée est refusée avec son chemin, sans exception (aucun débordement).
+        AssertError(ReadMutated(r => Nyx(r)["duo"]!["telegraphMs"] = long.MaxValue, scenario: Compagnon), "$.data.combatants[1].companion.duo.telegraphMs");
     }
 
     [Fact]
