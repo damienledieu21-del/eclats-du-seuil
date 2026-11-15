@@ -112,10 +112,34 @@ namespace EdS.World
             if (lastDay < 0) return true;
             if (Narrative is Narrative n && n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f && f.HasDate
                 && CivilDateOfDay(Zone.Time.Day) is CivilDate today && f.OccurrenceOf(today) is CivilDate start)
+            {
+                // Revue Codex de la PR #174 : l'occurrence réelle du dernier concours, gardée au registre, fait foi ; sans elle (registre plein),
+                // le jour du monde du dernier concours, projeté depuis l'instant fourni.
+                if (ContestKey(festival) is string key && _character.Events.FirstOrDefault(x => x.Id == key) is SavedEvent held)
+                    return held.Last != start.DayNumber;
                 return !(CivilDateOfDay(lastDay) is CivilDate then) || f.OccurrenceOf(then) != start;
+            }
             return lastDay != Zone.Time.Day;
         }
 
         bool INarrativeWorld.ContestOpen(string festival, long lastDay) => ContestOpen(festival, lastDay);
+
+        /// <summary>Clé de la ligne du registre des événements qui garde l'occurrence réelle du dernier concours d'une fête (« zone.…/festival.… »).</summary>
+        private string? ContestKey(string festival) => Definition is null ? null : $"{Definition.Id}/{festival}";
+
+        /// <summary>
+        /// Revue Codex de la PR #174 : garde l'occurrence réelle (jour de son début) du concours que le personnage vient de faire, pour une fête
+        /// datée dont la date réelle est connue ; registre plein : rien n'est gardé (le jour du monde du concours sert alors). Ne lève pas.
+        /// </summary>
+        public void ContestHeld(string festival)
+        {
+            if (!(Narrative is Narrative n) || !(n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f) || !f.HasDate) return;
+            if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today) || !(f.OccurrenceOf(today) is CivilDate start)) return;
+            if (!(ContestKey(festival) is string key) || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
+            bool has = _character.Events.Any(x => x.Id == key);
+            if (!has && _character.Events.Count >= SavedEvent.MaxEntries) return;
+            var entry = new SavedEvent(key, 0, 0, start.DayNumber, EventOutcome.None);
+            _character = _character.WithEvents(_character.Events.Where(x => x.Id != key).Concat(new[] { entry }));
+        }
     }
 }

@@ -305,6 +305,13 @@ namespace EdS.World
         /// </summary>
         bool ContestOpen(string festival, long lastDay);
 
+        /// <summary>
+        /// Revue Codex de la PR #174 : le personnage vient de concourir à la fête <paramref name="festival"/> ; pour une fête datée dont la
+        /// date réelle est connue, son occurrence réelle est gardée (registre des événements), pour qu'une reprise un an plus tard ne la
+        /// confonde pas avec la nouvelle. Ne lève pas.
+        /// </summary>
+        void ContestHeld(string festival);
+
         /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
         bool NpcAway(Npc npc);
     }
@@ -1484,6 +1491,7 @@ namespace EdS.World
                         break;
                     case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
                         _contests[e.Id] = Math.Min(SavedEvent.MaxDay, _world.Day);
+                        _world.ContestHeld(e.Id);
                         events.Add(new StoryEvent(StoryEventKind.ContestEntered, e.Id, null, _world.Day));
                         break;
                     default:

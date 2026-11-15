@@ -335,4 +335,46 @@ public class FetesVraiesDatesTests
         Assert.True(liens.OnCivil(new CivilDate(2027, 3, 2)));    // année ordinaire : jusqu'au 2 mars
         Assert.False(liens.OnCivil(new CivilDate(2027, 3, 3)));
     }
+
+    [Fact]
+    public void Revue_Codex_occurrence_reelle_du_dernier_concours_gardee_a_la_reprise()
+    {
+        // Concours aux moissons de 2027 ; la partie reprend un an plus tard, sans que le monde ait avancé : le concours est de nouveau ouvert.
+        WorldSession w = Open(100, 12 * 60);
+        w.SetCivilTime(Utc(2027, 9, 20, 10));
+        Assert.True(w.ContestOpen("festival.moissons", -1));
+        w.ContestHeld("festival.moissons");
+        Assert.False(w.ContestOpen("festival.moissons", 100));
+        SavedEvent held = w.EventRegistry.Single(x => x.Id == "zone.vallons/festival.moissons");
+        Assert.Equal(new CivilDate(2027, 9, 15).DayNumber, held.Last);
+        WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(w.Save())).Save!;
+        ZoneDefinition zone = Zone();
+        WorldSession Resume(long utc)
+        {
+            var r = new WorldSession(saved, zone, ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+            r.SetCivilTime(utc);
+            return r;
+        }
+        Assert.False(Resume(Utc(2027, 9, 22, 10)).ContestOpen("festival.moissons", 100));   // même occurrence : fermé
+        WorldSession nextYear = Resume(Utc(2028, 9, 20, 10));
+        Assert.Equal("festival.moissons", nextYear.FestivalToday?.Id);
+        Assert.True(nextYear.ContestOpen("festival.moissons", 100));   // l'occurrence de 2028 : ouvert
+        // Une fête non datée (le marché) ou sans date fournie : rien n'est gardé au registre.
+        WorldSession plain = Open(100, 12 * 60);
+        plain.ContestHeld("festival.moissons");
+        Assert.DoesNotContain(plain.EventRegistry, x => x.Id.EndsWith("/festival.moissons"));
+    }
+
+    [Fact]
+    public void Revue_Codex_fete_du_calendrier_avant_un_marche_dans_les_donnees()
+    {
+        StoryLoadResult r = Mutated(root =>
+        {
+            var list = root["data"]!["festivals"]!.AsArray();
+            JsonNode lanternes = list.Single(f => (string)f!["id"]! == "festival.lanternes")!;
+            list.Remove(lanternes);
+            list.Insert(0, lanternes);
+        });
+        Assert.True(r.IsValid, r.Report.ToString());
+    }
 }

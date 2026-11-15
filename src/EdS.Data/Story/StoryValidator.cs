@@ -1341,7 +1341,7 @@ namespace EdS.Data.Story
                         continue;
                     }
                     // Relecture de la PR #120 : deux fêtes ne se chevauchent jamais (même jour possible et heures croisées) : une seule fête à la fois.
-                    if (festivals.FirstOrDefault(other => SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)
+                    if (festivals.FirstOrDefault(other => !other.CalendarOnly && SameDay(other, festival) && other.From < festival.To && festival.From < other.To) is Festival clash)   // revue Codex de la PR #174 : une fête du calendrier seulement n'a pas de jour du jeu
                     {
                         _r.Add(path + ".from", ValidationCode.InvalidValue,
                             $"« {festival.Id} » chevauche « {clash.Id} » (même jour possible, de {clash.From / 60:00}:{clash.From % 60:00} à {clash.To / 60:00}:{clash.To % 60:00}) : une seule fête à la fois.");
