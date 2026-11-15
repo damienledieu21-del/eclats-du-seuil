@@ -102,6 +102,8 @@ namespace EdS.Runtime
     /// eau des rivières et du lac, gorge et ravins, routes, parois de rochers, nappes de forêt (lieux « foret… ») et bois. Tout est tiré de la
     /// carte de l'aire entière, coupé à la case et au-dehors du sol déjà couvert par le décor de la zone (<c>hole</c> : la fenêtre que
     /// <c>SpaceView</c> construit) : d'une case à l'autre, rien n'est en double ni ne manque (bords partagés, grille des arbres fixée au monde).
+    /// Au-delà de <see cref="MaxTreesPerCell"/> arbres, la case garde ceux dont la clé de tirage (fixée au monde) est la plus petite : un
+    /// sous-échantillonnage uniforme et déterministe.
     /// Sans Unity ; affichage seulement (le moteur ne voit que les obstacles).
     /// </summary>
     public static class CellDecor
@@ -116,8 +118,10 @@ namespace EdS.Runtime
         public const double RoadGap = 2.5, ObstacleGap = 1.5;
 
         /// <summary>Le décor de la case <paramref name="cell"/> de <paramref name="grid"/>, d'après la carte de l'aire entière.</summary>
-        public static CellDecorSet For(AdventureMap whole, RegionGrid grid, RegionCell cell, (double MinX, double MinZ, double MaxX, double MaxZ)? hole = null)
+        public static CellDecorSet For(AdventureMap whole, RegionGrid grid, RegionCell cell, (double MinX, double MinZ, double MaxX, double MaxZ)? hole = null,
+            int maxTrees = MaxTreesPerCell)
         {
+            if (maxTrees < 0) throw new ArgumentOutOfRangeException(nameof(maxTrees));
             if (whole is null) throw new ArgumentNullException(nameof(whole));
             if (grid is null) throw new ArgumentNullException(nameof(grid));
             if (cell.Column < 0 || cell.Column >= grid.Columns || cell.Row < 0 || cell.Row >= grid.Rows) throw new ArgumentOutOfRangeException(nameof(cell));
@@ -132,13 +136,14 @@ namespace EdS.Runtime
             if (rects.Count == 0) return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees);
 
             // Obstacles qui touchent la case (boîtes, pour les arbres).
-            var near = new List<(string Id, bool Low, IReadOnlyList<(double X, double Z)> Points, double MinX, double MinZ, double MaxX, double MaxZ)>();
+            // Relecture de la PR #173 : « est un bois » calculé une fois par obstacle (pas pour chaque arbre candidat).
+            var near = new List<(string Id, bool Low, bool Wood, IReadOnlyList<(double X, double Z)> Points, double MinX, double MinZ, double MaxX, double MaxZ)>();
             foreach (SpaceObstacle o in whole.Obstacles)
             {
                 var pts = o.Points.Select(p => (X: p.X.Raw / 10000.0, Z: p.Z.Raw / 10000.0)).ToList();
                 double bx0 = pts.Min(p => p.X), bz0 = pts.Min(p => p.Z), bx1 = pts.Max(p => p.X), bz1 = pts.Max(p => p.Z);
                 if (bx1 < x0 - ObstacleGap || bx0 > x1 + ObstacleGap || bz1 < z0 - ObstacleGap || bz0 > z1 + ObstacleGap) continue;
-                near.Add((o.Id, o.Low, pts, bx0, bz0, bx1, bz1));
+                near.Add((o.Id, o.Low, TownRules.BuildingFor(o.Id) == StyleBuilding.Woods, pts, bx0, bz0, bx1, bz1));
             }
             foreach (var o in near)
             {
@@ -164,43 +169,58 @@ namespace EdS.Runtime
                 if (TownRules.RoadAt(x, z, whole.Roads).Edge < RoadGap) return false;
                 foreach (var o in near)
                 {
-                    if (TownRules.BuildingFor(o.Id) == StyleBuilding.Woods) continue;
+                    if (o.Wood) continue;
                     if (x < o.MinX - ObstacleGap || x > o.MaxX + ObstacleGap || z < o.MinZ - ObstacleGap || z > o.MaxZ + ObstacleGap) continue;
                     if (StyleRules.InsideDistance(x, z, o.Points) > -ObstacleGap) return false;
                 }
                 return true;
             }
-            foreach (var wood in near.Where(o => TownRules.BuildingFor(o.Id) == StyleBuilding.Woods))
+            // Candidats avec leur clé de tirage (hachage de la place, fixé au monde) : relecture de la PR #173, le plafond garde les plus petites
+            // clés, réparties uniformément dans la case (et non les premiers obstacles), même résultat quel que soit l'ordre de chargement.
+            var candidates = new List<(uint Key, CellTree Tree)>();
+            var seen = new HashSet<(long, long)>();
+            foreach (var wood in near.Where(o => o.Wood))
             {
                 bool wolves = WolfPlace(whole, (wood.MinX + wood.MaxX) / 2, (wood.MinZ + wood.MaxZ) / 2);
                 foreach (StyleWoodTree t in TownRules.WoodTrees(wood.Points, wood.Id, MapPainter.WoodSpacing))
                 {
-                    if (trees.Count >= MaxTreesPerCell) break;
-                    if (Free(t.X, t.Z)) trees.Add(new CellTree(t.X, t.Z, t.Scale, wolves));
+                    // Dédoublonnage au décimètre près (deux bois qui se touchent).
+                    if (!seen.Add(((long)Math.Round(t.X * 10), (long)Math.Round(t.Z * 10))) || !Free(t.X, t.Z)) continue;
+                    candidates.Add((Hash((long)Math.Round(t.X * 10), (long)Math.Round(t.Z * 10)), new CellTree(t.X, t.Z, t.Scale, wolves)));
                 }
             }
-            foreach (MapPlace place in whole.Places)
+            // Nappes : une seule grille du monde pour tous les lieux de forêt (relecture de la PR #173 : deux lieux qui se chevauchent ne
+            // doublent pas leurs arbres) ; un point dans un lieu de la forêt des Loups y prend ses essences.
+            var forests = whole.Places.Where(p => StyleRules.Key(p.Id).Contains("foret") && p.MaxX > x0 && p.MinX < x1 && p.MaxZ > z0 && p.MinZ < z1).ToList();
+            if (forests.Count > 0)
             {
-                if (!StyleRules.Key(place.Id).Contains("foret")) continue;
-                double px0 = Math.Max(place.MinX, x0), pz0 = Math.Max(place.MinZ, z0), px1 = Math.Min(place.MaxX, x1), pz1 = Math.Min(place.MaxZ, z1);
-                if (px0 >= px1 || pz0 >= pz1) continue;
-                bool wolves = StyleRules.Key(place.Id).Contains("loup");
-                // Grille du monde (mêmes places d'une case à l'autre, quelle que soit la case qui la construit).
-                long c0 = (long)Math.Floor(px0 / ForestSpacing), c1 = (long)Math.Ceiling(px1 / ForestSpacing);
-                long r0 = (long)Math.Floor(pz0 / ForestSpacing), r1 = (long)Math.Ceiling(pz1 / ForestSpacing);
-                for (long r = r0; r <= r1 && trees.Count < MaxTreesPerCell; r++)
-                    for (long c = c0; c <= c1 && trees.Count < MaxTreesPerCell; c++)
+                long c0 = (long)Math.Floor(x0 / ForestSpacing) - 1, c1 = (long)Math.Ceiling(x1 / ForestSpacing);
+                long r0 = (long)Math.Floor(z0 / ForestSpacing) - 1, r1 = (long)Math.Ceiling(z1 / ForestSpacing);
+                for (long r = r0; r <= r1; r++)
+                    for (long c = c0; c <= c1; c++)
                     {
                         uint h = Hash(c, r);
                         // Clairières : une maille sur six reste vide.
                         if (h % 6u == 0u) continue;
                         double x = (c + 0.15 + 0.7 * ((h >> 3) % 1000u) / 1000.0) * ForestSpacing;
                         double z = (r + 0.15 + 0.7 * ((h >> 13) % 1000u) / 1000.0) * ForestSpacing;
-                        if (x < place.MinX || x > place.MaxX || z < place.MinZ || z > place.MaxZ) continue;
-                        if (!Free(x, z)) continue;
-                        trees.Add(new CellTree(x, z, 0.8 + 0.5 * ((h >> 23) % 100u) / 100.0, wolves));
+                        MapPlace? inside = null;
+                        bool wolves = false;
+                        foreach (MapPlace p in forests)
+                            if (x >= p.MinX && x <= p.MaxX && z >= p.MinZ && z <= p.MaxZ)
+                            {
+                                inside ??= p;
+                                wolves |= StyleRules.Key(p.Id).Contains("loup");
+                            }
+                        if (inside is null || !Free(x, z)) continue;
+                        // Un bois de la zone a déjà ses arbres : pas de nappe par-dessus.
+                        if (near.Any(o => o.Wood && x >= o.MinX && x <= o.MaxX && z >= o.MinZ && z <= o.MaxZ && StyleRules.InsideDistance(x, z, o.Points) > 0)) continue;
+                        candidates.Add((h, new CellTree(x, z, 0.8 + 0.5 * ((h >> 23) % 100u) / 100.0, wolves)));
                     }
             }
+            if (candidates.Count > maxTrees)
+                candidates = candidates.OrderBy(t => t.Key).ThenBy(t => t.Tree.X).ThenBy(t => t.Tree.Z).Take(maxTrees).ToList();
+            trees.AddRange(candidates.Select(t => t.Tree));
             return new CellDecorSet(cell, x0, z0, x1, z1, water, ravines, roads, rocks, trees);
         }
 

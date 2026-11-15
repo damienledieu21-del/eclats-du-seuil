@@ -29,7 +29,7 @@ namespace EdS.Game
         private readonly Dictionary<RegionCell, MeshRenderer> _cells = new Dictionary<RegionCell, MeshRenderer>();
         private readonly Stack<MeshRenderer> _pool = new Stack<MeshRenderer>();
         private readonly Dictionary<int, MeshRenderer> _far = new Dictionary<int, MeshRenderer>();
-        private readonly List<Mesh> _meshes = new List<Mesh>();
+        private readonly HashSet<Mesh> _meshes = new HashSet<Mesh>();
         private readonly Stopwatch _watch = new Stopwatch();
         private Vector3[] _vertices = new Vector3[0];
         private Vector3[] _normals = new Vector3[0];
@@ -191,8 +191,10 @@ namespace EdS.Game
         private readonly List<(bool Far, RegionCell Cell, int Block, MeshRenderer Renderer, bool Visible)> _staged =
             new List<(bool, RegionCell, int, MeshRenderer, bool)>();
 
-        // Sous-lot V2.28d (1) : décor préparé avec sa case (calculé dans le budget de l'image), montré à la publication.
-        private readonly Dictionary<RegionCell, CellDecorSet> _stagedDecor = new Dictionary<RegionCell, CellDecorSet>();
+        // Sous-lot V2.28d (1) : décor préparé avec sa case (calculé et construit, inactif, pendant la préparation de la case), montré à la
+        // publication ; null : la case n'a plus de décor (quittée, déchargée ou hors de l'anneau de détail). Relecture de la PR #173 : la
+        // publication n'échange que des objets déjà faits (rien qui puisse échouer) ; un échec de préparation est rattrapé par Discard.
+        private readonly Dictionary<RegionCell, GameObject> _stagedDecor = new Dictionary<RegionCell, GameObject>();
 
         private MeshRenderer Spare() => _pool.Count > 0 ? _pool.Pop() : Make("Terrain");
 
@@ -208,15 +210,16 @@ namespace EdS.Game
                 bool shadows = ring == 0 && _terrain.Profile.DetailShadows;
                 renderer.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
                 renderer.receiveShadows = ring == 0;
-                // Sous-lot V2.28d (1) : le décor des cases de détail, calculé ici (dans le budget de l'image).
-                if (ring == 0 && !_decor.ContainsKey(cell)) _stagedDecor[cell] = CellDecor.For(_whole, _grid, cell, _hole);
-                else if (ring == 0) _stagedDecor.Remove(cell);
-                else _stagedDecor[cell] = null;
+                // Sous-lot V2.28d (1) : le décor des cases de détail, calculé et construit ici, inactif (pendant la préparation de la case : le
+                // budget de l'image est compté entre deux préparations, une case de forêt peut le dépasser de quelques millisecondes).
+                if (ring == 0 && !_decor.ContainsKey(cell)) StageDecor(cell, BuildDecor(CellDecor.For(_whole, _grid, cell, _hole)));
+                else if (ring == 0) StageDecor(cell, null, keep: true);
+                else StageDecor(cell, null);
             }
             else
             {
                 _staged.Add((false, cell, 0, null, false));
-                _stagedDecor[cell] = null;
+                StageDecor(cell, null);
             }
         }
 
@@ -251,21 +254,26 @@ namespace EdS.Game
             }
             _staged.Clear();
             // Sous-lot V2.28d (1) : décor montré avec sa case de détail, retiré quand la case quitte l'anneau de détail ou se décharge.
-            foreach (KeyValuePair<RegionCell, CellDecorSet> d in _stagedDecor)
+            foreach (KeyValuePair<RegionCell, GameObject> d in _stagedDecor)
             {
                 _decor.TryGetValue(d.Key, out GameObject old);
-                if (d.Value == null)
-                {
-                    if (old != null) DestroyDecor(old);
-                    _decor.Remove(d.Key);
-                }
+                if (old != null) DestroyDecor(old);
+                if (d.Value == null) _decor.Remove(d.Key);
                 else
                 {
-                    if (old != null) DestroyDecor(old);
-                    _decor[d.Key] = BuildDecor(d.Value);
+                    d.Value.SetActive(true);
+                    _decor[d.Key] = d.Value;
                 }
             }
             _stagedDecor.Clear();
+        }
+
+        /// <summary>Décor préparé d'une case (inactif) ; <paramref name="keep"/> : la case garde son décor actuel (rien à préparer).</summary>
+        private void StageDecor(RegionCell cell, GameObject decor, bool keep = false)
+        {
+            if (_stagedDecor.TryGetValue(cell, out GameObject previous) && previous != null) DestroyDecor(previous);
+            if (keep) _stagedDecor.Remove(cell);
+            else _stagedDecor[cell] = decor;
         }
 
         /// <summary>
@@ -276,6 +284,7 @@ namespace EdS.Game
         private GameObject BuildDecor(CellDecorSet set)
         {
             var root = new GameObject("Décor " + set.Cell.Name);
+            root.SetActive(false);   // préparé, pas encore montré
             root.transform.SetParent(_root.transform, false);
             if (set.IsEmpty) return root;
             var flat = new List<Vector3>();
@@ -351,8 +360,9 @@ namespace EdS.Game
             if (samples.Count < 2) return;
             int start = vertices.Count;
             foreach ((double x, double z, double nx, double nz) in samples)
-                foreach (float side in new[] { -half, half })
+                for (int k = 0; k < 2; k++)
                 {
+                    float side = k == 0 ? -half : half;
                     double px = x + nx * side, pz = z + nz * side;
                     vertices.Add(new Vector3((float)px, (float)_relief.Height(px, pz) + 0.06f, (float)pz));
                 }
@@ -410,6 +420,7 @@ namespace EdS.Game
 
         void ITerrainSink.Discard()
         {
+            foreach (GameObject decor in _stagedDecor.Values) if (decor != null) DestroyDecor(decor);
             _stagedDecor.Clear();
             foreach ((bool far, RegionCell cell, int block, MeshRenderer renderer, bool visible) in _staged)
                 if (renderer != null)
