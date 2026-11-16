@@ -26,7 +26,7 @@ public class V2302BourgEnceinteTests
     private static readonly Lazy<BourgDress> All = new(() => BourgModels.Dress(Obstacles));
 
     /// <summary>V2.30.3 : l'habillage ne garde ici que l'enceinte (pièces F, pans et tours).</summary>
-    private static readonly Lazy<BourgDress> Dress = new(() => new BourgDress(All.Value.Pieces.Where(p => p.Piece.StartsWith("f", StringComparison.Ordinal)).ToList(),
+    private static readonly Lazy<BourgDress> Dress = new(() => new BourgDress(All.Value.Pieces.Where(p => p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece)).ToList(),
         All.Value.Needs.Where(n => BourgModels.IsWall(n.Key) || BourgModels.IsTower(n.Key)).ToDictionary(n => n.Key, n => n.Value)));
 
     private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>

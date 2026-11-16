@@ -55,7 +55,7 @@ namespace EdS.Game
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 BourgOpen(holder.transform, model.transform, p.Piece);
-                AddModelOccluders(model);
+                if (!BourgModels.IsGround(p.Piece)) AddModelOccluders(model);   // V2.30.4 : un sol à plat ne cache rien
                 // V2.30.3 : un bâtiment habillé arrête la caméra à son emprise (comme un modèle de l'atelier), jusqu'au haut de ses pièces.
                 if (p.Covers != null && Blocks(TownRules.BuildingFor(p.Covers)) && TownRules.BuildingFor(p.Covers) != StyleBuilding.None)
                 {

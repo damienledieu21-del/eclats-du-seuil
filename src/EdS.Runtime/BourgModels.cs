@@ -104,6 +104,35 @@ namespace EdS.Runtime
                 case "h10_angle_miroir": return (-4.0, 4.55, -4.55, 4.0, 10.57);
                 case "h11_passage": return (-4.0, 4.0, -5.3, 5.3, 13.6);
                 case "h12_pauvre_enceinte": return (-2.8, 2.8, -2.8, 2.8, 4.66);
+                // V2.30.4 : rues, accessoires de rue et de garde, cours (groupes Voirie, Charrois_Mobilier, Accessoires_*, Cours).
+                case Paving: return (-3.0, 3.0, -3.0, 3.0, 0.18);
+                case Curb: return (-3.0, 3.0, -0.12, 0.12, 0.18);
+                case Street: return (-3.0, 3.0, -4.0, 4.0, 0.2);
+                case Lane: return (-3.0, 3.0, -1.75, 1.75, 0.16);
+                case "r19_charrette_caisses": case "r19_charrette_paille": case "r19_charrette_vide": return (-0.76, 0.76, -1.6, 1.6, 1.7);
+                case "r20_chariot_bache": case "r20_chariot_plateau_caisses": case "r20_chariot_plateau_tonneaux": case "r20_chariot_plateau_vide":
+                    return (-1.36, 1.36, -3.5, 3.5, 3.5);
+                case "r22_banc_dossier": return (-1.1, 1.1, -0.21, 0.33, 0.9);
+                case "r22_banc_sans_dossier": return (-1.1, 1.1, -0.21, 0.2, 0.45);
+                case Trough: return (-1.5, 1.5, -0.55, 0.55, 0.8);
+                case Pillory: return (-1.2, 1.2, -0.7, 0.7, 2.2);
+                case "r25_panneau_roue_epi": case "r25_panneau_epi_cloche": case "r25_panneau_cloche_roue": return (-0.8, 0.8, -0.2, 0.2, 2.8);
+                case "r26_tonneau_petit": return (-0.29, 0.29, -0.29, 0.29, 0.8);
+                case "r26_tonneau_moyen": return (-0.44, 0.44, -0.44, 0.44, 1.2);
+                case "r26_tonneau_grand": return (-0.54, 0.54, -0.54, 0.54, 1.4);
+                case "r27_caisse_petite": return (-0.3, 0.3, -0.2, 0.2, 0.4);
+                case "r27_caisse_moyenne": return (-0.6, 0.6, -0.4, 0.4, 0.8);
+                case "r27_caisse_longue": return (-0.8, 0.8, -0.4, 0.4, 0.8);
+                case "r28_ballot_tissu": case "r28_ballot_laine": case "r28_ballot_paille": return (-0.7, 0.7, -0.46, 0.46, 0.9);
+                case TollBar: return (-3.5, 3.5, -0.4, 0.4, 1.33);
+                case Brazier: return (-0.4, 0.4, -0.4, 0.4, 1.25);
+                case Rack: return (-1.01, 1.01, -0.34, 0.34, 1.8);
+                case Banner: return (-0.6, 0.6, -0.2, 0.2, 5.0);
+                case "h21_appentis_ouvert": case "h21_appentis_ferme": return (-2.0, 2.0, -1.3, 1.3, 2.8);
+                case "h22_puits": return (-0.71, 0.75, -0.62, 0.62, 2.6);
+                case "h23_latrines": return (-0.75, 0.75, -0.9, 0.9, 2.6);
+                case "h24_tas_bois_plein": case "h24_tas_bois_moitie": case "h24_tas_bois_presque_vide": return (-1.26, 1.26, -0.45, 0.45, 1.5);
+                case "h25_potager_legumes": case "h25_potager_aromatiques": case "h25_potager_hiver": return (-1.98, 1.98, -1.5, 1.5, 0.73);
                 default:
                     if (Array.IndexOf(Stalls, piece) >= 0) return (-1.5, 1.5, -1.2, 1.2, 2.8);
                     return null;
@@ -133,6 +162,43 @@ namespace EdS.Runtime
         public const string Oven = "p10_four_banal";
         public const string Fountain = "p11_fontaine";
         public const string Well = "p12_puits";
+
+        public const string Paving = "r01_paves_place";
+        public const string Curb = "r01_bordure";
+        public const string Street = "r02_rue_pavee";
+        public const string Lane = "r03_ruelle_terre";
+        public const string Trough = "r23_abreuvoir";
+        public const string Pillory = "r24_pilori";
+        public const string TollBar = "f16_barriere_peage";
+        public const string Brazier = "f17_brasero";
+        public const string Rack = "f18_ratelier_pieds";
+        public const string Banner = "f19_banniere_mat";
+
+        /// <summary>Sols posés à plat (pavés, rue, ruelle, bordure) : ils peuvent couvrir une route et passer sous un étal ou le puits.</summary>
+        public static bool IsGround(string piece) => piece == Paving || piece == Curb || piece == Street || piece == Lane;
+
+        /// <summary>V2.30.4 : pièce du décor des rues (<see cref="Streets"/>) ?</summary>
+        public static bool IsStreetDecor(string piece) => IsGround(piece) || piece == Trough || piece == Pillory || piece == TollBar || piece == Brazier
+            || piece == Rack || piece == Banner || piece.StartsWith("r22_", StringComparison.Ordinal) || Array.IndexOf(Carts, piece) >= 0
+            || Array.IndexOf(Wagons, piece) >= 0 || Array.IndexOf(Signs, piece) >= 0 || Array.IndexOf(Goods, piece) >= 0 || Array.IndexOf(Yards, piece) >= 0;
+
+        public static readonly string[] Carts = { "r19_charrette_caisses", "r19_charrette_paille", "r19_charrette_vide" };
+        public static readonly string[] Wagons = { "r20_chariot_bache", "r20_chariot_plateau_caisses", "r20_chariot_plateau_tonneaux", "r20_chariot_plateau_vide" };
+        public static readonly string[] Signs = { "r25_panneau_roue_epi", "r25_panneau_epi_cloche", "r25_panneau_cloche_roue" };
+
+        /// <summary>Marchandises posées derrière les étals (tonneaux, caisses, ballots).</summary>
+        public static readonly string[] Goods =
+        {
+            "r26_tonneau_petit", "r26_tonneau_moyen", "r26_tonneau_grand", "r27_caisse_petite", "r27_caisse_moyenne", "r27_caisse_longue",
+            "r28_ballot_tissu", "r28_ballot_laine", "r28_ballot_paille",
+        };
+
+        /// <summary>Petits éléments de cour (H21 à H25), un derrière une maison sur trois.</summary>
+        public static readonly string[] Yards =
+        {
+            "h21_appentis_ouvert", "h21_appentis_ferme", "h22_puits", "h23_latrines", "h24_tas_bois_plein", "h24_tas_bois_moitie",
+            "h24_tas_bois_presque_vide", "h25_potager_legumes", "h25_potager_aromatiques", "h25_potager_hiver",
+        };
 
         /// <summary>Les huit étals (R11 à R18) : les six étals de la place dans l'ordre de leur numéro, puis deux de décor.</summary>
         public static readonly string[] Stalls =
@@ -272,6 +338,7 @@ namespace EdS.Runtime
             Enceinte(obstacles, pieces, needs);
             Monuments(obstacles, roads, pieces, needs);
             HousesOf(obstacles, roads, pieces, needs);
+            Streets(obstacles, roads, pieces);
             if (pieces.Count == 0) return BourgDress.Empty;
             return new BourgDress(pieces, needs.ToDictionary(n => n.Key, n => (IReadOnlyList<string>)n.Value.Distinct().OrderBy(p => p, StringComparer.Ordinal).ToList(),
                 StringComparer.Ordinal));
@@ -553,6 +620,175 @@ namespace EdS.Runtime
         {
             var v = Box(piece)!.Value;
             return (v.X1 - v.X0) * (v.Y1 - v.Y0);
+        }
+
+        // --- V2.30.4 : rues, accessoires, cours (décor) -------------------------------------------------------------------------
+
+        /// <summary>Écart (m) gardé entre un accessoire et un obstacle, une route ou un autre accessoire.</summary>
+        public const double PropClearance = 0.3;
+
+        /// <summary>
+        /// Décor des rues (aucun obstacle ne lui correspond ; il n'arrête rien) : place du marché pavée (modules de 6 m sur le rectangle des
+        /// étals agrandi de 3 m) et bordée ; route d'Ambre pavée entre les portes (hors de la place), chemin des vignes en ruelle de terre ;
+        /// aux portes, braseros et râtelier dedans, bannières dehors, barrière de péage ouverte le long de la route devant la porte de l'Est,
+        /// chariots de caravane dans la porte de l'Ouest, un panneau dans chaque porte ; marchandises derrière les étals, charrettes, bancs
+        /// autour de la fontaine, pilori sur la place, abreuvoir devant les écuries ; un élément de cour derrière une maison sur trois. Une
+        /// place prise par un obstacle, une route (sauf les sols) ou un autre accessoire est sautée.
+        /// </summary>
+        private static void Streets(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces)
+        {
+            var gates = pieces.Where(p => p.Piece == EastGate || p.Piece == WestGate || p.Piece == NorthGate).ToList();
+            if (gates.Count == 0) return;
+            var boxes = obstacles.Select(o => (o.Id, Box: Bounds(o))).ToList();
+            var taken = pieces.Where(p => !IsGround(p.Piece) && Box(p.Piece) != null).Select(p => Footprint(p.Piece, p.X, p.Z, p.Yaw)).ToList();
+            var placed = new List<BourgPiece>();
+            bool Try(string piece, double x, double z, double yaw)
+            {
+                var f = Footprint(piece, x, z, yaw);
+                bool ground = IsGround(piece);
+                double m = ground ? 0 : PropClearance;
+                foreach (var (id, b) in boxes)
+                {
+                    if (ground && (id.StartsWith("etal_ville_", StringComparison.Ordinal) || id == "puits_ville_marche"
+                        || id.StartsWith(AdventureSession.WaySignPrefix, StringComparison.Ordinal))) continue;
+                    if (f.X0 < b.X1 + m && f.X1 > b.X0 - m && f.Z0 < b.Z1 + m && f.Z1 > b.Z0 - m) return false;
+                }
+                if (!ground)
+                {
+                    foreach (var t in taken)
+                        if (f.X0 < t.X1 + m && f.X1 > t.X0 - m && f.Z0 < t.Z1 + m && f.Z1 > t.Z0 - m) return false;
+                    var corners = new[] { (f.X0, f.Z0), (f.X0, f.Z1), (f.X1, f.Z0), (f.X1, f.Z1), (x, z) };
+                    if (roads.Count > 0 && corners.Any(c => TownRules.RoadAt(c.Item1, c.Item2, roads).Edge < m)) return false;
+                    taken.Add(f);
+                }
+                placed.Add(new BourgPiece(piece, Round(x), Round(z), Round(yaw), null));
+                return true;
+            }
+            // Place du marché : le rectangle des étals agrandi de 3 m, pavé de modules de 6 m, bordé là où rien ne passe.
+            var stalls = boxes.Where(b => b.Id.StartsWith("etal_ville_", StringComparison.Ordinal)).Select(b => b.Box).ToList();
+            (double X0, double X1, double Z0, double Z1) square = default;
+            if (stalls.Count > 0)
+            {
+                square = (stalls.Min(b => b.X0) - 3, stalls.Max(b => b.X1) + 3, stalls.Min(b => b.Z0) - 3, stalls.Max(b => b.Z1) + 3);
+                int nx = (int)Math.Ceiling((square.X1 - square.X0) / 6), nz = (int)Math.Ceiling((square.Z1 - square.Z0) / 6);
+                square = (square.X0, square.X0 + 6 * nx, square.Z0, square.Z0 + 6 * nz);
+                for (int i = 0; i < nx; i++)
+                    for (int j = 0; j < nz; j++) Try(Paving, square.X0 + 3 + 6 * i, square.Z0 + 3 + 6 * j, 0);
+                for (int i = 0; i < nx; i++)
+                {
+                    TryCurb(square.X0 + 3 + 6 * i, square.Z0 - 0.12, 0);
+                    TryCurb(square.X0 + 3 + 6 * i, square.Z1 + 0.12, 180);
+                }
+                for (int j = 0; j < nz; j++)
+                {
+                    TryCurb(square.X0 - 0.12, square.Z0 + 3 + 6 * j, -90);
+                    TryCurb(square.X1 + 0.12, square.Z0 + 3 + 6 * j, 90);
+                }
+            }
+            void TryCurb(double x, double z, double yaw)
+            {
+                // Pas de bordure en travers d'une route.
+                if (roads.Count > 0 && TownRules.RoadAt(x, z, roads).Edge < 3.5) return;
+                Try(Curb, x, z, yaw);
+            }
+            bool InSquare(double x, double z) => stalls.Count > 0 && x > square.X0 - 4 && x < square.X1 + 4 && z > square.Z0 - 4 && z < square.Z1 + 4;
+            // Route d'Ambre pavée et chemin des vignes en terre, dans les murs, hors de la place et des portes (12 m).
+            var walls = boxes.Where(b => IsWall(b.Id)).Select(b => b.Box).ToList();
+            double wx0 = walls.Min(b => b.X0), wx1 = walls.Max(b => b.X1), wz0 = walls.Min(b => b.Z0), wz1 = walls.Max(b => b.Z1);
+            foreach (StyleRoad road in roads.Where(r => r.Id == "route_d_ambre_ouest" || r.Id == "chemin_des_vignes"))
+            {
+                string piece = road.Id == "route_d_ambre_ouest" ? Street : Lane;
+                for (int i = 0; i + 1 < road.Points.Count; i++)
+                {
+                    (double ax, double az) = road.Points[i];
+                    (double bx, double bz) = road.Points[i + 1];
+                    double length = Math.Sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az));
+                    double yaw = Math.Atan2(-(bz - az), bx - ax) * 180 / Math.PI;   // le x du modèle (6 m) le long de la route
+                    for (double t = 3; t + 3 <= length + 1e-9; t += 6)
+                    {
+                        double x = ax + (bx - ax) * t / length, z = az + (bz - az) * t / length;
+                        if (x < wx0 + 12 || x > wx1 - 12 || z < wz0 + 12 || z > wz1 - 12 || InSquare(x, z)) continue;
+                        Try(piece, x, z, yaw);
+                    }
+                }
+            }
+            // Portes : dedans braseros et râtelier, dehors bannières ; panneau à 25 m dedans ; péage et chariots.
+            int gateIndex = 0;
+            foreach (BourgPiece g in gates.OrderBy(g => g.Piece, StringComparer.Ordinal))
+            {
+                double a = g.Yaw * Math.PI / 180;
+                (double ox, double oz) = (Math.Sin(a), Math.Cos(a));     // vers l'extérieur
+                (double sx, double sz) = (Math.Cos(a), -Math.Sin(a));    // le long du mur
+                double half = Passage(g.Piece) / 2, wide = Box(g.Piece)!.Value.X1 + 1;
+                (double X, double Z) P(double out_, double along) => (g.X + ox * out_ + sx * along, g.Z + oz * out_ + sz * along);
+                foreach (int side in new[] { -1, 1 })
+                {
+                    var b = P(-8, side * (half + 3));
+                    Try(Brazier, b.X, b.Z, g.Yaw);
+                    var f = P(4, side * wide);
+                    Try(Banner, f.X, f.Z, g.Yaw);
+                }
+                var r = P(-12, half + 5);
+                Try(Rack, r.X, r.Z, g.Yaw + 180);
+                var sign = P(-25, half + 3);
+                Try(Signs[gateIndex++ % Signs.Length], sign.X, sign.Z, g.Yaw + 90);
+                if (g.Piece == EastGate)
+                {
+                    var t = P(18, half + 4.5);
+                    Try(TollBar, t.X, t.Z, g.Yaw + 90);   // ouverte : la lisse le long de la route
+                }
+                if (g.Piece == WestGate)
+                    for (int k = 0; k < Wagons.Length; k++)
+                    {
+                        var c = P(-22 - 9 * k, (k % 2 == 0 ? 1 : -1) * (half + 6));
+                        Try(Wagons[k % Wagons.Length], c.X, c.Z, g.Yaw);
+                    }
+            }
+            // Étals de la place : marchandises derrière chacun (côté opposé à sa face), une charrette à côté des étals du sud.
+            int stallIndex = 0, cartIndex = 0;
+            foreach (BourgPiece s in pieces.Where(p => Array.IndexOf(Stalls, p.Piece) >= 0 && p.Covers != null).OrderBy(p => p.Covers, StringComparer.Ordinal))
+            {
+                double a = s.Yaw * Math.PI / 180;
+                (double fx, double fz) = (Math.Sin(a), Math.Cos(a));
+                (double rx, double rz) = (Math.Cos(a), -Math.Sin(a));
+                for (int k = 0; k < 3; k++)
+                {
+                    string good = Goods[(stallIndex * 3 + k) % Goods.Length];
+                    Try(good, s.X - fx * 3.0 + rx * (k - 1) * 2.3, s.Z - fz * 3.0 + rz * (k - 1) * 2.3, s.Yaw + StyleRules.Variant(s.Covers + "/lacet" + k, 30) - 15);
+                }
+                stallIndex++;
+                // Une charrette à côté de chaque étal, du côté libre, tant qu'il en reste à poser (trois).
+                if (cartIndex < Carts.Length && (Try(Carts[cartIndex], s.X - rx * 5, s.Z - rz * 5, s.Yaw + 90) || Try(Carts[cartIndex], s.X + rx * 5, s.Z + rz * 5, s.Yaw + 90)))
+                    cartIndex++;
+            }
+            // Bancs autour de la fontaine, pilori sur la place, abreuvoir devant les écuries.
+            BourgPiece? fountain = pieces.Where(p => p.Piece == Fountain).Select(p => (BourgPiece?)p).FirstOrDefault();
+            if (fountain != null)
+            {
+                BourgPiece f = fountain.Value;
+                Try("r22_banc_dossier", f.X - 5, f.Z, -90 + 180);
+                Try("r22_banc_dossier", f.X + 5, f.Z, 90 + 180);
+                Try("r22_banc_sans_dossier", f.X, f.Z - 5, 0);
+                Try(Pillory, f.X + 14, f.Z + 4, 0);
+            }
+            BourgPiece? stables = pieces.Where(p => p.Piece == Stables).Select(p => (BourgPiece?)p).FirstOrDefault();
+            if (stables != null) Try(Trough, stables.Value.X + 9, stables.Value.Z - 14, 0);
+            // Cours : derrière une maison sur trois (côté opposé à sa façade), un élément tiré de son identifiant.
+            var houses = pieces.Where(p => p.Covers != null && p.Covers.StartsWith("maison_ville_", StringComparison.Ordinal) && p.Covers != "maison_ville_grande_maison")
+                .OrderBy(p => p.Covers, StringComparer.Ordinal).ToList();
+            for (int k = 0; k < houses.Count; k += 3)
+            {
+                BourgPiece h = houses[k];
+                var hb = boxes.Single(b => b.Id == h.Covers).Box;
+                double a = h.Yaw * Math.PI / 180;
+                (double fx, double fz) = (Math.Round(Math.Sin(a)), Math.Round(Math.Cos(a)));
+                double back = fx != 0 ? (hb.X1 - hb.X0) / 2 : (hb.Z1 - hb.Z0) / 2;
+                string yard = Yards[StyleRules.Variant(h.Covers + "/cour", Yards.Length)];
+                var yb = Box(yard)!.Value;
+                double depth = Math.Max(yb.Y1 - yb.Y0, yb.X1 - yb.X0) / 2;
+                Try(yard, h.X - fx * (back + PropClearance + 0.2 + depth), h.Z - fz * (back + PropClearance + 0.2 + depth), h.Yaw + 180);
+            }
+            pieces.AddRange(placed);
         }
 
         /// <summary>Distance (m, le long du pan) entre le centre d'une porte et celui d'un module coiffé de la ronde couverte.</summary>
