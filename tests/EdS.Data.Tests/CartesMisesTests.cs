@@ -368,6 +368,39 @@ public class CartesMisesTests
         Assert.Equal(CardTableRefusal.SeatsExhausted, full.SitDownAtCards(Mathurin, 5, 0));
         Assert.Same(before, full.Character);
     }
+
+    /// <summary>Revue Codex de la PR #189 : la mise en cours est réservée sous le plafond ; une sauvegarde qui la dépasse est refusée.</summary>
+    [Fact]
+    public void Sauvegarde_gains_plus_mise_en_cours_sous_le_plafond()
+    {
+        long day = Table().Day;
+        var played = new Dictionary<string, int> { [Mathurin] = 1 };
+        Assert.Throws<ArgumentException>(() => new SavedCards(Seed, 1, 0, false, day, played, 130, new SavedCardGame(Mathurin, 2, day, 0, 25, Array.Empty<int>())));
+        WorldSession w = Table(100, new SavedCards(Seed, 0, 0, false, day, new Dictionary<string, int> { ["npc.boulanger"] = 1 }, 125, null));
+        Assert.Equal(CardTableRefusal.None, w.SitDownAtCards(Mathurin, 25, 0));
+        string text = SaveJsonReader.Write(w.Save());
+        Assert.True(SaveJsonReader.Read(text).IsValid);
+        SaveLoadResult bad = SaveJsonReader.Read(text.Replace("\"gained\": 125", "\"gained\": 130"));
+        Assert.False(bad.IsValid);
+        Assert.Contains(bad.Report.Errors, e => e.Path.EndsWith(".cards.game.stake") && e.Code == ValidationCode.OutOfRange);
+    }
+
+    /// <summary>Revue Codex de la PR #189 : une partie commencée hors combat ne se joue pas pendant un combat ; rien ne change.</summary>
+    [Fact]
+    public void Pas_de_carte_jouee_en_combat()
+    {
+        WorldSession w = Table();
+        Assert.Equal(CardTableRefusal.None, w.SitDownAtCards(Mathurin, 5, Seed));
+        w.Zone.Leave(w.CombatantId);   // comme la pêche : hors d'état de jouer, la partie le compte en combat
+        w.Step();
+        Assert.True(w.InCombat);
+        SavedCharacter before = w.Character;
+        Assert.Equal(CardTableRefusal.InCombat, w.PlayCard(0, out CardRound? round, out CardGameEnd? end));
+        Assert.Null(round);
+        Assert.Null(end);
+        Assert.Same(before, w.Character);
+        Assert.NotNull(w.CardGame);   // la partie reste, à reprendre hors combat
+    }
 }
 
 internal static class CartesTestExtensions

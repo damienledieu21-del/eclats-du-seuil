@@ -133,14 +133,15 @@ namespace EdS.World
         /// <summary>
         /// Joue la carte de la place <paramref name="index"/> ; le PNJ joue la sienne. À la cinquième manche, la partie est réglée : mise
         /// doublée si gagnée (le gain compte dans le plafond du jour), rendue si nulle, perdue sinon ; la dixième victoire donne le titre et le
-        /// jeu de cartes rare (s'il tient dans le sac ; sinon il reste dû). Refusé sans rien changer : aucune partie, place vide, ou bourse
-        /// qui ne peut pas recevoir le gain.
+        /// jeu de cartes rare (s'il tient dans le sac ; sinon il reste dû). Refusé sans rien changer : aucune partie, en combat, place vide,
+        /// ou bourse qui ne peut pas recevoir le gain.
         /// </summary>
         public CardTableRefusal PlayCard(int index, out CardRound? round, out CardGameEnd? end)
         {
             round = null;
             end = null;
             if (!(_character.Cards is SavedCards cards) || !(cards.Game is SavedCardGame game)) return CardTableRefusal.NoGame;
+            if (InCombat) return CardTableRefusal.InCombat;   // revue Codex de la PR #189 : pas un coup pendant un combat, même partie commencée avant
             CardMatch match = Replay(cards, game);
             if (index < 0 || index >= match.PlayerHand.Count) return CardTableRefusal.NoSuchCard;
             if (match.Play(index, out CardRound? played) != CardRefusal.None) return CardTableRefusal.NoSuchCard;

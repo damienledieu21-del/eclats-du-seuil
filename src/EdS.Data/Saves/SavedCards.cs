@@ -164,6 +164,9 @@ namespace EdS.Data.Saves
             }
             if (p.Count > MaxOpponents) throw new ArgumentException($"{p.Count} adversaires du jour, au plus {MaxOpponents}.", nameof(played));
             if (gained < 0 || gained > DailyCap) throw new ArgumentOutOfRangeException(nameof(gained), gained, $"Gains du jour hors de [0, {DailyCap}].");
+            // Revue Codex de la PR #189 : la mise de la partie en cours est réservée sous le plafond (sa victoire ne peut pas le dépasser).
+            if (game != null && checked(gained + game.Stake) > DailyCap)
+                throw new ArgumentException($"Gains du jour et mise de la partie en cours au-delà de {DailyCap} cuivre.", nameof(game));
             if (game != null && (game.Day != day || !p.TryGetValue(game.Npc, out int n) || n <= game.Game))
                 throw new ArgumentException("Partie en cours hors des parties de son jour (même jour, comptée dans « played »).", nameof(game));
             Secret = secret;

@@ -1295,6 +1295,8 @@ namespace EdS.Data.Saves
             if (m.Moves is null) report.Add(g + ".moves", ValidationCode.MissingField, "places jouées manquantes.");
             else if (m.Moves.Any(v => v is null) || !SavedCards.AreMoves(m.Moves.Select(v => v ?? -1).ToList()))
                 report.Add(g + ".moves", ValidationCode.OutOfRange, $"places jouées : au plus {SavedCards.HandSize - 1}, la i-ème de 0 à {SavedCards.HandSize - 1} − i.");
+            if (report.IsValid && checked(x.Gained!.Value + m.Stake!.Value) > SavedCards.DailyCap)   // revue Codex de la PR #189 : marge réservée
+                report.Add(g + ".stake", ValidationCode.OutOfRange, $"gains du jour et mise en cours au-delà de {SavedCards.DailyCap} cuivre (la mise est réservée sous le plafond).");
             if (report.IsValid && (m.Day != x.Day || !x.Played!.TryGetValue(m.Npc!, out int? n) || n <= m.Game))
                 report.Add(g, ValidationCode.InvalidValue, "partie en cours hors des parties de son jour (même « day », comptée dans « played »).");
         }
