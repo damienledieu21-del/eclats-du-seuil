@@ -106,6 +106,9 @@ public class V2303BourgMonumentsMaisonsTests
         for (int i = 0; i < court.Count; i++)
             for (int j = i + 1; j < court.Count; j++)
                 Assert.False(Overlaps(court[i], court[j]));
+        // Relecture indépendante : l'étal se lit dans le numéro de l'obstacle ; sans les étals 1 à 4 (une autre fenêtre), le 5 reste le poisson.
+        var south = BourgModels.Dress(Obstacles.Where(o => o.Id != "etal_ville_1" && o.Id != "etal_ville_2" && o.Id != "etal_ville_3" && o.Id != "etal_ville_4").ToList(), Roads.Value);
+        Assert.Equal(BourgModels.Stalls[4], south.Pieces.Single(p => p.Covers == "etal_ville_5").Piece);
         // Les six étals de la place, chacun tourné vers la route ; leurs modèles (3 × 2,4) tiennent dans les obstacles (4 × 3).
         for (int i = 1; i <= 6; i++)
         {
@@ -154,8 +157,8 @@ public class V2303BourgMonumentsMaisonsTests
                 string fbx = Path.Combine(Folder(group), "bourg_" + piece + ".fbx");
                 Assert.True(File.Exists(fbx), fbx);
                 Assert.NotNull(BourgModels.Box(piece));
-                Assert.True(new FileInfo(Path.Combine(Folder(group), "bourg_" + piece + "_couleur.jpg")).Length < 600_000);
-                Assert.True(new FileInfo(Path.Combine(Folder(group), "bourg_" + piece + "_normale.png")).Length < 700_000);
+                Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder(group), "bourg_" + piece + "_couleur.jpg")) <= 1024);
+                Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder(group), "bourg_" + piece + "_normale.png")) <= 512);
             }
             Assert.True(Directory.GetFiles(Folder(group)).Sum(f => new FileInfo(f).Length) < 15_000_000);
         }

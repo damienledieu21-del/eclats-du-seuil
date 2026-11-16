@@ -607,6 +607,8 @@ namespace EdS.Game.Editor
                 material.SetColor("_EmissionColor", Color.white * (float)AtelierDecor.SeuilGlowDay);
                 notes.Add(name + " : émission " + Path.GetFileName(emission) + ".");
             }
+            // V2.30.2 (relecture indépendante) : les pièces du Bourg sont répétées par centaines (palissade, pavés, maisons) : instanciées.
+            if (name.StartsWith("bourg_", System.StringComparison.Ordinal)) material.enableInstancing = true;
             // V2.25.2 : les brins de la touffe sont en double face.
             if (AtelierDecor.DoubleSided(name)) material.SetFloat("_Cull", 0f);
             // Matières encore dans le FBX (première préparation) ; celles déjà remappées n'y sont plus, et leur remap reste en place.

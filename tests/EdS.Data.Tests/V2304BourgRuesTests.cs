@@ -72,7 +72,13 @@ public class V2304BourgRuesTests
             var hits = Obstacles.Where(o => Overlaps(f, Box(o)) && !(ground && (o.Id.StartsWith("etal_ville_", StringComparison.Ordinal)
                 || o.Id == "puits_ville_marche" || o.Id.StartsWith("panneau", StringComparison.Ordinal)))).Select(o => o.Id).ToList();
             Assert.True(hits.Count == 0, p.Piece + " sur " + string.Join(", ", hits));
-            if (ground) continue;
+            if (ground)
+            {
+                // Relecture indépendante : pas de pavé sous la fontaine, le lavoir, le parvis, le cimetière, le pilori ni l'abreuvoir.
+                Assert.DoesNotContain(Dress.Value.Pieces.Where(q => q.Piece is BourgModels.Fountain or BourgModels.Washhouse or BourgModels.Parvis
+                    or BourgModels.Cemetery or BourgModels.Pillory or BourgModels.Trough), q => Overlaps(f, BourgModels.Footprint(q.Piece, q.X, q.Z, q.Yaw)));
+                continue;
+            }
             Assert.True(new[] { (f.X0, f.Z0), (f.X0, f.Z1), (f.X1, f.Z0), (f.X1, f.Z1) }.All(c => TownRules.RoadAt(c.Item1, c.Item2, Roads.Value).Edge >= 0.3), p.Piece + " sur une route");
             Assert.DoesNotContain(doors, d => d.X > f.X0 - 1.5 && d.X < f.X1 + 1.5 && d.Z > f.Z0 - 1.5 && d.Z < f.Z1 + 1.5);
             Assert.DoesNotContain(others, q => !(q.Piece == p.Piece && q.X == p.X && q.Z == p.Z) && Overlaps(f, BourgModels.Footprint(q.Piece, q.X, q.Z, q.Yaw)));
@@ -100,5 +106,10 @@ public class V2304BourgRuesTests
         Assert.Equal(files, used.OrderBy(f => f, StringComparer.Ordinal));   // toutes les pièces livrées sont posées
         Assert.Equal(41 * 3, Directory.GetFiles(Folder).Length);
         Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 20_000_000);
+        foreach (string f in files)
+        {
+            Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder, "bourg_" + f + "_couleur.jpg")) <= 1024, f);
+            Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder, "bourg_" + f + "_normale.png")) <= 512, f);
+        }
     }
 }
