@@ -571,6 +571,9 @@ namespace EdS.Game.Editor
             if (!AssetDatabase.IsValidFolder(LotCModels.Folder)) return new GameObject[0];
             List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { LotCModels.Folder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => LotCModels.CodeOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            // Relecture de la PR #196 : seuls les modèles reliés aux données entrent au catalogue ; ceux en attente (Pending) ne sont ni
+            // chargés ni emportés dans le jeu construit (mémoire du téléphone), ils restent dans le dossier jusqu'à leur donnée.
+            int waiting = paths.RemoveAll(p => LotCModels.Find(LotCModels.CodeOf(p))?.Linked != true);
             var result = new List<GameObject>();
             foreach (string path in paths)
             {
@@ -578,7 +581,7 @@ namespace EdS.Game.Editor
                 GameObject model = Load(path);
                 if (model != null) result.Add(model);
             }
-            if (result.Count > 0) notes.Add("Lot C : " + result.Count + " modèles Tripo.");
+            if (result.Count > 0 || waiting > 0) notes.Add("Lot C : " + result.Count + " modèles Tripo reliés aux données (" + waiting + " en attente, non chargés).");
             return result.ToArray();
         }
 

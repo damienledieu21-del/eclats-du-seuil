@@ -638,8 +638,9 @@ namespace EdS.Game
             string anvilCode = LotCModels.ForVillage("forge/enclume", m.Data.Id);
             GameObject anvil = anvilCode != null ? LotCLook.Place(holder, anvilCode, m.Data.Id + "/enclume", c, 0f) : null;
             float anvilTop = 0.79f;
-            if (anvil != null && StyleLook.VisibleBounds(anvil, out Bounds ab)) anvilTop = ab.max.y - c.y;
-            else Anvil(holder, c);
+            // Relecture de la PR #197 : jamais deux enclumes ; celle du code seulement sans l'enclume Tripo.
+            if (anvil == null) Anvil(holder, c);
+            else if (StyleLook.VisibleBounds(anvil, out Bounds ab)) anvilTop = ab.max.y - c.y;
             string pitCode = LotCModels.ForVillage("prop/" + StyleProp.FirePit, m.Data.Id + "/foyer");
             bool lotCPit = pitCode != null && pit.name.EndsWith("(" + pitCode + ")");
             // Le marteau couché sur la table de l'enclume.

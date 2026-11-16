@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -816,10 +817,20 @@ namespace EdS.Game
         public GameObject LotCModel(string code)
         {
             if (LotC == null || string.IsNullOrEmpty(code)) return null;
-            foreach (GameObject g in LotC)
-                if (g != null && g.name == code) return g;
-            return null;
+            if (_lotCIndex == null || !ReferenceEquals(_lotCIndexOf, LotC))
+            {
+                // Relecture de la PR #196 : index construit une fois (refait seulement si le menu remplace le tableau).
+                _lotCIndex = new Dictionary<string, GameObject>(System.StringComparer.Ordinal);
+                foreach (GameObject g in LotC)
+                    if (g != null && !_lotCIndex.ContainsKey(g.name)) _lotCIndex.Add(g.name, g);
+                _lotCIndexOf = LotC;
+            }
+            GameObject found;
+            return _lotCIndex.TryGetValue(code, out found) && found != null ? found : null;
         }
+
+        [System.NonSerialized] private Dictionary<string, GameObject> _lotCIndex;
+        [System.NonSerialized] private GameObject[] _lotCIndexOf;
 
         /// <summary>V2.25.2 : le petit décor de l'atelier « …_&lt;piece&gt; » (<see cref="AtelierDecor.IsPiece"/>) ; null sans lui.</summary>
         public GameObject OwnDecorPiece(string piece)

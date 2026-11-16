@@ -174,6 +174,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : le souvenir de la Rupture n'a pas de villageois (ni fidèle devant la porte de lumière, ni paysan à la place de
             // la reine Ysolde : StoryStage la dessine).
             if (!space.Obstacles.Any(o => StoryStage.IsLightGate(o.Id))) Villagers(layout.Villagers);
+            _room = null;   // relecture de la PR #200 : le lieu ne vaut que pendant la construction de la pièce
         }
 
         // --- Murs, fenêtres, porte ------------------------------------------------------------------------------------------
@@ -666,6 +667,9 @@ namespace EdS.Game
             return holder;
         }
 
+        /// <summary>Lot C : emprise au sol (x, z, en mètres, sans rotation ni échelle) de chaque modèle déjà mesuré, par code.</summary>
+        private static readonly Dictionary<string, Vector2> LotCSizes = new Dictionary<string, Vector2>();
+
         /// <summary>Lot C : lieu de la pièce construite (premier lieu de sa carte), pour <see cref="LotCModels.ForRoom"/> et <see cref="LotCModels.ForPiece"/>.</summary>
         private string _room;
 
@@ -677,13 +681,19 @@ namespace EdS.Game
         {
             string code = LotCModels.ForRoom(_room, id);
             if (code == null) return null;
-            GameObject probe = LotCLook.Place(_root.transform, code, id, Vector3.zero, 0f);
-            if (probe == null) return null;
-            bool measured = StyleLook.VisibleBounds(probe, out Bounds pb);
-            Object.Destroy(probe);
-            if (!measured) return null;
+            Vector2 size;
+            if (!LotCSizes.TryGetValue(code, out size))
+            {
+                // Relecture de la PR #200 : l'emprise d'un modèle est mesurée une seule fois (une copie d'essai par code, pas par meuble).
+                GameObject probe = LotCLook.Place(_root.transform, code, id, Vector3.zero, 0f);
+                if (probe == null) return null;
+                size = StyleLook.VisibleBounds(probe, out Bounds pb) ? new Vector2(pb.size.x, pb.size.z) : Vector2.zero;
+                Object.Destroy(probe);
+                LotCSizes[code] = size;
+            }
+            if (size.x <= 0f || size.y <= 0f) return null;
             GameObject first = null;
-            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, pb.size.x, pb.size.z))
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y))
             {
                 GameObject copy = LotCLook.Place(_root.transform, code, id, new Vector3((float)k.X, 0f, (float)k.Z), (float)k.Yaw, (float)k.Scale,
                     (float)k.ThinX, (float)k.ThinZ);
