@@ -126,8 +126,8 @@ public class V261SuitesDuSeuilTests
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((15, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((14, "0.20.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((15, "0.30.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.31.0-provisoire", Texts.ContentVersion);   // concours de pâtisserie : 0.31.0 ;
+        Assert.Equal((15, "0.31.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.32.0-provisoire", Texts.ContentVersion);   // quête du cheval : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.20.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(24, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)

@@ -136,16 +136,17 @@ internal static class ScenarioTestData
         foreach (var festival in data["festivals"]?.AsArray() ?? new JsonArray())
             foreach (var guest in festival!["guests"]?.AsArray() ?? new JsonArray()) BackToCore(guest, "position");
         var quests = data["quests"]!.AsArray();
-        foreach (var q in quests.Where(q => (string?)q!["id"] == "quest.passages_de_la_vallee").ToList()) quests.Remove(q);
+        // Sous-lot V2.28d (3) : ni la quête du cheval (les rives du lac sont hors du cœur), ni ses répliques (v2283_).
+        foreach (var q in quests.Where(q => (string?)q!["id"] is "quest.passages_de_la_vallee" or "quest.le_cheval_de_la_ferme").ToList()) quests.Remove(q);
         foreach (var d in data["dialogues"]!.AsArray())
         {
             var entries = d!["entries"]!.AsArray();
             var nodes = d["nodes"]!.AsArray();
-            foreach (var e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
-            foreach (var n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v228_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            foreach (var e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v228", StringComparison.Ordinal)).ToList()) entries.Remove(e);
+            foreach (var n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v228", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
             foreach (var n in nodes)
                 if (n!["choices"] is JsonArray choices)
-                    foreach (var c in choices.Where(c => ((string?)c!["next"])?.StartsWith("v228_", StringComparison.Ordinal) == true).ToList()) choices.Remove(c);
+                    foreach (var c in choices.Where(c => ((string?)c!["next"])?.StartsWith("v228", StringComparison.Ordinal) == true).ToList()) choices.Remove(c);
         }
     }
 

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 15,
   "kind": "story",
-  "contentVersion": "0.30.0-provisoire",
+  "contentVersion": "0.31.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -18716,6 +18716,25 @@
             "conditions": [
               {
                 "if": "questAt",
+                "id": "quest.le_cheval_de_la_ferme",
+                "step": "retour"
+              }
+            ],
+            "node": "v2283_cheval_retour"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questActive",
+                "id": "quest.le_cheval_de_la_ferme"
+              }
+            ],
+            "node": "v2283_cheval_attente"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questAt",
                 "id": "quest.sangliers_des_champs",
                 "step": "retour"
               }
@@ -18752,6 +18771,19 @@
               }
             ],
             "node": "ch3_sangliers"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.le_cheval_de_la_ferme"
+              }
+            ],
+            "node": "v2283_cheval"
           },
           {
             "conditions": [
@@ -18920,6 +18952,58 @@
             "choices": [
               {
                 "text": "text.ch3.fermier.accueil.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v2283_cheval",
+            "text": "text.v2283.fermier.cheval",
+            "choices": [
+              {
+                "text": "text.v2283.fermier.cheval.accepter",
+                "conditions": [
+                  {
+                    "if": "questNotStarted",
+                    "id": "quest.le_cheval_de_la_ferme"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "startQuest",
+                    "id": "quest.le_cheval_de_la_ferme"
+                  }
+                ],
+                "next": null
+              },
+              {
+                "text": "text.v2283.fermier.cheval.plus_tard",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v2283_cheval_attente",
+            "text": "text.v2283.fermier.cheval.attente",
+            "choices": [
+              {
+                "text": "text.v2283.fermier.cheval.attente.partir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v2283_cheval_retour",
+            "text": "text.v2283.fermier.cheval.retour",
+            "choices": [
+              {
+                "text": "text.v2283.fermier.cheval.retour.merci",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -25402,6 +25486,48 @@
           {
             "do": "giveXp",
             "value": 60
+          }
+        ]
+      },
+      {
+        "id": "quest.le_cheval_de_la_ferme",
+        "name": "text.v2283.quest.cheval.name",
+        "category": "side",
+        "requires": [
+          {
+            "if": "questDone",
+            "id": "quest.traces_sous_le_moulin"
+          }
+        ],
+        "steps": [
+          {
+            "id": "jument",
+            "text": "text.v2283.quest.cheval.jument",
+            "objective": {
+              "kind": "reach",
+              "id": "rives_du_lac"
+            },
+            "effects": [
+              {
+                "do": "setFact",
+                "id": "fact.v2283.brume_retrouvee"
+              }
+            ]
+          },
+          {
+            "id": "retour",
+            "text": "text.v2283.quest.cheval.retour",
+            "objective": {
+              "kind": "talk",
+              "id": "npc.fermier"
+            },
+            "effects": []
+          }
+        ],
+        "effects": [
+          {
+            "do": "giveXp",
+            "value": 40
           }
         ]
       }

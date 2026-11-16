@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.31.0-provisoire",
+  "contentVersion": "0.32.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1980,7 +1980,17 @@
       "text.v215.boulanger.tarte.choisir": "La tarte renversée. Tout se joue au moment de la retourner : on ne triche pas avec un caramel. Laquelle tu me montres ?",
       "text.v215.boulanger.retour": "Finalement, pas celle-là.",
       "text.ui.item_presented": "Présenté : {0}",
-      "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main."
+      "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main.",
+      "text.v2283.quest.cheval.name": "Le cheval de la ferme",
+      "text.v2283.quest.cheval.jument": "Brume, la jument de Achille, a pris peur des loups et s'est sauvée vers le lac par le chemin des pontons. Va la chercher sur les rives du lac.",
+      "text.v2283.quest.cheval.retour": "Brume te suit sans rechigner. Ramène-la à Achille, à la ferme des champs.",
+      "text.v2283.fermier.cheval": "Toi qui as fait taire la meute… Ma jument, Brume, a cassé sa longe la nuit des loups. Elle a filé vers le lac, par le chemin des pontons. Ramène-la-moi, et je te la confie : elle s'ennuie à la charrue, et toi, tu as de la route à faire.",
+      "text.v2283.fermier.cheval.accepter": "Je vais chercher Brume.",
+      "text.v2283.fermier.cheval.plus_tard": "Pas maintenant.",
+      "text.v2283.fermier.cheval.attente": "Brume ? Sur les rives du lac, sûrement : elle aime l'herbe des berges. Le chemin des pontons part derrière la grange.",
+      "text.v2283.fermier.cheval.attente.partir": "J'y vais.",
+      "text.v2283.fermier.cheval.retour": "Brume ! Te voilà, tête de mule. Elle t'a suivi sans se faire prier : c'est bon signe. Garde-la, elle est à toi. Siffle-la sur la route, elle viendra.",
+      "text.v2283.fermier.cheval.retour.merci": "Merci, Achille. J'en prendrai soin."
     }
   }
 }
