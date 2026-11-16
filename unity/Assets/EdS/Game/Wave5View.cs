@@ -21,6 +21,11 @@ namespace EdS.Game
         /// </summary>
         public static GameObject Place(Transform parent, Wave5Role role, string id, Vector3 at, float yaw, float size = 0f, int variant = 0)
         {
+            // Lot C (16 novembre 2026) : le modèle Tripo de ce décor (sacs de farine, table de pains, poires, charrette, guirlande, bannières),
+            // à l'échelle réelle, passe devant celui des packs.
+            string lotC = LotCModels.ForVillage("wave5/" + role, id);
+            GameObject own = lotC != null ? LotCLook.Place(parent, lotC, id, at, yaw) : null;
+            if (own != null) return own;
             StyleCatalog catalog = StyleCatalog.Loaded;
             Wave5Look look = null;
             if (catalog != null)
@@ -51,7 +56,8 @@ namespace EdS.Game
         }
 
         /// <summary>Le modèle a-t-il été déposé (et se montre-t-il sur cette plateforme) ?</summary>
-        public static bool Has(Wave5Role role) => StyleCatalog.Loaded != null && StyleCatalog.Loaded.Look(role) != null;
+        public static bool Has(Wave5Role role) => StyleCatalog.Loaded != null
+            && (StyleCatalog.Loaded.Look(role) != null || StyleCatalog.Loaded.LotCModel(LotCModels.ForVillage("wave5/" + role, string.Empty)) != null);   // lot C
 
         /// <summary>Une animation « Legacy » du modèle (feu follet, attente) tourne en boucle, à partir d'un instant varié.</summary>
         private static void Loop(GameObject holder)

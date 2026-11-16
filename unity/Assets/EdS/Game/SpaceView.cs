@@ -399,6 +399,9 @@ namespace EdS.Game
             }
             if (id.StartsWith(AdventureSession.WaySignPrefix))
             {
+                // Lot C (16 novembre 2026) : le panneau sur poteau de Tripo, planté au centre de l'obstacle, tourné d'après son identifiant.
+                string sign = LotCModels.ForObstacle(id);
+                if (sign != null && LotCLook.Place(_root.transform, sign, id, StyleWorld.OnGround(Center(points)), StyleRules.Variant(id, 360)) != null) return;
                 // Sous-lot V2.30.1 : panneau d'un croisement : poteau de bois et planche (son texte est l'étiquette de WorldMarkers).
                 Material wood = ArenaView.MakeMaterial(new Color(0.42f, 0.3f, 0.18f));
                 Prism(id, points, 2.2f, wood, true);

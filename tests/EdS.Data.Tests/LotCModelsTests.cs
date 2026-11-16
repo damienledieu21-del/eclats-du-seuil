@@ -64,6 +64,12 @@ public class LotCModelsTests
                 {
                     case "item": Assert.True(items.Contains(id), m.Code + " : objet inconnu " + id); break;
                     case "node": Assert.True(nodes.Contains(id), m.Code + " : nœud inconnu " + id); break;
+                    case "village": Assert.True(VillageKnown(id), m.Code + " : décor du village inconnu " + id); continue;
+                    case "obstacle":
+                        string[] hits = VallonsObstacles.Where(o => id.EndsWith("*") ? o.StartsWith(id.TrimEnd('*')) : o == id).ToArray();
+                        Assert.True(hits.Length > 0, m.Code + " : obstacle inconnu " + id);
+                        foreach (string o in hits) Assert.Equal(m.Code, LotCModels.ForObstacle(o));
+                        continue;
                     default: Assert.Fail(m.Code + " : cible inconnue " + t); break;
                 }
                 Assert.Equal(m.Code, kind == "item" ? LotCModels.ForItem(id) : LotCModels.ForNode(id));
@@ -90,6 +96,40 @@ public class LotCModelsTests
         Assert.True(LotCModels.Find("C_EQ051")!.HandHeld);
         Assert.True(LotCModels.Find("C_BU_L03_02")!.HandHeld);
         Assert.False(LotCModels.Find("C_BU_L03_03")!.HandHeld);
+    }
+
+    private static string Game => Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game");
+
+    private static string[] VallonsObstacles =>
+        JsonDocument.Parse(File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "scenarios", "zones", "vallons.json"))).RootElement
+            .GetProperty("data").GetProperty("space").GetProperty("obstacles").EnumerateArray().Select(o => o.GetProperty("id").GetString()!).ToArray();
+
+    /// <summary>Un décor du village posé par le jeu : rôle de la 5e vague ou accessoire du catalogue réellement posé par la vue, ou place fixe connue.</summary>
+    private static bool VillageKnown(string key)
+    {
+        string markers = File.ReadAllText(Path.Combine(Game, "WorldMarkers.cs"));
+        string[] p = key.Split('/');
+        return p[0] switch
+        {
+            "wave5" => Enum.TryParse(p[1], out Wave5Role r) && r.ToString() == p[1] && markers.Contains("Wave5Role." + p[1] + ","),
+            "prop" => Enum.TryParse(p[1], out StyleProp sp) && sp.ToString() == p[1] && markers.Contains("StyleProp." + p[1] + ","),
+            _ => LotCModels.VillageSpots.Contains(key) && markers.Contains("\"" + key + "\""),
+        };
+    }
+
+    [Fact]
+    public void Decors_du_village_relies()
+    {
+        Assert.Equal("C_OV_A03", LotCModels.ForVillage("prop/FirePit", "forge/foyer"));
+        Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "forge"));
+        Assert.Equal("C_OV_C14", LotCModels.ForObstacle("panneau_hameau"));
+        Assert.Null(LotCModels.ForObstacle("puits"));
+        Assert.Null(LotCModels.ForVillage("wave5/Bunting", "guirlande"));   // pas de mâts : la guirlande des packs reste
+        Assert.Null(LotCModels.ForVillage(null, "x"));
+        // Trois sacs de farine : tirés de l'identifiant, toujours le même pour le même identifiant.
+        var flour = new[] { "farine 1", "farine 2", "farine 3", "farine 4", "farine 5" }.Select(i => LotCModels.ForVillage("wave5/FlourSack", i)).ToList();
+        Assert.All(flour, c => Assert.StartsWith("C_OV_D02_0", c));
+        Assert.Equal(flour[0], LotCModels.ForVillage("wave5/FlourSack", "farine 1"));
     }
 
     [Fact]

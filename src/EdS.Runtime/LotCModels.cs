@@ -56,6 +56,7 @@ namespace EdS.Runtime
             all.AddRange(Equipment());
             all.AddRange(Loot());
             all.AddRange(Harvest());
+            all.AddRange(Village());
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
@@ -102,6 +103,39 @@ namespace EdS.Runtime
 
         /// <summary>Modèle de l'objet <paramref name="itemId"/> du catalogue (« item.cepe »), ou null.</summary>
         public static string? ForItem(string? itemId) => itemId == null ? null : Target("item:" + itemId);
+
+        /// <summary>
+        /// Modèle d'un décor du village posé par le jeu (<paramref name="key"/> : « wave5/FlourSack », « prop/FirePit », « forge/enclume »),
+        /// ou null. Plusieurs modèles pour un même décor (les trois sacs de farine) : celui tiré de <paramref name="id"/>.
+        /// </summary>
+        public static string? ForVillage(string? key, string? id)
+        {
+            if (key == null) return null;
+            string target = "village:" + key;
+            List<LotCModel> list = All.Where(m => m.Targets.Contains(target)).ToList();
+            return list.Count == 0 ? null : list[StyleRules.Variant(id ?? string.Empty, list.Count)].Code;
+        }
+
+        /// <summary>
+        /// Modèle d'un obstacle d'une zone du dehors (« panneau_hameau ») : cible exacte <c>obstacle:panneau_hameau</c>, ou préfixe
+        /// <c>obstacle:panneau_*</c> (tous les panneaux) ; null sinon.
+        /// </summary>
+        public static string? ForObstacle(string? obstacleId)
+        {
+            if (string.IsNullOrEmpty(obstacleId)) return null;
+            foreach (LotCModel m in All)
+                foreach (string t in m.Targets)
+                {
+                    if (!t.StartsWith("obstacle:", StringComparison.Ordinal)) continue;
+                    string want = t.Substring("obstacle:".Length);
+                    if (want.EndsWith("*", StringComparison.Ordinal) ? obstacleId!.StartsWith(want.Substring(0, want.Length - 1), StringComparison.Ordinal) : obstacleId == want)
+                        return m.Code;
+                }
+            return null;
+        }
+
+        /// <summary>Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer.</summary>
+        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume" };
 
         /// <summary>
         /// Échelle d'affichage d'un modèle sur un nœud de récolte : les plantes (une vingtaine de centimètres) sont grossies 2 fois pour
@@ -180,6 +214,93 @@ namespace EdS.Runtime
             yield return Waiting("C_RE_S06", c, "Grappe de raisin", vintage);
             yield return Waiting("C_RE_S07", c, "Hotte de vendange", vintage);
             yield return Waiting("C_RE_S08", c, "Panier de vendange", vintage);
+        }
+
+        // --- 02 : objets du village (forge, éclairage, mobilier de rue, marché, fêtes) ----------------------------------------------
+
+        private static IEnumerable<LotCModel> Village()
+        {
+            const string c = "02_Objets_Village";
+            const string forge = "pièce de forge que le jeu ne pose pas encore (la forge de Maëlle n'a que le foyer, l'enclume, le marteau, un tonneau et une caisse)";
+            const string light = "éclairage de nuit fait par le code (NightLamps : hauteur de la lumière réglée sur ses lanternes) : à brancher avec un essai dans Unity";
+            const string street = "aucune place dans les données des Vallons pour ce mobilier de rue";
+            const string market = "aucune place dans les données ni dans les décors du marché posés par le jeu";
+            const string feast = "décor de fête sans place dans les données ni parmi les décors de fête posés par le jeu (guirlande, bannières)";
+            yield return Waiting("C_OV_A01", c, "Auvent de la forge", forge);
+            yield return Linked("C_OV_A02", c, "Enclume sur billot", "village:forge/enclume");
+            yield return Linked("C_OV_A03", c, "Foyer de forge en pierre", "village:prop/FirePit");
+            yield return Waiting("C_OV_A04", c, "Soufflet manuel", forge);
+            yield return Waiting("C_OV_A05", c, "Établi avec outils", forge);
+            yield return Waiting("C_OV_A06_01", c, "Petit marteau", forge);
+            yield return Linked("C_OV_A06_02", c, "Marteau moyen", "village:prop/Hammer");
+            yield return Waiting("C_OV_A06_03", c, "Grand marteau", forge);
+            yield return Waiting("C_OV_A06_04", c, "Petite pince", forge);
+            yield return Waiting("C_OV_A06_05", c, "Pince moyenne", forge);
+            yield return Waiting("C_OV_A06_06", c, "Grande pince", forge);
+            yield return Waiting("C_OV_A06_07", c, "Petite lime", forge);
+            yield return Waiting("C_OV_A06_08", c, "Grande lime", forge);
+            yield return Waiting("C_OV_A07", c, "Bac de trempe", forge);
+            yield return Waiting("C_OV_A08", c, "Râtelier d'armes", forge);
+            yield return Waiting("C_OV_A09", c, "Présentoir de fers à cheval", forge);
+            yield return Waiting("C_OV_A10", c, "Tas de charbon", forge);
+            yield return Waiting("C_OV_A11", c, "Meule à aiguiser à pédale", forge);
+            yield return Waiting("C_OV_B01", c, "Réverbère en fer forgé", light);
+            yield return Waiting("C_OV_B02", c, "Lanterne sur poteau de bois", light);
+            yield return Waiting("C_OV_B03", c, "Lanterne murale", light);
+            yield return Waiting("C_OV_B04", c, "Brasero", street);
+            yield return Waiting("C_OV_B05", c, "Torche murale", light);
+            yield return Waiting("C_OV_B06_01", c, "Petite bougie sur bougeoir", "bougies des intérieurs : reliées avec les intérieurs (lot C, PR suivantes) si une pièce en a la place");
+            yield return Waiting("C_OV_B06_02", c, "Bougie moyenne sur bougeoir", "bougies des intérieurs : reliées avec les intérieurs (lot C, PR suivantes) si une pièce en a la place");
+            yield return Waiting("C_OV_B06_03", c, "Grande bougie sur bougeoir", "bougies des intérieurs : reliées avec les intérieurs (lot C, PR suivantes) si une pièce en a la place");
+            yield return Waiting("C_OV_B07", c, "Lanterne de fête en papier", feast);
+            yield return Waiting("C_OV_C01", c, "Banc de pierre", street);
+            yield return Waiting("C_OV_C02", c, "Banc de bois", street);
+            yield return Waiting("C_OV_C03_01", c, "Table de taverne", "la terrasse de la taverne est faite par le code ; aucune table dans les données");
+            yield return Waiting("C_OV_C03_02", c, "Banc de table de taverne", "la terrasse de la taverne est faite par le code ; aucun banc dans les données");
+            yield return Linked("C_OV_C04", c, "Tonneau debout", "village:prop/Barrel");
+            yield return Waiting("C_OV_C05", c, "Tonneau couché", street);
+            yield return Waiting("C_OV_C06", c, "Tonneaux empilés", street);
+            yield return Waiting("C_OV_C07_01", c, "Grande caisse fermée", street);
+            yield return Linked("C_OV_C07_02", c, "Caisse moyenne fermée", "village:prop/Crate");
+            yield return Waiting("C_OV_C07_03", c, "Petite caisse ouverte", street);
+            yield return Waiting("C_OV_C08_01", c, "Grand seau", street);
+            yield return Waiting("C_OV_C08_02", c, "Petit seau", street);
+            yield return Waiting("C_OV_C09", c, "Échelle", street);
+            yield return Waiting("C_OV_C10", c, "Billot avec hache", street);
+            yield return Waiting("C_OV_C11", c, "Tas de bûches", street);
+            yield return Waiting("C_OV_C12", c, "Charrette à bras", street);
+            yield return Linked("C_OV_C13", c, "Charrette à cheval", "village:wave5/Cart");
+            yield return Linked("C_OV_C14", c, "Panneau de bois sur poteau", "obstacle:panneau_*");
+            yield return Waiting("C_OV_C15", c, "Panneau de bois accroché", "enseignes des boutiques faites par le code (étiquettes) ; aucune place dans les données");
+            yield return Waiting("C_OV_C16", c, "Abreuvoir", street);
+            yield return Waiting("C_OV_C17", c, "Fontaine de place", street);
+            yield return Waiting("C_OV_C18", c, "Pilori", street);
+            yield return Waiting("C_OV_C19", c, "Puits couvert", "le puits des Vallons a déjà son modèle de l'atelier (puits_vallons) ; celui du Bourg est au chantier du Bourg fortifié");
+            yield return Waiting("C_OV_D01", c, "Étal de marché couvert", "les étals des Vallons ont déjà leurs modèles de l'atelier ; ceux du Bourg sont au chantier du Bourg fortifié");
+            yield return Linked("C_OV_D02_01", c, "Grand sac de farine", "village:wave5/FlourSack");
+            yield return Linked("C_OV_D02_02", c, "Sac moyen de farine", "village:wave5/FlourSack");
+            yield return Linked("C_OV_D02_03", c, "Petit sac de farine", "village:wave5/FlourSack");
+            yield return Linked("C_OV_D03", c, "Table de pains", "village:wave5/BakeryTable");
+            yield return Linked("C_OV_D04", c, "Caisse de poires", "village:wave5/PearCrate");
+            yield return Waiting("C_OV_D05_01", c, "Panier moyen", market);
+            yield return Waiting("C_OV_D05_02", c, "Petit panier", market);
+            yield return Waiting("C_OV_D05_03", c, "Grand panier", market);
+            yield return Waiting("C_OV_D06_01", c, "Grande jarre avec couvercle", market);
+            yield return Waiting("C_OV_D06_02", c, "Jarre moyenne ouverte", market);
+            yield return Waiting("C_OV_D06_03", c, "Petite jarre ouverte", market);
+            yield return Waiting("C_OV_D07", c, "Rouet", market);
+            yield return Waiting("C_OV_D08", c, "Métier à tisser de rue", market);
+            yield return Waiting("C_OV_D09", c, "Tréteaux de tailleur de pierre", market);
+            yield return Waiting("C_OV_D10", c, "Étal de poissonnier", market);
+            yield return Waiting("C_OV_E01", c, "Guirlande de fanions", "la guirlande de Tripo n'a pas de mâts : la guirlande posée par le jeu est au sol (celle des packs a ses poteaux) ; à poser entre deux supports");
+            yield return Waiting("C_OV_E02", c, "Guirlande de feuillage", feast);
+            yield return Linked("C_OV_E03", c, "Bannières de tissu", "village:wave5/Banner");
+            yield return Waiting("C_OV_E04", c, "Mât de fête avec rubans", feast);
+            yield return Waiting("C_OV_E05", c, "Feu de joie", feast);
+            yield return Waiting("C_OV_E06_01", c, "Table de banquet", feast);
+            yield return Waiting("C_OV_E06_02", c, "Banc de banquet", feast);
+            yield return Waiting("C_OV_E07", c, "Lanternes suspendues", feast);
+            yield return Waiting("C_OV_E08", c, "Décorations d'hiver", feast);
         }
     }
 }
