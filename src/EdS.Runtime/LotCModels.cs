@@ -257,8 +257,10 @@ namespace EdS.Runtime
             int count = Math.Max(1, (int)Math.Floor((boxLong + 0.05) / (modelLong * scale)));
             if (count * modelLong * scale > boxLong) scale = boxLong / (count * modelLong);
             double thin = modelShort * scale > boxShort ? boxShort / (modelShort * scale) : 1;
-            // Le grand côté du modèle suit celui de l'emprise : l'amincissement porte sur son petit côté (x ou z du modèle).
-            double thinX = modelW < modelD ? thin : 1, thinZ = modelW < modelD ? 1 : thin;
+            // L'amincissement porte sur l'axe du modèle posé le long du petit côté de l'emprise (relecture de la PR #200 : même pour un
+            // modèle presque carré, resté sans quart de tour) : tourné d'un quart, son x va selon z du monde.
+            bool thinOnX = boxAlongX == turned;
+            double thinX = thinOnX ? thin : 1, thinZ = thinOnX ? 1 : thin;
             var copies = new List<LotCCopy>();
             double step = boxLong / count;
             for (int i = 0; i < count; i++)

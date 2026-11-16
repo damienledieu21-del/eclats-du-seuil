@@ -168,7 +168,7 @@ public class LotCModelsTests
     public void Meubles_poses_dans_leur_emprise_sans_deborder()
     {
         // Empreintes types des meubles du lot C (table, comptoir, tonneaux, rayonnage, âtre, coffre, caisses).
-        (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3) };
+        (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3), (1.0, 1.02), (1.02, 1.0) };
         int rooms = 0;
         foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives" })
         {
@@ -202,6 +202,24 @@ public class LotCModelsTests
         Assert.Equal(180, LotCModels.Fit(-1, 4, 1, 4.5, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
         Assert.Equal(0, LotCModels.Fit(-1, -4.5, 1, -4, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
         Assert.Empty(LotCModels.Fit(0, 0, 1, 1, -7, -5, 7, 5, 0, 1));
+    }
+
+    [Fact]
+    public void Modele_presque_carre_aminci_sur_le_petit_cote_de_l_emprise()
+    {
+        // Relecture de la PR #200 : un modèle presque carré (1,00 × 1,02 m) reste sans quart de tour ; l'amincissement doit porter sur l'axe
+        // du modèle posé le long du petit côté de l'emprise, pas sur son propre petit côté.
+        // Emprise longue en x contre le mur sud (pas tournée) : petit côté selon z du monde, donc z du modèle.
+        LotCCopy a = LotCModels.Fit(4, 0, 6, 0.5, 0, 0, 10, 10, 1.0, 1.02)[0];
+        Assert.Equal(0, a.Yaw);
+        Assert.Equal(1.0, a.ThinX);
+        Assert.True(a.ThinZ < 1);
+        Assert.True(1.02 * a.Scale * a.ThinZ <= 0.5 + 1e-9);
+        // Emprise longue en z contre le mur ouest (tournée d'un quart) : petit côté selon x du monde, donc z du modèle.
+        LotCCopy b = LotCModels.Fit(0, 4, 0.5, 6, 0, 0, 10, 10, 1.02, 1.0)[0];
+        Assert.Equal(90, b.Yaw);
+        Assert.Equal(1.0, b.ThinX);
+        Assert.True(1.0 * b.Scale * b.ThinZ <= 0.5 + 1e-9);
     }
 
     [Fact]
