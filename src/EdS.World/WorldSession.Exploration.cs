@@ -9,7 +9,8 @@ namespace EdS.World
 {
     /// <summary>
     /// Sous-lot V2.29 (2) : brouillard de carte à dissiper (sujet 30) et points de vue (décision de Damien du 15 novembre 2026 : au sommet,
-    /// à la première visite, 200 XP, une entrée au carnet et le brouillard dissipé autour). Seulement dans une zone à région, hors des
+    /// à la première visite, 200 XP, une entrée au carnet et le brouillard dissipé autour ; le 16 novembre 2026 : sur toute la région,
+    /// sous-lot V2.29.1). Seulement dans une zone à région, hors des
     /// intérieurs ; les cases vues sont gardées dans la sauvegarde (version 23, <see cref="SavedCharacter.Explored"/>).
     /// </summary>
     public sealed partial class WorldSession
@@ -44,7 +45,8 @@ namespace EdS.World
                 _character = _character.WithXp(Math.Min(SaveValidator.MaxXp, checked(before + v.Xp)));
                 long added = _character.Xp - before;
                 if (added > 0) story.Add(new StoryEvent(StoryEventKind.XpGiven, "xp", null, added));
-                _explored.Reveal(v.Position, v.RevealMeters);
+                if (v.WholeRegion) _explored.RevealAll();   // sous-lot V2.29.1 : le sommet lève le brouillard sur toute la région
+                else _explored.Reveal(v.Position, v.RevealMeters);
             }
         }
 

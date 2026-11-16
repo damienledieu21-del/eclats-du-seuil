@@ -28,8 +28,8 @@ public class V192Chapitre2Tests
         Apprentie = "quest.apprentie_de_maelle", Herbes = "quest.herbes_pour_la_chapelle", Peaux = "quest.peaux_pour_l_auberge", Bete = "quest.bete_blanche";
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle) : dans les Vallons, puis dans les intérieurs.
-    private static readonly (double X, double Z) Gaspard = (26, -13), Renart = (-47.5, -3.3), Lison = (-62.1, -1), Forge = (-19, -5), Colombe = (-22, -4.8),
-        Epiciere = (-50.8, 4.4), Herboriste = (-65.2, -6.4), Gue = (12, 0.5), FilonOuest = (31, -12.5), FilonCentre = (44, -0.5), FilonEst = (54, 5.5),
+    private static readonly (double X, double Z) Gaspard = (26, -13), Renart = (-1079.5, -37.3), Lison = (-1094.1, -35), Forge = (-19, -5), Colombe = (-22, -4.8),
+        Epiciere = (-1082.8, -29.6), Herboriste = (-1097.2, -40.4), Gue = (12, 0.5), FilonOuest = (31, -12.5), FilonCentre = (44, -0.5), FilonEst = (54, 5.5),
         HerbesLac = (-12.5, -62), HerbesVerger = (54, -41.5);
     private static readonly (double X, double Z) Albe = (3.2, 3.2), Pretre = (-2, 3.6), Mathurin = (3.75, 1.6), Rosalie = (-1.8, -2.4), Maitresse = (0, 1.0);
 

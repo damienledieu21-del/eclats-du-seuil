@@ -27,7 +27,7 @@ public class V193bSuitesTests
     private const string Mission = "quest.traces_sous_le_moulin", Bourg = "quest.bourg_d_aube", Hameau = "quest.champs_et_hameau",
         Apprentie = "quest.apprentie_de_maelle", Lettre = "quest.lettre_au_fond_du_lac", Aveu = "fact.ch2.renart.aveu";
 
-    private static readonly (double X, double Z) Renart = (-47.5, -3.3), Forge = (-19, -5), Colombe = (-22, -4.8), Albe = (3.2, 3.2);
+    private static readonly (double X, double Z) Renart = (-1079.5, -37.3), Forge = (-19, -5), Colombe = (-22, -4.8), Albe = (3.2, 3.2);
 
     private static readonly string[] AfterChapter2 = { "fact.traces.recit", "fact.moulin.porte_ouverte", "fact.ch1.vers_le_bourg", "fact.ch2.albe.rencontree",
         Aveu, "fact.ch2.vers_les_champs" };

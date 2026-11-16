@@ -25,6 +25,9 @@ public class V224ReliefTests : IDisposable
         return a.Map;
     }
 
+    /// <summary>Sous-lot V2.30.1 : la carte du secteur du bourg, déménagé dans la ville fortifiée.</summary>
+    private AdventureMap Bourg() => LoadAtBourg(Path.Combine(_folder, "bourg", "partie.json")).Map;
+
     private static IEnumerable<(double X, double Z)> Grid(AdventureMap map, double step)
     {
         for (double x = map.MinX; x <= map.MaxX; x += step)
@@ -92,11 +95,25 @@ public class V224ReliefTests : IDisposable
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
         var built = map.Obstacles.Where(GroundRelief.Builds).ToList();
-        foreach (string id in new[] { "maison1", "auberge", "chapelle", "grange", "puits", "etal1", "tente1", "palissade_camp1", "mur_nord", "porte_moulin",
+        foreach (string id in new[] { "maison3", "grange", "tente1", "palissade_camp1", "mur_nord", "porte_moulin",
                      "bloc1", "front_de_taille", "pierre_seuil1", "tour", "moulin", "pilier1" })
             Assert.Contains(built, o => o.Id == id);
         foreach (string id in new[] { "riviere_sud", "riviere_lac", "arbre1", "bois_no1", "haie_ouest" })
             Assert.DoesNotContain(built, o => o.Id == id);
+        // Sous-lot V2.30.1 : les bâtiments du bourg, déménagés dans la ville fortifiée, sur la carte de son secteur.
+        AdventureMap town = Bourg();
+        GroundRelief townRelief = GroundRelief.For(town);
+        var moved = town.Obstacles.Where(o => MovedBuildings.Contains(o.Id)).ToList();
+        Assert.Equal(MovedBuildings.Length, moved.Count);
+        Assert.All(moved, o => Assert.True(GroundRelief.Builds(o), o.Id));
+        Flat(townRelief, moved);
+        // Le groupe du bourg est toujours un seul replat.
+        Assert.Single(townRelief.Pads.Where(p => p.Id == "maison2" || p.Id == "auberge").Select(p => p.Group).Distinct());
+        Flat(r, built);
+    }
+
+    private static void Flat(GroundRelief r, IEnumerable<SpaceObstacle> built)
+    {
         foreach (SpaceObstacle o in built)
         {
             var pts = Points(o);
@@ -106,8 +123,14 @@ public class V224ReliefTests : IDisposable
             var probes = pts.Concat(new[] { (cx, cz) }).Concat(pts.Select(p => (p.X + Math.Sign(p.X - cx) * 0.35, p.Z + Math.Sign(p.Z - cz) * 0.35)));
             foreach ((double x, double z) in probes) Assert.True(Math.Abs(r.Height(x, z) - level) < 1e-9, o.Id + " n'est pas sur un replat en " + x + ", " + z);
         }
-        // Le groupe du bourg est un seul replat ; la butte du Seuil porte ses pierres plus haut que la rivière.
-        Assert.Single(r.Pads.Where(p => p.Id == "maison2" || p.Id == "auberge").Select(p => p.Group).Distinct());
+    }
+
+    [Fact]
+    public void Les_buttes_du_Seuil_et_de_la_tour()
+    {
+        AdventureMap map = Vallons();
+        GroundRelief r = GroundRelief.For(map);
+        // La butte du Seuil porte ses pierres plus haut que la rivière.
         Assert.InRange(r.Pads.Single(p => p.Id == "pierre_seuil1").Level, 1.5, 5);
         Assert.InRange(r.Pads.Single(p => p.Id == "tour").Level, 1.2, 5);   // butte de la tour (la rivière, à 20 m, la tasse un peu)
     }
@@ -153,7 +176,10 @@ public class V224ReliefTests : IDisposable
     {
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
-        double Gap(StyleMesh mesh)
+        AdventureMap town = Bourg();   // sous-lot V2.30.1 : la place pavée du bourg est dans la ville fortifiée
+        GroundRelief townRelief = GroundRelief.For(town);
+        double Gap(StyleMesh mesh) => GapOn(r, mesh);
+        static double GapOn(GroundRelief r, StyleMesh mesh)
         {
             double worst = 0;
             for (int t = 0; t < mesh.Triangles.Count; t += 3)
@@ -166,11 +192,11 @@ public class V224ReliefTests : IDisposable
             return worst;
         }
         // La place du bourg (seule rue pavée) est sur un replat : on la déplace sur une pente pour que le test morde.
-        StyleRoad paved = map.Roads.Single(x => x.Paved);
+        StyleRoad paved = town.Roads.Single(x => x.Paved);
         var slope = new StyleRoad("essai", new[] { (30.0, -40.0), (60.0, -30.0), (90.0, 20.0) }, paved.Width, true);
         Assert.True(Gap(TownShapes.Pavement(slope, 1.5)) > 0.1);   // sans découpe : enterré ou flottant
         Assert.InRange(Gap(TownShapes.Pavement(slope, 1.5, 24, 1.0)), 0, 0.05);
-        Assert.InRange(Gap(TownShapes.Pavement(paved, 1.5, 24, 1.0)), 0, 0.05);
+        Assert.InRange(GapOn(townRelief, TownShapes.Pavement(paved, 1.5, 24, 1.0)), 0, 0.05);
         var boxes = map.Obstacles.Select(o => (o.Points.Min(p => p.X.Raw) / 1e4, o.Points.Min(p => p.Z.Raw) / 1e4, o.Points.Max(p => p.X.Raw) / 1e4,
             o.Points.Max(p => p.Z.Raw) / 1e4)).ToList();
         var fields = map.Places.Where(p => TownRules.Farmland(p.Id))
@@ -288,17 +314,21 @@ public class V224ReliefTests : IDisposable
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
         const double overhang = 1.42;   // jusqu'à 1,42 m hors de l'emprise (le replat est horizontal jusqu'à 1,5 m)
+        AdventureMap town = Bourg();   // sous-lot V2.30.1 : le puits et les étals du bourg sont dans la ville fortifiée
+        GroundRelief townRelief = GroundRelief.For(town);
         foreach (string id in new[] { "grange", "moulin", "tour", "puits", "etal1", "etal2", "tente1", "tente2", "tente3", "palissade_camp1", "palissade_camp2" })
         {
-            SpaceObstacle o = map.Obstacles.Single(x => x.Id == id);
+            bool inTown = MovedBuildings.Contains(id);
+            SpaceObstacle o = (inTown ? town : map).Obstacles.Single(x => x.Id == id);
+            GroundRelief r2 = inTown ? townRelief : r;
             Assert.True(GroundRelief.Builds(o), id);
             var pts = Points(o);
-            double level = r.Pads.Single(p => p.Id == id).Level;
+            double level = r2.Pads.Single(p => p.Id == id).Level;
             double x0 = pts.Min(p => p.X) - overhang, x1 = pts.Max(p => p.X) + overhang, z0 = pts.Min(p => p.Z) - overhang, z1 = pts.Max(p => p.Z) + overhang;
             for (double x = x0; x <= x1 + 1e-9; x += 0.25)
                 for (double z = z0; z <= z1 + 1e-9; z += 0.25)
                     if (GroundRelief.PolygonDistance(pts, x, z) <= overhang)   // débord rectangulaire d'1 m, coins compris (1,41 m)
-                        Assert.True(Math.Abs(r.Height(x, z) - level) < 1e-9, id + " : sol pas à plat en " + x + ", " + z);
+                        Assert.True(Math.Abs(r2.Height(x, z) - level) < 1e-9, id + " : sol pas à plat en " + x + ", " + z);
         }
         // Roue (rayon 1,75) et eau du bief (4,8 m de long) du moulin : dans son emprise de 6 × 6 élargie du replat, quelle que soit sa façade.
         SpaceObstacle mill = map.Obstacles.Single(x => x.Id == "moulin");

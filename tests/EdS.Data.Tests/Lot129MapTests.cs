@@ -55,9 +55,9 @@ public class Lot129MapTests : IDisposable
         Assert.Equal(AdventureMap.Ground, Cell(-18, -12));        // la place du village
         Assert.Equal(AdventureMap.Solid, Cell(58, 0));            // le front de taille de la carrière
         Assert.Equal(AdventureMap.Solid, Cell(-3, 19));           // la porte du moulin, fermée
-        Assert.Equal(AdventureMap.Solid, Cell(-30, 7));           // une maison du bourg
+        Assert.Equal(AdventureMap.Solid, Cell(-30, -10));           // une maison du hameau (V2.30.1 : le bourg a déménagé dans la ville)
         Assert.Equal(AdventureMap.Water, Cell(5, -54));           // le lac
-        Assert.Equal(AdventureMap.Ground, Cell(-58, -5));         // la place pavée du bourg
+        Assert.Equal(AdventureMap.Ground, Cell(-58, -5));         // l'ancienne place du bourg (V2.30.1 : sol libre du hameau)
         // Coordonnées de la carte : 0 à 1, nord en haut.
         Assert.Equal((0.0, 0.0), map.ToMap(-180, 242));
         Assert.Equal((1.0, 1.0), map.ToMap(204, -142));

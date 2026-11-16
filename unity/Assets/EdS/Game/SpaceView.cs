@@ -397,6 +397,15 @@ namespace EdS.Game
                 Building(building, id, points);
                 return;
             }
+            if (id.StartsWith(AdventureSession.WaySignPrefix))
+            {
+                // Sous-lot V2.30.1 : panneau d'un croisement : poteau de bois et planche (son texte est l'étiquette de WorldMarkers).
+                Material wood = ArenaView.MakeMaterial(new Color(0.42f, 0.3f, 0.18f));
+                Prism(id, points, 2.2f, wood, true);
+                Vector3 post = Center(points);
+                Box(id + " (planche)", post + Vector3.up * 1.9f, new Vector3(1.2f, 0.35f, 0.08f), wood, 1f);
+                return;
+            }
             if (id.StartsWith("arbre"))
             {
                 // Essai de style : un arbre des packs à la place du tronc et de sa boule de feuillage (même emprise au moteur).

@@ -223,6 +223,13 @@ namespace EdS.Game
                     _signs[sign.Id] = m;
                 }
                 _shops.Workshops(adventure.Workshops());
+                // Sous-lot V2.30.1 : panneaux des croisements du village au Bourg (le poteau est dessiné par SpaceView ; l'étiquette ici).
+                foreach (WorldMarker sign in adventure.WaySigns())
+                {
+                    Marker m = Add(sign, PrimitiveType.Cube, new Vector3(0.05f, 0.05f, 0.05f), 2.4f, new Color(0.95f, 0.85f, 0.55f), 3.1f, SignLabelRange);
+                    m.Rank = 2;
+                    m.Body.GetComponent<Renderer>().enabled = false;
+                }
             }
         }
 
