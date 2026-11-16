@@ -186,10 +186,13 @@ namespace EdS.Game
             if (minZ <= _whole.MinZ) Border("Bord sud", new Vector3(minX, 0f, minZ - 0.15f), new Vector3(maxX, 0f, minZ - 0.15f), border, borderTile);
             if (maxZ >= _whole.MaxZ) Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
+            // V2.30.2 : Bourg d'Aube fortifié habillé des modèles de l'atelier, calculé sur l'aire entière (le même d'une fenêtre à l'autre).
+            _bourg = map != null ? map.Bourg : BourgModels.Dress(space.Obstacles, _roads);
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
             QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
+            BourgDecor();   // V2.30.2 : palissade, tours et portes du Bourg fortifié (modèles de l'atelier)
             Pavements();
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg
@@ -367,6 +370,12 @@ namespace EdS.Game
                 }
                 // Eau : prisme bas (la rivière arrête la marche et, au 11.6, la vue : un seul genre d'obstacle dans le moteur).
                 Prism(id, points, 0.12f, _water, false, 4f);
+                return;
+            }
+            // V2.30.2 : un obstacle du Bourg fortifié habillé par les modèles de l'atelier (posés par BourgDecor) n'a pas de forme faite par le code.
+            if (BourgCovers(id))
+            {
+                _draped = true;   // chaque pièce est posée sur son sol : pas de relèvement d'ensemble (Obstacle)
                 return;
             }
             // V2.25 : le modèle de l'atelier d'un obstacle qui n'est pas un bâtiment du bourg (le moulin et sa roue, les palissades du camp)
