@@ -1,0 +1,61 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.moulin",
+    "name": "Moulin",
+    "scenario": "zones/moulin",
+    "indoor": true,
+    "entry": "pesee",
+    "safePoints": [
+      {
+        "id": "pesee",
+        "name": "Pupitre de pesée",
+        "position": [
+          0,
+          -1.4
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_du_moulin",
+        "name": "Moulin",
+        "min": [
+          -3,
+          -3
+        ],
+        "max": [
+          3,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Moulin",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_moulin_interieur"
+      },
+      {
+        "id": "etage",
+        "name": "Étage des meules",
+        "position": [
+          -2.45,
+          0.9
+        ],
+        "to": "zone.moulin_meules",
+        "toDoor": "sortie"
+      }
+    ]
+  }
+}

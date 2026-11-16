@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.auberge_chambres",
+    "name": "Chambres de l'auberge",
+    "scenario": "zones/auberge_chambres",
+    "indoor": true,
+    "entry": "couloir",
+    "safePoints": [
+      {
+        "id": "couloir",
+        "name": "Couloir",
+        "position": [
+          3.5,
+          -2.0
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "chambres_auberge",
+        "name": "Chambres de l'auberge",
+        "min": [
+          -7,
+          -5
+        ],
+        "max": [
+          7,
+          5
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Auberge de l'Aube",
+        "position": [
+          6.0,
+          -3.6
+        ],
+        "to": "zone.auberge",
+        "toDoor": "chambres"
+      }
+    ]
+  }
+}

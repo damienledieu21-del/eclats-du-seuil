@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.tour",
+    "name": "Tour de guet",
+    "scenario": "zones/tour",
+    "indoor": true,
+    "entry": "registre",
+    "safePoints": [
+      {
+        "id": "registre",
+        "name": "Table du registre",
+        "position": [
+          0,
+          -1.4
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "salle_de_garde",
+        "name": "Tour de guet",
+        "min": [
+          -3,
+          -3
+        ],
+        "max": [
+          3,
+          3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Tour de guet",
+        "position": [
+          0,
+          -2.3
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_tour"
+      }
+    ]
+  }
+}

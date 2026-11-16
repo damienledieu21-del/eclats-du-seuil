@@ -76,7 +76,9 @@ public class V2301DemenagementBourgTests
     {
         ZoneDefinition zone = Vallons.Value;
         static bool OldBourg((double X, double Z) p) => p.X >= -100 && p.X <= -26 && p.Z >= -24 && p.Z <= 19;
-        Assert.DoesNotContain(zone.Doors, d => OldBourg(P(d.Position)));
+        // Décision de Damien du 16 novembre 2026 (vers 21 h 40, lot C) : seule exception, la forge couverte, par la maison de Maëlle (maison3),
+        // à côté de sa forge en plein air ; ni boutique ni autre porte au hameau (choix de la maison posé en question dans la PR).
+        Assert.DoesNotContain(zone.Doors, d => OldBourg(P(d.Position)) && !(d.Id == "porte_forge" && d.Building == "maison3" && d.To == "zone.forge"));
         Assert.DoesNotContain(zone.NightSpots, n => OldBourg(P(n.Position)));
         Assert.DoesNotContain(zone.SafePoints, s => OldBourg(P(s.Position)));
         // Deux maisons du hameau restent ; la grand-rue va toujours du village à la route d'Ambre.

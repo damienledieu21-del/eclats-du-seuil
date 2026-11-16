@@ -1,4 +1,6 @@
 using System.Text.Json;
+using EdS.Data.Items;
+using EdS.Data.Zones;
 using EdS.Data.Json;
 using EdS.Runtime;
 using static EdS.Data.Tests.ScenarioTestData;
@@ -136,7 +138,11 @@ public class LotCModelsTests
         {
             "wave5" => Enum.TryParse(p[1], out Wave5Role r) && r.ToString() == p[1] && markers.Contains("Wave5Role." + p[1] + ","),
             "prop" => Enum.TryParse(p[1], out StyleProp sp) && sp.ToString() == p[1] && markers.Contains("StyleProp." + p[1] + ","),
-            _ => LotCModels.VillageSpots.Contains(key) && markers.Contains("\"" + key + "\""),
+            // Lot C (décision du 16 novembre 2026) : les pièces autour de la forge sont posées par la table LotCModels.ForgeYard, les outils
+            // par LotCModels.ForgeToolCodes.
+            _ => LotCModels.VillageSpots.Contains(key) && (markers.Contains("\"" + key + "\"")
+                || (LotCModels.ForgeYard.Any(p => p.Key == key) && markers.Contains("LotCModels.ForgeYard"))
+                || (key == LotCModels.ForgeTools && markers.Contains("LotCModels.ForgeToolCodes"))),
         };
     }
 
@@ -170,7 +176,8 @@ public class LotCModelsTests
         // Empreintes types des meubles du lot C (table, comptoir, tonneaux, rayonnage, âtre, coffre, caisses).
         (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3), (1.0, 1.02), (1.02, 1.0) };
         int rooms = 0;
-        foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives", "chapelle", "epicerie", "herboristerie", "mercerie", "maison" })
+        foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives", "chapelle", "epicerie", "herboristerie", "mercerie", "maison",
+            "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge" })
         {
             AdventureMap map = Map(room);
             rooms++;
@@ -197,7 +204,7 @@ public class LotCModelsTests
                 }
             }
         }
-        Assert.Equal(9, rooms);
+        Assert.Equal(17, rooms);   // lot C (16 novembre 2026) : et les huit intérieurs de métier
         // Dos au mur : le comptoir de l'auberge regarde l'intérieur, sur une seule rangée de copies le long du grand côté.
         Assert.Equal(180, LotCModels.Fit(-1, 4, 1, 4.5, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
         Assert.Equal(0, LotCModels.Fit(-1, -4.5, 1, -4, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
@@ -255,6 +262,178 @@ public class LotCModelsTests
         Assert.Equal("C_OV_D02_02", LotCModels.ForVillage("wave5/FlourSack", "x", 4));
         Assert.Equal("C_OV_D02_03", LotCModels.ForVillage("wave5/FlourSack", "x", -1));
         Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "x", 7));
+    }
+
+    /// <summary>Emprise au sol (x, z en mètres) des modèles reliés aux intérieurs de métier, d'après leurs exports (manifeste de l'atelier).</summary>
+    private static readonly Dictionary<string, (double W, double D)> TradeSizes = new()
+    {
+        ["C_IN1_A0_11"] = (0.904, 1.284),
+        ["C_IN1_A0_12"] = (0.613, 1.001),
+        ["C_IN1_A0_13"] = (0.599, 2.292),
+        ["C_IN1_A1_01"] = (2.003, 1.28),
+        ["C_IN1_A1_02"] = (0.443, 0.7),
+        ["C_IN1_A1_04"] = (0.478, 0.8),
+        ["C_IN1_A1_06"] = (0.551, 0.7),
+        ["C_IN1_A1_07"] = (1.797, 1.141),
+        ["C_IN1_A2_01"] = (2.001, 1.499),
+        ["C_IN1_A2_02"] = (0.479, 0.9),
+        ["C_IN1_A2_03"] = (0.766, 1.401),
+        ["C_IN1_A2_04"] = (0.446, 0.459),
+        ["C_IN1_A2_05"] = (1.901, 1.343),
+        ["C_IN1_A2_10"] = (0.877, 1.05),
+        ["C_IN1_A3_01"] = (0.485, 1.997),
+        ["C_IN1_A3_02"] = (0.8, 1.201),
+        ["C_IN1_A3_03"] = (0.438, 2.008),
+        ["C_IN1_A3_04"] = (0.651, 1.994),
+        ["C_IN2_F0_01"] = (1.269, 1.775),
+        ["C_IN2_F0_02"] = (0.498, 1.304),
+        ["C_IN2_F0_03"] = (0.519, 0.719),
+        ["C_IN2_F0_04"] = (0.906, 1.8),
+        ["C_IN2_F0_05"] = (0.651, 0.643),
+        ["C_IN2_F0_06"] = (0.436, 1.256),
+        ["C_IN2_G0_01"] = (3.797, 2.017),
+        ["C_IN2_G0_02"] = (3.577, 2.205),
+        ["C_IN2_G0_03"] = (0.868, 1.722),
+        ["C_IN2_G0_04"] = (0.788, 1.401),
+        ["C_IN2_G0_05"] = (0.573, 2.701),
+        ["C_IN2_O0_01"] = (1.701, 1.489),
+        ["C_IN2_O0_02"] = (0.691, 0.9),
+        ["C_IN2_O0_03"] = (0.855, 1.1),
+        ["C_IN2_O0_04"] = (1.051, 0.927),
+        ["C_IN2_O0_05"] = (0.505, 0.638),
+        ["C_IN2_O1_01"] = (1.55, 1.482),
+        ["C_IN2_O1_04"] = (0.792, 1.0),
+        ["C_IN2_T0_01"] = (1.291, 1.966),
+        ["C_IN2_T0_02"] = (0.557, 1.199),
+        ["C_IN2_T0_03"] = (0.378, 0.912),
+        ["C_IN2_T0_05"] = (0.73, 1.001),
+        ["C_IN2_V0_01"] = (1.8, 1.02),
+        ["C_IN2_V0_02"] = (0.933, 1.181),
+        ["C_IN2_V0_03"] = (0.606, 1.1),
+        ["C_IN2_V0_04"] = (0.493, 0.897),
+        ["C_IN2_V0_05"] = (0.344, 1.034),
+        ["C_IN2_V0_06"] = (1.067, 0.629),
+        ["C_IN2_V1_02"] = (0.616, 1.4),
+        ["C_IN2_V1_03"] = (0.571, 1.001),
+    };
+
+    [Fact]
+    public void Interieurs_de_metier_meubles_a_la_mesure_de_leurs_modeles()
+    {
+        // Décisions de Damien du 16 novembre 2026 : chaque meuble des huit intérieurs de métier a son modèle du lot C, posé une seule fois
+        // dans son emprise, presque à sa taille (échelle de 0,9 à 1,15, à peine aminci) ; portes à l'écart des meubles.
+        string[] rooms = { "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge" };
+        int linked = 0;
+        foreach (string room in rooms)
+        {
+            AdventureMap map = Map(room);
+            foreach (var o in map.Obstacles)
+            {
+                string? code = LotCModels.ForRoom(room, o.Id);
+                if (code == null)
+                {
+                    Assert.True(room == "cuisine_auberge" && o.Id == "tonneau", room + "/" + o.Id + " sans modèle");   // le tonneau du code
+                    continue;
+                }
+                linked++;
+                (double w, double d) = TradeSizes[code];
+                double x0 = o.Points.Min(p => p.X.Raw) / 10000.0, x1 = o.Points.Max(p => p.X.Raw) / 10000.0;
+                double z0 = o.Points.Min(p => p.Z.Raw) / 10000.0, z1 = o.Points.Max(p => p.Z.Raw) / 10000.0;
+                LotCCopy k = Assert.Single(LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, w, d));
+                Assert.True(k.Scale >= 0.9 && k.Scale <= LotCModels.MaxScale + 1e-9, room + "/" + o.Id + " : échelle " + k.Scale);
+                Assert.True(Math.Min(k.ThinX, k.ThinZ) >= 0.85, room + "/" + o.Id + " trop aminci");
+            }
+            foreach (MapDoor door in map.Doors)
+                foreach (var o in map.Obstacles)
+                {
+                    double dx = Math.Max(0, Math.Max(o.Points.Min(p => p.X.Raw) / 10000.0 - door.X, door.X - o.Points.Max(p => p.X.Raw) / 10000.0));
+                    double dz = Math.Max(0, Math.Max(o.Points.Min(p => p.Z.Raw) / 10000.0 - door.Z, door.Z - o.Points.Max(p => p.Z.Raw) / 10000.0));
+                    Assert.True(Math.Sqrt(dx * dx + dz * dz) >= 0.55, room + " : porte " + door.Id + " contre " + o.Id);
+                }
+        }
+        Assert.Equal(TradeSizes.Count, TradeSizes.Keys.Count(c => LotCModels.Find(c)!.Linked));
+        Assert.True(linked >= 50, linked.ToString());
+        // Plus rien en attente pour ces lieux (forge, grange, moulin, tour, maison paysanne, cuisine et chambres de l'auberge).
+        Assert.DoesNotContain(LotCModels.All, m => m.Pending != null && (m.Code.StartsWith("C_IN2_F0", StringComparison.Ordinal)
+            || m.Code.StartsWith("C_IN2_G0", StringComparison.Ordinal) || m.Code.StartsWith("C_IN2_O", StringComparison.Ordinal)
+            || m.Code.StartsWith("C_IN2_T0", StringComparison.Ordinal) || m.Code.StartsWith("C_IN2_V", StringComparison.Ordinal)
+            || m.Code.StartsWith("C_IN1_A1", StringComparison.Ordinal) || m.Code.StartsWith("C_IN1_A2", StringComparison.Ordinal)
+            || m.Code.StartsWith("C_IN1_A3", StringComparison.Ordinal) || m.Code is "C_IN1_A0_11" or "C_IN1_A0_12"));
+    }
+
+    [Fact]
+    public void Forge_de_Maelle_toutes_les_pieces_sans_bloquer_le_passage()
+    {
+        // Décision de Damien du 16 novembre 2026 : toutes les pièces de forge du lot C autour de la forge en plein air de Maëlle.
+        string[] forgeCodes = { "C_OV_A04", "C_OV_A05", "C_OV_A06_01", "C_OV_A06_03", "C_OV_A06_04", "C_OV_A06_05", "C_OV_A06_06", "C_OV_A06_07",
+            "C_OV_A06_08", "C_OV_A07", "C_OV_A08", "C_OV_A09", "C_OV_A10", "C_OV_A11" };
+        Assert.All(forgeCodes, c => Assert.True(LotCModels.Find(c)!.Linked, c));
+        Assert.Equal(7, LotCModels.ForgeToolCodes.Count);
+        Assert.Equal(7, LotCModels.ForgeYard.Count);
+        Assert.Equal("C_OV_A06_02", LotCModels.ForVillage("prop/Hammer", "forge/marteau"));   // le marteau moyen reste sur l'enclume
+        // Centre du lieu « forge » (le marqueur de l'atelier) ; Maëlle et son apprentie à la forge (emplois du temps).
+        JsonElement vallons = JsonDocument.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"))).RootElement.GetProperty("data");
+        JsonElement place = vallons.GetProperty("places").EnumerateArray().Single(p => p.GetProperty("id").GetString() == "forge");
+        double px0 = place.GetProperty("min")[0].GetDouble(), pz0 = place.GetProperty("min")[1].GetDouble();
+        double px1 = place.GetProperty("max")[0].GetDouble(), pz1 = place.GetProperty("max")[1].GetDouble();
+        double cx = (px0 + px1) / 2, cz = (pz0 + pz1) / 2;
+        JsonElement story = Data("story.json");
+        var smiths = story.GetProperty("npcs").EnumerateArray().Where(n => n.GetProperty("id").GetString() is "npc.maelle" or "npc.apprentie")
+            .SelectMany(n => n.GetProperty("schedule").EnumerateArray()).Where(s => !s.TryGetProperty("zone", out _)
+                && s.GetProperty("position")[0].GetDouble() is var x && x > px0 && x < px1 && s.GetProperty("position")[1].GetDouble() is var z && z > pz0 && z < pz1)
+            .Select(s => (s.GetProperty("position")[0].GetDouble(), s.GetProperty("position")[1].GetDouble())).Distinct().ToList();
+        Assert.Equal(2, smiths.Count);
+        // Emprises : celles déjà posées par WorldMarkers.Forge (enclume, foyer, tonneau, caisse), puis la table.
+        var boxes = new List<(string Id, double X0, double Z0, double X1, double Z1)>();
+        void Add(string id, string code, double x, double z, double yaw)
+        {
+            (double w, double d) = LotCModels.ForgeYardSize(code);
+            Assert.True(w > 0 && d > 0, code);
+            if (yaw == 90 || yaw == 270) (w, d) = (d, w);
+            boxes.Add((id, x - w / 2, z - d / 2, x + w / 2, z + d / 2));
+        }
+        double ax = cx + 0.2, az = cz + 1.6;   // l'enclume, un pas derrière Maëlle
+        Add("enclume", "C_OV_A02", ax, az, 0);
+        Add("foyer", "C_OV_A03", ax + 1.9, az - 0.2, 0);
+        Add("tonneau", "C_OV_C04", ax - 1.5, az + 0.3, 0);
+        boxes.Add(("caisse", ax - 1.7 - 0.32, az - 1.6 - 0.32, ax - 1.7 + 0.32, az - 1.6 + 0.32));   // tournée de 75° : son cercle
+        foreach (LotCYardPiece p in LotCModels.ForgeYard)
+            Add(p.Key, LotCModels.ForVillage(p.Key, "forge")!, cx + p.Dx, cz + p.Dz, p.Yaw);
+        // Rien ne se chevauche (10 cm de jeu) ; rien à moins de 60 cm de Maëlle ou de son apprentie ; tout dans le lieu à 0,8 m près.
+        for (int i = 0; i < boxes.Count; i++)
+        {
+            var a = boxes[i];
+            Assert.True(a.X0 >= px0 - 0.8 && a.X1 <= px1 + 0.8 && a.Z0 >= pz0 - 0.8 && a.Z1 <= pz1 + 0.8, a.Id + " loin de la forge");
+            for (int j = i + 1; j < boxes.Count; j++)
+            {
+                var b = boxes[j];
+                Assert.False(a.X0 < b.X1 + 0.1 && b.X0 < a.X1 + 0.1 && a.Z0 < b.Z1 + 0.1 && b.Z0 < a.Z1 + 0.1, a.Id + " chevauche " + b.Id);
+            }
+            foreach ((double sx, double sz) in smiths)
+            {
+                double dx = Math.Max(0, Math.Max(a.X0 - sx, sx - a.X1)), dz = Math.Max(0, Math.Max(a.Z0 - sz, sz - a.Z1));
+                Assert.True(Math.Sqrt(dx * dx + dz * dz) >= 0.6, a.Id + " contre un forgeron");
+            }
+        }
+        // Un passage de 1,2 m du bord sud du lieu jusqu'à Maëlle reste libre.
+        (double mx, double mz) = smiths.OrderBy(s => Math.Abs(s.Item1 - cx) + Math.Abs(s.Item2 - cz)).First();
+        Assert.DoesNotContain(boxes, b => b.X0 < mx + 0.6 && b.X1 > mx - 0.6 && b.Z0 < mz && b.Z1 > pz0 - 0.7);
+        // Ni sur un obstacle des Vallons ni sur un chemin.
+        JsonElement space = JsonDocument.Parse(File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "scenarios", "zones", "vallons.json"))).RootElement
+            .GetProperty("data").GetProperty("space");
+        foreach (JsonElement o in space.GetProperty("obstacles").EnumerateArray())
+        {
+            double ox0 = o.GetProperty("points").EnumerateArray().Min(p => p[0].GetDouble()), ox1 = o.GetProperty("points").EnumerateArray().Max(p => p[0].GetDouble());
+            double oz0 = o.GetProperty("points").EnumerateArray().Min(p => p[1].GetDouble()), oz1 = o.GetProperty("points").EnumerateArray().Max(p => p[1].GetDouble());
+            Assert.DoesNotContain(boxes, b => b.X0 < ox1 && ox0 < b.X1 && b.Z0 < oz1 && oz0 < b.Z1);
+        }
+        ZoneDefinition zone = ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"), Path.Combine(AppContext.BaseDirectory, "scenarios"),
+            ShippedData, ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!).Zone!;
+        IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
+        foreach (var b in boxes.Where(b => b.Id.StartsWith("forge/", StringComparison.Ordinal)))   // l'enclume et le foyer d'avant sont sur le chemin
+            for (double x = b.X0; x <= b.X1 + 1e-9; x += 0.2)
+                for (double z = b.Z0; z <= b.Z1 + 1e-9; z += 0.2)
+                    Assert.True(TownRules.RoadAt(x, z, roads).Edge > 0.2, b.Id + " sur un chemin");
     }
 
     [Fact]

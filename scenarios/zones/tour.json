@@ -1,0 +1,111 @@
+{
+  "$schema": "../../data/schemas/scenario.schema.json",
+  "schemaVersion": 22,
+  "kind": "scenario",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "seed": 265,
+    "durationMs": 3600000,
+    "zone": true,
+    "space": {
+      "bounds": {
+        "min": [
+          -3,
+          -3
+        ],
+        "max": [
+          3,
+          3
+        ]
+      },
+      "obstacles": [
+        {
+          "id": "lit_gardes",
+          "points": [
+            [
+              -3.0,
+              0.9
+            ],
+            [
+              -1.7,
+              0.9
+            ],
+            [
+              -1.7,
+              2.9
+            ],
+            [
+              -3.0,
+              2.9
+            ]
+          ]
+        },
+        {
+          "id": "table_registre",
+          "points": [
+            [
+              0.6,
+              2.3
+            ],
+            [
+              1.8,
+              2.3
+            ],
+            [
+              1.8,
+              2.9
+            ],
+            [
+              0.6,
+              2.9
+            ]
+          ]
+        },
+        {
+          "id": "ratelier_armes",
+          "points": [
+            [
+              2.6,
+              -0.2
+            ],
+            [
+              3.0,
+              -0.2
+            ],
+            [
+              3.0,
+              0.75
+            ],
+            [
+              2.6,
+              0.75
+            ]
+          ]
+        },
+        {
+          "id": "coffre_gardes",
+          "points": [
+            [
+              2.25,
+              1.5
+            ],
+            [
+              3.0,
+              1.5
+            ],
+            [
+              3.0,
+              2.55
+            ],
+            [
+              2.25,
+              2.55
+            ]
+          ]
+        }
+      ]
+    },
+    "combatants": [],
+    "commands": []
+  }
+}

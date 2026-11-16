@@ -270,6 +270,18 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+## 7 undecies. Lot C : intérieurs de métier et forge de Maëlle (Retenu)
+
+Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la session principale (modèles Tripo du lot C, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Intérieurs de métier | Créer les intérieurs de la **forge**, de la **grange**, du **moulin**, de la **tour de guet**, d'une **maison paysanne**, et la **cuisine** et les **chambres** de l'auberge, meublés avec les modèles du lot C. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; réalisé dans la PR empilée sur #201 ([MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026)) |
+| Forge de Maëlle | **Toutes les pièces de forge** du lot C (soufflet, bac de trempe, meule, râtelier d'armes, présentoir de fers, tas de charbon, établi, outils) autour de la forge **en plein air**, sans bloquer le passage. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; même PR |
+| Plantes et filons | Plantes à récolter **grossies 2 fois** et **trois tailles de filons** : gardées. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; PR #196 |
+| Meubles des nouveaux lieux (I01 à I21) | La PR #202 **reste en brouillon** ; chaque meuble sera placé quand son lieu entrera dans les données. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) |
+| Où mènent les portes (recommandation de Claude, à confirmer) | Forge couverte : porte de la maison de Maëlle (`maison3`), à côté de la forge en plein air. Maison paysanne : celle d'Achille (`maison9`, champs du sud). Moulin sur deux niveaux (salle et étage des meules, par l'échelle). Chambres : un seul étage ouvert (quatre chambres, coin de Mathurin, dortoir, réserve à linge), par l'escalier. Personne n'y travaille ni n'y dort : aucun emploi du temps ne le prévoit. | Recommandation (Claude, 16 novembre 2026) : question posée à Damien dans la PR |
+
 ## 7 quinquies. L'âme du jeu (Retenu)
 
 Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session principale. Elle précise le sujet 13 « L'âme du jeu » de la [feuille de route](FEUILLE_DE_ROUTE.md).

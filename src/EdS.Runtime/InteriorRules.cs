@@ -43,6 +43,12 @@ namespace EdS.Runtime
 
         /// <summary>Sous-lot V2.14 : pétrin de bois (« petrin… »), la pâte qui lève dedans.</summary>
         Kneader = 17,
+
+        /// <summary>
+        /// Lot C (décisions de Damien du 16 novembre 2026) : objet de métier (soufflet, enclume, établi, bac, râtelier, charrette, foin,
+        /// échelle, sacs, pupitre, meules, bureau, chaise, ballot) : son modèle du lot C, sinon un simple bloc de bois ; rien d'autre posé.
+        /// </summary>
+        Fixture = 18,
     }
 
     /// <summary>
@@ -253,6 +259,12 @@ namespace EdS.Runtime
             ("coffre", InteriorFurniture.Chest), ("etagere", InteriorFurniture.Shelf), ("caisse", InteriorFurniture.Crates),
             ("armoire", InteriorFurniture.Cabinet), ("rouet", InteriorFurniture.SpinningWheel), ("statue", InteriorFurniture.Statue),
             ("four", InteriorFurniture.Oven), ("petrin", InteriorFurniture.Kneader),   // sous-lot V2.14 : la boulangerie
+            ("rayonnage", InteriorFurniture.Shelf),   // lot C : intérieurs de métier (16 novembre 2026)
+            ("soufflet", InteriorFurniture.Fixture), ("enclume", InteriorFurniture.Fixture), ("etabli", InteriorFurniture.Fixture),
+            ("bac", InteriorFurniture.Fixture), ("ratelier", InteriorFurniture.Fixture), ("charrette", InteriorFurniture.Fixture),
+            ("foin", InteriorFurniture.Fixture), ("echelle", InteriorFurniture.Fixture), ("sacs", InteriorFurniture.Fixture),
+            ("pupitre", InteriorFurniture.Fixture), ("meule", InteriorFurniture.Fixture), ("bureau", InteriorFurniture.Fixture),
+            ("chaise", InteriorFurniture.Fixture), ("ballot", InteriorFurniture.Fixture),
         };
 
         /// <summary>Meuble que représente l'obstacle <paramref name="id"/> d'un intérieur (début de son identifiant), ou <see cref="InteriorFurniture.None"/>.</summary>

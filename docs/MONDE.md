@@ -229,6 +229,26 @@ Dans une pièce, ni oiseaux ni rivière, le vent du dehors à peine ; la carte e
 
 Limites : une pièce n'a qu'un niveau (l'escalier de l'auberge est un décor) ; les portes ne se ferment pas à clé ; seuls les PNJ de l'histoire d'une pièce parlent (les clients de l'auberge restent du décor). Passer une porte ouvre une nouvelle session, donc agit comme une halte (PV pleins, niveau et équipement appliqués) sans être près d'un point sûr : question posée à Damien. Ressortir reconstruit tout le décor des Vallons (un à-coup possible sur le téléphone).
 
+### Intérieurs de métier (lot C, décisions du 16 novembre 2026)
+
+Décisions de Damien du 16 novembre 2026, vers 21 h 40 ([CADRAGE.md](CADRAGE.md#7-undecies-lot-c--intérieurs-de-métier-et-forge-de-maëlle-retenu)) : huit pièces de plus, meublées avec les modèles Tripo du lot C (codes de l'atelier entre parenthèses). Les fiches de ChatGPT des intérieurs ne sont pas dans l'atelier : les mesures viennent du tableau du lot C et des modèles exportés.
+
+| Zone | Lieu (pièce) | Porte | Meubles |
+|---|---|---|---|
+| `zone.forge` | Forge couverte de Maëlle (`forge_couverte`, 9 × 7 m) | `porte_forge`, façade nord de `maison3` (maison de Maëlle) | foyer avec hotte, soufflet, enclume sur billot, établi, bac de trempe, râtelier de pinces (F0) |
+| `zone.grange` | Grange (12 × 8 m) | `porte_grange` | charrette agricole, tas de foin, râtelier agricole, coffre à outils, échelle rangée (G0) |
+| `zone.moulin` | Moulin, salle (`salle_du_moulin`, 6 × 6 m) | `porte_moulin_interieur`, façade ouest ; porte `etage` | rouet et lanterne, bac à farine, sacs de grain, échelle de meunier, pupitre de pesée (O0) |
+| `zone.moulin_meules` | Étage des meules (6 × 6 m) | par l'échelle du moulin | meules avec archure et trémie, sacs en attente, caisse à grain, trappe de l'échelle (O1) |
+| `zone.tour` | Tour de guet, salle de garde (6 × 6 m) | `porte_tour`, façade est | couchettes superposées, table du registre, râtelier d'armes, coffre des gardes, lanterne suspendue (T0) |
+| `zone.chaumiere` | Maison paysanne (7 × 6 m) | `porte_chaumiere`, façade est de `maison9` (Achille, champs du sud) | lit paysan, cheminée, table, coffre, étagère, échelle du grenier, caisses basses, ballot de linge (V0, V1) |
+| `zone.auberge_cuisine` | Cuisine de l'auberge (6 × 5 m) | porte `cuisine` de l'auberge, derrière le comptoir | foyer, table et étagère de la cuisine (A0-11 à 13), un tonneau |
+| `zone.auberge_chambres` | Chambres de l'auberge (14 × 10 m, un étage ouvert) | porte `chambres` de l'auberge, au pied de l'escalier | quatre chambres (lits et coffres, A1), coin de Mathurin (lit, coffre, bureau, chaise), dortoir de quatre lits, échelle des combles (A2), réserve à linge (rayonnage, coffre à draps, étagère, caisses, A3) |
+
+- **Objets de métier** : un obstacle dont l'identifiant commence par `soufflet`, `enclume`, `etabli`, `bac`, `ratelier`, `charrette`, `foin`, `echelle`, `sacs`, `pupitre`, `meule`, `bureau`, `chaise` ou `ballot` est un objet de métier (`InteriorFurniture.Fixture`) : son modèle du lot C, sinon un bloc de bois ; `rayonnage` est une étagère.
+- **Emprises** : chaque meuble a son modèle, posé une fois dans son emprise presque à sa taille (échelle de 0,9 à 1,15, `LotCModelsTests`) ; chaque porte est à plus de 55 cm des meubles et toutes les portes d'une pièce sont reliées à son point sûr par des passages d'au moins 1 m (`InterieursTests.Interieurs_praticables`).
+- **PNJ** : personne n'y travaille ni n'y dort, aucun emploi du temps ne le prévoyant (Maëlle à sa forge en plein air, Odile devant le moulin, Achille aux champs, Mathurin au comptoir).
+- **Forge de Maëlle en plein air** : toutes les pièces de forge du lot C autour d'elle (`LotCModels.ForgeYard`, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)), sans collision, hors du chemin qui la longe au nord, à 60 cm au moins de Maëlle et de son apprentie, avec un passage de 1,2 m du sud jusqu'à Maëlle.
+
 ## Monnaie, marchands et voyage rapide (sous-lot V1.1)
 
 Premier sous-lot du lot « Vallons solo finis » ([PLAN_VALLONS_SOLO.md](PLAN_VALLONS_SOLO.md#v11--monnaie-marchands-voyage-rapide-m)). Valeurs **provisoires**.

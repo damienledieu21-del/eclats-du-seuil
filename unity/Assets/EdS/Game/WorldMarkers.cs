@@ -619,6 +619,36 @@ namespace EdS.Game
         }
 
         /// <summary>
+        /// Décision de Damien du 16 novembre 2026 : les autres pièces de forge du lot C (soufflet, bac de trempe, tas de charbon, meule,
+        /// râtelier d'armes, présentoir de fers, établi) autour de la forge en plein air, à leurs places de <see cref="LotCModels.ForgeYard"/>
+        /// (testées : hors des passages, loin de Maëlle et de son apprentie), et les outils côte à côte sur l'établi. Sans modèle, rien.
+        /// </summary>
+        private static void ForgeYard(Transform holder, string id)
+        {
+            Vector3 center = holder.position;
+            GameObject bench = null;
+            foreach (LotCYardPiece piece in LotCModels.ForgeYard)
+            {
+                string code = LotCModels.ForVillage(piece.Key, id);
+                if (code == null) continue;
+                Vector3 at = StyleWorld.OnGround(new Vector3(center.x + (float)piece.Dx, 0f, center.z + (float)piece.Dz));
+                GameObject placed = LotCLook.Place(holder, code, id + "/" + piece.Key, at, (float)piece.Yaw);
+                if (piece.Key == "forge/etabli") bench = placed;
+            }
+            if (bench == null || !StyleLook.VisibleBounds(bench, out Bounds top)) return;
+            // Les outils en rang sur le plateau, le long de son grand côté, chacun tourné en travers.
+            IReadOnlyList<string> tools = LotCModels.ForgeToolCodes;
+            bool alongX = top.size.x >= top.size.z;
+            float length = (alongX ? top.size.x : top.size.z) * 0.8f;
+            for (int i = 0; i < tools.Count; i++)
+            {
+                float t = -length / 2f + length * (i + 0.5f) / tools.Count;
+                Vector3 at = new Vector3(top.center.x + (alongX ? t : 0f), top.max.y, top.center.z + (alongX ? 0f : t));
+                LotCLook.Place(holder, tools[i], id + "/outil" + i, at, alongX ? 90f : 0f);
+            }
+        }
+
+        /// <summary>
         /// Forge de Maëlle : une enclume (faite par le code, fer sombre) avec le marteau posé dessus, le foyer de pierre à côté avec ses
         /// braises et une lueur qui vacille, un tonneau et une caisse derrière. Sans le foyer dans le catalogue, l'enclume simple reste.
         /// </summary>
@@ -660,6 +690,7 @@ namespace EdS.Game
                 BarrelLook.Make(holder, m.Data.Id + "/tonneau", barrelAt, 35f);
             }
             StyleLook.Prop(holder, StyleProp.Crate, m.Data.Id + "/caisse", c + new Vector3(-1.7f, 0f, -1.6f), 75f);
+            ForgeYard(holder, m.Data.Id);
             // Braises au fond du foyer et lueur orange (une seule lumière par forge).
             StyleLook.VisibleBounds(pit, out Bounds b);
             GameObject embers = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
