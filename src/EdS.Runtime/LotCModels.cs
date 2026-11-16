@@ -137,12 +137,17 @@ namespace EdS.Runtime
         /// Modèle d'un décor du village posé par le jeu (<paramref name="key"/> : « wave5/FlourSack », « prop/FirePit », « forge/enclume »),
         /// ou null. Plusieurs modèles pour un même décor (les trois sacs de farine) : celui tiré de <paramref name="id"/>.
         /// </summary>
-        public static string? ForVillage(string? key, string? id)
+        public static string? ForVillage(string? key, string? id) => ForVillage(key, id, null);
+
+        /// <summary>
+        /// Comme <see cref="ForVillage(string?, string?)"/>, mais <paramref name="rank"/>, s'il est donné, choisit parmi plusieurs modèles
+        /// (rang demandé par l'appelant, modulo leur nombre) au lieu de le tirer de <paramref name="id"/>. Index construit une fois.
+        /// </summary>
+        public static string? ForVillage(string? key, string? id, int? rank)
         {
-            if (key == null) return null;
-            string target = "village:" + key;
-            List<LotCModel> list = All.Where(m => m.Targets.Contains(target)).ToList();
-            return list.Count == 0 ? null : list[StyleRules.Variant(id ?? string.Empty, list.Count)].Code;
+            if (key == null || !Index.ByTarget.TryGetValue("village:" + key, out List<string>? list)) return null;
+            int n = list.Count;
+            return list[rank.HasValue ? ((rank.Value % n) + n) % n : StyleRules.Variant(id ?? string.Empty, n)];
         }
 
         /// <summary>

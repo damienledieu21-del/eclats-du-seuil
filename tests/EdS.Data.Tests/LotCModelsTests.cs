@@ -135,6 +135,11 @@ public class LotCModelsTests
         var flour = new[] { "farine 1", "farine 2", "farine 3", "farine 4", "farine 5" }.Select(i => LotCModels.ForVillage("wave5/FlourSack", i)).ToList();
         Assert.All(flour, c => Assert.StartsWith("C_OV_D02_0", c));
         Assert.Equal(flour[0], LotCModels.ForVillage("wave5/FlourSack", "farine 1"));
+        // Relecture de la PR #197 : le rang demandé (variant de Wave5View.Place) choisit parmi les trois, modulo, même négatif.
+        Assert.Equal("C_OV_D02_01", LotCModels.ForVillage("wave5/FlourSack", "x", 0));
+        Assert.Equal("C_OV_D02_02", LotCModels.ForVillage("wave5/FlourSack", "x", 4));
+        Assert.Equal("C_OV_D02_03", LotCModels.ForVillage("wave5/FlourSack", "x", -1));
+        Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "x", 7));
     }
 
     [Fact]
