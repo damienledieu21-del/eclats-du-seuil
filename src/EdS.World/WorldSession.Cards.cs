@@ -50,6 +50,12 @@ namespace EdS.World
 
         /// <summary>Compteur d'assises au plafond technique (<see cref="SavedCards.MaxSeats"/>).</summary>
         SeatsExhausted = 14,
+
+        /// <summary>
+        /// Sous-lot V2.32 : le PNJ ne joue qu'à la taverne (<see cref="CardMatch.Tavern"/>) le soir (<see cref="DayPhase.Dusk"/>, de 19 h à
+        /// 22 h) ; ailleurs ou à une autre heure, il ne s'assoit pas.
+        /// </summary>
+        NotAtTavern = 15,
     }
 
     /// <summary>Fin d'une partie des Trois Feux : issue (+1 gagnée, 0 nulle, −1 perdue), cuivre rendu, et récompense rare.</summary>
@@ -66,8 +72,12 @@ namespace EdS.World
         /// <summary>Le jeu de cartes rare vient d'entrer dans le sac (faux si le sac était plein : il reste dû, <see cref="WorldSession.ClaimRareDeck"/>).</summary>
         public bool DeckGiven { get; }
 
-        internal CardGameEnd(int outcome, int payout, bool becameAce, bool deckGiven)
+        /// <summary>Sous-lot V2.32 : la partie finie, ses cinq manches (pour l'écran de l'issue ; elle n'est plus dans la sauvegarde).</summary>
+        public CardMatch Match { get; }
+
+        internal CardGameEnd(int outcome, int payout, bool becameAce, bool deckGiven, CardMatch match)
         {
+            Match = match;
             Outcome = outcome;
             Payout = payout;
             BecameAce = becameAce;
@@ -92,6 +102,18 @@ namespace EdS.World
         /// <summary>Parties encore possibles contre <paramref name="npc"/> aujourd'hui.</summary>
         public int CardGamesLeft(string npc) => CardMatch.MaxGamesPerDay - (_character.Cards?.PlayedOn(Day, npc) ?? 0);
 
+        /// <summary>
+        /// Sous-lot V2.32 (« le PNJ joue seulement à la taverne le soir ») : <paramref name="npc"/>, PNJ de l'histoire, est là, dans la
+        /// taverne (<see cref="CardMatch.Tavern"/>, d'après son emploi du temps), et c'est le soir (<see cref="DayPhase.Dusk"/>, de 19 h à
+        /// 22 h). Ne dit rien de la portée de parole ni des mises. Ne lève pas.
+        /// </summary>
+        public bool PlaysCardsNow(string? npc)
+        {
+            if (npc is null || !SavedCards.IsNpc(npc) || !(Narrative is Narrative story) || !story.Book.HasNpc(npc)) return false;
+            EdS.Data.Story.Npc n = story.Book.Npc(npc);
+            return Zone.Time.Phase == DayPhase.Dusk && !NpcAway(n) && (NpcZone(n) ?? _storyZone) == CardMatch.Tavern;
+        }
+
         /// <summary>Cuivre que la taverne peut encore faire gagner aujourd'hui (plafond de 150 cuivre par jour).</summary>
         public int CardGainsLeft => CardMatch.DailyCap - (_character.Cards?.GainedOn(Day) ?? 0);
 
@@ -107,7 +129,7 @@ namespace EdS.World
         /// S'asseoir contre <paramref name="npc"/> pour une mise de <paramref name="stake"/> cuivre (5, 10 ou 25), prise dès maintenant. La
         /// première fois, <paramref name="entropy"/> (fourni par l'hôte, jamais montré) devient la graine secrète des donnes du personnage ;
         /// ensuite, il est ignoré. Refusé sans rien changer : partie déjà en cours, en combat, mise inconnue, bourse trop légère,
-        /// trois parties déjà jouées contre ce PNJ aujourd'hui, ou gains du jour qui passeraient le plafond si l'on gagnait.
+        /// trois parties déjà jouées contre ce PNJ aujourd'hui, PNJ hors de la taverne ou hors du soir (V2.32), ou gains du jour qui passeraient le plafond si l'on gagnait.
         /// </summary>
         public CardTableRefusal SitDownAtCards(string npc, int stake, ulong entropy)
         {
@@ -117,6 +139,7 @@ namespace EdS.World
             if (cards.Game != null) return CardTableRefusal.GameInProgress;
             if (InCombat) return CardTableRefusal.InCombat;
             if (!story.CanReach(npc)) return CardTableRefusal.TooFar;   // relecture indépendante de la PR #189 : la portée d'un dialogue
+            if (!PlaysCardsNow(npc)) return CardTableRefusal.NotAtTavern;   // sous-lot V2.32 : à la taverne, le soir
             long day = Day;
             if (day < 0 || day > SavedEvent.MaxDay) return CardTableRefusal.NoMoreGamesToday;
             int played = cards.PlayedOn(day, npc);
@@ -159,7 +182,7 @@ namespace EdS.World
             _character = _character.WithMoney(purse).WithCards(after);
             round = played;
             bool deck = after.IsAce && !after.DeckGiven && GiveRareDeck();
-            end = new CardGameEnd(outcome, payout, becameAce, deck);
+            end = new CardGameEnd(outcome, payout, becameAce, deck, match);
             return CardTableRefusal.None;
         }
 

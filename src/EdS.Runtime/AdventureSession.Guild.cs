@@ -16,11 +16,15 @@ namespace EdS.Runtime
         public string Name { get; }
         public bool Shown { get; }
 
-        internal TitleEntry(string id, string name, bool shown)
+        /// <summary>Sous-lot V2.32 : le titre peut s'afficher sous le nom (faux pour « As des Trois Feux », qui n'est pas un titre de la guilde).</summary>
+        public bool Showable { get; }
+
+        internal TitleEntry(string id, string name, bool shown, bool showable = true)
         {
             Id = id;
             Name = name;
             Shown = shown;
+            Showable = showable;
         }
     }
 
@@ -177,8 +181,10 @@ namespace EdS.Runtime
         public GuildCardView GuildCard()
         {
             Narrative? n = World.Narrative;
+            // Sous-lot V2.32 : « As des Trois Feux » parmi les titres, membre de la guilde ou non (gagné à la taverne, pas à la guilde).
+            IReadOnlyList<TitleEntry> ace = CardAceEntry is TitleEntry a ? new[] { a } : Array.Empty<TitleEntry>();
             if (n is null || !n.IsMember)
-                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", null, Array.Empty<TitleEntry>(), Text("text.ui.guild.not_member"), false);
+                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", null, ace, Text("text.ui.guild.not_member"), false);
             GuildRank rank = _guild.Ranks[n.GuildRankIndex];
             GuildRank? next = n.NextRank;
             bool openNext = next != null && next.Open;
@@ -194,7 +200,7 @@ namespace EdS.Runtime
                 GuildRefusal.Locked => Format("text.ui.guild.trial_locked", Text(next!.Name)),   // relecture de la PR #79 : conditions de la quête
                 _ => Text("text.ui.guild.trial_top"),
             };
-            var titles = n.Titles.Select(id => new TitleEntry(id, _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id, n.ShownTitle == id)).ToList();
+            var titles = n.Titles.Select(id => new TitleEntry(id, _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id, n.ShownTitle == id)).Concat(ace).ToList();
             return new GuildCardView(true, rank.Id, Text(rank.Name), points, progress, Format("text.ui.guild.contracts_done", n.ContractsDone), ShownTitle, titles,
                 trialText, trial == GuildRefusal.None);
         }

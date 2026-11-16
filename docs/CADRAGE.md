@@ -352,6 +352,7 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la sessi
 | Mises, confirmées | Mises de **5, 10 ou 25 cuivre** ; **3 parties par PNJ et par jour** ; jeu de cartes rare et titre **« As des Trois Feux »** après **10 victoires** ; la **partie en cours est enregistrée dans la sauvegarde** (v25). | Retenu (Damien, 16 novembre 2026) ; fait (branche `v2-31-mises-cartes`) |
 | Partie nulle, plafond de gains | Partie nulle : **chacun récupère sa mise**. **Plafond de gains à la taverne : 150 cuivre par jour**, compté sur les **gains seulement** (les pertes ne redonnent pas de marge). | Retenu (Damien, 16 novembre 2026 ; gains seulement : vers 2 h 20) ; fait (branche `v2-31-mises-cartes`) |
 | Donne à chaque assise | Un **compteur d'assises persistant** dans la sauvegarde (v25) : la donne change à chaque fois qu'on s'assoit. | Retenu (Damien, 16 novembre 2026, vers 2 h 20) ; fait |
+| Où et quand on joue | Le PNJ joue **seulement à la taverne (`zone.auberge`) le soir**, pris comme la tranche du soir de l'horloge (**19 h à 22 h**), d'après son emploi du temps ; mises proposées dans son dialogue, écran de partie Unity, titre « As des Trois Feux » parmi les titres de la carte d'aventurier (pas sous le nom). | Recommandation (Claude, V2.32, option la plus prudente) ; fait (branche `v2-32-cartes-cote-jeu`) ; **question à Damien** : élargir le soir (18 h à minuit) ? |
 
 ## 8. Points ouverts
 

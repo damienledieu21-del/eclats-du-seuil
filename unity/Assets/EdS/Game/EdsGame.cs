@@ -429,7 +429,8 @@ namespace EdS.Game
         private const float FadeSeconds = 0.7f;
 
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
-        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null || TalentsOpen);
+        private bool AdventureCovered => _adventure != null && (_screens.Open != AdventureScreens.Panel.None || _adventure.Dialogue != null || TalentsOpen
+            || _adventure.CardTable != null);   // sous-lot V2.32 : la table des Trois Feux
 
         /// <summary>Essai réaliste 6, étape 2 : l'arbre des Éclats est ouvert.</summary>
         private bool TalentsOpen => _talentView != null && _talentView.IsOpen;
@@ -541,7 +542,13 @@ namespace EdS.Game
             // Revue Codex de la PR #49 : une image où un dialogue était ouvert ne lit pas les commandes de combat, même si la réponse choisie
             // l'a fermé (la touche 1 à 4 de la réponse ne lance pas aussi une compétence).
             bool talking = a.Dialogue != null;
-            if (talking)
+            bool atCards = a.CardTable != null;   // sous-lot V2.32 : à la table des Trois Feux, 1 à 5 posent une carte
+            if (atCards)
+            {
+                if (DigitPressed() is int card && card >= 0) a.PlayCardAt(card);
+                talking = true;
+            }
+            else if (talking)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) a.CloseDialogue();
                 else if (DigitPressed() is int answer && answer >= 0) a.Choose(answer);

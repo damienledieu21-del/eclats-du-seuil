@@ -33,10 +33,23 @@ public class CartesMisesTests
         return r.Story!;
     });
 
+    /// <summary>Premier tick du jour 0 à 19 h 30 (le soir, <see cref="DayPhase.Dusk"/>).</summary>
+    internal static long TickAt(long day, int minute)
+    {
+        var clock = new WorldClock(50);
+        long tick = (day * WorldClock.MinutesPerDay + minute - WorldClock.DefaultStartMinute) * clock.TicksPerDay / WorldClock.MinutesPerDay;
+        while (tick > 0 && clock.At(tick - 1).Equals(new WorldTime(day, minute))) tick--;
+        while (!clock.At(tick).Equals(new WorldTime(day, minute))) tick++;
+        return tick;
+    }
+
+    private static readonly long Evening = TickAt(0, 19 * 60 + 30);
+
     /// <summary>À l'Auberge de l'Aube, à portée de Mathurin (relecture indépendante de la PR #189 : il faut être à portée de parole).</summary>
     private static WorldSession AtInn(SavedCharacter hero)
     {
-        var session = new WorldSession(new WorldSave("zone.auberge", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero),
+        // Sous-lot V2.32 : on ne joue qu'à la taverne le soir : le jour 0, à 19 h 30.
+        var session = new WorldSession(new WorldSave("zone.auberge", Evening, 0, new[] { PlayerCharacters.PlacesKey }, hero),
             V16TestData.Interiors.Single(z => z.Id == "zone.auberge"), ShippedData, Progression, ItemsCatalog, Shipped.Value, door: "sortie", storyZone: "zone.vallons");
         session.Step();
         return session;

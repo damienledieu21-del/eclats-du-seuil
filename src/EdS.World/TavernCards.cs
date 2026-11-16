@@ -109,6 +109,9 @@ namespace EdS.World
         /// <summary>Décision de Damien du 16 novembre 2026 : gains de la taverne au plus par jour du monde, en cuivre.</summary>
         public const int DailyCap = EdS.Data.Saves.SavedCards.DailyCap;
 
+        /// <summary>Sous-lot V2.32 : la taverne où l'on joue (l'Auberge de l'Aube) ; un PNJ n'y joue que le soir.</summary>
+        public const string Tavern = "zone.auberge";
+
         /// <summary>Le jeu de cartes rare donné à la dixième victoire (objet décoratif, catalogue 0.21.0).</summary>
         public const string RareDeck = "item.jeu_des_trois_feux";
 

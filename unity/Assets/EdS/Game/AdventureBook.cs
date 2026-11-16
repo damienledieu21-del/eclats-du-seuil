@@ -195,6 +195,7 @@ namespace EdS.Game
             _speech.Wrap();
             _leave = UiKit.Button(_dialogue, "Fermer", "bouton_sobre", "", UiFace.Bold, 15f, UiKit.Muted, () => _session?.CloseDialogue());
             UiKit.Place(_leave.Rect, new Vector2(1260f, 24f), new Vector2(220f, 40f), new Vector2(1f, 0f));
+            BuildCards(root);   // sous-lot V2.32 : la table des Trois Feux (AdventureBook.Cards.cs)
             UiKit.Show(_canvas, false);
         }
 
@@ -953,8 +954,9 @@ namespace EdS.Game
             _session = a;
             _time += deltaTime;
             bool book = a != null && screens.Open != AdventureScreens.Panel.None;
-            bool talk = a != null && a.Dialogue != null;
-            UiKit.Show(_canvas, book || talk);
+            bool cards = RefreshCards(a);   // sous-lot V2.32 : la table des Trois Feux, par-dessus le reste
+            bool talk = a != null && a.Dialogue != null && !cards;
+            UiKit.Show(_canvas, book || talk || cards);
             UiKit.Show(_book, book);
             // Étape 3 : le panneau apparaît en fondu, légèrement grossi. Essai réaliste 7 : il s'ouvre et se ferme en sonnant, et un
             // changement d'onglet aussi.
