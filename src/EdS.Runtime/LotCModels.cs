@@ -101,8 +101,37 @@ namespace EdS.Runtime
         private static LotCModel Waiting(string code, string category, string name, string why) =>
             new LotCModel(code, category, name, Array.Empty<string>(), why);
 
-        /// <summary>Le modèle de ce code, ou null.</summary>
-        public static LotCModel? Find(string? code) => code == null ? null : All.FirstOrDefault(m => m.Code == code);
+        /// <summary>Le modèle de ce code, ou null (index construit une fois).</summary>
+        public static LotCModel? Find(string? code) => code != null && Index.ByCode.TryGetValue(code, out LotCModel? m) ? m : null;
+
+        /// <summary>
+        /// Index construits une seule fois, au premier usage (classe imbriquée : après <see cref="All"/>) : modèle par code, et code du
+        /// modèles (dans l'ordre de <see cref="All"/>) qui portent chaque cible.
+        /// </summary>
+        private static class Index
+        {
+            public static readonly Dictionary<string, LotCModel> ByCode = BuildByCode();
+            public static readonly Dictionary<string, List<string>> ByTarget = BuildByTarget();
+
+            private static Dictionary<string, LotCModel> BuildByCode()
+            {
+                var d = new Dictionary<string, LotCModel>(StringComparer.Ordinal);
+                foreach (LotCModel m in All) d[m.Code] = m;
+                return d;
+            }
+
+            private static Dictionary<string, List<string>> BuildByTarget()
+            {
+                var d = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                foreach (LotCModel m in All)
+                    foreach (string t in m.Targets)
+                    {
+                        if (!d.TryGetValue(t, out List<string>? codes)) d.Add(t, codes = new List<string>());
+                        if (!codes.Contains(m.Code)) codes.Add(m.Code);
+                    }
+                return d;
+            }
+        }
 
         /// <summary>Objet porté en main : arbalètes (« C_EQ… ») et armes des butins (épieux, couteaux, lances, dagues : « C_BU_Lnn_01/02 »).</summary>
         public static bool IsHandHeld(string code) =>
@@ -126,7 +155,7 @@ namespace EdS.Runtime
             return model != null && parts[n - 2] == code && parts[n - 3] == model.Category ? code : null;
         }
 
-        private static string? Target(string target) => All.FirstOrDefault(m => m.Targets.Contains(target))?.Code;
+        private static string? Target(string target) => Index.ByTarget.TryGetValue(target, out List<string>? codes) ? codes[0] : null;
 
         /// <summary>Modèle du nœud de récolte <paramref name="nodeId"/> (« filon_ouest »), ou null.</summary>
         public static string? ForNode(string? nodeId) => nodeId == null ? null : Target("node:" + nodeId);
@@ -138,12 +167,17 @@ namespace EdS.Runtime
         /// Modèle d'un décor du village posé par le jeu (<paramref name="key"/> : « wave5/FlourSack », « prop/FirePit », « forge/enclume »),
         /// ou null. Plusieurs modèles pour un même décor (les trois sacs de farine) : celui tiré de <paramref name="id"/>.
         /// </summary>
-        public static string? ForVillage(string? key, string? id)
+        public static string? ForVillage(string? key, string? id) => ForVillage(key, id, null);
+
+        /// <summary>
+        /// Comme <see cref="ForVillage(string?, string?)"/>, mais <paramref name="rank"/>, s'il est donné, choisit parmi plusieurs modèles
+        /// (rang demandé par l'appelant, modulo leur nombre) au lieu de le tirer de <paramref name="id"/>. Index construit une fois.
+        /// </summary>
+        public static string? ForVillage(string? key, string? id, int? rank)
         {
-            if (key == null) return null;
-            string target = "village:" + key;
-            List<LotCModel> list = All.Where(m => m.Targets.Contains(target)).ToList();
-            return list.Count == 0 ? null : list[StyleRules.Variant(id ?? string.Empty, list.Count)].Code;
+            if (key == null || !Index.ByTarget.TryGetValue("village:" + key, out List<string>? list)) return null;
+            int n = list.Count;
+            return list[rank.HasValue ? ((rank.Value % n) + n) % n : StyleRules.Variant(id ?? string.Empty, n)];
         }
 
         /// <summary>
@@ -224,8 +258,10 @@ namespace EdS.Runtime
             int count = Math.Max(1, (int)Math.Floor((boxLong + 0.05) / (modelLong * scale)));
             if (count * modelLong * scale > boxLong) scale = boxLong / (count * modelLong);
             double thin = modelShort * scale > boxShort ? boxShort / (modelShort * scale) : 1;
-            // Le grand côté du modèle suit celui de l'emprise : l'amincissement porte sur son petit côté (x ou z du modèle).
-            double thinX = modelW < modelD ? thin : 1, thinZ = modelW < modelD ? 1 : thin;
+            // L'amincissement porte sur l'axe du modèle posé le long du petit côté de l'emprise (relecture de la PR #200 : même pour un
+            // modèle presque carré, resté sans quart de tour) : tourné d'un quart, son x va selon z du monde.
+            bool thinOnX = boxAlongX == turned;
+            double thinX = thinOnX ? thin : 1, thinZ = thinOnX ? 1 : thin;
             var copies = new List<LotCCopy>();
             double step = boxLong / count;
             for (int i = 0; i < count; i++)

@@ -114,6 +114,11 @@ public class LotCModelsTests
         Assert.True(LotCModels.Find("C_EQ051")!.HandHeld);
         Assert.True(LotCModels.Find("C_BU_L03_02")!.HandHeld);
         Assert.False(LotCModels.Find("C_BU_L03_03")!.HandHeld);
+        // Relecture de la PR #196 : index construit une fois, mêmes réponses que la table.
+        foreach (LotCModel m in LotCModels.All) Assert.Same(m, LotCModels.Find(m.Code));
+        Assert.Null(LotCModels.Find(null));
+        Assert.Null(LotCModels.Find("C_INCONNU"));
+        Assert.False(LotCModels.Find("C_EQ051")!.Linked);   // en attente : pas chargé au catalogue (EdsStyle.LotCPieces)
     }
 
     private static string Game => Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game");
@@ -163,7 +168,7 @@ public class LotCModelsTests
     public void Meubles_poses_dans_leur_emprise_sans_deborder()
     {
         // Empreintes types des meubles du lot C (table, comptoir, tonneaux, rayonnage, âtre, coffre, caisses).
-        (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3) };
+        (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3), (1.0, 1.02), (1.02, 1.0) };
         int rooms = 0;
         foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives", "chapelle", "epicerie", "herboristerie", "mercerie", "maison" })
         {
@@ -200,6 +205,24 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Modele_presque_carre_aminci_sur_le_petit_cote_de_l_emprise()
+    {
+        // Relecture de la PR #200 : un modèle presque carré (1,00 × 1,02 m) reste sans quart de tour ; l'amincissement doit porter sur l'axe
+        // du modèle posé le long du petit côté de l'emprise, pas sur son propre petit côté.
+        // Emprise longue en x contre le mur sud (pas tournée) : petit côté selon z du monde, donc z du modèle.
+        LotCCopy a = LotCModels.Fit(4, 0, 6, 0.5, 0, 0, 10, 10, 1.0, 1.02)[0];
+        Assert.Equal(0, a.Yaw);
+        Assert.Equal(1.0, a.ThinX);
+        Assert.True(a.ThinZ < 1);
+        Assert.True(1.02 * a.Scale * a.ThinZ <= 0.5 + 1e-9);
+        // Emprise longue en z contre le mur ouest (tournée d'un quart) : petit côté selon x du monde, donc z du modèle.
+        LotCCopy b = LotCModels.Fit(0, 4, 0.5, 6, 0, 0, 10, 10, 1.02, 1.0)[0];
+        Assert.Equal(90, b.Yaw);
+        Assert.Equal(1.0, b.ThinX);
+        Assert.True(1.0 * b.Scale * b.ThinZ <= 0.5 + 1e-9);
+    }
+
+    [Fact]
     public void Le_modele_remplace_le_corps_du_meuble_et_garde_sieges_et_vaisselle()
     {
         InteriorLayout layout = Layout("auberge");
@@ -227,6 +250,11 @@ public class LotCModelsTests
         var flour = new[] { "farine 1", "farine 2", "farine 3", "farine 4", "farine 5" }.Select(i => LotCModels.ForVillage("wave5/FlourSack", i)).ToList();
         Assert.All(flour, c => Assert.StartsWith("C_OV_D02_0", c));
         Assert.Equal(flour[0], LotCModels.ForVillage("wave5/FlourSack", "farine 1"));
+        // Relecture de la PR #197 : le rang demandé (variant de Wave5View.Place) choisit parmi les trois, modulo, même négatif.
+        Assert.Equal("C_OV_D02_01", LotCModels.ForVillage("wave5/FlourSack", "x", 0));
+        Assert.Equal("C_OV_D02_02", LotCModels.ForVillage("wave5/FlourSack", "x", 4));
+        Assert.Equal("C_OV_D02_03", LotCModels.ForVillage("wave5/FlourSack", "x", -1));
+        Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "x", 7));
     }
 
     [Fact]
