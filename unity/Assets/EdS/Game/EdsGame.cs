@@ -672,7 +672,7 @@ namespace EdS.Game
             if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
-            _markers.Walk(a, GameDelta, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
+            _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
             // Sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices ; décision de Damien du 7 novembre 2026 : ce qui sort du Seuil
