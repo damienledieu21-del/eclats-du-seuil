@@ -45,6 +45,17 @@ namespace EdS.Runtime
         /// <summary>Obstacle habillé → pièces qu'il lui faut (toutes présentes : la forme faite par le code n'est pas posée).</summary>
         public IReadOnlyDictionary<string, IReadOnlyList<string>> Needs { get; }
 
+        /// <summary>
+        /// Pièces dont le pied touche le rectangle (<paramref name="minX"/>, <paramref name="minZ"/>) – (<paramref name="maxX"/>,
+        /// <paramref name="maxZ"/>) agrandi de <paramref name="margin"/> m, dans leur ordre : celles qu'une fenêtre pose.
+        /// </summary>
+        public IEnumerable<BourgPiece> Near(double minX, double minZ, double maxX, double maxZ, double margin) =>
+            Pieces.Where(p =>
+            {
+                var f = BourgModels.Box(p.Piece) != null ? BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw) : (p.X, p.X, p.Z, p.Z);
+                return f.Item2 >= minX - margin && f.Item1 <= maxX + margin && f.Item4 >= minZ - margin && f.Item3 <= maxZ + margin;
+            });
+
         public static readonly BourgDress Empty = new BourgDress(Array.Empty<BourgPiece>(), new Dictionary<string, IReadOnlyList<string>>());
     }
 
@@ -170,6 +181,16 @@ namespace EdS.Runtime
         /// <summary>Recul (m, vers l'intérieur) du centre d'une tour de guet F06 par rapport à la ligne de la ronde (accroche A_ronde Y −1,50).</summary>
         public const double WatchTowerInset = 1.5;
 
+        /// <summary>
+        /// Pièce assez haute pour cacher le joueur (tours, portes, bâtiments, au moins 6 m) : la vue ne fait d'occulteurs que pour elles
+        /// (relecture indépendante : les centaines de modules de palissade et de petits décors n'en ont pas, pour le téléphone).
+        /// </summary>
+        public static bool Occludes(string piece)
+        {
+            var b = Box(piece);
+            return b != null && b.Value.Top >= 6.0;
+        }
+
         /// <summary>Rayon (m) du pied d'une pièce : la vue la pose au plus bas du sol affiché sous ce pied (V2.24).</summary>
         public static double Foot(string piece)
         {
@@ -261,8 +282,8 @@ namespace EdS.Runtime
         public static bool IsTower(string? id) => id != null && id.StartsWith("tour_ville_", StringComparison.Ordinal) && id != "tour_ville_clocher";
 
         /// <summary>
-        /// Habillage du Bourg pour les obstacles donnés (ceux d'une fenêtre ou de toute l'aire) et les routes de la carte (façades des
-        /// étals et des maisons) ; vide hors du Bourg.
+        /// Habillage du Bourg pour les obstacles de l'aire entière (<see cref="AdventureMap.Bourg"/> ; sur une fenêtre, le centre et les portes
+        /// de l'enceinte seraient faux) et les routes de la carte ; vide sans palissade du Bourg.
         /// </summary>
         public static BourgDress Dress(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad>? roads = null)
         {
@@ -480,13 +501,15 @@ namespace EdS.Runtime
                 // Grenier au fond, à l'ouest, face à la cour (au sud) : sa façade (Y −7) à 16 m du bord sud.
                 Put(At(Granary, b, (0, -1), -18, front - 16 - 7, great.Id));
             }
-            var stalls = obstacles.Where(o => o.Id.StartsWith("etal_ville_", StringComparison.Ordinal)).OrderBy(o => o.Id, StringComparer.Ordinal).ToList();
-            for (int i = 0; i < stalls.Count && i < 6; i++)
+            // Relecture indépendante : l'étal de l'atelier se lit dans le numéro N de « etal_ville_N » (1 à 6), pas dans le rang.
+            foreach (SpaceObstacle stall in obstacles.Where(o => o.Id.StartsWith("etal_ville_", StringComparison.Ordinal)).OrderBy(o => o.Id, StringComparer.Ordinal))
             {
-                var b = Bounds(stalls[i]);
-                Put(At(Stalls[i], b, RoadSide(stalls[i].Id, b, roads), 0, 0, stalls[i].Id));
-                // Les deux derniers étals de l'atelier (étoffes, poteries) à côté des deux étals du sud, sur la même ligne.
-                if (i >= 4) Put(At(Stalls[i + 2], b, RoadSide(stalls[i].Id, b, roads), 4.5, 0, null));
+                if (!int.TryParse(stall.Id.Substring("etal_ville_".Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int n)
+                    || n < 1 || n > 6) continue;
+                var b = Bounds(stall);
+                Put(At(Stalls[n - 1], b, RoadSide(stall.Id, b, roads), 0, 0, stall.Id));
+                // Les deux derniers étals de l'atelier (étoffes, poteries) à côté des étals 5 et 6 (au sud), sur la même ligne.
+                if (n >= 5) Put(At(Stalls[n + 1], b, RoadSide(stall.Id, b, roads), 4.5, 0, null));
             }
             if (byId.TryGetValue("puits_ville_marche", out SpaceObstacle? square))
             {
