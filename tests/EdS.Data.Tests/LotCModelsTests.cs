@@ -24,6 +24,8 @@ public class LotCModelsTests
         foreach (string f in fbx)
             Assert.True(LotCModels.CodeOf(Path.GetRelativePath(Lot93UnityPackageTests.Root, f)) != null, "hors table : " + f);
         Assert.Equal(LotCModels.All.Count, fbx.Length);
+        Assert.Equal(324, LotCModels.All.Count);   // le lot C entier (PLAN.csv de l'atelier)
+        Assert.Equal(new[] { 5, 75, 70, 93, 12, 17, 26, 26 }, LotCModels.All.GroupBy(m => m.Category).OrderBy(g => g.Key).Select(g => g.Count()));
         foreach (LotCModel m in LotCModels.All)
         {
             string dir = Path.Combine(Folder, m.Category, m.Code);

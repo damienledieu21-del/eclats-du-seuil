@@ -87,6 +87,7 @@ namespace EdS.Runtime
             all.AddRange(Village());
             all.AddRange(InteriorsBag());
             all.AddRange(InteriorsVillage());
+            all.AddRange(NewPlaces());
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
@@ -602,6 +603,42 @@ namespace EdS.Runtime
             yield return Waiting("C_IN2_V0_06", c, "Échelle du grenier", cottage);
             yield return Waiting("C_IN2_V1_02", c, "Caisses basses", cottage);
             yield return Waiting("C_IN2_V1_03", c, "Ballot de linge", cottage);
+        }
+
+        // --- 05 et 06 : intérieurs des nouveaux lieux (fiches I01 à I21) ---------------------------------------------------------------
+
+        private static IEnumerable<LotCModel> NewPlaces()
+        {
+            const string none = "intérieur d'un nouveau lieu (fiches I01 à I21) : ni la pièce ni le lieu ne sont encore dans les données";
+            yield return Waiting("C_IN3_I01a_05", "05_Nouveaux_Lieux_1", "Buste sur socle", none);
+            yield return Waiting("C_IN3_I02a_05", "05_Nouveaux_Lieux_1", "Forge maçonnée", none);
+            yield return Waiting("C_IN3_I03a_02", "05_Nouveaux_Lieux_1", "Chevalet à écharner", none);
+            yield return Waiting("C_IN3_I03a_05", "05_Nouveaux_Lieux_1", "Peaux pliées sur claie", none);
+            yield return Waiting("C_IN3_I04a_04", "05_Nouveaux_Lieux_1", "Étagère à bocaux", none);
+            yield return Waiting("C_IN3_I05a_06", "05_Nouveaux_Lieux_1", "Étagère à étoffes", none);
+            yield return Waiting("C_IN3_I06b_02", "05_Nouveaux_Lieux_1", "Foyer de cuisson", none);
+            yield return Waiting("C_IN3_I06b_04", "05_Nouveaux_Lieux_1", "Dressoir", none);
+            yield return Waiting("C_IN3_I06b_05", "05_Nouveaux_Lieux_1", "Évier de pierre", none);
+            yield return Waiting("C_IN3_I07d_03", "05_Nouveaux_Lieux_1", "Armoire à vêtements", none);
+            yield return Waiting("C_IN3_I09c_01", "05_Nouveaux_Lieux_1", "Cloche suspendue / projection", none);
+            yield return Waiting("C_IN3_I10b_02", "05_Nouveaux_Lieux_1", "Seau couvert", none);
+            yield return Waiting("C_IN3_I11a_03", "06_Nouveaux_Lieux_2", "Bois sur tasseaux", none);
+            yield return Waiting("C_IN3_I12b_02", "06_Nouveaux_Lieux_2", "Dressoir", none);
+            yield return Waiting("C_IN3_I12d_04", "06_Nouveaux_Lieux_2", "Garde-robe", none);
+            yield return Waiting("C_IN3_I13a_05", "06_Nouveaux_Lieux_2", "Âtre du logis", none);
+            yield return Waiting("C_IN3_I13c_04", "06_Nouveaux_Lieux_2", "Garde-robe", none);
+            yield return Waiting("C_IN3_I14a_01", "06_Nouveaux_Lieux_2", "Table et deux bancs", none);
+            yield return Waiting("C_IN3_I15b_01", "06_Nouveaux_Lieux_2", "Claie à fromages", none);
+            yield return Waiting("C_IN3_I15b_02", "06_Nouveaux_Lieux_2", "Table d'égouttage", none);
+            yield return Waiting("C_IN3_I16a_01", "06_Nouveaux_Lieux_2", "Banc de sas", none);
+            yield return Waiting("C_IN3_I16b_05", "06_Nouveaux_Lieux_2", "Foyer protégé", none);
+            yield return Waiting("C_IN3_I16b_07", "06_Nouveaux_Lieux_2", "Réserve de couvertures", none);
+            yield return Waiting("C_IN3_I17a_01", "06_Nouveaux_Lieux_2", "Comptoir bas", none);
+            yield return Waiting("C_IN3_I17a_04", "06_Nouveaux_Lieux_2", "Âtre", none);
+            yield return Waiting("C_IN3_I18a_04", "06_Nouveaux_Lieux_2", "Râtelier de haches", none);
+            yield return Waiting("C_IN3_I19a_04", "06_Nouveaux_Lieux_2", "Filet sur traverse", none);
+            yield return Waiting("C_IN3_I20a_03", "06_Nouveaux_Lieux_2", "Étagère de bocaux", none);
+            yield return Waiting("C_IN3_I21a_04", "06_Nouveaux_Lieux_2", "Tableau des équipes", none);
         }
     }
 }
