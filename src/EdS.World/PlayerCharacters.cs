@@ -389,13 +389,21 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V2.28d (2b) : le personnage avec son cheval s'il a fini la quête du cheval (<see cref="HorseQuest"/> ; V2.28d (3), avant : la mission du chapitre 1), d'après son
-        /// histoire <paramref name="story"/>) et n'a pas encore de monture ; tel quel sinon. Idempotente.
+        /// histoire <paramref name="story"/>) et n'a pas encore de monture ; avec le fait <see cref="MountFact"/> s'il a une monture ; tel quel sinon. Idempotente.
         /// </summary>
         public static SavedCharacter GiveHorse(SavedCharacter character, SavedStory story)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));
             if (story is null) throw new ArgumentNullException(nameof(story));
-            return character.Mount is null && story.Quests.TryGetValue(HorseQuest, out QuestProgress q) && q.IsDone ? character.WithMount(Horse) : character;
+            SavedCharacter c = character.Mount is null && story.Quests.TryGetValue(HorseQuest, out QuestProgress q) && q.IsDone ? character.WithMount(Horse) : character;
+            // Relecture indépendante de la PR #192 : un personnage qui a une monture le dit à l'histoire (fait MountFact), pour qu'Achille ne
+            // lui propose pas d'aller chercher Brume (un cheval donné par la fin de la mission, V2.28d (2b), avant la quête du cheval).
+            if (c.Mount is null || story.Facts.Contains(MountFact)) return c;
+            return c.WithStory(new SavedStory(story.Facts.Append(MountFact), story.Quests, story.Trust, story.Discoveries, story.Tracked, story.Guild,
+                story.Hunted, story.Reputation, story.Festivals));
         }
+
+        /// <summary>Relecture indépendante de la PR #192 : fait de l'histoire d'un personnage qui a une monture (posé par <see cref="GiveHorse"/>).</summary>
+        public const string MountFact = "fact.v2283.monture";
     }
 }

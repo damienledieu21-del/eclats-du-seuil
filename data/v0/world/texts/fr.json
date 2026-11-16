@@ -1982,7 +1982,7 @@
       "text.ui.item_presented": "Présenté : {0}",
       "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main.",
       "text.v2283.quest.cheval.name": "Le cheval de la ferme",
-      "text.v2283.quest.cheval.jument": "Brume, la jument de Achille, a pris peur des loups et s'est sauvée vers le lac par le chemin des pontons. Va la chercher sur les rives du lac.",
+      "text.v2283.quest.cheval.jument": "Brume, la jument d'Achille, a pris peur des loups et s'est sauvée vers le lac par le chemin des pontons. Va la chercher sur les rives du lac.",
       "text.v2283.quest.cheval.retour": "Brume te suit sans rechigner. Ramène-la à Achille, à la ferme des champs.",
       "text.v2283.fermier.cheval": "Toi qui as fait taire la meute… Ma jument, Brume, a cassé sa longe la nuit des loups. Elle a filé vers le lac, par le chemin des pontons. Ramène-la-moi, et je te la confie : elle s'ennuie à la charrue, et toi, tu as de la route à faire.",
       "text.v2283.fermier.cheval.accepter": "Je vais chercher Brume.",
@@ -1997,7 +1997,9 @@
       "text.v231.boulanger.fouace.choisir": "La fouace. Trop de levain, elle se fend ; pas assez, c'est une galette. Et la mie doit sentir le miel sans qu'on le voie. Laquelle tu me montres ?",
       "text.v231.boulanger.verdict.masterwork": "… Elle a levé comme un champ au mois d'avril. La croûte chante quand on la casse, la mie tient et fond. Je n'ai rien à reprendre. Le grand prix des Semailles est à toi, et tout le bourg saura qui l'a cuite.",
       "text.v231.boulanger.verdict.superior": "Belle pousse, belle couleur. Le cœur est un peu serré : un quart d'heure de repos de plus, et tu m'aurais fait pleurer. Le deuxième prix, et bien gagné.",
-      "text.v231.boulanger.verdict.normal": "Elle est bonne, et elle est de toi : c'est ce que je juge. La pousse est timide, ça viendra avec la main. Voilà le prix de l'apprenti ; reviens aux Moissons avec une couronne."
+      "text.v231.boulanger.verdict.normal": "Elle est bonne, et elle est de toi : c'est ce que je juge. La pousse est timide, ça viendra avec la main. Voilà le prix de l'apprenti ; reviens aux Moissons avec une couronne.",
+      "text.v2283.fermier.deja_monture": "Tu as déjà une monture, à ce que je vois ! Ma Brume s'est sauvée vers le lac, mais elle finira bien par revenir seule : elle connaît le chemin de l'écurie mieux que moi.",
+      "text.v2283.fermier.deja_monture.partir": "Bonne chance avec elle, Achille."
     }
   }
 }

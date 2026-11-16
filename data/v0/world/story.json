@@ -19089,9 +19089,34 @@
               {
                 "if": "questNotStarted",
                 "id": "quest.le_cheval_de_la_ferme"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v2283.monture"
               }
             ],
             "node": "v2283_cheval"
+          },
+          {
+            "conditions": [
+              {
+                "if": "questDone",
+                "id": "quest.traces_sous_le_moulin"
+              },
+              {
+                "if": "questNotStarted",
+                "id": "quest.le_cheval_de_la_ferme"
+              },
+              {
+                "if": "fact",
+                "id": "fact.v2283.monture"
+              },
+              {
+                "if": "notFact",
+                "id": "fact.v2283.deja_monture_dit"
+              }
+            ],
+            "node": "v2283_deja_monture"
           },
           {
             "conditions": [
@@ -19314,6 +19339,23 @@
                 "text": "text.v2283.fermier.cheval.retour.merci",
                 "conditions": [],
                 "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v2283_deja_monture",
+            "text": "text.v2283.fermier.deja_monture",
+            "choices": [
+              {
+                "text": "text.v2283.fermier.deja_monture.partir",
+                "conditions": [],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.v2283.deja_monture_dit"
+                  }
+                ],
                 "next": null
               }
             ]
@@ -25836,6 +25878,10 @@
           {
             "do": "giveXp",
             "value": 40
+          },
+          {
+            "do": "setFact",
+            "id": "fact.v2283.monture"
           }
         ]
       }

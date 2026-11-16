@@ -77,6 +77,7 @@ public class V2283QueteDuChevalTests
         // Les répliques de la quête en cours passent avant toutes les autres d'Achille (une étape se termine en lui parlant) ; l'offre vient
         // après celles de la quête des sangliers (chapitre 3), avant ses répliques ordinaires.
         var order = book.Dialogue("dialogue.fermier").Entries.Select(e => e.Node).ToList();
+        Assert.Equal(order.IndexOf("v2283_cheval") + 1, order.IndexOf("v2283_deja_monture"));
         Assert.Equal(new[] { "v2283_cheval_retour", "v2283_cheval_attente" }, order.Take(2));
         int offer = order.IndexOf("v2283_cheval");
         Assert.True(offer > order.IndexOf("ch3_sangliers") && offer < order.IndexOf("ch3_apres") && offer < order.IndexOf("ch3_accueil"));
@@ -127,11 +128,19 @@ public class V2283QueteDuChevalTests
         // Une partie où le cheval est venu avec la fin de la mission (V2.28d (2b)) : la monture reste, la quête reste à faire (sans cheval de
         // plus à la fin : GiveHorse ne remplace jamais une monture).
         SavedCharacter rider = V11TestData.Hero(0).WithStory(Done()).WithMount("mount.cheval");
-        Assert.Same(rider, PlayerCharacters.GiveHorse(rider, rider.Story));
+        SavedCharacter marked = PlayerCharacters.GiveHorse(rider, rider.Story);
+        Assert.Equal("mount.cheval", marked.Mount);
+        Assert.Contains(PlayerCharacters.MountFact, marked.Story.Facts);
+        Assert.Same(marked, PlayerCharacters.GiveHorse(marked, marked.Story));   // idempotente
+        // Relecture indépendante de la PR #192 : Achille ne propose pas la quête à qui a déjà une monture ; il le lui dit une fois.
         WorldSession w = Open(Ferme, rider);
         Assert.True(w.OwnsMount);
         Assert.True(w.CanCallMount);
-        Say(w, "npc.fermier", "v2283_cheval");
+        Say(w, "npc.fermier", "v2283_deja_monture");
+        Choose(w, 0);
+        Assert.Equal(DialogueRefusal.None, w.Talk("npc.fermier", out DialogueView? next));
+        Assert.DoesNotContain("v2283", next!.Node, StringComparison.Ordinal);
+        Assert.False(w.Narrative!.IsActive(Cheval) || w.Narrative.IsDone(Cheval));
         // La mission seule ne donne pas le cheval ; la quête du cheval finie, oui.
         SavedCharacter walker = V11TestData.Hero(0).WithStory(Done());
         Assert.Null(PlayerCharacters.GiveHorse(walker, walker.Story).Mount);
