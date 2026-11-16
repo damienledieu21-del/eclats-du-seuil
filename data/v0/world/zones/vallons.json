@@ -777,12 +777,12 @@
         "id": "pont_suspendu",
         "name": "Pont suspendu",
         "min": [
-          494,
-          929
+          526.7,
+          984.5
         ],
         "max": [
-          514,
-          949
+          550.7,
+          1008.5
         ],
         "minLevel": 10
       },
@@ -1519,6 +1519,49 @@
           "signMs": 20000,
           "sign": "text.zone.vieux_brunot.signe"
         }
+      },
+      {
+        "creature": "sanglier_chute1",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier_chute2",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "loup_taniere_foret1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret4",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "ours_foret1",
+        "respawnMs": 900000,
+        "leashRange": 12,
+        "loot": "loot.ours",
+        "family": "ours"
       }
     ],
     "passages": [
@@ -1541,6 +1584,11 @@
         "id": "gue_vallee_nord",
         "name": "Gué de la vallée (nord)",
         "obstacle": "riviere_vallee_gue_nord"
+      },
+      {
+        "id": "pont_suspendu",
+        "name": "Pont suspendu",
+        "obstacle": "riviere_vallee_pont_suspendu_chute"
       }
     ],
     "roads": [
@@ -2180,6 +2228,33 @@
           [
             612,
             1046
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "sentier_du_pont_suspendu",
+        "width": 3,
+        "points": [
+          [
+            570,
+            977.4
+          ],
+          [
+            550.7,
+            989.2
+          ],
+          [
+            526.8,
+            1003.7
+          ],
+          [
+            300,
+            960
+          ],
+          [
+            200,
+            850
           ]
         ],
         "kind": "terre"

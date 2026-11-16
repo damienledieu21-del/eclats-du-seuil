@@ -73,7 +73,8 @@ public sealed class V228c3RegionTests : IDisposable
             (double x, double z) = P(s.Position);
             Assert.True(TownRules.RoadAt(x, z, roads).Edge < 6, $"{id} loin des routes");
         }
-        // Lieux de la région : hors du cœur (le niveau de chaque lieu du cœur ne change pas), sans créature.
+        // Lieux de la région : hors du cœur (le niveau de chaque lieu du cœur ne change pas), sans créature sauf celles des lieux de la grande
+        // carte (décision de Damien du 16 novembre 2026, vers 23 h : peupler les lieux avec le bestiaire existant).
         var core = new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac",
             "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups", "four_de_firmin", "feu_de_camp" };   // cuisine : deux postes
         var region = zone.Places.Where(p => !core.Contains(p.Id)).ToList();
@@ -82,7 +83,7 @@ public sealed class V228c3RegionTests : IDisposable
         {
             Assert.False(p.Min.X.Raw < Fixed.FromInt(140).Raw && p.Max.X.Raw > Fixed.FromInt(-100).Raw && p.Min.Z.Raw < Fixed.FromInt(100).Raw
                 && p.Max.Z.Raw > Fixed.FromInt(-70).Raw, $"{p.Id} chevauche le cœur");
-            Assert.DoesNotContain(zone.Populations, q => zone.Setup.Combatants.Any(c => c.Id == q.Creature && c.Placement is { } at && p.Contains(at.Position)));
+            Assert.DoesNotContain(zone.Populations, q => !ScenarioTestData.IsLieu(q.Creature) && zone.Setup.Combatants.Any(c => c.Id == q.Creature && c.Placement is { } at && p.Contains(at.Position)));
         }
         Assert.Equal(1, zone.MinLevelAt(G(-18, -12)));
         Assert.Equal(15, zone.MinLevelAt(G(-850, 780)));   // forêt des Loups profonde
@@ -149,7 +150,7 @@ public sealed class V228c3RegionTests : IDisposable
                 }
             }
         }
-        Assert.Equal(1, crossings);   // le chemin de la bergerie, au gué sud
+        Assert.Equal(2, crossings);   // le chemin de la bergerie, au gué sud ; V2.31 : le sentier du pont suspendu, à son passage
     }
 
     [Fact]

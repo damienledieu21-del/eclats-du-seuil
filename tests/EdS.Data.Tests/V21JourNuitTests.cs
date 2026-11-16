@@ -68,7 +68,7 @@ public sealed class V21JourNuitTests : IDisposable
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
         mutate(root);
-        return ZoneJsonReader.Read(root.ToJsonString(), ScenariosFor(root), ShippedData, ItemsCatalog);
+        return ZoneJsonReader.Read(PreparedZone(root), ScenariosFor(root), ShippedData, ItemsCatalog);
     }
 
     private static JsonObject Population(JsonObject root, string creature) =>

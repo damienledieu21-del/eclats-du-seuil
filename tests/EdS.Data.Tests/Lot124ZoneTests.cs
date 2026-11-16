@@ -94,7 +94,7 @@ public class Lot124ZoneTests
             "bourg", "champs", "lac", "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups" },
             z.Places.Select(p => p.Id).Take(19));   // V2.28c (3) : puis les quinze lieux de la région ; Vallons agrandis : dix lieux de plus ; V1.9.5 : le cœur du Seuil (Gardien au niveau 23 au moins)
         Assert.Equal(new[] { "village" }, z.PlacesAt(z.Entry.Position).Select(p => p.Id));
-        Assert.Equal(66, z.Populations.Count);   // V2.9.2 : l'ours (crépuscule et nuit), l'ourse, le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
+        Assert.Equal(73, z.Populations.Count);   // V2.31, V2.32 : sept créatures des lieux ;   // V2.9.2 : l'ours (crépuscule et nuit), l'ourse, le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits (hameau, lac, vergers)
         Assert.Equal(z.Setup.Combatants.Select(c => c.Id).OrderBy(i => i, StringComparer.Ordinal),
             z.Populations.Select(p => p.Creature).OrderBy(i => i, StringComparer.Ordinal));   // chaque créature du scénario est peuplée
         Population wolf = z.PopulationOf("loup1")!;
@@ -260,7 +260,7 @@ public class Lot124ZoneTests
         // Sous-lot V2.26 (places recyclées) : une vie partie libère sa place ; le plafond qui arrête les vies suivantes est celui des identités
         // d'une session de zone (1 024), plus celui des 128 places.
         int max = CombatRules.MaxSessionCombatants;
-        int creatures = z.Setup.Combatants.Count;
+        int creatures = z.Setup.Combatants.Count(c => !IsLieu(c.Id));   // V2.31 et suivants : les créatures des lieux vivent dans leurs secteurs
         Assert.Equal(66, creatures);   // V2.9.2 : deux ours et le vieux Brunot ; V2.4 : cinq bêtes de la brume, six cerfs, quatre lièvres ; V2.1 : sept loups de la nuit et quatre échos (absents le jour) ; V1.9.4 : le Grand Borgne ; sous-lot V1.6 : quatre bandits et le loup blanc ; V1.7 : le Borgne ; V1.9.3 : trois bandits du chapitre 3
         Assert.Equal(max - 3, session.Zone.Engine.CombatantIds.Count);   // V1.9.6 : trois secondes formes gardées (Croc-Gris)
         // Réponses du 31 octobre 2026 : le loup blanc (créature de la nuit) n'est pas là au début : une vie suivante de plus avant le plafond.

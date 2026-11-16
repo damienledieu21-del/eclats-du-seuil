@@ -1591,20 +1591,20 @@
           "id": "riviere_vallee7",
           "points": [
             [
-              504.27,
-              942.34
+              506.6,
+              940.4
             ],
             [
-              506.84,
-              940.79
+              538.5,
+              993.1
             ],
             [
-              589.8,
-              1078.08
+              535.9,
+              994.7
             ],
             [
-              587.23,
-              1079.63
+              504,
+              941.9
             ]
           ],
           "low": true
@@ -5281,7 +5281,7 @@
           ]
         },
         {
-          "id": "riviere_vallee_bassin_cascade",
+          "id": "riviere_vallee_bassin_chute",
           "points": [
             [
               595,
@@ -5327,7 +5327,7 @@
           "low": true
         },
         {
-          "id": "bloc_rocher_cascade_1",
+          "id": "bloc_rocher_chute_1",
           "points": [
             [
               598.3,
@@ -5348,7 +5348,7 @@
           ]
         },
         {
-          "id": "bloc_rocher_cascade_2",
+          "id": "bloc_rocher_chute_2",
           "points": [
             [
               594.4,
@@ -5369,7 +5369,7 @@
           ]
         },
         {
-          "id": "bloc_rocher_cascade_3",
+          "id": "bloc_rocher_chute_3",
           "points": [
             [
               587,
@@ -5390,7 +5390,7 @@
           ]
         },
         {
-          "id": "bloc_rocher_cascade_4",
+          "id": "bloc_rocher_chute_4",
           "points": [
             [
               575.2,
@@ -5411,7 +5411,7 @@
           ]
         },
         {
-          "id": "bloc_rocher_cascade_5",
+          "id": "bloc_rocher_chute_5",
           "points": [
             [
               573.7,
@@ -5432,7 +5432,7 @@
           ]
         },
         {
-          "id": "bloc_rocher_cascade_6",
+          "id": "bloc_rocher_chute_6",
           "points": [
             [
               573.9,
@@ -5453,7 +5453,7 @@
           ]
         },
         {
-          "id": "maison_moulin_a_foulon_cascade",
+          "id": "maison_moulin_a_foulon_chute",
           "points": [
             [
               468.4,
@@ -5474,7 +5474,7 @@
           ]
         },
         {
-          "id": "maison_cabane_du_pecheur_cascade",
+          "id": "maison_cabane_du_pecheur_chute",
           "points": [
             [
               385.2,
@@ -5495,86 +5495,130 @@
           ]
         },
         {
-          "id": "bloc_ancrage_pont_suspendu_cascade_1",
+          "id": "riviere_vallee_amont_chute",
           "points": [
             [
-              495.9,
-              940.4
+              541.6,
+              998.3
             ],
             [
-              496.5,
-              940.4
+              590.1,
+              1078.5
             ],
             [
-              496.5,
-              941
+              587.5,
+              1080.1
             ],
             [
-              495.9,
-              941
+              539,
+              999.8
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "riviere_vallee_pont_suspendu_chute",
+          "points": [
+            [
+              538.5,
+              993.1
+            ],
+            [
+              541.6,
+              998.3
+            ],
+            [
+              539,
+              999.8
+            ],
+            [
+              535.9,
+              994.7
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "bloc_ancrage_pont_suspendu_chute_1",
+          "points": [
+            [
+              532.4,
+              994.9
+            ],
+            [
+              533,
+              994.9
+            ],
+            [
+              533,
+              995.5
+            ],
+            [
+              532.4,
+              995.5
             ]
           ]
         },
         {
-          "id": "bloc_ancrage_pont_suspendu_cascade_2",
+          "id": "bloc_ancrage_pont_suspendu_chute_2",
           "points": [
             [
-              498.6,
-              944.8
+              536.8,
+              1002.1
             ],
             [
-              499.2,
-              944.8
+              537.4,
+              1002.1
             ],
             [
-              499.2,
-              945.4
+              537.4,
+              1002.7
             ],
             [
-              498.6,
-              945.4
+              536.8,
+              1002.7
             ]
           ]
         },
         {
-          "id": "bloc_ancrage_pont_suspendu_cascade_3",
+          "id": "bloc_ancrage_pont_suspendu_chute_3",
           "points": [
             [
-              508.8,
-              932.6
+              540.1,
+              990.3
             ],
             [
-              509.4,
-              932.6
+              540.7,
+              990.3
             ],
             [
-              509.4,
-              933.2
+              540.7,
+              990.9
             ],
             [
-              508.8,
-              933.2
+              540.1,
+              990.9
             ]
           ]
         },
         {
-          "id": "bloc_ancrage_pont_suspendu_cascade_4",
+          "id": "bloc_ancrage_pont_suspendu_chute_4",
           "points": [
             [
-              511.5,
-              937
+              544.5,
+              997.4
             ],
             [
-              512.1,
-              937
+              545.1,
+              997.4
             ],
             [
-              512.1,
-              937.6
+              545.1,
+              998
             ],
             [
-              511.5,
-              937.6
+              544.5,
+              998
             ]
           ]
         },
@@ -9290,6 +9334,355 @@
         "behavior": {
           "maxRange": 1.2,
           "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier_chute1",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          470,
+          740
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "sanglier_chute2",
+        "type": "assailant",
+        "team": "gibier",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 2000,
+        "intervalMs": 4000,
+        "attacks": [
+          {
+            "id": "charge",
+            "rawDamage": 25,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1000,
+            "range": 10,
+            "width": 1.4,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          478,
+          748
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.9,
+        "speed": 5,
+        "behavior": {
+          "maxRange": 6,
+          "minRange": 3,
+          "aggroRange": 10,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_taniere_foret1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1186,
+          1040
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_taniere_foret",
+            "spacing": 1.5,
+            "lead": true
+          }
+        }
+      },
+      {
+        "id": "loup_taniere_foret2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1180,
+          1036
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_taniere_foret",
+            "spacing": 1.5
+          }
+        }
+      },
+      {
+        "id": "loup_taniere_foret3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1174,
+          1041
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_taniere_foret",
+            "spacing": 1.5
+          }
+        }
+      },
+      {
+        "id": "loup_taniere_foret4",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1180,
+          1046
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_taniere_foret",
+            "spacing": 1.5
+          }
+        }
+      },
+      {
+        "id": "ours_foret1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 460,
+        "armor": 15,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2200,
+        "attacks": [
+          {
+            "id": "griffe",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.4
+          },
+          {
+            "id": "charge",
+            "rawDamage": 28,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "line",
+            "telegraphMs": 1100,
+            "range": 8,
+            "width": 1.6,
+            "guardable": true,
+            "charge": true,
+            "push": 2
+          }
+        ],
+        "position": [
+          -700,
+          1000
+        ],
+        "facing": [
+          1,
+          0
+        ],
+        "radius": 1.0,
+        "speed": 4.6,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
           "pack": false
         }
       }

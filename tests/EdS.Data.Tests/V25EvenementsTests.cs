@@ -37,7 +37,7 @@ public class V25EvenementsTests
 
     private static JsonObject ZoneJson() => JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons")))!.AsObject();
 
-    private static ZoneLoadResult Read(JsonObject root) => ZoneJsonReader.Read(root.ToJsonString(), ScenariosFor(root), ShippedData, ItemsCatalog);
+    private static ZoneLoadResult Read(JsonObject root) => ZoneJsonReader.Read(PreparedZone(root), ScenariosFor(root), ShippedData, ItemsCatalog);
 
     private static ZoneLoadResult Mutated(Action<JsonObject> mutate)
     {

@@ -1,13 +1,19 @@
+using System.Text.Json.Nodes;
 using EdS.Data.Zones;
+using EdS.Domain.Space;
+using EdS.Tools.Zones;
 using static EdS.Data.Tests.GrandeCarteLieux;
+using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
 
 /// <summary>
 /// Sous-lots V2.31 (vallée de la rivière et cascade) et V2.32 (forêt des Loups et arbre millénaire) de la grande carte : bassin et rochers
-/// au pied de la cascade, moulin à foulon et cabane du pêcheur sur la rive est, pont suspendu au-dessus du gué nord (le passage reste
-/// celui du gué), sentier et point sûr du pied de la cascade ; arbre millénaire et cercle de druides, tanière de la meute, cabane du
-/// bûcheron, souches et troncs couchés, sentier et point sûr de l'arbre (rive ouest, fermée jusqu'à la fin du chapitre 1).
+/// au pied de la cascade, moulin à foulon et cabane du pêcheur sur la rive est, pont suspendu (vrai troisième passage sur la rivière, décision
+/// de Damien du 16 novembre 2026, ouvert avec les gués par la quête « Les passages de la vallée »), sentiers et point sûr du pied de la
+/// cascade ; arbre millénaire et cercle de druides, tanière de la meute, cabane du bûcheron, sentier et point sûr de l'arbre (rive ouest,
+/// fermée jusqu'à la fin du chapitre 1). Créatures du bestiaire existant (décision de Damien du 16 novembre 2026) : sangliers de la rive est,
+/// meute de la tanière, ours de la forêt.
 /// </summary>
 [Trait("Category", "World")]
 public class V231V232ValleeForetTests
@@ -15,9 +21,9 @@ public class V231V232ValleeForetTests
     [Fact]
     public void Obstacles_dans_leurs_lieux_routes_et_points_surs_degages()
     {
-        InPlaces("_cascade", "vallee_de_la_riviere", "cascade");
+        InPlaces("_chute", "vallee_de_la_riviere", "cascade");
         InPlaces("_foret", "foret_des_loups_profonde");
-        RoadsClear("_cascade");
+        RoadsClear("_chute");
         RoadsClear("_foret");
         SafePointClear("pied_de_la_cascade");
         SafePointClear("arbre_millenaire");
@@ -30,6 +36,21 @@ public class V231V232ValleeForetTests
     }
 
     [Fact]
+    public void Etiquettes_strictes_le_scenario_d_un_bloc_redonne_l_aire_d_avant()
+    {
+        // Relecture de la PR #205 : aucune étiquette de lieu ne prend un obstacle d'avant le V2.31 ; sans les lieux, l'aire redevient celle
+        // d'avant (233 obstacles, 66 créatures), simulable d'un bloc.
+        JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+        WithoutLieux(root);
+        var ids = root["data"]!["space"]!["obstacles"]!.AsArray().Select(o => (string)o!["id"]!).ToList();
+        Assert.Equal(233, ids.Count);
+        Assert.Contains("falaise_cascade", ids);
+        Assert.Contains("riviere_vallee7", ids);
+        Assert.Equal(66, root["data"]!["combatants"]!.AsArray().Count);
+        Assert.True(ReadVallonsBlock().IsValid);
+    }
+
+    [Fact]
     public void Cascade_rive_est_ouverte_depuis_le_gue_de_la_vallee()
     {
         // La rive est n'est pas fermée par le verrou du chapitre 1 : du point sûr du gué au pied de la cascade, à pied, gués fermés.
@@ -39,12 +60,19 @@ public class V231V232ValleeForetTests
     }
 
     [Fact]
-    public void Pont_suspendu_le_gue_nord_reste_le_passage()
+    public void Pont_suspendu_vrai_passage_ferme_jusqu_a_la_quete()
     {
-        // Gué fermé : la rive ouest ne s'atteint pas par le pont ; gué ouvert : les poteaux laissent passer.
-        (double X, double Z) min = (420, 860), max = (600, 1020);
-        Assert.False(Walks(min, max, (540, 920), (470, 960), 0.5));
-        Assert.True(Walks(min, max, (540, 920), (470, 960), 0.5, "riviere_vallee_gue_nord"));
+        ZoneDefinition zone = Vallons.Value;
+        Passage pont = zone.Passages.Single(p => p.Id == "pont_suspendu");
+        var shape = Shape(zone.Setup.Space!.Obstacles.Single(o => o.Id == pont.Obstacle));
+        (double cx, double cz) = (shape.Average(p => p.X), shape.Average(p => p.Z));
+        // Entre le gué nord et la cascade ; le sentier du pont le traverse.
+        Assert.InRange(cz, 960, 1060);
+        Assert.True(EdS.Runtime.TownRules.RoadAt(cx, cz, EdS.Runtime.AdventureSession.Roads(zone)).Edge < 0);
+        (double X, double Z) min = (cx - 40, cz - 40), max = (cx + 40, cz + 40);
+        (double X, double Z) east = (cx + 20, cz - 12), west = (cx - 20, cz + 12);
+        Assert.False(Walks(min, max, east, west, 0.5));
+        Assert.True(Walks(min, max, east, west, 0.5, pont.Obstacle));
     }
 
     [Fact]
@@ -60,4 +88,40 @@ public class V231V232ValleeForetTests
         // Dans le cercle, au pied de l'arbre, par l'ouverture du sud-est.
         Assert.True(Walks((-900, 730), (-800, 830), SafePoint("arbre_millenaire"), (-850 + 7, 780 - 3), 0.5));
     }
+
+    [Fact]
+    public void Creatures_des_lieux_dans_leurs_lieux_toujours_la()
+    {
+        ZoneDefinition zone = Vallons.Value;
+        var lieux = zone.Populations.Where(p => IsLieu(p.Creature)).ToList();
+        Assert.Equal(new[] { "loup_taniere_foret1", "loup_taniere_foret2", "loup_taniere_foret3", "loup_taniere_foret4", "ours_foret1",
+            "sanglier_chute1", "sanglier_chute2" }, lieux.Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
+        foreach (Population p in lieux)
+        {
+            var c = zone.Setup.Combatants.Single(x => x.Id == p.Creature);
+            GroundVector at = c.Placement!.Position;
+            Assert.Equal(p.Creature.StartsWith("sanglier", StringComparison.Ordinal) ? 10 : 15, zone.MinLevelAt(at));
+            Assert.Null(p.Hours);
+            Assert.Null(p.Weather);
+            Assert.Null(p.Night);
+        }
+    }
+
+    [Fact]
+    public void Ligne_de_commande_valide_et_simule_le_secteur_d_entree()
+    {
+        // Relecture de la PR #205 : eds validate lit l'aire de la zone (plus de 256 obstacles) ; eds simulate simule le secteur du point
+        // d'entrée (ZoneAreas.EntrySector), comme le jeu.
+        string root = AppContext.BaseDirectory;
+        var validate = Lot71Files.Cli(root, "validate", Path.Combine(root, "scenarios", "zones", "vallons.json"));
+        Assert.Equal(0, validate.ExitCode);
+        Assert.Contains("simulée par secteurs", validate.Output, StringComparison.Ordinal);
+        var setup = ZoneAreas.EntrySector(ScenarioPath("zones/vallons"), DataDirectory, ShippedData, out string? sector, out string? why);
+        Assert.True(setup != null, why);
+        Assert.Equal(SectorMapHome(), sector);
+        Assert.InRange(setup!.Space!.Obstacles.Count, 1, SpaceLimits.MaxObstacles);
+        Assert.False(ZoneAreas.IsZoneScenario(ScenarioPath("mannequin")));
+    }
+
+    private static string SectorMapHome() => EdS.World.SectorMap.For(Vallons.Value).HomeSector;
 }

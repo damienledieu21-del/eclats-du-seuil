@@ -192,18 +192,20 @@ public class V228cObstaclesTests
         Assert.Null(alone.Setup);
         Assert.Contains(alone.Report.Errors, e => e.Path == "$.data.space.obstacles" && e.Message.Contains("300 obstacles, au plus 256", StringComparison.Ordinal));
         Assert.NotNull(ScenarioJsonReader.Read(root.ToJsonString(), ShippedData, area: true).Setup);
-        // La ligne de commande : validate refuse (code 1), simulate aussi, sans exception.
+        // La ligne de commande (relecture de la PR #205, sous-lot V2.31 : l'aire des Vallons dépasse 256 obstacles) : validate lit un scénario
+        // de zone comme une aire (code 0, « simulée par secteurs ») ; simulate simule le secteur d'entrée de sa zone, et refuse sans exception
+        // un scénario de zone qu'aucune zone ne prend pour aire (code 1).
         Lot71Files.InTempDirectory(directory =>
         {
             string path = Path.Combine(directory, "zone.json");
             File.WriteAllText(path, root.ToJsonString());
             string repository = Path.GetFullPath(Path.Combine(DataDirectory, "..", ".."));   // données livrées
             var validate = Lot71Files.Cli(repository, "validate", path);
-            Assert.Equal(1, validate.ExitCode);
-            Assert.Contains("300 obstacles, au plus 256", validate.Output + validate.Error, StringComparison.Ordinal);
+            Assert.Equal(0, validate.ExitCode);
+            Assert.Contains("300 obstacles, simulée par secteurs", validate.Output, StringComparison.Ordinal);
             var simulate = Lot71Files.Cli(repository, "simulate", path, "--data", DataDirectory, "--out", Path.Combine(directory, "j.jsonl"));
             Assert.Equal(1, simulate.ExitCode);
-            Assert.Contains("300 obstacles, au plus 256", simulate.Output + simulate.Error, StringComparison.Ordinal);
+            Assert.Contains("aire de 300 obstacles, simulée par secteurs", simulate.Output + simulate.Error, StringComparison.Ordinal);
             Assert.DoesNotContain("Exception", simulate.Output + simulate.Error, StringComparison.Ordinal);
             return 0;
         });
