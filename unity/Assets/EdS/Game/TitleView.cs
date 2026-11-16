@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -5,24 +6,29 @@ namespace EdS.Game
 {
     /// <summary>
     /// Sous-lot V2.55 (sujet 13, « L'âme du jeu » : écran titre vivant) : l'écran titre au lancement, après l'ouverture du logo (V2.54). Les règles
-    /// (décor de la saison et de l'heure du monde avec fondu, Envers, placement du personnage et du logo dans le repère des peintures, fondus) sont dans
-    /// le cœur (<see cref="TitleScreen"/>, testé) ; ici, seulement l'affichage : le décor (deux peintures mélangées, dérive très lente), le héros du
-    /// joueur (son vrai modèle, rendu par une caméra à part dans une texture transparente, posé au point des pieds de la peinture, éclairé de la teinte du
-    /// décor ; il reste dans sa pose de repos), le logo avec la devise en haut à droite, et l'invite. Un geste lance le jeu (fondu de sortie).
-    /// Le jeu attend dessous, gelé. Sans les peintures, un fond sombre ; sans héros, le décor seul. Aucune allocation par image (textures en cache,
-    /// rectangles et couleurs par valeur) ; temps d'affichage réel.
+    /// (décor de la saison et de l'heure du monde avec fondu, Envers, crépuscule, placement du personnage, du logo et du menu, fondus) sont dans le
+    /// cœur (<see cref="TitleScreen"/>) et l'état du menu dans <see cref="TitleMenu"/> (testés) ; ici, seulement l'affichage et la lecture des
+    /// appuis : le décor (deux peintures mélangées, dérive très lente), le héros du joueur (son vrai modèle, rendu par une caméra à part dans une
+    /// texture transparente, éclairé de la teinte du décor par une lumière qui ne touche que lui), le logo avec la devise, et le menu (Continuer s'il y
+    /// a une sauvegarde, Nouvelle partie, Réglages, Quitter) au clavier (flèches, Entrée, Échap), à la souris et au doigt. Le jeu attend dessous, inerte.
+    /// Aucune allocation par image (chemins calculés une fois, textures en cache) ; les images et la caméra sont libérées à la fin.
     /// </summary>
     public sealed class TitleView
     {
-        /// <summary>Couche d'Unity prise par le héros pendant l'écran titre (la caméra du héros ne voit que celle-ci) ; rendue ensuite à ses couches.</summary>
+        /// <summary>Couche d'Unity prise par le héros pendant l'écran titre (la caméra et la lumière du héros ne voient que celle-ci) ; rendue ensuite à ses couches.</summary>
         private const int HeroLayer = 31;
 
         private bool _pending;
-        private float _shown = -1f, _leaving = -1f;
+        private float _shown = -1f, _leaving = -1f, _rescan;
         private TitleMix _mix;
+        private TitleMenu _menu;
+        private TitleAction _choice;
+        private Vector3 _lastMouse;
+        private string _qualityRow = "", _brightnessRow = "";
+        private readonly string[] _paths = new string[18];
+        private readonly List<Transform> _parts = new List<Transform>();
+        private readonly List<int> _layers = new List<int>();
         private Transform _hero;
-        private Transform[] _heroParts;
-        private int[] _heroLayers;
         private GameObject _rig;
         private Camera _camera;
         private Light _light;
@@ -31,27 +37,39 @@ namespace EdS.Game
         /// <summary>L'écran titre n'est pas terminé (il couvre le jeu, qui attend).</summary>
         public bool Pending => _pending;
 
-        /// <summary>Prépare l'écran : le jeu attend jusqu'à ce que le joueur le lance.</summary>
+        /// <summary>Prépare l'écran : le jeu attend jusqu'à ce que le joueur ait choisi.</summary>
         public void Begin() => _pending = true;
 
-        /// <summary>Annule l'écran (pas de partie à montrer, ou démarrage en erreur).</summary>
+        /// <summary>Annule l'écran (pas de partie à montrer, ou démarrage en erreur) et libère tout.</summary>
         public void Cancel()
         {
             _pending = false;
             Hide();
+            Release();
+        }
+
+        /// <summary>Le choix fait (Continuer ou Nouvelle partie), une seule fois ; <see cref="TitleAction.None"/> sinon.</summary>
+        public TitleAction TakeChoice()
+        {
+            TitleAction c = _choice;
+            _choice = TitleAction.None;
+            return c;
         }
 
         /// <summary>
         /// Avance l'écran. <paramref name="canShow"/> : les données sont prêtes et le logo d'ouverture est fini ; <paramref name="hero"/> : le héros du
-        /// joueur (null : sans héros) ; <paramref name="mix"/> : le décor du moment.
+        /// joueur (null : sans héros) ; <paramref name="mix"/> : le décor du moment ; <paramref name="hasSave"/> : une sauvegarde existe (Continuer).
         /// </summary>
-        public void Tick(float unscaledDelta, bool canShow, Transform hero, TitleMix mix)
+        public void Tick(float unscaledDelta, bool canShow, Transform hero, TitleMix mix, bool hasSave)
         {
             if (!_pending) return;
             _mix = mix;
             if (_shown < 0f && canShow)
             {
                 _shown = 0f;
+                _menu = new TitleMenu(hasSave, !Application.isMobilePlatform);
+                _lastMouse = Input.mousePosition;
+                RefreshRows();
                 SetUpHero(hero);
             }
             if (_shown < 0f) return;
@@ -60,10 +78,108 @@ namespace EdS.Game
             {
                 _leaving += unscaledDelta;
                 if (TitleScreen.Finished(_leaving)) Cancel();
+                return;
             }
-            else if (TitleScreen.GestureStarts(_shown) && (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.touchCount > 0)) _leaving = 0f;
+            if (TitleScreen.GestureStarts(_shown)) ReadMenu();
+            Relayer(unscaledDelta);
             UpdateLight();
         }
+
+        // --- Menu -----------------------------------------------------------------------------------------------------------------
+
+        private void ReadMenu()
+        {
+            // Souris : la rangée survolée est choisie quand la souris bouge ; un clic la valide. Doigt : un nouvel appui valide la rangée touchée.
+            int pressedRow = -1;
+            bool pressed = false;
+            Vector3 mouse = Input.mousePosition;
+            if (Input.touchCount > 0)
+            {
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    Touch t = Input.GetTouch(i);
+                    if (t.phase != TouchPhase.Began) continue;
+                    pressed = true;
+                    pressedRow = RowUnder(t.position.x, t.position.y);
+                    break;
+                }
+            }
+            else
+            {
+                if (mouse.x != _lastMouse.x || mouse.y != _lastMouse.y)
+                {
+                    int over = RowUnder(mouse.x, mouse.y);
+                    if (over >= 0) _menu.Hover(over);
+                }
+                if (Input.GetMouseButtonDown(0))
+                {
+                    pressed = true;
+                    pressedRow = RowUnder(mouse.x, mouse.y);
+                }
+            }
+            _lastMouse = mouse;
+            if (pressed && pressedRow >= 0)
+            {
+                _menu.Hover(pressedRow);
+                Do(_menu.Activate());
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.UpArrow)) _menu.Move(-1);
+            else if (Input.GetKeyDown(KeyCode.DownArrow)) _menu.Move(1);
+            else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)) Do(_menu.Activate());
+            else if (Input.GetKeyDown(KeyCode.LeftArrow)) Do(_menu.Adjust(-1));
+            else if (Input.GetKeyDown(KeyCode.RightArrow)) Do(_menu.Adjust(1));
+            else if (Input.GetKeyDown(KeyCode.Escape)) _menu.Back();
+        }
+
+        /// <summary>Rangée sous un point de l'écran (pixels, origine en bas à gauche) ; -1 si aucune.</summary>
+        private int RowUnder(float pixelX, float pixelY)
+        {
+            float x = pixelX / Hud.Scale, y = (Screen.height - pixelY) / Hud.Scale;
+            TitleRect first = TitleScreen.MenuRow(0, Hud.Width, Hud.VirtualHeight);
+            if (x < first.X || x > first.X + first.Width) return -1;
+            return _menu.RowAt(y, first.Y, first.Height);
+        }
+
+        private void Do(TitleAction action)
+        {
+            switch (action)
+            {
+                case TitleAction.Continue:
+                case TitleAction.NewGame:
+                    _choice = action;
+                    _leaving = 0f;
+                    break;
+                case TitleAction.Quit:
+                    Application.Quit();
+                    break;
+                case TitleAction.Textures:
+                    DeviceQuality.Cycle();
+                    RefreshRows();
+                    break;
+                case TitleAction.Brightness:
+                    BrightnessSetting.Step(_menu.Direction);
+                    RefreshRows();
+                    break;
+            }
+        }
+
+        private void RefreshRows()
+        {
+            _qualityRow = "Textures : " + DeviceQuality.Label;
+            _brightnessRow = "Luminosité : " + BrightnessSetting.Label;
+        }
+
+        private string RowText(int index)
+        {
+            TitleAction a = _menu.ItemAt(index);
+            if (a == TitleAction.Textures) return _qualityRow;
+            if (a == TitleAction.Brightness) return _brightnessRow;
+            if (a == TitleAction.Back && _menu.Page == TitlePage.ConfirmNew) return "Non, garder ma partie";
+            return TitleMenu.Label(a);
+        }
+
+        // --- Dessin ---------------------------------------------------------------------------------------------------------------
 
         /// <summary>Dessine l'écran (espace virtuel du HUD, hauteur 1080) au-dessus du jeu, sous le logo d'ouverture.</summary>
         public void Draw()
@@ -78,26 +194,25 @@ namespace EdS.Game
                 return;
             }
             float alpha = TitleScreen.Opacity(_shown, _leaving);
-            DeviceTier tier = DeviceQuality.Tier;
             Hud.Fill(full, new Color(0.04f, 0.035f, 0.06f, alpha));
             Color previous = GUI.color;
             TitleScreen.Cover(width, height, out float scale, out float ox, out float oy);
             float drift = TitleScreen.Drift(_shown);
             float w = TitleScreen.ReferenceWidth * scale * drift, h = TitleScreen.ReferenceHeight * scale * drift;
             Rect back = new Rect(ox + (TitleScreen.ReferenceWidth * scale - w) * 0.5f, oy + (TitleScreen.ReferenceHeight * scale - h) * 0.5f, w, h);
-            Texture2D first = UiKit.Texture(TitleScreen.ResourcePath(_mix.Primary, tier));
+            Texture2D first = UiKit.Texture(PathOf(_mix.Primary));
             GUI.color = new Color(1f, 1f, 1f, alpha);
             if (first != null) GUI.DrawTexture(back, first);
             if (_mix.Mix > 0f)
             {
-                Texture2D second = UiKit.Texture(TitleScreen.ResourcePath(_mix.Secondary, tier));
+                Texture2D second = UiKit.Texture(PathOf(_mix.Secondary));
                 if (second != null)
                 {
                     GUI.color = new Color(1f, 1f, 1f, alpha * _mix.Mix);
                     GUI.DrawTexture(back, second);
                 }
             }
-            // Le héros, dans l'enveloppe prévue par la peinture (la dérive du décor est trop lente pour le décoller du sol).
+            // Le héros, dans l'enveloppe prévue par la peinture.
             if (_texture != null)
             {
                 TitleRect r = TitleScreen.Place(TitleScreen.HeroX, TitleScreen.HeroY, TitleScreen.HeroWidth, TitleScreen.HeroHeight, width, height);
@@ -109,27 +224,58 @@ namespace EdS.Game
             GUI.color = new Color(1f, 1f, 1f, alpha);
             LogoView.DrawStatic(new Rect(l.X, l.Y, l.Width, l.Height), false);
             GUI.color = previous;
-            // L'invite, en bas de la bande de sécurité, qui pulse doucement.
-            float y = Mathf.Min(height - 130f, oy + TitleScreen.SafeBottom * scale - 110f);
-            float pulse = TitleScreen.PromptPulse(_shown);
-            Hud.Centered(new Rect(0f, y, width, 56f), Application.isMobilePlatform ? "Touchez l'écran" : "Appuyez sur une touche",
-                new Color(0.96f, 0.92f, 0.82f, alpha * pulse));
+            DrawMenu(alpha);
         }
+
+        private void DrawMenu(float alpha)
+        {
+            if (_menu == null) return;
+            float width = Hud.Width, height = Hud.VirtualHeight;
+            TitleRect top = TitleScreen.MenuRow(0, width, height);
+            float rowH = top.Height;
+            // Fond sombre derrière le titre de page et les rangées (lisible sur toutes les peintures).
+            Hud.Panel(new Rect(top.X - 24f, top.Y - rowH * 0.95f, top.Width + 48f, rowH * (_menu.Count + 1.1f)), new Color(0.04f, 0.035f, 0.06f, 0.55f * alpha));
+            if (_menu.Heading.Length > 0)
+                Hud.Centered(new Rect(top.X, top.Y - rowH * 0.9f, top.Width, rowH * 0.8f), _menu.Heading, new Color(HudArt.Gold.r, HudArt.Gold.g, HudArt.Gold.b, alpha));
+            for (int i = 0; i < _menu.Count; i++)
+            {
+                TitleRect row = TitleScreen.MenuRow(i, width, height);
+                Rect rect = new Rect(row.X, row.Y + 4f, row.Width, row.Height - 8f);
+                bool selected = i == _menu.Selected;
+                if (selected) Hud.Fill(rect, new Color(HudArt.Gold.r, HudArt.Gold.g, HudArt.Gold.b, 0.2f * alpha));
+                Color c = selected ? HudArt.Gold : HudArt.Parchment;
+                Hud.Centered(rect, RowText(i), new Color(c.r, c.g, c.b, alpha));
+            }
+        }
+
+        private string PathOf(TitleDecor decor)
+        {
+            string path = _paths[decor.Number];
+            if (path == null) path = _paths[decor.Number] = TitleScreen.ResourcePath(decor, DeviceQuality.Tier);
+            return path;
+        }
+
+        /// <summary>Libère les peintures, les images du logo et leurs entrées du cache (mémoire rendue en fin d'écran).</summary>
+        private void Release()
+        {
+            for (int i = 0; i < _paths.Length; i++)
+            {
+                UiKit.Forget(_paths[i]);
+                _paths[i] = null;
+            }
+            LogoView.ReleaseStatic();
+        }
+
+        // --- Héros ----------------------------------------------------------------------------------------------------------------
 
         private void SetUpHero(Transform hero)
         {
             if (hero == null) return;
             _hero = hero;
-            _heroParts = hero.GetComponentsInChildren<Transform>(true);
-            _heroLayers = new int[_heroParts.Length];
-            for (int i = 0; i < _heroParts.Length; i++)
-            {
-                _heroLayers[i] = _heroParts[i].gameObject.layer;
-                _heroParts[i].gameObject.layer = HeroLayer;
-            }
-            bool phone = DeviceQuality.Tier != DeviceTier.Full;
+            Relayer(0.5f);
+            bool light = DeviceQuality.Tier != DeviceTier.Full;
             // Rapport de l'enveloppe (640 × 720) ; un peu moins de pixels sur téléphone et PC modeste.
-            _texture = phone ? new RenderTexture(320, 360, 16) : new RenderTexture(640, 720, 24);
+            _texture = light ? new RenderTexture(320, 360, 16) : new RenderTexture(640, 720, 24);
             _rig = new GameObject("Écran titre : caméra du héros");
             _camera = _rig.AddComponent<Camera>();
             _camera.clearFlags = CameraClearFlags.SolidColor;
@@ -144,12 +290,33 @@ namespace EdS.Game
             Vector3 front = (hero.forward * 0.9f + hero.right * 0.45f).normalized;
             _rig.transform.position = feet + front * 3.7f + Vector3.up * 1.0f;
             _rig.transform.LookAt(feet + Vector3.up * 0.95f);
-            // La lumière du décor, sur le héros seulement (le jeu est caché dessous).
+            // La lumière du décor : elle n'éclaire que la couche du héros (le reste du jeu, caché dessous, ne la reçoit pas).
             _light = _rig.AddComponent<Light>();
             _light.type = LightType.Directional;
             _light.shadows = LightShadows.None;
-            _rig.transform.LookAt(feet + Vector3.up * 0.95f);
+            _light.cullingMask = 1 << HeroLayer;
             UpdateLight();
+        }
+
+        /// <summary>
+        /// Met sur la couche du héros toutes les parties du modèle, y compris l'équipement ajouté après la mise en place (relu deux fois par
+        /// seconde ; une pièce déjà sur la couche n'est pas touchée). <paramref name="delta"/> : temps écoulé depuis la dernière relecture.
+        /// </summary>
+        private void Relayer(float delta)
+        {
+            if (_hero == null) return;
+            _rescan += delta;
+            if (_rescan < 0.5f) return;
+            _rescan = 0f;
+            Transform[] all = _hero.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                GameObject part = all[i].gameObject;
+                if (part.layer == HeroLayer) continue;
+                _parts.Add(all[i]);
+                _layers.Add(part.layer);
+                part.layer = HeroLayer;
+            }
         }
 
         private void UpdateLight()
@@ -160,13 +327,13 @@ namespace EdS.Game
             _light.intensity = intensity;
         }
 
-        private void Hide()
+        /// <summary>Rend ses couches au héros, détruit la caméra, la lumière et la texture. Appelé à la fin de l'écran et à la désactivation du jeu.</summary>
+        public void Hide()
         {
-            if (_heroParts != null)
-                for (int i = 0; i < _heroParts.Length; i++)
-                    if (_heroParts[i] != null) _heroParts[i].gameObject.layer = _heroLayers[i];
-            _heroParts = null;
-            _heroLayers = null;
+            for (int i = 0; i < _parts.Count; i++)
+                if (_parts[i] != null) _parts[i].gameObject.layer = _layers[i];
+            _parts.Clear();
+            _layers.Clear();
             _hero = null;
             if (_rig != null) Object.Destroy(_rig);
             _rig = null;

@@ -178,10 +178,10 @@ namespace EdS.Game
         /// <summary>V2.55 : l'écran titre vivant (après le logo, avant le jeu) ; le créateur de personnage d'une nouvelle partie attend qu'il soit fini.</summary>
         private readonly TitleView _title = new TitleView();
 
-        private bool _creatorAfterTitle;
+        private bool _creatorAfterTitle, _stageAfterTitle;
 
         /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
-        private bool Overlay => _logo.Active;
+        private bool Overlay => _logo.Active || _title.Pending;
 
         private bool _inputLocked;
 
@@ -329,7 +329,8 @@ namespace EdS.Game
                 _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             }
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
-            _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
+            if (_title.Pending) _stageAfterTitle = true;   // V2.55 : le réveil ne commence qu'à la fin de l'écran titre
+            else _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
             if (_adventure.IsNewGame)
             {
@@ -930,6 +931,7 @@ namespace EdS.Game
         /// <summary>Le curseur est rendu quand le jeu s'arrête (caméra à la souris libre).</summary>
         private void OnDisable()
         {
+            _title.Hide();   // V2.55 : le héros retrouve ses couches, la caméra et la lumière de l'écran titre disparaissent
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
@@ -937,7 +939,7 @@ namespace EdS.Game
         /// <summary>Relecture de la PR #99 : minute du monde de la dernière lumière posée (jour × 1440 + minute ; -1 hors de l'aventure).</summary>
         private long _lightKey = long.MinValue;
 
-        /// <summary>V2.55 : avance l'écran titre (décor de la saison et de l'heure du monde, héros du joueur) ; l'annule s'il n'y a pas de partie à montrer.</summary>
+        /// <summary>V2.55 : avance l'écran titre (décor de la saison et de l'heure du monde, héros du joueur, menu) ; l'annule s'il n'y a pas de partie à montrer ; lance le réveil et le créateur à sa fin.</summary>
         private void TickTitle()
         {
             if (_title.Pending && (_startupError != null || _ready && (_adventure == null || _error != null))) _title.Cancel();
@@ -945,19 +947,48 @@ namespace EdS.Game
             {
                 TitleMix mix = default;
                 if (_adventure != null) mix = TitleScreen.Pick(_adventure.SeasonShown.Season, (int)_adventure.World.Zone.Time.Minute, false);   // pas encore d'état Envers : false
-                _title.Tick(Time.unscaledDeltaTime, _ready && _adventure != null && !_logo.Active, _arena?.Player, mix);
+                _title.Tick(Time.unscaledDeltaTime, _ready && _adventure != null && !_logo.Active, _arena?.Player, mix, _adventure != null && !_adventure.IsNewGame);
+                // « Nouvelle partie » sur une sauvegarde : elle est mise de côté (copie gardée) et le monde est rechargé pendant le fondu.
+                if (_title.TakeChoice() == TitleAction.NewGame && _adventure != null && !_adventure.IsNewGame)
+                {
+                    BackupSave();
+                    StartAdventure();   // l'écran titre est encore là : le réveil et le créateur attendent sa fin
+                }
             }
-            if (!_title.Pending && _creatorAfterTitle)
+            if (!_title.Pending)
             {
-                _creatorAfterTitle = false;
-                if (_adventure != null) OpenCreator();
+                if (_stageAfterTitle)
+                {
+                    _stageAfterTitle = false;
+                    if (_adventure != null) _stage?.Begin(_adventure);
+                }
+                if (_creatorAfterTitle)
+                {
+                    _creatorAfterTitle = false;
+                    if (_adventure != null) OpenCreator();
+                }
+            }
+        }
+
+        /// <summary>V2.55 : met la sauvegarde de côté (<c>vallons.json.ancienne</c>, remplacée à chaque fois) avant une nouvelle partie.</summary>
+        private void BackupSave()
+        {
+            try
+            {
+                if (!File.Exists(SavePath)) return;
+                File.Copy(SavePath, SavePath + ".ancienne", true);
+                File.Delete(SavePath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
             }
         }
 
         private void Update()
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
-            if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
+            if (_title.Pending || _creatorAfterTitle || _stageAfterTitle) TickTitle();   // V2.55
 
             LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible

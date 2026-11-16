@@ -99,7 +99,7 @@ public sealed class V255EcranTitreTests
     [Fact]
     public void Les_treize_decors_existent_en_deux_tailles_en_jpeg_16_9()
     {
-        var decors = new List<TitleDecor> { TitleScreen.Envers };
+        var decors = new List<TitleDecor> { TitleScreen.Envers };   // les crépuscules (14 à 17) viendront avec leurs peintures
         for (int s = 0; s < 4; s++)
             foreach (TitleMoment m in new[] { TitleMoment.Dawn, TitleMoment.Day, TitleMoment.Night }) decors.Add(TitleScreen.Decor(s, m));
         Assert.Equal(13, decors.Count);
@@ -212,5 +212,140 @@ public sealed class V255EcranTitreTests
         string credits = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "docs", "CREDITS.md"));
         Assert.Contains("Écran titre vivant", credits);
         Assert.Contains("EdsInterface/Titre", credits);
+    }
+
+    [Fact]
+    public void Le_creneau_du_crepuscule_est_reserve_et_l_aube_le_remplace_tant_que_les_peintures_manquent()
+    {
+        Assert.Equal(14, TitleScreen.Decor(0, TitleMoment.Dusk).Number);
+        Assert.Equal(17, TitleScreen.Decor(3, TitleMoment.Dusk).Number);
+        Assert.Equal("EdsInterface/Titre/1920/titre_15_ete_crepuscule", TitleScreen.ResourcePath(TitleScreen.Decor(1, TitleMoment.Dusk), DeviceTier.Full));
+        // Sans les peintures (aujourd'hui) : l'aube sert le soir.
+        Assert.False(TitleScreen.DuskPainted);
+        Assert.Equal(TitleMoment.Dawn, TitleScreen.Pick(1, 1100, false).Primary.Moment);
+        // Avec les peintures : jour -> crépuscule vers 17 h 30, crépuscule -> nuit vers 21 h.
+        Assert.Equal(TitleMoment.Day, TitleScreen.Pick(1, 1050, false, true).Primary.Moment);
+        Assert.Equal(TitleMoment.Dusk, TitleScreen.Pick(1, 1050, false, true).Secondary.Moment);
+        Assert.Equal(15, TitleScreen.Pick(1, 1100, false, true).Primary.Number);
+        Assert.Equal(TitleMoment.Dusk, TitleScreen.Pick(1, 1260, false, true).Primary.Moment);
+        Assert.Equal(TitleMoment.Night, TitleScreen.Pick(1, 1260, false, true).Secondary.Moment);
+        TitleScreen.LightFor(TitleScreen.Decor(0, TitleMoment.Dusk), out float r, out _, out float b, out _);
+        Assert.True(r > b);
+        // Les images de crépuscule ne sont exigées que quand elles sont déclarées livrées.
+        bool painted = TitleScreen.DuskPainted;
+        if (painted)
+            for (int season = 0; season < 4; season++)
+                Assert.True(File.Exists(Path.Combine(Resources, TitleScreen.ResourcePath(TitleScreen.Decor(season, TitleMoment.Dusk), DeviceTier.Full) + ".jpg")));
+    }
+
+    [Fact]
+    public void Le_menu_propose_continuer_seulement_avec_une_sauvegarde_et_quitter_seulement_hors_telephone()
+    {
+        var withSave = new TitleMenu(true, true);
+        Assert.Equal(new[] { TitleAction.Continue, TitleAction.NewGame, TitleAction.Settings, TitleAction.Quit }, Items(withSave));
+        Assert.Equal(0, withSave.Selected);
+        var fresh = new TitleMenu(false, true);
+        Assert.Equal(new[] { TitleAction.NewGame, TitleAction.Settings, TitleAction.Quit }, Items(fresh));
+        var phone = new TitleMenu(true, false);
+        Assert.Equal(new[] { TitleAction.Continue, TitleAction.NewGame, TitleAction.Settings }, Items(phone));
+        Assert.Equal("Continuer", TitleMenu.Label(TitleAction.Continue));
+        Assert.Equal("Nouvelle partie", TitleMenu.Label(TitleAction.NewGame));
+        Assert.Equal("Réglages", TitleMenu.Label(TitleAction.Settings));
+        Assert.Equal("Quitter", TitleMenu.Label(TitleAction.Quit));
+    }
+
+    private static TitleAction[] Items(TitleMenu menu) => Enumerable.Range(0, menu.Count).Select(menu.ItemAt).ToArray();
+
+    [Fact]
+    public void Le_clavier_boucle_la_souris_choisit_et_valide_et_le_doigt_valide()
+    {
+        var menu = new TitleMenu(true, true);
+        menu.Move(-1);
+        Assert.Equal(3, menu.Selected);   // boucle vers le bas de la liste
+        menu.Move(1);
+        Assert.Equal(0, menu.Selected);
+        menu.Move(2);
+        Assert.Equal(2, menu.Selected);
+        menu.Hover(1);
+        Assert.Equal(1, menu.Selected);
+        menu.Hover(9);
+        menu.Hover(-1);
+        Assert.Equal(1, menu.Selected);
+        // Les rangées du menu : de haut en bas, sans trou ; hors liste, -1.
+        Assert.Equal(-1, menu.RowAt(99f, 100f, 50f));
+        Assert.Equal(0, menu.RowAt(100f, 100f, 50f));
+        Assert.Equal(1, menu.RowAt(160f, 100f, 50f));
+        Assert.Equal(3, menu.RowAt(299.9f, 100f, 50f));
+        Assert.Equal(-1, menu.RowAt(300f, 100f, 50f));
+        // Continuer et Quitter rendent leur action tout de suite.
+        menu.Hover(0);
+        Assert.Equal(TitleAction.Continue, menu.Activate());
+        menu.Hover(3);
+        Assert.Equal(TitleAction.Quit, menu.Activate());
+    }
+
+    [Fact]
+    public void Nouvelle_partie_demande_confirmation_seulement_s_il_y_a_une_sauvegarde_a_effacer()
+    {
+        var fresh = new TitleMenu(false, true);
+        Assert.Equal(TitleAction.NewGame, fresh.Activate());   // rien à effacer : tout de suite
+        var menu = new TitleMenu(true, true);
+        menu.Hover(1);
+        Assert.Equal(TitleAction.None, menu.Activate());
+        Assert.Equal(TitlePage.ConfirmNew, menu.Page);
+        Assert.Equal(new[] { TitleAction.Back, TitleAction.ConfirmNew }, Items(menu));
+        Assert.Equal(0, menu.Selected);   // par défaut, ne rien effacer
+        Assert.Equal(TitleAction.None, menu.Activate());
+        Assert.Equal(TitlePage.Main, menu.Page);
+        Assert.Equal(1, menu.Selected);   // revenu sur Nouvelle partie
+        menu.Activate();
+        menu.Move(1);
+        Assert.Equal(TitleAction.NewGame, menu.Activate());   // confirmée
+        // Échap sur la confirmation revient sans rien faire ; sur la page principale, il ne fait rien.
+        var other = new TitleMenu(true, true);
+        other.Hover(1);
+        other.Activate();
+        Assert.True(other.Back());
+        Assert.Equal(TitlePage.Main, other.Page);
+        Assert.False(other.Back());
+    }
+
+    [Fact]
+    public void Les_reglages_changent_de_page_ajustent_et_reviennent_a_leur_rangee()
+    {
+        var menu = new TitleMenu(true, true);
+        menu.Hover(2);
+        Assert.Equal(TitleAction.None, menu.Activate());
+        Assert.Equal(TitlePage.Settings, menu.Page);
+        Assert.Equal("Réglages", menu.Heading);
+        Assert.Equal(new[] { TitleAction.Textures, TitleAction.Brightness, TitleAction.Back }, Items(menu));
+        Assert.Equal(TitleAction.Textures, menu.Activate());
+        menu.Move(1);
+        Assert.Equal(TitleAction.Brightness, menu.Adjust(-1));
+        Assert.Equal(-1, menu.Direction);
+        Assert.Equal(TitleAction.Brightness, menu.Adjust(1));
+        Assert.Equal(1, menu.Direction);
+        Assert.Equal(TitleAction.Brightness, menu.Activate());
+        menu.Move(1);
+        Assert.Equal(TitleAction.None, menu.Adjust(1));   // « Retour » ne se règle pas
+        Assert.Equal(TitleAction.None, menu.Activate());
+        Assert.Equal(TitlePage.Main, menu.Page);
+        Assert.Equal(2, menu.Selected);   // sur Réglages
+        Assert.Equal(TitleAction.None, menu.Adjust(1));   // hors de la page de réglages
+    }
+
+    [Fact]
+    public void Les_rangees_du_menu_sont_a_droite_sous_le_logo_sans_toucher_le_heros_et_restent_dans_la_fenetre()
+    {
+        for (int rows = 3; rows <= 4; rows++)
+        {
+            TitleRect first = TitleScreen.MenuRow(0, 1920f, 1080f), last = TitleScreen.MenuRow(rows - 1, 1920f, 1080f);
+            TitleRect logo = TitleScreen.LogoRect(1920f, 1080f, 0f), hero = TitleScreen.Place(TitleScreen.HeroX, TitleScreen.HeroY, TitleScreen.HeroWidth, TitleScreen.HeroHeight, 1920f, 1080f);
+            Assert.True(first.Y >= logo.Y + logo.Height);
+            Assert.True(first.X >= hero.X + hero.Width);
+            Assert.True(last.Y + last.Height <= 1080f * 0.85f + 1f);   // dans la bande de sécurité
+            Assert.True(first.X + first.Width <= 1920f);
+            Assert.Equal(first.Height, TitleScreen.MenuRow(1, 1920f, 1080f).Y - first.Y, 3);
+        }
     }
 }

@@ -8,6 +8,9 @@ namespace EdS.Runtime
         Dawn = 0,
         Day = 1,
         Night = 2,
+
+        /// <summary>Crépuscule : quatre peintures à commander (une par saison, même cadrage) ; en attendant, <see cref="TitleScreen.DuskPainted"/> est faux et l'aube les remplace.</summary>
+        Dusk = 3,
     }
 
     /// <summary>
@@ -81,6 +84,15 @@ namespace EdS.Runtime
         /// <summary>Numéro de l'image de l'Envers.</summary>
         public const int EnversNumber = 13;
 
+        /// <summary>Numéro de la première peinture de crépuscule (14 à 17, une par saison) : le créneau est réservé, les images ne sont pas livrées.</summary>
+        public const int DuskFirstNumber = 14;
+
+        /// <summary>
+        /// Les quatre peintures de crépuscule sont-elles livrées ? <b>Non</b> (décision de Damien du 17 novembre 2026 : on les commandera) : tant que
+        /// c'est faux, le crépuscule reprend la peinture de l'aube. Passer à vrai quand les images <c>titre_14…17</c> sont dans le dépôt.
+        /// </summary>
+        public const bool DuskPainted = false;
+
         /// <summary>Largeur et hauteur des peintures d'origine (pixels) ; tous les repères ci-dessous sont dans ce repère.</summary>
         public const float ReferenceWidth = 3840f, ReferenceHeight = 2160f;
 
@@ -106,13 +118,14 @@ namespace EdS.Runtime
         public const float StartAfter = 0.8f;
 
         private static readonly string[] SeasonNames = { "printemps", "ete", "automne", "hiver" };
-        private static readonly string[] MomentNames = { "aube", "jour", "nuit" };
+        private static readonly string[] MomentNames = { "aube", "jour", "nuit", "crepuscule" };
 
         /// <summary>Le décor d'une saison et d'un moment (saison de 0 à 3).</summary>
         public static TitleDecor Decor(int season, TitleMoment moment)
         {
             if (season < 0 || season > 3) throw new ArgumentOutOfRangeException(nameof(season));
-            return new TitleDecor(season * 3 + (int)moment + 1, season, moment);
+            int number = moment == TitleMoment.Dusk ? DuskFirstNumber + season : season * 3 + (int)moment + 1;
+            return new TitleDecor(number, season, moment);
         }
 
         /// <summary>Le décor de l'Envers.</summary>
@@ -120,23 +133,23 @@ namespace EdS.Runtime
 
         /// <summary>
         /// Le choix du décor : l'Envers seul s'il est là ; sinon, d'après la minute du jour (0 à 1 439, toute valeur est ramenée dans le jour),
-        /// le moment et son voisin avec le mélange. Le crépuscule (de 17 h 30 à 21 h) reprend la peinture de l'aube (soleil bas, tons chauds).
+        /// le moment et son voisin avec le mélange. Le crépuscule (de 17 h 30 à 21 h) a sa peinture quand <paramref name="dusk"/> est vrai (<see cref="DuskPainted"/>), sinon il reprend celle de l'aube (soleil bas, tons chauds).
         /// </summary>
-        public static TitleMix Pick(int season, int minuteOfDay, bool envers)
+        public static TitleMix Pick(int season, int minuteOfDay, bool envers, bool dusk = DuskPainted)
         {
             if (envers) return new TitleMix(Envers, Envers, 0f);
             int m = ((minuteOfDay % 1440) + 1440) % 1440;
             // Segments : [Nuit jusqu'à 5 h] [Aube 5 h - 9 h] [Jour 9 h - 17 h 30] [Aube (crépuscule) 17 h 30 - 21 h] [Nuit dès 21 h].
-            TitleMoment from, to;
+            TitleMoment evening = dusk ? TitleMoment.Dusk : TitleMoment.Dawn, from, to;
             int boundary;
             if (m < DawnStarts - HalfFade) return Single(season, TitleMoment.Night);
             if (m < DawnStarts + HalfFade) { from = TitleMoment.Night; to = TitleMoment.Dawn; boundary = DawnStarts; }
             else if (m < DayStarts - HalfFade) return Single(season, TitleMoment.Dawn);
             else if (m < DayStarts + HalfFade) { from = TitleMoment.Dawn; to = TitleMoment.Day; boundary = DayStarts; }
             else if (m < DuskStarts - HalfFade) return Single(season, TitleMoment.Day);
-            else if (m < DuskStarts + HalfFade) { from = TitleMoment.Day; to = TitleMoment.Dawn; boundary = DuskStarts; }
-            else if (m < NightStarts - HalfFade) return Single(season, TitleMoment.Dawn);
-            else if (m < NightStarts + HalfFade) { from = TitleMoment.Dawn; to = TitleMoment.Night; boundary = NightStarts; }
+            else if (m < DuskStarts + HalfFade) { from = TitleMoment.Day; to = evening; boundary = DuskStarts; }
+            else if (m < NightStarts - HalfFade) return Single(season, evening);
+            else if (m < NightStarts + HalfFade) { from = evening; to = TitleMoment.Night; boundary = NightStarts; }
             else return Single(season, TitleMoment.Night);
             float t = (m - (boundary - HalfFade)) / (2f * HalfFade);
             t = t * t * (3f - 2f * t);
@@ -161,6 +174,7 @@ namespace EdS.Runtime
             switch (decor.Moment)
             {
                 case TitleMoment.Dawn: r = 1f; g = 0.78f; b = 0.58f; intensity = 1f; break;
+                case TitleMoment.Dusk: r = 1f; g = 0.6f; b = 0.55f; intensity = 0.85f; break;
                 case TitleMoment.Day: r = 1f; g = 0.96f; b = 0.88f; intensity = 1.15f; break;
                 default: r = 0.45f; g = 0.58f; b = 0.9f; intensity = 0.55f; break;
             }
@@ -187,8 +201,15 @@ namespace EdS.Runtime
             return Math.Min(inn, Math.Max(0f, 1f - leaving / FadeOutSeconds));
         }
 
-        /// <summary>Un geste du joueur lance-t-il le jeu ? (l'écran est montré depuis assez longtemps)</summary>
+        /// <summary>Le menu répond-il aux appuis ? (l'écran est montré depuis assez longtemps)</summary>
         public static bool GestureStarts(float shown) => shown >= StartAfter;
+
+        /// <summary>Colonne du menu (repère des peintures) : à droite sous le logo, loin du personnage.</summary>
+        public const float MenuX = 2640f, MenuY = 900f, MenuWidth = 840f, MenuRowHeight = 150f;
+
+        /// <summary>Rectangle de la rangée <paramref name="index"/> du menu pour une fenêtre donnée (rangées l'une sous l'autre, sans trou).</summary>
+        public static TitleRect MenuRow(int index, float width, float height) =>
+            Place(MenuX, MenuY + index * MenuRowHeight, MenuWidth, MenuRowHeight, width, height);
 
         /// <summary>L'écran est terminé (le fondu de sortie est fini).</summary>
         public static bool Finished(float leaving) => leaving >= FadeOutSeconds;

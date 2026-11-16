@@ -52,7 +52,7 @@ namespace UnityEngine
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
     public enum LightShadows { None, Hard, Soft }
-    public sealed class Light : Behaviour { public LightType type { get; set; } public float intensity { get; set; } public LightShadows shadows { get; set; } public Color color { get; set; } public float range { get; set; } public bool enabled { get; set; } }
+    public sealed class Light : Behaviour { public LightType type { get; set; } public int cullingMask { get; set; } public float intensity { get; set; } public LightShadows shadows { get; set; } public Color color { get; set; } public float range { get; set; } public bool enabled { get; set; } }
     public enum FogMode { Linear = 1, Exponential = 2, ExponentialSquared = 3 }
     public static class RenderSettings { public static Material skybox { get; set; } public static UnityEngine.Rendering.AmbientMode ambientMode { get; set; } public static Color ambientSkyColor { get; set; } public static Color ambientEquatorColor { get; set; } public static Color ambientGroundColor { get; set; } public static bool fog { get; set; } public static FogMode fogMode { get; set; } public static Color fogColor { get; set; } public static float fogStartDistance { get; set; } public static float fogEndDistance { get; set; } public static float fogDensity { get; set; } }
     public sealed class TerrainLayer : Object { public TerrainLayer() { } public Texture2D diffuseTexture { get; set; } public Texture2D normalMapTexture { get; set; } public Vector2 tileSize { get; set; } public Vector4 diffuseRemapMin { get; set; } public Vector4 diffuseRemapMax { get; set; } }
@@ -119,7 +119,7 @@ namespace UnityEngine
         public void Stop(bool withChildren, ParticleSystemStopBehavior stopBehavior) { }
     }
     public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
-    public static class Application { public static string unityVersion => ""; public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
+    public static class Application { public static void Quit() { } public static string unityVersion => ""; public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
     public class AsyncOperation { }
     public static class SleepTimeout { public const int NeverSleep = -1; }
     public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
