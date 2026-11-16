@@ -227,11 +227,8 @@ public class VallonsAgrandisTests
             foreach ((string id, (double X, double Z)[] points) in obstacles)
             {
                 if (road.Paved && TownRules.BuildingFor(id) is StyleBuilding.Well or StyleBuilding.Stall) continue;
-                // V2.30.5 (décision de Damien du 16 novembre 2026) : la porte de l'Est n'a que son passage de 4,20 m ; la route d'Ambre (4,50 m)
-                // en frôle les montants de 0,15 m de chaque côté.
-                double rub = road.Id == "route_d_ambre_ouest" && id.StartsWith("palissade_ville_est", StringComparison.Ordinal) ? 0.16 : 0;
                 foreach (var s in samples)
-                    Assert.True(StyleRules.InsideDistance(s.X, s.Z, points) <= rub, $"{road.Id} passe dans {id} en ({s.X:0.##}, {s.Z:0.##})");
+                    Assert.True(StyleRules.InsideDistance(s.X, s.Z, points) <= 0, $"{road.Id} passe dans {id} en ({s.X:0.##}, {s.Z:0.##})");
             }
         }
     }

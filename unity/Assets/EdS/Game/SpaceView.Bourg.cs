@@ -89,8 +89,8 @@ namespace EdS.Game
 
         /// <summary>
         /// V2.30.5 (décision de Damien du 16 novembre 2026 : façades vivantes) : la nuit d'un bâtiment habillé. Une lanterne sur potence (R21)
-        /// reçoit la lumière de porte ; un monument habillé (église, halle, écuries, cour du prévôt) a la lanterne de porte faite par le code
-        /// (une fois par obstacle) ; les fenêtres de façade d'un bâtiment habillé (entre ses volets « Volet_…_G » et « …_D », rez-de-chaussée
+        /// reçoit la lumière de porte ; un monument habillé (église, halle, écuries, chaque bâtiment de la cour du prévôt) a la lanterne de
+        /// porte faite par le code, sur la façade de son modèle (<see cref="BourgModels.DoorLanternOf"/>) ; les fenêtres de façade d'un bâtiment habillé (entre ses volets « Volet_…_G » et « …_D », rez-de-chaussée
         /// et premier étage côté rue, deux au plus) prennent le fond de fenêtre qui s'allume la nuit.
         /// </summary>
         private void BourgNight(BourgPiece p, Transform holder, GameObject model)
@@ -107,12 +107,11 @@ namespace EdS.Game
             }
             if (p.Covers == null || BourgModels.IsWall(p.Covers) || BourgModels.IsTower(p.Covers) || BourgModels.IsDitch(p.Covers)) return;
             StyleBuilding kind = TownRules.BuildingFor(p.Covers);
-            if (!BourgModels.IsTownHouse(p.Covers) && BourgModels.ShopModel(p.Covers) == null && _bourgLit.Add(p.Covers))
+            // Revue Codex de la PR #204 : la lanterne de porte d'un monument va sur la façade de la pièce posée (pas sur la boîte de l'obstacle).
+            if (BourgModels.HasDoorLantern(p.Piece))
             {
-                SpaceObstacle o = _space.Obstacles.FirstOrDefault(q => q.Id == p.Covers);
-                if (o != null)
-                    DoorLantern(kind, p.Covers, Raw(o.Points.Min(q => q.X.Raw)), Raw(o.Points.Min(q => q.Z.Raw)), Raw(o.Points.Max(q => q.X.Raw)),
-                        Raw(o.Points.Max(q => q.Z.Raw)), facing);
+                (double lx, double lz) = BourgModels.DoorLanternOf(p);
+                _lampSpots.Add(new NightLamp("porte/" + p.Covers + "/" + p.Piece, NightLampKind.DoorLantern, lx, NightLamps.DoorLanternHeight, lz, p.Yaw));
             }
             int lit = 0;
             foreach (Renderer left in model.GetComponentsInChildren<Renderer>())
@@ -130,9 +129,6 @@ namespace EdS.Game
                 lit++;
             }
         }
-
-        /// <summary>Obstacles du Bourg dont la lanterne de porte est déjà posée.</summary>
-        private readonly System.Collections.Generic.HashSet<string> _bourgLit = new System.Collections.Generic.HashSet<string>();
 
         /// <summary>Vantaux tournés autour de leur charnière (repère du support), herse levée.</summary>
         private static void BourgOpen(Transform holder, Transform model, string piece)

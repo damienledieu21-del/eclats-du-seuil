@@ -946,6 +946,23 @@ namespace EdS.Runtime
             }
         }
 
+        /// <summary>
+        /// V2.30.5 (revue Codex de la PR #204) : place au sol de la lanterne de porte d'un monument habillé, d'après la pièce posée et non
+        /// d'après la boîte de son obstacle (l'église avance de 2 m devant la sienne ; la cour du prévôt a quatre bâtiments) : sur la façade
+        /// du modèle (le devant de son pied, Y le plus petit de l'export), 0,25 m devant, 0,9 m à droite du milieu vu de dehors.
+        /// </summary>
+        public static (double X, double Z) DoorLanternOf(BourgPiece p)
+        {
+            var b = Box(p.Piece) ?? throw new ArgumentException("pièce inconnue : " + p.Piece, nameof(p));
+            double a = p.Yaw * Math.PI / 180, fx = Math.Sin(a), fz = Math.Cos(a);
+            double ahead = -b.Y0 + 0.25;
+            return (Round(p.X + fx * ahead - fz * 0.9), Round(p.Z + fz * ahead + fx * 0.9));
+        }
+
+        /// <summary>V2.30.5 : pièce d'un monument habillé qui a une lanterne de porte (église, halle, écuries, bâtiments de la cour du prévôt).</summary>
+        public static bool HasDoorLantern(string piece) =>
+            piece == Church || piece == Hall || piece == Stables || piece == Provost || piece == Guardhouse || piece == Granary || piece == Oven;
+
         /// <summary>Milieu du fossé (m hors de la ligne de la palissade : de 4,2 à 11,2 m, accroche « face_exterieure_rideau » de F11).</summary>
         public const double MoatCenter = 7.7;
 

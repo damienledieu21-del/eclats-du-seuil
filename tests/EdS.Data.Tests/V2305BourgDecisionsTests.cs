@@ -188,4 +188,28 @@ public class V2305BourgDecisionsTests : IDisposable
         }
         Assert.Equal(dress.Needs.Count, withRoads.Needs.Count);
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #204 : la lanterne de porte d'un monument habillé est sur la façade de son modèle, devant l'entrée, hors de tout
+    /// obstacle (l'église avance de 2 m devant le sien ; la cour du prévôt a une lanterne par bâtiment).
+    /// </summary>
+    [Fact]
+    public void Monument_door_lanterns_hang_on_the_model_facade()
+    {
+        var dress = BourgModels.Dress(Obstacles, AdventureSession.Roads(Vallons.Value));
+        var lit = dress.Pieces.Where(p => BourgModels.HasDoorLantern(p.Piece)).ToList();
+        Assert.Equal(7, lit.Count);   // église, halle, écuries, prévôt, corps de garde, grenier, four banal
+        foreach (BourgPiece p in lit)
+        {
+            (double x, double z) = BourgModels.DoorLanternOf(p);
+            // Hors de tout autre obstacle ; la halle (24 × 14, obstacle 30 × 18) et le grenier (au fond de la cour du prévôt, qui reste un seul
+            // obstacle) ont leur lanterne dans leur propre obstacle, sur la façade de leur modèle.
+            Assert.DoesNotContain(Obstacles.Where(o => o.Id != p.Covers), o => { var b = Box(o); return x > b.X0 && x < b.X1 && z > b.Z0 && z < b.Z1; });
+            if (p.Piece != BourgModels.Hall && p.Piece != BourgModels.Granary) Assert.False(Blocked(x, z), p.Piece + " : lanterne dans un obstacle");
+            double a = p.Yaw * Math.PI / 180, ahead = (x - p.X) * Math.Sin(a) + (z - p.Z) * Math.Cos(a);
+            Assert.Equal(-BourgModels.Box(p.Piece)!.Value.Y0 + 0.25, ahead, 6);
+        }
+        BourgPiece church = lit.Single(p => p.Piece == BourgModels.Church);
+        Assert.Equal(7.65, BourgModels.DoorLanternOf(church).Z, 6);   // façade de l'église à z 7,90 (obstacle à partir de z 10)
+    }
 }
