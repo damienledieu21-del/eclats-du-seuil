@@ -42,6 +42,10 @@ Puis, vers 10 h (après la PR #190) :
 5. **Panneaux aux croisements** entre le village et le Bourg : **dès le V2.30.1** (fait : quatre panneaux, direction et distance du Bourg et du village).
 6. **Quête du cheval** : Achille, Brume et les rives du lac **confirmés**. **Plus tard** (noté, pas maintenant) : ramener un vrai cheval à la longe jusqu'à la ferme, avec le modèle 3D, quand ses animations seront prêtes.
 
+Puis, vers 16 h 30 :
+
+7. **Grand Solitaire et Bourg déménagé** : le boss du monde attaque **devant la porte de l'Est** et **n'entre pas dans les murs** (choix de Claude au V2.30.1, confirmé).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
@@ -356,6 +360,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 ### Étape 2 : les lieux un par un
 
 **Avancement V2.30** (15 novembre 2026, en PR) : le Bourg fortifié en surface (palissade, dix tours, portes est et ouest, poterne sud, grande maison, église, halle, place du marché, écurie, 121 maisons, point sûr de la place ; [MONDE.md](MONDE.md)). Écart au plan : pas de porte nord (le plan illustré n'en a pas ; le chemin du pont des Murmures n'est pas tracé), une poterne sud sur le chemin des vignes à la place.
+
+**Avancement V2.28d (3)** (16 novembre 2026, en PR, empilée sur le V2.30.1) : la quête du cheval (§ 0 ter) : « Le cheval de la ferme », Achille et Brume, rives du lac ; le cheval n'est plus donné par la fin de la mission du chapitre 1 ([DONNEES.md](DONNEES.md#monture-dans-la-partie-solo-sous-lot-v228d-2b)).
 
 **Avancement V2.30.1** (16 novembre 2026, en PR) : le bourg a déménagé **en bloc** dans la ville fortifiée, décalé de (−1 032, −34) m (§ 4.4 bis) : auberge, chapelle, Guilde (`maison6`), maison de Rosalie (`maison5`), boulangerie (`maison2`), épicerie (`maison4`), herboristerie (`maison7`), mercerie (`maison1`), puits et étals de la place ; portes, point sûr `place_du_bourg`, lieux `bourg` et `four_de_firmin`, places de nuit, emplois du temps des PNJ, invités des fêtes et étals du grand jour de marché suivent, **identifiants inchangés** (intérieurs, quêtes, sauvegardes : aucun changement de format, la reprise au point sûr `place_du_bourg` se fait sur la nouvelle place, le secteur sauvegardé n'étant pas comparé). Le bloc est au nord-ouest de la place du marché, entre la route d'Ambre et les îlots du nord (deux maisons de la ville retirées, `maison_ville_74` et `maison_ville_75`), relié à la place du marché par la `rue_du_marche` ; la `rue_des_boutiques` reprend la grand-rue de l'ouest. Il reste à l'ancien emplacement un **hameau** (`maison3`, `maison8`) et la grand-rue jusqu'à la route d'Ambre. Porte nord : non faite, notée pour le V2.40 (§ 0 ter).
 
