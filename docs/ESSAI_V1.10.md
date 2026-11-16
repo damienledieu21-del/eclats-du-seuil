@@ -689,3 +689,16 @@ Avant l'essai : récupérer `main` à jour, puis **Éclats du Seuil → Prépare
 | 41.7 | Mode Jeu, menu Essai des saisons : printemps, été, automne, hiver | Le feuillage change ; feuilles au sol en automne seulement ; branches nues en hiver | [ ] | |
 | 41.8 | Sur téléphone (ou PC modeste) | Imposteurs plus tôt, pas de saccade | [ ] | |
 | 41.9 | Ton avis : tailles réelles (chênes de 16 à 20 m), densité des bois, arbres qu'on traverse | — | [ ] | |
+
+## 42. Enceinte du Bourg d'Aube fortifié (V2.30.2, 16 novembre 2026)
+
+Avant l'essai : récupérer la branche, puis **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md#lenceinte-du-bourg-fortifié-sous-lot-v2302).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 42.1 | Lire le rapport du menu | « Décor de l'atelier : bourg_f01_palissade, … bourg_f10_porte_nord » (dix pièces) | [ ] | |
+| 42.2 | Aller à la porte de l'Est (route d'Ambre, x −710) | Porte à deux tourelles et galerie, vantaux ouverts vers la ville, une tour de flanquement de chaque côté, ronde couverte à côté | [ ] | |
+| 42.3 | Porte de l'Ouest (x −1 310) et poterne sud (chemin des vignes) | Grande porte à deux tours, herse levée ; petite porte-tour sur la poterne, une tour de flanquement à côté | [ ] | |
+| 42.4 | Longer la palissade (dehors et dedans) | Pieux sans jour d'un coin à l'autre, face pointue dehors, ronde dedans ; quelques modules abîmés ou réparés ; un escalier de ronde tous les 150 m ; une tour de guet au milieu de chaque côté | [ ] | Un jour, un module à l'envers ? |
+| 42.5 | Sur une pente | Pieux au sol (enterrés de 1,20 m), rien ne flotte | [ ] | |
+| 42.6 | Ton avis : passer à côté des portes (on traverse 4 m de palissade près de la porte de l'Est, 4 m de tour à l'Ouest, 2 m à la poterne) | Faut-il resserrer les ouvertures des données sur les passages des portes ? | [ ] | |
