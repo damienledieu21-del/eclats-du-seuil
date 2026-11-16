@@ -29,7 +29,9 @@ public class V11VoyageTests : IDisposable
 
     private string SavePath => Path.Combine(_folder, "partie", "sauvegarde.json");
 
-    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(AdventureSession.PlayerId).Position!.Value;
+    // Le combattant du joueur dans la session du moment : après un passage de secteur, son identifiant prend « _pN » (V2.26), et l'ancien
+    // « bastion » peut rester figé dans un secteur rouvert (relecture du V2.30.1 : le retour vers l'est semblait bloqué vers x = −892).
+    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value;
 
     private static GroundVector At(double x, double z) => new GroundVector(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));

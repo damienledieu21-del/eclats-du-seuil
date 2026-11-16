@@ -30,7 +30,9 @@ public class V228RepriseTests : IDisposable
 
     private string SavePath => Path.Combine(_folder, "partie", "sauvegarde.json");
 
-    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(AdventureSession.PlayerId).Position!.Value;
+    // Le combattant du joueur dans la session du moment : après un passage de secteur, son identifiant prend « _pN » (V2.26), et l'ancien
+    // « bastion » peut rester figé dans un secteur rouvert (relecture du V2.30.1 : le retour vers l'est semblait bloqué vers x = −892).
+    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value;
 
     private static GroundVector At(double x, double z) => new GroundVector(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));
@@ -303,14 +305,14 @@ public class V228RepriseTests : IDisposable
         // La découverte puis l'approche marquent la partie à sauvegarder : la sauvegarde automatique écrit le point de reprise.
         a.Advance(AdventureSession.AutosaveSeconds);
         Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
-        // Retour à pied à la place du marché (point sûr déjà découvert en venant) : le point de reprise change, et se sauvegarde sans autre
-        // événement. Sous-lot V2.30.1 : le bourg est dans la ville fortifiée ; avant, le retour se faisait au village.
-        Assert.True(WalkTo(a, -1060, -35));
-        Assert.True(WalkTo(a, -1040, -60));
-        Assert.True(WalkTo(a, -1010, -76));
-        Assert.Equal("Place du marché du Bourg", a.LastSafePoint);
+        // Retour au village à pied (point sûr déjà découvert) : le point de reprise change, et se sauvegarde sans autre événement. Sous-lot
+        // V2.30.1 : par la ville fortifiée et la route d'Ambre.
+        foreach ((double x, double z) in Enumerable.Reverse(RoadToBourg).Skip(1)) Assert.True(WalkTo(a, x, z), $"bloqué avant ({x}, {z}) en {Position(a)}");
+        Assert.True(WalkTo(a, -20, -2));
+        Assert.True(WalkTo(a, -18, -11));
+        Assert.Equal("Place du village", a.LastSafePoint);
         a.Advance(AdventureSession.AutosaveSeconds);
-        Assert.Equal("place_du_marche_de_la_ville", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+        Assert.Equal("place_du_village", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
     }
 
     [Fact]

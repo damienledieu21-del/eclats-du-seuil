@@ -187,6 +187,42 @@ public class V2301DemenagementBourgTests
     }
 
     [Fact]
+    public void Partie_solo_du_village_au_bourg_et_retour_a_pied()
+    {
+        // Relecture du V2.30.1 : l'aller et retour en partie solo (passages de secteur, secteur rouvert au retour). Le joueur est suivi par
+        // l'identifiant de son combattant dans la session du moment (« bastion », puis « bastion_pN » après un passage).
+        string path = Path.Combine(Path.GetTempPath(), "eds_v2301_" + Guid.NewGuid().ToString("N"), "partie.json");
+        try
+        {
+            AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), path);
+            a.Advance(0.05);
+            bool Walk(double x, double z)
+            {
+                for (int i = 0; i < 4000; i++)
+                {
+                    (double px, double pz) = P(a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value);
+                    double dx = x - px, dz = z - pz;
+                    if (Math.Sqrt(dx * dx + dz * dz) <= 1) return true;
+                    a.Combat.SetMove(dx, dz);
+                    a.Advance(0.05);
+                }
+                return false;
+            }
+            Assert.True(Walk(-20, -2));
+            foreach ((double x, double z) in RoadToBourg) Assert.True(Walk(x, z), $"aller : bloqué avant ({x}, {z})");
+            Assert.Equal("Place du Bourg", a.LastSafePoint);
+            foreach ((double x, double z) in Enumerable.Reverse(RoadToBourg).Skip(1)) Assert.True(Walk(x, z), $"retour : bloqué avant ({x}, {z})");
+            Assert.True(Walk(-18, -11));
+            Assert.Equal("Place du village", a.LastSafePoint);
+        }
+        finally
+        {
+            string dir = Path.GetDirectoryName(path)!;
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void Une_partie_sauvegardee_a_la_place_du_bourg_reprend_sur_la_nouvelle_place()
     {
         // Sauvegarde d'avant le déménagement : même point sûr, ancien secteur (le secteur n'est pas comparé, le point sûr fait foi).
