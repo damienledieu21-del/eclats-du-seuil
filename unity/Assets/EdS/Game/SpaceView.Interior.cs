@@ -113,11 +113,20 @@ namespace EdS.Game
             Beams(layout, minX, minZ, maxX, maxZ, height, darkWood, woodTile, chapel);
 
             // Meubles faits par le code d'après les obstacles.
+            _room = map.Places.Count > 0 ? map.Places[0].Id : null;
+            var lotC = new Dictionary<string, GameObject>();
             foreach (SpaceObstacle o in space.Obstacles)
             {
                 // Sous-lot V1.9.8 : la porte de lumière du souvenir est une arche de lumière (StoryStage), pas un autel.
                 if (StoryStage.IsLightGate(o.Id)) continue;
                 float x0 = Raw(o.Points.Min(p => p.X.Raw)), x1 = Raw(o.Points.Max(p => p.X.Raw)), z0 = Raw(o.Points.Min(p => p.Z.Raw)), z1 = Raw(o.Points.Max(p => p.Z.Raw));
+                // Lot C (16 novembre 2026) : le meuble modélisé par Tripo pour cet obstacle, posé dans son emprise, remplace celui du code.
+                GameObject own = LotCFurniture(o.Id, x0, z0, x1, z1, map);
+                if (own != null)
+                {
+                    lotC[o.Id] = own;
+                    continue;
+                }
                 switch (InteriorRules.FurnitureFor(o.Id))
                 {
                     case InteriorFurniture.Counter: Counter(o.Id, x0, z0, x1, z1, map, wood, darkWood, woodTile); break;
@@ -138,6 +147,13 @@ namespace EdS.Game
             {
                 InteriorPiece piece = layout.Pieces[i];
                 if (StoryStage.IsLightGate(piece.Id)) continue;   // sous-lot V1.9.8 : ni chandeliers ni trône sur la porte de lumière
+                // Lot C : le corps d'un meuble modélisé (table, étagères, caisses…) est déjà posé ; ce qui va dessus se pose sur le modèle.
+                string body = lotC.Keys.FirstOrDefault(k => LotCModels.Replaces(k, piece));
+                if (body != null)
+                {
+                    placed[i] = lotC[body];
+                    continue;
+                }
                 float y = (float)piece.Y;
                 if (piece.Parent >= 0)
                 {
@@ -626,7 +642,11 @@ namespace EdS.Game
         private GameObject Furnish(InteriorPiece piece, Transform parent, Vector3 at, AdventureMap map)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            InteriorLook look = catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
+            // Lot C : l'objet modélisé par Tripo pour cette sorte d'objet dans cette pièce (miche, bougeoir, lanterne…) passe devant.
+            string own = LotCModels.ForPiece(_room, piece.Prop);
+            GameObject ownModel = own != null && catalog != null ? catalog.LotCModel(own) : null;
+            InteriorLook look = ownModel != null ? new InteriorLook { Kind = piece.Prop, Model = ownModel }
+                : catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
             GameObject holder = look != null ? Model(look, piece, parent) : Fallback(piece, parent);
             if (holder == null) return null;
             if (!StyleLook.VisibleBounds(holder, out Bounds b)) return holder;
@@ -644,6 +664,34 @@ namespace EdS.Game
             if (piece.Prop == InteriorProp.Chandelier || piece.Prop == InteriorProp.Candelabra) Lit(holder, 0.18f);
             if (b.size.y > 1.6f && !piece.OnWall) AddModelOccluders(holder);
             return holder;
+        }
+
+        /// <summary>Lot C : lieu de la pièce construite (premier lieu de sa carte), pour <see cref="LotCModels.ForRoom"/> et <see cref="LotCModels.ForPiece"/>.</summary>
+        private string _room;
+
+        /// <summary>
+        /// Lot C (16 novembre 2026) : le meuble Tripo de l'obstacle <paramref name="id"/> (<see cref="LotCModels.ForRoom"/>), une ou plusieurs
+        /// copies posées dans son emprise (<see cref="LotCModels.Fit"/>) ; la première copie, ou null sans modèle relié ou sans catalogue.
+        /// </summary>
+        private GameObject LotCFurniture(string id, float x0, float z0, float x1, float z1, AdventureMap map)
+        {
+            string code = LotCModels.ForRoom(_room, id);
+            if (code == null) return null;
+            GameObject probe = LotCLook.Place(_root.transform, code, id, Vector3.zero, 0f);
+            if (probe == null) return null;
+            bool measured = StyleLook.VisibleBounds(probe, out Bounds pb);
+            Object.Destroy(probe);
+            if (!measured) return null;
+            GameObject first = null;
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, pb.size.x, pb.size.z))
+            {
+                GameObject copy = LotCLook.Place(_root.transform, code, id, new Vector3((float)k.X, 0f, (float)k.Z), (float)k.Yaw, (float)k.Scale,
+                    (float)k.ThinX, (float)k.ThinZ);
+                if (copy == null) continue;
+                if (StyleLook.VisibleBounds(copy, out Bounds b) && b.size.y > 1.6f) AddModelOccluders(copy);
+                if (first == null) first = copy;
+            }
+            return first;
         }
 
         /// <summary>Copie du modèle du catalogue, à l'échelle de l'aménagement (et de celle réglée dans le catalogue), tournée.</summary>
