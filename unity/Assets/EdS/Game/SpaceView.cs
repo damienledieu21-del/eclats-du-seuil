@@ -187,7 +187,7 @@ namespace EdS.Game
             if (maxZ >= _whole.MaxZ) Border("Bord nord", new Vector3(minX, 0f, maxZ + 0.15f), new Vector3(maxX, 0f, maxZ + 0.15f), border, borderTile);
 
             // V2.30.2 : Bourg d'Aube fortifié habillé des modèles de l'atelier, calculé sur l'aire entière (le même d'une fenêtre à l'autre).
-            _bourg = map != null ? map.Bourg : BourgModels.Dress(space.Obstacles);
+            _bourg = map != null ? map.Bourg : BourgModels.Dress(space.Obstacles, _roads);
             foreach (SpaceObstacle obstacle in space.Obstacles) Obstacle(obstacle);
             OpenGates(space, map);   // V2.25.2 : la barrière du moulin, ouverte, quand son obstacle n'est plus là
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
