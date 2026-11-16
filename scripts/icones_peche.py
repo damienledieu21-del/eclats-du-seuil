@@ -5,10 +5,15 @@ Même méthode que `defense_de_sanglier`, `ferrure` et `peau_de_loup` (essai ré
 (CC BY 3.0, auteurs cités dans unity/Assets/EdS/Interface/LICENCES.md et docs/CREDITS.md), peinte par le code (dégradé de la
 couleur de l'espèce, motif, relief, contour sombre, ombre portée), en PNG 128 x 128 avec transparence.
 
-Sources (https://github.com/game-icons/icons, à télécharger dans un dossier vide donné en argument) :
+Sources (https://github.com/game-icons/icons : le fichier `<auteur>/<nom>.svg` du dépôt est attendu, dans le dossier donné en argument,
+sous le nom `<auteur>_<nom>.svg`, par exemple `delapouite_fish-escape.svg` pour `delapouite/fish-escape.svg`) :
   delapouite/fish-escape.svg  (le poisson qui saute, seul : la forme qui contient le point 400, 80) -> les cinq poissons
   cathelineau/earth-worm.svg                                                    -> item.ver_de_terre
   lorc/dragonfly.svg                                                             -> item.mouche_de_mai
+  darkzaitzev/fried-fish.svg                                                     -> item.friture_du_lac
+  darkzaitzev/fish-cooked.svg                                                    -> item.truite_meuniere
+  delapouite/hot-meal.svg                                                        -> item.quenelles_de_brochet
+  delapouite/cooking-pot.svg                                                     -> item.matelote_de_carpe_doree
 
 Usage : python3 -I scripts/icones_peche.py DOSSIER_DES_SVG DOSSIER_DE_SORTIE
 Demande rsvg-convert et Pillow. Déterministe (motifs tirés d'une graine fixe).
@@ -137,6 +142,10 @@ def main(src, out):
     fish = silhouette(open(f"{src}/delapouite_fish-escape.svg").read(), seed=(400, 80))
     worm = silhouette(open(f"{src}/cathelineau_earth-worm.svg").read())
     fly = silhouette(open(f"{src}/lorc_dragonfly.svg").read())
+    fried = silhouette(open(f"{src}/darkzaitzev_fried-fish.svg").read())
+    cooked = silhouette(open(f"{src}/darkzaitzev_fish-cooked.svg").read())
+    cloche = silhouette(open(f"{src}/delapouite_hot-meal.svg").read())
+    pot = silhouette(open(f"{src}/delapouite_cooking-pot.svg").read())
     icons = {
         # Gardon : argenté, nageoires rougies (dégradé vers le rose en bas).
         "gardon": paint(fit(fish), (206, 214, 222), (176, 120, 120), scales((255, 255, 255, 70)), seed=11),
@@ -153,6 +162,15 @@ def main(src, out):
         "ver_de_terre": paint(fit(worm), (196, 120, 120), (150, 80, 80), bands((110, 50, 50, 140), 9), seed=16),
         # Mouche de mai : ailes claires, corps ambré.
         "mouche_de_mai": paint(fit(fly), (236, 228, 196), (168, 128, 60), bands((120, 90, 40, 90), 6), seed=17),
+        # Plats de poisson (décision de Damien du 16 novembre 2026, vers 14 h) : même méthode.
+        # Friture du lac : panure dorée, mouchetée.
+        "friture_du_lac": paint(fit(fried), (238, 196, 96), (176, 112, 40), spots((120, 70, 20, 120), 40, 1.6), seed=18),
+        # Truite meunière : beurre noisette, sur la braise.
+        "truite_meuniere": paint(fit(cooked), (214, 170, 110), (150, 84, 40), scales((90, 50, 20, 90)), seed=19),
+        # Quenelles de brochet : la cloche d'argent du service, reflets crème.
+        "quenelles_de_brochet": paint(fit(cloche), (236, 236, 228), (168, 160, 140), bands((255, 248, 220, 60), 4), seed=20),
+        # Matelote de carpe dorée au cidre : la marmite, cuivre et sauce ambrée.
+        "matelote_de_carpe_doree": paint(fit(pot), (200, 120, 70), (120, 60, 30), bands((240, 190, 90, 80), 3), seed=21),
     }
     for name, icon in icons.items():
         icon.save(f"{out}/{name}.png", optimize=True)

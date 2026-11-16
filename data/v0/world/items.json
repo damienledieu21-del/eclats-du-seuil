@@ -2129,7 +2129,6 @@
       {
         "id": "item.friture_du_lac",
         "name": "Friture du lac",
-        "icon": "sac",
         "type": "boon",
         "rarity": "common",
         "stack": 5,
@@ -2142,7 +2141,6 @@
       {
         "id": "item.truite_meuniere",
         "name": "Truite meunière",
-        "icon": "sac",
         "type": "boon",
         "rarity": "common",
         "stack": 5,
@@ -2156,7 +2154,6 @@
       {
         "id": "item.quenelles_de_brochet",
         "name": "Quenelles de brochet",
-        "icon": "sac",
         "type": "boon",
         "rarity": "rare",
         "stack": 5,
@@ -2170,7 +2167,6 @@
       {
         "id": "item.matelote_de_carpe_doree",
         "name": "Matelote de carpe dorée au cidre",
-        "icon": "sac",
         "type": "boon",
         "rarity": "very_rare",
         "stack": 3,
