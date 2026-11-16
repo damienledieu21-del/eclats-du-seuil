@@ -42,6 +42,10 @@ Puis, vers 10 h (après la PR #190) :
 5. **Panneaux aux croisements** entre le village et le Bourg : **dès le V2.30.1** (fait : quatre panneaux, direction et distance du Bourg et du village).
 6. **Quête du cheval** : Achille, Brume et les rives du lac **confirmés**. **Plus tard** (noté, pas maintenant) : ramener un vrai cheval à la longe jusqu'à la ferme, avec le modèle 3D, quand ses animations seront prêtes.
 
+Puis, vers 16 h 30 :
+
+7. **Grand Solitaire et Bourg déménagé** : le boss du monde attaque **devant la porte de l'Est** et **n'entre pas dans les murs** (choix de Claude au V2.30.1, confirmé).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).

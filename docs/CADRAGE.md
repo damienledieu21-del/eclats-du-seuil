@@ -297,6 +297,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Bourg déménagé : emplacement | Le bloc au nord-ouest de la place du marché est **gardé** ; ajustement possible après le test dans Unity. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; V2.30.1 |
 | Panneaux du village au Bourg | Des **panneaux aux croisements** entre le village et le Bourg, dès maintenant. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 | Quête du cheval : détails | **Achille, Brume et les rives du lac** confirmés ; **plus tard** : ramener un vrai cheval à la longe jusqu'à la ferme (modèle 3D et animations). | Retenu (Damien, 16 novembre 2026, vers 10 h) ; la suite est à faire avec le modèle du cheval (V2.28d (2c)) |
+| Grand Solitaire et Bourg déménagé | Le boss du monde attaque **devant la porte de l'Est** du Bourg fortifié et **n'entre pas dans les murs**. | Retenu (Damien, 16 novembre 2026, vers 16 h 30) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
