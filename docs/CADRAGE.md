@@ -291,6 +291,9 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Point de vue du sommet | À la **première visite** : **200 XP**, une **entrée au carnet**, et le **brouillard de carte dissipé** autour. | Retenu (Damien, 15 novembre 2026, vers 17 h) ; à réaliser au V2.29 (2) |
 | Forêt des Murmures | **Au nord-ouest**, comme sur la carte d'Orsédia retenue (déjà aligné : pont des Murmures à l'ouest côté nord, [PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md#40-bis-les-vallons-dans-orsédia-retenu)). | Retenu (Damien, 15 novembre 2026, vers 17 h) |
 | Brouillard de carte | **Sous le brouillard, tout est caché** : noms de lieux, PNJ, points sûrs, portes (et créatures) ne s'affichent que sur les cases vues ; le joueur et l'objectif de la quête suivie restent. | Retenu (Damien, 15 novembre 2026, vers 21 h 15) ; réalisé au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) |
+| Point de vue du sommet : brouillard | Monter au point de vue **lève le brouillard sur toute la région** (remplace « autour », ligne du 15 novembre 2026 ci-dessus). | Retenu (Damien, 16 novembre 2026) ; sous-lot V2.29.1 ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) |
+| Monture : quête du cheval | Une **vraie petite quête** pour obtenir la monture, au lieu de l'avoir directement à la fin du chapitre 1. | Retenu (Damien, 16 novembre 2026) ; sous-lot à venir, après le sommet ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md#0-ter-décisions-de-damien-du-16-novembre-2026-retenu)) |
+| Porte nord du Bourg | Une **porte nord**, reliée au chemin du pont des Murmures. | Retenu (Damien, 16 novembre 2026) ; prévue au V2.40 avec le chemin du pont |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
