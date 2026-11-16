@@ -9,7 +9,7 @@ namespace EdS.Game.Editor
     /// Sous-lot V2.54 : l'icône de l'application (icône 1024 du dossier « Logo définitif », <c>Assets/EdS/Icone/eds_icone_1024.png</c>) dans les
     /// réglages du lecteur : l'icône par défaut (PC) et, sur Android, les icônes à une couche (classique et ronde ; l'icône adaptative à deux
     /// couches n'est pas touchée, Unity la déduit de l'icône par défaut). Chaque taille demandée par Unity reçoit l'image (Unity la réduit).
-    /// Appliquée à l'ouverture du projet seulement si l'icône par défaut est vide (un choix fait à la main n'est jamais écrasé), ou par le
+    /// Appliquée à l'ouverture du projet seulement si l'icône par défaut est vide (un choix fait à la main, y compris les icônes Android, n'est jamais écrasé), ou par le
     /// menu « Éclats du Seuil → Appliquer l'icône de l'application » (qui remplace). <c>ProjectSettings/ProjectSettings.asset</c> n'est pas
     /// suivi par git : le dépôt ne change aucun réglage du lecteur, le script les pose chez chaque développeur.
     /// </summary>
@@ -39,14 +39,16 @@ namespace EdS.Game.Editor
                 Texture2D[] current = PlayerSettings.GetIcons(NamedBuildTarget.Unknown, IconKind.Application);
                 bool empty = current.Length == 0 || Array.TrueForAll(current, t => t == null);
                 if (!empty && !replace) return;
-                Fill(NamedBuildTarget.Unknown, icon);
-                Fill(NamedBuildTarget.Android, icon);
+                Fill(NamedBuildTarget.Unknown, icon, replace);
+                Fill(NamedBuildTarget.Android, icon, replace);
                 foreach (PlatformIconKind kind in PlayerSettings.GetSupportedIconKindsForNamedBuildTarget(NamedBuildTarget.Android))
                 {
                     PlatformIcon[] icons = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, kind);
                     bool single = icons.Length > 0;
                     foreach (PlatformIcon p in icons) single &= p.maxLayerCount == 1;
                     if (!single) continue;
+                    // Des icônes Android déjà posées à la main ne sont jamais écrasées (sauf par le menu).
+                    if (!replace && Array.Exists(icons, p => p.GetTexture(0) != null)) continue;
                     foreach (PlatformIcon p in icons) p.SetTexture(icon, 0);
                     PlayerSettings.SetPlatformIcons(NamedBuildTarget.Android, kind, icons);
                 }
@@ -59,8 +61,10 @@ namespace EdS.Game.Editor
             }
         }
 
-        private static void Fill(NamedBuildTarget target, Texture2D icon)
+        private static void Fill(NamedBuildTarget target, Texture2D icon, bool replace)
         {
+            Texture2D[] present = PlayerSettings.GetIcons(target, IconKind.Application);
+            if (!replace && present.Length > 0 && !Array.TrueForAll(present, t => t == null)) return;
             int count = PlayerSettings.GetIcons(target, IconKind.Application).Length;
             if (count == 0) count = 1;
             var all = new Texture2D[count];

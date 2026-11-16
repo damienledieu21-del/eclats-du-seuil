@@ -115,9 +115,22 @@ namespace EdS.Runtime
             return t * t * (3f - 2f * t);
         }
 
-        /// <summary>Instant d'après un geste du joueur : on saute à la fin de l'ouverture (devise lisible, puis fondu de sortie) si le geste vient assez tard.</summary>
-        public static float AfterGesture(float elapsed) =>
-            elapsed >= SkipAfter && elapsed < OutStart ? OutStart : elapsed;
+        /// <summary>Vitesse du rattrapage après un geste : le temps de l'ouverture court quatre fois plus vite jusqu'au fondu de sortie (aucune opacité ne saute).</summary>
+        public const float SkipSpeed = 4f;
+
+        /// <summary>Un geste peut-il abréger l'ouverture à cet instant ? (pas avant <see cref="SkipAfter"/>, pas pendant le fondu de sortie)</summary>
+        public static bool CanSkip(float elapsed) => elapsed >= SkipAfter && elapsed < OutStart;
+
+        /// <summary>
+        /// Avance le temps de l'ouverture de <paramref name="delta"/> secondes d'affichage. Pendant le rattrapage (<paramref name="skipping"/>), le temps
+        /// court à <see cref="SkipSpeed"/> jusqu'à <see cref="OutStart"/> (il s'y arrête exactement), puis reprend sa vitesse : le fondu de sortie se fait normalement.
+        /// </summary>
+        public static float Advance(float elapsed, float delta, bool skipping)
+        {
+            if (!skipping || elapsed >= OutStart) return elapsed + delta;
+            float next = elapsed + delta * SkipSpeed;
+            return next > OutStart ? OutStart : next;
+        }
 
         /// <summary>
         /// Version fixe à montrer (écran titre, menu, petite taille) : blanche sur fond clair ou très petite (moins de
