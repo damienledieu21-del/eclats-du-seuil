@@ -127,13 +127,23 @@ public class InterfaceStyleTests
             itemCount++;
         }
         Assert.True(itemCount >= 20);
+        // Sous-lot V2.33 : poissons et appâts de la pêche ont leur propre icône peinte (plus celle de l'herbe ou du sac).
+        foreach (string fish in new[] { "gardon", "perche", "truite", "brochet", "carpe_doree", "ver_de_terre", "mouche_de_mai" })
+        {
+            Assert.Contains(fish, icons);
+            Assert.Contains($"\"id\": \"item.{fish}\",", Read("data", "v0", "world", "items.json"), StringComparison.Ordinal);
+        }
+        foreach (JsonElement item in items.RootElement.GetProperty("data").GetProperty("items").EnumerateArray())
+            if (new[] { "item.gardon", "item.perche", "item.truite", "item.brochet", "item.carpe_doree", "item.ver_de_terre", "item.mouche_de_mai" }
+                    .Contains(item.GetProperty("id").GetString()))
+                Assert.False(item.TryGetProperty("icon", out _), item.GetProperty("id").GetString());
         Assert.Contains("garde", icons);
         Assert.Contains("parade", icons);
 
         // Licences et crédits : chaque source citée (CC0, CC BY 3.0, OFL).
         string licences = Read(Folder.Split(Path.DirectorySeparatorChar).Append("LICENCES.md").ToArray());
         string credits = Read("docs", "CREDITS.md");
-        foreach (string source in new[] { "Drummyfish", "LudicArts", "J. W. Bjerk", "boar-tusks", "metal-bar", "animal-hide", "Cinzel Decorative", "Barlow Condensed" })
+        foreach (string source in new[] { "Drummyfish", "LudicArts", "J. W. Bjerk", "boar-tusks", "metal-bar", "animal-hide", "fish-escape", "earth-worm", "dragonfly", "Cathelineau", "Cinzel Decorative", "Barlow Condensed" })
         {
             Assert.Contains(source, licences, StringComparison.Ordinal);
             Assert.Contains(source, credits, StringComparison.Ordinal);
