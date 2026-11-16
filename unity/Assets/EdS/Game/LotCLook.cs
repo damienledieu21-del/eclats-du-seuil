@@ -30,5 +30,18 @@ namespace EdS.Game
             if (StyleLook.VisibleBounds(look, out Bounds b)) look.transform.position += new Vector3(at.x - b.center.x, at.y - b.min.y, at.z - b.center.z);
             return look;
         }
+
+        /// <summary>
+        /// Relecture de la PR #197 : « une seule variante » (<see cref="StyleLook.Prop"/>) pour un modèle du lot C : s'il a plusieurs rendus,
+        /// un seul reste, tiré de <paramref name="id"/>. Un export Tripo n'a qu'un maillage : rien ne change alors.
+        /// </summary>
+        public static void OneVariant(GameObject look, string id)
+        {
+            Renderer[] renderers = look.GetComponentsInChildren<Renderer>();
+            if (renderers.Length < 2) return;
+            int keep = StyleRules.Variant(id ?? string.Empty, renderers.Length);
+            for (int i = 0; i < renderers.Length; i++)
+                if (i != keep) renderers[i].enabled = false;
+        }
     }
 }
