@@ -123,6 +123,8 @@ namespace EdS.World
             return refusal;
         }
 
+        bool INarrativeWorld.OtherTitleShown => _character.Cards?.Shown == true;
+
         /// <summary>Titre actif : identifiant du titre affiché sous le nom (« As des Trois Feux » ou un titre de la guilde), ou null.</summary>
         public string? ActiveTitle => _character.Cards?.Shown == true ? CardMatch.AceTitle : Narrative?.ShownTitle;
 

@@ -328,6 +328,12 @@ namespace EdS.World
 
         /// <summary>Concours de pâtisserie : identifiant du personnage (sa signature sur ce qu'il fabrique), ou null hors d'une partie.</summary>
         string? CharacterId { get; }
+
+        /// <summary>
+        /// Titre actif (sauvegarde v26) : un titre hors de la guilde (« As des Trois Feux ») est affiché sous le nom ; un titre de guilde
+        /// gagné (inscription, promotion) n'est alors pas affiché d'office (revue Codex de la PR #193 : un seul titre affiché).
+        /// </summary>
+        bool OtherTitleShown { get; }
     }
 
     /// <summary>
@@ -1148,7 +1154,7 @@ namespace EdS.World
             if (_card != null) return GuildRefusal.AlreadyMember;
             GuildRank g = _guild.Ranks[0];
             long reputation = ReputationPoints();
-            _card = new GuildCard { Rank = 0, Title = g.Title };
+            _card = new GuildCard { Rank = 0, Title = _world.OtherTitleShown ? null : g.Title };   // revue Codex de la PR #193 : le titre choisi reste
             _card.Titles.Add(g.Title);
             Revision++;
             events.Add(new StoryEvent(StoryEventKind.GuildJoined, g.Id));
@@ -1304,7 +1310,7 @@ namespace EdS.World
                 if (_card.Rank + 1 != rank.Index) return;   // déjà au-dessus (ne peut arriver : l'épreuve ne s'ouvre qu'au rang juste en dessous)
                 _card.Rank = rank.Index;
                 _card.Titles.Add(rank.Title);
-                _card.Title = rank.Title;
+                if (!_world.OtherTitleShown) _card.Title = rank.Title;   // revue Codex de la PR #193 : le titre choisi (« As des Trois Feux ») reste
                 Revision++;
                 events.Add(new StoryEvent(StoryEventKind.GuildPromoted, rank.Id));
                 return;
