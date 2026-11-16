@@ -38,9 +38,8 @@ namespace EdS.Game
             if (catalog == null || _bourg == null || _bourg.Pieces.Count == 0) return;
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
             float minZ = Raw(_space.Min.Z.Raw) - BourgMargin, maxZ = Raw(_space.Max.Z.Raw) + BourgMargin;
-            foreach (BourgPiece p in _bourg.Pieces)
+            foreach (BourgPiece p in _bourg.Near(minX, minZ, maxX, maxZ, 0))
             {
-                if (p.X < minX || p.X > maxX || p.Z < minZ || p.Z > maxZ) continue;
                 if (p.Covers != null && !BourgCovers(p.Covers)) continue;
                 GameObject prefab = catalog.OwnDecorPiece(p.Piece);
                 if (prefab == null) continue;
@@ -52,7 +51,8 @@ namespace EdS.Game
                 GameObject model = Object.Instantiate(prefab, holder.transform, false);
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 BourgOpen(holder.transform, model.transform, p.Piece);
-                AddModelOccluders(model);
+                // Relecture indépendante : occulteurs pour les grandes pièces seulement (tours, portes, bâtiments).
+                if (BourgModels.Occludes(p.Piece)) AddModelOccluders(model);
             }
         }
 

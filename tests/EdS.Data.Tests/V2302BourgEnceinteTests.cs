@@ -220,8 +220,57 @@ public class V2302BourgEnceinteTests
         Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 10_000_000);
     }
 
+    /// <summary>
+    /// Relecture indépendante des PR #195 à #199 : la vue d'un secteur n'a qu'une fenêtre de l'aire (≈ 384 m) ; l'habillage est calculé une
+    /// fois sur l'aire entière (<see cref="AdventureMap.Bourg"/>) et la fenêtre en pose ce qui la touche. Au milieu du côté ouest (aucune
+    /// porte dans la fenêtre) et au milieu du côté nord : mêmes pièces que l'aire entière, faces extérieures dehors, aucune porte fantôme.
+    /// </summary>
+    [Fact]
+    public void A_sector_window_poses_the_whole_town_dress_restricted_to_it()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "eds_v2302_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(folder, "partie.json"));
+            a.Advance(0.05);
+            AdventureMap whole = a.RegionMap;
+            foreach ((double cx, double cz, double yaw) in new[] { (-1310.0, 60.0, -90.0), (-1010.0, 180.0, 0.0) })
+            {
+                long r(double v) => (long)Math.Round(v * 10000);
+                CombatSpace space = AdventureMap.WindowOf(whole.Space, (r(cx - 64), r(cz - 64), r(cx + 64), r(cz + 64)));
+                var window = new AdventureMap(space, whole.Places, whole.Roads, whole.Clearings, whole.Doors, whole.Indoor, whole.Speakers, whole.Gates, whole.Region)
+                    { Whole = whole };
+                Assert.Same(whole.Bourg, window.Bourg);
+                double x0 = space.Min.X.Raw / 1e4, z0 = space.Min.Z.Raw / 1e4, x1 = space.Max.X.Raw / 1e4, z1 = space.Max.Z.Raw / 1e4;
+                var near = window.Bourg.Near(x0, z0, x1, z1, 0).ToList();
+                Assert.Equal(whole.Bourg.Pieces.Where(p => near.Contains(p)), near);
+                var wall = near.Where(p => p.Piece.Contains("palissade", StringComparison.Ordinal) && (yaw == 0 ? Math.Abs(p.Z - cz) < 0.01 : Math.Abs(p.X - cx) < 0.01)).ToList();
+                Assert.True(wall.Count >= 20);
+                Assert.All(wall, p => Assert.Equal(yaw, p.Yaw, 6));
+                Assert.DoesNotContain(near, p => p.Piece is BourgModels.EastGate or BourgModels.WestGate or BourgModels.NorthGate);
+                // Calculé sur la fenêtre seule (l'erreur relevée), le centre de l'enceinte serait faux.
+                Assert.NotEqual(BourgModels.Dress(space.Obstacles).Pieces.Count(p => p.Piece.Contains("palissade", StringComparison.Ordinal)), whole.Bourg.Pieces.Count(p => p.Piece.Contains("palissade", StringComparison.Ordinal)));
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+    }
+
+    /// <summary>Seules les grandes pièces (6 m et plus) cachent le joueur ; modules de palissade et petits décors non (téléphone).</summary>
+    [Fact]
+    public void Only_tall_pieces_occlude()
+    {
+        Assert.False(BourgModels.Occludes(BourgModels.Wall));
+        Assert.False(BourgModels.Occludes(BourgModels.Walkway));
+        Assert.True(BourgModels.Occludes(BourgModels.FlankTower));
+        Assert.True(BourgModels.Occludes(BourgModels.EastGate));
+        Assert.True(BourgModels.Occludes(BourgModels.WatchTower));
+    }
+
     /// <summary>Plus grand côté (px) d'un PNG ou d'un JPEG, lu dans son en-tête.</summary>
-    private static int ImageSize(string path)
+    internal static int ImageSize(string path)
     {
         byte[] b = File.ReadAllBytes(path);
         if (b[0] == 0x89 && b[1] == 'P') return Math.Max(b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19], b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23]);
