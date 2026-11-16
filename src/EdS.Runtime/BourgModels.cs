@@ -12,8 +12,9 @@ namespace EdS.Runtime
     /// </summary>
     public readonly struct BourgPiece
     {
-        public BourgPiece(string piece, double x, double z, double yaw, string? covers)
+        public BourgPiece(string piece, double x, double z, double yaw, string? covers, double height = 0)
         {
+            Height = height;
             Piece = piece;
             X = x;
             Z = z;
@@ -26,6 +27,9 @@ namespace EdS.Runtime
         public double Z { get; }
         public double Yaw { get; }
         public string? Covers { get; }
+
+        /// <summary>V2.30.5 : hauteur (m) du pivot au-dessus du sol (pièce murale : lanterne, auvent, linge, bannière, râtelier) ; 0 au sol.</summary>
+        public double Height { get; }
     }
 
     /// <summary>
@@ -115,7 +119,25 @@ namespace EdS.Runtime
                 case "h10_angle_miroir": return (-4.0, 4.55, -4.55, 4.0, 10.57);
                 case "h11_passage": return (-4.0, 4.0, -5.3, 5.3, 13.6);
                 case "h12_pauvre_enceinte": return (-2.8, 2.8, -2.8, 2.8, 4.66);
+                case "p13_armurier": return (-3.98, 3.98, -5.3, 5.0, 11.8);
+                case "p14_forgeron": return (-6.0, 6.0, -5.3, 4.97, 11.5);
+                case "p15_tanneur": return (-4.97, 4.97, -6.3, 6.0, 12.1);
+                case "p16_apothicaire": return (-3.48, 3.48, -4.8, 4.5, 11.1);
+                case "p17_tailleur": return (-3.98, 3.98, -4.8, 4.5, 11.1);
+                case "p18_taverne": return (-6.97, 6.97, -6.3, 6.0, 12.6);
                 // V2.30.4 : rues, accessoires de rue et de garde, cours (groupes Voirie, Charrois_Mobilier, Accessoires_*, Cours).
+                // V2.30.5 : fossé, talus, ponts ; pièces murales.
+                case Ditch: return (-3.0, 3.0, -3.5, 3.5, 0.0);
+                case Bank: return (-3.0, 3.0, -2.0, 2.0, 1.21);
+                case EastBridge: return (-2.6, 2.6, -6.0, 6.0, 1.2);
+                case WestBridge: return (-3.6, 3.6, -6.0, 6.0, 1.2);
+                case NorthBridge: return (-2.0, 2.0, -6.0, 6.0, 1.2);
+                case WallLantern: return (-0.55, 0.56, -0.25, 0.25, 1.2);
+                case "r29_corde_linge": return (-4.0, 4.0, -0.08, 0.08, 1.86);
+                case "r30_auvent_lin": case "r30_auvent_ocre": case "r30_auvent_rayee": case "r30_auvent_rayee_perches": return (-2.0, 2.0, -1.1, 1.1, 1.1);
+                case "r30_auvent_lin_replie": return (-1.93, 1.98, -0.15, 0.15, 1.1);
+                case "f18_ratelier_mural": return (-1.0, 1.0, -0.01, 0.33, 1.8);
+                case "f19_banniere_potence": return (-0.6, 0.6, -0.05, 0.05, 2.4);
                 case Paving: return (-3.0, 3.0, -3.0, 3.0, 0.18);
                 case Curb: return (-3.0, 3.0, -0.12, 0.12, 0.18);
                 case Street: return (-3.0, 3.0, -4.0, 4.0, 0.2);
@@ -173,6 +195,46 @@ namespace EdS.Runtime
         public const string Oven = "p10_four_banal";
         public const string Fountain = "p11_fontaine";
         public const string Well = "p12_puits";
+
+        public const string Ditch = "f11_fosse";
+        public const string Bank = "f12_talus";
+        public const string EastBridge = "f13_pont_est";
+        public const string WestBridge = "f14_pont_ouest";
+        public const string NorthBridge = "f15_pont_nord";
+        public const string WallLantern = "r21_lanterne_potence";
+        public const string Line = "r29_corde_linge";
+        public const string WallRack = "f18_ratelier_mural";
+        public const string WallBanner = "f19_banniere_potence";
+        public static readonly string[] Awnings = { "r30_auvent_lin", "r30_auvent_ocre", "r30_auvent_rayee", "r30_auvent_rayee_perches", "r30_auvent_lin_replie" };
+
+        /// <summary>V2.30.5 : pièce posée au niveau du bord du fossé (pas au fond creusé) : modules du fossé et ponts.</summary>
+        public static bool OnRim(string piece) => piece == Ditch || piece == EastBridge || piece == WestBridge || piece == NorthBridge;
+
+        /// <summary>V2.30.5 : pièce du fossé (modules, ponts, talus) ou d'une façade (lanterne, linge, auvent, râtelier mural, bannière sur potence) ?</summary>
+        public static bool IsFacadeOrMoat(string piece) => OnRim(piece) || piece == Bank || piece == WallLantern || piece == Line || piece == WallRack
+            || piece == WallBanner || Array.IndexOf(Awnings, piece) >= 0;
+
+        /// <summary>V2.30.5 : obstacle du fossé (bas : on voit par-dessus, on ne le franchit que par les ponts).</summary>
+        public static bool IsDitch(string? id) => id != null && id.StartsWith("fosse_ville_", StringComparison.Ordinal);
+
+        /// <summary>V2.30.5 : profondeur du fossé creusé dans le relief (fiche F11 : fond à −2,00) et demi-largeur de son fond plat.</summary>
+        public const double DitchDepth = 2.0, DitchFloor = 2.0, DitchBank = 1.5;
+
+        /// <summary>V2.30.5 : bâtiments ajoutés le long de la route d'Ambre (décision de Damien du 16 novembre 2026) et leur modèle.</summary>
+        public static string? ShopModel(string? id)
+        {
+            switch (id)
+            {
+                case "maison_ville_armurier": return "p13_armurier";
+                case "maison_ville_forgeron": return "p14_forgeron";
+                case "maison_ville_tanneur": return "p15_tanneur";
+                case "maison_ville_apothicaire": return "p16_apothicaire";
+                case "maison_ville_tailleur": return "p17_tailleur";
+                case "maison_ville_taverne": return "p18_taverne";
+                case "maison_ville_notable": return "h09_notable_large";
+                default: return null;
+            }
+        }
 
         public const string Paving = "r01_paves_place";
         public const string Curb = "r01_bordure";
@@ -359,7 +421,10 @@ namespace EdS.Runtime
             Enceinte(obstacles, pieces, needs);
             Monuments(obstacles, roads, pieces, needs);
             HousesOf(obstacles, roads, pieces, needs);
+            Shops(obstacles, roads, pieces, needs);
+            Moat(obstacles, pieces, needs);
             Streets(obstacles, roads, pieces);
+            Facades(obstacles, pieces);
             if (pieces.Count == 0) return BourgDress.Empty;
             return new BourgDress(pieces, needs.ToDictionary(n => n.Key, n => (IReadOnlyList<string>)n.Value.Distinct().OrderBy(p => p, StringComparer.Ordinal).ToList(),
                 StringComparer.Ordinal));
@@ -602,8 +667,7 @@ namespace EdS.Runtime
         private static void HousesOf(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces,
             Dictionary<string, List<string>> needs)
         {
-            foreach (SpaceObstacle o in obstacles.Where(o => o.Id.StartsWith("maison_ville_", StringComparison.Ordinal) && o.Id != "maison_ville_grande_maison")
-                .OrderBy(o => o.Id, StringComparer.Ordinal))
+            foreach (SpaceObstacle o in obstacles.Where(o => IsTownHouse(o.Id)).OrderBy(o => o.Id, StringComparer.Ordinal))
             {
                 var b = Bounds(o);
                 (int X, int Z) facing = HouseFacing(b, roads);
@@ -613,6 +677,10 @@ namespace EdS.Runtime
                 Need(needs, o.Id, model);
             }
         }
+
+        /// <summary>Maison numérotée de la ville (« maison_ville_NN »).</summary>
+        public static bool IsTownHouse(string? id) =>
+            id != null && id.StartsWith("maison_ville_", StringComparison.Ordinal) && id.Length > 13 && id.Skip(13).All(char.IsDigit);
 
         /// <summary>Façade d'une maison : sur un petit côté, celui dont le milieu est le plus près d'une route (à égalité : est, puis nord).</summary>
         public static (int X, int Z) HouseFacing((double X0, double X1, double Z0, double Z1) b, IReadOnlyList<StyleRoad> roads)
@@ -709,7 +777,7 @@ namespace EdS.Runtime
                 {
                     var b = P(-8, side * (half + 3));
                     Try(Brazier, b.X, b.Z, g.Yaw);
-                    var f = P(4, side * wide);
+                    var f = P(2.6, side * wide);   // V2.30.5 : entre la palissade et le fossé (4,2 m)
                     Try(Banner, f.X, f.Z, g.Yaw);
                 }
                 var r = P(-12, half + 5);
@@ -758,8 +826,7 @@ namespace EdS.Runtime
             BourgPiece? stables = pieces.Where(p => p.Piece == Stables).Select(p => (BourgPiece?)p).FirstOrDefault();
             if (stables != null) Try(Trough, stables.Value.X + 9, stables.Value.Z - 14, 0);
             // Cours : derrière une maison sur trois (côté opposé à sa façade), un élément tiré de son identifiant.
-            var houses = pieces.Where(p => p.Covers != null && p.Covers.StartsWith("maison_ville_", StringComparison.Ordinal) && p.Covers != "maison_ville_grande_maison")
-                .OrderBy(p => p.Covers, StringComparer.Ordinal).ToList();
+            var houses = pieces.Where(p => IsTownHouse(p.Covers)).OrderBy(p => p.Covers, StringComparer.Ordinal).ToList();
             for (int k = 0; k < houses.Count; k += 3)
             {
                 BourgPiece h = houses[k];
@@ -822,6 +889,129 @@ namespace EdS.Runtime
                 }
             }
             pieces.AddRange(placed);
+        }
+
+        // --- V2.30.5 : décisions de Damien du 16 novembre 2026 (vers 21 h 30) -------------------------------------------------------
+
+        /// <summary>Boutiques P13 à P18 et maison notable H09 sur leurs obstacles, façade vers la route la plus proche.</summary>
+        private static void Shops(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces, Dictionary<string, List<string>> needs)
+        {
+            foreach (SpaceObstacle o in obstacles.Where(o => ShopModel(o.Id) != null).OrderBy(o => o.Id, StringComparer.Ordinal))
+            {
+                var b = Bounds(o);
+                string model = ShopModel(o.Id)!;
+                pieces.Add(At(model, b, RoadSide(o.Id, b, roads), 0, 0, o.Id));
+                Need(needs, o.Id, model);
+            }
+        }
+
+        /// <summary>
+        /// Fossé : modules F11 de 6 m serrés le long de chaque obstacle du fossé (face extérieure dehors) ; un pont devant chaque porte
+        /// (F13 à l'est, F14 à l'ouest, F15 à la poterne), au milieu du fossé ; talus F12 au pied intérieur de chaque module de palissade
+        /// (pas sous les escaliers de ronde).
+        /// </summary>
+        private static void Moat(IReadOnlyList<SpaceObstacle> obstacles, List<BourgPiece> pieces, Dictionary<string, List<string>> needs)
+        {
+            var walls = obstacles.Where(o => IsWall(o.Id)).Select(Bounds).ToList();
+            if (walls.Count == 0) return;
+            double cx = (walls.Min(b => b.X0) + walls.Max(b => b.X1)) / 2, cz = (walls.Min(b => b.Z0) + walls.Max(b => b.Z1)) / 2;
+            foreach (SpaceObstacle o in obstacles.Where(o => IsDitch(o.Id)).OrderBy(o => o.Id, StringComparer.Ordinal))
+            {
+                var b = Bounds(o);
+                bool alongX = b.X1 - b.X0 >= b.Z1 - b.Z0;
+                double line = alongX ? (b.Z0 + b.Z1) / 2 : (b.X0 + b.X1) / 2;
+                int sign = line >= (alongX ? cz : cx) ? 1 : -1;
+                (int, int) facing = alongX ? (0, sign) : (sign, 0);
+                double from = alongX ? b.X0 : b.Z0, to = alongX ? b.X1 : b.Z1;
+                int n = Math.Max(1, (int)Math.Ceiling((to - from) / ModuleLength - 1e-9));
+                for (int k = 0; k < n; k++)
+                {
+                    double c = n == 1 ? (from + to) / 2 : from + ModuleLength / 2 + k * (to - from - ModuleLength) / (n - 1);
+                    (double x, double z) = alongX ? (c, line) : (line, c);
+                    pieces.Add(new BourgPiece(Ditch, Round(x), Round(z), Yaw(facing), o.Id));
+                }
+                Need(needs, o.Id, Ditch);
+            }
+            if (!obstacles.Any(o => IsDitch(o.Id))) return;
+            foreach (BourgPiece g in pieces.Where(p => p.Piece == EastGate || p.Piece == WestGate || p.Piece == NorthGate).ToList())
+            {
+                double a = g.Yaw * Math.PI / 180;
+                string bridge = g.Piece == EastGate ? EastBridge : g.Piece == WestGate ? WestBridge : NorthBridge;
+                pieces.Add(new BourgPiece(bridge, Round(g.X + Math.Sin(a) * MoatCenter), Round(g.Z + Math.Cos(a) * MoatCenter), g.Yaw, null));
+            }
+            foreach (BourgPiece t in pieces.Where(p => p.Piece == Wall || p.Piece == WallBroken || p.Piece == WallMended).ToList())
+            {
+                double a = t.Yaw * Math.PI / 180;
+                pieces.Add(new BourgPiece(Bank, Round(t.X - Math.Sin(a) * BankInset), Round(t.Z - Math.Cos(a) * BankInset), t.Yaw, null));
+            }
+        }
+
+        /// <summary>Milieu du fossé (m hors de la ligne de la palissade : de 4,2 à 11,2 m, accroche « face_exterieure_rideau » de F11).</summary>
+        public const double MoatCenter = 7.7;
+
+        /// <summary>Centre du talus (m vers la ville) : son bord A (Y −2) contre la face intérieure du rideau (0,16 m).</summary>
+        public const double BankInset = 2.16;
+
+        /// <summary>
+        /// Façades vivantes : une lanterne sur potence (R21, fixée à 3,50 m) à droite de la porte de chaque maison et de chaque boutique ; un
+        /// auvent de toile (R30, fixé à 3,20 m) au-dessus de l'entrée des boutiques ; deux bannières sur potence (F19, fixées à 4,50 m) sur la
+        /// maison du prévôt ; un râtelier mural (F18) sur le corps de garde ; une corde à linge (R29, anneaux à 4,20 m) entre deux maisons dont
+        /// les façades se font face à moins de 8 m. Les hauteurs sont celles des accroches de l'atelier moins la hauteur du modèle.
+        /// </summary>
+        private static void Facades(IReadOnlyList<SpaceObstacle> obstacles, List<BourgPiece> pieces)
+        {
+            var boxes = obstacles.ToDictionary(o => o.Id, Bounds, StringComparer.Ordinal);
+            var added = new List<BourgPiece>();
+            (double fx, double fz, double rx, double rz, double half) Frame(BourgPiece p)
+            {
+                double a = p.Yaw * Math.PI / 180;
+                double fx = Math.Round(Math.Sin(a)), fz = Math.Round(Math.Cos(a));
+                var b = boxes[p.Covers!];
+                double half = fx != 0 ? (b.X1 - b.X0) / 2 : (b.Z1 - b.Z0) / 2;
+                return (fx, fz, -fz, fx, half);   // droite vue de dehors : (−fz, fx)
+            }
+            int awning = 0;
+            foreach (BourgPiece p in pieces.Where(p => p.Covers != null && boxes.ContainsKey(p.Covers) && (IsTownHouse(p.Covers) || ShopModel(p.Covers) != null)))
+            {
+                var (fx, fz, rx, rz, half) = Frame(p);
+                double ox = p.X + fx * (half + 0.25), oz = p.Z + fz * (half + 0.25);
+                added.Add(new BourgPiece(WallLantern, Round(ox + rx * 0.9), Round(oz + rz * 0.9), p.Yaw, null, 3.5 - 1.2));
+                if (ShopModel(p.Covers) != null && p.Covers != "maison_ville_notable")
+                    added.Add(new BourgPiece(Awnings[awning++ % Awnings.Length], Round(p.X + fx * (half + 1.1)), Round(p.Z + fz * (half + 1.1)), p.Yaw, null, 3.2 - 1.1));
+            }
+            foreach (BourgPiece p in pieces.Where(p => p.Piece == Provost || p.Piece == Guardhouse).ToList())
+            {
+                var (fx, fz, rx, rz, half) = Frame(p);
+                // La façade du modèle (Y −5,40) devant le pivot ; les accessoires à 0,1 m devant elle.
+                double ox = p.X + fx * 5.5, oz = p.Z + fz * 5.5;
+                if (p.Piece == Provost)
+                    foreach (int side in new[] { -1, 1 })
+                        added.Add(new BourgPiece(WallBanner, Round(ox + rx * side * 4), Round(oz + rz * side * 4), p.Yaw, null, 4.5 - 2.4));
+                else
+                    added.Add(new BourgPiece(WallRack, Round(ox + rx * 5), Round(oz + rz * 5), p.Yaw, null, 0.3));
+            }
+            // Linge : dans la ruelle entre deux bâtiments voisins d'un même rang (2 à 8 m d'écart le long de x, au moins 3 m en regard) ; les
+            // maisons numérotées sont trop espacées (plus de 30 m) : ce sont les boutiques de la route d'Ambre qui en ont.
+            var houses = pieces.Where(p => IsTownHouse(p.Covers) || ShopModel(p.Covers) != null).OrderBy(p => p.Covers, StringComparer.Ordinal).ToList();
+            var used = new HashSet<string>(StringComparer.Ordinal);
+            foreach (BourgPiece h in houses)
+            {
+                if (used.Contains(h.Covers!)) continue;
+                var b = boxes[h.Covers!];
+                foreach (BourgPiece o in houses)
+                {
+                    if (o.Covers == h.Covers || used.Contains(o.Covers!)) continue;
+                    var c = boxes[o.Covers!];
+                    double gap = c.X0 - b.X1, overlap = Math.Min(b.Z1, c.Z1) - Math.Max(b.Z0, c.Z0);
+                    if (gap < 2 || gap > 8 || overlap < 3) continue;
+                    // La corde (x du modèle, 8 m) d'un mur à l'autre, au milieu de la partie en regard.
+                    added.Add(new BourgPiece(Line, Round(b.X1 + gap / 2), Round((Math.Max(b.Z0, c.Z0) + Math.Min(b.Z1, c.Z1)) / 2), 0, null, 4.2 - 1.86));
+                    used.Add(h.Covers!);
+                    used.Add(o.Covers!);
+                    break;
+                }
+            }
+            pieces.AddRange(added);
         }
 
         /// <summary>Distance (m, le long du pan) entre le centre d'une porte et celui d'un module coiffé de la ronde couverte.</summary>

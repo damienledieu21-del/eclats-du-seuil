@@ -298,6 +298,10 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Panneaux du village au Bourg | Des **panneaux aux croisements** entre le village et le Bourg, dès maintenant. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 | Quête du cheval : détails | **Achille, Brume et les rives du lac** confirmés ; **plus tard** : ramener un vrai cheval à la longe jusqu'à la ferme (modèle 3D et animations). | Retenu (Damien, 16 novembre 2026, vers 10 h) ; la suite est à faire avec le modèle du cheval (V2.28d (2c)) |
 | Grand Solitaire et Bourg déménagé | Le boss du monde attaque **devant la porte de l'Est** du Bourg fortifié et **n'entre pas dans les murs**. | Retenu (Damien, 16 novembre 2026, vers 16 h 30) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
+| Bourg : ouvertures des portes | Ouvertures des données **resserrées sur les passages** des modèles : est 4,2 m, ouest 6 m, poterne 3 m. | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5 ([MONDE.md](MONDE.md)) |
+| Bourg : fossé | **Fossé creusé**, infranchissable, autour de la palissade (obstacles, modèles F11 à F15, talus), franchi seulement par les **ponts** devant les portes. | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5 |
+| Bourg : données alignées sur les modèles | Clocher sur celui de l'église, écuries portées à 24 m, maison notable H09 et boutiques P13 à P18 placées (route d'Ambre). | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5 |
+| Bourg : façades vivantes | Fenêtres allumées la nuit et lanternes de porte sur les bâtiments habillés ; pièces murales (lanternes, auvents, linge, bannières, râtelier) à leur hauteur de pose ; kit H13-H20 s'il s'adapte. | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5, sauf le kit H13-H20 (non adapté) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 

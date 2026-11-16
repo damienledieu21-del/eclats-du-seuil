@@ -1,0 +1,191 @@
+using EdS.Data.Json;
+using EdS.Data.Zones;
+using EdS.Domain.Space;
+using EdS.Runtime;
+using static EdS.Data.Tests.ScenarioTestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// V2.30.5 : décisions de Damien du 16 novembre 2026 (vers 21 h 30) pour le Bourg d'Aube fortifié : ouvertures des données resserrées sur
+/// les passages des portes ; fossé infranchissable autour de la palissade (obstacles bas, creusé dans le relief) avec un pont devant chaque
+/// porte ; données alignées sur les modèles (clocher sur celui de l'église, écuries de 24 m, maison notable H09 et boutiques P13 à P18 le
+/// long de la route d'Ambre) ; façades vivantes (lanternes sur potence, auvents, linge, bannières, râtelier mural). Sur les vraies données.
+/// </summary>
+[Trait("Category", "World")]
+public class V2305BourgDecisionsTests : IDisposable
+{
+    private readonly string _folder = Path.Combine(Path.GetTempPath(), "eds_v2305_" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_folder)) Directory.Delete(_folder, true);
+    }
+
+    private static readonly Lazy<ZoneDefinition> Vallons = new(() => ZoneJsonReader.ReadFile(ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+        Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!).Zone!);
+
+    private static IReadOnlyList<SpaceObstacle> Obstacles => Vallons.Value.Setup.Space!.Obstacles;
+
+    private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>
+        (o.Points.Min(p => p.X.Raw / 1e4), o.Points.Max(p => p.X.Raw / 1e4), o.Points.Min(p => p.Z.Raw / 1e4), o.Points.Max(p => p.Z.Raw / 1e4));
+
+    private static (double X0, double X1, double Z0, double Z1) Box(string id) => Box(Obstacles.Single(o => o.Id == id));
+
+    private static bool Blocked(double x, double z) => Obstacles.Any(o =>
+    {
+        var b = Box(o);
+        return x > b.X0 && x < b.X1 && z > b.Z0 && z < b.Z1;
+    });
+
+    private AdventureMap Map()
+    {
+        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
+        a.Advance(0.05);
+        return a.RegionMap;
+    }
+
+    [Fact]
+    public void Openings_match_the_gate_passages_and_the_data_follow_the_models()
+    {
+        // Ouvertures : le long de chaque ligne, ce qui n'est ni palissade ni tour est exactement le passage de la porte.
+        (double X, double Z, bool AlongX, double Width)[] gates = { (-710, -50, false, 4.2), (-1310, -90, false, 6.0), (-1160, -320, true, 3.0) };
+        foreach ((double gx, double gz, bool alongX, double width) in gates)
+        {
+            int open = 0;
+            for (double t = -10; t <= 10; t += 0.05)
+            {
+                double x = alongX ? gx + t : gx, z = alongX ? gz : gz + t;
+                if (!Obstacles.Where(o => BourgModels.IsWall(o.Id) || BourgModels.IsTower(o.Id)).Any(o =>
+                    {
+                        var b = Box(o);
+                        return x >= b.X0 && x <= b.X1 && z >= b.Z0 && z <= b.Z1;
+                    })) open++;
+            }
+            Assert.Equal(width, open * 0.05, 1);
+        }
+        // Clocher sur celui du modèle de l'église (avant gauche, façade au sud), écuries de 30 × 24.
+        Assert.Equal((-905.8, -899.8, 8.0, 14.0), Box("tour_ville_clocher"));
+        Assert.Equal((-790.0, -760.0, 0.0, 24.0), Box("grange_ville_ecurie"));
+        BourgPiece church = BourgModels.Dress(Obstacles).Pieces.Single(p => p.Piece == BourgModels.Church);
+        // Clocher du modèle : X 0,20 – 6,20, Y 0 – 6 de la réservation de 18 × 34 (recentrée de −9, −17), façade au sud.
+        Assert.Equal((-897.0 - 8.8, -897.0 - 2.8, 25.0 - 17.0, 25.0 - 11.0), (church.X - 8.8, church.X - 2.8, church.Z - 17.0, church.Z - 11.0));
+        // Le point sûr de la porte de l'Est est dehors, au-delà du fossé, sur la route.
+        SafePoint gate = Vallons.Value.SafePoints.Single(s => s.Id == "porte_est_du_bourg");
+        Assert.Equal((-692.0, -49.0), (gate.Position.X.Raw / 1e4, gate.Position.Z.Raw / 1e4));
+        Assert.False(Blocked(-692, -49));
+    }
+
+    [Fact]
+    public void The_moat_rings_the_town_and_is_crossed_only_by_the_bridges()
+    {
+        var ditches = Obstacles.Where(o => BourgModels.IsDitch(o.Id)).ToList();
+        Assert.Equal(7, ditches.Count);
+        Assert.All(ditches, d => Assert.True(d.Low));
+        // Tour au milieu du fossé (7,7 m hors de la ligne), tous les 0,5 m : bloqué partout sauf devant les trois portes.
+        var open = new List<(double X, double Z)>();
+        void Walk(double x0, double z0, double x1, double z1)
+        {
+            double len = Math.Max(Math.Abs(x1 - x0), Math.Abs(z1 - z0));
+            for (double t = 0; t <= len; t += 0.5)
+            {
+                double x = x0 + (x1 - x0) * t / len, z = z0 + (z1 - z0) * t / len;
+                if (!ditches.Any(o => { var b = Box(o); return x > b.X0 && x < b.X1 && z > b.Z0 && z < b.Z1; })) open.Add((x, z));
+            }
+        }
+        const double M = BourgModels.MoatCenter;
+        Walk(-1310 - M, 180 + M, -710 + M, 180 + M);
+        Walk(-710 + M, 180 + M, -710 + M, -320 - M);
+        Walk(-710 + M, -320 - M, -1310 - M, -320 - M);
+        Walk(-1310 - M, -320 - M, -1310 - M, 180 + M);
+        Assert.All(open, p => Assert.True(
+            (p.X == -710 + M && Math.Abs(p.Z - -50) < 2.6) || (p.X == -1310 - M && Math.Abs(p.Z - -90) < 3.6) || (p.Z == -320 - M && Math.Abs(p.X - -1160) < 2.0),
+            $"fossé ouvert en ({p.X}, {p.Z})"));
+        Assert.Equal(3, open.Select(p => Math.Round(p.X / 50) * 1000 + Math.Round(p.Z / 50)).Distinct().Count());
+        // Un pont devant chaque porte, au milieu du fossé, dans l'axe du passage, aussi large que le trou du fossé.
+        var dress = BourgModels.Dress(Obstacles);
+        var bridges = dress.Pieces.Where(p => p.Piece is BourgModels.EastBridge or BourgModels.WestBridge or BourgModels.NorthBridge)
+            .Select(p => (p.Piece, p.X, p.Z, p.Yaw)).OrderBy(p => p.Piece, StringComparer.Ordinal).ToList();
+        Assert.Equal(new[] { (BourgModels.EastBridge, -710 + M, -50.0, 90.0), (BourgModels.WestBridge, -1310 - M, -90.0, -90.0), (BourgModels.NorthBridge, -1160.0, -320 - M, 180.0) },
+            bridges);
+        // Modules du fossé serrés sur chaque tronçon (aucun jour), talus au pied de chaque module droit de palissade.
+        foreach (SpaceObstacle d in ditches)
+        {
+            var b = Box(d);
+            bool alongX = b.X1 - b.X0 > b.Z1 - b.Z0;
+            var spans = dress.Pieces.Where(p => p.Covers == d.Id).Select(p => BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw))
+                .Select(f => alongX ? (f.X0, f.X1) : (f.Z0, f.Z1)).OrderBy(s => s.Item1).ToList();
+            double at = alongX ? b.X0 : b.Z0;
+            foreach (var s in spans)
+            {
+                Assert.True(s.Item1 <= at + 1e-6, d.Id);
+                at = Math.Max(at, s.Item2);
+            }
+            Assert.True(at >= (alongX ? b.X1 : b.Z1) - 1e-6, d.Id);
+        }
+        Assert.Equal(dress.Pieces.Count(p => p.Piece is BourgModels.Wall or BourgModels.WallBroken or BourgModels.WallMended),
+            dress.Pieces.Count(p => p.Piece == BourgModels.Bank));
+    }
+
+    [Fact]
+    public void The_moat_is_dug_in_the_relief_but_not_under_the_bridges()
+    {
+        AdventureMap map = Map();
+        GroundRelief relief = GroundRelief.For(map);
+        const double M = BourgModels.MoatCenter;
+        Assert.Equal(BourgModels.DitchDepth, relief.Moat(-710 + M, 50), 6);       // côté est, loin des portes
+        Assert.Equal(BourgModels.DitchDepth, relief.Moat(-1000, 180 + M), 6);     // côté nord
+        Assert.Equal(0, relief.Moat(-710 + M, -50), 6);                            // pont de l'Est
+        Assert.Equal(0, relief.Moat(-1310 - M, -90), 6);                           // pont de l'Ouest
+        Assert.Equal(0, relief.Moat(-1160, -320 - M), 6);                          // pont de la poterne
+        Assert.Equal(0, relief.Moat(-710 - 2, 50), 6);                             // pied intérieur de la palissade
+        Assert.Equal(0, relief.Moat(-1010, -77), 6);                               // place du marché
+        // Le relief affiché descend bien de la profondeur du fossé (même sol sans les obstacles du fossé).
+        var without = new AdventureMap(new CombatSpace(map.Space.Min, map.Space.Max, map.Space.Obstacles.Where(o => !BourgModels.IsDitch(o.Id))),
+            map.Places, map.Roads, map.Clearings, map.Doors, map.Indoor, map.Speakers, map.Gates, map.Region);
+        GroundRelief plain = GroundRelief.For(without);
+        Assert.Equal(plain.Height(-710 + M, 50) - BourgModels.DitchDepth, relief.Height(-710 + M, 50), 6);
+        Assert.Equal(plain.Height(-710 + M, -50), relief.Height(-710 + M, -50), 6);
+    }
+
+    [Fact]
+    public void Shops_and_the_large_notable_house_stand_along_the_road_with_living_facades()
+    {
+        var dress = BourgModels.Dress(Obstacles);
+        var roads = AdventureSession.Roads(Vallons.Value);
+        var withRoads = BourgModels.Dress(Obstacles, roads);
+        foreach (string id in new[] { "maison_ville_apothicaire", "maison_ville_armurier", "maison_ville_forgeron", "maison_ville_tanneur",
+            "maison_ville_tailleur", "maison_ville_taverne", "maison_ville_notable" })
+        {
+            BourgPiece p = withRoads.Pieces.Single(q => q.Covers == id);
+            Assert.Equal(BourgModels.ShopModel(id), p.Piece);
+            Assert.Equal(180, p.Yaw, 6);   // façade au sud, vers la route d'Ambre
+            var f = BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw);
+            var b = Box(id);
+            Assert.True(new[] { b.X0 - f.X0, f.X1 - b.X1, b.Z0 - f.Z0, f.Z1 - b.Z1 }.Max() <= 0.35, id);
+            Assert.True(TownRules.RoadAt((b.X0 + b.X1) / 2, b.Z0, roads).Edge > 3.5, id + " trop près de la route");
+            // Lanterne sur potence à droite de la porte ; auvent au-dessus de l'entrée (sauf la maison notable).
+            Assert.Contains(withRoads.Pieces, q => q.Piece == BourgModels.WallLantern && q.Height > 2 && Math.Abs(q.Z - (b.Z0 - 0.25)) < 0.01 && q.X > b.X0 && q.X < b.X1);
+            Assert.Equal(id != "maison_ville_notable", withRoads.Pieces.Any(q => BourgModels.Awnings.Contains(q.Piece) && q.X == (b.X0 + b.X1) / 2 && q.Height > 1.5));
+        }
+        // Une lanterne par maison et par boutique ; linge dans les ruelles entre boutiques ; bannières sur la maison du prévôt ; râtelier mural.
+        Assert.Equal(119 + 7, withRoads.Pieces.Count(p => p.Piece == BourgModels.WallLantern));
+        Assert.InRange(withRoads.Pieces.Count(p => p.Piece == BourgModels.Line), 2, 6);
+        Assert.Equal(2, withRoads.Pieces.Count(p => p.Piece == BourgModels.WallBanner));
+        Assert.Equal(1, withRoads.Pieces.Count(p => p.Piece == BourgModels.WallRack));
+        // Rien de mural sur une route ni dans un autre obstacle que celui contre lequel il est fixé.
+        // (La corde à linge, 8 m, entre dans les deux murs qui la portent : elle n'est vérifiée que sur la route.)
+        foreach (BourgPiece p in withRoads.Pieces.Where(p => p.Height > 0))
+        {
+            var f = BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw);
+            Assert.True(TownRules.RoadAt(p.X, p.Z, roads).Edge > 0, p.Piece + " sur une route");
+            if (p.Piece == BourgModels.Line) continue;
+            Assert.DoesNotContain(Obstacles, o =>
+            {
+                var b = Box(o);
+                return f.X0 + 0.3 < b.X1 && f.X1 - 0.3 > b.X0 && f.Z0 + 0.3 < b.Z1 && f.Z1 - 0.3 > b.Z0;
+            });
+        }
+        Assert.Equal(dress.Needs.Count, withRoads.Needs.Count);
+    }
+}
