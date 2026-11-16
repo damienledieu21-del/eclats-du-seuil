@@ -555,6 +555,8 @@ namespace EdS.Game
         public BuildingLook[] Buildings = new BuildingLook[0];
         [Tooltip("V2.25.2 : petits décors de l'atelier (« Assets/EdS/Modeles/Decor/<groupe>/ ») : cailloux et touffe des pierres du Seuil, accessoires de la carrière (remplis par le menu).")]
         public GameObject[] OwnDecor = new GameObject[0];
+        [Tooltip("Lot C (16 novembre 2026) : modèles Tripo du lot C (« Assets/EdS/Modeles/LotC/<catégorie>/<code>/ », remplis par le menu), reliés aux données par LotCModels.")]
+        public GameObject[] LotC = new GameObject[0];
         [Tooltip("V2.25.4 : arbres de l'atelier (« Assets/EdS/Modeles/Arbres/<essence>/ », remplis par le menu) ; ils remplacent les arbres téléchargés partout où le jeu pose des arbres.")]
         public TreeLook[] AtelierTrees = new TreeLook[0];
         [Tooltip("V2.25.4 : l'arbre millénaire de l'atelier, livré mais pas posé (il ira avec la grande carte, V2.32).")]
@@ -809,6 +811,15 @@ namespace EdS.Game
 
         /// <summary>V2.25.4 : y a-t-il des arbres de l'atelier ? (Ils passent alors devant ceux téléchargés.)</summary>
         public bool HasAtelierTrees => AtelierTrees != null && AtelierTrees.Length > 0;
+
+        /// <summary>Lot C : le modèle Tripo du code <paramref name="code"/> (« C_RE_S01 », voir <see cref="LotCModels"/>) ; null sans lui.</summary>
+        public GameObject LotCModel(string code)
+        {
+            if (LotC == null || string.IsNullOrEmpty(code)) return null;
+            foreach (GameObject g in LotC)
+                if (g != null && g.name == code) return g;
+            return null;
+        }
 
         /// <summary>V2.25.2 : le petit décor de l'atelier « …_&lt;piece&gt; » (<see cref="AtelierDecor.IsPiece"/>) ; null sans lui.</summary>
         public GameObject OwnDecorPiece(string piece)
