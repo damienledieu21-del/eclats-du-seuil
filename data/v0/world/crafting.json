@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.10.0-provisoire",
+  "contentVersion": "0.11.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -662,6 +662,45 @@
         ],
         "output": {
           "item": "item.couronne_des_moissons",
+          "count": 1
+        },
+        "xp": 80,
+        "quality": true
+      },
+      {
+        "id": "recipe.cuisine.fouace_des_semailles",
+        "name": "text.recipe.cuisine.fouace_des_semailles",
+        "profession": "cuisine",
+        "requiredLevel": 7,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 2
+          },
+          {
+            "item": "item.oeufs_frais",
+            "count": 3
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          },
+          {
+            "item": "item.levain",
+            "count": 1
+          },
+          {
+            "item": "item.sucre_roux",
+            "count": 1
+          },
+          {
+            "item": "item.miel_de_bruyere",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.fouace_des_semailles",
           "count": 1
         },
         "xp": 80,

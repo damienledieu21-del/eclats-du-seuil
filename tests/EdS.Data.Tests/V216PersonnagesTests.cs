@@ -330,8 +330,8 @@ public sealed class V216PersonnagesTests
     [Fact]
     public void Sauvegarde_v17_de_l_aspect_et_v16_encore_lue()
     {
-        Assert.Equal(24, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
-        Assert.Equal(SaveValidator.LookSince + 7, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 ;   // V2.26 : la version 18 suit celle de l'aspect du héros ; V2.28 : 19 (point de reprise)
+        Assert.Equal(25, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
+        Assert.Equal(SaveValidator.LookSince + 8, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 ;   // V2.26 : la version 18 suit celle de l'aspect du héros ; V2.28 : 19 (point de reprise)
         var look = new SavedLook("made.odile", 3, false, true, 5, 12);
         string text = SaveJsonReader.Write(SaveWith(look));
         Assert.Contains("\"look\": {\"body\": \"made.odile\", \"hair\": 3, \"beard\": false, \"dark\": true, \"hairTone\": 5, \"palette\": 12}", text, StringComparison.Ordinal);
