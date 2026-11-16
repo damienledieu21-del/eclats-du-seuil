@@ -74,17 +74,27 @@ public class V229BrouillardTests : IDisposable
     }
 
     [Fact]
-    public void Point_de_vue_du_sommet_dissipe_huit_cases_autour()
+    public void Point_de_vue_du_sommet_leve_le_brouillard_sur_toute_la_region()
     {
+        // Décision de Damien du 16 novembre 2026 (sous-lot V2.29.1) : toute la région, et non plus 1 024 m autour.
         Viewpoint top = Assert.Single(Viewpoint.All);
-        Assert.Equal(("zone.vallons", 200L, 1024), (top.Zone, top.Xp, top.RevealMeters));
-        var cells = new ExploredCells(RegionGrid.Vallons());
-        int added = cells.Reveal(top.Position, top.RevealMeters);
-        Assert.InRange(added, 120, 260);
-        RegionCell summit = RegionGrid.Vallons().CellOf(top.Position);
-        Assert.True(cells.IsSeen(summit.Column, summit.Row));
-        Assert.True(cells.IsSeen(summit.Column - 7, summit.Row));
-        Assert.False(cells.IsSeen(summit.Column, 0));   // le sud de la région reste dans le brouillard
+        Assert.Equal(("zone.vallons", 200L, Viewpoint.RevealsWholeRegion, true), (top.Zone, top.Xp, top.RevealMeters, top.WholeRegion));
+        RegionGrid grid = RegionGrid.Vallons();
+        var cells = new ExploredCells(grid);
+        cells.Reveal(At(-18, -12), 128);
+        int before = cells.Count;
+        Assert.Equal(grid.CellCount - before, cells.RevealAll());
+        Assert.Equal(grid.CellCount, cells.Count);
+        for (int row = 0; row < grid.Rows; row++)
+            for (int column = 0; column < grid.Columns; column++) Assert.True(cells.IsSeen(column, row));
+        Assert.Equal(0, cells.RevealAll());   // déjà tout vu : rien de nouveau
+        // Relue telle quelle (même chaîne : tous les bits à 1).
+        var back = new ExploredCells(grid, cells.ToHex());
+        Assert.Equal((grid.CellCount, cells.ToHex()), (back.Count, back.ToHex()));
+        // Un autre point de vue garde son rayon ; un rayon négatif autre que « toute la région » est refusé.
+        var near = new Viewpoint("essai", "zone.vallons", At(0, 0), "discovery.essai", 10, 256);
+        Assert.False(near.WholeRegion);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Viewpoint("essai", "zone.vallons", At(0, 0), "discovery.essai", 10, -2));
     }
 
     // --- Sauvegarde v23 -----------------------------------------------------------------------------------------------
@@ -167,7 +177,8 @@ public class V229BrouillardTests : IDisposable
         }
         Assert.True(found, $"sommet non atteint : {a.World.Zone.Engine.View(a.World.CombatantId).Position} PV {a.World.Zone.Engine.View(a.World.CombatantId).Health} {a.World.Explored!.Count} " + string.Join(" | ", trace));
         Assert.True(a.World.Character.Xp >= xp + 200);
-        Assert.True(a.World.Explored!.Count >= seen + 100);
+        Assert.True(seen < a.World.Explored!.Grid.CellCount);
+        Assert.Equal(a.World.Explored.Grid.CellCount, a.World.Explored.Count);   // V2.29.1 : toute la région
         Assert.Contains("discovery.point_de_vue_du_sommet", a.World.Save().Character!.Story.Discoveries);
         // Une seule fois, même après une sauvegarde, un rechargement et un retour au sommet.
         long after = a.World.Character.Xp;

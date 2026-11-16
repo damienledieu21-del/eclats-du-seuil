@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.11.0-provisoire",
+  "contentVersion": "0.12.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -991,7 +991,7 @@
         "xp": 6
       },
       {
-        "id": "pommier_du_bourg",
+        "id": "pommier_du_hameau",
         "profession": "cuisine",
         "item": "item.pomme_du_verger",
         "count": 2,

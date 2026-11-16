@@ -29,7 +29,9 @@ public class V11VoyageTests : IDisposable
 
     private string SavePath => Path.Combine(_folder, "partie", "sauvegarde.json");
 
-    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(AdventureSession.PlayerId).Position!.Value;
+    // Le combattant du joueur dans la session du moment : après un passage de secteur, son identifiant prend « _pN » (V2.26), et l'ancien
+    // « bastion » peut rester figé dans un secteur rouvert (relecture du V2.30.1 : le retour vers l'est semblait bloqué vers x = −892).
+    private static GroundVector Position(AdventureSession a) => a.World.Zone.Engine.View(a.World.CombatantId).Position!.Value;
 
     private static GroundVector At(double x, double z) => new GroundVector(Fixed.Parse(x.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         Fixed.Parse(z.ToString(System.Globalization.CultureInfo.InvariantCulture)));
@@ -53,12 +55,14 @@ public class V11VoyageTests : IDisposable
         return false;
     }
 
-    /// <summary>Du village au bourg par la grand-rue (aucun obstacle, aucune créature à portée).</summary>
+    /// <summary>
+    /// Du village au bourg : la grand-rue, la route d'Ambre jusqu'à la porte de l'Est de la ville fortifiée, la place du marché, puis la
+    /// rue du marché jusqu'à la place du bourg (sous-lot V2.30.1 : le bourg a déménagé, à 1 km à l'ouest ; aucune créature à portée).
+    /// </summary>
     private static void WalkToBourg(AdventureSession a)
     {
         Assert.True(WalkTo(a, -20, -2));
-        Assert.True(WalkTo(a, -50, -1));
-        Assert.True(WalkTo(a, -58, -4));
+        foreach ((double x, double z) in RoadToBourg) Assert.True(WalkTo(a, x, z), $"bloqué avant ({x}, {z})");
     }
 
     /// <summary>Données et scénarios copiés dans le dossier du test, scénario (et zone) des Vallons retouchés.</summary>
@@ -113,7 +117,7 @@ public class V11VoyageTests : IDisposable
         Assert.Equal(TravelRefusal.NotDiscovered, a.CanTravel("zone.vallons", "place_du_bourg"));
         WalkToBourg(a);
         Assert.Contains("Point sûr découvert : Place du Bourg. Le voyage rapide y mène depuis la carte (L).", a.DrainMessages());
-        Assert.Equal(new[] { "place_du_village", "place_du_bourg" }, a.TravelDestinations().Select(d => d.SafePoint));
+        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "place_du_marche_de_la_ville" }, a.TravelDestinations().Select(d => d.SafePoint));   // V2.30.1 : la place du marché, sur le chemin du bourg
         Assert.True(a.TravelDestinations()[1].Here);
         // Retour d'un coup au village : sauvegarde, puis nouvelle session au point sûr (PV pleins, comme une halte).
         Assert.Equal(TravelRefusal.None, a.CanTravel("zone.vallons", "place_du_village"));
@@ -129,10 +133,10 @@ public class V11VoyageTests : IDisposable
         Assert.Contains("zone.vallons/safe/place_du_village", saved.Consumed);
         // La découverte survit à la reprise : le bourg reste une destination, et l'on y retourne.
         AdventureSession again = Adventure(SavePath);
-        Assert.Equal(new[] { "place_du_village", "place_du_bourg" }, again.TravelDestinations().Select(d => d.SafePoint));
+        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "place_du_marche_de_la_ville" }, again.TravelDestinations().Select(d => d.SafePoint));
         Assert.Equal(TravelRefusal.None, again.Travel("zone.vallons", "place_du_bourg"));
         again.Advance(0.05);
-        Assert.Equal(At(-58, -6), Position(again));
+        Assert.Equal(At(-1090, -40), Position(again));
     }
 
     [Fact]
@@ -215,7 +219,7 @@ public class V11VoyageTests : IDisposable
         Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
         Assert.False(a.Indoors);
         a.Advance(0.05);
-        Assert.Equal(At(-58, -6), Position(a));
+        Assert.Equal(At(-1090, -40), Position(a));
         Assert.Equal(("zone.vallons", 5L), (SaveStore.Read(SavePath).Save!.Zone, SaveStore.Read(SavePath).Save!.Character!.Money));
         // Dans un intérieur, rien ne se découvre (la porte n'est pas un point sûr du voyage).
         Assert.DoesNotContain(SaveStore.Read(SavePath).Save!.Consumed, k => k.StartsWith("zone.auberge/", StringComparison.Ordinal));
@@ -290,7 +294,7 @@ public class V11VoyageTests : IDisposable
     public void Decouverte_dans_la_session_du_monde()
     {
         // Au niveau de la session : un point sûr approché à 5 m est découvert une fois (événement de l'histoire), puis gardé au registre.
-        ZoneDefinition zone = Zone(-62, -6);   // à 4 m de la place du bourg
+        ZoneDefinition zone = Zone(-1094, -40);   // à 4 m de la place du bourg
         WorldSession w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         var events = new List<StoryEvent>();
         for (int i = 0; i < 5; i++) events.AddRange(w.Step().Story);

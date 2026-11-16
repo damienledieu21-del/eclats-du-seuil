@@ -102,7 +102,7 @@ public class V2254ArbresTests : IDisposable
         // Points sûrs (dont la place du village) : aucun arbre de décor à moins de 6 m ; une place sur une route est refusée.
         var road = map.Roads.First(r => !r.Paved).Points[0];
         Assert.False(AtelierTrees.Free(road.X, road.Z, map, map.Obstacles, true));
-        var maison = map.Obstacles.First(o => o.Id == "maison1");
+        var maison = map.Obstacles.First(o => o.Id == "maison3");
         Assert.False(AtelierTrees.Free(Center(maison).X, Center(maison).Z, map, map.Obstacles, true));
         // Les arbres des bois gardés par la vue ne sont ni sur une route, ni sur un autre obstacle que leur bois.
         int kept = 0;

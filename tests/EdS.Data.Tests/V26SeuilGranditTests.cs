@@ -77,8 +77,8 @@ public class V26SeuilGranditTests
     {
         Assert.Equal((14, 10, 9), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.EventsSchemaVersion, ZoneValidator.WeatherSchemaVersion));
         Assert.Equal((26, 14, 13), (SaveValidator.CurrentSchemaVersion, SaveValidator.ScarsSince, SaveValidator.EventsSince));
-        Assert.Equal((14, "0.19.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
-        Assert.Equal("0.30.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
+        Assert.Equal((14, "0.20.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation
+        Assert.Equal("0.31.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         Assert.Equal("0.33.0-provisoire", JsonNode.Parse(File.ReadAllText(StoryJsonReader.TextsPathIn(DataDirectory)))!["contentVersion"]!.GetValue<string>());
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios ne changent (ceux de V2.4.1).
         Assert.Equal(("0.34.0", 28, 22), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
@@ -661,9 +661,9 @@ public class V26SeuilGranditTests
     }
 
     [Theory]
-    [InlineData("npc.herboriste", "zone.vallons", -65.2, -6.4, "fact.event.faille_du_seuil.cicatrice", "v26_cicatrice")]
+    [InlineData("npc.herboriste", "zone.vallons", -1097.2, -40.4, "fact.event.faille_du_seuil.cicatrice", "v26_cicatrice")]
     [InlineData("npc.albe", "zone.chapelle", 3.2, 3.2, "fact.event.faille_du_seuil.cicatrice_rode", "v26_rode")]
-    [InlineData("npc.boulanger", "zone.vallons", -42, 2, "fact.event.faille_du_seuil.cicatrice_purifiee", "v26_purifiee")]
+    [InlineData("npc.boulanger", "zone.vallons", -1074, -32, "fact.event.faille_du_seuil.cicatrice_purifiee", "v26_purifiee")]
     public void Les_PNJ_en_parlent_une_fois(string npc, string zone, double x, double z, string fact, string node)
     {
         // Le pain du matin déjà livré : la demande de Firmin (une offre de quête) passe avant ses autres mots.

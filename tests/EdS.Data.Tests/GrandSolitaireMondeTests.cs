@@ -175,7 +175,7 @@ public class GrandSolitaireMondeTests
         WorldBossLoadResult r = Load();
         Assert.True(r.IsValid, r.Report.ToString());
         WorldBossDefinition b = r.Book!.Boss("grand_solitaire");
-        Assert.Equal((2, 2, "0.3.0-provisoire"), (r.Book.SchemaVersion, WorldBossValidator.CurrentSchemaVersion, r.Book.ContentVersion));
+        Assert.Equal((2, 2, "0.4.0-provisoire"), (r.Book.SchemaVersion, WorldBossValidator.CurrentSchemaVersion, r.Book.ContentVersion));
         Assert.True(b.Fightable);
         Assert.Equal(new[] { "grand_solitaire_calme", "grand_solitaire_blesse", "grand_solitaire_enrage" }, b.Phases.Select(p => p.Form!.Id));
         // Chaque forme n'a que des attaques de sa phase, annoncées au sol (l'anneau attend une forme nouvelle du moteur).

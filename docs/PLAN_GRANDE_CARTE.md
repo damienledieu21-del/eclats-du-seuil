@@ -28,6 +28,20 @@ Statuts, comme dans [CADRAGE.md](CADRAGE.md) :
 4. **Crypte-donjon sous l'abbaye** ; la chapelle garde une petite crypte.
 5. **Corruption** : **jamais les villes** (ni le village du cœur, ni l'intérieur de la palissade du Bourg) ; elle s'arrête aux portes.
 
+## 0 ter. Décisions de Damien du 16 novembre 2026 (Retenu)
+
+Rapportées par la session principale ; ordre de travail : V2.30.1, puis le sommet, puis la quête du cheval.
+
+1. **Quête du cheval** : une **vraie petite quête** pour obtenir la monture, au lieu de l'avoir directement à la fin de la mission du chapitre 1 (V2.28d (2b)).
+2. **Point de vue du sommet** : y monter **lève le brouillard sur toute la région** (et non plus 1 024 m autour, décision du 15 novembre 2026, V2.29 (2)).
+3. **Porte nord du Bourg**, reliée au **chemin du pont des Murmures** : prévue avec ce chemin au **V2.40** (elle n'est pas triviale avec le V2.30.1 : le chemin du pont n'est pas tracé et passerait le ravin des Ronces, verrou du chapitre 1).
+
+Puis, vers 10 h (après la PR #190) :
+
+4. **Emplacement du bourg déménagé** (V2.30.1, au nord-ouest de la place du marché) : **gardé** ; on l'ajustera après le test dans Unity.
+5. **Panneaux aux croisements** entre le village et le Bourg : **dès le V2.30.1** (fait : quatre panneaux, direction et distance du Bourg et du village).
+6. **Quête du cheval** : Achille, Brume et les rives du lac **confirmés**. **Plus tard** (noté, pas maintenant) : ramener un vrai cheval à la longe jusqu'à la ferme, avec le modèle 3D, quand ses animations seront prêtes.
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
@@ -337,9 +351,13 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.29** (15 novembre 2026) : première partie en PR : silhouettes de l'horizon lointain (Crêtes de Fer au nord-est, Forêt des Murmures au nord-ouest, collines ; `HorizonProfile`, `HorizonView`, [UNITY.md](UNITY.md#horizon-lointain-sous-lot-v229-première-partie)). **Deuxième partie** (V2.29 (2), en PR) : brouillard de carte à dissiper (cases vues à 128 m, sauvegarde v23), point de vue du sommet (décision de Damien du 15 novembre 2026 : à la première visite, 200 XP, entrée au carnet, brouillard dissipé à 1 024 m autour), la mer à l'ouest sur l'horizon ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)). À faire : cartes peintes (modèles et textures à demander), tour de caméra du sommet.
 
+**Avancement V2.29.1** (16 novembre 2026, en PR) : décision de Damien du 16 novembre 2026 : monter au point de vue du sommet **lève le brouillard sur toute la région** (avant : 1 024 m autour) ; `Viewpoint.WholeRegion`, `ExploredCells.RevealAll` ; aucun changement de format ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)).
+
 ### Étape 2 : les lieux un par un
 
 **Avancement V2.30** (15 novembre 2026, en PR) : le Bourg fortifié en surface (palissade, dix tours, portes est et ouest, poterne sud, grande maison, église, halle, place du marché, écurie, 121 maisons, point sûr de la place ; [MONDE.md](MONDE.md)). Écart au plan : pas de porte nord (le plan illustré n'en a pas ; le chemin du pont des Murmures n'est pas tracé), une poterne sud sur le chemin des vignes à la place.
+
+**Avancement V2.30.1** (16 novembre 2026, en PR) : le bourg a déménagé **en bloc** dans la ville fortifiée, décalé de (−1 032, −34) m (§ 4.4 bis) : auberge, chapelle, Guilde (`maison6`), maison de Rosalie (`maison5`), boulangerie (`maison2`), épicerie (`maison4`), herboristerie (`maison7`), mercerie (`maison1`), puits et étals de la place ; portes, point sûr `place_du_bourg`, lieux `bourg` et `four_de_firmin`, places de nuit, emplois du temps des PNJ, invités des fêtes et étals du grand jour de marché suivent, **identifiants inchangés** (intérieurs, quêtes, sauvegardes : aucun changement de format, la reprise au point sûr `place_du_bourg` se fait sur la nouvelle place, le secteur sauvegardé n'étant pas comparé). Le bloc est au nord-ouest de la place du marché, entre la route d'Ambre et les îlots du nord (deux maisons de la ville retirées, `maison_ville_74` et `maison_ville_75`), relié à la place du marché par la `rue_du_marche` ; la `rue_des_boutiques` reprend la grand-rue de l'ouest. Il reste à l'ancien emplacement un **hameau** (`maison3`, `maison8`) et la grand-rue jusqu'à la route d'Ambre. Porte nord : non faite, notée pour le V2.40 (§ 0 ter).
 
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|

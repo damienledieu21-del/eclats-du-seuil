@@ -125,8 +125,8 @@ public class V261SuitesDuSeuilTests
     {
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((14, "0.19.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((16, "0.30.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal((14, "0.20.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
+        Assert.Equal((16, "0.31.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.33.0-provisoire", Texts.ContentVersion);   // cartes côté jeu (V2.32) : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.21.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
@@ -522,7 +522,7 @@ public class V261SuitesDuSeuilTests
 
     /// <summary>Sœur Albe dans sa chapelle (10 h) ou sur le parvis (17 h 30, sa veille du soir).</summary>
     private static WorldSession AtAlbe(long day, bool evening, SavedCharacter hero) => evening
-        ? Near("zone.vallons", -70.4, -5.4, At(day, 17, 30), hero)   // entre sa place de veille et son abri (s'il pleut)
+        ? Near("zone.vallons", -1102.4, -39.4, At(day, 17, 30), hero)   // entre sa place de veille et son abri (s'il pleut)
         : Near("zone.chapelle", 3.2, 3.2, At(day, 10), hero);
 
     [Fact]

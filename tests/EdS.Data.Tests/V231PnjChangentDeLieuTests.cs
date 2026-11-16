@@ -101,7 +101,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     public void Histoire_livree_en_schema_10_avec_les_PNJ_qui_changent_de_lieu()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((16, 16, 9, "0.30.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
+        Assert.Equal((16, 16, 9, "0.31.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine" },
@@ -156,7 +156,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         {
             JsonNode slot = SlotNode(r, "npc.archiviste", "15:00");
             slot["zone"] = "zone.vallons";
-            slot["position"] = new JsonArray(-58, -6);
+            slot["position"] = new JsonArray(-1090, -40);
         });
         // La zone du PNJ redonnée (un créneau sans zone y reste), dans un intérieur comme dehors.
         Refused(Slot(root, "npc.aubergiste", "18:00") + ".zone", ValidationCode.InvalidValue, r => SlotNode(r, "npc.aubergiste", "18:00")["zone"] = "zone.auberge");
@@ -170,7 +170,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
             slot["position"] = new JsonArray(0, 0);
         });
         // La place et l'abri se jugent dans la zone du créneau : une place du bourg n'est pas dans la salle de l'auberge.
-        Refused(Slot(root, "npc.boulanger", "18:30") + ".position", ValidationCode.OutOfRange, r => SlotNode(r, "npc.boulanger", "18:30")["position"] = new JsonArray(-65.5, 2.8));
+        Refused(Slot(root, "npc.boulanger", "18:30") + ".position", ValidationCode.OutOfRange, r => SlotNode(r, "npc.boulanger", "18:30")["position"] = new JsonArray(-1097.5, -31.2));
         Refused(Slot(root, "npc.habitant", "12:00") + ".rain.position", ValidationCode.OutOfRange, r => SlotNode(r, "npc.habitant", "12:00")["rain"]!["position"] = new JsonArray(9999, 9999));
         // Dans un obstacle de la salle (une table).
         Refused(Slot(root, "npc.boulanger", "18:30") + ".position", ValidationCode.InvalidValue, r => SlotNode(r, "npc.boulanger", "18:30")["position"] = new JsonArray(-3.5, 2.0));
@@ -223,7 +223,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         string[] inside = Shipped.Value.VisitorsOf("zone.auberge").Where(inn.NpcHere).Select(n => n.Id).ToArray();
         Assert.Equal(new[] { "npc.maelle", "npc.epiciere", "npc.aubergiste", "npc.boulanger", "npc.renart", "npc.fermier" }, inside);
         // Dehors, sur la terrasse : seulement Aldric (sa « ronde assise » commence à 16 h 30… et finit à 19 h) ; à 18 h, il y est.
-        WorldSession terrace = Outside(TickAt(DryDay(18 * 60), 18 * 60), -69, 1.5);
+        WorldSession terrace = Outside(TickAt(DryDay(18 * 60), 18 * 60), -1101, -32.5);
         Assert.Equal("taverne", terrace.NpcActivity(Shipped.Value.Npc("npc.archer_garde")));
         Assert.True(terrace.NpcHere(Shipped.Value.Npc("npc.archer_garde")));
         Assert.False(terrace.NpcHere(Shipped.Value.Npc("npc.aubergiste")));   // Mathurin sert dans sa salle
@@ -235,7 +235,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         int evening = 19 * 60 + 10;
         long day = DryDay(evening);
         // Firmin est dans la salle (à la table du fond) : de la terrasse, à sa place d'avant, il n'est pas là.
-        WorldSession terrace = Outside(TickAt(day, evening), -65.5, 1.6);
+        WorldSession terrace = Outside(TickAt(day, evening), -1097.5, -32.4);
         Assert.Equal(DialogueRefusal.TooFar, terrace.Talk("npc.boulanger", out _));
         WorldSession inn = Inside("zone.auberge", TickAt(day, evening), -1.9, 0.8);
         Assert.Equal(P(-1.9, 2.0), inn.NpcPosition(Shipped.Value.Npc("npc.boulanger")));
@@ -246,7 +246,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         long pipeDay = DryDay(pipe);
         WorldSession counter = Inside("zone.auberge", TickAt(pipeDay, pipe), 3.75, 1.5);
         Assert.Equal(DialogueRefusal.TooFar, counter.Talk("npc.aubergiste", out _));
-        WorldSession outside = Outside(TickAt(pipeDay, pipe), -67.6, 2.8);
+        WorldSession outside = Outside(TickAt(pipeDay, pipe), -1099.6, -31.2);
         Assert.Equal("pipe", outside.NpcActivity(Shipped.Value.Npc("npc.aubergiste")));
         Assert.Equal(DialogueRefusal.None, outside.Talk("npc.aubergiste", out _));
         outside.Narrative!.Close();
@@ -263,7 +263,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal("taverne", inn.NpcActivity(Shipped.Value.Npc("npc.armurier")));
         Assert.Equal(TradeRefusal.None, inn.CanTrade("merchant.armurier"));
         // Sur la terrasse (sa place de taverne d'avant V2.3.1), il n'y est pas.
-        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, noon), -64.5, 1.4).CanTrade("merchant.armurier"));
+        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, noon), -1096.5, -32.6).CanTrade("merchant.armurier"));
         // Aubin mange à l'auberge : sa réserve (la boutique de la guilde) le suit.
         Assert.Equal("zone.auberge", inn.NpcZone(Shipped.Value.Npc("npc.intendant_guilde")));
         Assert.True(inn.NpcHere(Shipped.Value.Npc("npc.intendant_guilde")));
@@ -283,13 +283,13 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.True(read.IsValid, read.Report.ToString());
         int evening = 20 * 60;
         long day = DryDay(evening);
-        WorldSession stall = Outside(TickAt(day, evening), -50.8, 7.2, merchants: read.Book);
+        WorldSession stall = Outside(TickAt(day, evening), -1082.8, -26.8, merchants: read.Book);
         Assert.False(stall.NpcHere(Shipped.Value.Npc("npc.epiciere")));   // Bertille boit à l'auberge
         Assert.Equal(TradeRefusal.Closed, stall.CanTrade("merchant.epicier"));
         // Ailleurs dans le bourg : trop loin, comme avant.
         Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, evening), -18, -12, merchants: read.Book).CanTrade("merchant.epicier"));
         // Boutique livrée (fermée la nuit seulement), même heure : trop loin de Bertille (la vraie raison est donnée par l'étal, AwayStallInReach).
-        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, evening), -50.8, 7.2).CanTrade("merchant.epicier"));
+        Assert.Equal(TradeRefusal.TooFar, Outside(TickAt(day, evening), -1082.8, -26.8).CanTrade("merchant.epicier"));
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         {
             JsonNode slot = r["data"]!["npcs"]![mathurin]!["schedule"]![last]!;
             slot["zone"] = "zone.vallons";
-            slot["position"] = new JsonArray(-67.6, 4.3);
+            slot["position"] = new JsonArray(-1099.6, -29.7);
         });
         // Livré : de 23 h 59 à minuit, chacun reste dans sa zone, et la partie qui passe minuit ne déplace personne d'une zone à l'autre.
         foreach (Npc npc in Shipped.Value.Npcs) Assert.Equal((npc.Zone, npc.Zone), (npc.ZoneAt(1439), npc.ZoneAt(0)));
@@ -361,12 +361,12 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         // ouvert, il reste là (même zone, même place, même activité) ; il part dès qu'il se ferme.
         int before = 18 * 60 + 29;
         long day = DryDay(before);
-        WorldSession w = Outside(TickAt(day, before), -38.5, 3.6);
+        WorldSession w = Outside(TickAt(day, before), -1070.5, -30.4);
         Npc firmin = Shipped.Value.Npc("npc.boulanger");
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.boulanger", out _));
         for (int i = 0; i < 4000 && w.Zone.Time.Minute < 18 * 60 + 31; i++) w.Step();
         Assert.Equal(18 * 60 + 31, w.Zone.Time.Minute);
-        Assert.Equal(((string?)null, "sieste", P(-38.5, 4.8)), (w.NpcZone(firmin), w.NpcActivity(firmin), w.NpcPosition(firmin)));
+        Assert.Equal(((string?)null, "sieste", P(-1070.5, -29.2)), (w.NpcZone(firmin), w.NpcActivity(firmin), w.NpcPosition(firmin)));
         Assert.True(w.NpcHere(firmin));
         Assert.NotNull(w.Narrative!.Open);
         // La réponse se choisit encore (il n'est pas « trop loin »).
@@ -384,7 +384,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     {
         // Mathurin rencontré sur la terrasse, sa pipe à la main : le soir, dans sa salle, il ne se présente plus (ses retrouvailles).
         int pipe = 16 * 60 + 10;
-        WorldSession terrace = Outside(TickAt(DryDay(pipe), pipe), -67.6, 2.8);
+        WorldSession terrace = Outside(TickAt(DryDay(pipe), pipe), -1099.6, -31.2);
         Assert.Equal(DialogueRefusal.None, terrace.Talk("npc.aubergiste", out DialogueView? first));
         Assert.Equal("text.aubergiste.accueil", first!.Text);   // sa présentation
         terrace.Narrative!.Close();
@@ -447,8 +447,8 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(1, 11 * 60), 0, Array.Empty<string>(), Hero(100)));
         AdventureSession town = Adventure(save);
         WorldMarker m = town.NpcStage().Single(n => n.Id == "npc.aubergiste");
-        Assert.Equal((false, -69.0, 4.0), (m.Present, m.X, m.Z));
-        Assert.Equal((-73.0, -7.0), (town.NpcStage().Single(n => n.Id == "npc.pretre").X, town.NpcStage().Single(n => n.Id == "npc.pretre").Z));
+        Assert.Equal((false, -1101.0, -30.0), (m.Present, m.X, m.Z));
+        Assert.Equal((-1105.0, -41.0), (town.NpcStage().Single(n => n.Id == "npc.pretre").X, town.NpcStage().Single(n => n.Id == "npc.pretre").Z));
     }
 
     [Fact]

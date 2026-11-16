@@ -37,7 +37,12 @@ namespace EdS.Runtime
 
         private static double Meters(long raw) => raw / 10_000.0;
 
-        private static long Clamp(double meters) => Raw(Math.Max(-1000.0, Math.Min(1000.0, meters)));
+        /// <summary>
+        /// Coordonnée bornée à la borne technique de l'espace (±4 096 m, <see cref="SpaceLimits.MaxCoordinateMeters"/>). Sous-lot V2.30.1 :
+        /// ±1 000 m avant, ce qui ramenait à x = −1 000 les trajets des PNJ du bourg déménagé dans la ville fortifiée (x ≈ −1 100) : ils ne
+        /// trouvaient plus de chemin et allaient tout droit, à travers les étals.
+        /// </summary>
+        private static long Clamp(double meters) => Raw(Math.Max(-SpaceLimits.MaxCoordinateMeters, Math.Min(SpaceLimits.MaxCoordinateMeters, meters)));
 
         /// <summary>
         /// Points de passage de (from) à (to), le but compris ; vide si la ligne droite est libre (aller droit) ; null s'il n'y a pas de

@@ -97,6 +97,23 @@ namespace EdS.World
             return added;
         }
 
+        /// <summary>
+        /// Sous-lot V2.29.1 (décision de Damien du 16 novembre 2026 : le point de vue du sommet lève le brouillard sur toute la région) : rend
+        /// vues toutes les cases de la région ; rend le nombre de cases nouvellement vues.
+        /// </summary>
+        public int RevealAll()
+        {
+            int added = 0;
+            for (int i = 0; i < _seen.Length; i++)
+            {
+                if (_seen[i]) continue;
+                _seen[i] = true;
+                Count++;
+                added++;
+            }
+            return added;
+        }
+
         /// <summary>Bits des cases vues, en hexadécimal minuscule (format de la sauvegarde) ; null si aucune n'est vue.</summary>
         public string? ToHex()
         {
@@ -116,7 +133,8 @@ namespace EdS.World
     /// <summary>
     /// Sous-lot V2.29 (2) : un point de vue de la région (décision de Damien du 15 novembre 2026 pour le sommet des hautes collines) : à la
     /// première visite (à moins de <see cref="Range"/> mètres), <see cref="Xp"/> points d'expérience, une découverte au carnet
-    /// (<see cref="Discovery"/>, qui marque aussi la visite), et le brouillard dissipé à <see cref="RevealMeters"/> mètres autour.
+    /// (<see cref="Discovery"/>, qui marque aussi la visite), et le brouillard dissipé à <see cref="RevealMeters"/> mètres autour, ou sur
+    /// toute la région (<see cref="WholeRegion"/>, sous-lot V2.29.1).
     /// </summary>
     public sealed class Viewpoint
     {
@@ -127,6 +145,15 @@ namespace EdS.World
         public long Xp { get; }
         public int RevealMeters { get; }
 
+        /// <summary>
+        /// Sous-lot V2.29.1 : la première visite lève le brouillard sur toute la région (<see cref="ExploredCells.RevealAll"/>), et non plus
+        /// à <see cref="RevealMeters"/> mètres autour.
+        /// </summary>
+        public bool WholeRegion => RevealMeters == RevealsWholeRegion;
+
+        /// <summary>Valeur de <see cref="RevealMeters"/> d'un point de vue qui lève le brouillard sur toute la région.</summary>
+        public const int RevealsWholeRegion = -1;
+
         /// <summary>Distance de la visite (comme la découverte d'un point sûr).</summary>
         public const int Range = 12;
 
@@ -135,18 +162,19 @@ namespace EdS.World
             Id = id;
             Zone = zone;
             Position = position;
+            if (revealMeters < 0 && revealMeters != RevealsWholeRegion) throw new ArgumentOutOfRangeException(nameof(revealMeters));
             Discovery = discovery;
             Xp = xp;
             RevealMeters = revealMeters;
         }
 
         /// <summary>
-        /// Points de vue connus. Le sommet (180, 1 360), au bout du chemin des cairns : 200 XP (Damien), brouillard dissipé à 1 024 m autour
-        /// (valeur de Claude : « autour », soit huit cases ; environ un cinquième des Vallons).
+        /// Points de vue connus. Le sommet (180, 1 360), au bout du chemin des cairns : 200 XP (Damien, 15 novembre 2026), brouillard levé sur
+        /// **toute la région** (Damien, 16 novembre 2026 ; avant, sous-lot V2.29 (2) : 1 024 m autour, valeur de Claude).
         /// </summary>
         public static readonly IReadOnlyList<Viewpoint> All = Array.AsReadOnly(new[]
         {
-            new Viewpoint("sommet", "zone.vallons", new GroundVector(Fixed.FromInt(180), Fixed.FromInt(1360)), "discovery.point_de_vue_du_sommet", 200, 1024),
+            new Viewpoint("sommet", "zone.vallons", new GroundVector(Fixed.FromInt(180), Fixed.FromInt(1360)), "discovery.point_de_vue_du_sommet", 200, RevealsWholeRegion),
         });
     }
 }

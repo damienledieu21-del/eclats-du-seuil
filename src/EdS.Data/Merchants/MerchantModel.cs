@@ -488,8 +488,11 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V2.14 : fournées au plus ; étals, criées au plus ; foule au plus ; jours de marché par semaine au plus (décision de Damien : 1 ou 2).</summary>
         public const int MaxBakes = 6, MaxStalls = 24, MaxCries = 16, MaxCrowd = 64, MaxMarketDays = 2;
 
-        /// <summary>Sous-lot V2.14 : coordonnée d'un étal au plus (mètres, en valeur absolue).</summary>
-        public const int MaxStallCoordinate = 1000;
+        /// <summary>
+        /// Sous-lot V2.14 : coordonnée d'un étal au plus (mètres, en valeur absolue). Sous-lot V2.30.1 : 4 096 m (1 000 m avant), pour la
+        /// région de 4 × 3 km : le grand jour de marché a déménagé avec le bourg dans la ville fortifiée, vers x = −1 090.
+        /// </summary>
+        public const int MaxStallCoordinate = 4096;
 
         private static readonly Regex StallId = new Regex(@"^stall(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
         private static readonly Regex ZoneId = new Regex(@"^zone(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);

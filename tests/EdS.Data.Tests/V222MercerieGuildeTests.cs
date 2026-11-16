@@ -27,8 +27,7 @@ public class V222MercerieGuildeTests : IDisposable
 
     private AdventureSession Vallons()
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         return a;
     }
 
@@ -38,7 +37,7 @@ public class V222MercerieGuildeTests : IDisposable
         Directory.CreateDirectory(_folder);
         string save = Path.Combine(_folder, "partie.json");
         int at = hour * 60 + minute;
-        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(day, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero()));
+        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(day, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero(), resume: new SavedResume("place_du_bourg")));
         AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), save);
         a.Advance(0.05);
         Assert.Equal(new WorldTime(day, at), a.World.Zone.Time);
@@ -86,20 +85,20 @@ public class V222MercerieGuildeTests : IDisposable
     {
         AdventureMap map = Vallons().Map;
         var (minX, maxX, minZ, maxZ) = Box(map.Obstacles.First(x => x.Id == "maison1"));
-        Assert.Equal((-32.0, -25.0, 4.0, 10.5), (minX, maxX, minZ, maxZ));
+        Assert.Equal((-1064.0, -1057.0, -30.0, -23.5), (minX, maxX, minZ, maxZ));
         (int X, int Z) facing = TownRules.FacingOf("maison1", minX, minZ, maxX, maxZ, map.Roads, map.Doors);
         Assert.Equal((0, -1), facing);
         var door = map.Doors.First(d => d.Building == "maison1");
         Assert.Equal("porte_mercerie", door.Id);
-        Assert.Equal((-28.5, 3.0), (door.X, door.Z));
+        Assert.Equal((-1060.5, -31.0), (door.X, door.Z));
         double cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
         // Porte du modèle : Blender (3,20 ; 0 ; 0) -> repère du FBX recentré (x = 3,20 − X = 0, z = 2,90 − Y = 2,90).
         var modelDoor = TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.90);
         Assert.Equal(door.X, modelDoor.X, 6);
-        Assert.Equal(4.35, modelDoor.Z, 6);
+        Assert.Equal(-29.65, modelDoor.Z, 6);
         Assert.InRange(modelDoor.Z, door.Z, cz);
         // Mur du fond (Y = 5,80) : dans l'emprise.
-        Assert.Equal(10.15, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.90 - 5.80).Z, 6);
+        Assert.Equal(-23.85, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.90 - 5.80).Z, 6);
         // L'enseigne en ciseaux (Y −0,39, le plus en avant) s'arrête avant la porte du jeu.
         Assert.InRange(TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.90 + 0.39).Z, door.Z, minZ);
     }
@@ -116,26 +115,26 @@ public class V222MercerieGuildeTests : IDisposable
     {
         AdventureMap map = Vallons().Map;
         var (minX, maxX, minZ, maxZ) = Box(map.Obstacles.First(x => x.Id == "maison6"));
-        Assert.Equal((-98.0, -84.0, -20.0, -7.0), (minX, maxX, minZ, maxZ));
+        Assert.Equal((-1130.0, -1116.0, -54.0, -41.0), (minX, maxX, minZ, maxZ));
         (int X, int Z) facing = TownRules.FacingOf("maison6", minX, minZ, maxX, maxZ, map.Roads, map.Doors);
         Assert.Equal((0, 1), facing);
         var door = map.Doors.First(d => d.Building == "maison6");
         Assert.Equal("porte_guilde", door.Id);
-        Assert.Equal((-91.0, -6.0), (door.X, door.Z));
+        Assert.Equal((-1123.0, -40.0), (door.X, door.Z));
         double cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
         // Porte du modèle : Blender (6,60 ; 0 ; 0) -> repère du FBX recentré (x = 6,60 − X = 0, z = 5,00 − Y = 5,00).
         var modelDoor = TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 5.00);
         Assert.Equal(door.X, modelDoor.X, 6);
-        Assert.Equal(-8.5, modelDoor.Z, 6);
+        Assert.Equal(-42.5, modelDoor.Z, 6);
         Assert.InRange(modelDoor.Z, cz, door.Z);
         // Débord arrière du toit (Y 10,40) et rives (X −0,40 et 13,60) : dans l'emprise.
-        Assert.Equal(-18.9, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 5.00 - 10.40).Z, 6);
-        Assert.Equal(-84.0, Math.Max(TownModels.OwnPlace(cx, cz, facing, 6.60 + 0.40, 0.0, 0.0).X, TownModels.OwnPlace(cx, cz, facing, 6.60 - 13.60, 0.0, 0.0).X), 6);
+        Assert.Equal(-52.9, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 5.00 - 10.40).Z, 6);
+        Assert.Equal(-1116.0, Math.Max(TownModels.OwnPlace(cx, cz, facing, 6.60 + 0.40, 0.0, 0.0).X, TownModels.OwnPlace(cx, cz, facing, 6.60 - 13.60, 0.0, 0.0).X), 6);
         // Perron : de Y −2,60 à 0, joues X 5,00 – 8,20.
         var a = TownModels.OwnPlace(cx, cz, facing, 6.60 - 5.00, 0.0, 5.00 + 2.60);
         var b = TownModels.OwnPlace(cx, cz, facing, 6.60 - 8.20, 0.0, 5.00);
         double px0 = Math.Min(a.X, b.X), px1 = Math.Max(a.X, b.X), pz0 = Math.Min(a.Z, b.Z), pz1 = Math.Max(a.Z, b.Z);
-        Assert.Equal((-92.6, -89.4, -8.5, -5.9), (Math.Round(px0, 6), Math.Round(px1, 6), Math.Round(pz0, 6), Math.Round(pz1, 6)));
+        Assert.Equal((-1124.6, -1121.4, -42.5, -39.9), (Math.Round(px0, 6), Math.Round(px1, 6), Math.Round(pz0, 6), Math.Round(pz1, 6)));
         Assert.True(pz1 > maxZ);                       // il sort de l'emprise, vers la porte : voulu
         Assert.InRange(door.X, px0, px1);              // la porte du jeu est dans l'axe du perron
         foreach (var other in map.Obstacles.Where(x => x.Id != "maison6"))
@@ -175,8 +174,8 @@ public class V222MercerieGuildeTests : IDisposable
             Assert.Equal(1.925, w.Y, 6);
         }
         // Sur la vraie emprise (façade vers −z) : x −27,70, z 4,13.
-        var real = TownModels.OwnPlace(-28.5, 7.25, (0, -1), local!.Value.X, local.Value.Y, local.Value.Z);
-        Assert.Equal((-27.7, 4.13), (Math.Round(real.X, 6), Math.Round(real.Z, 6)));
+        var real = TownModels.OwnPlace(-1060.5, -26.75, (0, -1), local!.Value.X, local.Value.Y, local.Value.Z);
+        Assert.Equal((-1059.7, -29.87), (Math.Round(real.X, 6), Math.Round(real.Z, 6)));
         Assert.False(TownModels.OwnLanternAlwaysLit(Mercerie));
         Assert.Null(TownModels.OwnLantern(Guilde));
         Assert.False(TownModels.OwnLanternAlwaysLit(Guilde));
@@ -233,8 +232,8 @@ public class V222MercerieGuildeTests : IDisposable
         ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("tisane/", StringComparison.Ordinal));
         Assert.Equal("tisane/merchant.herboriste", c.Id);
         Assert.Equal("maison7", a.ShopBuildingOf(c.Id));
-        Assert.Equal(-54.75, c.X, 6);
-        Assert.Equal(-20.75, c.Z, 6);
+        Assert.Equal(-1086.75, c.X, 6);
+        Assert.Equal(-54.75, c.Z, 6);
         Assert.True(c.Lit);
         Assert.Equal(0.35, TownModels.SmokeStrength(c.Id), 6);
         Assert.Equal(1.0, TownModels.SmokeStrength("atre/merchant.epicier"), 6);

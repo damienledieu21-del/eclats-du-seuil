@@ -23,8 +23,7 @@ public class V220EpicerieTests : IDisposable
 
     private AdventureSession Vallons()
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         return a;
     }
 
@@ -73,9 +72,9 @@ public class V220EpicerieTests : IDisposable
         // Porte du modèle : Blender (5,40 ; 0 ; 0) -> repère du FBX recentré (x = 5,40 − X = 0, z = 4,70 − Y = 4,70).
         var modelDoor = TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 4.70);
         Assert.Equal(door.X, modelDoor.X, 6);
-        Assert.Equal(-9.8, modelDoor.Z, 6);
+        Assert.Equal(-43.8, modelDoor.Z, 6);
         Assert.InRange(modelDoor.Z, cz, door.Z);
-        // Bord avant de l'auvent (Y = −1,80) : encore devant la façade, avant la porte du jeu (z = −7).
+        // Bord avant de l'auvent (Y = −1,80) : encore devant la façade, avant la porte du jeu (z = −41, −7 avant le déménagement du V2.30.1).
         var eave = TownModels.OwnPlace(cx, cz, facing, 0.0, 2.84, 4.70 + 1.80);
         Assert.InRange(eave.Z, modelDoor.Z, door.Z);
         // L'enseigne peinte se lit de dehors : la droite de la façade vue de la porte du jeu (+X de Blender, x = 5,40 − X négatif)

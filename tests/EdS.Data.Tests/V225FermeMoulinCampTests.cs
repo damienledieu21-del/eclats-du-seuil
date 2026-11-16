@@ -96,9 +96,9 @@ public class V225FermeMoulinCampTests : IDisposable
         ["grange"] = ("grange_vallons", new[] { -92.0, -80.0, -50.0, -42.0, 0, 1, -6.0, 6.0, -3.982, 3.982, 0.0 }),
         ["moulin"] = ("moulin_vallons", new[] { -6.0, 0.0, 6.0, 12.0, -1, 0, -2.482, 3.5, -3.0, 3.0, 0.0 }),
         ["tour"] = ("tour_vallons", new[] { 24.3, 31.7, 64.3, 71.7, 1, 0, -3.731, 3.731, -3.731, 3.731, 0.031 }),
-        ["puits"] = ("puits_vallons", new[] { -59.2, -56.8, -2.2, 0.2, -1, 0, -1.39, 1.21, -1.2, 1.2, 0.19 }),
-        ["etal1"] = ("etal_legumes_vallons", new[] { -55.0, -52.0, 5.0, 7.0, 0, -1, -1.75, 1.75, -1.3, 1.3, 0.3 }),
-        ["etal2"] = ("etal_etoffes_vallons", new[] { -64.0, -61.0, -9.0, -7.0, 0, 1, -1.75, 1.75, -1.3, 1.3, 0.3 }),
+        ["puits"] = ("puits_vallons", new[] { -1091.2, -1088.8, -36.2, -33.8, -1, 0, -1.39, 1.21, -1.2, 1.2, 0.19 }),
+        ["etal1"] = ("etal_legumes_vallons", new[] { -1087.0, -1084.0, -29.0, -27.0, 0, -1, -1.75, 1.75, -1.3, 1.3, 0.3 }),
+        ["etal2"] = ("etal_etoffes_vallons", new[] { -1096.0, -1093.0, -43.0, -41.0, 0, 1, -1.75, 1.75, -1.3, 1.3, 0.3 }),
         ["tente1"] = ("tente_camp", new[] { 109.6, 114.4, 78.6, 83.4, -1, 0, -1.929, 1.929, -2.33, 2.324, 0.0 }),
         ["tente2"] = ("tente_camp", new[] { 119.6, 124.4, 71.6, 76.4, -1, 0, -1.929, 1.929, -2.33, 2.324, 0.0 }),
         ["tente3"] = ("tente_camp", new[] { 121.6, 126.4, 86.6, 91.4, -1, 0, -1.929, 1.929, -2.33, 2.324, 0.0 }),
@@ -137,7 +137,7 @@ public class V225FermeMoulinCampTests : IDisposable
     public void Chaque_piece_tient_dans_son_emprise(string id)
     {
         (string model, double[] v) = Pieces[id];
-        AdventureMap map = Vallons().Map;
+        AdventureMap map = (MovedBuildings.Contains(id) ? LoadAtBourg(Path.Combine(_folder, "bourg", "partie.json")) : Vallons()).Map;   // V2.30.1 : bourg déménagé
         var b = Box(map.Obstacles.First(o => o.Id == id));
         Assert.Equal((v[0], v[1], v[2], v[3]), (Math.Round(b.MinX, 2), Math.Round(b.MaxX, 2), Math.Round(b.MinZ, 2), Math.Round(b.MaxZ, 2)));
         (int X, int Z) facing = Facing(map, id, b);
