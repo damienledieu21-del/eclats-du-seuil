@@ -180,6 +180,28 @@ namespace EdS.Game
 
         private bool _creatorAfterTitle;
 
+        /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
+        private bool Overlay => _logo.Active;
+
+        private bool _inputLocked;
+
+        /// <summary>Coupe (ou rend) les clics de l'interface en uGUI ; l'IMGUI est gardée inerte par <c>GUI.enabled</c> dans <c>OnGUI</c>.</summary>
+        private void LockInput(bool locked)
+        {
+            var events = UnityEngine.EventSystems.EventSystem.current;
+            if (events == null) return;
+            if (locked && events.enabled)
+            {
+                events.enabled = false;
+                _inputLocked = true;
+            }
+            else if (!locked && _inputLocked)
+            {
+                events.enabled = true;
+                _inputLocked = false;
+            }
+        }
+
         private IEnumerator Start()
         {
             _logo.Start();
@@ -936,6 +958,8 @@ namespace EdS.Game
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
             if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
+
+            LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
             // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
@@ -961,6 +985,7 @@ namespace EdS.Game
                 _lightKey = lightKey;
                 StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
             }
+            if (Overlay) return;   // V2.54 : sous le logo, aucune commande ne lit le clavier, la souris ni le doigt, et le jeu n'avance pas
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             UpdateHudLayout();
             _touch.Update(_hudLayout, AdventureCovered);
@@ -1815,7 +1840,10 @@ namespace EdS.Game
 
         private void OnGUI()
         {
+            bool locked = Overlay;
+            GUI.enabled = !locked;   // V2.54 : sous le logo, aucun contrôle de l'interface ne répond
             DrawGame();
+            GUI.enabled = true;
             Hud.Begin();
             _title.Draw();   // V2.55 : l'écran titre, sous le logo d'ouverture (qui s'efface dessus)
             Hud.Begin();

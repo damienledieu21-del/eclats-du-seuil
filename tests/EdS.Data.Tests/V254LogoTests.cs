@@ -87,11 +87,32 @@ public sealed class V254LogoTests
         Assert.Equal(1f, LogoIntro.MottoOpacity(LogoIntro.MottoEnd));
         Assert.Equal(0f, LogoIntro.MottoOpacity(0f));
         Assert.Equal(1f, LogoIntro.MottoOpacity(LogoIntro.TotalSeconds));
-        Assert.Equal(LogoIntro.OutStart, LogoIntro.AfterGesture(2f));
-        Assert.Equal(LogoIntro.OutStart, LogoIntro.AfterGesture(LogoIntro.SkipAfter));
-        Assert.Equal(0.1f, LogoIntro.AfterGesture(0.1f));
-        Assert.Equal(LogoIntro.OutStart + 0.2f, LogoIntro.AfterGesture(LogoIntro.OutStart + 0.2f));
-        Assert.Equal(1f, LogoIntro.MottoOpacity(LogoIntro.AfterGesture(1f)));
+        Assert.False(LogoIntro.CanSkip(LogoIntro.SkipAfter - 0.01f));
+        Assert.True(LogoIntro.CanSkip(LogoIntro.SkipAfter));
+        Assert.True(LogoIntro.CanSkip(LogoIntro.OutStart - 0.01f));
+        Assert.False(LogoIntro.CanSkip(LogoIntro.OutStart));
+    }
+
+    [Fact]
+    public void Le_rattrapage_apres_un_geste_est_continu_sans_saut_d_opacite_et_s_arrete_au_fondu_de_sortie()
+    {
+        Assert.Equal(1f + 0.016f, LogoIntro.Advance(1f, 0.016f, false), 5);
+        Assert.Equal(1f + 0.016f * LogoIntro.SkipSpeed, LogoIntro.Advance(1f, 0.016f, true), 5);
+        Assert.Equal(LogoIntro.OutStart, LogoIntro.Advance(LogoIntro.OutStart - 0.001f, 0.016f, true));
+        Assert.Equal(LogoIntro.OutStart + 0.016f, LogoIntro.Advance(LogoIntro.OutStart, 0.016f, true), 5);
+        // À 60 images par seconde, de n'importe quel instant jusqu'à la fin : aucune des opacités ne bouge de plus de 0,15 d'une image à l'autre.
+        for (float start = LogoIntro.SkipAfter; start < LogoIntro.OutStart; start += 0.37f)
+        {
+            float t = start;
+            while (LogoIntro.Active(t))
+            {
+                float next = LogoIntro.Advance(t, 1f / 60f, true);
+                Assert.True(System.Math.Abs(LogoIntro.Overall(next) - LogoIntro.Overall(t)) < 0.15f);
+                Assert.True(System.Math.Abs(LogoIntro.CrackReveal(next) - LogoIntro.CrackReveal(t)) < 0.15f);
+                Assert.True(System.Math.Abs(LogoIntro.MottoOpacity(next) - LogoIntro.MottoOpacity(t)) < 0.15f);
+                t = next;
+            }
+        }
     }
 
     [Fact]
