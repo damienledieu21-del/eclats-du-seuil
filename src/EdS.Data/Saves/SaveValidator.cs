@@ -698,7 +698,8 @@ namespace EdS.Data.Saves
         /// version 23 ou antérieure est lue telle quelle et mise à jour ; une signature hors chef-d'œuvre y est refusée.</remarks>
         /// <remarks>Version 25 (cartes à la taverne, <see cref="CardsSince"/>, décisions de Damien du 16 novembre 2026) : <c>cards</c>
         /// facultatif dans le personnage (absent tant qu'il ne s'est jamais assis à une table) : <c>{ "secret", "wins", "deck", "day", "played",
-        /// "gained", "game" }</c> ; graine secrète des donnes (16 chiffres hexadécimaux en minuscules), victoires (de 0 à
+        /// "gained", "game" }</c> plus <c>seats</c> ; graine secrète des donnes (16 chiffres hexadécimaux en minuscules), assises
+        /// comptées depuis toujours (de 0 à <see cref="SavedCards.MaxSeats"/> ; elles changent la donne à chaque assise), victoires (de 0 à
         /// <see cref="SavedCards.MaxWins"/>), jeu rare remis (seulement après <see cref="SavedCards.VictoriesForReward"/> victoires), jour des
         /// compteurs, parties du jour par PNJ (« npc.… » : 1 à <see cref="SavedCards.MaxGamesPerDay"/>, au plus
         /// <see cref="SavedCards.MaxOpponents"/>), gains du jour (0 à <see cref="SavedCards.DailyCap"/>), partie en cours facultative
@@ -1239,7 +1240,7 @@ namespace EdS.Data.Saves
                 c.Mount, c.Explored?.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), Cards(c.Cards));
         }
 
-        private static SavedCards? Cards(SavedCardsData? x) => x is null ? null : new SavedCards(SavedCards.ParseSecret(x.Secret!), x.Wins!.Value, x.Deck!.Value,
+        private static SavedCards? Cards(SavedCardsData? x) => x is null ? null : new SavedCards(SavedCards.ParseSecret(x.Secret!), x.Seats!.Value, x.Wins!.Value, x.Deck!.Value,
             x.Day!.Value, x.Played!.ToDictionary(e => e.Key, e => e.Value!.Value, StringComparer.Ordinal), x.Gained!.Value,
             x.Game is null ? null : new SavedCardGame(x.Game.Npc!, x.Game.Style!.Value, x.Game.Day!.Value, x.Game.Game!.Value, x.Game.Stake!.Value,
                 x.Game.Moves!.Select(m => m!.Value)));
@@ -1252,6 +1253,9 @@ namespace EdS.Data.Saves
         {
             if (!SavedCards.IsSecret(x.Secret)) report.Add(path + ".secret", x.Secret is null ? ValidationCode.MissingField : ValidationCode.InvalidValue,
                 "graine : 16 chiffres hexadécimaux en minuscules.");
+            if (x.Seats is null) report.Add(path + ".seats", ValidationCode.MissingField, "assises manquantes.");
+            else if (x.Seats < 0 || x.Seats > SavedCards.MaxSeats) report.Add(path + ".seats", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxSeats}].");
+            else if (x.Seats == 0 && x.Game != null) report.Add(path + ".seats", ValidationCode.InvalidValue, "partie en cours sans assise comptée.");
             if (x.Wins is null) report.Add(path + ".wins", ValidationCode.MissingField, "victoires manquantes.");
             else if (x.Wins < 0 || x.Wins > SavedCards.MaxWins) report.Add(path + ".wins", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxWins}].");
             if (x.Deck is null) report.Add(path + ".deck", ValidationCode.MissingField, "jeu rare remis (vrai ou faux) manquant.");
@@ -1280,6 +1284,8 @@ namespace EdS.Data.Saves
             if (!SavedCards.IsNpc(m.Npc)) report.Add(g + ".npc", m.Npc is null ? ValidationCode.MissingField : ValidationCode.InvalidValue, "PNJ mal formé (« npc.<nom> »).");
             if (m.Style is null) report.Add(g + ".style", ValidationCode.MissingField, "manière manquante.");
             else if (m.Style < 0 || m.Style > SavedCards.MaxStyle) report.Add(g + ".style", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxStyle}].");
+            else if (SavedCards.IsNpc(m.Npc) && m.Style != SavedCards.StyleOf(m.Npc!))   // relecture indépendante de la PR #189
+                report.Add(g + ".style", ValidationCode.InvalidValue, $"manière {m.Style} : « {m.Npc} » joue toujours en {SavedCards.StyleOf(m.Npc!)}.");
             if (m.Day is null) report.Add(g + ".day", ValidationCode.MissingField, "jour manquant.");
             else if (m.Day < 0 || m.Day > SavedEvent.MaxDay) report.Add(g + ".day", ValidationCode.OutOfRange, $"hors de [0, {SavedEvent.MaxDay}].");
             if (m.Game is null) report.Add(g + ".game", ValidationCode.MissingField, "numéro de partie manquant.");

@@ -34,6 +34,7 @@ namespace EdS.Data.Saves
         {
             if (!SavedCards.IsNpc(npc)) throw new ArgumentException($"PNJ « {npc} » hors du format des sauvegardes.", nameof(npc));
             if (style < 0 || style > SavedCards.MaxStyle) throw new ArgumentOutOfRangeException(nameof(style), style, $"Manière hors de [0, {SavedCards.MaxStyle}].");
+            if (style != SavedCards.StyleOf(npc)) throw new ArgumentException($"Manière {style} : « {npc} » joue toujours en {SavedCards.StyleOf(npc)}.", nameof(style));
             if (day < 0 || day > SavedEvent.MaxDay) throw new ArgumentOutOfRangeException(nameof(day), day, $"Jour hors de [0, {SavedEvent.MaxDay}].");
             if (game < 0 || game >= SavedCards.MaxGamesPerDay) throw new ArgumentOutOfRangeException(nameof(game), game, $"Partie du jour hors de [0, {SavedCards.MaxGamesPerDay - 1}].");
             if (!SavedCards.Stakes.Contains(stake)) throw new ArgumentOutOfRangeException(nameof(stake), stake, $"Mise : {string.Join(", ", SavedCards.Stakes)} cuivre.");
@@ -79,10 +80,27 @@ namespace EdS.Data.Saves
         public const int HandSize = 5, MaxStyle = 2, MaxNpcLength = 64, MaxOpponents = 32;
         public const long MaxWins = 1_000_000;
 
+        /// <summary>Décision de Damien du 16 novembre 2026 : assises au plus (borne technique du compteur ; au-delà, on ne s'assoit plus).</summary>
+        public const long MaxSeats = 1_000_000_000;
+
         private static readonly Regex NpcId = new Regex(@"^npc(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
         private static readonly Regex SecretHex = new Regex(@"^[0-9a-f]{16}\z", RegexOptions.CultureInvariant);
 
         public static bool IsNpc(string? id) => id != null && id.Length <= MaxNpcLength && NpcId.IsMatch(id);
+
+        /// <summary>
+        /// Manière de jouer de <paramref name="npc"/> (0 prudent, 1 hardi, 2 rusé) : Mathurin (<c>npc.aubergiste</c>) est rusé ; les autres
+        /// ont une manière tirée de leur identifiant (FNV-1a sur « cards:style:&lt;npc&gt; », modulo 3), toujours la même. Une partie
+        /// sauvegardée doit porter cette manière (relecture indépendante de la PR #189).
+        /// </summary>
+        public static int StyleOf(string npc)
+        {
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (npc == "npc.aubergiste") return 2;
+            ulong hash = 14695981039346656037UL;
+            foreach (byte b in System.Text.Encoding.UTF8.GetBytes("cards:style:" + npc)) hash = unchecked((hash ^ b) * 1099511628211UL);
+            return (int)(hash % 3);
+        }
 
         /// <summary>La graine au format de la sauvegarde : 16 chiffres hexadécimaux en minuscules.</summary>
         public static bool IsSecret(string? hex) => hex != null && SecretHex.IsMatch(hex);
@@ -103,6 +121,14 @@ namespace EdS.Data.Saves
         }
 
         public ulong Secret { get; }
+
+        /// <summary>
+        /// Décision de Damien du 16 novembre 2026 : assises comptées depuis toujours (chaque partie commencée en ajoute une) ; le numéro de
+        /// l'assise entre dans la clé de la donne, qui change ainsi à chaque fois qu'on s'assoit. La partie en cours est l'assise
+        /// <see cref="Seats"/> − 1.
+        /// </summary>
+        public long Seats { get; }
+
         public long Wins { get; }
 
         /// <summary>Le jeu de cartes rare a été remis (il l'est à la dixième victoire, ou plus tard si le sac était plein).</summary>
@@ -122,8 +148,10 @@ namespace EdS.Data.Saves
 
         public SavedCardGame? Game { get; }
 
-        public SavedCards(ulong secret, long wins, bool deckGiven, long day, IReadOnlyDictionary<string, int>? played, int gained, SavedCardGame? game)
+        public SavedCards(ulong secret, long seats, long wins, bool deckGiven, long day, IReadOnlyDictionary<string, int>? played, int gained, SavedCardGame? game)
         {
+            if (seats < 0 || seats > MaxSeats) throw new ArgumentOutOfRangeException(nameof(seats), seats, $"Assises hors de [0, {MaxSeats}].");
+            if (game != null && seats < 1) throw new ArgumentException("Partie en cours sans assise comptée.", nameof(seats));
             if (wins < 0 || wins > MaxWins) throw new ArgumentOutOfRangeException(nameof(wins), wins, $"Victoires hors de [0, {MaxWins}].");
             if (deckGiven && wins < VictoriesForReward) throw new ArgumentException($"Jeu rare remis avant {VictoriesForReward} victoires.", nameof(deckGiven));
             if (day < 0 || day > SavedEvent.MaxDay) throw new ArgumentOutOfRangeException(nameof(day), day, $"Jour hors de [0, {SavedEvent.MaxDay}].");
@@ -139,6 +167,7 @@ namespace EdS.Data.Saves
             if (game != null && (game.Day != day || !p.TryGetValue(game.Npc, out int n) || n <= game.Game))
                 throw new ArgumentException("Partie en cours hors des parties de son jour (même jour, comptée dans « played »).", nameof(game));
             Secret = secret;
+            Seats = seats;
             Wins = wins;
             DeckGiven = deckGiven;
             Day = day;
@@ -148,7 +177,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>État neuf : la graine <paramref name="secret"/>, rien de joué.</summary>
-        public static SavedCards Fresh(ulong secret) => new SavedCards(secret, 0, false, 0, null, 0, null);
+        public static SavedCards Fresh(ulong secret) => new SavedCards(secret, 0, 0, false, 0, null, 0, null);
 
         /// <summary>Parties déjà commencées contre <paramref name="npc"/> le jour <paramref name="day"/>.</summary>
         public int PlayedOn(long day, string npc) => day == Day && Played.TryGetValue(npc, out int n) ? n : 0;
@@ -162,20 +191,26 @@ namespace EdS.Data.Saves
             if (game is null) throw new ArgumentNullException(nameof(game));
             var p = game.Day == Day ? Played.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal) : new Dictionary<string, int>(StringComparer.Ordinal);
             p[game.Npc] = checked(PlayedOn(game.Day, game.Npc) + 1);
-            return new SavedCards(Secret, Wins, DeckGiven, game.Day, p, GainedOn(game.Day), game);
+            return new SavedCards(Secret, checked(Seats + 1), Wins, DeckGiven, game.Day, p, GainedOn(game.Day), game);
         }
 
         /// <summary>La partie en cours avance (même partie, une place jouée de plus).</summary>
-        public SavedCards WithGame(SavedCardGame game) => new SavedCards(Secret, Wins, DeckGiven, Day, Played, Gained, game ?? throw new ArgumentNullException(nameof(game)));
+        public SavedCards WithGame(SavedCardGame game) => new SavedCards(Secret, Seats, Wins, DeckGiven, Day, Played, Gained, game ?? throw new ArgumentNullException(nameof(game)));
 
-        /// <summary>La partie est réglée : plus de partie en cours ; une victoire compte, et ses gains comptent pour le jour <see cref="Day"/>.</summary>
+        /// <summary>
+        /// La partie est réglée : plus de partie en cours ; une victoire compte (le compteur sature à <see cref="MaxWins"/> : relecture
+        /// indépendante de la PR #189), et ses gains comptent pour le jour <see cref="Day"/>.
+        /// </summary>
         public SavedCards WithEnd(bool won, int gain) =>
-            new SavedCards(Secret, won ? checked(Wins + 1) : Wins, DeckGiven, Day, Played, checked(Gained + gain), null);
+            new SavedCards(Secret, Seats, won ? Math.Min(MaxWins, checked(Wins + 1)) : Wins, DeckGiven, Day, Played, checked(Gained + gain), null);
+
+        /// <summary>Commencer une partie contre <paramref name="npc"/> le jour <paramref name="day"/> ferait-il dépasser <see cref="MaxOpponents"/> adversaires du jour ?</summary>
+        public bool TooManyOpponents(long day, string npc) => day == Day && !Played.ContainsKey(npc) && Played.Count >= MaxOpponents;
 
         /// <summary>Le jeu de cartes rare est remis.</summary>
-        public SavedCards WithDeckGiven() => new SavedCards(Secret, Wins, true, Day, Played, Gained, Game);
+        public SavedCards WithDeckGiven() => new SavedCards(Secret, Seats, Wins, true, Day, Played, Gained, Game);
 
-        public override bool Equals(object? obj) => obj is SavedCards o && o.Secret == Secret && o.Wins == Wins && o.DeckGiven == DeckGiven && o.Day == Day
+        public override bool Equals(object? obj) => obj is SavedCards o && o.Secret == Secret && o.Seats == Seats && o.Wins == Wins && o.DeckGiven == DeckGiven && o.Day == Day
             && o.Gained == Gained && o.Played.SequenceEqual(Played) && Equals(o.Game, Game);
 
         public override int GetHashCode() => unchecked((int)Secret * 31 + (int)Wins * 7 + (int)Day + Gained);

@@ -1,5 +1,7 @@
 using System.Text.Json.Nodes;
 using EdS.Data.Json;
+using EdS.Data.Story;
+using EdS.Data.Zones;
 using EdS.Data.Saves;
 using EdS.Data.Validation;
 using EdS.World;
@@ -16,14 +18,35 @@ namespace EdS.Data.Tests;
 [Trait("Category", "World")]
 public class CartesMisesTests
 {
-    private const string Mathurin = "npc.aubergiste", Other = "npc.forgeron";
+    private const string Mathurin = "npc.aubergiste", Other = "npc.boulanger";
     private const ulong Seed = 0x5EED_CAFE_0000_0001UL;
+
+    /// <summary>L'histoire livrée, Mathurin posé près de la porte de l'auberge (comme les essais du V1.6), là où arrive le joueur.</summary>
+    private static readonly Lazy<StoryBook> Shipped = new Lazy<StoryBook>(() =>
+    {
+        JsonObject root = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!.AsObject();
+        JsonObject n = root["data"]!["npcs"]!.AsArray().Select(x => x!.AsObject()).Single(x => (string?)x["id"] == Mathurin);
+        Door door = V16TestData.Interiors.Single(z => z.Id == (string)n["zone"]!).Doors[0];
+        V23TestData.Move(n, new JsonArray(Math.Round(door.Position.X.Raw / 10000.0, 4), Math.Round(door.Position.Z.Raw / 10000.0 + 1.5, 4)));
+        StoryLoadResult r = StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Zone(), ItemsCatalog, V16TestData.Interiors);
+        Assert.True(r.IsValid, r.Report.ToString());
+        return r.Story!;
+    });
+
+    /// <summary>À l'Auberge de l'Aube, à portée de Mathurin (relecture indépendante de la PR #189 : il faut être à portée de parole).</summary>
+    private static WorldSession AtInn(SavedCharacter hero)
+    {
+        var session = new WorldSession(new WorldSave("zone.auberge", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero),
+            V16TestData.Interiors.Single(z => z.Id == "zone.auberge"), ShippedData, Progression, ItemsCatalog, Shipped.Value, door: "sortie", storyZone: "zone.vallons");
+        session.Step();
+        return session;
+    }
 
     private static WorldSession Table(long money = 500, SavedCards? cards = null, params ItemStack[] items)
     {
         SavedCharacter hero = Hero(money, items);
         if (cards != null) hero = hero.WithCards(cards);
-        return Play(Zone(), hero);
+        return AtInn(hero);
     }
 
     /// <summary>Joue toujours la première carte de la main ; rend la fin de partie.</summary>
@@ -36,9 +59,9 @@ public class CartesMisesTests
     }
 
     /// <summary>Issue d'une partie jouée « toujours la première carte », calculée à part (sans la session).</summary>
-    private static int OutcomeOf(ulong secret, string npc, long day, int game)
+    private static int OutcomeOf(ulong secret, string npc, long day, int game, long seat = 0)
     {
-        var m = new CardMatch(CardMatch.Key(secret, "bastion", npc, day, game), CardMatch.StyleOf(npc));
+        var m = new CardMatch(CardMatch.Key(secret, "bastion", npc, day, game, seat), CardMatch.StyleOf(npc));
         while (!m.IsOver) m.Play(0, out _);
         return m.Outcome;
     }
@@ -72,6 +95,9 @@ public class CartesMisesTests
         SavedCharacter before = w.Character;
         Assert.Equal(CardTableRefusal.NoSuchStake, w.SitDownAtCards(Mathurin, 7, Seed));
         Assert.Equal(CardTableRefusal.UnknownNpc, w.SitDownAtCards("aubergiste", 5, Seed));
+        Assert.Equal(CardTableRefusal.UnknownNpc, w.SitDownAtCards("npc.inconnu", 5, Seed));   // absent de l'histoire
+        Assert.Equal(CardTableRefusal.TooFar, w.SitDownAtCards(Other, 5, Seed));   // Firmin n'est pas à l'auberge
+        Assert.Equal(CardTableRefusal.TooFar, Play(Zone(), Hero(500)).SitDownAtCards(Mathurin, 5, Seed));   // dehors, loin de Mathurin
         Assert.Equal(CardTableRefusal.NoGame, w.PlayCard(0, out _, out _));
         Assert.Equal(CardTableRefusal.NoGame, w.ForfeitCards());
         Assert.Same(before, w.Character);
@@ -82,7 +108,7 @@ public class CartesMisesTests
         Assert.Equal(Seed, w.Cards!.Secret);
         Assert.NotNull(w.CardGame);
         before = w.Character;
-        Assert.Equal(CardTableRefusal.GameInProgress, w.SitDownAtCards(Other, 5, Seed + 1));
+        Assert.Equal(CardTableRefusal.GameInProgress, w.SitDownAtCards(Mathurin, 5, Seed + 1));
         Assert.Equal(CardTableRefusal.NoSuchCard, w.PlayCard(5, out _, out _));
         Assert.Equal(CardTableRefusal.NoSuchCard, w.PlayCard(-1, out _, out _));
         Assert.Same(before, w.Character);
@@ -133,13 +159,13 @@ public class CartesMisesTests
         saved.PlayCard(2, out _, out _);
         saved.PlayCard(0, out _, out _);
         string text = SaveJsonReader.Write(saved.Save());
-        Assert.Contains($"\"cards\": {{\"secret\": \"{SavedCards.SecretText(Seed)}\", \"wins\": 0, \"deck\": false, \"day\": {saved.Day}, \"played\": {{\"{Mathurin}\": 1}}, \"gained\": 0, \"game\": {{\"npc\": \"{Mathurin}\", \"style\": 2, \"day\": {saved.Day}, \"game\": 0, \"stake\": 25, \"moves\": [2, 0]}}}}", text);
+        Assert.Contains($"\"cards\": {{\"secret\": \"{SavedCards.SecretText(Seed)}\", \"seats\": 1, \"wins\": 0, \"deck\": false, \"day\": {saved.Day}, \"played\": {{\"{Mathurin}\": 1}}, \"gained\": 0, \"game\": {{\"npc\": \"{Mathurin}\", \"style\": 2, \"day\": {saved.Day}, \"game\": 0, \"stake\": 25, \"moves\": [2, 0]}}}}", text);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "save.schema.json")).IsValid(System.Text.Json.JsonDocument.Parse(text).RootElement));
         SaveLoadResult read = SaveJsonReader.Read(text);
         Assert.True(read.IsValid, string.Join("; ", read.Report.Errors.Select(e => e.Path + " " + e.Message)));
         Assert.Equal(saved.Character.Cards, read.Save!.Character!.Cards);
         Assert.Equal(text, SaveJsonReader.Write(read.Save));
-        WorldSession resumed = Play(Zone(), read.Save.Character!);
+        WorldSession resumed = AtInn(read.Save.Character!);
         Assert.Equal(straight.CardGame!.PlayerHand, resumed.CardGame!.PlayerHand);
         Assert.Equal(straight.CardGame.Rounds.Select(r => (r.Player, r.Npc)), resumed.CardGame.Rounds.Select(r => (r.Player, r.Npc)));
         for (int i = 0; i < 3; i++)
@@ -193,9 +219,9 @@ public class CartesMisesTests
         Assert.Equal(CardTableRefusal.NoMoreGamesToday, w.SitDownAtCards(Mathurin, 5, Seed));
         Assert.Same(before, w.Character);
         Assert.Equal(985L, w.Money);
-        Assert.Equal(CardTableRefusal.None, w.SitDownAtCards(Other, 5, Seed));   // un autre PNJ : ses trois parties à lui
+        Assert.Equal((0, 3), (w.CardGamesLeft(Mathurin), w.CardGamesLeft(Other)));   // un autre PNJ : ses trois parties à lui
         // Le lendemain, les compteurs repartent de zéro.
-        var tomorrow = new SavedCards(Seed, 0, false, w.Day, new Dictionary<string, int> { [Mathurin] = 3 }, 150, null);
+        var tomorrow = new SavedCards(Seed, 0, 0, false, w.Day, new Dictionary<string, int> { [Mathurin] = 3 }, 150, null);
         Assert.Equal(0, tomorrow.PlayedOn(w.Day + 1, Mathurin));
         Assert.Equal(0, tomorrow.GainedOn(w.Day + 1));
         SavedCards next = tomorrow.WithStart(new SavedCardGame(Mathurin, 2, w.Day + 1, 0, 5, Array.Empty<int>()));
@@ -206,7 +232,7 @@ public class CartesMisesTests
     public void Plafond_de_150_cuivre_de_gains_par_jour()
     {
         long day = Table().Day;
-        var cards = new SavedCards(SecretFor(1, day), 0, false, day, new Dictionary<string, int> { [Other] = 3 }, 140, null);
+        var cards = new SavedCards(SecretFor(1, day), 0, 0, false, day, new Dictionary<string, int> { [Other] = 3 }, 140, null);
         WorldSession w = Table(100, cards);
         Assert.Equal(10, w.CardGainsLeft);
         SavedCharacter before = w.Character;
@@ -216,7 +242,7 @@ public class CartesMisesTests
         Assert.Equal(1, PlayOut(w).Outcome);
         Assert.Equal((150, 0, 110L), (w.Cards!.Gained, w.CardGainsLeft, w.Money));
         Assert.Equal(CardTableRefusal.DailyCapReached, w.SitDownAtCards(Mathurin, 5, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SavedCards(Seed, 0, false, day, null, 151, null));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SavedCards(Seed, 0, 0, false, day, null, 151, null));
     }
 
     [Fact]
@@ -224,7 +250,7 @@ public class CartesMisesTests
     {
         long day = Table().Day;
         ulong secret = SecretFor(1, day);
-        var nine = new SavedCards(secret, 9, false, 0, null, 0, null);
+        var nine = new SavedCards(secret, 0, 9, false, 0, null, 0, null);
         WorldSession w = Table(100, nine);
         Assert.False(w.IsCardAce);
         w.SitDownAtCards(Mathurin, 5, 0);
@@ -245,7 +271,102 @@ public class CartesMisesTests
         f.Inventory.Remove("item.gambison", 1);
         Assert.Equal(CardTableRefusal.None, f.ClaimRareDeck());
         Assert.True(f.Cards!.DeckGiven);
-        Assert.Throws<ArgumentException>(() => new SavedCards(Seed, 9, true, 0, null, 0, null));
+        Assert.Throws<ArgumentException>(() => new SavedCards(Seed, 0, 9, true, 0, null, 0, null));
+    }
+
+    [Fact]
+    public void Au_plus_32_adversaires_par_jour_refus_type_sans_rien_changer()
+    {
+        long day = Table().Day;
+        var many = Enumerable.Range(0, SavedCards.MaxOpponents).ToDictionary(i => $"npc.joueur_{i}", _ => 1);
+        WorldSession w = Table(100, new SavedCards(Seed, 0, 0, false, day, many, 0, null));
+        SavedCharacter before = w.Character;
+        Assert.Equal(CardTableRefusal.TooManyOpponents, w.SitDownAtCards(Mathurin, 5, 0));
+        Assert.Same(before, w.Character);
+        // Un adversaire déjà rencontré aujourd'hui reste possible ; le lendemain, tout repart.
+        many[Mathurin] = 1;
+        many.Remove("npc.joueur_0");
+        Assert.Equal(CardTableRefusal.None, Table(100, new SavedCards(Seed, 0, 0, false, day, many, 0, null)).SitDownAtCards(Mathurin, 5, 0));
+        Assert.False(new SavedCards(Seed, 0, 0, false, day, many, 0, null).TooManyOpponents(day + 1, "npc.nouveau"));
+    }
+
+    [Fact]
+    public void La_maniere_sauvegardee_est_celle_du_PNJ()
+    {
+        Assert.Equal(2, SavedCards.StyleOf(Mathurin));
+        Assert.Equal((int)CardMatch.StyleOf(Other), SavedCards.StyleOf(Other));
+        Assert.Throws<ArgumentException>(() => new SavedCardGame(Mathurin, 0, 0, 0, 5, Array.Empty<int>()));
+        WorldSession w = Table();
+        w.SitDownAtCards(Mathurin, 5, Seed);
+        string text = SaveJsonReader.Write(w.Save());
+        SaveLoadResult bad = SaveJsonReader.Read(text.Replace("\"style\": 2", "\"style\": 1"));
+        Assert.False(bad.IsValid);
+        Assert.Contains(bad.Report.Errors, e => e.Path.EndsWith(".cards.game.style") && e.Code == ValidationCode.InvalidValue);
+    }
+
+    [Fact]
+    public void Victoires_saturees_au_plafond()
+    {
+        var top = new SavedCards(Seed, 1, SavedCards.MaxWins, true, 0, new Dictionary<string, int> { [Mathurin] = 1 }, 0,
+            new SavedCardGame(Mathurin, 2, 0, 0, 5, Array.Empty<int>()));
+        Assert.Equal(SavedCards.MaxWins, top.WithEnd(true, 5).Wins);
+    }
+
+    /// <summary>
+    /// Une vraie sauvegarde v24 (figée, sans cartes) se lit, monte en v25 à la réécriture sans champ « cards » ; la réécriture ne diffère
+    /// que par la version (relecture indépendante de la PR #189).
+    /// </summary>
+    [Fact]
+    public void Sauvegarde_v24_sans_cartes_relue_et_reecrite_en_v25_sans_cartes()
+    {
+        string v24 = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "sauvegardes", "v24-sans-cartes.json"));
+        Assert.Contains("\"schemaVersion\": 24", v24);
+        Assert.DoesNotContain("\"cards\"", v24);
+        SaveLoadResult read = SaveJsonReader.Read(v24);
+        Assert.True(read.IsValid, string.Join("; ", read.Report.Errors.Select(e => e.Path + " " + e.Message)));
+        Assert.Null(read.Save!.Character!.Cards);
+        string v25 = SaveJsonReader.Write(read.Save);
+        Assert.Equal(v24.Replace("\"schemaVersion\": 24", SaveVersion.Current), v25);
+        Assert.Equal(v25, SaveJsonReader.Write(SaveJsonReader.Read(v25).Save!));   // aller-retour v25 octet par octet
+        Assert.Null(AtInn(read.Save.Character!).Cards);
+    }
+
+    /// <summary>Décision de Damien du 16 novembre 2026 : un compteur d'assises persistant change la donne à chaque fois qu'on s'assoit.</summary>
+    [Fact]
+    public void La_donne_change_a_chaque_assise_et_se_reproduit_a_l_identique()
+    {
+        long day = Table().Day;
+        IReadOnlyList<Card> HandAt(long seats)
+        {
+            WorldSession w = Table(100, new SavedCards(Seed, seats, 0, false, day, null, 0, null));
+            Assert.Equal(CardTableRefusal.None, w.SitDownAtCards(Mathurin, 5, 0));
+            Assert.Equal(seats + 1, w.Cards!.Seats);
+            return w.CardGame!.PlayerHand;
+        }
+        // Même jour, même PNJ, même numéro de partie du jour : seule l'assise change, et la donne avec.
+        Assert.NotEqual(HandAt(7), HandAt(8));
+        Assert.Equal(HandAt(7), HandAt(7));
+        // Rejouer « la même » partie (abandon puis nouvelle assise le même jour) donne une autre main ; aller-retour v25 du compteur.
+        WorldSession t = Table();
+        t.SitDownAtCards(Mathurin, 5, Seed);
+        IReadOnlyList<Card> first = t.CardGame!.PlayerHand;
+        t.ForfeitCards();
+        string text = SaveJsonReader.Write(t.Save());
+        Assert.Contains("\"seats\": 1, ", text);
+        WorldSession again = AtInn(SaveJsonReader.Read(text).Save!.Character!);
+        Assert.Equal(1, again.Cards!.Seats);
+        again.SitDownAtCards(Mathurin, 5, 0);
+        Assert.Equal(2, again.Cards.Seats);
+        Assert.NotEqual(first, again.CardGame!.PlayerHand);
+        // Bornes : « seats » obligatoire, au format ; une partie en cours demande une assise comptée ; plafond : refus typé, rien ne change.
+        Assert.False(SaveJsonReader.Read(text.Replace("\"seats\": 1, ", "")).IsValid);
+        Assert.Contains(SaveJsonReader.Read(text.Replace("\"seats\": 1, ", "\"seats\": -1, ")).Report.Errors, e => e.Path.EndsWith(".cards.seats"));
+        Assert.Throws<ArgumentException>(() => new SavedCards(Seed, 0, 0, false, day, new Dictionary<string, int> { [Mathurin] = 1 }, 0,
+            new SavedCardGame(Mathurin, 2, day, 0, 5, Array.Empty<int>())));
+        WorldSession full = Table(100, new SavedCards(Seed, SavedCards.MaxSeats, 0, false, day, null, 0, null));
+        SavedCharacter before = full.Character;
+        Assert.Equal(CardTableRefusal.SeatsExhausted, full.SitDownAtCards(Mathurin, 5, 0));
+        Assert.Same(before, full.Character);
     }
 }
 

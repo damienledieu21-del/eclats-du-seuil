@@ -218,6 +218,7 @@ namespace EdS.Data.Saves
     public sealed class SavedCardsData
     {
         public string? Secret { get; set; }
+        public long? Seats { get; set; }
         public long? Wins { get; set; }
         public bool? Deck { get; set; }
         public long? Day { get; set; }

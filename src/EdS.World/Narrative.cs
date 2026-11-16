@@ -313,14 +313,15 @@ namespace EdS.World
         /// Relecture indépendante de la PR #174 : le concours de la fête <paramref name="festival"/> est ouvert au personnage, dont le dernier
         /// concours de cette fête a eu lieu le jour du monde <paramref name="lastDay"/> (-1 : jamais).
         /// </summary>
-        bool ContestOpen(string festival, long lastDay);
+        /// <param name="key">Schéma 16 : clé du concours (la fête, ou « fête.piste ») ; chaque piste a son propre concours par fête et par an.</param>
+        bool ContestOpen(string festival, string key, long lastDay);
 
         /// <summary>
         /// Revue Codex de la PR #174 : le personnage vient de concourir à la fête <paramref name="festival"/> ; pour une fête datée dont la
         /// date réelle est connue, son occurrence réelle est gardée (registre des événements), pour qu'une reprise un an plus tard ne la
         /// confonde pas avec la nouvelle. Ne lève pas.
         /// </summary>
-        void ContestHeld(string festival);
+        void ContestHeld(string festival, string key);
 
         /// <summary>Sous-lot V2.10 : le PNJ est de passage et n'est pas là maintenant (hors de ses fêtes) : on ne lui parle pas.</summary>
         bool NpcAway(Npc npc);
@@ -434,7 +435,7 @@ namespace EdS.World
                 .ToDictionary(r => r.Key, r => Reputations.Clamp(r.Value)), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
             // Sous-lot V2.10 : une fête disparue des données est oubliée.
-            _contests = new SortedDictionary<string, long>(saved.Festivals.Where(f => book.HasFestival(f.Key)).ToDictionary(f => f.Key, f => f.Value), StringComparer.Ordinal);
+            _contests = new SortedDictionary<string, long>(saved.Festivals.Where(f => book.HasFestival(f.Key) || book.Festivals.Any(x => f.Key.StartsWith(x.Id + ".", StringComparison.Ordinal))).ToDictionary(f => f.Key, f => f.Value), StringComparer.Ordinal);
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
                 Quest quest = book.Quest(q.Key);
@@ -841,6 +842,9 @@ namespace EdS.World
                 _bonusXp = 0;
             }
         }
+
+        /// <summary>Cartes à la taverne (relecture indépendante de la PR #189) : <paramref name="npc"/> est un PNJ de l'histoire, là et à portée de parole.</summary>
+        public bool CanReach(string? npc) => npc != null && _book.HasNpc(npc) && InRange(_book.Npc(npc));
 
         private bool InRange(Npc n) => !_world.NpcAway(n) &&   // sous-lot V2.10 : un PNJ de passage hors de sa fête n'est pas là
             _world.PlayerPositionIn(_world.NpcZone(n)) is GroundVector p && !ZonePopulations.Beyond(p, EdS.Domain.Numerics.Fixed.Zero, _world.NpcPosition(n), EdS.Domain.Numerics.Fixed.Zero, TalkRange);
@@ -1399,7 +1403,7 @@ namespace EdS.World
             ConditionKind.Standing => StandingIndex(c.Id) == Reputations.TierIndex(c.Step!),
             ConditionKind.StandingAtLeast => StandingIndex(c.Id) >= Reputations.TierIndex(c.Step!),
             ConditionKind.Festival => c.Id == StoryValidator.AnyFestival ? _world.Festival != null : _world.Festival == c.Id,   // sous-lot V2.10
-            ConditionKind.ContestOpen => _world.Festival == c.Id && _world.ContestOpen(c.Id, ContestDay(c.Id)),
+            ConditionKind.ContestOpen => _world.Festival == c.Id && _world.ContestOpen(c.Id, c.ContestKey, ContestDay(c.ContestKey)),   // schéma 16 : la piste
             ConditionKind.ContestRound => _world.Festival == c.Id && _world.FestivalRound(c.Id) == c.Value,   // sous-lot V2.10 : la rotation des concours
             // Concours de pâtisserie : une pâtisserie de sa main (signée de son nom), de la qualité demandée.
             ConditionKind.HasSigned => _world.CharacterId is string me && _world.Inventory.CountSigned(c.Id, me, c.Quality) > 0,
@@ -1535,8 +1539,8 @@ namespace EdS.World
                         events.Add(new StoryEvent(StoryEventKind.ItemPresented, e.Id, SaveQualityName(e.Quality!.Value), 1));
                         break;
                     case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
-                        _contests[e.Id] = Math.Min(SavedEvent.MaxDay, _world.Day);
-                        _world.ContestHeld(e.Id);
+                        _contests[e.ContestKey] = Math.Min(SavedEvent.MaxDay, _world.Day);   // schéma 16 : chaque piste a sa clé
+                        _world.ContestHeld(e.Id, e.ContestKey);
                         events.Add(new StoryEvent(StoryEventKind.ContestEntered, e.Id, null, _world.Day));
                         break;
                     default:

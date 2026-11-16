@@ -116,12 +116,7 @@ namespace EdS.World
         /// Manière de jouer d'un PNJ : Mathurin (<c>npc.aubergiste</c>) est rusé ; les autres PNJ de la taverne ont une manière tirée de leur
         /// identifiant (toujours la même pour un PNJ donné).
         /// </summary>
-        public static CardStyle StyleOf(string npc)
-        {
-            if (npc is null) throw new ArgumentNullException(nameof(npc));
-            if (npc == "npc.aubergiste") return CardStyle.Cunning;
-            return (CardStyle)(int)(Loot.Fnv1a("cards:style:" + npc) % 3);
-        }
+        public static CardStyle StyleOf(string npc) => (CardStyle)EdS.Data.Saves.SavedCards.StyleOf(npc);
 
         /// <summary>Nombre de cartes du paquet (trois couleurs de <see cref="MaxValue"/> cartes).</summary>
         public const int DeckSize = 3 * MaxValue;
@@ -172,6 +167,16 @@ namespace EdS.World
         /// s'écrivent jamais pareil.
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">Jour négatif ou numéro hors de [0, <see cref="MaxGamesPerDay"/>[.</exception>
+        /// <summary>
+        /// Décision de Damien du 16 novembre 2026 : clé d'une partie avec le numéro de l'assise <paramref name="seat"/> (compteur persistant
+        /// de la sauvegarde) : la donne change à chaque fois qu'on s'assoit.
+        /// </summary>
+        public static string Key(ulong secret, string character, string npc, long day, int counter, long seat)
+        {
+            if (seat < 0) throw new ArgumentOutOfRangeException(nameof(seat), seat, "Assise négative.");
+            return Key(secret, character, npc, day, counter) + ":" + seat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         public static string Key(ulong secret, string character, string npc, long day, int counter)
         {
             if (character is null) throw new ArgumentNullException(nameof(character));

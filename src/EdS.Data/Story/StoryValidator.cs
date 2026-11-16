@@ -153,7 +153,18 @@ namespace EdS.Data.Story
         /// de sa main, de cette qualité, ou de toute qualité sans <c>quality</c>) et effet <c>present</c> (<c>id</c> et <c>quality</c>
         /// obligatoire : il en présente une de sa main, de cette qualité exacte ; dans une réponse de dialogue seulement, qui demande
         /// <c>hasSigned</c> du même objet et de la même qualité). La version 14 reste lue telle quelle.</remarks>
-        public const int CurrentSchemaVersion = 15;
+        /// <remarks>Version 16 (décision de Damien du 16 novembre 2026 : à une même fête, le tir d'Aldric et le concours de pâtisserie de
+        /// Firmin ne se ferment plus l'un l'autre) : <c>lane</c> facultatif sur une condition <c>contestOpen</c> et un effet <c>contest</c>
+        /// (nom <c>[a-z0-9_]</c>, 32 caractères au plus) : une piste de concours de la fête, avec son propre « un par fête et par an » (clé
+        /// « fête.piste » dans <c>story.festivals</c> de la sauvegarde, format inchangé). La version 15 reste lue telle quelle.</remarks>
+        public const int CurrentSchemaVersion = 16;
+
+        /// <summary>Concours de pâtisserie : version 15, encore lue (sans <c>lane</c>).</summary>
+        public const int Schema15 = 15;
+
+        /// <summary>Schéma 16 : piste d'un concours (<c>lane</c>).</summary>
+        public static readonly System.Text.RegularExpressions.Regex LaneName = new System.Text.RegularExpressions.Regex(@"^[a-z0-9_]{1,32}\z",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
         /// <summary>Fêtes aux vraies dates : version 14, encore lue (sans <c>hasSigned</c> ni <c>present</c>).</summary>
         public const int Schema14 = 14;
@@ -339,6 +350,7 @@ namespace EdS.Data.Story
                 || document.SchemaVersion == Schema12   // sous-lot V2.10
                 || document.SchemaVersion == Schema13   // fêtes aux vraies dates
                 || document.SchemaVersion == Schema14   // concours de pâtisserie
+                || document.SchemaVersion == Schema15   // décision de Damien du 16 novembre 2026 : pistes de concours (lane)
                 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, report))
                 return new StoryLoadResult(report, null);
@@ -819,10 +831,10 @@ namespace EdS.Data.Story
                             // Sous-lot V2.10 : concourir ferme le concours : la réponse demande qu'il soit ouvert (sinon il se rejouerait sans fin).
                             if (effects != null && conditions != null)
                                 for (int e = 0; e < effects.Count; e++)
-                                    if (effects[e].Kind == EffectKind.Contest && !conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.Id == effects[e].Id))
+                                    if (effects[e].Kind == EffectKind.Contest && !conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.ContestKey == effects[e].ContestKey))
                                     {
                                         _r.Add($"{cp}.effects[{e}].id", ValidationCode.InvalidValue,
-                                            $"concours « {effects[e].Id} » : la réponse doit demander « contestOpen » de la même fête.");
+                                            $"concours « {effects[e].ContestKey} » : la réponse doit demander « contestOpen » de la même fête (et de la même piste).");
                                         chOk = false;
                                     }
                             // Concours de pâtisserie (schéma 15) : présenter une pâtisserie demande de l'avoir, de cette qualité exacte.
@@ -838,7 +850,7 @@ namespace EdS.Data.Story
                             // Relecture indépendante de la PR #186 : on ne présente qu'au concours d'une fête, qui se referme : sans cela, la
                             // réponse se rejouerait à volonté (et ses prix avec).
                             if (effects != null && conditions != null && effects.Any(x => x.Kind == EffectKind.Present)
-                                && !effects.Any(x => x.Kind == EffectKind.Contest && conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.Id == x.Id)))
+                                && !effects.Any(x => x.Kind == EffectKind.Contest && conditions.Any(c => c.Kind == ConditionKind.ContestOpen && c.ContestKey == x.ContestKey)))
                             {
                                 int e = effects.FindIndex(x => x.Kind == EffectKind.Present);
                                 _r.Add($"{cp}.effects[{e}].do", ValidationCode.InvalidValue,
@@ -969,6 +981,7 @@ namespace EdS.Data.Story
                         continue;
                     }
                     if (!NoNpc(t, p)) continue;
+                    if (!LaneOk(t, p, kind == ConditionKind.ContestOpen, out string? conditionLane)) continue;
                     if (kind == ConditionKind.HasSigned)   // concours de pâtisserie (schéma 15)
                     {
                         if (!Since15(t.Kind, p + ".if")) continue;
@@ -1005,7 +1018,7 @@ namespace EdS.Data.Story
                         ConditionKind.InPlace => Ref(t, p, _zone.Places.Select(x => x.Id), "lieu") && NoValue(t, p) && NoStep(t, p),
                         _ => Ref(t, p, _zone.Passages.Select(x => x.Id), "passage") && NoValue(t, p) && NoStep(t, p),
                     };
-                    if (ok) list.Add(new StoryCondition(kind, t.Id ?? string.Empty, t.Value ?? 0, t.Step));
+                    if (ok) list.Add(new StoryCondition(kind, t.Id ?? string.Empty, t.Value ?? 0, t.Step, null, conditionLane));
                 }
                 return list.Count == terms.Count ? list : null;
             }
@@ -1036,6 +1049,7 @@ namespace EdS.Data.Story
                         continue;
                     }
                     if (!NoStep(t, p) || !NoNpc(t, p)) continue;
+                    if (!LaneOk(t, p, kind == EffectKind.Contest, out string? effectLane)) continue;
                     if (kind == EffectKind.Present)   // concours de pâtisserie (schéma 15)
                     {
                         if (!Since15("present", p + ".do")) continue;
@@ -1079,7 +1093,7 @@ namespace EdS.Data.Story
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
-                    if (ok) list.Add(new StoryEffect(kind, t.Id ?? string.Empty, t.Value ?? 0));
+                    if (ok) list.Add(new StoryEffect(kind, t.Id ?? string.Empty, t.Value ?? 0, null, effectLane));
                 }
                 return list.Count == terms.Count ? list : null;
             }
@@ -1109,6 +1123,7 @@ namespace EdS.Data.Story
                 // Sous-lot V2.6.1 : purify est nouveau en version 11.
                 if (kind == ObjectiveKind.Purify && !Since11("purify", path + ".kind")) return null;
                 if (kind != ObjectiveKind.CraftQuality && !NoQuality(t, path)) return null;
+                if (!LaneOk(t, path, false, out _)) return null;   // schéma 16 : seuls contestOpen et contest ont une piste
                 bool ok = kind switch
                 {
                     ObjectiveKind.Purify => ScarredRift(t, path) && Value(t, path, 1, EdS.Data.Saves.SavedScar.MaxEntries),   // sous-lot V2.6.1
@@ -1292,9 +1307,28 @@ namespace EdS.Data.Story
             /// <summary>Concours de pâtisserie : <paramref name="what"/> est connu depuis la version 15.</summary>
             private bool Since15(string what, string p)
             {
-                if (_schema >= CurrentSchemaVersion) return true;
-                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                if (_schema >= Schema15) return true;
+                _r.Add(p, ValidationCode.InvalidValue, $"« {what} » inconnu en version {_schema} du format : version {Schema15} demandée.");
                 return false;
+            }
+
+            /// <summary>
+            /// Schéma 16 : piste d'un concours (<c>lane</c>), seulement sur <c>contestOpen</c> et <c>contest</c> (<paramref name="allowed"/>),
+            /// au format ; rend la piste (null sans piste) dans <paramref name="lane"/>.
+            /// </summary>
+            private bool LaneOk(TermData t, string p, bool allowed, out string? lane)
+            {
+                lane = null;
+                if (!t.Present.Contains("lane") && t.Lane is null) return true;
+                if (!allowed) { _r.Add(p + ".lane", ValidationCode.InvalidValue, "seuls « contestOpen » et « contest » ont une piste (lane)."); return false; }
+                if (_schema < CurrentSchemaVersion)
+                {
+                    _r.Add(p + ".lane", ValidationCode.InvalidValue, $"« lane » inconnu en version {_schema} du format : version {CurrentSchemaVersion} demandée.");
+                    return false;
+                }
+                if (t.Lane is null || !LaneName.IsMatch(t.Lane)) { _r.Add(p + ".lane", ValidationCode.InvalidValue, "piste : [a-z0-9_], de 1 à 32 caractères."); return false; }
+                lane = t.Lane;
+                return true;
             }
 
             /// <summary>Concours de pâtisserie : qualité exacte connue (« normal », « superior » ou « masterwork »), obligatoire.</summary>

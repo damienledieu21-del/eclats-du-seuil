@@ -9,7 +9,7 @@ namespace EdS.World
     {
         None = 0,
 
-        /// <summary>PNJ mal formé (« npc.… »).</summary>
+        /// <summary>PNJ mal formé (« npc.… »), absent de l'histoire, ou partie sans histoire.</summary>
         UnknownNpc = 1,
 
         /// <summary>Mise hors de 5, 10 ou 25 cuivre.</summary>
@@ -41,6 +41,15 @@ namespace EdS.World
 
         /// <summary>Rien à remettre (jeu rare déjà remis, ou moins de dix victoires), ou sac plein.</summary>
         NothingOwed = 11,
+
+        /// <summary>Le PNJ n'est pas là, ou trop loin pour lui parler (même portée que pour un dialogue).</summary>
+        TooFar = 12,
+
+        /// <summary>Déjà <see cref="SavedCards.MaxOpponents"/> adversaires différents aujourd'hui (borne technique de la sauvegarde).</summary>
+        TooManyOpponents = 13,
+
+        /// <summary>Compteur d'assises au plafond technique (<see cref="SavedCards.MaxSeats"/>).</summary>
+        SeatsExhausted = 14,
     }
 
     /// <summary>Fin d'une partie des Trois Feux : issue (+1 gagnée, 0 nulle, −1 perdue), cuivre rendu, et récompense rare.</summary>
@@ -88,7 +97,7 @@ namespace EdS.World
 
         private CardMatch Replay(SavedCards cards, SavedCardGame game)
         {
-            var match = new CardMatch(CardMatch.Key(cards.Secret, _character.Id, game.Npc, game.Day, game.Game), (CardStyle)game.Style);
+            var match = new CardMatch(CardMatch.Key(cards.Secret, _character.Id, game.Npc, game.Day, game.Game, cards.Seats - 1), (CardStyle)game.Style);
             foreach (int move in game.Moves)
                 if (match.Play(move, out _) != CardRefusal.None) throw new InvalidOperationException("Partie de la sauvegarde impossible à rejouer.");
             return match;
@@ -102,15 +111,18 @@ namespace EdS.World
         /// </summary>
         public CardTableRefusal SitDownAtCards(string npc, int stake, ulong entropy)
         {
-            if (!SavedCards.IsNpc(npc)) return CardTableRefusal.UnknownNpc;
+            if (!SavedCards.IsNpc(npc) || !(Narrative is Narrative story) || !story.Book.HasNpc(npc)) return CardTableRefusal.UnknownNpc;
             if (!CardMatch.Stakes.Contains(stake)) return CardTableRefusal.NoSuchStake;
             SavedCards cards = _character.Cards ?? SavedCards.Fresh(entropy);
             if (cards.Game != null) return CardTableRefusal.GameInProgress;
             if (InCombat) return CardTableRefusal.InCombat;
+            if (!story.CanReach(npc)) return CardTableRefusal.TooFar;   // relecture indépendante de la PR #189 : la portée d'un dialogue
             long day = Day;
             if (day < 0 || day > SavedEvent.MaxDay) return CardTableRefusal.NoMoreGamesToday;
             int played = cards.PlayedOn(day, npc);
             if (played >= CardMatch.MaxGamesPerDay) return CardTableRefusal.NoMoreGamesToday;
+            if (cards.TooManyOpponents(day, npc)) return CardTableRefusal.TooManyOpponents;
+            if (cards.Seats >= SavedCards.MaxSeats) return CardTableRefusal.SeatsExhausted;
             if (checked(cards.GainedOn(day) + stake) > CardMatch.DailyCap) return CardTableRefusal.DailyCapReached;
             if (stake > _character.Money) return CardTableRefusal.NotEnoughMoney;
             var game = new SavedCardGame(npc, (int)CardMatch.StyleOf(npc), day, played, stake, Array.Empty<int>());

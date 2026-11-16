@@ -227,6 +227,7 @@ namespace EdS.Data.Json
                     bool cok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
                     {
                         ["secret"] = (ev2, ep) => cd.Secret = input.Text(ev2, ep),
+                        ["seats"] = (ev2, ep) => cd.Seats = input.Int64(ev2, ep),   // décision de Damien du 16 novembre 2026
                         ["wins"] = (ev2, ep) => cd.Wins = input.Int64(ev2, ep),
                         ["deck"] = (ev2, ep) => cd.Deck = input.Boolean(ev2, ep),
                         ["day"] = (ev2, ep) => cd.Day = input.Int64(ev2, ep),
@@ -660,7 +661,7 @@ namespace EdS.Data.Json
             if (c.Cards is SavedCards cards)   // cartes à la taverne (version 25) : état déjà validé à la construction (PNJ au format, aucun échappement)
             {
                 string Num(long n) => n.ToString(CultureInfo.InvariantCulture);
-                b.Append("      \"cards\": {\"secret\": \"").Append(SavedCards.SecretText(cards.Secret)).Append("\", \"wins\": ").Append(Num(cards.Wins))
+                b.Append("      \"cards\": {\"secret\": \"").Append(SavedCards.SecretText(cards.Secret)).Append("\", \"seats\": ").Append(Num(cards.Seats)).Append(", \"wins\": ").Append(Num(cards.Wins))
                     .Append(", \"deck\": ").Append(cards.DeckGiven ? "true" : "false").Append(", \"day\": ").Append(Num(cards.Day))
                     .Append(", \"played\": {").Append(string.Join(", ", cards.Played.Select(e => "\"" + e.Key + "\": " + Num(e.Value)))).Append('}')
                     .Append(", \"gained\": ").Append(Num(cards.Gained));

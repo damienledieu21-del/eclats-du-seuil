@@ -991,6 +991,7 @@
                   "additionalProperties": false,
                   "required": [
                     "secret",
+                    "seats",
                     "wins",
                     "deck",
                     "day",
@@ -1002,6 +1003,12 @@
                       "type": "string",
                       "pattern": "^[0-9a-f]{16}$",
                       "description": "Graine secrète des donnes (jamais montrée)."
+                    },
+                    "seats": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1000000000,
+                      "description": "Assises comptées depuis toujours : la donne change à chaque assise (décision de Damien du 16 novembre 2026)."
                     },
                     "wins": {
                       "type": "integer",

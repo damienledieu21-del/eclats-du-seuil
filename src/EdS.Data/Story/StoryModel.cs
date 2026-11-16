@@ -242,8 +242,18 @@ namespace EdS.Data.Story
         /// <summary>Concours de pâtisserie (schéma 15) : qualité demandée par <c>hasSigned</c> ; null : toute qualité (et pour les autres conditions).</summary>
         public EdS.Data.Saves.ItemQuality? Quality { get; }
 
-        internal StoryCondition(ConditionKind kind, string id, long value, string? step, EdS.Data.Saves.ItemQuality? quality = null)
+        /// <summary>
+        /// Schéma 16 (décision de Damien du 16 novembre 2026) : piste du concours (<c>contestOpen</c>) ; null : le concours principal de la
+        /// fête. Chaque piste a son propre « un par fête et par an ».
+        /// </summary>
+        public string? Lane { get; }
+
+        /// <summary>Clé du concours visé (<c>contestOpen</c>) : la fête, ou « fête.piste ».</summary>
+        public string ContestKey => Lane is null ? Id : Id + "." + Lane;
+
+        internal StoryCondition(ConditionKind kind, string id, long value, string? step, EdS.Data.Saves.ItemQuality? quality = null, string? lane = null)
         {
+            Lane = lane;
             Quality = quality;
             Kind = kind;
             Id = id;
@@ -264,8 +274,15 @@ namespace EdS.Data.Story
         /// <summary>Concours de pâtisserie (schéma 15) : qualité exacte de la pâtisserie présentée (<c>present</c>) ; null pour les autres effets.</summary>
         public EdS.Data.Saves.ItemQuality? Quality { get; }
 
-        internal StoryEffect(EffectKind kind, string id, long value, EdS.Data.Saves.ItemQuality? quality = null)
+        /// <summary>Schéma 16 : piste du concours (<c>contest</c>) ; null : le concours principal de la fête.</summary>
+        public string? Lane { get; }
+
+        /// <summary>Clé du concours visé (<c>contest</c>) : la fête, ou « fête.piste ».</summary>
+        public string ContestKey => Lane is null ? Id : Id + "." + Lane;
+
+        internal StoryEffect(EffectKind kind, string id, long value, EdS.Data.Saves.ItemQuality? quality = null, string? lane = null)
         {
+            Lane = lane;
             Quality = quality;
             Kind = kind;
             Id = id;
