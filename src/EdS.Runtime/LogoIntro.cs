@@ -66,7 +66,7 @@ namespace EdS.Runtime
         public const float CrackBottom = 0.82f;
 
         /// <summary>Largeur d'affichage (pixels) sous laquelle la devise est illisible : on montre 01 au lieu de 06.</summary>
-        public const float MottoMinWidth = 700f;
+        public const float MottoMinWidth = 400f;
 
         /// <summary>Largeur d'affichage (pixels) sous laquelle le logo doré est trop fin : on montre la version blanche.</summary>
         public const float WhiteMaxWidth = 256f;

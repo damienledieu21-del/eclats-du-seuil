@@ -175,9 +175,15 @@ namespace EdS.Game
         /// <summary>V2.54 : l'ouverture du logo au lancement (le jeu attend dessous, gelé).</summary>
         private readonly LogoView _logo = new LogoView();
 
+        /// <summary>V2.55 : l'écran titre vivant (après le logo, avant le jeu) ; le créateur de personnage d'une nouvelle partie attend qu'il soit fini.</summary>
+        private readonly TitleView _title = new TitleView();
+
+        private bool _creatorAfterTitle;
+
         private IEnumerator Start()
         {
             _logo.Start();
+            _title.Begin();
             // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
             // de laisser l'écran bloqué sur « Préparation des données du jeu… ».
             try
@@ -303,7 +309,12 @@ namespace EdS.Game
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
             _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
-            if (_adventure.IsNewGame) OpenCreator();   // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
+            if (_adventure.IsNewGame)
+            {
+                if (_title.Pending) _creatorAfterTitle = true;   // V2.55 : le créateur s'ouvre après l'écran titre
+                else OpenCreator();
+            }
+            // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
 
@@ -612,7 +623,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
+            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active || _title.Pending;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -904,9 +915,27 @@ namespace EdS.Game
         /// <summary>Relecture de la PR #99 : minute du monde de la dernière lumière posée (jour × 1440 + minute ; -1 hors de l'aventure).</summary>
         private long _lightKey = long.MinValue;
 
+        /// <summary>V2.55 : avance l'écran titre (décor de la saison et de l'heure du monde, héros du joueur) ; l'annule s'il n'y a pas de partie à montrer.</summary>
+        private void TickTitle()
+        {
+            if (_title.Pending && (_startupError != null || _ready && (_adventure == null || _error != null))) _title.Cancel();
+            if (_title.Pending)
+            {
+                TitleMix mix = default;
+                if (_adventure != null) mix = TitleScreen.Pick(_adventure.SeasonShown.Season, (int)_adventure.World.Zone.Time.Minute, false);   // pas encore d'état Envers : false
+                _title.Tick(Time.unscaledDeltaTime, _ready && _adventure != null && !_logo.Active, _arena?.Player, mix);
+            }
+            if (!_title.Pending && _creatorAfterTitle)
+            {
+                _creatorAfterTitle = false;
+                if (_adventure != null) OpenCreator();
+            }
+        }
+
         private void Update()
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
+            if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
             // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
@@ -1787,6 +1816,8 @@ namespace EdS.Game
         private void OnGUI()
         {
             DrawGame();
+            Hud.Begin();
+            _title.Draw();   // V2.55 : l'écran titre, sous le logo d'ouverture (qui s'efface dessus)
             Hud.Begin();
             _logo.Draw();   // V2.54 : le logo s'ouvre au-dessus de tout (démarrage, préparation, jeu)
         }
