@@ -92,14 +92,39 @@ namespace EdS.World
         /// <summary>Commence l'épreuve de promotion du rang suivant (sa quête), auprès de la maîtresse.</summary>
         public GuildRefusal StartTrial(out IReadOnlyList<StoryEvent> events) => AtDesk(n => n.StartTrial, out events);
 
-        /// <summary>Choisit le titre affiché (un titre gagné), ou plus aucun (null), où que l'on soit.</summary>
+        /// <summary>
+        /// Choisit le titre affiché (un titre gagné), ou plus aucun (null), où que l'on soit. Titre actif (sauvegarde v26, décision de Damien
+        /// du 16 novembre 2026, vers 14 h) : un seul titre affiché, choisi parmi les titres de la guilde et « As des Trois Feux »
+        /// (<see cref="CardMatch.AceTitle"/>, pour un As, membre de la guilde ou non) ; en choisir un retire l'autre. Refusé sans rien changer
+        /// (titre non gagné, pas de carte de guilde pour un titre de guilde).
+        /// </summary>
         public GuildRefusal ShowTitle(string? title, out IReadOnlyList<StoryEvent> events)
         {
             var list = new List<StoryEvent>();
-            GuildRefusal refusal = Narrative is null ? GuildRefusal.NoGuild : Narrative.ShowTitle(title, list);
             events = list;
+            EdS.Data.Saves.SavedCards? cards = _character.Cards;
+            if (title == CardMatch.AceTitle)
+            {
+                if (cards is null || !cards.IsAce) return GuildRefusal.UnknownTitle;
+                if (cards.Shown) return GuildRefusal.None;
+                if (Narrative?.ShownTitle != null) Narrative.ShowTitle(null, new List<StoryEvent>());   // le titre de guilde s'efface sans annonce
+                _character = _character.WithCards(cards.WithShown(true));
+                list.Add(new StoryEvent(StoryEventKind.TitleShown, title));
+                return GuildRefusal.None;
+            }
+            if (title is null && cards != null && cards.Shown)
+            {
+                _character = _character.WithCards(cards.WithShown(false));
+                list.Add(new StoryEvent(StoryEventKind.TitleShown, string.Empty));
+                return GuildRefusal.None;
+            }
+            GuildRefusal refusal = Narrative is null ? GuildRefusal.NoGuild : Narrative.ShowTitle(title, list);
+            if (refusal == GuildRefusal.None && title != null && cards != null && cards.Shown) _character = _character.WithCards(cards.WithShown(false));
             return refusal;
         }
+
+        /// <summary>Titre actif : identifiant du titre affiché sous le nom (« As des Trois Feux » ou un titre de la guilde), ou null.</summary>
+        public string? ActiveTitle => _character.Cards?.Shown == true ? CardMatch.AceTitle : Narrative?.ShownTitle;
 
         /// <summary>
         /// Rang de la guilde requis pour passer la porte <paramref name="door"/> de la zone en cours (« accès à des lieux ») et que le personnage

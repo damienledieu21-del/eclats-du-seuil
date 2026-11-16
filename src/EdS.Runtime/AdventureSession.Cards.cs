@@ -69,7 +69,7 @@ namespace EdS.Runtime
     public sealed partial class AdventureSession
     {
         /// <summary>Titre « As des Trois Feux » : identifiant de la ligne de la carte d'aventurier (jamais un titre de la guilde).</summary>
-        public const string CardAceTitle = "title.as_des_trois_feux";
+        public const string CardAceTitle = CardMatch.AceTitle;
 
         /// <summary>
         /// Source de l'entropie qui devient, la première fois qu'on s'assoit, la graine secrète des donnes (fournie par l'hôte, jamais
@@ -79,6 +79,22 @@ namespace EdS.Runtime
 
         /// <summary>Issue de la dernière partie, montrée jusqu'à ce que le joueur se lève (affichage seulement, rien n'est sauvegardé).</summary>
         private (string Npc, int Stake, CardMatch Match, CardGameEnd End)? _cardEnd;
+
+        /// <summary>
+        /// Relecture indépendante de la PR #193 : la table vue, gardée d'une image à l'autre (la rejouer coûte), refaite après s'être assis,
+        /// avoir posé une carte, s'être levé ou avoir demandé à quitter ; une nouvelle session (chargement) part sans.
+        /// </summary>
+        private CardTableView? _cardView;
+        private bool _cardViewFresh;
+
+        /// <summary>« Quitter la table » demandé une fois en pleine partie : la seconde fois, la partie et la mise sont perdues.</summary>
+        private bool _leaveAsked;
+
+        private void ForgetCardView()
+        {
+            _cardViewFresh = false;
+            _cardView = null;
+        }
 
         /// <summary>Le jeu de cartes rare est dû (sac plein à la dixième victoire).</summary>
         public bool RareDeckOwed => World.Cards is SavedCards c && c.IsAce && !c.DeckGiven;
@@ -132,8 +148,11 @@ namespace EdS.Runtime
             {
                 case CardTableRefusal.None:
                     _dirty = true;
+                    _leaveAsked = false;
+                    ForgetCardView();
                     CloseDialogue();
                     return;
+                case CardTableRefusal.PurseFull: Say("text.ui.purse_full"); return;
                 case CardTableRefusal.NotEnoughMoney: Say("text.ui.not_enough_money"); return;
                 case CardTableRefusal.NoMoreGamesToday: Say("text.ui.cards.refused.games", name); return;
                 case CardTableRefusal.DailyCapReached: Say("text.ui.cards.refused.cap", World.CardGainsLeft); return;
@@ -149,9 +168,12 @@ namespace EdS.Runtime
         {
             get
             {
+                if (_cardViewFresh) return _cardView;
                 if (World.Cards is SavedCards cards && cards.Game is SavedCardGame game && World.CardGame is CardMatch match)
-                    return View(game.Npc, game.Stake, match, null);
-                return _cardEnd is { } end ? View(end.Npc, end.Stake, end.Match, end.End) : null;
+                    _cardView = View(game.Npc, game.Stake, match, null);
+                else _cardView = _cardEnd is { } end ? View(end.Npc, end.Stake, end.Match, end.End) : null;
+                _cardViewFresh = true;
+                return _cardView;
             }
         }
 
@@ -162,6 +184,7 @@ namespace EdS.Runtime
                 ? Format("text.ui.cards.round", match.Rounds.Count + 1, CardMatch.HandSize)
                 : end.Outcome > 0 ? Format("text.ui.cards.won", end.Payout) : end.Outcome == 0 ? Text("text.ui.cards.draw") : Format("text.ui.cards.lost", name);
             if (end != null && end.BecameAce) prompt += " " + Text("text.ui.cards.ace");
+            if (end is null && _leaveAsked) prompt = Text("text.ui.cards.leave_confirm");
             string last = "";
             if (match.Rounds.Count > 0)
             {
@@ -183,6 +206,8 @@ namespace EdS.Runtime
         {
             SavedCardGame? game = World.Cards?.Game;
             CardTableRefusal refusal = World.PlayCard(index, out _, out CardGameEnd? end);
+            _leaveAsked = false;
+            ForgetCardView();
             if (refusal == CardTableRefusal.None) _dirty = true;
             else if (refusal == CardTableRefusal.PurseFull) Say("text.ui.purse_full");
             else if (refusal == CardTableRefusal.InCombat) Say("text.ui.cards.refused.combat");
@@ -197,14 +222,25 @@ namespace EdS.Runtime
             return refusal;
         }
 
-        /// <summary>Se lever : après l'issue, ferme la table ; en pleine partie, quitte la table (partie et mise perdues).</summary>
+        /// <summary>
+        /// Se lever (bouton, ou Échap : relecture indépendante de la PR #193) : après l'issue, ferme la table ; en pleine partie, la première
+        /// fois, demande confirmation (la table le dit) ; la seconde, quitte la table (partie et mise perdues). Poser une carte annule la demande.
+        /// </summary>
         public void LeaveCardTable()
         {
+            ForgetCardView();
             if (_cardEnd != null)
             {
                 _cardEnd = null;
                 return;
             }
+            if (World.CardGame is null) return;
+            if (!_leaveAsked)
+            {
+                _leaveAsked = true;
+                return;
+            }
+            _leaveAsked = false;
             if (World.ForfeitCards() == CardTableRefusal.None)
             {
                 _dirty = true;
@@ -212,7 +248,7 @@ namespace EdS.Runtime
             }
         }
 
-        /// <summary>Ligne du titre « As des Trois Feux » sur la carte d'aventurier (ni affichable sous le nom, ni de la guilde), ou null.</summary>
-        private TitleEntry? CardAceEntry => World.IsCardAce ? new TitleEntry(CardAceTitle, Text("text.ui.cards.ace_title"), false, false) : null;
+        /// <summary>Ligne du titre « As des Trois Feux » sur la carte d'aventurier (titre actif possible depuis la sauvegarde v26 ; pas de la guilde), ou null.</summary>
+        private TitleEntry? CardAceEntry => World.IsCardAce ? new TitleEntry(CardAceTitle, Text("text.ui.cards.ace_title"), World.Cards!.Shown) : null;
     }
 }

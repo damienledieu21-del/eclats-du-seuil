@@ -545,7 +545,8 @@ namespace EdS.Game
             bool atCards = a.CardTable != null;   // sous-lot V2.32 : à la table des Trois Feux, 1 à 5 posent une carte
             if (atCards)
             {
-                if (DigitPressed() is int card && card >= 0) a.PlayCardAt(card);
+                if (Input.GetKeyDown(KeyCode.Escape)) a.LeaveCardTable();   // relecture de la PR #193 : Échap, avec confirmation en pleine partie
+                else if (DigitPressed() is int card && card >= 0) a.PlayCardAt(card);
                 talking = true;
             }
             else if (talking)

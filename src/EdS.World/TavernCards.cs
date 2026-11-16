@@ -109,6 +109,15 @@ namespace EdS.World
         /// <summary>Décision de Damien du 16 novembre 2026 : gains de la taverne au plus par jour du monde, en cuivre.</summary>
         public const int DailyCap = EdS.Data.Saves.SavedCards.DailyCap;
 
+        /// <summary>Titre gagné à la dixième victoire ; titre actif possible (sauvegarde v26), jamais un titre du catalogue de la guilde.</summary>
+        public const string AceTitle = "title.as_des_trois_feux";
+
+        /// <summary>
+        /// Décision de Damien du 16 novembre 2026 (vers 14 h) : les joueurs de cartes sont à l'auberge de 18 h à minuit (minutes du jour,
+        /// <see cref="EveningStart"/> comprise, <see cref="EveningEnd"/> exclue).
+        /// </summary>
+        public const int EveningStart = 18 * 60, EveningEnd = 24 * 60;
+
         /// <summary>Sous-lot V2.32 : la taverne où l'on joue (l'Auberge de l'Aube) ; un PNJ n'y joue que le soir.</summary>
         public const string Tavern = "zone.auberge";
 

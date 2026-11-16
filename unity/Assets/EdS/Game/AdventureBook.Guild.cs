@@ -248,9 +248,9 @@ namespace EdS.Game
 
         private void ToggleTitle(int index)
         {
-            if (_session == null || _titleIds[index] == null || _titleIds[index] == AdventureSession.CardAceTitle) return;   // V2.32 : pas sous le nom
-            // Un titre déjà affiché se retire ; un autre s'affiche à sa place.
-            bool shown = _session.World.Narrative != null && _session.World.Narrative.ShownTitle == _titleIds[index];
+            if (_session == null || _titleIds[index] == null) return;
+            // Un titre déjà affiché se retire ; un autre s'affiche à sa place (titre actif, sauvegarde v26 : « As des Trois Feux » compris).
+            bool shown = _session.World.ActiveTitle == _titleIds[index];
             _session.ShowTitle(shown ? null : _titleIds[index]);
         }
 
@@ -275,7 +275,7 @@ namespace EdS.Game
             {
                 bool used = i < card.Titles.Count;
                 UiKit.Show(_cardTitles[i].Name.Rect, used);
-                UiKit.Show(_cardTitles[i].Show.Rect, used && card.Titles[i].Showable);
+                UiKit.Show(_cardTitles[i].Show.Rect, used);
                 _titleIds[i] = used ? card.Titles[i].Id : null;
                 if (!used) continue;
                 TitleEntry t = card.Titles[i];

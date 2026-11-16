@@ -2015,6 +2015,7 @@
       "text.ui.cards.leave": "Quitter la table (mise perdue)",
       "text.ui.cards.stand": "Se lever",
       "text.ui.cards.left": "Tu quittes la table : la mise est perdue.",
+      "text.ui.cards.leave_confirm": "Quitter maintenant, c'est perdre la partie et la mise. Échap ou « Quitter la table » encore pour confirmer ; pose une carte pour rester.",
       "text.ui.cards.refused.games": "{0} a assez joué pour aujourd'hui (trois parties).",
       "text.ui.cards.refused.cap": "La taverne ne fait plus gagner que {0} cuivre aujourd'hui : choisis une mise plus petite, ou reviens demain.",
       "text.ui.cards.refused.tavern": "{0} ne joue qu'à la taverne, le soir.",

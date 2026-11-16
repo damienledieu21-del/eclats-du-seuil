@@ -16,15 +16,11 @@ namespace EdS.Runtime
         public string Name { get; }
         public bool Shown { get; }
 
-        /// <summary>Sous-lot V2.32 : le titre peut s'afficher sous le nom (faux pour « As des Trois Feux », qui n'est pas un titre de la guilde).</summary>
-        public bool Showable { get; }
-
-        internal TitleEntry(string id, string name, bool shown, bool showable = true)
+        internal TitleEntry(string id, string name, bool shown)
         {
             Id = id;
             Name = name;
             Shown = shown;
-            Showable = showable;
         }
     }
 
@@ -175,7 +171,11 @@ namespace EdS.Runtime
         public string RankName(string rank) => Text(_guild.Rank(rank).Name);
 
         /// <summary>Nom traduit du titre affiché, ou null (le titre sous le nom du personnage).</summary>
-        public string? ShownTitle => World.Narrative?.ShownTitle is string id && _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : null;
+        /// <remarks>Titre actif (sauvegarde v26) : « As des Trois Feux » ou un titre de la guilde.</remarks>
+        public string? ShownTitle => World.ActiveTitle is string id ? TitleName(id) : null;
+
+        /// <summary>Nom traduit d'un titre (de la guilde, ou « As des Trois Feux »).</summary>
+        private string TitleName(string id) => id == CardAceTitle ? Text("text.ui.cards.ace_title") : _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id;
 
         /// <summary>La carte d'aventurier, pour l'écran.</summary>
         public GuildCardView GuildCard()
@@ -184,7 +184,7 @@ namespace EdS.Runtime
             // Sous-lot V2.32 : « As des Trois Feux » parmi les titres, membre de la guilde ou non (gagné à la taverne, pas à la guilde).
             IReadOnlyList<TitleEntry> ace = CardAceEntry is TitleEntry a ? new[] { a } : Array.Empty<TitleEntry>();
             if (n is null || !n.IsMember)
-                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", null, ace, Text("text.ui.guild.not_member"), false);
+                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", ShownTitle, ace, Text("text.ui.guild.not_member"), false);
             GuildRank rank = _guild.Ranks[n.GuildRankIndex];
             GuildRank? next = n.NextRank;
             bool openNext = next != null && next.Open;
@@ -309,7 +309,7 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.TitleShown:
                     if (e.Id.Length == 0) Say("text.ui.guild.title_hidden");
-                    else Say("text.ui.guild.title_shown", _guild.TryGetTitle(e.Id, out GuildTitle shown) ? Text(shown.Name) : e.Id);
+                    else Say("text.ui.guild.title_shown", TitleName(e.Id));
                     break;
             }
         }

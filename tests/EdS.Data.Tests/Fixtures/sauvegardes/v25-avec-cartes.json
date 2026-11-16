@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 25,
+  "kind": "save",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "zone": "zone.vallons",
+    "worldTick": 1,
+    "sessions": 1,
+    "character": {
+      "id": "bastion",
+      "class": "class.bastion",
+      "xp": 0,
+      "talents": {},
+      "activeSkills": ["skill.bastion.frappe_du_rempart", "skill.bastion.heurt_de_bouclier"],
+      "ultimate": null,
+      "passiveSkills": ["skill.bastion.endurance_du_roc"],
+      "inventory": [
+        {"item": "item.potion_de_soin", "count": 3}
+      ],
+      "equipment": {"shard": "item.eclat_du_seuil_endormi", "shield": "item.ecu_du_novice"},
+      "story": {
+        "facts": [],
+        "quests": {},
+        "trust": {},
+        "reputation": {},
+        "discoveries": [],
+        "tracked": null
+      },
+      "professions": {},
+      "money": 1234,
+      "explored": {"zone.vallons": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0000000e0000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000"},
+      "cards": {"secret": "00c0ffee12345678", "seats": 12, "wins": 10, "deck": true, "day": 3, "played": {"npc.aubergiste": 2}, "gained": 10, "game": {"npc": "npc.aubergiste", "style": 2, "day": 3, "game": 1, "stake": 5, "moves": [2]}},
+      "crafts": 0,
+      "boons": [],
+      "events": [
+        {"id": "zone.vallons/attaque_hameau", "won": 0, "lost": 0, "last": -1, "outcome": "none"},
+        {"id": "zone.vallons/faille_du_seuil", "won": 0, "lost": 0, "last": -1, "outcome": "none"}
+      ],
+      "scars": []
+    },
+    "consumed": [
+      "character/skill_places_v18",
+      "zone.vallons/safe/place_du_village"
+    ]
+  }
+}

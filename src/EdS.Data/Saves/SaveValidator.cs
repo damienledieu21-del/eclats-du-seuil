@@ -708,10 +708,17 @@ namespace EdS.Data.Saves
         /// <see cref="SavedCards.MaxOpponents"/>), gains du jour (0 à <see cref="SavedCards.DailyCap"/>), partie en cours facultative
         /// <c>{ "npc", "style", "day", "game", "stake", "moves" }</c> (voir <see cref="SavedCardGame"/>). Une sauvegarde de version 24 ou
         /// antérieure est lue telle quelle (jamais joué aux cartes) et mise à jour ; elle n'a pas de <c>cards</c> (refusé, champ inconnu).</remarks>
-        public const int CurrentSchemaVersion = 25;
+        /// <remarks>Version 26 (titre actif, <see cref="CardTitleSince"/>, décision de Damien du 16 novembre 2026, vers 14 h) : <c>shown</c>
+        /// facultatif dans <c>cards</c> (vrai : le titre « As des Trois Feux » est affiché sous le nom ; seulement après
+        /// <see cref="SavedCards.VictoriesForReward"/> victoires, et jamais avec un titre de guilde affiché). Une sauvegarde de version 25 ou
+        /// antérieure est lue telle quelle (aucun titre des cartes affiché) et mise à jour ; elle n'a pas de <c>shown</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 26;
 
         /// <summary>Cartes à la taverne : version où l'état des cartes (<c>cards</c>) entre dans la sauvegarde.</summary>
         public const int CardsSince = 25;
+
+        /// <summary>Titre actif : version où le titre « As des Trois Feux » peut être affiché sous le nom (<c>cards.shown</c>).</summary>
+        public const int CardTitleSince = 26;
 
         /// <summary>Concours de pâtisserie : version où une instance de qualité normale ou supérieure peut porter une signature (marque du pâtissier).</summary>
         public const int BakerMarkSince = 24;
@@ -1218,7 +1225,17 @@ namespace EdS.Data.Saves
                 if (c.Present.Contains("cards") || c.Cards != null)
                     report.Add(path + ".cards", ValidationCode.UnknownField, $"champ inconnu en version {version} (cartes à la taverne : version {CardsSince}).");
             }
-            else if (c.Cards != null) CheckCards(c.Cards, path + ".cards", report);
+            else if (c.Cards != null)
+            {
+                CheckCards(c.Cards, path + ".cards", report);
+                // Titre actif (version 26) : « shown » n'existe pas avant ; un As seulement ; un seul titre affiché (pas celui de la guilde avec).
+                if (c.Cards.Present.Contains("shown") && version < CardTitleSince)
+                    report.Add(path + ".cards.shown", ValidationCode.UnknownField, $"champ inconnu en version {version} (titre actif : version {CardTitleSince}).");
+                else if (c.Cards.Shown == true && c.Cards.Wins is long aw && aw < SavedCards.VictoriesForReward)
+                    report.Add(path + ".cards.shown", ValidationCode.InvalidValue, $"titre « As des Trois Feux » affiché avant {SavedCards.VictoriesForReward} victoires.");
+                else if (c.Cards.Shown == true && story?.Guild?.Title != null)
+                    report.Add(path + ".cards.shown", ValidationCode.InvalidValue, "un seul titre affiché : la carte de guilde en affiche déjà un.");
+            }
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -1246,7 +1263,7 @@ namespace EdS.Data.Saves
         private static SavedCards? Cards(SavedCardsData? x) => x is null ? null : new SavedCards(SavedCards.ParseSecret(x.Secret!), x.Seats!.Value, x.Wins!.Value, x.Deck!.Value,
             x.Day!.Value, x.Played!.ToDictionary(e => e.Key, e => e.Value!.Value, StringComparer.Ordinal), x.Gained!.Value,
             x.Game is null ? null : new SavedCardGame(x.Game.Npc!, x.Game.Style!.Value, x.Game.Day!.Value, x.Game.Game!.Value, x.Game.Stake!.Value,
-                x.Game.Moves!.Select(m => m!.Value)));
+                x.Game.Moves!.Select(m => m!.Value)), x.Shown ?? false);
 
         /// <summary>
         /// Cartes à la taverne (version 25) : graine au format, victoires, jeu rare remis seulement après dix victoires, jour, parties du jour

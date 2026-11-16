@@ -36,7 +36,10 @@ namespace EdS.World
         /// <summary>On ne joue pas aux cartes en plein combat.</summary>
         InCombat = 9,
 
-        /// <summary>La bourse ne peut pas recevoir le gain (plafond technique) : la dernière carte n'est pas jouée.</summary>
+        /// <summary>
+        /// La bourse ne peut pas recevoir le gain (plafond technique) : refusé dès l'assise (relecture indépendante de la PR #193), et encore,
+        /// par sûreté, à la dernière carte (qui n'est alors pas jouée).
+        /// </summary>
         PurseFull = 10,
 
         /// <summary>Rien à remettre (jeu rare déjà remis, ou moins de dix victoires), ou sac plein.</summary>
@@ -52,8 +55,8 @@ namespace EdS.World
         SeatsExhausted = 14,
 
         /// <summary>
-        /// Sous-lot V2.32 : le PNJ ne joue qu'à la taverne (<see cref="CardMatch.Tavern"/>) le soir (<see cref="DayPhase.Dusk"/>, de 19 h à
-        /// 22 h) ; ailleurs ou à une autre heure, il ne s'assoit pas.
+        /// Sous-lot V2.32 : le PNJ ne joue qu'à la taverne (<see cref="CardMatch.Tavern"/>) le soir (de 18 h à minuit, décision de Damien du
+        /// 16 novembre 2026) ; ailleurs ou à une autre heure, il ne s'assoit pas.
         /// </summary>
         NotAtTavern = 15,
     }
@@ -104,14 +107,16 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V2.32 (« le PNJ joue seulement à la taverne le soir ») : <paramref name="npc"/>, PNJ de l'histoire, est là, dans la
-        /// taverne (<see cref="CardMatch.Tavern"/>, d'après son emploi du temps), et c'est le soir (<see cref="DayPhase.Dusk"/>, de 19 h à
-        /// 22 h). Ne dit rien de la portée de parole ni des mises. Ne lève pas.
+        /// taverne (<see cref="CardMatch.Tavern"/>, d'après son emploi du temps), et c'est le soir (décision de Damien du 16 novembre 2026,
+        /// vers 14 h : de <see cref="CardMatch.EveningStart"/> à <see cref="CardMatch.EveningEnd"/>, 18 h à minuit). Ne dit rien de la portée
+        /// de parole ni des mises. Ne lève pas.
         /// </summary>
         public bool PlaysCardsNow(string? npc)
         {
             if (npc is null || !SavedCards.IsNpc(npc) || !(Narrative is Narrative story) || !story.Book.HasNpc(npc)) return false;
             EdS.Data.Story.Npc n = story.Book.Npc(npc);
-            return Zone.Time.Phase == DayPhase.Dusk && !NpcAway(n) && (NpcZone(n) ?? _storyZone) == CardMatch.Tavern;
+            int minute = Zone.Time.Minute;
+            return minute >= CardMatch.EveningStart && minute < CardMatch.EveningEnd && !NpcAway(n) && (NpcZone(n) ?? _storyZone) == CardMatch.Tavern;
         }
 
         /// <summary>Cuivre que la taverne peut encore faire gagner aujourd'hui (plafond de 150 cuivre par jour).</summary>
@@ -148,6 +153,8 @@ namespace EdS.World
             if (cards.Seats >= SavedCards.MaxSeats) return CardTableRefusal.SeatsExhausted;
             if (checked(cards.GainedOn(day) + stake) > CardMatch.DailyCap) return CardTableRefusal.DailyCapReached;
             if (stake > _character.Money) return CardTableRefusal.NotEnoughMoney;
+            // Relecture indépendante de la PR #193 : la bourse doit pouvoir recevoir le gain le plus grand (mise doublée), sinon on ne s'assoit pas.
+            if (!Coins.TryAdd(checked(_character.Money - stake), checked(2 * stake), out _)) return CardTableRefusal.PurseFull;
             var game = new SavedCardGame(npc, (int)CardMatch.StyleOf(npc), day, played, stake, Array.Empty<int>());
             _character = _character.WithMoney(checked(_character.Money - stake)).WithCards(cards.WithStart(game));
             return CardTableRefusal.None;

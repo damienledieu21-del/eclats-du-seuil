@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 25
+      "const": 26
     },
     "kind": {
       "const": "save"
@@ -1041,6 +1041,10 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 150
+                    },
+                    "shown": {
+                      "type": "boolean",
+                      "description": "Titre actif (version 26, décision de Damien du 16 novembre 2026) : le titre « As des Trois Feux » est affiché sous le nom (seulement après dix victoires, jamais avec un titre de guilde affiché) ; absent : non affiché."
                     },
                     "game": {
                       "type": "object",
