@@ -100,7 +100,7 @@ public class V11RelectureTests : IDisposable
     [Fact]
     public void Boutique_fermee_le_marchand_parle_quand_meme()
     {
-        (string data, string scenarios) = DataCopy((-65.2, -6.4), merchants: root =>
+        (string data, string scenarios) = DataCopy((-1097.2, -40.4), merchants: root =>
         {
             V214TestData.WithoutShops(root);   // sous-lot V2.14 : l'étal d'avant les boutiques
             Merchant(root, "merchant.herboriste")["closed"] = new JsonArray("day");
@@ -123,7 +123,7 @@ public class V11RelectureTests : IDisposable
     [Fact]
     public void Nouvelle_session_ferme_la_boutique()
     {
-        (string data, string scenarios) = DataCopy((-65.2, -6.4));
+        (string data, string scenarios) = DataCopy((-1097.2, -40.4));
         SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(500)));
         AdventureSession a = Adventure(SavePath, data, scenarios);
         Assert.True(a.Interact());
@@ -179,7 +179,7 @@ public class V11RelectureTests : IDisposable
     [Fact]
     public void Vendre_la_part_libre_d_une_pile_reservee()
     {
-        (string data, string scenarios) = DataCopy((-65.2, -6.4));
+        (string data, string scenarios) = DataCopy((-1097.2, -40.4));
         // 8 potions en deux piles : une pile (5) est emportée au combat à l'entrée, 3 restent à vendre.
         SaveStore.Write(SavePath, new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero(100, new ItemStack("item.potion_de_soin", 5),
             new ItemStack("item.peau_de_loup", 3), new ItemStack("item.potion_de_soin", 3))));

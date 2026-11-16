@@ -64,11 +64,13 @@ public class V110BourgTests
         for (int i = 0; i < ids.Count; i++)
             for (int k = i + 1; k < ids.Count; k++)
                 Assert.True(Gap(boxes[ids[i]], boxes[ids[k]]) >= 2, $"{ids[i]} et {ids[k]} : {Gap(boxes[ids[i]], boxes[ids[k]]):0.##} m");
-        // Les maisons restent dans le bourg, sous la haie du nord.
+        // Les maisons restent dans le bourg ; sous-lot V2.30.1 : déménagées en bloc dans la ville fortifiée, sauf maison3 et maison8 (hameau).
         foreach (string id in BourgHouses)
         {
             var b = boxes[id];
-            Assert.True(b.X0 >= -100 && b.X1 <= -24 && b.Z0 >= -24 && b.Z1 <= 17, id);
+            bool moved = MovedBuildings.Contains(id);
+            double dx = moved ? BourgDX : 0, dz = moved ? BourgDZ : 0;
+            Assert.True(b.X0 >= -100 + dx && b.X1 <= -24 + dx && b.Z0 >= -24 + dz && b.Z1 <= 17 + dz, id);
         }
     }
 

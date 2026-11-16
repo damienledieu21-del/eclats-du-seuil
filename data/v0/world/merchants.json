@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "values": [
       {
@@ -1530,8 +1530,8 @@
           "merchant": "merchant.fromagere",
           "kind": "cheese",
           "position": [
-            -50.5,
-            -4.3
+            -1082.5,
+            -38.3
           ],
           "sign": "text.v214.enseigne.fromages"
         },
@@ -1540,8 +1540,8 @@
           "merchant": "merchant.marchand_epices",
           "kind": "spices",
           "position": [
-            -61.0,
-            3.0
+            -1093.0,
+            -31.0
           ],
           "sign": "text.v214.enseigne.epices"
         },
@@ -1550,8 +1550,8 @@
           "merchant": "merchant.colporteur",
           "kind": "exotic",
           "position": [
-            -57.0,
-            1.8
+            -1089.0,
+            -32.2
           ],
           "sign": "text.v214.enseigne.colporteur"
         },
@@ -1559,8 +1559,8 @@
           "id": "stall.poteries",
           "kind": "pottery",
           "position": [
-            -63.5,
-            -3.0
+            -1095.5,
+            -37.0
           ],
           "sign": "text.v214.enseigne.poteries"
         },
@@ -1568,8 +1568,8 @@
           "id": "stall.fleurs",
           "kind": "flowers",
           "position": [
-            -53.0,
-            2.5
+            -1085.0,
+            -31.5
           ],
           "sign": "text.v214.enseigne.fleurs"
         },
@@ -1577,8 +1577,8 @@
           "id": "stall.volailles",
           "kind": "meat",
           "position": [
-            -66.0,
-            1.5
+            -1098.0,
+            -32.5
           ],
           "sign": "text.v214.enseigne.volailles"
         },
@@ -1586,8 +1586,8 @@
           "id": "stall.miel",
           "kind": "honey",
           "position": [
-            -49.0,
-            0.5
+            -1081.0,
+            -33.5
           ],
           "sign": "text.v214.enseigne.miel"
         },
@@ -1595,8 +1595,8 @@
           "id": "stall.toiles",
           "kind": "cloth",
           "position": [
-            -62.5,
-            -5.5
+            -1094.5,
+            -39.5
           ],
           "sign": "text.v214.enseigne.toiles"
         }

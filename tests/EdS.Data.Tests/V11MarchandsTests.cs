@@ -421,7 +421,7 @@ public class V11MarchandsTests : IDisposable
         CopyTree(ScenariosDirectory, scenarios);
         string zonePath = ZoneJsonReader.PathIn(data, "zone.vallons");
         JsonObject zone = JsonNode.Parse(File.ReadAllText(zonePath))!.AsObject();
-        zone["data"]!["safePoints"]![0]!["position"] = new JsonArray(-65.2, -6.4);   // l'entrée près de l'herboriste
+        zone["data"]!["safePoints"]![0]!["position"] = new JsonArray(-1097.2, -40.4);   // l'entrée près de l'herboriste
         File.WriteAllText(zonePath, zone.ToJsonString());
         string savePath = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);

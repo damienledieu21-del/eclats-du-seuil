@@ -90,7 +90,7 @@ public class ConcoursPatisserieTests
 
     private static WorldSession Oven(params ItemStack[] items)
     {
-        ZoneDefinition zone = ZoneAt(-43.5, 2.5);
+        ZoneDefinition zone = ZoneAt(-1075.5, -31.5);
         SavedCharacter hero = Hero(0, items).WithProfessions(new Dictionary<string, long> { ["cuisine"] = 1_000_000 });
         var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression, ItemsCatalog, null, Crafting(zone));
         session.Step();
@@ -100,8 +100,8 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
-        CraftingBook book = Crafting(ZoneAt(-43.5, 2.5));
-        Assert.Equal("0.11.0-provisoire", book.ContentVersion);
+        CraftingBook book = Crafting(ZoneAt(-1075.5, -31.5));
+        Assert.Equal("0.12.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
         Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons", "recipe.cuisine.fouace_des_semailles" },
             cuisine.Where(r => r.Quality).Select(r => r.Id));
@@ -167,7 +167,7 @@ public class ConcoursPatisserieTests
     }
 
     /// <summary>Sur la place, à la Fête des Moissons (jour 63 du calendrier du jeu, 10 h 30), près de Firmin.</summary>
-    private static WorldSession AtFestival(SavedCharacter hero, long day = 63, double x = -55, double z = 3.1)
+    private static WorldSession AtFestival(SavedCharacter hero, long day = 63, double x = -1087, double z = -30.9)
     {
         ZoneDefinition zone = Zone(x, z);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 10 * 60 + 30) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone,
@@ -245,7 +245,7 @@ public class ConcoursPatisserieTests
     private const string Fouace = "item.fouace_des_semailles";
 
     /// <summary>Sur la place, aux Semailles (jour 14 du calendrier du jeu, 10 h 30), près de l'étal de Firmin (−54,5 ; 0).</summary>
-    private static WorldSession AtSemailles(SavedCharacter hero) => AtFestival(hero, 14, -54.5, 1.5);
+    private static WorldSession AtSemailles(SavedCharacter hero) => AtFestival(hero, 14, -1086.5, -32.5);
 
     [Theory]
     [InlineData(ItemQuality.Masterwork, "masterwork", "v231_chef", 600L, 20)]

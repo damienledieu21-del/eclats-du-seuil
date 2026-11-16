@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.19.0-provisoire",
+  "contentVersion": "0.20.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -37,8 +37,8 @@
         "id": "place_du_bourg",
         "name": "Place du Bourg",
         "position": [
-          -58,
-          -6
+          -1090,
+          -40
         ]
       },
       {
@@ -267,12 +267,12 @@
         "id": "bourg",
         "name": "Bourg d'Aube",
         "min": [
-          -100,
-          -24
+          -1132,
+          -58
         ],
         "max": [
-          -24,
-          19
+          -1056,
+          -15
         ],
         "minLevel": 1
       },
@@ -696,12 +696,12 @@
         "id": "four_de_firmin",
         "name": "Four de la boulangerie de Firmin",
         "min": [
-          -45.5,
-          0.5
+          -1077.5,
+          -33.5
         ],
         "max": [
-          -41.5,
-          4
+          -1073.5,
+          -30
         ],
         "minLevel": 1
       },
@@ -1480,12 +1480,12 @@
         "width": 12,
         "points": [
           [
-            -67,
-            -1
+            -1099,
+            -35
           ],
           [
-            -49,
-            -1
+            -1081,
+            -35
           ]
         ]
       },
@@ -1495,7 +1495,7 @@
         "width": 4.5,
         "points": [
           [
-            -66,
+            -50,
             -1
           ],
           [
@@ -1515,7 +1515,7 @@
         "points": [
           [
             -57.5,
-            -6.5
+            -1
           ],
           [
             -60.5,
@@ -1987,6 +1987,55 @@
             1355
           ]
         ]
+      },
+      {
+        "id": "rue_des_boutiques",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -1125,
+            -35
+          ],
+          [
+            -1099,
+            -35
+          ]
+        ]
+      },
+      {
+        "id": "rue_du_marche",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -1081,
+            -35
+          ],
+          [
+            -1052,
+            -35
+          ]
+        ]
+      },
+      {
+        "id": "sentier_de_l_herboristerie",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -1089.5,
+            -40.5
+          ],
+          [
+            -1092.5,
+            -47
+          ],
+          [
+            -1094,
+            -60
+          ]
+        ]
       }
     ],
     "boss": {
@@ -2010,8 +2059,8 @@
         "id": "porte_auberge",
         "name": "Auberge de l'Aube",
         "position": [
-          -69,
-          4
+          -1101,
+          -30
         ],
         "to": "zone.auberge",
         "toDoor": "sortie",
@@ -2021,8 +2070,8 @@
         "id": "porte_chapelle",
         "name": "Chapelle du Bourg",
         "position": [
-          -73,
-          -7
+          -1105,
+          -41
         ],
         "to": "zone.chapelle",
         "toDoor": "sortie",
@@ -2032,8 +2081,8 @@
         "id": "porte_maison",
         "name": "Maison du Bourg",
         "position": [
-          -84.5,
-          3
+          -1116.5,
+          -31
         ],
         "to": "zone.maison",
         "toDoor": "sortie",
@@ -2043,8 +2092,8 @@
         "id": "porte_guilde",
         "name": "Maison de la Guilde",
         "position": [
-          -91,
-          -6
+          -1123,
+          -40
         ],
         "to": "zone.guilde",
         "toDoor": "sortie",
@@ -2064,8 +2113,8 @@
         "id": "porte_boulangerie",
         "name": "Boulangerie de Firmin",
         "position": [
-          -41.25,
-          5
+          -1073.25,
+          -29
         ],
         "to": "zone.boulangerie",
         "toDoor": "sortie",
@@ -2075,8 +2124,8 @@
         "id": "porte_epicerie",
         "name": "Épicerie de Bertille",
         "position": [
-          -43,
-          -7
+          -1075,
+          -41
         ],
         "to": "zone.epicerie",
         "toDoor": "sortie",
@@ -2086,8 +2135,8 @@
         "id": "porte_herboristerie",
         "name": "Herboristerie de Sauge",
         "position": [
-          -59,
-          -20.75
+          -1091,
+          -54.75
         ],
         "to": "zone.herboristerie",
         "toDoor": "sortie",
@@ -2097,8 +2146,8 @@
         "id": "porte_mercerie",
         "name": "Mercerie de Margot",
         "position": [
-          -28.5,
-          3
+          -1060.5,
+          -31
         ],
         "to": "zone.mercerie",
         "toDoor": "sortie",
@@ -2164,15 +2213,15 @@
       {
         "npc": "npc.armurier",
         "position": [
-          -54.5,
-          -16.6
+          -1086.5,
+          -50.6
         ]
       },
       {
         "npc": "npc.epiciere",
         "position": [
-          -46,
-          5
+          -1078,
+          -29
         ]
       },
       {

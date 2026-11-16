@@ -26,7 +26,7 @@ public class V191Chapitre1Tests
 
     // Où se tenir pour chaque PNJ (à 1 à 1,5 m, hors de tout obstacle) et pour les lieux de la mission.
     private static readonly (double X, double Z) Odile = (-9, 2), Moulin = (-8, 5), Forge = (-19, -5), Pre = (-10, 30), Gaspard = (26, -13),
-        Boulanger = (-42, 2), Archer = (1, -1.5);
+        Boulanger = (-1074, -32), Archer = (1, -1.5);
 
     private static CraftingBook Crafting(ZoneDefinition zone) => CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, ItemsCatalog).Book!;
 

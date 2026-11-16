@@ -60,8 +60,7 @@ public class V219AubergeChapelleTests : IDisposable
     [InlineData("chapelle", 0, 1, 8.0, 14.0)]
     public void La_facade_regarde_la_porte_du_jeu(string id, int fx, int fz, double along, double deep)
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         AdventureMap map = a.Map;
         var o = map.Obstacles.First(x => x.Id == id);
         double minX = o.Points.Min(p => p.X.Raw / 10000.0), maxX = o.Points.Max(p => p.X.Raw / 10000.0);
@@ -127,7 +126,7 @@ public class V219AubergeChapelleTests : IDisposable
         Directory.CreateDirectory(_folder);
         string save = Path.Combine(_folder, "partie.json");
         int at = hour * 60 + minute;
-        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(1, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero()));
+        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(1, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero(), resume: new SavedResume("place_du_bourg")));
         AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), save);
         a.Advance(0.05);
         Assert.Equal(new WorldTime(1, at), a.World.Zone.Time);
@@ -135,8 +134,8 @@ public class V219AubergeChapelleTests : IDisposable
         ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("cuisine/", StringComparison.Ordinal));
         Assert.Equal("cuisine/merchant.auberge", c.Id);
         Assert.Equal("auberge", a.ShopBuildingOf(c.Id));
-        Assert.Equal(-69, c.X, 6);
-        Assert.Equal(9.5, c.Z, 6);
+        Assert.Equal(-1101, c.X, 6);
+        Assert.Equal(-24.5, c.Z, 6);
         Assert.Equal(lit, c.Lit);
         Assert.DoesNotContain(a.Chimneys(), x => x.Id == c.Id);   // les cheminées des fournils ne changent pas
     }

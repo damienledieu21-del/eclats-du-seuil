@@ -25,8 +25,7 @@ public class V221HerboristerieTests : IDisposable
 
     private AdventureSession Vallons()
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         return a;
     }
 
@@ -36,7 +35,7 @@ public class V221HerboristerieTests : IDisposable
         Directory.CreateDirectory(_folder);
         string save = Path.Combine(_folder, "partie.json");
         int at = hour * 60 + minute;
-        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(day, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero()));
+        SaveStore.Write(save, new WorldSave("zone.vallons", V214BoutiquesMarcheTests.TickAt(day, at) - 1, 0, Array.Empty<string>(), V11TestData.Hero(), resume: new SavedResume("place_du_bourg")));
         AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), save);
         a.Advance(0.05);
         Assert.Equal(new WorldTime(day, at), a.World.Zone.Time);
@@ -81,20 +80,20 @@ public class V221HerboristerieTests : IDisposable
         var o = map.Obstacles.First(x => x.Id == Id);
         double minX = o.Points.Min(p => p.X.Raw / 10000.0), maxX = o.Points.Max(p => p.X.Raw / 10000.0);
         double minZ = o.Points.Min(p => p.Z.Raw / 10000.0), maxZ = o.Points.Max(p => p.Z.Raw / 10000.0);
-        Assert.Equal((-58.0, -51.5, -24.0, -17.5), (minX, maxX, minZ, maxZ));
+        Assert.Equal((-1090.0, -1083.5, -58.0, -51.5), (minX, maxX, minZ, maxZ));
         (int X, int Z) facing = TownRules.FacingOf(Id, minX, minZ, maxX, maxZ, map.Roads, map.Doors);
         Assert.Equal((-1, 0), facing);
         var door = map.Doors.First(d => d.Building == Id);
         Assert.Equal("porte_herboristerie", door.Id);
-        Assert.Equal((-59.0, -20.75), (door.X, door.Z));
+        Assert.Equal((-1091.0, -54.75), (door.X, door.Z));
         double cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
         // Porte du modèle : Blender (2,25 ; 0 ; 0) -> repère du FBX recentré (x = 2,25 − X = 0, z = 2,60 − Y = 2,60).
         var modelDoor = TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.60);
-        Assert.Equal(-57.35, modelDoor.X, 6);
+        Assert.Equal(-1089.35, modelDoor.X, 6);
         Assert.Equal(door.Z, modelDoor.Z, 6);
         Assert.InRange(modelDoor.X, door.X, cx);
         // Le mur du fond (Y = 5,20) reste dans l'emprise.
-        Assert.Equal(-52.15, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.60 - 5.20).X, 6);
+        Assert.Equal(-1084.15, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.60 - 5.20).X, 6);
         // L'enseigne se lit de dehors : la droite de la façade vue de la porte du jeu (+X de Blender : x = 2,25 − X négatif) est vers −z
         // dans le monde quand la façade regarde −x (la droite vue de dehors est (−fz, fx), comme TownModels.OwnDoorLantern).
         var right = TownModels.OwnPlace(cx, cz, facing, -2.25, 0.0, 2.60);
@@ -204,8 +203,8 @@ public class V221HerboristerieTests : IDisposable
         ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("atre/", StringComparison.Ordinal));
         Assert.Equal("atre/merchant.epicier", c.Id);
         Assert.Equal("maison4", a.ShopBuildingOf(c.Id));
-        Assert.Equal(-43, c.X, 6);
-        Assert.Equal(-14.5, c.Z, 6);
+        Assert.Equal(-1075, c.X, 6);
+        Assert.Equal(-48.5, c.Z, 6);
         Assert.Equal(lit, c.Lit);
         // La mercerie n'a pas de feu tenu ; V2.22 : l'herboristerie a son feu de tisanes, permanent ; les fournils ne changent pas.
         Assert.Equal(new[] { "atre/merchant.epicier", "cuisine/merchant.auberge", "tisane/merchant.herboriste" }, a.KitchenChimneys().Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal));

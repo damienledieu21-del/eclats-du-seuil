@@ -105,7 +105,7 @@ public class GrandSolitaireTests
         Assert.Equal("$.data.bosses[0].sites[0].position", First(Mutated(r => B(r)["sites"]![0]!["position"] = new JsonArray(-65, -48))));   // une maison
         Assert.Equal("$.data.bosses[0].sites[1].kind", First(Mutated(r => B(r)["sites"]![1]!["kind"] = "toit")));
         Assert.Equal("$.data.bosses[0].targets[0].place", First(Mutated(r => B(r)["targets"]![0]!["place"] = "atlantide")));
-        Assert.Equal("$.data.bosses[0].targets[0].route[1]", First(Mutated(r => B(r)["targets"]![0]!["route"]![1] = new JsonArray(-40, -10))));
+        Assert.Equal("$.data.bosses[0].targets[0].route[1]", First(Mutated(r => B(r)["targets"]![0]!["route"]![1] = new JsonArray(-30, -10))));   // dans maison3 (hameau ; V2.30.1 : maison4 a déménagé)
         Assert.Equal("$.data.bosses[0].targets[0].objectives[1].id", First(Mutated(r => B(r)["targets"]![0]!["objectives"]![1]!["id"] = "palissade")));
         Assert.Equal("$.data.bosses[0].loot.mount", First(Mutated(r => B(r)["loot"]!["mount"] = "item.licorne")));
         Assert.Equal("$.data.bosses[0].loot.mountChanceBasisPoints", First(Mutated(r => B(r)["loot"]!["mountChanceBasisPoints"] = 10_001)));

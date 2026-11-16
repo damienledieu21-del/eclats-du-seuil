@@ -476,6 +476,10 @@ public class V228b2bAventureTests : IDisposable
         JsonNode storyBefore = JsonNode.Parse(File.ReadAllText(storyPath))!;
         StoryBefore(storyBefore);   // sous-lot V2.28c (4) : sans la quête des passages de la vallée
         File.WriteAllText(storyPath, storyBefore.ToJsonString());
+        string bossesPath = Path.Combine(data, "world", "worldbosses.json");
+        JsonNode bossesBefore = JsonNode.Parse(File.ReadAllText(bossesPath))!;
+        WorldBossesBefore(bossesBefore);   // sous-lot V2.30.1 : la cible « bourg » au bord du cœur, comme avant le déménagement
+        File.WriteAllText(bossesPath, bossesBefore.ToJsonString());
         foreach (string key in new[] { "events", "boss", "chiefs" }) zone["data"]!.AsObject().Remove(key);
         zone["data"]!["safePoints"]!.AsArray().Add(new JsonObject { ["id"] = "seuil_est", ["name"] = "Seuil de l'est", ["position"] = new JsonArray(124, 0) });
         File.WriteAllText(zonePath, zone.ToJsonString());

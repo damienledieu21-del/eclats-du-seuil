@@ -39,8 +39,7 @@ public class V217AtelierTests : IDisposable
     [Fact]
     public void La_boulangerie_de_firmin_tient_sur_maison2_porte_au_sud()
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         AdventureMap map = a.Map;
         var o = map.Obstacles.FirstOrDefault(x => x.Id == "maison2");
         Assert.NotNull(o);
@@ -129,8 +128,7 @@ public class V217AtelierTests : IDisposable
     [Fact]
     public void L_enseigne_et_la_cheminee_de_la_boulangerie_disent_leur_maison()
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
-        a.Advance(0.05);
+        AdventureSession a = LoadAtBourg(Path.Combine(_folder, "partie.json"));   // V2.30.1 : au bourg, dans la ville fortifiée
         Assert.Equal("maison2", a.ShopBuildingOf("enseigne/merchant.boulangerie"));
         Assert.Equal("maison2", a.ShopBuildingOf("cheminee/merchant.boulangerie"));
         Assert.Contains(a.ShopSigns(), s => a.ShopBuildingOf(s.Id) == "maison2");

@@ -31,7 +31,7 @@ public class V193Chapitre3Tests
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle) : dans les Vallons, puis dans la chapelle.
     private static readonly (double X, double Z) Josse = (84, -37.5), Aubine = (72, -37.5), Achille = (-66, -37.5), Garance = (58, -29.5),
-        Mahaut = (-64, -19.5), Renart = (-47.5, -3.3), Odile = (-9, 2), Gaspard = (26, -13), Forge = (-19, -5), Lac = (-12.5, -62), Vergers0 = (54, -41.5);
+        Mahaut = (-1096, -53.5), Renart = (-1079.5, -37.3), Odile = (-9, 2), Gaspard = (26, -13), Forge = (-19, -5), Lac = (-12.5, -62), Vergers0 = (54, -41.5);
     private static readonly (double X, double Z) Albe = (3.2, 3.2);
 
     /// <summary>Heure du monde : 22 h 27 le premier jour (la journée dure trois heures réelles et commence à 8 h).</summary>
