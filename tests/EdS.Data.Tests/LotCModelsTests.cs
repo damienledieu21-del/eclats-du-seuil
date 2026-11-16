@@ -90,6 +90,11 @@ public class LotCModelsTests
         Assert.True(LotCModels.Find("C_EQ051")!.HandHeld);
         Assert.True(LotCModels.Find("C_BU_L03_02")!.HandHeld);
         Assert.False(LotCModels.Find("C_BU_L03_03")!.HandHeld);
+        // Relecture de la PR #196 : index construit une fois, mêmes réponses que la table.
+        foreach (LotCModel m in LotCModels.All) Assert.Same(m, LotCModels.Find(m.Code));
+        Assert.Null(LotCModels.Find(null));
+        Assert.Null(LotCModels.Find("C_INCONNU"));
+        Assert.False(LotCModels.Find("C_EQ051")!.Linked);   // en attente : pas chargé au catalogue (EdsStyle.LotCPieces)
     }
 
     [Fact]

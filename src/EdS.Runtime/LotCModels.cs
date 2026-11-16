@@ -70,8 +70,37 @@ namespace EdS.Runtime
         private static LotCModel Waiting(string code, string category, string name, string why) =>
             new LotCModel(code, category, name, Array.Empty<string>(), why);
 
-        /// <summary>Le modèle de ce code, ou null.</summary>
-        public static LotCModel? Find(string? code) => code == null ? null : All.FirstOrDefault(m => m.Code == code);
+        /// <summary>Le modèle de ce code, ou null (index construit une fois).</summary>
+        public static LotCModel? Find(string? code) => code != null && Index.ByCode.TryGetValue(code, out LotCModel? m) ? m : null;
+
+        /// <summary>
+        /// Index construits une seule fois, au premier usage (classe imbriquée : après <see cref="All"/>) : modèle par code, et code du
+        /// modèles (dans l'ordre de <see cref="All"/>) qui portent chaque cible.
+        /// </summary>
+        private static class Index
+        {
+            public static readonly Dictionary<string, LotCModel> ByCode = BuildByCode();
+            public static readonly Dictionary<string, List<string>> ByTarget = BuildByTarget();
+
+            private static Dictionary<string, LotCModel> BuildByCode()
+            {
+                var d = new Dictionary<string, LotCModel>(StringComparer.Ordinal);
+                foreach (LotCModel m in All) d[m.Code] = m;
+                return d;
+            }
+
+            private static Dictionary<string, List<string>> BuildByTarget()
+            {
+                var d = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                foreach (LotCModel m in All)
+                    foreach (string t in m.Targets)
+                    {
+                        if (!d.TryGetValue(t, out List<string>? codes)) d.Add(t, codes = new List<string>());
+                        if (!codes.Contains(m.Code)) codes.Add(m.Code);
+                    }
+                return d;
+            }
+        }
 
         /// <summary>Objet porté en main : arbalètes (« C_EQ… ») et armes des butins (épieux, couteaux, lances, dagues : « C_BU_Lnn_01/02 »).</summary>
         public static bool IsHandHeld(string code) =>
@@ -95,7 +124,7 @@ namespace EdS.Runtime
             return model != null && parts[n - 2] == code && parts[n - 3] == model.Category ? code : null;
         }
 
-        private static string? Target(string target) => All.FirstOrDefault(m => m.Targets.Contains(target))?.Code;
+        private static string? Target(string target) => Index.ByTarget.TryGetValue(target, out List<string>? codes) ? codes[0] : null;
 
         /// <summary>Modèle du nœud de récolte <paramref name="nodeId"/> (« filon_ouest »), ou null.</summary>
         public static string? ForNode(string? nodeId) => nodeId == null ? null : Target("node:" + nodeId);
