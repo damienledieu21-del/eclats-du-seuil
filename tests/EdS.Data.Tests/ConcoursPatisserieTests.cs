@@ -321,6 +321,19 @@ public class ConcoursPatisserieTests
         Assert.InRange(w.Narrative.Book.ContestKeyCount, 1, SavedStory.MaxFestivals);
     }
 
+    /// <summary>Revue Codex de la PR #189 : la clé « fête.piste » ne dépasse pas les 200 caractères que relit la sauvegarde.</summary>
+    [Fact]
+    public void Cle_fete_piste_bornee_a_200_caracteres()
+    {
+        string longId = "festival.foire" + new string('x', 200 - "festival.foire".Length);   // 200 caractères : une fête valide
+        JsonObject root = JsonNode.Parse(StoryJson().ToJsonString().Replace("\"festival.foire\"", "\"" + longId + "\""))!.AsObject();
+        StoryLoadResult read = ReadStory(root);
+        Assert.False(read.IsValid);
+        Assert.Contains(read.Report.Errors, e => e.Path.EndsWith(".lane") && e.Code == ValidationCode.OutOfRange);
+        Assert.DoesNotContain(read.Report.Errors, e => !e.Path.EndsWith(".lane"));   // seule la piste est refusée
+        Assert.Equal(200, SavedStory.MaxFestivalKeyLength);
+    }
+
     [Fact]
     public void Piste_de_concours_en_schema_16_seulement_et_au_format()
     {

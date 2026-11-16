@@ -199,6 +199,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 : fêtes gardées au plus.</summary>
         public const int MaxFestivals = 16;
 
+        /// <summary>Caractères au plus d'une clé de <c>story.festivals</c> (fête, ou « fête.piste » en histoire de schéma 16).</summary>
+        public const int MaxFestivalKeyLength = 200;
+
         internal static readonly Regex FestivalKey = new Regex(@"^festival(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
         /// <summary>Sous-lot V2.10 : même histoire avec d'autres concours (le reste inchangé).</summary>
@@ -1704,7 +1707,7 @@ namespace EdS.Data.Saves
                     {
                         var t = st.Festivals[i];
                         string p = $"{path}.festivals.{t.Key}";
-                        if (t.Key is null || t.Key.Length > 200 || !SavedStory.FestivalKey.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "fête mal formée : « festival.… ».");
+                        if (t.Key is null || t.Key.Length > SavedStory.MaxFestivalKeyLength || !SavedStory.FestivalKey.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "fête mal formée : « festival.… ».");
                         else if (t.Value is not int v) Missing(report, p, "jour du monde");
                         else if (v < 0 || v > SavedEvent.MaxDay) report.Add(p, ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
                         else if (i > 0 && string.CompareOrdinal(st.Festivals[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "fêtes hors de l'ordre ordinal ou en double.");

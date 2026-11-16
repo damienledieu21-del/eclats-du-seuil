@@ -1338,6 +1338,13 @@ namespace EdS.Data.Story
                     return false;
                 }
                 if (t.Lane is null || !LaneName.IsMatch(t.Lane)) { _r.Add(p + ".lane", ValidationCode.InvalidValue, "piste : [a-z0-9_], de 1 à 32 caractères."); return false; }
+                // Revue Codex de la PR #189 : la clé « fête.piste » est gardée par la sauvegarde, qui n'en relit pas de plus longue.
+                if (t.Id != null && t.Id.Length + 1 + t.Lane.Length > EdS.Data.Saves.SavedStory.MaxFestivalKeyLength)
+                {
+                    _r.Add(p + ".lane", ValidationCode.OutOfRange,
+                        $"clé de concours « fête.piste » de {t.Id.Length + 1 + t.Lane.Length} caractères : au plus {EdS.Data.Saves.SavedStory.MaxFestivalKeyLength}.");
+                    return false;
+                }
                 lane = t.Lane;
                 return true;
             }
