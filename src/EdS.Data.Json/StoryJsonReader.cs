@@ -386,6 +386,7 @@ namespace EdS.Data.Json
                 ["step"] = (v, p) => { t.Present.Add("step"); t.Step = input.Text(v, p); },
                 ["npc"] = (v, p) => { t.Present.Add("npc"); t.Npc = input.Text(v, p); },   // sous-lot V1.6 : objectif deliver
                 ["quality"] = (v, p) => { t.Present.Add("quality"); t.Quality = input.Text(v, p); },   // sous-lot V1.9.3b : objectif craftQuality
+                ["lane"] = (v, p) => { t.Present.Add("lane"); t.Lane = input.Text(v, p); },   // schéma 16 : piste d'un concours (contestOpen, contest)
             }) ? t : null;
         }
     }

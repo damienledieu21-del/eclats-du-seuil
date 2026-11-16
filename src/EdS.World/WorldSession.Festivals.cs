@@ -122,7 +122,10 @@ namespace EdS.World
         /// calendrier du jeu, comme avant ; pour une fête datée dont la date réelle est connue, <b>un seul concours par occurrence</b> de la
         /// fête (ses 7 à 14 jours réels) et par personnage.
         /// </summary>
-        public bool ContestOpen(string festival, long lastDay)
+        public bool ContestOpen(string festival, long lastDay) => ContestOpen(festival, festival, lastDay);
+
+        /// <summary>Schéma 16 (décision de Damien du 16 novembre 2026) : le concours de clé <paramref name="key"/> (fête ou « fête.piste ») de la fête <paramref name="festival"/>.</summary>
+        public bool ContestOpen(string festival, string key, long lastDay)
         {
             if (lastDay < 0) return true;
             if (Narrative is Narrative n && n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f && f.HasDate
@@ -130,14 +133,14 @@ namespace EdS.World
             {
                 // Revue Codex de la PR #174 : l'occurrence réelle du dernier concours, gardée au registre, fait foi ; sans elle (registre plein),
                 // le jour du monde du dernier concours, projeté depuis l'instant fourni.
-                if (ContestKey(festival) is string key && _character.Events.FirstOrDefault(x => x.Id == key) is SavedEvent held)
+                if (ContestKey(key) is string registry && _character.Events.FirstOrDefault(x => x.Id == registry) is SavedEvent held)
                     return held.Last != start.DayNumber;
                 return !(CivilDateOfDay(lastDay) is CivilDate then) || f.OccurrenceOf(then) != start;
             }
             return lastDay != Zone.Time.Day;
         }
 
-        bool INarrativeWorld.ContestOpen(string festival, long lastDay) => ContestOpen(festival, lastDay);
+        bool INarrativeWorld.ContestOpen(string festival, string key, long lastDay) => ContestOpen(festival, key, lastDay);
 
         /// <summary>Concours de pâtisserie : le personnage signe ce qu'il fabrique de son identifiant (comme à la forge).</summary>
         string? INarrativeWorld.CharacterId => _character.Id;
@@ -149,11 +152,16 @@ namespace EdS.World
         /// Revue Codex de la PR #174 : garde l'occurrence réelle (jour de son début) du concours que le personnage vient de faire, pour une fête
         /// datée dont la date réelle est connue ; registre plein : rien n'est gardé (le jour du monde du concours sert alors). Ne lève pas.
         /// </summary>
-        public void ContestHeld(string festival)
+        public void ContestHeld(string festival) => ContestHeld(festival, festival);
+
+        void INarrativeWorld.ContestHeld(string festival, string key) => ContestHeld(festival, key);
+
+        /// <summary>Schéma 16 : le personnage vient de concourir au concours de clé <paramref name="key"/> (fête ou « fête.piste ») de la fête <paramref name="festival"/>.</summary>
+        public void ContestHeld(string festival, string contest)
         {
             if (!(Narrative is Narrative n) || !(n.Book.Festivals.FirstOrDefault(f => f.Id == festival) is Festival f) || !f.HasDate) return;
             if (!(CivilDateOfDay(Zone.Time.Day) is CivilDate today) || !(f.OccurrenceOf(today) is CivilDate start)) return;
-            if (!(ContestKey(festival) is string key) || key.Length > SavedEvent.MaxKeyLength || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
+            if (!(ContestKey(contest) is string key) || key.Length > SavedEvent.MaxKeyLength || !EdS.Data.Saves.SaveValidator.IsEventKey(key) || start.DayNumber < 0 || start.DayNumber > SavedEvent.MaxDay) return;
             bool has = _character.Events.Any(x => x.Id == key);
             if (!has && _character.Events.Count >= SavedEvent.MaxEntries) return;
             var entry = new SavedEvent(key, 0, 0, start.DayNumber, EventOutcome.None);

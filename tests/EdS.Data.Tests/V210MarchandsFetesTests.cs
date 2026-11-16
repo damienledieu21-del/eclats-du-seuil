@@ -63,9 +63,9 @@ public class V210MarchandsFetesTests
     [Fact]
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
-        Assert.Equal((15, 12, 15), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // concours de pâtisserie : schéma 15 ; fêtes aux vraies dates : 14
-        Assert.Equal((6, 4, "0.13.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
-        Assert.Equal((24, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
+        Assert.Equal((16, 12, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // concours de pâtisserie : schéma 15 ; fêtes aux vraies dates : 14
+        Assert.Equal((6, 4, "0.14.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
+        Assert.Equal((25, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi",
             "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil", "festival.grand_tournoi",
             "festival.etoiles_filantes", "festival.nuit_des_echos", "festival.givre" }, Story.Value.Festivals.Select(f => f.Id));   // V2.14 : le marché du mercredi ; fêtes aux vraies dates : les neuf fêtes du calendrier seulement

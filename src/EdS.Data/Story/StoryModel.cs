@@ -242,8 +242,18 @@ namespace EdS.Data.Story
         /// <summary>Concours de pâtisserie (schéma 15) : qualité demandée par <c>hasSigned</c> ; null : toute qualité (et pour les autres conditions).</summary>
         public EdS.Data.Saves.ItemQuality? Quality { get; }
 
-        internal StoryCondition(ConditionKind kind, string id, long value, string? step, EdS.Data.Saves.ItemQuality? quality = null)
+        /// <summary>
+        /// Schéma 16 (décision de Damien du 16 novembre 2026) : piste du concours (<c>contestOpen</c>) ; null : le concours principal de la
+        /// fête. Chaque piste a son propre « un par fête et par an ».
+        /// </summary>
+        public string? Lane { get; }
+
+        /// <summary>Clé du concours visé (<c>contestOpen</c>) : la fête, ou « fête.piste ».</summary>
+        public string ContestKey => Lane is null ? Id : Id + "." + Lane;
+
+        internal StoryCondition(ConditionKind kind, string id, long value, string? step, EdS.Data.Saves.ItemQuality? quality = null, string? lane = null)
         {
+            Lane = lane;
             Quality = quality;
             Kind = kind;
             Id = id;
@@ -264,8 +274,15 @@ namespace EdS.Data.Story
         /// <summary>Concours de pâtisserie (schéma 15) : qualité exacte de la pâtisserie présentée (<c>present</c>) ; null pour les autres effets.</summary>
         public EdS.Data.Saves.ItemQuality? Quality { get; }
 
-        internal StoryEffect(EffectKind kind, string id, long value, EdS.Data.Saves.ItemQuality? quality = null)
+        /// <summary>Schéma 16 : piste du concours (<c>contest</c>) ; null : le concours principal de la fête.</summary>
+        public string? Lane { get; }
+
+        /// <summary>Clé du concours visé (<c>contest</c>) : la fête, ou « fête.piste ».</summary>
+        public string ContestKey => Lane is null ? Id : Id + "." + Lane;
+
+        internal StoryEffect(EffectKind kind, string id, long value, EdS.Data.Saves.ItemQuality? quality = null, string? lane = null)
         {
+            Lane = lane;
             Quality = quality;
             Kind = kind;
             Id = id;
@@ -679,8 +696,9 @@ namespace EdS.Data.Story
 
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
             IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null,
-            IEnumerable<string>? learnable = null)
+            IEnumerable<string>? learnable = null, IEnumerable<string>? contestKeys = null)
         {
+            _contestKeys = new HashSet<string>(contestKeys ?? Array.Empty<string>(), StringComparer.Ordinal);
             _learnable = new HashSet<string>(learnable ?? Array.Empty<string>(), StringComparer.Ordinal);
             Festivals = Frozen.List(festivals ?? Array.Empty<Festival>(), nameof(festivals));
             Reputation = reputation ?? ReputationRules.None;
@@ -698,6 +716,18 @@ namespace EdS.Data.Story
         public Quest Quest(string id) => Quests.FirstOrDefault(q => q.Id == id) ?? throw new ArgumentException($"Quête « {id} » inconnue.", nameof(id));
         public bool HasQuest(string id) => Quests.Any(q => q.Id == id);
         public bool HasNpc(string id) => Npcs.Any(n => n.Id == id);
+
+        private readonly HashSet<string> _contestKeys;
+
+        /// <summary>
+        /// Schéma 16 (revue Codex de la PR #189) : clé d'un concours que l'histoire peut fermer (effet <c>contest</c> : la fête, ou
+        /// « fête.piste »). Une autre clé d'une sauvegarde est oubliée au chargement : la sauvegarde n'en garde jamais plus que
+        /// <c>SavedStory.MaxFestivals</c> (vérifié par le validateur).
+        /// </summary>
+        public bool HasContestKey(string? key) => key != null && _contestKeys.Contains(key);
+
+        /// <summary>Schéma 16 : nombre de clés de concours de l'histoire, au plus <c>SavedStory.MaxFestivals</c>.</summary>
+        public int ContestKeyCount => _contestKeys.Count;
 
         /// <summary>Sous-lot V1.6 : PNJ qui vivent dans la zone <paramref name="zone"/> (null : la zone de l'histoire), dans l'ordre du fichier.</summary>
         public IEnumerable<Npc> NpcsIn(string? zone) => Npcs.Where(n => n.Zone == zone);

@@ -199,6 +199,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 : fêtes gardées au plus.</summary>
         public const int MaxFestivals = 16;
 
+        /// <summary>Caractères au plus d'une clé de <c>story.festivals</c> (fête, ou « fête.piste » en histoire de schéma 16).</summary>
+        public const int MaxFestivalKeyLength = 200;
+
         internal static readonly Regex FestivalKey = new Regex(@"^festival(\.[a-z0-9_]+)+\z", RegexOptions.CultureInvariant);
 
         /// <summary>Sous-lot V2.10 : même histoire avec d'autres concours (le reste inchangé).</summary>
@@ -293,7 +296,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.5 : même personnage avec un autre registre des événements.</summary>
         public SavedCharacter WithEvents(IEnumerable<SavedEvent> events) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+                Boons, events ?? throw new ArgumentNullException(nameof(events)), Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V2.6 (version 14) : cicatrices des failles restées ouvertes, rangées par identifiant.</summary>
         public IReadOnlyList<SavedScar> Scars { get; }
@@ -301,7 +304,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.6 : même personnage avec d'autres cicatrices.</summary>
         public SavedCharacter WithScars(IEnumerable<SavedScar> scars) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look, Companions, Fishing, Mount, Explored);
+                Boons, Events, scars ?? throw new ArgumentNullException(nameof(scars)), Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V2.10 (version 16) : stock des marchands (lignes non vides, rangées par identifiant).</summary>
         public IReadOnlyList<SavedStock> Stock { get; }
@@ -309,7 +312,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.10 : même personnage avec un autre stock des marchands.</summary>
         public SavedCharacter WithStock(IEnumerable<SavedStock> stock) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look, Companions, Fishing, Mount, Explored);
+                Boons, Events, Scars, stock ?? throw new ArgumentNullException(nameof(stock)), Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V2.16 (version 17) : aspect choisi pour le héros dans le créateur de personnage ; null tant que rien n'est choisi.</summary>
         public SavedLook? Look { get; }
@@ -319,7 +322,7 @@ namespace EdS.Data.Saves
 
         public SavedCharacter WithCompanions(SavedCompanions companions) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, companions ?? throw new ArgumentNullException(nameof(companions)), Fishing, Mount, Explored);
+                Boons, Events, Scars, Stock, Look, companions ?? throw new ArgumentNullException(nameof(companions)), Fishing, Mount, Explored, Cards);
 
         /// <summary>
         /// Sous-lot V2.28d (2b) (version 22) : monture du personnage (<see cref="SaveValidator.Mounts"/> : « mount.cheval », le cheval des
@@ -330,7 +333,7 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.28d (2b) : même personnage avec une autre monture (null : aucune).</summary>
         public SavedCharacter WithMount(string? mount) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, mount, Explored);
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, mount, Explored, Cards);
 
         /// <summary>Pêche et carnet (version 21) : lancers et carnet des prises ; jamais null (vide tant que le personnage n'a pas pêché).</summary>
         public SavedFishing Fishing { get; }
@@ -338,7 +341,7 @@ namespace EdS.Data.Saves
         /// <summary>Pêche et carnet : même personnage avec une autre pêche.</summary>
         public SavedCharacter WithFishing(SavedFishing fishing) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, fishing ?? throw new ArgumentNullException(nameof(fishing)), Mount, Explored);
+                Boons, Events, Scars, Stock, Look, Companions, fishing ?? throw new ArgumentNullException(nameof(fishing)), Mount, Explored, Cards);
 
         /// <summary>
         /// Sous-lot V2.29 (2) (version 23) : cases explorées de la carte (brouillard dissipé), par zone à région : une chaîne hexadécimale
@@ -350,17 +353,28 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.29 (2) : même personnage avec d'autres cases explorées.</summary>
         public SavedCharacter WithExplored(IReadOnlyDictionary<string, string> explored) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, explored ?? throw new ArgumentNullException(nameof(explored)));
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, explored ?? throw new ArgumentNullException(nameof(explored)), Cards);
+
+        /// <summary>
+        /// Cartes à la taverne (version 25, décisions de Damien du 16 novembre 2026) : graine secrète des donnes, victoires, jeu rare remis,
+        /// parties et gains du jour, partie en cours ; null tant que le personnage ne s'est jamais assis à une table.
+        /// </summary>
+        public SavedCards? Cards { get; }
+
+        /// <summary>Cartes à la taverne : même personnage avec un autre état des cartes.</summary>
+        public SavedCharacter WithCards(SavedCards? cards) =>
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
+                Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, cards);
 
         /// <summary>Sous-lot V2.16 : même personnage avec un autre aspect (null : l'aspect par défaut du jeu).</summary>
         public SavedCharacter WithLook(SavedLook? look) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                Boons, Events, Scars, Stock, look, Companions, Fishing, Mount, Explored);
+                Boons, Events, Scars, Stock, look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V1.8c : même personnage avec d'autres bonus actifs.</summary>
         public SavedCharacter WithBoons(IEnumerable<SavedBoon> boons) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts,
-                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+                boons ?? throw new ArgumentNullException(nameof(boons)), Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V1.4 : fabrications gardées au plus (plafond technique du compteur).</summary>
         public const long MaxCrafts = 1_000_000_000;
@@ -375,8 +389,10 @@ namespace EdS.Data.Saves
             long money = 0, IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null,
             IReadOnlyDictionary<string, ItemStack>? equipmentInstances = null, long crafts = 0, IEnumerable<SavedBoon>? boons = null,
             IEnumerable<SavedEvent>? events = null, IEnumerable<SavedScar>? scars = null, IEnumerable<SavedStock>? stock = null, SavedLook? look = null,
-            SavedCompanions? companions = null, SavedFishing? fishing = null, string? mount = null, IReadOnlyDictionary<string, string>? explored = null)
+            SavedCompanions? companions = null, SavedFishing? fishing = null, string? mount = null, IReadOnlyDictionary<string, string>? explored = null,
+            SavedCards? cards = null)
         {
+            Cards = cards;
             Companions = companions ?? SavedCompanions.Empty;
             Fishing = fishing ?? SavedFishing.Empty;
             // Relecture indépendante de la PR #184 : seule une monture connue (l'écrivain de la sauvegarde la recopie telle quelle).
@@ -435,7 +451,7 @@ namespace EdS.Data.Saves
         }
 
         /// <summary>Même personnage avec une autre expérience.</summary>
-        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+        public SavedCharacter WithXp(long xp) => new SavedCharacter(Id, ClassId, xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>
         /// Sous-lot 12.3 : même personnage avec un autre inventaire et un autre équipement. Sous-lot V1.3 : avec les propriétés tirées des objets
@@ -444,7 +460,7 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, string> equipment,
             IReadOnlyDictionary<string, IReadOnlyList<RolledProperty>>? equipmentProperties = null) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory, equipment, Story, Professions, Money, equipmentProperties,
-                null, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+                null, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>
         /// Sous-lot V1.4 : même personnage avec un autre inventaire et un autre équipement, chaque objet porté avec son instance
@@ -453,15 +469,15 @@ namespace EdS.Data.Saves
         public SavedCharacter WithItems(IEnumerable<ItemStack> inventory, IReadOnlyDictionary<string, ItemStack> worn) =>
             new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, inventory,
                 (worn ?? throw new ArgumentNullException(nameof(worn))).ToDictionary(e => e.Key, e => e.Value.Item, StringComparer.Ordinal), Story, Professions, Money,
-                null, worn, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+                null, worn, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot V1.4 : même personnage avec un autre compteur de fabrications.</summary>
         public SavedCharacter WithCrafts(long crafts) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot 12.5 : même personnage avec un autre état narratif.</summary>
         public SavedCharacter WithStory(SavedStory story) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>
         /// Essai réaliste 6 : même personnage avec d'autres rangs de talent (le build est jugé contre la classe et le niveau par le
@@ -469,15 +485,15 @@ namespace EdS.Data.Saves
         /// </summary>
         public SavedCharacter WithTalents(IReadOnlyDictionary<string, int> talents) =>
             new SavedCharacter(Id, ClassId, Xp, talents ?? throw new ArgumentNullException(nameof(talents)), ActiveSkills, Ultimate, PassiveSkills, Inventory,
-                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+                Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot 12.6 : même personnage avec d'autres expériences de métier.</summary>
         public SavedCharacter WithProfessions(IReadOnlyDictionary<string, long> professions) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>Sous-lot 12.9b : même personnage avec d'autres compétences équipées.</summary>
         public SavedCharacter WithSkills(IEnumerable<string> activeSkills, string? ultimate, IEnumerable<string> passiveSkills) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+            new SavedCharacter(Id, ClassId, Xp, Talents, activeSkills, ultimate, passiveSkills, Inventory, Equipment, Story, Professions, Money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
 
         /// <summary>
         /// Sous-lot V1.1 : même personnage avec une autre bourse (en cuivre). Hors de [0, <see cref="Coins.Max"/>] : refusée
@@ -485,7 +501,7 @@ namespace EdS.Data.Saves
         /// qui refuse un dépassement.
         /// </summary>
         public SavedCharacter WithMoney(long money) =>
-            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored);
+            new SavedCharacter(Id, ClassId, Xp, Talents, ActiveSkills, Ultimate, PassiveSkills, Inventory, Equipment, Story, Professions, money, null, EquipmentInstances, Crafts, Boons, Events, Scars, Stock, Look, Companions, Fishing, Mount, Explored, Cards);
     }
 
     /// <summary>
@@ -683,7 +699,19 @@ namespace EdS.Data.Saves
         /// supérieure : <c>{ "item", "quality": "superior", "signedBy" }</c>). Un chef-d'œuvre reste toujours signé ; l'accord avec le
         /// catalogue (seule une pâtisserie de concours est signée hors chef-d'œuvre) est vérifié quand la partie reprend. Une sauvegarde de
         /// version 23 ou antérieure est lue telle quelle et mise à jour ; une signature hors chef-d'œuvre y est refusée.</remarks>
-        public const int CurrentSchemaVersion = 24;
+        /// <remarks>Version 25 (cartes à la taverne, <see cref="CardsSince"/>, décisions de Damien du 16 novembre 2026) : <c>cards</c>
+        /// facultatif dans le personnage (absent tant qu'il ne s'est jamais assis à une table) : <c>{ "secret", "wins", "deck", "day", "played",
+        /// "gained", "game" }</c> plus <c>seats</c> ; graine secrète des donnes (16 chiffres hexadécimaux en minuscules), assises
+        /// comptées depuis toujours (de 0 à <see cref="SavedCards.MaxSeats"/> ; elles changent la donne à chaque assise), victoires (de 0 à
+        /// <see cref="SavedCards.MaxWins"/>), jeu rare remis (seulement après <see cref="SavedCards.VictoriesForReward"/> victoires), jour des
+        /// compteurs, parties du jour par PNJ (« npc.… » : 1 à <see cref="SavedCards.MaxGamesPerDay"/>, au plus
+        /// <see cref="SavedCards.MaxOpponents"/>), gains du jour (0 à <see cref="SavedCards.DailyCap"/>), partie en cours facultative
+        /// <c>{ "npc", "style", "day", "game", "stake", "moves" }</c> (voir <see cref="SavedCardGame"/>). Une sauvegarde de version 24 ou
+        /// antérieure est lue telle quelle (jamais joué aux cartes) et mise à jour ; elle n'a pas de <c>cards</c> (refusé, champ inconnu).</remarks>
+        public const int CurrentSchemaVersion = 25;
+
+        /// <summary>Cartes à la taverne : version où l'état des cartes (<c>cards</c>) entre dans la sauvegarde.</summary>
+        public const int CardsSince = 25;
 
         /// <summary>Concours de pâtisserie : version où une instance de qualité normale ou supérieure peut porter une signature (marque du pâtissier).</summary>
         public const int BakerMarkSince = 24;
@@ -1184,6 +1212,13 @@ namespace EdS.Data.Saves
                             $"cases explorées : chaîne hexadécimale en minuscules, de longueur paire, de 2 à {MaxExploredHex} caractères.");
                 }
             }
+            // Cartes à la taverne (version 25) : facultatif ; une sauvegarde antérieure n'en a pas.
+            if (version < CardsSince)
+            {
+                if (c.Present.Contains("cards") || c.Cards != null)
+                    report.Add(path + ".cards", ValidationCode.UnknownField, $"champ inconnu en version {version} (cartes à la taverne : version {CardsSince}).");
+            }
+            else if (c.Cards != null) CheckCards(c.Cards, path + ".cards", report);
             if (!report.IsValid) return null;
             return new SavedCharacter(c.Id!, c.Class!, c.Xp!.Value, c.Talents!.ToDictionary(t => t.Key, t => t.Value!.Value, StringComparer.Ordinal),
                 c.ActiveSkills!.Select(s => s!), c.Ultimate, c.PassiveSkills!.Select(s => s!),
@@ -1205,7 +1240,68 @@ namespace EdS.Data.Saves
                     c.Companions.Active!.Select(a => a!),
                     c.Companions.Former?.Select(x => new SavedCompanion(x!.Id!, 0, x.Approval!.Value, x.Trait, false))),
                 c.Fishing is null ? null : new SavedFishing(c.Fishing.Casts!.Value, c.Fishing.Log!.Select(x => new SavedCatch(x!.Fish!, x.Count!.Value, x.Best!.Value))),
-                c.Mount, c.Explored?.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal));
+                c.Mount, c.Explored?.ToDictionary(e => e.Key, e => e.Value!, StringComparer.Ordinal), Cards(c.Cards));
+        }
+
+        private static SavedCards? Cards(SavedCardsData? x) => x is null ? null : new SavedCards(SavedCards.ParseSecret(x.Secret!), x.Seats!.Value, x.Wins!.Value, x.Deck!.Value,
+            x.Day!.Value, x.Played!.ToDictionary(e => e.Key, e => e.Value!.Value, StringComparer.Ordinal), x.Gained!.Value,
+            x.Game is null ? null : new SavedCardGame(x.Game.Npc!, x.Game.Style!.Value, x.Game.Day!.Value, x.Game.Game!.Value, x.Game.Stake!.Value,
+                x.Game.Moves!.Select(m => m!.Value)));
+
+        /// <summary>
+        /// Cartes à la taverne (version 25) : graine au format, victoires, jeu rare remis seulement après dix victoires, jour, parties du jour
+        /// par PNJ, gains du jour sous le plafond, partie en cours bien formée et comptée parmi les parties de son jour.
+        /// </summary>
+        private static void CheckCards(SavedCardsData x, string path, ValidationReport report)
+        {
+            if (!SavedCards.IsSecret(x.Secret)) report.Add(path + ".secret", x.Secret is null ? ValidationCode.MissingField : ValidationCode.InvalidValue,
+                "graine : 16 chiffres hexadécimaux en minuscules.");
+            if (x.Seats is null) report.Add(path + ".seats", ValidationCode.MissingField, "assises manquantes.");
+            else if (x.Seats < 0 || x.Seats > SavedCards.MaxSeats) report.Add(path + ".seats", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxSeats}].");
+            else if (x.Seats == 0 && x.Game != null) report.Add(path + ".seats", ValidationCode.InvalidValue, "partie en cours sans assise comptée.");
+            if (x.Wins is null) report.Add(path + ".wins", ValidationCode.MissingField, "victoires manquantes.");
+            else if (x.Wins < 0 || x.Wins > SavedCards.MaxWins) report.Add(path + ".wins", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxWins}].");
+            if (x.Deck is null) report.Add(path + ".deck", ValidationCode.MissingField, "jeu rare remis (vrai ou faux) manquant.");
+            else if (x.Deck == true && x.Wins is long w && w < SavedCards.VictoriesForReward)
+                report.Add(path + ".deck", ValidationCode.InvalidValue, $"jeu rare remis avant {SavedCards.VictoriesForReward} victoires.");
+            if (x.Day is null) report.Add(path + ".day", ValidationCode.MissingField, "jour manquant.");
+            else if (x.Day < 0 || x.Day > SavedEvent.MaxDay) report.Add(path + ".day", ValidationCode.OutOfRange, $"hors de [0, {SavedEvent.MaxDay}].");
+            if (x.Played is null) report.Add(path + ".played", ValidationCode.MissingField, "parties du jour manquantes.");
+            else
+                foreach (KeyValuePair<string, int?> e in x.Played)
+                {
+                    if (!SavedCards.IsNpc(e.Key)) report.Add(path + ".played." + e.Key, ValidationCode.InvalidValue, "PNJ mal formé (« npc.<nom> », 64 caractères au plus).");
+                    else if (e.Value is null || e.Value < 1 || e.Value > SavedCards.MaxGamesPerDay)
+                        report.Add(path + ".played." + e.Key, ValidationCode.OutOfRange, $"parties hors de [1, {SavedCards.MaxGamesPerDay}].");
+                }
+            if (x.Gained is null) report.Add(path + ".gained", ValidationCode.MissingField, "gains du jour manquants.");
+            else if (x.Gained < 0 || x.Gained > SavedCards.DailyCap) report.Add(path + ".gained", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.DailyCap}] cuivre.");
+            if (x.Game is null)
+            {
+                if (x.Present.Contains("game") && !report.Errors.Any(e => e.Path.StartsWith(path + ".game", StringComparison.Ordinal)))
+                    report.Add(path + ".game", ValidationCode.WrongType, "partie en cours : un objet attendu (absente sans partie).");
+                return;
+            }
+            string g = path + ".game";
+            SavedCardGameData m = x.Game;
+            if (!SavedCards.IsNpc(m.Npc)) report.Add(g + ".npc", m.Npc is null ? ValidationCode.MissingField : ValidationCode.InvalidValue, "PNJ mal formé (« npc.<nom> »).");
+            if (m.Style is null) report.Add(g + ".style", ValidationCode.MissingField, "manière manquante.");
+            else if (m.Style < 0 || m.Style > SavedCards.MaxStyle) report.Add(g + ".style", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxStyle}].");
+            else if (SavedCards.IsNpc(m.Npc) && m.Style != SavedCards.StyleOf(m.Npc!))   // relecture indépendante de la PR #189
+                report.Add(g + ".style", ValidationCode.InvalidValue, $"manière {m.Style} : « {m.Npc} » joue toujours en {SavedCards.StyleOf(m.Npc!)}.");
+            if (m.Day is null) report.Add(g + ".day", ValidationCode.MissingField, "jour manquant.");
+            else if (m.Day < 0 || m.Day > SavedEvent.MaxDay) report.Add(g + ".day", ValidationCode.OutOfRange, $"hors de [0, {SavedEvent.MaxDay}].");
+            if (m.Game is null) report.Add(g + ".game", ValidationCode.MissingField, "numéro de partie manquant.");
+            else if (m.Game < 0 || m.Game >= SavedCards.MaxGamesPerDay) report.Add(g + ".game", ValidationCode.OutOfRange, $"hors de [0, {SavedCards.MaxGamesPerDay - 1}].");
+            if (m.Stake is null) report.Add(g + ".stake", ValidationCode.MissingField, "mise manquante.");
+            else if (!SavedCards.Stakes.Contains(m.Stake.Value)) report.Add(g + ".stake", ValidationCode.InvalidValue, $"mise : {string.Join(", ", SavedCards.Stakes)} cuivre.");
+            if (m.Moves is null) report.Add(g + ".moves", ValidationCode.MissingField, "places jouées manquantes.");
+            else if (m.Moves.Any(v => v is null) || !SavedCards.AreMoves(m.Moves.Select(v => v ?? -1).ToList()))
+                report.Add(g + ".moves", ValidationCode.OutOfRange, $"places jouées : au plus {SavedCards.HandSize - 1}, la i-ème de 0 à {SavedCards.HandSize - 1} − i.");
+            if (report.IsValid && checked(x.Gained!.Value + m.Stake!.Value) > SavedCards.DailyCap)   // revue Codex de la PR #189 : marge réservée
+                report.Add(g + ".stake", ValidationCode.OutOfRange, $"gains du jour et mise en cours au-delà de {SavedCards.DailyCap} cuivre (la mise est réservée sous le plafond).");
+            if (report.IsValid && (m.Day != x.Day || !x.Played!.TryGetValue(m.Npc!, out int? n) || n <= m.Game))
+                report.Add(g, ValidationCode.InvalidValue, "partie en cours hors des parties de son jour (même « day », comptée dans « played »).");
         }
 
         private static readonly Regex ExploredHex = new Regex(@"^[0-9a-f]+\z", RegexOptions.CultureInvariant);
@@ -1611,7 +1707,7 @@ namespace EdS.Data.Saves
                     {
                         var t = st.Festivals[i];
                         string p = $"{path}.festivals.{t.Key}";
-                        if (t.Key is null || t.Key.Length > 200 || !SavedStory.FestivalKey.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "fête mal formée : « festival.… ».");
+                        if (t.Key is null || t.Key.Length > SavedStory.MaxFestivalKeyLength || !SavedStory.FestivalKey.IsMatch(t.Key)) report.Add(p, ValidationCode.InvalidValue, "fête mal formée : « festival.… ».");
                         else if (t.Value is not int v) Missing(report, p, "jour du monde");
                         else if (v < 0 || v > SavedEvent.MaxDay) report.Add(p, ValidationCode.OutOfRange, $"jour hors de [0, {SavedEvent.MaxDay}].");
                         else if (i > 0 && string.CompareOrdinal(st.Festivals[i - 1].Key, t.Key) >= 0) report.Add(p, ValidationCode.InvalidValue, "fêtes hors de l'ordre ordinal ou en double.");

@@ -124,13 +124,13 @@ public class V261SuitesDuSeuilTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
-        Assert.Equal((15, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
+        Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
         Assert.Equal((14, "0.19.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((15, "0.29.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
-        Assert.Equal("0.31.0-provisoire", Texts.ContentVersion);   // concours de pâtisserie : 0.31.0 ;
-        Assert.Equal("0.20.0-provisoire", ItemsCatalog.ContentVersion);
+        Assert.Equal((16, "0.30.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal("0.32.0-provisoire", Texts.ContentVersion);   // concours de pâtisserie : 0.31.0 ;
+        Assert.Equal("0.21.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
-        Assert.Equal(24, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
+        Assert.Equal(25, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
         Assert.Equal(("0.34.0", 28, 22), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
@@ -227,6 +227,7 @@ public class V261SuitesDuSeuilTests
         // Version 10 : 16 répliques au plus ; Gaspard en a 28 (V2.7 : 22 et la piste des rôdeurs ; V2.9.2 : le vieux Brunot ; compagnons : la quête de lien ; V2.28c (4) : l'offre de la vallée) : refusé au chemin précis du dialogue.
         JsonObject ten = StoryJson();
         ten["schemaVersion"] = 10;
+        V215TestData.WithoutPastryContest(ten);   // concours de pâtisserie (Moissons et Semailles) : erreurs de version 15 hors du propos
         int gaspard = ten["data"]!["dialogues"]!.AsArray().Select((d, k) => ((string?)d!["id"], k)).Single(x => x.Item1 == "dialogue.gaspard").k;
         StoryLoadResult refused = ReadStory(ten);
         AssertError(refused.Report, $"$.data.dialogues[{gaspard}].entries", ValidationCode.OutOfRange);

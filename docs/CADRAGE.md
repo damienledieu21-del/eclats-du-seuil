@@ -339,6 +339,9 @@ Réponses de Damien du 15 novembre 2026, vers 15 h 30, rapportées par la sessio
 | Recettes | Les **treize recettes** sont gardées telles quelles. | Retenu (Damien, 15 novembre 2026, 15 h 30) |
 | Valeurs des plats et prix des ingrédients | Valeurs provisoires de Claude, à ajuster à l'essai. | Recommandation (question non posée) |
 
+| Concours des Semailles | Un concours de pâtisserie **aussi à la fête des Semailles** (recette de printemps cohérente avec les données : la **fouace des Semailles**), en plus des Moissons. **Prix confirmés** : couronne 150 / 300 / 600 cuivre, tarte 80 / 150 / 300 ; la fouace garde le barème de la couronne. La pâtisserie présentée reste un **trophée**, pas utilisable en combat. | Retenu (Damien, 16 novembre 2026) ; fait (branche `v2-31-mises-cartes`) |
+| Deux concours à la même fête | Aux Semailles, le **tir d'Aldric et le concours de pâtisserie** se font tous les deux (ils ne se ferment plus l'un l'autre) ; même règle aux Moissons (tourte et pâtisserie). Tarte : pas aux Semailles, fouace seulement. | Retenu (Damien, 16 novembre 2026, vers 2 h 20) ; fait (histoire en schéma 16, piste `lane`) |
+
 ## 7 decies. Cartes à la taverne (Retenu)
 
 Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la session principale (PR #187, vague 4 « la vie à côté du combat »). Détail : [MONDE.md](MONDE.md#cartes-à-la-taverne-vague-4-3e-partie).
@@ -349,7 +352,9 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la sessi
 | Mises | **5, 10 ou 25 cuivre**, rendues **doublées** si l'on gagne ; **au plus 3 parties par PNJ et par jour**. | Retenu (Damien, 15 novembre 2026, 18 h 45) |
 | Récompense rare | Après **10 victoires** : un **jeu de cartes rare** (objet décoratif) et le titre **« As des Trois Feux »**. | Retenu (Damien, 15 novembre 2026, 18 h 45) |
 | Adversaires | **Mathurin** et les PNJ présents à la taverne le soir. | Retenu (Damien, 15 novembre 2026, 18 h 45, sur la proposition de Claude) |
-| Partie nulle, plafond de gains | Mise rendue sur une partie nulle ; plafond de gains de la taverne par jour (par exemple 150 cuivre). | Recommandation (relecture indépendante de la PR #187), à confirmer |
+| Mises, confirmées | Mises de **5, 10 ou 25 cuivre** ; **3 parties par PNJ et par jour** ; jeu de cartes rare et titre **« As des Trois Feux »** après **10 victoires** ; la **partie en cours est enregistrée dans la sauvegarde** (v25). | Retenu (Damien, 16 novembre 2026) ; fait (branche `v2-31-mises-cartes`) |
+| Partie nulle, plafond de gains | Partie nulle : **chacun récupère sa mise**. **Plafond de gains à la taverne : 150 cuivre par jour**, compté sur les **gains seulement** (les pertes ne redonnent pas de marge). | Retenu (Damien, 16 novembre 2026 ; gains seulement : vers 2 h 20) ; fait (branche `v2-31-mises-cartes`) |
+| Donne à chaque assise | Un **compteur d'assises persistant** dans la sauvegarde (v25) : la donne change à chaque fois qu'on s'assoit. | Retenu (Damien, 16 novembre 2026, vers 2 h 20) ; fait |
 
 ## 8. Points ouverts
 
