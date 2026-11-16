@@ -28,9 +28,10 @@
         12,
         13,
         14,
-        15
+        15,
+        16
       ],
-      "description": "Version 15 (concours de pâtisserie) : condition hasSigned (id : pâtisserie de concours, quality facultative normal, superior ou masterwork) et effet present (id, quality obligatoire ; réponse de dialogue qui demande hasSigned du même objet et de la même qualité). Version 14 (fêtes aux vraies dates) : date facultative d'une fête annuelle (month, day, days de 7 à 14). Version 13 (sous-lot V2.10) : fêtes du bourg (section festivals ; festivals d'un PNJ de passage ; conditions festival et contestOpen ; effet contest). Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
+      "description": "Version 16 (décision de Damien du 16 novembre 2026) : lane facultatif sur une condition contestOpen et un effet contest (piste de concours [a-z0-9_]{1,32}, avec son propre « un par fête et par an »). Version 15 (concours de pâtisserie) : condition hasSigned (id : pâtisserie de concours, quality facultative normal, superior ou masterwork) et effet present (id, quality obligatoire ; réponse de dialogue qui demande hasSigned du même objet et de la même qualité). Version 14 (fêtes aux vraies dates) : date facultative d'une fête annuelle (month, day, days de 7 à 14). Version 13 (sous-lot V2.10) : fêtes du bourg (section festivals ; festivals d'un PNJ de passage ; conditions festival et contestOpen ; effet contest). Version 12 (sous-lot V2.7) : réputation (conditions reputationAtLeast, reputationBelow, standing, standingAtLeast ; effet reputation ; section reputation). Version 11 (sous-lot V2.6.1) : 32 répliques par dialogue (16 en version 10 et avant), objectif purify, conditions scarsAtLeast et scarsBelow ; les versions 4 à 10 restent lues."
     },
     "kind": {
       "const": "story"
@@ -587,6 +588,11 @@
             "masterwork"
           ],
           "description": "Concours de pâtisserie (schéma 15) : qualité exacte demandée par hasSigned (absente : toute qualité)."
+        },
+        "lane": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,32}$",
+          "description": "Schéma 16 : piste du concours (contestOpen, contest) ; absente : le concours principal de la fête."
         }
       }
     },
@@ -636,6 +642,11 @@
             "masterwork"
           ],
           "description": "Concours de pâtisserie (schéma 15) : qualité exacte de la pâtisserie présentée (effet present)."
+        },
+        "lane": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,32}$",
+          "description": "Schéma 16 : piste du concours (contestOpen, contest) ; absente : le concours principal de la fête."
         }
       }
     },

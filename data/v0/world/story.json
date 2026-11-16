@@ -1,8 +1,8 @@
 {
   "$schema": "../../schemas/story.schema.json",
-  "schemaVersion": 15,
+  "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.31.0-provisoire",
+  "contentVersion": "0.32.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -11451,7 +11451,8 @@
             "conditions": [
               {
                 "if": "contestOpen",
-                "id": "festival.moissons"
+                "id": "festival.moissons",
+                "lane": "patisserie"
               },
               {
                 "if": "hasSigned",
@@ -11464,7 +11465,8 @@
             "conditions": [
               {
                 "if": "contestOpen",
-                "id": "festival.moissons"
+                "id": "festival.moissons",
+                "lane": "patisserie"
               },
               {
                 "if": "hasSigned",
@@ -11481,6 +11483,20 @@
               }
             ],
             "node": "v210_moissons"
+          },
+          {
+            "conditions": [
+              {
+                "if": "contestOpen",
+                "id": "festival.foire",
+                "lane": "patisserie"
+              },
+              {
+                "if": "hasSigned",
+                "id": "item.fouace_des_semailles"
+              }
+            ],
+            "node": "v231_semailles"
           },
           {
             "conditions": [
@@ -13610,7 +13626,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13625,7 +13642,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13743,7 +13761,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13759,7 +13778,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13778,7 +13798,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13794,7 +13815,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13813,7 +13835,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13829,7 +13852,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13860,7 +13884,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13876,7 +13901,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13895,7 +13921,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13911,7 +13938,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13930,7 +13958,8 @@
                 "conditions": [
                   {
                     "if": "contestOpen",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "if": "hasSigned",
@@ -13946,7 +13975,8 @@
                   },
                   {
                     "do": "contest",
-                    "id": "festival.moissons"
+                    "id": "festival.moissons",
+                    "lane": "patisserie"
                   },
                   {
                     "do": "giveMoney",
@@ -13965,6 +13995,284 @@
                 "conditions": [],
                 "effects": [],
                 "next": "v215_concours"
+              }
+            ]
+          },
+          {
+            "id": "v231_semailles",
+            "text": "text.v231.boulanger.semailles",
+            "choices": [
+              {
+                "text": "text.v231.boulanger.fouace",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.fouace_des_semailles"
+                  }
+                ],
+                "effects": [],
+                "next": "v231_fouace"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.croc_gris.vaincu",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.croc",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.croc"
+                  },
+                  {
+                    "do": "trust",
+                    "id": "npc.boulanger",
+                    "value": 1
+                  }
+                ],
+                "next": "ch1_croc_mort",
+                "text": "text.ch1.boulanger.croc_mort.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "quest.chat_de_rosalie",
+                    "if": "questDone"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.chat",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.chat"
+                  }
+                ],
+                "next": "ch1_chat_rentre",
+                "text": "text.ch1.boulanger.chat_rentre.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.secret",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_secret",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "conditions": [
+                  {
+                    "id": "fact.ch1.aldric.moque",
+                    "if": "fact"
+                  },
+                  {
+                    "id": "fact.ch1.boulanger.aldric",
+                    "if": "notFact"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "setFact",
+                    "id": "fact.ch1.boulanger.aldric"
+                  }
+                ],
+                "next": "ch1_aldric_moque",
+                "text": "text.ch1.boulanger.aldric.dire"
+              },
+              {
+                "text": "text.v215.boulanger.autre",
+                "conditions": [],
+                "effects": [],
+                "next": "v210_foire"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v231_fouace",
+            "text": "text.v231.boulanger.fouace.choisir",
+            "choices": [
+              {
+                "text": "text.v215.boulanger.couronne.masterwork",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "masterwork"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "masterwork"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 600
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 20
+                  }
+                ],
+                "next": "v231_chef"
+              },
+              {
+                "text": "text.v215.boulanger.couronne.superior",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "superior"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "superior"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 300
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 12
+                  }
+                ],
+                "next": "v231_superieure"
+              },
+              {
+                "text": "text.v215.boulanger.couronne.normal",
+                "conditions": [
+                  {
+                    "if": "contestOpen",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "if": "hasSigned",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "normal"
+                  }
+                ],
+                "effects": [
+                  {
+                    "do": "present",
+                    "id": "item.fouace_des_semailles",
+                    "quality": "normal"
+                  },
+                  {
+                    "do": "contest",
+                    "id": "festival.foire",
+                    "lane": "patisserie"
+                  },
+                  {
+                    "do": "giveMoney",
+                    "value": 150
+                  },
+                  {
+                    "do": "reputation",
+                    "id": "villagers",
+                    "value": 6
+                  }
+                ],
+                "next": "v231_normale"
+              },
+              {
+                "text": "text.v215.boulanger.retour",
+                "conditions": [],
+                "effects": [],
+                "next": "v231_semailles"
+              }
+            ]
+          },
+          {
+            "id": "v231_chef",
+            "text": "text.v231.boulanger.verdict.masterwork",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v231_superieure",
+            "text": "text.v231.boulanger.verdict.superior",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "v231_normale",
+            "text": "text.v231.boulanger.verdict.normal",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
               }
             ]
           },

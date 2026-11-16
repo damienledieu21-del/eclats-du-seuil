@@ -261,6 +261,9 @@ namespace EdS.Data.Story
         /// <summary>Sous-lot V1.9.3b (schéma 5) : qualité minimale (objectif <c>craftQuality</c> : « superior » ou « masterwork »).</summary>
         public string? Quality { get; set; }
 
+        /// <summary>Schéma 16 (décision de Damien du 16 novembre 2026) : piste d'un concours (<c>contestOpen</c>, <c>contest</c>).</summary>
+        public string? Lane { get; set; }
+
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
 }

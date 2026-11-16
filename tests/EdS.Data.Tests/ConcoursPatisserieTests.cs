@@ -35,8 +35,8 @@ public class ConcoursPatisserieTests
     public void Catalogue_v8_deux_patisseries_de_concours_seulement()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((8, 8, "0.20.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
-        Assert.Equal(new[] { Tarte, Couronne }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
+        Assert.Equal((8, 8, "0.21.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
+        Assert.Equal(new[] { Tarte, Couronne, "item.fouace_des_semailles" }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
         Assert.All(new[] { Couronne, Tarte }, id => Assert.True(c.TakesQuality(c.Item(id)) && c.SignsAlways(c.Item(id))));
         // Un autre objet de soin ne prend pas de qualité ; un équipement prend une qualité mais n'est signé que chef-d'œuvre.
         Assert.False(c.TakesQuality(c.Item("item.potion_de_soin")));
@@ -101,9 +101,9 @@ public class ConcoursPatisserieTests
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
         CraftingBook book = Crafting(ZoneAt(-1075.5, -31.5));
-        Assert.Equal("0.10.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.11.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
-        Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons" },
+        Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons", "recipe.cuisine.fouace_des_semailles" },
             cuisine.Where(r => r.Quality).Select(r => r.Id));
         Assert.All(cuisine, r => Assert.Equal(r.Quality, r.Signed));
         // Une recette à qualité demande le petit jeu (les trois gestes) ; sans lui, refusée et rien ne change.
@@ -135,7 +135,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Sauvegarde_v24_marque_du_patissier_relue_et_refusee_avant()
     {
-        Assert.Equal((24, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
+        Assert.Equal((25, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
         WorldSession w = Oven(Signed(Tarte, ItemQuality.Normal), Signed(Couronne, ItemQuality.Superior), Signed(Couronne, ItemQuality.Masterwork),
             new ItemStack(Couronne, 2));
         string json = SaveJsonReader.Write(w.Save());
@@ -167,9 +167,9 @@ public class ConcoursPatisserieTests
     }
 
     /// <summary>Sur la place, à la Fête des Moissons (jour 63 du calendrier du jeu, 10 h 30), près de Firmin.</summary>
-    private static WorldSession AtFestival(SavedCharacter hero, long day = 63)
+    private static WorldSession AtFestival(SavedCharacter hero, long day = 63, double x = -1087, double z = -30.9)
     {
-        ZoneDefinition zone = Zone(-1087, -30.9);
+        ZoneDefinition zone = Zone(x, z);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 10 * 60 + 30) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone,
             ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         session.Step();
@@ -240,6 +240,131 @@ public class ConcoursPatisserieTests
         Assert.Equal((prize, 0, reputation), (w.Money, w.Inventory.Count(item), w.Narrative!.Reputation("villagers")));
     }
 
+    // --- Concours des Semailles (décision de Damien du 16 novembre 2026) --------------------------------------------------------------
+
+    private const string Fouace = "item.fouace_des_semailles";
+
+    /// <summary>Sur la place, aux Semailles (jour 14 du calendrier du jeu, 10 h 30), près de l'étal de Firmin (−54,5 ; 0).</summary>
+    private static WorldSession AtSemailles(SavedCharacter hero) => AtFestival(hero, 14, -1086.5, -32.5);
+
+    [Theory]
+    [InlineData(ItemQuality.Masterwork, "masterwork", "v231_chef", 600L, 20)]
+    [InlineData(ItemQuality.Superior, "superior", "v231_superieure", 300L, 12)]
+    [InlineData(ItemQuality.Normal, "normal", "v231_normale", 150L, 6)]
+    public void Semailles_la_fouace_de_sa_main_au_bareme_de_la_couronne(ItemQuality quality, string choice, string node, long prize, int reputation)
+    {
+        WorldSession w = AtSemailles(Baker(Signed(Fouace, quality), new ItemStack(Fouace, 1)));
+        Assert.Equal("festival.foire", w.Festival?.Id);
+        DialogueView view = Talk(w);
+        Assert.Equal("v231_semailles", view.Node);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v231.boulanger.fouace").Index, out DialogueView? which, out _));
+        Assert.Equal(new[] { "text.v215.boulanger.couronne." + choice, "text.v215.boulanger.retour" }, which!.Options.Select(o => o.Text));
+        Assert.Equal(DialogueRefusal.None, w.Choose(which.Options[0].Index, out DialogueView? verdict, out IReadOnlyList<StoryEvent> events));
+        Assert.Equal(node, verdict!.Node);
+        Assert.Contains(events, e => e.Kind == StoryEventKind.ItemPresented && e.Id == Fouace && e.Step == choice);
+        Assert.Contains(events, e => e.Kind == StoryEventKind.ContestEntered && e.Id == "festival.foire");
+        // La fouace de sa main est un trophée parti chez le juge ; la fouace sans marque reste ; le prix, la réputation.
+        Assert.Equal((prize, reputation, 0, 1), (w.Money, w.Narrative!.Reputation("villagers"), w.Inventory.CountSigned(Fouace, Me, null), w.Inventory.Count(Fouace)));
+        // Un concours par fête et par an : fermé jusqu'à l'an prochain (Firmin reprend son accueil des Semailles).
+        Assert.Equal("v210_foire", Talk(w).Node);
+    }
+
+    /// <summary>
+    /// Décision de Damien du 16 novembre 2026 (vers 2 h 20) : à une même fête, le tir d'Aldric (ou la tourte) et le concours de pâtisserie de
+    /// Firmin ne se ferment plus l'un l'autre : la pâtisserie a sa piste (« lane » : patisserie, histoire en schéma 16), clé « fête.patisserie ».
+    /// </summary>
+    [Theory]
+    [InlineData("festival.foire", 14L)]
+    [InlineData("festival.moissons", 63L)]
+    public void Le_concours_de_patisserie_ne_ferme_plus_l_autre_concours_de_la_fete(string festival, long day)
+    {
+        bool spring = festival == "festival.foire";
+        ItemStack pastry = Signed(spring ? Fouace : Couronne, ItemQuality.Normal);
+        WorldSession Open(SavedCharacter hero) => spring ? AtSemailles(hero) : AtFestival(hero);
+        // Le concours principal de la fête (tir d'Aldric, tourte de Firmin) déjà fait : le concours de pâtisserie reste ouvert.
+        SavedCharacter baker = Baker(pastry);
+        SavedCharacter done = baker.WithStory(baker.Story.WithFestivals(new Dictionary<string, long> { [festival] = day }));
+        WorldSession w = Open(done);
+        Assert.Equal(spring ? "v231_semailles" : "v215_concours", Talk(w).Node);
+        // Et l'inverse : la pâtisserie présentée, le concours principal reste ouvert ; la pâtisserie se ferme pour l'année.
+        WorldSession x = Open(baker);
+        DialogueView view = Talk(x);
+        Assert.Equal(DialogueRefusal.None, x.Choose(view.Options.Single(o => o.Text == (spring ? "text.v231.boulanger.fouace" : "text.v215.boulanger.couronne")).Index, out DialogueView? which, out _));
+        Assert.Equal(DialogueRefusal.None, x.Choose(which!.Options[0].Index, out _, out IReadOnlyList<StoryEvent> events));
+        Assert.Contains(events, e => e.Kind == StoryEventKind.ContestEntered && e.Id == festival);
+        Assert.Equal((-1L, day), (x.Narrative!.ContestDay(festival), x.Narrative.ContestDay(festival + ".patisserie")));
+        Assert.False(x.Contested(festival));
+        SavedStory saved = x.Save().Character!.Story;
+        Assert.Equal(day, saved.Festivals[festival + ".patisserie"]);
+        Assert.False(saved.Festivals.ContainsKey(festival));
+        Assert.Equal(spring ? "v210_foire" : "v210_moissons", Talk(Open(x.Save().Character!)).Node);   // relu : la pâtisserie reste faite
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #189 : une sauvegarde aux seize clés de pistes inconnues (« festival.foire.a » à « .p ») se charge, ces clés
+    /// sont oubliées, et la partie se sauvegarde encore après un concours (au plus seize clés, celles des effets « contest »).
+    /// </summary>
+    [Fact]
+    public void Pistes_inconnues_de_la_sauvegarde_oubliees_et_sauvegarde_toujours_possible()
+    {
+        SavedCharacter baker = Baker(Signed(Fouace, ItemQuality.Normal));
+        var junk = Enumerable.Range(0, SavedStory.MaxFestivals).ToDictionary(i => "festival.foire." + (char)('a' + i), _ => 1L);
+        WorldSession w = AtSemailles(baker.WithStory(baker.Story.WithFestivals(junk)));
+        DialogueView view = Talk(w);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v231.boulanger.fouace").Index, out DialogueView? which, out _));
+        Assert.Equal(DialogueRefusal.None, w.Choose(which!.Options[0].Index, out _, out _));
+        SavedStory saved = w.Save().Character!.Story;
+        Assert.Equal(new[] { "festival.foire.patisserie" }, saved.Festivals.Keys);
+        Assert.True(w.Narrative!.Book.HasContestKey("festival.moissons"));
+        Assert.True(w.Narrative.Book.HasContestKey("festival.moissons.patisserie"));
+        Assert.False(w.Narrative.Book.HasContestKey("festival.foire.a"));
+        Assert.InRange(w.Narrative.Book.ContestKeyCount, 1, SavedStory.MaxFestivals);
+    }
+
+    /// <summary>Revue Codex de la PR #189 : la clé « fête.piste » ne dépasse pas les 200 caractères que relit la sauvegarde.</summary>
+    [Fact]
+    public void Cle_fete_piste_bornee_a_200_caracteres()
+    {
+        string longId = "festival.foire" + new string('x', 200 - "festival.foire".Length);   // 200 caractères : une fête valide
+        JsonObject root = JsonNode.Parse(StoryJson().ToJsonString().Replace("\"festival.foire\"", "\"" + longId + "\""))!.AsObject();
+        StoryLoadResult read = ReadStory(root);
+        Assert.False(read.IsValid);
+        Assert.Contains(read.Report.Errors, e => e.Path.EndsWith(".lane") && e.Code == ValidationCode.OutOfRange);
+        Assert.DoesNotContain(read.Report.Errors, e => !e.Path.EndsWith(".lane"));   // seule la piste est refusée
+        Assert.Equal(200, SavedStory.MaxFestivalKeyLength);
+    }
+
+    [Fact]
+    public void Piste_de_concours_en_schema_16_seulement_et_au_format()
+    {
+        JsonObject root = StoryJson();
+        root["schemaVersion"] = 15;
+        StoryLoadResult old = ReadStory(root);
+        Assert.False(old.IsValid);
+        Assert.Contains(old.Report.Errors, e => e.Path.EndsWith(".lane") && e.Message.Contains("version 16"));
+        var (pastry, path, choice) = FirstPastryChoice();
+        choice["effects"]!.AsArray().Select(x => x!.AsObject()).Single(x => (string?)x["do"] == "contest")["lane"] = "autre";
+        StoryLoadResult mismatch = ReadStory(pastry);
+        Assert.False(mismatch.IsValid);
+        Assert.Contains(mismatch.Report.Errors, e => e.Path.StartsWith(path + ".effects") && e.Message.Contains("même piste"));
+        (pastry, path, choice) = FirstPastryChoice();
+        choice["effects"]!.AsArray().Select(x => x!.AsObject()).Single(x => (string?)x["do"] == "giveMoney")["lane"] = "patisserie";
+        Assert.Contains(ReadStory(pastry).Report.Errors, e => e.Path.StartsWith(path + ".effects") && e.Path.EndsWith(".lane"));
+    }
+
+    [Fact]
+    public void Semailles_sans_fouace_de_sa_main_ni_aux_moissons()
+    {
+        Assert.Equal("v210_foire", Talk(AtSemailles(Baker(new ItemStack(Fouace, 2)))).Node);
+        Assert.Equal("v210_foire", Talk(AtSemailles(Baker(Signed(Couronne, ItemQuality.Masterwork)))).Node);   // la couronne est des Moissons
+        Assert.Equal("v210_moissons", Talk(AtFestival(Baker(Signed(Fouace, ItemQuality.Masterwork)))).Node);   // la fouace est des Semailles
+        // « Parlons d'autre chose » ramène à l'accueil des Semailles.
+        WorldSession w = AtSemailles(Baker(Signed(Fouace, ItemQuality.Normal)));
+        DialogueView view = Talk(w);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v215.boulanger.autre").Index, out DialogueView? next, out _));
+        Assert.Equal("v210_foire", next!.Node);
+    }
+
     [Fact]
     public void Sans_patisserie_de_sa_main_Firmin_garde_son_accueil_de_fete()
     {
@@ -275,7 +400,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Histoire_schema_15_et_ses_refus()
     {
-        Assert.Equal(15, StoryValidator.CurrentSchemaVersion);
+        Assert.Equal((16, 15), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema15));
         Assert.True(ReadStory(StoryJson()).IsValid);
         // Présenter une qualité que la réponse ne demande pas : refusé au chemin de l'effet.
         var (root, path, choice) = FirstPastryChoice();
@@ -328,13 +453,14 @@ public class ConcoursPatisserieTests
     }
 
     [Fact]
-    public void Un_seul_concours_de_Firmin_par_fete_tourte_ou_patisserie()
+    public void Tourte_et_patisserie_a_la_meme_fete_decision_du_16_novembre()
     {
+        // Décision de Damien du 16 novembre 2026 (vers 2 h 20) : la pâtisserie ne ferme plus la tourte (avant : « tourte ou pâtisserie »).
         WorldSession w = AtFestival(Baker(Signed(Tarte, ItemQuality.Normal), new ItemStack("item.herbe_de_l_aube", 8)));
         Present(w, "tarte", "normal", out _);
         DialogueView after = Talk(w);
         Assert.Equal("v210_moissons", after.Node);
-        Assert.DoesNotContain(after.Options, o => o.Text == "text.v210.boulanger.tourte");
+        Assert.Contains(after.Options, o => o.Text == "text.v210.boulanger.tourte");
         Assert.Equal(80L, w.Money);
     }
 

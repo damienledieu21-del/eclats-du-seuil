@@ -207,7 +207,7 @@ public class V14ForgeTests
     {
         CraftingBook book = Crafting(Zone());
         Assert.Equal(4, book.SchemaVersion);   // sous-lot V1.8 : version 3 (expérience d'un échec) ; saisons : version 4 (nœuds de saison)
-        Assert.Equal(7, book.Recipes.Count(r => r.Quality));   // concours de pâtisserie : la tarte renversée et la couronne des moissons, au four
+        Assert.Equal(8, book.Recipes.Count(r => r.Quality));   // 16 novembre 2026 : la fouace des Semailles ;   // concours de pâtisserie : la tarte renversée et la couronne des moissons, au four
         Assert.Equal(5, book.Recipes.Count(r => r.Quality && r.Profession == "forge"));
         Assert.All(book.Recipes.Where(r => r.Quality && r.Profession == "forge"), r => Assert.Equal(("forge", "forge", 1), (r.Profession, r.Place, r.Output.Count)));
         Assert.Equal(3, book.Forge.Strikes);
@@ -826,7 +826,7 @@ public class V14ForgeTests
         // carte comprise, puis se réécrit à la version courante avec un compteur à 0.
         Assert.Equal(SaveValidator.GuildCardSince + 1, SaveValidator.ItemStateSince);
         Assert.Equal(SaveValidator.ItemStateSince + 1, SaveValidator.BoonsSince);   // sous-lot V1.8c : version 12 (bonus actifs)
-        Assert.Equal(SaveValidator.BakerMarkSince, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 ;   // monture : 22 ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs) ;   // V2.16 : 17 (aspect du héros) ;   // V2.10 : 16 (stock des marchands, concours des fêtes) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; V1.8c : 12 (bonus)
+        Assert.Equal((24, 25), (SaveValidator.BakerMarkSince, SaveValidator.CurrentSchemaVersion));   // cartes à la taverne : 25 ;   // concours de pâtisserie : 24 ;   // monture : 22 ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs) ;   // V2.16 : 17 (aspect du héros) ;   // V2.10 : 16 (stock des marchands, concours des fêtes) ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; V1.8c : 12 (bonus)
         SavedCharacter hero = Inventory.Outfit(Hero(12), Items)
             .WithStory(new SavedStory(guild: new SavedGuildCard("g", titles: new[] { "title.guilde.recrue" }), hunted: new[] { "loup_blanc" }));
         string current = SaveJsonReader.Write(new WorldSave("zone.vallons", 10, 2, Array.Empty<string>(), hero));

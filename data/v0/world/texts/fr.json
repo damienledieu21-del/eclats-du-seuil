@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.32.0-provisoire",
+  "contentVersion": "0.33.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1990,7 +1990,14 @@
       "text.v2283.fermier.cheval.attente": "Brume ? Sur les rives du lac, sûrement : elle aime l'herbe des berges. Le chemin des pontons part derrière la grange.",
       "text.v2283.fermier.cheval.attente.partir": "J'y vais.",
       "text.v2283.fermier.cheval.retour": "Brume ! Te voilà, tête de mule. Elle t'a suivi sans se faire prier : c'est bon signe. Garde-la, elle est à toi. Siffle-la sur la route, elle viendra.",
-      "text.v2283.fermier.cheval.retour.merci": "Merci, Achille. J'en prendrai soin."
+      "text.v2283.fermier.cheval.retour.merci": "Merci, Achille. J'en prendrai soin.",
+      "text.recipe.cuisine.fouace_des_semailles": "Fouace des Semailles, au miel de bruyère",
+      "text.v231.boulanger.semailles": "Une fouace ? Pour les Semailles ? Ah, tu as de la suite dans les idées. Au printemps, je ne juge que ça : la pâte qui lève comme le blé qu'on vient de semer. Un seul concours par fête, tu le sais : choisis bien entre mon four et le pas de tir d'Aldric.",
+      "text.v231.boulanger.fouace": "[Concours] Présenter ta fouace des Semailles.",
+      "text.v231.boulanger.fouace.choisir": "La fouace. Trop de levain, elle se fend ; pas assez, c'est une galette. Et la mie doit sentir le miel sans qu'on le voie. Laquelle tu me montres ?",
+      "text.v231.boulanger.verdict.masterwork": "… Elle a levé comme un champ au mois d'avril. La croûte chante quand on la casse, la mie tient et fond. Je n'ai rien à reprendre. Le grand prix des Semailles est à toi, et tout le bourg saura qui l'a cuite.",
+      "text.v231.boulanger.verdict.superior": "Belle pousse, belle couleur. Le cœur est un peu serré : un quart d'heure de repos de plus, et tu m'aurais fait pleurer. Le deuxième prix, et bien gagné.",
+      "text.v231.boulanger.verdict.normal": "Elle est bonne, et elle est de toi : c'est ce que je juge. La pousse est timide, ça viendra avec la main. Voilà le prix de l'apprenti ; reviens aux Moissons avec une couronne."
     }
   }
 }
