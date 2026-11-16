@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.33.0-provisoire",
+  "contentVersion": "0.34.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -1981,6 +1981,16 @@
       "text.v215.boulanger.retour": "Finalement, pas celle-là.",
       "text.ui.item_presented": "Présenté : {0}",
       "text.ui.nothing_to_present": "Tu n'as plus cette pâtisserie de ta main.",
+      "text.v2283.quest.cheval.name": "Le cheval de la ferme",
+      "text.v2283.quest.cheval.jument": "Brume, la jument d'Achille, a pris peur des loups et s'est sauvée vers le lac par le chemin des pontons. Va la chercher sur les rives du lac.",
+      "text.v2283.quest.cheval.retour": "Brume te suit sans rechigner. Ramène-la à Achille, à la ferme des champs.",
+      "text.v2283.fermier.cheval": "Toi qui as fait taire la meute… Ma jument, Brume, a cassé sa longe la nuit des loups. Elle a filé vers le lac, par le chemin des pontons. Ramène-la-moi, et je te la confie : elle s'ennuie à la charrue, et toi, tu as de la route à faire.",
+      "text.v2283.fermier.cheval.accepter": "Je vais chercher Brume.",
+      "text.v2283.fermier.cheval.plus_tard": "Pas maintenant.",
+      "text.v2283.fermier.cheval.attente": "Brume ? Sur les rives du lac, sûrement : elle aime l'herbe des berges. Le chemin des pontons part derrière la grange.",
+      "text.v2283.fermier.cheval.attente.partir": "J'y vais.",
+      "text.v2283.fermier.cheval.retour": "Brume ! Te voilà, tête de mule. Elle t'a suivi sans se faire prier : c'est bon signe. Garde-la, elle est à toi. Siffle-la sur la route, elle viendra.",
+      "text.v2283.fermier.cheval.retour.merci": "Merci, Achille. J'en prendrai soin.",
       "text.recipe.cuisine.fouace_des_semailles": "Fouace des Semailles, au miel de bruyère",
       "text.v231.boulanger.semailles": "Une fouace ? Pour les Semailles ? Ah, tu as de la suite dans les idées. Au printemps, je ne juge que ça : la pâte qui lève comme le blé qu'on vient de semer. Un seul concours par fête, tu le sais : choisis bien entre mon four et le pas de tir d'Aldric.",
       "text.v231.boulanger.fouace": "[Concours] Présenter ta fouace des Semailles.",
@@ -2020,7 +2030,9 @@
       "text.ui.cards.refused.cap": "La taverne ne fait plus gagner que {0} cuivre aujourd'hui : choisis une mise plus petite, ou reviens demain.",
       "text.ui.cards.refused.tavern": "{0} ne joue qu'à la taverne, le soir.",
       "text.ui.cards.refused.combat": "Pas de cartes en plein combat.",
-      "text.ui.cards.refused.other": "Pas de partie possible pour l'instant."
+      "text.ui.cards.refused.other": "Pas de partie possible pour l'instant.",
+      "text.v2283.fermier.deja_monture": "Tu as déjà une monture, à ce que je vois ! Ma Brume s'est sauvée vers le lac, mais elle finira bien par revenir seule : elle connaît le chemin de l'écurie mieux que moi.",
+      "text.v2283.fermier.deja_monture.partir": "Bonne chance avec elle, Achille."
     }
   }
 }
