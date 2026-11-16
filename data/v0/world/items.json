@@ -1448,7 +1448,6 @@
       {
         "id": "item.gardon",
         "name": "Gardon",
-        "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "common",
         "stack": 10
@@ -1456,7 +1455,6 @@
       {
         "id": "item.perche",
         "name": "Perche",
-        "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "common",
         "stack": 10
@@ -1464,7 +1462,6 @@
       {
         "id": "item.truite",
         "name": "Truite de rivière",
-        "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "common",
         "stack": 10
@@ -1472,7 +1469,6 @@
       {
         "id": "item.brochet",
         "name": "Brochet",
-        "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "rare",
         "stack": 10
@@ -1480,7 +1476,6 @@
       {
         "id": "item.carpe_doree",
         "name": "Carpe dorée",
-        "icon": "herbe_de_l_aube",
         "type": "material",
         "rarity": "very_rare",
         "stack": 10
@@ -1488,7 +1483,6 @@
       {
         "id": "item.ver_de_terre",
         "name": "Vers de terre",
-        "icon": "sac",
         "type": "material",
         "rarity": "common",
         "stack": 50
@@ -1496,7 +1490,6 @@
       {
         "id": "item.mouche_de_mai",
         "name": "Mouches de mai",
-        "icon": "sac",
         "type": "material",
         "rarity": "common",
         "stack": 50
@@ -2136,7 +2129,6 @@
       {
         "id": "item.friture_du_lac",
         "name": "Friture du lac",
-        "icon": "sac",
         "type": "boon",
         "rarity": "common",
         "stack": 5,
@@ -2149,7 +2141,6 @@
       {
         "id": "item.truite_meuniere",
         "name": "Truite meunière",
-        "icon": "sac",
         "type": "boon",
         "rarity": "common",
         "stack": 5,
@@ -2163,7 +2154,6 @@
       {
         "id": "item.quenelles_de_brochet",
         "name": "Quenelles de brochet",
-        "icon": "sac",
         "type": "boon",
         "rarity": "rare",
         "stack": 5,
@@ -2177,7 +2167,6 @@
       {
         "id": "item.matelote_de_carpe_doree",
         "name": "Matelote de carpe dorée au cidre",
-        "icon": "sac",
         "type": "boon",
         "rarity": "very_rare",
         "stack": 3,
