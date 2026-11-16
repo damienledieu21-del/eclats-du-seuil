@@ -553,7 +553,11 @@ namespace EdS.Game.Editor
             var result = new List<GameObject>();
             foreach (string path in paths)
             {
-                OwnMaterial(path, notes, AtelierDecor.OwnDecorOf(path));
+                // V2.30.2 : une pièce du Bourg a son propre atlas (« bourg_f01_palissade_couleur ») ; les autres, celui de leur groupe.
+                string own = Path.GetFileNameWithoutExtension(path);
+                string folder = Path.GetDirectoryName(path).Replace('\\', '/');
+                bool ownMaps = (AssetDatabase.FindAssets(own + "_couleur t:Texture2D", new[] { folder }) ?? new string[0]).Length > 0;
+                OwnMaterial(path, notes, ownMaps ? null : AtelierDecor.OwnDecorOf(path));
                 GameObject model = Load(path);
                 if (model != null) result.Add(model);
             }
