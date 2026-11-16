@@ -66,7 +66,7 @@ public class V2292PanoramaTests
         {
             PanoramaChoice c = HorizonPanorama.Choose(s, 1f, false);
             Assert.Null(c.Under);
-            Assert.Equal(SeasonCalendar.Id((Season)s) == "spring" ? "spring" : HorizonPanorama.Names[s], c.Top);
+            Assert.Equal(new[] { "spring", "summer", "autumn", "winter" }[s], c.Top);
             Assert.Equal(1f, c.TopAlpha);
             Assert.Equal(0f, c.UnderAlpha);
         }
@@ -169,9 +169,80 @@ public class V2292PanoramaTests
                 Assert.Equal(HorizonPanorama.Height(tier), (head[20] << 24) | (head[21] << 16) | (head[22] << 8) | head[23]);
                 Assert.Equal(8, head[24]);    // 8 bits par canal
                 Assert.Equal(6, head[25]);    // RVBA : le ciel du jeu reste visible derrière
+                (int w, int h, byte[] px) = DecodeRgba(file);
+                Assert.Equal(HorizonPanorama.Width(tier), w);
+                Assert.Equal(HorizonPanorama.Height(tier), h);
+                for (int x = 0; x < w; x++)
+                {
+                    Assert.Equal(0, px[x * 4 + 3]);                                   // le haut : ciel transparent
+                    Assert.True(px[((h - 1) * w + x) * 4 + 3] >= 250, file + " bas opaque, colonne " + x);   // le bas : terrain plein
+                }
+                for (int y = 0; y < h; y++)   // raccord : la dernière colonne rejoint la première
+                    for (int c = 0; c < 4; c++)
+                        Assert.InRange(Math.Abs(px[(y * w) * 4 + c] - px[(y * w + w - 1) * 4 + c]), 0, 24);
             }
         }
         Assert.Empty(Directory.GetFiles(dir, "*16384*"));
         Assert.Equal(10, Directory.GetFiles(dir, "*.png").Length);
+    }
+
+    /// <summary>Décodeur PNG minimal (RVBA 8 bits, sans entrelacement) : largeur, hauteur et octets RVBA.</summary>
+    private static (int, int, byte[]) DecodeRgba(string file)
+    {
+        byte[] d = File.ReadAllBytes(file);
+        int w = 0, h = 0, pos = 8;
+        var idat = new MemoryStream();
+        while (pos < d.Length)
+        {
+            int len = (d[pos] << 24) | (d[pos + 1] << 16) | (d[pos + 2] << 8) | d[pos + 3];
+            string type = System.Text.Encoding.ASCII.GetString(d, pos + 4, 4);
+            if (type == "IHDR")
+            {
+                w = (d[pos + 8] << 24) | (d[pos + 9] << 16) | (d[pos + 10] << 8) | d[pos + 11];
+                h = (d[pos + 12] << 24) | (d[pos + 13] << 16) | (d[pos + 14] << 8) | d[pos + 15];
+                Assert.Equal(0, d[pos + 8 + 12]);   // pas d'entrelacement
+            }
+            else if (type == "IDAT") idat.Write(d, pos + 8, len);
+            pos += 12 + len;
+        }
+        idat.Position = 0;
+        int stride = w * 4;
+        var raw = new byte[(stride + 1) * h];
+        using (var z = new System.IO.Compression.ZLibStream(idat, System.IO.Compression.CompressionMode.Decompress))
+        {
+            int read = 0;
+            while (read < raw.Length)
+            {
+                int n = z.Read(raw, read, raw.Length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+            Assert.Equal(raw.Length, read);
+        }
+        var px = new byte[stride * h];
+        for (int y = 0; y < h; y++)
+        {
+            int filter = raw[y * (stride + 1)], src = y * (stride + 1) + 1, row = y * stride;
+            for (int i = 0; i < stride; i++)
+            {
+                int a = i >= 4 ? px[row + i - 4] : 0, b = y > 0 ? px[row - stride + i] : 0, c = i >= 4 && y > 0 ? px[row - stride + i - 4] : 0;
+                int pr = filter switch
+                {
+                    0 => 0,
+                    1 => a,
+                    2 => b,
+                    3 => (a + b) / 2,
+                    _ => Paeth(a, b, c),
+                };
+                px[row + i] = (byte)(raw[src + i] + pr);
+            }
+        }
+        return (w, h, px);
+    }
+
+    private static int Paeth(int a, int b, int c)
+    {
+        int p = a + b - c, pa = Math.Abs(p - a), pb = Math.Abs(p - b), pc = Math.Abs(p - c);
+        return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
     }
 }

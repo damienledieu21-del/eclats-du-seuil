@@ -48,7 +48,8 @@ namespace EdS.Game
             if (camera == null) return;
             if (_root == null) Build();
             if (!_bandBuilt) BuildBand();
-            if (!visible)
+            // Revue indépendante de la PR #203 : tant que la saison n'est pas connue, rien n'est montré (pas de printemps par défaut).
+            if (!visible || !SeasonView.HasLook)
             {
                 _root.SetActive(false);
                 _band.SetActive(false);
@@ -88,8 +89,7 @@ namespace EdS.Game
         /// <summary>Pose la bande peinte (voir la classe) ; faux (et bande cachée) si les textures manquent : les silhouettes servent alors.</summary>
         private static bool ShowPanorama(Camera camera)
         {
-            PanoramaChoice choice = SeasonView.HasLook ? HorizonPanorama.Choose(SeasonView.Shown.Season, SeasonView.Shown.Blend, Reversed)
-                : HorizonPanorama.Choose(0, 1f, Reversed);
+            PanoramaChoice choice = HorizonPanorama.Choose(SeasonView.Shown.Season, SeasonView.Shown.Blend, Reversed);
             Texture2D top = Panorama(choice.Top);
             Texture2D under = choice.Under != null ? Panorama(choice.Under) : null;
             if (top == null)
