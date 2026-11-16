@@ -101,7 +101,7 @@ public class ConcoursPatisserieTests
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
         CraftingBook book = Crafting(ZoneAt(-1075.5, -31.5));
-        Assert.Equal("0.11.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.12.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
         Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons", "recipe.cuisine.fouace_des_semailles" },
             cuisine.Where(r => r.Quality).Select(r => r.Id));

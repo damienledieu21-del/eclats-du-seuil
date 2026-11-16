@@ -52,7 +52,7 @@ public class CuisineBoulangerieTests
     public void Metier_de_cuisine_quatorze_recettes_au_four_de_Firmin_et_au_feu_de_camp()
     {
         CraftingBook book = Shipped.Value;
-        Assert.Equal("0.11.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.12.0-provisoire", book.ContentVersion);
         Assert.Contains(book.Professions, p => p.Id == "cuisine");
         Assert.Equal("Cuisine et boulangerie", Texts.Get("text.profession.cuisine"));
         Assert.Equal(14, Cuisine.Count());   // 16 novembre 2026 : la fouace des Semailles
@@ -68,7 +68,7 @@ public class CuisineBoulangerieTests
         // Les pommes du verger se cueillent (expérience de cuisine).
         Assert.Contains(book.Nodes, n => n.Id == "pommes_verger" && n.Profession == "cuisine" && n.Item == "item.pomme_du_verger");
         // Relecture de la PR #183 : un pommier près du bourg (les vergers sont au niveau 6, les chaussons au niveau 3 du métier).
-        Assert.Contains(book.Nodes, n => n.Id == "pommier_du_bourg" && n.Profession == "cuisine" && n.Item == "item.pomme_du_verger");
+        Assert.Contains(book.Nodes, n => n.Id == "pommier_du_hameau" && n.Profession == "cuisine" && n.Item == "item.pomme_du_verger");
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class CuisineBoulangerieTests
     {
         // Le pommier du bourg : deux pommes, l'expérience de cuisine.
         WorldSession tree = Play(Zone(-27, -19), null);
-        Assert.Equal(CraftRefusal.None, tree.Gather("pommier_du_bourg", out CraftEvent? picked));
+        Assert.Equal(CraftRefusal.None, tree.Gather("pommier_du_hameau", out CraftEvent? picked));
         Assert.Equal(("item.pomme_du_verger", 2, "cuisine", 6L), (picked!.Item, picked.Count, picked.Profession, picked.Xp));
         // Au four, au niveau 3 du métier : la pâte feuilletée, puis les chaussons avec les pommes cueillies.
         WorldSession oven = Play(Zone(-1075.5, -31.5), new Dictionary<string, long> { ["cuisine"] = 100 },

@@ -110,7 +110,7 @@ public class V199Chapitre1MaxTests
         Assert.Equal((8, 8, "0.21.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
         Assert.Equal((16, "0.31.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.6.1 : schéma 11, contenu 0.21.0 ; V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
         Assert.Equal("0.15.0-provisoire", ShippedMerchants.ContentVersion);   // V2.9.2 : 0.9.0 (ours, cape du vieux Brunot) ; V2.7 : 0.8.0 (factions, marché noir) ;   // V2.6.1 : inchangé (le chapelet de l'Aube ne se vend pas, réponse de Damien du 7 novembre 2026)
-        Assert.Equal("0.11.0-provisoire", Crafting(Vallons.Value).ContentVersion);
+        Assert.Equal("0.12.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.3.0-provisoire", Guilde.Value.ContentVersion);   // V2.9.2 : points du vieux Brunot
         Assert.Equal((14, "0.20.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation ; V2.6 : cicatrices ; V2.4 : animaux, brume
         Assert.Equal("0.32.0-provisoire", Texts.ContentVersion);   // concours de pâtisserie : 0.31.0 ;   // cuisine et boulangerie : 0.29.0 ; pêche : 0.28.0 (après les compagnons 0.26.0 et les fêtes 0.27.0) ; V2.6.1 : suites du Seuil (0.21.0) ; V2.6 : le Seuil qui grandit (0.20.0) ; V2.3.1 : PNJ qui changent de lieu ; V1.9.11 : retrouvailles de tous les PNJ qui parlent ; V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
