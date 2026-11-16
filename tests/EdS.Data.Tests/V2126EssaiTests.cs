@@ -329,7 +329,7 @@ public sealed class V2126EssaiTests
     [Fact]
     public void PNJ_du_bourg_entre_leurs_places_sans_traverser_de_maison()
     {
-        CombatSpace space = HomeSectorSpace();   // sous-lot V2.28c : l'espace réel du secteur du cœur, pas celui de toute la région
+        CombatSpace space = BourgSectorSpace();   // sous-lot V2.28c : l'espace réel du secteur, pas celui de toute la région ; V2.30.1 : celui du bourg, dans la ville
         var paths = new WalkPaths(space);
         long r = (long)Math.Round(WalkPaths.DefaultRadius * 1e4);
         JsonNode story = JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "story.json")))!["data"]!;
@@ -346,7 +346,7 @@ public sealed class V2126EssaiTests
                 else if (step["zone"] is JsonNode z && doors.TryGetValue((string)z!, out (double, double) door)) away.Add(door);
             if (places.Count < 2) continue;
             // Seulement les PNJ du bourg (Garin, Sauge, Bertille…) : entre leurs places, et vers la porte de chaque sortie de leur journée.
-            if (places[0].X > -24 || places[0].X < -100 || places[0].Z < -24 || places[0].Z > 19) continue;
+            if (!InMovedBourg(places[0].X, places[0].Z)) continue;   // sous-lot V2.30.1 : le bourg est dans la ville fortifiée
             var hops = new List<((double X, double Z) A, (double X, double Z) B)>();
             for (int i = 0; i + 1 < places.Count; i++) hops.Add((places[i], places[i + 1]));
             foreach ((double, double) door in away) hops.Add((places[0], door));   // vers la porte où il sort (12 h : Garin à la taverne)

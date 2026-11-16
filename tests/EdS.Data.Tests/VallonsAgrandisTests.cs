@@ -112,7 +112,7 @@ public class VallonsAgrandisTests
     {
         ZoneDefinition zone = Zone();
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(zone);
-        Assert.Equal(20, roads.Count);   // V2.25.1 : chemin et aire de la grange ; V2.28c (3) : huit routes et chemins de la région
+        Assert.Equal(22, roads.Count);   // V2.30.1 : rues des boutiques et du marché dans la ville ; // V2.25.1 : chemin et aire de la grange ; V2.28c (3) : huit routes et chemins de la région
         // Chaque point sûr est au bord d'une route (à 6 m au plus) ; la grand-rue et le passage des ruines arrivent aux deux têtes du pont.
         // V2.7 : sauf la planque des contrebandiers, point sûr secret, loin des routes par nature.
         foreach (SafePoint s in zone.SafePoints.Where(x => x.Id != "planque_des_contrebandiers"))
@@ -185,8 +185,8 @@ public class VallonsAgrandisTests
         // Relecture des Vallons agrandis : une route hors de sa boîte n'était plus regardée dès qu'une autre avait été vue ; maison6 et
         // maison8, au bout ouest du bourg, regardaient la grand-rue (à 37 m) au lieu de la grand-rue de l'ouest (à 3 m).
         IReadOnlyList<StyleRoad> roads = AdventureSession.Roads(Zone());
-        RoadHit hit = TownRules.RoadAt(-89.5, -6, roads);
-        Assert.Equal("grand_rue_ouest", hit.Road!.Id);
+        RoadHit hit = TownRules.RoadAt(-1121.5, -40, roads);
+        Assert.Equal("rue_des_boutiques", hit.Road!.Id);
         Assert.Equal(2.75, hit.Edge, 6);
         // Même réponse qu'une recherche exhaustive, partout sur l'aire.
         for (double x = -100; x <= 140; x += 2.9)
@@ -195,7 +195,7 @@ public class VallonsAgrandisTests
                 double best = roads.Min(r => TownRules.RoadAt(x, z, new[] { r }).Edge);
                 Assert.Equal(best, TownRules.RoadAt(x, z, roads).Edge, 9);
             }
-        Assert.Equal((0, 1), TownRules.Facing(-98, -20, -84, -7, roads));    // maison6 (V1.10) : au nord, vers la grand-rue de l'ouest
+        Assert.Equal((0, 1), TownRules.Facing(-1130, -54, -1116, -41, roads));    // maison6 (V1.10) : au nord, vers la grand-rue de l'ouest
         Assert.Equal((0, -1), TownRules.Facing(-99, 4, -93, 10.5, roads));   // maison8 (V1.10) : au sud
     }
 

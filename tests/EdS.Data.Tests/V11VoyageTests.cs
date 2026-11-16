@@ -53,12 +53,14 @@ public class V11VoyageTests : IDisposable
         return false;
     }
 
-    /// <summary>Du village au bourg par la grand-rue (aucun obstacle, aucune créature à portée).</summary>
+    /// <summary>
+    /// Du village au bourg : la grand-rue, la route d'Ambre jusqu'à la porte de l'Est de la ville fortifiée, la place du marché, puis la
+    /// rue du marché jusqu'à la place du bourg (sous-lot V2.30.1 : le bourg a déménagé, à 1 km à l'ouest ; aucune créature à portée).
+    /// </summary>
     private static void WalkToBourg(AdventureSession a)
     {
         Assert.True(WalkTo(a, -20, -2));
-        Assert.True(WalkTo(a, -50, -1));
-        Assert.True(WalkTo(a, -58, -4));
+        foreach ((double x, double z) in RoadToBourg) Assert.True(WalkTo(a, x, z), $"bloqué avant ({x}, {z})");
     }
 
     /// <summary>Données et scénarios copiés dans le dossier du test, scénario (et zone) des Vallons retouchés.</summary>
@@ -132,7 +134,7 @@ public class V11VoyageTests : IDisposable
         Assert.Equal(new[] { "place_du_village", "place_du_bourg" }, again.TravelDestinations().Select(d => d.SafePoint));
         Assert.Equal(TravelRefusal.None, again.Travel("zone.vallons", "place_du_bourg"));
         again.Advance(0.05);
-        Assert.Equal(At(-58, -6), Position(again));
+        Assert.Equal(At(-1090, -40), Position(again));
     }
 
     [Fact]
@@ -215,7 +217,7 @@ public class V11VoyageTests : IDisposable
         Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
         Assert.False(a.Indoors);
         a.Advance(0.05);
-        Assert.Equal(At(-58, -6), Position(a));
+        Assert.Equal(At(-1090, -40), Position(a));
         Assert.Equal(("zone.vallons", 5L), (SaveStore.Read(SavePath).Save!.Zone, SaveStore.Read(SavePath).Save!.Character!.Money));
         // Dans un intérieur, rien ne se découvre (la porte n'est pas un point sûr du voyage).
         Assert.DoesNotContain(SaveStore.Read(SavePath).Save!.Consumed, k => k.StartsWith("zone.auberge/", StringComparison.Ordinal));
@@ -290,7 +292,7 @@ public class V11VoyageTests : IDisposable
     public void Decouverte_dans_la_session_du_monde()
     {
         // Au niveau de la session : un point sûr approché à 5 m est découvert une fois (événement de l'histoire), puis gardé au registre.
-        ZoneDefinition zone = Zone(-62, -6);   // à 4 m de la place du bourg
+        ZoneDefinition zone = Zone(-1094, -40);   // à 4 m de la place du bourg
         WorldSession w = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), Hero()), zone, ShippedData, Progression, ItemsCatalog, Book(zone));
         var events = new List<StoryEvent>();
         for (int i = 0; i < 5; i++) events.AddRange(w.Step().Story);

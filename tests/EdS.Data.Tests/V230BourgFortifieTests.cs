@@ -90,9 +90,10 @@ public class V230BourgFortifieTests
         Assert.False(Blocked(town, -1010, -77, 3));
         Assert.Contains(zone.Places, p => p.Id == "place_du_marche_de_la_ville");
         Assert.Contains(zone.Places, p => p.Id == "eglise_de_la_ville");
-        // Rien d'autre de la région dans l'enceinte (le cœur, ses quêtes et ses portes ne bougent pas avant le V2.30.1).
-        Assert.DoesNotContain(zone.Setup.Space!.Obstacles, o => !o.Id.Contains("_ville", StringComparison.Ordinal)
-            && o.Points.All(p => P(p).X > W && P(p).X < E && P(p).Z > S && P(p).Z < N));
+        // Rien d'autre de la région dans l'enceinte, sauf les bâtiments du bourg déménagés au V2.30.1.
+        var moved = new[] { "maison1", "maison2", "maison4", "maison5", "maison6", "maison7", "auberge", "chapelle", "puits", "etal1", "etal2" };
+        Assert.Equal(moved.OrderBy(i => i, StringComparer.Ordinal), zone.Setup.Space!.Obstacles.Where(o => !o.Id.Contains("_ville", StringComparison.Ordinal)
+            && o.Points.All(p => P(p).X > W && P(p).X < E && P(p).Z > S && P(p).Z < N)).Select(o => o.Id).OrderBy(i => i, StringComparer.Ordinal));
     }
 
     [Fact]

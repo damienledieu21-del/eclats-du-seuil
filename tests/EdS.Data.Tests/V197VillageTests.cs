@@ -28,8 +28,8 @@ public class V197VillageTests
         Fleches = "quest.fleches_perdues", Lanterne = "quest.derniere_lanterne", Tour = "quest.tour_silencieuse";
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle).
-    private static readonly (double X, double Z) Odile = (-9, 2), Moulin = (-8, 5), Boulanger = (-42, 2), Archer = (1, -1.5), Gaspard = (26, -13),
-        Capitaine = (-2, -9.5), Herboriste = (-65.2, -6.4), Forge = (-19, -5), Epiciere = (-50.8, 4.4), RondEst = (-15, 25.5), RondOuest = (-21, 25.5);
+    private static readonly (double X, double Z) Odile = (-9, 2), Moulin = (-8, 5), Boulanger = (-1074, -32), Archer = (1, -1.5), Gaspard = (26, -13),
+        Capitaine = (-2, -9.5), Herboriste = (-1097.2, -40.4), Forge = (-19, -5), Epiciere = (-1082.8, -29.6), RondEst = (-15, 25.5), RondOuest = (-21, 25.5);
     private static readonly (double X, double Z) Rosalie = (-1.8, -2.4);
 
     /// <summary>Heures du monde (la journée dure trois heures réelles et commence à 8 h) : 20 h, 22 h 27, 6 h le lendemain.</summary>
@@ -565,7 +565,7 @@ public class V197VillageTests
         {
             Say(Open(at, Hero(1, story)), npc, day);
             // Sous-lot V2.1 : la nuit, Maëlle et Bertille sont rentrées : on leur parle devant leur porte.
-            (double, double) night = npc == "npc.maelle" ? (-22.6, -8) : npc == "npc.epiciere" ? (-46, 3.4) : at;
+            (double, double) night = npc == "npc.maelle" ? (-22.6, -8) : npc == "npc.epiciere" ? (-1078, -30.6) : at;
             Say(Open(night, Hero(1, story), Nuit), npc, "ch1_nuit");
         }
         // Firmin, à l'aube ; Rosalie, la nuit (après le chat, son mot d'après de jour).

@@ -32,6 +32,60 @@ internal static class ScenarioTestData
         space["bounds"] = new System.Text.Json.Nodes.JsonObject { ["min"] = new System.Text.Json.Nodes.JsonArray(-100, -70), ["max"] = new System.Text.Json.Nodes.JsonArray(140, 100) };
         var obstacles = space["obstacles"]!.AsArray();
         foreach (var o in obstacles.Where(o => SurfaceObstacle((string)o!["id"]!)).ToList()) obstacles.Remove(o);
+        foreach (var o in obstacles.Where(o => MovedBuildings.Contains((string)o!["id"]!)))
+            foreach (var p in o!["points"]!.AsArray()) BackToCore(p!);
+    }
+
+    /// <summary>
+    /// Sous-lot V2.30.1 (déménagement du bourg) : décalage du bloc des boutiques, du cœur à la ville fortifiée (mètres). Les essais du
+    /// cœur seul (<see cref="VallonsBefore"/>, <see cref="ZoneBefore"/>, <see cref="StoryBefore"/>) remettent le bourg à sa place d'avant.
+    /// </summary>
+    public const double BourgDX = -1032, BourgDZ = -34;
+
+    /// <summary>
+    /// Sous-lot V2.30.1 : du bout de la grand-rue du village à la place du bourg déménagé, en lignes droites libres (route d'Ambre, porte
+    /// de l'Est de la ville, place du marché, rue du marché) ; le dernier point est à 1 m du point sûr <c>place_du_bourg</c> (−1 090, −40).
+    /// </summary>
+    public static readonly (double X, double Z)[] RoadToBourg =
+        { (-50, -1), (-99, -1), (-300, -20), (-500, -40), (-700, -50), (-1000, -68), (-1040, -60), (-1060, -35), (-1090, -39) };
+
+    /// <summary>Sous-lot V2.30.1 : les bâtiments du bourg déménagés (le hameau garde <c>maison3</c> et <c>maison8</c>).</summary>
+    public static readonly string[] MovedBuildings = { "maison1", "maison2", "maison4", "maison5", "maison6", "maison7", "auberge", "chapelle", "puits", "etal1", "etal2" };
+
+    /// <summary>Sous-lot V2.30.1 : le point est-il dans le bloc du bourg déménagé (ville fortifiée) ?</summary>
+    public static bool InMovedBourg(double x, double z) => x >= -100 + BourgDX && x <= -24 + BourgDX && z >= -25 + BourgDZ && z <= 20 + BourgDZ;
+
+    /// <summary>Sous-lot V2.30.1 : position du bourg avant le déménagement, d'une position d'après.</summary>
+    public static (double X, double Z) Old(double x, double z) => (x - BourgDX, z - BourgDZ);
+
+    /// <summary>Sous-lot V2.30.1 : position d'après le déménagement, d'une position du bourg d'avant.</summary>
+    public static (double X, double Z) New(double x, double z) => (x + BourgDX, z + BourgDZ);
+
+    /// <summary>
+    /// Sous-lot V2.30.1 : une partie des Vallons qui reprend au point sûr de la place du bourg (dans la ville fortifiée), à l'instant
+    /// <paramref name="tick"/> : la carte et le décor de la session sont ceux du secteur du bourg (les essais des bâtiments du bourg).
+    /// </summary>
+    public static EdS.Runtime.AdventureSession LoadAtBourg(string savePath, long tick = 0, EdS.Data.Saves.SavedCharacter? hero = null)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        EdS.World.SaveStore.Write(savePath, new EdS.Data.Saves.WorldSave("zone.vallons", tick, 0, Array.Empty<string>(), hero,
+            resume: new EdS.Data.Saves.SavedResume("place_du_bourg")));
+        var a = EdS.Runtime.AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), savePath);
+        a.Advance(0.05);
+        return a;
+    }
+
+    private static void BackToCore(JsonNode point)
+    {
+        double x = (double)point[0]!, z = (double)point[1]!;
+        if (!InMovedBourg(x, z)) return;
+        point[0] = Math.Round(x - BourgDX, 4);
+        point[1] = Math.Round(z - BourgDZ, 4);
+    }
+
+    private static void BackToCore(JsonNode? owner, string key)
+    {
+        if (owner?[key] is JsonArray p) BackToCore(p);
     }
 
     /// <summary>
@@ -45,6 +99,14 @@ internal static class ScenarioTestData
         // Sous-lot V2.28c (3) : ni les points sûrs, ni les lieux, ni les routes de la région (hors de l'aire d'avant).
         static bool Inside(JsonNode? point) => (double)point![0]! >= -100 && (double)point[0]! <= 140 && (double)point[1]! >= -70 && (double)point[1]! <= 100;
         var data = zone["data"]!;
+        // Sous-lot V2.30.1 : le bourg revient au cœur (portes, point sûr, lieux, places de nuit, place pavée).
+        foreach (var n in data["doors"]!.AsArray()) BackToCore(n, "position");
+        foreach (var n in data["safePoints"]!.AsArray()) BackToCore(n, "position");
+        foreach (var n in data["nightSpots"]!.AsArray()) BackToCore(n, "position");
+        foreach (var n in data["places"]!.AsArray())
+            if ((string?)n!["id"] is "bourg" or "four_de_firmin") { BackToCore(n, "min"); BackToCore(n, "max"); }
+        foreach (var n in data["roads"]!.AsArray())
+            if ((string?)n!["id"] == "place_du_bourg") foreach (var p in n!["points"]!.AsArray()) BackToCore(p!);
         foreach (var (key, keep) in new (string, Func<JsonNode, bool>)[]
         {
             ("safePoints", n => Inside(n["position"])),
@@ -65,6 +127,14 @@ internal static class ScenarioTestData
     public static void StoryBefore(JsonNode story)
     {
         var data = story["data"]!;
+        // Sous-lot V2.30.1 : PNJ, haltes et invités des fêtes du bourg reviennent au cœur.
+        foreach (var npc in data["npcs"]!.AsArray())
+        {
+            BackToCore(npc, "position");
+            foreach (var slot in npc!["schedule"]?.AsArray() ?? new JsonArray()) { BackToCore(slot, "position"); BackToCore(slot!["rain"], "position"); }
+        }
+        foreach (var festival in data["festivals"]?.AsArray() ?? new JsonArray())
+            foreach (var guest in festival!["guests"]?.AsArray() ?? new JsonArray()) BackToCore(guest, "position");
         var quests = data["quests"]!.AsArray();
         foreach (var q in quests.Where(q => (string?)q!["id"] == "quest.passages_de_la_vallee").ToList()) quests.Remove(q);
         foreach (var d in data["dialogues"]!.AsArray())
@@ -90,6 +160,19 @@ internal static class ScenarioTestData
             Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, items).Zone!;
         var sectors = EdS.World.SectorMap.For(zone);
         return sectors.SetupFor(sectors.HomeSector, 0).Space!;
+    }
+
+    /// <summary>
+    /// Sous-lot V2.30.1 : espace réel de la session du secteur du bourg déménagé (celui du point sûr <c>place_du_bourg</c>, dans la ville
+    /// fortifiée, avec sa marge), où le jeu calcule les trajets des PNJ du bourg.
+    /// </summary>
+    public static EdS.Domain.Space.CombatSpace BourgSectorSpace()
+    {
+        var items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        var zone = EdS.Data.Json.ZoneJsonReader.ReadFile(EdS.Data.Json.ZoneJsonReader.PathIn(DataDirectory, "zone.vallons"),
+            Path.Combine(AppContext.BaseDirectory, "scenarios"), ShippedData, items).Zone!;
+        var sectors = EdS.World.SectorMap.For(zone);
+        return sectors.SetupFor(sectors.OwnerOf(zone.SafePoints.Single(s => s.Id == "place_du_bourg").Position), 0).Space!;
     }
 
     /// <summary>

@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((15, 15, "0.29.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((15, 15, "0.30.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -172,21 +172,21 @@ public sealed class V23JourneeTests : IDisposable
         Refused(firmin + "[1].activity", ValidationCode.InvalidValue, r => S(r, 1)["activity"] = "Marché");
         Refused(firmin + "[1].activity", ValidationCode.UnknownReference, r => S(r, 1)["activity"] = "danse");   // pas de texte « text.activity.danse »
         Refused(firmin + "[1].position", ValidationCode.OutOfRange, r => S(r, 1)["position"] = new JsonArray(-2300, 0));
-        Refused(firmin + "[1].position", ValidationCode.InvalidValue, r => S(r, 1)["position"] = new JsonArray(-42, 10));   // dans la maison du fournil
-        Refused(firmin + "[1].rain.position", ValidationCode.InvalidValue, r => S(r, 1)["rain"]!["position"] = new JsonArray(-69, 9));   // dans l'auberge
+        Refused(firmin + "[1].position", ValidationCode.InvalidValue, r => S(r, 1)["position"] = new JsonArray(-1074, -24));   // dans la maison du fournil
+        Refused(firmin + "[1].rain.position", ValidationCode.InvalidValue, r => S(r, 1)["rain"]!["position"] = new JsonArray(-1101, -25));   // dans l'auberge
         Refused(firmin + "[1].rain.activity", ValidationCode.MissingField, r => S(r, 1)["rain"]!.AsObject().Remove("activity"));
         Refused(firmin, ValidationCode.OutOfRange, r => r["data"]!["npcs"]![f]!["schedule"] = new JsonArray());
         Refused(firmin, ValidationCode.LimitExceeded, r =>
         {
             var many = new JsonArray();
             for (int i = 0; i < StoryValidator.MaxScheduleSlots + 1; i++)
-                many.Add(new JsonObject { ["at"] = $"{i:00}:00", ["activity"] = "fournil", ["position"] = new JsonArray(-42, 3.5) });
+                many.Add(new JsonObject { ["at"] = $"{i:00}:00", ["activity"] = "fournil", ["position"] = new JsonArray(-1074, -30.5) });
             r["data"]!["npcs"]![f]!["schedule"] = many;
         });
         // Un PNJ d'un intérieur : sa place est dans sa pièce.
         int mathurin = NpcIndex(probe, "npc.aubergiste");
         Refused($"$.data.npcs[{mathurin}].schedule[0].position", ValidationCode.OutOfRange, r => r["data"]!["npcs"]![mathurin]!["schedule"] =
-            new JsonArray(new JsonObject { ["at"] = "08:00", ["activity"] = "taverne", ["position"] = new JsonArray(-65, 2.8) }));
+            new JsonArray(new JsonObject { ["at"] = "08:00", ["activity"] = "taverne", ["position"] = new JsonArray(-1097, -31.2) }));
     }
 
     [Fact]
@@ -319,11 +319,11 @@ public sealed class V23JourneeTests : IDisposable
     }
 
     [Theory]
-    [InlineData(11 * 60 + 29, "fournil", -42, 3.5)]
-    [InlineData(11 * 60 + 30, "marche", -55.5, -4.5)]
-    [InlineData(15 * 60, "sieste", -38.5, 4.8)]
+    [InlineData(11 * 60 + 29, "fournil", -1074, -30.5)]
+    [InlineData(11 * 60 + 30, "marche", -1087.5, -38.5)]
+    [InlineData(15 * 60, "sieste", -1070.5, -29.2)]
     [InlineData(19 * 60, "taverne", -1.9, 2.0)]   // V2.3.1 : dans la salle de l'auberge (zone de son créneau)
-    [InlineData(23 * 60, "fournil", -42, 3.5)]
+    [InlineData(23 * 60, "fournil", -1074, -30.5)]
     public void Firmin_suit_sa_journee(int minute, string activity, double x, double z)
     {
         long day = DryDay(minute);
@@ -383,10 +383,10 @@ public sealed class V23JourneeTests : IDisposable
             }
         WorldSession wet = At(TickAt(shower!.Value.day, shower.Value.minute));
         Assert.Equal("abri", wet.NpcActivity(firmin));
-        Assert.Equal(P(-53.5, 4.2), wet.NpcPosition(firmin));
+        Assert.Equal(P(-1085.5, -29.8), wet.NpcPosition(firmin));
         WorldSession light = At(TickAt(drizzle!.Value.day, drizzle.Value.minute));
         Assert.Equal("marche", light.NpcActivity(firmin));
-        Assert.Equal(P(-55.5, -4.5), light.NpcPosition(firmin));
+        Assert.Equal(P(-1087.5, -38.5), light.NpcPosition(firmin));
         Assert.True(WorldSession.Shelters(WeatherKind.Storm));
         Assert.False(WorldSession.Shelters(WeatherKind.Mist));
     }
@@ -413,7 +413,7 @@ public sealed class V23JourneeTests : IDisposable
         int noon = 12 * 60 + 15;
         long day = DryDay(noon);
         // V2.3.1 : la taverne est dans la salle de l'auberge (Garin n'est plus sur la terrasse).
-        Assert.Equal(DialogueRefusal.TooFar, At(TickAt(day, noon), Zone(-64.5, 1.4)).Talk("npc.armurier", out DialogueView? _));
+        Assert.Equal(DialogueRefusal.TooFar, At(TickAt(day, noon), Zone(-1096.5, -32.6)).Talk("npc.armurier", out DialogueView? _));
         WorldSession tavern = V231TestData.Inside("zone.auberge", TickAt(day, noon), 3.5, 0.8, Shipped.Value);
         Assert.Equal(DialogueRefusal.None, tavern.Talk("npc.armurier", out DialogueView? _));   // V1.9.10 : la première fois, il se présente
         tavern.Narrative!.Close();
@@ -496,7 +496,7 @@ public sealed class V23JourneeTests : IDisposable
         // Relecture indépendante de la PR #103 : l'étal de Renart (ouvert après son aveu) n'annonce pas « on le trouve au puits » quand on ne
         // peut pas lui acheter : il dit qu'il n'est pas encore ouvert.
         int noon = 12 * 60 + 15;
-        (string data, string scenarios) = DataCopy((-47.5, -0.6));
+        (string data, string scenarios) = DataCopy((-1079.5, -34.6));
         string save = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(save)!);
         SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(DryDay(noon), noon), 0, Array.Empty<string>(), Hero(100)));
@@ -618,16 +618,16 @@ public sealed class V23JourneeTests : IDisposable
     [Fact]
     public void Places_du_bourg_trouvees_sur_la_carte()
     {
-        (string data, string scenarios) = DataCopy((-58, -6));
+        (string data, string scenarios) = DataCopy((-1090, -40));
         string save = Path.Combine(_folder, "partie", "sauvegarde.json");
         Directory.CreateDirectory(Path.GetDirectoryName(save)!);
         SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(0, 9 * 60), 0, Array.Empty<string>(), Hero(100)));
         AdventureSession a = Adventure(save, data, scenarios);
         VillageSpots spots = VillageDay.Spots(a.Map)!;
-        Assert.Equal((-69.0, 4.0), spots.Tavern);
+        Assert.Equal((-1101.0, -30.0), spots.Tavern);
         Assert.Equal((0.0, -1.0), spots.TavernOut);   // la porte de l'auberge donne au sud
-        Assert.Equal((-58.0, -1.0), spots.Well);
-        Assert.InRange(spots.Houses.Count, 5, 20);
+        Assert.Equal((-1090.0, -35.0), spots.Well);
+        Assert.InRange(spots.Houses.Count, 5, 200);   // V2.30.1 : le bourg est dans la ville fortifiée (ses maisons serrées comptent)
         Assert.Contains("Firmin", VillageTrial.Guide(5 * 60 + 25), StringComparison.Ordinal);
         Assert.Contains("taverne", VillageTrial.Guide(19 * 60 + 40), StringComparison.Ordinal);
     }

@@ -90,7 +90,7 @@ public class ConcoursPatisserieTests
 
     private static WorldSession Oven(params ItemStack[] items)
     {
-        ZoneDefinition zone = ZoneAt(-43.5, 2.5);
+        ZoneDefinition zone = ZoneAt(-1075.5, -31.5);
         SavedCharacter hero = Hero(0, items).WithProfessions(new Dictionary<string, long> { ["cuisine"] = 1_000_000 });
         var session = new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>(), hero), zone, ShippedData, Progression, ItemsCatalog, null, Crafting(zone));
         session.Step();
@@ -100,7 +100,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
-        CraftingBook book = Crafting(ZoneAt(-43.5, 2.5));
+        CraftingBook book = Crafting(ZoneAt(-1075.5, -31.5));
         Assert.Equal("0.10.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
         Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons" },
@@ -169,7 +169,7 @@ public class ConcoursPatisserieTests
     /// <summary>Sur la place, à la Fête des Moissons (jour 63 du calendrier du jeu, 10 h 30), près de Firmin.</summary>
     private static WorldSession AtFestival(SavedCharacter hero, long day = 63)
     {
-        ZoneDefinition zone = Zone(-55, 3.1);
+        ZoneDefinition zone = Zone(-1087, -30.9);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 10 * 60 + 30) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone,
             ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         session.Step();

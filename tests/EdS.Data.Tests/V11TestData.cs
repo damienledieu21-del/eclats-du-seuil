@@ -103,9 +103,9 @@ internal static class V11TestData
     /// <summary>Place où se tenir pour commercer avec chaque marchand livré (à 1,6 m de son PNJ, hors de tout obstacle).</summary>
     public static (double X, double Z) Near(string merchant) => merchant switch
     {
-        "merchant.herboriste" => (-65.2, -6.4),
-        "merchant.armurier" => (-54.5, -11),
-        "merchant.epicier" => (-50.8, 4.4),
+        "merchant.herboriste" => (-1097.2, -40.4),
+        "merchant.armurier" => (-1086.5, -45),
+        "merchant.epicier" => (-1082.8, -29.6),
         _ => throw new ArgumentException(merchant),
     };
 
@@ -115,8 +115,8 @@ internal static class V11TestData
     /// </summary>
     public static (double X, double Z) NearAtNight(string merchant) => merchant switch
     {
-        "merchant.armurier" => (-54.5, -15),
-        "merchant.epicier" => (-46, 3.4),
+        "merchant.armurier" => (-1086.5, -49),
+        "merchant.epicier" => (-1078, -30.6),
         _ => Near(merchant),
     };
 

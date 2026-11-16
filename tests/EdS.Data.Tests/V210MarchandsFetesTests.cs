@@ -47,7 +47,7 @@ public class V210MarchandsFetesTests
         return session;
     }
 
-    private static WorldSession AtHerboriste(SavedCharacter hero, long day, int minute = 9 * 60) => Open(-65.2, -6.4, hero, day, minute);
+    private static WorldSession AtHerboriste(SavedCharacter hero, long day, int minute = 9 * 60) => Open(-1097.2, -40.4, hero, day, minute);
 
     private static SavedCharacter Reloaded(WorldSession w) => w.Save().Character!;
 
@@ -64,7 +64,7 @@ public class V210MarchandsFetesTests
     public void Formats_du_sous_lot_et_anciennes_versions_lues()
     {
         Assert.Equal((15, 12, 15), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema12, Story.Value.SchemaVersion));   // concours de pâtisserie : schéma 15 ; fêtes aux vraies dates : 14
-        Assert.Equal((6, 4, "0.13.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
+        Assert.Equal((6, 4, "0.14.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema4, ShippedMerchants.ContentVersion));   // sous-lot V2.14 : schéma 6
         Assert.Equal((24, 16), (SaveValidator.CurrentSchemaVersion, SaveValidator.StockSince));
         Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi",
             "festival.lanternes", "festival.liens", "festival.carnaval", "festival.artisans", "festival.feux_du_seuil", "festival.grand_tournoi",
@@ -236,7 +236,7 @@ public class V210MarchandsFetesTests
     public void Le_colporteur_ne_vient_qu_aux_fetes()
     {
         Npc anseau = Story.Value.Npc("npc.colporteur");
-        WorldSession ordinary = Open(-57, 4.6, Hero(100_000), 1);
+        WorldSession ordinary = Open(-1089, -29.4, Hero(100_000), 1);
         Assert.True(ordinary.NpcAway(anseau));
         Assert.False(ordinary.NpcHere(anseau));
         Assert.Equal(DialogueRefusal.TooFar, ordinary.Talk("npc.colporteur", out _));
@@ -244,7 +244,7 @@ public class V210MarchandsFetesTests
         Assert.Equal(TradeRefusal.NotFestival, ordinary.Buy(Colporteur, "item.pierre_a_aiguiser"));
         Assert.Equal(("festival.marche_mercredi", 2L), (ordinary.NextFestival()!.Value.Festival.Id, ordinary.NextFestival()!.Value.Day));   // V2.14 : le marché du mercredi
         // Jour de marché : il est là, sa boutique est ouverte, ses objets rares tournent.
-        WorldSession market = Open(-57, 4.6, Hero(100_000), 5, 8 * 60);
+        WorldSession market = Open(-1089, -29.4, Hero(100_000), 5, 8 * 60);
         Assert.Equal("festival.marche", market.Festival?.Id);
         Assert.False(market.NpcAway(anseau));
         Assert.True(market.NpcHere(anseau));
@@ -255,7 +255,7 @@ public class V210MarchandsFetesTests
         Assert.Equal(5, market.Stock(Colporteur).Count);   // deux offres permanentes, trois tirées
         // La route d'Ambre est coupée tant que la bande de Mâchefer tient le camp : pas de bottes ni de pendentif.
         Assert.Equal((0, 1), (market.Left(Colporteur, "item.bottes_du_renard"),
-            Open(-57, 4.6, Hero(100_000).WithStory(new SavedStory(new[] { "fact.chef_des_bandits.vaincu" })), 5, 8 * 60).Left(Colporteur, "item.bottes_du_renard")));
+            Open(-1089, -29.4, Hero(100_000).WithStory(new SavedStory(new[] { "fact.chef_des_bandits.vaincu" })), 5, 8 * 60).Left(Colporteur, "item.bottes_du_renard")));
         Assert.Contains(market.ActiveShocks, s => s.Id == "route_coupee");
     }
 
@@ -263,16 +263,16 @@ public class V210MarchandsFetesTests
     public void Les_invites_se_rassemblent_sur_la_place()
     {
         StoryBook book = Story.Value;
-        WorldSession market = Open(-57, 4.6, Hero(), 5, 8 * 60);
+        WorldSession market = Open(-1089, -29.4, Hero(), 5, 8 * 60);
         Npc lison = book.Npc("npc.lison");
-        Assert.Equal(("colporteur", P(-57.5, 1.5)), (market.NpcActivity(lison), market.NpcPosition(lison)));
-        WorldSession moissons = Open(-55, 3.1, Hero(), 63, 10 * 60 + 30);
+        Assert.Equal(("colporteur", P(-1089.5, -32.5)), (market.NpcActivity(lison), market.NpcPosition(lison)));
+        WorldSession moissons = Open(-1087, -30.9, Hero(), 63, 10 * 60 + 30);
         Npc firmin = book.Npc("npc.boulanger"), mathurin = book.Npc("npc.aubergiste");
-        Assert.Equal(("fete_concours", P(-55, 1.5)), (moissons.NpcActivity(firmin), moissons.NpcPosition(firmin)));
+        Assert.Equal(("fete_concours", P(-1087, -32.5)), (moissons.NpcActivity(firmin), moissons.NpcPosition(firmin)));
         // Mathurin sort de son auberge pour tenir le tonneau de cidre sur la place.
         Assert.Equal(((string?)null, true, "tonneau"), (moissons.NpcZone(mathurin), moissons.NpcHere(mathurin), moissons.NpcActivity(mathurin)));
         // Hors de la fête, chacun reprend sa journée.
-        WorldSession after = Open(-55, 3.1, Hero(), 63, 22 * 60 + 30);
+        WorldSession after = Open(-1087, -30.9, Hero(), 63, 22 * 60 + 30);
         Assert.Equal("fournil", after.NpcActivity(firmin));
     }
 
@@ -281,7 +281,7 @@ public class V210MarchandsFetesTests
     {
         var pain = new Dictionary<string, QuestProgress> { ["quest.pain_du_matin"] = new QuestProgress(QuestProgress.Done) };
         SavedCharacter hero = Hero(0, new ItemStack(Herbe, 8)).WithStory(new SavedStory(new[] { "fact.met.boulanger" }, pain));
-        WorldSession w = Open(-55, 3.1, hero, 63, 10 * 60 + 30);
+        WorldSession w = Open(-1087, -30.9, hero, 63, 10 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, w.Talk("npc.boulanger", out DialogueView? view));
         Assert.Equal("v210_moissons", view!.Node);
         DialogueOption tourte = view.Options.Single(o => o.Text == "text.v210.boulanger.tourte");
@@ -294,12 +294,12 @@ public class V210MarchandsFetesTests
         Assert.DoesNotContain(view!.Options, o => o.Text == "text.v210.boulanger.tourte");
         SavedCharacter saved = Reloaded(w);
         Assert.Equal(63L, saved.Story.Festivals["festival.moissons"]);
-        WorldSession nextYear = Open(-55, 3.1, saved, 63 + WorldCalendar.DaysPerYear, 10 * 60 + 30);
+        WorldSession nextYear = Open(-1087, -30.9, saved, 63 + WorldCalendar.DaysPerYear, 10 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, nextYear.Talk("npc.boulanger", out view));
         Assert.Contains(view!.Options, o => o.Text == "text.v210.boulanger.tourte");
         // Une quête en cours passe avant la fête (Firmin parle d'abord du pain du matin).
         var started = new Dictionary<string, QuestProgress> { ["quest.pain_du_matin"] = new QuestProgress(Story.Value.Quest("quest.pain_du_matin").Steps[0].Id) };
-        WorldSession busy = Open(-55, 3.1, Hero().WithStory(new SavedStory(null, started)), 63, 10 * 60 + 30);
+        WorldSession busy = Open(-1087, -30.9, Hero().WithStory(new SavedStory(null, started)), 63, 10 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, busy.Talk("npc.boulanger", out view));
         Assert.NotEqual("v210_moissons", view!.Node);
     }
@@ -322,7 +322,7 @@ public class V210MarchandsFetesTests
             return v!;
         }
         // Semaine 0 : la tourte ; la première victoire donne le tablier de maître.
-        WorldSession first = Open(-54, 2.1, hero, 5, 8 * 60 + 30);
+        WorldSession first = Open(-1086, -31.9, hero, 5, 8 * 60 + 30);
         DialogueView view = Talk(first, "npc.boulanger");
         Assert.Equal("v210_marche", view.Node);
         Assert.Equal(DialogueRefusal.None, first.Choose(view.Options.Single(o => o.Text == "text.v210.boulanger.marche.tourte").Index, out _, out _));
@@ -330,17 +330,17 @@ public class V210MarchandsFetesTests
         Assert.True(first.Narrative!.Knows("fact.v210.prix.tablier"));
         SavedCharacter after = Reloaded(first);
         // Semaine 1 : pas de tourte, le tir d'Aldric.
-        WorldSession tir = Open(-54, 2.1, after, 12, 8 * 60 + 30);
+        WorldSession tir = Open(-1086, -31.9, after, 12, 8 * 60 + 30);
         Assert.DoesNotContain(Talk(tir, "npc.boulanger").Options, o => o.Text == "text.v210.boulanger.marche.tourte");
-        WorldSession aldric = Open(-58, -7.4, after, 12, 8 * 60 + 30);
+        WorldSession aldric = Open(-1090, -41.4, after, 12, 8 * 60 + 30);
         Assert.Contains(Talk(aldric, "npc.archer_garde").Options, o => o.Text == "text.v210.aldric.marche.tir");
         // Semaine 2 : les contes, et le livre de contes.
-        WorldSession contes = Open(-52.5, -1.9, after, 19, 8 * 60 + 30);
+        WorldSession contes = Open(-1084.5, -35.9, after, 19, 8 * 60 + 30);
         view = Talk(contes, "npc.pretre");
         Assert.Equal(DialogueRefusal.None, contes.Choose(view.Options.Single(o => o.Text == "text.v210.anselme.marche.conter").Index, out _, out _));
         Assert.Equal(1, contes.Inventory.Count("item.livre_de_contes"));
         // Semaine 3 : la tourte revient ; le tablier est déjà donné : la bourse ordinaire.
-        WorldSession again = Open(-54, 2.1, after, 26, 8 * 60 + 30);
+        WorldSession again = Open(-1086, -31.9, after, 26, 8 * 60 + 30);
         view = Talk(again, "npc.boulanger");
         long money = again.Money;
         Assert.Equal(DialogueRefusal.None, again.Choose(view.Options.Single(o => o.Text == "text.v210.boulanger.marche.tourte").Index, out _, out _));
@@ -366,12 +366,12 @@ public class V210MarchandsFetesTests
             ["quest.cloches_de_la_chapelle"] = new QuestProgress(QuestProgress.Done),
         };
         SavedCharacter hero = Hero(1_000).WithStory(new SavedStory(new[] { "fact.met.pretre" }, done));
-        WorldSession contes = Open(-52.5, -1.9, hero, 19, 8 * 60 + 30);
+        WorldSession contes = Open(-1084.5, -35.9, hero, 19, 8 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, contes.Talk("npc.pretre", out DialogueView? view));
         Assert.Equal("v210_marche", view!.Node);
         Assert.Equal(DialogueRefusal.None, contes.Choose(view.Options.Single(o => o.Text == "text.v210.anselme.marche.conter").Index, out _, out _));
         Assert.Equal(1, contes.Inventory.Count("item.livre_de_contes"));
-        WorldSession veillee = Open(-71, -3.5, hero, 105, 18 * 60 + 30);
+        WorldSession veillee = Open(-1103, -37.5, hero, 105, 18 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, veillee.Talk("npc.pretre", out view));
         Assert.Equal("v210_veillee", view!.Node);
         // Chez tous les PNJ : aucune entrée « quête terminée » ne passe avant une entrée de fête (elle capterait la conversation pour toujours).
@@ -388,7 +388,7 @@ public class V210MarchandsFetesTests
             ["quest.bete_blanche"] = new QuestProgress(QuestProgress.Done),
             ["quest.cloches_de_la_chapelle"] = new QuestProgress(Story.Value.Quest("quest.cloches_de_la_chapelle").Steps[0].Id),
         };
-        WorldSession busy = Open(-52.5, -1.9, Hero(1_000).WithStory(new SavedStory(new[] { "fact.met.pretre" }, started)), 19, 8 * 60 + 30);
+        WorldSession busy = Open(-1084.5, -35.9, Hero(1_000).WithStory(new SavedStory(new[] { "fact.met.pretre" }, started)), 19, 8 * 60 + 30);
         Assert.Equal(DialogueRefusal.None, busy.Talk("npc.pretre", out view));
         Assert.NotEqual("v210_marche", view!.Node);
     }
@@ -415,10 +415,10 @@ public class V210MarchandsFetesTests
                 change(root);
                 File.WriteAllText(path, root.ToJsonString());
             }
-            Edit(ZoneJsonReader.PathIn(data, "zone.vallons"), root => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-66.0, -6.5));
+            Edit(ZoneJsonReader.PathIn(data, "zone.vallons"), root => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-1098.0, -40.5));
             Edit(StoryJsonReader.StoryPathIn(data), root => root["data"]!["festivals"]!.AsArray()
                 .Single(f => (string?)f!["id"] == "festival.veillee")!["guests"]!.AsArray()
-                .Add(new JsonObject { ["npc"] = "npc.archiviste", ["position"] = new JsonArray(-66.0, -7.0), ["activity"] = "veillee" }));
+                .Add(new JsonObject { ["npc"] = "npc.archiviste", ["position"] = new JsonArray(-1098.0, -41.0), ["activity"] = "veillee" }));
             StoryBook book = StoryJsonReader.ReadStory(File.ReadAllText(StoryJsonReader.StoryPathIn(data)), Texts, Zone(), ItemsCatalog, V16TestData.Interiors).Story!;
             Assert.Contains(book.VisitorsOf(null), n => n.Id == "npc.archiviste");
             Assert.Contains(book.VisitorsOf("zone.archives"), n => n.Id == "npc.archiviste");
@@ -548,7 +548,7 @@ public class V210MarchandsFetesTests
         foreach (long day in new long[] { 1, 2, 30, 31, 63, 90, 91 })
         {
             var market = new Market(ShippedMerchants);
-            WorldSession w = Open(-65.2, -6.4, hero, day, 9 * 60, null);
+            WorldSession w = Open(-1097.2, -40.4, hero, day, 9 * 60, null);
             long Wealth() => w.Money + w.Inventory.Stacks.Sum(s => new Market(ShippedMerchants).UnitPrice(Herboriste, s.Item) * s.Count);
             long wealth = Wealth();
             for (int i = 0; i < 400; i++)
@@ -623,7 +623,7 @@ public class V210MarchandsFetesTests
         root["data"]!["prices"] = rules;
         MerchantsLoadResult read = ReadMerchants(root);
         Assert.True(read.IsValid, read.Report.ToString());
-        WorldSession w = Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, read.Book);
+        WorldSession w = Open(-1097.2, -40.4, Hero(100_000), 1, 9 * 60, read.Book);
         Assert.Equal(MerchantValidator.MaxPercent, w.MarketPercent(Herboriste, Potion));
         Assert.Equal(180L, w.Stock(Herboriste).Single(o => o.Item == Potion).Price);   // 60 × 300 %
         Assert.Equal(TradeRefusal.None, w.Buy(Herboriste, Potion));
@@ -651,7 +651,7 @@ public class V210MarchandsFetesTests
         MerchantBook book = ReadMerchants(root).Book!;
         var market = new Market(book);
         long day = Enumerable.Range(1, 30).First(d => market.Stock(Herboriste, d).All(o => o.Item != "item.eclat_de_seuil"));
-        WorldSession w = Open(-65.2, -6.4, Hero(100_000, new ItemStack("item.eclat_de_seuil", 2)), day, 9 * 60, book);
+        WorldSession w = Open(-1097.2, -40.4, Hero(100_000, new ItemStack("item.eclat_de_seuil", 2)), day, 9 * 60, book);
         Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, "item.eclat_de_seuil", 2));
         MerchantOffer resold = w.Stock(Herboriste).Single(o => o.Item == "item.eclat_de_seuil");
         Assert.Equal((true, "f"), (resold.Resold, resold.Rank));
@@ -668,7 +668,7 @@ public class V210MarchandsFetesTests
         const string eclat = "item.eclat_de_seuil";
         var market = new Market(ShippedMerchants);
         long day = Enumerable.Range(1, 30).First(d => market.Stock(Herboriste, d).All(o => o.Item != eclat));
-        WorldSession w = Open(-65.2, -6.4, Hero(100_000, new ItemStack(eclat, 2)), day, 9 * 60);
+        WorldSession w = Open(-1097.2, -40.4, Hero(100_000, new ItemStack(eclat, 2)), day, 9 * 60);
         Assert.Equal(TradeRefusal.None, w.Sell(Herboriste, eclat, 2));
         Assert.Equal(2, w.Stock(Herboriste).Single(o => o.Item == eclat).Left);
         string before = Snapshot(w);
@@ -706,14 +706,14 @@ public class V210MarchandsFetesTests
         root["data"]!["prices"] = rules;
         MerchantsLoadResult bare = ReadMerchants(root);
         Assert.True(bare.IsValid, bare.Report.ToString());
-        Assert.Equal(MerchantValidator.MaxPercent, Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, bare.Book).MarketPercent(Herboriste, Potion));
+        Assert.Equal(MerchantValidator.MaxPercent, Open(-1097.2, -40.4, Hero(100_000), 1, 9 * 60, bare.Book).MarketPercent(Herboriste, Potion));
         var shocks = new JsonArray();
         for (int i = 0; i < 8; i++)
             shocks.Add(new JsonObject { ["id"] = $"baisse_{i}", ["notFact"] = "fact.chef_des_bandits.vaincu", ["items"] = new JsonArray(Potion), ["stockPercent"] = 100, ["pricePercent"] = MerchantValidator.MinPercent });
         root["data"]!["shocks"] = shocks;
         MerchantsLoadResult read = ReadMerchants(root);
         Assert.True(read.IsValid, read.Report.ToString());
-        WorldSession w = Open(-65.2, -6.4, Hero(100_000), 1, 9 * 60, read.Book);
+        WorldSession w = Open(-1097.2, -40.4, Hero(100_000), 1, 9 * 60, read.Book);
         Assert.Equal(256, w.MarketPercent(Herboriste, Potion));
         Assert.Equal(154L, w.Stock(Herboriste).Single(o => o.Item == Potion).Price);   // 60 × 256 % = 153,6, arrondi au-dessus
     }

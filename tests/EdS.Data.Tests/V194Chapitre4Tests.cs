@@ -28,7 +28,7 @@ public class V194Chapitre4Tests
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle) : dans les Vallons, puis dans les intérieurs.
     private static readonly (double X, double Z) Thibaut = (118, 54.5), Capitaine = (-2, -9.5), Colin = (68, -31.5), Josse = (84, -37.5), Aubine = (72, -37.5),
-        Renart = (-47.5, -3.3), Epiciere = (-50.8, 4.4), Tour0 = (15, 77), Camp0 = (90, 84);
+        Renart = (-1079.5, -37.3), Epiciere = (-1082.8, -29.6), Tour0 = (15, 77), Camp0 = (90, 84);
     private static readonly (double X, double Z) Albe = (3.2, 3.2), Rosalie = (-1.8, -2.4), Maitresse = (0, 1.0);
 
     private static readonly Lazy<ZoneDefinition> Vallons = new(() => Zone());

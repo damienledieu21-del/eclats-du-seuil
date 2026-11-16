@@ -159,8 +159,8 @@ public class EssaiRealiste8Tests : IDisposable
                 used.Add(pick.Model);
             }
         }
-        Assert.Equal(10, houses);
-        Assert.True(used.Count >= 3, "les dix maisons doivent varier");
+        Assert.Equal(4, houses);   // V2.30.1 : six maisons du bourg sont dans la ville fortifiée (autre secteur) ; restent au cœur maison3, maison8 (hameau), maison9, maison10
+        Assert.True(used.Count >= 3, "les maisons doivent varier");
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class EssaiRealiste8Tests : IDisposable
             map.Obstacles.Select(o => (o.Points.Min(q => q.X.Raw) / 10000.0, o.Points.Min(q => q.Z.Raw) / 10000.0, o.Points.Max(q => q.X.Raw) / 10000.0,
                 o.Points.Max(q => q.Z.Raw) / 10000.0)).ToList(), map.Roads, map.Clearings, (map.MinX, map.MinZ, map.MaxX, map.MaxZ))).ToList();
         IReadOnlyList<StyleVillager> villagers = TownModels.Villagers(map, fields, 30);
-        Assert.InRange(villagers.Count, 8, 30);
+        Assert.InRange(villagers.Count, 4, 30);   // V2.30.1 : moins de villageois au cœur, le bourg a déménagé
         Assert.Equal(villagers.Count, villagers.Select(v => v.Id).Distinct().Count());
         Assert.All(villagers, v => Assert.Contains(v.Character, new[] { "paysan", "garde", "sentinelle" }));
         Assert.Contains(villagers, v => v.Activity == VillagerActivity.Talk);

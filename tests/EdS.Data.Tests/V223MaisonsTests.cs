@@ -23,9 +23,11 @@ public class V223MaisonsTests : IDisposable
 
     private static string Folder(string id) => Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Modeles", "Batiments", id);
 
-    private AdventureSession Vallons()
+    /// <summary>Les Vallons, au bourg (ville fortifiée, sous-lot V2.30.1) pour <c>maison5</c>, au village pour les autres maisons.</summary>
+    private AdventureSession Vallons(string id = "maison5")
     {
-        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, "partie.json"));
+        if (id == "maison5") return LoadAtBourg(Path.Combine(_folder, id, "partie.json"));
+        AdventureSession a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), Path.Combine(_folder, id, "partie.json"));
         a.Advance(0.05);
         return a;
     }
@@ -76,7 +78,7 @@ public class V223MaisonsTests : IDisposable
     // sud-ouest est à 1,70 m du bord du chemin des champs.
     private static readonly Dictionary<string, double[]> Houses = new Dictionary<string, double[]>
     {
-        ["maison5"] = new[] { -89.5, -79.5, 4.0, 13.0, 0, -1, 3.20, 3.90, -0.30, 9.637, -0.525, 8.10, -84.5, 4.6, 1.437, 7.00, 9.637, 0.40, 7.50 },
+        ["maison5"] = new[] { -1121.5, -1111.5, -30.0, -21.0, 0, -1, 3.20, 3.90, -0.30, 9.637, -0.525, 8.10, -1116.5, -29.4, 1.437, 7.00, 9.637, 0.40, 7.50 },
         ["maison3"] = new[] { -35.0, -25.0, -15.0, -6.0, 0, 1, 4.70, 4.20, -0.30, 9.70, -0.30, 8.70, -30.0, -6.3, 0.0, 0.0, 0.0, 0.0, 0.0 },
         ["maison8"] = new[] { -99.0, -93.0, 4.0, 10.5, 0, -1, 2.70, 2.95, -0.30, 5.70, -0.30, 6.20, -96.0, 4.3, 0.0, 0.0, 0.0, 0.0, 0.0 },
         ["maison9"] = new[] { -74.0, -67.0, -52.0, -46.0, 1, 0, 2.20, 2.70, -0.30, 6.70, -0.30, 5.70, -67.8, -49.0, 1.5, 4.40, 6.70, 0.80, 4.90 },
@@ -102,7 +104,7 @@ public class V223MaisonsTests : IDisposable
         int fx = (int)h[4], fz = (int)h[5];
         double wx = h[6], wy = h[7], x0 = h[8], x1 = h[9], y0 = h[10], y1 = h[11], doorX = h[12], doorZ = h[13], overflow = h[14];
         double ex0 = h[15], ex1 = h[16], ey0 = h[17], ey1 = h[18];
-        AdventureMap map = Vallons().Map;
+        AdventureMap map = Vallons(id).Map;
         Assert.Equal((minX, maxX, minZ, maxZ), Box(map.Obstacles.First(o => o.Id == id)));
         (int X, int Z) facing = TownRules.FacingOf(id, minX, minZ, maxX, maxZ, map.Roads, map.Doors);
         Assert.Equal((fx, fz), facing);
@@ -148,19 +150,19 @@ public class V223MaisonsTests : IDisposable
         AdventureMap map = Vallons().Map;
         var door = map.Doors.First(d => d.Building == "maison5");
         Assert.Equal("porte_maison", door.Id);
-        Assert.Equal((-84.5, 3.0), (door.X, door.Z));
-        (int X, int Z) facing = TownRules.FacingOf("maison5", -89.5, 4.0, -79.5, 13.0, map.Roads, map.Doors);
-        var p1 = TownModels.OwnPlace(-84.5, 8.5, facing, 3.20 - 3.20, 0.0, 3.90);
+        Assert.Equal((-1116.5, -31.0), (door.X, door.Z));
+        (int X, int Z) facing = TownRules.FacingOf("maison5", -1121.5, -30.0, -1111.5, -21.0, map.Roads, map.Doors);
+        var p1 = TownModels.OwnPlace(-1116.5, -25.5, facing, 3.20 - 3.20, 0.0, 3.90);
         Assert.Equal(door.X, p1.X, 6);
-        Assert.InRange(p1.Z, door.Z, 8.5);
-        var garden = TownModels.OwnPlace(-84.5, 8.5, facing, 3.20 - 8.25, 0.0, 3.90 - 4.0);
-        Assert.True(garden.X > -84.5);
+        Assert.InRange(p1.Z, door.Z, -25.5);
+        var garden = TownModels.OwnPlace(-1116.5, -25.5, facing, 3.20 - 8.25, 0.0, 3.90 - 4.0);
+        Assert.True(garden.X > -1116.5);
         // Vu de dehors (devant la porte, regard vers +z), la droite est +x dans Unity.
-        Assert.Equal((-79.45, 4.6), (Math.Round(garden.X, 6), Math.Round(TownModels.OwnPlace(-84.5, 8.5, facing, 0.0, 0.0, 3.90).Z, 6)));
-        var cat = TownModels.OwnPlace(-84.5, 8.5, facing, 3.20 - 6.352, 1.0, 3.90 - 2.02);
-        Assert.Equal((-81.348, 1.0, 6.62), (Math.Round(cat.X, 6), Math.Round(cat.Y, 6), Math.Round(cat.Z, 6)));
-        Assert.InRange(cat.X, -89.5, -79.5);
-        Assert.InRange(cat.Z, 4.0, 13.0);
+        Assert.Equal((-1111.45, -29.4), (Math.Round(garden.X, 6), Math.Round(TownModels.OwnPlace(-1116.5, -25.5, facing, 0.0, 0.0, 3.90).Z, 6)));
+        var cat = TownModels.OwnPlace(-1116.5, -25.5, facing, 3.20 - 6.352, 1.0, 3.90 - 2.02);
+        Assert.Equal((-1113.348, 1.0, -27.38), (Math.Round(cat.X, 6), Math.Round(cat.Y, 6), Math.Round(cat.Z, 6)));
+        Assert.InRange(cat.X, -1121.5, -1111.5);
+        Assert.InRange(cat.Z, -30.0, -21.0);
     }
 
     /// <summary>
@@ -178,9 +180,9 @@ public class V223MaisonsTests : IDisposable
             Assert.Null(TownModels.OwnLantern(m));
             Assert.False(TownModels.OwnLanternAlwaysLit(m));
         }
-        AdventureSession a = Vallons();
-        foreach (ShopChimney c in a.Chimneys().Concat(a.KitchenChimneys()))
-            Assert.DoesNotContain(a.ShopBuildingOf(c.Id), new[] { "maison3", "maison5", "maison8", "maison9", "maison10" });
+        foreach (AdventureSession a in new[] { Vallons(), Vallons("maison3") })   // V2.30.1 : au bourg (ville fortifiée), puis au cœur
+            foreach (ShopChimney c in a.Chimneys().Concat(a.KitchenChimneys()))
+                Assert.DoesNotContain(a.ShopBuildingOf(c.Id), new[] { "maison3", "maison5", "maison8", "maison9", "maison10" });
     }
 
     private static double SegmentDistance(double px, double pz, (double X, double Z) a, (double X, double Z) b)

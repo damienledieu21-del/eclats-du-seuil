@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 15,
   "kind": "story",
-  "contentVersion": "0.29.0-provisoire",
+  "contentVersion": "0.30.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -154,8 +154,8 @@
         "id": "npc.armurier",
         "name": "text.npc.armurier.name",
         "position": [
-          -54.5,
-          -12.6
+          -1086.5,
+          -46.6
         ],
         "dialogue": "dialogue.armurier",
         "schedule": [
@@ -163,8 +163,8 @@
             "at": "05:00",
             "activity": "boutique",
             "position": [
-              -54.5,
-              -12.6
+              -1086.5,
+              -46.6
             ]
           },
           {
@@ -180,16 +180,16 @@
             "at": "13:00",
             "activity": "boutique",
             "position": [
-              -54.5,
-              -12.6
+              -1086.5,
+              -46.6
             ]
           },
           {
             "at": "22:00",
             "activity": "maison",
             "position": [
-              -54.5,
-              -16.6
+              -1086.5,
+              -50.6
             ]
           }
         ]
@@ -198,8 +198,8 @@
         "id": "npc.herboriste",
         "name": "text.npc.herboriste.name",
         "position": [
-          -65.2,
-          -8
+          -1097.2,
+          -42
         ],
         "dialogue": "dialogue.herboriste",
         "schedule": [
@@ -207,8 +207,8 @@
             "at": "07:45",
             "activity": "boutique",
             "position": [
-              -65.2,
-              -8
+              -1097.2,
+              -42
             ]
           },
           {
@@ -223,8 +223,8 @@
             "at": "16:30",
             "activity": "boutique",
             "position": [
-              -65.2,
-              -8
+              -1097.2,
+              -42
             ]
           }
         ]
@@ -233,8 +233,8 @@
         "id": "npc.epiciere",
         "name": "text.npc.epiciere.name",
         "position": [
-          -50.8,
-          6
+          -1082.8,
+          -28
         ],
         "dialogue": "dialogue.epiciere",
         "schedule": [
@@ -242,22 +242,22 @@
             "at": "05:00",
             "activity": "boutique",
             "position": [
-              -50.8,
-              6
+              -1082.8,
+              -28
             ]
           },
           {
             "at": "12:30",
             "activity": "commerages",
             "position": [
-              -56,
-              1.2
+              -1088,
+              -32.8
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -51.5,
-                4.4
+                -1083.5,
+                -29.6
               ]
             }
           },
@@ -265,8 +265,8 @@
             "at": "13:30",
             "activity": "boutique",
             "position": [
-              -50.8,
-              6
+              -1082.8,
+              -28
             ]
           },
           {
@@ -282,16 +282,16 @@
             "at": "21:15",
             "activity": "boutique",
             "position": [
-              -50.8,
-              6
+              -1082.8,
+              -28
             ]
           },
           {
             "at": "22:00",
             "activity": "maison",
             "position": [
-              -46,
-              5
+              -1078,
+              -29
             ]
           }
         ]
@@ -334,8 +334,8 @@
             "at": "16:00",
             "activity": "pipe",
             "position": [
-              -67.6,
-              4.3
+              -1099.6,
+              -29.7
             ],
             "zone": "zone.vallons"
           },
@@ -359,8 +359,8 @@
             "at": "21:00",
             "activity": "pipe",
             "position": [
-              -67.6,
-              4.3
+              -1099.6,
+              -29.7
             ],
             "zone": "zone.vallons"
           },
@@ -412,15 +412,15 @@
             "at": "15:30",
             "activity": "tournee",
             "position": [
-              -62.7,
-              -17.0
+              -1094.7,
+              -51.0
             ],
             "zone": "zone.vallons",
             "rain": {
               "activity": "abri",
               "position": [
-                -71.0,
-                -5.6
+                -1103.0,
+                -39.6
               ]
             }
           },
@@ -498,15 +498,15 @@
             "at": "12:00",
             "activity": "puits",
             "position": [
-              -56.3,
-              -2.8
+              -1088.3,
+              -36.8
             ],
             "zone": "zone.vallons",
             "rain": {
               "activity": "abri",
               "position": [
-                -57.2,
-                -3.2
+                -1089.2,
+                -37.2
               ]
             }
           },
@@ -530,15 +530,15 @@
             "at": "16:00",
             "activity": "promenade",
             "position": [
-              -56.5,
-              -7.8
+              -1088.5,
+              -41.8
             ],
             "zone": "zone.vallons",
             "rain": {
               "activity": "abri",
               "position": [
-                -52.5,
-                4.3
+                -1084.5,
+                -29.7
               ]
             }
           },
@@ -697,8 +697,8 @@
         "id": "npc.boulanger",
         "name": "text.ch1.npc.boulanger.name",
         "position": [
-          -42,
-          3.5
+          -1074,
+          -30.5
         ],
         "dialogue": "dialogue.boulanger",
         "schedule": [
@@ -706,22 +706,22 @@
             "at": "02:00",
             "activity": "fournil",
             "position": [
-              -42,
-              3.5
+              -1074,
+              -30.5
             ]
           },
           {
             "at": "11:30",
             "activity": "marche",
             "position": [
-              -55.5,
-              -4.5
+              -1087.5,
+              -38.5
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -53.5,
-                4.2
+                -1085.5,
+                -29.8
               ]
             }
           },
@@ -729,8 +729,8 @@
             "at": "14:00",
             "activity": "sieste",
             "position": [
-              -38.5,
-              4.8
+              -1070.5,
+              -29.2
             ]
           },
           {
@@ -746,8 +746,8 @@
             "at": "21:30",
             "activity": "fournil",
             "position": [
-              -42,
-              3.5
+              -1074,
+              -30.5
             ]
           }
         ],
@@ -790,14 +790,14 @@
             "at": "16:30",
             "activity": "taverne",
             "position": [
-              -71,
-              1.2
+              -1103,
+              -32.8
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -70.5,
-                4.3
+                -1102.5,
+                -29.7
               ]
             }
           },
@@ -850,15 +850,15 @@
             "at": "17:00",
             "activity": "veille",
             "position": [
-              -69.6,
-              -6.4
+              -1101.6,
+              -40.4
             ],
             "zone": "zone.vallons",
             "rain": {
               "activity": "abri",
               "position": [
-                -71.6,
-                -5.4
+                -1103.6,
+                -39.4
               ]
             }
           },
@@ -876,8 +876,8 @@
         "id": "npc.renart",
         "name": "text.ch2.npc.renart.name",
         "position": [
-          -47.5,
-          -2
+          -1079.5,
+          -36
         ],
         "dialogue": "dialogue.renart",
         "schedule": [
@@ -885,22 +885,22 @@
             "at": "07:00",
             "activity": "boutique",
             "position": [
-              -47.5,
-              -2
+              -1079.5,
+              -36
             ]
           },
           {
             "at": "12:00",
             "activity": "commerages",
             "position": [
-              -58.5,
-              1.6
+              -1090.5,
+              -32.4
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -49.5,
-                4.3
+                -1081.5,
+                -29.7
               ]
             }
           },
@@ -908,8 +908,8 @@
             "at": "13:00",
             "activity": "boutique",
             "position": [
-              -47.5,
-              -2
+              -1079.5,
+              -36
             ]
           },
           {
@@ -925,8 +925,8 @@
             "at": "22:00",
             "activity": "boutique",
             "position": [
-              -47.5,
-              -2
+              -1079.5,
+              -36
             ]
           }
         ]
@@ -935,8 +935,8 @@
         "id": "npc.lison",
         "name": "text.ch2.npc.lison.name",
         "position": [
-          -60.8,
-          -1
+          -1092.8,
+          -35
         ],
         "dialogue": "dialogue.lison",
         "schedule": [
@@ -944,22 +944,22 @@
             "at": "00:00",
             "activity": "puits",
             "position": [
-              -60.8,
-              -1
+              -1092.8,
+              -35
             ]
           },
           {
             "at": "13:00",
             "activity": "jeux",
             "position": [
-              -67,
-              -3.5
+              -1099,
+              -37.5
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -58,
-                -3.2
+                -1090,
+                -37.2
               ]
             }
           },
@@ -967,14 +967,14 @@
             "at": "15:00",
             "activity": "jeux",
             "position": [
-              -60.5,
-              -12.5
+              -1092.5,
+              -46.5
             ],
             "rain": {
               "activity": "abri",
               "position": [
-                -58,
-                -3.2
+                -1090,
+                -37.2
               ]
             }
           },
@@ -982,8 +982,8 @@
             "at": "17:30",
             "activity": "puits",
             "position": [
-              -60.8,
-              -1
+              -1092.8,
+              -35
             ]
           }
         ]
@@ -1215,8 +1215,8 @@
         "id": "npc.veuve",
         "name": "text.ch3.npc.veuve.name",
         "position": [
-          -64,
-          -18
+          -1096,
+          -52
         ],
         "dialogue": "dialogue.veuve",
         "schedule": [
@@ -1224,32 +1224,32 @@
             "at": "06:00",
             "activity": "chapelle",
             "position": [
-              -71.5,
-              -5.5
+              -1103.5,
+              -39.5
             ]
           },
           {
             "at": "07:30",
             "activity": "attente",
             "position": [
-              -64,
-              -18
+              -1096,
+              -52
             ]
           },
           {
             "at": "18:30",
             "activity": "chapelle",
             "position": [
-              -71.5,
-              -5.5
+              -1103.5,
+              -39.5
             ]
           },
           {
             "at": "19:30",
             "activity": "attente",
             "position": [
-              -64,
-              -18
+              -1096,
+              -52
             ]
           }
         ]
@@ -1439,8 +1439,8 @@
         "id": "npc.colporteur",
         "name": "text.v210.npc.colporteur.name",
         "position": [
-          -57,
-          3
+          -1089,
+          -31
         ],
         "dialogue": "dialogue.colporteur",
         "faction": "villagers",
@@ -1494,8 +1494,8 @@
         "id": "npc.fromagere",
         "name": "text.v214.npc.fromagere.name",
         "position": [
-          -50.5,
-          -5.6
+          -1082.5,
+          -39.6
         ],
         "dialogue": "dialogue.fromagere",
         "faction": "villagers",
@@ -1508,8 +1508,8 @@
         "id": "npc.marchand_epices",
         "name": "text.v214.npc.epices.name",
         "position": [
-          -61.0,
-          4.2
+          -1093.0,
+          -29.8
         ],
         "dialogue": "dialogue.marchand_epices",
         "faction": "villagers",
@@ -25656,40 +25656,40 @@
           {
             "npc": "npc.boulanger",
             "position": [
-              -55,
-              1.5
+              -1087,
+              -32.5
             ],
             "activity": "fete_concours"
           },
           {
             "npc": "npc.odile",
             "position": [
-              -53.5,
-              -1
+              -1085.5,
+              -35
             ],
             "activity": "fete"
           },
           {
             "npc": "npc.archer_garde",
             "position": [
-              -57.5,
-              -6
+              -1089.5,
+              -40
             ],
             "activity": "fete"
           },
           {
             "npc": "npc.lison",
             "position": [
-              -58.5,
-              2.2
+              -1090.5,
+              -31.8
             ],
             "activity": "bal"
           },
           {
             "npc": "npc.aubergiste",
             "position": [
-              -60,
-              2
+              -1092,
+              -32
             ],
             "activity": "tonneau"
           }
@@ -25707,32 +25707,32 @@
           {
             "npc": "npc.pretre",
             "position": [
-              -71,
-              -4.5
+              -1103,
+              -38.5
             ],
             "activity": "conte"
           },
           {
             "npc": "npc.albe",
             "position": [
-              -69,
-              -4
+              -1101,
+              -38
             ],
             "activity": "veillee"
           },
           {
             "npc": "npc.lison",
             "position": [
-              -70.5,
-              -2.5
+              -1102.5,
+              -36.5
             ],
             "activity": "veillee"
           },
           {
             "npc": "npc.habitant",
             "position": [
-              -68,
-              -5.5
+              -1100,
+              -39.5
             ],
             "activity": "veillee"
           }
@@ -25750,24 +25750,24 @@
           {
             "npc": "npc.archer_garde",
             "position": [
-              -58,
-              -9
+              -1090,
+              -43
             ],
             "activity": "cible"
           },
           {
             "npc": "npc.lison",
             "position": [
-              -57,
-              0.5
+              -1089,
+              -33.5
             ],
             "activity": "foire"
           },
           {
             "npc": "npc.boulanger",
             "position": [
-              -54.5,
-              0
+              -1086.5,
+              -34
             ],
             "activity": "foire"
           }
@@ -25783,40 +25783,40 @@
           {
             "npc": "npc.habitant",
             "position": [
-              -55,
-              -2.5
+              -1087,
+              -36.5
             ],
             "activity": "marche"
           },
           {
             "npc": "npc.lison",
             "position": [
-              -57.5,
-              1.5
+              -1089.5,
+              -32.5
             ],
             "activity": "colporteur"
           },
           {
             "npc": "npc.boulanger",
             "position": [
-              -54,
-              0.5
+              -1086,
+              -33.5
             ],
             "activity": "fete_concours"
           },
           {
             "npc": "npc.archer_garde",
             "position": [
-              -58,
-              -9
+              -1090,
+              -43
             ],
             "activity": "cible"
           },
           {
             "npc": "npc.pretre",
             "position": [
-              -52.5,
-              -3.5
+              -1084.5,
+              -37.5
             ],
             "activity": "conte"
           }
@@ -25833,16 +25833,16 @@
           {
             "npc": "npc.habitant",
             "position": [
-              -55,
-              -2.5
+              -1087,
+              -36.5
             ],
             "activity": "marche"
           },
           {
             "npc": "npc.lison",
             "position": [
-              -57.5,
-              1.5
+              -1089.5,
+              -32.5
             ],
             "activity": "colporteur"
           }

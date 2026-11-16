@@ -67,11 +67,15 @@ public class MapPainterTests
         // Vallons agrandis : routes, bâtiments, bois, lac, camp, champs.
         var dirt = At(image, width, height, map, -36, -1.2);           // grand-rue de terre battue
         Assert.True(dirt.R > dirt.G && dirt.G > dirt.B && dirt.R > 0.3, $"chemin {dirt}");
-        var cobble = At(image, width, height, map, -63, -5);           // place pavée du bourg
+        // Sous-lot V2.30.1 : la place, l'auberge et la chapelle du bourg sont dans la ville fortifiée : carte peinte de leur secteur.
+        AdventureMap town = LoadAtBourg(Path.Combine(Path.GetTempPath(), "eds_peinte_" + Guid.NewGuid().ToString("N"), "sauvegarde.json")).Map;
+        (int tw, int th) = MapPainter.Size(town);
+        byte[] townImage = MapPainter.Paint(town, tw, th);
+        var cobble = At(townImage, tw, th, town, -1095, -39);           // place pavée du bourg
         Assert.True(Math.Abs(cobble.R - cobble.G) < 0.1 && Math.Abs(cobble.G - cobble.B) < 0.1, $"pavés {cobble}");
-        var inn = At(image, width, height, map, -69, 7.5);             // toit de tuiles sombres de l'auberge
+        var inn = At(townImage, tw, th, town, -1101, -26.5);             // toit de tuiles sombres de l'auberge
         Assert.True(inn.R > inn.G + 0.08 && inn.R > inn.B + 0.12, $"auberge {inn}");
-        var chapel = At(image, width, height, map, -71, -17);          // ardoises de la chapelle (pan est, hors du faîte)
+        var chapel = At(townImage, tw, th, town, -1103, -51);          // ardoises de la chapelle (pan est, hors du faîte)
         Assert.True(chapel.B > chapel.R && chapel.B > chapel.G - 0.02, $"chapelle {chapel}");
         var woods = Enumerable.Range(0, 25).Select(i => At(image, width, height, map, -64 + i % 5, 58 + i / 5)).ToList();   // cœur du bois du nord-ouest
         Assert.True(woods.Average(p => p.G) > woods.Average(p => p.R) && woods.Average(p => p.R + p.G + p.B) < 1.0, "bois");

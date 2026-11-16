@@ -327,13 +327,13 @@ public class V214BoutiquesMarcheTests
     {
         MerchantBook book = Valid(WithHerbShop());
         // Jour 1 (mardi), 9 h : ouverte, tout le stock.
-        WorldSession w = Open(-65.2, -6.4, Hero(10_000), 1, 9 * 60, book);
+        WorldSession w = Open(-1097.2, -40.4, Hero(10_000), 1, 9 * 60, book);
         Assert.Equal(ShopState.Open, w.ShopStateOf(Herboriste));
         Assert.Equal(TradeRefusal.None, w.CanTrade(Herboriste));
         Assert.True(w.Stock(Herboriste).Count > 1);
         Assert.Null(w.NextOpening(Herboriste));
         // 17 h : fermée, le patron répond à la porte : seulement les potions et l'herbe, et il n'achète rien.
-        WorldSession late = Open(-65.2, -6.4, Hero(10_000, new ItemStack(Herbe, 3)), 1, 17 * 60, book);
+        WorldSession late = Open(-1097.2, -40.4, Hero(10_000, new ItemStack(Herbe, 3)), 1, 17 * 60, book);
         Assert.Equal(ShopState.AtDoor, late.ShopStateOf(Herboriste));
         Assert.Equal(TradeRefusal.None, late.CanTrade(Herboriste));
         Assert.Equal(new[] { Potion, Herbe }, late.Stock(Herboriste).Select(o => o.Item));
@@ -344,7 +344,7 @@ public class V214BoutiquesMarcheTests
         Assert.Equal(TradeRefusal.None, late.Buy(Herboriste, Potion));
         Assert.Equal((2L, 480), late.NextOpening(Herboriste));
         // Dimanche (jour 6) : jour de repos, à la porte aussi ; réouverture lundi à 8 h.
-        WorldSession sunday = Open(-65.2, -6.4, Hero(10_000), 6, 10 * 60, book);
+        WorldSession sunday = Open(-1097.2, -40.4, Hero(10_000), 6, 10 * 60, book);
         Assert.Equal(ShopState.AtDoor, sunday.ShopStateOf(Herboriste));
         Assert.Equal((7L, 480), sunday.NextOpening(Herboriste));
         // Sans personne à la porte : fermée pour de bon (jour de repos, ou hors des heures).
@@ -355,8 +355,8 @@ public class V214BoutiquesMarcheTests
         Merchant(nobody, Herboriste)["offers"]!.AsArray().RemoveAt(1);
         Merchant(nobody, Herboriste)["offers"]!.AsArray().RemoveAt(0);
         MerchantBook closedBook = Valid(nobody);
-        Assert.Equal(ShopState.RestDay, Open(-65.2, -6.4, Hero(), 6, 10 * 60, closedBook).ShopStateOf(Herboriste));
-        WorldSession shut = Open(-65.2, -6.4, Hero(), 1, 17 * 60, closedBook);
+        Assert.Equal(ShopState.RestDay, Open(-1097.2, -40.4, Hero(), 6, 10 * 60, closedBook).ShopStateOf(Herboriste));
+        WorldSession shut = Open(-1097.2, -40.4, Hero(), 1, 17 * 60, closedBook);
         Assert.Equal(ShopState.ClosedHours, shut.ShopStateOf(Herboriste));
         Assert.Equal(TradeRefusal.Closed, shut.CanTrade(Herboriste));
         Assert.Equal(TradeRefusal.Closed, shut.Buy(Herboriste, Faucille));
@@ -373,7 +373,7 @@ public class V214BoutiquesMarcheTests
     private static WorldSession AtBakery(long day, int minute, SavedCharacter? hero = null) =>
         V231TestData.Inside("zone.boulangerie", TickAt(day, minute) - 1, -0.25, -0.2, Story.Value, hero ?? Hero(10_000));
 
-    private static WorldSession AtMarket(long day, int minute, SavedCharacter? hero = null) => Open(-50.5, -3.0, hero ?? Hero(10_000), day, minute);
+    private static WorldSession AtMarket(long day, int minute, SavedCharacter? hero = null) => Open(-1082.5, -37.0, hero ?? Hero(10_000), day, minute);
 
     private static SavedCharacter Liked(int reputation, long money = 10_000) =>
         Hero(money).WithStory(new SavedStory(reputation: new Dictionary<string, int> { ["villagers"] = reputation }));
@@ -382,7 +382,7 @@ public class V214BoutiquesMarcheTests
     public void Boutiques_et_marche_livres()
     {
         MerchantBook book = ShippedMerchants;
-        Assert.Equal((6, "0.13.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((6, "0.14.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les vraies boutiques : genre, maison du bourg, intérieur, horaires et jour de repos (0 : lundi … 6 : dimanche).
@@ -486,7 +486,7 @@ public class V214BoutiquesMarcheTests
             Assert.Equal(TradeRefusal.None, Open(x, z, Hero(1000), 5, 10 * 60).CanTrade(merchant));
         }
         // Sauge, ouverte jour et nuit, tous les jours.
-        Assert.Equal(ShopState.Open, Open(-65.2, -6.4, Hero(1000), 6, 10 * 60).ShopStateOf(Herboriste));
+        Assert.Equal(ShopState.Open, Open(-1097.2, -40.4, Hero(1000), 6, 10 * 60).ShopStateOf(Herboriste));
     }
 
     [Fact]
@@ -556,7 +556,7 @@ public class V214BoutiquesMarcheTests
         Assert.Equal(HaggleRefusal.None, AtMarket(hard, 9 * 60, Liked(350)).Haggle(Fromagere));
         // Hors du marché, et pour une boutique : pas de marchandage.
         Assert.Equal(HaggleRefusal.NoMarket, AtMarket(lucky, 20 * 60, Liked(700)).Haggle(Fromagere));
-        Assert.Equal(HaggleRefusal.NotAStall, Open(-65.2, -6.4, Liked(700), lucky, 9 * 60).Haggle("merchant.herboriste"));
+        Assert.Equal(HaggleRefusal.NotAStall, Open(-1097.2, -40.4, Liked(700), lucky, 9 * 60).Haggle("merchant.herboriste"));
     }
 
     [Fact]
@@ -671,13 +671,13 @@ public class V214BoutiquesMarcheTests
         inn["shop"]!.AsObject().Remove("door");
         foreach (JsonNode? o in inn["offers"]!.AsArray()) o!.AsObject().Remove("door");
         MerchantBook book = Valid(root);
-        WorldSession tuesday = Open(-65.2, -6.4, Hero(), 1, 30, book);
+        WorldSession tuesday = Open(-1097.2, -40.4, Hero(), 1, 30, book);
         Assert.Equal(ShopState.RestDay, tuesday.ShopStateOf("merchant.auberge"));
         Assert.Equal((1L, 360), tuesday.NextOpening("merchant.auberge"));
         // Le dimanche soir à 0 h 30 (lundi), l'auberge du dimanche est encore ouverte.
-        Assert.Equal(ShopState.Open, Open(-65.2, -6.4, Hero(), 7, 30, book).ShopStateOf("merchant.auberge"));
+        Assert.Equal(ShopState.Open, Open(-1097.2, -40.4, Hero(), 7, 30, book).ShopStateOf("merchant.auberge"));
         // Le mardi à 2 h (après la fermeture de 1 h) : simplement fermée.
-        Assert.Equal(ShopState.ClosedHours, Open(-65.2, -6.4, Hero(), 1, 120, book).ShopStateOf("merchant.auberge"));
+        Assert.Equal(ShopState.ClosedHours, Open(-1097.2, -40.4, Hero(), 1, 120, book).ShopStateOf("merchant.auberge"));
     }
 
     [Fact]

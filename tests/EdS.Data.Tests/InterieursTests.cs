@@ -80,7 +80,7 @@ public class InterieursTests : IDisposable
     }
 
     /// <summary>Le point sûr d'entrée des Vallons posé devant la porte de l'auberge (à 1,5 m).</summary>
-    private static void EntryAtInn(JsonObject root) => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-69, 2.5);
+    private static void EntryAtInn(JsonObject root) => root["data"]!["safePoints"]![0]!["position"] = new JsonArray(-1101, -31.5);
 
     private string SavePath => Path.Combine(_folder, "partie", "sauvegarde.json");
 
@@ -160,8 +160,8 @@ public class InterieursTests : IDisposable
     [InlineData("to", "\"auberge\"", "$.data.doors[0].to", ValidationCode.InvalidValue)]
     [InlineData("toDoor", "\"Sortie\"", "$.data.doors[0].toDoor", ValidationCode.InvalidValue)]
     [InlineData("building", "\"cave\"", "$.data.doors[0].building", ValidationCode.UnknownReference)]
-    [InlineData("position", "[-69, 0]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
-    [InlineData("position", "[-69, 6]", "$.data.doors[0].position", ValidationCode.InvalidValue)]
+    [InlineData("position", "[-1101, -34]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
+    [InlineData("position", "[-1101, -28]", "$.data.doors[0].position", ValidationCode.InvalidValue)]
     [InlineData("position", "[-300, 4]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
     [InlineData("position", "[400000, 4]", "$.data.doors[0].position", ValidationCode.OutOfRange)]   // relecture : plus de dépassement
     [InlineData("position", "[-69, 400000]", "$.data.doors[0].position", ValidationCode.OutOfRange)]
@@ -346,7 +346,7 @@ public class InterieursTests : IDisposable
         Assert.True(a.UseDoor());
         Assert.False(a.Indoors);
         Assert.Equal("zone.vallons", a.World.Definition!.Id);
-        Assert.Equal(At(-69, 4), Position(a));
+        Assert.Equal(At(-1101, -30), Position(a));
         Assert.Equal(3, a.Opened);
         Assert.Equal("Place du village", a.LastSafePoint);   // le point sûr le plus proche de la porte (posé devant elle ici)
         Assert.Equal("zone.vallons", SaveStore.Read(SavePath).Save!.Zone);
@@ -391,7 +391,7 @@ public class InterieursTests : IDisposable
         (string data, string scenarios) = Copy(EntryAtInn, s =>
         {
             JsonObject boar = s["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
-            boar["position"] = new JsonArray(-62, 1);
+            boar["position"] = new JsonArray(-1094, -33);
         });
         AdventureSession a = AdventureSession.Load(data, scenarios, SavePath);
         a.Advance(0.05);
@@ -434,7 +434,7 @@ public class InterieursTests : IDisposable
         back.Advance(0.05);
         Assert.False(back.Indoors);
         Assert.Equal("zone.vallons", back.World.Definition!.Id);
-        Assert.Equal(At(-69, 2.5), Position(back));
+        Assert.Equal(At(-1101, -31.5), Position(back));
     }
 
     [Fact]

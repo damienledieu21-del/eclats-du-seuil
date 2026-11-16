@@ -46,7 +46,7 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((6, 3, "0.13.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((6, 3, "0.14.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
             ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers"), ("merchant.boulangerie", "villagers"),   // V2.14 : boutiques et marché
             ("merchant.auberge", "villagers"), ("merchant.mercerie", "villagers"), ("merchant.fromagere", "villagers"), ("merchant.marchand_epices", "villagers") },
@@ -176,10 +176,10 @@ public class V27ReponsesTests
     }
 
     [Theory]
-    [InlineData(-58, -6, Nuit, -700, "place_du_village")]   // au bourg, la nuit, haï de la garde
-    [InlineData(-58, -6, 0, -700, null)]                    // le jour
+    [InlineData(-1090, -40, Nuit, -700, "place_du_village")]   // au bourg, la nuit, haï de la garde
+    [InlineData(-1090, -40, 0, -700, null)]                    // le jour
     [InlineData(-18, -12, Nuit, -700, null)]                // au village
-    [InlineData(-58, -6, Nuit, -500, null)]                 // hostile seulement
+    [InlineData(-1090, -40, Nuit, -500, null)]                 // hostile seulement
     public void Couvre_feu_du_bourg(double x, double z, long tick, int guard, string? expected)
     {
         WorldSession w = Open(x, z, With(Hero(), new Dictionary<string, int> { ["guard"] = guard }), tick);

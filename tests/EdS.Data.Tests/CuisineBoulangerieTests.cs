@@ -107,8 +107,8 @@ public class CuisineBoulangerieTests
         var stock = new[] { new ItemStack("item.farine_de_ble", 3), new ItemStack("item.levain", 1) };
         WorldSession forge = Play(Zone(-19, -5), null, stock);
         Assert.Equal(CraftRefusal.NotHere, forge.Craft("recipe.cuisine.pain_de_campagne", out _));
-        Assert.Equal(CraftRefusal.NotHere, Play(Zone(-60, 0), null, stock).Craft("recipe.cuisine.pain_de_campagne", out _));   // ailleurs dans le bourg
-        WorldSession bourg = Play(Zone(-43.5, 2.5), null, stock);
+        Assert.Equal(CraftRefusal.NotHere, Play(Zone(-1092, -34), null, stock).Craft("recipe.cuisine.pain_de_campagne", out _));   // ailleurs dans le bourg
+        WorldSession bourg = Play(Zone(-1075.5, -31.5), null, stock);
         Assert.Equal(CraftRefusal.None, bourg.Craft("recipe.cuisine.pain_de_campagne", out CraftEvent? pain));
         Assert.Equal(("item.pain_de_campagne", "cuisine", 20L), (pain!.Item, pain.Profession, pain.Xp));
         Assert.Equal((3, 0, 0), (bourg.Inventory.Count("item.pain_de_campagne"), bourg.Inventory.Count("item.farine_de_ble"), bourg.Inventory.Count("item.levain")));
@@ -148,7 +148,7 @@ public class CuisineBoulangerieTests
         Assert.Equal(CraftRefusal.None, tree.Gather("pommier_du_bourg", out CraftEvent? picked));
         Assert.Equal(("item.pomme_du_verger", 2, "cuisine", 6L), (picked!.Item, picked.Count, picked.Profession, picked.Xp));
         // Au four, au niveau 3 du métier : la pâte feuilletée, puis les chaussons avec les pommes cueillies.
-        WorldSession oven = Play(Zone(-43.5, 2.5), new Dictionary<string, long> { ["cuisine"] = 100 },
+        WorldSession oven = Play(Zone(-1075.5, -31.5), new Dictionary<string, long> { ["cuisine"] = 100 },
             new ItemStack("item.farine_de_ble", 2), new ItemStack("item.beurre_de_baratte", 2), new ItemStack("item.sucre_roux", 1),
             new ItemStack("item.pomme_du_verger", picked.Count));
         Assert.Equal(3, oven.Workshop!.Level("cuisine"));
@@ -166,7 +166,7 @@ public class CuisineBoulangerieTests
     {
         // Niveau 1, brioche (niveau 4) refusée ; chaussons (niveau 3, deux au-dessus) tentés jusqu'à un raté : la moitié rendue.
         var stock = new[] { new ItemStack("item.pate_feuilletee", 10), new ItemStack("item.pomme_du_verger", 20), new ItemStack("item.sucre_roux", 10) };
-        WorldSession w = Play(Zone(-43.5, 2.5), null, stock);
+        WorldSession w = Play(Zone(-1075.5, -31.5), null, stock);
         CraftEvent? failed = null;
         for (int k = 0; k < 10 && failed is null; k++)
         {

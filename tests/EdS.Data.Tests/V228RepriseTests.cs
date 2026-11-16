@@ -54,12 +54,14 @@ public class V228RepriseTests : IDisposable
         return false;
     }
 
-    /// <summary>Du village au bourg par la grand-rue (aucun obstacle, aucune créature à portée).</summary>
+    /// <summary>
+    /// Du village au bourg : la grand-rue, la route d'Ambre jusqu'à la porte de l'Est de la ville fortifiée, la place du marché, puis la
+    /// rue du marché jusqu'à la place du bourg (sous-lot V2.30.1 : le bourg a déménagé, à 1 km à l'ouest ; aucune créature à portée).
+    /// </summary>
     private static void WalkToBourg(AdventureSession a)
     {
         Assert.True(WalkTo(a, -20, -2));
-        Assert.True(WalkTo(a, -50, -1));
-        Assert.True(WalkTo(a, -58, -4));
+        foreach ((double x, double z) in RoadToBourg) Assert.True(WalkTo(a, x, z), $"bloqué avant ({x}, {z})");
     }
 
     /// <summary>La sauvegarde écrite, retouchée (objet <c>data</c>) et réécrite telle quelle.</summary>
@@ -277,11 +279,11 @@ public class V228RepriseTests : IDisposable
         Assert.Equal("Place du Bourg", a.LastSafePoint);
         a.Save();
         WorldSave saved = SaveStore.Read(SavePath).Save!;
-        Assert.Equal(("zone.vallons", "place_du_bourg", "s07_06"), (saved.Zone, saved.Resume!.SafePoint, saved.Resume.Sector));
+        Assert.Equal(("zone.vallons", "place_du_bourg", "s03_06"), (saved.Zone, saved.Resume!.SafePoint, saved.Resume.Sector));
         long sessions = saved.Sessions;
         // Le jeu est relancé : nouvelle session au point sûr (PV pleins), plus à l'entrée de la zone.
         AdventureSession again = Adventure(SavePath);
-        Assert.Equal(At(-58, -6), Position(again));
+        Assert.Equal(At(-1090, -40), Position(again));
         Assert.Equal("Place du Bourg", again.LastSafePoint);
         Assert.Equal(sessions + 1, again.World.Zone.Session);
         Assert.Equal(again.World.Zone.Engine.View(AdventureSession.PlayerId).MaxHealth, again.World.Zone.Engine.View(AdventureSession.PlayerId).Health);
@@ -290,7 +292,7 @@ public class V228RepriseTests : IDisposable
         again.Save();
         Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
         AdventureSession third = Adventure(SavePath);
-        Assert.Equal(At(-58, -6), Position(third));
+        Assert.Equal(At(-1090, -40), Position(third));
     }
 
     [Fact]
@@ -349,10 +351,10 @@ public class V228RepriseTests : IDisposable
         // Un secteur périmé (le point sûr a été déplacé par les données) : le point sûr fait foi, le secteur est réécrit.
         EditSave(data => data["resume"] = new JsonObject { ["safePoint"] = "place_du_bourg", ["sector"] = "s00_00" });
         AdventureSession stale = Adventure(SavePath);
-        Assert.Equal(At(-58, -6), Position(stale));
+        Assert.Equal(At(-1090, -40), Position(stale));
         stale.Save();
         WorldSave rewritten = SaveStore.Read(SavePath).Save!;
-        Assert.Equal(("place_du_bourg", "s07_06"), (rewritten.Resume!.SafePoint, rewritten.Resume.Sector));
+        Assert.Equal(("place_du_bourg", "s03_06"), (rewritten.Resume!.SafePoint, rewritten.Resume.Sector));
         // Un point de reprise mal formé : la sauvegarde est refusée comme toute sauvegarde invalide (copie de secours, sinon nouvelle partie).
         EditSave(data => data["resume"] = new JsonObject { ["safePoint"] = "Place Du Bourg" });
         Assert.False(SaveJsonReader.Read(File.ReadAllText(SavePath)).IsValid);
@@ -369,11 +371,11 @@ public class V228RepriseTests : IDisposable
         a.Advance(0.05);
         Assert.Equal(TravelRefusal.None, a.Travel("zone.vallons", "place_du_bourg"));
         WorldSave traveled = SaveStore.Read(SavePath).Save!;
-        Assert.Equal(("place_du_bourg", "s07_06"), (traveled.Resume!.SafePoint, traveled.Resume.Sector));
+        Assert.Equal(("place_du_bourg", "s03_06"), (traveled.Resume!.SafePoint, traveled.Resume.Sector));
         // Porte de l'auberge : la partie est sauvegardée dans l'intérieur, à son point sûr (zone sans région : pas de secteur).
         a.Advance(0.05);
-        Assert.True(WalkTo(a, -66, 0));
-        Assert.True(WalkTo(a, -69, 2.5, 0.5));
+        Assert.True(WalkTo(a, -1098, -34));
+        Assert.True(WalkTo(a, -1101, -31.5, 0.5));
         Assert.True(a.UseDoor());
         WorldSave inside = SaveStore.Read(SavePath).Save!;
         Assert.Equal(("zone.auberge", "coin_du_feu", null), (inside.Zone, inside.Resume!.SafePoint, inside.Resume.Sector));
@@ -387,9 +389,9 @@ public class V228RepriseTests : IDisposable
         Assert.False(again.Indoors);
         Assert.Equal("Place du Bourg", again.LastSafePoint);
         WorldSave outside = SaveStore.Read(SavePath).Save!;
-        Assert.Equal(("zone.vallons", "place_du_bourg", "s07_06"), (outside.Zone, outside.Resume!.SafePoint, outside.Resume.Sector));
+        Assert.Equal(("zone.vallons", "place_du_bourg", "s03_06"), (outside.Zone, outside.Resume!.SafePoint, outside.Resume.Sector));
         AdventureSession back = Adventure(SavePath);
-        Assert.Equal(At(-58, -6), Position(back));
+        Assert.Equal(At(-1090, -40), Position(back));
     }
 
     // --- Point sûr de reprise occupé (relecture indépendante de la PR #155) ---------------------------------------------------
@@ -398,7 +400,7 @@ public class V228RepriseTests : IDisposable
     private static void BoarOnTheBourg(JsonObject scenario)
     {
         JsonObject boar = scenario["data"]!["combatants"]!.AsArray().Single(c => (string)c!["id"]! == "sanglier")!.AsObject();
-        boar["position"] = new JsonArray(-58, -6);
+        boar["position"] = new JsonArray(-1090, -40);
         boar["arrivalMs"] = 0;
     }
 
@@ -449,10 +451,10 @@ public class V228RepriseTests : IDisposable
         Assert.False(again.Stranded);
         Assert.False(again.MustContinue);
         Assert.True(again.World.Zone.Engine.View("sanglier").IsPresent);
-        Assert.InRange(Distance(again.World.Zone.Engine.View("sanglier").Position!.Value, At(-58, -6)), 0, 1.0);   // arrivé sur le point sûr (il a fait un pas depuis)
+        Assert.InRange(Distance(again.World.Zone.Engine.View("sanglier").Position!.Value, At(-1090, -40)), 0, 1.0);   // arrivé sur le point sûr (il a fait un pas depuis)
         GroundVector here = Position(again);
-        Assert.NotEqual(At(-58, -6), here);
-        Assert.InRange(Distance(here, At(-58, -6)), 0.5, 8.0);
+        Assert.NotEqual(At(-1090, -40), here);
+        Assert.InRange(Distance(here, At(-1090, -40)), 0.5, 8.0);
         Assert.Equal("Place du Bourg", again.LastSafePoint);
         // C'est la place de la règle (fonction pure des données et de la sauvegarde), la même à chaque relance.
         (string? point, GroundVector? place) = WorldSession.ResumeArrival(saved, again.World.Definition!, Progression, again.World.Narrative!.Book, AdventureSession.ZoneId);
@@ -481,7 +483,7 @@ public class V228RepriseTests : IDisposable
         a.Advance(0.05);
         Assert.False(a.Stranded);
         GroundVector arrived = Position(a);
-        Assert.InRange(Distance(arrived, At(-58, -6)), 0.5, 8.0);
+        Assert.InRange(Distance(arrived, At(-1090, -40)), 0.5, 8.0);
         Assert.Equal("Place du Bourg", a.LastSafePoint);
         Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
         // Le sanglier, mortel ici, fait tomber le personnage ; la reprise rouvre une session au même point sûr, à la même place libre.
@@ -540,7 +542,7 @@ public class V228RepriseTests : IDisposable
         full.Advance(0.05);
         Assert.False(full.Stranded);
         Assert.Equal("Place du Bourg", full.LastSafePoint);
-        Assert.InRange(Distance(Position(full), At(-58, -6)), 0.5, 8.0);
+        Assert.InRange(Distance(Position(full), At(-1090, -40)), 0.5, 8.0);
     }
 
     [Fact]
@@ -633,8 +635,8 @@ public class V228RepriseTests : IDisposable
         (string? point, GroundVector? place) = WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression);
         Assert.Equal("place_du_bourg", point);
         Assert.NotNull(place);
-        Assert.Equal(At(-58, -6).Z, place!.Value.Z);
-        Assert.True(place.Value.X > At(-58, -6).X);
+        Assert.Equal(At(-1090, -40).Z, place!.Value.Z);
+        Assert.True(place.Value.X > At(-1090, -40).X);
         Assert.Equal(place, WorldSession.ResumeArrival(Save(busy, "place_du_bourg"), busy, Progression).Place);   // déterministe
         // Les autres points sûrs de la même zone ne sont pas touchés.
         Assert.Equal(("place_du_village", (GroundVector?)null), WorldSession.ResumeArrival(Save(busy, "place_du_village"), busy, Progression));
@@ -644,7 +646,7 @@ public class V228RepriseTests : IDisposable
         // La règle seule : une place hors de l'aire à plus de 8 m n'a aucune place libre ; une place libre est rendue telle quelle.
         Fixed r = WorldSession.CharacterRadius;
         Assert.Null(WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-1920, 0), r));   // V2.28c : hors de la région
-        Assert.Equal(At(-58, -6), WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-58, -6), r));
+        Assert.Equal(At(-1090, -40), WorldSession.FreeArrival(calm.Setup, Array.Empty<EdS.Domain.Combat.CombatantSetup>(), At(-1090, -40), r));
         Assert.Throws<ArgumentNullException>(() => WorldSession.ResumeArrival(Save(calm, null), calm, null!));
         // La session n'accepte une place d'arrivée qu'autour de son point sûr (8 m), jamais avec une porte.
         var aside = new WorldSession(Save(busy, null), busy, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg", place: place);
@@ -653,8 +655,8 @@ public class V228RepriseTests : IDisposable
         Assert.True(aside.Zone.Engine.View("bastion").IsPresent);
         Assert.Equal(place, aside.Zone.Engine.View("bastion").Position);
         Assert.Equal("place_du_bourg", aside.LastSafePoint);
-        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg", place: At(-49.9, -6)));
-        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, door: "porte_auberge", place: At(-69, 4)));
+        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, safePoint: "place_du_bourg", place: At(-1081.9, -40)));
+        Assert.Throws<ArgumentException>(() => new WorldSession(Save(calm, null), calm, ShippedData, Progression, ItemsCatalog, door: "porte_auberge", place: At(-1101, -30)));
     }
 
     [Fact]
@@ -692,7 +694,7 @@ public class V228RepriseTests : IDisposable
         int opened = a.Opened;
         Assert.True(a.Rest());
         a.Advance(0.05);
-        Assert.Equal((opened + 1, At(-58, -6)), (a.Opened, Position(a)));
+        Assert.Equal((opened + 1, At(-1090, -40)), (a.Opened, Position(a)));
         Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
     }
 }

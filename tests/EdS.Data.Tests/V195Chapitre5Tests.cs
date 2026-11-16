@@ -31,7 +31,7 @@ public class V195Chapitre5Tests
 
     // Où se tenir (à 1 à 2 m du PNJ, hors de tout obstacle) : dans les Vallons, puis dans les intérieurs.
     private static readonly (double X, double Z) Odile = (-9, 2), Moulin = (-8, 5), Forge = (-19, -5), Pre = (-10, 30), Gaspard = (26, -13),
-        Renart = (-47.5, -3.3), Gue = (12, 0.5), Josse = (84, -37.5), Lac = (-12.5, -62), Thibaut = (118, 54.5),
+        Renart = (-1079.5, -37.3), Gue = (12, 0.5), Josse = (84, -37.5), Lac = (-12.5, -62), Thibaut = (118, 54.5),
         Tour0 = (15, 77), Camp0 = (90, 84), Seuil0 = (46, 38), Ysarn = (66, 48.5), Ruines0 = (22, -12), Foret0 = (-20, 60), Plaine0 = (75, -50);
     private static readonly (double X, double Z) Albe = (3.2, 3.2), Pretre = (-2, 3.6), Mathurin = (3.75, 1.6), Rosalie = (-1.8, -2.4), Maitresse = (0, 1.0);
 
