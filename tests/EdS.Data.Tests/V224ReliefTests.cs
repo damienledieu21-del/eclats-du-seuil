@@ -176,7 +176,10 @@ public class V224ReliefTests : IDisposable
     {
         AdventureMap map = Vallons();
         GroundRelief r = GroundRelief.For(map);
-        double Gap(StyleMesh mesh)
+        AdventureMap town = Bourg();   // sous-lot V2.30.1 : la place pavée du bourg est dans la ville fortifiée
+        GroundRelief townRelief = GroundRelief.For(town);
+        double Gap(StyleMesh mesh) => GapOn(r, mesh);
+        static double GapOn(GroundRelief r, StyleMesh mesh)
         {
             double worst = 0;
             for (int t = 0; t < mesh.Triangles.Count; t += 3)
@@ -189,11 +192,11 @@ public class V224ReliefTests : IDisposable
             return worst;
         }
         // La place du bourg (seule rue pavée) est sur un replat : on la déplace sur une pente pour que le test morde.
-        StyleRoad paved = map.Roads.Single(x => x.Paved);
+        StyleRoad paved = town.Roads.Single(x => x.Paved);
         var slope = new StyleRoad("essai", new[] { (30.0, -40.0), (60.0, -30.0), (90.0, 20.0) }, paved.Width, true);
         Assert.True(Gap(TownShapes.Pavement(slope, 1.5)) > 0.1);   // sans découpe : enterré ou flottant
         Assert.InRange(Gap(TownShapes.Pavement(slope, 1.5, 24, 1.0)), 0, 0.05);
-        Assert.InRange(Gap(TownShapes.Pavement(paved, 1.5, 24, 1.0)), 0, 0.05);
+        Assert.InRange(GapOn(townRelief, TownShapes.Pavement(paved, 1.5, 24, 1.0)), 0, 0.05);
         var boxes = map.Obstacles.Select(o => (o.Points.Min(p => p.X.Raw) / 1e4, o.Points.Min(p => p.Z.Raw) / 1e4, o.Points.Max(p => p.X.Raw) / 1e4,
             o.Points.Max(p => p.Z.Raw) / 1e4)).ToList();
         var fields = map.Places.Where(p => TownRules.Farmland(p.Id))

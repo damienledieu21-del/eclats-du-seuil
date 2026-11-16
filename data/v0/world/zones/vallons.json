@@ -1490,36 +1490,6 @@
         ]
       },
       {
-        "id": "rue_des_boutiques",
-        "kind": "terre",
-        "width": 4.5,
-        "points": [
-          [
-            -1125,
-            -35
-          ],
-          [
-            -1099,
-            -35
-          ]
-        ]
-      },
-      {
-        "id": "rue_du_marche",
-        "kind": "terre",
-        "width": 4.5,
-        "points": [
-          [
-            -1081,
-            -35
-          ],
-          [
-            -1052,
-            -35
-          ]
-        ]
-      },
-      {
         "id": "grand_rue_ouest",
         "kind": "terre",
         "width": 4.5,
@@ -2015,6 +1985,55 @@
           [
             180,
             1355
+          ]
+        ]
+      },
+      {
+        "id": "rue_des_boutiques",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -1125,
+            -35
+          ],
+          [
+            -1099,
+            -35
+          ]
+        ]
+      },
+      {
+        "id": "rue_du_marche",
+        "kind": "terre",
+        "width": 4.5,
+        "points": [
+          [
+            -1081,
+            -35
+          ],
+          [
+            -1052,
+            -35
+          ]
+        ]
+      },
+      {
+        "id": "sentier_de_l_herboristerie",
+        "kind": "terre",
+        "width": 3,
+        "points": [
+          [
+            -1089.5,
+            -40.5
+          ],
+          [
+            -1092.5,
+            -47
+          ],
+          [
+            -1094,
+            -60
           ]
         ]
       }

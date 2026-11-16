@@ -93,7 +93,7 @@ public class V221HerboristerieTests : IDisposable
         Assert.Equal(door.Z, modelDoor.Z, 6);
         Assert.InRange(modelDoor.X, door.X, cx);
         // Le mur du fond (Y = 5,20) reste dans l'emprise.
-        Assert.Equal(-52.15, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.60 - 5.20).X, 6);
+        Assert.Equal(-1084.15, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 2.60 - 5.20).X, 6);
         // L'enseigne se lit de dehors : la droite de la façade vue de la porte du jeu (+X de Blender : x = 2,25 − X négatif) est vers −z
         // dans le monde quand la façade regarde −x (la droite vue de dehors est (−fz, fx), comme TownModels.OwnDoorLantern).
         var right = TownModels.OwnPlace(cx, cz, facing, -2.25, 0.0, 2.60);

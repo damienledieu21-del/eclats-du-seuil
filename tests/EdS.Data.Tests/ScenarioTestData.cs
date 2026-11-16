@@ -44,16 +44,16 @@ internal static class ScenarioTestData
 
     /// <summary>
     /// Sous-lot V2.30.1 : du bout de la grand-rue du village à la place du bourg déménagé, en lignes droites libres (route d'Ambre, porte
-    /// de l'Est de la ville, place du marché, rue du marché) ; le dernier point est à 1 m du point sûr <c>place_du_bourg</c> (−1 090, −40).
+    /// de l'Est de la ville, point sûr de la place du marché, rue du marché) ; le dernier point est à 1 m du point sûr <c>place_du_bourg</c> (−1 090, −40).
     /// </summary>
     public static readonly (double X, double Z)[] RoadToBourg =
-        { (-50, -1), (-99, -1), (-300, -20), (-500, -40), (-700, -50), (-1000, -68), (-1040, -60), (-1060, -35), (-1090, -39) };
+        { (-50, -1), (-99, -1), (-300, -20), (-500, -40), (-700, -50), (-1010, -76), (-1040, -60), (-1060, -35), (-1090, -39) };
 
     /// <summary>Sous-lot V2.30.1 : les bâtiments du bourg déménagés (le hameau garde <c>maison3</c> et <c>maison8</c>).</summary>
     public static readonly string[] MovedBuildings = { "maison1", "maison2", "maison4", "maison5", "maison6", "maison7", "auberge", "chapelle", "puits", "etal1", "etal2" };
 
     /// <summary>Sous-lot V2.30.1 : le point est-il dans le bloc du bourg déménagé (ville fortifiée) ?</summary>
-    public static bool InMovedBourg(double x, double z) => x >= -100 + BourgDX && x <= -24 + BourgDX && z >= -25 + BourgDZ && z <= 20 + BourgDZ;
+    public static bool InMovedBourg(double x, double z) => x >= -100 + BourgDX && x <= -24 + BourgDX && z >= -30 + BourgDZ && z <= 20 + BourgDZ;
 
     /// <summary>Sous-lot V2.30.1 : position du bourg avant le déménagement, d'une position d'après.</summary>
     public static (double X, double Z) Old(double x, double z) => (x - BourgDX, z - BourgDZ);

@@ -166,18 +166,18 @@ public class EssaiRealiste8Tests : IDisposable
     [Fact]
     public void Les_villageois_restent_hors_des_obstacles_et_loin_des_PNJ()
     {
-        AdventureMap map = Map();
+        // Sous-lot V2.30.1 : le bourg a déménagé dans la ville fortifiée (autre secteur) : villageois du cœur, puis ceux du bourg.
+        var all = new List<StyleVillager>();
+        foreach (AdventureMap map in new[] { Map(), LoadAtBourg(Path.Combine(_folder, "bourg", "partie.json")).Map })
+        {
         var fields = map.Places.Where(p => TownRules.Farmland(p.Id)).SelectMany(p => TownRules.Fields(p.MinX, p.MinZ, p.MaxX, p.MaxZ,
             map.Obstacles.Select(o => (o.Points.Min(q => q.X.Raw) / 10000.0, o.Points.Min(q => q.Z.Raw) / 10000.0, o.Points.Max(q => q.X.Raw) / 10000.0,
                 o.Points.Max(q => q.Z.Raw) / 10000.0)).ToList(), map.Roads, map.Clearings, (map.MinX, map.MinZ, map.MaxX, map.MaxZ))).ToList();
         IReadOnlyList<StyleVillager> villagers = TownModels.Villagers(map, fields, 30);
-        Assert.InRange(villagers.Count, 4, 30);   // V2.30.1 : moins de villageois au cœur, le bourg a déménagé
+        Assert.InRange(villagers.Count, 1, 30);
+        all.AddRange(villagers);
         Assert.Equal(villagers.Count, villagers.Select(v => v.Id).Distinct().Count());
         Assert.All(villagers, v => Assert.Contains(v.Character, new[] { "paysan", "garde", "sentinelle" }));
-        Assert.Contains(villagers, v => v.Activity == VillagerActivity.Talk);
-        Assert.Contains(villagers, v => v.Activity == VillagerActivity.Look);
-        Assert.Contains(villagers, v => v.Activity == VillagerActivity.Gather);
-        Assert.Single(villagers, v => v.Walks);
         var polygons = map.Obstacles.Select(o => o.Points.Select(p => (p.X.Raw / 10000.0, p.Z.Raw / 10000.0)).ToList()).ToList();
         void Clear(double x, double z, string what)
         {
@@ -201,6 +201,12 @@ public class EssaiRealiste8Tests : IDisposable
         Assert.Equal(3, TownModels.Villagers(map, fields, 3).Count);
         Assert.Empty(TownModels.Villagers(map, fields, 0));
         Assert.Empty(TownModels.Villagers(null!, fields, 10));
+        }
+        Assert.InRange(all.Count, 8, 60);
+        Assert.Contains(all, v => v.Activity == VillagerActivity.Talk);
+        Assert.Contains(all, v => v.Activity == VillagerActivity.Look);
+        Assert.Contains(all, v => v.Activity == VillagerActivity.Gather);
+        Assert.InRange(all.Count(v => v.Walks), 1, 2);
     }
 
     [Fact]

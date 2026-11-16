@@ -129,12 +129,12 @@ public class V222MercerieGuildeTests : IDisposable
         Assert.InRange(modelDoor.Z, cz, door.Z);
         // Débord arrière du toit (Y 10,40) et rives (X −0,40 et 13,60) : dans l'emprise.
         Assert.Equal(-52.9, TownModels.OwnPlace(cx, cz, facing, 0.0, 0.0, 5.00 - 10.40).Z, 6);
-        Assert.Equal(-84.0, Math.Max(TownModels.OwnPlace(cx, cz, facing, 6.60 + 0.40, 0.0, 0.0).X, TownModels.OwnPlace(cx, cz, facing, 6.60 - 13.60, 0.0, 0.0).X), 6);
+        Assert.Equal(-1116.0, Math.Max(TownModels.OwnPlace(cx, cz, facing, 6.60 + 0.40, 0.0, 0.0).X, TownModels.OwnPlace(cx, cz, facing, 6.60 - 13.60, 0.0, 0.0).X), 6);
         // Perron : de Y −2,60 à 0, joues X 5,00 – 8,20.
         var a = TownModels.OwnPlace(cx, cz, facing, 6.60 - 5.00, 0.0, 5.00 + 2.60);
         var b = TownModels.OwnPlace(cx, cz, facing, 6.60 - 8.20, 0.0, 5.00);
         double px0 = Math.Min(a.X, b.X), px1 = Math.Max(a.X, b.X), pz0 = Math.Min(a.Z, b.Z), pz1 = Math.Max(a.Z, b.Z);
-        Assert.Equal((-92.6, -89.4, -8.5, -5.9), (Math.Round(px0, 6), Math.Round(px1, 6), Math.Round(pz0, 6), Math.Round(pz1, 6)));
+        Assert.Equal((-1124.6, -1121.4, -42.5, -39.9), (Math.Round(px0, 6), Math.Round(px1, 6), Math.Round(pz0, 6), Math.Round(pz1, 6)));
         Assert.True(pz1 > maxZ);                       // il sort de l'emprise, vers la porte : voulu
         Assert.InRange(door.X, px0, px1);              // la porte du jeu est dans l'axe du perron
         foreach (var other in map.Obstacles.Where(x => x.Id != "maison6"))

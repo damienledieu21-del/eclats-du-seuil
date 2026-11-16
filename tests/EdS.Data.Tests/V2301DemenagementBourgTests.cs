@@ -171,6 +171,22 @@ public class V2301DemenagementBourgTests
     }
 
     [Fact]
+    public void De_la_place_du_bourg_au_village_a_pied()
+    {
+        // Le retour : rue du marché, place du marché, porte de l'Est, route d'Ambre, grand-rue (le chemin des essais à l'envers).
+        CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
+        ItemCatalog items = ItemJsonReader.ReadFile(ItemJsonReader.PathIn(DataDirectory), ShippedData).Catalog!;
+        SavedCharacter hero = Inventory.Outfit(PlayerCharacters.Create("heros", AdventureSession.PlayerClass, progression), items);
+        WorldSession w = V228b2PassageTests.Open(Vallons.Value, new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, hero),
+            safePoint: "place_du_bourg");
+        foreach ((double x, double z) in Enumerable.Reverse(RoadToBourg)) V228b2PassageTests.WalkTo(w, x, z);
+        V228b2PassageTests.WalkTo(w, -20, -2);
+        V228b2PassageTests.WalkTo(w, -18, -11);
+        Assert.True(w.Registered("zone.vallons/safe/place_du_marche_de_la_ville"));
+        Assert.True(w.Registered("zone.vallons/safe/place_du_village"));
+    }
+
+    [Fact]
     public void Une_partie_sauvegardee_a_la_place_du_bourg_reprend_sur_la_nouvelle_place()
     {
         // Sauvegarde d'avant le déménagement : même point sûr, ancien secteur (le secteur n'est pas comparé, le point sûr fait foi).

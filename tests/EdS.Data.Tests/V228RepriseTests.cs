@@ -275,7 +275,7 @@ public class V228RepriseTests : IDisposable
         WalkToBourg(a);
         Assert.Equal("Place du Bourg", a.LastSafePoint);
         // S'éloigner ne change rien : le dernier point sûr approché reste celui de la reprise.
-        Assert.True(WalkTo(a, -50, -1));
+        Assert.True(WalkTo(a, -1070, -35));   // V2.30.1 : vers la rue du marché, loin d'un autre point sûr
         Assert.Equal("Place du Bourg", a.LastSafePoint);
         a.Save();
         WorldSave saved = SaveStore.Read(SavePath).Save!;
@@ -303,13 +303,14 @@ public class V228RepriseTests : IDisposable
         // La découverte puis l'approche marquent la partie à sauvegarder : la sauvegarde automatique écrit le point de reprise.
         a.Advance(AdventureSession.AutosaveSeconds);
         Assert.Equal("place_du_bourg", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
-        // Retour au village à pied (point sûr déjà découvert) : le point de reprise change, et se sauvegarde sans autre événement.
-        Assert.True(WalkTo(a, -50, -1));
-        Assert.True(WalkTo(a, -20, -2));
-        Assert.True(WalkTo(a, -18, -11));
-        Assert.Equal("Place du village", a.LastSafePoint);
+        // Retour à pied à la place du marché (point sûr déjà découvert en venant) : le point de reprise change, et se sauvegarde sans autre
+        // événement. Sous-lot V2.30.1 : le bourg est dans la ville fortifiée ; avant, le retour se faisait au village.
+        Assert.True(WalkTo(a, -1060, -35));
+        Assert.True(WalkTo(a, -1040, -60));
+        Assert.True(WalkTo(a, -1010, -76));
+        Assert.Equal("Place du marché du Bourg", a.LastSafePoint);
         a.Advance(AdventureSession.AutosaveSeconds);
-        Assert.Equal("place_du_village", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
+        Assert.Equal("place_du_marche_de_la_ville", SaveStore.Read(SavePath).Save!.Resume!.SafePoint);
     }
 
     [Fact]
