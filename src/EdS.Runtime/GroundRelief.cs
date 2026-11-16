@@ -232,7 +232,8 @@ namespace EdS.Runtime
             return !o.Low && !key.StartsWith("arbre", StringComparison.Ordinal) && TownRules.BuildingFor(o.Id) != StyleBuilding.Woods
                 && StyleRules.FenceFor(o.Id) != StyleFence.Hedge && !key.StartsWith("eboulement", StringComparison.Ordinal)
                 && !key.StartsWith("falaise", StringComparison.Ordinal)
-                && !FollowsGround(o.Id);   // sous-lot V2.30 : les pans de 500 m de la ville suivent le sol
+                && !FollowsGround(o.Id)   // sous-lot V2.30 : les pans de 500 m de la ville suivent le sol
+                && !key.StartsWith("panneau", StringComparison.Ordinal);   // sous-lot V2.30.1 : un poteau de panneau est planté dans le sol
         }
 
         /// <summary>

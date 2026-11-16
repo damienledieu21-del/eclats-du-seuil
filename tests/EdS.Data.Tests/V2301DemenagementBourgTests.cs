@@ -223,6 +223,47 @@ public class V2301DemenagementBourgTests
     }
 
     [Fact]
+    public void Panneaux_aux_croisements_du_village_au_Bourg()
+    {
+        // Décision de Damien du 16 novembre 2026 : des panneaux aux croisements entre le village et le Bourg.
+        Assert.Equal("Bourg d'Aube : est, 1,0 km", AdventureSession.WaySignPart("Bourg d'Aube", 0, 0, 1000, 0));
+        Assert.Equal("Village : nord, 500 m", AdventureSession.WaySignPart("Village", 0, 0, 0, 500));
+        Assert.Equal("Village : sud-ouest, 140 m", AdventureSession.WaySignPart("Village", 0, 0, -100, -100));
+        Assert.Equal("Village : ici", AdventureSession.WaySignPart("Village", 0, 0, 5, 5));
+        string path = Path.Combine(Path.GetTempPath(), "eds_v2301_" + Guid.NewGuid().ToString("N"), "partie.json");
+        try
+        {
+            AdventureSession a = LoadAtBourg(path);
+            IReadOnlyList<WorldMarker> signs = a.WaySigns();
+            Assert.Equal(new[] { "panneau_hameau", "panneau_route_d_ambre", "panneau_porte_est", "panneau_place_du_marche" }, signs.Select(s => s.Id));
+            Assert.Equal("Bourg d'Aube : ouest, 390 m · Village : est, 690 m", signs.Single(s => s.Id == "panneau_porte_est").Name);
+            Assert.All(signs, s => Assert.Matches("^Bourg d'Aube : [a-z-]+, [0-9,]+ k?m · Village : [a-z-]+, [0-9,]+ k?m$", s.Name));
+            ZoneDefinition zone = Vallons.Value;
+            foreach (WorldMarker s in signs)
+            {
+                // Au bord de la route, jamais dessus ; un poteau seul (rien d'autre à moins d'un mètre).
+                var roads = AdventureSession.Roads(zone);
+                Assert.InRange(TownRules.RoadAt(s.X, s.Z, roads).Edge, 0.5, 4);
+                Assert.DoesNotContain(zone.Setup.Space!.Obstacles, o => o.Id != s.Id && Inside(Box(o.Id), s.X, s.Z, 1));
+            }
+            Assert.Empty(LoadInside(path).WaySigns());
+        }
+        finally
+        {
+            string dir = Path.GetDirectoryName(path)!;
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
+    }
+
+    private static AdventureSession LoadInside(string path)
+    {
+        EdS.World.SaveStore.Write(path, new WorldSave("zone.auberge", 0, 0, Array.Empty<string>()));
+        var a = AdventureSession.Load(DataDirectory, Path.Combine(AppContext.BaseDirectory, "scenarios"), path);
+        a.Advance(0.05);
+        return a;
+    }
+
+    [Fact]
     public void Une_partie_sauvegardee_a_la_place_du_bourg_reprend_sur_la_nouvelle_place()
     {
         // Sauvegarde d'avant le déménagement : même point sûr, ancien secteur (le secteur n'est pas comparé, le point sûr fait foi).

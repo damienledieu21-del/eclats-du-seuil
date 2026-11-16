@@ -20,7 +20,8 @@ internal static class ScenarioTestData
     public static bool SurfaceObstacle(string id) => id.StartsWith("riviere_vallee", StringComparison.Ordinal) || id.StartsWith("riviere_champs", StringComparison.Ordinal)
         || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
             or "falaise_crete"
-        || id.Contains("_ville", StringComparison.Ordinal);   // sous-lot V2.30 : le Bourg fortifié (palissade, tours, maisons de la ville)
+        || id.Contains("_ville", StringComparison.Ordinal)   // sous-lot V2.30 : le Bourg fortifié (palissade, tours, maisons de la ville)
+        || id.StartsWith("panneau_", StringComparison.Ordinal);   // sous-lot V2.30.1 : panneaux des croisements du village au Bourg
 
     /// <summary>
     /// Sous-lot V2.28c : remet un scénario des Vallons (racine du fichier) à l'aire d'avant la surface étendue, de [−100, −70] à [140, 100],

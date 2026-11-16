@@ -145,6 +145,46 @@ namespace EdS.Runtime
         }
 
         /// <summary>
+        /// Sous-lot V2.30.1 (décision de Damien du 16 novembre 2026 : des panneaux aux croisements entre le village et le Bourg) : un panneau
+        /// par obstacle <c>panneau_…</c> de la zone (un poteau), avec en étiquette la direction et la distance à vol d'oiseau du Bourg d'Aube
+        /// (lieu <c>bourg</c>) et du village (lieu <c>village</c>) : « Bourg d'Aube : ouest, 1,0 km · Village : est, 80 m ». Vide dans un
+        /// intérieur ou sans ces lieux.
+        /// </summary>
+        public IReadOnlyList<WorldMarker> WaySigns()
+        {
+            if (Indoors) return Array.Empty<WorldMarker>();
+            MapPlace? town = RegionMap.Places.FirstOrDefault(p => p.Id == "bourg"), village = RegionMap.Places.FirstOrDefault(p => p.Id == "village");
+            if (town is null || village is null) return Array.Empty<WorldMarker>();
+            var signs = new List<WorldMarker>();
+            foreach (SpaceObstacle post in RegionMap.Obstacles)
+            {
+                if (!post.Id.StartsWith(WaySignPrefix, StringComparison.Ordinal)) continue;
+                double x = (post.Points.Min(p => p.X.Raw) + post.Points.Max(p => p.X.Raw)) / 20000.0;
+                double z = (post.Points.Min(p => p.Z.Raw) + post.Points.Max(p => p.Z.Raw)) / 20000.0;
+                string label = WaySignPart(town.Name, x, z, town.CenterX, town.CenterZ) + " · " + WaySignPart(village.Name, x, z, village.CenterX, village.CenterZ);
+                signs.Add(new WorldMarker(post.Id, label, new GroundVector(ToFixed(x), ToFixed(z))));
+            }
+            return signs;
+        }
+
+        /// <summary>Sous-lot V2.30.1 : préfixe des obstacles qui sont des panneaux (<see cref="WaySigns"/>).</summary>
+        public const string WaySignPrefix = "panneau_";
+
+        /// <summary>Sous-lot V2.30.1 : « Nom : direction, distance » (huit directions ; mètres arrondis à 10 m, km au-delà de 950 m).</summary>
+        public static string WaySignPart(string name, double x, double z, double toX, double toZ)
+        {
+            double dx = toX - x, dz = toZ - z, d = Math.Sqrt(dx * dx + dz * dz);
+            if (d < 15) return name + " : ici";
+            string[] dirs = { "est", "nord-est", "nord", "nord-ouest", "ouest", "sud-ouest", "sud", "sud-est" };
+            double angle = Math.Atan2(dz, dx);
+            int sector = (int)Math.Round(angle / (Math.PI / 4));
+            string dir = dirs[((sector % 8) + 8) % 8];
+            string dist = d >= 950 ? (Math.Round(d / 100) / 10).ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " km"
+                : (Math.Round(d / 10) * 10).ToString("0", CultureInfo.InvariantCulture) + " m";
+            return name + " : " + dir + ", " + dist;
+        }
+
+        /// <summary>
         /// Sous-lot V2.17 : obstacle de la maison de la boutique d'une enseigne (« enseigne/&lt;marchand&gt; ») ou d'une cheminée
         /// (« cheminee/&lt;marchand&gt; ») ; null sinon.
         /// </summary>

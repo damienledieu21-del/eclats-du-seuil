@@ -36,6 +36,12 @@ Rapportées par la session principale ; ordre de travail : V2.30.1, puis le somm
 2. **Point de vue du sommet** : y monter **lève le brouillard sur toute la région** (et non plus 1 024 m autour, décision du 15 novembre 2026, V2.29 (2)).
 3. **Porte nord du Bourg**, reliée au **chemin du pont des Murmures** : prévue avec ce chemin au **V2.40** (elle n'est pas triviale avec le V2.30.1 : le chemin du pont n'est pas tracé et passerait le ravin des Ronces, verrou du chapitre 1).
 
+Puis, vers 10 h (après la PR #190) :
+
+4. **Emplacement du bourg déménagé** (V2.30.1, au nord-ouest de la place du marché) : **gardé** ; on l'ajustera après le test dans Unity.
+5. **Panneaux aux croisements** entre le village et le Bourg : **dès le V2.30.1** (fait : quatre panneaux, direction et distance du Bourg et du village).
+6. **Quête du cheval** : Achille, Brume et les rives du lac **confirmés**. **Plus tard** (noté, pas maintenant) : ramener un vrai cheval à la longe jusqu'à la ferme, avec le modèle 3D, quand ses animations seront prêtes.
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
