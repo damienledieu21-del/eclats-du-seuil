@@ -88,7 +88,36 @@ namespace EdS.Runtime
                 case EastGate: return (-6.0, 6.0, -1.15, 5.9, 10.5);
                 case WestGate: return (-8.65, 8.9, -1.3, 10.0, 13.8);
                 case NorthGate: return (-4.6, 4.6, -1.5, 4.9, 10.11);
-                default: return null;
+                // V2.30.3 : monuments, étals, maisons (exports de jeu des groupes Eglise, Edicules, Halle, Ecuries, Boutiques, Etals,
+                // Maisons_*).
+                case Church: return (-8.9, 8.69, -17.1, 15.69, 28.0);
+                case Parvis: return (-11.0, 11.0, -6.0, 6.0, 0.3);
+                case Cemetery: return (-14.03, 14.03, -11.05, 11.03, 1.8);
+                case Hall: return (-12.0, 12.0, -7.0, 7.0, 10.1);
+                case Provost: return (-8.0, 8.0, -5.97, 5.97, 20.0);
+                case Guardhouse: return (-9.0, 9.0, -5.97, 5.97, 9.6);
+                case Stables: return (-15.0, 15.0, -12.0, 12.0, 10.8);
+                case Granary: return (-4.97, 4.97, -7.4, 8.6, 11.42);
+                case Washhouse: return (-6.0, 6.0, -3.5, 3.5, 5.1);
+                case Oven: return (-4.48, 4.48, -3.52, 4.4, 6.7);
+                case Fountain: return (-2.25, 2.25, -2.25, 2.25, 3.2);
+                case Well: return (-1.7, 1.7, -1.7, 1.7, 4.2);
+                case "h01_artisan_etroite": return (-2.25, 2.25, -4.8, 4.3, 10.72);
+                case "h02_artisan_moyenne": return (-3.0, 3.0, -4.55, 4.3, 10.72);
+                case "h03_artisan_large": return (-3.75, 3.75, -4.55, 4.3, 10.72);
+                case "h04_marchand_etroite": return (-2.5, 2.5, -5.8, 5.3, 11.9);
+                case "h05_marchand_moyenne": return (-3.5, 3.5, -5.8, 5.3, 14.51);
+                case "h06_marchand_large": return (-4.5, 4.5, -5.8, 5.3, 14.95);
+                case "h07_notable_etroite": return (-3.0, 3.0, -6.8, 6.3, 15.3);
+                case "h08_notable_moyenne": return (-4.25, 4.25, -6.8, 6.3, 15.3);
+                case "h09_notable_large": return (-5.5, 5.5, -6.8, 6.3, 15.3);
+                case "h10_angle": return (-4.55, 4.0, -4.55, 4.0, 10.57);
+                case "h10_angle_miroir": return (-4.0, 4.55, -4.55, 4.0, 10.57);
+                case "h11_passage": return (-4.0, 4.0, -5.3, 5.3, 13.6);
+                case "h12_pauvre_enceinte": return (-2.8, 2.8, -2.8, 2.8, 4.66);
+                default:
+                    if (Array.IndexOf(Stalls, piece) >= 0) return (-1.5, 1.5, -1.2, 1.2, 2.8);
+                    return null;
             }
         }
 
@@ -102,6 +131,34 @@ namespace EdS.Runtime
         public const string EastGate = "f08_porte_est";
         public const string WestGate = "f09_porte_ouest";
         public const string NorthGate = "f10_porte_nord";
+
+        public const string Church = "p01_eglise";
+        public const string Parvis = "p02_parvis";
+        public const string Cemetery = "p03_cimetiere";
+        public const string Hall = "p04_halle";
+        public const string Provost = "p05_prevot";
+        public const string Guardhouse = "p06_corps_de_garde";
+        public const string Stables = "p07_ecuries";
+        public const string Granary = "p08_grenier";
+        public const string Washhouse = "p09_lavoir";
+        public const string Oven = "p10_four_banal";
+        public const string Fountain = "p11_fontaine";
+        public const string Well = "p12_puits";
+
+        /// <summary>Les huit étals (R11 à R18) : les six étals de la place dans l'ordre de leur numéro, puis deux de décor.</summary>
+        public static readonly string[] Stalls =
+        {
+            "r11_etal_legumes", "r12_etal_fruits", "r13_etal_pain", "r14_etal_poisson", "r15_etal_viande", "r16_etal_fromages",
+            "r17_etal_etoffes", "r18_etal_poteries",
+        };
+
+        /// <summary>Maisons types de l'atelier (H01 à H12, avec la maison d'angle en miroir).</summary>
+        public static readonly string[] Houses =
+        {
+            "h01_artisan_etroite", "h02_artisan_moyenne", "h03_artisan_large", "h04_marchand_etroite", "h05_marchand_moyenne",
+            "h06_marchand_large", "h07_notable_etroite", "h08_notable_moyenne", "h09_notable_large", "h10_angle", "h10_angle_miroir",
+            "h11_passage", "h12_pauvre_enceinte",
+        };
 
         /// <summary>Longueur d'un module de palissade (A → B, m).</summary>
         public const double ModuleLength = 6.0;
@@ -232,7 +289,10 @@ namespace EdS.Runtime
         {
             var pieces = new List<BourgPiece>();
             var needs = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            roads ??= Array.Empty<StyleRoad>();
             Enceinte(obstacles, pieces, needs);
+            Monuments(obstacles, roads, pieces, needs);
+            HousesOf(obstacles, roads, pieces, needs);
             if (pieces.Count == 0) return BourgDress.Empty;
             return new BourgDress(pieces, needs.ToDictionary(n => n.Key, n => (IReadOnlyList<string>)n.Value.Distinct().OrderBy(p => p, StringComparer.Ordinal).ToList(),
                 StringComparer.Ordinal));
@@ -371,8 +431,151 @@ namespace EdS.Runtime
                 if (longest.To - longest.From < 150) continue;
                 double mid = (longest.From + longest.To) / 2;
                 (double x, double z) = longest.AlongX ? (mid, longest.Line) : (longest.Line, mid);
-                pieces.Add(new BourgPiece(WatchTower, x - longest.Out.X * WatchTowerInset, z - longest.Out.Z * WatchTowerInset, Yaw(longest.Out), null));
+                pieces.Add(new BourgPiece(WatchTower, Round(x - longest.Out.X * WatchTowerInset), Round(z - longest.Out.Z * WatchTowerInset), Yaw(longest.Out), null));
             }
+        }
+
+        // --- V2.30.3 : monuments, étals, maisons --------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Une pièce posée dans le repère d'un obstacle (<paramref name="o"/>, sa boîte) dont la façade regarde <paramref name="facing"/> :
+        /// <paramref name="right"/> le long de la façade (vers la droite vue de dehors), <paramref name="ahead"/> vers l'avant, depuis le
+        /// centre de l'obstacle.
+        /// </summary>
+        private static BourgPiece At(string piece, (double X0, double X1, double Z0, double Z1) o, (int X, int Z) facing, double right, double ahead,
+            string? covers)
+        {
+            double cx = (o.X0 + o.X1) / 2, cz = (o.Z0 + o.Z1) / 2;
+            // Droite vue de dehors (en regardant le bâtiment, donc vers −facing) : (−fz, fx).
+            double x = cx + facing.X * ahead - facing.Z * right, z = cz + facing.Z * ahead + facing.X * right;
+            return new BourgPiece(piece, Round(x), Round(z), Yaw(facing), covers);
+        }
+
+        /// <summary>Façade d'un bâtiment de la ville vers la route la plus proche (sans route : vers le sud).</summary>
+        private static (int X, int Z) RoadSide(string id, (double X0, double X1, double Z0, double Z1) b, IReadOnlyList<StyleRoad> roads) =>
+            roads.Count == 0 ? (0, -1) : TownRules.FacingOf(id, b.X0, b.Z0, b.X1, b.Z1, roads, null);
+
+        /// <summary>
+        /// Monuments du cœur de la ville (V2.30) : l'église face au sud (vers la route d'Ambre et la place), son parvis devant, le
+        /// cimetière clos à l'est ; le clocher des données (derrière le chevet) est couvert par l'église, qui porte le sien ; la halle face
+        /// au nord (vers la place) ; les écuries face au sud (vers la route), leur façade sur le bord de l'obstacle ; le puits de la place ;
+        /// la grande maison en cour des bâtiments publics (maison du prévôt et beffroi, corps de garde, four banal devant, grenier au fond) ;
+        /// la fontaine et le lavoir au sud de la place ; les six étals de la place tournés vers la route, deux de plus à côté des étals du
+        /// sud.
+        /// </summary>
+        private static void Monuments(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces,
+            Dictionary<string, List<string>> needs)
+        {
+            void Put(BourgPiece p)
+            {
+                pieces.Add(p);
+                if (p.Covers != null) Need(needs, p.Covers, p.Piece);
+            }
+            var byId = obstacles.ToDictionary(o => o.Id, o => o, StringComparer.Ordinal);
+            if (byId.TryGetValue("chapelle_ville_eglise", out SpaceObstacle? church))
+            {
+                var b = Bounds(church);
+                Put(At(Church, b, (0, -1), 0, 0, church.Id));
+                // Parvis : contre la façade (seuil Y −17 de l'église : 2 m devant l'obstacle), 12 m de profondeur.
+                Put(At(Parvis, b, (0, -1), 0, (b.Z1 - b.Z0) / 2 + 2 + 6, null));
+                // Cimetière clos : à l'est de la nef, portillon vers l'église (face à l'ouest).
+                Put(new BourgPiece(Cemetery, Round(b.X1 + 3 + 11.05), Round((b.Z0 + b.Z1) / 2), Yaw((-1, 0)), null));
+                if (byId.ContainsKey("tour_ville_clocher")) Need(needs, "tour_ville_clocher", Church);
+            }
+            if (byId.TryGetValue("grange_ville_halle", out SpaceObstacle? hall)) Put(At(Hall, Bounds(hall), (0, 1), 0, 0, hall.Id));
+            if (byId.TryGetValue("grange_ville_ecurie", out SpaceObstacle? stables))
+            {
+                var b = Bounds(stables);
+                // Façade (Y −12) sur le bord sud de l'obstacle : le corps arrière dépasse au nord (U de 24 m sur 16).
+                Put(At(Stables, b, (0, -1), 0, (b.Z1 - b.Z0) / 2 - 12, stables.Id));
+            }
+            if (byId.TryGetValue("puits_ville_marche", out SpaceObstacle? well)) Put(At(Well, Bounds(well), (0, -1), 0, 0, well.Id));
+            if (byId.TryGetValue("maison_ville_grande_maison", out SpaceObstacle? great))
+            {
+                var b = Bounds(great);
+                double front = (b.Z1 - b.Z0) / 2;   // façades au bord sud (vers la place)
+                // Le long de la façade (droite vue de dehors, depuis la place : vers +x) : corps de garde à l'est, prévôt, four banal à l'ouest.
+                Put(At(Guardhouse, b, (0, -1), 16, front - 5.4, great.Id));
+                Put(At(Provost, b, (0, -1), -2, front - 5.4, great.Id));
+                Put(At(Oven, b, (0, -1), -16.5, front - 2.025, great.Id));
+                // Grenier au fond, à l'ouest, face à la cour (au sud) : sa façade (Y −7) à 16 m du bord sud.
+                Put(At(Granary, b, (0, -1), -18, front - 16 - 7, great.Id));
+            }
+            // Relecture indépendante : l'étal de l'atelier se lit dans le numéro N de « etal_ville_N » (1 à 6), pas dans le rang.
+            foreach (SpaceObstacle stall in obstacles.Where(o => o.Id.StartsWith("etal_ville_", StringComparison.Ordinal)).OrderBy(o => o.Id, StringComparer.Ordinal))
+            {
+                if (!int.TryParse(stall.Id.Substring("etal_ville_".Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int n)
+                    || n < 1 || n > 6) continue;
+                var b = Bounds(stall);
+                Put(At(Stalls[n - 1], b, RoadSide(stall.Id, b, roads), 0, 0, stall.Id));
+                // Les deux derniers étals de l'atelier (étoffes, poteries) à côté des étals 5 et 6 (au sud), sur la même ligne.
+                if (n >= 5) Put(At(Stalls[n + 1], b, RoadSide(stall.Id, b, roads), 4.5, 0, null));
+            }
+            if (byId.TryGetValue("puits_ville_marche", out SpaceObstacle? square))
+            {
+                var b = Bounds(square);
+                double cx = (b.X0 + b.X1) / 2;
+                // Au sud de la route d'Ambre, entre les étals du sud : fontaine, puis lavoir derrière elle.
+                Put(new BourgPiece(Fountain, Round(cx), Round(b.Z0 - 52), Yaw((0, 1)), null));
+                Put(new BourgPiece(Washhouse, Round(cx), Round(b.Z0 - 80), Yaw((0, 1)), null));
+            }
+        }
+
+        /// <summary>Marge (m) admise entre le pied d'une maison type et l'emprise de sa maison (rives, encorbellements).</summary>
+        public const double HouseTolerance = 0.15;
+
+        /// <summary>Part de la surface de la plus grande maison qui tient en dessous de laquelle une maison type n'est pas tirée.</summary>
+        public const double HouseChoice = 0.55;
+
+        /// <summary>
+        /// Maisons de la ville (<c>maison_ville_NN</c>, hors la grande maison) : pignon sur rue (décision de Damien pour les maisons types)
+        /// sur le petit côté de l'emprise, vers la route la plus proche des deux petits côtés ; maison type tirée (d'après l'identifiant)
+        /// parmi celles qui tiennent dans l'emprise et dont la surface vaut au moins <see cref="HouseChoice"/> de la plus grande qui tient.
+        /// </summary>
+        private static void HousesOf(IReadOnlyList<SpaceObstacle> obstacles, IReadOnlyList<StyleRoad> roads, List<BourgPiece> pieces,
+            Dictionary<string, List<string>> needs)
+        {
+            foreach (SpaceObstacle o in obstacles.Where(o => o.Id.StartsWith("maison_ville_", StringComparison.Ordinal) && o.Id != "maison_ville_grande_maison")
+                .OrderBy(o => o.Id, StringComparer.Ordinal))
+            {
+                var b = Bounds(o);
+                (int X, int Z) facing = HouseFacing(b, roads);
+                string? model = HouseModel(o.Id, b, facing);
+                if (model == null) continue;
+                pieces.Add(At(model, b, facing, 0, 0, o.Id));
+                Need(needs, o.Id, model);
+            }
+        }
+
+        /// <summary>Façade d'une maison : sur un petit côté, celui dont le milieu est le plus près d'une route (à égalité : est, puis nord).</summary>
+        public static (int X, int Z) HouseFacing((double X0, double X1, double Z0, double Z1) b, IReadOnlyList<StyleRoad> roads)
+        {
+            bool alongX = b.X1 - b.X0 >= b.Z1 - b.Z0;   // grand côté le long de x : façade à l'est ou à l'ouest
+            (double ax, double az, (int, int) a) = alongX ? (b.X1, (b.Z0 + b.Z1) / 2, (1, 0)) : ((b.X0 + b.X1) / 2, b.Z1, (0, 1));
+            (double bx, double bz, (int, int) c) = alongX ? (b.X0, (b.Z0 + b.Z1) / 2, (-1, 0)) : ((b.X0 + b.X1) / 2, b.Z0, (0, -1));
+            if (roads.Count == 0) return a;
+            return TownRules.RoadAt(bx, bz, roads).Edge < TownRules.RoadAt(ax, az, roads).Edge - 1e-9 ? c : a;
+        }
+
+        /// <summary>Maison type d'une emprise (null si aucune ne tient).</summary>
+        public static string? HouseModel(string id, (double X0, double X1, double Z0, double Z1) b, (int X, int Z) facing)
+        {
+            double cx = (b.X0 + b.X1) / 2, cz = (b.Z0 + b.Z1) / 2, yaw = Yaw(facing);
+            var fits = Houses.Where(h =>
+            {
+                var f = Footprint(h, cx, cz, yaw);
+                return f.X0 >= b.X0 - HouseTolerance && f.X1 <= b.X1 + HouseTolerance && f.Z0 >= b.Z0 - HouseTolerance && f.Z1 <= b.Z1 + HouseTolerance;
+            }).Select(h => (Piece: h, Area: Area(h))).ToList();
+            if (fits.Count == 0) return null;
+            double best = fits.Max(f => f.Area);
+            var pool = fits.Where(f => f.Area >= HouseChoice * best).Select(f => f.Piece).OrderBy(p => p, StringComparer.Ordinal).ToList();
+            return pool[StyleRules.Variant(id + "/maison", pool.Count)];
+        }
+
+        private static double Area(string piece)
+        {
+            var v = Box(piece)!.Value;
+            return (v.X1 - v.X0) * (v.Y1 - v.Y0);
         }
 
         /// <summary>Distance (m, le long du pan) entre le centre d'une porte et celui d'un module coiffé de la ronde couverte.</summary>

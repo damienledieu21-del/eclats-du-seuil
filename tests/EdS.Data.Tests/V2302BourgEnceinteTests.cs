@@ -23,7 +23,11 @@ public class V2302BourgEnceinteTests
 
     private static IReadOnlyList<SpaceObstacle> Obstacles => Vallons.Value.Setup.Space!.Obstacles;
 
-    private static readonly Lazy<BourgDress> Dress = new(() => BourgModels.Dress(Obstacles));
+    private static readonly Lazy<BourgDress> All = new(() => BourgModels.Dress(Obstacles));
+
+    /// <summary>V2.30.3 : l'habillage ne garde ici que l'enceinte (pièces F, pans et tours).</summary>
+    private static readonly Lazy<BourgDress> Dress = new(() => new BourgDress(All.Value.Pieces.Where(p => p.Piece.StartsWith("f", StringComparison.Ordinal)).ToList(),
+        All.Value.Needs.Where(n => BourgModels.IsWall(n.Key) || BourgModels.IsTower(n.Key)).ToDictionary(n => n.Key, n => n.Value)));
 
     private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>
         (o.Points.Min(p => p.X.Raw / 1e4), o.Points.Max(p => p.X.Raw / 1e4), o.Points.Min(p => p.Z.Raw / 1e4), o.Points.Max(p => p.Z.Raw / 1e4));
@@ -71,6 +75,8 @@ public class V2302BourgEnceinteTests
             Assert.Equal(new[] { BourgModels.FlankTower }, Dress.Value.Needs["tour_ville_" + t]);
         // Hors du Bourg (le cœur, le hameau) : rien.
         Assert.Empty(BourgModels.Dress(Obstacles.Where(o => !o.Id.Contains("_ville", StringComparison.Ordinal)).ToList()).Pieces);
+        // V2.30.3 : l'église (son clocher) et les maisons ne prennent aucune pièce de l'enceinte.
+        Assert.All(All.Value.Needs.Where(n => !BourgModels.IsWall(n.Key) && !BourgModels.IsTower(n.Key)), n => Assert.DoesNotContain(n.Value, p => p.StartsWith("f", StringComparison.Ordinal)));
     }
 
     [Fact]
