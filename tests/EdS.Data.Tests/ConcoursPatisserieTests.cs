@@ -35,8 +35,8 @@ public class ConcoursPatisserieTests
     public void Catalogue_v8_deux_patisseries_de_concours_seulement()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((8, 8, "0.20.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
-        Assert.Equal(new[] { Tarte, Couronne }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
+        Assert.Equal((8, 8, "0.21.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
+        Assert.Equal(new[] { Tarte, Couronne, "item.fouace_des_semailles" }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
         Assert.All(new[] { Couronne, Tarte }, id => Assert.True(c.TakesQuality(c.Item(id)) && c.SignsAlways(c.Item(id))));
         // Un autre objet de soin ne prend pas de qualité ; un équipement prend une qualité mais n'est signé que chef-d'œuvre.
         Assert.False(c.TakesQuality(c.Item("item.potion_de_soin")));
@@ -101,9 +101,9 @@ public class ConcoursPatisserieTests
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
         CraftingBook book = Crafting(ZoneAt(-43.5, 2.5));
-        Assert.Equal("0.10.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.11.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
-        Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons" },
+        Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons", "recipe.cuisine.fouace_des_semailles" },
             cuisine.Where(r => r.Quality).Select(r => r.Id));
         Assert.All(cuisine, r => Assert.Equal(r.Quality, r.Signed));
         // Une recette à qualité demande le petit jeu (les trois gestes) ; sans lui, refusée et rien ne change.
@@ -135,7 +135,7 @@ public class ConcoursPatisserieTests
     [Fact]
     public void Sauvegarde_v24_marque_du_patissier_relue_et_refusee_avant()
     {
-        Assert.Equal((24, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
+        Assert.Equal((25, 24), (SaveValidator.CurrentSchemaVersion, SaveValidator.BakerMarkSince));
         WorldSession w = Oven(Signed(Tarte, ItemQuality.Normal), Signed(Couronne, ItemQuality.Superior), Signed(Couronne, ItemQuality.Masterwork),
             new ItemStack(Couronne, 2));
         string json = SaveJsonReader.Write(w.Save());
@@ -167,9 +167,9 @@ public class ConcoursPatisserieTests
     }
 
     /// <summary>Sur la place, à la Fête des Moissons (jour 63 du calendrier du jeu, 10 h 30), près de Firmin.</summary>
-    private static WorldSession AtFestival(SavedCharacter hero, long day = 63)
+    private static WorldSession AtFestival(SavedCharacter hero, long day = 63, double x = -55, double z = 3.1)
     {
-        ZoneDefinition zone = Zone(-55, 3.1);
+        ZoneDefinition zone = Zone(x, z);
         var session = new WorldSession(new WorldSave("zone.vallons", TickAt(day, 10 * 60 + 30) - 1, 0, new[] { PlayerCharacters.PlacesKey }, hero), zone,
             ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
         session.Step();
@@ -238,6 +238,48 @@ public class ConcoursPatisserieTests
         WorldSession w = AtFestival(Baker(Signed(item, quality)));
         Present(w, pastry, choice, out _);
         Assert.Equal((prize, 0, reputation), (w.Money, w.Inventory.Count(item), w.Narrative!.Reputation("villagers")));
+    }
+
+    // --- Concours des Semailles (décision de Damien du 16 novembre 2026) --------------------------------------------------------------
+
+    private const string Fouace = "item.fouace_des_semailles";
+
+    /// <summary>Sur la place, aux Semailles (jour 14 du calendrier du jeu, 10 h 30), près de l'étal de Firmin (−54,5 ; 0).</summary>
+    private static WorldSession AtSemailles(SavedCharacter hero) => AtFestival(hero, 14, -54.5, 1.5);
+
+    [Theory]
+    [InlineData(ItemQuality.Masterwork, "masterwork", "v231_chef", 600L, 20)]
+    [InlineData(ItemQuality.Superior, "superior", "v231_superieure", 300L, 12)]
+    [InlineData(ItemQuality.Normal, "normal", "v231_normale", 150L, 6)]
+    public void Semailles_la_fouace_de_sa_main_au_bareme_de_la_couronne(ItemQuality quality, string choice, string node, long prize, int reputation)
+    {
+        WorldSession w = AtSemailles(Baker(Signed(Fouace, quality), new ItemStack(Fouace, 1)));
+        Assert.Equal("festival.foire", w.Festival?.Id);
+        DialogueView view = Talk(w);
+        Assert.Equal("v231_semailles", view.Node);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v231.boulanger.fouace").Index, out DialogueView? which, out _));
+        Assert.Equal(new[] { "text.v215.boulanger.couronne." + choice, "text.v215.boulanger.retour" }, which!.Options.Select(o => o.Text));
+        Assert.Equal(DialogueRefusal.None, w.Choose(which.Options[0].Index, out DialogueView? verdict, out IReadOnlyList<StoryEvent> events));
+        Assert.Equal(node, verdict!.Node);
+        Assert.Contains(events, e => e.Kind == StoryEventKind.ItemPresented && e.Id == Fouace && e.Step == choice);
+        Assert.Contains(events, e => e.Kind == StoryEventKind.ContestEntered && e.Id == "festival.foire");
+        // La fouace de sa main est un trophée parti chez le juge ; la fouace sans marque reste ; le prix, la réputation.
+        Assert.Equal((prize, reputation, 0, 1), (w.Money, w.Narrative!.Reputation("villagers"), w.Inventory.CountSigned(Fouace, Me, null), w.Inventory.Count(Fouace)));
+        // Un concours par fête et par an : fermé jusqu'à l'an prochain (Firmin reprend son accueil des Semailles).
+        Assert.Equal("v210_foire", Talk(w).Node);
+    }
+
+    [Fact]
+    public void Semailles_sans_fouace_de_sa_main_ni_aux_moissons()
+    {
+        Assert.Equal("v210_foire", Talk(AtSemailles(Baker(new ItemStack(Fouace, 2)))).Node);
+        Assert.Equal("v210_foire", Talk(AtSemailles(Baker(Signed(Couronne, ItemQuality.Masterwork)))).Node);   // la couronne est des Moissons
+        Assert.Equal("v210_moissons", Talk(AtFestival(Baker(Signed(Fouace, ItemQuality.Masterwork)))).Node);   // la fouace est des Semailles
+        // « Parlons d'autre chose » ramène à l'accueil des Semailles.
+        WorldSession w = AtSemailles(Baker(Signed(Fouace, ItemQuality.Normal)));
+        DialogueView view = Talk(w);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v215.boulanger.autre").Index, out DialogueView? next, out _));
+        Assert.Equal("v210_foire", next!.Node);
     }
 
     [Fact]

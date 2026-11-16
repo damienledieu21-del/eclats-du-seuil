@@ -227,7 +227,7 @@ public sealed class V22MeteoTests : IDisposable
         Assert.True(w.Weather.Raining);
         string text = SaveJsonReader.Write(w.Save());
         Assert.DoesNotContain("weather", text, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(24, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
+        Assert.Equal(25, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   /* V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) */   // format de la sauvegarde inchangé
         WorldSave back = SaveJsonReader.Read(text).Save!;
         var next = new WorldSession(back, Shipped.Value, ShippedData, Progression, ItemsCatalog, Book(Shipped.Value), market: new Market(ShippedMerchants));
         Assert.Equal(w.Zone.Time, next.Zone.Time);
@@ -279,7 +279,7 @@ public sealed class V22MeteoTests : IDisposable
     {
         StoryBook book = Book(Shipped.Value);
         // Sous-lot V2.3 : schéma 9 (emplois du temps), contenu 0.15.0.
-        Assert.Equal((15, StoryValidator.CurrentSchemaVersion, "0.29.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((15, StoryValidator.CurrentSchemaVersion, "0.30.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         JsonObject root = StoryJson();
         int weatherEntries = 0;
         var speakers = new HashSet<string>();

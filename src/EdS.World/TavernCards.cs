@@ -106,6 +106,23 @@ namespace EdS.World
         /// <summary>Décision de Damien du 15 novembre 2026 : victoires qui donnent le jeu de cartes rare et le titre « As des Trois Feux ».</summary>
         public const int VictoriesForReward = 10;
 
+        /// <summary>Décision de Damien du 16 novembre 2026 : gains de la taverne au plus par jour du monde, en cuivre.</summary>
+        public const int DailyCap = EdS.Data.Saves.SavedCards.DailyCap;
+
+        /// <summary>Le jeu de cartes rare donné à la dixième victoire (objet décoratif, catalogue 0.21.0).</summary>
+        public const string RareDeck = "item.jeu_des_trois_feux";
+
+        /// <summary>
+        /// Manière de jouer d'un PNJ : Mathurin (<c>npc.aubergiste</c>) est rusé ; les autres PNJ de la taverne ont une manière tirée de leur
+        /// identifiant (toujours la même pour un PNJ donné).
+        /// </summary>
+        public static CardStyle StyleOf(string npc)
+        {
+            if (npc is null) throw new ArgumentNullException(nameof(npc));
+            if (npc == "npc.aubergiste") return CardStyle.Cunning;
+            return (CardStyle)(int)(Loot.Fnv1a("cards:style:" + npc) % 3);
+        }
+
         /// <summary>Nombre de cartes du paquet (trois couleurs de <see cref="MaxValue"/> cartes).</summary>
         public const int DeckSize = 3 * MaxValue;
 

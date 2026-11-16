@@ -110,6 +110,9 @@ namespace EdS.Data.Saves
         /// <summary>Sous-lot V2.29 (2) (version 23) : cases explorées par zone (facultatives).</summary>
         public Dictionary<string, string?>? Explored { get; set; }
 
+        /// <summary>Cartes à la taverne (version 25) : graine, victoires, compteurs du jour, partie en cours (facultatif).</summary>
+        public SavedCardsData? Cards { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -209,5 +212,29 @@ namespace EdS.Data.Saves
     {
         public string? Step { get; set; }
         public long? Progress { get; set; }
+    }
+
+    /// <summary>Cartes à la taverne (version 25) : <c>character.cards</c> tel que lu.</summary>
+    public sealed class SavedCardsData
+    {
+        public string? Secret { get; set; }
+        public long? Wins { get; set; }
+        public bool? Deck { get; set; }
+        public long? Day { get; set; }
+        public Dictionary<string, int?>? Played { get; set; }
+        public int? Gained { get; set; }
+        public SavedCardGameData? Game { get; set; }
+        public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Cartes à la taverne (version 25) : la partie en cours telle que lue.</summary>
+    public sealed class SavedCardGameData
+    {
+        public string? Npc { get; set; }
+        public int? Style { get; set; }
+        public long? Day { get; set; }
+        public int? Game { get; set; }
+        public int? Stake { get; set; }
+        public List<int?>? Moves { get; set; }
     }
 }

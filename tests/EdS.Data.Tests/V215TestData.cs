@@ -6,17 +6,19 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// Concours de pâtisserie : l'histoire livrée sans ce qui demande la version 15 (conditions <c>hasSigned</c>, effet <c>present</c>) : les
-/// entrées et nœuds « v215 » du concours de Firmin.
+/// entrées et nœuds « v215 » du concours de Firmin, et « v231 » (concours des Semailles, décision de Damien du 16 novembre 2026).
 /// </summary>
 internal static class V215TestData
 {
+    private static bool Pastry(string? id) => id != null && (id.StartsWith("v215_", StringComparison.Ordinal) || id.StartsWith("v231_", StringComparison.Ordinal));
+
     public static void WithoutPastryContest(JsonObject root)
     {
         foreach (JsonNode? d in root["data"]!["dialogues"]!.AsArray())
         {
             JsonArray entries = d!["entries"]!.AsArray(), nodes = d["nodes"]!.AsArray();
-            foreach (JsonNode? e in entries.Where(e => ((string?)e!["node"])!.StartsWith("v215_", StringComparison.Ordinal)).ToList()) entries.Remove(e);
-            foreach (JsonNode? n in nodes.Where(n => ((string?)n!["id"])!.StartsWith("v215_", StringComparison.Ordinal)).ToList()) nodes.Remove(n);
+            foreach (JsonNode? e in entries.Where(e => Pastry((string?)e!["node"])).ToList()) entries.Remove(e);
+            foreach (JsonNode? n in nodes.Where(n => Pastry((string?)n!["id"])).ToList()) nodes.Remove(n);
         }
     }
 }

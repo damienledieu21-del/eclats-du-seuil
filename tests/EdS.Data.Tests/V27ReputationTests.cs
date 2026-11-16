@@ -68,8 +68,8 @@ public class V27ReputationTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((15, 11), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema11));
-        Assert.Equal((24, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
-        Assert.Equal((15, "0.29.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
+        Assert.Equal((25, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
+        Assert.Equal((15, "0.30.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
         Assert.Equal(new[] { "villagers", "guard", "rangers", "bandits" }, Reputations.Factions);
         Assert.Equal(7, Reputations.Tiers.Count);
         // Ni le moteur, ni le journal, ni les scénarios.
@@ -112,6 +112,7 @@ public class V27ReputationTests
     {
         JsonObject eleven = StoryJson();
         eleven["schemaVersion"] = 11;
+        V215TestData.WithoutPastryContest(eleven);   // concours de pâtisserie : erreurs de version 15 hors du propos
         StoryLoadResult refused = Read(eleven);
         Assert.False(refused.IsValid);
         AssertError(refused.Report, "$.data.reputation", ValidationCode.InvalidValue);

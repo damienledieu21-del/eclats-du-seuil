@@ -220,6 +220,55 @@ namespace EdS.Data.Json
                     }
                     c.Explored = map;
                 },
+                ["cards"] = (v, p) =>   // cartes à la taverne (version 25), facultatif
+                {
+                    c.Present.Add("cards");
+                    var cd = new SavedCardsData();
+                    bool cok = input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["secret"] = (ev2, ep) => cd.Secret = input.Text(ev2, ep),
+                        ["wins"] = (ev2, ep) => cd.Wins = input.Int64(ev2, ep),
+                        ["deck"] = (ev2, ep) => cd.Deck = input.Boolean(ev2, ep),
+                        ["day"] = (ev2, ep) => cd.Day = input.Int64(ev2, ep),
+                        ["played"] = (ev2, ep) =>
+                        {
+                            if (!input.RequireKind(ev2, JsonValueKind.Object, ep, "objet « PNJ : parties du jour »")) return;
+                            var map = new Dictionary<string, int?>(StringComparer.Ordinal);
+                            foreach (JsonProperty property in input.UniqueProperties(ev2, ep))
+                            {
+                                if (map.Count >= SavedCards.MaxOpponents) { input.Report.Add(ep, ValidationCode.LimitExceeded, $"au plus {SavedCards.MaxOpponents} adversaires."); return; }
+                                map[property.Name] = input.Int32(property.Value, ep + "." + property.Name);
+                            }
+                            cd.Played = map;
+                        },
+                        ["gained"] = (ev2, ep) => cd.Gained = input.Int32(ev2, ep),
+                        ["game"] = (ev2, ep) =>
+                        {
+                            cd.Present.Add("game");
+                            var g = new SavedCardGameData();
+                            bool gok = input.ReadFields(ev2, ep, new Dictionary<string, Action<JsonElement, string>>
+                            {
+                                ["npc"] = (e3, p3) => g.Npc = input.Text(e3, p3),
+                                ["style"] = (e3, p3) => g.Style = input.Int32(e3, p3),
+                                ["day"] = (e3, p3) => g.Day = input.Int64(e3, p3),
+                                ["game"] = (e3, p3) => g.Game = input.Int32(e3, p3),
+                                ["stake"] = (e3, p3) => g.Stake = input.Int32(e3, p3),
+                                ["moves"] = (e3, p3) =>
+                                {
+                                    if (!input.RequireKind(e3, JsonValueKind.Array, p3, "tableau")) return;
+                                    int length = e3.GetArrayLength();
+                                    if (length >= SavedCards.HandSize) { input.Report.Add(p3, ValidationCode.LimitExceeded, $"{length} places jouées, au plus {SavedCards.HandSize - 1}."); return; }
+                                    var moves = new List<int?>();
+                                    int k = 0;
+                                    foreach (JsonElement m in e3.EnumerateArray()) moves.Add(input.Int32(m, p3 + "[" + (k++).ToString(CultureInfo.InvariantCulture) + "]"));
+                                    g.Moves = moves;
+                                },
+                            });
+                            if (gok) cd.Game = g;
+                        },
+                    });
+                    if (cok) c.Cards = cd;
+                },
                 ["mount"] = (v, p) =>   // sous-lot V2.28d (2b) (version 22) : la monture, facultative
                 {
                     c.Present.Add("mount");
@@ -608,6 +657,19 @@ namespace EdS.Data.Json
             if (c.Mount != null) b.Append("      \"mount\": \"").Append(c.Mount).Append("\",\n");   // sous-lot V2.28d (2b) (version 22) : identifiant déjà validé
             if (c.Explored.Count > 0)   // sous-lot V2.29 (2) (version 23) : zones et chaînes déjà validées (aucun échappement nécessaire)
                 b.Append("      \"explored\": {").Append(string.Join(", ", c.Explored.Select(e => "\"" + e.Key + "\": \"" + e.Value + "\""))).Append("},\n");
+            if (c.Cards is SavedCards cards)   // cartes à la taverne (version 25) : état déjà validé à la construction (PNJ au format, aucun échappement)
+            {
+                string Num(long n) => n.ToString(CultureInfo.InvariantCulture);
+                b.Append("      \"cards\": {\"secret\": \"").Append(SavedCards.SecretText(cards.Secret)).Append("\", \"wins\": ").Append(Num(cards.Wins))
+                    .Append(", \"deck\": ").Append(cards.DeckGiven ? "true" : "false").Append(", \"day\": ").Append(Num(cards.Day))
+                    .Append(", \"played\": {").Append(string.Join(", ", cards.Played.Select(e => "\"" + e.Key + "\": " + Num(e.Value)))).Append('}')
+                    .Append(", \"gained\": ").Append(Num(cards.Gained));
+                if (cards.Game is SavedCardGame cg)
+                    b.Append(", \"game\": {\"npc\": \"").Append(cg.Npc).Append("\", \"style\": ").Append(Num(cg.Style)).Append(", \"day\": ").Append(Num(cg.Day))
+                        .Append(", \"game\": ").Append(Num(cg.Game)).Append(", \"stake\": ").Append(Num(cg.Stake))
+                        .Append(", \"moves\": [").Append(string.Join(", ", cg.Moves.Select(m => Num(m)))).Append("]}");
+                b.Append("},\n");
+            }
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));
             b.Append("      \"crafts\": ").Append(c.Crafts.ToString(CultureInfo.InvariantCulture)).Append(",\n");
