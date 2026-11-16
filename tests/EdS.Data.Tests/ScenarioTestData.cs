@@ -121,6 +121,24 @@ internal static class ScenarioTestData
     }
 
     /// <summary>
+    /// Sous-lot V2.30.1 (revue Codex de la PR #190) : le boss du monde d'avant le déménagement (racine du fichier des boss du monde), pour
+    /// une zone passée par <see cref="ZoneBefore"/> : la cible « bourg » reprend sa route et ses objectifs au bord du cœur.
+    /// </summary>
+    public static void WorldBossesBefore(JsonNode bosses)
+    {
+        foreach (var boss in bosses["data"]!["bosses"]!.AsArray())
+            foreach (var target in boss!["targets"]!.AsArray())
+            {
+                if ((string?)target!["id"] != "bourg") continue;
+                target["route"] = new JsonArray(new JsonArray(-40, -30), new JsonArray(-32, -24));
+                target["objectives"] = new JsonArray(
+                    new JsonObject { ["id"] = "palissade", ["position"] = new JsonArray(-30, -22) },
+                    new JsonObject { ["id"] = "porte", ["position"] = new JsonArray(-28, -20) },
+                    new JsonObject { ["id"] = "auvent_du_grenier", ["position"] = new JsonArray(-26, -18) });
+            }
+    }
+
+    /// <summary>
     /// Sous-lot V2.28c (4) : l'histoire des Vallons d'avant la surface étendue (racine du fichier d'histoire), pour une zone passée par
     /// <see cref="ZoneBefore"/> : sans la quête des passages de la vallée (ses passages n'y existent pas), ni ses répliques (<c>v228_</c>) ni
     /// les réponses qui y mènent.

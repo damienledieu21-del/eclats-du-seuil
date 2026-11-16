@@ -134,6 +134,23 @@ public class V2301DemenagementBourgTests
     }
 
     [Fact]
+    public void Le_Grand_Solitaire_assiege_le_Bourg_a_sa_porte_de_l_Est()
+    {
+        // Revue Codex de la PR #190 : la cible « bourg » du boss du monde suit le bourg déménagé : la route d'approche longe la route d'Ambre
+        // et les trois objectifs sont devant la porte de l'Est de la ville fortifiée (le boss n'entre pas dans les murs).
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "worldbosses.json")))!;
+        var target = root["data"]!["bosses"]![0]!["targets"]!.AsArray().Single(t => (string)t!["id"]! == "bourg")!;
+        Assert.Equal("bourg", (string)target["place"]!);
+        var points = target["route"]!.AsArray().Select(p => ((double)p![0]!, (double)p[1]!))
+            .Concat(target["objectives"]!.AsArray().Select(o => ((double)o!["position"]![0]!, (double)o["position"]![1]!))).ToList();
+        Assert.Equal(5, points.Count);
+        Assert.All(points, p => Assert.InRange(p.Item1, -710, -300));   // hors des murs, à l'est de la palissade (x = −710)
+        Assert.All(points.Skip(2), p => Assert.InRange(Math.Abs(p.Item1 - -710), 0, 20));   // devant la porte
+        Assert.All(points, p => Assert.False(Blocked(p.Item1, p.Item2, 3), $"({p.Item1}, {p.Item2}) dans un obstacle"));
+        Assert.Contains(points, p => p.Item2 > -60 && p.Item2 < -40);   // la porte elle-même
+    }
+
+    [Fact]
     public void De_la_place_du_marche_a_chaque_porte_a_pied()
     {
         CharacterProgression progression = ProgressionJsonReader.ReadFile(ProgressionJsonReader.PathIn(DataDirectory), ShippedData).Progression!;
