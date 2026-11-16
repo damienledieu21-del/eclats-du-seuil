@@ -444,6 +444,9 @@ namespace EdS.Game
         /// <summary>V2.53 : écran de chargement peint (démarrage, voyage rapide).</summary>
         private readonly LoadingView _loading = new LoadingView();
 
+        /// <summary>Temps de jeu de l'image : nul en pause et sous l'écran de chargement (le jeu ne tourne pas sous l'écran peint).</summary>
+        private float GameDelta => _paused || _loading.Active ? 0f : Time.deltaTime;
+
         private const float FadeSeconds = 0.7f;
 
         /// <summary>Un écran (sac, journal, atelier) ou un dialogue de l'aventure couvre les commandes tactiles (revue Codex de la PR #49).</summary>
@@ -626,7 +629,7 @@ namespace EdS.Game
             // Sous-lot V1.7 : de même pour le tableau de la guilde (le bouton Parler le ferme pour le dialogue de la maîtresse).
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
-            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
+            bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             frozen = frozen || _stage != null && _stage.Blocking || creating;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
@@ -669,14 +672,14 @@ namespace EdS.Game
             if (a.LootAnnounced > _shownLoot) StyleLook.Play(Audio, StyleSound.Coin, 0.6f);   // et le bruit des pièces pour un butin
             _shownLoot = a.LootAnnounced;
             _markers.Sync(a);
-            _markers.Walk(a, Time.deltaTime, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
+            _markers.Walk(a, GameDelta, _arena);   // sous-lot V2.1 : les villageois rentrent chez eux la nuit ; V2.3 : et suivent leur journée, corps des pièces compris
             player = _combat.Player();
             _stage?.BeforeSync();
             // Sous-lot V2.9.1 : échos plus vifs la nuit et sur les cicatrices ; décision de Damien du 7 novembre 2026 : ce qui sort du Seuil
             // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
             EchoContext(a);
             _arena.Sync(_combat, player, null);
-            _arena.SyncCrowd(a.World, _sectorCrowd, _combat, _paused ? 0f : Time.deltaTime);   // sous-lot V2.28b (3)
+            _arena.SyncCrowd(a.World, _sectorCrowd, _combat, GameDelta);   // sous-lot V2.28b (3)
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
@@ -703,13 +706,13 @@ namespace EdS.Game
             if (_companions == null) _companions = new CompanionsView();
             Companions.Shown(a.World.Inventory, CompanionTrial.Forced, _companionList);   // relecture de la PR #102 : sans allocation
             _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
-                _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
+                _shownZone + "/" + _shownTravels, GameDelta);
             // Sous-lot V2.5 : événements du monde (faille, pillage, cloche).
             if (_worldEvents == null) _worldEvents = new WorldEventsView { Effects = _effects };   // V2.9.1 : lueurs aspirées
-            _worldEvents.Sync(a, _paused ? 0f : Time.deltaTime);
+            _worldEvents.Sync(a, GameDelta);
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
-            _scars.Sync(a, _camera.Camera.transform.position, _paused ? 0f : Time.deltaTime);
+            _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
@@ -720,11 +723,11 @@ namespace EdS.Game
             // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
             // pause, pendant une scène et dans une maison.
             _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
-                _paused || a.InScene || a.Indoors ? 0f : Time.deltaTime);
+                _paused || _loading.Active || a.InScene || a.Indoors ? 0f : Time.deltaTime);
             // Sous-lot V2.9 (2e vague) : bêtes de la ferme et leurs cris ; pas du personnage selon le sol.
             if (_arena.Player != null)
             {
-                _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || a.InScene ? 0f : Time.deltaTime);
+                _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || _loading.Active || a.InScene ? 0f : Time.deltaTime);
                 if (_footsteps == null && StyleCatalog.Loaded != null) _footsteps = new Footsteps(_camera.Camera.transform);
                 _footsteps?.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
                     !_paused && !a.InScene, Time.deltaTime);

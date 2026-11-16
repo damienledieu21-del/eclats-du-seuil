@@ -79,8 +79,27 @@ public sealed class V253ChargementsTests
                 string file = Path.Combine(root, "unity", "Assets", "EdS", "Interface", "Resources", LoadingScreens.ResourcePath(screen, tier) + ".jpg");
                 Assert.True(File.Exists(file), file);
                 Assert.True(new FileInfo(file).Length < 1_000_000, file);   // JPEG qualité 85, jamais de PNG 4K
+                (int w, int h) = JpegSize(file);
+                Assert.Equal(LoadingScreens.ResourcePath(screen, tier).Contains("/1280/") ? (1280, 720) : (1920, 1080), (w, h));   // taille et ratio 16:9 réels
             }
         }
+    }
+
+    private static (int Width, int Height) JpegSize(string file)
+    {
+        byte[] b = File.ReadAllBytes(file);
+        Assert.True(b[0] == 0xFF && b[1] == 0xD8, file + " n'est pas un JPEG");
+        int i = 2;
+        while (i + 9 < b.Length)
+        {
+            Assert.Equal(0xFF, b[i]);
+            int marker = b[i + 1];
+            int length = (b[i + 2] << 8) | b[i + 3];
+            if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 && marker != 0xCC)
+                return ((b[i + 7] << 8) | b[i + 8], (b[i + 5] << 8) | b[i + 6]);
+            i += 2 + length;
+        }
+        throw new InvalidDataException(file);
     }
 
     [Fact]

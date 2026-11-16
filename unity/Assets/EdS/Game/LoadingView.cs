@@ -13,6 +13,7 @@ namespace EdS.Game
         private LoadingScreen _screen;
         private string _text = "";
         private float _elapsed = -1f;
+        private Texture2D _image;   // chargée au début de l'écran, libérée à sa fin : aucune peinture gardée en mémoire (pas de cache UiKit)
 
         /// <summary>L'écran est montré (il couvre le jeu).</summary>
         public bool Active => _elapsed >= 0f && _elapsed < LoadingScreens.HoldSeconds;
@@ -23,6 +24,14 @@ namespace EdS.Game
             _screen = screen;
             _text = text ?? "";
             _elapsed = 0f;
+            Release();
+            _image = Resources.Load<Texture2D>(LoadingScreens.ResourcePath(screen, DeviceQuality.Tier));
+        }
+
+        private void Release()
+        {
+            if (_image != null) Resources.UnloadAsset(_image);
+            _image = null;
         }
 
         /// <summary>Avance le temps (hors du temps de jeu) ; un geste après une seconde passe au fondu de sortie.</summary>
@@ -30,7 +39,14 @@ namespace EdS.Game
         {
             if (!Active) return;
             _elapsed += unscaledDelta;
-            bool gesture = Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.touchCount > 0;
+            if (_elapsed >= LoadingScreens.HoldSeconds)
+            {
+                Release();
+                return;
+            }
+            bool gesture = Input.anyKeyDown || Input.GetMouseButtonDown(0);
+            for (int i = 0; i < Input.touchCount && !gesture; i++)
+                gesture = Input.GetTouch(i).phase == TouchPhase.Began;   // un doigt déjà posé (joystick) ne l'abrège pas
             float exit = LoadingScreens.HoldSeconds - LoadingScreens.FadeSeconds;
             if (gesture && _elapsed > 1f && _elapsed < exit) _elapsed = exit;
         }
@@ -41,7 +57,7 @@ namespace EdS.Game
             if (!Active || _screen == null) return;
             float alpha = LoadingScreens.Opacity(_elapsed);
             Rect full = new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight);
-            Texture2D image = UiKit.Texture(LoadingScreens.ResourcePath(_screen, DeviceQuality.Tier));
+            Texture2D image = _image;
             Color previous = GUI.color;
             GUI.color = new Color(1f, 1f, 1f, alpha);
             if (image != null) GUI.DrawTexture(full, image, ScaleMode.ScaleAndCrop);
