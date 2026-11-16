@@ -210,3 +210,9 @@ Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fich
 | --- | --- | --- |
 | [MakeHuman](https://static.makehumancommunity.org/) (outil) | personnages que Damien fabrique, dans `Assets/Style/MakeHuman/<nom>/` (non suivi par git) | modèles exportés **CC0** ([FAQ](https://static.makehumancommunity.org/oldsite/faq/can_i_sell_models_created_with_makehuman.html)) ; éléments de base CC0 ([licence](https://static.makehumancommunity.org/about/license.html)) ; le programme est AGPL, sans effet sur les sorties |
 | Vêtements et cheveux de la bibliothèque de MakeHuman | seulement **CC0 ou CC BY** (jamais NC, ND, SA) | chaque personnage a son `MANIFESTE.md` ; un élément CC BY est cité ici avec son auteur |
+
+## Écrans de chargement peints (sous-lot V2.53, 16 novembre 2026)
+
+| Source | Ce qui sert | Licence |
+| --- | --- | --- |
+| Dossier ChatGPT « Chargements » (AssetLab, `Chargements/`, livraison du 16 novembre 2026) : douze peintures des grands lieux des Vallons et une phrase d'Orsédia par lieu | `unity/Assets/EdS/Interface/Resources/EdsInterface/Chargements/` (JPEG qualité 85, 1 920 × 1 080 et 1 280 × 720, réduits des PNG 3 840 × 2 160 ; le dossier de livraison reste hors du dépôt) ; phrases dans `data/v0/world/texts/fr.json` (`text.loading.*`) | Générées par ChatGPT pour le projet, sans texte ni logo incrustés : **tous droits réservés**, comme le dépôt |

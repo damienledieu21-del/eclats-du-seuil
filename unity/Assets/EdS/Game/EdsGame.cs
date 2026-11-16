@@ -299,6 +299,7 @@ namespace EdS.Game
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
             _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
+            if (!_adventure.IsNewGame && !_adventure.Indoors) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend
             if (_adventure.IsNewGame) OpenCreator();   // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
@@ -336,6 +337,13 @@ namespace EdS.Game
             _paused = false;
         }
 
+        /// <summary>V2.53 : montre l'écran de chargement peint du lieu où est le personnage, avec sa phrase d'Orsédia.</summary>
+        private void StartLoading()
+        {
+            LoadingScreen screen = _adventure.LoadingHere();
+            _loading.Start(screen, _adventure.Text(screen.TextKey));
+        }
+
         /// <summary>Affiche la session de zone en cours (au départ, après une halte ou une reprise).</summary>
         private void ShowAdventureSession()
         {
@@ -351,7 +359,14 @@ namespace EdS.Game
             }
             _shownZone = _adventure.CurrentZone;
             // Sous-lot V1.1 : un voyage rapide passe aussi par un fondu au noir.
-            if (_adventure.Travels != _shownTravels) _fade = 1f;
+            bool traveled = _adventure.Travels != _shownTravels;
+            if (traveled) _fade = 1f;
+            // V2.53 : le voyage rapide et le démarrage (dehors) passent par l'écran peint du grand lieu d'arrivée, à la place du fondu au noir.
+            if (traveled && !_adventure.Indoors)
+            {
+                StartLoading();
+                _fade = 0f;
+            }
             _shownTravels = _adventure.Travels;
             _combat = _adventure.Combat;
             // Sous-lot V1.9.8 : l'Écho de la Rupture est une silhouette de lumière (avant la couleur des chefs).
@@ -425,6 +440,9 @@ namespace EdS.Game
 
         /// <summary>Intérieurs : opacité du fondu au noir après une porte (de 1 à 0 en <see cref="FadeSeconds"/>).</summary>
         private float _fade;
+
+        /// <summary>V2.53 : écran de chargement peint (démarrage, voyage rapide).</summary>
+        private readonly LoadingView _loading = new LoadingView();
 
         private const float FadeSeconds = 0.7f;
 
@@ -601,6 +619,7 @@ namespace EdS.Game
             if (a.Opened != _shownSession) ShowAdventureSession();
             else FollowRebind(a);
             if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
+            _loading.Tick(Time.unscaledDeltaTime);
             // Sous-lot V1.1 : la boutique suit l'écran (Échap, I, J, K, L la ferment) ; le bouton Parler la ferme pour le dialogue.
             if (_screens.Open == AdventureScreens.Panel.Merchant && a.Shop == null) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Merchant && a.Shop != null) a.CloseShop();
@@ -1847,6 +1866,7 @@ namespace EdS.Game
                 DrawAdventure();
                 // Intérieurs : fondu au noir après une porte.
                 if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
+                _loading.Draw();   // V2.53 : écran de chargement peint, au-dessus du jeu
                 // Sous-lot V1.9.8 : réveil, souvenir (proposition, fondu blanc, titre), bulle du tutoriel, « Quête passée », légendes.
                 bool calm = _screens.Open == AdventureScreens.Panel.None && !TalentsOpen && !_paused;
                 _stage?.Draw(_adventure, calm && _adventure.Dialogue == null, calm, _touch.Active);

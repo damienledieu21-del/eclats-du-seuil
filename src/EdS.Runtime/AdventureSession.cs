@@ -1062,6 +1062,9 @@ namespace EdS.Runtime
         /// <summary>Intérieurs : la zone en cours est un intérieur.</summary>
         public bool Indoors => _zone.Indoor;
 
+        /// <summary>Sous-lot V2.53 : l'écran de chargement peint du lieu où est le personnage (le village à défaut). Affichage seulement.</summary>
+        public LoadingScreen LoadingHere() => LoadingScreens.For(_zone, Me);
+
         /// <summary>Intérieurs : identifiant de la zone en cours (« zone.vallons », « zone.auberge »).</summary>
         public string CurrentZone => _zone.Id;
 
