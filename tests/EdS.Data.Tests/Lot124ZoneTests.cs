@@ -323,7 +323,7 @@ public class Lot124ZoneTests
 
     // --- Documents construits hors du lecteur JSON ----------------------------------------------------
 
-    private static CombatSetup ZoneScenario => ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!;
+    private static CombatSetup ZoneScenario => ReadVallonsBlock().Setup!;   // V2.31 : zone sans région, scénario d'un bloc (sans les lieux)
 
     private static ZoneDocument Dto(Action<ZoneData>? edit = null)
     {

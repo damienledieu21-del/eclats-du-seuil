@@ -21,7 +21,55 @@ internal static class ScenarioTestData
         || id is "riviere_grand_lac" or "gorge_ouest" or "ravin_ronces_sud" or "ravin_ronces_est" or "eboulement_nord" or "falaise_collines" or "falaise_cascade"
             or "falaise_crete"
         || id.Contains("_ville", StringComparison.Ordinal)   // sous-lot V2.30 : le Bourg fortifié (palissade, tours, maisons de la ville)
-        || id.StartsWith("panneau_", StringComparison.Ordinal);   // sous-lot V2.30.1 : panneaux des croisements du village au Bourg
+        || id.StartsWith("panneau_", StringComparison.Ordinal)   // sous-lot V2.30.1 : panneaux des croisements du village au Bourg
+        || LieuTags.Any(t => id.Contains(t, StringComparison.Ordinal));   // sous-lots V2.31 et suivants : les lieux de la grande carte
+
+    /// <summary>
+    /// Sous-lots V2.31 et suivants (les lieux de la grande carte) : chaque obstacle d'un lieu porte l'étiquette de son lieu dans son
+    /// identifiant (« bloc_rocher_cascade_1 », « maison_cabane_du_bucheron_foret »).
+    /// </summary>
+    public static readonly string[] LieuTags = { "_cascade", "_foret" };
+
+    /// <summary>
+    /// Sous-lots V2.31 et suivants : l'aire des Vallons dépasse 256 obstacles avec les lieux de la grande carte ; elle ne se simule plus d'un
+    /// bloc (seulement par secteurs, <see cref="EdS.Data.Json.ScenarioJsonReader.ReadFile(string, EdS.Data.GameData, bool)"/>). Les essais qui
+    /// simulent le scénario de la zone d'un bloc le lisent sans les obstacles des lieux (<see cref="LieuTags"/>) : l'aire d'avant le V2.31.
+    /// </summary>
+    public static void WithoutLieux(JsonObject scenario)
+    {
+        var obstacles = scenario["data"]!["space"]!["obstacles"]!.AsArray();
+        foreach (var o in obstacles.Where(o => LieuTags.Any(t => ((string)o!["id"]!).Contains(t, StringComparison.Ordinal))).ToList()) obstacles.Remove(o);
+    }
+
+    /// <summary>
+    /// Sous-lots V2.31 et suivants : copie des scénarios livrés où l'aire des Vallons est sans les obstacles des lieux (<see cref="WithoutLieux"/>),
+    /// pour une zone lue dans un schéma d'avant la région (schéma 12 et moins : son scénario se lit d'un bloc, 256 obstacles au plus).
+    /// </summary>
+    public static string BlockScenariosDirectory => BlockScenarios.Value;
+
+    private static readonly Lazy<string> BlockScenarios = new(() =>
+    {
+        string source = Path.Combine(AppContext.BaseDirectory, "scenarios");
+        string target = Path.Combine(Path.GetTempPath(), "eds-scenarios-bloc-" + Environment.ProcessId);
+        foreach (string file in Directory.GetFiles(source, "*.json", SearchOption.AllDirectories))
+        {
+            string to = Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to, overwrite: true);
+        }
+        string vallons = Path.Combine(target, "zones", "vallons.json");
+        JsonObject root = JsonNode.Parse(File.ReadAllText(vallons))!.AsObject();
+        WithoutLieux(root);
+        File.WriteAllText(vallons, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        return target;
+    });
+
+    /// <summary>Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non.</summary>
+    public static string ScenariosFor(JsonObject zone) =>
+        zone["data"]?["region"] is null ? BlockScenariosDirectory : Path.Combine(AppContext.BaseDirectory, "scenarios");
+
+    /// <summary>Sous-lots V2.31 et suivants : le scénario de la zone des Vallons, d'un bloc (<see cref="WithoutLieux"/>).</summary>
+    public static ScenarioLoadResult ReadVallonsBlock(GameData? data = null) => ReadMutated(WithoutLieux, data, "zones/vallons");
 
     /// <summary>
     /// Sous-lot V2.28c : remet un scénario des Vallons (racine du fichier) à l'aire d'avant la surface étendue, de [−100, −70] à [140, 100],
@@ -267,6 +315,7 @@ internal static class ScenarioTestData
     public static ScenarioLoadResult ReadMutated(Action<JsonObject> mutate, GameData? data = null, string scenario = "mannequin")
     {
         JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath(scenario)))!.AsObject();
+        if (scenario == "zones/vallons") WithoutLieux(root);   // sous-lots V2.31 et suivants : simulé d'un bloc
         mutate(root);
         return ScenarioJsonReader.Read(root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), data ?? ShippedData);
     }
