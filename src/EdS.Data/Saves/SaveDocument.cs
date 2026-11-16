@@ -225,6 +225,10 @@ namespace EdS.Data.Saves
         public Dictionary<string, int?>? Played { get; set; }
         public int? Gained { get; set; }
         public SavedCardGameData? Game { get; set; }
+
+        /// <summary>Titre actif (version 26) : « As des Trois Feux » affiché sous le nom.</summary>
+        public bool? Shown { get; set; }
+
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
 

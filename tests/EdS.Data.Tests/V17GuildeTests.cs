@@ -456,6 +456,37 @@ public class V17GuildeTests : IDisposable
 
     // --- Inscription, tableau, contrats ---------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Revue Codex de la PR #193 (titre actif, sauvegarde v26) : un As qui affiche « As des Trois Feux » et s'inscrit, puis est promu, garde
+    /// son titre choisi ; les titres de guilde sont gagnés sans être affichés d'office, et la sauvegarde reste valide (un seul titre affiché).
+    /// </summary>
+    [Fact]
+    public void Titre_choisi_garde_a_l_inscription_et_a_la_promotion()
+    {
+        var ace = new SavedCards(0x1234UL, 10, SavedCards.VictoriesForReward, true, 0, null, 0, null, shown: true);
+        WorldSession w = InGuild(Hero().WithCards(ace));
+        Assert.Equal(GuildRefusal.None, w.JoinGuild(out _));
+        Assert.Equal((string?)null, w.Narrative!.ShownTitle);
+        Assert.Equal(new[] { "title.guilde.recrue" }, w.Narrative.Titles);
+        Assert.Equal(CardMatch.AceTitle, w.ActiveTitle);
+        string text = EdS.Data.Json.SaveJsonReader.Write(w.Save());   // ne lève pas : un seul titre affiché
+        Assert.True(EdS.Data.Json.SaveJsonReader.Read(text).IsValid);
+
+        // Promotion (épreuve finie) : le titre du rang est gagné, l'As reste affiché.
+        SavedCharacter hero = WithCard(Hero(0, new ItemStack("item.peau_de_loup", 3)).WithCards(ace), Card("g", 100));
+        w = InGuild(WithCard(hero, hero.Story.Guild, new Dictionary<string, QuestProgress> { [TrialF] = new QuestProgress("preuves") }));
+        Assert.Equal(GuildRefusal.None, w.VisitGuild());
+        Assert.Equal(DialogueRefusal.None, Deliver(w, Mistress));
+        Steps(w);
+        Assert.Equal("f", w.Narrative!.GuildRankId);
+        Assert.Contains("title.guilde.eclaireur", w.Narrative.Titles);
+        Assert.Equal(CardMatch.AceTitle, w.ActiveTitle);
+        Assert.True(EdS.Data.Json.SaveJsonReader.Read(EdS.Data.Json.SaveJsonReader.Write(w.Save())).IsValid);
+        // Sans titre de la taverne affiché, la promotion affiche le titre du rang (comme avant).
+        Assert.Equal(GuildRefusal.None, w.ShowTitle(null, out _));
+        Assert.Null(w.ActiveTitle);
+    }
+
     [Fact]
     public void Inscription_aupres_de_la_maitresse()
     {

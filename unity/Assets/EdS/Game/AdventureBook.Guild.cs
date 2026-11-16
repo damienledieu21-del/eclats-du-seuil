@@ -249,8 +249,8 @@ namespace EdS.Game
         private void ToggleTitle(int index)
         {
             if (_session == null || _titleIds[index] == null) return;
-            // Un titre déjà affiché se retire ; un autre s'affiche à sa place.
-            bool shown = _session.World.Narrative != null && _session.World.Narrative.ShownTitle == _titleIds[index];
+            // Un titre déjà affiché se retire ; un autre s'affiche à sa place (titre actif, sauvegarde v26 : « As des Trois Feux » compris).
+            bool shown = _session.World.ActiveTitle == _titleIds[index];
             _session.ShowTitle(shown ? null : _titleIds[index]);
         }
 
@@ -269,7 +269,8 @@ namespace EdS.Game
             UiKit.Show(_cardBar, card.Member);
             _cardContracts.Value = card.ContractsText;
             _cardTrial.Value = card.Member ? card.TrialText : "";
-            _cardTitlesHeader.Value = card.Member ? a.Text("text.ui.guild.titles") + " · " + card.Titles.Count : "";
+            // Sous-lot V2.32 : « As des Trois Feux » est un titre de la taverne, montré même hors de la guilde.
+            _cardTitlesHeader.Value = card.Titles.Count > 0 ? a.Text("text.ui.guild.titles") + " · " + card.Titles.Count : "";
             for (int i = 0; i < _cardTitles.Count; i++)
             {
                 bool used = i < card.Titles.Count;

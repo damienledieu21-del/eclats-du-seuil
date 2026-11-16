@@ -1082,7 +1082,8 @@ namespace EdS.Runtime
         /// qui est livré (« Voici : Peau de loup ×3. »).
         /// </summary>
         public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d
-            ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text)).ToList()
+            ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text))
+                .Concat(CardAnswers).ToList()   // sous-lot V2.32 : puis les mises des Trois Feux (AdventureSession.Cards.cs)
             : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
@@ -1091,7 +1092,8 @@ namespace EdS.Runtime
         /// </summary>
         public DialogueRefusal Choose(int index)
         {
-            if (!(Dialogue is DialogueView open) || index < 0 || index >= open.Options.Count) return DialogueRefusal.NoSuchChoice;
+            if (!(Dialogue is DialogueView open) || index < 0) return DialogueRefusal.NoSuchChoice;
+            if (index >= open.Options.Count) return ChooseCards(index - open.Options.Count);   // sous-lot V2.32 : une réponse de cartes
             DialogueRefusal refusal = World.Choose(open.Options[index].Index, out _, out IReadOnlyList<StoryEvent> events);
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;

@@ -148,8 +148,17 @@ namespace EdS.Data.Saves
 
         public SavedCardGame? Game { get; }
 
-        public SavedCards(ulong secret, long seats, long wins, bool deckGiven, long day, IReadOnlyDictionary<string, int>? played, int gained, SavedCardGame? game)
+        /// <summary>
+        /// Sauvegarde v26 (décision de Damien du 16 novembre 2026, vers 14 h : titre actif choisi parmi les titres obtenus) : le titre
+        /// « As des Trois Feux » est celui affiché sous le nom (seulement pour un As). Un seul titre est affiché : celui de la carte de guilde
+        /// est alors vide.
+        /// </summary>
+        public bool Shown { get; }
+
+        public SavedCards(ulong secret, long seats, long wins, bool deckGiven, long day, IReadOnlyDictionary<string, int>? played, int gained, SavedCardGame? game,
+            bool shown = false)
         {
+            if (shown && wins < VictoriesForReward) throw new ArgumentException($"Titre « As des Trois Feux » affiché avant {VictoriesForReward} victoires.", nameof(shown));
             if (seats < 0 || seats > MaxSeats) throw new ArgumentOutOfRangeException(nameof(seats), seats, $"Assises hors de [0, {MaxSeats}].");
             if (game != null && seats < 1) throw new ArgumentException("Partie en cours sans assise comptée.", nameof(seats));
             if (wins < 0 || wins > MaxWins) throw new ArgumentOutOfRangeException(nameof(wins), wins, $"Victoires hors de [0, {MaxWins}].");
@@ -177,6 +186,7 @@ namespace EdS.Data.Saves
             Played = new ReadOnlyDictionary<string, int>(p);
             Gained = gained;
             Game = game;
+            Shown = shown;
         }
 
         /// <summary>État neuf : la graine <paramref name="secret"/>, rien de joué.</summary>
@@ -194,27 +204,31 @@ namespace EdS.Data.Saves
             if (game is null) throw new ArgumentNullException(nameof(game));
             var p = game.Day == Day ? Played.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal) : new Dictionary<string, int>(StringComparer.Ordinal);
             p[game.Npc] = checked(PlayedOn(game.Day, game.Npc) + 1);
-            return new SavedCards(Secret, checked(Seats + 1), Wins, DeckGiven, game.Day, p, GainedOn(game.Day), game);
+            return new SavedCards(Secret, checked(Seats + 1), Wins, DeckGiven, game.Day, p, GainedOn(game.Day), game, Shown);
         }
 
         /// <summary>La partie en cours avance (même partie, une place jouée de plus).</summary>
-        public SavedCards WithGame(SavedCardGame game) => new SavedCards(Secret, Seats, Wins, DeckGiven, Day, Played, Gained, game ?? throw new ArgumentNullException(nameof(game)));
+        public SavedCards WithGame(SavedCardGame game) => new SavedCards(Secret, Seats, Wins, DeckGiven, Day, Played, Gained, game ?? throw new ArgumentNullException(nameof(game)), Shown);
 
         /// <summary>
         /// La partie est réglée : plus de partie en cours ; une victoire compte (le compteur sature à <see cref="MaxWins"/> : relecture
         /// indépendante de la PR #189), et ses gains comptent pour le jour <see cref="Day"/>.
         /// </summary>
         public SavedCards WithEnd(bool won, int gain) =>
-            new SavedCards(Secret, Seats, won ? Math.Min(MaxWins, checked(Wins + 1)) : Wins, DeckGiven, Day, Played, checked(Gained + gain), null);
+            new SavedCards(Secret, Seats, won ? Math.Min(MaxWins, checked(Wins + 1)) : Wins, DeckGiven, Day, Played, checked(Gained + gain), null, Shown);
 
         /// <summary>Commencer une partie contre <paramref name="npc"/> le jour <paramref name="day"/> ferait-il dépasser <see cref="MaxOpponents"/> adversaires du jour ?</summary>
         public bool TooManyOpponents(long day, string npc) => day == Day && !Played.ContainsKey(npc) && Played.Count >= MaxOpponents;
 
         /// <summary>Le jeu de cartes rare est remis.</summary>
-        public SavedCards WithDeckGiven() => new SavedCards(Secret, Seats, Wins, true, Day, Played, Gained, Game);
+        public SavedCards WithDeckGiven() => new SavedCards(Secret, Seats, Wins, true, Day, Played, Gained, Game, Shown);
+
+        /// <summary>Sauvegarde v26 : le titre « As des Trois Feux » est affiché sous le nom, ou ne l'est plus.</summary>
+        /// <exception cref="ArgumentException">Affiché avant <see cref="VictoriesForReward"/> victoires.</exception>
+        public SavedCards WithShown(bool shown) => new SavedCards(Secret, Seats, Wins, DeckGiven, Day, Played, Gained, Game, shown);
 
         public override bool Equals(object? obj) => obj is SavedCards o && o.Secret == Secret && o.Seats == Seats && o.Wins == Wins && o.DeckGiven == DeckGiven && o.Day == Day
-            && o.Gained == Gained && o.Played.SequenceEqual(Played) && Equals(o.Game, Game);
+            && o.Gained == Gained && o.Played.SequenceEqual(Played) && Equals(o.Game, Game) && o.Shown == Shown;
 
         public override int GetHashCode() => unchecked((int)Secret * 31 + (int)Wins * 7 + (int)Day + Gained);
     }

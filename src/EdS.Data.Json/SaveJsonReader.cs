@@ -243,6 +243,11 @@ namespace EdS.Data.Json
                             cd.Played = map;
                         },
                         ["gained"] = (ev2, ep) => cd.Gained = input.Int32(ev2, ep),
+                        ["shown"] = (ev2, ep) =>   // titre actif (version 26)
+                        {
+                            cd.Present.Add("shown");
+                            cd.Shown = input.Boolean(ev2, ep);
+                        },
                         ["game"] = (ev2, ep) =>
                         {
                             cd.Present.Add("game");
@@ -665,6 +670,7 @@ namespace EdS.Data.Json
                     .Append(", \"deck\": ").Append(cards.DeckGiven ? "true" : "false").Append(", \"day\": ").Append(Num(cards.Day))
                     .Append(", \"played\": {").Append(string.Join(", ", cards.Played.Select(e => "\"" + e.Key + "\": " + Num(e.Value)))).Append('}')
                     .Append(", \"gained\": ").Append(Num(cards.Gained));
+                if (cards.Shown) b.Append(", \"shown\": true");   // titre actif (version 26) : écrit seulement quand il est affiché
                 if (cards.Game is SavedCardGame cg)
                     b.Append(", \"game\": {\"npc\": \"").Append(cg.Npc).Append("\", \"style\": ").Append(Num(cg.Style)).Append(", \"day\": ").Append(Num(cg.Day))
                         .Append(", \"game\": ").Append(Num(cg.Game)).Append(", \"stake\": ").Append(Num(cg.Stake))

@@ -113,11 +113,11 @@ public class V199Chapitre1MaxTests
         Assert.Equal("0.12.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.3.0-provisoire", Guilde.Value.ContentVersion);   // V2.9.2 : points du vieux Brunot
         Assert.Equal((14, "0.20.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation ; V2.6 : cicatrices ; V2.4 : animaux, brume
-        Assert.Equal("0.33.0-provisoire", Texts.ContentVersion);   // quête du cheval : 0.33.0 ; concours de pâtisserie : 0.31.0 ;   // cuisine et boulangerie : 0.29.0 ; pêche : 0.28.0 (après les compagnons 0.26.0 et les fêtes 0.27.0) ; V2.6.1 : suites du Seuil (0.21.0) ; V2.6 : le Seuil qui grandit (0.20.0) ; V2.3.1 : PNJ qui changent de lieu ; V1.9.11 : retrouvailles de tous les PNJ qui parlent ; V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
+        Assert.Equal("0.34.0-provisoire", Texts.ContentVersion);   // cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;   // cuisine et boulangerie : 0.29.0 ; pêche : 0.28.0 (après les compagnons 0.26.0 et les fêtes 0.27.0) ; V2.6.1 : suites du Seuil (0.21.0) ; V2.6 : le Seuil qui grandit (0.20.0) ; V2.3.1 : PNJ qui changent de lieu ; V1.9.11 : retrouvailles de tous les PNJ qui parlent ; V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
         WorldSave saved = SaveJsonReader.Read(SaveJsonReader.Write(old.Save())).Save!;
-        Assert.Equal(25, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; sinon inchangée
+        Assert.Equal(26, SaveValidator.CurrentSchemaVersion);   // titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements) ; sinon inchangée
         Assert.Equal(3, Open(Gaspard, saved.Character!).Inventory.Count("item.peau_de_loup"));
     }
 

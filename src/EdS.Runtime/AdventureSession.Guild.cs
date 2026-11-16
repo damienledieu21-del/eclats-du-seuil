@@ -171,14 +171,20 @@ namespace EdS.Runtime
         public string RankName(string rank) => Text(_guild.Rank(rank).Name);
 
         /// <summary>Nom traduit du titre affiché, ou null (le titre sous le nom du personnage).</summary>
-        public string? ShownTitle => World.Narrative?.ShownTitle is string id && _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : null;
+        /// <remarks>Titre actif (sauvegarde v26) : « As des Trois Feux » ou un titre de la guilde.</remarks>
+        public string? ShownTitle => World.ActiveTitle is string id ? TitleName(id) : null;
+
+        /// <summary>Nom traduit d'un titre (de la guilde, ou « As des Trois Feux »).</summary>
+        private string TitleName(string id) => id == CardAceTitle ? Text("text.ui.cards.ace_title") : _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id;
 
         /// <summary>La carte d'aventurier, pour l'écran.</summary>
         public GuildCardView GuildCard()
         {
             Narrative? n = World.Narrative;
+            // Sous-lot V2.32 : « As des Trois Feux » parmi les titres, membre de la guilde ou non (gagné à la taverne, pas à la guilde).
+            IReadOnlyList<TitleEntry> ace = CardAceEntry is TitleEntry a ? new[] { a } : Array.Empty<TitleEntry>();
             if (n is null || !n.IsMember)
-                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", null, Array.Empty<TitleEntry>(), Text("text.ui.guild.not_member"), false);
+                return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", ShownTitle, ace, Text("text.ui.guild.not_member"), false);
             GuildRank rank = _guild.Ranks[n.GuildRankIndex];
             GuildRank? next = n.NextRank;
             bool openNext = next != null && next.Open;
@@ -194,7 +200,7 @@ namespace EdS.Runtime
                 GuildRefusal.Locked => Format("text.ui.guild.trial_locked", Text(next!.Name)),   // relecture de la PR #79 : conditions de la quête
                 _ => Text("text.ui.guild.trial_top"),
             };
-            var titles = n.Titles.Select(id => new TitleEntry(id, _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id, n.ShownTitle == id)).ToList();
+            var titles = n.Titles.Select(id => new TitleEntry(id, _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id, n.ShownTitle == id)).Concat(ace).ToList();
             return new GuildCardView(true, rank.Id, Text(rank.Name), points, progress, Format("text.ui.guild.contracts_done", n.ContractsDone), ShownTitle, titles,
                 trialText, trial == GuildRefusal.None);
         }
@@ -303,7 +309,7 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.TitleShown:
                     if (e.Id.Length == 0) Say("text.ui.guild.title_hidden");
-                    else Say("text.ui.guild.title_shown", _guild.TryGetTitle(e.Id, out GuildTitle shown) ? Text(shown.Name) : e.Id);
+                    else Say("text.ui.guild.title_shown", TitleName(e.Id));
                     break;
             }
         }
