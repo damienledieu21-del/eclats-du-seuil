@@ -79,7 +79,7 @@ public sealed class V1910DejaRencontreTests
         w.Narrative!.Close();
         string text = SaveJsonReader.Write(w.Save());
         Assert.Contains("fact.met.renart", text, StringComparison.Ordinal);
-        Assert.Equal(24, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
+        Assert.Equal(25, SaveValidator.CurrentSchemaVersion);   // concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)   // format inchangé par V1.9.10 ; V2.7 : 15 (réputation) ; V2.6 : 14 (cicatrices) ; V2.5 : 13 (registre des événements)
         WorldSave back = SaveJsonReader.Read(text).Save!;
 
         WorldSession again = Near("renart", back);
@@ -150,7 +150,7 @@ public sealed class V1910DejaRencontreTests
     [Fact]
     public void Le_fait_est_lisible_par_les_conditions_mais_jamais_pose_par_un_effet()
     {
-        Assert.Equal(15, StoryValidator.CurrentSchemaVersion);   // concours de pâtisserie : 15 ; fêtes aux vraies dates : 14 ; V2.10 : 13 (fêtes) ; V2.7 : 12 (réputation)   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau) ; V2.6.1 : 11
+        Assert.Equal(16, StoryValidator.CurrentSchemaVersion);   // concours de pâtisserie : 15 ; fêtes aux vraies dates : 14 ; V2.10 : 13 (fêtes) ; V2.7 : 12 (réputation)   // pas de nouveau schéma en V1.9.10 ; V2.3.1 : schéma 10 (zone d'un créneau) ; V2.6.1 : 11
         Assert.Equal("fact.met.renart", StoryValidator.MetFact("npc.renart"));
         Assert.True(Read(StoryJson()).IsValid);
 

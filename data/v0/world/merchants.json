@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "values": [
       {
@@ -551,6 +551,10 @@
       },
       {
         "item": "item.couronne_des_moissons",
+        "value": 120
+      },
+      {
+        "item": "item.fouace_des_semailles",
         "value": 120
       },
       {

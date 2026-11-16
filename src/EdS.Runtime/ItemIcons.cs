@@ -104,6 +104,8 @@ namespace EdS.Runtime
             ("oeufs", new[] { "egg" }), ("lait", new[] { "milk", "bottle" }), ("sucre", new[] { "sugar", "powder" }), ("pomme", new[] { "apple", "fruit" }),
             ("pate", new[] { "dough", "pastry" }), ("tarte", new[] { "pie", "tart", "pastry" }), ("couronne", new[] { "cake", "pastry" }),
             ("friture", new[] { "fish", "food" }), ("quenelles", new[] { "food", "fish" }), ("matelote", new[] { "stew", "fish", "food" }),
+            // 16 novembre 2026 : la fouace des Semailles (concours de printemps) et le jeu de cartes rare des Trois Feux.
+            ("fouace", new[] { "bread", "cake", "pastry" }), ("jeu", new[] { "cards", "card", "deck" }),
         };
 
         /// <summary>Mots anglais cherchés pour l'objet <paramref name="itemId"/> (« item.epee_de_garde » → sword), le meilleur d'abord ; vide sinon.</summary>
