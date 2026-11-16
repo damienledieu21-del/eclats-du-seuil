@@ -367,6 +367,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.31 et V2.32** (16 novembre 2026, en PR, une PR pour les deux) : vallée de la rivière et cascade (bassin, rochers, moulin à foulon, cabane du pêcheur, pont suspendu au-dessus du gué nord, sentier et point sûr du pied de la cascade), forêt des Loups (arbre millénaire et cercle de druides, tanière, cabane du bûcheron, sentier et point sûr de l'arbre) ([MONDE.md](MONDE.md)). Écarts au plan : le pont suspendu ne crée pas de nouveau passage (il enjambe le gué nord, fermé jusqu'à la fin du chapitre 1) ; aucune créature (meute, ours) ajoutée ; souches, troncs couchés, roue du moulin et ponton attendent leurs modèles (pas d'habit existant).
 
+**Avancement V2.33 à V2.39** (16 novembre 2026, en PR, une PR pour les sept, empilée sur celle du V2.31) : coteaux et château viticole, hautes collines, abbaye en ruine, marais du lac et île des saules dormants (verrou d'hiver accroché), carrière devenue mine (surface), fort des bandits, terres corrompues ([MONDE.md](MONDE.md)). Écarts au plan : aucune créature (bergers, moutons, bandits, échos) ; pontons, barques, wagonnets, rails, cuves, charrette et états de la vigne (vert, mûr, vendangé : V2.44) attendent leurs modèles ; les murs de l'abbaye prennent l'habit des éboulements.
+
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
 | **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |

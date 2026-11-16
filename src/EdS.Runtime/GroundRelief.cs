@@ -191,8 +191,10 @@ namespace EdS.Runtime
             foreach ((string prefix, double height, double fall) in _s.Buttes)
             {
                 // Relecture de la PR #188 : la butte de la tour de guet du cœur (« tour ») ne prend pas les tours du Bourg fortifié.
-                var stones = map.Obstacles.Where(o => o.Id.StartsWith(prefix, StringComparison.Ordinal) && !o.Id.Contains("_ville", StringComparison.Ordinal))
-                    .Select(Points).ToList();
+                // Sous-lots V2.31 et suivants : ni les tours des lieux de la grande carte (« tour_donjon_fort »…) : une butte prend l'obstacle
+                // du cœur (« tour ») ou ses pareils numérotés (« pierre_seuil1 »), pas les identifiants qui continuent par un mot.
+                var stones = map.Obstacles.Where(o => o.Id.StartsWith(prefix, StringComparison.Ordinal) && !o.Id.Contains("_ville", StringComparison.Ordinal)
+                    && o.Id.Skip(prefix.Length).All(char.IsDigit)).Select(Points).ToList();
                 if (stones.Count == 0) continue;
                 double cx = stones.Average(s => s.Average(p => p.X)), cz = stones.Average(s => s.Average(p => p.Z));
                 double plateau = stones.SelectMany(s => s).Max(p => Distance(p.X - cx, p.Z - cz)) + _s.PadCore + 1;

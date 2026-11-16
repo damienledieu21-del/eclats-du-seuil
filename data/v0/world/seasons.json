@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "seasons",
-  "contentVersion": "0.1.0-provisoire",
+  "contentVersion": "0.2.0-provisoire",
   "data": {
     "mistEchoes": {
       "presence": {
@@ -21,7 +21,11 @@
     "locks": [
       {
         "id": "ile_des_saules_dormants",
-        "passage": "glace_du_lac"
+        "passage": "glace_du_lac",
+        "anchor": [
+          180,
+          -1230
+        ]
       }
     ]
   }

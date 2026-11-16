@@ -28,7 +28,7 @@ internal static class ScenarioTestData
     /// Sous-lots V2.31 et suivants (les lieux de la grande carte) : chaque obstacle d'un lieu porte l'étiquette de son lieu dans son
     /// identifiant (« bloc_rocher_cascade_1 », « maison_cabane_du_bucheron_foret »).
     /// </summary>
-    public static readonly string[] LieuTags = { "_cascade", "_foret" };
+    public static readonly string[] LieuTags = { "_cascade", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu" };
 
     /// <summary>
     /// Sous-lots V2.31 et suivants : l'aire des Vallons dépasse 256 obstacles avec les lieux de la grande carte ; elle ne se simule plus d'un
@@ -64,9 +64,34 @@ internal static class ScenarioTestData
         return target;
     });
 
-    /// <summary>Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non.</summary>
-    public static string ScenariosFor(JsonObject zone) =>
-        zone["data"]?["region"] is null ? BlockScenariosDirectory : Path.Combine(AppContext.BaseDirectory, "scenarios");
+    /// <summary>
+    /// Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non. Une zone sans région
+    /// (schéma d'avant le 13) perd aussi les lieux nommés des lieux de la grande carte (<see cref="LieuPlaces"/>) : elle en garde au plus 64.
+    /// </summary>
+    public static string ScenariosFor(JsonObject zone)
+    {
+        if (zone["data"]?["region"] is not null) return Path.Combine(AppContext.BaseDirectory, "scenarios");
+        if (zone["data"]?["places"] is JsonArray places)
+            foreach (var p in places.Where(p => LieuPlaces.Contains((string?)p?["id"])).ToList()) places.Remove(p);
+        return BlockScenariosDirectory;
+    }
+
+    /// <summary>Sous-lots V2.31 et suivants : texte d'une zone préparée par <see cref="ScenariosFor"/> (à appeler avant elle, même résultat).</summary>
+    public static string PreparedZone(JsonObject zone)
+    {
+        ScenariosFor(zone);
+        return zone.ToJsonString();
+    }
+
+    /// <summary>Sous-lots V2.31 et suivants : lieux nommés ajoutés avec les lieux de la grande carte.</summary>
+    public static readonly HashSet<string?> LieuPlaces = new(StringComparer.Ordinal)
+    {
+        "cascade", "moulin_a_foulon", "cabane_du_pecheur", "pont_suspendu", "arbre_millenaire", "taniere_de_la_meute", "cabane_du_bucheron",
+        "lisiere_de_la_foret", "domaine_du_chateau", "pressoir_du_chateau", "chai_du_chateau", "vignes_du_chateau", "bergerie_des_collines",
+        "cairns_de_la_crete", "tour_de_signal", "nef_de_l_abbaye", "cloitre_de_l_abbaye", "dortoir_de_l_abbaye", "jardin_de_l_abbaye",
+        "cabanes_sur_pilotis", "ile_des_saules_dormants", "village_des_mineurs", "carreau_de_la_mine", "gradins_de_la_carriere",
+        "enceinte_du_fort", "tour_des_bandits", "cercle_des_pierres_levees",
+    };
 
     /// <summary>Sous-lots V2.31 et suivants : le scénario de la zone des Vallons, d'un bloc (<see cref="WithoutLieux"/>).</summary>
     public static ScenarioLoadResult ReadVallonsBlock(GameData? data = null) => ReadMutated(WithoutLieux, data, "zones/vallons");

@@ -1,0 +1,80 @@
+using EdS.Data.Json;
+using EdS.Data.Seasons;
+using EdS.Data.Zones;
+using EdS.Domain.Numerics;
+using static EdS.Data.Tests.GrandeCarteLieux;
+using static EdS.Data.Tests.ScenarioTestData;
+
+namespace EdS.Data.Tests;
+
+/// <summary>
+/// Sous-lots V2.33 à V2.39 de la grande carte, livrés « habités » : coteaux et château viticole (enceinte de haies, château, pressoir, chai,
+/// jardin, rangs de vigne), hautes collines (bergerie, enclos, cairns, tour de signal), abbaye en ruine (enceinte, nef éventrée, cloître,
+/// dortoir, jardin, statues, point sûr du parvis), marais du lac (cabanes sur pilotis, roselières, île des saules dormants), carrière
+/// devenue mine (village des mineurs, gradins, treuil, bouche fermée), fort des bandits (palissade, tours, donjon, tentes, cage, tour de guet
+/// isolée), terres corrompues (cercle de pierres levées, autels, éclats, arbres morts, failles).
+/// </summary>
+[Trait("Category", "World")]
+public class V233A239LieuxDeLaRegionTests
+{
+    public static IEnumerable<object[]> Lieux() => new[]
+    {
+        new object[] { "_vignes", new[] { "coteaux_du_chateau" }, 13 },
+        new object[] { "_bergers", new[] { "vallee_de_la_riviere", "foret_des_loups_profonde", "hautes_collines" }, 10 },
+        new object[] { "_abbaye", new[] { "abbaye_en_ruine" }, 20 },
+        new object[] { "_marais", new[] { "rives_du_lac", "grand_lac" }, 8 },
+        new object[] { "_mine", new[] { "grande_carriere", "plaine_de_l_est", "village_des_mineurs" }, 9 },
+        new object[] { "_fort", new[] { "fort_des_bandits", "route_du_col" }, 21 },
+        new object[] { "_corrompu", new[] { "terres_corrompues" }, 22 },
+    };
+
+    [Theory]
+    [MemberData(nameof(Lieux))]
+    public void Obstacles_dans_leurs_lieux_et_routes_degagees(string tag, string[] places, int level)
+    {
+        InPlaces(tag, places);
+        RoadsClear(tag);
+        Assert.All(Tagged(tag), o => Assert.InRange(Vallons.Value.MinLevelAt(o.Points[0]), level, 22));
+    }
+
+    [Fact]
+    public void Points_surs_et_lieux_nommes()
+    {
+        SafePointClear("parvis_de_l_abbaye");
+        ZoneDefinition zone = Vallons.Value;
+        foreach ((string id, int level) in new[] { ("domaine_du_chateau", 13), ("vignes_du_chateau", 13), ("bergerie_des_collines", 10),
+            ("cairns_de_la_crete", 17), ("tour_de_signal", 17), ("nef_de_l_abbaye", 20), ("cloitre_de_l_abbaye", 20), ("cabanes_sur_pilotis", 8),
+            ("ile_des_saules_dormants", 11), ("village_des_mineurs", 9), ("carreau_de_la_mine", 18), ("enceinte_du_fort", 21),
+            ("tour_des_bandits", 22), ("cercle_des_pierres_levees", 22) })
+            Assert.Equal(level, zone.Places.Single(p => p.Id == id).MinLevel);
+        Assert.Equal(24, Tagged("haie_vigne").Count);
+    }
+
+    [Fact]
+    public void Chateau_fort_abbaye_et_mine_s_atteignent_a_pied_depuis_leur_chemin()
+    {
+        // Château : du point sûr, par le portail, jusqu'au logis.
+        Assert.True(Walks((-1400, -760), (-1260, -640), SafePoint("chateau_viticole"), (-1330, -718)));
+        // Fort : du pied du fort, par la porte sud, jusqu'au pied du donjon.
+        Assert.True(Walks((1100, 860), (1300, 1080), SafePoint("pied_du_fort"), (1220, 1028)));
+        // Abbaye : du parvis, dans la nef (portail ouest) et dans le préau du cloître (par la porterie sud ou la nef éventrée).
+        Assert.True(Walks((1600, 60), (1820, 230), SafePoint("parvis_de_l_abbaye"), (1740, 146)));
+        Assert.True(Walks((1600, 60), (1820, 230), SafePoint("parvis_de_l_abbaye"), (1735, 110)));
+        // Mine : de la route d'Ambre au carreau, devant la bouche fermée ; la bouche elle-même est close.
+        Assert.True(Walks((1000, 300), (1220, 400), (1050, 350), (1185, 356)));
+        // Le point de vue du sommet reste dégagé (visite à 12 m) malgré la tour de signal.
+        Assert.True(Walks((150, 1320), (240, 1400), (180, 1355), (180, 1360), 0.5));
+    }
+
+    [Fact]
+    public void Ile_des_saules_dans_le_lac_et_verrou_d_hiver_accroche()
+    {
+        ZoneDefinition zone = Vallons.Value;
+        Place ile = zone.Places.Single(p => p.Id == "ile_des_saules_dormants");
+        // L'île n'est pas atteignable à pied hors de l'hiver : elle est dans l'eau du grand lac (le passage d'hiver est saisonnier).
+        Assert.False(Walks((-300, -1360), (1150, -840), SafePoint("pontons_du_lac"), (180, -1230), 2));
+        SeasonLoadResult seasons = SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone);
+        Assert.True(seasons.IsValid, seasons.Report.ToString());
+        Assert.True(ile.Contains(seasons.Book!.Lock("ile_des_saules_dormants").Anchor!.Value));
+    }
+}
