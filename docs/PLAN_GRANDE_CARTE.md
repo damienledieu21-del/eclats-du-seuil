@@ -351,6 +351,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.29** (15 novembre 2026) : première partie en PR : silhouettes de l'horizon lointain (Crêtes de Fer au nord-est, Forêt des Murmures au nord-ouest, collines ; `HorizonProfile`, `HorizonView`, [UNITY.md](UNITY.md#horizon-lointain-sous-lot-v229-première-partie)). **Deuxième partie** (V2.29 (2), en PR) : brouillard de carte à dissiper (cases vues à 128 m, sauvegarde v23), point de vue du sommet (décision de Damien du 15 novembre 2026 : à la première visite, 200 XP, entrée au carnet, brouillard dissipé à 1 024 m autour), la mer à l'ouest sur l'horizon ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)). À faire : cartes peintes (modèles et textures à demander), tour de caméra du sommet.
 
+**Avancement V2.29.1** (16 novembre 2026, en PR) : décision de Damien du 16 novembre 2026 : monter au point de vue du sommet **lève le brouillard sur toute la région** (avant : 1 024 m autour) ; `Viewpoint.WholeRegion`, `ExploredCells.RevealAll` ; aucun changement de format ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)).
+
 ### Étape 2 : les lieux un par un
 
 **Avancement V2.30** (15 novembre 2026, en PR) : le Bourg fortifié en surface (palissade, dix tours, portes est et ouest, poterne sud, grande maison, église, halle, place du marché, écurie, 121 maisons, point sûr de la place ; [MONDE.md](MONDE.md)). Écart au plan : pas de porte nord (le plan illustré n'en a pas ; le chemin du pont des Murmures n'est pas tracé), une poterne sud sur le chemin des vignes à la place.
