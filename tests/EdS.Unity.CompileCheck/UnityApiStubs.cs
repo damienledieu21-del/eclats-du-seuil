@@ -333,3 +333,21 @@ namespace UnityEditor.Build
     public interface IPostprocessBuildWithReport : IOrderedCallback { void OnPostprocessBuild(UnityEditor.Build.Reporting.BuildReport report); }
     public class BuildFailedException : Exception { public BuildFailedException(string message) : base(message) { } }
 }
+namespace UnityEditor.Build
+{
+    public sealed class NamedBuildTarget { public static NamedBuildTarget Unknown => null; public static NamedBuildTarget Android => null; }
+}
+namespace UnityEditor
+{
+    public enum IconKind { Any = -1, Application = 0 }
+    public class PlatformIconKind { }
+    public class PlatformIcon { public int maxLayerCount => 1; public void SetTexture(UnityEngine.Texture2D texture, int layer) { } }
+    public static class PlayerSettings
+    {
+        public static UnityEngine.Texture2D[] GetIcons(UnityEditor.Build.NamedBuildTarget target, IconKind kind) => null;
+        public static void SetIcons(UnityEditor.Build.NamedBuildTarget target, UnityEngine.Texture2D[] icons, IconKind kind) { }
+        public static PlatformIconKind[] GetSupportedIconKindsForNamedBuildTarget(UnityEditor.Build.NamedBuildTarget target) => null;
+        public static PlatformIcon[] GetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind) => null;
+        public static void SetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind, PlatformIcon[] icons) { }
+    }
+}

@@ -172,8 +172,12 @@ namespace EdS.Game
         private static readonly VisibleGear NoGear = new VisibleGear(WeaponLook.None, EdS.Data.Items.ItemRarity.Common, ShieldLook.None,
             EdS.Data.Items.ItemRarity.Common, false, EdS.Data.Items.ItemRarity.Common);
 
+        /// <summary>V2.54 : l'ouverture du logo au lancement (le jeu attend dessous, gelé).</summary>
+        private readonly LogoView _logo = new LogoView();
+
         private IEnumerator Start()
         {
+            _logo.Start();
             // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
             // de laisser l'écran bloqué sur « Préparation des données du jeu… ».
             try
@@ -608,7 +612,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking || creating;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
+            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -902,6 +906,7 @@ namespace EdS.Game
 
         private void Update()
         {
+            _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
             // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
@@ -1780,6 +1785,13 @@ namespace EdS.Game
         }
 
         private void OnGUI()
+        {
+            DrawGame();
+            Hud.Begin();
+            _logo.Draw();   // V2.54 : le logo s'ouvre au-dessus de tout (démarrage, préparation, jeu)
+        }
+
+        private void DrawGame()
         {
             Hud.Begin();
             if (_startupError != null)
