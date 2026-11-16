@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "kind": "worldBosses",
-  "contentVersion": "0.3.0-provisoire",
+  "contentVersion": "0.4.0-provisoire",
   "data": {
     "bosses": [
       {
@@ -147,34 +147,34 @@
             "place": "bourg",
             "route": [
               [
-                -40,
-                -30
+                -400,
+                -35
               ],
               [
-                -32,
-                -24
+                -650,
+                -48
               ]
             ],
             "objectives": [
               {
                 "id": "palissade",
                 "position": [
-                  -30,
-                  -22
+                  -695,
+                  -72
                 ]
               },
               {
                 "id": "porte",
                 "position": [
-                  -28,
-                  -20
+                  -695,
+                  -50
                 ]
               },
               {
                 "id": "auvent_du_grenier",
                 "position": [
-                  -26,
-                  -18
+                  -695,
+                  -28
                 ]
               }
             ]
