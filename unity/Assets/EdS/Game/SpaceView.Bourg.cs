@@ -1,3 +1,5 @@
+using System.Linq;
+using EdS.Domain.Space;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -38,6 +40,7 @@ namespace EdS.Game
             if (catalog == null || _bourg == null || _bourg.Pieces.Count == 0) return;
             float minX = Raw(_space.Min.X.Raw) - BourgMargin, maxX = Raw(_space.Max.X.Raw) + BourgMargin;
             float minZ = Raw(_space.Min.Z.Raw) - BourgMargin, maxZ = Raw(_space.Max.Z.Raw) + BourgMargin;
+            var walled = new System.Collections.Generic.Dictionary<string, float>();
             foreach (BourgPiece p in _bourg.Pieces)
             {
                 if (p.X < minX || p.X > maxX || p.Z < minZ || p.Z > maxZ) continue;
@@ -53,6 +56,21 @@ namespace EdS.Game
                 foreach (Collider c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 BourgOpen(holder.transform, model.transform, p.Piece);
                 AddModelOccluders(model);
+                // V2.30.3 : un bâtiment habillé arrête la caméra à son emprise (comme un modèle de l'atelier), jusqu'au haut de ses pièces.
+                if (p.Covers != null && Blocks(TownRules.BuildingFor(p.Covers)) && TownRules.BuildingFor(p.Covers) != StyleBuilding.None)
+                {
+                    var box = BourgModels.Box(p.Piece);
+                    float top = box != null ? (float)box.Value.Top : 8f;
+                    walled[p.Covers] = walled.TryGetValue(p.Covers, out float seen) ? Mathf.Max(seen, top) : top;
+                }
+            }
+            foreach (SpaceObstacle o in _space.Obstacles)
+            {
+                if (!walled.TryGetValue(o.Id, out float top)) continue;
+                float x0 = Raw(o.Points.Min(q => q.X.Raw)), x1 = Raw(o.Points.Max(q => q.X.Raw));
+                float z0 = Raw(o.Points.Min(q => q.Z.Raw)), z1 = Raw(o.Points.Max(q => q.Z.Raw));
+                float ground = Ground((x0 + x1) / 2f, (z0 + z1) / 2f, 0.4f);
+                _cameraBoxes.Add(new CameraBox(x0, ground, z0, x1, ground + top, z1));
             }
         }
 
