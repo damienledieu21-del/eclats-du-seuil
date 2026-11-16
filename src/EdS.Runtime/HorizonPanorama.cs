@@ -93,6 +93,26 @@ namespace EdS.Runtime
         /// <summary>Angle vu de la caméra (degrés, au-dessus de l'horizontale de l'œil) d'un point à la hauteur <paramref name="worldY"/> sur le cylindre.</summary>
         public static double SeenAngle(double worldY, double cameraY, double radius) => Math.Atan2(worldY - cameraY, radius) * 180.0 / Math.PI;
 
+        /// <summary>
+        /// Rangées de sommets de la bande (revue Codex de la PR #203) : les lignes de l'image sont linéaires en degrés mais la hauteur d'un
+        /// cylindre l'est en tangente ; deux rangées seulement décaleraient l'horizon de 0,1° et les crêtes de 0,3°. Une rangée par demi-degré
+        /// (donc exactement à 0° et à 8,5°), plus le bas et le haut de l'image. <c>V</c> : ligne de l'image (0 en bas, 1 en haut) ;
+        /// <c>Height</c> : hauteur au rayon de référence (m), <c>6 000 × tan(angle)</c>, que l'échelle y de la vue ramène au plan lointain.
+        /// </summary>
+        public static (double V, double Height)[] Rows()
+        {
+            var rows = new System.Collections.Generic.List<(double, double)>();
+            rows.Add((0.0, ReferenceRadius * Math.Tan(BottomAngle * Math.PI / 180.0)));
+            for (int k = (int)Math.Floor(BottomAngle * 2) + 1; k * 0.5 < TopAngle; k++)
+            {
+                double angle = k * 0.5;
+                if (angle <= BottomAngle) continue;
+                rows.Add((V(angle), ReferenceRadius * Math.Tan(angle * Math.PI / 180.0)));
+            }
+            rows.Add((1.0, ReferenceRadius * Math.Tan(TopAngle * Math.PI / 180.0)));
+            return rows.ToArray();
+        }
+
         /// <summary>Taille de l'image utilisée : 4 096 × 256 sur téléphone, 8 192 × 512 sur PC (jamais 16 384).</summary>
         public static int Width(DeviceTier tier) => tier == DeviceTier.Phone ? 4096 : 8192;
 

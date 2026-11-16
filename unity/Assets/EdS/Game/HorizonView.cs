@@ -131,28 +131,31 @@ namespace EdS.Game
         {
             _bandBuilt = true;
             int n = PanoramaSegments;
-            var vertices = new Vector3[2 * (n + 1)];
+            (double V, double Height)[] rows = HorizonPanorama.Rows();   // une rangée par demi-degré : angle juste (revue Codex de la PR #203)
+            int r = rows.Length;
+            var vertices = new Vector3[r * (n + 1)];
             var uv = new Vector2[vertices.Length];
-            var triangles = new int[6 * n];
+            var triangles = new int[6 * n * (r - 1)];
             // Rayon 1 ; hauteurs au rayon de référence (6 000 m) : l'échelle y du maillage les ramène au plan lointain.
-            float bottom = (float)(HorizonProfile.Radius * System.Math.Tan(HorizonPanorama.BottomAngle * System.Math.PI / 180.0));
-            float top = (float)(HorizonProfile.Radius * System.Math.Tan(HorizonPanorama.TopAngle * System.Math.PI / 180.0));
             for (int i = 0; i <= n; i++)
             {
                 double azimuth = i * 360.0 / n, a = azimuth * System.Math.PI / 180.0;
                 float x = (float)System.Math.Sin(a), z = (float)System.Math.Cos(a);   // 0 : le nord (+z), 90 : l'est (+x)
-                vertices[2 * i] = new Vector3(x, bottom, z);
-                vertices[2 * i + 1] = new Vector3(x, top, z);
                 float u = i / (float)n;
-                uv[2 * i] = new Vector2(u, 0f);
-                uv[2 * i + 1] = new Vector2(u, 1f);
+                for (int j = 0; j < r; j++)
+                {
+                    vertices[i * r + j] = new Vector3(x, (float)rows[j].Height, z);
+                    uv[i * r + j] = new Vector2(u, (float)rows[j].V);
+                }
             }
+            int t = 0;
             for (int i = 0; i < n; i++)
-            {
-                int a = 2 * i, t = 6 * i;
-                triangles[t] = a; triangles[t + 1] = a + 1; triangles[t + 2] = a + 2;
-                triangles[t + 3] = a + 1; triangles[t + 4] = a + 3; triangles[t + 5] = a + 2;
-            }
+                for (int j = 0; j < r - 1; j++)
+                {
+                    int a = i * r + j, c = a + r;
+                    triangles[t++] = a; triangles[t++] = a + 1; triangles[t++] = c;
+                    triangles[t++] = a + 1; triangles[t++] = c + 1; triangles[t++] = c;
+                }
             var mesh = new Mesh { name = "HorizonPanorama" };
             mesh.vertices = vertices;
             mesh.uv = uv;

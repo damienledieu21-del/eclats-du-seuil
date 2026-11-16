@@ -59,6 +59,32 @@ public class V2292PanoramaTests
             HorizonPanorama.SeenAngle(HorizonPanorama.WorldY(8.5, cameraY, 3000), cameraY, 3000), 9);
     }
 
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.8)]
+    [InlineData(2.0)]
+    [InlineData(8.5)]
+    [InlineData(-3.0)]
+    [InlineData(17.3)]
+    public void Geometrie_de_la_bande_angle_juste_a_un_centieme_de_degre(double angle)
+    {
+        var rows = HorizonPanorama.Rows();
+        Assert.Equal(0.0, rows[0].V);
+        Assert.Equal(1.0, rows[^1].V);
+        for (int i = 1; i < rows.Length; i++) Assert.True(rows[i].V > rows[i - 1].V && rows[i].Height > rows[i - 1].Height);
+        // Hauteur du point de la bande qui montre la ligne v de l'image (interpolation linéaire entre rangées, comme le rendu).
+        double v = HorizonPanorama.V(angle);
+        int k = 1;
+        while (rows[k].V < v) k++;
+        double t = (v - rows[k - 1].V) / (rows[k].V - rows[k - 1].V);
+        double height = rows[k - 1].Height + t * (rows[k].Height - rows[k - 1].Height);
+        double seen = Math.Atan(height / HorizonPanorama.ReferenceRadius) * 180 / Math.PI;
+        Assert.Equal(angle, seen, 2);
+        // Et à la hauteur du monde, pour une caméra haute et un plan lointain donnés : l'angle au-dessus de l'horizon reste juste.
+        double y = HorizonPanorama.WorldY(HorizonPanorama.AngleOf(v), 0, 3000);
+        Assert.Equal(angle, Math.Atan2(y, 3000) * 180 / Math.PI, 2);
+    }
+
     [Fact]
     public void Saison_entiere_une_seule_texture()
     {
