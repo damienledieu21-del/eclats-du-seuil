@@ -86,6 +86,7 @@ namespace EdS.Runtime
             all.AddRange(Harvest());
             all.AddRange(Village());
             all.AddRange(InteriorsBag());
+            all.AddRange(InteriorsVillage());
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
@@ -488,6 +489,119 @@ namespace EdS.Runtime
             yield return Waiting("C_IN1_P15", c, "Carte des rangs (roulée)", small);
             yield return Linked("C_IN1_P16", c, "Lanterne", Pieces("Lantern", "auberge guilde boulangerie").Concat(Pieces("HangingLantern", "auberge guilde boulangerie")).ToArray());
             yield return Linked("C_IN1_P17", c, "Bougeoir", Pieces("Candlestick", "auberge guilde archives"));
+        }
+
+        // --- 04 : intérieurs du village (chapelle, épicerie, herboristerie, mercerie, maison de Rosalie…) ------------------------------
+
+        private static IEnumerable<LotCModel> InteriorsVillage()
+        {
+            const string c = "04_Interieurs_Village";
+            const string chapel = "pas de place pour ce meuble dans la chapelle des données (autel, huit bancs, deux chandeliers, statue)";
+            const string crypt = "crypte de la chapelle : pas dans les données";
+            const string grocer = "pas de place pour ce meuble dans l'épicerie des données (comptoir, deux étagères, tonneau, caisse)";
+            const string forge = "intérieur de la forge : pas dans les données (la forge de Maëlle est dehors)";
+            const string barn = "intérieur de la grange : pas dans les données";
+            const string herb = "pas de place pour ce meuble dans l'herboristerie des données (comptoir, deux étagères, table de séchage, tonneau)";
+            const string tailor = "pas de place pour ce meuble dans la mercerie des données (comptoir, étagère à toiles, rouet, table de coupe, coffre)";
+            const string mill = "intérieur du moulin : pas dans les données";
+            const string small = "petit objet que l'aménagement de ces pièces ne pose pas";
+            const string rosalie = "les tables de la maison ont des tabourets (aménagement) ; aucun banc dans les données";
+            const string upstairs = "étage de la maison de Rosalie : pas dans les données (une pièce n'a qu'un niveau)";
+            const string tower = "intérieur de la tour de guet : pas dans les données";
+            const string cottage = "maison paysanne : pas d'intérieur dans les données (la maison du bourg est celle de Rosalie)";
+            yield return Linked("C_IN2_C0_01", c, "Banc de nef", "room:chapelle/banc1", "room:chapelle/banc2", "room:chapelle/banc3", "room:chapelle/banc4", "room:chapelle/banc5", "room:chapelle/banc6", "room:chapelle/banc7", "room:chapelle/banc8");
+            yield return Linked("C_IN2_C0_09", c, "Autel", "room:chapelle/autel");
+            yield return Waiting("C_IN2_C0_10", c, "Reliquaire (logement vide de l'Éclat)", chapel);
+            yield return Waiting("C_IN2_C0_11", c, "Armoire de sacristie", chapel);
+            yield return Waiting("C_IN2_C_1_02", c, "Table votive", crypt);
+            yield return Waiting("C_IN2_C_1_03", c, "Coffre scellé", crypt);
+            yield return Linked("C_IN2_C_1_04", c, "Support de cierges", "room:chapelle/chandelier1", "room:chapelle/chandelier2");
+            yield return Linked("C_IN2_E0_01", c, "Comptoir de vente", "room:epicerie/comptoir", "room:mercerie/comptoir");
+            yield return Linked("C_IN2_E0_02", c, "Rayonnage de pots", "room:epicerie/etagere_ouest");
+            yield return Linked("C_IN2_E0_03", c, "Étagères à denrées", "room:epicerie/etagere_fond");
+            yield return Waiting("C_IN2_E0_04", c, "Table de fromages", grocer);
+            yield return Linked("C_IN2_E0_05", c, "Tonneaux de sel", "room:epicerie/tonneau");
+            yield return Linked("C_IN2_E0_06", c, "Sacs de réserve", "room:epicerie/caisse");
+            yield return Waiting("C_IN2_E0_07", c, "Rayonnage de la réserve", grocer);
+            yield return Waiting("C_IN2_E0_08", c, "Bureau de Lucie", grocer);
+            yield return Waiting("C_IN2_F0_01", c, "Foyer avec hotte", forge);
+            yield return Waiting("C_IN2_F0_02", c, "Soufflet", forge);
+            yield return Waiting("C_IN2_F0_03", c, "Enclume sur billot", forge);
+            yield return Waiting("C_IN2_F0_04", c, "Établi", forge);
+            yield return Waiting("C_IN2_F0_05", c, "Bac de trempe", forge);
+            yield return Waiting("C_IN2_F0_06", c, "Râtelier de pinces", forge);
+            yield return Waiting("C_IN2_G0_01", c, "Charrette agricole", barn);
+            yield return Waiting("C_IN2_G0_02", c, "Tas de foin", barn);
+            yield return Waiting("C_IN2_G0_03", c, "Râtelier agricole", barn);
+            yield return Waiting("C_IN2_G0_04", c, "Coffre à outils", barn);
+            yield return Waiting("C_IN2_G0_05", c, "Échelle de travail rangée", barn);
+            yield return Linked("C_IN2_H0_01", c, "Table de tri de Tiphaine", "room:herboristerie/table_sechage");
+            yield return Waiting("C_IN2_H0_02", c, "Alambic sur foyer", herb);
+            yield return Linked("C_IN2_H0_03", c, "Étagère de bocaux", "room:herboristerie/etagere_fond");
+            yield return Linked("C_IN2_H0_04", c, "Étagère interdite en hauteur", "room:herboristerie/etagere_est");
+            yield return Linked("C_IN2_H0_05", c, "Petit comptoir", "room:herboristerie/comptoir");
+            yield return Waiting("C_IN2_H0_06", c, "Mortier sur billot", herb);
+            yield return Waiting("C_IN2_M0_01", c, "Métier à tisser", tailor);
+            yield return Linked("C_IN2_M0_02", c, "Table de coupe", "room:mercerie/table_coupe");
+            yield return Linked("C_IN2_M0_03", c, "Rouet", "room:mercerie/rouet", "room:maison/rouet");
+            yield return Waiting("C_IN2_M0_04", c, "Mannequin de couturière (fait main, sans Tripo)", tailor);
+            yield return Linked("C_IN2_M0_05", c, "Rouleaux et étagère", "room:mercerie/etagere_toiles");
+            yield return Linked("C_IN2_M0_06", c, "Tabouret", "piece:mercerie/Stool", "piece:maison/Stool");
+            yield return Waiting("C_IN2_O0_01", c, "Rouet et lanterne", mill);
+            yield return Waiting("C_IN2_O0_02", c, "Bac à farine", mill);
+            yield return Waiting("C_IN2_O0_03", c, "Sacs de grain", mill);
+            yield return Waiting("C_IN2_O0_04", c, "Échelle de meunier", mill);
+            yield return Waiting("C_IN2_O0_05", c, "Pupitre de pesée", mill);
+            yield return Waiting("C_IN2_O1_01", c, "Meules avec archure et trémie", mill);
+            yield return Waiting("C_IN2_O1_04", c, "Caisse à grain", mill);
+            yield return Linked("C_IN2_P01", c, "Cierge", "piece:chapelle/Candlestick");
+            yield return Linked("C_IN2_P02", c, "Bougeoir", "piece:maison/Candlestick");
+            yield return Waiting("C_IN2_P03", c, "Livre de la chapelle", small);
+            yield return Waiting("C_IN2_P04", c, "Pot de miel", small);
+            yield return Waiting("C_IN2_P05", c, "Fromage", small);
+            yield return Waiting("C_IN2_P06", c, "Tresse d'ail", small);
+            yield return Linked("C_IN2_P08", c, "Bocal", "piece:herboristerie/ClayPot", "piece:epicerie/ClayPot");
+            yield return Waiting("C_IN2_P09", c, "Mortier", small);
+            yield return Waiting("C_IN2_P10", c, "Bouquet d'herbes", small);
+            yield return Linked("C_IN2_P11", c, "Fiole", "piece:herboristerie/Bottles");
+            yield return Waiting("C_IN2_P12", c, "Ciseaux", small);
+            yield return Linked("C_IN2_P13", c, "Rouleau de lin", "piece:mercerie/Cloth");
+            yield return Waiting("C_IN2_P14", c, "Écheveau", small);
+            yield return Waiting("C_IN2_P15", c, "Bobine", small);
+            yield return Linked("C_IN2_P16", c, "Assiette", "piece:maison/Plate");
+            yield return Linked("C_IN2_P17", c, "Cruche", "piece:maison/Bottles", "piece:epicerie/Bottles");
+            yield return Linked("C_IN2_P18", c, "Panier", "piece:maison/Basket", "piece:epicerie/Basket", "piece:herboristerie/Basket", "piece:mercerie/Basket");
+            yield return Linked("C_IN2_P20", c, "Écuelle", "piece:maison/Bowl");
+            yield return Waiting("C_IN2_P21", c, "Couverture", small);
+            yield return Waiting("C_IN2_P22", c, "Oreiller", small);
+            yield return Waiting("C_IN2_P23", c, "Pelle à grain", small);
+            yield return Waiting("C_IN2_P25", c, "Tamis", small);
+            yield return Waiting("C_IN2_P26", c, "Pinces", small);
+            yield return Waiting("C_IN2_P27", c, "Marteau", small);
+            yield return Waiting("C_IN2_P28", c, "Râteau", small);
+            yield return Waiting("C_IN2_P29", c, "Fourche", small);
+            yield return Waiting("C_IN2_P30", c, "Registre", small);
+            yield return Linked("C_IN2_R0_01", c, "Lit clos", "room:maison/lit");
+            yield return Linked("C_IN2_R0_02", c, "Cheminée domestique", "room:maison/cheminee");
+            yield return Linked("C_IN2_R0_03", c, "Table familiale", "room:maison/table");
+            yield return Waiting("C_IN2_R0_04", c, "Banc", rosalie);
+            yield return Linked("C_IN2_R0_05", c, "Coffre", "room:maison/coffre");
+            yield return Linked("C_IN2_R0_07", c, "Étagère à vaisselle", "room:maison/etagere");
+            yield return Waiting("C_IN2_R1_02", c, "Coffre à linge", upstairs);
+            yield return Waiting("C_IN2_R1_03", c, "Étagère à paniers", upstairs);
+            yield return Waiting("C_IN2_T0_01", c, "Couchettes superposées", tower);
+            yield return Waiting("C_IN2_T0_02", c, "Table du registre", tower);
+            yield return Waiting("C_IN2_T0_03", c, "Râtelier d'armes", tower);
+            yield return Waiting("C_IN2_T0_05", c, "Coffre des gardes", tower);
+            yield return Linked("C_IN2_T0_06", c, "Lanterne suspendue", "piece:maison/HangingLantern", "piece:epicerie/HangingLantern", "piece:herboristerie/HangingLantern", "piece:mercerie/HangingLantern");
+            yield return Waiting("C_IN2_V0_01", c, "Lit paysan", cottage);
+            yield return Waiting("C_IN2_V0_02", c, "Cheminée", cottage);
+            yield return Waiting("C_IN2_V0_03", c, "Table simple", cottage);
+            yield return Linked("C_IN2_V0_04", c, "Coffre", "room:mercerie/coffre");
+            yield return Waiting("C_IN2_V0_05", c, "Étagère", cottage);
+            yield return Waiting("C_IN2_V0_06", c, "Échelle du grenier", cottage);
+            yield return Waiting("C_IN2_V1_02", c, "Caisses basses", cottage);
+            yield return Waiting("C_IN2_V1_03", c, "Ballot de linge", cottage);
         }
     }
 }

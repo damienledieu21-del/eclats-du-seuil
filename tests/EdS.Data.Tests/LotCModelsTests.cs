@@ -165,7 +165,7 @@ public class LotCModelsTests
         // Empreintes types des meubles du lot C (table, comptoir, tonneaux, rayonnage, âtre, coffre, caisses).
         (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3) };
         int rooms = 0;
-        foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives" })
+        foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives", "chapelle", "epicerie", "herboristerie", "mercerie", "maison" })
         {
             AdventureMap map = Map(room);
             rooms++;
@@ -192,7 +192,7 @@ public class LotCModelsTests
                 }
             }
         }
-        Assert.Equal(4, rooms);
+        Assert.Equal(9, rooms);
         // Dos au mur : le comptoir de l'auberge regarde l'intérieur, sur une seule rangée de copies le long du grand côté.
         Assert.Equal(180, LotCModels.Fit(-1, 4, 1, 4.5, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
         Assert.Equal(0, LotCModels.Fit(-1, -4.5, 1, -4, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
