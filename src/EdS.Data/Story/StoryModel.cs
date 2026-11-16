@@ -696,8 +696,9 @@ namespace EdS.Data.Story
 
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
             IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null,
-            IEnumerable<string>? learnable = null)
+            IEnumerable<string>? learnable = null, IEnumerable<string>? contestKeys = null)
         {
+            _contestKeys = new HashSet<string>(contestKeys ?? Array.Empty<string>(), StringComparer.Ordinal);
             _learnable = new HashSet<string>(learnable ?? Array.Empty<string>(), StringComparer.Ordinal);
             Festivals = Frozen.List(festivals ?? Array.Empty<Festival>(), nameof(festivals));
             Reputation = reputation ?? ReputationRules.None;
@@ -715,6 +716,18 @@ namespace EdS.Data.Story
         public Quest Quest(string id) => Quests.FirstOrDefault(q => q.Id == id) ?? throw new ArgumentException($"Quête « {id} » inconnue.", nameof(id));
         public bool HasQuest(string id) => Quests.Any(q => q.Id == id);
         public bool HasNpc(string id) => Npcs.Any(n => n.Id == id);
+
+        private readonly HashSet<string> _contestKeys;
+
+        /// <summary>
+        /// Schéma 16 (revue Codex de la PR #189) : clé d'un concours que l'histoire peut fermer (effet <c>contest</c> : la fête, ou
+        /// « fête.piste »). Une autre clé d'une sauvegarde est oubliée au chargement : la sauvegarde n'en garde jamais plus que
+        /// <c>SavedStory.MaxFestivals</c> (vérifié par le validateur).
+        /// </summary>
+        public bool HasContestKey(string? key) => key != null && _contestKeys.Contains(key);
+
+        /// <summary>Schéma 16 : nombre de clés de concours de l'histoire, au plus <c>SavedStory.MaxFestivals</c>.</summary>
+        public int ContestKeyCount => _contestKeys.Count;
 
         /// <summary>Sous-lot V1.6 : PNJ qui vivent dans la zone <paramref name="zone"/> (null : la zone de l'histoire), dans l'ordre du fichier.</summary>
         public IEnumerable<Npc> NpcsIn(string? zone) => Npcs.Where(n => n.Zone == zone);

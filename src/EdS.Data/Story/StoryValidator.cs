@@ -380,6 +380,12 @@ namespace EdS.Data.Story
 
             /// <summary>Sous-lot V2.10 : fêtes déclarées (conditions <c>festival</c>, <c>contestOpen</c>, effet <c>contest</c>, PNJ de passage).</summary>
             private readonly HashSet<string> _festivals = new HashSet<string>(StringComparer.Ordinal);
+
+            /// <summary>
+            /// Revue Codex de la PR #189 : clés des concours que l'histoire peut fermer (effets <c>contest</c> : la fête, ou « fête.piste »),
+            /// les seules gardées dans <c>story.festivals</c> de la sauvegarde.
+            /// </summary>
+            private readonly SortedSet<string> _contestKeys = new SortedSet<string>(StringComparer.Ordinal);
             // Revue Codex de la PR #174 (4e tour) : fêtes du calendrier seulement (affichage) : jamais au jour du jeu, donc refusées dans le gameplay.
             private readonly HashSet<string> _calendarOnly = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
@@ -546,8 +552,12 @@ namespace EdS.Data.Story
                         _r.Add(path, ValidationCode.UnknownReference, $"fait « {fact} » jamais appris (aucun effet setFact).");
                 // Sous-lot V2.10 (schéma 13) : les fêtes et leurs invités (PNJ connus).
                 List<Festival> festivals = CheckFestivals(npcs);
+                // Revue Codex de la PR #189 : chaque fête et chaque piste a sa clé dans story.festivals de la sauvegarde, au plus MaxFestivals.
+                if (_contestKeys.Count > EdS.Data.Saves.SavedStory.MaxFestivals)
+                    _r.Add("$.data.festivals", ValidationCode.LimitExceeded,
+                        $"{_contestKeys.Count} concours (fêtes et pistes) fermés par des effets « contest » : au plus {EdS.Data.Saves.SavedStory.MaxFestivals}, gardés par la sauvegarde.");
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet, _contestKeys);
             }
 
             /// <summary>
@@ -1093,6 +1103,7 @@ namespace EdS.Data.Story
                         _ => Ref(t, p, _discoveries, "découverte") && NoValue(t, p),
                     };
                     if (kind == EffectKind.SetFact && ok) _factsSet.Add(t.Id!);
+                    if (ok && kind == EffectKind.Contest) _contestKeys.Add(effectLane is null ? t.Id! : t.Id + "." + effectLane);
                     if (ok) list.Add(new StoryEffect(kind, t.Id ?? string.Empty, t.Value ?? 0, null, effectLane));
                 }
                 return list.Count == terms.Count ? list : null;

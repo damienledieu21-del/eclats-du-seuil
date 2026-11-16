@@ -300,6 +300,27 @@ public class ConcoursPatisserieTests
         Assert.Equal(spring ? "v210_foire" : "v210_moissons", Talk(Open(x.Save().Character!)).Node);   // relu : la pâtisserie reste faite
     }
 
+    /// <summary>
+    /// Revue Codex de la PR #189 : une sauvegarde aux seize clés de pistes inconnues (« festival.foire.a » à « .p ») se charge, ces clés
+    /// sont oubliées, et la partie se sauvegarde encore après un concours (au plus seize clés, celles des effets « contest »).
+    /// </summary>
+    [Fact]
+    public void Pistes_inconnues_de_la_sauvegarde_oubliees_et_sauvegarde_toujours_possible()
+    {
+        SavedCharacter baker = Baker(Signed(Fouace, ItemQuality.Normal));
+        var junk = Enumerable.Range(0, SavedStory.MaxFestivals).ToDictionary(i => "festival.foire." + (char)('a' + i), _ => 1L);
+        WorldSession w = AtSemailles(baker.WithStory(baker.Story.WithFestivals(junk)));
+        DialogueView view = Talk(w);
+        Assert.Equal(DialogueRefusal.None, w.Choose(view.Options.Single(o => o.Text == "text.v231.boulanger.fouace").Index, out DialogueView? which, out _));
+        Assert.Equal(DialogueRefusal.None, w.Choose(which!.Options[0].Index, out _, out _));
+        SavedStory saved = w.Save().Character!.Story;
+        Assert.Equal(new[] { "festival.foire.patisserie" }, saved.Festivals.Keys);
+        Assert.True(w.Narrative!.Book.HasContestKey("festival.moissons"));
+        Assert.True(w.Narrative.Book.HasContestKey("festival.moissons.patisserie"));
+        Assert.False(w.Narrative.Book.HasContestKey("festival.foire.a"));
+        Assert.InRange(w.Narrative.Book.ContestKeyCount, 1, SavedStory.MaxFestivals);
+    }
+
     [Fact]
     public void Piste_de_concours_en_schema_16_seulement_et_au_format()
     {

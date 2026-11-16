@@ -435,7 +435,7 @@ namespace EdS.World
                 .ToDictionary(r => r.Key, r => Reputations.Clamp(r.Value)), StringComparer.Ordinal);
             _discoveries = new SortedSet<string>(saved.Discoveries, StringComparer.Ordinal);
             // Sous-lot V2.10 : une fête disparue des données est oubliée.
-            _contests = new SortedDictionary<string, long>(saved.Festivals.Where(f => book.HasFestival(f.Key) || book.Festivals.Any(x => f.Key.StartsWith(x.Id + ".", StringComparison.Ordinal))).ToDictionary(f => f.Key, f => f.Value), StringComparer.Ordinal);
+            _contests = new SortedDictionary<string, long>(saved.Festivals.Where(f => book.HasContestKey(f.Key)).ToDictionary(f => f.Key, f => f.Value), StringComparer.Ordinal);
             foreach (KeyValuePair<string, QuestProgress> q in saved.Quests)
             {
                 Quest quest = book.Quest(q.Key);
@@ -1539,7 +1539,8 @@ namespace EdS.World
                         events.Add(new StoryEvent(StoryEventKind.ItemPresented, e.Id, SaveQualityName(e.Quality!.Value), 1));
                         break;
                     case EffectKind.Contest:   // sous-lot V2.10 : le concours se referme jusqu'à la prochaine fête
-                        _contests[e.ContestKey] = Math.Min(SavedEvent.MaxDay, _world.Day);   // schéma 16 : chaque piste a sa clé
+                        // Schéma 16 : chaque piste a sa clé ; seules les clés de l'histoire sont gardées (au plus MaxFestivals, vérifié par le validateur).
+                        _contests[e.ContestKey] = Math.Min(SavedEvent.MaxDay, _world.Day);
                         _world.ContestHeld(e.Id, e.ContestKey);
                         events.Add(new StoryEvent(StoryEventKind.ContestEntered, e.Id, null, _world.Day));
                         break;
