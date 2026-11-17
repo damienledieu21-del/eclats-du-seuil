@@ -553,7 +553,11 @@ namespace EdS.Game.Editor
             var result = new List<GameObject>();
             foreach (string path in paths)
             {
-                OwnMaterial(path, notes, AtelierDecor.OwnDecorOf(path));
+                // V2.30.2 : une pièce du Bourg a son propre atlas (« bourg_f01_palissade_couleur ») ; les autres, celui de leur groupe.
+                string own = Path.GetFileNameWithoutExtension(path);
+                string folder = Path.GetDirectoryName(path).Replace('\\', '/');
+                bool ownMaps = (AssetDatabase.FindAssets(own + "_couleur t:Texture2D", new[] { folder }) ?? new string[0]).Length > 0;
+                OwnMaterial(path, notes, ownMaps ? null : AtelierDecor.OwnDecorOf(path));
                 GameObject model = Load(path);
                 if (model != null) result.Add(model);
             }
@@ -603,6 +607,8 @@ namespace EdS.Game.Editor
                 material.SetColor("_EmissionColor", Color.white * (float)AtelierDecor.SeuilGlowDay);
                 notes.Add(name + " : émission " + Path.GetFileName(emission) + ".");
             }
+            // V2.30.2 (relecture indépendante) : les pièces du Bourg sont répétées par centaines (palissade, pavés, maisons) : instanciées.
+            if (name.StartsWith("bourg_", System.StringComparison.Ordinal)) material.enableInstancing = true;
             // V2.25.2 : les brins de la touffe sont en double face.
             if (AtelierDecor.DoubleSided(name)) material.SetFloat("_Cull", 0f);
             // Matières encore dans le FBX (première préparation) ; celles déjà remappées n'y sont plus, et leur remap reste en place.
