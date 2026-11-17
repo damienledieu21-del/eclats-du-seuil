@@ -167,7 +167,7 @@ namespace EdS.Game
                     if (under == null) continue;   // pas de meuble dessous : rien dessus
                     y = StyleLook.VisibleBounds(under, out Bounds ub) ? ub.max.y : y;
                 }
-                else if (piece.Y > 0 && CandleTop(lotC, piece) is float top) y = top;
+                else if (piece.Y > 0 && SurfaceY(lotC, piece) is float top) y = top;
                 Transform parent = _root.transform;
                 if (piece.OnWall)
                 {
@@ -668,6 +668,11 @@ namespace EdS.Game
                 : catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
             GameObject holder = look != null ? Model(look, piece, parent) : Fallback(piece, parent);
             if (holder == null) return null;
+            // Revue Codex de la PR #200 : un modèle Tripo allongé (le banc de l'auberge, long selon z) est tourné d'un quart pour suivre l'axe
+            // que l'aménagement donne à la pièce (le long de la table : selon x à 0°, selon z à 90°).
+            if (ownModel != null && LotCModels.AlongTable(piece.Prop) && StyleLook.VisibleBounds(holder, out Bounds lb)
+                && (lb.size.x >= lb.size.z) != LotCModels.AlongX(piece.Yaw))
+                holder.transform.rotation = Quaternion.Euler(0f, (float)piece.Yaw + 90f, 0f);
             if (!StyleLook.VisibleBounds(holder, out Bounds b)) return holder;
             Vector3 target = at;
             if (piece.OnWall)
@@ -686,15 +691,19 @@ namespace EdS.Game
         }
 
         /// <summary>
-        /// Relecture Codex de la PR #201 : la bougie posée en hauteur sur un support de cierges (« chandelier1/bougie », sans parent dans
-        /// l'aménagement) suit le haut du support Tripo qui remplace le pied du code ; null si le support n'est pas un modèle du lot C.
+        /// Revues Codex de la PR #201 : un objet posé en hauteur sans parent sur un meuble remplacé par son modèle Tripo (vaisselle, lanterne,
+        /// panier du comptoir à <see cref="InteriorRules.CounterHeight"/>, chandeliers et bougeoirs de l'autel à
+        /// <see cref="InteriorRules.AltarHeight"/>, bougie d'un support de cierges à <see cref="InteriorRules.CandleHeight"/>) suit le haut
+        /// du modèle posé, à son écart d'origine ; null si le meuble n'est pas un modèle du lot C.
         /// </summary>
-        private static float? CandleTop(Dictionary<string, GameObject> lotC, InteriorPiece piece)
+        private static float? SurfaceY(Dictionary<string, GameObject> lotC, InteriorPiece piece)
         {
             foreach (KeyValuePair<string, GameObject> k in lotC)
-                if (piece.Id.StartsWith(k.Key + "/", System.StringComparison.Ordinal) && InteriorRules.FurnitureFor(k.Key) == InteriorFurniture.Candelabra
-                    && StyleLook.VisibleBounds(k.Value, out Bounds b))
-                    return b.max.y;
+            {
+                if (!piece.Id.StartsWith(k.Key + "/", System.StringComparison.Ordinal)) continue;
+                double? nominal = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(k.Key));
+                if (nominal is double h && StyleLook.VisibleBounds(k.Value, out Bounds b)) return b.max.y + (float)(piece.Y - h);
+            }
             return null;
         }
 
