@@ -104,6 +104,7 @@ public sealed class V23JourneeTests : IDisposable
             "npc.ysarn", "npc.deserteur", "npc.thibaut", "npc.aubergiste", "npc.pretre", "npc.albe", "npc.habitant", "npc.maitresse_guilde",
             "npc.intendant_guilde", "npc.archiviste",
             "npc.voyageur_convoyeur", "npc.voyageuse_pelerine",   // 17 novembre 2026 (vers 2 h) : voyageurs de passage
+            "npc.serveuse", "npc.palefrenier",   // réponses de Damien du 17 novembre 2026 : le personnel de l'auberge
             // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
             "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
         };

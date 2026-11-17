@@ -1655,8 +1655,8 @@
             "at": "06:30",
             "activity": "route",
             "position": [
-              -1450,
-              -125.5
+              -1130,
+              -40
             ],
             "zone": "zone.vallons"
           },
@@ -1693,8 +1693,8 @@
             "at": "07:00",
             "activity": "route",
             "position": [
-              -900,
-              -59.5
+              -1060,
+              -35
             ],
             "zone": "zone.vallons"
           },
@@ -1713,6 +1713,112 @@
             "position": [
               2.6,
               -0.8
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.serveuse",
+        "name": "text.lotc.npc.serveuse.name",
+        "position": [
+          1.6,
+          0.6
+        ],
+        "dialogue": "dialogue.serveuse",
+        "zone": "zone.auberge",
+        "schedule": [
+          {
+            "at": "06:30",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "11:30",
+            "activity": "cuisine",
+            "position": [
+              -0.2,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:30",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "17:30",
+            "activity": "cuisine",
+            "position": [
+              -0.2,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "18:00",
+            "activity": "salle",
+            "position": [
+              1.6,
+              0.6
+            ]
+          },
+          {
+            "at": "22:30",
+            "activity": "rangement",
+            "position": [
+              1.6,
+              0.6
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.palefrenier",
+        "name": "text.lotc.npc.palefrenier.name",
+        "position": [
+          -1093.5,
+          -24
+        ],
+        "dialogue": "dialogue.palefrenier",
+        "schedule": [
+          {
+            "at": "05:30",
+            "activity": "ecurie",
+            "position": [
+              -1093.5,
+              -24
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "repas",
+            "position": [
+              -0.6,
+              -0.5
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:45",
+            "activity": "ecurie",
+            "position": [
+              -1093.5,
+              -24
+            ]
+          },
+          {
+            "at": "21:00",
+            "activity": "paille",
+            "position": [
+              -1093.5,
+              -24
             ]
           }
         ]
@@ -22701,6 +22807,24 @@
             ],
             "choices": [
               {
+                "text": "text.lotc.voyageur_convoyeur.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.voyageur_convoyeur.reponse",
+            "choices": [
+              {
                 "text": "text.v210.au_revoir",
                 "conditions": [],
                 "effects": [],
@@ -22733,6 +22857,128 @@
                 "text": "text.lotc.voyageuse_pelerine.retrouvailles"
               }
             ],
+            "choices": [
+              {
+                "text": "text.lotc.voyageuse_pelerine.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.voyageuse_pelerine.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.serveuse",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.serveuse.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.serveuse"
+                  }
+                ],
+                "text": "text.lotc.serveuse.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.serveuse.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.serveuse.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.palefrenier",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.palefrenier.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.palefrenier"
+                  }
+                ],
+                "text": "text.lotc.palefrenier.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.lotc.palefrenier.question",
+                "conditions": [],
+                "effects": [],
+                "next": "reponse"
+              },
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "reponse",
+            "text": "text.lotc.palefrenier.reponse",
             "choices": [
               {
                 "text": "text.v210.au_revoir",

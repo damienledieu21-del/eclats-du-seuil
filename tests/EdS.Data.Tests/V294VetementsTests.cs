@@ -61,6 +61,24 @@ public sealed class V294VetementsTests
         Assert.Single(StyleRules.Candidates(models, StyleSlot.Hero));
     }
 
+    [Fact]
+    public void Voyageurs_en_tenue_de_voyage_et_personnel_de_l_auberge()
+    {
+        // Réponses de Damien du 17 novembre 2026 : les voyageurs de passage ont toute l'année une cape et un sac ; Perrine porte le tablier.
+        foreach (string id in new[] { "npc.voyageur_convoyeur", "npc.voyageuse_pelerine" })
+        {
+            WardrobePlan summer = HumanWardrobe.Plan(id, "pnj", Look(id, "pnj"), WardrobeSeason.Summer, false, false);
+            Assert.Contains(summer.Requests, q => q.Slot == WardrobeSlot.Back && q.Kinds.Contains("cloak"));
+            Assert.Contains(summer.Requests, q => q.Slot == WardrobeSlot.Waist && q.Kinds.Contains("bag"));
+        }
+        Assert.False(Look("npc.voyageur_convoyeur", "pnj").Female);
+        Assert.True(Look("npc.voyageuse_pelerine", "pnj").Female);
+        Assert.True(Look("npc.serveuse", "pnj").Female);
+        Assert.False(Look("npc.palefrenier", "pnj").Female);
+        Assert.Contains(HumanWardrobe.Plan("npc.serveuse", "pnj", Look("npc.serveuse", "pnj"), WardrobeSeason.Summer, false, false).Requests,
+            q => q.Slot == WardrobeSlot.Waist && q.Kinds.Contains("apron"));
+    }
+
     private static HumanLook Look(string id, string role) => HumanLooks.For(id, role);
 
     private static (int[]? Picks, WardrobePlan Plan) Dress(string id, string role, IReadOnlyList<WardrobeItem> items, WardrobeSeason season = WardrobeSeason.Spring,

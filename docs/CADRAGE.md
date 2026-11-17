@@ -289,7 +289,9 @@ Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la sessi
 | Aubergiste en cuisine | Mathurin en cuisine aux heures du service, 11 h 30 à 12 h 30 et 17 h 30 à 18 h ; ses autres horaires ne changent pas. L'auberge n'a pas d'autre personnel dans les données. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
 | Voyageurs de passage | Deux PNJ simples, sans quête : un convoyeur et une voyageuse, arrivés le soir à la taverne, la nuit dans les chambres (leur zone), repartis le matin sur la route d'Ambre. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
 | Achille dort chez lui | Sa zone devient sa maison (`zone.chaumiere`) : il y dort et y prend son repas de midi ; ses journées aux champs et ses soirées à la taverne ne changent pas, ni ses quêtes. Seule exception à « le matin, chacun à sa place du début du jeu », avec les voyageurs. Aucune sauvegarde à migrer : la place d'un PNJ ne se sauvegarde pas. | Retenu (Damien, 17 novembre 2026, vers 2 h) ; même PR |
-| Odile le matin | Elle reste dehors le matin : la règle étendue ne change pas « le matin, chacun à sa place du début du jeu » (ses quêtes du moulin commencent là). | Constat (Claude, 17 novembre 2026) : question posée dans la PR |
+| Odile le matin | Elle **reste dehors le matin**, sans exception (ses quêtes du moulin commencent là). | Retenu (Damien, 17 novembre 2026) ; PR #212 |
+| Personnel de l'auberge | Deux employés, avec prénom, horaires et quelques répliques : **Perrine, la serveuse** (en salle, en cuisine aux repas avec Mathurin, la nuit à l'auberge) et **Huguet, le garçon d'écurie** (à l'écurie devant l'auberge, son repas de midi en cuisine, la nuit dans la paille). | Retenu (Damien, 17 novembre 2026) ; PR #212 |
+| Voyageurs nommés | Un prénom (**Baudouin**, convoyeur ; **Aveline**, voyageuse), une **tenue de voyage** (cape et sac, toute l'année) et une réplique sur leur route. | Retenu (Damien, 17 novembre 2026) ; PR #212 |
 
 ## 7 quinquies. L'âme du jeu (Retenu)
 

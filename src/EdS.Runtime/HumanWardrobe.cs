@@ -385,7 +385,10 @@ namespace EdS.Runtime
         private static string Who(string id) => StyleRules.CharacterOf(id ?? string.Empty);
 
         private static readonly string[] WellOff = { "renart", "marchand", "intendant", "maitresse", "capitaine", "doyen", "heros", "hero" };
-        private static readonly string[] Aproned = { "boulanger", "epiciere", "aubergiste", "fermiere" };
+        private static readonly string[] Aproned = { "boulanger", "epiciere", "aubergiste", "fermiere", "serveuse" };
+
+        /// <summary>Lot C (réponse de Damien du 17 novembre 2026) : les voyageurs de passage, en tenue de voyage (cape et sac, toute l'année).</summary>
+        private static readonly string[] Travellers = { "voyageur", "voyageuse" };
         private static readonly string[] Poor = { "bandit", "deserteur", "veuve", "mendiant" };
 
         /// <summary>
@@ -500,10 +503,14 @@ namespace EdS.Runtime
                 : false;
             if (outfit == HumanOutfit.Hero || who == "capitaine" || part == "capitaine") cloak |= Roll("cape", 100) < 60;
             if (festive && wellOff) cloak = true;
+            bool traveller = Travellers.Contains(who) || Travellers.Contains(part);
+            if (traveller) cloak = true;
             if (cloak) Add(WardrobeSlot.Back, "cloak", new[] { "cloak" }, "manteau");
             // Gorgerin des gardes l'hiver ; tablier de la forge, de l'auberge, du fournil et de l'épicerie (s'il y en a un dans le pack).
             if (outfit == HumanOutfit.Guard && season == WardrobeSeason.Winter) Add(WardrobeSlot.Neck, "knight", new[] { "gorget" }, "col");
             if (outfit == HumanOutfit.Smith || aproned) Add(WardrobeSlot.Waist, "peasant", new[] { "apron", "belt" }, "tablier");
+            // Le sac du voyageur (à la ceinture : sacoche, besace, sinon la ceinture du pack).
+            else if (traveller) Add(WardrobeSlot.Waist, "peasant", new[] { "bag", "satchel", "pouch", "belt" }, "sac");
 
             // Usure selon le statut : neuve pour les gens aisés, le clergé et le héros ; usée pour les bandits, les déserteurs, la veuve ; les
             // paysans de l'une à l'autre. Un jour de fête, on sort ses beaux habits.

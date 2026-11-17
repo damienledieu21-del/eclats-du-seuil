@@ -44,6 +44,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         "npc.renart", "npc.fermier", "npc.capitaine", "npc.albe",   // V2.6.1 : la veille du soir de Sœur Albe sur le parvis
         "npc.odile",   // lot C (décision de Damien du 17 novembre 2026) : l'après-midi dans la salle du moulin
         "npc.voyageur_convoyeur", "npc.voyageuse_pelerine",   // 17 novembre 2026 (vers 2 h) : voyageurs de passage, la nuit dans les chambres
+        "npc.serveuse", "npc.palefrenier",   // réponses de Damien du 17 novembre 2026 : Perrine et Huguet, en cuisine aux repas
     };
 
     /// <summary>
@@ -114,7 +115,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine",
-                "npc.voyageur_convoyeur", "npc.voyageuse_pelerine" },
+                "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.serveuse" },
             book.VisitorsOf("zone.auberge").Select(n => n.Id));
         // Rosalie sort (chapelle, puits, place) ; Mathurin fume sur la terrasse ; Frère Anselme fait sa tournée.
         Npc rosalie = book.Npc("npc.habitant"), mathurin = book.Npc("npc.aubergiste"), anselme = book.Npc("npc.pretre");
@@ -132,6 +133,11 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal(((string?)null, "zone.chaumiere", "zone.chaumiere", "zone.chaumiere"), (achille.ZoneAt(9 * 60), achille.ZoneAt(12 * 60 + 30), achille.ZoneAt(23 * 60), achille.ZoneAt(3 * 60)));
         // Mathurin en cuisine aux heures du service (11 h 30 à 12 h 30, 17 h 30 à 18 h) : pièce derrière la salle (deux portes des Vallons).
         Assert.Equal(("zone.auberge_cuisine", "zone.auberge_cuisine", "zone.auberge"), (mathurin.ZoneAt(12 * 60), mathurin.ZoneAt(17 * 60 + 45), mathurin.ZoneAt(13 * 60)));
+        // Réponses de Damien du 17 novembre 2026 : Perrine sert en salle et aide en cuisine aux repas ; Huguet mange en cuisine à midi.
+        Npc perrine = book.Npc("npc.serveuse"), huguet = book.Npc("npc.palefrenier");
+        Assert.Equal(("zone.auberge", "zone.auberge_cuisine", "zone.auberge", "zone.auberge"),
+            (perrine.Zone, perrine.ZoneAt(12 * 60), perrine.ZoneAt(19 * 60), perrine.ZoneAt(2 * 60)));
+        Assert.Equal(((string?)null, "zone.auberge_cuisine", (string?)null), (huguet.ZoneAt(9 * 60), huguet.ZoneAt(12 * 60 + 15), huguet.ZoneAt(23 * 60)));
         // Voyageurs : sur la route le jour, à la taverne le soir, la nuit dans les chambres (leur zone).
         Npc convoyeur = book.Npc("npc.voyageur_convoyeur");
         Assert.Equal(("zone.auberge_chambres", (string?)null, "zone.auberge", "zone.auberge_chambres"),
@@ -253,7 +259,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         WorldSession inn = Inside("zone.auberge", tick, 0, -3.5);
         string[] inside = Shipped.Value.VisitorsOf("zone.auberge").Where(inn.NpcHere).Select(n => n.Id).ToArray();
         Assert.Equal(new[] { "npc.maelle", "npc.epiciere", "npc.aubergiste", "npc.boulanger", "npc.renart", "npc.fermier", "npc.voyageur_convoyeur",
-            "npc.voyageuse_pelerine" }, inside);   // 17 novembre 2026 : et les voyageurs de passage
+            "npc.voyageuse_pelerine", "npc.serveuse" }, inside);   // 17 novembre 2026 : et les voyageurs de passage
         // Dehors, sur la terrasse : seulement Aldric (sa « ronde assise » commence à 16 h 30… et finit à 19 h) ; à 18 h, il y est.
         WorldSession terrace = Outside(TickAt(DryDay(18 * 60), 18 * 60), -1101, -32.5);
         Assert.Equal("taverne", terrace.NpcActivity(Shipped.Value.Npc("npc.archer_garde")));
@@ -472,7 +478,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         // Dans la salle de l'auberge à 11 h : les visiteurs du soir attendent, cachés, à la porte ; Mathurin est là.
         SaveStore.Write(save, new WorldSave("zone.auberge", TickAt(1, 11 * 60), 0, Array.Empty<string>(), Hero(100)));
         AdventureSession inn = Adventure(save);
-        Assert.Equal(new[] { "npc.aubergiste" }, inn.NpcStage().Where(n => n.Present).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.aubergiste", "npc.serveuse" }, inn.NpcStage().Where(n => n.Present).Select(n => n.Id));   // 17 novembre 2026 : Perrine aussi
         Assert.All(inn.NpcStage().Where(n => !n.Present), n => Assert.Equal((0.0, -4.3), (n.X, n.Z)));
         Assert.Equal(inn.NpcStage().Select(n => n.Id), inn.Map.Speakers.Select(s => s.Id));   // un corps pour chacun
         // Dehors, les visiteurs de l'intérieur attendent à sa porte (celle de l'auberge pour Mathurin).
