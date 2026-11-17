@@ -118,7 +118,16 @@ static int RunValidate(ReadOnlySpan<string> options)
         Console.WriteLine($"{path} : valide");
         Warnings(scenario.Report);
         if (setup.Space is { } area && area.Obstacles.Count > EdS.Domain.Space.SpaceLimits.MaxObstacles)
-            Console.WriteLine($"  aire           {area.Obstacles.Count} obstacles, simulée par secteurs (au plus {EdS.Domain.Space.SpaceLimits.MaxObstacles} chacun)");
+        {
+            // Revue Codex de la PR #205 : une aire de plus de 256 obstacles n'est valide qu'avec sa zone, dont le validateur borne chaque
+            // secteur (256 obstacles au plus avec sa marge).
+            if (ZoneAreas.ZoneOf(path, DefaultDataDirectory(), data, out string? why) is not { } zone)
+            {
+                Console.Error.WriteLine($"{path} : aire de {area.Obstacles.Count} obstacles, simulée par secteurs : {why}");
+                return 1;
+            }
+            Console.WriteLine($"  aire           {area.Obstacles.Count} obstacles, simulée par secteurs (zone {zone.Id}, au plus {EdS.Domain.Space.SpaceLimits.MaxObstacles} par secteur, vérifié)");
+        }
         Console.WriteLine($"  combattants    {string.Join(", ", setup.Combatants.Select(c => c.Id))}");
         Console.WriteLine($"  commandes      {setup.Commands.Count}");
         Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");

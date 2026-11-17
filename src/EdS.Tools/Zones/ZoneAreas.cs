@@ -36,6 +36,19 @@ public static class ZoneAreas
     public static CombatSetup? EntrySector(string scenarioPath, string dataDirectory, GameData data, out string? sector, out string? why)
     {
         sector = null;
+        if (ZoneOf(scenarioPath, dataDirectory, data, out why) is not { } zone) return null;
+        SectorMap map = SectorMap.For(zone);
+        sector = map.HomeSector;
+        return map.SetupFor(map.HomeSector, 0);
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #205 : zone à région dont <paramref name="scenarioPath"/> est l'aire, lue et validée par le validateur des zones
+    /// (dont les bornes de chaque secteur : 256 obstacles au plus avec sa marge) ; null avec la raison sinon (aucune zone, zone refusée, zone
+    /// sans région).
+    /// </summary>
+    public static ZoneDefinition? ZoneOf(string scenarioPath, string dataDirectory, GameData data, out string? why)
+    {
         string full = Path.GetFullPath(scenarioPath);
         string? root = Path.GetDirectoryName(full);
         while (root != null && Path.GetFileName(root) != "scenarios") root = Path.GetDirectoryName(root);
@@ -50,10 +63,8 @@ public static class ZoneAreas
         ZoneLoadResult zone = ZoneJsonReader.ReadFile(zonePath, root, data, items.Catalog);
         if (zone.Zone is null) { why = zone.Report.ToString(); return null; }
         if (zone.Zone.Region is null) { why = $"{zonePath} : zone sans région."; return null; }
-        SectorMap map = SectorMap.For(zone.Zone);
-        sector = map.HomeSector;
         why = null;
-        return map.SetupFor(map.HomeSector, 0);
+        return zone.Zone;
     }
 
     private static string? ScenarioOf(string zonePath)

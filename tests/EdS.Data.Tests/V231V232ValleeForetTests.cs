@@ -115,7 +115,32 @@ public class V231V232ValleeForetTests
         string root = AppContext.BaseDirectory;
         var validate = Lot71Files.Cli(root, "validate", Path.Combine(root, "scenarios", "zones", "vallons.json"));
         Assert.Equal(0, validate.ExitCode);
-        Assert.Contains("simulée par secteurs", validate.Output, StringComparison.Ordinal);
+        Assert.Contains("simulée par secteurs (zone zone.vallons", validate.Output, StringComparison.Ordinal);
+        // Revue Codex de la PR #205 : une aire dont un secteur dépasse 256 obstacles est refusée par sa zone (validateur des secteurs).
+        Lot71Files.InTempDirectory(directory =>
+        {
+            foreach (string file in Directory.GetFiles(Path.Combine(root, "data"), "*", SearchOption.AllDirectories)
+                .Concat(Directory.GetFiles(Path.Combine(root, "scenarios"), "*.json", SearchOption.AllDirectories)))
+            {
+                string to = Path.Combine(directory, Path.GetRelativePath(root, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                File.Copy(file, to);
+            }
+            JsonObject crowded = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
+            var obstacles = crowded["data"]!["space"]!["obstacles"]!.AsArray();
+            for (int i = 0; i < 300; i++)
+            {
+                double x = 600 + (i % 20) * 2, z = -300 + (i / 20) * 2;
+                obstacles.Add(new JsonObject { ["id"] = $"caillou{i}", ["points"] = new JsonArray(new JsonArray(x, z), new JsonArray(x + 0.5, z), new JsonArray(x + 0.5, z + 0.5), new JsonArray(x, z + 0.5)) });
+            }
+            string path = Path.Combine(directory, "scenarios", "zones", "vallons.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, crowded.ToJsonString());
+            var refused = Lot71Files.Cli(directory, "validate", path);
+            Assert.Equal(1, refused.ExitCode);
+            Assert.Contains("obstacles dans son espace simulé", refused.Error, StringComparison.Ordinal);
+            return 0;
+        });
         var setup = ZoneAreas.EntrySector(ScenarioPath("zones/vallons"), DataDirectory, ShippedData, out string? sector, out string? why);
         Assert.True(setup != null, why);
         Assert.Equal(SectorMapHome(), sector);
