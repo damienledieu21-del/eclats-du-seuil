@@ -349,4 +349,24 @@ public sealed class V255EcranTitreTests
             Assert.Equal(first.Height, TitleScreen.MenuRow(1, 1920f, 1080f).Y - first.Y, 3);
         }
     }
+
+    [Fact]
+    public void Le_reveil_est_remis_a_zero_avant_la_construction_du_decor_du_souvenir()
+    {
+        // Revue Codex de la PR #210 : Begin() (qui appelle Reset) doit passer AVANT ShowAdventureSession() (qui construit le décor d'un souvenir repris),
+        // sinon le décor est détruit sans être refait. Le test garde l'ordre dans StartAdventure (le code Unity n'est pas exécutable ici).
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        int start = code.IndexOf("private void StartAdventure()", StringComparison.Ordinal);
+        Assert.True(start > 0);
+        int begin = code.IndexOf("_stage?.Begin(_adventure);", start, StringComparison.Ordinal);
+        int show = code.IndexOf("ShowAdventureSession();", start, StringComparison.Ordinal);
+        Assert.True(begin > 0 && show > 0 && begin < show);
+        Assert.DoesNotContain("_stageAfterTitle", code);
+        // Et la mise en scène n'avance pas sous l'écran titre : Update rend la main avant AfterSync.
+        int update = code.IndexOf("private void Update()", StringComparison.Ordinal);
+        int overlay = code.IndexOf("if (Overlay) return;", update, StringComparison.Ordinal);
+        int advance = code.IndexOf("UpdateAdventure();", update, StringComparison.Ordinal);   // l'appel qui mène à _stage.AfterSync
+        Assert.True(update > 0 && overlay > update && advance > overlay);
+        Assert.Contains("_stage?.AfterSync(", code[code.IndexOf("private void UpdateAdventure()", StringComparison.Ordinal)..update]);
+    }
 }

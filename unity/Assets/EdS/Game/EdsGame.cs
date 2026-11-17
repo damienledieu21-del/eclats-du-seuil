@@ -178,7 +178,7 @@ namespace EdS.Game
         /// <summary>V2.55 : l'écran titre vivant (après le logo, avant le jeu) ; le créateur de personnage d'une nouvelle partie attend qu'il soit fini.</summary>
         private readonly TitleView _title = new TitleView();
 
-        private bool _creatorAfterTitle, _stageAfterTitle;
+        private bool _creatorAfterTitle;
 
         /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
         private bool Overlay => _logo.Active || _title.Pending;
@@ -331,8 +331,10 @@ namespace EdS.Game
                 _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             }
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
-            if (_title.Pending) _stageAfterTitle = true;   // V2.55 : le réveil ne commence qu'à la fin de l'écran titre
-            else _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
+            // Sous-lot V1.9.8 : le réveil d'une nouvelle partie. V2.55 (revue Codex de la PR #210) : toujours AVANT ShowAdventureSession (Begin remet la mise en
+            // scène à zéro, ShowAdventureSession construit le décor du souvenir) ; sous l'écran titre le réveil ne court pas (son temps passe dans AfterSync, que
+            // Update n'atteint pas tant que l'écran couvre le jeu).
+            _stage?.Begin(_adventure);
             ShowAdventureSession();
             if (!_adventure.IsNewGame && !_adventure.Indoors && !_title.Pending) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend (l'écran titre, s'il est là, tient ce rôle)
             if (_adventure.IsNewGame)
@@ -988,11 +990,6 @@ namespace EdS.Game
             }
             if (!_title.Pending)
             {
-                if (_stageAfterTitle)
-                {
-                    _stageAfterTitle = false;
-                    if (_adventure != null) _stage?.Begin(_adventure);
-                }
                 if (_creatorAfterTitle)
                 {
                     _creatorAfterTitle = false;
@@ -1019,7 +1016,7 @@ namespace EdS.Game
         private void Update()
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
-            if (_title.Pending || _creatorAfterTitle || _stageAfterTitle) TickTitle();   // V2.55
+            if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
 
             LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
