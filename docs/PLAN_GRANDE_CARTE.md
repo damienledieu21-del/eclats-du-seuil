@@ -51,6 +51,11 @@ Puis, vers 23 h :
 8. **Peupler les lieux** dès maintenant, avec le **bestiaire existant** (meute et tanière dans la forêt, ours, etc.), pour les lieux des V2.31 et V2.32 comme pour ceux des V2.33 à V2.40.
 9. **Pont suspendu** : un **vrai troisième passage** sur la rivière (pas sur le gué nord), relié par des sentiers.
 
+Puis, le 17 novembre 2026 vers 1 h 10 :
+
+10. **Pont suspendu ouvert avec les gués** par la quête des passages de la vallée : **gardé**.
+11. **Créatures de nuit** dans les nouveaux lieux, avec le bestiaire de nuit existant (loups de la nuit, échos) : **oui** (vallée et forêt comprises, au V2.33 et suivants).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).

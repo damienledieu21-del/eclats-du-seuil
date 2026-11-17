@@ -14578,6 +14578,583 @@
           "aggroRange": 8,
           "encircle": true
         }
+      },
+      {
+        "id": "loup_nuit_foret1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -950,
+          956
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_nuit_foret2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -944,
+          956
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_nuit_foret3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -956,
+          958
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "echo_nuit_chute1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          560,
+          960
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "echo_nuit_chute2",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          406,
+          700
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_nuit_vignes1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1500,
+          -900
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_nuit_vignes2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1494,
+          -906
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "echo_nuit_bergers1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          406,
+          1340
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "echo_nuit_abbaye1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1720,
+          190
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_nuit_marais1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          600,
+          -830
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_nuit_marais2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          606,
+          -836
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "echo_nuit_corrompu1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1900,
+          -900
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "echo_nuit_corrompu2",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1500,
+          -1000
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
       }
     ],
     "commands": []

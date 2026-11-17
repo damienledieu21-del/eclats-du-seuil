@@ -97,6 +97,22 @@ public class V233A239LieuxDeLaRegionTests
             Assert.All(found, c => Assert.Equal(level, zone.MinLevelAt(c.Placement!.Position)));
             Assert.All(found, c => Assert.Null(zone.Populations.Single(p => p.Creature == c.Id).Hours));
         }
-        Assert.Equal(30, zone.Populations.Count(p => IsLieu(p.Creature)));
+        Assert.Equal(43, zone.Populations.Count(p => IsLieu(p.Creature)));
+    }
+
+    [Fact]
+    public void Creatures_de_nuit_des_lieux()
+    {
+        // Décision de Damien du 17 novembre 2026 (vers 1 h 10) : des créatures de nuit dans les lieux, avec le bestiaire de nuit existant
+        // (loups de la nuit, échos) : la nuit seulement, sans annonce de plus.
+        ZoneDefinition zone = Vallons.Value;
+        var night = zone.Populations.Where(p => IsLieu(p.Creature) && p.Hours != null).ToList();
+        Assert.Equal(13, night.Count);
+        int nightOnly = zone.Populations.Single(q => q.Creature == "loup_nuit2").Hours!.Mask;
+        Assert.All(night, p => Assert.Equal(nightOnly, p.Hours!.Mask));
+        Assert.All(night, p => Assert.Null(p.Hours!.Sign));
+        Assert.All(night, p => Assert.Contains(p.Family, new[] { "loup", "echo" }));
+        foreach (string lieu in new[] { "_foret", "_chute", "_vignes", "_bergers", "_abbaye", "_marais", "_corrompu" })
+            Assert.Contains(night, p => p.Creature.Contains(lieu, StringComparison.Ordinal));
     }
 }

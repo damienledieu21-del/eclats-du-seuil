@@ -1968,6 +1968,162 @@
         "leashRange": 20,
         "loot": "loot.echo",
         "family": "echo"
+      },
+      {
+        "creature": "loup_nuit_foret1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_foret2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_foret3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_chute1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_chute2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_vignes1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_vignes2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_bergers1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_abbaye1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_marais1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_marais2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_corrompu1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_corrompu2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
       }
     ],
     "passages": [

@@ -300,6 +300,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Grand Solitaire et Bourg déménagé | Le boss du monde attaque **devant la porte de l'Est** du Bourg fortifié et **n'entre pas dans les murs**. | Retenu (Damien, 16 novembre 2026, vers 16 h 30) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 | Lieux de la grande carte : créatures | Les lieux sont **peuplés dès leur sous-lot** avec le bestiaire existant (meute de la tanière, ours, etc.). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; V2.31 et suivants ([MONDE.md](MONDE.md)) |
 | Pont suspendu de la vallée | Un **vrai troisième passage** sur la rivière, ailleurs que sur le gué nord, relié par des sentiers ; il s'ouvre avec les gués (quête « Les passages de la vallée »). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; ouverture avec les gués : choix de Claude ; V2.31 ([MONDE.md](MONDE.md)) |
+| Lieux de la grande carte : nuit | Le pont suspendu s'ouvre **avec les gués** (gardé) ; les lieux ont aussi des **créatures de nuit** du bestiaire de nuit existant (loups de la nuit, échos). | Retenu (Damien, 17 novembre 2026, vers 1 h 10) ; V2.33 et suivants ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 

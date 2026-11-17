@@ -93,7 +93,7 @@ public class V231V232ValleeForetTests
     public void Creatures_des_lieux_dans_leurs_lieux_toujours_la()
     {
         ZoneDefinition zone = Vallons.Value;
-        var lieux = zone.Populations.Where(p => p.Creature.Contains("_chute", StringComparison.Ordinal) || p.Creature.Contains("_foret", StringComparison.Ordinal)).ToList();
+        var lieux = zone.Populations.Where(p => (p.Creature.Contains("_chute", StringComparison.Ordinal) || p.Creature.Contains("_foret", StringComparison.Ordinal)) && p.Hours is null).ToList();   // créatures de jour (celles de nuit : V233A239)
         Assert.Equal(new[] { "loup_taniere_foret1", "loup_taniere_foret2", "loup_taniere_foret3", "loup_taniere_foret4", "ours_foret1",
             "sanglier_chute1", "sanglier_chute2" }, lieux.Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         foreach (Population p in lieux)
