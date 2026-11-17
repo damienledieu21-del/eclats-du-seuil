@@ -157,8 +157,12 @@ namespace EdS.Game
                 bool herb = node.Profession == "herboristerie";
                 Marker m = Add(node, herb ? PrimitiveType.Sphere : PrimitiveType.Cube, herb ? new Vector3(0.7f, 0.5f, 0.7f) : new Vector3(0.8f, 0.7f, 0.8f),
                     herb ? 0.25f : 0.35f, herb ? new Color(0.35f, 0.8f, 0.35f) : new Color(0.55f, 0.55f, 0.6f), 1.2f, NodeLabelRange);
-                if (herb) Herb(m);
-                else Ore(m);
+                // Lot C (16 novembre 2026) : la plante ou le filon modélisé pour ce nœud (LotCModels), sinon l'essai réaliste d'avant.
+                if (!LotCNode(m))
+                {
+                    if (herb) Herb(m);
+                    else Ore(m);
+                }
                 m.Body.SetActive(node.Ready);   // saisons : un nœud hors de sa saison (jamais prêt) reste caché jusqu'à sa saison
                 _nodes[node.Id] = m;
             }
@@ -544,6 +548,25 @@ namespace EdS.Game
         {
             Renderer own = m.Body.GetComponent<Renderer>();
             if (own != null) own.enabled = false;
+        }
+
+        /// <summary>
+        /// Lot C : le modèle Tripo du nœud (plante grossie 2 fois, filon à l'échelle réelle : <see cref="LotCModels.NodeScale"/>), tourné
+        /// d'après son identifiant ; faux sans modèle relié ou sans catalogue.
+        /// </summary>
+        private static bool LotCNode(Marker m)
+        {
+            string code = LotCModels.ForNode(m.Data.Id);
+            if (code == null || StyleCatalog.Loaded == null || StyleCatalog.Loaded.LotCModel(code) == null) return false;
+            Transform holder = Holder(m);
+            GameObject look = LotCLook.Place(holder, code, m.Data.Id, holder.position, StyleRules.Variant(m.Data.Id, 360), (float)LotCModels.NodeScale(code));
+            if (look == null)
+            {
+                Object.Destroy(holder.gameObject);
+                return false;
+            }
+            Hide(m);
+            return true;
         }
 
         /// <summary>Herbe de l'Aube : une pervenche de Poly Haven (une variante du lot), plus grande que nature pour qu'on la voie.</summary>

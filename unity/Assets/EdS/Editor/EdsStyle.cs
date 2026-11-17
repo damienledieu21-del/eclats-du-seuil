@@ -279,6 +279,7 @@ namespace EdS.Game.Editor
             BuildingLook[] own = OwnBuildings(notes);
             if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
             catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
+            catalog.LotC = LotCPieces(notes);   // lot C (16 novembre 2026) : modèles Tripo reliés aux données (LotCModels)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
             // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
@@ -562,6 +563,29 @@ namespace EdS.Game.Editor
                 if (model != null) result.Add(model);
             }
             if (result.Count > 0) notes.Add("Décor de l'atelier : " + string.Join(", ", result.Select(m => m.name)) + ".");
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Lot C (16 novembre 2026) : modèles Tripo du lot C (<see cref="LotCModels.Folder"/>/&lt;catégorie&gt;/&lt;code&gt;/&lt;code&gt;.fbx),
+        /// chacun avec sa matière (« &lt;code&gt;_couleur », « &lt;code&gt;_normale », <see cref="OwnMaterial"/>). Sans dossier : rien, sans erreur.
+        /// </summary>
+        private static GameObject[] LotCPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(LotCModels.Folder)) return new GameObject[0];
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { LotCModels.Folder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => LotCModels.CodeOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            // Relecture de la PR #196 : seuls les modèles reliés aux données entrent au catalogue ; ceux en attente (Pending) ne sont ni
+            // chargés ni emportés dans le jeu construit (mémoire du téléphone), ils restent dans le dossier jusqu'à leur donnée.
+            int waiting = paths.RemoveAll(p => LotCModels.Find(LotCModels.CodeOf(p))?.Linked != true);
+            var result = new List<GameObject>();
+            foreach (string path in paths)
+            {
+                OwnMaterial(path, notes);
+                GameObject model = Load(path);
+                if (model != null) result.Add(model);
+            }
+            if (result.Count > 0 || waiting > 0) notes.Add("Lot C : " + result.Count + " modèles Tripo reliés aux données (" + waiting + " en attente, non chargés).");
             return result.ToArray();
         }
 
