@@ -131,7 +131,7 @@ public class V219AubergeChapelleTests : IDisposable
         a.Advance(0.05);
         Assert.Equal(new WorldTime(1, at), a.World.Zone.Time);
         // V2.21 : KitchenChimneys donne aussi l'âtre de l'épicerie (« atre/… », V221HerboristerieTests) ; ici, la cuisine seule.
-        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("cuisine/", StringComparison.Ordinal));
+        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id == "cuisine/merchant.auberge");   // V2.30.5 : la taverne des caravaniers a aussi sa cuisine
         Assert.Equal("cuisine/merchant.auberge", c.Id);
         Assert.Equal("auberge", a.ShopBuildingOf(c.Id));
         Assert.Equal(-1101, c.X, 6);

@@ -302,6 +302,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Bourg : fossé | **Fossé creusé**, infranchissable, autour de la palissade (obstacles, modèles F11 à F15, talus), franchi seulement par les **ponts** devant les portes. | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5 |
 | Bourg : données alignées sur les modèles | Clocher sur celui de l'église, écuries portées à 24 m, maison notable H09 et boutiques P13 à P18 placées (route d'Ambre). | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5 |
 | Bourg : façades vivantes | Fenêtres allumées la nuit et lanternes de porte sur les bâtiments habillés ; pièces murales (lanternes, auvents, linge, bannières, râtelier) à leur hauteur de pose ; kit H13-H20 s'il s'adapte. | Retenu (Damien, 16 novembre 2026, vers 21 h 30) ; réalisé au V2.30.5, sauf le kit H13-H20 (non adapté) |
+| Bourg : rôle des nouveaux bâtiments | Les 7 nouveaux bâtiments (H09, boutiques P13 à P18) reçoivent un rôle : un marchand et ses PNJ chacun, métier, horaires et marchandises d'après le dossier du Bourg, sans invention. | Retenu (Damien, 16 novembre 2026, vers 23 h 20) ; réalisé au V2.30.5 pour les six boutiques (choix prudents à confirmer : le dossier ne donne que les métiers) ; H09 : un habitant sans boutique (question posée) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 

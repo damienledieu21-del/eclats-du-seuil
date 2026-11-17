@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.32.0-provisoire",
+  "contentVersion": "0.33.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -1598,6 +1598,211 @@
             "position": [
               -2.1,
               -0.3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.armurier_ville",
+        "name": "text.v2305.npc.armurier.name",
+        "position": [
+          -1219.8,
+          -76.0
+        ],
+        "dialogue": "dialogue.armurier_ville",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "boutique",
+            "position": [
+              -1219.8,
+              -76.0
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              -1219.8,
+              -76.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.forgeron_ville",
+        "name": "text.v2305.npc.forgeron.name",
+        "position": [
+          -1202.8,
+          -75.0
+        ],
+        "dialogue": "dialogue.forgeron_ville",
+        "schedule": [
+          {
+            "at": "05:00",
+            "activity": "forge",
+            "position": [
+              -1202.8,
+              -75.0
+            ]
+          },
+          {
+            "at": "22:00",
+            "activity": "maison",
+            "position": [
+              -1202.8,
+              -75.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.tanneur_ville",
+        "name": "text.v2305.npc.tanneur.name",
+        "position": [
+          -1173.8,
+          -73.0
+        ],
+        "dialogue": "dialogue.tanneur_ville",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "boutique",
+            "position": [
+              -1173.8,
+              -73.0
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "maison",
+            "position": [
+              -1173.8,
+              -73.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.apothicaire_ville",
+        "name": "text.v2305.npc.apothicaire.name",
+        "position": [
+          -1232.3,
+          -77.0
+        ],
+        "dialogue": "dialogue.apothicaire_ville",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "comptoir",
+            "position": [
+              -1232.3,
+              -77.0
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "maison",
+            "position": [
+              -1232.3,
+              -77.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.tailleur_ville",
+        "name": "text.v2305.npc.tailleur.name",
+        "position": [
+          -1159.8,
+          -72.0
+        ],
+        "dialogue": "dialogue.tailleur_ville",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "couture",
+            "position": [
+              -1159.8,
+              -72.0
+            ]
+          },
+          {
+            "at": "18:30",
+            "activity": "maison",
+            "position": [
+              -1159.8,
+              -72.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.taverne_ville",
+        "name": "text.v2305.npc.taverne.name",
+        "position": [
+          -940.0,
+          -60.0
+        ],
+        "dialogue": "dialogue.taverne_ville",
+        "schedule": [
+          {
+            "at": "01:00",
+            "activity": "maison",
+            "position": [
+              -940.0,
+              -60.0
+            ]
+          },
+          {
+            "at": "06:00",
+            "activity": "comptoir",
+            "position": [
+              -940.0,
+              -60.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.notable_ville",
+        "name": "text.v2305.npc.notable.name",
+        "position": [
+          -925.0,
+          -59.0
+        ],
+        "dialogue": "dialogue.notable_ville",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "porte",
+            "position": [
+              -925.0,
+              -59.0
+            ]
+          },
+          {
+            "at": "12:00",
+            "activity": "maison",
+            "position": [
+              -925.0,
+              -59.0
+            ]
+          },
+          {
+            "at": "15:00",
+            "activity": "promenade",
+            "position": [
+              -1010.0,
+              -95.0
+            ]
+          },
+          {
+            "at": "19:00",
+            "activity": "maison",
+            "position": [
+              -925.0,
+              -59.0
             ]
           }
         ]
@@ -22550,6 +22755,244 @@
           {
             "id": "reponse",
             "text": "text.v214.commis_mercerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.armurier_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.armurier.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.armurier_ville"
+                  }
+                ],
+                "text": "text.v1911.armurier_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.forgeron_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.forgeron.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.forgeron_ville"
+                  }
+                ],
+                "text": "text.v1911.forgeron_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.tanneur_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.tanneur.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.tanneur_ville"
+                  }
+                ],
+                "text": "text.v1911.tanneur_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.apothicaire_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.apothicaire.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.apothicaire_ville"
+                  }
+                ],
+                "text": "text.v1911.apothicaire_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.tailleur_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.tailleur.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.tailleur_ville"
+                  }
+                ],
+                "text": "text.v1911.tailleur_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.taverne_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.taverne.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.taverne_ville"
+                  }
+                ],
+                "text": "text.v1911.taverne_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.notable_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.notable.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.notable_ville"
+                  }
+                ],
+                "text": "text.v1911.notable_ville.retrouvailles"
+              }
+            ],
             "choices": [
               {
                 "text": "text.v210.au_revoir",
