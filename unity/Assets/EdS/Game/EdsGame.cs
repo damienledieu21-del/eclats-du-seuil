@@ -334,6 +334,7 @@ namespace EdS.Game
             if (_title.Pending) _stageAfterTitle = true;   // V2.55 : le réveil ne commence qu'à la fin de l'écran titre
             else _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
             ShowAdventureSession();
+            if (!_adventure.IsNewGame && !_adventure.Indoors && !_title.Pending) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend (l'écran titre, s'il est là, tient ce rôle)
             if (_adventure.IsNewGame)
             {
                 if (_title.Pending) _creatorAfterTitle = true;   // V2.55 : le créateur s'ouvre après l'écran titre
@@ -376,6 +377,13 @@ namespace EdS.Game
             _paused = false;
         }
 
+        /// <summary>V2.53 : montre l'écran de chargement peint du lieu où est le personnage, avec sa phrase d'Orsédia.</summary>
+        private void StartLoading()
+        {
+            LoadingScreen screen = _adventure.LoadingHere();
+            _loading.Start(screen, _adventure.Text(screen.TextKey));
+        }
+
         /// <summary>Affiche la session de zone en cours (au départ, après une halte ou une reprise).</summary>
         private void ShowAdventureSession()
         {
@@ -391,7 +399,14 @@ namespace EdS.Game
             }
             _shownZone = _adventure.CurrentZone;
             // Sous-lot V1.1 : un voyage rapide passe aussi par un fondu au noir.
-            if (_adventure.Travels != _shownTravels) _fade = 1f;
+            bool traveled = _adventure.Travels != _shownTravels;
+            if (traveled) _fade = 1f;
+            // V2.53 : le voyage rapide et le démarrage (dehors) passent par l'écran peint du grand lieu d'arrivée, à la place du fondu au noir.
+            if (traveled && !_adventure.Indoors)
+            {
+                StartLoading();
+                _fade = 0f;
+            }
             _shownTravels = _adventure.Travels;
             _combat = _adventure.Combat;
             // Sous-lot V1.9.8 : l'Écho de la Rupture est une silhouette de lumière (avant la couleur des chefs).
@@ -465,6 +480,12 @@ namespace EdS.Game
 
         /// <summary>Intérieurs : opacité du fondu au noir après une porte (de 1 à 0 en <see cref="FadeSeconds"/>).</summary>
         private float _fade;
+
+        /// <summary>V2.53 : écran de chargement peint (démarrage, voyage rapide).</summary>
+        private readonly LoadingView _loading = new LoadingView();
+
+        /// <summary>Temps de jeu de l'image : nul en pause et sous l'écran de chargement (le jeu ne tourne pas sous l'écran peint).</summary>
+        private float GameDelta => _paused || _loading.Active ? 0f : Time.deltaTime;
 
         private const float FadeSeconds = 0.7f;
 
@@ -573,6 +594,9 @@ namespace EdS.Game
             // Relecture Codex de la PR #134 : tant que le créateur de personnage est ouvert, aucune commande d'aventure ne passe (halte, marche,
             // raccourcis, écrans) ; seuls Échap (annuler) et ses boutons répondent.
             bool creating = _creator != null && _creator.Open;
+            // V2.53 (revue Codex de la PR #207) : sous l'écran de chargement peint, aucune commande ne passe (Entrée, Échap, I/J/K/L, F6, N,
+            // T, B…) ; seul le temps avance (le geste qui abrège l'écran est lu par LoadingView).
+            creating |= _loading.Active;
             if (!creating && (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed))
             {
                 LeaveAdventure();
@@ -598,6 +622,10 @@ namespace EdS.Game
             {
                 // Essai réaliste 6, étape 2 : T ou Échap ferme l'arbre sans garder les points.
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();
+            }
+            else if (_loading.Active)
+            {
+                // Écran de chargement : ni pause ni écran à ouvrir.
             }
             else if (_creator != null && _creator.Open)
             {
@@ -641,13 +669,14 @@ namespace EdS.Game
             if (a.Opened != _shownSession) ShowAdventureSession();
             else FollowRebind(a);
             if (_fade > 0f) _fade = Mathf.Max(0f, _fade - Time.deltaTime / FadeSeconds);
+            _loading.Tick(Time.unscaledDeltaTime);
             // Sous-lot V1.1 : la boutique suit l'écran (Échap, I, J, K, L la ferment) ; le bouton Parler la ferme pour le dialogue.
             if (_screens.Open == AdventureScreens.Panel.Merchant && a.Shop == null) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Merchant && a.Shop != null) a.CloseShop();
             // Sous-lot V1.7 : de même pour le tableau de la guilde (le bouton Parler le ferme pour le dialogue de la maîtresse).
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
-            bool frozen = _paused || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
+            bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active || _title.Pending;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
@@ -697,7 +726,7 @@ namespace EdS.Game
             // (créatures des failles, échos rôdeurs) et les chefs déjà tués sont des échos.
             EchoContext(a);
             _arena.Sync(_combat, player, null);
-            _arena.SyncCrowd(a.World, _sectorCrowd, _combat, _paused ? 0f : Time.deltaTime);   // sous-lot V2.28b (3)
+            _arena.SyncCrowd(a.World, _sectorCrowd, _combat, GameDelta);   // sous-lot V2.28b (3)
             // Sous-lot V1.2 : arme, bouclier et cape portés. Relecture de la PR #75 : le même objet tant que rien ne change (pas d'allocation
             // à chaque image).
             _visibleGear = GearLooks.For(a.World.Inventory, _visibleGear);
@@ -724,13 +753,13 @@ namespace EdS.Game
             if (_companions == null) _companions = new CompanionsView();
             Companions.Shown(a.World.Inventory, CompanionTrial.Forced, _companionList);   // relecture de la PR #102 : sans allocation
             _companions.Sync(_companionList, _arena.Player, a.InScene, a.World.InCombat, a.IsNight,
-                _shownZone + "/" + _shownTravels, _paused ? 0f : Time.deltaTime);
+                _shownZone + "/" + _shownTravels, GameDelta);
             // Sous-lot V2.5 : événements du monde (faille, pillage, cloche).
             if (_worldEvents == null) _worldEvents = new WorldEventsView { Effects = _effects };   // V2.9.1 : lueurs aspirées
-            _worldEvents.Sync(a, _paused ? 0f : Time.deltaTime);
+            _worldEvents.Sync(a, GameDelta);
             // Sous-lot V2.6 : cicatrices du Seuil, couleurs fanées autour de la caméra.
             if (_scars == null) _scars = new ScarsView();
-            _scars.Sync(a, _camera.Camera.transform.position, _paused ? 0f : Time.deltaTime);
+            _scars.Sync(a, _camera.Camera.transform.position, GameDelta);
             _arena.Gates(a, Time.deltaTime);   // V2.25.2 : la barrière du moulin s'ouvre avec le passage
             _arena.Season((int)a.WardrobeSeason);   // V2.25.4 : le feuillage des arbres de l'atelier suit la saison du monde
             _arena.SyncSpace(_combat, _camera.Camera.transform.position, Time.deltaTime);
@@ -741,11 +770,11 @@ namespace EdS.Game
             // Sous-lot V2.9 : voix des bêtes (hurlements la nuit et par brume, brame à l'aube et au crépuscule, sanglier, lièvre), muettes en
             // pause, pendant une scène et dans une maison.
             _arena.Voices(_camera.Camera.transform.position, a.World.Zone.Time.Minute, a.IsNight, _weatherState.Kind == WeatherKind.Mist,
-                _paused || a.InScene || a.Indoors ? 0f : Time.deltaTime);
+                _paused || _loading.Active || a.InScene || a.Indoors ? 0f : Time.deltaTime);
             // Sous-lot V2.9 (2e vague) : bêtes de la ferme et leurs cris ; pas du personnage selon le sol.
             if (_arena.Player != null)
             {
-                _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || a.InScene ? 0f : Time.deltaTime);
+                _arena.Life(_arena.Player.position, a.World.Zone.Time.Minute, _paused || _loading.Active || a.InScene ? 0f : Time.deltaTime);
                 if (_footsteps == null && StyleCatalog.Loaded != null) _footsteps = new Footsteps(_camera.Camera.transform);
                 _footsteps?.Update(_arena, _arena.Player.position - Vector3.up * ArenaView.FeetOffset, (_mood.Places & AmbiencePlace.Forest) != 0,
                     !_paused && !a.InScene, Time.deltaTime);
@@ -1047,10 +1076,12 @@ namespace EdS.Game
                 UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même écran ouvert
                 return;
             }
+            // V2.53 (revue Codex de la PR #207) : sous l'écran de chargement peint, ni menu réseau (M) ni aide (H) ne passent (F8 et Échap du curseur sont sans effet sur la partie).
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
             // Relecture de l'essai 6 : pas de menu par-dessus l'arbre des Éclats (ses clics iraient aussi à l'arbre).
             if (!TalentsOpen && ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen))) _menuOpen = !_menuOpen;
+            if (_loading.Active) _menuOpen = false;   // V2.53 : le menu réseau ne s'ouvre pas sous l'écran de chargement
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
@@ -1058,7 +1089,7 @@ namespace EdS.Game
                 UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même menu ouvert
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;
+            if (!_loading.Active && (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed)) _help = !_help;
             if (_adventure != null)
             {
                 UpdateAdventure();
@@ -1948,9 +1979,13 @@ namespace EdS.Game
 
             if (_adventure != null)
             {
+                bool wasEnabled = GUI.enabled;
+                if (_loading.Active) GUI.enabled = false;   // V2.53 : aucun clic ne traverse l'écran de chargement (boutons de l'interface)
                 DrawAdventure();
+                GUI.enabled = wasEnabled;
                 // Intérieurs : fondu au noir après une porte.
                 if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
+                _loading.Draw();   // V2.53 : écran de chargement peint, au-dessus du jeu
                 // Sous-lot V1.9.8 : réveil, souvenir (proposition, fondu blanc, titre), bulle du tutoriel, « Quête passée », légendes.
                 bool calm = _screens.Open == AdventureScreens.Panel.None && !TalentsOpen && !_paused;
                 _stage?.Draw(_adventure, calm && _adventure.Dialogue == null, calm, _touch.Active);
