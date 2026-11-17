@@ -125,6 +125,12 @@ namespace EdS.Game
                 if (own != null)
                 {
                     lotC[o.Id] = own;
+                    // Relecture Codex de la PR #200 : la cheminée Tripo garde le feu de celle du code (bûches, braises, flammes et fumée).
+                    if (InteriorRules.FurnitureFor(o.Id) == InteriorFurniture.Hearth)
+                    {
+                        (int X, int Z) f = Inward(map, x0, z0, x1, z1);
+                        HearthFire(own.transform, o.Id, new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f), new Vector3(f.X, 0f, f.Z), f.Z != 0, darkWood);
+                    }
                     continue;
                 }
                 switch (InteriorRules.FurnitureFor(o.Id))
@@ -500,6 +506,26 @@ namespace EdS.Game
             Part(t, id + " (linteau)", c + Vector3.up * (mantel + 0.12f) + inward * 0.04f, Size(body + 0.2f, 0.24f, depth + 0.08f), darkWood, woodTile);
             Part(t, id + " (hotte)", c - inward * 0.08f + Vector3.up * ((mantel + 0.24f + height) / 2f), Size(body - 0.2f, height - mantel - 0.24f, depth - 0.16f), stone, stoneTile);
             // Bûches qui brûlent, braises, feu du pack.
+            Material bark = HearthFire(t, id, c, inward, alongX, darkWood);
+            // Bois empilé aux deux bouts (dans l'emprise).
+            float pile = (length - body) / 2f;
+            if (pile > 0.3f)
+                for (int s = -1; s <= 1; s += 2)
+                    for (int row = 0; row < 3; row++)
+                    {
+                        Vector3 at = c + along * (s * (body / 2f + pile / 2f)) + Vector3.up * (0.08f + row * 0.15f) + inward * ((row % 2) * 0.05f);
+                        GameObject log = Block(id + " (bois)", at, alongX ? new Vector3(pile * 0.8f, 0.14f, depth * 0.7f) : new Vector3(depth * 0.7f, 0.14f, pile * 0.8f), bark);
+                        log.transform.SetParent(t, true);
+                    }
+        }
+
+        /// <summary>
+        /// Feu d'une cheminée (bûches, braises rougeoyantes, flammes et fumée du pack) au milieu de son âtre, en <paramref name="c"/>, un peu
+        /// vers la pièce ; l'écorce des bûches est rendue (pour le bois empilé). Relecture Codex de la PR #200 : aussi posé dans la cheminée
+        /// Tripo qui remplace celle du code, pour qu'elle garde ses flammes.
+        /// </summary>
+        private Material HearthFire(Transform t, string id, Vector3 c, Vector3 inward, bool alongX, Material darkWood)
+        {
             Material bark = StyleWorld.Surface(StyleSurface.Bark, out float barkTile) ?? darkWood;
             Vector3 fire = c + Vector3.up * 0.14f + inward * 0.05f;
             for (int i = 0; i < 3; i++)
@@ -512,16 +538,7 @@ namespace EdS.Game
                 Glow(new Color(1f, 0.35f, 0.08f), EmberGlow));
             embers.transform.SetParent(t, true);
             Effects.Ambient(StyleVfx.ForgeFire, t, fire + Vector3.up * 0.12f);
-            // Bois empilé aux deux bouts (dans l'emprise).
-            float pile = (length - body) / 2f;
-            if (pile > 0.3f)
-                for (int s = -1; s <= 1; s += 2)
-                    for (int row = 0; row < 3; row++)
-                    {
-                        Vector3 at = c + along * (s * (body / 2f + pile / 2f)) + Vector3.up * (0.08f + row * 0.15f) + inward * ((row % 2) * 0.05f);
-                        GameObject log = Block(id + " (bois)", at, alongX ? new Vector3(pile * 0.8f, 0.14f, depth * 0.7f) : new Vector3(depth * 0.7f, 0.14f, pile * 0.8f), bark);
-                        log.transform.SetParent(t, true);
-                    }
+            return bark;
         }
 
         /// <summary>Escalier de bois contre le mur : marches qui montent vers le mur, limon, rampe et balustres du côté de la pièce.</summary>
