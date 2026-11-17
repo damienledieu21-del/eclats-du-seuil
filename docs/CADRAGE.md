@@ -362,6 +362,19 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45, rapportées par la sessi
 | Où et quand on joue | Les joueurs de cartes sont **à l'auberge de 18 h à minuit** (d'après leur emploi du temps) ; mises proposées dans leur dialogue, écran de partie Unity. | Retenu (Damien, 16 novembre 2026, vers 14 h ; la PR #193 proposait 19 h à 22 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
 | Titre actif | Le joueur choisit **un titre affiché sous son nom** parmi ceux obtenus (titres de la guilde et « As des Trois Feux »), depuis la carte d'aventurier ; sauvegarde **v26** (`cards.shown`). | Retenu (Damien, 16 novembre 2026, vers 14 h) ; fait (branche `v2-32-cartes-cote-jeu`) |
 
+## 7 undecies. Les 12 fêtes d'Orsédia (Retenu)
+
+Décisions de Damien du 17 novembre 2026, rapportées par la session principale, sur le dossier « Les 12 fêtes d'Orsédia » (AssetLab, `Fetes/`, 108 références). Elles précisent le sujet 12 « Fêtes et saisons » de la [feuille de route](FEUILLE_DE_ROUTE.md) ; le détail est dans [MONDE.md](MONDE.md#les-12-fêtes-dorsédia).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Monnaie de fête | **Chaque fête a sa monnaie propre** (12 monnaies). Elle est **liée au personnage**, **gardée d'une année sur l'autre**, **ni échangeable entre joueurs ni convertible en cuivre**. Elle se gagne **aux activités de la fête** et se dépense **chez le marchand de fête**. | Retenu (Damien, 17 novembre 2026) |
+| Récompense annuelle | **Une récompense annuelle par fête et par personnage**, jamais perdue pour toujours : une récompense ratée **se rattrape à la fête suivante** (l'année d'après), **achetable à prix plein** en monnaie de fête. | Retenu (Damien, 17 novembre 2026) |
+| Nature des récompenses | **Cosmétiques seulement, sans aucune statistique.** Chaque fête gagnée donne **en plus un titre** (mécanisme des titres existant). | Retenu (Damien, 17 novembre 2026) |
+| Raretés | Les **récompenses** sont de rareté **Rare**, les **costumes Communs**. | Retenu (Damien, 17 novembre 2026) |
+| Fenêtres | Déjà retenu le 15 novembre (§ 7 septies) : **vraies dates (7 à 14 jours)** ; sans date fournie, **repli sur le calendrier du jeu**. | Retenu (Damien, 15 et 17 novembre 2026) |
+| Montants | Gains par activité, prix chez le marchand, plafond du portefeuille, plats gardés au plus, activités pour gagner une fête : **proposition de Claude** (PR des fêtes F1 à F3), à régler par Damien. | Recommandation |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**
