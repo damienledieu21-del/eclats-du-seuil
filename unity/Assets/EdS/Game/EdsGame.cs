@@ -984,10 +984,12 @@ namespace EdS.Game
                 UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même écran ouvert
                 return;
             }
+            // V2.53 (revue Codex de la PR #207) : sous l'écran de chargement peint, ni menu réseau (M) ni aide (H) ne passent (F8 et Échap du curseur sont sans effet sur la partie).
             // Sous-lot 10.4 : menu du réseau (M) ; ouvert, il prend la souris et le clavier, la partie en réseau continue.
             // Une lettre M tapée dans un champ du menu (nom, adresse) ne le ferme pas.
             // Relecture de l'essai 6 : pas de menu par-dessus l'arbre des Éclats (ses clics iraient aussi à l'arbre).
             if (!TalentsOpen && ((Keys.MenuPressed && !(_menuOpen && GUIUtility.keyboardControl != 0)) || (_touch.MenuPressed && !_menuOpen))) _menuOpen = !_menuOpen;
+            if (_loading.Active) _menuOpen = false;   // V2.53 : le menu réseau ne s'ouvre pas sous l'écran de chargement
             if (_menuOpen)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) _menuOpen = false;
@@ -995,7 +997,7 @@ namespace EdS.Game
                 UpdateWeatherFx(true);   // revue Codex de la PR #101 : l'éclair s'éteint même menu ouvert
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed) _help = !_help;
+            if (!_loading.Active && (Input.GetKeyDown(KeyCode.H) || _touch.HelpPressed)) _help = !_help;
             if (_adventure != null)
             {
                 UpdateAdventure();

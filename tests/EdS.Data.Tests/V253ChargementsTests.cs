@@ -115,6 +115,9 @@ public sealed class V253ChargementsTests
         Assert.Contains("else if (_loading.Active)", game, StringComparison.Ordinal);
         Assert.Contains("if (_loading.Active) GUI.enabled = false;", game, StringComparison.Ordinal);
         Assert.Contains("bool frozen = _paused || _loading.Active", game, StringComparison.Ordinal);
+        // Ce qui est lu dans Update() avant UpdateAdventure() : menu réseau (M), aide (H).
+        Assert.Contains("if (_loading.Active) _menuOpen = false;", game, StringComparison.Ordinal);
+        Assert.Contains("if (!_loading.Active && (Input.GetKeyDown(KeyCode.H)", game, StringComparison.Ordinal);
     }
 
     [Fact]
