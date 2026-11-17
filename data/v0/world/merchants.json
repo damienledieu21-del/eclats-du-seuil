@@ -1382,7 +1382,7 @@
       {
         "id": "merchant.armurier_ville",
         "npc": "npc.armurier_ville",
-        "greeting": "text.v2305.armurier.greeting",
+        "greeting": "text.v2305.armurier_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,
@@ -1458,7 +1458,7 @@
       {
         "id": "merchant.forgeron_ville",
         "npc": "npc.forgeron_ville",
-        "greeting": "text.v2305.forgeron.greeting",
+        "greeting": "text.v2305.forgeron_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,
@@ -1522,7 +1522,7 @@
       {
         "id": "merchant.tanneur_ville",
         "npc": "npc.tanneur_ville",
-        "greeting": "text.v2305.tanneur.greeting",
+        "greeting": "text.v2305.tanneur_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,
@@ -1580,7 +1580,7 @@
       {
         "id": "merchant.apothicaire_ville",
         "npc": "npc.apothicaire_ville",
-        "greeting": "text.v2305.apothicaire.greeting",
+        "greeting": "text.v2305.apothicaire_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,
@@ -1614,7 +1614,7 @@
       {
         "id": "merchant.tailleur_ville",
         "npc": "npc.tailleur_ville",
-        "greeting": "text.v2305.tailleur.greeting",
+        "greeting": "text.v2305.tailleur_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,
@@ -1672,7 +1672,7 @@
       {
         "id": "merchant.taverne_ville",
         "npc": "npc.taverne_ville",
-        "greeting": "text.v2305.taverne.greeting",
+        "greeting": "text.v2305.taverne_ville.achat_reponse",
         "sellPercent": 25,
         "closed": [],
         "daily": 1,

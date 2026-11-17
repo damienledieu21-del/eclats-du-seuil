@@ -1766,9 +1766,9 @@
       },
       {
         "id": "npc.notable_ville",
-        "name": "text.v2305.npc.notable.name",
+        "name": "text.v2305.npc.notable_ville.name",
         "position": [
-          -925.0,
+          -927.0,
           -59.0
         ],
         "dialogue": "dialogue.notable_ville",
@@ -1777,7 +1777,7 @@
             "at": "08:00",
             "activity": "porte",
             "position": [
-              -925.0,
+              -927.0,
               -59.0
             ]
           },
@@ -1785,7 +1785,7 @@
             "at": "12:00",
             "activity": "maison",
             "position": [
-              -925.0,
+              -927.0,
               -59.0
             ]
           },
@@ -1801,7 +1801,50 @@
             "at": "19:00",
             "activity": "maison",
             "position": [
-              -925.0,
+              -927.0,
+              -59.0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.notable_dame_ville",
+        "name": "text.v2305.npc.notable_dame_ville.name",
+        "position": [
+          -923.0,
+          -59.0
+        ],
+        "dialogue": "dialogue.notable_dame_ville",
+        "schedule": [
+          {
+            "at": "08:00",
+            "activity": "porte",
+            "position": [
+              -923.0,
+              -59.0
+            ]
+          },
+          {
+            "at": "10:30",
+            "activity": "porte",
+            "position": [
+              -923.0,
+              -59.0
+            ]
+          },
+          {
+            "at": "13:00",
+            "activity": "marche",
+            "position": [
+              -1007.0,
+              -95.0
+            ]
+          },
+          {
+            "at": "18:00",
+            "activity": "maison",
+            "position": [
+              -923.0,
               -59.0
             ]
           }
@@ -22777,7 +22820,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.armurier.accueil",
+            "text": "text.v2305.armurier_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22791,7 +22834,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.armurier_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.armurier_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.armurier_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.armurier_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.armurier_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.armurier_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.armurier_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.armurier_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22811,7 +22896,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.forgeron.accueil",
+            "text": "text.v2305.forgeron_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22825,7 +22910,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.forgeron_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.forgeron_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.forgeron_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.forgeron_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.forgeron_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.forgeron_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.forgeron_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.forgeron_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22845,7 +22972,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.tanneur.accueil",
+            "text": "text.v2305.tanneur_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22859,7 +22986,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.tanneur_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.tanneur_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.tanneur_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.tanneur_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.tanneur_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.tanneur_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.tanneur_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.tanneur_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22879,7 +23048,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.apothicaire.accueil",
+            "text": "text.v2305.apothicaire_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22893,7 +23062,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.apothicaire_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.apothicaire_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.apothicaire_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.apothicaire_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.apothicaire_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.apothicaire_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.apothicaire_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.apothicaire_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22913,7 +23124,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.tailleur.accueil",
+            "text": "text.v2305.tailleur_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22927,7 +23138,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.tailleur_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.tailleur_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.tailleur_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.tailleur_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.tailleur_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.tailleur_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.tailleur_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.tailleur_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22947,7 +23200,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.taverne.accueil",
+            "text": "text.v2305.taverne_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22961,7 +23214,49 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.taverne_ville.achat",
+                "conditions": [],
+                "effects": [],
+                "next": "achat"
+              },
+              {
+                "text": "text.v2305.taverne_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.taverne_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "achat",
+            "text": "text.v2305.taverne_ville.achat_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.taverne_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.taverne_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.taverne_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.taverne_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null
@@ -22981,7 +23276,7 @@
         "nodes": [
           {
             "id": "accueil",
-            "text": "text.v2305.notable.accueil",
+            "text": "text.v2305.notable_ville.accueil",
             "lines": [
               {
                 "conditions": [
@@ -22995,7 +23290,77 @@
             ],
             "choices": [
               {
-                "text": "text.v210.au_revoir",
+                "text": "text.v2305.notable_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.notable_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.notable_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.notable_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.notable_dame_ville",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.v2305.notable_dame_ville.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.notable_dame_ville"
+                  }
+                ],
+                "text": "text.v1911.notable_dame_ville.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v2305.notable_dame_ville.rumeur",
+                "conditions": [],
+                "effects": [],
+                "next": "rumeur"
+              },
+              {
+                "text": "text.v2305.notable_dame_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          },
+          {
+            "id": "rumeur",
+            "text": "text.v2305.notable_dame_ville.rumeur_reponse",
+            "choices": [
+              {
+                "text": "text.v2305.notable_dame_ville.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null

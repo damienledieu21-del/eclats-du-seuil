@@ -212,4 +212,32 @@ public class V2305BourgDecisionsTests : IDisposable
         BourgPiece church = lit.Single(p => p.Piece == BourgModels.Church);
         Assert.Equal(7.65, BourgModels.DoorLanternOf(church).Z, 6);   // façade de l'église à z 7,90 (obstacle à partir de z 10)
     }
+
+    /// <summary>
+    /// Décisions de Damien du 16 novembre 2026 (vers 23 h 20) et du 17 novembre 2026 (vers 2 h 15) : chaque boutique de la route d'Ambre a
+    /// son marchand, avec un prénom, devant sa boutique, et des répliques (salut, achat, rumeur du Bourg, au revoir) ; la maison notable
+    /// (H09) est habitée par une famille, sans boutique ; aucune quête nouvelle.
+    /// </summary>
+    [Fact]
+    public void Each_new_shop_has_its_named_merchant_and_the_notable_house_a_family()
+    {
+        var story = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "story.json")))!["data"]!;
+        var merchants = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "merchants.json")))!["data"]!["merchants"]!.AsArray();
+        var texts = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "texts", "fr.json")))!["data"]!["entries"]!;
+        foreach (string k in new[] { "armurier", "forgeron", "tanneur", "apothicaire", "tailleur", "taverne" })
+        {
+            var m = merchants.Single(x => (string?)x!["id"] == "merchant." + k + "_ville")!;
+            Assert.Equal("maison_ville_" + k, (string?)m["shop"]!["building"]);
+            Assert.Equal("npc." + k + "_ville", (string?)m["npc"]);
+            var npc = story["npcs"]!.AsArray().Single(n => (string?)n!["id"] == "npc." + k + "_ville")!;
+            Assert.Matches("^[A-ZÉ][a-zéè]+, ", (string)texts[(string)npc["name"]!]!);   // « Hugon, l'armurier »
+            var nodes = story["dialogues"]!.AsArray().Single(d => (string?)d!["id"] == (string?)npc["dialogue"])!["nodes"]!.AsArray().Select(n => (string)n!["id"]!).ToList();
+            Assert.Equal(new[] { "accueil", "achat", "rumeur" }, nodes);
+        }
+        var family = story["npcs"]!.AsArray().Where(n => ((string)n!["id"]!).StartsWith("npc.notable", StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, family.Count);
+        Assert.All(family, n => Assert.EndsWith("Vaudry, notable du Bourg", (string)texts[(string)n!["name"]!]!));
+        Assert.DoesNotContain(merchants, m => ((string)m!["npc"]!).StartsWith("npc.notable", StringComparison.Ordinal));
+        Assert.DoesNotContain(story["quests"]!.AsArray(), q => q!.ToJsonString().Contains("_ville\"", StringComparison.Ordinal));
+    }
 }
