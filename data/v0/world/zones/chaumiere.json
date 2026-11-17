@@ -14,8 +14,8 @@
         "id": "coin_du_feu",
         "name": "Coin du feu",
         "position": [
-          0.4,
-          -1.4
+          0.8,
+          -1.2
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "maison_paysanne",
         "name": "Maison paysanne",
         "min": [
-          -3.5,
-          -3
+          -1.8,
+          -2.3
         ],
         "max": [
-          3.5,
-          3
+          1.8,
+          2.3
         ]
       }
     ],
@@ -41,7 +41,7 @@
         "name": "Champs du sud",
         "position": [
           0,
-          -2.3
+          -1.7
         ],
         "to": "zone.vallons",
         "toDoor": "porte_chaumiere"

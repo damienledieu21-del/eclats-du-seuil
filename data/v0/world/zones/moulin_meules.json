@@ -14,8 +14,8 @@
         "id": "meules",
         "name": "Meules",
         "position": [
-          0,
-          -0.6
+          0.6,
+          -1.5
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "etage_des_meules",
         "name": "Étage des meules",
         "min": [
-          -3,
-          -3
+          -1.85,
+          -2.6
         ],
         "max": [
-          3,
-          3
+          1.85,
+          2.6
         ]
       }
     ],
@@ -40,8 +40,8 @@
         "id": "sortie",
         "name": "Moulin",
         "position": [
-          -2.45,
-          0.9
+          -0.1,
+          -1.2
         ],
         "to": "zone.moulin",
         "toDoor": "etage"

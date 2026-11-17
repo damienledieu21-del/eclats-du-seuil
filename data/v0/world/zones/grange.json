@@ -15,7 +15,7 @@
         "name": "Aire de la grange",
         "position": [
           0,
-          -2.4
+          -2.0
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "grange",
         "name": "Grange",
         "min": [
-          -6,
-          -4
+          -5.3,
+          -3.3
         ],
         "max": [
-          6,
-          4
+          5.3,
+          3.3
         ]
       }
     ],
@@ -41,7 +41,7 @@
         "name": "Champs",
         "position": [
           0,
-          -3.3
+          -2.7
         ],
         "to": "zone.vallons",
         "toDoor": "porte_grange"

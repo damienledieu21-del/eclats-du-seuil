@@ -14,8 +14,8 @@
         "id": "enclume",
         "name": "Enclume",
         "position": [
-          0,
-          -1.6
+          1.0,
+          -1.2
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "forge_couverte",
         "name": "Forge couverte de Maëlle",
         "min": [
-          -4.5,
-          -3.5
+          -2.5,
+          -2
         ],
         "max": [
-          4.5,
-          3.5
+          2.5,
+          2
         ]
       }
     ],
@@ -41,7 +41,7 @@
         "name": "Forge de Maëlle",
         "position": [
           0,
-          -2.8
+          -1.4
         ],
         "to": "zone.vallons",
         "toDoor": "porte_forge"

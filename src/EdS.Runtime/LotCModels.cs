@@ -302,11 +302,21 @@ namespace EdS.Runtime
             new LotCYardPiece("forge/soufflet", 2.4, -0.3, 0),
             new LotCYardPiece("forge/bac", 1.15, -0.9, 0),
             new LotCYardPiece("forge/charbon", 2.8, -1.6, 0),
-            new LotCYardPiece("forge/meule", 1.15, -2.4, 0),
-            new LotCYardPiece("forge/ratelier", -2.3, -3.2, 90),
+            new LotCYardPiece("forge/meule", -1.1, -3.1, 0),
+            new LotCYardPiece("forge/ratelier", 2.0, -3.24, 90),
             new LotCYardPiece("forge/fers", 3.47, 1.4, 0),
             new LotCYardPiece("forge/etabli", -3.15, -0.65, 0),
         };
+
+        /// <summary>
+        /// Décision de Damien du 17 novembre 2026 (vers 0 h 10) : l'auvent de la forge (C_OV_A01, 6 × 3,6 m, égout à 2,65 m) au-dessus de la
+        /// forge en plein air, sur Maëlle et la cour de travail ; ses quatre poteaux (aux coins) hors des pièces, du chemin, du passage et à
+        /// l'écart des forgerons ; aucune pièce plus haute que l'égout dessous (le foyer et sa hotte restent juste au nord).
+        /// </summary>
+        public static LotCYardPiece ForgeAwning { get; } = new LotCYardPiece("forge/auvent", 0.65, -1.6, 0);
+
+        /// <summary>Hauteur de l'égout de l'auvent de la forge (fiche A01 des objets du village), en mètres.</summary>
+        public const double ForgeAwningEave = 2.65;
 
         /// <summary>Outils (« forge/outils ») posés sur l'établi de la forge, un par modèle, dans l'ordre de la table.</summary>
         public const string ForgeTools = "forge/outils";
@@ -315,14 +325,14 @@ namespace EdS.Runtime
         /// Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer (déclaré après
         /// <see cref="ForgeYard"/>, dont il reprend les clés).
         /// </summary>
-        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume", ForgeTools }.Concat(ForgeYard.Select(p => p.Key)).ToArray();
+        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume", ForgeTools, ForgeAwning.Key }.Concat(ForgeYard.Select(p => p.Key)).ToArray();
 
         /// <summary>Emprise au sol (x, z en mètres, sans quart de tour) des modèles de la forge de Maëlle, d'après leurs exports.</summary>
         public static (double W, double D) ForgeYardSize(string code) => code switch
         {
             "C_OV_A02" => (0.596, 0.891), "C_OV_A03" => (1.854, 2.291), "C_OV_A04" => (1.15, 0.563), "C_OV_A05" => (1.141, 2.2),
             "C_OV_A07" => (0.831, 1.251), "C_OV_A08" => (1.104, 2.309), "C_OV_A09" => (0.587, 1.351), "C_OV_A10" => (1.122, 1.693),
-            "C_OV_A11" => (0.894, 1.196), "C_OV_C04" => (0.775, 0.741), "C_OV_C07_02" => (0.45, 0.448),
+            "C_OV_A11" => (0.894, 1.196), "C_OV_C04" => (0.775, 0.741), "C_OV_C07_02" => (0.45, 0.448), "C_OV_A01" => (6.014, 3.618),
             _ => (0, 0),
         };
 
@@ -414,12 +424,11 @@ namespace EdS.Runtime
         private static IEnumerable<LotCModel> Village()
         {
             const string c = "02_Objets_Village";
-            const string forge = "auvent de 6 × 4 m : la forge de Maëlle reste en plein air (décision de Damien du 16 novembre 2026 : ses pièces sont posées autour, sans toit)";
             const string light = "éclairage de nuit fait par le code (NightLamps : hauteur de la lumière réglée sur ses lanternes) : à brancher avec un essai dans Unity";
             const string street = "aucune place dans les données des Vallons pour ce mobilier de rue";
             const string market = "aucune place dans les données ni dans les décors du marché posés par le jeu";
             const string feast = "décor de fête sans place dans les données ni parmi les décors de fête posés par le jeu (guirlande, bannières)";
-            yield return Waiting("C_OV_A01", c, "Auvent de la forge", forge);
+            yield return Linked("C_OV_A01", c, "Auvent de la forge", "village:forge/auvent");
             yield return Linked("C_OV_A02", c, "Enclume sur billot", "village:forge/enclume");
             yield return Linked("C_OV_A03", c, "Foyer de forge en pierre", "village:prop/FirePit");
             yield return Linked("C_OV_A04", c, "Soufflet manuel", "village:forge/soufflet");
@@ -523,16 +532,16 @@ namespace EdS.Runtime
             yield return Linked("C_IN1_A1_04", c, "Coffre de chambre 2", "room:chambres_auberge/coffre_2", "room:chambres_auberge/coffre_4");
             yield return Linked("C_IN1_A1_06", c, "Coffre de chambre 3", "room:chambres_auberge/coffre_3");
             yield return Linked("C_IN1_A1_07", c, "Lit de la chambre 4", "room:chambres_auberge/lit_4");
-            yield return Linked("C_IN1_A2_01", c, "Lit de Mathurin", "room:chambres_auberge/lit_mathurin");
-            yield return Linked("C_IN1_A2_02", c, "Coffre de Mathurin", "room:chambres_auberge/coffre_mathurin");
-            yield return Linked("C_IN1_A2_03", c, "Bureau de Mathurin", "room:chambres_auberge/bureau_mathurin");
-            yield return Linked("C_IN1_A2_04", c, "Chaise", "room:chambres_auberge/chaise_mathurin");
-            yield return Linked("C_IN1_A2_05", c, "Lit de dortoir", "room:chambres_auberge/lit_dortoir_1", "room:chambres_auberge/lit_dortoir_2", "room:chambres_auberge/lit_dortoir_3", "room:chambres_auberge/lit_dortoir_4");
-            yield return Linked("C_IN1_A2_10", c, "Échelle des combles", "room:chambres_auberge/echelle_combles");
-            yield return Linked("C_IN1_A3_01", c, "Rayonnage à linge", "room:chambres_auberge/rayonnage_linge");
-            yield return Linked("C_IN1_A3_02", c, "Coffre à draps", "room:chambres_auberge/coffre_draps");
-            yield return Linked("C_IN1_A3_03", c, "Étagère de la réserve", "room:chambres_auberge/etagere_reserve");
-            yield return Linked("C_IN1_A3_04", c, "Caisses", "room:auberge/caisses", "room:guilde/caisses", "room:chambres_auberge/caisses");
+            yield return Linked("C_IN1_A2_01", c, "Lit de Mathurin", "room:logement_auberge/lit_mathurin");
+            yield return Linked("C_IN1_A2_02", c, "Coffre de Mathurin", "room:logement_auberge/coffre_mathurin");
+            yield return Linked("C_IN1_A2_03", c, "Bureau de Mathurin", "room:logement_auberge/bureau_mathurin");
+            yield return Linked("C_IN1_A2_04", c, "Chaise", "room:logement_auberge/chaise_mathurin");
+            yield return Linked("C_IN1_A2_05", c, "Lit de dortoir", "room:logement_auberge/lit_dortoir_1", "room:logement_auberge/lit_dortoir_2", "room:logement_auberge/lit_dortoir_3", "room:logement_auberge/lit_dortoir_4");
+            yield return Linked("C_IN1_A2_10", c, "Échelle des combles", "room:logement_auberge/echelle_combles");
+            yield return Linked("C_IN1_A3_01", c, "Rayonnage à linge", "room:combles_auberge/rayonnage_linge");
+            yield return Linked("C_IN1_A3_02", c, "Coffre à draps", "room:combles_auberge/coffre_draps");
+            yield return Linked("C_IN1_A3_03", c, "Étagère de la réserve", "room:combles_auberge/etagere_reserve");
+            yield return Linked("C_IN1_A3_04", c, "Caisses", "room:auberge/caisses", "room:guilde/caisses", "room:combles_auberge/caisses");
             yield return Waiting("C_IN1_B0_01", c, "Comptoir de la boulangerie", "plus profond (1,07 m) que le comptoir des données (0,6 m) : le comptoir de l'auberge (0,55 m) y est posé à sa place");
             yield return Linked("C_IN1_B0_02", c, "Étagère à pains", "room:boulangerie/etagere_pains");
             yield return Waiting("C_IN1_B0_03", c, "Présentoir", bakery);
@@ -592,6 +601,7 @@ namespace EdS.Runtime
             const string herb = "pas de place pour ce meuble dans l'herboristerie des données (comptoir, deux étagères, table de séchage, tonneau)";
             const string tailor = "pas de place pour ce meuble dans la mercerie des données (comptoir, étagère à toiles, rouet, table de coupe, coffre)";
             const string small = "petit objet que l'aménagement de ces pièces ne pose pas";
+            const string attic = "grenier de la maison paysanne (fiche V1) : pas de pièce dans les données (on y monte par l'échelle, un seul niveau joué)";
             const string rosalie = "les tables de la maison ont des tabourets (aménagement) ; aucun banc dans les données";
             const string upstairs = "étage de la maison de Rosalie : pas dans les données (une pièce n'a qu'un niveau)";
             yield return Linked("C_IN2_C0_01", c, "Banc de nef", "room:chapelle/banc1", "room:chapelle/banc2", "room:chapelle/banc3", "room:chapelle/banc4", "room:chapelle/banc5", "room:chapelle/banc6", "room:chapelle/banc7", "room:chapelle/banc8");
@@ -685,8 +695,8 @@ namespace EdS.Runtime
             yield return Linked("C_IN2_V0_04", c, "Coffre", "room:mercerie/coffre", "room:maison_paysanne/coffre");
             yield return Linked("C_IN2_V0_05", c, "Étagère", "room:maison_paysanne/etagere");
             yield return Linked("C_IN2_V0_06", c, "Échelle du grenier", "room:maison_paysanne/echelle_grenier");
-            yield return Linked("C_IN2_V1_02", c, "Caisses basses", "room:maison_paysanne/caisses_basses");
-            yield return Linked("C_IN2_V1_03", c, "Ballot de linge", "room:maison_paysanne/ballot_de_linge");
+            yield return Waiting("C_IN2_V1_02", c, "Caisses basses", attic);
+            yield return Waiting("C_IN2_V1_03", c, "Ballot de linge", attic);
         }
     }
 }

@@ -42,6 +42,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     {
         "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant", "npc.intendant_guilde", "npc.boulanger",
         "npc.renart", "npc.fermier", "npc.capitaine", "npc.albe",   // V2.6.1 : la veille du soir de Sœur Albe sur le parvis
+        "npc.odile",   // lot C (décision de Damien du 17 novembre 2026) : l'après-midi dans la salle du moulin
     };
 
     private static long TickAt(long day, int minute)
@@ -112,6 +113,12 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal(("zone.chapelle", (string?)null, (string?)null, "zone.maison"), (rosalie.ZoneAt(6 * 60 + 45), rosalie.ZoneAt(12 * 60 + 15), rosalie.ZoneAt(16 * 60 + 30), rosalie.ZoneAt(14 * 60)));
         Assert.Equal(((string?)null, "zone.auberge", (string?)null), (mathurin.ZoneAt(16 * 60 + 10), mathurin.ZoneAt(18 * 60), mathurin.ZoneAt(21 * 60 + 10)));
         Assert.Equal(((string?)null, "zone.auberge", "zone.chapelle"), (anselme.ZoneAt(16 * 60), anselme.ZoneAt(17 * 60), anselme.ZoneAt(17 * 60 + 15)));
+        // Lot C (décision de Damien du 17 novembre 2026, horaires gardés) : Maëlle dans sa forge couverte de 16 h à 19 h 30, Odile dans la
+        // salle du moulin l'après-midi, Achille à table chez lui à midi ; le matin et la nuit, chacun reste à sa place d'avant.
+        Npc maelle = book.Npc("npc.maelle"), odile = book.Npc("npc.odile"), achille = book.Npc("npc.fermier");
+        Assert.Equal(((string?)null, "zone.forge", "zone.auberge"), (maelle.ZoneAt(14 * 60), maelle.ZoneAt(17 * 60), maelle.ZoneAt(20 * 60)));
+        Assert.Equal(((string?)null, "zone.moulin", (string?)null), (odile.ZoneAt(9 * 60), odile.ZoneAt(15 * 60), odile.ZoneAt(22 * 60)));
+        Assert.Equal(((string?)null, "zone.chaumiere", (string?)null), (achille.ZoneAt(9 * 60), achille.ZoneAt(12 * 60 + 30), achille.ZoneAt(23 * 60)));
         // L'archer reste en « ronde assise » sur la terrasse (il ne quitte pas la zone de l'histoire).
         Assert.False(book.Npc("npc.archer_garde").Roams);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))

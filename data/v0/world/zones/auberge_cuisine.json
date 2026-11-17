@@ -12,10 +12,10 @@
     "safePoints": [
       {
         "id": "table",
-        "name": "Table de la cuisine",
+        "name": "Cuisine",
         "position": [
-          0,
-          -1.1
+          0.4,
+          -1.0
         ]
       }
     ],
@@ -24,12 +24,12 @@
         "id": "cuisine_auberge",
         "name": "Cuisine de l'auberge",
         "min": [
-          -3,
-          -2.5
+          -1.7,
+          -1.55
         ],
         "max": [
-          3,
-          2.5
+          1.7,
+          1.55
         ]
       }
     ],
@@ -40,8 +40,8 @@
         "id": "sortie",
         "name": "Auberge de l'Aube",
         "position": [
-          0,
-          -1.8
+          -0.8,
+          -0.95
         ],
         "to": "zone.auberge",
         "toDoor": "cuisine"

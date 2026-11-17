@@ -259,18 +259,34 @@ namespace EdS.Runtime
             ("coffre", InteriorFurniture.Chest), ("etagere", InteriorFurniture.Shelf), ("caisse", InteriorFurniture.Crates),
             ("armoire", InteriorFurniture.Cabinet), ("rouet", InteriorFurniture.SpinningWheel), ("statue", InteriorFurniture.Statue),
             ("four", InteriorFurniture.Oven), ("petrin", InteriorFurniture.Kneader),   // sous-lot V2.14 : la boulangerie
-            ("rayonnage", InteriorFurniture.Shelf),   // lot C : intérieurs de métier (16 novembre 2026)
+        };
+
+        /// <summary>
+        /// Lot C (16 novembre 2026, relecture de la PR #209) : mots stricts des objets de métier, reconnus seulement pour l'identifiant
+        /// entier ou suivi d'un séparateur ou d'un chiffre (« bac_de_trempe », « sacs2 ») : « bac », « sacs », « foin » ou « chaise » ne
+        /// prennent pas « bacon », « sacristie », « foire » ni « chaises_longues ».
+        /// </summary>
+        private static readonly (string Word, InteriorFurniture Kind)[] StrictWords =
+        {
+            ("rayonnage", InteriorFurniture.Shelf),
             ("soufflet", InteriorFurniture.Fixture), ("enclume", InteriorFurniture.Fixture), ("etabli", InteriorFurniture.Fixture),
             ("bac", InteriorFurniture.Fixture), ("ratelier", InteriorFurniture.Fixture), ("charrette", InteriorFurniture.Fixture),
             ("foin", InteriorFurniture.Fixture), ("echelle", InteriorFurniture.Fixture), ("sacs", InteriorFurniture.Fixture),
-            ("pupitre", InteriorFurniture.Fixture), ("meule", InteriorFurniture.Fixture), ("bureau", InteriorFurniture.Fixture),
-            ("chaise", InteriorFurniture.Fixture), ("ballot", InteriorFurniture.Fixture),
+            ("pupitre", InteriorFurniture.Fixture), ("meule", InteriorFurniture.Fixture), ("meules", InteriorFurniture.Fixture),
+            ("bureau", InteriorFurniture.Fixture), ("chaise", InteriorFurniture.Fixture), ("ballot", InteriorFurniture.Fixture),
         };
+
+        /// <summary>L'identifiant <paramref name="id"/> est-il le mot <paramref name="word"/>, seul ou suivi d'un séparateur ou d'un chiffre ?</summary>
+        private static bool StrictMatch(string id, string word) =>
+            id.StartsWith(word, StringComparison.Ordinal) && (id.Length == word.Length || !char.IsLetter(id[word.Length]));
 
         /// <summary>Meuble que représente l'obstacle <paramref name="id"/> d'un intérieur (début de son identifiant), ou <see cref="InteriorFurniture.None"/>.</summary>
         public static InteriorFurniture FurnitureFor(string id)
         {
-            string key = StyleRules.Key(id);
+            string raw = (id ?? string.Empty).ToLowerInvariant();
+            foreach ((string word, InteriorFurniture kind) in StrictWords)
+                if (StrictMatch(raw, word)) return kind;
+            string key = StyleRules.Key(raw);
             foreach ((string prefix, InteriorFurniture kind) in FurnitureWords)
                 if (key.StartsWith(prefix, StringComparison.Ordinal)) return kind;
             return InteriorFurniture.None;
@@ -636,6 +652,15 @@ namespace EdS.Runtime
             var beamAt = new List<double>();
             for (int i = 1; i < beams; i++) beamAt.Add((alongX ? map.MinX : map.MinZ) + length * i / beams);
 
+            // Lot C (17 novembre 2026) : une petite pièce sans cheminée ni mur libre (salle du moulin) n'aurait que la lanterne du plafond :
+            // une seconde lanterne suspendue, au quart de la pièce, pour deux lumières au moins. Les autres pièces ne changent pas.
+            if (lights.Count < 2 && style != InteriorStyle.Chapel)
+            {
+                double t = length / 4;
+                double x = alongX ? cx - t : cx, z = alongX ? cz : cz - t;
+                Add(new InteriorPiece("plafond/appoint", InteriorProp.HangingLantern, x, z, 0, 0, height: 0.9, y: height - 1.25));
+                Light(InteriorLightKind.Lantern, x, height - 1.1, z, 7, 1.5);
+            }
             return new InteriorLayout(style, height, pieces, lights, windows, beamAt, !alongX, Villagers(map, boxes, style));
         }
 
@@ -697,6 +722,20 @@ namespace EdS.Runtime
                     list.Add(new InteriorWindow(x, z, wall, width, bottom, top));
                 }
             }
+            // Lot C (16 novembre 2026) : une petite pièce meublée d'après sa fiche (moulin, maison paysanne…) peut n'avoir aucun milieu de mur
+            // libre ; alors une fenêtre au moins, à la première place libre de chaque mur (pas de 25 cm). Les pièces qui en ont déjà ne changent pas.
+            if (list.Count == 0 && !chapel)
+                foreach ((int X, int Z) wall in Walls)
+                {
+                    double span = wall.X != 0 ? map.Depth : map.Width;
+                    for (double t = -span / 2; t <= span / 2; t += 0.25)
+                    {
+                        if (!WallFree(map, boxes, wall, t, width / 2 + 0.15, 0.9)) continue;
+                        (double x, double z) = WallPoint(map, wall, t, 0);
+                        list.Add(new InteriorWindow(x, z, wall, width, bottom, top));
+                        break;
+                    }
+                }
             return list;
         }
 

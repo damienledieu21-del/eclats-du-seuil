@@ -635,6 +635,11 @@ namespace EdS.Game
                 GameObject placed = LotCLook.Place(holder, code, id + "/" + piece.Key, at, (float)piece.Yaw);
                 if (piece.Key == "forge/etabli") bench = placed;
             }
+            // Décision du 17 novembre 2026 : l'auvent au-dessus de la cour de travail (place testée : poteaux libres).
+            LotCYardPiece awning = LotCModels.ForgeAwning;
+            string awningCode = LotCModels.ForVillage(awning.Key, id);
+            if (awningCode != null)
+                LotCLook.Place(holder, awningCode, id + "/auvent", StyleWorld.OnGround(new Vector3(center.x + (float)awning.Dx, 0f, center.z + (float)awning.Dz)), (float)awning.Yaw);
             if (bench == null || !StyleLook.VisibleBounds(bench, out Bounds top)) return;
             // Les outils en rang sur le plateau, le long de son grand côté, chacun tourné en travers.
             IReadOnlyList<string> tools = LotCModels.ForgeToolCodes;

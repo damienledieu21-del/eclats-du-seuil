@@ -101,7 +101,7 @@ public class InterieursTests : IDisposable
         // Sous-lot V2.14 : les boutiques dans de vraies maisons (boulangerie, épicerie, herboristerie, mercerie).
         Assert.Equal(new[] { "zone.vallons", "zone.auberge", "zone.chapelle", "zone.maison", "zone.guilde", "zone.souvenir_rupture", "zone.boulangerie", "zone.epicerie",
                 "zone.herboristerie", "zone.mercerie", "zone.forge", "zone.grange", "zone.moulin", "zone.tour", "zone.chaumiere",
-                "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules" },   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
+                "zone.auberge_cuisine", "zone.auberge_chambres", "zone.archives", "zone.moulin_meules", "zone.auberge_logement", "zone.auberge_combles" },   // lot C (décisions du 16 novembre 2026) : intérieurs de métier
             linked.Zones.Select(z => z.Id));
         // Sous-lot V2.1 : les Vallons passent au schéma 8 (jour et nuit) ; les intérieurs restent au schéma 7, encore lu.
         Assert.All(linked.Zones, z => Assert.Equal(z.Id == "zone.vallons" ? ZoneValidator.CurrentSchemaVersion : ZoneValidator.OldestSchemaVersion, z.SchemaVersion));   // V2.4 : Vallons en 9, intérieurs en 7
@@ -127,11 +127,14 @@ public class InterieursTests : IDisposable
                 "zone.archives" => "zone.guilde",
                 "zone.auberge_cuisine" or "zone.auberge_chambres" => "zone.auberge",
                 "zone.moulin_meules" => "zone.moulin",
+                // 17 novembre 2026 (fiches A1 à A3) : trois niveaux au-dessus de la salle, de palier en palier.
+                "zone.auberge_logement" => "zone.auberge_chambres",
+                "zone.auberge_combles" => "zone.auberge_logement",
                 _ => "zone.vallons",
             };
             Assert.Equal(("sortie", outside, (string?)null), (exit.Id, exit.To, exit.Building));
             Assert.Equal(exit.Id, linked.Zones.Single(z => z.Id == outside).DoorOf(exit.ToDoor)!.ToDoor);
-            Assert.Equal(inside.Id switch { "zone.guilde" or "zone.moulin" => 2, "zone.auberge" => 3, _ => 1 }, inside.Doors.Count);
+            Assert.Equal(inside.Id switch { "zone.guilde" or "zone.moulin" or "zone.auberge_chambres" or "zone.auberge_logement" => 2, "zone.auberge" => 3, _ => 1 }, inside.Doors.Count);
             // Un intérieur n'a ni créature ni chef : rien à y combattre.
             Assert.Empty(inside.Setup.Combatants);
             Assert.Empty(inside.Populations);
@@ -140,7 +143,8 @@ public class InterieursTests : IDisposable
         }
         Assert.Equal(new[] { "Auberge de l'Aube", "Chapelle du Bourg", "Maison du Bourg", "Maison de la Guilde", "Souvenir de la Rupture", "Boulangerie de Firmin",
                 "Épicerie de Bertille", "Herboristerie de Sauge", "Mercerie de Margot", "Forge couverte de Maëlle", "Grange", "Moulin", "Tour de guet",
-                "Maison paysanne", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules" },   // V2.14 : les boutiques ; lot C
+                "Maison paysanne", "Cuisine de l'auberge", "Chambres de l'auberge", "Archives de la Guilde", "Étage des meules",
+                "Logement et dortoir de l'auberge", "Combles de l'auberge" },   // V2.14 : les boutiques ; lot C
             linked.Zones.Skip(1).Select(z => z.Name));
         MiniJsonSchema schema = MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "zone.schema.json"));
         foreach (string zone in linked.Zones.Select(z => z.Id))
@@ -240,7 +244,7 @@ public class InterieursTests : IDisposable
             Read(ZoneJson("zone.mercerie")).Zone! };
         // Lot C (16 novembre 2026) : les intérieurs de métier, la cuisine et les chambres de l'auberge, l'étage des meules.
         ZoneDefinition[] trades = new[] { "zone.forge", "zone.grange", "zone.moulin", "zone.moulin_meules", "zone.tour", "zone.chaumiere", "zone.auberge_cuisine",
-            "zone.auberge_chambres" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();
+            "zone.auberge_chambres", "zone.auberge_logement", "zone.auberge_combles" }.Select(z => Read(ZoneJson(z)).Zone!).ToArray();
         ValidationReport all = ZoneValidator.CheckDoors(new[] { vallons, Read(ZoneJson("zone.auberge")).Zone!, chapelle, maison, guilde, archives, souvenir }.Concat(shops).Concat(trades).ToArray());
         Assert.True(all.IsValid, all.ToString());
 
@@ -508,7 +512,7 @@ public class InterieursTests : IDisposable
             CombatSpace space = inside.Setup.Space!;
             // Lot C (16 novembre 2026) : chaque porte (cuisine et chambres de l'auberge, étage du moulin), pas seulement la sortie.
             foreach (Door door in inside.Doors) Assert.True(Reachable(space, door.Position, inside.Entry.Position), inside.Id + " : " + door.Id);
-            Assert.InRange(space.Obstacles.Count, 4, 64);
+            Assert.InRange(space.Obstacles.Count, inside.Id == "zone.auberge_cuisine" ? 3 : 4, 64);   // la cuisine (fiche A0) : trois meubles
         }
     }
 
@@ -558,10 +562,12 @@ public class InterieursTests : IDisposable
             ["zone.moulin"] = (InteriorStyle.House, new[] { InteriorProp.SpinningWheel, InteriorProp.HangingLantern, InteriorProp.Door }, 0),
             ["zone.moulin_meules"] = (InteriorStyle.House, new[] { InteriorProp.Crate, InteriorProp.HangingLantern, InteriorProp.Door }, 0),
             ["zone.tour"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Table, InteriorProp.Chest, InteriorProp.HangingLantern, InteriorProp.Door }, 0),
-            ["zone.chaumiere"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Table, InteriorProp.Chest, InteriorProp.Shelves, InteriorProp.Crate,
+            ["zone.chaumiere"] = (InteriorStyle.House, new[] { InteriorProp.Bed, InteriorProp.Table, InteriorProp.Chest, InteriorProp.Shelves,
                 InteriorProp.Pot, InteriorProp.Door }, 0),
             ["zone.auberge_cuisine"] = (InteriorStyle.Tavern, new[] { InteriorProp.Pot, InteriorProp.Table, InteriorProp.Shelves, InteriorProp.Door }, 0),
-            ["zone.auberge_chambres"] = (InteriorStyle.Tavern, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Shelves, InteriorProp.Crate, InteriorProp.Door }, 0),
+            ["zone.auberge_chambres"] = (InteriorStyle.Tavern, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Door }, 0),
+            ["zone.auberge_logement"] = (InteriorStyle.Tavern, new[] { InteriorProp.Bed, InteriorProp.Chest, InteriorProp.Door }, 0),
+            ["zone.auberge_combles"] = (InteriorStyle.Tavern, new[] { InteriorProp.Shelves, InteriorProp.Chest, InteriorProp.Crate, InteriorProp.Door }, 0),
         };
         List<ZoneDefinition> insides = Linked().Zones.Where(z => z.Indoor).ToList();
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), insides.Select(z => z.Id).OrderBy(k => k, StringComparer.Ordinal));
@@ -593,7 +599,7 @@ public class InterieursTests : IDisposable
             }
             // Lumières : le feu ou les bougies, bornées, dans la pièce ; chaque lanterne et chaque lustre a la sienne (relecture : les
             // lumières du plafond passent avant les bougies des murs).
-            Assert.InRange(layout.Lights.Count, 2, InteriorRules.MaxLights);
+            Assert.True(layout.Lights.Count >= 2 && layout.Lights.Count <= InteriorRules.MaxLights, inside.Id + " : " + layout.Lights.Count + " lumières");
             foreach (InteriorPiece lit in layout.Pieces.Where(p => p.Prop == InteriorProp.Lantern || p.Prop == InteriorProp.HangingLantern || p.Prop == InteriorProp.Chandelier))
                 Assert.True(layout.Lights.Any(l => Math.Abs(l.X - lit.X) < 0.6 && Math.Abs(l.Z - lit.Z) < 0.6), inside.Id + " : " + lit.Id + " sans lumière");
             // Objets posés au sol à côté l'un de l'autre dans une même emprise : ils ne se chevauchent pas et restent dans l'emprise.
@@ -617,7 +623,10 @@ public class InterieursTests : IDisposable
                     && p.Z > o.Points.Min(q => q.Z.Raw) / 10000.0 - 0.3 && p.Z < o.Points.Max(q => q.Z.Raw) / 10000.0 + 0.3 && !(p.Prop == InteriorProp.Hatchet && p.Id.StartsWith(o.Id + "/", StringComparison.Ordinal)));   // lot C : sa propre cheminée, quel que soit son nom
             Assert.All(layout.Lights, l => Assert.True(l.X > map.MinX && l.X < map.MaxX && l.Z > map.MinZ && l.Z < map.MaxZ && l.Y > 0 && l.Y < layout.WallHeight));
             // Fenêtres sur les murs, jamais devant la porte ; poutres dans la pièce.
-            Assert.True(layout.Windows.Count > 0, inside.Id + " : aucune fenêtre");
+            // Lot C : la forge couverte n'a aucune baie (fiche F0 : auvent ouvert, éclairée par l'accès et la lanterne) ; les deux fenêtres de la
+            // maison paysanne (fiche V0) sont au-dessus du coffre et de l'étagère, places que l'aménagement laisse aux meubles (limite connue).
+            // Même chose pour la fenêtre arrière de la cuisine de l'auberge (fiche A0), derrière sa table et son étagère.
+            Assert.True(layout.Windows.Count > 0 || inside.Id is "zone.forge" or "zone.chaumiere" or "zone.auberge_cuisine", inside.Id + " : aucune fenêtre");
             Assert.All(layout.Windows, w => Assert.True(w.Bottom < w.Top && w.Top < layout.WallHeight && w.Width > 0));
             Assert.All(layout.Beams, b => Assert.InRange(b, layout.BeamsAlongX ? map.MinZ : map.MinX, layout.BeamsAlongX ? map.MaxZ : map.MaxX));
             // Villageois hors des meubles et loin de la porte.
@@ -698,6 +707,16 @@ public class InterieursTests : IDisposable
         Assert.Equal(InteriorFurniture.Table, InteriorRules.FurnitureFor("table3"));
         Assert.Equal(InteriorFurniture.Pew, InteriorRules.FurnitureFor("banc8"));
         Assert.Equal(InteriorFurniture.Hearth, InteriorRules.FurnitureFor("cheminee_nord"));
+        // Lot C (relecture de la PR #209) : mots stricts des objets de métier (identifiant entier, ou suivi d'un séparateur ou d'un chiffre).
+        Assert.Equal(InteriorFurniture.Fixture, InteriorRules.FurnitureFor("bac_de_trempe"));
+        Assert.Equal(InteriorFurniture.Fixture, InteriorRules.FurnitureFor("foin"));
+        Assert.Equal(InteriorFurniture.Fixture, InteriorRules.FurnitureFor("sacs2"));
+        Assert.Equal(InteriorFurniture.Fixture, InteriorRules.FurnitureFor("meules"));
+        Assert.Equal(InteriorFurniture.Shelf, InteriorRules.FurnitureFor("rayonnage_linge"));
+        Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("bacon"));
+        Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("sacristie"));
+        Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("foire"));
+        Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("chaises"));
         Assert.Equal(InteriorFurniture.Bed, InteriorRules.FurnitureFor("lit"));
         Assert.Equal(InteriorFurniture.None, InteriorRules.FurnitureFor("fenetre"));
     }

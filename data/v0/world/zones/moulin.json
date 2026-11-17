@@ -12,9 +12,9 @@
     "safePoints": [
       {
         "id": "pesee",
-        "name": "Pupitre de pesée",
+        "name": "Salle du moulin",
         "position": [
-          0,
+          0.6,
           -1.4
         ]
       }
@@ -24,12 +24,12 @@
         "id": "salle_du_moulin",
         "name": "Moulin",
         "min": [
-          -3,
-          -3
+          -1.85,
+          -2.6
         ],
         "max": [
-          3,
-          3
+          1.85,
+          2.6
         ]
       }
     ],
@@ -40,8 +40,8 @@
         "id": "sortie",
         "name": "Moulin",
         "position": [
-          0,
-          -2.3
+          0.55,
+          -2.0
         ],
         "to": "zone.vallons",
         "toDoor": "porte_moulin_interieur"
@@ -50,8 +50,8 @@
         "id": "etage",
         "name": "Étage des meules",
         "position": [
-          -2.45,
-          0.9
+          -0.1,
+          -1.2
         ],
         "to": "zone.moulin_meules",
         "toDoor": "sortie"

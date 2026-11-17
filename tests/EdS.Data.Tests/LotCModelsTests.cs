@@ -142,7 +142,8 @@ public class LotCModelsTests
             // par LotCModels.ForgeToolCodes.
             _ => LotCModels.VillageSpots.Contains(key) && (markers.Contains("\"" + key + "\"")
                 || (LotCModels.ForgeYard.Any(p => p.Key == key) && markers.Contains("LotCModels.ForgeYard"))
-                || (key == LotCModels.ForgeTools && markers.Contains("LotCModels.ForgeToolCodes"))),
+                || (key == LotCModels.ForgeTools && markers.Contains("LotCModels.ForgeToolCodes"))
+                || (key == LotCModels.ForgeAwning.Key && markers.Contains("LotCModels.ForgeAwning"))),
         };
     }
 
@@ -177,7 +178,7 @@ public class LotCModelsTests
         (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3), (1.0, 1.02), (1.02, 1.0) };
         int rooms = 0;
         foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives", "chapelle", "epicerie", "herboristerie", "mercerie", "maison",
-            "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge" })
+            "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge", "logement_auberge", "combles_auberge" })
         {
             AdventureMap map = Map(room);
             rooms++;
@@ -204,7 +205,7 @@ public class LotCModelsTests
                 }
             }
         }
-        Assert.Equal(17, rooms);   // lot C (16 novembre 2026) : et les huit intérieurs de métier
+        Assert.Equal(19, rooms);   // lot C (16 novembre 2026) : et les huit intérieurs de métier
         // Dos au mur : le comptoir de l'auberge regarde l'intérieur, sur une seule rangée de copies le long du grand côté.
         Assert.Equal(180, LotCModels.Fit(-1, 4, 1, 4.5, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
         Assert.Equal(0, LotCModels.Fit(-1, -4.5, 1, -4, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
@@ -313,16 +314,14 @@ public class LotCModelsTests
         ["C_IN2_V0_04"] = (0.493, 0.897),
         ["C_IN2_V0_05"] = (0.344, 1.034),
         ["C_IN2_V0_06"] = (1.067, 0.629),
-        ["C_IN2_V1_02"] = (0.616, 1.4),
-        ["C_IN2_V1_03"] = (0.571, 1.001),
     };
 
     [Fact]
     public void Interieurs_de_metier_meubles_a_la_mesure_de_leurs_modeles()
     {
         // Décisions de Damien du 16 novembre 2026 : chaque meuble des huit intérieurs de métier a son modèle du lot C, posé une seule fois
-        // dans son emprise, presque à sa taille (échelle de 0,9 à 1,15, à peine aminci) ; portes à l'écart des meubles.
-        string[] rooms = { "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge" };
+        // dans son emprise cotée, presque à sa taille (échelle de 0,75 à 1,15, à peine aminci) ; portes à l'écart des meubles.
+        string[] rooms = { "forge_couverte", "grange", "salle_du_moulin", "etage_des_meules", "salle_de_garde", "maison_paysanne", "cuisine_auberge", "chambres_auberge", "logement_auberge", "combles_auberge" };
         int linked = 0;
         foreach (string room in rooms)
         {
@@ -332,7 +331,7 @@ public class LotCModelsTests
                 string? code = LotCModels.ForRoom(room, o.Id);
                 if (code == null)
                 {
-                    Assert.True(room == "cuisine_auberge" && o.Id == "tonneau", room + "/" + o.Id + " sans modèle");   // le tonneau du code
+                    Assert.True(o.Id == "escalier", room + "/" + o.Id + " sans modèle");   // escaliers de la tour et de l'auberge : ceux du code
                     continue;
                 }
                 linked++;
@@ -340,7 +339,8 @@ public class LotCModelsTests
                 double x0 = o.Points.Min(p => p.X.Raw) / 10000.0, x1 = o.Points.Max(p => p.X.Raw) / 10000.0;
                 double z0 = o.Points.Min(p => p.Z.Raw) / 10000.0, z1 = o.Points.Max(p => p.Z.Raw) / 10000.0;
                 LotCCopy k = Assert.Single(LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, w, d));
-                Assert.True(k.Scale >= 0.9 && k.Scale <= LotCModels.MaxScale + 1e-9, room + "/" + o.Id + " : échelle " + k.Scale);
+                // 17 novembre 2026 : emprises cotées des fiches ; un modèle exporté plus grand que sa fiche est réduit (jusqu'aux trois quarts).
+                Assert.True(k.Scale >= 0.75 && k.Scale <= LotCModels.MaxScale + 1e-9, room + "/" + o.Id + " : échelle " + k.Scale);
                 Assert.True(Math.Min(k.ThinX, k.ThinZ) >= 0.85, room + "/" + o.Id + " trop aminci");
             }
             foreach (MapDoor door in map.Doors)
@@ -356,7 +356,7 @@ public class LotCModelsTests
         // Plus rien en attente pour ces lieux (forge, grange, moulin, tour, maison paysanne, cuisine et chambres de l'auberge).
         Assert.DoesNotContain(LotCModels.All, m => m.Pending != null && (m.Code.StartsWith("C_IN2_F0", StringComparison.Ordinal)
             || m.Code.StartsWith("C_IN2_G0", StringComparison.Ordinal) || m.Code.StartsWith("C_IN2_O", StringComparison.Ordinal)
-            || m.Code.StartsWith("C_IN2_T0", StringComparison.Ordinal) || m.Code.StartsWith("C_IN2_V", StringComparison.Ordinal)
+            || m.Code.StartsWith("C_IN2_T0", StringComparison.Ordinal) || m.Code.StartsWith("C_IN2_V0", StringComparison.Ordinal)
             || m.Code.StartsWith("C_IN1_A1", StringComparison.Ordinal) || m.Code.StartsWith("C_IN1_A2", StringComparison.Ordinal)
             || m.Code.StartsWith("C_IN1_A3", StringComparison.Ordinal) || m.Code is "C_IN1_A0_11" or "C_IN1_A0_12"));
     }
@@ -418,6 +418,29 @@ public class LotCModelsTests
         // Un passage de 1,2 m du bord sud du lieu jusqu'à Maëlle reste libre.
         (double mx, double mz) = smiths.OrderBy(s => Math.Abs(s.Item1 - cx) + Math.Abs(s.Item2 - cz)).First();
         Assert.DoesNotContain(boxes, b => b.X0 < mx + 0.6 && b.X1 > mx - 0.6 && b.Z0 < mz && b.Z1 > pz0 - 0.7);
+        // Décision du 17 novembre 2026 : l'auvent (C_OV_A01) couvre Maëlle ; ses quatre poteaux (30 cm aux coins) ne touchent aucune pièce (10 cm
+        // de jeu), ni le passage, ni un forgeron (60 cm) ; rien de plus haut que l'égout sous le toit (le foyer et sa hotte restent au nord).
+        Assert.Equal("C_OV_A01", LotCModels.ForVillage(LotCModels.ForgeAwning.Key, "forge"));
+        (double aw, double ad) = LotCModels.ForgeYardSize("C_OV_A01");
+        if (LotCModels.ForgeAwning.Yaw is 90 or 270) (aw, ad) = (ad, aw);
+        double rx0 = cx + LotCModels.ForgeAwning.Dx - aw / 2, rx1 = rx0 + aw, rz0 = cz + LotCModels.ForgeAwning.Dz - ad / 2, rz1 = rz0 + ad;
+        Assert.True(mx > rx0 && mx < rx1 && mz > rz0 && mz < rz1, "Maëlle hors de l'auvent");
+        var heights = new Dictionary<string, double> { ["foyer"] = 4.405, ["forge/ratelier"] = 2.562 };
+        foreach (var b in boxes.Where(b => heights.TryGetValue(b.Id, out double h) && h >= LotCModels.ForgeAwningEave))
+            Assert.False(b.X0 < rx1 && rx0 < b.X1 && b.Z0 < rz1 && rz0 < b.Z1, b.Id + " plus haut que l'égout, sous l'auvent");
+        var posts = new[] { (rx0, rz0), (rx1 - 0.3, rz0), (rx0, rz1 - 0.3), (rx1 - 0.3, rz1 - 0.3) }
+            .Select((p, i) => ("forge/auvent/poteau" + i, p.Item1, p.Item2, p.Item1 + 0.3, p.Item2 + 0.3)).ToList();
+        foreach (var p in posts)
+        {
+            Assert.DoesNotContain(boxes, b => p.Item2 < b.X1 + 0.1 && b.X0 < p.Item4 + 0.1 && p.Item3 < b.Z1 + 0.1 && b.Z0 < p.Item5 + 0.1);
+            Assert.False(p.Item2 < mx + 0.6 && p.Item4 > mx - 0.6 && p.Item3 < mz && p.Item5 > pz0 - 0.8, p.Item1 + " dans le passage");
+            foreach ((double sx, double sz) in smiths)
+            {
+                double dx = Math.Max(0, Math.Max(p.Item2 - sx, sx - p.Item4)), dz = Math.Max(0, Math.Max(p.Item3 - sz, sz - p.Item5));
+                Assert.True(Math.Sqrt(dx * dx + dz * dz) >= 0.6, p.Item1 + " contre un forgeron");
+            }
+        }
+        boxes.AddRange(posts);
         // Ni sur un obstacle des Vallons ni sur un chemin.
         JsonElement space = JsonDocument.Parse(File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "scenarios", "zones", "vallons.json"))).RootElement
             .GetProperty("data").GetProperty("space");
