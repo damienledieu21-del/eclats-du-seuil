@@ -9,7 +9,7 @@ namespace EdS.Runtime
         Day = 1,
         Night = 2,
 
-        /// <summary>Crépuscule : quatre peintures à commander (une par saison, même cadrage) ; en attendant, <see cref="TitleScreen.DuskPainted"/> est faux et l'aube les remplace.</summary>
+        /// <summary>Crépuscule : quatre peintures (une par saison, même cadrage, numéros 14 à 17) ; si <see cref="TitleScreen.DuskPainted"/> était faux, l'aube les remplacerait.</summary>
         Dusk = 3,
     }
 
@@ -88,10 +88,10 @@ namespace EdS.Runtime
         public const int DuskFirstNumber = 14;
 
         /// <summary>
-        /// Les quatre peintures de crépuscule sont-elles livrées ? <b>Non</b> (décision de Damien du 17 novembre 2026 : on les commandera) : tant que
-        /// c'est faux, le crépuscule reprend la peinture de l'aube. Passer à vrai quand les images <c>titre_14…17</c> sont dans le dépôt.
+        /// Les quatre peintures de crépuscule sont-elles livrées ? <b>Oui</b> (commandées sur décision de Damien du 17 novembre 2026, livrées le
+        /// même jour) : <c>titre_14…17</c> sont dans le dépôt. Si faux, le crépuscule reprendrait la peinture de l'aube.
         /// </summary>
-        public const bool DuskPainted = false;
+        public const bool DuskPainted = true;
 
         /// <summary>Largeur et hauteur des peintures d'origine (pixels) ; tous les repères ci-dessous sont dans ce repère.</summary>
         public const float ReferenceWidth = 3840f, ReferenceHeight = 2160f;

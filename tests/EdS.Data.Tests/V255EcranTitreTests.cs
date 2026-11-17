@@ -16,7 +16,7 @@ public sealed class V255EcranTitreTests
     [InlineData(0, 0, 3)]     // printemps, minuit : nuit
     [InlineData(0, 420, 1)]   // 7 h : aube
     [InlineData(0, 780, 2)]   // 13 h : jour
-    [InlineData(1, 1100, 4)]  // été, 18 h 20 : le crépuscule reprend l'aube
+    [InlineData(1, 1100, 15)] // été, 18 h 20 : crépuscule
     [InlineData(2, 1380, 9)]  // automne, 23 h : nuit
     [InlineData(3, 780, 11)]  // hiver, 13 h : jour
     [InlineData(3, 60, 12)]   // hiver, 1 h : nuit
@@ -63,8 +63,8 @@ public sealed class V255EcranTitreTests
         {
             TitleMix x = TitleScreen.Pick(1, m, false);
             Assert.InRange(x.Mix, 0f, 1f);
-            Assert.InRange(x.Primary.Number, 4, 6);
-            Assert.InRange(x.Secondary.Number, 4, 6);
+            Assert.Contains(x.Primary.Number, new[] { 4, 5, 6, 15 });
+            Assert.Contains(x.Secondary.Number, new[] { 4, 5, 6, 15 });
         }
         // La nuit passe à l'aube vers 5 h, le crépuscule à la nuit vers 21 h : fondu aux deux bouts.
         Assert.Equal(TitleMoment.Night, TitleScreen.Pick(0, 300, false).Primary.Moment);
@@ -97,12 +97,13 @@ public sealed class V255EcranTitreTests
     }
 
     [Fact]
-    public void Les_treize_decors_existent_en_deux_tailles_en_jpeg_16_9()
+    public void Les_dix_sept_decors_existent_en_deux_tailles_en_jpeg_16_9()
     {
-        var decors = new List<TitleDecor> { TitleScreen.Envers };   // les crépuscules (14 à 17) viendront avec leurs peintures
+        var decors = new List<TitleDecor> { TitleScreen.Envers };
         for (int s = 0; s < 4; s++)
             foreach (TitleMoment m in new[] { TitleMoment.Dawn, TitleMoment.Day, TitleMoment.Night }) decors.Add(TitleScreen.Decor(s, m));
-        Assert.Equal(13, decors.Count);
+        for (int s = 0; s < 4; s++) decors.Add(TitleScreen.Decor(s, TitleMoment.Dusk));
+        Assert.Equal(17, decors.Count);
         foreach (TitleDecor decor in decors)
             foreach ((DeviceTier tier, int w, int h) in new[] { (DeviceTier.Full, 1920, 1080), (DeviceTier.Phone, 1280, 720) })
             {
@@ -220,9 +221,10 @@ public sealed class V255EcranTitreTests
         Assert.Equal(14, TitleScreen.Decor(0, TitleMoment.Dusk).Number);
         Assert.Equal(17, TitleScreen.Decor(3, TitleMoment.Dusk).Number);
         Assert.Equal("EdsInterface/Titre/1920/titre_15_ete_crepuscule", TitleScreen.ResourcePath(TitleScreen.Decor(1, TitleMoment.Dusk), DeviceTier.Full));
-        // Sans les peintures (aujourd'hui) : l'aube sert le soir.
-        Assert.False(TitleScreen.DuskPainted);
-        Assert.Equal(TitleMoment.Dawn, TitleScreen.Pick(1, 1100, false).Primary.Moment);
+        // Livrées : le soir est un crépuscule ; sans elles (paramètre), l'aube le remplacerait.
+        Assert.True(TitleScreen.DuskPainted);
+        Assert.Equal(TitleMoment.Dusk, TitleScreen.Pick(1, 1100, false).Primary.Moment);
+        Assert.Equal(TitleMoment.Dawn, TitleScreen.Pick(1, 1100, false, false).Primary.Moment);
         // Avec les peintures : jour -> crépuscule vers 17 h 30, crépuscule -> nuit vers 21 h.
         Assert.Equal(TitleMoment.Day, TitleScreen.Pick(1, 1050, false, true).Primary.Moment);
         Assert.Equal(TitleMoment.Dusk, TitleScreen.Pick(1, 1050, false, true).Secondary.Moment);
@@ -231,11 +233,10 @@ public sealed class V255EcranTitreTests
         Assert.Equal(TitleMoment.Night, TitleScreen.Pick(1, 1260, false, true).Secondary.Moment);
         TitleScreen.LightFor(TitleScreen.Decor(0, TitleMoment.Dusk), out float r, out _, out float b, out _);
         Assert.True(r > b);
-        // Les images de crépuscule ne sont exigées que quand elles sont déclarées livrées.
-        bool painted = TitleScreen.DuskPainted;
-        if (painted)
-            for (int season = 0; season < 4; season++)
-                Assert.True(File.Exists(Path.Combine(Resources, TitleScreen.ResourcePath(TitleScreen.Decor(season, TitleMoment.Dusk), DeviceTier.Full) + ".jpg")));
+        // Les quatre images de crépuscule (deux tailles) existent.
+        for (int season = 0; season < 4; season++)
+            foreach (DeviceTier tier in new[] { DeviceTier.Full, DeviceTier.Phone })
+                Assert.True(File.Exists(Path.Combine(Resources, TitleScreen.ResourcePath(TitleScreen.Decor(season, TitleMoment.Dusk), tier) + ".jpg")));
     }
 
     [Fact]

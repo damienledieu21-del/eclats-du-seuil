@@ -91,6 +91,7 @@ namespace EdS.Game
         {
             // Souris : la rangée survolée est choisie quand la souris bouge ; un clic la valide. Doigt : un nouvel appui valide la rangée touchée.
             int pressedRow = -1;
+            float pressX = 0f;
             bool pressed = false;
             Vector3 mouse = Input.mousePosition;
             if (Input.touchCount > 0)
@@ -101,6 +102,7 @@ namespace EdS.Game
                     if (t.phase != TouchPhase.Began) continue;
                     pressed = true;
                     pressedRow = RowUnder(t.position.x, t.position.y);
+                    pressX = t.position.x;
                     break;
                 }
             }
@@ -115,13 +117,16 @@ namespace EdS.Game
                 {
                     pressed = true;
                     pressedRow = RowUnder(mouse.x, mouse.y);
+                    pressX = mouse.x;
                 }
             }
             _lastMouse = mouse;
             if (pressed && pressedRow >= 0)
             {
                 _menu.Hover(pressedRow);
-                Do(_menu.Activate());
+                // Réglage de luminosité : la moitié gauche de la rangée diminue, la droite augmente (au doigt, sans flèches de clavier ; revue Codex de la PR #210).
+                bool left = _menu.Page == TitlePage.Settings && _menu.ItemAt(pressedRow) == TitleAction.Brightness && PressedLeftHalf(pressX);
+                Do(left ? _menu.Adjust(-1) : _menu.Activate());
                 return;
             }
             if (Input.GetKeyDown(KeyCode.UpArrow)) _menu.Move(-1);
@@ -139,6 +144,13 @@ namespace EdS.Game
             TitleRect first = TitleScreen.MenuRow(0, Hud.Width, Hud.VirtualHeight);
             if (x < first.X || x > first.X + first.Width) return -1;
             return _menu.RowAt(y, first.Y, first.Height);
+        }
+
+        /// <summary>L'appui (pixels) est-il sur la moitié gauche des rangées du menu ?</summary>
+        private static bool PressedLeftHalf(float pixelX)
+        {
+            TitleRect first = TitleScreen.MenuRow(0, Hud.Width, Hud.VirtualHeight);
+            return pixelX / Hud.Scale < first.X + first.Width * 0.5f;
         }
 
         private void Do(TitleAction action)
@@ -167,7 +179,7 @@ namespace EdS.Game
         private void RefreshRows()
         {
             _qualityRow = "Textures : " + DeviceQuality.Label;
-            _brightnessRow = "Luminosité : " + BrightnessSetting.Label;
+            _brightnessRow = "‹   Luminosité : " + BrightnessSetting.Label + "   ›";
         }
 
         private string RowText(int index)
