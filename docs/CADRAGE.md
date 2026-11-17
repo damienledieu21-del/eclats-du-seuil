@@ -314,6 +314,8 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Panneaux du village au Bourg | Des **panneaux aux croisements** entre le village et le Bourg, dès maintenant. | Retenu (Damien, 16 novembre 2026, vers 10 h) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
 | Quête du cheval : détails | **Achille, Brume et les rives du lac** confirmés ; **plus tard** : ramener un vrai cheval à la longe jusqu'à la ferme (modèle 3D et animations). | Retenu (Damien, 16 novembre 2026, vers 10 h) ; la suite est à faire avec le modèle du cheval (V2.28d (2c)) |
 | Grand Solitaire et Bourg déménagé | Le boss du monde attaque **devant la porte de l'Est** du Bourg fortifié et **n'entre pas dans les murs**. | Retenu (Damien, 16 novembre 2026, vers 16 h 30) ; réalisé au V2.30.1 ([MONDE.md](MONDE.md)) |
+| Lieux de la grande carte : créatures | Les lieux sont **peuplés dès leur sous-lot** avec le bestiaire existant (meute de la tanière, ours, etc.). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; V2.31 et suivants ([MONDE.md](MONDE.md)) |
+| Pont suspendu de la vallée | Un **vrai troisième passage** sur la rivière, ailleurs que sur le gué nord, relié par des sentiers ; il s'ouvre avec les gués (quête « Les passages de la vallée »). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; ouverture avec les gués : choix de Claude ; V2.31 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
