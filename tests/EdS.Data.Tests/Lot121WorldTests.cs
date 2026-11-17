@@ -27,7 +27,7 @@ public class Lot121WorldTests
     private static CombatSetup ZoneSetup(Action<JsonObject>? mutate = null)
     {
         ScenarioLoadResult loaded = mutate is null
-            ? ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData)
+            ? ReadVallonsBlock()
             : ReadMutated(mutate, scenario: "zones/vallons");
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         return loaded.Setup!;

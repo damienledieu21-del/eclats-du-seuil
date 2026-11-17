@@ -416,7 +416,7 @@ namespace EdS.World
 
         private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
             CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables, ICombatLog? log, bool _, ZoneDefinition? hosted = null,
-            string? storyZone = null)
+            string? storyZone = null, IReadOnlyList<string>? caughtUp = null)
         {
             _items = items;
             if (save is null) throw new ArgumentNullException(nameof(save));
@@ -504,7 +504,7 @@ namespace EdS.World
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.
-            _host = hosted is null ? null : HostFor(hosted, save, storyZone, log);
+            _host = hosted is null ? null : HostFor(hosted, save, storyZone, log, caughtUp);
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
@@ -764,7 +764,9 @@ namespace EdS.World
         /// plus grande que le secteur du cœur). Même simulation que la session d'une zone : même aire au début (heure et temps du monde),
         /// même session, même registre, mêmes créatures voulues.
         /// </summary>
-        private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
+        /// <param name="caughtUp">Revue Codex de la PR #205 : passages rattrapés (<see cref="CaughtUpPassages"/>) : l'hôte et chacun de ses
+        /// secteurs les tiennent ouverts dès la première session (leurs clés rejoignent le registre de départ).</param>
+        private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log, IReadOnlyList<string>? caughtUp = null)
         {
             if (zone.Region is null || zone.Setup.Space is null) return null;
             // Sous-lot V2.28b (2c) : une aire à plusieurs secteurs est tenue par l'hôte, chefs et événements du monde compris (chacun lié au
@@ -774,7 +776,8 @@ namespace EdS.World
             string weatherZone = storyZone ?? zone.Id;
             // L'aire du cœur seul garde exactement la session d'avant (sessions des secteurs rendues telles quelles) ; une aire à plusieurs
             // secteurs reprend la dernière session de chaque secteur : une réouverture prend la suivante.
-            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), save.Consumed, single ? null : save.Sectors,
+            IEnumerable<string> consumed = caughtUp is null || caughtUp.Count == 0 ? save.Consumed : save.Consumed.Concat(caughtUp.Select(zone.PassageKey)).ToList();
+            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), consumed, single ? null : save.Sectors,
                 log is null ? (Func<string, long, ICombatLog>?)null : (sector, session) => log,
                 (population, worldTick) => Wanted(population, checked(worldTick - Zone.StartWorldTick)),
                 tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind));
@@ -822,14 +825,17 @@ namespace EdS.World
         private WorldSession(WorldSave save, ZoneDefinition zone, GameData data, CharacterProgression progression, ItemCatalog items, StoryBook? story,
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled,
             GroundVector? place = null)
-            : this(save, ZoneSetups.For(zone, save.Consumed, StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
-                null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone)
+            : this(save, ZoneSetups.For(zone, save.Consumed.Concat(CaughtUpPassages(save, zone, story, storyZone).Select(zone.PassageKey)), StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
+                null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone, CaughtUpPassages(save, zone, story, storyZone))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
             // Sous-lot V2.28b : sur l'hôte des secteurs, les vies des populations sont celles du secteur du personnage (les mêmes, dans le même ordre).
             _populations = _host?.PopulationsIn(_host.SectorOf(_character.Id)!) ?? new ZonePopulations(zone, StartPhase(zone, save), StartWeather(zone, save, storyZone));
             if (story != null) Narrative = new Narrative(story, _character.Story, this, guild);
+            // Sous-lot V2.31 : une sauvegarde d'avant qu'une quête terminée n'ouvre un passage de plus (le pont suspendu, ouvert avec les gués
+            // de la vallée) l'ouvre en reprenant ; son obstacle est déjà retiré de la session (ZoneSetups ci-dessus).
+            foreach (string passage in CaughtUpPassages(save, zone, story, storyZone)) OpenPassage(passage);
             StartExploration();   // sous-lot V2.29 (2) : brouillard de carte de la région
             NoteRecruitedCompanions();   // compagnons : une troupe déjà recrutée apprend son fait (sauvegarde d'avant la quête de lien)
             if (crafting != null) Workshop = new Workshop(crafting, _character.Professions);
@@ -1297,6 +1303,22 @@ namespace EdS.World
                     return bossTable;
             // Sous-lot V2.5 : une créature d'événement donne le butin de la population dont elle prend le modèle.
             return PopulationOfCombatant(combatant) is { Loot: string id } && _items.TryGetLoot(id, out LootTable found) ? found : null;
+        }
+
+        /// <summary>
+        /// Sous-lot V2.31 (décision de Damien du 16 novembre 2026 : le pont suspendu, vrai troisième passage sur la rivière) : passages que les
+        /// effets d'une quête terminée ouvrent et que la sauvegarde n'a pas encore (sauvegarde d'avant l'ajout de l'effet) ; vide sans histoire,
+        /// sans personnage ou pour une autre zone que celle de l'histoire. Les passages ne se referment jamais : les rouvrir ne change rien d'autre.
+        /// </summary>
+        internal static IReadOnlyList<string> CaughtUpPassages(WorldSave save, ZoneDefinition zone, StoryBook? story, string? storyZone)
+        {
+            if (story is null || save.Character is not { } hero || (storyZone ?? zone.Id) != zone.Id) return Array.Empty<string>();
+            var consumed = new HashSet<string>(save.Consumed, StringComparer.Ordinal);
+            return story.Quests
+                .Where(q => hero.Story.Quests.TryGetValue(q.Id, out QuestProgress? p) && p.Step == QuestProgress.Done)
+                .SelectMany(q => q.Effects)
+                .Where(e => e.Kind == EffectKind.OpenPassage && zone.Passages.Any(p => p.Id == e.Id) && !consumed.Contains(zone.PassageKey(e.Id)))
+                .Select(e => e.Id).Distinct(StringComparer.Ordinal).ToList();
         }
 
         /// <summary>

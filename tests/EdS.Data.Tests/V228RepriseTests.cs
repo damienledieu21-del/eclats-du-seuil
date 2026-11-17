@@ -257,7 +257,8 @@ public class V228RepriseTests : IDisposable
         ZoneDefinition zone = V11TestData.Zone();
         var resume = new SavedResume("place_du_bourg", "s07_06");
         var save = new WorldSave(zone.Id, 0, 0, Array.Empty<string>(), Hero(), resume: resume);
-        var session = new WorldSession(save, zone.Setup, ShippedData, Progression, ItemsCatalog, new CombatantPlacement(At(-18, -12), Fixed.Parse("0.5")));
+        var session = new WorldSession(save, ReadVallonsBlock().Setup!, ShippedData,   // V2.31 : aire d'un bloc, sans les lieux
+            Progression, ItemsCatalog, new CombatantPlacement(At(-18, -12), Fixed.Parse("0.5")));
         session.Step();
         Assert.Null(session.LastSafePoint);
         Assert.False(session.TrackSafePoint());
