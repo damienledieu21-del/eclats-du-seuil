@@ -109,6 +109,23 @@ namespace EdS.Runtime
 
         private AdventureMap? _whole;
 
+        private BourgDress? _bourg;
+
+        /// <summary>
+        /// V2.30.2 (relecture indépendante des PR #195 à #199) : habillage du Bourg fortifié calculé une seule fois sur la carte de l'aire
+        /// entière (<see cref="Whole"/>) : le même d'une fenêtre à l'autre (centre et faces de l'enceinte, portes, accessoires) ; une
+        /// fenêtre n'en pose que ce qui la touche (<see cref="BourgDress.Near"/>).
+        /// </summary>
+        public BourgDress Bourg
+        {
+            get
+            {
+                AdventureMap whole = Whole;
+                if (!ReferenceEquals(whole, this)) return whole.Bourg;
+                return _bourg ??= BourgModels.Dress(Obstacles, Roads);
+            }
+        }
+
         private string? _fieldsKey;
         private IReadOnlyList<StyleField>? _fields;
 
