@@ -2032,7 +2032,19 @@
       "text.ui.cards.refused.combat": "Pas de cartes en plein combat.",
       "text.ui.cards.refused.other": "Pas de partie possible pour l'instant.",
       "text.v2283.fermier.deja_monture": "Tu as déjà une monture, à ce que je vois ! Ma Brume s'est sauvée vers le lac, mais elle finira bien par revenir seule : elle connaît le chemin de l'écurie mieux que moi.",
-      "text.v2283.fermier.deja_monture.partir": "Bonne chance avec elle, Achille."
+      "text.v2283.fermier.deja_monture.partir": "Bonne chance avec elle, Achille.",
+      "text.loading.bourg_aube": "À l'aube, les portes s'ouvrent ; les vieilles pierres gardent leurs secrets.",
+      "text.loading.village": "Au cœur d'Orsédia, une fenêtre allumée suffit parfois à retrouver son chemin.",
+      "text.loading.vallee_cascade": "La rivière descend des hauteurs, emportant des murmures plus anciens que les royaumes.",
+      "text.loading.chateau_coteaux": "Sous les vignes, la terre conserve le goût des étés et des serments.",
+      "text.loading.foret_loups": "Les loups connaissent les sentiers ; l'arbre millénaire se souvient de ceux qui les oublièrent.",
+      "text.loading.hautes_collines": "Depuis le sommet, Orsédia semble paisible. Les ombres, elles, n'ont jamais cessé de marcher.",
+      "text.loading.abbaye": "Le toit a disparu, mais le vent traverse encore la nef comme une prière.",
+      "text.loading.marais_lac": "Sur le lac des Aubes, certaines brumes semblent attendre le retour d'un nom oublié.",
+      "text.loading.carriere_mine": "Chaque pierre extraite rapproche les mineurs d'un silence qu'aucune lampe ne peut dissiper.",
+      "text.loading.fort_bandits": "Derrière les pieux, on compte l'or plus volontiers que les jours.",
+      "text.loading.terres_seuil": "Là où la terre se fend, Orsédia laisse entrevoir ce qu'elle retient.",
+      "text.loading.col_pont_murmures": "Le col promet l'ailleurs ; le pont garde la mémoire de ceux qui l'ont franchi."
     }
   }
 }
