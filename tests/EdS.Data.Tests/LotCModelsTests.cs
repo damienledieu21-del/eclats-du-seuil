@@ -144,6 +144,20 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Panneau_Tripo_pose_sur_son_sol_une_seule_fois()
+    {
+        // Revue Codex de la PR #197 : le panneau Tripo est posé sur le sol affiché (StyleWorld.OnGround) ; l'obstacle ne doit pas le relever
+        // une seconde fois (Obstacle → Lift) : le bloc du panneau marque l'obstacle comme déjà posé (_draped) avant de rendre la main.
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        int at = view.IndexOf("LotCModels.ForObstacle(id)", StringComparison.Ordinal);
+        Assert.True(at > 0);
+        string block = view.Substring(at, view.IndexOf("Sous-lot V2.30.1 : panneau d'un croisement", at, StringComparison.Ordinal) - at);
+        Assert.Contains("StyleWorld.OnGround(", block);
+        Assert.True(block.IndexOf("_draped = true;", StringComparison.Ordinal) < block.IndexOf("return;", StringComparison.Ordinal), block);
+        Assert.Contains("if (_draped) return;", view);
+    }
+
+    [Fact]
     public void Code_d_un_chemin()
     {
         Assert.Equal("C_RE_S01", LotCModels.CodeOf("Assets/EdS/Modeles/LotC/08_Recoltes/C_RE_S01/C_RE_S01.fbx"));
