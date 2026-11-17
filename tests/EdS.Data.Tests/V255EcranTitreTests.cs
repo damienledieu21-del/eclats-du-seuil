@@ -69,7 +69,7 @@ public sealed class V255EcranTitreTests
         // La nuit passe à l'aube vers 5 h, le crépuscule à la nuit vers 21 h : fondu aux deux bouts.
         Assert.Equal(TitleMoment.Night, TitleScreen.Pick(0, 300, false).Primary.Moment);
         Assert.Equal(TitleMoment.Dawn, TitleScreen.Pick(0, 300, false).Secondary.Moment);
-        Assert.Equal(TitleMoment.Dawn, TitleScreen.Pick(0, 1260, false).Primary.Moment);
+        Assert.Equal(TitleMoment.Dusk, TitleScreen.Pick(0, 1260, false).Primary.Moment);
         Assert.Equal(TitleMoment.Night, TitleScreen.Pick(0, 1260, false).Secondary.Moment);
     }
 
