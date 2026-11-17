@@ -103,6 +103,7 @@ public sealed class V23JourneeTests : IDisposable
             // Réponse de Damien (question 6) : on en rajoute, dehors et dans les intérieurs (chacun dans sa zone).
             "npc.ysarn", "npc.deserteur", "npc.thibaut", "npc.aubergiste", "npc.pretre", "npc.albe", "npc.habitant", "npc.maitresse_guilde",
             "npc.intendant_guilde", "npc.archiviste",
+            "npc.voyageur_convoyeur", "npc.voyageuse_pelerine",   // 17 novembre 2026 (vers 2 h) : voyageurs de passage
             // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
             "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
         };
@@ -121,6 +122,8 @@ public sealed class V23JourneeTests : IDisposable
             || l.Text == "text.v27.receleur.retrouvailles"
             // V2.10 : ou une fête (répliques de fête), ou les retrouvailles du colporteur.
             || l.Text == "text.v210.colporteur.retrouvailles" || l.Conditions.Any(c => c.Kind == ConditionKind.Festival)
+            // 17 novembre 2026 : les retrouvailles des voyageurs de passage (PNJ nouveaux, sans quête).
+            || l.Text.StartsWith("text.lotc.", StringComparison.Ordinal)
             // V2.14 : ou les retrouvailles des PNJ des boutiques et du marché, ou un moment de la journée (Colin, le soir : tout est vendu).
             || (l.Text.StartsWith("text.v214.", StringComparison.Ordinal) && (l.Text.EndsWith(".retrouvailles", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Phase)))
             || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))));
@@ -352,7 +355,8 @@ public sealed class V23JourneeTests : IDisposable
         // De 7 h 45 à 11 h 29, chaque PNJ est à sa place de l'histoire (le jeu commence à 8 h : l'ouverture et les premières quêtes ne bougent pas).
         foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Schedule.Count > 0))
             for (int minute = 7 * 60 + 45; minute < 11 * 60 + 30; minute++)
-                Assert.True(npc.SlotAt(minute)!.Position == npc.Position, $"{npc.Id} à {minute / 60} h {minute % 60}");
+                Assert.True(npc.SlotAt(minute)!.Position == npc.Position || V231PnjChangentDeLieuTests.AwayInTheMorning.Contains(npc.Id),
+                    $"{npc.Id} à {minute / 60} h {minute % 60}");   // 17 novembre 2026 : Achille et les voyageurs (voir AwayInTheMorning)
     }
 
     [Fact]

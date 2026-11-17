@@ -1574,9 +1574,31 @@ namespace EdS.Runtime
         public GroundVector DoorToward(string? zone)
         {
             string target = zone ?? ZoneId;
-            Door? door = _zone.Doors.FirstOrDefault(d => d.To == target)
+            Door? door = _zone.Doors.FirstOrDefault(d => d.To == target) ?? FirstDoorOnWay(target)
                 ?? (World.InStoryZone ? null : _zone.Doors.FirstOrDefault(d => d.To == ZoneId));
             return door?.Position ?? _zone.Entry.Position;
+        }
+
+        /// <summary>
+        /// Lot C (décision de Damien du 17 novembre 2026 : PNJ dans une pièce derrière une pièce) : première porte de la zone en cours sur le
+        /// plus court chemin de portes vers <paramref name="target"/> (parcours en largeur sur les zones reliées, dans l'ordre des portes) ;
+        /// null s'il n'y en a pas.
+        /// </summary>
+        private Door? FirstDoorOnWay(string target)
+        {
+            var first = new Dictionary<string, Door>(StringComparer.Ordinal);
+            var queue = new Queue<ZoneDefinition>();
+            var seen = new HashSet<string>(StringComparer.Ordinal) { _zone.Id };
+            foreach (Door d in _zone.Doors)
+                if (seen.Add(d.To) && _zones.FirstOrDefault(z => z.Id == d.To) is ZoneDefinition z0) { first[d.To] = d; queue.Enqueue(z0); }
+            while (queue.Count > 0)
+            {
+                ZoneDefinition at = queue.Dequeue();
+                if (at.Id == target) return first[at.Id];
+                foreach (Door d in at.Doors)
+                    if (seen.Add(d.To) && _zones.FirstOrDefault(z => z.Id == d.To) is ZoneDefinition next) { first[d.To] = first[at.Id]; queue.Enqueue(next); }
+            }
+            return null;
         }
 
         /// <summary>Nœuds de récolte (dans la zone de l'histoire seulement).</summary>

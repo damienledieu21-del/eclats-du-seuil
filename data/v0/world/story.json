@@ -325,6 +325,23 @@
             ]
           },
           {
+            "at": "11:30",
+            "activity": "cuisine",
+            "position": [
+              0.4,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
+          },
+          {
+            "at": "12:30",
+            "activity": "comptoir",
+            "position": [
+              3.75,
+              3.55
+            ]
+          },
+          {
             "at": "14:00",
             "activity": "cave",
             "position": [
@@ -356,6 +373,15 @@
               3.75,
               3.55
             ]
+          },
+          {
+            "at": "17:30",
+            "activity": "cuisine",
+            "position": [
+              0.4,
+              -1.0
+            ],
+            "zone": "zone.auberge_cuisine"
           },
           {
             "at": "18:00",
@@ -1138,10 +1164,11 @@
         "id": "npc.fermier",
         "name": "text.ch3.npc.fermier.name",
         "position": [
-          -66,
-          -36
+          1.2,
+          -0.5
         ],
         "dialogue": "dialogue.fermier",
+        "zone": "zone.chaumiere",
         "schedule": [
           {
             "at": "05:30",
@@ -1149,7 +1176,8 @@
             "position": [
               -66,
               -36
-            ]
+            ],
+            "zone": "zone.vallons"
           },
           {
             "at": "12:00",
@@ -1157,8 +1185,7 @@
             "position": [
               -0.35,
               0.2
-            ],
-            "zone": "zone.chaumiere"
+            ]
           },
           {
             "at": "13:00",
@@ -1166,7 +1193,8 @@
             "position": [
               -66,
               -36
-            ]
+            ],
+            "zone": "zone.vallons"
           },
           {
             "at": "19:00",
@@ -1181,8 +1209,8 @@
             "at": "21:30",
             "activity": "maison",
             "position": [
-              -69,
-              -45
+              1.2,
+              -0.5
             ]
           }
         ]
@@ -1609,6 +1637,82 @@
             "position": [
               -2.1,
               -0.3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.voyageur_convoyeur",
+        "name": "text.lotc.npc.voyageur_convoyeur.name",
+        "position": [
+          -2.2,
+          -0.8
+        ],
+        "dialogue": "dialogue.voyageur_convoyeur",
+        "zone": "zone.auberge_chambres",
+        "schedule": [
+          {
+            "at": "06:30",
+            "activity": "route",
+            "position": [
+              -1450,
+              -125.5
+            ],
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "18:30",
+            "activity": "taverne",
+            "position": [
+              0,
+              -0.3
+            ],
+            "zone": "zone.auberge"
+          },
+          {
+            "at": "21:30",
+            "activity": "chambre",
+            "position": [
+              -2.2,
+              -0.8
+            ]
+          }
+        ]
+      },
+      {
+        "id": "npc.voyageuse_pelerine",
+        "name": "text.lotc.npc.voyageuse_pelerine.name",
+        "position": [
+          2.6,
+          -0.8
+        ],
+        "dialogue": "dialogue.voyageuse_pelerine",
+        "zone": "zone.auberge_chambres",
+        "schedule": [
+          {
+            "at": "07:00",
+            "activity": "route",
+            "position": [
+              -900,
+              -59.5
+            ],
+            "zone": "zone.vallons"
+          },
+          {
+            "at": "19:00",
+            "activity": "taverne",
+            "position": [
+              0,
+              -3.2
+            ],
+            "zone": "zone.auberge"
+          },
+          {
+            "at": "21:00",
+            "activity": "chambre",
+            "position": [
+              2.6,
+              -0.8
             ]
           }
         ]
@@ -22561,6 +22665,74 @@
           {
             "id": "reponse",
             "text": "text.v214.commis_mercerie.reponse",
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.voyageur_convoyeur",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.voyageur_convoyeur.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageur_convoyeur"
+                  }
+                ],
+                "text": "text.lotc.voyageur_convoyeur.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.voyageuse_pelerine",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.lotc.voyageuse_pelerine.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageuse_pelerine"
+                  }
+                ],
+                "text": "text.lotc.voyageuse_pelerine.retrouvailles"
+              }
+            ],
             "choices": [
               {
                 "text": "text.v210.au_revoir",

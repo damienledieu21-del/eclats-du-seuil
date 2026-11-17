@@ -179,8 +179,11 @@ public class V193Chapitre3Tests
         })
         {
             Npc n = Story.Value.Npc(npc);
-            Assert.Null(n.Zone);
-            double nx = n.Position.X.Raw / 10000.0, nz = n.Position.Z.Raw / 10000.0;
+            // 17 novembre 2026 : Achille vit chez lui (zone.chaumiere) ; on le trouve aux champs le jour, à sa place d'avant.
+            GroundVector day = npc == "npc.fermier" ? n.SlotAt(9 * 60)!.Position : n.Position;
+            Assert.Equal(npc == "npc.fermier" ? "zone.chaumiere" : null, n.Zone);
+            if (npc == "npc.fermier") Assert.Null(n.ZoneAt(9 * 60));
+            double nx = day.X.Raw / 10000.0, nz = day.Z.Raw / 10000.0;
             Assert.True(Math.Sqrt((nx - at.x) * (nx - at.x) + (nz - at.z) * (nz - at.z)) < 3, npc);
             foreach ((double px, double pz) in new[] { at, (nx, nz) })
                 Assert.All(Vallons.Value.Setup.Space!.Obstacles, o => Assert.False(
