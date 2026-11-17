@@ -148,5 +148,35 @@ public class V231V232ValleeForetTests
         Assert.False(ZoneAreas.IsZoneScenario(ScenarioPath("mannequin")));
     }
 
+    [Fact]
+    public void Ancienne_sauvegarde_quete_finie_le_pont_s_ouvre_des_la_reprise_dans_son_secteur()
+    {
+        // Revue Codex de la PR #205 : une sauvegarde d'avant le pont suspendu, quête des passages finie (éboulement et gués ouverts), qui
+        // reprend près du pont : le passage est rattrapé dans l'hôte des secteurs dès la première session (obstacle absent du secteur,
+        // clé au registre, gardée dans la sauvegarde).
+        ZoneDefinition zone = Vallons.Value;
+        var quests = new Dictionary<string, EdS.Data.Saves.QuestProgress>(StringComparer.Ordinal)
+        {
+            ["quest.traces_sous_le_moulin"] = new(EdS.Data.Saves.QuestProgress.Done),
+            ["quest.passages_de_la_vallee"] = new(EdS.Data.Saves.QuestProgress.Done),
+        };
+        EdS.Data.Saves.SavedCharacter hero = V11TestData.Hero().WithStory(new EdS.Data.Saves.SavedStory(quests: quests));
+        var consumed = new[] { EdS.World.PlayerCharacters.PlacesKey }.Concat(new[] { "eboulement", "gue_vallee_sud", "gue_vallee_nord" }.Select(zone.PassageKey));
+        var save = new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, consumed, hero);
+        string pont = zone.Passages.Single(p => p.Id == "pont_suspendu").Obstacle;
+        var w = new EdS.World.WorldSession(save, zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, V11TestData.Book(zone),
+            safePoint: "pied_de_la_cascade");
+        w.Step();
+        Assert.True(w.IsPassageOpen("pont_suspendu"));
+        Assert.DoesNotContain(w.Zone.Setup.Space!.Obstacles, o => o.Id == pont);
+        Assert.Contains(zone.PassageKey("pont_suspendu"), w.Save().Consumed);
+        // Sans la quête finie, le pont reste fermé.
+        var fresh = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+            zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, V11TestData.Book(zone), safePoint: "pied_de_la_cascade");
+        fresh.Step();
+        Assert.False(fresh.IsPassageOpen("pont_suspendu"));
+        Assert.Contains(fresh.Zone.Setup.Space!.Obstacles, o => o.Id == pont);
+    }
+
     private static string SectorMapHome() => EdS.World.SectorMap.For(Vallons.Value).HomeSector;
 }

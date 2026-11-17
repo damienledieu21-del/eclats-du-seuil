@@ -416,7 +416,7 @@ namespace EdS.World
 
         private WorldSession(WorldSave save, CombatSetup zoneSetup, GameData data, CharacterProgression progression, ItemCatalog items,
             CombatantPlacement placement, IReadOnlyDictionary<string, string>? lootTables, ICombatLog? log, bool _, ZoneDefinition? hosted = null,
-            string? storyZone = null)
+            string? storyZone = null, IReadOnlyList<string>? caughtUp = null)
         {
             _items = items;
             if (save is null) throw new ArgumentNullException(nameof(save));
@@ -504,7 +504,7 @@ namespace EdS.World
             // Revue Codex de la PR #43 : le personnage entre avec la session, dans sa simulation de départ (en-tête du journal compris).
             // Sous-lot V2.28b : la session d'une zone à région est tenue par l'hôte des secteurs (HostFor) ; le personnage entre de même avec
             // la session de son secteur, qui est alors exactement celle de la zone.
-            _host = hosted is null ? null : HostFor(hosted, save, storyZone, log);
+            _host = hosted is null ? null : HostFor(hosted, save, storyZone, log, caughtUp);
             if (_host != null)
             {
                 _host.EnterAtStart(setup);
@@ -764,7 +764,9 @@ namespace EdS.World
         /// plus grande que le secteur du cœur). Même simulation que la session d'une zone : même aire au début (heure et temps du monde),
         /// même session, même registre, mêmes créatures voulues.
         /// </summary>
-        private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log)
+        /// <param name="caughtUp">Revue Codex de la PR #205 : passages rattrapés (<see cref="CaughtUpPassages"/>) : l'hôte et chacun de ses
+        /// secteurs les tiennent ouverts dès la première session (leurs clés rejoignent le registre de départ).</param>
+        private SectorWorld? HostFor(ZoneDefinition zone, WorldSave save, string? storyZone, ICombatLog? log, IReadOnlyList<string>? caughtUp = null)
         {
             if (zone.Region is null || zone.Setup.Space is null) return null;
             // Sous-lot V2.28b (2c) : une aire à plusieurs secteurs est tenue par l'hôte, chefs et événements du monde compris (chacun lié au
@@ -774,7 +776,8 @@ namespace EdS.World
             string weatherZone = storyZone ?? zone.Id;
             // L'aire du cœur seul garde exactement la session d'avant (sessions des secteurs rendues telles quelles) ; une aire à plusieurs
             // secteurs reprend la dernière session de chaque secteur : une réouverture prend la suivante.
-            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), save.Consumed, single ? null : save.Sectors,
+            IEnumerable<string> consumed = caughtUp is null || caughtUp.Count == 0 ? save.Consumed : save.Consumed.Concat(caughtUp.Select(zone.PassageKey)).ToList();
+            return SectorWorld.For(zone, save.WorldTick, checked(save.Sessions + 1), consumed, single ? null : save.Sectors,
                 log is null ? (Func<string, long, ICombatLog>?)null : (sector, session) => log,
                 (population, worldTick) => Wanted(population, checked(worldTick - Zone.StartWorldTick)),
                 tick => (clock.At(tick).Phase, WorldWeather.At(weatherZone, clock.At(tick)).Kind));
@@ -823,7 +826,7 @@ namespace EdS.World
             CraftingBook? crafting, ICombatLog? log, string? safePoint, string? door, string? storyZone, Market? market, GuildBook? guild, bool scaled,
             GroundVector? place = null)
             : this(save, ZoneSetups.For(zone, save.Consumed.Concat(CaughtUpPassages(save, zone, story, storyZone).Select(zone.PassageKey)), StartPhase(zone, save), StartWeather(zone, save, storyZone)), data, progression, items, new CombatantPlacement(EntryOf(zone, safePoint, door, place), CharacterRadius),
-                null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone)
+                null, log, CheckZone(save, zone, story, crafting, market, guild), zone, storyZone, CaughtUpPassages(save, zone, story, storyZone))
         {
             Definition = zone;
             _storyZone = storyZone ?? zone.Id;
