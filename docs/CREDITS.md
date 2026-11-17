@@ -116,7 +116,7 @@ Fichiers de tiers employés pour l'essai de style (décisions de Damien des 25, 
 
 | Source | Ce qui sert | Licence |
 | --- | --- | --- |
-| Images générées par **ChatGPT** (OpenAI) sur commande de Damien, livrées dans `Eclats_du_Seuil_AssetLab/Trois_Feux` | 56 cartes (27 faces et un dos, éditions ordinaire et dorée), le tapis de la table et le cycle des couleurs, réduits (cartes 375 × 525, tapis JPEG) dans `unity/Assets/EdS/Interface/Resources/EdsTroisFeux/` ; l'icône du jeu doré (`Peintes/jeu_des_trois_feux.png`) est le dos doré réduit | images générées pour le jeu à la demande de Damien (conditions d'OpenAI à vérifier par Damien avant toute sortie commerciale) |
+| Images générées par **ChatGPT** (OpenAI) sur commande de Damien, livrées dans `Eclats_du_Seuil_AssetLab/Trois_Feux` | 56 cartes (27 faces et un dos, éditions ordinaire et dorée), le tapis de la table et le cycle des couleurs, réduits (cartes 376 × 528, tapis JPEG) dans `unity/Assets/EdS/Interface/Resources/EdsTroisFeux/` ; l'icône du jeu doré (`Peintes/jeu_des_trois_feux.png`) est le dos doré réduit | images générées pour le jeu à la demande de Damien (conditions d'OpenAI à vérifier par Damien avant toute sortie commerciale) |
 
 ## 5e vague (sous-lot V2.11, 8 et 9 novembre 2026)
 

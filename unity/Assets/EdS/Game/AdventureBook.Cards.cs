@@ -19,7 +19,7 @@ namespace EdS.Game
     {
         private const int CardSlots = 5;
         private const float MatWidth = 1920f, MatHeight = 1080f, SlotWidth = 222f, SlotHeight = 311f, TopRowY = 116f, BottomRowY = 652f;
-        private const float PlayedWidth = 143f, PlayedHeight = 200f, PlayedY = 436f, Lift = 30f;
+        private const float LeaveY = 586f, LeaveHeight = 28f, PlayedWidth = 143f, PlayedHeight = 200f, PlayedY = 436f, Lift = 30f;
         private const float FlipBack = 0.5f, FlipHalf = 0.2f, FlipDone = FlipBack + 2f * FlipHalf;
         private static readonly float[] SlotX = { 280f, 564f, 848f, 1132f, 1416f };
 
@@ -37,7 +37,7 @@ namespace EdS.Game
         private readonly Texture2D[] _cardsFaces = new Texture2D[CardMatch.DeckSize];
         private Texture2D _cardsBack, _cardsMatTexture, _cardsCycleTexture;
         private bool _cardsLoaded, _cardsGold;
-        private int _cardsSeen = -1, _cardsHover = -1;
+        private int _cardsSeen = -1, _cardsHover = -1, _cardsInputFrame = -10;
         private float _cardsFlip = FlipDone;
 
         private void BuildCards(Transform root)
@@ -87,10 +87,10 @@ namespace EdS.Game
             _cardsLast.Wrap();
             _cardsCycle = UiKit.Raw(_cardsTable, "Cycle", null, Color.white);
             UiKit.Place(_cardsCycle.rectTransform, new Vector2(1248f, 514f), new Vector2(84f, 84f), Vector2.zero);
-            _cardsRules = Text(_cardsTable, UiFace.Body, 14f, new Color(0.85f, 0.85f, 0.85f), TextAnchor.UpperLeft, 1342f, 514f, 288f, 86f, 0f, 0f);
+            _cardsRules = Text(_cardsTable, UiFace.Body, 14f, new Color(0.85f, 0.85f, 0.85f), TextAnchor.UpperLeft, 1342f, 514f, 288f, 68f, 0f, 0f);
             _cardsRules.Wrap();
             _cardsLeave = UiKit.Button(_cardsTable, "Se lever", "bouton_sobre", "", UiFace.Bold, 15f, UiKit.Muted, () => _session?.LeaveCardTable());
-            UiKit.Place(_cardsLeave.Rect, new Vector2(1248f, 600f), new Vector2(380f, 32f), Vector2.zero);
+            UiKit.Place(_cardsLeave.Rect, new Vector2(1248f, LeaveY), new Vector2(380f, LeaveHeight), Vector2.zero);
             UiKit.Show(_cardsPanel, false);
         }
 
@@ -152,15 +152,20 @@ namespace EdS.Game
         private static float MatFit => Mathf.Min(1f, UiKit.Width / MatWidth);
 
         /// <summary>Place de la main sous le point d'écran <paramref name="screen"/> (pixels), ou -1.</summary>
-        private static int HandSlotAt(Vector2 screen, int count)
+        private static int HandSlotAt(Vector2 screen, int count, int lifted)
         {
             if (Screen.height <= 0) return -1;
             float scale = Screen.height / 1080f * MatFit;
             float x = (screen.x - Screen.width * 0.5f) / scale + MatWidth * 0.5f;
             float y = (Screen.height * 0.5f - screen.y) / scale + MatHeight * 0.5f;   // origine en haut, comme la mise en page
-            if (y < BottomRowY - Lift || y > BottomRowY + SlotHeight) return -1;
+            // Au repos la zone est la place elle-même ; seule la carte soulevée (<paramref name="lifted"/>) l'étend vers le haut, de son
+            // propre décalage : jamais sur le bouton « Se lever » (qui finit avant BottomRowY - Lift).
             for (int i = 0; i < count && i < CardSlots; i++)
-                if (x >= SlotX[i] && x <= SlotX[i] + SlotWidth) return i;
+            {
+                if (x < SlotX[i] || x > SlotX[i] + SlotWidth) continue;
+                float top = i == lifted ? BottomRowY - Lift : BottomRowY;
+                return y >= top && y <= BottomRowY + SlotHeight ? i : -1;
+            }
             return -1;
         }
 
@@ -172,22 +177,27 @@ namespace EdS.Game
         public void ReadCardsInput(AdventureSession a)
         {
             CardTableView table = a != null ? a.CardTable : null;
+            // L'entrée de l'image où la table s'ouvre (le clic ou le toucher sur « [Cartes] Une partie… ») n'est pas pour les cartes : on ne
+            // lit qu'à partir de l'image suivante, tant que la lecture se poursuit d'une image à l'autre.
+            bool opening = _cardsInputFrame < Time.frameCount - 1;
+            _cardsInputFrame = Time.frameCount;
+            int lifted = _cardsHover;
             _cardsHover = -1;
-            if (table == null || table.Hand.Count == 0) return;
+            if (table == null || table.Hand.Count == 0 || opening) return;
             if (Input.touchCount > 0)
             {
                 for (int i = 0; i < Input.touchCount; i++)
                 {
                     Touch touch = Input.GetTouch(i);
                     if (touch.phase != TouchPhase.Began) continue;
-                    int slot = HandSlotAt(touch.position, table.Hand.Count);
+                    int slot = HandSlotAt(touch.position, table.Hand.Count, -1);
                     if (slot >= 0) a.PlayCardAt(slot);
                     return;
                 }
                 return;
             }
             Vector2 mouse = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
-            _cardsHover = HandSlotAt(mouse, table.Hand.Count);
+            _cardsHover = HandSlotAt(mouse, table.Hand.Count, lifted);
             if (_cardsHover >= 0 && Input.GetMouseButtonDown(0)) a.PlayCardAt(_cardsHover);
         }
 
@@ -250,11 +260,15 @@ namespace EdS.Game
             UiKit.Show(_cardsPlayedNpc, played);
             if (played)
             {
-                _cardsPlayedPlayer.texture = FaceOf(table.LastPlayer);
+                Texture2D mine = FaceOf(table.LastPlayer);
+                _cardsPlayedPlayer.texture = mine;
+                _cardsPlayedPlayer.color = mine != null ? Color.white : UiKit.Alpha(new Color(0.15f, 0.15f, 0.2f), 0.9f);
                 float flip = _cardsFlip;
                 bool front = flip >= FlipBack + FlipHalf;
                 float width = flip < FlipBack || flip >= FlipDone ? 1f : flip < FlipBack + FlipHalf ? 1f - (flip - FlipBack) / FlipHalf : (flip - FlipBack - FlipHalf) / FlipHalf;
-                _cardsPlayedNpc.texture = front ? FaceOf(table.LastNpc) : _cardsBack;
+                Texture2D theirs = front ? FaceOf(table.LastNpc) : _cardsBack;
+                _cardsPlayedNpc.texture = theirs;
+                _cardsPlayedNpc.color = theirs != null ? Color.white : UiKit.Alpha(new Color(0.15f, 0.15f, 0.2f), 0.9f);
                 _cardsPlayedNpc.rectTransform.localScale = new Vector3(Mathf.Max(0.02f, width), 1f, 1f);
                 UiKit.Place(_cardsPlayedNpc.rectTransform, new Vector2(1077f + PlayedWidth * 0.5f, PlayedY), new Vector2(PlayedWidth, PlayedHeight), new Vector2(0.5f, 0f));
             }

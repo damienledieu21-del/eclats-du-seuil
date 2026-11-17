@@ -14,7 +14,7 @@ namespace EdS.Data.Tests;
 
 /// <summary>
 /// Sous-lot V2.32.1, les vraies cartes des Trois Feux (livraison ChatGPT du 17 novembre 2026) : correspondance carte → fichier selon la
-/// couleur, la valeur et l'édition ; les 56 fichiers (27 faces et un dos, ordinaire et doré) existent en 375 × 525 avec transparence ; le
+/// couleur, la valeur et l'édition ; les 56 fichiers (27 faces et un dos, ordinaire et doré) existent en 376 × 528 avec transparence ; le
 /// tapis et le cycle aux bonnes dimensions ; l'icône du jeu doré ; la table dit quelle édition le joueur emploie.
 /// </summary>
 [Trait("Category", "World")]
@@ -66,7 +66,7 @@ public class V2321CartesImagesTests
     }
 
     [Fact]
-    public void Les_56_cartes_existent_en_375_sur_525_avec_transparence_et_rien_de_plus()
+    public void Les_56_cartes_existent_en_376_sur_528_avec_transparence_et_rien_de_plus()
     {
         string folder = Path.Combine(Resources, "EdsTroisFeux", "Cartes");
         var expected = new List<string> { CardArt.Back(false), CardArt.Back(true) };
@@ -79,7 +79,7 @@ public class V2321CartesImagesTests
             Assert.Equal((CardArt.Width, CardArt.Height, 6), Png(Path.Combine(folder, name + ".png")));   // 6 : couleurs avec transparence
         Assert.Equal(expected.OrderBy(n => n, StringComparer.Ordinal), Directory.GetFiles(folder, "*.png").Select(f => Path.GetFileNameWithoutExtension(f)!)
             .OrderBy(n => n, StringComparer.Ordinal));
-        Assert.Equal((375, 525), (CardArt.Width, CardArt.Height));
+        Assert.Equal((376, 528), (CardArt.Width, CardArt.Height));
     }
 
     [Fact]
@@ -130,5 +130,27 @@ public class V2321CartesImagesTests
         Assert.True(next.Gold);
         Assert.Equal(2, next.RoundsPlayed);
         Assert.Equal(CardMatch.HandSize - 2, next.NpcCards);
+    }
+
+    [Fact]
+    public void Entrees_de_la_table_relecture_independante_de_la_PR_211()
+    {
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "AdventureBook.Cards.cs"));
+        // 1 : l'image d'ouverture est ignorée (le clic qui a ouvert la table ne pose pas de carte).
+        Assert.Contains("_cardsInputFrame < Time.frameCount - 1", code, StringComparison.Ordinal);
+        Assert.Contains("|| opening) return;", code, StringComparison.Ordinal);
+        // 2 : la zone d'une carte au repos commence à sa place ; seule la carte soulevée monte ; le bouton finit avant la carte soulevée.
+        Assert.Contains("i == lifted ? BottomRowY - Lift : BottomRowY", code, StringComparison.Ordinal);
+        const float bottomRow = 652f, lift = 30f, leaveY = 586f, leaveHeight = 28f;
+        Assert.True(leaveY + leaveHeight < bottomRow - lift);
+        Assert.Contains("LeaveY = 586f, LeaveHeight = 28f", code, StringComparison.Ordinal);
+        Assert.Contains("BottomRowY = 652f", code, StringComparison.Ordinal);
+        Assert.Contains("Lift = 30f", code, StringComparison.Ordinal);
+        // 3 : les cartes posées sans image ont le repli sombre.
+        Assert.Contains("_cardsPlayedPlayer.color = mine != null", code, StringComparison.Ordinal);
+        Assert.Contains("_cardsPlayedNpc.color = theirs != null", code, StringComparison.Ordinal);
+        // 4 : dimensions multiples de 4 (compression de Unity sur PC).
+        Assert.Equal(0, CardArt.Width % 4);
+        Assert.Equal(0, CardArt.Height % 4);
     }
 }

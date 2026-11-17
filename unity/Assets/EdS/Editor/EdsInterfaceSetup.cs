@@ -125,7 +125,7 @@ namespace EdS.Game.Editor
     }
 
     /// <summary>
-    /// Sous-lot V2.32.1 : réglages d'import des images des Trois Feux (<c>Resources/EdsTroisFeux</c> : 56 cartes de 375 × 525, tapis, cycle) :
+    /// Sous-lot V2.32.1 : réglages d'import des images des Trois Feux (<c>Resources/EdsTroisFeux</c> : 56 cartes de 376 × 528, multiples de 4 pour la compression, tapis, cycle) :
     /// compression de Unity (PC et téléphone), sans réduction en cascade (inutile : les cartes s'affichent à peu près à leur taille), taille
     /// exacte, lecture seule (non lisibles par le code, donc moitié moins de mémoire). Elles sont chargées à l'ouverture de la table et
     /// rendues en la quittant (<c>Resources.UnloadAsset</c>).

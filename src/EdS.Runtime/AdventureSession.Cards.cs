@@ -27,7 +27,7 @@ namespace EdS.Runtime
     /// <summary>
     /// Sous-lot V2.32.1 : les vraies cartes des Trois Feux. Correspondance carte → fichier image (sans Unity, donc testable) : une édition
     /// ordinaire (<c>STD</c>) et l'édition dorée (<c>OR</c>, jeu rare), 27 faces et un dos chacune, livrées par ChatGPT en 750 × 1050 et
-    /// gardées en 375 × 525 dans <c>Resources/EdsTroisFeux/Cartes</c>.
+    /// gardées en 376 × 528 (375 × 525 plus une marge transparente : multiples de 4, pour la compression de Unity) dans <c>Resources/EdsTroisFeux/Cartes</c>.
     /// </summary>
     public static class CardArt
     {
@@ -35,7 +35,7 @@ namespace EdS.Runtime
         public const string Folder = "EdsTroisFeux/Cartes/";
 
         /// <summary>Dimensions de chaque image de carte, en pixels.</summary>
-        public const int Width = 375, Height = 525;
+        public const int Width = 376, Height = 528;
 
         /// <summary>Tapis de la table (chemin de <c>Resources</c>) : 1920 × 1080 sur PC, 1280 × 720 sur téléphone.</summary>
         public static string Mat(bool large) => large ? "EdsTroisFeux/tapis_1920" : "EdsTroisFeux/tapis_1280";

@@ -85,7 +85,7 @@ namespace UnityEngine
     public enum CursorLockMode { None, Locked, Confined }
     public static class Cursor { public static CursorLockMode lockState { get; set; } public static bool visible { get; set; } }
     public static class Input { public static bool anyKeyDown => false; public static bool GetKey(KeyCode k) => false; public static bool GetKeyDown(KeyCode k) => false; public static bool GetMouseButton(int b) => false; public static bool GetMouseButtonDown(int b) => false; public static bool GetMouseButtonUp(int b) => false; public static Vector3 mousePosition => default; public static float GetAxis(string a) => 0; public static Vector2 mouseScrollDelta => default; public static bool touchSupported => false; public static int touchCount => 0; public static Touch GetTouch(int i) => default; }
-    public static class Time { public static float time => 0; public static float deltaTime => 0; public static float unscaledDeltaTime => 0; public static float unscaledTime => 0; }
+    public static class Time { public static int frameCount => 0; public static float time => 0; public static float deltaTime => 0; public static float unscaledDeltaTime => 0; public static float unscaledTime => 0; }
     // Essai réaliste 7 : effets en particules (Effects).
     public struct Keyframe { public Keyframe(float time, float value) { } }
     public sealed class AnimationCurve { public AnimationCurve(params Keyframe[] keys) { } public static AnimationCurve Linear(float timeStart, float valueStart, float timeEnd, float valueEnd) => null; }
