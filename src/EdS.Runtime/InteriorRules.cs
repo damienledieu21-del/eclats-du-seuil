@@ -208,6 +208,21 @@ namespace EdS.Runtime
         /// <summary>Hauteur (m) du dessus d'un comptoir, d'un autel, du linteau d'une cheminée faits par le code.</summary>
         public const double CounterHeight = 1.05, AltarHeight = 1.0, MantelHeight = 1.45;
 
+        /// <summary>Hauteur de la bougie au sommet d'un support de cierges fait par le code.</summary>
+        public const double CandleHeight = 1.45;
+
+        /// <summary>
+        /// Lot C (revues Codex de la PR #201) : hauteur du plateau d'un meuble fait par le code sur lequel l'aménagement pose des objets sans
+        /// parent (comptoir, autel, support de cierges) ; null pour les autres. Un modèle Tripo qui le remplace y recale ces objets.
+        /// </summary>
+        public static double? SurfaceHeight(InteriorFurniture kind) => kind switch
+        {
+            InteriorFurniture.Counter => CounterHeight,
+            InteriorFurniture.Altar => AltarHeight,
+            InteriorFurniture.Candelabra => CandleHeight,
+            _ => (double?)null,
+        };
+
         /// <summary>
         /// Revue Codex de la PR #67 : places des montants d'un comptoir de longueur <paramref name="length"/> (m), le long de son grand
         /// côté : à 0,1 m des bouts et environ tous les 0,9 m entre les deux, en nombre entier borné (65 au plus). Un comptoir de 0,2 m
@@ -591,7 +606,7 @@ namespace EdS.Runtime
                     }
                     case InteriorFurniture.Candelabra:
                         // Pied de fer fait par le code ; la bougie au sommet, allumée.
-                        Add(new InteriorPiece(b.Id + "/bougie", InteriorProp.Candlestick, b.CX, b.CZ, 0, 0, height: 0.28, y: 1.45));
+                        Add(new InteriorPiece(b.Id + "/bougie", InteriorProp.Candlestick, b.CX, b.CZ, 0, 0, height: 0.28, y: CandleHeight));
                         Light(InteriorLightKind.Candle, b.CX, 1.95, b.CZ, 4.5, 1.1);
                         break;
                     case InteriorFurniture.Statue:
