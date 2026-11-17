@@ -384,7 +384,7 @@ public class Lot122CharacterTests
     public void Partie_sans_personnage_refusee()
     {
         Assert.Throws<ArgumentException>(() => new WorldSession(new WorldSave("zone.vallons", 0, 0, Array.Empty<string>()),
-            ScenarioJsonReader.ReadFile(ScenarioPath("zones/vallons"), ShippedData).Setup!, ShippedData, Shipped, Items,
+            ReadVallonsBlock().Setup!, ShippedData, Shipped, Items,
             new CombatantPlacement(GroundVector.Parse("-18", "-12"), Fixed.Parse("0.5"))));
     }
 }

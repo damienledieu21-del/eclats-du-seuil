@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.20.0-provisoire",
+  "contentVersion": "0.21.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -135,6 +135,22 @@
         "position": [
           -1326,
           -656
+        ]
+      },
+      {
+        "id": "pied_de_la_cascade",
+        "name": "Pied de la cascade",
+        "position": [
+          612,
+          1052
+        ]
+      },
+      {
+        "id": "arbre_millenaire",
+        "name": "Arbre millénaire",
+        "position": [
+          -824,
+          802
         ]
       }
     ],
@@ -717,6 +733,110 @@
           -11
         ],
         "minLevel": 1
+      },
+      {
+        "id": "cascade",
+        "name": "Cascade",
+        "min": [
+          560,
+          1040
+        ],
+        "max": [
+          625,
+          1092
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "moulin_a_foulon",
+        "name": "Moulin à foulon",
+        "min": [
+          463.9,
+          851.5
+        ],
+        "max": [
+          481.9,
+          869.5
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "cabane_du_pecheur",
+        "name": "Cabane du pêcheur",
+        "min": [
+          367.7,
+          685.1
+        ],
+        "max": [
+          393.7,
+          701.1
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "pont_suspendu",
+        "name": "Pont suspendu",
+        "min": [
+          526.7,
+          984.5
+        ],
+        "max": [
+          550.7,
+          1008.5
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "arbre_millenaire",
+        "name": "Arbre millénaire",
+        "min": [
+          -880,
+          750
+        ],
+        "max": [
+          -815,
+          810
+        ],
+        "minLevel": 15
+      },
+      {
+        "id": "taniere_de_la_meute",
+        "name": "Tanière de la meute",
+        "min": [
+          -1200,
+          1045
+        ],
+        "max": [
+          -1160,
+          1080
+        ],
+        "minLevel": 15
+      },
+      {
+        "id": "cabane_du_bucheron",
+        "name": "Cabane du bûcheron",
+        "min": [
+          -545,
+          450
+        ],
+        "max": [
+          -500,
+          490
+        ],
+        "minLevel": 15
+      },
+      {
+        "id": "lisiere_de_la_foret",
+        "name": "Lisière de la forêt des Loups",
+        "min": [
+          -200,
+          880
+        ],
+        "max": [
+          -120,
+          960
+        ],
+        "minLevel": 15
       }
     ],
     "populations": [
@@ -1399,6 +1519,49 @@
           "signMs": 20000,
           "sign": "text.zone.vieux_brunot.signe"
         }
+      },
+      {
+        "creature": "sanglier_chute1",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier_chute2",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "loup_taniere_foret1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_taniere_foret4",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "ours_foret1",
+        "respawnMs": 900000,
+        "leashRange": 12,
+        "loot": "loot.ours",
+        "family": "ours"
       }
     ],
     "passages": [
@@ -1421,6 +1584,11 @@
         "id": "gue_vallee_nord",
         "name": "Gué de la vallée (nord)",
         "obstacle": "riviere_vallee_gue_nord"
+      },
+      {
+        "id": "pont_suspendu",
+        "name": "Pont suspendu",
+        "obstacle": "riviere_vallee_pont_suspendu_chute"
       }
     ],
     "roads": [
@@ -2036,6 +2204,87 @@
             -60
           ]
         ]
+      },
+      {
+        "id": "sentier_de_la_cascade",
+        "width": 3,
+        "points": [
+          [
+            370,
+            630
+          ],
+          [
+            402,
+            648
+          ],
+          [
+            452,
+            790
+          ],
+          [
+            536,
+            922
+          ],
+          [
+            612,
+            1046
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "sentier_du_pont_suspendu",
+        "width": 3,
+        "points": [
+          [
+            570,
+            977.4
+          ],
+          [
+            550.7,
+            989.2
+          ],
+          [
+            526.8,
+            1003.7
+          ],
+          [
+            300,
+            960
+          ],
+          [
+            200,
+            850
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "sentier_de_l_arbre",
+        "width": 3,
+        "points": [
+          [
+            35,
+            965
+          ],
+          [
+            -150,
+            925
+          ],
+          [
+            -400,
+            860
+          ],
+          [
+            -640,
+            800
+          ],
+          [
+            -826,
+            798
+          ]
+        ],
+        "kind": "terre"
       }
     ],
     "boss": {

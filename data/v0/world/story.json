@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.32.0-provisoire",
+  "contentVersion": "0.33.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -26261,6 +26261,10 @@
           {
             "do": "openPassage",
             "id": "gue_vallee_nord"
+          },
+          {
+            "do": "openPassage",
+            "id": "pont_suspendu"
           },
           {
             "do": "giveXp",
