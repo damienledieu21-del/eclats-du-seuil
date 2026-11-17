@@ -113,6 +113,7 @@ namespace EdS.Game
             Color ambientTint = Tint(light.AmbientTint) * Tint(weather.AmbientTint) * ambient;
             // Sous-lot V2.6 : près d'une cicatrice du Seuil, la lumière tire vers le froid.
             ambientTint = Color.Lerp(ambientTint, ambientTint * ScarCold, _scarFade);
+            HorizonLight = ambientTint;   // V2.29.2 : la lumière de l'heure teinte les panoramas peints de l'horizon
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = catalog.AmbientSky * ambientTint;
             RenderSettings.ambientEquatorColor = catalog.AmbientHorizon * ambientTint;
@@ -331,6 +332,9 @@ namespace EdS.Game
 
         /// <summary>Teinte froide d'une cicatrice (lumière et brume).</summary>
         private static readonly Color ScarCold = new Color(0.62f, 0.7f, 0.82f);
+
+        /// <summary>Sous-lot V2.29.2 : lumière ambiante de l'heure et du temps (1 : plein jour clair), teinte des panoramas de l'horizon.</summary>
+        public static Color HorizonLight { get; private set; } = Color.white;
 
         private static Color Tint(StyleTint t) => new Color((float)t.R, (float)t.G, (float)t.B);
 

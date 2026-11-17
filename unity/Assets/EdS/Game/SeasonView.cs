@@ -19,6 +19,11 @@ namespace EdS.Game
         private static readonly int TintId = Shader.PropertyToID("_EdsSeasonTint"), SnowId = Shader.PropertyToID("_EdsSnow"),
             IceId = Shader.PropertyToID("_EdsIce"), SeasonId = Shader.PropertyToID("_EdsSeason");
 
+        /// <summary>V2.29.2 : dernière saison montrée (pour les panoramas de l'horizon) ; <see cref="HasLook"/> faux tant que rien n'a été posé.</summary>
+        public static SeasonLook Shown { get; private set; }
+
+        public static bool HasLook { get; private set; }
+
         private float _sinceClock = float.MaxValue;
         private bool _shown;
         private SeasonLook _last;
@@ -35,6 +40,8 @@ namespace EdS.Game
             if (_shown && look.Equals(_last)) return;
             _shown = true;
             _last = look;
+            Shown = look;
+            HasLook = true;
             Shader.SetGlobalColor(TintId, new Color(look.R, look.G, look.B, look.Strength));
             Shader.SetGlobalFloat(SnowId, look.Snow);
             Shader.SetGlobalFloat(IceId, look.Ice);
@@ -44,6 +51,7 @@ namespace EdS.Game
         /// <summary>Remet les globales à zéro (le décor sans effet de saison).</summary>
         public static void Clear()
         {
+            HasLook = false;
             Shader.SetGlobalColor(TintId, new Color(0.5f, 0.5f, 0.5f, 0f));
             Shader.SetGlobalFloat(SnowId, 0f);
             Shader.SetGlobalFloat(IceId, 0f);
