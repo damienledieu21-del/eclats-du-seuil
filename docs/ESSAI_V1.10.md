@@ -714,3 +714,14 @@ Avant l'essai : **Éclats du Seuil → Préparer l'essai de style**. Détail : [
 | 43.3 | Halle (sud-ouest de la place) et écuries (près de la porte de l'Est) | Halle ouverte face à la place ; écuries en U, cour vers la route | [ ] | |
 | 43.4 | Se promener dans les îlots | Maisons à pans de bois variées, pignon vers les ruelles, rien de travers ni de flottant ; la caméra s'arrête aux murs | [ ] | Une maison qui déborde ? |
 | 43.5 | Ton avis : maisons tournées vers les ruelles (grand côté sur la route), écuries qui dépassent de 8 m au nord, clocher des données derrière l'église | — | [ ] | |
+
+## 44. Rues et accessoires du Bourg fortifié (V2.30.4, 16 novembre 2026)
+
+Avant l'essai : **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md#rues-et-accessoires-du-bourg-fortifié-sous-lot-v2304).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 44.1 | Place du marché | Pavée et bordée, marchandises derrière les étals, charrettes, bancs autour de la fontaine, pilori | [ ] | |
+| 44.2 | Route d'Ambre d'une porte à l'autre, chemin des vignes | Rue pavée, ruelle de terre ; sur une pente, rien qui flotte ni qui s'enfonce trop | [ ] | Un pavé enterré ? |
+| 44.3 | Portes | Braseros et râtelier dedans, bannières dehors, panneau ; péage ouvert à l'est ; chariots de caravane à l'ouest ; le passage reste libre | [ ] | |
+| 44.4 | Derrière les maisons | Appentis, puits, latrines, tas de bois, potagers ; rien sur la route ni devant une porte | [ ] | |
