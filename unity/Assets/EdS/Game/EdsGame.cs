@@ -184,20 +184,26 @@ namespace EdS.Game
         private bool Overlay => _logo.Active || _title.Pending;
 
         private bool _inputLocked;
+        private UnityEngine.EventSystems.EventSystem _lockedEvents;
 
-        /// <summary>Coupe (ou rend) les clics de l'interface en uGUI ; l'IMGUI est gardée inerte par <c>GUI.enabled</c> dans <c>OnGUI</c>.</summary>
+        /// <summary>
+        /// Coupe (ou rend) les clics de l'interface en uGUI ; l'IMGUI est gardée inerte par <c>GUI.enabled</c> dans <c>OnGUI</c>. Le composant coupé
+        /// est gardé : un EventSystem désactivé n'est plus <c>EventSystem.current</c> (revue Codex de la PR #208).
+        /// </summary>
         private void LockInput(bool locked)
         {
-            var events = UnityEngine.EventSystems.EventSystem.current;
-            if (events == null) return;
-            if (locked && events.enabled)
+            if (locked && !_inputLocked)
             {
+                var events = UnityEngine.EventSystems.EventSystem.current;
+                if (events == null) return;
+                _lockedEvents = events;
                 events.enabled = false;
                 _inputLocked = true;
             }
             else if (!locked && _inputLocked)
             {
-                events.enabled = true;
+                if (_lockedEvents != null) _lockedEvents.enabled = true;
+                _lockedEvents = null;
                 _inputLocked = false;
             }
         }
