@@ -221,6 +221,19 @@ namespace EdS.Runtime
             piece != null && (piece.Id == obstacleId || piece.Id.StartsWith(obstacleId + "/", StringComparison.Ordinal)) && piece.Parent < 0
             && Array.IndexOf(Body, piece.Prop) >= 0;
 
+        /// <summary>
+        /// Revue Codex de la PR #200 : objets d'aménagement allongés le long d'une table (bancs) : leur modèle du lot C est tourné pour que
+        /// son grand côté suive l'axe de la pièce (<see cref="AlongX"/>), quel que soit l'axe de l'export.
+        /// </summary>
+        public static bool AlongTable(InteriorProp prop) => prop == InteriorProp.Bench;
+
+        /// <summary>Un objet tourné de <paramref name="yaw"/> degrés a-t-il son grand côté selon x (0 ou 180 ; sinon selon z) ?</summary>
+        public static bool AlongX(double yaw)
+        {
+            double a = ((yaw % 180) + 180) % 180;
+            return a < 45 || a >= 135;
+        }
+
         /// <summary>Échelle la plus grande donnée à un meuble du lot C (les modèles sont à l'échelle réelle des fiches).</summary>
         public const double MaxScale = 1.15;
 

@@ -259,6 +259,26 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Bancs_de_l_auberge_le_long_des_tables()
+    {
+        // Revue Codex de la PR #200 : l'aménagement pose les bancs le long de leur table (selon x à 0°, selon z à 90°) ; le banc Tripo
+        // (C_IN1_A0_03, long selon z dans son export) est tourné d'un quart quand son grand côté ne suit pas cet axe (SpaceView.Furnish).
+        Assert.Equal("C_IN1_A0_03", LotCModels.ForPiece("auberge", InteriorProp.Bench));
+        Assert.True(LotCModels.AlongTable(InteriorProp.Bench));
+        Assert.False(LotCModels.AlongTable(InteriorProp.Bowl));
+        Assert.True(LotCModels.AlongX(0) && LotCModels.AlongX(180) && LotCModels.AlongX(-180) && LotCModels.AlongX(10));
+        Assert.False(LotCModels.AlongX(90) || LotCModels.AlongX(270) || LotCModels.AlongX(-90));
+        InteriorLayout inn = Layout("auberge");
+        Assert.Contains(inn.Pieces, p => p.Prop == InteriorProp.Bench);
+        foreach (InteriorPiece bench in inn.Pieces.Where(p => p.Prop == InteriorProp.Bench))
+        {
+            InteriorPiece table = inn.Pieces.Single(p => p.Id == bench.Id.Substring(0, bench.Id.IndexOf('/')) && p.Prop == InteriorProp.Table);
+            Assert.Equal(LotCModels.AlongX(table.Yaw), LotCModels.AlongX(bench.Yaw));
+        }
+        Assert.Contains("LotCModels.AlongTable(piece.Prop)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
     public void Code_d_un_chemin()
     {
         Assert.Equal("C_RE_S01", LotCModels.CodeOf("Assets/EdS/Modeles/LotC/08_Recoltes/C_RE_S01/C_RE_S01.fbx"));
