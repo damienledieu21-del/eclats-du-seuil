@@ -554,6 +554,9 @@ namespace EdS.Game
             // Relecture Codex de la PR #134 : tant que le créateur de personnage est ouvert, aucune commande d'aventure ne passe (halte, marche,
             // raccourcis, écrans) ; seuls Échap (annuler) et ses boutons répondent.
             bool creating = _creator != null && _creator.Open;
+            // V2.53 (revue Codex de la PR #207) : sous l'écran de chargement peint, aucune commande ne passe (Entrée, Échap, I/J/K/L, F6, N,
+            // T, B…) ; seul le temps avance (le geste qui abrège l'écran est lu par LoadingView).
+            creating |= _loading.Active;
             if (!creating && (Input.GetKeyDown(KeyCode.N) || _touch.NextScenePressed))
             {
                 LeaveAdventure();
@@ -579,6 +582,10 @@ namespace EdS.Game
             {
                 // Essai réaliste 6, étape 2 : T ou Échap ferme l'arbre sans garder les points.
                 if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Escape)) _talentView.Cancel();
+            }
+            else if (_loading.Active)
+            {
+                // Écran de chargement : ni pause ni écran à ouvrir.
             }
             else if (_creator != null && _creator.Open)
             {
@@ -1866,7 +1873,10 @@ namespace EdS.Game
 
             if (_adventure != null)
             {
+                bool wasEnabled = GUI.enabled;
+                if (_loading.Active) GUI.enabled = false;   // V2.53 : aucun clic ne traverse l'écran de chargement (boutons de l'interface)
                 DrawAdventure();
+                GUI.enabled = wasEnabled;
                 // Intérieurs : fondu au noir après une porte.
                 if (_fade > 0f) Hud.Fill(new Rect(0f, 0f, Hud.Width, Hud.VirtualHeight), new Color(0f, 0f, 0f, _fade));
                 _loading.Draw();   // V2.53 : écran de chargement peint, au-dessus du jeu

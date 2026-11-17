@@ -103,6 +103,21 @@ public sealed class V253ChargementsTests
     }
 
     [Fact]
+    public void Sous_l_ecran_de_chargement_aucune_commande_ne_passe()
+    {
+        // Revue Codex de la PR #207 : les raccourcis (Entrée -> halte, Échap, I/J/K/L, F6, N) passent tous par « !creating » ; l'écran actif
+        // compte comme le créateur de personnage, l'interface IMGUI est désactivée sous lui et le temps de jeu est nul.
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs")).Replace("\r\n", "\n");
+        Assert.Contains("creating |= _loading.Active;", game, StringComparison.Ordinal);
+        int creating = game.IndexOf("creating |= _loading.Active;", StringComparison.Ordinal);
+        Assert.True(creating < game.IndexOf("Input.GetKeyDown(KeyCode.N)", creating, StringComparison.Ordinal));
+        Assert.True(creating < game.IndexOf("a.Rest()", creating, StringComparison.Ordinal));
+        Assert.Contains("else if (_loading.Active)", game, StringComparison.Ordinal);
+        Assert.Contains("if (_loading.Active) GUI.enabled = false;", game, StringComparison.Ordinal);
+        Assert.Contains("bool frozen = _paused || _loading.Active", game, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Le_telephone_et_le_pc_modeste_prennent_la_petite_image()
     {
         LoadingScreen screen = LoadingScreens.All[0];
