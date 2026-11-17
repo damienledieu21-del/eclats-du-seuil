@@ -166,7 +166,8 @@ public class V2305BourgDecisionsTests : IDisposable
             Assert.True(new[] { b.X0 - f.X0, f.X1 - b.X1, b.Z0 - f.Z0, f.Z1 - b.Z1 }.Max() <= 0.35, id);
             Assert.True(TownRules.RoadAt((b.X0 + b.X1) / 2, b.Z0, roads).Edge > 3.5, id + " trop près de la route");
             // Lanterne sur potence à droite de la porte ; auvent au-dessus de l'entrée (sauf la maison notable).
-            Assert.Contains(withRoads.Pieces, q => q.Piece == BourgModels.WallLantern && q.Height > 2 && Math.Abs(q.Z - (b.Z0 - 0.25)) < 0.01 && q.X > b.X0 && q.X < b.X1);
+            // (Façade du modèle au sud, à 0,25 m près de l'avant de l'emprise ; voir Lanterns_hang_on_the_model_facade.)
+            Assert.Contains(withRoads.Pieces, q => q.Piece == BourgModels.WallLantern && q.Height > 2 && q.Z > b.Z0 - 1 && q.Z < b.Z0 + 1 && q.X > b.X0 && q.X < b.X1);
             Assert.Equal(id != "maison_ville_notable", withRoads.Pieces.Any(q => BourgModels.Awnings.Contains(q.Piece) && q.X == (b.X0 + b.X1) / 2 && q.Height > 1.5));
         }
         // Une lanterne par maison et par boutique ; linge dans les ruelles entre boutiques ; bannières sur la maison du prévôt ; râtelier mural.
@@ -181,7 +182,9 @@ public class V2305BourgDecisionsTests : IDisposable
             var f = BourgModels.Footprint(p.Piece, p.X, p.Z, p.Yaw);
             Assert.True(TownRules.RoadAt(p.X, p.Z, roads).Edge > 0, p.Piece + " sur une route");
             if (p.Piece == BourgModels.Line) continue;
-            Assert.DoesNotContain(Obstacles, o =>
+            // Le bâtiment qui la porte (le plus proche) : son emprise de collision peut déborder du mur du modèle.
+            string carrier = withRoads.Pieces.Where(q => q.Covers != null).OrderBy(q => (q.X - p.X) * (q.X - p.X) + (q.Z - p.Z) * (q.Z - p.Z)).First().Covers!;
+            Assert.DoesNotContain(Obstacles.Where(o => o.Id != carrier), o =>
             {
                 var b = Box(o);
                 return f.X0 + 0.3 < b.X1 && f.X1 - 0.3 > b.X0 && f.Z0 + 0.3 < b.Z1 && f.Z1 - 0.3 > b.Z0;
@@ -265,5 +268,33 @@ public class V2305BourgDecisionsTests : IDisposable
         }
         Assert.Empty(BourgModels.FacadeWindows("h05_marchand_moyenne"));   // les maisons types ont leurs volets
         Assert.Empty(BourgModels.FacadeWindows(BourgModels.Church));
+    }
+
+    /// <summary>
+    /// Revue Codex de la PR #204 : la lanterne sur potence d'une maison ou d'une boutique est accrochée au mur de façade du modèle posé,
+    /// 0,25 m devant lui, 0,9 m à droite de sa porte, et non au bord de l'emprise de collision (maison_ville_23 : emprise de 14 × 10 m,
+    /// maison d'angle de 8,55 m : la lanterne flottait à 2,70 m du mur).
+    /// </summary>
+    [Fact]
+    public void Lanterns_hang_on_the_model_facade()
+    {
+        var dress = BourgModels.Dress(Obstacles, AdventureSession.Roads(Vallons.Value));
+        var lanterns = dress.Pieces.Where(p => p.Piece == BourgModels.WallLantern).ToList();
+        var fronts = dress.Pieces.Where(p => p.Covers != null && BourgModels.FrontDoor(p.Piece) != null).ToList();
+        Assert.Equal(fronts.Count, lanterns.Count);
+        foreach (BourgPiece h in fronts)
+        {
+            (double dx, double dy) = BourgModels.FrontDoor(h.Piece)!.Value;
+            var expected = BourgModels.Place(h.X, h.Z, h.Yaw, -(dx + 0.9), -dy + 0.25);
+            Assert.Contains(lanterns, l => l.X == expected.X && l.Z == expected.Z && l.Yaw == h.Yaw);
+            // Devant le mur de façade, dans le pied du modèle (élargi de la saillie de la potence) : rien ne flotte.
+            var f = BourgModels.Footprint(h.Piece, h.X, h.Z, h.Yaw);
+            Assert.True(expected.X >= f.X0 - 0.6 && expected.X <= f.X1 + 0.6 && expected.Z >= f.Z0 - 0.6 && expected.Z <= f.Z1 + 0.6, h.Covers);
+        }
+        BourgPiece h23 = fronts.Single(p => p.Covers == "maison_ville_23");
+        var l23 = lanterns.Single(l => Math.Abs(l.X - h23.X) < 8 && Math.Abs(l.Z - h23.Z) < 8);
+        double a = h23.Yaw * Math.PI / 180, ahead = (l23.X - h23.X) * Math.Sin(a) + (l23.Z - h23.Z) * Math.Cos(a);
+        Assert.Equal(-BourgModels.FrontDoor(h23.Piece)!.Value.Y + 0.25, ahead, 6);
+        Assert.True(ahead <= -BourgModels.Box(h23.Piece)!.Value.Y0 + 0.25);
     }
 }

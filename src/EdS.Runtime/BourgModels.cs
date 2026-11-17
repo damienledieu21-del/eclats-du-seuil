@@ -986,6 +986,35 @@ namespace EdS.Runtime
                 .Select(w => (Round(w.Item1), w.Item2, Round(z), 0.8, 1.0)).ToList();
         }
 
+        /// <summary>
+        /// V2.30.5 (revue Codex de la PR #204) : seuil de la porte d'entrée d'une maison type ou d'une boutique dans le repère de Blender du
+        /// FBX de jeu (X, Y : Y est le plan du mur de façade au rez-de-chaussée, sous les encorbellements). Maisons : accroche « seuil_avant »
+        /// de l'export de jeu ; boutiques : porte au milieu, façade d'après le recentrage de l'export (Y 0 de la fiche). Null ailleurs.
+        /// </summary>
+        public static (double X, double Y)? FrontDoor(string piece)
+        {
+            switch (piece)
+            {
+                case "h01_artisan_etroite": return (-0.99, -4.0);
+                case "h02_artisan_moyenne": return (-1.32, -4.0);
+                case "h03_artisan_large": return (-1.65, -4.0);
+                case "h04_marchand_etroite": return (-1.1, -5.0);
+                case "h05_marchand_moyenne": return (-1.54, -5.0);
+                case "h06_marchand_large": return (-1.98, -5.0);
+                case "h07_notable_etroite": return (-1.32, -6.0);
+                case "h08_notable_moyenne": return (-1.87, -6.0);
+                case "h09_notable_large": return (-2.42, -6.0);
+                case "h10_angle": return (1.5, -4.0);
+                case "h10_angle_miroir": return (-1.5, -4.0);
+                case "h11_passage": return (-2.8, -5.0);
+                case "h12_pauvre_enceinte": return (-1.3, -2.5);
+                case "p13_armurier": case "p14_forgeron": return (0, -4.6);
+                case "p15_tanneur": case "p18_taverne": return (0, -5.6);
+                case "p16_apothicaire": case "p17_tailleur": return (0, -4.1);
+                default: return null;
+            }
+        }
+
         /// <summary>V2.30.5 : pièce d'un monument habillé qui a une lanterne de porte (église, halle, écuries, bâtiments de la cour du prévôt).</summary>
         public static bool HasDoorLantern(string piece) =>
             piece == Church || piece == Hall || piece == Stables || piece == Provost || piece == Guardhouse || piece == Granary || piece == Oven;
@@ -1015,13 +1044,18 @@ namespace EdS.Runtime
                 return (fx, fz, -fz, fx, half);   // droite vue de dehors : (−fz, fx)
             }
             int awning = 0;
-            foreach (BourgPiece p in pieces.Where(p => p.Covers != null && boxes.ContainsKey(p.Covers) && (IsTownHouse(p.Covers) || ShopModel(p.Covers) != null)))
+            foreach (BourgPiece p in pieces.Where(p => p.Covers != null && (IsTownHouse(p.Covers) || ShopModel(p.Covers) != null) && FrontDoor(p.Piece) != null))
             {
-                var (fx, fz, rx, rz, half) = Frame(p);
-                double ox = p.X + fx * (half + 0.25), oz = p.Z + fz * (half + 0.25);
-                added.Add(new BourgPiece(WallLantern, Round(ox + rx * 0.9), Round(oz + rz * 0.9), p.Yaw, null, 3.5 - 1.2));
+                // Revue Codex de la PR #204 : sur la façade du modèle posé (pas sur l'emprise de collision, qui peut être bien plus grande) :
+                // 0,25 m devant le mur, 0,9 m à droite de la porte vue de dehors (+X de Blender, donc −x dans Unity).
+                (double dx, double dy) = FrontDoor(p.Piece)!.Value;
+                (double lx, double lz) = Place(p.X, p.Z, p.Yaw, -(dx + 0.9), -dy + 0.25);
+                added.Add(new BourgPiece(WallLantern, lx, lz, p.Yaw, null, 3.5 - 1.2));
                 if (ShopModel(p.Covers) != null && p.Covers != "maison_ville_notable")
-                    added.Add(new BourgPiece(Awnings[awning++ % Awnings.Length], Round(p.X + fx * (half + 1.1)), Round(p.Z + fz * (half + 1.1)), p.Yaw, null, 3.2 - 1.1));
+                {
+                    (double ax, double az) = Place(p.X, p.Z, p.Yaw, -dx, -dy + 1.1);
+                    added.Add(new BourgPiece(Awnings[awning++ % Awnings.Length], ax, az, p.Yaw, null, 3.2 - 1.1));
+                }
             }
             foreach (BourgPiece p in pieces.Where(p => p.Piece == Provost || p.Piece == Guardhouse).ToList())
             {
