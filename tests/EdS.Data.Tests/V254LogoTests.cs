@@ -164,3 +164,28 @@ public sealed class V254LogoTests
         Assert.Contains("Interface/Resources/EdsInterface/Logo", credits);
     }
 }
+
+[Trait("Category", "Runtime")]
+public sealed class V254InputLockTests
+{
+    private sealed class Component { }
+
+    [Fact]
+    public void Le_verrou_coupe_une_fois_et_rend_exactement_le_composant_coupe_meme_s_il_n_est_plus_le_courant()
+    {
+        var gate = new InputLock<Component>();
+        var events = new Component();
+        Assert.Null(gate.Lock(null));          // pas encore de composant : on réessaiera
+        Assert.False(gate.Held);
+        Assert.Same(events, gate.Lock(events));
+        Assert.True(gate.Held);
+        Assert.Null(gate.Lock(events));        // une seule coupure
+        Assert.Null(gate.Lock(null));          // le composant coupé n'est plus « le courant » : on garde la référence
+        Assert.Same(events, gate.Unlock());    // et c'est lui qu'on rend
+        Assert.False(gate.Held);
+        Assert.Null(gate.Unlock());
+        var other = new Component();
+        Assert.Same(other, gate.Lock(other));  // un nouveau cycle (écran titre) coupe de nouveau
+        Assert.Same(other, gate.Unlock());
+    }
+}

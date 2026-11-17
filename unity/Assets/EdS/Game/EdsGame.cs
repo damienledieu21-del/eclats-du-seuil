@@ -178,28 +178,23 @@ namespace EdS.Game
         /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
         private bool Overlay => _logo.Active;
 
-        private bool _inputLocked;
-        private UnityEngine.EventSystems.EventSystem _lockedEvents;
+        private readonly InputLock<UnityEngine.EventSystems.EventSystem> _eventsLock = new InputLock<UnityEngine.EventSystems.EventSystem>();
 
         /// <summary>
         /// Coupe (ou rend) les clics de l'interface en uGUI ; l'IMGUI est gardée inerte par <c>GUI.enabled</c> dans <c>OnGUI</c>. Le composant coupé
-        /// est gardé : un EventSystem désactivé n'est plus <c>EventSystem.current</c> (revue Codex de la PR #208).
+        /// est gardé (<see cref="InputLock{T}"/>) : un EventSystem désactivé n'est plus <c>EventSystem.current</c> (revue Codex de la PR #208).
         /// </summary>
         private void LockInput(bool locked)
         {
-            if (locked && !_inputLocked)
+            if (locked)
             {
-                var events = UnityEngine.EventSystems.EventSystem.current;
-                if (events == null) return;
-                _lockedEvents = events;
-                events.enabled = false;
-                _inputLocked = true;
+                var cut = _eventsLock.Lock(UnityEngine.EventSystems.EventSystem.current);
+                if (cut != null) cut.enabled = false;
             }
-            else if (!locked && _inputLocked)
+            else
             {
-                if (_lockedEvents != null) _lockedEvents.enabled = true;
-                _lockedEvents = null;
-                _inputLocked = false;
+                var back = _eventsLock.Unlock();
+                if (back != null) back.enabled = true;
             }
         }
 
