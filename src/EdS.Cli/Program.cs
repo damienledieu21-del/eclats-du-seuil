@@ -6,6 +6,7 @@ using EdS.Data.Classes;
 using EdS.Data.Json;
 using EdS.Tools.Measures;
 using EdS.Tools.Network;
+using EdS.Tools.Zones;
 using EdS.Data.Rules;
 using EdS.Data.Scenarios;
 using EdS.Data.Validation;
@@ -112,10 +113,12 @@ static int RunValidate(ReadOnlySpan<string> options)
     {
         GameData? data = LoadData(DefaultDataDirectory());
         if (data is null) return 1;
-        ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(path, data);
+        ScenarioLoadResult scenario = ReadScenario(path, data);
         if (scenario.Setup is not { } setup) return Fail(path, scenario.Report);
         Console.WriteLine($"{path} : valide");
         Warnings(scenario.Report);
+        if (setup.Space is { } area && area.Obstacles.Count > EdS.Domain.Space.SpaceLimits.MaxObstacles)
+            Console.WriteLine($"  aire           {area.Obstacles.Count} obstacles, simulée par secteurs (au plus {EdS.Domain.Space.SpaceLimits.MaxObstacles} chacun)");
         Console.WriteLine($"  combattants    {string.Join(", ", setup.Combatants.Select(c => c.Id))}");
         Console.WriteLine($"  commandes      {setup.Commands.Count}");
         Console.WriteLine($"  durée          {setup.DurationMs} ms, graine {setup.Seed}");
@@ -202,6 +205,9 @@ static void Warnings(ValidationReport report)
 
 static string DefaultDataDirectory() => Path.Combine("data", "v0");
 
+// Sous-lots V2.31 et suivants : un scénario de zone (« zone » vrai) se lit comme une aire (jusqu'à 4 096 obstacles, simulée par secteurs).
+static ScenarioLoadResult ReadScenario(string path, GameData data) => ScenarioJsonReader.ReadFile(path, data, ZoneAreas.IsZoneScenario(path));
+
 static GameData? LoadData(string directory)
 {
     GameDataLoadResult loaded = GameDataLoader.Load(directory);
@@ -232,9 +238,21 @@ static int RunSimulate(ReadOnlySpan<string> options)
 
     GameData? data = LoadData(dataDirectory);
     if (data is null) return 1;
-    ScenarioLoadResult scenario = ScenarioJsonReader.ReadFile(scenarioPath, data);
+    ScenarioLoadResult scenario = ReadScenario(scenarioPath, data);
     if (scenario.Setup is not { } setup) return Fail(scenarioPath, scenario.Report);
     Warnings(scenario.Report);
+    if (setup.Space is { } area && area.Obstacles.Count > EdS.Domain.Space.SpaceLimits.MaxObstacles)
+    {
+        // Sous-lots V2.31 et suivants : une aire de zone à plus de 256 obstacles ne se simule pas d'un bloc ; on simule le secteur de son
+        // point d'entrée, comme le jeu à l'ouverture de la zone.
+        if (ZoneAreas.EntrySector(scenarioPath, dataDirectory, data, out string? sector, out string? why) is not { } sectorSetup)
+        {
+            Console.Error.WriteLine($"{scenarioPath} : aire de {area.Obstacles.Count} obstacles, simulée par secteurs : {why}");
+            return 1;
+        }
+        Console.Error.WriteLine($"{scenarioPath} : aire de {area.Obstacles.Count} obstacles ; simulation du secteur {sector} (point d'entrée de la zone).");
+        setup = sectorSetup;
+    }
 
     var log = new MemoryCombatLog();
     CombatResult result = CombatEngine.Run(setup, log);

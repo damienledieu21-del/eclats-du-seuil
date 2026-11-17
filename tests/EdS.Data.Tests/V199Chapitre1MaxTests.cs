@@ -108,7 +108,7 @@ public class V199Chapitre1MaxTests
     {
         ItemCatalog items = ItemJsonReader.ReadFile(Path.Combine(DataDirectory, "world", "items.json"), ShippedData).Catalog!;
         Assert.Equal((8, 8, "0.21.0-provisoire"), (items.SchemaVersion, ItemValidator.CurrentSchemaVersion, items.ContentVersion));
-        Assert.Equal((16, "0.32.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.6.1 : schéma 11, contenu 0.21.0 ; V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
+        Assert.Equal((16, "0.33.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));   // V2.6.1 : schéma 11, contenu 0.21.0 ; V2.2 : schéma 8 (weather), contenu 0.14.0 ; V2.3 : schéma 9, contenu 0.15.0
         Assert.Equal("0.15.0-provisoire", ShippedMerchants.ContentVersion);   // V2.9.2 : 0.9.0 (ours, cape du vieux Brunot) ; V2.7 : 0.8.0 (factions, marché noir) ;   // V2.6.1 : inchangé (le chapelet de l'Aube ne se vend pas, réponse de Damien du 7 novembre 2026)
         Assert.Equal("0.12.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.3.0-provisoire", Guilde.Value.ContentVersion);   // V2.9.2 : points du vieux Brunot
@@ -175,7 +175,7 @@ public class V199Chapitre1MaxTests
         LootTable echo = ItemsCatalog.Loot.Single(l => l.Id == "loot.echo");
         Assert.Equal(new[] { (Poussiere, 1, 80), (Poussiere, 1, 25) }, echo.Drops.Select(d => (d.Item, d.Count, d.ChancePercent)));
         // Les quatre échos (et eux seuls) ont ce butin ; les loups de la nuit gardent celui du loup.
-        Population[] echoes = Vallons.Value.Populations.Where(p => p.Family == "echo").ToArray();
+        Population[] echoes = Vallons.Value.Populations.Where(p => p.Family == "echo" && !IsLieu(p.Creature)).ToArray();   // V2.35 et suivants : les échos des lieux à part
         // Sous-lot V2.4 : et les deux échos de la brume.
         Assert.Equal(new[] { "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4", "loup_echo5", "loup_echo6" }, echoes.Select(p => p.Creature));
         Assert.All(echoes, p => Assert.Equal("loot.echo", p.Loot));

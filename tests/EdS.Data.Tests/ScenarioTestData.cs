@@ -26,9 +26,10 @@ internal static class ScenarioTestData
 
     /// <summary>
     /// Sous-lots V2.31 et suivants (les lieux de la grande carte) : chaque obstacle d'un lieu porte l'étiquette de son lieu dans son
-    /// identifiant (« bloc_rocher_cascade_1 », « maison_cabane_du_bucheron_foret »).
+    /// identifiant (« bloc_rocher_chute_1 », « maison_cabane_du_bucheron_foret », « loup_taniere_foret1 ») ; une étiquette n'apparaît dans
+    /// aucun identifiant d'avant le V2.31 (« _cascade » aurait pris falaise_cascade).
     /// </summary>
-    public static readonly string[] LieuTags = { "_cascade", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu" };
+    public static readonly string[] LieuTags = { "_chute", "_foret", "_vignes", "_bergers", "_abbaye", "_marais", "_mine", "_fort", "_corrompu" };
 
     /// <summary>
     /// Sous-lots V2.31 et suivants : l'aire des Vallons dépasse 256 obstacles avec les lieux de la grande carte ; elle ne se simule plus d'un
@@ -38,7 +39,22 @@ internal static class ScenarioTestData
     public static void WithoutLieux(JsonObject scenario)
     {
         var obstacles = scenario["data"]!["space"]!["obstacles"]!.AsArray();
-        foreach (var o in obstacles.Where(o => LieuTags.Any(t => ((string)o!["id"]!).Contains(t, StringComparison.Ordinal))).ToList()) obstacles.Remove(o);
+        foreach (var o in obstacles.Where(o => IsLieu((string?)o!["id"])).ToList()) obstacles.Remove(o);
+        // Décision de Damien du 16 novembre 2026 (vers 23 h) : les créatures des lieux aussi.
+        var combatants = scenario["data"]!["combatants"]!.AsArray();
+        foreach (var c in combatants.Where(c => IsLieu((string?)c!["id"])).ToList()) combatants.Remove(c);
+    }
+
+    /// <summary>Sous-lots V2.31 et suivants : identifiant (obstacle ou créature) d'un lieu de la grande carte.</summary>
+    public static bool IsLieu(string? id) => id != null && LieuTags.Any(t => id.Contains(t, StringComparison.Ordinal));
+
+    /// <summary>Retire d'une zone (racine du fichier) les populations et les passages des lieux de la grande carte.</summary>
+    public static void ZoneWithoutLieux(JsonObject zone)
+    {
+        if (zone["data"]?["populations"] is JsonArray populations)
+            foreach (var p in populations.Where(p => IsLieu((string?)p?["creature"])).ToList()) populations.Remove(p);
+        if (zone["data"]?["passages"] is JsonArray passages)
+            foreach (var p in passages.Where(p => IsLieu((string?)p?["obstacle"])).ToList()) passages.Remove(p);
     }
 
     /// <summary>
@@ -66,11 +82,13 @@ internal static class ScenarioTestData
 
     /// <summary>
     /// Sous-lots V2.31 et suivants : dossier des scénarios d'une zone (racine du fichier) selon qu'elle a une région ou non. Une zone sans région
-    /// (schéma d'avant le 13) perd aussi les lieux nommés des lieux de la grande carte (<see cref="LieuPlaces"/>) : elle en garde au plus 64.
+    /// (schéma d'avant le 13) perd les populations et passages des lieux (leurs créatures et obstacles ne sont pas dans le scénario d'un bloc)
+    /// et leurs lieux nommés (<see cref="LieuPlaces"/>) : elle en garde au plus 64.
     /// </summary>
     public static string ScenariosFor(JsonObject zone)
     {
         if (zone["data"]?["region"] is not null) return Path.Combine(AppContext.BaseDirectory, "scenarios");
+        ZoneWithoutLieux(zone);
         if (zone["data"]?["places"] is JsonArray places)
             foreach (var p in places.Where(p => LieuPlaces.Contains((string?)p?["id"])).ToList()) places.Remove(p);
         return BlockScenariosDirectory;
@@ -106,6 +124,8 @@ internal static class ScenarioTestData
         space["bounds"] = new System.Text.Json.Nodes.JsonObject { ["min"] = new System.Text.Json.Nodes.JsonArray(-100, -70), ["max"] = new System.Text.Json.Nodes.JsonArray(140, 100) };
         var obstacles = space["obstacles"]!.AsArray();
         foreach (var o in obstacles.Where(o => SurfaceObstacle((string)o!["id"]!)).ToList()) obstacles.Remove(o);
+        var combatants = scenario["data"]!["combatants"]!.AsArray();   // sous-lots V2.31 et suivants : créatures des lieux
+        foreach (var c in combatants.Where(c => IsLieu((string?)c!["id"])).ToList()) combatants.Remove(c);
         foreach (var o in obstacles.Where(o => MovedBuildings.Contains((string)o!["id"]!)))
             foreach (var p in o!["points"]!.AsArray()) BackToCore(p!);
     }
@@ -170,6 +190,7 @@ internal static class ScenarioTestData
     {
         var passages = zone["data"]!["passages"]!.AsArray();
         foreach (var p in passages.Where(p => SurfaceObstacle((string)p!["obstacle"]!)).ToList()) passages.Remove(p);
+        ZoneWithoutLieux(zone);   // sous-lots V2.31 et suivants : populations des lieux
         // Sous-lot V2.28c (3) : ni les points sûrs, ni les lieux, ni les routes de la région (hors de l'aire d'avant).
         static bool Inside(JsonNode? point) => (double)point![0]! >= -100 && (double)point[0]! <= 140 && (double)point[1]! >= -70 && (double)point[1]! <= 100;
         var data = zone["data"]!;
@@ -209,6 +230,18 @@ internal static class ScenarioTestData
                     new JsonObject { ["id"] = "porte", ["position"] = new JsonArray(-28, -20) },
                     new JsonObject { ["id"] = "auvent_du_grenier", ["position"] = new JsonArray(-26, -18) });
             }
+    }
+
+    /// <summary>
+    /// Sous-lot V2.36 : les saisons d'avant l'île des saules dormants (dossier de données copié) : le verrou d'hiver sans point d'accroche,
+    /// pour une aire réduite au cœur (l'île, au milieu du grand lac, en est hors).
+    /// </summary>
+    public static void SeasonsBefore(string dataDirectory)
+    {
+        string path = Path.Combine(dataDirectory, "world", "seasons.json");
+        JsonNode seasons = JsonNode.Parse(File.ReadAllText(path))!;
+        foreach (var l in seasons["data"]!["locks"]!.AsArray()) l!.AsObject().Remove("anchor");
+        File.WriteAllText(path, seasons.ToJsonString());
     }
 
     /// <summary>

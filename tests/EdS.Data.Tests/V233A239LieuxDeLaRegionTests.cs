@@ -77,4 +77,26 @@ public class V233A239LieuxDeLaRegionTests
         Assert.True(seasons.IsValid, seasons.Report.ToString());
         Assert.True(ile.Contains(seasons.Book!.Lock("ile_des_saules_dormants").Anchor!.Value));
     }
+    [Fact]
+    public void Creatures_des_lieux_du_bestiaire_existant()
+    {
+        // Décision de Damien du 16 novembre 2026 (vers 23 h) : les lieux sont peuplés avec le bestiaire existant, toujours là.
+        ZoneDefinition zone = Vallons.Value;
+        var expected = new (string Prefix, int Count, string Team, int Level)[]
+        {
+            ("sanglier_vignes", 2, "gibier", 13), ("cerf_bergers", 2, "gibier", 10), ("loup_crete_bergers", 3, "meute", 17),
+            ("echo_abbaye", 3, "echos", 20), ("loup_marais", 2, "meute", 8), ("bandit_mine", 1, "bandits", 18), ("bandit_arc_mine", 1, "bandits", 18),
+            ("bandit_fort", 3, "bandits", 21), ("bandit_arc_fort", 2, "bandits", 21), ("archer_tour_fort", 1, "bandits", 22), ("echo_corrompu", 3, "echos", 22),
+        };
+        foreach (var (prefix, count, team, level) in expected)
+        {
+            var found = zone.Setup.Combatants.OfType<EdS.Domain.Combat.AssailantSetup>().Where(c => c.Id.StartsWith(prefix, StringComparison.Ordinal)
+                && c.Id.Length > prefix.Length && char.IsDigit(c.Id[prefix.Length])).ToList();
+            Assert.True(count == found.Count, $"{prefix} : {found.Count}");
+            Assert.All(found, c => Assert.Equal(team, c.Team));
+            Assert.All(found, c => Assert.Equal(level, zone.MinLevelAt(c.Placement!.Position)));
+            Assert.All(found, c => Assert.Null(zone.Populations.Single(p => p.Creature == c.Id).Hours));
+        }
+        Assert.Equal(30, zone.Populations.Count(p => IsLieu(p.Creature)));
+    }
 }

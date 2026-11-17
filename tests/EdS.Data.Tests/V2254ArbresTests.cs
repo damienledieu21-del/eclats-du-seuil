@@ -162,8 +162,8 @@ public class V2254ArbresTests : IDisposable
         // Près du Seuil : corrompu, quelle que soit l'origine ; aucun arbre corrompu loin du Seuil.
         Assert.Equal(TreeEssence.Corrompu, AtelierTrees.Spot(62, 30, TreeSource.Obstacle, map, map.Obstacles).Essence);
         Assert.DoesNotContain(decor, s => s.Essence == TreeEssence.Corrompu && s.Source != TreeSource.Seuil);
-        // Pas de vignes dans les Vallons actuels : le cyprès n'est pas posé (règle prête pour la grande carte).
-        Assert.DoesNotContain(map.Places, p => p.Id.Contains("vigne"));
+        // Sous-lot V2.33 : les vignes du château viticole existent ; aucun cyprès au cœur (loin des vignes).
+        Assert.Contains(map.Places, p => p.Id == "vignes_du_chateau");
         Assert.DoesNotContain(decor, s => s.Essence == TreeEssence.Cypres);
     }
 

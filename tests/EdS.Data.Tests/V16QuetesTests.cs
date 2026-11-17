@@ -242,9 +242,9 @@ public class V16QuetesTests
         Assert.Equal("loup", z.PopulationOf("loup12")!.Family);   // par défaut : sans les chiffres finaux
         Assert.Equal("sanglier", z.PopulationOf("sanglier")!.Family);
         Assert.Equal(new[] { "bandit_arc1", "bandit_arc2", "bandit_arc3", "bandit_epee1", "bandit_epee2", "bandit_epee3", "bandit_epee4", "grand_borgne", "le_borgne" },   // sous-lot V1.7 : le Borgne ; V1.9.3 : trois bandits ; V1.9.4 : le Grand Borgne
-            z.Populations.Where(p => p.Family == "bandit").Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
+            z.Populations.Where(p => p.Family == "bandit" && !IsLieu(p.Creature)).Select(p => p.Creature).OrderBy(c => c, StringComparer.Ordinal));
         Assert.Equal("loup_blanc", z.PopulationOf("loup_blanc")!.Family);
-        Assert.Equal(22, z.Populations.Count(p => p.Family == "loup"));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée) ; V2.4 : plus les trois loups gris de la brume
+        Assert.Equal(22, z.Populations.Count(p => p.Family == "loup" && !IsLieu(p.Creature)));   // V2.1 : plus les sept loups de la nuit (famille « loup » donnée) ; V2.4 : plus les trois loups gris de la brume
     }
 
     [Fact]

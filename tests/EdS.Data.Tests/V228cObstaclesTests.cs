@@ -186,24 +186,27 @@ public class V228cObstaclesTests
         // comme une aire (jusqu'à 4 096).
         var root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         root["data"]!["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-4000, -4000), ["max"] = new JsonArray(4000, 4000) };
+        WithoutLieux(root);   // sous-lots V2.31 et suivants : l'aire d'avant les lieux (233 obstacles), complétée jusqu'à 300
         var obstacles = root["data"]!["space"]!["obstacles"]!.AsArray();
         for (int i = obstacles.Count; i < 300; i++) obstacles.Add(Square($"o{i}", -3900 + 10 * (i % 700), 3000 + 10 * (i / 700)));
         ScenarioLoadResult alone = ScenarioJsonReader.Read(root.ToJsonString(), ShippedData);
         Assert.Null(alone.Setup);
         Assert.Contains(alone.Report.Errors, e => e.Path == "$.data.space.obstacles" && e.Message.Contains("300 obstacles, au plus 256", StringComparison.Ordinal));
         Assert.NotNull(ScenarioJsonReader.Read(root.ToJsonString(), ShippedData, area: true).Setup);
-        // La ligne de commande : validate refuse (code 1), simulate aussi, sans exception.
+        // La ligne de commande (relecture de la PR #205, sous-lot V2.31 : l'aire des Vallons dépasse 256 obstacles) : validate lit un scénario
+        // de zone comme une aire (code 0, « simulée par secteurs ») ; simulate simule le secteur d'entrée de sa zone, et refuse sans exception
+        // un scénario de zone qu'aucune zone ne prend pour aire (code 1).
         Lot71Files.InTempDirectory(directory =>
         {
             string path = Path.Combine(directory, "zone.json");
             File.WriteAllText(path, root.ToJsonString());
             string repository = Path.GetFullPath(Path.Combine(DataDirectory, "..", ".."));   // données livrées
             var validate = Lot71Files.Cli(repository, "validate", path);
-            Assert.Equal(1, validate.ExitCode);
-            Assert.Contains("300 obstacles, au plus 256", validate.Output + validate.Error, StringComparison.Ordinal);
+            Assert.Equal(0, validate.ExitCode);
+            Assert.Contains("300 obstacles, simulée par secteurs", validate.Output, StringComparison.Ordinal);
             var simulate = Lot71Files.Cli(repository, "simulate", path, "--data", DataDirectory, "--out", Path.Combine(directory, "j.jsonl"));
             Assert.Equal(1, simulate.ExitCode);
-            Assert.Contains("300 obstacles, au plus 256", simulate.Output + simulate.Error, StringComparison.Ordinal);
+            Assert.Contains("aire de 300 obstacles, simulée par secteurs", simulate.Output + simulate.Error, StringComparison.Ordinal);
             Assert.DoesNotContain("Exception", simulate.Output + simulate.Error, StringComparison.Ordinal);
             return 0;
         });
