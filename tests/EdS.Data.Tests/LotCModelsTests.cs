@@ -19,7 +19,8 @@ public class LotCModelsTests
     [Fact]
     public void Chaque_fichier_est_dans_la_table_et_chaque_modele_a_ses_fichiers()
     {
-        string[] fbx = Directory.GetFiles(Folder, "*.fbx", SearchOption.AllDirectories);
+        // Revue Codex de la PR #196 : les .meta qu'Unity écrit à l'ouverture du projet ne comptent pas (comme V218BoulangerieTests).
+        string[] fbx = Directory.GetFiles(Folder, "*.fbx", SearchOption.AllDirectories).Where(f => f.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)).ToArray();
         foreach (string f in fbx)
             Assert.True(LotCModels.CodeOf(Path.GetRelativePath(Lot93UnityPackageTests.Root, f)) != null, "hors table : " + f);
         Assert.Equal(LotCModels.All.Count, fbx.Length);
@@ -28,7 +29,7 @@ public class LotCModelsTests
             string dir = Path.Combine(Folder, m.Category, m.Code);
             Assert.True(File.Exists(Path.Combine(dir, m.Code + ".fbx")), m.Code);
             Assert.True(File.Exists(Path.Combine(dir, m.Code + "_couleur.jpg")), m.Code);
-            Assert.Equal(m.Code == "C_IN2_M0_04" ? 2 : 3, Directory.GetFiles(dir).Length);   // le mannequin fait main n'a pas de normale
+            Assert.Equal(m.Code == "C_IN2_M0_04" ? 2 : 3, Directory.GetFiles(dir).Count(f => !f.EndsWith(".meta", StringComparison.Ordinal)));   // le mannequin fait main n'a pas de normale
         }
     }
 
