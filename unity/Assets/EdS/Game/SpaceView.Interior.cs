@@ -668,6 +668,11 @@ namespace EdS.Game
                 : catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
             GameObject holder = look != null ? Model(look, piece, parent) : Fallback(piece, parent);
             if (holder == null) return null;
+            // Revue Codex de la PR #200 : un modèle Tripo allongé (le banc de l'auberge, long selon z) est tourné d'un quart pour suivre l'axe
+            // que l'aménagement donne à la pièce (le long de la table : selon x à 0°, selon z à 90°).
+            if (ownModel != null && LotCModels.AlongTable(piece.Prop) && StyleLook.VisibleBounds(holder, out Bounds lb)
+                && (lb.size.x >= lb.size.z) != LotCModels.AlongX(piece.Yaw))
+                holder.transform.rotation = Quaternion.Euler(0f, (float)piece.Yaw + 90f, 0f);
             if (!StyleLook.VisibleBounds(holder, out Bounds b)) return holder;
             Vector3 target = at;
             if (piece.OnWall)
