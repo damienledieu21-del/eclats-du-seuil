@@ -167,6 +167,7 @@ namespace EdS.Game
                     if (under == null) continue;   // pas de meuble dessous : rien dessus
                     y = StyleLook.VisibleBounds(under, out Bounds ub) ? ub.max.y : y;
                 }
+                else if (piece.Y > 0 && CandleTop(lotC, piece) is float top) y = top;
                 Transform parent = _root.transform;
                 if (piece.OnWall)
                 {
@@ -682,6 +683,19 @@ namespace EdS.Game
             if (piece.Prop == InteriorProp.Chandelier || piece.Prop == InteriorProp.Candelabra) Lit(holder, 0.18f);
             if (b.size.y > 1.6f && !piece.OnWall) AddModelOccluders(holder);
             return holder;
+        }
+
+        /// <summary>
+        /// Relecture Codex de la PR #201 : la bougie posée en hauteur sur un support de cierges (« chandelier1/bougie », sans parent dans
+        /// l'aménagement) suit le haut du support Tripo qui remplace le pied du code ; null si le support n'est pas un modèle du lot C.
+        /// </summary>
+        private static float? CandleTop(Dictionary<string, GameObject> lotC, InteriorPiece piece)
+        {
+            foreach (KeyValuePair<string, GameObject> k in lotC)
+                if (piece.Id.StartsWith(k.Key + "/", System.StringComparison.Ordinal) && InteriorRules.FurnitureFor(k.Key) == InteriorFurniture.Candelabra
+                    && StyleLook.VisibleBounds(k.Value, out Bounds b))
+                    return b.max.y;
+            return null;
         }
 
         /// <summary>Lot C : emprise au sol (x, z, en mètres, sans rotation ni échelle) de chaque modèle déjà mesuré, par code.</summary>
