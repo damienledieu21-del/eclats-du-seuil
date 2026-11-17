@@ -259,6 +259,26 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Objets_des_comptoirs_de_l_autel_et_des_cierges_recales_sur_le_modele()
+    {
+        // Revues Codex de la PR #201 : les objets posés sans parent sur un comptoir, l'autel ou un support de cierges (à la hauteur du meuble du
+        // code) suivent le haut du modèle Tripo qui le remplace (SpaceView.SurfaceY), à leur écart d'origine (l'oignon 3 cm au-dessus).
+        Assert.Equal(InteriorRules.CounterHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Counter));
+        Assert.Equal(InteriorRules.AltarHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Altar));
+        Assert.Equal(InteriorRules.CandleHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Candelabra));
+        Assert.Null(InteriorRules.SurfaceHeight(InteriorFurniture.Table));
+        foreach ((string room, string furniture) in new[] { ("chapelle", "autel"), ("chapelle", "chandelier1"), ("chapelle", "chandelier2"), ("epicerie", "comptoir"), ("auberge", "comptoir") })
+        {
+            Assert.NotNull(LotCModels.ForRoom(room, furniture));
+            double h = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(furniture))!.Value;
+            var on = Layout(room).Pieces.Where(p => p.Id.StartsWith(furniture + "/", StringComparison.Ordinal) && p.Parent < 0 && p.Y > 0).ToList();
+            Assert.True(on.Count > 0, room + "/" + furniture);
+            Assert.All(on, p => Assert.InRange(p.Y - h, -1e-9, 0.1));
+        }
+        Assert.Contains("SurfaceY(lotC, piece)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
     public void Code_d_un_chemin()
     {
         Assert.Equal("C_RE_S01", LotCModels.CodeOf("Assets/EdS/Modeles/LotC/08_Recoltes/C_RE_S01/C_RE_S01.fbx"));
