@@ -29,7 +29,7 @@ public class V2303BourgMonumentsMaisonsTests
 
     private static readonly Lazy<BourgDress> Dress = new(() => BourgModels.Dress(Obstacles, Roads.Value));
 
-    private static IEnumerable<BourgPiece> Inside => Dress.Value.Pieces.Where(p => !p.Piece.StartsWith("f", StringComparison.Ordinal));
+    private static IEnumerable<BourgPiece> Inside => Dress.Value.Pieces.Where(p => !p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece));
 
     private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>
         (o.Points.Min(p => p.X.Raw / 1e4), o.Points.Max(p => p.X.Raw / 1e4), o.Points.Min(p => p.Z.Raw / 1e4), o.Points.Max(p => p.Z.Raw / 1e4));
