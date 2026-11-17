@@ -149,6 +149,10 @@ public class V2321CartesImagesTests
         // 3 : les cartes posées sans image ont le repli sombre.
         Assert.Contains("_cardsPlayedPlayer.color = mine != null", code, StringComparison.Ordinal);
         Assert.Contains("_cardsPlayedNpc.color = theirs != null", code, StringComparison.Ordinal);
+        // Revue Codex : le score garde sa valeur d'avant tant que la carte du PNJ est face cachée.
+        Assert.Contains("if (revealed) _cardsShownScore = table.Score;", code, StringComparison.Ordinal);
+        Assert.Contains("_cardsScore.Value = _cardsShownScore;", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("_cardsScore.Value = table.Score", code, StringComparison.Ordinal);
         // 4 : dimensions multiples de 4 (compression de Unity sur PC).
         Assert.Equal(0, CardArt.Width % 4);
         Assert.Equal(0, CardArt.Height % 4);

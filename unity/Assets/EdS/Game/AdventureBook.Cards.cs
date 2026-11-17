@@ -37,6 +37,7 @@ namespace EdS.Game
         private readonly Texture2D[] _cardsFaces = new Texture2D[CardMatch.DeckSize];
         private Texture2D _cardsBack, _cardsMatTexture, _cardsCycleTexture;
         private bool _cardsLoaded, _cardsGold;
+        private string _cardsShownScore = "";
         private int _cardsSeen = -1, _cardsHover = -1, _cardsInputFrame = -10;
         private float _cardsFlip = FlipDone;
 
@@ -123,6 +124,7 @@ namespace EdS.Game
             _cardsLoaded = false;
             _cardsSeen = -1;
             _cardsHover = -1;
+            _cardsShownScore = "";
             _cardsFlip = FlipDone;
             for (int i = 0; i < CardSlots; i++)
             {
@@ -226,7 +228,9 @@ namespace EdS.Game
             bool revealed = _cardsFlip >= FlipDone;
 
             _cardsHeader.Value = table.Header;
-            _cardsScore.Value = table.Score;
+            // Le score (qui dit qui a gagné la manche) garde sa valeur d'avant tant que la carte du PNJ n'est pas retournée.
+            if (revealed) _cardsShownScore = table.Score;
+            _cardsScore.Value = _cardsShownScore;
             _cardsPrompt.Value = revealed || !table.Finished ? table.Prompt : "";
             _cardsLast.Value = revealed ? table.LastRound : "";
             _cardsRules.Value = table.Rules;
