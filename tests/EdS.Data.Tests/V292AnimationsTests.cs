@@ -374,7 +374,7 @@ public sealed class V292AnimationsTests
         Assert.Equal(30, populations["vieux_brunot"]["night"]!["chancePercent"]!.GetValue<int>());
         Assert.Equal(16, populations["vieux_brunot"]["level"]!.GetValue<int>());
         var scenario = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "scenarios", "zones", "vallons.json")))!;
-        var bears = scenario["data"]!["combatants"]!.AsArray().Where(c => ((string)c!["id"]!).StartsWith("ours") || (string)c!["id"]! == "vieux_brunot")
+        var bears = scenario["data"]!["combatants"]!.AsArray().Where(c => (((string)c!["id"]!).StartsWith("ours") || (string)c!["id"]! == "vieux_brunot") && !ScenarioTestData.IsLieu((string)c!["id"]!))
             .ToDictionary(c => (string)c!["id"]!, c => c!);
         Assert.Equal(3, bears.Count);
         Assert.All(bears.Values, b => Assert.Equal("meute", (string)b["team"]!));

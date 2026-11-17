@@ -19,7 +19,7 @@ namespace EdS.Data.Tests;
 public class V228c4QueteValleeTests
 {
     private const string Mission = "quest.traces_sous_le_moulin", Vallee = "quest.passages_de_la_vallee";
-    private static readonly string[] Passages = { "eboulement", "gue_vallee_sud", "gue_vallee_nord" };
+    private static readonly string[] Passages = { "eboulement", "gue_vallee_sud", "gue_vallee_nord", "pont_suspendu" };   // V2.31 : le pont suspendu (décision de Damien du 16 novembre 2026)
     private static readonly (double X, double Z) Gaspard = (26, -13), Archer = (1, -1.5);
 
     private static WorldSession Open((double X, double Z) at, SavedCharacter hero, IEnumerable<string>? consumed = null)

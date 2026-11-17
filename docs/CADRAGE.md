@@ -305,6 +305,8 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Bourg : rôle des nouveaux bâtiments | Les 7 nouveaux bâtiments (H09, boutiques P13 à P18) reçoivent un rôle : un marchand et ses PNJ chacun, métier, horaires et marchandises d'après le dossier du Bourg, sans invention. | Retenu (Damien, 16 novembre 2026, vers 23 h 20) ; réalisé au V2.30.5 pour les six boutiques (choix prudents à confirmer : le dossier ne donne que les métiers) ; H09 : un habitant sans boutique (question posée) |
 | Bourg : marchands des nouvelles boutiques | Un vrai prénom, une petite personnalité et quelques répliques (salut, achat, au revoir, une ou deux rumeurs du Bourg) pour les six marchands, dans le ton des PNJ existants, sans quête nouvelle. | Retenu (Damien, 17 novembre 2026, vers 2 h 15) ; réalisé au V2.30.5 |
 | Bourg : maison notable (H09) | H09 reste un habitant : une famille du Bourg avec ses horaires, sans boutique. | Retenu (Damien, 17 novembre 2026, vers 2 h 15) ; réalisé au V2.30.5 (Aymon et Ermeline Vaudry) |
+| Lieux de la grande carte : créatures | Les lieux sont **peuplés dès leur sous-lot** avec le bestiaire existant (meute de la tanière, ours, etc.). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; V2.31 et suivants ([MONDE.md](MONDE.md)) |
+| Pont suspendu de la vallée | Un **vrai troisième passage** sur la rivière, ailleurs que sur le gué nord, relié par des sentiers ; il s'ouvre avec les gués (quête « Les passages de la vallée »). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; ouverture avec les gués : choix de Claude ; V2.31 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 
