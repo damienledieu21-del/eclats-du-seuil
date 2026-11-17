@@ -128,6 +128,14 @@ namespace EdS.Game
                 Box(p.Covers + " (fenêtre " + lit + ")", c, size, WindowGlass(), 1f);
                 lit++;
             }
+            // Revue Codex de la PR #204 : un modèle sans volets séparés (boutiques, prévôt, corps de garde, écuries) : ses fenêtres de façade.
+            if (lit == 0)
+                foreach (var w in BourgModels.FacadeWindows(p.Piece))
+                {
+                    Vector3 c = holder.TransformPoint(new Vector3((float)w.X, (float)w.Y, (float)w.Z));
+                    Vector3 size = facing.X != 0 ? new Vector3(0.06f, (float)w.Height, (float)w.Width) : new Vector3((float)w.Width, (float)w.Height, 0.06f);
+                    Box(p.Covers + " (fenêtre " + lit++ + ")", c, size, WindowGlass(), 1f);
+                }
         }
 
         /// <summary>Vantaux tournés autour de leur charnière (repère du support), herse levée.</summary>

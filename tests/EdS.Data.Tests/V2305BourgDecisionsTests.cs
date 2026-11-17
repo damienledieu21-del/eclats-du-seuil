@@ -240,4 +240,29 @@ public class V2305BourgDecisionsTests : IDisposable
         Assert.DoesNotContain(merchants, m => ((string)m!["npc"]!).StartsWith("npc.notable", StringComparison.Ordinal));
         Assert.DoesNotContain(story["quests"]!.AsArray(), q => q!.ToJsonString().Contains("_ville\"", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// Revue Codex de la PR #204 : les modèles sans volets séparés (boutiques P13 à P18, prévôt, corps de garde, écuries) ont des fenêtres
+    /// de façade à éclairer la nuit : devant le mur de façade, dans la largeur du modèle, hors de la porte (au milieu).
+    /// </summary>
+    [Fact]
+    public void Models_without_separate_shutters_have_facade_windows()
+    {
+        foreach (string piece in new[] { "p13_armurier", "p14_forgeron", "p15_tanneur", "p16_apothicaire", "p17_tailleur", "p18_taverne",
+            BourgModels.Provost, BourgModels.Guardhouse, BourgModels.Stables })
+        {
+            var windows = BourgModels.FacadeWindows(piece);
+            var b = BourgModels.Box(piece)!.Value;
+            Assert.InRange(windows.Count, 4, 4);
+            Assert.All(windows, w =>
+            {
+                Assert.InRange(w.X, -b.X1, -b.X0);              // dans la largeur (x = −X)
+                Assert.InRange(w.Z, 0.5, -b.Y0 + 0.05);        // devant le centre, pas au-delà du débord avant
+                Assert.True(Math.Abs(w.X) >= 1.0, piece + " : fenêtre sur la porte");
+                Assert.InRange(w.Y, 1.5, 5.0);
+            });
+        }
+        Assert.Empty(BourgModels.FacadeWindows("h05_marchand_moyenne"));   // les maisons types ont leurs volets
+        Assert.Empty(BourgModels.FacadeWindows(BourgModels.Church));
+    }
 }

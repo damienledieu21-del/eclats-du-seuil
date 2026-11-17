@@ -959,6 +959,33 @@ namespace EdS.Runtime
             return (Round(p.X + fx * ahead - fz * 0.9), Round(p.Z + fz * ahead + fx * 0.9));
         }
 
+        /// <summary>
+        /// V2.30.5 (revue Codex de la PR #204) : fenêtres de façade à éclairer la nuit pour les modèles dont les volets ne sont pas des objets
+        /// séparés (boutiques P13 à P18, maison du prévôt, corps de garde, écuries : un seul maillage par FBX). Chaque fenêtre : centre
+        /// (x, y, z) dans le repère du modèle d'Unity (z = −Y de Blender : devant la façade, 3 cm en avant du mur, Y de la façade d'après le
+        /// recentrage de l'export de jeu), largeur et hauteur (m). Rez-de-chaussée à 1,60 m, étage à 4,80 m (étage Z 3,20 des fiches), au
+        /// quart et aux trois quarts de la largeur (la porte est au milieu) ; écuries : quatre baies du logement (fiche P07 : X 5, 11, 19, 25,
+        /// allège 4). Vide pour les autres pièces. Approximation : les baies réelles des modèles n'ont pas été relevées.
+        /// </summary>
+        public static IReadOnlyList<(double X, double Y, double Z, double Width, double Height)> FacadeWindows(string piece)
+        {
+            double facade;
+            switch (piece)
+            {
+                case "p13_armurier": case "p14_forgeron": facade = 4.6; break;
+                case "p15_tanneur": case "p18_taverne": facade = 5.6; break;
+                case "p16_apothicaire": case "p17_tailleur": facade = 4.1; break;
+                case Provost: case Guardhouse: facade = 5.4; break;
+                case Stables:
+                    return new[] { 5.0, 11.0, 19.0, 25.0 }.Select(x => (Round(15.0 - x), 4.6, 12.03, 1.0, 1.0)).ToList();
+                default: return Array.Empty<(double, double, double, double, double)>();
+            }
+            var b = Box(piece)!.Value;
+            double quarter = (b.X1 - b.X0) / 4, z = facade + 0.03;
+            return new[] { (-quarter, 1.6), (quarter, 1.6), (-quarter, 4.8), (quarter, 4.8) }
+                .Select(w => (Round(w.Item1), w.Item2, Round(z), 0.8, 1.0)).ToList();
+        }
+
         /// <summary>V2.30.5 : pièce d'un monument habillé qui a une lanterne de porte (église, halle, écuries, bâtiments de la cour du prévôt).</summary>
         public static bool HasDoorLantern(string piece) =>
             piece == Church || piece == Hall || piece == Stables || piece == Provost || piece == Guardhouse || piece == Granary || piece == Oven;
