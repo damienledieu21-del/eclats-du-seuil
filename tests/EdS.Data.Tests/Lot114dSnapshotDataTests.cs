@@ -26,7 +26,9 @@ public class Lot114dSnapshotDataTests
     [MemberData(nameof(Scenarios))]
     public void Instantanes_d_un_scenario_livre_relus_et_continues_a_l_identique(string file)
     {
-        ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", file), ShippedData);
+        // Sous-lots V2.31 et suivants : l'aire des Vallons, simulée d'un bloc, sans les obstacles des lieux de la grande carte.
+        ScenarioLoadResult loaded = file == "zones/vallons.json" ? ReadVallonsBlock()
+            : ScenarioJsonReader.ReadFile(Path.Combine(AppContext.BaseDirectory, "scenarios", file), ShippedData);
         Assert.True(loaded.IsValid, loaded.Report.ToString());
         long ticks = loaded.Setup!.DurationMs / loaded.Setup.Combat.TickMilliseconds;
         var resumeAt = new HashSet<long>(Enumerable.Range(0, 5).Select(k => ticks * k / 5 + 3));
