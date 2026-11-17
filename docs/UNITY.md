@@ -1085,6 +1085,15 @@ Les cinq panoramas livrés par ChatGPT (commandés par Damien : printemps, été
 
 Essais : `V229HorizonTests`, `V2292PanoramaTests`.
 
+### Les vraies cartes des Trois Feux (sous-lot V2.32.1, 17 novembre 2026)
+
+Livraison ChatGPT (`Eclats_du_Seuil_AssetLab/Trois_Feux`) : 56 cartes de 750 × 1050 (27 faces et un dos, édition ordinaire `STD` et dorée `OR`), tapis 1920 × 1080, cycle 256 × 256. `unity/Assets/EdS/Game/AdventureBook.Cards.cs` :
+- **Fichiers** : `unity/Assets/EdS/Interface/Resources/EdsTroisFeux/` : `Cartes/` en PNG réduits à **375 × 525** (Lanczos, transparence gardée, ~20 Mo en tout avec le tapis), `tapis_1920.jpg` et `tapis_1280.jpg` (JPEG 85, choisi selon la hauteur de l'écran : 800 et plus pour le grand), `cycle.png` (256). Import (`EdsCardTextures`, `EdsInterfaceSetup.cs`) : compression de Unity, sans mipmaps, non lisibles. Icône du jeu doré : `Resources/EdsInterface/Peintes/jeu_des_trois_feux.png` (dos doré dans 128 × 128).
+- **Mise en page** : tapis de 1920 × 1080 au centre (réduit si l'écran est plus étroit que 16:9), places à (280, 564, 848, 1132, 1416) en x, 222 × 311, rangée du PNJ à y 116 et celle du joueur à y 652 ; cartes posées au centre (143 × 200), textes sur deux plaques sombres de part et d'autre, pastilles des manches sous le cycle du tapis.
+- **Entrées** : `AdventureBook.ReadCardsInput` (appelée par `EdsGame` quand la table est ouverte) : survol de la souris, clic, ou toucher en `TouchPhase.Began` seulement (la souris simulée à partir du doigt est ignorée) ; touches 1 à 5 et Échap comme avant.
+- **Mémoire** : textures chargées par `Resources.Load` à l'ouverture, rendues par `Resources.UnloadAsset` à la fermeture de la table ou du livre ; aucun cache statique ; l'image de la main, du PNJ et des cartes posées réutilise des `RawImage` créés une fois.
+- Essais : `V2321CartesImagesTests` ; compilation de contrôle seulement (`tests/EdS.Unity.CompileCheck`, qui reçoit `Resources.UnloadAsset`). À essayer dans Unity par Damien : calage des places sur le tapis, lisibilité des textes, retournement, téléphone.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.

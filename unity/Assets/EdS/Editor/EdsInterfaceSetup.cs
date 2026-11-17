@@ -123,4 +123,30 @@ namespace EdS.Game.Editor
             importer.filterMode = FilterMode.Bilinear;
         }
     }
+
+    /// <summary>
+    /// Sous-lot V2.32.1 : réglages d'import des images des Trois Feux (<c>Resources/EdsTroisFeux</c> : 56 cartes de 375 × 525, tapis, cycle) :
+    /// compression de Unity (PC et téléphone), sans réduction en cascade (inutile : les cartes s'affichent à peu près à leur taille), taille
+    /// exacte, lecture seule (non lisibles par le code, donc moitié moins de mémoire). Elles sont chargées à l'ouverture de la table et
+    /// rendues en la quittant (<c>Resources.UnloadAsset</c>).
+    /// </summary>
+    public sealed class EdsCardTextures : AssetPostprocessor
+    {
+        public override uint GetVersion() => 1;
+
+        public static bool IsCardImage(string path) => (path ?? "").Replace('\\', '/').Contains("/Resources/EdsTroisFeux/");
+
+        private void OnPreprocessTexture()
+        {
+            if (!IsCardImage(assetPath) || !(assetImporter is TextureImporter importer)) return;
+            importer.textureType = TextureImporterType.Default;
+            importer.npotScale = TextureImporterNPOTScale.None;
+            importer.mipmapEnabled = false;
+            importer.isReadable = false;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.alphaIsTransparency = true;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.filterMode = FilterMode.Bilinear;
+        }
+    }
 }
