@@ -973,6 +973,17 @@ Décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D �
 - **Écarts connus** (testés) : église 18 × 34 sur 16 × 30 (1 m de chaque côté, 2,1 m au sud) ; clocher des données (6 × 6) sans modèle, derrière le chevet ; **écuries** en U de 30 × 24 sur 30 × 16 : l'aile arrière dépasse de **8 m** au nord (traversable) ; four banal : 1,5 m d'auvent hors de la grande maison ; la grande maison garde des parties vides mais bloquantes (la cour) ; puits 0,5 m hors de son obstacle. **H09** (notable large, 11 m de façade) ne tient sur aucune emprise : livrée, pas posée. Maisons tournées vers les ruelles supposées entre les îlots (aucune rue dans les données) : grand côté le long des routes. Boutiques P13 à P18 (armurier, forgeron, tanneur, apothicaire, tailleur, taverne) non livrées : aucun obstacle ni boutique dans les données. **Rien n'a été vérifié dans Unity.**
 - Tests : `V2303BourgMonumentsMaisonsTests` ; `V2302BourgEnceinteTests` ne regarde que l'enceinte.
 
+### Rues et accessoires du Bourg fortifié (sous-lot V2.30.4)
+
+16 novembre 2026, à la suite du V2.30.3. Décor seul (aucun obstacle ne lui correspond, il n'arrête rien) ; données de zone et moteur inchangés.
+
+- **Fichiers** : `Modeles/Decor/bourg_rues/` (41 pièces, 18 Mo, un atlas par pièce, couleur 1 024, normale 512) : voirie `r01_paves_place`, `r01_bordure`, `r02_rue_pavee`, `r03_ruelle_terre` ; charrettes R19 (3), chariots de caravane R20 (4), bancs R22 (2), abreuvoir R23, pilori R24, panneaux sans texte R25 (3), tonneaux R26, caisses R27, ballots R28 (3 de chaque) ; garde : barrière de péage F16, brasero F17, râtelier sur pieds F18, bannière sur mât F19 ; cours : appentis H21 (2), puits privé H22, latrines H23, tas de bois H24 (3), potager H25 (3).
+- **Table de décor** (`BourgModels.Streets`) : place du marché pavée (modules de 6 m sur le rectangle des étals agrandi de 3 m ; les pavés passent sous les étals et le puits) et bordée (sauf en travers d'une route) ; route d'Ambre pavée et chemin des vignes en ruelle de terre, dans les murs, hors de la place et à plus de 12 m des portes ; à chaque porte, deux braseros dedans, un râtelier, deux bannières dehors, un panneau à 25 m dedans ; barrière de péage ouverte (lisse le long de la route) devant la porte de l'Est ; quatre chariots de caravane dans la porte de l'Ouest ; marchandises derrière chaque étal, trois charrettes à côté des étals ; bancs autour de la fontaine, pilori sur la place, abreuvoir devant les écuries ; un élément de cour derrière une maison sur trois. Une place prise (obstacle, route sauf pour les sols, autre accessoire, à 0,30 m près) est sautée : rien ne gêne la marche des PNJ, les portes des intérieurs ni le passage des portes de la ville (testé).
+- **Vue** : comme les autres pièces du Bourg ; les sols (pavés, rues, bordures) ne s'effacent pas devant le joueur.
+- **Non posés** (et non livrés) : pièces murales qui demandent une hauteur de pose sur une façade (lanterne sur potence R21, corde à linge R29, auvents R30, râtelier mural F18, bannière sur potence F19) ; kit de façades H13 à H20 (pans, portes, volets, lucarnes, cheminée : faits pour composer des maisons, les maisons types les portent déjà) ; caniveau R04, trottoir R05, marches R06, rampe R07, grille R08, bouche et entrée d'égout R09 et R10 (sous la rue pavée ou sans dénivelé dans les données ; les égouts viendront au V2.49). Sols posés à plat au plus bas de leur pied : sur une pente, leur côté haut s'enfonce (à voir dans Unity). **Rien n'a été vérifié dans Unity.**
+- **Relecture indépendante** (16 novembre 2026) : la table est calculée sur l'aire entière (`AdventureMap.Bourg`) : mêmes accessoires d'une fenêtre à l'autre, y compris dans un secteur sans porte ; les sols sont posés en dernier et jamais sous la fontaine, le lavoir, le parvis, le cimetière, le pilori ou l'abreuvoir ; les sols et petits décors n'ont pas d'occulteur.
+- Tests : `V2304BourgRuesTests`.
+
 ### Relief des Vallons (sous-lot V2.24)
 
 Affichage seulement (décision de Damien du 11 novembre 2026) ; détail des règles : [MONDE.md](MONDE.md#relief-des-vallons-sous-lot-v224).
@@ -1058,11 +1069,21 @@ Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity
 
 Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra, qui la suit à chaque image (`EdsGame.LateUpdate`) en gardant les angles du profil de référence (hauteur réduite autour de l’altitude de la caméra). Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
 
+### Panoramas peints (sous-lot V2.29.2, 16 novembre 2026)
+
+Les cinq panoramas livrés par ChatGPT (commandés par Damien : printemps, été, automne, hiver, Envers) remplacent les silhouettes. `HorizonPanorama` (`src/EdS.Runtime`, sans Unity) porte les règles, `HorizonView` (Unity) la bande :
+- **Calage** : image circulaire de 360°, nord à la colonne 0, est au quart (4 096 sur 16 384), 45,511 px/° ; horizon à 200 px du bas de 1 024 (v = 0,1953125 ; 50 px sur 256, 100 sur 512), soit de -4,39° à +18,11° ; Crêtes de Fer jusqu'à 8,5°. La bande est un cylindre de 144 pans posé à 92 % du plan lointain, qui suit la caméra ; ses hauteurs sont celles du profil de référence (6 000 m) mises à l'échelle, comme les silhouettes : l'angle au-dessus de l'horizon ne dépend ni du plan lointain ni de l'altitude de la caméra (`HorizonPanorama.WorldY`).
+- **Lumière** : textures neutres, teintées par la lumière de l'heure et du temps (`StyleWorld.HorizonLight`) et un peu fondues dans la brume ; le ciel du jeu reste visible derrière (alpha).
+- **Saison** : texture de la saison montrée (`SeasonLook`, calendrier du 15 novembre : 1er mars, 1er juin, 1er septembre, 1er décembre). Pendant les 7 jours de transition, la saison d'avant reste dessous (opacité jusqu'à mi-transition, puis elle s'efface) et la nouvelle apparaît dessus (opacité = progression adoucie).
+- **L'Envers** : pas encore affiché dans le jeu. `HorizonView.Reversed` reste faux ; sa texture (`horizon_reverse_*`) n'est chargée que s'il devient vrai. Prête, non utilisée.
+- **Tailles** : PC (modeste et complet) 8 192 × 512, téléphone 4 096 × 256 (`HorizonPanorama.Width`). Pas de 16 384 dans le dépôt (images de 4 096 × 256 d'origine pour le téléphone, 16 384 × 1 024 réduites par moitié avec Lanczos pour le PC). Fichiers : `unity/Assets/EdS/Interface/Resources/EdsHorizon/horizon_<saison>_<largeur>.png` (11 Mo en tout) ; réglages d'import par `EdsHorizonTextures` (taille maximale 8 192, sans mipmaps, bords bloqués).
+- **Secours** : sans textures, les silhouettes de `HorizonProfile` servent encore (le profil reste dans le cœur, avec ses essais). Caché dans les pièces et dans le souvenir de la Rupture, comme avant.
+- Compilation de contrôle seulement (`tests/EdS.Unity.CompileCheck`) : pas d'essai dans Unity dans cette PR. Essais du cœur : `V2292PanoramaTests`. Origine des images : [CREDITS.md](CREDITS.md).
+
 **À venir** :
-- les **cartes peintes** du ciel, à demander à ChatGPT ; ces silhouettes les remplacent en attendant ;
 - le tour de caméra du point de vue du sommet. Le **brouillard à dissiper** et le **point de vue du sommet** sont faits au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) : brouillard posé sur la grande carte du livre d'aventure.
 
-Essais : `V229HorizonTests`.
+Essais : `V229HorizonTests`, `V2292PanoramaTests`.
 
 ## Lot C : modèles Tripo (16 novembre 2026)
 
