@@ -70,10 +70,11 @@ public class V2305BourgDecisionsTests : IDisposable
         BourgPiece church = BourgModels.Dress(Obstacles).Pieces.Single(p => p.Piece == BourgModels.Church);
         // Clocher du modèle : X 0,20 – 6,20, Y 0 – 6 de la réservation de 18 × 34 (recentrée de −9, −17), façade au sud.
         Assert.Equal((-897.0 - 8.8, -897.0 - 2.8, 25.0 - 17.0, 25.0 - 11.0), (church.X - 8.8, church.X - 2.8, church.Z - 17.0, church.Z - 11.0));
-        // Le point sûr de la porte de l'Est est dehors, au-delà du fossé, sur la route.
+        // Le point sûr de la porte de l'Est est juste dedans, sur la route, derrière la porte (dans la ville : son écran de chargement est
+        // celui du Bourg, V2.53).
         SafePoint gate = Vallons.Value.SafePoints.Single(s => s.Id == "porte_est_du_bourg");
-        Assert.Equal((-692.0, -49.0), (gate.Position.X.Raw / 1e4, gate.Position.Z.Raw / 1e4));
-        Assert.False(Blocked(-692, -49));
+        Assert.Equal((-722.0, -50.0), (gate.Position.X.Raw / 1e4, gate.Position.Z.Raw / 1e4));
+        Assert.False(Blocked(-722, -50));
     }
 
     [Fact]
