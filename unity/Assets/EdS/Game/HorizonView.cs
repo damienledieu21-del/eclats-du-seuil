@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EdS.Runtime;
 using UnityEngine;
 
@@ -8,6 +9,14 @@ namespace EdS.Game
     /// les Crêtes de Fer enneigées au nord-est, la Forêt des Murmures voilée au nord-ouest, des collines basses ailleurs. Un seul maillage, posé
     /// juste en deçà du plan lointain de la caméra et qui la suit (jamais chargé par cases) ; dessiné après le ciel, sans écrire la profondeur :
     /// tout le décor proche passe devant. Les couleurs se fondent dans celle de la brume du moment (jour, nuit, météo).
+    /// <para>
+    /// Sous-lot V2.29.2 : les <b>panoramas peints</b> (<see cref="HorizonPanorama"/>) remplacent ces silhouettes dès que leurs textures sont
+    /// là (Resources/EdsHorizon) : une bande cylindrique texturée (alpha, le ciel du jeu derrière), calée en azimut (nord à u = 0) et en
+    /// angle (l'horizon à 200 px du bas, 45,511 px/°, donc juste quel que soit le plan lointain et la hauteur de la caméra), teintée par la
+    /// lumière de l'heure (<see cref="StyleWorld.HorizonLight"/>), choisie selon la saison du jeu avec un fondu pendant la transition de
+    /// 7 jours. L'Envers n'est pas encore un état du jeu : <see cref="Reversed"/> reste faux, sa texture n'est chargée que s'il devient vrai.
+    /// Les silhouettes ne servent plus que de secours (textures absentes).
+    /// </para>
     /// </summary>
     public static class HorizonView
     {
@@ -19,6 +28,16 @@ namespace EdS.Game
         private static Color _fog = new Color(-1f, 0f, 0f, 0f);
         private static float _radius = -1f;
 
+        /// <summary>Sous-lot V2.29.2 : l'Envers est montré (aucun état du jeu ne le pose pour l'instant : ses textures restent prêtes, non chargées).</summary>
+        public static bool Reversed { get; set; }
+
+        private const int PanoramaSegments = 144;
+        private static GameObject _band;
+        private static Material _under, _top;
+        private static Renderer _underRenderer;
+        private static readonly Dictionary<string, Texture2D> Loaded = new Dictionary<string, Texture2D>();
+        private static bool _bandBuilt;
+
         private static readonly Color Hills = new Color(0.36f, 0.43f, 0.47f), Forest = new Color(0.22f, 0.32f, 0.29f),
             Rock = new Color(0.33f, 0.35f, 0.42f), Snow = new Color(0.9f, 0.93f, 0.97f),
             Sea = new Color(0.30f, 0.42f, 0.50f);   // sous-lot V2.29 (2) : la mer de la Côte des Brumes, à l'ouest
@@ -28,8 +47,17 @@ namespace EdS.Game
         {
             if (camera == null) return;
             if (_root == null) Build();
-            _root.SetActive(visible);
-            if (!visible) return;
+            if (!_bandBuilt) BuildBand();
+            // Revue indépendante de la PR #203 : tant que la saison n'est pas connue, rien n'est montré (pas de printemps par défaut).
+            if (!visible || !SeasonView.HasLook)
+            {
+                _root.SetActive(false);
+                _band.SetActive(false);
+                return;
+            }
+            bool painted = ShowPanorama(camera);
+            _root.SetActive(!painted);
+            if (painted) return;
             float radius = camera.farClipPlane * 0.92f;
             if (!Mathf.Approximately(radius, _radius))
             {
@@ -56,6 +84,103 @@ namespace EdS.Game
                 }
                 _mesh.colors = _colors;
             }
+        }
+
+        /// <summary>Pose la bande peinte (voir la classe) ; faux (et bande cachée) si les textures manquent : les silhouettes servent alors.</summary>
+        private static bool ShowPanorama(Camera camera)
+        {
+            PanoramaChoice choice = HorizonPanorama.Choose(SeasonView.Shown.Season, SeasonView.Shown.Blend, Reversed);
+            Texture2D top = Panorama(choice.Top);
+            Texture2D under = choice.Under != null ? Panorama(choice.Under) : null;
+            if (top == null)
+            {
+                _band.SetActive(false);
+                return false;
+            }
+            _band.SetActive(true);
+            float radius = camera.farClipPlane * 0.92f, scale = radius / (float)HorizonProfile.Radius;
+            _band.transform.localScale = new Vector3(radius, scale, radius);
+            Vector3 at = camera.transform.position;
+            _band.transform.position = new Vector3(at.x, at.y * (1f - scale), at.z);   // angles justes à toute altitude (HorizonPanorama.WorldY)
+            // La lumière de l'heure (jour, nuit, météo), un peu fondue dans la brume : le pied se perd dans la brume du moment.
+            Color tint = Color.Lerp(StyleWorld.HorizonLight, RenderSettings.fogColor, 0.18f);
+            _top.SetTexture("_MainTex", top);
+            _top.SetColor("_Color", new Color(tint.r, tint.g, tint.b, choice.TopAlpha));
+            bool both = under != null && choice.UnderAlpha > 0f;
+            _underRenderer.gameObject.SetActive(both);
+            if (both)
+            {
+                _under.SetTexture("_MainTex", under);
+                _under.SetColor("_Color", new Color(tint.r, tint.g, tint.b, choice.UnderAlpha));
+            }
+            return true;
+        }
+
+        /// <summary>Texture d'un panorama pour la classe de la machine (4 096 sur téléphone, 8 192 sur PC) ; chargée une fois, null si absente.</summary>
+        private static Texture2D Panorama(string name)
+        {
+            string path = HorizonPanorama.ResourcePath(name, DeviceQuality.Tier);
+            if (Loaded.TryGetValue(path, out Texture2D t)) return t;
+            t = Resources.Load<Texture2D>(path);
+            if (t != null) t.wrapMode = TextureWrapMode.Clamp;   // un seul tour en u (colonnes extrêmes identiques), pas de reprise en hauteur
+            Loaded[path] = t;
+            return t;
+        }
+
+        private static void BuildBand()
+        {
+            _bandBuilt = true;
+            int n = PanoramaSegments;
+            (double V, double Height)[] rows = HorizonPanorama.Rows();   // une rangée par demi-degré : angle juste (revue Codex de la PR #203)
+            int r = rows.Length;
+            var vertices = new Vector3[r * (n + 1)];
+            var uv = new Vector2[vertices.Length];
+            var triangles = new int[6 * n * (r - 1)];
+            // Rayon 1 ; hauteurs au rayon de référence (6 000 m) : l'échelle y du maillage les ramène au plan lointain.
+            for (int i = 0; i <= n; i++)
+            {
+                double azimuth = i * 360.0 / n, a = azimuth * System.Math.PI / 180.0;
+                float x = (float)System.Math.Sin(a), z = (float)System.Math.Cos(a);   // 0 : le nord (+z), 90 : l'est (+x)
+                float u = i / (float)n;
+                for (int j = 0; j < r; j++)
+                {
+                    vertices[i * r + j] = new Vector3(x, (float)rows[j].Height, z);
+                    uv[i * r + j] = new Vector2(u, (float)rows[j].V);
+                }
+            }
+            int t = 0;
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < r - 1; j++)
+                {
+                    int a = i * r + j, c = a + r;
+                    triangles[t++] = a; triangles[t++] = a + 1; triangles[t++] = c;
+                    triangles[t++] = a + 1; triangles[t++] = c + 1; triangles[t++] = c;
+                }
+            var mesh = new Mesh { name = "HorizonPanorama" };
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            _band = new GameObject("HorizonPanorama");
+            Object.DontDestroyOnLoad(_band);
+            _top = new Material(Shader.Find("Sprites/Default")) { name = "HorizonPanoramaTop", renderQueue = 2999 };
+            _under = new Material(Shader.Find("Sprites/Default")) { name = "HorizonPanoramaUnder", renderQueue = 2998 };
+            // Deux bandes sur le même maillage : la saison d'avant dessous (file 2998), la saison montrée dessus (2999) ; fondu pendant la transition.
+            var underObject = new GameObject("Under");
+            underObject.transform.SetParent(_band.transform, false);
+            _underRenderer = Place(underObject, mesh, _under);
+            Place(_band, mesh, _top);
+            _band.SetActive(false);
+        }
+
+        private static Renderer Place(GameObject target, Mesh mesh, Material material)
+        {
+            target.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = target.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
         }
 
         private static void Build()
