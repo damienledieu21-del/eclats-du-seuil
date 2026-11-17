@@ -461,6 +461,60 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Objets_des_comptoirs_de_l_autel_et_des_cierges_recales_sur_le_modele()
+    {
+        // Revues Codex de la PR #201 : les objets posés sans parent sur un comptoir, l'autel ou un support de cierges (à la hauteur du meuble du
+        // code) suivent le haut du modèle Tripo qui le remplace (SpaceView.SurfaceY), à leur écart d'origine (l'oignon 3 cm au-dessus).
+        Assert.Equal(InteriorRules.CounterHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Counter));
+        Assert.Equal(InteriorRules.AltarHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Altar));
+        Assert.Equal(InteriorRules.CandleHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Candelabra));
+        Assert.Null(InteriorRules.SurfaceHeight(InteriorFurniture.Table));
+        foreach ((string room, string furniture) in new[] { ("chapelle", "autel"), ("chapelle", "chandelier1"), ("chapelle", "chandelier2"), ("epicerie", "comptoir"), ("auberge", "comptoir") })
+        {
+            Assert.NotNull(LotCModels.ForRoom(room, furniture));
+            double h = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(furniture))!.Value;
+            var on = Layout(room).Pieces.Where(p => p.Id.StartsWith(furniture + "/", StringComparison.Ordinal) && p.Parent < 0 && p.Y > 0).ToList();
+            Assert.True(on.Count > 0, room + "/" + furniture);
+            Assert.All(on, p => Assert.InRange(p.Y - h, -1e-9, 0.1));
+        }
+        Assert.Contains("SurfaceY(lotC, piece)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
+    public void Bancs_de_l_auberge_le_long_des_tables()
+    {
+        // Revue Codex de la PR #200 : l'aménagement pose les bancs le long de leur table (selon x à 0°, selon z à 90°) ; le banc Tripo
+        // (C_IN1_A0_03, long selon z dans son export) est tourné d'un quart quand son grand côté ne suit pas cet axe (SpaceView.Furnish).
+        Assert.Equal("C_IN1_A0_03", LotCModels.ForPiece("auberge", InteriorProp.Bench));
+        Assert.True(LotCModels.AlongTable(InteriorProp.Bench));
+        Assert.False(LotCModels.AlongTable(InteriorProp.Bowl));
+        Assert.True(LotCModels.AlongX(0) && LotCModels.AlongX(180) && LotCModels.AlongX(-180) && LotCModels.AlongX(10));
+        Assert.False(LotCModels.AlongX(90) || LotCModels.AlongX(270) || LotCModels.AlongX(-90));
+        InteriorLayout inn = Layout("auberge");
+        Assert.Contains(inn.Pieces, p => p.Prop == InteriorProp.Bench);
+        foreach (InteriorPiece bench in inn.Pieces.Where(p => p.Prop == InteriorProp.Bench))
+        {
+            InteriorPiece table = inn.Pieces.Single(p => p.Id == bench.Id.Substring(0, bench.Id.IndexOf('/')) && p.Prop == InteriorProp.Table);
+            Assert.Equal(LotCModels.AlongX(table.Yaw), LotCModels.AlongX(bench.Yaw));
+        }
+        Assert.Contains("LotCModels.AlongTable(piece.Prop)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
+    public void Panneau_Tripo_pose_sur_son_sol_une_seule_fois()
+    {
+        // Revue Codex de la PR #197 : le panneau Tripo est posé sur le sol affiché (StyleWorld.OnGround) ; l'obstacle ne doit pas le relever
+        // une seconde fois (Obstacle → Lift) : le bloc du panneau marque l'obstacle comme déjà posé (_draped) avant de rendre la main.
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        int at = view.IndexOf("LotCModels.ForObstacle(id)", StringComparison.Ordinal);
+        Assert.True(at > 0);
+        string block = view.Substring(at, view.IndexOf("Sous-lot V2.30.1 : panneau d'un croisement", at, StringComparison.Ordinal) - at);
+        Assert.Contains("StyleWorld.OnGround(", block);
+        Assert.True(block.IndexOf("_draped = true;", StringComparison.Ordinal) < block.IndexOf("return;", StringComparison.Ordinal), block);
+        Assert.Contains("if (_draped) return;", view);
+    }
+
+    [Fact]
     public void Code_d_un_chemin()
     {
         Assert.Equal("C_RE_S01", LotCModels.CodeOf("Assets/EdS/Modeles/LotC/08_Recoltes/C_RE_S01/C_RE_S01.fbx"));
