@@ -123,4 +123,26 @@ namespace EdS.Game.Editor
             importer.filterMode = FilterMode.Bilinear;
         }
     }
+
+    /// <summary>
+    /// Sous-lot V2.53 : réglages d'import des écrans de chargement peints (<c>Resources/EdsInterface/Chargements</c>) : compression activée et
+    /// aucun mipmap (images plein écran vues une fois, libérées après l'écran).
+    /// </summary>
+    public sealed class EdsLoadingTextures : AssetPostprocessor
+    {
+        public override uint GetVersion() => 1;
+
+        public static bool IsLoadingImage(string path) => (path ?? "").Replace('\\', '/').Contains("/Resources/EdsInterface/Chargements/");
+
+        private void OnPreprocessTexture()
+        {
+            if (!IsLoadingImage(assetPath) || !(assetImporter is TextureImporter importer)) return;
+            importer.textureType = TextureImporterType.Default;
+            importer.npotScale = TextureImporterNPOTScale.None;
+            importer.mipmapEnabled = false;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.filterMode = FilterMode.Bilinear;
+        }
+    }
 }
