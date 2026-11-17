@@ -1069,11 +1069,21 @@ Plan de la grande carte, § 6.3. `HorizonProfile` (`src/EdS.Runtime`, sans Unity
 
 Les natures se raccordent en douceur. `HorizonView` (Unity) en fait un seul maillage, posé à 92 % du plan lointain de la caméra, qui la suit à chaque image (`EdsGame.LateUpdate`) en gardant les angles du profil de référence (hauteur réduite autour de l’altitude de la caméra). Il est dessiné après le décor opaque, sans écrire la profondeur (`Sprites/Default`, file 2999) : tout le décor proche passe devant. Ses couleurs se fondent dans la brume du moment : le pied s'y perd, la forêt reste voilée, les neiges restent plus nettes. Il est caché dans les pièces et dans le souvenir de la Rupture.
 
+### Panoramas peints (sous-lot V2.29.2, 16 novembre 2026)
+
+Les cinq panoramas livrés par ChatGPT (commandés par Damien : printemps, été, automne, hiver, Envers) remplacent les silhouettes. `HorizonPanorama` (`src/EdS.Runtime`, sans Unity) porte les règles, `HorizonView` (Unity) la bande :
+- **Calage** : image circulaire de 360°, nord à la colonne 0, est au quart (4 096 sur 16 384), 45,511 px/° ; horizon à 200 px du bas de 1 024 (v = 0,1953125 ; 50 px sur 256, 100 sur 512), soit de -4,39° à +18,11° ; Crêtes de Fer jusqu'à 8,5°. La bande est un cylindre de 144 pans posé à 92 % du plan lointain, qui suit la caméra ; ses hauteurs sont celles du profil de référence (6 000 m) mises à l'échelle, comme les silhouettes : l'angle au-dessus de l'horizon ne dépend ni du plan lointain ni de l'altitude de la caméra (`HorizonPanorama.WorldY`).
+- **Lumière** : textures neutres, teintées par la lumière de l'heure et du temps (`StyleWorld.HorizonLight`) et un peu fondues dans la brume ; le ciel du jeu reste visible derrière (alpha).
+- **Saison** : texture de la saison montrée (`SeasonLook`, calendrier du 15 novembre : 1er mars, 1er juin, 1er septembre, 1er décembre). Pendant les 7 jours de transition, la saison d'avant reste dessous (opacité jusqu'à mi-transition, puis elle s'efface) et la nouvelle apparaît dessus (opacité = progression adoucie).
+- **L'Envers** : pas encore affiché dans le jeu. `HorizonView.Reversed` reste faux ; sa texture (`horizon_reverse_*`) n'est chargée que s'il devient vrai. Prête, non utilisée.
+- **Tailles** : PC (modeste et complet) 8 192 × 512, téléphone 4 096 × 256 (`HorizonPanorama.Width`). Pas de 16 384 dans le dépôt (images de 4 096 × 256 d'origine pour le téléphone, 16 384 × 1 024 réduites par moitié avec Lanczos pour le PC). Fichiers : `unity/Assets/EdS/Interface/Resources/EdsHorizon/horizon_<saison>_<largeur>.png` (11 Mo en tout) ; réglages d'import par `EdsHorizonTextures` (taille maximale 8 192, sans mipmaps, bords bloqués).
+- **Secours** : sans textures, les silhouettes de `HorizonProfile` servent encore (le profil reste dans le cœur, avec ses essais). Caché dans les pièces et dans le souvenir de la Rupture, comme avant.
+- Compilation de contrôle seulement (`tests/EdS.Unity.CompileCheck`) : pas d'essai dans Unity dans cette PR. Essais du cœur : `V2292PanoramaTests`. Origine des images : [CREDITS.md](CREDITS.md).
+
 **À venir** :
-- les **cartes peintes** du ciel, à demander à ChatGPT ; ces silhouettes les remplacent en attendant ;
 - le tour de caméra du point de vue du sommet. Le **brouillard à dissiper** et le **point de vue du sommet** sont faits au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) : brouillard posé sur la grande carte du livre d'aventure.
 
-Essais : `V229HorizonTests`.
+Essais : `V229HorizonTests`, `V2292PanoramaTests`.
 
 ## 8. En cas de problème
 
