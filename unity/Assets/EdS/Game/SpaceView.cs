@@ -373,6 +373,8 @@ namespace EdS.Game
                 return;
             }
             // V2.30.2 : un obstacle du Bourg fortifié habillé par les modèles de l'atelier (posés par BourgDecor) n'a pas de forme faite par le code.
+            // V2.30.5 : un tronçon du fossé est creusé dans le relief (GroundRelief.Moat) : sans ses modules, aucune forme.
+            if (BourgModels.IsDitch(id) && !BourgCovers(id)) return;
             if (BourgCovers(id))
             {
                 _draped = true;   // chaque pièce est posée sur son sol : pas de relèvement d'ensemble (Obstacle)

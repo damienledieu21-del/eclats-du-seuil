@@ -382,12 +382,13 @@ public class V214BoutiquesMarcheTests
     public void Boutiques_et_marche_livres()
     {
         MerchantBook book = ShippedMerchants;
-        Assert.Equal((6, "0.15.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((6, "0.16.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les vraies boutiques : genre, maison du bourg, intérieur, horaires et jour de repos (0 : lundi … 6 : dimanche).
         var shops = book.Merchants.Where(m => m.Shop != null).ToDictionary(m => m.Id, m => m.Shop!);
-        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", Boulangerie, "merchant.auberge", "merchant.mercerie" }, shops.Keys);
+        Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", Boulangerie, "merchant.auberge", "merchant.mercerie",
+            "merchant.armurier_ville", "merchant.forgeron_ville", "merchant.tanneur_ville", "merchant.apothicaire_ville", "merchant.tailleur_ville", "merchant.taverne_ville" }, shops.Keys);   // V2.30.5 : boutiques de la route d'Ambre
         Assert.Equal(("bakery", "maison2", "zone.boulangerie", 330, 1170, DoorService.Clerk), (shops[Boulangerie].Kind, shops[Boulangerie].Building, shops[Boulangerie].Zone,
             shops[Boulangerie].Open, shops[Boulangerie].Close, shops[Boulangerie].Door));
         Assert.Equal(new[] { 0 }, shops[Boulangerie].Rest);

@@ -253,7 +253,7 @@ public class V2301DemenagementBourgTests
             AdventureSession a = LoadAtBourg(path);
             IReadOnlyList<WorldMarker> signs = a.WaySigns();
             Assert.Equal(new[] { "panneau_hameau", "panneau_route_d_ambre", "panneau_porte_est", "panneau_place_du_marche" }, signs.Select(s => s.Id));
-            Assert.Equal("Bourg d'Aube : ouest, 390 m · Village : est, 690 m", signs.Single(s => s.Id == "panneau_porte_est").Name);
+            Assert.Equal("Bourg d'Aube : ouest, 400 m · Village : est, 690 m", signs.Single(s => s.Id == "panneau_porte_est").Name);   // V2.30.5 : poteau déplacé de 3 m vers l'est, hors du fossé
             Assert.All(signs, s => Assert.Matches("^Bourg d'Aube : [a-z-]+, [0-9,]+ k?m · Village : [a-z-]+, [0-9,]+ k?m$", s.Name));
             ZoneDefinition zone = Vallons.Value;
             foreach (WorldMarker s in signs)
