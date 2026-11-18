@@ -229,7 +229,7 @@ public class V222MercerieGuildeTests : IDisposable
     public void Le_feu_de_tisanes_de_Sauge_brule_a_toute_heure(long day, int hour, int minute)
     {
         AdventureSession a = VallonsAt(day, hour, minute);
-        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("tisane/", StringComparison.Ordinal));
+        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id == "tisane/merchant.herboriste");   // V2.30.5 : l'apothicaire aussi
         Assert.Equal("tisane/merchant.herboriste", c.Id);
         Assert.Equal("maison7", a.ShopBuildingOf(c.Id));
         Assert.Equal(-1086.75, c.X, 6);
