@@ -308,7 +308,9 @@ public class LotCModelsTests
         Assert.True(at > 0);
         string block = view.Substring(at, view.IndexOf("Sous-lot V2.30.1 : panneau d'un croisement", at, StringComparison.Ordinal) - at);
         Assert.Contains("StyleWorld.OnGround(", block);
-        Assert.True(block.IndexOf("_draped = true;", StringComparison.Ordinal) < block.IndexOf("return;", StringComparison.Ordinal), block);
+        // Revue Codex de la PR #197 (P1) : l'affectation doit exister (IndexOf ≥ 0) avant de comparer sa place au « return ».
+        int draped = block.IndexOf("_draped = true;", StringComparison.Ordinal), back = block.IndexOf("return;", StringComparison.Ordinal);
+        Assert.True(draped >= 0 && back >= 0 && draped < back, block);
         Assert.Contains("if (_draped) return;", view);
     }
 
