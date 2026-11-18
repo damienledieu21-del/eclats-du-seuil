@@ -113,6 +113,12 @@ Fichiers de tiers employés pour l'essai de style (décisions de Damien des 25, 
 | --- | --- | --- |
 | **Panoramas « Horizons des Vallons d'Aube »** (printemps, été, automne, hiver, Envers), images **commandées par Damien à ChatGPT** (outil de génération d'images intégré, assemblées en quatre secteurs, recalées et détourées ; livrées dans l'atelier `Eclats_du_Seuil_AssetLab/Panoramas`) | `unity/Assets/EdS/Interface/Resources/EdsHorizon/horizon_*_8192.png` (réduites de 16 384 à 8 192 par Claude) et `horizon_*_4096.png` (version téléphone livrée) : bande de l'horizon lointain (`HorizonView`) | Commandées par Damien pour le projet : **tous droits réservés**, comme le dépôt (même régime que les autres dossiers ChatGPT) |
 
+## Cartes des Trois Feux (sous-lot V2.32.1, 17 novembre 2026)
+
+| Source | Ce qui sert | Licence |
+| --- | --- | --- |
+| Images générées par **ChatGPT** (OpenAI) sur commande de Damien, livrées dans `Eclats_du_Seuil_AssetLab/Trois_Feux` | 56 cartes (27 faces et un dos, éditions ordinaire et dorée), le tapis de la table et le cycle des couleurs, réduits (cartes 376 × 528, tapis JPEG) dans `unity/Assets/EdS/Interface/Resources/EdsTroisFeux/` ; l'icône du jeu doré (`Peintes/jeu_des_trois_feux.png`) est le dos doré réduit | images générées pour le jeu à la demande de Damien (conditions d'OpenAI à vérifier par Damien avant toute sortie commerciale) |
+
 ## 5e vague (sous-lot V2.11, 8 et 9 novembre 2026)
 
 Ressources déposées par Damien dans `unity/Assets/Style` (non suivies par git), branchées ou prêtes (liste partagée `src/EdS.Runtime/Wave5.cs`). Modèles de Sketchfab convertis en FBX par Claude (CONVERSION_V5.md) ; objets de Poly Haven sous CC0 (cités par courtoisie).
@@ -224,6 +230,12 @@ Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fich
 | Source | Ce qui sert | Licence |
 | --- | --- | --- |
 | **Logo définitif** : création par génération d'images intégrée de **ChatGPT** (OpenAI) à partir du logo n° 1 « lettres d'or fendues » choisi par Damien le 29 octobre 2026, puis assemblage des calques et export ; devise « Ce qui est brisé peut encore briller. » composée en Noto Serif (SIL OFL 1.1). Dossier de livraison `Eclats_du_Seuil_AssetLab/Logo/EDS_Logo_Definitif/` (six PNG, 4 096 × 2 048, icône 1 024 × 1 024 ; vérifié : 01 = 02 + 03 au pixel près) | logos 01, 02, 03, 04 et 06 réduits à 2 048 × 1 024 et 1 024 × 512 (PNG, `unity/Assets/EdS/Interface/Resources/EdsInterface/Logo/`), icône 05 (`unity/Assets/EdS/Icone/eds_icone_1024.png`) ; suivis par git | image créée pour le projet : droits d'usage du projet, aucune obligation de citation (cité par transparence) |
+
+## Décors de l'écran titre (sous-lot V2.55, 16 novembre 2026)
+
+| Source | Ce qui sert | Licence |
+| --- | --- | --- |
+| **Écran titre vivant** : dix-sept peintures créées par génération d'images intégrée de **ChatGPT** (OpenAI) pour le projet (quatre saisons, aube, plein jour, crépuscule et nuit, plus l'Envers ; même cadrage ; sources 1 672 × 941 agrandies à 3 840 × 2 160, sans personnage, logo ni texte). Dossier de livraison `Eclats_du_Seuil_AssetLab/Ecran_Titre/` | les dix-sept décors réduits en JPEG qualité 85, 1 920 × 1 080 et 1 280 × 720 (`unity/Assets/EdS/Interface/Resources/EdsInterface/Titre/`) ; suivis par git ; les 4K d'origine ne sont pas dans le dépôt | image créée pour le projet : droits d'usage du projet, aucune obligation de citation (cité par transparence) |
 
 ## Écrans de chargement peints (sous-lot V2.53, 16 novembre 2026)
 
