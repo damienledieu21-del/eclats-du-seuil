@@ -154,7 +154,7 @@ namespace EdS.Game
                 InteriorPiece piece = layout.Pieces[i];
                 if (StoryStage.IsLightGate(piece.Id)) continue;   // sous-lot V1.9.8 : ni chandeliers ni trône sur la porte de lumière
                 // Lot C : le corps d'un meuble modélisé (table, étagères, caisses…) est déjà posé ; ce qui va dessus se pose sur le modèle.
-                string body = lotC.Keys.FirstOrDefault(k => LotCModels.Replaces(k, piece));
+                string body = lotC.Keys.FirstOrDefault(k => LotCModels.Replaces(k, piece, layout.Pieces));
                 if (body != null)
                 {
                     placed[i] = lotC[body];
