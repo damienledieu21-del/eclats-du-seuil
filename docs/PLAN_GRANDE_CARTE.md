@@ -56,6 +56,11 @@ Puis, le 17 novembre 2026 vers 1 h 10 :
 10. **Pont suspendu ouvert avec les gués** par la quête des passages de la vallée : **gardé**.
 11. **Créatures de nuit** dans les nouveaux lieux, avec le bestiaire de nuit existant (loups de la nuit, échos) : **oui** (vallée et forêt comprises, au V2.33 et suivants).
 
+Puis, le 18 novembre 2026 :
+
+12. **Points sûrs** devant l'entrée de la mine (`bouche_de_la_mine`), devant le fort (`devant_le_fort`) et plus bas sur la route du col des Crêtes de Fer, là où la pente le permet (V2.40).
+13. **Passerelle des Ronces** : elle s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine (V2.40).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).

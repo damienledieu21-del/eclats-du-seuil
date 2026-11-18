@@ -101,7 +101,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.All(a.Nodes(), n => Assert.Equal(n.Present, n.Ready));   // saisons : sans date, les quatre nœuds de saison sont absents, jamais prêts
         Assert.Equal(17, a.Nodes().Count(n => n.Ready));
         Assert.Equal(new[] { "place_du_village", "camp_de_la_carriere", "place_du_bourg", "ferme_des_champs", "hameau_de_la_carriere",
-            "porte_est_du_bourg", "place_du_marche_de_la_ville", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole", "pied_de_la_cascade", "arbre_millenaire", "parvis_de_l_abbaye" },   // V2.31, V2.32
+            "porte_est_du_bourg", "place_du_marche_de_la_ville", "pontons_du_lac", "hameau_des_mineurs", "pied_du_fort", "gue_de_la_vallee", "bergerie", "lisiere_des_terres_grises", "chateau_viticole", "pied_de_la_cascade", "arbre_millenaire", "parvis_de_l_abbaye", "bouche_de_la_mine", "devant_le_fort" },   // décision de Damien du 18 novembre 2026 : mine et fort   // V2.31, V2.32
             a.SafePoints().Select(s => s.Id));   // V2.28c (3) : les carrefours de la région
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());

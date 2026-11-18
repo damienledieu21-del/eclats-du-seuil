@@ -41,6 +41,12 @@ public class V233A239LieuxDeLaRegionTests
     public void Points_surs_et_lieux_nommes()
     {
         SafePointClear("parvis_de_l_abbaye");
+        // Décision de Damien du 18 novembre 2026 : des points sûrs devant l'entrée de la mine et devant le fort.
+        SafePointClear("bouche_de_la_mine");
+        SafePointClear("devant_le_fort");
+        Assert.Contains(Vallons.Value.PlacesAt(Vallons.Value.SafePoints.Single(s => s.Id == "bouche_de_la_mine").Position), p => p.Id == "carreau_de_la_mine");
+        Assert.True(Walks((1100, 860), (1300, 1080), SafePoint("devant_le_fort"), (1220, 1028)));
+        Assert.True(Walks((1000, 300), (1220, 400), SafePoint("bouche_de_la_mine"), (1185, 356)));
         ZoneDefinition zone = Vallons.Value;
         foreach ((string id, int level) in new[] { ("domaine_du_chateau", 13), ("vignes_du_chateau", 13), ("bergerie_des_collines", 10),
             ("cairns_de_la_crete", 17), ("tour_de_signal", 17), ("nef_de_l_abbaye", 20), ("cloitre_de_l_abbaye", 20), ("cabanes_sur_pilotis", 8),
