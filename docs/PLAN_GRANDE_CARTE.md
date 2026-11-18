@@ -379,6 +379,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.33 à V2.39** (16 novembre 2026, en PR, une PR pour les sept, empilée sur celle du V2.31) : coteaux et château viticole, hautes collines, abbaye en ruine, marais du lac et île des saules dormants (verrou d'hiver accroché), carrière devenue mine (surface), fort des bandits, terres corrompues ([MONDE.md](MONDE.md)). Créatures du bestiaire existant (décision du 16 novembre, 23 h) : sangliers, cerfs, loups, échos, bandits. Écarts au plan : ni bergers ni moutons (pas de modèle ni de bête paisible de ce genre) ; pontons, barques, wagonnets, rails, cuves, charrette et états de la vigne (vert, mûr, vendangé : V2.44) attendent leurs modèles ; les murs de l'abbaye prennent l'habit des éboulements.
 
+**Avancement V2.40** (17 novembre 2026, en PR, empilée sur celle des V2.33 à V2.39) : porte nord du Bourg et chemin du pont des Murmures (§ 0 ter, décision du 16 novembre), passerelle des Ronces fermée (le verrou du chapitre 1 tient), pont des Murmures gardé, col des Crêtes de Fer (arche, refuge, éboulement), péage d'Havre d'Ambre, route de l'Est et pont effondré, créatures de jour et de nuit ([MONDE.md](MONDE.md)). Écarts au plan : pas de tablier ni de route au-delà de la gorge (avec la Forêt des Murmures) ; pas de point sûr au refuge du col.
+
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|
 | **V2.30** | Bourg d'Aube fortifié, à 1 km à l'ouest du village, d'après son plan illustré (surface) | L | palissade ronde de pieux (pans droits et courbes), tours et chemin de ronde de bois, trois portes fortifiées, église, halle du marché, maisons de ville serrées (3 gabarits × 3 tailles) |

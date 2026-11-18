@@ -2,7 +2,7 @@
   "$schema": "../../data/schemas/scenario.schema.json",
   "schemaVersion": 22,
   "kind": "scenario",
-  "contentVersion": "0.14.0-provisoire",
+  "contentVersion": "0.15.0-provisoire",
   "data": {
     "seed": 116,
     "durationMs": 3600000,
@@ -1838,11 +1838,11 @@
               277.0
             ],
             [
-              -159.0,
+              -993.0,
               277.0
             ],
             [
-              -159.0,
+              -993.0,
               281.0
             ]
           ],
@@ -1941,11 +1941,11 @@
               179.5
             ],
             [
-              -710,
+              -950,
               179.5
             ],
             [
-              -710,
+              -950,
               180.5
             ],
             [
@@ -9784,6 +9784,398 @@
             ]
           ],
           "low": true
+        },
+        {
+          "id": "palissade_ville_nord_est",
+          "points": [
+            [
+              -930,
+              179.5
+            ],
+            [
+              -710,
+              179.5
+            ],
+            [
+              -710,
+              180.5
+            ],
+            [
+              -930,
+              180.5
+            ]
+          ]
+        },
+        {
+          "id": "tour_ville_porte_nord_ouest",
+          "points": [
+            [
+              -950,
+              178.3
+            ],
+            [
+              -950,
+              181.7
+            ],
+            [
+              -952.3,
+              184
+            ],
+            [
+              -955.7,
+              184
+            ],
+            [
+              -958,
+              181.7
+            ],
+            [
+              -958,
+              178.3
+            ],
+            [
+              -955.7,
+              176
+            ],
+            [
+              -952.3,
+              176
+            ]
+          ]
+        },
+        {
+          "id": "tour_ville_porte_nord_est",
+          "points": [
+            [
+              -922,
+              178.3
+            ],
+            [
+              -922,
+              181.7
+            ],
+            [
+              -924.3,
+              184
+            ],
+            [
+              -927.7,
+              184
+            ],
+            [
+              -930,
+              181.7
+            ],
+            [
+              -930,
+              178.3
+            ],
+            [
+              -927.7,
+              176
+            ],
+            [
+              -924.3,
+              176
+            ]
+          ]
+        },
+        {
+          "id": "ravin_ronces_sud_est",
+          "points": [
+            [
+              -987.0,
+              281.0
+            ],
+            [
+              -987.0,
+              277.0
+            ],
+            [
+              -159.0,
+              277.0
+            ],
+            [
+              -159.0,
+              281.0
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "ravin_passerelle_des_ronces_passage",
+          "points": [
+            [
+              -993.0,
+              281.0
+            ],
+            [
+              -993.0,
+              277.0
+            ],
+            [
+              -987.0,
+              277.0
+            ],
+            [
+              -987.0,
+              281.0
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "porte_pont_des_murmures_passage",
+          "points": [
+            [
+              -1494,
+              464
+            ],
+            [
+              -1494,
+              476
+            ],
+            [
+              -1495,
+              476
+            ],
+            [
+              -1495,
+              464
+            ]
+          ]
+        },
+        {
+          "id": "bloc_culee_pont_des_murmures_passage_1",
+          "points": [
+            [
+              -1498,
+              460.5
+            ],
+            [
+              -1496,
+              460.5
+            ],
+            [
+              -1496,
+              462.5
+            ],
+            [
+              -1498,
+              462.5
+            ]
+          ]
+        },
+        {
+          "id": "bloc_culee_pont_des_murmures_passage_2",
+          "points": [
+            [
+              -1498,
+              477.5
+            ],
+            [
+              -1496,
+              477.5
+            ],
+            [
+              -1496,
+              479.5
+            ],
+            [
+              -1498,
+              479.5
+            ]
+          ]
+        },
+        {
+          "id": "eboulement_col_passage",
+          "points": [
+            [
+              2143.4,
+              1178.9
+            ],
+            [
+              2145.9,
+              1180.7
+            ],
+            [
+              2136.6,
+              1193.7
+            ],
+            [
+              2134.1,
+              1191.9
+            ]
+          ]
+        },
+        {
+          "id": "bloc_arche_col_passage_1",
+          "points": [
+            [
+              2093.4,
+              1164.9
+            ],
+            [
+              2095,
+              1164.9
+            ],
+            [
+              2095,
+              1166.5
+            ],
+            [
+              2093.4,
+              1166.5
+            ]
+          ]
+        },
+        {
+          "id": "bloc_arche_col_passage_2",
+          "points": [
+            [
+              2105,
+              1148.7
+            ],
+            [
+              2106.6,
+              1148.7
+            ],
+            [
+              2106.6,
+              1150.3
+            ],
+            [
+              2105,
+              1150.3
+            ]
+          ]
+        },
+        {
+          "id": "maison_refuge_du_col_passage",
+          "points": [
+            [
+              2041.9,
+              1146.7
+            ],
+            [
+              2048.9,
+              1146.7
+            ],
+            [
+              2048.9,
+              1151.7
+            ],
+            [
+              2041.9,
+              1151.7
+            ]
+          ]
+        },
+        {
+          "id": "porte_peage_passage",
+          "points": [
+            [
+              -1858.2,
+              -235
+            ],
+            [
+              -1860.8,
+              -223.3
+            ],
+            [
+              -1861.8,
+              -223.5
+            ],
+            [
+              -1859.2,
+              -235.2
+            ]
+          ]
+        },
+        {
+          "id": "maison_poste_de_peage_passage",
+          "points": [
+            [
+              -1845,
+              -216.5
+            ],
+            [
+              -1839,
+              -216.5
+            ],
+            [
+              -1839,
+              -211.5
+            ],
+            [
+              -1845,
+              -211.5
+            ]
+          ]
+        },
+        {
+          "id": "ravin_pont_effondre_passage",
+          "points": [
+            [
+              1994,
+              140
+            ],
+            [
+              2006,
+              140
+            ],
+            [
+              2006,
+              212
+            ],
+            [
+              1994,
+              212
+            ]
+          ],
+          "low": true
+        },
+        {
+          "id": "bloc_pile_pont_effondre_passage_1",
+          "points": [
+            [
+              1989,
+              169
+            ],
+            [
+              1991,
+              169
+            ],
+            [
+              1991,
+              171
+            ],
+            [
+              1989,
+              171
+            ]
+          ]
+        },
+        {
+          "id": "bloc_pile_pont_effondre_passage_2",
+          "points": [
+            [
+              2009,
+              182
+            ],
+            [
+              2011,
+              182
+            ],
+            [
+              2011,
+              184
+            ],
+            [
+              2009,
+              184
+            ]
+          ]
         }
       ]
     },
@@ -15143,6 +15535,439 @@
         "position": [
           1500,
           -1000
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "loup_col_passage1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          2080,
+          1180
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_col_passage",
+            "spacing": 1.5,
+            "lead": true
+          }
+        }
+      },
+      {
+        "id": "loup_col_passage2",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          2086,
+          1186
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_col_passage",
+            "spacing": 1.5
+          }
+        }
+      },
+      {
+        "id": "loup_col_passage3",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 170,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          2074,
+          1188
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ],
+            "group": "meute_col_passage",
+            "spacing": 1.5
+          }
+        }
+      },
+      {
+        "id": "echo_nuit_col_passage1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          2120,
+          1230
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 8,
+          "encircle": true
+        }
+      },
+      {
+        "id": "bandit_peage_passage1",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 170,
+        "armor": 10,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 1800,
+        "attacks": [
+          {
+            "id": "taille",
+            "rawDamage": 14,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1.5
+          },
+          {
+            "id": "moulinet",
+            "rawDamage": 20,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1200,
+            "radius": 2.2,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -1830,
+          -250
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 1,
+          "aggroRange": 9,
+          "pack": true
+        }
+      },
+      {
+        "id": "rodeur_peage_passage1",
+        "type": "assailant",
+        "team": "bandits",
+        "initiative": 0,
+        "health": 220,
+        "armor": 0,
+        "magicResistance": 20,
+        "target": null,
+        "firstAttackMs": 1500,
+        "intervalMs": 2500,
+        "attacks": [
+          {
+            "id": "eclat",
+            "rawDamage": 18,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 8
+          },
+          {
+            "id": "onde",
+            "rawDamage": 24,
+            "damageType": "magique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "circle",
+            "telegraphMs": 1400,
+            "radius": 2.5,
+            "holdPosition": true
+          }
+        ],
+        "position": [
+          -1815,
+          -260
+        ],
+        "facing": [
+          -1,
+          0
+        ],
+        "radius": 0.5,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 7,
+          "minRange": 3,
+          "aggroRange": 9,
+          "pack": false
+        }
+      },
+      {
+        "id": "loup_murmures_passage1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1470,
+          500
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 1.0,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "loup_nuit_murmures_passage1",
+        "type": "assailant",
+        "team": "meute",
+        "initiative": 0,
+        "health": 150,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 10,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          -1466,
+          506
+        ],
+        "facing": [
+          0,
+          -1
+        ],
+        "radius": 0.6,
+        "speed": 4,
+        "behavior": {
+          "maxRange": 0.5,
+          "aggroRange": 7,
+          "encircle": true,
+          "wander": {
+            "style": "patrol",
+            "radius": 3,
+            "pace": 0.35,
+            "legMs": 7000,
+            "pauseMs": [
+              1000,
+              3000
+            ]
+          }
+        }
+      },
+      {
+        "id": "echo_nuit_route_est_passage1",
+        "type": "assailant",
+        "team": "echos",
+        "initiative": 0,
+        "health": 160,
+        "armor": 0,
+        "magicResistance": 0,
+        "target": null,
+        "firstAttackMs": 1250,
+        "intervalMs": 1500,
+        "attacks": [
+          {
+            "id": "morsure",
+            "rawDamage": 12,
+            "damageType": "physique",
+            "targeting": "enemy",
+            "unblockable": false,
+            "applies": [],
+            "shape": "target",
+            "range": 1
+          }
+        ],
+        "position": [
+          1950,
+          160
         ],
         "facing": [
           0,

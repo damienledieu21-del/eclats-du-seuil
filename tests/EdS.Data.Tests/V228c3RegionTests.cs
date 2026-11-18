@@ -78,7 +78,7 @@ public sealed class V228c3RegionTests : IDisposable
         var core = new[] { "village", "moulin", "riviere", "pre_nord", "ruines", "carriere", "seuil", "coeur_du_seuil", "forge", "bourg", "champs", "lac",
             "vergers", "hameau", "plaine_est", "hautes_pierres", "tour_de_guet", "camp_des_rodeurs", "foret_des_loups", "four_de_firmin", "feu_de_camp" };   // cuisine : deux postes
         var region = zone.Places.Where(p => !core.Contains(p.Id)).ToList();
-        Assert.Equal(50, region.Count);   // V2.33 à V2.39 : 19 lieux ;   // V2.31 et V2.32 : cascade, moulin à foulon, cabane du pêcheur, pont suspendu, arbre millénaire, tanière, cabane du bûcheron, lisière ; V2.30 : place du marché et église de la ville ; relecture de la PR #170 : six lieux de transition
+        Assert.Equal(57, region.Count);   // V2.40 : sept lieux des passages ;   // V2.33 à V2.39 : 19 lieux ;   // V2.31 et V2.32 : cascade, moulin à foulon, cabane du pêcheur, pont suspendu, arbre millénaire, tanière, cabane du bûcheron, lisière ; V2.30 : place du marché et église de la ville ; relecture de la PR #170 : six lieux de transition
         foreach (Place p in region)
         {
             Assert.False(p.Min.X.Raw < Fixed.FromInt(140).Raw && p.Max.X.Raw > Fixed.FromInt(-100).Raw && p.Min.Z.Raw < Fixed.FromInt(100).Raw
@@ -150,7 +150,7 @@ public sealed class V228c3RegionTests : IDisposable
                 }
             }
         }
-        Assert.Equal(2, crossings);   // le chemin de la bergerie, au gué sud ; V2.31 : le sentier du pont suspendu, à son passage
+        Assert.Equal(4, crossings);   // le chemin de la bergerie, au gué sud ; V2.31 : le sentier du pont suspendu, à son passage ; V2.40 : le chemin du pont des Murmures, à la passerelle des Ronces et à la porte du pont (fermées)
     }
 
     [Fact]

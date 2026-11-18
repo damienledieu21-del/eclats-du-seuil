@@ -43,7 +43,7 @@ public class V231V232ValleeForetTests
         JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         WithoutLieux(root);
         var ids = root["data"]!["space"]!["obstacles"]!.AsArray().Select(o => (string)o!["id"]!).ToList();
-        Assert.Equal(233, ids.Count);
+        Assert.Equal(237, ids.Count);   // V2.40 : porte nord du Bourg (pan est de la palissade, deux tours) et ravin des Ronces coupé
         Assert.Contains("falaise_cascade", ids);
         Assert.Contains("riviere_vallee7", ids);
         Assert.Equal(66, root["data"]!["combatants"]!.AsArray().Count);

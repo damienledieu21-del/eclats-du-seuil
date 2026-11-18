@@ -41,8 +41,8 @@ public class V230BourgFortifieTests
     public void Palissade_fermee_sauf_les_trois_portes()
     {
         var town = Town();
-        Assert.Equal(7, town.Count(b => b.Id.StartsWith("palissade_ville", StringComparison.Ordinal)));
-        Assert.Equal(10, town.Count(b => b.Id.StartsWith("tour_ville", StringComparison.Ordinal)));   // 4 d'angle, 4 de portes, poterne, clocher
+        Assert.Equal(8, town.Count(b => b.Id.StartsWith("palissade_ville", StringComparison.Ordinal)));
+        Assert.Equal(12, town.Count(b => b.Id.StartsWith("tour_ville", StringComparison.Ordinal)));   // 4 d'angle, 4 de portes, poterne, clocher
         Assert.InRange(town.Count(b => b.Id.StartsWith("maison_ville", StringComparison.Ordinal)), 60, 160);
         // Tour du périmètre, tous les 0,5 m : chaque point est dans la palissade ou une tour, sauf dans les trois ouvertures.
         var gaps = new List<(double X, double Z)>();
@@ -60,11 +60,12 @@ public class V230BourgFortifieTests
         Walk(E, S, W, S);
         Walk(W, S, W, N);
         Assert.All(gaps, g => Assert.True(
-            (g.X == E && g.Z > -60 && g.Z < -40) || (g.X == W && g.Z > -97 && g.Z < -83) || (g.Z == S && g.X > -1163.5 && g.X < -1156.5),
+            (g.X == E && g.Z > -60 && g.Z < -40) || (g.X == W && g.Z > -97 && g.Z < -83) || (g.Z == S && g.X > -1163.5 && g.X < -1156.5) || (g.Z == N && g.X > -950 && g.X < -930),   // V2.40 : porte nord (20 m, comme celle de l'Est)
             $"brèche en ({g.X}, {g.Z})"));
         Assert.Contains(gaps, g => g.X == E);
         Assert.Contains(gaps, g => g.X == W);
         Assert.Contains(gaps, g => g.Z == S);
+        Assert.Contains(gaps, g => g.Z == N);
     }
 
     [Fact]

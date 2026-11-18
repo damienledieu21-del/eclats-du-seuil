@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -1092,6 +1092,97 @@
           -592
         ],
         "minLevel": 22
+      },
+      {
+        "id": "abords_de_la_porte_nord",
+        "name": "Porte nord du Bourg",
+        "min": [
+          -1000,
+          176
+        ],
+        "max": [
+          -930,
+          282
+        ],
+        "minLevel": 3
+      },
+      {
+        "id": "passerelle_des_ronces",
+        "name": "Passerelle des Ronces",
+        "min": [
+          -1000,
+          270
+        ],
+        "max": [
+          -980,
+          290
+        ],
+        "minLevel": 15
+      },
+      {
+        "id": "pont_des_murmures",
+        "name": "Pont des Murmures",
+        "min": [
+          -1510,
+          455
+        ],
+        "max": [
+          -1485,
+          485
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "col_des_cretes_de_fer",
+        "name": "Col des Crêtes de Fer",
+        "min": [
+          2040,
+          1100
+        ],
+        "max": [
+          2188,
+          1260
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "poste_de_peage",
+        "name": "Poste de péage",
+        "min": [
+          -1880,
+          -245
+        ],
+        "max": [
+          -1830,
+          -205
+        ],
+        "minLevel": 7
+      },
+      {
+        "id": "route_de_l_est",
+        "name": "Route de l'Est",
+        "min": [
+          1800,
+          100
+        ],
+        "max": [
+          2188,
+          240
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "pont_effondre",
+        "name": "Pont effondré",
+        "min": [
+          1985,
+          135
+        ],
+        "max": [
+          2015,
+          215
+        ],
+        "minLevel": 20
       }
     ],
     "populations": [
@@ -2124,6 +2215,79 @@
             "night"
           ]
         }
+      },
+      {
+        "creature": "loup_col_passage1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_col_passage2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_col_passage3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "echo_nuit_col_passage1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "bandit_peage_passage1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "rodeur_peage_passage1",
+        "respawnMs": 180000,
+        "leashRange": 20,
+        "loot": "loot.rodeur"
+      },
+      {
+        "creature": "loup_murmures_passage1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_nuit_murmures_passage1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_route_est_passage1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
       }
     ],
     "passages": [
@@ -2151,6 +2315,31 @@
         "id": "pont_suspendu",
         "name": "Pont suspendu",
         "obstacle": "riviere_vallee_pont_suspendu_chute"
+      },
+      {
+        "id": "passerelle_des_ronces",
+        "name": "Passerelle des Ronces (effondrée)",
+        "obstacle": "ravin_passerelle_des_ronces_passage"
+      },
+      {
+        "id": "pont_des_murmures",
+        "name": "Pont des Murmures (gardé : Forêt des Murmures fermée)",
+        "obstacle": "porte_pont_des_murmures_passage"
+      },
+      {
+        "id": "col_des_cretes_de_fer",
+        "name": "Col des Crêtes de Fer (fermé : éboulement)",
+        "obstacle": "eboulement_col_passage"
+      },
+      {
+        "id": "peage_d_havre",
+        "name": "Péage d'Havre d'Ambre (route fermée)",
+        "obstacle": "porte_peage_passage"
+      },
+      {
+        "id": "pont_effondre",
+        "name": "Pont effondré (route des Ruines d'Ysoria)",
+        "obstacle": "ravin_pont_effondre_passage"
       }
     ],
     "roads": [
@@ -2897,6 +3086,75 @@
           [
             1187,
             950
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "rue_de_la_porte_nord",
+        "width": 4.5,
+        "points": [
+          [
+            -940,
+            -64
+          ],
+          [
+            -940,
+            186
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "chemin_du_pont_des_murmures",
+        "width": 3,
+        "points": [
+          [
+            -940,
+            186
+          ],
+          [
+            -990,
+            266
+          ],
+          [
+            -990,
+            292
+          ],
+          [
+            -1250,
+            400
+          ],
+          [
+            -1498,
+            470
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "route_de_l_est",
+        "width": 4.5,
+        "points": [
+          [
+            1625,
+            187.5
+          ],
+          [
+            1625,
+            225
+          ],
+          [
+            1810,
+            225
+          ],
+          [
+            1900,
+            190
+          ],
+          [
+            2187,
+            150
           ]
         ],
         "kind": "terre"

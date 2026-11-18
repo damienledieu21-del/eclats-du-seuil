@@ -68,6 +68,8 @@ namespace EdS.Runtime
             ["seuil"] = 11, ["coeur_du_seuil"] = 11, ["terres_corrompues"] = 11, ["landes_du_seuil"] = 11,
             ["cercle_des_pierres_levees"] = 11,   // V2.39
             ["gorge_du_pont"] = 12, ["route_du_col"] = 12,
+            ["passerelle_des_ronces"] = 12, ["pont_des_murmures"] = 12, ["col_des_cretes_de_fer"] = 12,   // V2.40
+            ["abords_de_la_porte_nord"] = 1, ["poste_de_peage"] = 4, ["route_de_l_est"] = 7, ["pont_effondre"] = 7,   // V2.40
         };
 
         /// <summary>Écran d'un lieu des données (null s'il n'en a pas).</summary>

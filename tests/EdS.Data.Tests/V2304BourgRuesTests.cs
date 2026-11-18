@@ -47,7 +47,7 @@ public class V2304BourgRuesTests
         Assert.True(count["r01"] >= 200, all);       // pavés de la place et bordures
         Assert.True(count["r02"] >= 60, all);        // route d'Ambre pavée entre les portes
         Assert.True(count["r03"] >= 20, all);        // chemin des vignes
-        Assert.Equal(3, count["r25"]);               // un panneau par porte
+        Assert.Equal(4, count["r25"]);               // un panneau par porte (V2.40 : la porte nord)
         // Braseros dedans, bannières dehors, râtelier : là où la place est libre (tours, ronde et escaliers en prennent).
         Assert.True(count["f17"] >= 3 && count["f19"] >= 3 && count["f18"] >= 2, all);
         Assert.Equal(3, count["r19"]);               // charrettes à côté des étals
