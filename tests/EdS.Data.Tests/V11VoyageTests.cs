@@ -117,7 +117,7 @@ public class V11VoyageTests : IDisposable
         Assert.Equal(TravelRefusal.NotDiscovered, a.CanTravel("zone.vallons", "place_du_bourg"));
         WalkToBourg(a);
         Assert.Contains("Point sûr découvert : Place du Bourg. Le voyage rapide y mène depuis la carte (L).", a.DrainMessages());
-        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "place_du_marche_de_la_ville" }, a.TravelDestinations().Select(d => d.SafePoint));   // V2.30.1 : la place du marché, sur le chemin du bourg
+        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "porte_est_du_bourg", "place_du_marche_de_la_ville" }, a.TravelDestinations().Select(d => d.SafePoint));   // V2.30.1 : la place du marché, sur le chemin du bourg ; V2.30.5 : la porte de l'Est, dehors sur la route d'Ambre
         Assert.True(a.TravelDestinations()[1].Here);
         // Retour d'un coup au village : sauvegarde, puis nouvelle session au point sûr (PV pleins, comme une halte).
         Assert.Equal(TravelRefusal.None, a.CanTravel("zone.vallons", "place_du_village"));
@@ -133,7 +133,7 @@ public class V11VoyageTests : IDisposable
         Assert.Contains("zone.vallons/safe/place_du_village", saved.Consumed);
         // La découverte survit à la reprise : le bourg reste une destination, et l'on y retourne.
         AdventureSession again = Adventure(SavePath);
-        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "place_du_marche_de_la_ville" }, again.TravelDestinations().Select(d => d.SafePoint));
+        Assert.Equal(new[] { "place_du_village", "place_du_bourg", "porte_est_du_bourg", "place_du_marche_de_la_ville" }, again.TravelDestinations().Select(d => d.SafePoint));
         Assert.Equal(TravelRefusal.None, again.Travel("zone.vallons", "place_du_bourg"));
         again.Advance(0.05);
         Assert.Equal(At(-1090, -40), Position(again));

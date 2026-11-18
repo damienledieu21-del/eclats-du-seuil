@@ -225,6 +225,7 @@ internal static class ScenarioTestData
     {
         var data = story["data"]!;
         // Sous-lot V2.30.1 : PNJ, haltes et invités des fêtes du bourg reviennent au cœur.
+        int town = 0;
         foreach (var npc in data["npcs"]!.AsArray())
         {
             // Lot C (relecture de la PR #212) : les voyageurs attendent aux portes de la ville, hors de l'aire d'avant ; là, au bourg.
@@ -235,6 +236,14 @@ internal static class ScenarioTestData
                     slot!["position"] = new JsonArray(spot.Item1, spot.Item2);
                     slot["rain"]!["position"] = new JsonArray(spot.Item1, spot.Item2);
                 }
+            // V2.30.5 : les marchands des boutiques de la route d'Ambre (et le notable), hors du cœur, attendent sur l'ancienne place du bourg.
+            if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal))
+            {
+                var at = new JsonArray(-62.0 + town++, -6.0);
+                npc["position"] = at.DeepClone();
+                foreach (var slot in npc["schedule"]?.AsArray() ?? new JsonArray()) slot!["position"] = at.DeepClone();
+                continue;
+            }
             BackToCore(npc, "position");
             foreach (var slot in npc!["schedule"]?.AsArray() ?? new JsonArray()) { BackToCore(slot, "position"); BackToCore(slot!["rain"], "position"); }
         }

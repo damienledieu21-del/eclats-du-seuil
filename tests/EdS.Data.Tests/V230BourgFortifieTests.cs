@@ -133,6 +133,8 @@ public class V230BourgFortifieTests
         // Poterne sud : le long du chemin des vignes.
         V228b2PassageTests.WalkTo(w, -1080, -185);
         V228b2PassageTests.WalkTo(w, -1150, -300);
+        V228b2PassageTests.WalkTo(w, -1160, -312);   // V2.30.5 : poterne de 3 m, puis le pont du fossé
+        V228b2PassageTests.WalkTo(w, -1160, -338);
         V228b2PassageTests.WalkTo(w, -1170, -340);   // dehors, par la poterne
     }
 

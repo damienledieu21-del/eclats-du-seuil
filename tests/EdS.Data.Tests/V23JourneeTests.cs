@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((16, 16, "0.33.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((16, 16, "0.34.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -107,6 +107,9 @@ public sealed class V23JourneeTests : IDisposable
             "npc.serveuse", "npc.palefrenier",   // réponses de Damien du 17 novembre 2026 : le personnel de l'auberge
             // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
             "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
+            // V2.30.5 (décision de Damien du 16 novembre 2026, vers 23 h 20) : les marchands des boutiques de la route d'Ambre et le notable.
+            "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville",
+            "npc.notable_ville", "npc.notable_dame_ville",
         };
         Assert.Equal(scheduled.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Schedule.Count > 0).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // Chaque activité a son texte (sous le nom du PNJ, et pour la boutique).
@@ -115,7 +118,7 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 60, 180);   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
+        Assert.InRange(lines.Count, 60, 200);   // lot C (17 novembre 2026) : 183 (abris et retrouvailles des voyageurs et d'Huguet, PNJ de la ville)   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
         Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)
