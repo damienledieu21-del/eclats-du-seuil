@@ -266,8 +266,9 @@ internal static class ScenarioTestData
         foreach (var q in quests.Where(q => (string?)q!["id"] is "quest.passages_de_la_vallee" or "quest.le_cheval_de_la_ferme").ToList()) quests.Remove(q);
         // Sous-lot V2.40 (décision de Damien du 18 novembre 2026) : la fin du chapitre 1 ouvre la passerelle des Ronces, hors du cœur.
         foreach (var q in quests)
-            if (q!["effects"] is JsonArray effects)
-                foreach (var e in effects.Where(e => (string?)e!["do"] == "openPassage" && (string?)e["id"] == "passerelle_des_ronces").ToList()) effects.Remove(e);
+            foreach (var owner in new[] { q }.Concat(q!["steps"]?.AsArray() ?? new JsonArray()))
+                if (owner!["effects"] is JsonArray effects)
+                    foreach (var e in effects.Where(e => (string?)e!["do"] == "openPassage" && (string?)e["id"] == "passerelle_des_ronces").ToList()) effects.Remove(e);
         foreach (var d in data["dialogues"]!.AsArray())
         {
             var entries = d!["entries"]!.AsArray();

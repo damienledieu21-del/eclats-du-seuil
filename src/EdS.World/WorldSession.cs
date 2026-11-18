@@ -1307,7 +1307,7 @@ namespace EdS.World
 
         /// <summary>
         /// Sous-lot V2.31 (décision de Damien du 16 novembre 2026 : le pont suspendu, vrai troisième passage sur la rivière) : passages que les
-        /// effets d'une quête terminée ouvrent et que la sauvegarde n'a pas encore (sauvegarde d'avant l'ajout de l'effet) ; vide sans histoire,
+        /// effets d'une quête terminée (les siens et ceux de ses étapes, V2.40 : la passerelle des Ronces à la fin du chapitre 1) ouvrent et que la sauvegarde n'a pas encore (sauvegarde d'avant l'ajout de l'effet) ; vide sans histoire,
         /// sans personnage ou pour une autre zone que celle de l'histoire. Les passages ne se referment jamais : les rouvrir ne change rien d'autre.
         /// </summary>
         internal static IReadOnlyList<string> CaughtUpPassages(WorldSave save, ZoneDefinition zone, StoryBook? story, string? storyZone)
@@ -1316,7 +1316,7 @@ namespace EdS.World
             var consumed = new HashSet<string>(save.Consumed, StringComparer.Ordinal);
             return story.Quests
                 .Where(q => hero.Story.Quests.TryGetValue(q.Id, out QuestProgress? p) && p.Step == QuestProgress.Done)
-                .SelectMany(q => q.Effects)
+                .SelectMany(q => q.Effects.Concat(q.Steps.SelectMany(s => s.Effects)))   // V2.40 : les étapes aussi (fin du chapitre 1)
                 .Where(e => e.Kind == EffectKind.OpenPassage && zone.Passages.Any(p => p.Id == e.Id) && !consumed.Contains(zone.PassageKey(e.Id)))
                 .Select(e => e.Id).Distinct(StringComparer.Ordinal).ToList();
         }

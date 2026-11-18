@@ -22703,16 +22703,15 @@
               {
                 "do": "startQuest",
                 "id": "quest.bourg_d_aube"
+              },
+              {
+                "do": "openPassage",
+                "id": "passerelle_des_ronces"
               }
             ]
           }
         ],
-        "effects": [
-          {
-            "do": "openPassage",
-            "id": "passerelle_des_ronces"
-          }
-        ]
+        "effects": []
       },
       {
         "id": "quest.peaux_pour_l_auberge",

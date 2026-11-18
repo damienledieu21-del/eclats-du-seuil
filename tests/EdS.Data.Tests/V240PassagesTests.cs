@@ -80,7 +80,7 @@ public class V240PassagesTests
         SafePointClear("lacets_du_col");
         ZoneDefinition zone = Vallons.Value;
         EdS.Data.Story.StoryBook book = V11TestData.Book(zone);
-        Assert.Contains(book.Quests.Single(q => q.Id == "quest.traces_sous_le_moulin").Effects,
+        Assert.Contains(book.Quests.Single(q => q.Id == "quest.traces_sous_le_moulin").Steps.Last().Effects,
             e => e.Kind == EdS.Data.Story.EffectKind.OpenPassage && e.Id == "passerelle_des_ronces");
         var quests = new Dictionary<string, EdS.Data.Saves.QuestProgress>(StringComparer.Ordinal)
         {
