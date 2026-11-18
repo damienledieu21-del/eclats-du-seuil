@@ -235,9 +235,22 @@ namespace EdS.Runtime
         /// « obstacle/… », posé au sol, d'une sorte de <see cref="Body"/>) ? Alors le modèle du lot C du meuble le remplace ; les sièges, la
         /// vaisselle et ce qui est posé dessus restent (posés sur le modèle).
         /// </summary>
-        public static bool Replaces(string obstacleId, InteriorPiece piece) =>
-            piece != null && (piece.Id == obstacleId || piece.Id.StartsWith(obstacleId + "/", StringComparison.Ordinal)) && piece.Parent < 0
-            && Array.IndexOf(Body, piece.Prop) >= 0;
+        public static bool Replaces(string obstacleId, InteriorPiece piece) => Replaces(obstacleId, piece, null);
+
+        /// <summary>
+        /// Comme <see cref="Replaces(string, InteriorPiece)"/> ; revue Codex de la PR #200 : avec l'aménagement <paramref name="pieces"/>, une
+        /// pièce du corps posée sur une autre de même sorte (la caisse empilée sur une caisse) est remplacée elle aussi quand celle du dessous
+        /// l'est : le modèle Tripo porte déjà tout le meuble.
+        /// </summary>
+        public static bool Replaces(string obstacleId, InteriorPiece piece, IReadOnlyList<InteriorPiece>? pieces)
+        {
+            if (piece == null || !(piece.Id == obstacleId || piece.Id.StartsWith(obstacleId + "/", StringComparison.Ordinal)) || Array.IndexOf(Body, piece.Prop) < 0)
+                return false;
+            if (piece.Parent < 0) return true;
+            if (pieces == null || piece.Parent >= pieces.Count) return false;
+            InteriorPiece under = pieces[piece.Parent];
+            return under.Prop == piece.Prop && Replaces(obstacleId, under, pieces);
+        }
 
         /// <summary>
         /// Revue Codex de la PR #200 : objets d'aménagement allongés le long d'une table (bancs) : leur modèle du lot C est tourné pour que

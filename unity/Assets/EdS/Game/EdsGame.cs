@@ -175,8 +175,13 @@ namespace EdS.Game
         /// <summary>V2.54 : l'ouverture du logo au lancement (le jeu attend dessous, gelé).</summary>
         private readonly LogoView _logo = new LogoView();
 
+        /// <summary>V2.55 : l'écran titre vivant (après le logo, avant le jeu) ; le créateur de personnage d'une nouvelle partie attend qu'il soit fini.</summary>
+        private readonly TitleView _title = new TitleView();
+
+        private bool _creatorAfterTitle;
+
         /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
-        private bool Overlay => _logo.Active;
+        private bool Overlay => _logo.Active || _title.Pending;
 
         private readonly InputLock<UnityEngine.EventSystems.EventSystem> _eventsLock = new InputLock<UnityEngine.EventSystems.EventSystem>();
 
@@ -201,6 +206,7 @@ namespace EdS.Game
         private IEnumerator Start()
         {
             _logo.Start();
+            _title.Begin();
             // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
             // de laisser l'écran bloqué sur « Préparation des données du jeu… ».
             try
@@ -309,6 +315,7 @@ namespace EdS.Game
             }
             HumanBodies.HeroLook = _adventure.HeroLook;   // sous-lot V2.16 : l'aspect choisi du héros, repris avec la sauvegarde
             StyleWorld.UseRelief(_adventure.Map);   // revue Codex de la PR #144 : le relief de la zone avant ses repères
+            _markers?.Destroy();   // revue Codex de la PR #210 : une nouvelle partie lancée sur une sauvegarde chargée ne garde pas les anciens repères
             _markers = new WorldMarkers(_adventure);
             _crowdAsked = false;   // sous-lot V2.14 : nouvel espace, nouvelle foule
             _shownZone = _adventure.CurrentZone;
@@ -324,10 +331,21 @@ namespace EdS.Game
                 _music = StyleAudio.Create(_camera.Camera.transform);   // essai réaliste 7
             }
             if (_weatherFx == null) _weatherFx = StyleWeather.Create();   // sous-lot V2.2 : pluie, éclairs, tonnerre
-            _stage?.Begin(_adventure);   // sous-lot V1.9.8 : le réveil d'une nouvelle partie
+            // Sous-lot V1.9.8 : le réveil d'une nouvelle partie. V2.55 (revue Codex de la PR #210) : toujours AVANT ShowAdventureSession (Begin remet la mise en
+            // scène à zéro, ShowAdventureSession construit le décor du souvenir) ; sous l'écran titre le réveil ne court pas (son temps passe dans AfterSync, que
+            // Update n'atteint pas tant que l'écran couvre le jeu).
+            _stage?.Begin(_adventure);
             ShowAdventureSession();
-            if (!_adventure.IsNewGame && !_adventure.Indoors) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend
-            if (_adventure.IsNewGame) OpenCreator();   // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
+            // Revue Codex de la PR #210 : l'équipement est montré dès maintenant (UpdateAdventure ne tourne pas sous l'écran titre : le héros du titre serait nu).
+            _visibleGear = GearLooks.For(_adventure.World.Inventory, _visibleGear);
+            _arena.ShowGear(_adventure.InScene ? NoGear : _visibleGear);
+            if (!_adventure.IsNewGame && !_adventure.Indoors && !_title.Pending) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend (l'écran titre, s'il est là, tient ce rôle)
+            if (_adventure.IsNewGame)
+            {
+                if (_title.Pending) _creatorAfterTitle = true;   // V2.55 : le créateur s'ouvre après l'écran titre
+                else OpenCreator();
+            }
+            // sous-lot V2.16 : à la création du héros, il choisit son aspect (Annuler : l'aspect par défaut)
             if (_adventure.SaveProblem != null) Say("Sauvegarde illisible, nouvelle partie : " + _adventure.SaveProblem);
         }
 
@@ -597,7 +615,8 @@ namespace EdS.Game
             if (atCards)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) a.LeaveCardTable();   // relecture de la PR #193 : Échap, avec confirmation en pleine partie
-                else if (DigitPressed() is int card && card >= 0) a.PlayCardAt(card);
+                else if (DigitPressed() is int card && card >= 0) { if (_book == null || !_book.CardsFlipping) a.PlayCardAt(card); }
+                else _book?.ReadCardsInput(a);   // sous-lot V2.32.1 : survol, clic, toucher
                 talking = true;
             }
             else if (talking)
@@ -664,7 +683,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
+            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active || _title.Pending;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -949,6 +968,7 @@ namespace EdS.Game
         /// <summary>Le curseur est rendu quand le jeu s'arrête (caméra à la souris libre).</summary>
         private void OnDisable()
         {
+            _title.Hide();   // V2.55 : le héros retrouve ses couches, la caméra et la lumière de l'écran titre disparaissent
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
@@ -956,9 +976,53 @@ namespace EdS.Game
         /// <summary>Relecture de la PR #99 : minute du monde de la dernière lumière posée (jour × 1440 + minute ; -1 hors de l'aventure).</summary>
         private long _lightKey = long.MinValue;
 
+        /// <summary>V2.55 : avance l'écran titre (décor de la saison et de l'heure du monde, héros du joueur, menu) ; l'annule s'il n'y a pas de partie à montrer ; lance le réveil et le créateur à sa fin.</summary>
+        private void TickTitle()
+        {
+            if (_title.Pending && (_startupError != null || _ready && (_adventure == null || _error != null))) _title.Cancel();
+            if (_title.Pending)
+            {
+                TitleMix mix = default;
+                if (_adventure != null) mix = TitleScreen.Pick(_adventure.SeasonShown.Season, (int)_adventure.World.Zone.Time.Minute, false);   // pas encore d'état Envers : false
+                _title.Tick(Time.unscaledDeltaTime, _ready && _adventure != null && !_logo.Active, _arena?.Player, mix, _adventure != null && !_adventure.IsNewGame);
+                // « Nouvelle partie » sur une sauvegarde : elle est mise de côté (copie gardée) et le monde est rechargé pendant le fondu.
+                if (_title.TakeChoice() == TitleAction.NewGame && _adventure != null && !_adventure.IsNewGame)
+                {
+                    // Revue Codex de la PR #210 : si l'ancienne sauvegarde ne peut pas être mise de côté, la nouvelle partie est annulée (on reprend l'ancienne) et le joueur est prévenu.
+                    if (BackupSave()) StartAdventure();
+                    else Say("Nouvelle partie annulée : l'ancienne sauvegarde n'a pas pu être mise de côté. Ta partie est reprise.");   // l'écran titre est encore là : le réveil et le créateur attendent sa fin
+                }
+            }
+            if (!_title.Pending)
+            {
+                if (_creatorAfterTitle)
+                {
+                    _creatorAfterTitle = false;
+                    if (_adventure != null) OpenCreator();
+                }
+            }
+        }
+
+        /// <summary>V2.55 : met la sauvegarde de côté (<c>vallons.json.ancienne</c>, remplacée à chaque fois) avant une nouvelle partie.</summary>
+        private bool BackupSave()
+        {
+            try
+            {
+                SaveStore.SetAside(SavePath);   // la sauvegarde ET sa copie de secours (.bak), sans quoi l'ancienne progression reviendrait
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return false;
+            }
+        }
+
         private void Update()
         {
             _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
+            if (_title.Pending || _creatorAfterTitle) TickTitle();   // V2.55
+
             LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
@@ -1846,6 +1910,8 @@ namespace EdS.Game
             GUI.enabled = !locked;   // V2.54 : sous le logo, aucun contrôle de l'interface ne répond
             DrawGame();
             GUI.enabled = true;
+            Hud.Begin();
+            _title.Draw();   // V2.55 : l'écran titre, sous le logo d'ouverture (qui s'efface dessus)
             Hud.Begin();
             _logo.Draw();   // V2.54 : le logo s'ouvre au-dessus de tout (démarrage, préparation, jeu)
         }
