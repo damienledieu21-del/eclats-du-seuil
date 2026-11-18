@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.21.0-provisoire",
+  "contentVersion": "0.22.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -69,8 +69,8 @@
         "id": "porte_est_du_bourg",
         "name": "Porte de l'Est du Bourg",
         "position": [
-          -710,
-          -44
+          -722,
+          -50
         ]
       },
       {
@@ -1919,7 +1919,7 @@
       {
         "id": "route_d_ambre_ouest",
         "kind": "terre",
-        "width": 4.5,
+        "width": 4.2,
         "points": [
           [
             -99,
@@ -1934,6 +1934,10 @@
             -40
           ],
           [
+            -697,
+            -50
+          ],
+          [
             -710,
             -50
           ],
@@ -1943,6 +1947,10 @@
           ],
           [
             -1310,
+            -90
+          ],
+          [
+            -1325,
             -90
           ],
           [
@@ -2068,6 +2076,14 @@
           [
             -1150,
             -300
+          ],
+          [
+            -1160,
+            -312
+          ],
+          [
+            -1160,
+            -338
           ],
           [
             -1330,

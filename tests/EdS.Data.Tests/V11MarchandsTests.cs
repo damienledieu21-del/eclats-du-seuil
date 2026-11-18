@@ -43,15 +43,23 @@ public class V11MarchandsTests : IDisposable
         // Sous-lot V1.7 : et la réserve de la guilde, tenue par l'intendant dans la Maison de la Guilde.
         // Sous-lot V2.14 : la boulangerie (Bastien, le commis de Firmin), l'auberge, la mercerie, et deux marchands du grand jour de marché.
         Assert.Equal(new[] { "merchant.armurier", "merchant.herboriste", "merchant.epicier", "merchant.guilde", "merchant.renart", "merchant.receleur", "merchant.colporteur",
-            "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
+            "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices",
+            // V2.30.5 : les boutiques de la route d'Ambre.
+            "merchant.armurier_ville", "merchant.forgeron_ville", "merchant.tanneur_ville", "merchant.apothicaire_ville", "merchant.tailleur_ville",
+            "merchant.taverne_ville" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
         Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart", "npc.receleur", "npc.colporteur",
-            "npc.commis", "npc.aubergiste", "npc.couturiere", "npc.fromagere", "npc.marchand_epices" }, book.Merchants.Select(m => m.Npc));
+            "npc.commis", "npc.aubergiste", "npc.couturiere", "npc.fromagere", "npc.marchand_epices",
+            "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville" },
+            book.Merchants.Select(m => m.Npc));
         // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
         // V2.7 : sauf le receleur des bandits, au hameau, près de la cachette de Colin.
         Assert.Contains(zone.PlacesAt(story.Npc(book.Merchant("merchant.receleur").Npc).Position), p => p.Id == "hameau");
-        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null && m.Id != "merchant.receleur"), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
+        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null && m.Id != "merchant.receleur" && !m.Id.EndsWith("_ville", StringComparison.Ordinal)),
+            m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
+        // V2.30.5 : les boutiques de la route d'Ambre sont dans la ville fortifiée, chacune devant son bâtiment.
+        Assert.All(book.Merchants.Where(m => m.Id.EndsWith("_ville", StringComparison.Ordinal)), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "ville_du_bourg"));
         Assert.Equal("zone.guilde", story.Npc(book.Merchant("merchant.guilde").Npc).Zone);
         // L'herboriste vend toujours des potions de soin.
         Assert.Contains(book.Merchant("merchant.herboriste").Offers, o => o.Item == "item.potion_de_soin" && o.Always);

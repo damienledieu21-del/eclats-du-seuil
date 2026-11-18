@@ -29,7 +29,8 @@ public class V2303BourgMonumentsMaisonsTests
 
     private static readonly Lazy<BourgDress> Dress = new(() => BourgModels.Dress(Obstacles, Roads.Value));
 
-    private static IEnumerable<BourgPiece> Inside => Dress.Value.Pieces.Where(p => !p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece));
+    private static IEnumerable<BourgPiece> Inside => Dress.Value.Pieces.Where(p => !p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece) && !BourgModels.IsFacadeOrMoat(p.Piece)
+        && BourgModels.ShopModel(p.Covers) == null);
 
     private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>
         (o.Points.Min(p => p.X.Raw / 1e4), o.Points.Max(p => p.X.Raw / 1e4), o.Points.Min(p => p.Z.Raw / 1e4), o.Points.Max(p => p.Z.Raw / 1e4));
@@ -49,9 +50,9 @@ public class V2303BourgMonumentsMaisonsTests
     public void Every_building_of_the_town_is_dressed()
     {
         var town = Obstacles.Where(o => o.Id.Contains("_ville", StringComparison.Ordinal) && !BourgModels.IsWall(o.Id) && !BourgModels.IsTower(o.Id)
-            && !o.Id.StartsWith("panneau", StringComparison.Ordinal)).Select(o => o.Id).OrderBy(i => i, StringComparer.Ordinal).ToList();
-        Assert.Equal(town, Dress.Value.Needs.Keys.Where(k => !BourgModels.IsWall(k) && !BourgModels.IsTower(k)).OrderBy(i => i, StringComparer.Ordinal));
-        Assert.Equal(119, town.Count(i => i.StartsWith("maison_ville_", StringComparison.Ordinal) && i != "maison_ville_grande_maison"));
+            && !o.Id.StartsWith("panneau", StringComparison.Ordinal) && !BourgModels.IsDitch(o.Id) && BourgModels.ShopModel(o.Id) == null).Select(o => o.Id).OrderBy(i => i, StringComparer.Ordinal).ToList();
+        Assert.Equal(town, Dress.Value.Needs.Keys.Where(k => !BourgModels.IsWall(k) && !BourgModels.IsTower(k) && !BourgModels.IsDitch(k) && BourgModels.ShopModel(k) == null).OrderBy(i => i, StringComparer.Ordinal));
+        Assert.Equal(119, town.Count(BourgModels.IsTownHouse));
         Assert.Equal(new[] { BourgModels.Church }, Dress.Value.Needs["tour_ville_clocher"]);
         Assert.Equal(new[] { BourgModels.Provost, BourgModels.Guardhouse, BourgModels.Granary, BourgModels.Oven }.OrderBy(p => p, StringComparer.Ordinal),
             Dress.Value.Needs["maison_ville_grande_maison"]);
@@ -61,7 +62,7 @@ public class V2303BourgMonumentsMaisonsTests
     public void Houses_fit_their_footprint_gable_to_the_nearest_road_on_a_short_side()
     {
         var used = new Dictionary<string, int>();
-        foreach (BourgPiece h in Inside.Where(p => p.Piece.StartsWith("h", StringComparison.Ordinal)))
+        foreach (BourgPiece h in Inside.Where(p => BourgModels.IsTownHouse(p.Covers)))
         {
             var b = Box(h.Covers!);
             var f = BourgModels.Footprint(h.Piece, h.X, h.Z, h.Yaw);
@@ -87,7 +88,7 @@ public class V2303BourgMonumentsMaisonsTests
         {
             (BourgModels.Church, "chapelle_ville_eglise", 180, 2.1),        // 18 × 34 dans 16 × 30 : 1 m de chaque côté, 2,1 m au sud
             (BourgModels.Hall, "grange_ville_halle", 0, 0),
-            (BourgModels.Stables, "grange_ville_ecurie", 180, 8),             // U de 30 × 24 sur 30 × 16 : 8 m au nord
+            (BourgModels.Stables, "grange_ville_ecurie", 180, 0),             // V2.30.5 : obstacle porté à 30 × 24 (décision de Damien)
             (BourgModels.Well, "puits_ville_marche", 180, 0.5),
             (BourgModels.Provost, "maison_ville_grande_maison", 180, 0.57),  // auvent de la façade
             (BourgModels.Guardhouse, "maison_ville_grande_maison", 180, 0.57),
@@ -145,7 +146,7 @@ public class V2303BourgMonumentsMaisonsTests
     {
         foreach ((string group, int count, IEnumerable<string> pieces) in new[]
         {
-            ("bourg_monuments", 20, new[] { BourgModels.Church, BourgModels.Parvis, BourgModels.Cemetery, BourgModels.Hall, BourgModels.Provost,
+            ("bourg_monuments", 26, new[] { "p13_armurier", "p14_forgeron", "p15_tanneur", "p16_apothicaire", "p17_tailleur", "p18_taverne", BourgModels.Church, BourgModels.Parvis, BourgModels.Cemetery, BourgModels.Hall, BourgModels.Provost,
                 BourgModels.Guardhouse, BourgModels.Stables, BourgModels.Granary, BourgModels.Washhouse, BourgModels.Oven, BourgModels.Fountain,
                 BourgModels.Well }.Concat(BourgModels.Stalls)),
             ("bourg_maisons", 13, (IEnumerable<string>)BourgModels.Houses),
@@ -160,7 +161,7 @@ public class V2303BourgMonumentsMaisonsTests
                 Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder(group), "bourg_" + piece + "_couleur.jpg")) <= 1024);
                 Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder(group), "bourg_" + piece + "_normale.png")) <= 512);
             }
-            Assert.True(Directory.GetFiles(Folder(group)).Sum(f => new FileInfo(f).Length) < 15_000_000);
+            Assert.True(Directory.GetFiles(Folder(group)).Sum(f => new FileInfo(f).Length) < 20_000_000);
         }
     }
 }
