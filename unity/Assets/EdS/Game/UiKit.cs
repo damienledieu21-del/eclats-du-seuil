@@ -58,6 +58,14 @@ namespace EdS.Game
             return texture;
         }
 
+        /// <summary>Oublie la texture d'un fichier de <c>Resources</c> et libère sa mémoire (écrans passagers : logo, écran titre). Sans effet si elle n'a pas été prise.</summary>
+        public static void Forget(string path)
+        {
+            if (path == null || !Textures.TryGetValue(path, out Texture2D known)) return;
+            Textures.Remove(path);
+            if (known != null) Resources.UnloadAsset(known);
+        }
+
         /// <summary>
         /// Image d'interface (<c>Resources/EdsInterface/Hud/name</c>) ; <paramref name="border"/> : bords à garder entiers quand on l'étire
         /// (pixels d'affichage), 0 pour une image simple. Null si le fichier manque (le jeu continue sans cette image).
