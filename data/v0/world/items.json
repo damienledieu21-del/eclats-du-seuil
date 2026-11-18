@@ -2181,7 +2181,7 @@
       {
         "id": "item.jeu_des_trois_feux",
         "name": "Jeu des Trois Feux, cartes dorées",
-        "icon": "sac",
+        "icon": "jeu_des_trois_feux",
         "type": "material",
         "rarity": "very_rare",
         "stack": 1

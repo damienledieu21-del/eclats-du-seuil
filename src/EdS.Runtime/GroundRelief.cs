@@ -186,6 +186,13 @@ namespace EdS.Runtime
                 && (grid.OriginX, grid.OriginZ, grid.Columns, grid.Rows) == _s.RegionGrid;
             foreach (SpaceObstacle o in map.Obstacles)
                 if (o.Low && StyleRules.Key(o.Id).StartsWith("riviere", StringComparison.Ordinal)) _water.Add(Points(o));
+            // V2.30.5 : le fossé du Bourg (obstacles bas « fosse_ville_* »), creusé dans le relief.
+            foreach (SpaceObstacle o in map.Obstacles)
+                if (o.Low && BourgModels.IsDitch(o.Id))
+                {
+                    var pts = Points(o);
+                    _moat.Add((pts.Min(p => p.X), pts.Min(p => p.Z), pts.Max(p => p.X), pts.Max(p => p.Z)));
+                }
             foreach (MapPlace p in map.Places)
                 if (_s.CalmPlaces.Contains(p.Id)) _calm.Add((p.MinX, p.MinZ, p.MaxX, p.MaxZ));
             foreach ((string prefix, double height, double fall) in _s.Buttes)
@@ -245,6 +252,8 @@ namespace EdS.Runtime
         public static bool FollowsGround(string id) => (id ?? throw new ArgumentNullException(nameof(id))).StartsWith("palissade_ville", StringComparison.Ordinal);
 
         /// <summary>Hauteur du sol affiché (m) en (x, z), à l'étage <paramref name="floor"/> (0 : la surface ; les autres restent plats).</summary>
+        private readonly List<(double X0, double Z0, double X1, double Z1)> _moat = new List<(double, double, double, double)>();
+
         public double Height(double x, double z, int floor = 0)
         {
             if (_flat || floor != 0) return 0;
@@ -261,10 +270,30 @@ namespace EdS.Runtime
                 sum += wi;
                 sumLevel += wi * p.Level;
             }
-            if (sum <= 0) return b;
+            if (sum <= 0) return b - Moat(x, z);
             // Un replat proche de l'eau ne relève ni la berge ni le lit : le sol revient à 0 à moins de ShoreFlat mètres de l'eau.
             double w = 1 - keep;
-            return (b + w * (sumLevel / sum - b)) * Smooth((Water(x, z) - _s.ShoreFlat) / _s.ShoreBlend);
+            return (b + w * (sumLevel / sum - b)) * Smooth((Water(x, z) - _s.ShoreFlat) / _s.ShoreBlend) - Moat(x, z);
+        }
+
+        /// <summary>
+        /// V2.30.5 (décision de Damien du 16 novembre 2026) : profondeur (m, positive) du fossé du Bourg creusé sous (x, z) : fond plat de
+        /// <see cref="BourgModels.DitchDepth"/> m sur <see cref="BourgModels.DitchFloor"/> m de part et d'autre de son axe, berges sur
+        /// <see cref="BourgModels.DitchBank"/> m ; aux bouts d'un tronçon (devant un pont), il se referme sur 1 m. Le plus profond des tronçons.
+        /// </summary>
+        public double Moat(double x, double z)
+        {
+            double depth = 0;
+            foreach ((double x0, double z0, double x1, double z1) in _moat)
+            {
+                if (x < x0 - 1 || x > x1 + 1 || z < z0 - 1 || z > z1 + 1) continue;
+                bool alongX = x1 - x0 >= z1 - z0;
+                double across = alongX ? Math.Abs(z - (z0 + z1) / 2) : Math.Abs(x - (x0 + x1) / 2);
+                double beyond = alongX ? Math.Max(0, Math.Max(x0 - x, x - x1)) : Math.Max(0, Math.Max(z0 - z, z - z1));
+                double d = BourgModels.DitchDepth * (1 - Smooth((across - BourgModels.DitchFloor) / BourgModels.DitchBank)) * (1 - Smooth(beyond));
+                depth = Math.Max(depth, d);
+            }
+            return depth;
         }
 
         /// <summary>Distance (m) à l'eau la plus proche (0 dedans ; très grande sans eau).</summary>

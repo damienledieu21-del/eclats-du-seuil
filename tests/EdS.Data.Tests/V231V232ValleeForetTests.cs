@@ -39,11 +39,11 @@ public class V231V232ValleeForetTests
     public void Etiquettes_strictes_le_scenario_d_un_bloc_redonne_l_aire_d_avant()
     {
         // Relecture de la PR #205 : aucune étiquette de lieu ne prend un obstacle d'avant le V2.31 ; sans les lieux, l'aire redevient celle
-        // d'avant (233 obstacles, 66 créatures), simulable d'un bloc.
+        // d'avant (247 obstacles : 233 et les 14 du Bourg du V2.30.5, fossé et boutiques ; 66 créatures), simulable d'un bloc.
         JsonObject root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         WithoutLieux(root);
         var ids = root["data"]!["space"]!["obstacles"]!.AsArray().Select(o => (string)o!["id"]!).ToList();
-        Assert.Equal(237, ids.Count);   // V2.40 : porte nord du Bourg (pan est de la palissade, deux tours) et ravin des Ronces coupé
+        Assert.Equal(233 + 14 + 5, ids.Count);   // V2.30.5 : sept tronçons du fossé, six boutiques et la maison notable ; V2.40 : porte nord (pan est de la palissade, deux tours, fossé coupé) et ravin des Ronces coupé
         Assert.Contains("falaise_cascade", ids);
         Assert.Contains("riviere_vallee7", ids);
         Assert.Equal(66, root["data"]!["combatants"]!.AsArray().Count);

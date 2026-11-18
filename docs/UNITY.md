@@ -984,6 +984,17 @@ Décision de Damien du 9 novembre 2026 : « créer nous-mêmes les modèles 3D �
 - **Relecture indépendante** (16 novembre 2026) : la table est calculée sur l'aire entière (`AdventureMap.Bourg`) : mêmes accessoires d'une fenêtre à l'autre, y compris dans un secteur sans porte ; les sols sont posés en dernier et jamais sous la fontaine, le lavoir, le parvis, le cimetière, le pilori ou l'abreuvoir ; les sols et petits décors n'ont pas d'occulteur.
 - Tests : `V2304BourgRuesTests`.
 
+### Décisions du 16 novembre 2026 pour le Bourg fortifié (sous-lot V2.30.5)
+
+Décisions de Damien du 16 novembre 2026 (vers 21 h 30) ; données de zone détaillées dans [MONDE.md](MONDE.md).
+
+- **Fossé** : modules F11 de 6 m serrés le long de chaque obstacle `fosse_ville_*` (face extérieure dehors), ponts F13 (est), F14 (ouest), F15 (poterne) au milieu du fossé devant chaque porte, talus F12 au pied intérieur de chaque module droit de palissade. Le relief est creusé (`GroundRelief.Moat`) : le terrain des cases, le décor et les personnages descendent dans le fossé ; modules et ponts sont posés au niveau du **bord** (`BourgModels.OnRim`, `SpaceView.RimGround`). Un obstacle du fossé dont les modules manquent garde la forme faite par le code.
+- **Boutiques et maison notable** : P13 à P18 et H09 sur leurs nouveaux obstacles (`BourgModels.ShopModel`), façade vers la route d'Ambre.
+- **Façades vivantes** (`BourgModels.Facades`) : pièces murales posées à la hauteur de leur accroche moins la hauteur du modèle (`BourgPiece.Height`) : une **lanterne sur potence** R21 à 0,9 m à droite de la porte de chaque maison et boutique, sur le mur de façade du modèle posé (seuil de l'export de jeu, `BourgModels.FrontDoor` ; revue Codex de la PR #204 : pas sur l'emprise de collision, souvent plus grande) (sa lumière est la lumière de porte, allumée la nuit) ; un **auvent** R30 au-dessus de l'entrée de chaque boutique ; deux **bannières sur potence** F19 sur la maison du prévôt ; un **râtelier mural** F18 sur le corps de garde ; une **corde à linge** R29 dans les ruelles entre boutiques voisines (les maisons numérotées sont à plus de 30 m les unes des autres). Les monuments habillés (église, halle, écuries, cour du prévôt) retrouvent la **lanterne de porte** faite par le code ; les **fenêtres** côté rue d'un bâtiment habillé (entre ses volets `Volet_…_G` et `_D` du rez-de-chaussée et du premier étage, deux au plus) prennent le fond de fenêtre qui s'allume la nuit. Revue Codex de la PR #204 : les modèles dont les volets ne sont pas des objets séparés (boutiques P13 à P18, maison du prévôt, corps de garde, écuries : un seul maillage par FBX) ont des fenêtres de façade posées par `BourgModels.FacadeWindows` (rez-de-chaussée à 1,60 m et étage à 4,80 m, au quart et aux trois quarts de la largeur ; logement des écuries aux baies de la fiche P07) : approximation, les baies réelles des modèles n'ont pas été relevées.
+- **Non fait** : le kit de façades H13 à H20 n'est pas utilisé (les maisons types ont déjà leurs pans, portes, volets, lucarnes et cheminées ; l'adapter demanderait de recomposer les maisons) ; F12 « talus fin » non livré. **Rien n'a été vérifié dans Unity**, en particulier les noms des volets et la hauteur réelle des accroches.
+- Fichiers ajoutés : `bourg_enceinte/` (F11, F12, F13, F14, F15), `bourg_monuments/` (P13 à P18), `bourg_rues/` (R21, R29, cinq R30, F18 mural, F19 sur potence), 23 pièces, environ 13 Mo.
+- Tests : `V2305BourgDecisionsTests` ; `V2302`, `V2303`, `V2304` adaptés (portes sans écart, écuries sans débord).
+
 ### Relief des Vallons (sous-lot V2.24)
 
 Affichage seulement (décision de Damien du 11 novembre 2026) ; détail des règles : [MONDE.md](MONDE.md#relief-des-vallons-sous-lot-v224).
@@ -1084,6 +1095,16 @@ Les cinq panoramas livrés par ChatGPT (commandés par Damien : printemps, été
 - le tour de caméra du point de vue du sommet. Le **brouillard à dissiper** et le **point de vue du sommet** sont faits au V2.29 (2) ([DONNEES.md](DONNEES.md#brouillard-de-carte-et-point-de-vue-du-sommet-sous-lot-v229-2)) : brouillard posé sur la grande carte du livre d'aventure.
 
 Essais : `V229HorizonTests`, `V2292PanoramaTests`.
+
+### Les vraies cartes des Trois Feux (sous-lot V2.32.1, 17 novembre 2026)
+
+Livraison ChatGPT (`Eclats_du_Seuil_AssetLab/Trois_Feux`) : 56 cartes de 750 × 1050 (27 faces et un dos, édition ordinaire `STD` et dorée `OR`), tapis 1920 × 1080, cycle 256 × 256. `unity/Assets/EdS/Game/AdventureBook.Cards.cs` :
+- **Fichiers** : `unity/Assets/EdS/Interface/Resources/EdsTroisFeux/` : `Cartes/` en PNG réduits à 375 × 525 (Lanczos) puis posés sur une marge transparente de **376 × 528**, multiples de 4 pour que Unity puisse les compresser sur PC (375 × 525 ne le permet pas) ; transparence gardée, ~20 Mo en tout avec le tapis), `tapis_1920.jpg` et `tapis_1280.jpg` (JPEG 85, choisi selon la hauteur de l'écran : 800 et plus pour le grand), `cycle.png` (256). Import (`EdsCardTextures`, `EdsInterfaceSetup.cs`) : compression de Unity, sans mipmaps, non lisibles. Icône du jeu doré : `Resources/EdsInterface/Peintes/jeu_des_trois_feux.png` (dos doré dans 128 × 128).
+- **Mise en page** : tapis de 1920 × 1080 au centre (réduit si l'écran est plus étroit que 16:9), places à (280, 564, 848, 1132, 1416) en x, 222 × 311, rangée du PNJ à y 116 et celle du joueur à y 652 ; cartes posées au centre (143 × 200), textes sur deux plaques sombres de part et d'autre, pastilles des manches sous le cycle du tapis.
+- **Entrées** : `AdventureBook.ReadCardsInput` (appelée par `EdsGame` quand la table est ouverte) : survol de la souris, clic, ou toucher en `TouchPhase.Began` seulement (la souris simulée à partir du doigt est ignorée) ; touches 1 à 5 et Échap comme avant.
+- **Mémoire** : textures chargées par `Resources.Load` à l'ouverture, rendues par `Resources.UnloadAsset` à la fermeture de la table ou du livre ; aucun cache statique ; l'image de la main, du PNJ et des cartes posées réutilise des `RawImage` créés une fois.
+- **Décisions de Damien (17 novembre 2026)** : 20 Mo d'images dans le dépôt, acceptable ; jeu doré repéré à l'ouverture de la table, effet à la partie suivante. **Entrées** : l'image où la table s'ouvre est ignorée ; au repos la zone d'une carte est sa place, la carte survolée seule l'étend vers le haut (« Se lever » est à y 586 à 614, hors zone).
+- Essais : `V2321CartesImagesTests` ; compilation de contrôle seulement (`tests/EdS.Unity.CompileCheck`, qui reçoit `Resources.UnloadAsset`). À essayer dans Unity par Damien : calage des places sur le tapis, lisibilité des textes, retournement, téléphone.
 
 ## Lot C : modèles Tripo (16 novembre 2026)
 

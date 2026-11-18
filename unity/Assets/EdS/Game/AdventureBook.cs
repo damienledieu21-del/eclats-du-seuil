@@ -939,6 +939,7 @@ namespace EdS.Game
         public void Hide()
         {
             LeaveSkills();
+            ReleaseCards();   // sous-lot V2.32.1 : les images de la table ne survivent pas à l'écran
             UiKit.Show(_canvas, false);
         }
 
@@ -954,7 +955,7 @@ namespace EdS.Game
             _session = a;
             _time += deltaTime;
             bool book = a != null && screens.Open != AdventureScreens.Panel.None;
-            bool cards = RefreshCards(a);   // sous-lot V2.32 : la table des Trois Feux, par-dessus le reste
+            bool cards = RefreshCards(a, deltaTime);   // sous-lot V2.32 : la table des Trois Feux, par-dessus le reste
             bool talk = a != null && a.Dialogue != null && !cards;
             UiKit.Show(_canvas, book || talk || cards);
             UiKit.Show(_book, book);

@@ -49,7 +49,8 @@ public class VallonsAgrandisTests
             bool dressed = TownRules.BuildingFor(id) != StyleBuilding.None || id.StartsWith("riviere", StringComparison.Ordinal)
                 || StyleRules.FenceFor(id) != StyleFence.None || StyleRules.ForObstacle(id) != null || id.StartsWith("moulin", StringComparison.Ordinal)
                 || id.StartsWith("pilier", StringComparison.Ordinal) || StyleRules.RockFace(id) || StyleRules.Ravine(id)   // V2.28c : éboulement, falaises ; gorge et ravins
-                || id.StartsWith(AdventureSession.WaySignPrefix, StringComparison.Ordinal);   // V2.30.1 : poteau et planche des panneaux (SpaceView)
+                || id.StartsWith(AdventureSession.WaySignPrefix, StringComparison.Ordinal)   // V2.30.1 : poteau et planche des panneaux (SpaceView)
+                || BourgModels.IsDitch(id);   // V2.30.5 : le fossé du Bourg, creusé dans le relief (GroundRelief.Moat), habillé de ses modules
             Assert.True(dressed, $"{id} sans habit");
         }
     }

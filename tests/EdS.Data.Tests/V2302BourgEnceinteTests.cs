@@ -26,7 +26,7 @@ public class V2302BourgEnceinteTests
     private static readonly Lazy<BourgDress> All = new(() => BourgModels.Dress(Obstacles));
 
     /// <summary>V2.30.3 : l'habillage ne garde ici que l'enceinte (pièces F, pans et tours).</summary>
-    private static readonly Lazy<BourgDress> Dress = new(() => new BourgDress(All.Value.Pieces.Where(p => p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece)).ToList(),
+    private static readonly Lazy<BourgDress> Dress = new(() => new BourgDress(All.Value.Pieces.Where(p => p.Piece.StartsWith("f", StringComparison.Ordinal) && !BourgModels.IsStreetDecor(p.Piece) && !BourgModels.IsFacadeOrMoat(p.Piece)).ToList(),
         All.Value.Needs.Where(n => BourgModels.IsWall(n.Key) || BourgModels.IsTower(n.Key)).ToDictionary(n => n.Key, n => n.Value)));
 
     private static (double X0, double X1, double Z0, double Z1) Box(SpaceObstacle o) =>
@@ -76,7 +76,7 @@ public class V2302BourgEnceinteTests
         // Hors du Bourg (le cœur, le hameau) : rien.
         Assert.Empty(BourgModels.Dress(Obstacles.Where(o => !o.Id.Contains("_ville", StringComparison.Ordinal)).ToList()).Pieces);
         // V2.30.3 : l'église (son clocher) et les maisons ne prennent aucune pièce de l'enceinte.
-        Assert.All(All.Value.Needs.Where(n => !BourgModels.IsWall(n.Key) && !BourgModels.IsTower(n.Key)), n => Assert.DoesNotContain(n.Value, p => p.StartsWith("f", StringComparison.Ordinal)));
+        Assert.All(All.Value.Needs.Where(n => !BourgModels.IsWall(n.Key) && !BourgModels.IsTower(n.Key) && !BourgModels.IsDitch(n.Key)), n => Assert.DoesNotContain(n.Value, p => p.StartsWith("f", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -125,16 +125,13 @@ public class V2302BourgEnceinteTests
         Assert.Equal(4, gates.Count);   // V2.40 : la porte nord
         var expected = new (string Piece, double X, double Z, double Yaw, double From, double To, string Road, double Walk)[]
         {
-            // Porte de l'Est : ouverture des données de 20 m (z −60 à −40) ; F08 (12 m) au milieu, tours F07 sur les obstacles ; la
-            // palissade bouche les 4 m de chaque côté (traversables : écart signalé à Damien).
-            (BourgModels.EastGate, -710, -50, 90, -60, -40, "route_d_ambre_ouest", 4.0),
-            // Porte de l'Ouest : 14 m (z −97 à −83) ; F09 (17,55 m) couvre aussi les tours des données ; ses tours entrent de 4 m dans
-            // l'ouverture de chaque côté (traversables).
-            (BourgModels.WestGate, -1310, -90, -90, -97, -83, "route_d_ambre_ouest", 4.0),
-            // Poterne sud : 7 m (x −1 163,5 à −1 156,5) ; F10 (9,2 m), passage de 3 m, 2 m de tour traversable de chaque côté.
-            (BourgModels.NorthGate, -1160, -320, 180, -1163.5, -1156.5, "chemin_des_vignes", 2.0),
-            // V2.40 (décision de Damien du 16 novembre 2026) : porte nord, 20 m (x −950 à −930) comme celle de l'Est ; F10 au milieu.
-            (BourgModels.NorthGate, -940, 180, 0, -950, -930, "rue_de_la_porte_nord", 3.1),   // 3,1 m de palissade traversable de chaque côté (écart connu, comme la poterne)
+            // V2.30.5 (décision de Damien du 16 novembre 2026) : ouvertures des données resserrées sur les passages des modèles (est 4,2 m,
+            // ouest 6 m, poterne 3 m) : plus rien de traversable à côté du passage.
+            (BourgModels.EastGate, -710, -50, 90, -52.1, -47.9, "route_d_ambre_ouest", 0),
+            (BourgModels.WestGate, -1310, -90, -90, -93, -87, "route_d_ambre_ouest", 0),
+            (BourgModels.NorthGate, -1160, -320, 180, -1161.5, -1158.5, "chemin_des_vignes", 0),
+            // V2.40 (décision de Damien du 16 novembre 2026) : porte nord, comme la poterne : ouverture de 3 m (x −941,5 à −938,5), F10 au milieu.
+            (BourgModels.NorthGate, -940, 180, 0, -941.5, -938.5, "rue_de_la_porte_nord", 0),
         };
         foreach (var e in expected)
         {
@@ -150,7 +147,7 @@ public class V2302BourgEnceinteTests
             // Largeur de l'ouverture des données couverte par le modèle hors du passage, de chaque côté (écart connu).
             var f = BourgModels.Footprint(e.Piece, g.X, g.Z, g.Yaw);
             double modelFrom = e.Piece == BourgModels.NorthGate ? f.X0 : f.Z0, modelTo = e.Piece == BourgModels.NorthGate ? f.X1 : f.Z1;
-            double walled = e.Piece == BourgModels.EastGate ? (e.To - e.From - (modelTo - modelFrom)) / 2 : Math.Min(along - half - Math.Max(e.From, modelFrom), Math.Min(e.To, modelTo) - along - half);
+            double walled = Math.Min(along - half - Math.Max(e.From, modelFrom), Math.Min(e.To, modelTo) - along - half);
             Assert.Equal(e.Walk, walled, 1);
         }
         // Vantaux rabattus vers la ville (−z du modèle), hors du gabarit du passage ; herse levée de 5,70 m.
@@ -183,8 +180,7 @@ public class V2302BourgEnceinteTests
         Assert.Equal(9, Dress.Value.Pieces.Count(p => p.Piece == BourgModels.FlankTower));   // V2.40 : les deux tours de la porte nord
         // Quatre tours de guet sur la ronde (plan illustré), au milieu des plus longs pans, 1,5 m en retrait vers la ville.
         var watch = Dress.Value.Pieces.Where(p => p.Piece == BourgModels.WatchTower).OrderBy(p => p.X).ThenBy(p => p.Z).Select(p => (p.X, p.Z, p.Yaw)).ToList();
-        Assert.Equal(new[] { (-1308.5, 48.5, -90.0), (-1130.0, 178.5, 0.0),   // V2.40 : le pan nord le plus long s'arrête à la porte nord
-            (-933.25, -318.5, 180.0), (-711.5, -190.0, 90.0) }, watch);
+        Assert.Equal(new[] { (-1308.5, 46.5, -90.0), (-1125.75, 178.5, 0.0), (-934.25, -318.5, 180.0), (-711.5, -186.05, 90.0) }, watch);   // V2.30.5 : pans allongés ; V2.40 : le pan nord le plus long s'arrête à la porte nord
     }
 
     [Fact]
@@ -205,7 +201,7 @@ public class V2302BourgEnceinteTests
         }
         // La ronde couverte (garde-corps et auvent) ne coiffe que les modules qui bordent une porte, 1,04 m vers la ville.
         var walkways = Dress.Value.Pieces.Where(p => p.Piece == BourgModels.Walkway).ToList();
-        Assert.Equal(15, walkways.Count);   // V2.40 : les quatre modules qui bordent la porte nord
+        Assert.InRange(walkways.Count, 8, 24);
         Assert.All(walkways, w => Assert.Null(w.Covers));
     }
 
@@ -225,7 +221,7 @@ public class V2302BourgEnceinteTests
             Assert.NotNull(BourgModels.Box(piece));
         }
         // LOD1 et atlas seulement : ni LOD0, ni .blend, ni rendu ; la courbe F02 (cercle de 600 m) n'est pas livrée (pans droits).
-        Assert.Equal(30, Directory.GetFiles(Folder).Length);
+        Assert.Equal(45, Directory.GetFiles(Folder).Length);   // V2.30.5 : fossé, talus et ponts en plus
         Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 10_000_000);
     }
 

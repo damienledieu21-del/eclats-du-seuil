@@ -2,7 +2,7 @@
   "$schema": "../../schemas/merchants.schema.json",
   "schemaVersion": 6,
   "kind": "merchants",
-  "contentVersion": "0.15.0-provisoire",
+  "contentVersion": "0.16.0-provisoire",
   "data": {
     "values": [
       {
@@ -1374,6 +1374,345 @@
           {
             "item": "item.citrouille_du_sud",
             "price": 80,
+            "always": false,
+            "stock": 3
+          }
+        ]
+      },
+      {
+        "id": "merchant.armurier_ville",
+        "npc": "npc.armurier_ville",
+        "greeting": "text.v2305.armurier_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "guard",
+        "restock": 50,
+        "shop": {
+          "kind": "armorer",
+          "sign": "text.v2305.enseigne.armurier",
+          "building": "maison_ville_armurier",
+          "open": "05:00",
+          "close": "22:00",
+          "rest": [
+            6
+          ]
+        },
+        "offers": [
+          {
+            "item": "item.gambison",
+            "price": 455,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.coiffe_de_cuir",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.epaulieres_de_cuir",
+            "price": 585,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.brassards_de_cuir",
+            "price": 455,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.ecu_de_chene",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.casque_de_fer",
+            "price": 2730,
+            "always": true,
+            "stock": 1
+          },
+          {
+            "item": "item.cotte_de_mailles",
+            "price": 2600,
+            "always": true,
+            "stock": 1
+          },
+          {
+            "item": "item.jambieres_de_mailles",
+            "price": 3055,
+            "always": false,
+            "stock": 1
+          },
+          {
+            "item": "item.gantelets_de_fer",
+            "price": 3055,
+            "always": false,
+            "stock": 1
+          }
+        ]
+      },
+      {
+        "id": "merchant.forgeron_ville",
+        "npc": "npc.forgeron_ville",
+        "greeting": "text.v2305.forgeron_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "forge",
+          "sign": "text.v2305.enseigne.forgeron",
+          "building": "maison_ville_forgeron",
+          "open": "05:00",
+          "close": "22:00",
+          "rest": [
+            6
+          ]
+        },
+        "offers": [
+          {
+            "item": "item.marteau_de_forge",
+            "price": 1755,
+            "always": true,
+            "stock": 1
+          },
+          {
+            "item": "item.pierre_a_aiguiser",
+            "price": 60,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.hachette_du_bucheron",
+            "price": 455,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.pioche_du_carrier",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.faucille_de_l_herboriste",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.epee_du_milicien",
+            "price": 390,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.anneau_de_fer",
+            "price": 845,
+            "always": false,
+            "stock": 1
+          }
+        ]
+      },
+      {
+        "id": "merchant.tanneur_ville",
+        "npc": "npc.tanneur_ville",
+        "greeting": "text.v2305.tanneur_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "tailor",
+          "sign": "text.v2305.enseigne.tanneur",
+          "building": "maison_ville_tanneur",
+          "open": "08:00",
+          "close": "18:30",
+          "rest": [
+            0
+          ]
+        },
+        "offers": [
+          {
+            "item": "item.peau_d_ours",
+            "price": 90,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.gants_de_cuir",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.bottes_de_cuir",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.brassards_de_cuir",
+            "price": 455,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.coiffe_de_cuir",
+            "price": 325,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.ceinture_de_corde",
+            "price": 455,
+            "always": false,
+            "stock": 3
+          }
+        ]
+      },
+      {
+        "id": "merchant.apothicaire_ville",
+        "npc": "npc.apothicaire_ville",
+        "greeting": "text.v2305.apothicaire_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "herbalist",
+          "sign": "text.v2305.enseigne.apothicaire",
+          "building": "maison_ville_apothicaire",
+          "open": "08:00",
+          "close": "18:30",
+          "rest": [
+            0
+          ]
+        },
+        "offers": [
+          {
+            "item": "item.remede_de_l_aube",
+            "price": 195,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.elixir_de_garde",
+            "price": 195,
+            "always": false,
+            "stock": 3
+          }
+        ]
+      },
+      {
+        "id": "merchant.tailleur_ville",
+        "npc": "npc.tailleur_ville",
+        "greeting": "text.v2305.tailleur_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "tailor",
+          "sign": "text.v2305.enseigne.tailleur",
+          "building": "maison_ville_tailleur",
+          "open": "08:00",
+          "close": "18:30",
+          "rest": [
+            0
+          ]
+        },
+        "offers": [
+          {
+            "item": "item.cape_de_laine",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.braies_de_toile",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.gants_de_cuir",
+            "price": 325,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.tablier_de_maitre",
+            "price": 520,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.bobine_de_fil",
+            "price": 15,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.cape_de_voyageur",
+            "price": 3055,
+            "always": false,
+            "stock": 1
+          }
+        ]
+      },
+      {
+        "id": "merchant.taverne_ville",
+        "npc": "npc.taverne_ville",
+        "greeting": "text.v2305.taverne_ville.achat_reponse",
+        "sellPercent": 25,
+        "closed": [],
+        "daily": 1,
+        "faction": "villagers",
+        "restock": 50,
+        "shop": {
+          "kind": "inn",
+          "sign": "text.v2305.enseigne.taverne",
+          "building": "maison_ville_taverne",
+          "open": "06:00",
+          "close": "01:00"
+        },
+        "offers": [
+          {
+            "item": "item.ragout_de_l_auberge",
+            "price": 60,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.cidre_du_verger",
+            "price": 10,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.pain_de_campagne",
+            "price": 15,
+            "always": true,
+            "stock": 3
+          },
+          {
+            "item": "item.fromage_des_hautes_pierres",
+            "price": 30,
+            "always": false,
+            "stock": 3
+          },
+          {
+            "item": "item.friture_du_lac",
+            "price": 40,
             "always": false,
             "stock": 3
           }

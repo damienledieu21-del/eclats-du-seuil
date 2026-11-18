@@ -43,6 +43,8 @@ public class V2304BourgRuesTests
     public void Street_decor_is_placed_on_the_real_town()
     {
         var count = Streets.GroupBy(p => p.Piece.Substring(0, 3)).ToDictionary(g => g.Key, g => g.Count());
+        string all0 = string.Join(", ", count.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => c.Key + " " + c.Value));
+        Assert.True(count.ContainsKey("f19") && count.ContainsKey("r19") && count.ContainsKey("f17") && count.ContainsKey("f18"), all0);
         string all = string.Join(", ", count.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => c.Key + " " + c.Value));
         Assert.True(count["r01"] >= 200, all);       // pavés de la place et bordures
         Assert.True(count["r02"] >= 60, all);        // route d'Ambre pavée entre les portes
@@ -99,13 +101,13 @@ public class V2304BourgRuesTests
     [Fact]
     public void Shipped_models_are_light_game_exports()
     {
-        var used = Streets.Select(p => p.Piece).Distinct().ToList();
+        var used = Dress.Value.Pieces.Select(p => p.Piece).Where(p => File.Exists(Path.Combine(Folder, "bourg_" + p + ".fbx"))).Distinct().ToList();
         var files = Directory.GetFiles(Folder, "*.fbx").Select(f => Path.GetFileNameWithoutExtension(f).Substring("bourg_".Length)).OrderBy(f => f, StringComparer.Ordinal).ToList();
-        Assert.Equal(41, files.Count);
-        Assert.All(files, f => Assert.True(BourgModels.IsStreetDecor(f) && BourgModels.Box(f) != null, f));
+        Assert.Equal(50, files.Count);   // V2.30.5 : neuf pièces murales
+        Assert.All(files, f => Assert.True((BourgModels.IsStreetDecor(f) || BourgModels.IsFacadeOrMoat(f)) && BourgModels.Box(f) != null, f));
         Assert.Equal(files, used.OrderBy(f => f, StringComparer.Ordinal));   // toutes les pièces livrées sont posées
-        Assert.Equal(41 * 3, Directory.GetFiles(Folder).Length);
-        Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 20_000_000);
+        Assert.Equal(50 * 3, Directory.GetFiles(Folder).Length);
+        Assert.True(Directory.GetFiles(Folder).Sum(f => new FileInfo(f).Length) < 25_000_000);
         foreach (string f in files)
         {
             Assert.True(V2302BourgEnceinteTests.ImageSize(Path.Combine(Folder, "bourg_" + f + "_couleur.jpg")) <= 1024, f);
