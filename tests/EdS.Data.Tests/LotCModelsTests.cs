@@ -346,6 +346,37 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Pieces_empilees_du_corps_remplacees_avec_le_meuble()
+    {
+        // Revue Codex de la PR #200 : la caisse empilée (« caisses/caisse2 », parent : une caisse) disparaît avec le corps remplacé par le modèle
+        // Tripo ; ce qui n'est pas du corps (vaisselle, bougie) reste. Toutes les pièces reliées sont parcourues.
+        int stacked = 0;
+        foreach (LotCModel m in LotCModels.All)
+            foreach (string target in m.Targets.Where(t => t.StartsWith("room:", StringComparison.Ordinal)))
+            {
+                string[] rp = target.Substring(5).Split('/');
+                IReadOnlyList<InteriorPiece> pieces = Layout(rp[0]).Pieces;
+                foreach (InteriorPiece p in pieces.Where(p => p.Id.StartsWith(rp[1] + "/", StringComparison.Ordinal) && p.Parent >= 0))
+                {
+                    InteriorPiece under = pieces[p.Parent];
+                    bool sameBody = under.Prop == p.Prop && LotCModels.Replaces(rp[1], under, pieces);
+                    Assert.Equal(sameBody, LotCModels.Replaces(rp[1], p, pieces));
+                    if (sameBody) stacked++;
+                }
+            }
+        Assert.True(stacked > 0, "aucune pièce empilée");
+        foreach (string room in new[] { "auberge", "guilde" })
+        {
+            IReadOnlyList<InteriorPiece> pieces = Layout(room).Pieces;
+            InteriorPiece second = pieces.Single(p => p.Id == "caisses/caisse2");
+            Assert.True(second.Parent >= 0);
+            Assert.True(LotCModels.Replaces("caisses", second, pieces), room);
+            Assert.False(LotCModels.Replaces("caisses", second));   // sans l'aménagement : comme avant (pas de parent connu)
+        }
+        Assert.Contains("LotCModels.Replaces(k, piece, layout.Pieces)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
     public void Code_d_un_chemin()
     {
         Assert.Equal("C_RE_S01", LotCModels.CodeOf("Assets/EdS/Modeles/LotC/08_Recoltes/C_RE_S01/C_RE_S01.fbx"));
