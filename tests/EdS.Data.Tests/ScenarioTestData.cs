@@ -227,6 +227,14 @@ internal static class ScenarioTestData
         // Sous-lot V2.30.1 : PNJ, haltes et invités des fêtes du bourg reviennent au cœur.
         foreach (var npc in data["npcs"]!.AsArray())
         {
+            // Lot C (relecture de la PR #212) : les voyageurs attendent aux portes de la ville, hors de l'aire d'avant ; là, au bourg.
+            if ((string?)npc!["id"] is "npc.voyageur_convoyeur" or "npc.voyageuse_pelerine")
+                foreach (var slot in npc["schedule"]!.AsArray().Where(x => (string?)x!["activity"] == "route"))
+                {
+                    var spot = (string?)npc["id"] == "npc.voyageur_convoyeur" ? (-1130.0, -40.0) : (-1060.0, -35.0);
+                    slot!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                    slot["rain"]!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                }
             BackToCore(npc, "position");
             foreach (var slot in npc!["schedule"]?.AsArray() ?? new JsonArray()) { BackToCore(slot, "position"); BackToCore(slot!["rain"], "position"); }
         }

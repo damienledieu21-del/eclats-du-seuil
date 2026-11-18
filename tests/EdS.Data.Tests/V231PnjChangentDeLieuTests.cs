@@ -52,7 +52,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     /// lui, sa journée commence aux champs) et les voyageurs de passage (partis sur la route d'Ambre le matin). Aucun n'ouvre le jeu ni une
     /// première quête.
     /// </summary>
-    internal static readonly string[] AwayInTheMorning = { "npc.fermier", "npc.voyageur_convoyeur", "npc.voyageuse_pelerine" };
+    internal static readonly string[] AwayInTheMorning = { "npc.fermier", "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.palefrenier" };
 
     private static long TickAt(long day, int minute)
     {
@@ -115,7 +115,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
         Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine",
-                "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.serveuse" },
+                "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.serveuse", "npc.palefrenier" },
             book.VisitorsOf("zone.auberge").Select(n => n.Id));
         // Rosalie sort (chapelle, puits, place) ; Mathurin fume sur la terrasse ; Frère Anselme fait sa tournée.
         Npc rosalie = book.Npc("npc.habitant"), mathurin = book.Npc("npc.aubergiste"), anselme = book.Npc("npc.pretre");
@@ -137,7 +137,20 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Npc perrine = book.Npc("npc.serveuse"), huguet = book.Npc("npc.palefrenier");
         Assert.Equal(("zone.auberge", "zone.auberge_cuisine", "zone.auberge", "zone.auberge"),
             (perrine.Zone, perrine.ZoneAt(12 * 60), perrine.ZoneAt(19 * 60), perrine.ZoneAt(2 * 60)));
-        Assert.Equal(((string?)null, "zone.auberge_cuisine", (string?)null), (huguet.ZoneAt(9 * 60), huguet.ZoneAt(12 * 60 + 15), huguet.ZoneAt(23 * 60)));
+        // Relecture de la PR #212 : Huguet dort près du feu de la salle (zone.auberge), s'abrite sous la pluie ; Aveline comme Baudouin.
+        Assert.Equal(("zone.auberge", (string?)null, "zone.auberge_cuisine", "zone.auberge"), (huguet.Zone, huguet.ZoneAt(9 * 60), huguet.ZoneAt(12 * 60 + 15), huguet.ZoneAt(23 * 60)));
+        Assert.All(huguet.Schedule.Where(s => s.Activity == "ecurie"), s => Assert.NotNull(s.Rain));
+        Npc aveline = book.Npc("npc.voyageuse_pelerine");
+        Assert.Equal(("zone.auberge_chambres", (string?)null, "zone.auberge", "zone.auberge_chambres"),
+            (aveline.Zone, aveline.ZoneAt(10 * 60), aveline.ZoneAt(19 * 60 + 30), aveline.ZoneAt(2 * 60)));
+        // Les voyageurs attendent à une porte de la ville (palissade en x = -1310 et x = -710), avec un abri sous la pluie.
+        foreach (Npc v in new[] { book.Npc("npc.voyageur_convoyeur"), aveline })
+        {
+            ScheduleSlot route = v.Schedule.Single(s => s.Activity == "route");
+            double x = route.Position.X.Raw / 10000.0;
+            Assert.True(Math.Min(Math.Abs(x + 1310), Math.Abs(x + 710)) < 15, v.Id);
+            Assert.NotNull(route.Rain);
+        }
         // Voyageurs : sur la route le jour, à la taverne le soir, la nuit dans les chambres (leur zone).
         Npc convoyeur = book.Npc("npc.voyageur_convoyeur");
         Assert.Equal(("zone.auberge_chambres", (string?)null, "zone.auberge", "zone.auberge_chambres"),
@@ -164,6 +177,44 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(9, read.Story!.SchemaVersion);
         Assert.All(read.Story.Npcs, n => Assert.False(n.Roams));
+    }
+
+    [Fact]
+    public void Aucun_creneau_dans_un_obstacle_de_sa_zone()
+    {
+        // Relecture de la PR #212 : chaque place d'emploi du temps (et son abri sous la pluie) est hors des obstacles de sa zone, au sens des
+        // polygones des espaces (scenarios/zones), PNJ par PNJ.
+        var obstacles = new Dictionary<string, List<double[][]>>(StringComparer.Ordinal);
+        List<double[][]> Of(string zone)
+        {
+            if (obstacles.TryGetValue(zone, out var known)) return known;
+            JsonNode z = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, zone)))!;
+            JsonNode sc = JsonNode.Parse(File.ReadAllText(ScenarioPath((string)z["data"]!["scenario"]!)))!;
+            var list = sc["data"]!["space"]!["obstacles"]!.AsArray()
+                .Select(o => o!["points"]!.AsArray().Select(p => new[] { (double)p![0]!, (double)p[1]! }).ToArray()).ToList();
+            obstacles[zone] = list;
+            return list;
+        }
+        static bool In(double[][] poly, double x, double z)
+        {
+            bool inside = false;
+            for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
+                if ((poly[i][1] > z) != (poly[j][1] > z) && x < (poly[j][0] - poly[i][0]) * (z - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) inside = !inside;
+            return inside;
+        }
+        int checkedSpots = 0;
+        foreach (Npc npc in Shipped.Value.Npcs)
+            foreach (ScheduleSlot slot in npc.Schedule)
+            {
+                string zone = slot.Zone ?? "zone.vallons";
+                foreach (GroundVector at in new[] { slot.Position }.Concat(slot.Rain is null ? Array.Empty<GroundVector>() : new[] { slot.Rain.Position }))
+                {
+                    double x = at.X.Raw / 10000.0, z = at.Z.Raw / 10000.0;
+                    Assert.DoesNotContain(Of(zone), poly => In(poly, x, z));
+                    checkedSpots++;
+                }
+            }
+        Assert.True(checkedSpots > 150, checkedSpots.ToString());
     }
 
     [Fact]

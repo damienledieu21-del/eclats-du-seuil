@@ -328,8 +328,8 @@
             "at": "11:30",
             "activity": "cuisine",
             "position": [
-              0.4,
-              -1.0
+              -1.15,
+              -0.35
             ],
             "zone": "zone.auberge_cuisine"
           },
@@ -378,8 +378,8 @@
             "at": "17:30",
             "activity": "cuisine",
             "position": [
-              0.4,
-              -1.0
+              -1.15,
+              -0.35
             ],
             "zone": "zone.auberge_cuisine"
           },
@@ -1655,9 +1655,16 @@
             "at": "06:30",
             "activity": "route",
             "position": [
-              -1130,
-              -40
+              -1300,
+              -90
             ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1302,
+                -80
+              ]
+            },
             "zone": "zone.vallons"
           },
           {
@@ -1693,9 +1700,16 @@
             "at": "07:00",
             "activity": "route",
             "position": [
-              -1060,
-              -35
+              -720,
+              -50.5
             ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -716,
+                -42
+              ]
+            },
             "zone": "zone.vallons"
           },
           {
@@ -1783,10 +1797,11 @@
         "id": "npc.palefrenier",
         "name": "text.lotc.npc.palefrenier.name",
         "position": [
-          -1093.5,
-          -24
+          -5.5,
+          0
         ],
         "dialogue": "dialogue.palefrenier",
+        "zone": "zone.auberge",
         "schedule": [
           {
             "at": "05:30",
@@ -1794,7 +1809,15 @@
             "position": [
               -1093.5,
               -24
-            ]
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1096,
+                -30
+              ]
+            },
+            "zone": "zone.vallons"
           },
           {
             "at": "12:00",
@@ -1811,14 +1834,22 @@
             "position": [
               -1093.5,
               -24
-            ]
+            ],
+            "rain": {
+              "activity": "abri",
+              "position": [
+                -1096,
+                -30
+              ]
+            },
+            "zone": "zone.vallons"
           },
           {
             "at": "21:00",
-            "activity": "paille",
+            "activity": "repos",
             "position": [
-              -1093.5,
-              -24
+              -5.5,
+              0
             ]
           }
         ]
@@ -22798,6 +22829,20 @@
               {
                 "conditions": [
                   {
+                    "if": "activity",
+                    "id": "npc.voyageur_convoyeur",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageur_convoyeur"
+                  }
+                ],
+                "text": "text.lotc.voyageur_convoyeur.abri"
+              },
+              {
+                "conditions": [
+                  {
                     "if": "fact",
                     "id": "fact.met.voyageur_convoyeur"
                   }
@@ -22847,6 +22892,20 @@
             "id": "accueil",
             "text": "text.lotc.voyageuse_pelerine.accueil",
             "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.voyageuse_pelerine",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.voyageuse_pelerine"
+                  }
+                ],
+                "text": "text.lotc.voyageuse_pelerine.abri"
+              },
               {
                 "conditions": [
                   {
@@ -22951,6 +23010,20 @@
             "id": "accueil",
             "text": "text.lotc.palefrenier.accueil",
             "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "activity",
+                    "id": "npc.palefrenier",
+                    "step": "abri"
+                  },
+                  {
+                    "if": "fact",
+                    "id": "fact.met.palefrenier"
+                  }
+                ],
+                "text": "text.lotc.palefrenier.abri"
+              },
               {
                 "conditions": [
                   {
