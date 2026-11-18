@@ -6,7 +6,7 @@ using System;
 namespace UnityEngine
 {
     public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static void Destroy(Object o, float t) { } public static T Instantiate<T>(T original) where T : Object => original; public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation, Transform parent) where T : Object => original; public static T Instantiate<T>(T original, Transform parent, bool worldPositionStays) where T : Object => original; public static T FindFirstObjectByType<T>() where T : Object => default; public static T[] FindObjectsByType<T>(FindObjectsSortMode mode) where T : Object => null; public static void DestroyImmediate(Object o) { } public static void DontDestroyOnLoad(Object o) { } public static implicit operator bool(Object o) => o != null; }
-    public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; }
+    public class Component : Object { public Transform transform => null; public GameObject gameObject => null; public T GetComponent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponentsInChildren<T>() => null; public T[] GetComponentsInChildren<T>(bool includeInactive) => null; }
     public class Behaviour : Component { }
     public class MonoBehaviour : Behaviour { }
     public class Animator : Behaviour { public bool enabled { get; set; } public Avatar avatar { get; set; } public bool applyRootMotion { get; set; } public AnimatorCullingMode cullingMode { get; set; } public RuntimeAnimatorController runtimeAnimatorController { get; set; } public Vector3 GetIKPosition(AvatarIKGoal goal) => default; public void SetIKPosition(AvatarIKGoal goal, Vector3 position) { } public void SetIKPositionWeight(AvatarIKGoal goal, float value) { } public Vector3 bodyPosition { get; set; } public Transform GetBoneTransform(HumanBodyBones bone) => null; public bool isHuman => false; }
@@ -53,7 +53,7 @@ namespace UnityEngine
     public class Collider : Component { }
     public enum LightType { Spot, Directional, Point }
     public enum LightShadows { None, Hard, Soft }
-    public sealed class Light : Behaviour { public LightType type { get; set; } public float intensity { get; set; } public LightShadows shadows { get; set; } public Color color { get; set; } public float range { get; set; } public bool enabled { get; set; } }
+    public sealed class Light : Behaviour { public LightType type { get; set; } public int cullingMask { get; set; } public float intensity { get; set; } public LightShadows shadows { get; set; } public Color color { get; set; } public float range { get; set; } public bool enabled { get; set; } }
     public enum FogMode { Linear = 1, Exponential = 2, ExponentialSquared = 3 }
     public static class RenderSettings { public static Material skybox { get; set; } public static UnityEngine.Rendering.AmbientMode ambientMode { get; set; } public static Color ambientSkyColor { get; set; } public static Color ambientEquatorColor { get; set; } public static Color ambientGroundColor { get; set; } public static bool fog { get; set; } public static FogMode fogMode { get; set; } public static Color fogColor { get; set; } public static float fogStartDistance { get; set; } public static float fogEndDistance { get; set; } public static float fogDensity { get; set; } }
     public sealed class TerrainLayer : Object { public TerrainLayer() { } public Texture2D diffuseTexture { get; set; } public Texture2D normalMapTexture { get; set; } public Vector2 tileSize { get; set; } public Vector4 diffuseRemapMin { get; set; } public Vector4 diffuseRemapMax { get; set; } }
@@ -70,7 +70,7 @@ namespace UnityEngine
     public sealed class TextAreaAttribute : PropertyAttribute { public TextAreaAttribute(int minLines, int maxLines) { } }
     public class TextAsset : Object { public string text => ""; }
     public enum CameraClearFlags { Skybox = 1, SolidColor = 2 }
-    public sealed class Camera : Behaviour { public static Camera main => null; public float fieldOfView { get; set; } public float nearClipPlane { get; set; } public float farClipPlane { get; set; } public CameraClearFlags clearFlags { get; set; } public Color backgroundColor { get; set; } public Vector3 WorldToScreenPoint(Vector3 p) => default; }
+    public sealed class Camera : Behaviour { public static Camera main => null; public float fieldOfView { get; set; } public float nearClipPlane { get; set; } public float farClipPlane { get; set; } public CameraClearFlags clearFlags { get; set; } public Color backgroundColor { get; set; } public int cullingMask { get; set; } public RenderTexture targetTexture { get; set; } public Vector3 WorldToScreenPoint(Vector3 p) => default; }
     public struct Color32 { public byte r, g, b, a; public Color32(byte r, byte g, byte b, byte a) { this.r = r; this.g = g; this.b = b; this.a = a; } public static implicit operator Color32(Color c) => default; public static implicit operator Color(Color32 c) => default; }
     public struct Color { public float r, g, b, a; public Color(float r, float g, float b) : this(r, g, b, 1) { } public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; } public static Color white => default; public static Color black => default; public float maxColorComponent => 0; public static Color Lerp(Color a, Color b, float t) => a; public static Color operator *(Color a, Color b) => a; public static Color operator *(Color a, float b) => a; }
     public struct Vector2 { public float x, y; public Vector2(float x, float y) { this.x = x; this.y = y; } public static Vector2 zero => default; public static Vector2 one => default; public float magnitude => 0; public Vector2 normalized => default; public static float Distance(Vector2 a, Vector2 b) => 0; public static Vector2 operator +(Vector2 a, Vector2 b) => a; public static Vector2 operator -(Vector2 a, Vector2 b) => a; public static Vector2 operator *(Vector2 a, float f) => a; public static Vector2 operator /(Vector2 a, float f) => a; }
@@ -120,7 +120,7 @@ namespace UnityEngine
         public void Stop(bool withChildren, ParticleSystemStopBehavior stopBehavior) { }
     }
     public enum RuntimePlatform { WindowsEditor, WindowsPlayer, Android, IPhonePlayer }
-    public static class Application { public static string unityVersion => ""; public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
+    public static class Application { public static void Quit() { } public static string unityVersion => ""; public static bool isEditor => false; public static bool isFocused => false; public static string dataPath => ""; public static string streamingAssetsPath => ""; public static string persistentDataPath => ""; public static bool isMobilePlatform => false; public static RuntimePlatform platform => default; public static int targetFrameRate { get; set; } }
     public class AsyncOperation { }
     public static class SleepTimeout { public const int NeverSleep = -1; }
     public enum ScreenOrientation { Portrait = 1, LandscapeLeft = 3, AutoRotation = 5 }
@@ -351,4 +351,8 @@ namespace UnityEditor
         public static PlatformIcon[] GetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind) => null;
         public static void SetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind, PlatformIcon[] icons) { }
     }
+}
+namespace UnityEngine
+{
+    public class RenderTexture : Texture { public RenderTexture(int width, int height, int depth) { } public void Release() { } }
 }
