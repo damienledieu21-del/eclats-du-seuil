@@ -796,6 +796,15 @@ namespace EdS.Game
         /// </summary>
         public static GameObject Prop(Transform parent, StyleProp kind, string id, Vector3 at, float yaw, float scale = 1f, bool oneVariant = false)
         {
+            // Lot C (16 novembre 2026) : le modèle Tripo de ce décor (foyer, marteau, tonneau, caisse de la forge), à l'échelle réelle.
+            string lotC = LotCModels.ForVillage("prop/" + kind, id);
+            // Relecture de la PR #197 : l'échelle demandée et « une seule variante » valent aussi pour lui.
+            GameObject own = lotC != null ? LotCLook.Place(parent, lotC, id, at, yaw, scale) : null;
+            if (own != null)
+            {
+                if (oneVariant) LotCLook.OneVariant(own, id);
+                return own;
+            }
             StyleCatalog catalog = StyleCatalog.Loaded;
             PropLook prop = catalog != null ? catalog.Prop(kind) : null;
             if (prop == null) return null;

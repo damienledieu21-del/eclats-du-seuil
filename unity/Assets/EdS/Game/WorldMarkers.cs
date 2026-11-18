@@ -634,13 +634,21 @@ namespace EdS.Game
                 return;
             }
             Hide(m);
-            Anvil(holder, c);
+            // Lot C (16 novembre 2026) : l'enclume sur billot de Tripo, sinon celle faite par le code (table à 0,79 m).
+            string anvilCode = LotCModels.ForVillage("forge/enclume", m.Data.Id);
+            GameObject anvil = anvilCode != null ? LotCLook.Place(holder, anvilCode, m.Data.Id + "/enclume", c, 0f) : null;
+            float anvilTop = 0.79f;
+            // Relecture de la PR #197 : jamais deux enclumes ; celle du code seulement sans l'enclume Tripo.
+            if (anvil == null) Anvil(holder, c);
+            else if (StyleLook.VisibleBounds(anvil, out Bounds ab)) anvilTop = ab.max.y - c.y;
+            string pitCode = LotCModels.ForVillage("prop/" + StyleProp.FirePit, m.Data.Id + "/foyer");
+            bool lotCPit = pitCode != null && pit.name.EndsWith("(" + pitCode + ")");
             // Le marteau couché sur la table de l'enclume.
-            GameObject hammer = StyleLook.Prop(holder, StyleProp.Hammer, m.Data.Id + "/marteau", c + new Vector3(0.05f, 0.79f, 0.02f), 20f);
+            GameObject hammer = StyleLook.Prop(holder, StyleProp.Hammer, m.Data.Id + "/marteau", c + new Vector3(0.05f, anvilTop, 0.02f), 20f);
             if (hammer != null)
             {
                 hammer.transform.rotation = Quaternion.Euler(90f, 20f, 0f);
-                StyleLook.Ground(hammer, c.y + 0.79f);   // V2.24 : au-dessus du sol affiché
+                StyleLook.Ground(hammer, c.y + anvilTop);   // V2.24 : au-dessus du sol affiché
             }
             // Sous-lot V2.12.7 (essai du 9 novembre 2026 : tonneau bleu uni) : le modèle du catalogue s'il a l'air de bois, sinon un tonneau de
             // bois à cercles sombres fait par le code (BarrelLook).
@@ -658,15 +666,17 @@ namespace EdS.Game
             embers.name = "Braises";
             Object.Destroy(embers.GetComponent<Collider>());
             embers.transform.SetParent(holder, false);
-            embers.transform.position = new Vector3(b.center.x, b.min.y + 0.08f, b.center.z);
-            embers.transform.localScale = new Vector3(b.size.x * 0.55f, 0.03f, b.size.z * 0.55f);
+            // Lot C : le foyer maçonné de Tripo a sa sole vers 0,85 m et une hotte haute : braises sur la sole, lueur juste au-dessus.
+            float bed = lotCPit ? 0.85f : 0.08f;
+            embers.transform.position = new Vector3(b.center.x, b.min.y + bed, b.center.z);
+            embers.transform.localScale = new Vector3(b.size.x * (lotCPit ? 0.35f : 0.55f), 0.03f, b.size.z * (lotCPit ? 0.35f : 0.55f));
             Material glow = Made(new Color(0.25f, 0.06f, 0.02f));
             glow.EnableKeyword("_EMISSION");
             glow.SetColor("_EmissionColor", new Color(1.4f, 0.42f, 0.1f));   // V1.10 : moins fort, pour ne pas blanchir sous le halo
             embers.GetComponent<Renderer>().sharedMaterial = glow;
             var light = new GameObject("Lueur du foyer").AddComponent<Light>();
             light.transform.SetParent(holder, false);
-            light.transform.position = new Vector3(b.center.x, b.max.y + 0.4f, b.center.z);
+            light.transform.position = new Vector3(b.center.x, lotCPit ? b.min.y + bed + 0.8f : b.max.y + 0.4f, b.center.z);
             light.type = LightType.Point;
             light.color = new Color(1f, 0.55f, 0.2f);
             light.range = 5f;
@@ -674,7 +684,7 @@ namespace EdS.Game
             _fire = light;
             _fireBase = light.intensity;
             // Essai réaliste 8 : sur ordinateur, les flammes et la fumée du Particle Pack de Unity dans le foyer, s'il est importé.
-            Effects.Ambient(StyleVfx.ForgeFire, holder, new Vector3(b.center.x, b.min.y + 0.1f, b.center.z));
+            Effects.Ambient(StyleVfx.ForgeFire, holder, new Vector3(b.center.x, b.min.y + bed + 0.02f, b.center.z));
             // V1.10 (essai 10 : « fumée noire de la forge ») : la fumée du jeu, claire et non éclairée, à la place de celle du pack (Effects.Smoke).
             Effects.Smoke(holder, new Vector3(b.center.x, b.max.y + 0.2f, b.center.z));
         }
