@@ -235,6 +235,14 @@ namespace EdS.Runtime
             return a < 45 || a >= 135;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #201 : quart de tour imposé au meuble <paramref name="obstacleId"/> de la pièce <paramref name="room"/>, ou null
+        /// (dos au mur le plus proche). Les bancs de nef de la chapelle (C_IN2_C0_01 : dossier côté −x de l'export, l'avant côté +x de
+        /// Blender, −x dans Unity) sont tous tournés de 90° : leur assise regarde +z, l'autel au nord de la nef.
+        /// </summary>
+        public static double? YawFor(string? room, string? obstacleId) =>
+            room == "chapelle" && obstacleId != null && obstacleId.StartsWith("banc", StringComparison.Ordinal) ? 90 : (double?)null;
+
         /// <summary>Échelle la plus grande donnée à un meuble du lot C (les modèles sont à l'échelle réelle des fiches).</summary>
         public const double MaxScale = 1.15;
 
@@ -247,19 +255,28 @@ namespace EdS.Runtime
         /// donc ne bloque ni porte ni passage. Déterministe.
         /// </summary>
         public static IReadOnlyList<LotCCopy> Fit(double minX, double minZ, double maxX, double maxZ, double roomMinX, double roomMinZ,
-            double roomMaxX, double roomMaxZ, double modelW, double modelD)
+            double roomMaxX, double roomMaxZ, double modelW, double modelD) =>
+            Fit(minX, minZ, maxX, maxZ, roomMinX, roomMinZ, roomMaxX, roomMaxZ, modelW, modelD, null);
+
+        /// <summary>
+        /// Comme <see cref="Fit(double, double, double, double, double, double, double, double, double, double)"/> ; <paramref name="fixedYaw"/>
+        /// (0, 90, 180 ou 270), s'il est donné, impose le quart de tour au lieu du mur le plus proche (revue Codex de la PR #201 : les bancs de
+        /// nef regardent tous l'autel, <see cref="YawFor"/>).
+        /// </summary>
+        public static IReadOnlyList<LotCCopy> Fit(double minX, double minZ, double maxX, double maxZ, double roomMinX, double roomMinZ,
+            double roomMaxX, double roomMaxZ, double modelW, double modelD, double? fixedYaw)
         {
             if (!(modelW > 0 && modelD > 0 && maxX > minX && maxZ > minZ)) return Array.Empty<LotCCopy>();
             double w = maxX - minX, d = maxZ - minZ, cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
             // Dos au mur le plus proche : l'avant regarde l'intérieur de la pièce.
             double west = minX - roomMinX, east = roomMaxX - maxX, south = minZ - roomMinZ, north = roomMaxZ - maxZ;
             double near = Math.Min(Math.Min(west, east), Math.Min(south, north));
-            double yaw = near == south ? 0 : near == north ? 180 : near == west ? 90 : 270;
+            double yaw = fixedYaw ?? (near == south ? 0 : near == north ? 180 : near == west ? 90 : 270);
             // Côtés du modèle une fois tourné : à 90 ou 270°, sa largeur va selon z.
             bool turned = yaw == 90 || yaw == 270;
             double alongX = turned ? modelD : modelW, alongZ = turned ? modelW : modelD;
             bool boxAlongX = w >= d, modelAlongX = alongX >= alongZ;
-            if (boxAlongX != modelAlongX && Math.Abs(alongX - alongZ) > 0.05)
+            if (fixedYaw is null && boxAlongX != modelAlongX && Math.Abs(alongX - alongZ) > 0.05)
             {
                 yaw = (yaw + 90) % 360;
                 turned = !turned;
