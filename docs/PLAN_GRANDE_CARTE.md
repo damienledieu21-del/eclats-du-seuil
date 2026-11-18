@@ -56,6 +56,11 @@ Puis, le 17 novembre 2026 vers 1 h 10 :
 10. **Pont suspendu ouvert avec les gués** par la quête des passages de la vallée : **gardé**.
 11. **Créatures de nuit** dans les nouveaux lieux, avec le bestiaire de nuit existant (loups de la nuit, échos) : **oui** (vallée et forêt comprises, au V2.33 et suivants).
 
+Puis, le 18 novembre 2026 :
+
+12. **Points sûrs** devant l'entrée de la mine (`bouche_de_la_mine`), devant le fort (`devant_le_fort`) et plus bas sur la route du col des Crêtes de Fer, là où la pente le permet (V2.40).
+13. **Passerelle des Ronces** : elle s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine (V2.40).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
@@ -379,7 +384,7 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 
 **Avancement V2.33 à V2.39** (16 novembre 2026, en PR, une PR pour les sept, empilée sur celle du V2.31) : coteaux et château viticole, hautes collines, abbaye en ruine, marais du lac et île des saules dormants (verrou d'hiver accroché), carrière devenue mine (surface), fort des bandits, terres corrompues ([MONDE.md](MONDE.md)). Créatures du bestiaire existant (décision du 16 novembre, 23 h) : sangliers, cerfs, loups, échos, bandits. Écarts au plan : ni bergers ni moutons (pas de modèle ni de bête paisible de ce genre) ; pontons, barques, wagonnets, rails, cuves, charrette et états de la vigne (vert, mûr, vendangé : V2.44) attendent leurs modèles ; les murs de l'abbaye prennent l'habit des éboulements.
 
-**Avancement V2.40** (17 novembre 2026, en PR, empilée sur celle des V2.33 à V2.39) : porte nord du Bourg et chemin du pont des Murmures (§ 0 ter, décision du 16 novembre), passerelle des Ronces fermée (le verrou du chapitre 1 tient), pont des Murmures gardé, col des Crêtes de Fer (arche, refuge, éboulement), péage d'Havre d'Ambre, route de l'Est et pont effondré, créatures de jour et de nuit ([MONDE.md](MONDE.md)). Écarts au plan : pas de tablier ni de route au-delà de la gorge (avec la Forêt des Murmures) ; pas de point sûr au refuge du col.
+**Avancement V2.40** (17 novembre 2026, en PR, empilée sur celle des V2.33 à V2.39) : porte nord du Bourg et chemin du pont des Murmures (§ 0 ter, décision du 16 novembre), passerelle des Ronces ouverte à la fin du chapitre 1 (décision du 18 novembre), pont des Murmures gardé, col des Crêtes de Fer (arche, refuge, éboulement), péage d'Havre d'Ambre, route de l'Est et pont effondré, créatures de jour et de nuit ([MONDE.md](MONDE.md)). Point sûr des lacets du col (décision du 18 novembre). Écarts au plan : pas de tablier ni de route au-delà de la gorge (avec la Forêt des Murmures) ; pas de point sûr au refuge même (pente).
 
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|

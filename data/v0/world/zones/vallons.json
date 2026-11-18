@@ -160,6 +160,30 @@
           1678,
           166
         ]
+      },
+      {
+        "id": "bouche_de_la_mine",
+        "name": "Bouche de la mine",
+        "position": [
+          1175,
+          348
+        ]
+      },
+      {
+        "id": "devant_le_fort",
+        "name": "Devant le fort",
+        "position": [
+          1181,
+          912
+        ]
+      },
+      {
+        "id": "lacets_du_col",
+        "name": "Lacets du col",
+        "position": [
+          1600,
+          855
+        ]
       }
     ],
     "scaling": {

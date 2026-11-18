@@ -1,5 +1,6 @@
 using EdS.Data.Zones;
 using static EdS.Data.Tests.GrandeCarteLieux;
+using static EdS.Data.Tests.ScenarioTestData;
 
 namespace EdS.Data.Tests;
 
@@ -69,5 +70,31 @@ public class V240PassagesTests
         Assert.Equal(9, mine.Count);
         Assert.Equal(3, mine.Count(p => p.Hours != null));
         Assert.All(mine, p => Assert.InRange(zone.MinLevelAt(zone.Setup.Combatants.Single(c => c.Id == p.Creature).Placement!.Position), 7, 22));
+    }
+
+    [Fact]
+    public void Point_sur_des_lacets_du_col_et_passerelle_ouverte_a_la_fin_du_chapitre_1()
+    {
+        // Décisions de Damien du 18 novembre 2026 : un point sûr plus bas sur la route du col ; la passerelle des Ronces s'ouvre avec la
+        // quête qui termine le chapitre 1 (une sauvegarde où elle est déjà finie l'ouvre en reprenant, comme le pont suspendu).
+        SafePointClear("lacets_du_col");
+        ZoneDefinition zone = Vallons.Value;
+        EdS.Data.Story.StoryBook book = V11TestData.Book(zone);
+        Assert.Contains(book.Quests.Single(q => q.Id == "quest.traces_sous_le_moulin").Effects,
+            e => e.Kind == EdS.Data.Story.EffectKind.OpenPassage && e.Id == "passerelle_des_ronces");
+        var quests = new Dictionary<string, EdS.Data.Saves.QuestProgress>(StringComparer.Ordinal)
+        {
+            ["quest.traces_sous_le_moulin"] = new(EdS.Data.Saves.QuestProgress.Done),
+        };
+        var hero = V11TestData.Hero().WithStory(new EdS.Data.Saves.SavedStory(quests: quests));
+        var save = new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, hero);
+        var w = new EdS.World.WorldSession(save, zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, book, safePoint: "place_du_marche_de_la_ville");
+        w.Step();
+        Assert.True(w.IsPassageOpen("passerelle_des_ronces"));
+        Assert.Contains(zone.PassageKey("passerelle_des_ronces"), w.Save().Consumed);
+        var fresh = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+            zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, book, safePoint: "place_du_marche_de_la_ville");
+        fresh.Step();
+        Assert.False(fresh.IsPassageOpen("passerelle_des_ronces"));
     }
 }
