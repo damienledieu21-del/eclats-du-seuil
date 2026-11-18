@@ -597,7 +597,8 @@ namespace EdS.Game
             if (atCards)
             {
                 if (Input.GetKeyDown(KeyCode.Escape)) a.LeaveCardTable();   // relecture de la PR #193 : Échap, avec confirmation en pleine partie
-                else if (DigitPressed() is int card && card >= 0) a.PlayCardAt(card);
+                else if (DigitPressed() is int card && card >= 0) { if (_book == null || !_book.CardsFlipping) a.PlayCardAt(card); }
+                else _book?.ReadCardsInput(a);   // sous-lot V2.32.1 : survol, clic, toucher
                 talking = true;
             }
             else if (talking)
