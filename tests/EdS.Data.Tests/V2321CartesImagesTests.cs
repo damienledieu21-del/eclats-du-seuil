@@ -153,6 +153,11 @@ public class V2321CartesImagesTests
         Assert.Contains("if (revealed) _cardsShownScore = table.Score;", code, StringComparison.Ordinal);
         Assert.Contains("_cardsScore.Value = _cardsShownScore;", code, StringComparison.Ordinal);
         Assert.DoesNotContain("_cardsScore.Value = table.Score", code, StringComparison.Ordinal);
+        // Revue Codex : pas de nouvelle carte (souris, toucher, touches) pendant le retournement.
+        Assert.Contains("public bool CardsFlipping => _cardsLoaded && _cardsFlip < FlipDone;", code, StringComparison.Ordinal);
+        Assert.Contains("|| opening || CardsFlipping) return;", code, StringComparison.Ordinal);
+        string game = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("!_book.CardsFlipping) a.PlayCardAt(card)", game, StringComparison.Ordinal);
         // 4 : dimensions multiples de 4 (compression de Unity sur PC).
         Assert.Equal(0, CardArt.Width % 4);
         Assert.Equal(0, CardArt.Height % 4);

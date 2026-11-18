@@ -148,6 +148,9 @@ namespace EdS.Game
             _cardsCycleTexture = null;
         }
 
+        /// <summary>Vrai tant que la carte du PNJ se retourne : aucune nouvelle carte n'est acceptée (souris, toucher, touches 1 à 5).</summary>
+        public bool CardsFlipping => _cardsLoaded && _cardsFlip < FlipDone;
+
         private Texture2D FaceOf(CardFace face) => _cardsFaces[(int)face.Suit * CardMatch.MaxValue + face.Value - 1];
 
         /// <summary>Échelle du tapis sur l'écran (hauteur de référence 1080, réduit si l'écran est plus étroit que 16:9).</summary>
@@ -185,7 +188,7 @@ namespace EdS.Game
             _cardsInputFrame = Time.frameCount;
             int lifted = _cardsHover;
             _cardsHover = -1;
-            if (table == null || table.Hand.Count == 0 || opening) return;
+            if (table == null || table.Hand.Count == 0 || opening || CardsFlipping) return;
             if (Input.touchCount > 0)
             {
                 for (int i = 0; i < Input.touchCount; i++)
