@@ -87,10 +87,9 @@ public class FetesDonneesTests
         Assert.Equal(Fixed.FromRatio(36, 10), b.Ref("F06_D02")!.Size.X);
         Assert.Equal("Graine de Griffon", Texts.Get(b.Ref("F04_M01")!.Name));
         Assert.Equal("Icones/F04_M01_graine_de_griffon_icone.png", b.Ref("F04_M01")!.Icon);
-        // Semailles, Moissons et Veillée ont des activités (concours de l'histoire et invités) ; les neuf autres sont du calendrier seulement.
-        Assert.Equal(new[] { "festival.foire", "festival.moissons", "festival.veillee" },
-            b.Feasts.Where(f => f.Activities.Count > 0).Select(f => f.Festival).OrderBy(x => x, StringComparer.Ordinal));
-        Assert.All(b.Feasts.Where(f => f.Activities.Count == 0), f => Assert.True(Story.Value.Festival(f.Festival).CalendarOnly));
+        // Sous-lot F3 : les 12 fêtes ont des activités (concours de l'histoire ou invités) ; aucune n'est plus du calendrier seulement.
+        Assert.All(b.Feasts, f => Assert.NotEmpty(f.Activities));
+        Assert.All(b.Feasts, f => Assert.False(Story.Value.Festival(f.Festival).CalendarOnly));
         Feast semailles = b.Feast("festival.foire");
         Assert.Equal("festival.foire.patisserie", semailles.Activity("patisserie")!.Contest);
         Assert.Equal("npc.lison", semailles.Activity("course")!.Host);
@@ -180,7 +179,7 @@ public class FetesDonneesTests
             Ref(r, 0, 0).Remove("price"); }), f0 + ".refs[0].price", ValidationCode.MissingField);
         // Activités, marchand, plafond.
         Refused(Mutated(r => Feast(r, 0)["activities"]!.AsArray().Add(new JsonObject { ["id"] = "x", ["name"] = "text.fetes.f01.titre", ["coins"] = 5, ["host"] = "npc.lison" })),
-            f0 + ".activities", ValidationCode.InvalidValue);   // fête du calendrier seulement
+            f0 + ".activities[3].host", ValidationCode.DuplicateId);   // Lison mène déjà une activité des Lanternes
         Refused(Mutated(r => Feast(r, 3)["activities"] = new JsonArray()), f3 + ".activities", ValidationCode.InvalidValue);
         Refused(Mutated(r => Feast(r, 3)["activities"]![2]!["host"] = "npc.maelle"), f3 + ".activities[2].host", ValidationCode.InvalidValue);   // pas invitée
         Refused(Mutated(r => Feast(r, 3)["activities"]![2]!["host"] = "npc.personne"), f3 + ".activities[2].host", ValidationCode.UnknownReference);
@@ -197,7 +196,8 @@ public class FetesDonneesTests
         Refused(Mutated(r => Feast(r, 3)["rewardAfter"] = 5), f3 + ".rewardAfter", ValidationCode.OutOfRange);
         Refused(Mutated(r => Feast(r, 3)["rewardAfter"] = 0), f3 + ".rewardAfter", ValidationCode.OutOfRange);
         Refused(Mutated(r => Feast(r, 3).Remove("rewardAfter")), f3 + ".rewardAfter", ValidationCode.MissingField);
-        Refused(Mutated(r => Feast(r, 0)["rewardAfter"] = 1), f0 + ".rewardAfter", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Feast(r, 0)["activities"] = new JsonArray()), f0 + ".activities", ValidationCode.InvalidValue);   // fête en fête sans activité
+        Refused(Mutated(r => { Feast(r, 0)["activities"] = new JsonArray(); Feast(r, 0).Remove("rewardAfter"); Feast(r, 0)["rewardAfter"] = 1; }), f0 + ".rewardAfter", ValidationCode.InvalidValue);
         Refused(Mutated(r => r["data"]!["merchant"] = "npc.lison"), "$.data.merchant", ValidationCode.InvalidValue);   // pas de passage
         Refused(Mutated(r => r["data"]!["merchant"] = "npc.personne"), "$.data.merchant", ValidationCode.UnknownReference);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = 0), "$.data.wallet.cap", ValidationCode.OutOfRange);

@@ -18,7 +18,27 @@
           "id": "title.fete.lanternes",
           "name": "text.fetes.f01.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "voeu",
+            "name": "text.fetes.f01.activite.voeu",
+            "coins": 10,
+            "host": "npc.pretre"
+          },
+          {
+            "id": "lanternes",
+            "name": "text.fetes.f01.activite.lanternes",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "artifice",
+            "name": "text.fetes.f01.activite.artifice",
+            "coins": 10,
+            "host": "npc.habitant"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F01_D01",
@@ -148,7 +168,27 @@
           "id": "title.fete.liens",
           "name": "text.fetes.f02.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "entraide",
+            "name": "text.fetes.f02.activite.entraide",
+            "coins": 10,
+            "host": "npc.odile"
+          },
+          {
+            "id": "amities",
+            "name": "text.fetes.f02.activite.amities",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "banquet",
+            "name": "text.fetes.f02.activite.banquet",
+            "coins": 10,
+            "host": "npc.aubergiste"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F02_D01",
@@ -278,7 +318,27 @@
           "id": "title.fete.carnaval",
           "name": "text.fetes.f03.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "masques",
+            "name": "text.fetes.f03.activite.masques",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "roles",
+            "name": "text.fetes.f03.activite.roles",
+            "coins": 10,
+            "host": "npc.odile"
+          },
+          {
+            "id": "beignets",
+            "name": "text.fetes.f03.activite.beignets",
+            "coins": 10,
+            "host": "npc.aubergiste"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F03_D01",
@@ -564,7 +624,27 @@
           "id": "title.fete.artisans",
           "name": "text.fetes.f05.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "chef_oeuvre",
+            "name": "text.fetes.f05.activite.chef_oeuvre",
+            "coins": 10,
+            "host": "npc.boulanger"
+          },
+          {
+            "id": "demonstration",
+            "name": "text.fetes.f05.activite.demonstration",
+            "coins": 10,
+            "host": "npc.odile"
+          },
+          {
+            "id": "atelier",
+            "name": "text.fetes.f05.activite.atelier",
+            "coins": 10,
+            "host": "npc.archer_garde"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F05_D01",
@@ -694,7 +774,27 @@
           "id": "title.fete.feux_du_seuil",
           "name": "text.fetes.f06.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "ronde",
+            "name": "text.fetes.f06.activite.ronde",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "concert",
+            "name": "text.fetes.f06.activite.concert",
+            "coins": 10,
+            "host": "npc.aubergiste"
+          },
+          {
+            "id": "feu",
+            "name": "text.fetes.f06.activite.feu",
+            "coins": 10,
+            "host": "npc.archer_garde"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F06_D01",
@@ -824,7 +924,27 @@
           "id": "title.fete.grand_tournoi",
           "name": "text.fetes.f07.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "tir",
+            "name": "text.fetes.f07.activite.tir",
+            "coins": 10,
+            "host": "npc.archer_garde"
+          },
+          {
+            "id": "course",
+            "name": "text.fetes.f07.activite.course",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "joute",
+            "name": "text.fetes.f07.activite.joute",
+            "coins": 10,
+            "host": "npc.boulanger"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F07_D01",
@@ -954,7 +1074,27 @@
           "id": "title.fete.etoiles_filantes",
           "name": "text.fetes.f08.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "lunes",
+            "name": "text.fetes.f08.activite.lunes",
+            "coins": 10,
+            "host": "npc.pretre"
+          },
+          {
+            "id": "eclats",
+            "name": "text.fetes.f08.activite.eclats",
+            "coins": 10,
+            "host": "npc.albe"
+          },
+          {
+            "id": "observer",
+            "name": "text.fetes.f08.activite.observer",
+            "coins": 10,
+            "host": "npc.habitant"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F08_D01",
@@ -1240,7 +1380,27 @@
           "id": "title.fete.nuit_des_echos",
           "name": "text.fetes.f10.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "enigmes",
+            "name": "text.fetes.f10.activite.enigmes",
+            "coins": 10,
+            "host": "npc.pretre"
+          },
+          {
+            "id": "maison",
+            "name": "text.fetes.f10.activite.maison",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "costumes",
+            "name": "text.fetes.f10.activite.costumes",
+            "coins": 10,
+            "host": "npc.habitant"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F10_D01",
@@ -1520,7 +1680,27 @@
           "id": "title.fete.givre",
           "name": "text.fetes.f12.titre"
         },
-        "activities": [],
+        "activities": [
+          {
+            "id": "presents",
+            "name": "text.fetes.f12.activite.presents",
+            "coins": 10,
+            "host": "npc.boulanger"
+          },
+          {
+            "id": "neige",
+            "name": "text.fetes.f12.activite.neige",
+            "coins": 10,
+            "host": "npc.lison"
+          },
+          {
+            "id": "pere_du_givre",
+            "name": "text.fetes.f12.activite.pere_du_givre",
+            "coins": 10,
+            "host": "npc.archer_garde"
+          }
+        ],
+        "rewardAfter": 2,
         "refs": [
           {
             "code": "F12_D01",
