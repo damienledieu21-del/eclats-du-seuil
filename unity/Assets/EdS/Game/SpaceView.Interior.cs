@@ -167,6 +167,7 @@ namespace EdS.Game
                     if (under == null) continue;   // pas de meuble dessous : rien dessus
                     y = StyleLook.VisibleBounds(under, out Bounds ub) ? ub.max.y : y;
                 }
+                else if (piece.Y > 0 && SurfaceY(lotC, piece) is float top) y = top;
                 Transform parent = _root.transform;
                 if (piece.OnWall)
                 {
@@ -687,6 +688,23 @@ namespace EdS.Game
             if (piece.Prop == InteriorProp.Chandelier || piece.Prop == InteriorProp.Candelabra) Lit(holder, 0.18f);
             if (b.size.y > 1.6f && !piece.OnWall) AddModelOccluders(holder);
             return holder;
+        }
+
+        /// <summary>
+        /// Revues Codex de la PR #201 : un objet posé en hauteur sans parent sur un meuble remplacé par son modèle Tripo (vaisselle, lanterne,
+        /// panier du comptoir à <see cref="InteriorRules.CounterHeight"/>, chandeliers et bougeoirs de l'autel à
+        /// <see cref="InteriorRules.AltarHeight"/>, bougie d'un support de cierges à <see cref="InteriorRules.CandleHeight"/>) suit le haut
+        /// du modèle posé, à son écart d'origine ; null si le meuble n'est pas un modèle du lot C.
+        /// </summary>
+        private static float? SurfaceY(Dictionary<string, GameObject> lotC, InteriorPiece piece)
+        {
+            foreach (KeyValuePair<string, GameObject> k in lotC)
+            {
+                if (!piece.Id.StartsWith(k.Key + "/", System.StringComparison.Ordinal)) continue;
+                double? nominal = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(k.Key));
+                if (nominal is double h && StyleLook.VisibleBounds(k.Value, out Bounds b)) return b.max.y + (float)(piece.Y - h);
+            }
+            return null;
         }
 
         /// <summary>Lot C : emprise au sol (x, z, en mètres, sans rotation ni échelle) de chaque modèle déjà mesuré, par code.</summary>
