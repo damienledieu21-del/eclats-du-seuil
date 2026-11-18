@@ -65,6 +65,12 @@ public class LotCModelsTests
                 {
                     case "item": Assert.True(items.Contains(id), m.Code + " : objet inconnu " + id); break;
                     case "node": Assert.True(nodes.Contains(id), m.Code + " : nœud inconnu " + id); break;
+                    case "village": Assert.True(VillageKnown(id), m.Code + " : décor du village inconnu " + id); continue;
+                    case "obstacle":
+                        string[] hits = VallonsObstacles.Where(o => id.EndsWith("*") ? o.StartsWith(id.TrimEnd('*')) : o == id).ToArray();
+                        Assert.True(hits.Length > 0, m.Code + " : obstacle inconnu " + id);
+                        foreach (string o in hits) Assert.Equal(m.Code, LotCModels.ForObstacle(o));
+                        continue;
                     default: Assert.Fail(m.Code + " : cible inconnue " + t); break;
                 }
                 Assert.Equal(m.Code, kind == "item" ? LotCModels.ForItem(id) : LotCModels.ForNode(id));
@@ -96,6 +102,61 @@ public class LotCModelsTests
         Assert.Null(LotCModels.Find(null));
         Assert.Null(LotCModels.Find("C_INCONNU"));
         Assert.False(LotCModels.Find("C_EQ051")!.Linked);   // en attente : pas chargé au catalogue (EdsStyle.LotCPieces)
+    }
+
+    private static string Game => Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game");
+
+    private static string[] VallonsObstacles =>
+        JsonDocument.Parse(File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "scenarios", "zones", "vallons.json"))).RootElement
+            .GetProperty("data").GetProperty("space").GetProperty("obstacles").EnumerateArray().Select(o => o.GetProperty("id").GetString()!).ToArray();
+
+    /// <summary>Un décor du village posé par le jeu : rôle de la 5e vague ou accessoire du catalogue réellement posé par la vue, ou place fixe connue.</summary>
+    private static bool VillageKnown(string key)
+    {
+        string markers = File.ReadAllText(Path.Combine(Game, "WorldMarkers.cs"));
+        string[] p = key.Split('/');
+        return p[0] switch
+        {
+            "wave5" => Enum.TryParse(p[1], out Wave5Role r) && r.ToString() == p[1] && markers.Contains("Wave5Role." + p[1] + ","),
+            "prop" => Enum.TryParse(p[1], out StyleProp sp) && sp.ToString() == p[1] && markers.Contains("StyleProp." + p[1] + ","),
+            _ => LotCModels.VillageSpots.Contains(key) && markers.Contains("\"" + key + "\""),
+        };
+    }
+
+    [Fact]
+    public void Decors_du_village_relies()
+    {
+        Assert.Equal("C_OV_A03", LotCModels.ForVillage("prop/FirePit", "forge/foyer"));
+        Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "forge"));
+        Assert.Equal("C_OV_C14", LotCModels.ForObstacle("panneau_hameau"));
+        Assert.Null(LotCModels.ForObstacle("puits"));
+        Assert.Null(LotCModels.ForVillage("wave5/Bunting", "guirlande"));   // pas de mâts : la guirlande des packs reste
+        Assert.Null(LotCModels.ForVillage(null, "x"));
+        // Trois sacs de farine : tirés de l'identifiant, toujours le même pour le même identifiant.
+        var flour = new[] { "farine 1", "farine 2", "farine 3", "farine 4", "farine 5" }.Select(i => LotCModels.ForVillage("wave5/FlourSack", i)).ToList();
+        Assert.All(flour, c => Assert.StartsWith("C_OV_D02_0", c));
+        Assert.Equal(flour[0], LotCModels.ForVillage("wave5/FlourSack", "farine 1"));
+        // Relecture de la PR #197 : le rang demandé (variant de Wave5View.Place) choisit parmi les trois, modulo, même négatif.
+        Assert.Equal("C_OV_D02_01", LotCModels.ForVillage("wave5/FlourSack", "x", 0));
+        Assert.Equal("C_OV_D02_02", LotCModels.ForVillage("wave5/FlourSack", "x", 4));
+        Assert.Equal("C_OV_D02_03", LotCModels.ForVillage("wave5/FlourSack", "x", -1));
+        Assert.Equal("C_OV_A02", LotCModels.ForVillage("forge/enclume", "x", 7));
+    }
+
+    [Fact]
+    public void Panneau_Tripo_pose_sur_son_sol_une_seule_fois()
+    {
+        // Revue Codex de la PR #197 : le panneau Tripo est posé sur le sol affiché (StyleWorld.OnGround) ; l'obstacle ne doit pas le relever
+        // une seconde fois (Obstacle → Lift) : le bloc du panneau marque l'obstacle comme déjà posé (_draped) avant de rendre la main.
+        string view = File.ReadAllText(Path.Combine(Game, "SpaceView.cs"));
+        int at = view.IndexOf("LotCModels.ForObstacle(id)", StringComparison.Ordinal);
+        Assert.True(at > 0);
+        string block = view.Substring(at, view.IndexOf("Sous-lot V2.30.1 : panneau d'un croisement", at, StringComparison.Ordinal) - at);
+        Assert.Contains("StyleWorld.OnGround(", block);
+        // Revue Codex de la PR #197 (P1) : l'affectation doit exister (IndexOf ≥ 0) avant de comparer sa place au « return ».
+        int draped = block.IndexOf("_draped = true;", StringComparison.Ordinal), back = block.IndexOf("return;", StringComparison.Ordinal);
+        Assert.True(draped >= 0 && back >= 0 && draped < back, block);
+        Assert.Contains("if (_draped) return;", view);
     }
 
     [Fact]

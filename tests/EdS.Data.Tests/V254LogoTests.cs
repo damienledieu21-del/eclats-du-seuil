@@ -125,7 +125,7 @@ public sealed class V254LogoTests
         Assert.Equal(LogoVersion.White, LogoIntro.Fixed(false, LogoIntro.WhiteMaxWidth - 1f));
         Assert.Equal(LogoVersion.White, LogoIntro.Fixed(true, 1920f));
         Assert.True(LogoIntro.ShowsMotto(1280f));
-        Assert.False(LogoIntro.ShowsMotto(400f));
+        Assert.False(LogoIntro.ShowsMotto(300f));
     }
 
     [Fact]

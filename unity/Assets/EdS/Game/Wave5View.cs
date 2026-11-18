@@ -21,6 +21,21 @@ namespace EdS.Game
         /// </summary>
         public static GameObject Place(Transform parent, Wave5Role role, string id, Vector3 at, float yaw, float size = 0f, int variant = 0)
         {
+            // Lot C (16 novembre 2026) : le modèle Tripo de ce décor (sacs de farine, table de pains, poires, charrette, guirlande, bannières),
+            // à l'échelle réelle, passe devant celui des packs.
+            // Relecture de la PR #197 : la hauteur demandée (size) et le rang voulu (variant) valent aussi pour lui ; sinon échelle réelle
+            // et modèle tiré de l'identifiant.
+            string lotC = LotCModels.ForVillage("wave5/" + role, id, variant != 0 ? variant : (int?)null);
+            GameObject own = lotC != null ? LotCLook.Place(parent, lotC, id, at, yaw) : null;
+            if (own != null)
+            {
+                if (size > 0f && StyleLook.VisibleBounds(own, out Bounds ob) && ob.size.y > 0.01f)
+                {
+                    own.transform.localScale *= size / ob.size.y;
+                    StyleLook.Ground(own, at.y);
+                }
+                return own;
+            }
             StyleCatalog catalog = StyleCatalog.Loaded;
             Wave5Look look = null;
             if (catalog != null)
@@ -51,7 +66,18 @@ namespace EdS.Game
         }
 
         /// <summary>Le modèle a-t-il été déposé (et se montre-t-il sur cette plateforme) ?</summary>
-        public static bool Has(Wave5Role role) => StyleCatalog.Loaded != null && StyleCatalog.Loaded.Look(role) != null;
+        public static bool Has(Wave5Role role) => StyleCatalog.Loaded != null
+            && (StyleCatalog.Loaded.Look(role) != null || StyleCatalog.Loaded.LotCModel(LotCOf(role)) != null);   // lot C
+
+        /// <summary>Relecture de la PR #197 : modèle du lot C de chaque rôle, cherché une fois par rôle (Has est appelé à chaque décor).</summary>
+        private static readonly Dictionary<Wave5Role, string> LotCByRole = new Dictionary<Wave5Role, string>();
+
+        private static string LotCOf(Wave5Role role)
+        {
+            string code;
+            if (!LotCByRole.TryGetValue(role, out code)) LotCByRole[role] = code = LotCModels.ForVillage("wave5/" + role, string.Empty);
+            return code;
+        }
 
         /// <summary>Une animation « Legacy » du modèle (feu follet, attente) tourne en boucle, à partir d'un instant varié.</summary>
         private static void Loop(GameObject holder)
