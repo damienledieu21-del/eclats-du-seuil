@@ -40,8 +40,8 @@ public class FetesMoteurTests
         return w;
     }
 
-    // Le carnaval (calendrier du jeu : printemps, jour 3, de 10 h à 22 h) : Lison mène le défilé des masques près de l'étal du colporteur.
-    private const long CarnavalDay = 3;
+    // Le carnaval (calendrier du jeu : printemps, jour 13, de 10 h à 22 h) : Lison mène le défilé des masques près de l'étal du colporteur.
+    private const long CarnavalDay = 13;
     private const double NearX = -1089.8, NearZ = -31.4;
 
     [Fact]
@@ -84,7 +84,7 @@ public class FetesMoteurTests
         Assert.Same(before, w.Character.Feasts);
         // Hors de la fête, sans catalogue.
         Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay, 8, NearX, NearZ).JoinFeast("masques", out _));   // avant 10 h
-        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 1, 12, NearX, NearZ).JoinFeast("masques", out _));
+        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 2, 12, NearX, NearZ).JoinFeast("masques", out _));
         Assert.Equal(FeastRefusal.NoFeast, Session(CarnavalDay, 12, NearX, NearZ, catalog: false).JoinFeast("masques", out _));
     }
 
@@ -114,7 +114,7 @@ public class FetesMoteurTests
         Assert.Equal(FeastRefusal.None, next.BuyFeast("F03_R01"));
         Assert.Equal((0L, 1L), (next.Character.Feasts.Of(Carnaval).Coins, next.Character.Feasts.Of(Carnaval).Bought));
         // Le marchand n'est là que pendant la fête ; trop loin, il ne vend pas.
-        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 1, 12, NearX, NearZ, rich).BuyFeast("F03_D01"));
+        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 2, 12, NearX, NearZ, rich).BuyFeast("F03_D01"));
         Assert.Equal(FeastRefusal.TooFar, Session(CarnavalDay, 12, NearX - 12, NearZ, rich).BuyFeast("F03_D01"));
     }
 
