@@ -13,7 +13,10 @@ internal static class V214TestData
 {
     /// <summary>Marchands ajoutés en V2.14 (boutiques et étals du marché).</summary>
     public static readonly string[] Added =
-        { "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices" };
+        { "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices",
+          // V2.30.5 : les boutiques de la route d'Ambre (schéma 6 : « shop »).
+          "merchant.armurier_ville", "merchant.forgeron_ville", "merchant.tanneur_ville", "merchant.apothicaire_ville", "merchant.tailleur_ville",
+          "merchant.taverne_ville" };
 
     /// <summary>
     /// Les marchands sans leurs boutiques (horaires, porte, fournées, offres fraîches et à la porte), en gardant le reste : pour les essais
