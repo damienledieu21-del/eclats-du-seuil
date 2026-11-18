@@ -320,7 +320,7 @@ namespace EdS.Data.Feasts
         private static readonly Regex Code = new Regex(@"^F(0[1-9]|1[0-2])_([DCPMR])(0[1-9])\z", RegexOptions.CultureInvariant);
         private static readonly Regex TitleId = new Regex(@"^title\.fete\.[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex LocalId = new Regex(@"^[a-z][a-z0-9_]*\z", RegexOptions.CultureInvariant);
-        private static readonly Regex Picture = new Regex(@"^(Objets|Icones)/[A-Za-z0-9_]+\.png\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ImageFile = new Regex(@"^Objets/(?<code>F(0[1-9]|1[0-2])_[DCPMR]0[1-9])_(?<slug>[a-z0-9]+(_[a-z0-9]+)*)\.png\z", RegexOptions.CultureInvariant);
 
         private static readonly Dictionary<string, FeastCategory> Categories = new Dictionary<string, FeastCategory>(StringComparer.Ordinal)
         {
@@ -561,20 +561,22 @@ namespace EdS.Data.Feasts
                 Dimension(x.Size.Z, rp + ".size.z", r);
             }
 
-            if (x.Image is null) Missing(r, rp + ".image", "image de référence « Objets/….png »");
-            else if (!Picture.IsMatch(x.Image) || !x.Image.StartsWith("Objets/", StringComparison.Ordinal) || x.Image.Length > 200)
-                r.Add(rp + ".image", ValidationCode.InvalidValue, $"image « {x.Image} » mal formée : « Objets/<code>_….png ».");
-            else if (x.Code != null && !x.Image.StartsWith("Objets/" + x.Code + "_", StringComparison.Ordinal))
+            // Relecture indépendante de la PR #213 : l'image est vérifiée en entier, nom compris : « Objets/<code>_<nom>.png », le nom en
+            // minuscules ASCII et « _ » ; l'icône est exactement « Icones/<code>_<nom>_icone.png », du même nom que l'image.
+            string? slug = null;
+            if (x.Image is null) Missing(r, rp + ".image", "image de référence « Objets/<code>_<nom>.png »");
+            else if (x.Image.Length > 200 || !(ImageFile.Match(x.Image) is Match im && im.Success))
+                r.Add(rp + ".image", ValidationCode.InvalidValue, $"image « {x.Image} » mal formée : « Objets/<code>_<nom>.png » (nom en minuscules, chiffres et « _ »).");
+            else if (x.Code != null && im.Groups["code"].Value != x.Code)
                 r.Add(rp + ".image", ValidationCode.InvalidValue, $"image « {x.Image} » d'une autre référence que « {x.Code} ».");
+            else slug = im.Groups["slug"].Value;
 
             // Icônes : le plat, la monnaie et la récompense en ont une (dossier des fêtes : 3 icônes par fête), pas les autres.
             bool iconed = category is FeastCategory k && (k == FeastCategory.Dish || k == FeastCategory.Currency || k == FeastCategory.Reward);
-            if (x.Icon is null) { if (iconed) Missing(r, rp + ".icon", "icône « Icones/….png » (plat, monnaie, récompense)"); }
+            if (x.Icon is null) { if (iconed) Missing(r, rp + ".icon", "icône « Icones/<code>_<nom>_icone.png » (plat, monnaie, récompense)"); }
             else if (category != null && !iconed) r.Add(rp + ".icon", ValidationCode.InvalidValue, "seuls le plat, la monnaie et la récompense ont une icône.");
-            else if (!Picture.IsMatch(x.Icon) || !x.Icon.StartsWith("Icones/", StringComparison.Ordinal) || x.Icon.Length > 200)
-                r.Add(rp + ".icon", ValidationCode.InvalidValue, $"icône « {x.Icon} » mal formée : « Icones/<code>_…_icone.png ».");
-            else if (x.Code != null && !x.Icon.StartsWith("Icones/" + x.Code + "_", StringComparison.Ordinal))
-                r.Add(rp + ".icon", ValidationCode.InvalidValue, $"icône « {x.Icon} » d'une autre référence que « {x.Code} ».");
+            else if (x.Code != null && slug != null && x.Icon != $"Icones/{x.Code}_{slug}_icone.png")
+                r.Add(rp + ".icon", ValidationCode.InvalidValue, $"icône « {x.Icon} » : « Icones/{x.Code}_{slug}_icone.png » attendue (même nom que l'image).");
 
             // Rareté (décision de Damien du 17 novembre 2026) : récompense Rare, costume Commun ; la monnaie n'en a pas.
             ItemRarity? rarity = null;

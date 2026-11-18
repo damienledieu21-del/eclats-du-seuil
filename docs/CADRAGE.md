@@ -330,6 +330,7 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, rapportées par la sessio
 | Dates des douze fêtes | Toutes les dates proposées sont gardées : Lanternes 1-7 janvier, Liens 10-16 février, Carnaval 1-10 mars, Semailles 10-23 avril, Artisans 1-10 mai, Feux du Seuil 20-30 juin, Tournoi 10-23 juillet, Étoiles 8-17 août, Moissons 15-28 septembre, Échos 25 octobre-3 novembre, Contes 15-28 novembre, Givre 18-31 décembre. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Concours d'une fête datée | **Un seul concours récompensé par fête et par personnage** (par occurrence annuelle de la fête), au lieu d'un par jour du monde. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Fêtes sans contenu | Les neuf fêtes dont le contenu reste à écrire **n'affichent que leur nom** (fêtes du calendrier seulement). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
+| Fêtes sans contenu (suite) | Le choix du 15 novembre (les neuf fêtes n'affichent que leur nom) est **remplacé par le chantier des fêtes** : les douze fêtes ont leurs activités, leur monnaie, leur marchand et leurs récompenses ([§ 7 undecies](#7-undecies-les-12-fêtes-dorsédia-retenu)). | Retenu (Damien, 18 novembre 2026) |
 | Fête datée et marché | Quand leurs heures se croisent, **la fête datée passe avant le marché** ; le marché de la semaine se tient quand même. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
 ## 7 octies. Pêche : appâts (Retenu)
@@ -382,7 +383,11 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Nature des récompenses | **Cosmétiques seulement, sans aucune statistique.** Chaque fête gagnée donne **en plus un titre** (mécanisme des titres existant). | Retenu (Damien, 17 novembre 2026) |
 | Raretés | Les **récompenses** sont de rareté **Rare**, les **costumes Communs**. | Retenu (Damien, 17 novembre 2026) |
 | Fenêtres | Déjà retenu le 15 novembre (§ 7 septies) : **vraies dates (7 à 14 jours)** ; sans date fournie, **repli sur le calendrier du jeu**. | Retenu (Damien, 15 et 17 novembre 2026) |
-| Montants | Gains par activité, prix chez le marchand, plafond du portefeuille, plats gardés au plus, activités pour gagner une fête : **proposition de Claude** (PR des fêtes F1 à F3), à régler par Damien. | Recommandation |
+| Économie des fêtes | Validée telle que proposée : **plafond 999** pièces par fête, le gain au-delà **perdu mais annoncé** (l'activité compte quand même) ; prix : **décoration 40 / 60 / 90** (jusqu'à 1 m, jusqu'à 2,5 m, au-delà), **costume 120**, **plat 5**, **récompense rattrapée 150** ; gains : **concours 30** (une fois par édition), **activité 10** (une fois par jour de fête). | Retenu (Damien, 18 novembre 2026) |
+| Gagner une fête | **3 activités différentes** dans l'édition pour Semailles et Moissons, **2** pour les autres fêtes. | Retenu (Damien, 18 novembre 2026) |
+| Rattrapage | On ne rattrape que **l'édition précédente**, et **sans le titre** (seule une fête gagnée le donne). | Retenu (Damien, 18 novembre 2026) |
+| Marchand de fête | **Un marchand dédié**, pas le colporteur : un **étal de fête sur la place**, avec **son propre PNJ forain**, dont le **décor change chaque mois** (sous-lot F3). | Retenu (Damien, 18 novembre 2026) |
+| Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 
 ## 8. Points ouverts
 
