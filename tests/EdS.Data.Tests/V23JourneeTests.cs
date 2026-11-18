@@ -95,7 +95,7 @@ public sealed class V23JourneeTests : IDisposable
     public void Histoire_livree_en_schema_9_avec_les_emplois_du_temps()
     {
         StoryBook book = Shipped.Value;
-        Assert.Equal((16, 16, "0.33.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
+        Assert.Equal((16, 16, "0.34.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, book.ContentVersion));
         string[] scheduled =
         {
             "npc.boulanger", "npc.odile", "npc.maelle", "npc.apprentie", "npc.archer_garde", "npc.capitaine", "npc.gaspard", "npc.armurier",
@@ -105,6 +105,9 @@ public sealed class V23JourneeTests : IDisposable
             "npc.intendant_guilde", "npc.archiviste",
             // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
             "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
+            // V2.30.5 (décision de Damien du 16 novembre 2026, vers 23 h 20) : les marchands des boutiques de la route d'Ambre et le notable.
+            "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville",
+            "npc.notable_ville", "npc.notable_dame_ville",
         };
         Assert.Equal(scheduled.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Schedule.Count > 0).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // Chaque activité a son texte (sous le nom du PNJ, et pour la boutique).
