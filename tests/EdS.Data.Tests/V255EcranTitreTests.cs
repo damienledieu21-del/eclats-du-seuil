@@ -369,4 +369,50 @@ public sealed class V255EcranTitreTests
         Assert.True(update > 0 && overlay > update && advance > overlay);
         Assert.Contains("_stage?.AfterSync(", code[code.IndexOf("private void UpdateAdventure()", StringComparison.Ordinal)..update]);
     }
+
+    [Fact]
+    public void Nouvelle_partie_met_de_cote_la_sauvegarde_et_sa_copie_de_secours_sans_rien_perdre()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "eds_v255_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string path = Path.Combine(dir, "vallons.json");
+            File.WriteAllText(path, "principal");
+            File.WriteAllText(EdS.World.SaveStore.BackupPath(path), "secours");
+            File.WriteAllText(path + EdS.World.SaveStore.AsideSuffix, "ancienne mise de côté");   // remplacée
+            Assert.Equal(2, EdS.World.SaveStore.SetAside(path));
+            Assert.False(File.Exists(path));
+            Assert.False(File.Exists(EdS.World.SaveStore.BackupPath(path)));
+            Assert.Equal("principal", File.ReadAllText(path + ".ancienne"));
+            Assert.Equal("secours", File.ReadAllText(path + ".bak.ancienne"));
+            // Plus rien à reprendre : nouvelle partie, sans problème.
+            EdS.World.SaveReadResult read = EdS.World.SaveStore.Read(path);
+            Assert.Null(read.Save);
+            Assert.Null(read.Problem);
+            Assert.False(read.FromBackup);
+            // Sans sauvegarde : rien à faire, sans erreur.
+            Assert.Equal(0, EdS.World.SaveStore.SetAside(path));
+            // Seule la copie de secours existe : elle est écartée aussi.
+            File.WriteAllText(EdS.World.SaveStore.BackupPath(path), "secours seul");
+            Assert.Equal(1, EdS.World.SaveStore.SetAside(path));
+            Assert.Null(EdS.World.SaveStore.Read(path).Save);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void La_camera_du_titre_cadre_le_heros_depuis_ses_pieds()
+    {
+        // Revue Codex de la PR #210 : ArenaView.Player est le centre de la capsule (FeetOffset au-dessus des pieds).
+        string root = Lot93UnityPackageTests.Root;
+        string arena = File.ReadAllText(Path.Combine(root, "unity", "Assets", "EdS", "Game", "ArenaView.cs"));
+        Assert.Contains("public const float FeetOffset = 1f;", arena);
+        string view = File.ReadAllText(Path.Combine(root, "unity", "Assets", "EdS", "Game", "TitleView.cs"));
+        Assert.Contains("Vector3 feet = hero.position - Vector3.up * ArenaView.FeetOffset;", view);
+        Assert.DoesNotContain("Vector3 feet = hero.position;", view);
+    }
 }

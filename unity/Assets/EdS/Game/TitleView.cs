@@ -298,7 +298,8 @@ namespace EdS.Game
             _camera.nearClipPlane = 0.3f;
             _camera.farClipPlane = 20f;
             // Trois quarts, de face, à 3,7 m : le héros (1,8 m) remplit l'enveloppe, les pieds en bas.
-            Vector3 feet = hero.position;
+            // ArenaView.Player est le centre de la capsule, FeetOffset (1 m) au-dessus des pieds (revue Codex de la PR #210) : on cadre depuis les pieds.
+            Vector3 feet = hero.position - Vector3.up * ArenaView.FeetOffset;
             Vector3 front = (hero.forward * 0.9f + hero.right * 0.45f).normalized;
             _rig.transform.position = feet + front * 3.7f + Vector3.up * 1.0f;
             _rig.transform.LookAt(feet + Vector3.up * 0.95f);

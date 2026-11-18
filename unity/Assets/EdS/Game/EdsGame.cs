@@ -1003,9 +1003,7 @@ namespace EdS.Game
         {
             try
             {
-                if (!File.Exists(SavePath)) return;
-                File.Copy(SavePath, SavePath + ".ancienne", true);
-                File.Delete(SavePath);
+                SaveStore.SetAside(SavePath);   // la sauvegarde ET sa copie de secours (.bak), sans quoi l'ancienne progression reviendrait
             }
             catch (Exception e)
             {
