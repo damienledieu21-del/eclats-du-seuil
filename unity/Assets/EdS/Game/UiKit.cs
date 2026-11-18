@@ -107,6 +107,7 @@ namespace EdS.Game
         /// </summary>
         public static Sprite ItemIcon(string itemId, string fallback)
         {
+            if (itemId == EdS.World.CardMatch.RareDeck) return Icon(fallback);   // V2.32.1 : le dos doré du jeu rare, jamais une icône du pack
             StyleCatalog catalog = StyleCatalog.Loaded;
             Texture2D pack = catalog != null ? catalog.ItemIcon(itemId) : null;
             if (pack == null) return Icon(fallback);
