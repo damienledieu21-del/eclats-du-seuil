@@ -44,11 +44,14 @@ public class FetesMoteurTests
     private const long CarnavalDay = 13;
     private const double NearX = -1089.8, NearZ = -31.4;
 
+    // Sous-lot F3 (décision de Damien du 18 novembre 2026) : l'étal de fête du forain, sur la place.
+    private const double StallX = -1088.5, StallZ = -36.2;
+
     [Fact]
     public void Les_douze_fetes_mettent_le_monde_en_fete()
     {
         StoryBook story = Story.Value;
-        Assert.Equal("0.35.0-provisoire", story.ContentVersion);
+        Assert.Equal("0.36.0-provisoire", story.ContentVersion);
         FeastBook b = Feasts.Value;
         Assert.All(b.Feasts, f =>
         {
@@ -59,10 +62,14 @@ public class FetesMoteurTests
             Assert.InRange(f.RewardAfter, 1, f.Activities.Count);
             Assert.All(f.Activities.Where(a => a.Host != null), a => Assert.NotNull(fest.Guest(a.Host!)));
             Assert.Contains(f.Festival, story.Npc(b.Merchant).Festivals);
+            Assert.InRange(f.Stall.Count, 1, 5);
         });
         Assert.Equal(9 * 3 + 4 + 4 + 3, b.Feasts.Sum(f => f.Activities.Count));   // Semailles et Moissons en ont 4, la Veillée 3, les neuf autres 3
         // Une fête par jour du calendrier du jeu au plus, comme avant.
-        Assert.Equal(14, story.Festivals.Count);   // les 12 fêtes et les deux marchés
+        Assert.Equal(14, story.Festivals.Count);
+        Assert.Equal("npc.forain", b.Merchant);
+        Assert.Equal(new[] { "festival.moissons", "festival.veillee", "festival.foire", "festival.marche", "festival.marche_mercredi" },
+            story.Npc("npc.colporteur").Festivals);   // le colporteur garde ses fêtes d'avant   // les 12 fêtes et les deux marchés
         Assert.Equal(Carnaval, story.FestivalOn(CarnavalDay)!.Id);
     }
 
@@ -92,9 +99,16 @@ public class FetesMoteurTests
     public void Marchand_de_fete_et_rattrapage()
     {
         FeastBook b = Feasts.Value;
-        WorldSession poor = Session(CarnavalDay, 12, NearX, NearZ);
+        WorldSession poor = Session(CarnavalDay, 12, StallX, StallZ);
         Assert.Equal(FeastRefusal.None, poor.FeastShopOpen(out Feast? f));
         Assert.Equal(Carnaval, f!.Festival);
+        // Un marchand dédié, pas le colporteur : Maître Florentin et son étal, dont le décor est celui de la fête du mois.
+        var stall = poor.FeastStall!.Value;
+        Assert.Equal(("npc.forain", Carnaval), (stall.Merchant, stall.Feast.Festival));
+        Assert.Equal(b.Feast(Carnaval).Stall, stall.Decor);
+        Assert.All(stall.Decor, d => Assert.Equal((FeastCategory.Decoration, 3), (d.Category, d.Feast)));
+        Assert.True(poor.NpcAway(Story.Value.Npc("npc.colporteur")));   // le colporteur ne vient pas au carnaval
+        Assert.Null(Session(CarnavalDay + 2, 12, StallX, StallZ).FeastStall);
         IReadOnlyList<WorldSession.FeastOffer> offers = poor.FeastShop();
         Assert.Equal(new[] { "F03_D01", "F03_D02", "F03_D03", "F03_D04", "F03_D05", "F03_C01", "F03_P01", "F03_R01" }, offers.Select(o => o.Ref.Code));
         Assert.All(offers.Take(7), o => Assert.Equal(FeastRefusal.NotEnoughCoins, o.Status));
@@ -102,7 +116,7 @@ public class FetesMoteurTests
         Assert.Equal(FeastRefusal.NotEnoughCoins, poor.BuyFeast("F03_C01"));
         // Avec de la monnaie de la fête : le costume, puis plus rien du même ; la monnaie d'une autre fête ne sert à rien.
         var rich = new SavedFeasts(new[] { new SavedFeast(Carnaval, 130), new SavedFeast("festival.foire", 999) });
-        WorldSession w = Session(CarnavalDay, 12, NearX, NearZ, rich);
+        WorldSession w = Session(CarnavalDay, 12, StallX, StallZ, rich);
         Assert.Equal(FeastRefusal.None, w.BuyFeast("F03_C01"));
         Assert.Equal(130 - b.Ref("F03_C01")!.Price!.Value, w.Character.Feasts.Of(Carnaval).Coins);
         Assert.Equal(999, w.Character.Feasts.Of("festival.foire").Coins);
@@ -110,12 +124,12 @@ public class FetesMoteurTests
         Assert.Equal(FeastRefusal.UnknownRef, w.BuyFeast("F04_D01"));   // pas à cette fête
         Assert.Equal(FeastRefusal.NotForSale, w.BuyFeast("F03_M01"));
         // Rattrapage : la deuxième année du jeu, la récompense de la première, ratée, s'achète à prix plein.
-        WorldSession next = Session(CarnavalDay + WorldCalendar.DaysPerYear, 12, NearX, NearZ, new SavedFeasts(new[] { new SavedFeast(Carnaval, 150) }));
+        WorldSession next = Session(CarnavalDay + WorldCalendar.DaysPerYear, 12, StallX, StallZ, new SavedFeasts(new[] { new SavedFeast(Carnaval, 150) }));
         Assert.Equal(FeastRefusal.None, next.BuyFeast("F03_R01"));
         Assert.Equal((0L, 1L), (next.Character.Feasts.Of(Carnaval).Coins, next.Character.Feasts.Of(Carnaval).Bought));
         // Le marchand n'est là que pendant la fête ; trop loin, il ne vend pas.
-        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 2, 12, NearX, NearZ, rich).BuyFeast("F03_D01"));
-        Assert.Equal(FeastRefusal.TooFar, Session(CarnavalDay, 12, NearX - 12, NearZ, rich).BuyFeast("F03_D01"));
+        Assert.Equal(FeastRefusal.NotNow, Session(CarnavalDay + 2, 12, StallX, StallZ, rich).BuyFeast("F03_D01"));
+        Assert.Equal(FeastRefusal.TooFar, Session(CarnavalDay, 12, StallX - 12, StallZ, rich).BuyFeast("F03_D01"));
     }
 
     [Fact]

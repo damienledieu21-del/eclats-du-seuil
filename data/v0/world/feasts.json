@@ -8,7 +8,7 @@
       "cap": 999
     },
     "maxDishes": 20,
-    "merchant": "npc.colporteur",
+    "merchant": "npc.forain",
     "feasts": [
       {
         "number": 1,
@@ -39,6 +39,11 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F01_D01",
+          "F01_D04",
+          "F01_D05"
+        ],
         "refs": [
           {
             "code": "F01_D01",
@@ -189,6 +194,12 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F02_D01",
+          "F02_D03",
+          "F02_D04",
+          "F02_D05"
+        ],
         "refs": [
           {
             "code": "F02_D01",
@@ -339,6 +350,11 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F03_D01",
+          "F03_D03",
+          "F03_D04"
+        ],
         "refs": [
           {
             "code": "F03_D01",
@@ -495,6 +511,11 @@
           }
         ],
         "rewardAfter": 3,
+        "stall": [
+          "F04_D01",
+          "F04_D03",
+          "F04_D04"
+        ],
         "refs": [
           {
             "code": "F04_D01",
@@ -645,6 +666,13 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F05_D01",
+          "F05_D02",
+          "F05_D03",
+          "F05_D04",
+          "F05_D05"
+        ],
         "refs": [
           {
             "code": "F05_D01",
@@ -795,6 +823,10 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F06_D01",
+          "F06_D05"
+        ],
         "refs": [
           {
             "code": "F06_D01",
@@ -945,6 +977,10 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F07_D01",
+          "F07_D03"
+        ],
         "refs": [
           {
             "code": "F07_D01",
@@ -1095,6 +1131,13 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F08_D01",
+          "F08_D02",
+          "F08_D03",
+          "F08_D04",
+          "F08_D05"
+        ],
         "refs": [
           {
             "code": "F08_D01",
@@ -1251,6 +1294,12 @@
           }
         ],
         "rewardAfter": 3,
+        "stall": [
+          "F09_D02",
+          "F09_D03",
+          "F09_D04",
+          "F09_D05"
+        ],
         "refs": [
           {
             "code": "F09_D01",
@@ -1401,6 +1450,11 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F10_D01",
+          "F10_D03",
+          "F10_D05"
+        ],
         "refs": [
           {
             "code": "F10_D01",
@@ -1551,6 +1605,11 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F11_D02",
+          "F11_D03",
+          "F11_D05"
+        ],
         "refs": [
           {
             "code": "F11_D01",
@@ -1701,6 +1760,11 @@
           }
         ],
         "rewardAfter": 2,
+        "stall": [
+          "F12_D03",
+          "F12_D04",
+          "F12_D05"
+        ],
         "refs": [
           {
             "code": "F12_D01",

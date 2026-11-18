@@ -2280,7 +2280,10 @@
       "text.fetes.f10.activite.costumes": "Le concours des costumes",
       "text.fetes.f12.activite.presents": "Les présents du Givre",
       "text.fetes.f12.activite.neige": "La bataille de neige",
-      "text.fetes.f12.activite.pere_du_givre": "La visite du Père du Givre"
+      "text.fetes.f12.activite.pere_du_givre": "La visite du Père du Givre",
+      "text.fetes.forain.name": "Maître Florentin, le forain des fêtes",
+      "text.fetes.forain.accueil": "Approchez ! Mon étal change avec chaque fête : ce mois-ci, tout ce qui se trouve ici se paie dans la monnaie de la fête, et rien d'autre. Les pièces de cuivre, gardez-les pour le colporteur.",
+      "text.fetes.forain.retrouvailles": "Vous revoilà ! L'étal a changé de couleurs depuis votre dernière visite : chaque fête apporte son décor, et ses trésors."
     }
   }
 }

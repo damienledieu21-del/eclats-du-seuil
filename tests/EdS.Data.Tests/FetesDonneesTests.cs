@@ -94,7 +94,7 @@ public class FetesDonneesTests
         Assert.Equal("festival.foire.patisserie", semailles.Activity("patisserie")!.Contest);
         Assert.Equal("npc.lison", semailles.Activity("course")!.Host);
         Assert.Equal(3, semailles.RewardAfter);
-        Assert.Equal("npc.colporteur", b.Merchant);
+        Assert.Equal("npc.forain", b.Merchant);   // sous-lot F3 : marchand dédié (décision de Damien du 18 novembre 2026)
         Assert.Equal((999, 20), (b.WalletCap, b.MaxDishes));
         Assert.Same(semailles, b.ByTitle("title.fete.semailles"));
         Assert.Null(b.Of("festival.marche"));
@@ -214,6 +214,13 @@ public class FetesDonneesTests
         Refused(Mutated(r => Feast(r, 0)["activities"] = new JsonArray()), f0 + ".activities", ValidationCode.InvalidValue);   // fête en fête sans activité
         Refused(Mutated(r => { Feast(r, 0)["activities"] = new JsonArray(); Feast(r, 0).Remove("rewardAfter"); Feast(r, 0)["rewardAfter"] = 1; }), f0 + ".rewardAfter", ValidationCode.InvalidValue);
         Refused(Mutated(r => r["data"]!["merchant"] = "npc.lison"), "$.data.merchant", ValidationCode.InvalidValue);   // pas de passage
+        Refused(Mutated(r => r["data"]!["merchant"] = "npc.colporteur"), "$.data.feasts[0].festival", ValidationCode.InvalidValue);   // ne vient pas aux Lanternes
+        // Étal de fête (sous-lot F3) : des décorations de la fête, sans doublon, de 1 à 5.
+        Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray("F01_C01")), f0 + ".stall[0]", ValidationCode.UnknownReference);
+        Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray("F02_D01")), f0 + ".stall[0]", ValidationCode.UnknownReference);
+        Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray("F01_D01", "F01_D01")), f0 + ".stall[1]", ValidationCode.DuplicateId);
+        Refused(Mutated(r => Feast(r, 0)["stall"] = new JsonArray()), f0 + ".stall", ValidationCode.OutOfRange);
+        Refused(Mutated(r => Feast(r, 0).Remove("stall")), f0 + ".stall", ValidationCode.MissingField);
         Refused(Mutated(r => r["data"]!["merchant"] = "npc.personne"), "$.data.merchant", ValidationCode.UnknownReference);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = 0), "$.data.wallet.cap", ValidationCode.OutOfRange);
         Refused(Mutated(r => r["data"]!["wallet"]!["cap"] = FeastValidator.MaxWalletCap + 1), "$.data.wallet.cap", ValidationCode.OutOfRange);

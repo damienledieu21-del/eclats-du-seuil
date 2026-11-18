@@ -2,7 +2,7 @@
   "$schema": "../../schemas/story.schema.json",
   "schemaVersion": 16,
   "kind": "story",
-  "contentVersion": "0.35.0-provisoire",
+  "contentVersion": "0.36.0-provisoire",
   "data": {
     "npcs": [
       {
@@ -1448,15 +1448,6 @@
           "festival.moissons",
           "festival.veillee",
           "festival.foire",
-          "festival.lanternes",
-          "festival.liens",
-          "festival.carnaval",
-          "festival.artisans",
-          "festival.feux_du_seuil",
-          "festival.grand_tournoi",
-          "festival.etoiles_filantes",
-          "festival.nuit_des_echos",
-          "festival.givre",
           "festival.marche",
           "festival.marche_mercredi"
         ]
@@ -1857,6 +1848,30 @@
               -59.0
             ]
           }
+        ]
+      },
+      {
+        "id": "npc.forain",
+        "name": "text.fetes.forain.name",
+        "position": [
+          -1088.0,
+          -37.0
+        ],
+        "dialogue": "dialogue.forain",
+        "faction": "villagers",
+        "festivals": [
+          "festival.lanternes",
+          "festival.liens",
+          "festival.carnaval",
+          "festival.foire",
+          "festival.artisans",
+          "festival.feux_du_seuil",
+          "festival.grand_tournoi",
+          "festival.etoiles_filantes",
+          "festival.moissons",
+          "festival.nuit_des_echos",
+          "festival.veillee",
+          "festival.givre"
         ]
       }
     ],
@@ -23370,6 +23385,40 @@
             "choices": [
               {
                 "text": "text.v2305.notable_dame_ville.au_revoir",
+                "conditions": [],
+                "effects": [],
+                "next": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dialogue.forain",
+        "entries": [
+          {
+            "conditions": [],
+            "node": "accueil"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "accueil",
+            "text": "text.fetes.forain.accueil",
+            "lines": [
+              {
+                "conditions": [
+                  {
+                    "if": "fact",
+                    "id": "fact.met.forain"
+                  }
+                ],
+                "text": "text.fetes.forain.retrouvailles"
+              }
+            ],
+            "choices": [
+              {
+                "text": "text.v210.au_revoir",
                 "conditions": [],
                 "effects": [],
                 "next": null

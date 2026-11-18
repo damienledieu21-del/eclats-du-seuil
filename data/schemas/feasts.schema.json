@@ -70,7 +70,8 @@
               "motto",
               "title",
               "activities",
-              "refs"
+              "refs",
+              "stall"
             ],
             "properties": {
               "number": {
@@ -248,6 +249,17 @@
                       "maximum": 99999
                     }
                   }
+                }
+              },
+              "stall": {
+                "description": "Sous-lot F3 (décision de Damien du 18 novembre 2026) : décorations de cette fête qui habillent l'étal du forain ce mois-là.",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^F(0[1-9]|1[0-2])_D0[1-5]$"
                 }
               }
             }

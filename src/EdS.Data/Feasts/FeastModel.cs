@@ -46,6 +46,10 @@ namespace EdS.Data.Feasts
         public FeastTitleData? Title { get; set; }
         public List<FeastActivityData?>? Activities { get; set; }
         public int? RewardAfter { get; set; }
+
+        /// <summary>Sous-lot F3 (décision de Damien du 18 novembre 2026) : décorations de la fête qui habillent l'étal de fête ce mois-là.</summary>
+        public List<string?>? Stall { get; set; }
+
         public List<FeastRefData?>? Refs { get; set; }
     }
 
@@ -207,6 +211,18 @@ namespace EdS.Data.Feasts
         public int RewardAfter { get; }
 
         public IReadOnlyList<FeastRef> Refs { get; }
+
+        /// <summary>
+        /// Sous-lot F3 (décision de Damien du 18 novembre 2026 : un étal de fête sur la place, dont le décor change chaque mois) : les
+        /// décorations de la fête qui habillent l'étal du forain pendant cette fête.
+        /// </summary>
+        public IReadOnlyList<FeastRef> Stall { get; private set; } = Array.Empty<FeastRef>();
+
+        internal Feast WithStall(IEnumerable<FeastRef> stall)
+        {
+            Stall = Frozen.List(stall, nameof(stall));
+            return this;
+        }
 
         internal Feast(int number, string festival, string motto, string titleId, string titleName, IEnumerable<FeastActivity> activities, int rewardAfter,
             IEnumerable<FeastRef> refs)
@@ -493,8 +509,22 @@ namespace EdS.Data.Feasts
                 }
             }
 
+            // Étal de fête (sous-lot F3) : de 1 à 5 décorations de cette fête, sans doublon.
+            var stall = new List<FeastRef>();
+            if (x.Stall is null) Missing(r, p + ".stall", "décorations de l'étal de fête");
+            else if (x.Stall.Count < 1 || x.Stall.Count > Decorations) r.Add(p + ".stall", ValidationCode.OutOfRange, $"de 1 à {Decorations} décorations sur l'étal.");
+            else
+                for (int k = 0; k < x.Stall.Count; k++)
+                {
+                    string sp = $"{p}.stall[{k}]";
+                    FeastRef? d = refs.FirstOrDefault(z => z.Code == x.Stall[k]);
+                    if (d is null || d.Category != FeastCategory.Decoration) r.Add(sp, ValidationCode.UnknownReference, $"« {x.Stall[k]} » n'est pas une décoration de cette fête.");
+                    else if (stall.Contains(d)) r.Add(sp, ValidationCode.DuplicateId, $"« {d.Code} » déjà sur l'étal.");
+                    else stall.Add(d);
+                }
+
             if (r.Errors.Count > errors || festival is null || x.Title?.Id is null || x.Title.Name is null || x.Motto is null) return null;
-            return new Feast(number, festival.Id, x.Motto, x.Title.Id, x.Title.Name, activities, after, refs);
+            return new Feast(number, festival.Id, x.Motto, x.Title.Id, x.Title.Name, activities, after, refs).WithStall(stall);
         }
 
         private static FeastActivity? CheckActivity(FeastActivityData a, string ap, Festival? festival, StoryBook story, TextCatalog texts, int cap,
