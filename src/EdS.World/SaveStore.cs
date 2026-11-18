@@ -41,6 +41,30 @@ namespace EdS.World
 
         public static string BackupPath(string path) => path + ".bak";
 
+        /// <summary>Suffixe des copies mises de côté par <see cref="SetAside"/>.</summary>
+        public const string AsideSuffix = ".ancienne";
+
+        /// <summary>
+        /// Met de côté la sauvegarde de <paramref name="path"/> <b>et sa copie de secours</b> (sans quoi <see cref="Read"/> reprendrait la copie quand le
+        /// principal manque) avant une nouvelle partie : chaque fichier est d'abord copié vers « …<see cref="AsideSuffix"/> » (copie précédente remplacée),
+        /// puis seulement retiré. Si une copie échoue, rien n'est retiré (l'exception remonte). Rend les fichiers mis de côté.
+        /// </summary>
+        public static int SetAside(string path)
+        {
+            if (string.IsNullOrEmpty(path)) throw new ArgumentException("Chemin de sauvegarde vide.", nameof(path));
+            string[] files = { path, BackupPath(path) };
+            int moved = 0;
+            foreach (string file in files)
+                if (File.Exists(file)) File.Copy(file, file + AsideSuffix, true);
+            foreach (string file in files)
+            {
+                if (!File.Exists(file)) continue;
+                File.Delete(file);
+                moved++;
+            }
+            return moved;
+        }
+
         /// <summary>Écrit <paramref name="save"/> dans <paramref name="path"/> (texte canonique), de façon atomique.</summary>
         public static void Write(string path, WorldSave save)
         {

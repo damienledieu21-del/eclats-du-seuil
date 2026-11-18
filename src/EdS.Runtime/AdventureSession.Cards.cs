@@ -24,6 +24,41 @@ namespace EdS.Runtime
         }
     }
 
+    /// <summary>
+    /// Sous-lot V2.32.1 : les vraies cartes des Trois Feux. Correspondance carte → fichier image (sans Unity, donc testable) : une édition
+    /// ordinaire (<c>STD</c>) et l'édition dorée (<c>OR</c>, jeu rare), 27 faces et un dos chacune, livrées par ChatGPT en 750 × 1050 et
+    /// gardées en 376 × 528 (375 × 525 plus une marge transparente : multiples de 4, pour la compression de Unity) dans <c>Resources/EdsTroisFeux/Cartes</c>.
+    /// </summary>
+    public static class CardArt
+    {
+        /// <summary>Dossier des images (chemin de <c>Resources</c>).</summary>
+        public const string Folder = "EdsTroisFeux/Cartes/";
+
+        /// <summary>Dimensions de chaque image de carte, en pixels.</summary>
+        public const int Width = 376, Height = 528;
+
+        /// <summary>Tapis de la table (chemin de <c>Resources</c>) : 1920 × 1080 sur PC, 1280 × 720 sur téléphone.</summary>
+        public static string Mat(bool large) => large ? "EdsTroisFeux/tapis_1920" : "EdsTroisFeux/tapis_1280";
+
+        /// <summary>Rappel du cycle soleil, brume, lune (256 × 256).</summary>
+        public const string Cycle = "EdsTroisFeux/cycle";
+
+        /// <summary>Nom de fichier (sans extension) de la face d'une carte : <c>TF_STD_S07_Soleil</c>, <c>TF_OR_B01_Brume</c>.</summary>
+        public static string Face(CardSuit suit, int value, bool gold)
+        {
+            if (value < 1 || value > CardMatch.MaxValue) throw new ArgumentOutOfRangeException(nameof(value));
+            string letter = suit == CardSuit.Sun ? "S" : suit == CardSuit.Moon ? "L" : "B";
+            string color = suit == CardSuit.Sun ? "Soleil" : suit == CardSuit.Moon ? "Lune" : "Brume";
+            return "TF_" + (gold ? "OR" : "STD") + "_" + letter + value.ToString("00", CultureInfo.InvariantCulture) + "_" + color;
+        }
+
+        /// <summary>Nom de fichier (sans extension) du dos.</summary>
+        public static string Back(bool gold) => gold ? "TF_OR_Dos" : "TF_STD_Dos";
+
+        /// <summary>Icône du jeu doré dans l'inventaire (dos doré), dans <c>Resources/EdsInterface/Peintes</c>.</summary>
+        public const string RareDeckIcon = "jeu_des_trois_feux";
+    }
+
     /// <summary>Sous-lot V2.32 : la table des Trois Feux telle que l'écran la montre (textes déjà traduits).</summary>
     public sealed class CardTableView
     {
@@ -48,7 +83,26 @@ namespace EdS.Runtime
         /// <summary>La partie est finie : l'écran montre l'issue jusqu'à ce que le joueur se lève (<see cref="AdventureSession.LeaveCardTable"/>).</summary>
         public bool Finished { get; }
 
-        internal CardTableView(string header, string score, string prompt, string lastRound, string rules, IReadOnlyList<CardFace> hand, bool finished)
+        /// <summary>V2.32.1 : le joueur possède le jeu doré (<see cref="CardMatch.RareDeck"/>) et joue avec les cartes dorées.</summary>
+        public bool Gold { get; }
+
+        /// <summary>V2.32.1 : manches jouées (0 à 5) et gagnées par le joueur et par le PNJ.</summary>
+        public int RoundsPlayed { get; }
+        public int PlayerWins { get; }
+        public int NpcWins { get; }
+
+        /// <summary>V2.32.1 : issue de chaque manche jouée, dans l'ordre (1 gagnée, -1 perdue, 0 égalité).</summary>
+        public IReadOnlyList<int> RoundResults { get; }
+
+        /// <summary>V2.32.1 : cartes encore en main du PNJ (dos seulement).</summary>
+        public int NpcCards { get; }
+
+        /// <summary>V2.32.1 : cartes posées à la dernière manche (le PNJ la pose face cachée, l'écran la retourne), ou null.</summary>
+        public CardFace? LastPlayer { get; }
+        public CardFace? LastNpc { get; }
+
+        internal CardTableView(string header, string score, string prompt, string lastRound, string rules, IReadOnlyList<CardFace> hand, bool finished,
+            bool gold, int playerWins, int npcWins, IReadOnlyList<int> roundResults, int npcCards, CardFace? lastPlayer, CardFace? lastNpc)
         {
             Header = header;
             Score = score;
@@ -57,6 +111,14 @@ namespace EdS.Runtime
             Rules = rules;
             Hand = hand;
             Finished = finished;
+            Gold = gold;
+            RoundsPlayed = roundResults.Count;
+            PlayerWins = playerWins;
+            NpcWins = npcWins;
+            RoundResults = roundResults;
+            NpcCards = npcCards;
+            LastPlayer = lastPlayer;
+            LastNpc = lastNpc;
         }
     }
 
@@ -194,7 +256,10 @@ namespace EdS.Runtime
             }
             IReadOnlyList<CardFace> hand = end is null ? match.PlayerHand.Select(c => new CardFace(c, CardLabel(c))).ToList() : (IReadOnlyList<CardFace>)Array.Empty<CardFace>();
             return new CardTableView(Format("text.ui.cards.against", name, stake), Format("text.ui.cards.score", match.PlayerWins, name, match.NpcWins), prompt, last,
-                Text("text.ui.cards.rules"), hand, end != null);
+                Text("text.ui.cards.rules"), hand, end != null, World.Inventory.Count(CardMatch.RareDeck) > 0, match.PlayerWins, match.NpcWins,
+                match.Rounds.Select(r => r.Winner).ToList(), match.NpcHand.Count,
+                match.Rounds.Count > 0 ? new CardFace(match.Rounds[match.Rounds.Count - 1].Player, "") : null,
+                match.Rounds.Count > 0 ? new CardFace(match.Rounds[match.Rounds.Count - 1].Npc, "") : null);
         }
 
         /// <summary>« Soleil 7 ».</summary>
