@@ -310,8 +310,39 @@ public class LotCModelsTests
         Assert.True(at > 0);
         string block = view.Substring(at, view.IndexOf("Sous-lot V2.30.1 : panneau d'un croisement", at, StringComparison.Ordinal) - at);
         Assert.Contains("StyleWorld.OnGround(", block);
-        Assert.True(block.IndexOf("_draped = true;", StringComparison.Ordinal) < block.IndexOf("return;", StringComparison.Ordinal), block);
+        // Revue Codex de la PR #197 (P1) : l'affectation doit exister (IndexOf ≥ 0) avant de comparer sa place au « return ».
+        int draped = block.IndexOf("_draped = true;", StringComparison.Ordinal), back = block.IndexOf("return;", StringComparison.Ordinal);
+        Assert.True(draped >= 0 && back >= 0 && draped < back, block);
         Assert.Contains("if (_draped) return;", view);
+    }
+
+    [Fact]
+    public void Bancs_de_nef_tous_tournes_vers_l_autel()
+    {
+        // Revue Codex de la PR #201 : avec le mur le plus proche, les bancs impairs (côté ouest) prenaient 90° et les pairs 270° : la moitié
+        // tournait le dos à l'autel. Ils prennent tous 90° (assise vers +z, l'autel au nord), sans déborder de leur emprise.
+        AdventureMap map = Map("chapelle");
+        var autel = map.Obstacles.Single(o => o.Id == "autel");
+        double nef = map.Obstacles.Where(o => o.Id.StartsWith("banc", StringComparison.Ordinal)).Max(o => o.Points.Max(p => p.Z.Raw)) / 10000.0;
+        Assert.True(autel.Points.Min(p => p.Z.Raw) / 10000.0 > nef);   // l'autel est au nord des bancs
+        int pews = 0;
+        foreach (var o in map.Obstacles.Where(o => o.Id.StartsWith("banc", StringComparison.Ordinal)))
+        {
+            double x0 = o.Points.Min(p => p.X.Raw) / 10000.0, x1 = o.Points.Max(p => p.X.Raw) / 10000.0;
+            double z0 = o.Points.Min(p => p.Z.Raw) / 10000.0, z1 = o.Points.Max(p => p.Z.Raw) / 10000.0;
+            Assert.Equal(90.0, LotCModels.YawFor("chapelle", o.Id));
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, 0.555, 2.2, LotCModels.YawFor("chapelle", o.Id)))
+            {
+                Assert.Equal(90.0, k.Yaw);
+                double hx = 2.2 * k.ThinZ * k.Scale / 2, hz = 0.555 * k.ThinX * k.Scale / 2;
+                Assert.True(k.X - hx >= x0 - 1e-6 && k.X + hx <= x1 + 1e-6 && k.Z - hz >= z0 - 1e-6 && k.Z + hz <= z1 + 1e-6, o.Id);
+            }
+            pews++;
+        }
+        Assert.Equal(8, pews);
+        Assert.Null(LotCModels.YawFor("auberge", "banc1"));
+        Assert.Null(LotCModels.YawFor("chapelle", "autel"));
+        Assert.Contains("LotCModels.YawFor(_room, id)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
     }
 
     [Fact]

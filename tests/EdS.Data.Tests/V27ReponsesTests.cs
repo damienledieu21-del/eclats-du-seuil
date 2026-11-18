@@ -46,10 +46,12 @@ public class V27ReponsesTests
     [Fact]
     public void Marchands_en_schema_4_avec_leur_faction_et_le_marche_noir()
     {
-        Assert.Equal((6, 3, "0.15.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
+        Assert.Equal((6, 3, "0.16.0-provisoire"), (MerchantValidator.CurrentSchemaVersion, MerchantValidator.Schema3, ShippedMerchants.ContentVersion));
         Assert.Equal(new[] { ("merchant.armurier", "guard"), ("merchant.herboriste", "villagers"), ("merchant.epicier", "villagers"), ("merchant.guilde", "villagers"),
             ("merchant.renart", "villagers"), ("merchant.receleur", "bandits"), ("merchant.colporteur", "villagers"), ("merchant.boulangerie", "villagers"),   // V2.14 : boutiques et marché
-            ("merchant.auberge", "villagers"), ("merchant.mercerie", "villagers"), ("merchant.fromagere", "villagers"), ("merchant.marchand_epices", "villagers") },
+            ("merchant.auberge", "villagers"), ("merchant.mercerie", "villagers"), ("merchant.fromagere", "villagers"), ("merchant.marchand_epices", "villagers"),
+            ("merchant.armurier_ville", "guard"), ("merchant.forgeron_ville", "villagers"), ("merchant.tanneur_ville", "villagers"),
+            ("merchant.apothicaire_ville", "villagers"), ("merchant.tailleur_ville", "villagers"), ("merchant.taverne_ville", "villagers") },   // V2.30.5
             ShippedMerchants.Merchants.Select(m => (m.Id, m.Faction)));
         Assert.Equal("liked", ShippedMerchants.Merchant("merchant.receleur").Standing);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))

@@ -725,3 +725,15 @@ Avant l'essai : **Éclats du Seuil → Préparer l'essai de style**. Détail : [
 | 44.2 | Route d'Ambre d'une porte à l'autre, chemin des vignes | Rue pavée, ruelle de terre ; sur une pente, rien qui flotte ni qui s'enfonce trop | [ ] | Un pavé enterré ? |
 | 44.3 | Portes | Braseros et râtelier dedans, bannières dehors, panneau ; péage ouvert à l'est ; chariots de caravane à l'ouest ; le passage reste libre | [ ] | |
 | 44.4 | Derrière les maisons | Appentis, puits, latrines, tas de bois, potagers ; rien sur la route ni devant une porte | [ ] | |
+
+## 45. Fossé, ponts, boutiques et façades vivantes du Bourg (V2.30.5, 16 novembre 2026)
+
+Avant l'essai : **Éclats du Seuil → Préparer l'essai de style**. Détail : [UNITY.md](UNITY.md#décisions-du-16-novembre-2026-pour-le-bourg-fortifié-sous-lot-v2305).
+
+| # | À faire | Ce que tu dois voir | OK | Remarque |
+|---|---|---|---|---|
+| 45.1 | Faire le tour des murs dehors | Fossé de 7 m creusé tout autour, infranchissable ; on ne passe que par les ponts | [ ] | Un endroit où l'on passe ? |
+| 45.2 | Entrer par chaque porte | Pont dans l'axe, passage juste assez large, route droite sur le pont ; plus de palissade ni de tour traversable | [ ] | |
+| 45.3 | Route d'Ambre à l'ouest du bourg | Armurier, forgeron, tanneur, apothicaire, tailleur, auvents de toile, linge entre les boutiques ; taverne et maison notable à l'est de la place | [ ] | |
+| 45.4 | La nuit dans les rues | Lanternes allumées à côté des portes, fenêtres chaudes côté rue, lanternes de l'église, de la halle, des écuries | [ ] | |
+| 45.5 | Église et écuries | Le clocher (obstacle) est celui du modèle ; les écuries tiennent dans leur emprise | [ ] | |
