@@ -200,14 +200,14 @@ public class V221HerboristerieTests : IDisposable
     public void L_atre_de_l_epicerie_fume_pendant_l_ouverture(long day, int hour, int minute, bool lit)
     {
         AdventureSession a = VallonsAt(day, hour, minute);
-        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id.StartsWith("atre/", StringComparison.Ordinal));
+        ShopChimney c = Assert.Single(a.KitchenChimneys(), x => x.Id == "atre/merchant.epicier");
         Assert.Equal("atre/merchant.epicier", c.Id);
         Assert.Equal("maison4", a.ShopBuildingOf(c.Id));
         Assert.Equal(-1075, c.X, 6);
         Assert.Equal(-48.5, c.Z, 6);
         Assert.Equal(lit, c.Lit);
         // La mercerie n'a pas de feu tenu ; V2.22 : l'herboristerie a son feu de tisanes, permanent ; les fournils ne changent pas.
-        Assert.Equal(new[] { "atre/merchant.epicier", "cuisine/merchant.auberge", "tisane/merchant.herboriste" }, a.KitchenChimneys().Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal));
+        Assert.Equal(new[] { "atre/merchant.epicier", "cuisine/merchant.auberge", "cuisine/merchant.taverne_ville", "tisane/merchant.apothicaire_ville", "tisane/merchant.herboriste" }, a.KitchenChimneys().Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal));
         Assert.DoesNotContain(a.Chimneys(), x => a.ShopBuildingOf(x.Id) == "maison4" || a.ShopBuildingOf(x.Id) == Id);
     }
 }
