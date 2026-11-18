@@ -171,7 +171,9 @@ public class Lot111ScenarioDataTests
         Assert.NotEmpty(files);
         foreach (string file in files)
         {
-            ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(file, ShippedData);
+            // Sous-lots V2.31 et suivants : l'aire des Vallons (plus de 256 obstacles) se lit comme une aire.
+            bool area = file.Replace('\\', '/').EndsWith("zones/vallons.json", StringComparison.Ordinal);
+            ScenarioLoadResult loaded = ScenarioJsonReader.ReadFile(file, ShippedData, area);
             Assert.True(loaded.IsValid, file + " : " + loaded.Report);
         }
     }

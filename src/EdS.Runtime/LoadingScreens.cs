@@ -50,9 +50,10 @@ namespace EdS.Runtime
         {
             ["bourg"] = 1, ["ville_du_bourg"] = 1, ["place_du_marche_de_la_ville"] = 1, ["eglise_de_la_ville"] = 1,
             ["village"] = 2, ["moulin"] = 2, ["forge"] = 2, ["four_de_firmin"] = 2, ["champs"] = 2, ["champs_du_sud"] = 2, ["vergers"] = 2, ["vergers_du_sud"] = 2, ["pre_nord"] = 2,
-            ["riviere"] = 3, ["vallee_de_la_riviere"] = 3,
+            ["riviere"] = 3, ["vallee_de_la_riviere"] = 3, ["cascade"] = 3, ["moulin_a_foulon"] = 3, ["cabane_du_pecheur"] = 3, ["pont_suspendu"] = 3,   // V2.31
             ["coteaux_du_chateau"] = 4, ["route_d_havre_d_ambre"] = 4,
             ["foret_des_loups"] = 5, ["foret_des_loups_profonde"] = 5, ["camp_des_rodeurs"] = 5,
+            ["arbre_millenaire"] = 5, ["taniere_de_la_meute"] = 5, ["cabane_du_bucheron"] = 5, ["lisiere_de_la_foret"] = 5,   // V2.32
             ["hautes_collines"] = 6, ["hautes_pierres"] = 6, ["tour_de_guet"] = 6, ["epaulement_est"] = 6,
             ["ruines"] = 7, ["abbaye_en_ruine"] = 7,
             ["lac"] = 8, ["grand_lac"] = 8, ["rives_du_lac"] = 8,
