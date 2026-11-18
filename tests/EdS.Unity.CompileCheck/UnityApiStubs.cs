@@ -168,7 +168,7 @@ namespace UnityEngine.Animations
 }
 namespace UnityEngine.EventSystems
 {
-    public abstract class UIBehaviour : MonoBehaviour { public virtual bool IsActive() => false; }
+    public abstract class UIBehaviour : MonoBehaviour { public virtual bool IsActive() => false; public bool enabled { get; set; } }
     public class EventSystem : UIBehaviour { public static EventSystem current => null; public bool IsPointerOverGameObject() => false; }
     public abstract class BaseInputModule : UIBehaviour { }
     public class StandaloneInputModule : BaseInputModule { }
@@ -333,4 +333,22 @@ namespace UnityEditor.Build
     public interface IPreprocessBuildWithReport : IOrderedCallback { void OnPreprocessBuild(UnityEditor.Build.Reporting.BuildReport report); }
     public interface IPostprocessBuildWithReport : IOrderedCallback { void OnPostprocessBuild(UnityEditor.Build.Reporting.BuildReport report); }
     public class BuildFailedException : Exception { public BuildFailedException(string message) : base(message) { } }
+}
+namespace UnityEditor.Build
+{
+    public sealed class NamedBuildTarget { public static NamedBuildTarget Unknown => null; public static NamedBuildTarget Android => null; }
+}
+namespace UnityEditor
+{
+    public enum IconKind { Any = -1, Application = 0 }
+    public class PlatformIconKind { }
+    public class PlatformIcon { public int maxLayerCount => 1; public UnityEngine.Texture2D GetTexture(int layer) => null; public void SetTexture(UnityEngine.Texture2D texture, int layer) { } }
+    public static class PlayerSettings
+    {
+        public static UnityEngine.Texture2D[] GetIcons(UnityEditor.Build.NamedBuildTarget target, IconKind kind) => null;
+        public static void SetIcons(UnityEditor.Build.NamedBuildTarget target, UnityEngine.Texture2D[] icons, IconKind kind) { }
+        public static PlatformIconKind[] GetSupportedIconKindsForNamedBuildTarget(UnityEditor.Build.NamedBuildTarget target) => null;
+        public static PlatformIcon[] GetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind) => null;
+        public static void SetPlatformIcons(UnityEditor.Build.NamedBuildTarget target, PlatformIconKind kind, PlatformIcon[] icons) { }
+    }
 }

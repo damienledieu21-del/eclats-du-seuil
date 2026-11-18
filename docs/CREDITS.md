@@ -219,6 +219,12 @@ Une licence CC BY demande de citer l'auteur là où le jeu est montré : ce fich
 | [MakeHuman](https://static.makehumancommunity.org/) (outil) | personnages que Damien fabrique, dans `Assets/Style/MakeHuman/<nom>/` (non suivi par git) | modèles exportés **CC0** ([FAQ](https://static.makehumancommunity.org/oldsite/faq/can_i_sell_models_created_with_makehuman.html)) ; éléments de base CC0 ([licence](https://static.makehumancommunity.org/about/license.html)) ; le programme est AGPL, sans effet sur les sorties |
 | Vêtements et cheveux de la bibliothèque de MakeHuman | seulement **CC0 ou CC BY** (jamais NC, ND, SA) | chaque personnage a son `MANIFESTE.md` ; un élément CC BY est cité ici avec son auteur |
 
+## Logo définitif (sous-lot V2.54, 16 novembre 2026)
+
+| Source | Ce qui sert | Licence |
+| --- | --- | --- |
+| **Logo définitif** : création par génération d'images intégrée de **ChatGPT** (OpenAI) à partir du logo n° 1 « lettres d'or fendues » choisi par Damien le 29 octobre 2026, puis assemblage des calques et export ; devise « Ce qui est brisé peut encore briller. » composée en Noto Serif (SIL OFL 1.1). Dossier de livraison `Eclats_du_Seuil_AssetLab/Logo/EDS_Logo_Definitif/` (six PNG, 4 096 × 2 048, icône 1 024 × 1 024 ; vérifié : 01 = 02 + 03 au pixel près) | logos 01, 02, 03, 04 et 06 réduits à 2 048 × 1 024 et 1 024 × 512 (PNG, `unity/Assets/EdS/Interface/Resources/EdsInterface/Logo/`), icône 05 (`unity/Assets/EdS/Icone/eds_icone_1024.png`) ; suivis par git | image créée pour le projet : droits d'usage du projet, aucune obligation de citation (cité par transparence) |
+
 ## Écrans de chargement peints (sous-lot V2.53, 16 novembre 2026)
 
 | Source | Ce qui sert | Licence |
