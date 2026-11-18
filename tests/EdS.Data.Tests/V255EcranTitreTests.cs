@@ -415,4 +415,19 @@ public sealed class V255EcranTitreTests
         Assert.Contains("Vector3 feet = hero.position - Vector3.up * ArenaView.FeetOffset;", view);
         Assert.DoesNotContain("Vector3 feet = hero.position;", view);
     }
+
+    [Fact]
+    public void Un_echec_de_mise_de_cote_annule_la_nouvelle_partie_et_l_equipement_est_montre_avant_l_ecran_titre()
+    {
+        // Revue Codex de la PR #210 (garde-fous sur le texte du code Unity, non exécutable ici).
+        string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs"));
+        Assert.Contains("private bool BackupSave()", code);
+        Assert.Contains("if (BackupSave()) StartAdventure();", code);
+        Assert.Contains("Nouvelle partie annulée", code);
+        int start = code.IndexOf("private void StartAdventure()", StringComparison.Ordinal);
+        int show = code.IndexOf("ShowAdventureSession();", start, StringComparison.Ordinal);
+        int gear = code.IndexOf("_arena.ShowGear(", show, StringComparison.Ordinal);
+        int end = code.IndexOf("private void ShowAdventureSession()", start, StringComparison.Ordinal);
+        Assert.True(show > 0 && gear > show && gear < end);
+    }
 }

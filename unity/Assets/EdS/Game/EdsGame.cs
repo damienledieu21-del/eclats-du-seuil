@@ -336,6 +336,9 @@ namespace EdS.Game
             // Update n'atteint pas tant que l'écran couvre le jeu).
             _stage?.Begin(_adventure);
             ShowAdventureSession();
+            // Revue Codex de la PR #210 : l'équipement est montré dès maintenant (UpdateAdventure ne tourne pas sous l'écran titre : le héros du titre serait nu).
+            _visibleGear = GearLooks.For(_adventure.World.Inventory, _visibleGear);
+            _arena.ShowGear(_adventure.InScene ? NoGear : _visibleGear);
             if (!_adventure.IsNewGame && !_adventure.Indoors && !_title.Pending) StartLoading();   // V2.53 : la reprise d'une sauvegarde montre le lieu où elle reprend (l'écran titre, s'il est là, tient ce rôle)
             if (_adventure.IsNewGame)
             {
@@ -984,8 +987,9 @@ namespace EdS.Game
                 // « Nouvelle partie » sur une sauvegarde : elle est mise de côté (copie gardée) et le monde est rechargé pendant le fondu.
                 if (_title.TakeChoice() == TitleAction.NewGame && _adventure != null && !_adventure.IsNewGame)
                 {
-                    BackupSave();
-                    StartAdventure();   // l'écran titre est encore là : le réveil et le créateur attendent sa fin
+                    // Revue Codex de la PR #210 : si l'ancienne sauvegarde ne peut pas être mise de côté, la nouvelle partie est annulée (on reprend l'ancienne) et le joueur est prévenu.
+                    if (BackupSave()) StartAdventure();
+                    else Say("Nouvelle partie annulée : l'ancienne sauvegarde n'a pas pu être mise de côté. Ta partie est reprise.");   // l'écran titre est encore là : le réveil et le créateur attendent sa fin
                 }
             }
             if (!_title.Pending)
@@ -999,15 +1003,17 @@ namespace EdS.Game
         }
 
         /// <summary>V2.55 : met la sauvegarde de côté (<c>vallons.json.ancienne</c>, remplacée à chaque fois) avant une nouvelle partie.</summary>
-        private void BackupSave()
+        private bool BackupSave()
         {
             try
             {
                 SaveStore.SetAside(SavePath);   // la sauvegarde ET sa copie de secours (.bak), sans quoi l'ancienne progression reviendrait
+                return true;
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
+                return false;
             }
         }
 
