@@ -109,19 +109,29 @@ public class FetesDonneesTests
     [Fact]
     public void Les_references_suivent_le_catalogue_du_dossier()
     {
-        // Le catalogue CSV du dossier des fêtes (4 trimestres) est la source : codes, noms, cotes et icônes recopiés tels quels.
-        string? lab = Environment.GetEnvironmentVariable("EDS_FETES_DIR");
-        if (lab is null || !Directory.Exists(lab)) return;   // le dossier des fêtes n'est pas dans le dépôt : vérifié quand il est fourni
+        // Relecture indépendante de la PR #213 : copie figée du catalogue du dossier des fêtes (Catalogue_Fetes.csv des quatre trimestres),
+        // dans le dépôt : codes, fête, catégorie, noms, cotes, images et icônes comparés à chaque fois (les cotes écrites font foi).
         FeastBook b = Shipped;
-        var rows = Directory.GetFiles(lab, "Catalogue_Fetes.csv", SearchOption.AllDirectories).SelectMany(f => File.ReadAllLines(f).Skip(1))
-            .Where(l => l.Length > 0).Select(l => l.Split(';')).ToList();
+        JsonArray rows = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "fetes", "catalogue_fetes.json")))!["refs"]!.AsArray();
         Assert.Equal(108, rows.Count);
-        foreach (string[] c in rows)
+        Assert.Equal(rows.Select(x => (string)x!["code"]!), b.Refs.Select(x => x.Code));
+        var categories = new System.Collections.Generic.Dictionary<string, FeastCategory>
         {
-            FeastRef x = b.Ref(c[0])!;
-            Assert.Equal(c[4].Replace('’', '\''), Texts.Get(x.Name));
-            Assert.Equal(c[8], x.Image);
-            Assert.Equal(c[9].Length == 0 ? null : c[9], x.Icon);
+            ["decoration"] = FeastCategory.Decoration, ["costume"] = FeastCategory.Costume, ["dish"] = FeastCategory.Dish,
+            ["currency"] = FeastCategory.Currency, ["reward"] = FeastCategory.Reward,
+        };
+        static Fixed Metres(JsonNode? v) => Fixed.FromRaw(checked((long)Math.Round(decimal.Parse((string)v!, System.Globalization.CultureInfo.InvariantCulture) * 10_000m)));
+        foreach (JsonNode? row in rows)
+        {
+            FeastRef x = b.Ref((string)row!["code"]!)!;
+            Assert.Equal((int)row["feast"]!, x.Feast);
+            Assert.Equal(categories[(string)row["category"]!], x.Category);
+            Assert.Equal(((string)row["name"]!).Replace('’', '\''), Texts.Get(x.Name));
+            Assert.Equal((Metres(row["x"]), Metres(row["y"]), Metres(row["z"])), (x.Size.X, x.Size.Y, x.Size.Z));
+            Assert.Equal((string)row["image"]!, x.Image);
+            Assert.Equal((string?)row["icon"], x.Icon);
+            string[] months = { "Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre" };
+            Assert.Equal(Array.IndexOf(months, (string)row["month"]!) + 1, Story.Value.Festival(b.Feasts[x.Feast - 1].Festival).Month);
         }
     }
 
@@ -164,6 +174,11 @@ public class FetesDonneesTests
         Refused(Mutated(r => Ref(r, 0, 0)["name"] = "text.fetes.absent"), f0 + ".refs[0].name", ValidationCode.UnknownReference);
         Refused(Mutated(r => Ref(r, 0, 0)["image"] = "Objets/F02_D01_banniere.png"), f0 + ".refs[0].image", ValidationCode.InvalidValue);
         Refused(Mutated(r => Ref(r, 0, 0)["image"] = "../secret.png"), f0 + ".refs[0].image", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Ref(r, 0, 0)["image"] = "Objets/F01_D01_Lanterne.png"), f0 + ".refs[0].image", ValidationCode.InvalidValue);   // nom en minuscules
+        Refused(Mutated(r => Ref(r, 0, 0)["image"] = "Objets/F01_D01_.png"), f0 + ".refs[0].image", ValidationCode.InvalidValue);   // nom vide
+        Refused(Mutated(r => Ref(r, 0, 0)["image"] = "Objets/F01_D01_lanterne.png.png"), f0 + ".refs[0].image", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Ref(r, 0, 6)["icon"] = "Icones/F01_P01_autre_tourte_icone.png"), f0 + ".refs[6].icon", ValidationCode.InvalidValue);   // nom de l'icône ≠ image
+        Refused(Mutated(r => Ref(r, 0, 6)["icon"] = "Icones/F01_P01_tourte_des_voeux.png"), f0 + ".refs[6].icon", ValidationCode.InvalidValue);   // sans « _icone »
         Refused(Mutated(r => Ref(r, 0, 0)["icon"] = "Icones/F01_D01_x_icone.png"), f0 + ".refs[0].icon", ValidationCode.InvalidValue);   // une décoration n'a pas d'icône
         Refused(Mutated(r => Ref(r, 0, 6).Remove("icon")), f0 + ".refs[6].icon", ValidationCode.MissingField);   // le plat en a une
         Refused(Mutated(r => Ref(r, 0, 8)["rarity"] = "common"), f0 + ".refs[8].rarity", ValidationCode.InvalidValue);   // récompense Rare

@@ -228,12 +228,12 @@
                     },
                     "image": {
                       "type": "string",
-                      "pattern": "^Objets/[A-Za-z0-9_]+\\.png$",
+                      "pattern": "^Objets/F(0[1-9]|1[0-2])_[DCPMR]0[1-9]_[a-z0-9]+(_[a-z0-9]+)*\\.png$",
                       "maxLength": 200
                     },
                     "icon": {
                       "type": "string",
-                      "pattern": "^Icones/[A-Za-z0-9_]+\\.png$",
+                      "pattern": "^Icones/F(0[1-9]|1[0-2])_[PMR]01_[a-z0-9]+(_[a-z0-9]+)*_icone\\.png$",
                       "maxLength": 200
                     },
                     "rarity": {
