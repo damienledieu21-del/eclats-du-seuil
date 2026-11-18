@@ -172,8 +172,35 @@ namespace EdS.Game
         private static readonly VisibleGear NoGear = new VisibleGear(WeaponLook.None, EdS.Data.Items.ItemRarity.Common, ShieldLook.None,
             EdS.Data.Items.ItemRarity.Common, false, EdS.Data.Items.ItemRarity.Common);
 
+        /// <summary>V2.54 : l'ouverture du logo au lancement (le jeu attend dessous, gelé).</summary>
+        private readonly LogoView _logo = new LogoView();
+
+        /// <summary>V2.54 : un écran passager (logo d'ouverture) couvre le jeu : ni commande, ni clic, ni avancement du jeu dessous.</summary>
+        private bool Overlay => _logo.Active;
+
+        private readonly InputLock<UnityEngine.EventSystems.EventSystem> _eventsLock = new InputLock<UnityEngine.EventSystems.EventSystem>();
+
+        /// <summary>
+        /// Coupe (ou rend) les clics de l'interface en uGUI ; l'IMGUI est gardée inerte par <c>GUI.enabled</c> dans <c>OnGUI</c>. Le composant coupé
+        /// est gardé (<see cref="InputLock{T}"/>) : un EventSystem désactivé n'est plus <c>EventSystem.current</c> (revue Codex de la PR #208).
+        /// </summary>
+        private void LockInput(bool locked)
+        {
+            if (locked)
+            {
+                var cut = _eventsLock.Lock(UnityEngine.EventSystems.EventSystem.current);
+                if (cut != null) cut.enabled = false;
+            }
+            else
+            {
+                var back = _eventsLock.Unlock();
+                if (back != null) back.enabled = true;
+            }
+        }
+
         private IEnumerator Start()
         {
+            _logo.Start();
             // Correctif du sous-lot 11.8 (essai sur le Note8) : une erreur de démarrage (shader absent du jeu construit…) s'affiche au lieu
             // de laisser l'écran bloqué sur « Préparation des données du jeu… ».
             try
@@ -637,7 +664,7 @@ namespace EdS.Game
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
             bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
-            frozen = frozen || _stage != null && _stage.Blocking || creating;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
+            frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
             if (a.Shop != null) _screens.Show(AdventureScreens.Panel.Merchant);   // sous-lot V1.1 : F près d'un marchand ouvre sa boutique
             if (a.GuildOpen) _screens.Show(AdventureScreens.Panel.Guild);   // sous-lot V1.7 : F près de la maîtresse ouvre son tableau
@@ -931,6 +958,8 @@ namespace EdS.Game
 
         private void Update()
         {
+            _logo.Tick(Time.unscaledDeltaTime);   // V2.54 : le logo avance même pendant la préparation des données
+            LockInput(Overlay);   // V2.54 : sous le logo, aucun clic de l'interface ne passe
             if (!_ready || _startupError != null) return;   // sous-lot 11.8 : données en préparation, ou démarrage impossible
             // Essai réaliste : les curseurs du catalogue réglés pendant le jeu. Sous-lot V2.1 : à chaque image, la lumière de l'heure du monde
             // (nuit bleue, lanternes, aube et crépuscule) dans l'aventure ; le plein jour ailleurs (entraînement, réseau).
@@ -956,6 +985,7 @@ namespace EdS.Game
                 _lightKey = lightKey;
                 StyleWorld.SetDayLight(_adventure != null ? _adventure.Light() : (DayLight?)null);
             }
+            if (Overlay) return;   // V2.54 : sous le logo, aucune commande ne lit le clavier, la souris ni le doigt, et le jeu n'avance pas
             if (Input.GetKeyDown(KeyCode.F8) && _touch.ToggleForced()) Say(_touch.Active ? "Commandes tactiles affichées (F8 : cacher)." : "Commandes tactiles cachées.");
             UpdateHudLayout();
             _touch.Update(_hudLayout, AdventureCovered);
@@ -1811,6 +1841,16 @@ namespace EdS.Game
         }
 
         private void OnGUI()
+        {
+            bool locked = Overlay;
+            GUI.enabled = !locked;   // V2.54 : sous le logo, aucun contrôle de l'interface ne répond
+            DrawGame();
+            GUI.enabled = true;
+            Hud.Begin();
+            _logo.Draw();   // V2.54 : le logo s'ouvre au-dessus de tout (démarrage, préparation, jeu)
+        }
+
+        private void DrawGame()
         {
             Hud.Begin();
             if (_startupError != null)

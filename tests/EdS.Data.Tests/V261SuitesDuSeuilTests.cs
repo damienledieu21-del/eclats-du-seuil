@@ -43,7 +43,7 @@ public class V261SuitesDuSeuilTests
     {
         JsonObject root = ZoneJson();
         mutate(root);
-        return ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+        return ZoneJsonReader.Read(PreparedZone(root), ScenariosFor(root), ShippedData, ItemsCatalog);
     }
 
     private static StoryLoadResult ReadStory(JsonObject root) => StoryJsonReader.ReadStory(root.ToJsonString(), Texts, Vallons, ItemsCatalog, V16TestData.Interiors);
@@ -96,7 +96,7 @@ public class V261SuitesDuSeuilTests
         {
             JsonObject root = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, zone)))!.AsObject();
             root["data"]!["safePoints"]![0]!["position"] = new JsonArray(x, z);
-            ZoneLoadResult loaded = ZoneJsonReader.Read(root.ToJsonString(), ScenariosDirectory, ShippedData, ItemsCatalog);
+            ZoneLoadResult loaded = ZoneJsonReader.Read(PreparedZone(root), ScenariosFor(root), ShippedData, ItemsCatalog);
             Assert.True(loaded.IsValid, loaded.Report.ToString());
             definition = loaded.Zone!;
         }
@@ -125,8 +125,8 @@ public class V261SuitesDuSeuilTests
     {
         Assert.Equal((14, 12, 11, 10), (ZoneValidator.CurrentSchemaVersion, ZoneValidator.SpreadSchemaVersion, ZoneValidator.ScarsSchemaVersion, ZoneValidator.EventsSchemaVersion));
         Assert.Equal((16, 10, 32, 16), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema10, StoryValidator.MaxEntries, StoryValidator.MaxEntriesBefore11));
-        Assert.Equal((14, "0.20.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
-        Assert.Equal((16, "0.32.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
+        Assert.Equal((14, "0.21.0-provisoire"), (Vallons.SchemaVersion, Vallons.ContentVersion));   // V2.25.3 : région
+        Assert.Equal((16, "0.33.0-provisoire"), (Book(Vallons).SchemaVersion, Book(Vallons).ContentVersion));
         Assert.Equal("0.36.0-provisoire", Texts.ContentVersion);   // 12 fêtes d'Orsédia (F1) : 0.36.0 (0.35.0 pris par #204) ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;
         Assert.Equal("0.21.0-provisoire", ItemsCatalog.ContentVersion);
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
