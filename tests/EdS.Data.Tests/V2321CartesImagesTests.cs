@@ -138,7 +138,7 @@ public class V2321CartesImagesTests
         string code = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "AdventureBook.Cards.cs"));
         // 1 : l'image d'ouverture est ignorée (le clic qui a ouvert la table ne pose pas de carte).
         Assert.Contains("_cardsInputFrame < Time.frameCount - 1", code, StringComparison.Ordinal);
-        Assert.Contains("|| opening) return;", code, StringComparison.Ordinal);
+        Assert.Contains("|| opening || CardsFlipping) return;", code, StringComparison.Ordinal);
         // 2 : la zone d'une carte au repos commence à sa place ; seule la carte soulevée monte ; le bouton finit avant la carte soulevée.
         Assert.Contains("i == lifted ? BottomRowY - Lift : BottomRowY", code, StringComparison.Ordinal);
         const float bottomRow = 652f, lift = 30f, leaveY = 586f, leaveHeight = 28f;
