@@ -351,7 +351,7 @@ public class InterieursTests : IDisposable
         Assert.True(saved.WorldTick >= tick);
         Assert.Equal(1, saved.Sessions);   // la session des Vallons jouée ; celle de l'auberge est la deuxième
         // Dans l'intérieur : ni nœud ni atelier ; la porte ramène au bourg. Sous-lot V1.6 : le seul PNJ est celui de la pièce, l'aubergiste.
-        Assert.Equal("npc.aubergiste", Assert.Single(a.Npcs()).Id);
+        Assert.Equal(new[] { "npc.aubergiste", "npc.serveuse" }, a.Npcs().Select(n => n.Id));   // 17 novembre 2026 : et Perrine, la serveuse
         Assert.Empty(a.Nodes());
         Assert.Empty(a.Workshops());
         // Lot C (16 novembre 2026) : et les portes de la cuisine et des chambres.
