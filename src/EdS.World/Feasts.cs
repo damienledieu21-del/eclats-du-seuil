@@ -102,6 +102,9 @@ namespace EdS.World
             if (!(f.Activity(activity) is FeastActivity a)) return FeastRefusal.UnknownActivity;
             if (edition < 0 || edition > SavedFeast.MaxEdition || day < 0 || day > SavedFeast.MaxDayKey) return FeastRefusal.NotNow;
             SavedFeast e = state.Of(f.Festival);
+            // Relecture indépendante de la PR #215 : jamais d'édition plus ancienne que celle déjà connue (date réelle disparue : années du
+            // jeu après des années réelles) ; sinon la progression serait écrasée et une récompense pourrait être regagnée.
+            if (edition < KnownEdition(e)) return FeastRefusal.NotNow;
             IReadOnlyDictionary<string, long> done = e.DoneIn(edition);
             if (a.Contest != null ? done.ContainsKey(a.Id) : done.TryGetValue(a.Id, out long last) && last == day) return FeastRefusal.AlreadyDone;
             var now = new Dictionary<string, long>(done.ToDictionary(x => x.Key, x => x.Value), StringComparer.Ordinal) { [a.Id] = day };
@@ -147,6 +150,8 @@ namespace EdS.World
                     updated = e.With(coins: e.Coins - price, dishes: e.Dishes + 1);
                     break;
                 default:   // récompense : rattrapage de l'édition d'avant
+                    // Relecture indépendante de la PR #215 : seulement depuis une édition au moins aussi récente que la dernière connue.
+                    if (edition < KnownEdition(e)) return FeastRefusal.NotNow;
                     long missed = edition - 1;
                     if (missed < 0 || e.HasReward(missed)) return FeastRefusal.NothingToCatchUp;
                     if (e.Bought >= SavedFeast.MaxCount) return FeastRefusal.CountersFull;
@@ -158,8 +163,16 @@ namespace EdS.World
             return FeastRefusal.None;
         }
 
+        /// <summary>
+        /// Dernière édition connue de la fête pour ce personnage (édition des activités en cours, dernière récompense prise), ou -1. Une
+        /// édition plus ancienne est refusée (<see cref="FeastRefusal.NotNow"/>).
+        /// </summary>
+        public static long KnownEdition(SavedFeast e) =>
+            Math.Max(e.Edition ?? -1, e.Editions.Count > 0 ? e.Editions[e.Editions.Count - 1] : -1);
+
         /// <summary>La récompense de l'édition d'avant (<paramref name="edition"/> − 1) peut être rattrapée (sans regarder la bourse).</summary>
-        public static bool CanCatchUp(SavedFeasts state, string festival, long edition) => edition >= 1 && !state.Of(festival).HasReward(edition - 1);
+        public static bool CanCatchUp(SavedFeasts state, string festival, long edition) =>
+            edition >= 1 && edition >= KnownEdition(state.Of(festival)) && !state.Of(festival).HasReward(edition - 1);
 
         /// <summary>Titres de fête gagnés, dans l'ordre de l'année.</summary>
         public static IReadOnlyList<string> Titles(SavedFeasts state, FeastBook book) =>
