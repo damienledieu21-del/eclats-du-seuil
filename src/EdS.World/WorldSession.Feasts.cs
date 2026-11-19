@@ -194,9 +194,34 @@ namespace EdS.World
             if (_feasts is null) return FeastRefusal.NoFeast;
             if (InCombat) return FeastRefusal.NotNow;
             FeastRefusal refusal = FeastRules.Eat(_character.Feasts, _feasts, festival, out SavedFeasts next);
-            if (refusal == FeastRefusal.None) SetFeasts(next);
-            return refusal;
+            if (refusal != FeastRefusal.None) return refusal;
+            SetFeasts(next);
+            // Sous-lot F7 (décision de Damien du 19 novembre 2026) : réconfort pendant 60 minutes de jeu (un autre plat repart de maintenant).
+            ComfortUntilMinute = checked(NowMinute + ComfortMinutes);
+            return FeastRefusal.None;
         }
+
+        /// <summary>Sous-lot F7 : durée du réconfort d'un plat de fête, en minutes de jeu.</summary>
+        public const int ComfortMinutes = 60;
+
+        /// <summary>Minute absolue du monde (jour × 1 440 + minute).</summary>
+        private long NowMinute => checked(Zone.Time.Day * 1440 + Zone.Time.Minute);
+
+        /// <summary>
+        /// Sous-lot F7 : minute absolue du monde où finit le réconfort du dernier plat mangé, ou null. Hors sauvegarde (décision de Damien du
+        /// 19 novembre 2026 : perdu au rechargement, format inchangé) ; gardé d'un secteur à l'autre tant que la session du monde dure.
+        /// </summary>
+        public long? ComfortUntilMinute { get; private set; }
+
+        /// <summary>Sous-lot F7 : reprend le réconfort d'une session du monde précédente (porte, voyage) ; null : aucun.</summary>
+        public void CarryComfort(long? until) => ComfortUntilMinute = until;
+
+        /// <summary>
+        /// Sous-lot F7 : le joueur doit être réconforté maintenant : réconfort en cours (moins de 60 minutes de jeu depuis le plat) et hors
+        /// combat. Le pont l'envoie au moteur (commandes <c>comfort</c> et <c>comfortEnd</c>) : +10 % de marche à pied, aucune statistique
+        /// de combat. Déterministe (heure du monde, état du combat).
+        /// </summary>
+        public bool ComfortWanted => ComfortUntilMinute is long until && NowMinute < until && !InCombat;
 
         /// <summary>
         /// Concours de l'histoire (effet <c>contest</c>) : le concours de clé <paramref name="key"/> de la fête <paramref name="festival"/> vient

@@ -325,6 +325,8 @@ namespace EdS.Simulation.Engine
             // Sous-lot V2.28d (2) : en selle, la vitesse de la monture remplace la vitesse de marche.
             long step = IntMath.MulDiv(f.Mounted ? f.Character!.Mount!.Speed.Raw : f.Body!.Speed, _tickMs, 1000, RoundingMode.Floor);
             if (f.Guarding) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.GuardSpeedFactor, RoundingMode.Floor).Raw;
+            // Sous-lot F7 : réconforté par un plat de fête, à pied : +10 % (la monture garde sa vitesse).
+            if (f.Comforted && !f.Mounted) step = Fixed.Multiply(Fixed.FromRaw(step), _rules.ComfortSpeedFactor, RoundingMode.Floor).Raw;
             Fixed modifier = MovementSpeedModifier(f);
             if (modifier != Fixed.Zero)
                 step = Fixed.Multiply(Fixed.FromRaw(step), Fixed.Max(Fixed.Zero, Fixed.One + modifier), RoundingMode.Floor).Raw;

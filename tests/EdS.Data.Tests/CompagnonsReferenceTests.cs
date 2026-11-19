@@ -53,7 +53,7 @@ public class CompagnonsReferenceTests
     [Fact]
     public void Versions_du_lot()
     {
-        Assert.Equal(("0.34.0", 28, 22, 9), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
+        Assert.Equal(("0.35.0", 29, 23, 10), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion, CombatSnapshot.FormatVersion));
         Assert.Equal((17, "0.18.0-provisoire"), (DataFormat.RulesSchemaVersion, ShippedData.Rules.ContentVersion));   // règles inchangées
     }
 
