@@ -4,6 +4,7 @@ using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
+using EdS.Data.Zones;
 using EdS.Runtime;
 using EdS.World;
 using static EdS.Data.Tests.ScenarioTestData;
@@ -196,6 +197,39 @@ public class FirminPatisseriesTests
         Assert.True(Texts.Has("text.recipe.cuisine.pate_brisee"));
         Assert.Contains("blé", Texts.Get("text.recipe.cuisine.levain"), StringComparison.Ordinal);
         Assert.Contains(ShippedMerchants.Merchant(Bakery).Offers, o => o.Item == "item.pate_brisee" && !o.Seasonal);
+    }
+
+    private static WorldSession AtBakery(long day, int minute = 9 * 60)
+    {
+        var clock = new WorldClock(50);
+        long tick = (day * WorldClock.MinutesPerDay + minute - WorldClock.DefaultStartMinute) * clock.TicksPerDay / WorldClock.MinutesPerDay;
+        while (tick > 0 && clock.At(tick - 1).Equals(new WorldTime(day, minute))) tick--;
+        while (!clock.At(tick).Equals(new WorldTime(day, minute))) tick++;
+        ZoneDefinition zone = Zone(-1075.5, -31.5);
+        var session = new WorldSession(new WorldSave("zone.vallons", tick - 1, 0, new[] { PlayerCharacters.PlacesKey }, Hero(1000)), zone, ShippedData,
+            Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+        session.Step();
+        return session;
+    }
+
+    [Fact]
+    public void Saison_effective_de_l_hote_et_repli_sur_le_calendrier_du_jeu()
+    {
+        // Revue Codex de #217 : avec une date civile fournie par l'hôte, l'étal suit la saison réelle (WorldSession.Season), pas le
+        // calendrier de 28 jours ; sans date, le calendrier du jeu.
+        long day = Enumerable.Range(0, 400).First(d => WorldCalendar.WeekdayOf(d) == 5 && WorldCalendar.SeasonOf(d) == "spring");
+        WorldSession w = AtBakery(day);
+        Assert.Equal("spring", w.Season);
+        Assert.Contains(w.Stock(Bakery), o => o.Item == Fouace);
+        Assert.DoesNotContain(w.Stock(Bakery), o => o.Item == Couronne);
+        w.SetCivilTime(new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds());   // novembre : l'automne réel
+        Assert.Equal("autumn", w.Season);
+        Assert.Equal(5, w.Weekday);   // le jour de la semaine reste celui du monde
+        Assert.Contains(w.Stock(Bakery), o => o.Item == Couronne);
+        Assert.DoesNotContain(w.Stock(Bakery), o => o.Item == Fouace);
+        var market = new Market(ShippedMerchants);
+        Assert.Contains(Couronne, market.Stock(Bakery, day, "autumn").Select(o => o.Item));
+        Assert.Equal(market.Stock(Bakery, day).Select(o => o.Item), market.Stock(Bakery, day, null).Select(o => o.Item));
     }
 
     [Fact]

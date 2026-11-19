@@ -142,7 +142,14 @@ namespace EdS.World
         /// stock.
         /// </summary>
         /// <exception cref="ArgumentException">Marchand inconnu.</exception>
-        public IReadOnlyList<MerchantOffer> Stock(string merchant, long day)
+        public IReadOnlyList<MerchantOffer> Stock(string merchant, long day) => Stock(merchant, day, null);
+
+        /// <summary>
+        /// Comme <see cref="Stock(string, long)"/>, en la saison effective <paramref name="season"/> (revue Codex de #217 : la saison réelle
+        /// quand l'hôte a fourni une date, <c>WorldSession.Season</c>) pour les offres de certaines saisons ; null : celle du calendrier du jeu.
+        /// Le tirage du jour ne dépend pas de la saison.
+        /// </summary>
+        public IReadOnlyList<MerchantOffer> Stock(string merchant, long day, string? season)
         {
             if (day < 0) throw new ArgumentOutOfRangeException(nameof(day));
             Merchant m = Book.Merchant(merchant);
@@ -160,7 +167,7 @@ namespace EdS.World
             }
             // Pâtisseries de Firmin (schéma 7) : une offre permanente de certains jours ou saisons n'est en vente que ces jours-là (le tirage,
             // qui ne porte que sur les offres non permanentes, ne change pas).
-            return m.Offers.Where(o => (o.Always && o.OnSaleOn(day)) || chosen.Contains(o)).ToList().AsReadOnly();
+            return m.Offers.Where(o => (o.Always && o.OnSaleOn(day, season)) || chosen.Contains(o)).ToList().AsReadOnly();
         }
 
         /// <summary>

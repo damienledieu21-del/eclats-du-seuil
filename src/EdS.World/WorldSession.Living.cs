@@ -148,11 +148,11 @@ namespace EdS.World
             var list = new List<MerchantOffer>();
             // Sous-lot V2.14 : boutique fermée, à la porte : seulement les offres prévues pour la porte, ni vitrine ni tirage du jour.
             bool door = m.Shop != null && AtDoor(merchant);
-            foreach (MerchantOffer o in market.Stock(merchant, Zone.Time.Day))
+            foreach (MerchantOffer o in market.Stock(merchant, Zone.Time.Day, Season))   // revue Codex de #217 : saison effective (date de l'hôte)
                 if (!door || o.Door) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
             if (door)
                 foreach (MerchantOffer o in m.Offers)
-                    if (o.Door && o.OnSaleOn(Zone.Time.Day) && list.All(x => x.Item != o.Item)) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
+                    if (o.Door && o.OnSaleOn(Zone.Time.Day, Season) && list.All(x => x.Item != o.Item)) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
             if (door) return list.AsReadOnly();
             // Ce que le joueur a revendu et qui n'est pas dans le tirage du jour : au prix de l'offre s'il en a une, sinon à son prix de revente.
             foreach (SavedStock line in _character.Stock)

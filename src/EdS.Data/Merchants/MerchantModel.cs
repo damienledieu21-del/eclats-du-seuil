@@ -199,12 +199,14 @@ namespace EdS.Data.Merchants
         public bool Seasonal => Weekdays.Count > 0 || Seasons.Count > 0;
 
         /// <summary>
-        /// Pâtisseries de Firmin (schéma 7) : l'offre est-elle en vente le jour <paramref name="day"/> du monde (son jour de la semaine et sa
-        /// saison, <see cref="WorldCalendar"/>) ? Toujours vrai sans <see cref="Weekdays"/> ni <see cref="Seasons"/>.
+        /// Pâtisseries de Firmin (schéma 7) : l'offre est-elle en vente le jour <paramref name="day"/> du monde, en la saison
+        /// <paramref name="season"/> ? Le jour de la semaine vient du jour du monde ; la saison est la saison effective donnée par l'appelant
+        /// (revue Codex de #217 : la saison réelle quand l'hôte a fourni une date, <c>WorldSession.Season</c>), sinon celle du calendrier du
+        /// jeu (<see cref="WorldCalendar.SeasonOf"/>). Toujours vrai sans <see cref="Weekdays"/> ni <see cref="Seasons"/>.
         /// </summary>
-        public bool OnSaleOn(long day) =>
+        public bool OnSaleOn(long day, string? season = null) =>
             (Weekdays.Count == 0 || Weekdays.Contains(WorldCalendar.WeekdayOf(day)))
-            && (Seasons.Count == 0 || Seasons.Contains(WorldCalendar.SeasonOf(day)));
+            && (Seasons.Count == 0 || Seasons.Contains(season ?? WorldCalendar.SeasonOf(day)));
 
         internal MerchantOffer WithShop(bool fresh, bool door)
         {
