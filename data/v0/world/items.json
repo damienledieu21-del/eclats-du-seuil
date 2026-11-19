@@ -1530,7 +1530,7 @@
         "type": "material",
         "rarity": "common",
         "stack": 20,
-        "icon": "ecu_de_chene"
+        "icon": "pavois_du_moulin"
       },
       {
         "id": "item.pierre_taillee",
@@ -1538,7 +1538,7 @@
         "type": "material",
         "rarity": "common",
         "stack": 20,
-        "icon": "minerai_de_fer"
+        "icon": "marteau_du_carrier"
       },
       {
         "id": "item.miche_du_matin",
