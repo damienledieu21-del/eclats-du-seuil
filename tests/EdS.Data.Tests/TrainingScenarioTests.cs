@@ -86,10 +86,10 @@ public class TrainingScenarioTests
     }
 
     [Theory]
-    [InlineData("entrainement_garde_parade", "3ce4b5f8d76a214e4c122657d13b94edad1feabb9e13e1df9cc11929f4a16589")]
-    [InlineData("entrainement_rupture", "16802e2722af07eb86baf898b80174dc7e1c090c2a2a17b96985e5bc86f93103")]
-    [InlineData("entrainement_alterations", "77265aa2946de0a2d1aa7fd2a4c49177d668444bbaebd913bd94c462dd5dda67")]
-    [InlineData("entrainement_declencheurs", "af304fddf10e44ad1188c876a09b1515ae170e1465915be5fca6b5598fb466ff")]
+    [InlineData("entrainement_garde_parade", "642394652b62c18e99bd44d18678f80b799d0affa4347ba2f518ca5a164ddf4d")]
+    [InlineData("entrainement_rupture", "a9d9fe613cf9bcde806665bf4110fa0f80f4d94b62980074abfa9d63fd460bfc")]
+    [InlineData("entrainement_alterations", "27a6dd800fd32247de763975636e709bee3d8f176dc12c12537be682f85b4cc5")]
+    [InlineData("entrainement_declencheurs", "244fe5e04b1b8eabc2217c2ef167ac94738383f38aac2b72c8584b54530a72c7")]
     public void Journaux_d_entrainement_stables(string name, string expected)
     {
         // Références avec data/v0 : à mettre à jour sciemment si les données, les scénarios ou le moteur changent.
@@ -157,7 +157,7 @@ public class TrainingScenarioTests
         // Sous-lot V2.8 : moteur 0.30.0, format 24 (recherche de chemin) ; sans espace : seul l'en-tête change ; référence dans
         // Fixtures/reference-0.30.0-contenu-0.6.0-regles-0.17.0. Sous-lot V2.26 : moteur 0.31.0, format 25 (état emporté), scénarios en schéma
         // 18 ; sans état emporté : seul l'en-tête change. Compagnons : moteur 0.33.0, format 27, scénarios en schéma 21 ; sans compagnon : seul
-        // l'en-tête change ; référence dans Fixtures/reference-0.34.0-contenu-0.6.0-regles-0.18.0.
+        // l'en-tête change ; référence dans Fixtures/reference-0.35.0-contenu-0.6.0-regles-0.18.0.
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Simulate(name).ToString()))).ToLowerInvariant();
         Assert.True(hash == expected, $"empreinte {hash}, attendue {expected}");
     }

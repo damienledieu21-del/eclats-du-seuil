@@ -31,7 +31,7 @@ namespace EdS.Simulation.Engine
     public sealed partial class CombatEngine
     {
         /// <summary>Version du moteur, inscrite au journal : un rejeu exige la même version.</summary>
-        public const string Version = "0.34.0";
+        public const string Version = "0.35.0";   // sous-lot F7 : réconfort d'un plat de fête (commandes comfort et comfortEnd)
 
         public const string LogFormat = "eds-combat-log";
 
@@ -137,9 +137,14 @@ namespace EdS.Simulation.Engine
         /// (<c>carried.mounted</c>) ; commandes <c>mount</c> et <c>dismount</c> ; nouvelles lignes <c>mounted</c> (<c>actor</c>, <c>command</c>,
         /// <c>speed</c>) et <c>dismounted</c> (<c>actor</c>, <c>command</c>) ; nouveaux refus <c>actorCannotMount</c>, <c>alreadyMounted</c>,
         /// <c>dodgeActive</c>, <c>enemyNear</c>, <c>notMounted</c> et <c>mounted</c> (compétence, garde, parade, esquive, soin ou attaque à deux en
-        /// selle ; un ordre à un compagnon reste possible). Sans monture : mêmes lignes d'événements qu'au format 27. Un journal d'un autre format est refusé au rejeu.
+        /// selle ; un ordre à un compagnon reste possible). Sans monture : mêmes lignes d'événements qu'au format 27. 29 (sous-lot F7,
+        /// réconfort d'un plat de fête, décision de Damien du 19 novembre 2026) : commandes <c>comfort</c> et <c>comfortEnd</c> ; nouvelles
+        /// lignes <c>comforted</c> (<c>actor</c>, <c>command</c>, <c>factor</c>) et <c>comfortEnded</c> (<c>actor</c>, <c>command</c>) ;
+        /// nouveaux refus <c>actorCannotComfort</c>, <c>alreadyComforted</c>, <c>notComforted</c> ; réconforté et à pied, le pas est multiplié
+        /// par <see cref="CombatRules.ComfortSpeedFactor"/> (1,1). Sans réconfort : mêmes lignes d'événements qu'au format 28. Un journal d'un
+        /// autre format est refusé au rejeu.
         /// </summary>
-        public const int LogFormatVersion = 28;
+        public const int LogFormatVersion = 29;
 
         // Identifiants stables du journal.
         public const string Resonance = "resonance";
@@ -222,6 +227,12 @@ namespace EdS.Simulation.Engine
 
             /// <summary>Relecture de la PR #180 : tick où il est monté en selle (commande mount acceptée, ou arrivée en selle) ; null à pied.</summary>
             public long? MountedTick;
+
+            /// <summary>
+            /// Sous-lot F7 : réconforté par un plat de fête (commande <c>comfort</c>, jusqu'à <c>comfortEnd</c>) : à pied, il marche
+            /// <see cref="CombatRules.ComfortSpeedFactor"/> fois plus vite ; personnage seulement. Le monde ne l'envoie que hors combat.
+            /// </summary>
+            public bool Comforted;
 
             /// <summary>
             /// Altérations actives (lot 7.2), une instance par clé : (altération, source) pour un cumul par source, (altération) sinon ;
@@ -908,6 +919,8 @@ namespace EdS.Simulation.Engine
                 case CombatAction.Duo:     // compagnons : duoStarted ou refus
                 case CombatAction.Mount:   // sous-lot V2.28d (2) : mounted ou refus
                 case CombatAction.Dismount:   // dismounted ou refus
+                case CombatAction.Comfort:    // sous-lot F7 : comforted ou refus
+                case CombatAction.ComfortEnd: // comfortEnded ou refus
                     return Cost.Line;
                 case CombatAction.Parry:
                     return CheckParry(tick, actor) is null ? Cost.Enqueue + Cost.Line : Cost.Line;
@@ -1041,6 +1054,20 @@ namespace EdS.Simulation.Engine
                     actor.Mounted = false;
                     actor.MountedTick = null;
                     Emit(tick, CombatPhase.Commands, "dismounted", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
+                    return null;
+
+                // Sous-lot F7 : réconfort d'un plat de fête (le monde l'envoie hors combat) ; la marche change dès la phase « movement » de ce tick.
+                case CombatAction.Comfort:
+                    if (Reject(tick, item, actor, actor.Out ? OutReason(actor, "actor") : actor.Character is null || !_spatial ? "actorCannotComfort"
+                        : actor.Comforted ? "alreadyComforted" : null)) return null;
+                    actor.Comforted = true;
+                    Emit(tick, CombatPhase.Commands, "comforted", root, w => w.Field("actor", actor.Id).Field("command", item.Index).Field("factor", _rules.ComfortSpeedFactor));
+                    return null;
+
+                case CombatAction.ComfortEnd:
+                    if (Reject(tick, item, actor, actor.Comforted ? null : "notComforted")) return null;
+                    actor.Comforted = false;
+                    Emit(tick, CombatPhase.Commands, "comfortEnded", root, w => w.Field("actor", actor.Id).Field("command", item.Index));
                     return null;
 
                 // Sous-lot 12.6 : soin d'un objet emporté, immédiat ; la recharge partagée démarre.
