@@ -2417,6 +2417,61 @@
         "to": "zone.mercerie",
         "toDoor": "sortie",
         "building": "maison1"
+      },
+      {
+        "id": "porte_forge",
+        "name": "Forge couverte de Maëlle",
+        "position": [
+          -30,
+          -5.2
+        ],
+        "to": "zone.forge",
+        "toDoor": "sortie",
+        "building": "maison3"
+      },
+      {
+        "id": "porte_grange",
+        "name": "Grange",
+        "position": [
+          -86,
+          -41.2
+        ],
+        "to": "zone.grange",
+        "toDoor": "sortie",
+        "building": "grange"
+      },
+      {
+        "id": "porte_moulin_interieur",
+        "name": "Moulin",
+        "position": [
+          -6.8,
+          9
+        ],
+        "to": "zone.moulin",
+        "toDoor": "sortie",
+        "building": "moulin"
+      },
+      {
+        "id": "porte_tour",
+        "name": "Tour de guet",
+        "position": [
+          32.5,
+          68
+        ],
+        "to": "zone.tour",
+        "toDoor": "sortie",
+        "building": "tour"
+      },
+      {
+        "id": "porte_chaumiere",
+        "name": "Maison paysanne",
+        "position": [
+          -66.2,
+          -49
+        ],
+        "to": "zone.chaumiere",
+        "toDoor": "sortie",
+        "building": "maison9"
       }
     ],
     "chiefs": [

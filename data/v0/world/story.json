@@ -41,9 +41,10 @@
             "at": "13:30",
             "activity": "moulin",
             "position": [
-              -8,
-              3
-            ]
+              0.6,
+              -1.0
+            ],
+            "zone": "zone.moulin"
           },
           {
             "at": "21:00",
@@ -87,6 +88,15 @@
               -20,
               -4
             ]
+          },
+          {
+            "at": "16:00",
+            "activity": "forge",
+            "position": [
+              0.9,
+              -0.6
+            ],
+            "zone": "zone.forge"
           },
           {
             "at": "19:30",
@@ -1145,9 +1155,10 @@
             "at": "12:00",
             "activity": "repas",
             "position": [
-              -69,
-              -45
-            ]
+              -0.35,
+              0.2
+            ],
+            "zone": "zone.chaumiere"
           },
           {
             "at": "13:00",
