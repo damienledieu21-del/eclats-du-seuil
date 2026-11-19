@@ -733,7 +733,7 @@ namespace EdS.Game
             }
             if (size.x <= 0f || size.y <= 0f) return null;
             GameObject first = null;
-            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y))
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y, LotCModels.YawFor(_room, id)))
             {
                 GameObject copy = LotCLook.Place(_root.transform, code, id, new Vector3((float)k.X, 0f, (float)k.Z), (float)k.Yaw, (float)k.Scale,
                     (float)k.ThinX, (float)k.ThinZ);
