@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/merchants.schema.json",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "kind": "merchants",
   "contentVersion": "0.18.0-provisoire",
   "data": {
@@ -560,6 +560,10 @@
       {
         "item": "item.pate_feuilletee",
         "value": 12
+      },
+      {
+        "item": "item.pate_brisee",
+        "value": 10
       },
       {
         "item": "item.tarte_renversee_aux_pommes",
@@ -1195,6 +1199,65 @@
             "always": false,
             "stock": 8,
             "door": true
+          },
+          {
+            "item": "item.levain",
+            "price": 8,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.pate_feuilletee",
+            "price": 15,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.pate_brisee",
+            "price": 12,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.tarte_renversee_aux_pommes",
+            "price": 75,
+            "always": true,
+            "stock": 3,
+            "fresh": true,
+            "weekdays": [
+              6
+            ]
+          },
+          {
+            "item": "item.fouace_des_semailles",
+            "price": 150,
+            "always": true,
+            "stock": 2,
+            "fresh": true,
+            "weekdays": [
+              5,
+              6
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          {
+            "item": "item.couronne_des_moissons",
+            "price": 150,
+            "always": true,
+            "stock": 2,
+            "fresh": true,
+            "weekdays": [
+              5,
+              6
+            ],
+            "seasons": [
+              "autumn"
+            ]
           }
         ]
       },

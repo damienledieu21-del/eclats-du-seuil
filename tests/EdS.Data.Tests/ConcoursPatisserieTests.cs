@@ -107,11 +107,11 @@ public class ConcoursPatisserieTests
             cuisine.Where(r => r.Quality).Select(r => r.Id));
         Assert.All(cuisine, r => Assert.Equal(r.Quality, r.Signed));
         // Une recette à qualité demande le petit jeu (les trois gestes) ; sans lui, refusée et rien ne change.
-        var stock = new[] { new ItemStack("item.pate_feuilletee", 10), new ItemStack("item.pomme_du_verger", 20), new ItemStack("item.beurre_de_baratte", 10),
+        var stock = new[] { new ItemStack("item.pate_brisee", 10), new ItemStack("item.pomme_du_verger", 20), new ItemStack("item.beurre_de_baratte", 10),
             new ItemStack("item.sucre_roux", 20) };
         WorldSession w = Oven(stock);
         Assert.Equal(CraftRefusal.BadStrikes, w.Craft("recipe.cuisine.tarte_renversee_aux_pommes", out _));
-        Assert.Equal(10, w.Inventory.Count("item.pate_feuilletee"));
+        Assert.Equal(10, w.Inventory.Count("item.pate_brisee"));
         // Cinq tartes, gestes parfaits : chacune est de la main du personnage, quelle que soit sa qualité ; aucune ne s'empile.
         var qualities = new List<ItemQuality>();
         for (int k = 0; k < 5; k++)

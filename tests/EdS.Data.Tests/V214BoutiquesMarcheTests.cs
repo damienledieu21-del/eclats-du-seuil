@@ -63,7 +63,7 @@ public class V214BoutiquesMarcheTests
     private static JsonObject WithHerbShop(JsonObject? root = null)
     {
         root ??= MerchantsJson();
-        root["schemaVersion"] = 6;
+        root["schemaVersion"] = MerchantValidator.CurrentSchemaVersion;   // schéma 6, puis 7 (pâtisseries de Firmin)
         JsonObject m = Merchant(root, Herboriste);
         m["shop"] = JsonNode.Parse("{\"kind\":\"herbalist\",\"sign\":\"text.merchant.herboriste.greeting\",\"building\":\"maison7\",\"open\":\"08:00\",\"close\":\"15:00\",\"rest\":[6],\"door\":\"patron\"}");
         m["offers"]![0]!["door"] = true;
@@ -382,7 +382,7 @@ public class V214BoutiquesMarcheTests
     public void Boutiques_et_marche_livres()
     {
         MerchantBook book = ShippedMerchants;
-        Assert.Equal((6, "0.18.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
+        Assert.Equal((7, "0.18.0-provisoire"), (book.SchemaVersion, book.ContentVersion));
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "merchants.schema.json"))
             .IsValid(System.Text.Json.JsonDocument.Parse(File.ReadAllText(MerchantsPath)).RootElement));
         // Les vraies boutiques : genre, maison du bourg, intérieur, horaires et jour de repos (0 : lundi … 6 : dimanche).
@@ -640,7 +640,7 @@ public class V214BoutiquesMarcheTests
         StoryBook story = Book(Zone());
         JsonObject root = WithHerbShop();
         V214TestData.WithoutShops(root);   // seule l'herboristerie a une boutique
-        root["schemaVersion"] = 6;
+        root["schemaVersion"] = MerchantValidator.CurrentSchemaVersion;   // schéma 6, puis 7 (pâtisseries de Firmin)
         JsonObject herb = Merchant(root, Herboriste);
         herb["shop"] = JsonNode.Parse("{\"kind\":\"herbalist\",\"sign\":\"text.merchant.herboriste.greeting\",\"open\":\"08:00\",\"close\":\"15:00\",\"door\":\"patron\"}");
         foreach (JsonNode? m in root["data"]!["merchants"]!.AsArray())

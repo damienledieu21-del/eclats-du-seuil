@@ -167,7 +167,8 @@ public class V11MarchandsTests : IDisposable
                 b.Stock(m.Id, 199 - day);
                 Assert.Equal(stock.Select(o => o.Item), b.Stock(m.Id, day).Select(o => o.Item));
                 Assert.Equal(m.Offers.Where(o => stock.Contains(o)).Select(o => o.Item), stock.Select(o => o.Item));
-                Assert.All(m.Offers.Where(o => o.Always), o => Assert.Contains(o, stock));
+                Assert.All(m.Offers.Where(o => o.Always && o.OnSaleOn(day)), o => Assert.Contains(o, stock));   // schéma 7 : jours et saisons
+                Assert.All(m.Offers.Where(o => o.Always && !o.OnSaleOn(day)), o => Assert.DoesNotContain(o, stock));
                 Assert.Equal(m.Daily, stock.Count(o => !o.Always));
                 foreach (MerchantOffer o in stock) seen.Add(o.Item);
                 stocks.Add(string.Join(",", stock.Select(o => o.Item)));

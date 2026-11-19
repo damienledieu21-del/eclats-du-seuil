@@ -104,6 +104,7 @@ namespace EdS.Runtime
             all.AddRange(Village());
             all.AddRange(InteriorsBag());
             all.AddRange(InteriorsVillage());
+            all.AddRange(Firmin());   // pâtisseries de Firmin (19 novembre 2026)
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
