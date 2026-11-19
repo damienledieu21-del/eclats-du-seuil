@@ -1,4 +1,5 @@
 using System.Text.Json;
+using EdS.Data.Json;
 using EdS.Runtime;
 using static EdS.Data.Tests.ScenarioTestData;
 
@@ -54,6 +55,7 @@ public class LotCModelsTests
     {
         var items = Data("items.json").GetProperty("items").EnumerateArray().Select(i => i.GetProperty("id").GetString()).ToHashSet();
         var nodes = Data("crafting.json").GetProperty("nodes").EnumerateArray().Select(n => n.GetProperty("id").GetString()).ToHashSet();
+        var missing = new List<string>();
         foreach (LotCModel m in LotCModels.All)
         {
             Assert.True(m.Linked != (m.Pending != null), m.Code + " : relié ou en attente, pas les deux");
@@ -65,6 +67,21 @@ public class LotCModelsTests
                 {
                     case "item": Assert.True(items.Contains(id), m.Code + " : objet inconnu " + id); break;
                     case "node": Assert.True(nodes.Contains(id), m.Code + " : nœud inconnu " + id); break;
+                    case "room":
+                    {
+                        string[] rp = id.Split('/');
+                        Assert.True(RoomObstacles(rp[0]).Contains(rp[1]), m.Code + " : meuble inconnu " + id);
+                        Assert.Equal(m.Code, LotCModels.ForRoom(rp[0], rp[1]));
+                        continue;
+                    }
+                    case "piece":
+                    {
+                        string[] pp = id.Split('/');
+                        Assert.True(Enum.TryParse(pp[1], out InteriorProp prop) && prop.ToString() == pp[1], m.Code + " : sorte inconnue " + id);
+                        if (!Layout(pp[0]).Pieces.Any(x => x.Prop == prop)) missing.Add(m.Code + " : l'aménagement de " + pp[0] + " ne pose pas de " + pp[1]);
+                        Assert.Equal(m.Code, LotCModels.ForPiece(pp[0], prop));
+                        continue;
+                    }
                     case "village": Assert.True(VillageKnown(id), m.Code + " : décor du village inconnu " + id); continue;
                     case "obstacle":
                         string[] hits = VallonsObstacles.Where(o => id.EndsWith("*") ? o.StartsWith(id.TrimEnd('*')) : o == id).ToArray();
@@ -76,6 +93,7 @@ public class LotCModelsTests
                 Assert.Equal(m.Code, kind == "item" ? LotCModels.ForItem(id) : LotCModels.ForNode(id));
             }
         }
+        Assert.True(missing.Count == 0, string.Join("\n", missing));
     }
 
     [Fact]
@@ -123,6 +141,103 @@ public class LotCModelsTests
         };
     }
 
+    /// <summary>Zone d'intérieur dont le premier lieu est <paramref name="room"/> (« auberge »).</summary>
+    private static string ZoneOfRoom(string room)
+    {
+        foreach (string f in Directory.GetFiles(Path.Combine(DataDirectory, "world", "zones"), "*.json"))
+        {
+            JsonElement d = JsonDocument.Parse(File.ReadAllText(f)).RootElement.GetProperty("data");
+            if (d.TryGetProperty("indoor", out JsonElement indoor) && indoor.GetBoolean() && d.GetProperty("places")[0].GetProperty("id").GetString() == room)
+                return d.GetProperty("id").GetString()!;
+        }
+        throw new InvalidOperationException("aucun intérieur pour le lieu " + room);
+    }
+
+    private static AdventureMap Map(string room)
+    {
+        string zone = ZoneOfRoom(room);
+        JsonElement d = JsonDocument.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, zone))).RootElement.GetProperty("data");
+        JsonElement safe = d.GetProperty("safePoints")[0].GetProperty("position");
+        return InterieursTests.MapOf(V231TestData.Interior(zone, safe[0].GetDouble(), safe[1].GetDouble()));
+    }
+
+    private static InteriorLayout Layout(string room) => InteriorRules.Layout(Map(room));
+
+    private static string[] RoomObstacles(string room) => Map(room).Obstacles.Select(o => o.Id).ToArray();
+
+    [Fact]
+    public void Meubles_poses_dans_leur_emprise_sans_deborder()
+    {
+        // Empreintes types des meubles du lot C (table, comptoir, tonneaux, rayonnage, âtre, coffre, caisses).
+        (double W, double D)[] models = { (0.6, 1.8), (0.55, 1.8), (0.96, 1.2), (0.79, 3.0), (1.6, 2.12), (0.75, 1.4), (0.65, 2.0), (2.4, 0.85), (0.3, 0.3), (1.0, 1.02), (1.02, 1.0) };
+        int rooms = 0;
+        foreach (string room in new[] { "auberge", "boulangerie", "guilde", "archives" })
+        {
+            AdventureMap map = Map(room);
+            rooms++;
+            foreach (var o in map.Obstacles)
+            {
+                double x0 = o.Points.Min(p => p.X.Raw) / 10000.0, x1 = o.Points.Max(p => p.X.Raw) / 10000.0;
+                double z0 = o.Points.Min(p => p.Z.Raw) / 10000.0, z1 = o.Points.Max(p => p.Z.Raw) / 10000.0;
+                foreach ((double w, double d) in models)
+                {
+                    IReadOnlyList<LotCCopy> copies = LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, w, d);
+                    Assert.NotEmpty(copies);
+                    double used = 0;
+                    foreach (LotCCopy k in copies)
+                    {
+                        Assert.True(k.Scale > 0 && k.Scale <= LotCModels.MaxScale + 1e-9, room + "/" + o.Id);
+                        Assert.Contains(k.Yaw, new[] { 0.0, 90, 180, 270 });
+                        bool turned = k.Yaw == 90 || k.Yaw == 270;
+                        double hx = (turned ? d * k.ThinZ : w * k.ThinX) * k.Scale / 2, hz = (turned ? w * k.ThinX : d * k.ThinZ) * k.Scale / 2;
+                        Assert.True(k.X - hx >= x0 - 1e-6 && k.X + hx <= x1 + 1e-6 && k.Z - hz >= z0 - 1e-6 && k.Z + hz <= z1 + 1e-6,
+                            $"{room}/{o.Id} : copie hors de l'emprise ({w}×{d})");
+                        used += 2 * (x1 - x0 >= z1 - z0 ? hx : hz);
+                    }
+                    Assert.True(used <= Math.Max(x1 - x0, z1 - z0) + 1e-6, room + "/" + o.Id + " : copies qui se chevauchent");
+                }
+            }
+        }
+        Assert.Equal(4, rooms);
+        // Dos au mur : le comptoir de l'auberge regarde l'intérieur, sur une seule rangée de copies le long du grand côté.
+        Assert.Equal(180, LotCModels.Fit(-1, 4, 1, 4.5, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
+        Assert.Equal(0, LotCModels.Fit(-1, -4.5, 1, -4, -7, -5, 7, 5, 1.8, 0.55)[0].Yaw);
+        Assert.Empty(LotCModels.Fit(0, 0, 1, 1, -7, -5, 7, 5, 0, 1));
+    }
+
+    [Fact]
+    public void Modele_presque_carre_aminci_sur_le_petit_cote_de_l_emprise()
+    {
+        // Relecture de la PR #200 : un modèle presque carré (1,00 × 1,02 m) reste sans quart de tour ; l'amincissement doit porter sur l'axe
+        // du modèle posé le long du petit côté de l'emprise, pas sur son propre petit côté.
+        // Emprise longue en x contre le mur sud (pas tournée) : petit côté selon z du monde, donc z du modèle.
+        LotCCopy a = LotCModels.Fit(4, 0, 6, 0.5, 0, 0, 10, 10, 1.0, 1.02)[0];
+        Assert.Equal(0, a.Yaw);
+        Assert.Equal(1.0, a.ThinX);
+        Assert.True(a.ThinZ < 1);
+        Assert.True(1.02 * a.Scale * a.ThinZ <= 0.5 + 1e-9);
+        // Emprise longue en z contre le mur ouest (tournée d'un quart) : petit côté selon x du monde, donc z du modèle.
+        LotCCopy b = LotCModels.Fit(0, 4, 0.5, 6, 0, 0, 10, 10, 1.02, 1.0)[0];
+        Assert.Equal(90, b.Yaw);
+        Assert.Equal(1.0, b.ThinX);
+        Assert.True(1.0 * b.Scale * b.ThinZ <= 0.5 + 1e-9);
+    }
+
+    [Fact]
+    public void Le_modele_remplace_le_corps_du_meuble_et_garde_sieges_et_vaisselle()
+    {
+        InteriorLayout layout = Layout("auberge");
+        InteriorPiece[] table = layout.Pieces.Where(p => p.Id == "table1" || p.Id.StartsWith("table1/")).ToArray();
+        Assert.Contains(table, p => LotCModels.Replaces("table1", p));
+        Assert.All(table.Where(p => p.Prop is InteriorProp.Bench or InteriorProp.Stool), p => Assert.False(LotCModels.Replaces("table1", p)));
+        Assert.All(table.Where(p => p.Parent >= 0), p => Assert.False(LotCModels.Replaces("table1", p)));
+        Assert.DoesNotContain(layout.Pieces, p => LotCModels.Replaces("table", p) && !p.Id.StartsWith("table/") && p.Id != "table");   // pas « table1 » pour « table »
+        Assert.Equal("C_IN1_A0_02", LotCModels.ForRoom("auberge", "table3"));
+        Assert.Equal("C_IN1_P17", LotCModels.ForPiece("archives", InteriorProp.Candlestick));
+        Assert.Null(LotCModels.ForPiece("auberge", InteriorProp.None));
+        Assert.Null(LotCModels.ForRoom("boulangerie", "four"));   // le four voûté fait par le code reste
+    }
+
     [Fact]
     public void Decors_du_village_relies()
     {
@@ -144,6 +259,26 @@ public class LotCModelsTests
     }
 
     [Fact]
+    public void Bancs_de_l_auberge_le_long_des_tables()
+    {
+        // Revue Codex de la PR #200 : l'aménagement pose les bancs le long de leur table (selon x à 0°, selon z à 90°) ; le banc Tripo
+        // (C_IN1_A0_03, long selon z dans son export) est tourné d'un quart quand son grand côté ne suit pas cet axe (SpaceView.Furnish).
+        Assert.Equal("C_IN1_A0_03", LotCModels.ForPiece("auberge", InteriorProp.Bench));
+        Assert.True(LotCModels.AlongTable(InteriorProp.Bench));
+        Assert.False(LotCModels.AlongTable(InteriorProp.Bowl));
+        Assert.True(LotCModels.AlongX(0) && LotCModels.AlongX(180) && LotCModels.AlongX(-180) && LotCModels.AlongX(10));
+        Assert.False(LotCModels.AlongX(90) || LotCModels.AlongX(270) || LotCModels.AlongX(-90));
+        InteriorLayout inn = Layout("auberge");
+        Assert.Contains(inn.Pieces, p => p.Prop == InteriorProp.Bench);
+        foreach (InteriorPiece bench in inn.Pieces.Where(p => p.Prop == InteriorProp.Bench))
+        {
+            InteriorPiece table = inn.Pieces.Single(p => p.Id == bench.Id.Substring(0, bench.Id.IndexOf('/')) && p.Prop == InteriorProp.Table);
+            Assert.Equal(LotCModels.AlongX(table.Yaw), LotCModels.AlongX(bench.Yaw));
+        }
+        Assert.Contains("LotCModels.AlongTable(piece.Prop)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
     public void Panneau_Tripo_pose_sur_son_sol_une_seule_fois()
     {
         // Revue Codex de la PR #197 : le panneau Tripo est posé sur le sol affiché (StyleWorld.OnGround) ; l'obstacle ne doit pas le relever
@@ -157,6 +292,57 @@ public class LotCModelsTests
         int draped = block.IndexOf("_draped = true;", StringComparison.Ordinal), back = block.IndexOf("return;", StringComparison.Ordinal);
         Assert.True(draped >= 0 && back >= 0 && draped < back, block);
         Assert.Contains("if (_draped) return;", view);
+    }
+
+    [Fact]
+    public void Objets_des_comptoirs_de_l_autel_et_des_cierges_recales_sur_le_modele()
+    {
+        // Revues Codex des PR #200 et #201 : les objets posés sans parent sur un comptoir, l'autel ou un support de cierges (à la hauteur du meuble du
+        // code) suivent le haut du modèle Tripo qui le remplace (SpaceView.SurfaceY), à leur écart d'origine (l'oignon 3 cm au-dessus).
+        Assert.Equal(InteriorRules.CounterHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Counter));
+        Assert.Equal(InteriorRules.AltarHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Altar));
+        Assert.Equal(InteriorRules.CandleHeight, InteriorRules.SurfaceHeight(InteriorFurniture.Candelabra));
+        Assert.Null(InteriorRules.SurfaceHeight(InteriorFurniture.Table));
+        foreach ((string room, string furniture) in new[] { ("auberge", "comptoir"), ("boulangerie", "comptoir") })
+        {
+            Assert.NotNull(LotCModels.ForRoom(room, furniture));
+            double h = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(furniture))!.Value;
+            var on = Layout(room).Pieces.Where(p => p.Id.StartsWith(furniture + "/", StringComparison.Ordinal) && p.Parent < 0 && p.Y > 0).ToList();
+            Assert.True(on.Count > 0, room + "/" + furniture);
+            Assert.All(on, p => Assert.InRange(p.Y - h, -1e-9, 0.1));
+        }
+        Assert.Contains("SurfaceY(lotC, piece)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
+    }
+
+    [Fact]
+    public void Pieces_empilees_du_corps_remplacees_avec_le_meuble()
+    {
+        // Revue Codex de la PR #200 : la caisse empilée (« caisses/caisse2 », parent : une caisse) disparaît avec le corps remplacé par le modèle
+        // Tripo ; ce qui n'est pas du corps (vaisselle, bougie) reste. Toutes les pièces reliées sont parcourues.
+        int stacked = 0;
+        foreach (LotCModel m in LotCModels.All)
+            foreach (string target in m.Targets.Where(t => t.StartsWith("room:", StringComparison.Ordinal)))
+            {
+                string[] rp = target.Substring(5).Split('/');
+                IReadOnlyList<InteriorPiece> pieces = Layout(rp[0]).Pieces;
+                foreach (InteriorPiece p in pieces.Where(p => p.Id.StartsWith(rp[1] + "/", StringComparison.Ordinal) && p.Parent >= 0))
+                {
+                    InteriorPiece under = pieces[p.Parent];
+                    bool sameBody = under.Prop == p.Prop && LotCModels.Replaces(rp[1], under, pieces);
+                    Assert.Equal(sameBody, LotCModels.Replaces(rp[1], p, pieces));
+                    if (sameBody) stacked++;
+                }
+            }
+        Assert.True(stacked > 0, "aucune pièce empilée");
+        foreach (string room in new[] { "auberge", "guilde" })
+        {
+            IReadOnlyList<InteriorPiece> pieces = Layout(room).Pieces;
+            InteriorPiece second = pieces.Single(p => p.Id == "caisses/caisse2");
+            Assert.True(second.Parent >= 0);
+            Assert.True(LotCModels.Replaces("caisses", second, pieces), room);
+            Assert.False(LotCModels.Replaces("caisses", second));   // sans l'aménagement : comme avant (pas de parent connu)
+        }
+        Assert.Contains("LotCModels.Replaces(k, piece, layout.Pieces)", File.ReadAllText(Path.Combine(Game, "SpaceView.Interior.cs")));
     }
 
     [Fact]

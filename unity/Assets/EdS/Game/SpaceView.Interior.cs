@@ -113,11 +113,26 @@ namespace EdS.Game
             Beams(layout, minX, minZ, maxX, maxZ, height, darkWood, woodTile, chapel);
 
             // Meubles faits par le code d'après les obstacles.
+            _room = map.Places.Count > 0 ? map.Places[0].Id : null;
+            var lotC = new Dictionary<string, GameObject>();
             foreach (SpaceObstacle o in space.Obstacles)
             {
                 // Sous-lot V1.9.8 : la porte de lumière du souvenir est une arche de lumière (StoryStage), pas un autel.
                 if (StoryStage.IsLightGate(o.Id)) continue;
                 float x0 = Raw(o.Points.Min(p => p.X.Raw)), x1 = Raw(o.Points.Max(p => p.X.Raw)), z0 = Raw(o.Points.Min(p => p.Z.Raw)), z1 = Raw(o.Points.Max(p => p.Z.Raw));
+                // Lot C (16 novembre 2026) : le meuble modélisé par Tripo pour cet obstacle, posé dans son emprise, remplace celui du code.
+                GameObject own = LotCFurniture(o.Id, x0, z0, x1, z1, map);
+                if (own != null)
+                {
+                    lotC[o.Id] = own;
+                    // Relecture Codex de la PR #200 : la cheminée Tripo garde le feu de celle du code (bûches, braises, flammes et fumée).
+                    if (InteriorRules.FurnitureFor(o.Id) == InteriorFurniture.Hearth)
+                    {
+                        (int X, int Z) f = Inward(map, x0, z0, x1, z1);
+                        HearthFire(own.transform, o.Id, new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f), new Vector3(f.X, 0f, f.Z), f.Z != 0, darkWood);
+                    }
+                    continue;
+                }
                 switch (InteriorRules.FurnitureFor(o.Id))
                 {
                     case InteriorFurniture.Counter: Counter(o.Id, x0, z0, x1, z1, map, wood, darkWood, woodTile); break;
@@ -138,6 +153,13 @@ namespace EdS.Game
             {
                 InteriorPiece piece = layout.Pieces[i];
                 if (StoryStage.IsLightGate(piece.Id)) continue;   // sous-lot V1.9.8 : ni chandeliers ni trône sur la porte de lumière
+                // Lot C : le corps d'un meuble modélisé (table, étagères, caisses…) est déjà posé ; ce qui va dessus se pose sur le modèle.
+                string body = lotC.Keys.FirstOrDefault(k => LotCModels.Replaces(k, piece, layout.Pieces));
+                if (body != null)
+                {
+                    placed[i] = lotC[body];
+                    continue;
+                }
                 float y = (float)piece.Y;
                 if (piece.Parent >= 0)
                 {
@@ -145,6 +167,7 @@ namespace EdS.Game
                     if (under == null) continue;   // pas de meuble dessous : rien dessus
                     y = StyleLook.VisibleBounds(under, out Bounds ub) ? ub.max.y : y;
                 }
+                else if (piece.Y > 0 && SurfaceY(lotC, piece) is float top) y = top;
                 Transform parent = _root.transform;
                 if (piece.OnWall)
                 {
@@ -158,6 +181,7 @@ namespace EdS.Game
             // Sous-lot V1.9.8 : le souvenir de la Rupture n'a pas de villageois (ni fidèle devant la porte de lumière, ni paysan à la place de
             // la reine Ysolde : StoryStage la dessine).
             if (!space.Obstacles.Any(o => StoryStage.IsLightGate(o.Id))) Villagers(layout.Villagers);
+            _room = null;   // relecture de la PR #200 : le lieu ne vaut que pendant la construction de la pièce
         }
 
         // --- Murs, fenêtres, porte ------------------------------------------------------------------------------------------
@@ -483,6 +507,26 @@ namespace EdS.Game
             Part(t, id + " (linteau)", c + Vector3.up * (mantel + 0.12f) + inward * 0.04f, Size(body + 0.2f, 0.24f, depth + 0.08f), darkWood, woodTile);
             Part(t, id + " (hotte)", c - inward * 0.08f + Vector3.up * ((mantel + 0.24f + height) / 2f), Size(body - 0.2f, height - mantel - 0.24f, depth - 0.16f), stone, stoneTile);
             // Bûches qui brûlent, braises, feu du pack.
+            Material bark = HearthFire(t, id, c, inward, alongX, darkWood);
+            // Bois empilé aux deux bouts (dans l'emprise).
+            float pile = (length - body) / 2f;
+            if (pile > 0.3f)
+                for (int s = -1; s <= 1; s += 2)
+                    for (int row = 0; row < 3; row++)
+                    {
+                        Vector3 at = c + along * (s * (body / 2f + pile / 2f)) + Vector3.up * (0.08f + row * 0.15f) + inward * ((row % 2) * 0.05f);
+                        GameObject log = Block(id + " (bois)", at, alongX ? new Vector3(pile * 0.8f, 0.14f, depth * 0.7f) : new Vector3(depth * 0.7f, 0.14f, pile * 0.8f), bark);
+                        log.transform.SetParent(t, true);
+                    }
+        }
+
+        /// <summary>
+        /// Feu d'une cheminée (bûches, braises rougeoyantes, flammes et fumée du pack) au milieu de son âtre, en <paramref name="c"/>, un peu
+        /// vers la pièce ; l'écorce des bûches est rendue (pour le bois empilé). Relecture Codex de la PR #200 : aussi posé dans la cheminée
+        /// Tripo qui remplace celle du code, pour qu'elle garde ses flammes.
+        /// </summary>
+        private Material HearthFire(Transform t, string id, Vector3 c, Vector3 inward, bool alongX, Material darkWood)
+        {
             Material bark = StyleWorld.Surface(StyleSurface.Bark, out float barkTile) ?? darkWood;
             Vector3 fire = c + Vector3.up * 0.14f + inward * 0.05f;
             for (int i = 0; i < 3; i++)
@@ -495,16 +539,7 @@ namespace EdS.Game
                 Glow(new Color(1f, 0.35f, 0.08f), EmberGlow));
             embers.transform.SetParent(t, true);
             Effects.Ambient(StyleVfx.ForgeFire, t, fire + Vector3.up * 0.12f);
-            // Bois empilé aux deux bouts (dans l'emprise).
-            float pile = (length - body) / 2f;
-            if (pile > 0.3f)
-                for (int s = -1; s <= 1; s += 2)
-                    for (int row = 0; row < 3; row++)
-                    {
-                        Vector3 at = c + along * (s * (body / 2f + pile / 2f)) + Vector3.up * (0.08f + row * 0.15f) + inward * ((row % 2) * 0.05f);
-                        GameObject log = Block(id + " (bois)", at, alongX ? new Vector3(pile * 0.8f, 0.14f, depth * 0.7f) : new Vector3(depth * 0.7f, 0.14f, pile * 0.8f), bark);
-                        log.transform.SetParent(t, true);
-                    }
+            return bark;
         }
 
         /// <summary>Escalier de bois contre le mur : marches qui montent vers le mur, limon, rampe et balustres du côté de la pièce.</summary>
@@ -626,9 +661,18 @@ namespace EdS.Game
         private GameObject Furnish(InteriorPiece piece, Transform parent, Vector3 at, AdventureMap map)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            InteriorLook look = catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
+            // Lot C : l'objet modélisé par Tripo pour cette sorte d'objet dans cette pièce (miche, bougeoir, lanterne…) passe devant.
+            string own = LotCModels.ForPiece(_room, piece.Prop);
+            GameObject ownModel = own != null && catalog != null ? catalog.LotCModel(own) : null;
+            InteriorLook look = ownModel != null ? new InteriorLook { Kind = piece.Prop, Model = ownModel }
+                : catalog != null ? catalog.Interior(piece.Prop, piece.Id) : null;
             GameObject holder = look != null ? Model(look, piece, parent) : Fallback(piece, parent);
             if (holder == null) return null;
+            // Revue Codex de la PR #200 : un modèle Tripo allongé (le banc de l'auberge, long selon z) est tourné d'un quart pour suivre l'axe
+            // que l'aménagement donne à la pièce (le long de la table : selon x à 0°, selon z à 90°).
+            if (ownModel != null && LotCModels.AlongTable(piece.Prop) && StyleLook.VisibleBounds(holder, out Bounds lb)
+                && (lb.size.x >= lb.size.z) != LotCModels.AlongX(piece.Yaw))
+                holder.transform.rotation = Quaternion.Euler(0f, (float)piece.Yaw + 90f, 0f);
             if (!StyleLook.VisibleBounds(holder, out Bounds b)) return holder;
             Vector3 target = at;
             if (piece.OnWall)
@@ -644,6 +688,60 @@ namespace EdS.Game
             if (piece.Prop == InteriorProp.Chandelier || piece.Prop == InteriorProp.Candelabra) Lit(holder, 0.18f);
             if (b.size.y > 1.6f && !piece.OnWall) AddModelOccluders(holder);
             return holder;
+        }
+
+        /// <summary>
+        /// Revues Codex de la PR #201 : un objet posé en hauteur sans parent sur un meuble remplacé par son modèle Tripo (vaisselle, lanterne,
+        /// panier du comptoir à <see cref="InteriorRules.CounterHeight"/>, chandeliers et bougeoirs de l'autel à
+        /// <see cref="InteriorRules.AltarHeight"/>, bougie d'un support de cierges à <see cref="InteriorRules.CandleHeight"/>) suit le haut
+        /// du modèle posé, à son écart d'origine ; null si le meuble n'est pas un modèle du lot C.
+        /// </summary>
+        private static float? SurfaceY(Dictionary<string, GameObject> lotC, InteriorPiece piece)
+        {
+            foreach (KeyValuePair<string, GameObject> k in lotC)
+            {
+                if (!piece.Id.StartsWith(k.Key + "/", System.StringComparison.Ordinal)) continue;
+                double? nominal = InteriorRules.SurfaceHeight(InteriorRules.FurnitureFor(k.Key));
+                if (nominal is double h && StyleLook.VisibleBounds(k.Value, out Bounds b)) return b.max.y + (float)(piece.Y - h);
+            }
+            return null;
+        }
+
+        /// <summary>Lot C : emprise au sol (x, z, en mètres, sans rotation ni échelle) de chaque modèle déjà mesuré, par code.</summary>
+        private static readonly Dictionary<string, Vector2> LotCSizes = new Dictionary<string, Vector2>();
+
+        /// <summary>Lot C : lieu de la pièce construite (premier lieu de sa carte), pour <see cref="LotCModels.ForRoom"/> et <see cref="LotCModels.ForPiece"/>.</summary>
+        private string _room;
+
+        /// <summary>
+        /// Lot C (16 novembre 2026) : le meuble Tripo de l'obstacle <paramref name="id"/> (<see cref="LotCModels.ForRoom"/>), une ou plusieurs
+        /// copies posées dans son emprise (<see cref="LotCModels.Fit"/>) ; la première copie, ou null sans modèle relié ou sans catalogue.
+        /// </summary>
+        private GameObject LotCFurniture(string id, float x0, float z0, float x1, float z1, AdventureMap map)
+        {
+            string code = LotCModels.ForRoom(_room, id);
+            if (code == null) return null;
+            Vector2 size;
+            if (!LotCSizes.TryGetValue(code, out size))
+            {
+                // Relecture de la PR #200 : l'emprise d'un modèle est mesurée une seule fois (une copie d'essai par code, pas par meuble).
+                GameObject probe = LotCLook.Place(_root.transform, code, id, Vector3.zero, 0f);
+                if (probe == null) return null;
+                size = StyleLook.VisibleBounds(probe, out Bounds pb) ? new Vector2(pb.size.x, pb.size.z) : Vector2.zero;
+                Object.Destroy(probe);
+                LotCSizes[code] = size;
+            }
+            if (size.x <= 0f || size.y <= 0f) return null;
+            GameObject first = null;
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y))
+            {
+                GameObject copy = LotCLook.Place(_root.transform, code, id, new Vector3((float)k.X, 0f, (float)k.Z), (float)k.Yaw, (float)k.Scale,
+                    (float)k.ThinX, (float)k.ThinZ);
+                if (copy == null) continue;
+                if (StyleLook.VisibleBounds(copy, out Bounds b) && b.size.y > 1.6f) AddModelOccluders(copy);
+                if (first == null) first = copy;
+            }
+            return first;
         }
 
         /// <summary>Copie du modèle du catalogue, à l'échelle de l'aménagement (et de celle réglée dans le catalogue), tournée.</summary>
