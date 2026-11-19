@@ -16,7 +16,7 @@ namespace EdS.Game
     /// caisse. Sans catalogue, les formes simples restent.
     /// </para>
     /// </summary>
-    public sealed class WorldMarkers
+    public sealed partial class WorldMarkers
     {
         private const float NpcLabelRange = 15f, NodeLabelRange = 7f, SafeLabelRange = 12f;
 
@@ -249,6 +249,7 @@ namespace EdS.Game
             if (map == null) return;
             List<IReadOnlyList<(double X, double Z)>> obstacles = Wave5View.Polygons(map.Obstacles);
             Transform root = _root.transform;
+            _feastObstacles = obstacles;   // sous-lot F4 : l'étal de fête se pose plus tard (Sync), aux mêmes places libres
             WorldMarker Npc(string word) => byDay.Values.FirstOrDefault(n => StyleRules.Key(n.Id) == "npc" + word);
             MapPlace Place(string id) => map.Places.FirstOrDefault(p => p.Id == id);
             float Yaw(WorldMarker n) => _npcs.TryGetValue(n.Id, out Marker m) ? m.RestYaw : 0f;
@@ -880,6 +881,7 @@ namespace EdS.Game
                 if (g != null && g.activeSelf != festive) g.SetActive(festive);
             // Sous-lot V2.14 : étals selon la phase du marché, fumée du fournil ; l'étiquette des enseignes une fois par minute du monde.
             _shops?.Sync(adventure, Time.deltaTime);
+            SyncFeastStall(adventure);   // sous-lot F4 : l'étal de fête du forain, refait quand la fête change
             if (_signs.Count > 0 && adventure.World.Zone.Time.Minute != _signMinute)
             {
                 _signMinute = adventure.World.Zone.Time.Minute;

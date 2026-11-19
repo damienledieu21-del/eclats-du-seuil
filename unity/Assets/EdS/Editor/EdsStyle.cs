@@ -280,6 +280,7 @@ namespace EdS.Game.Editor
             if (own.Length > 0) catalog.Buildings = catalog.Buildings.Concat(own).ToArray();
             catalog.OwnDecor = OwnDecorPieces(notes);   // V2.25.2 : cailloux, touffe, accessoires de la carrière
             catalog.LotC = LotCPieces(notes);   // lot C (16 novembre 2026) : modèles Tripo reliés aux données (LotCModels)
+            catalog.Feasts = FeastPieces(notes);   // sous-lot F4 : modèles Tripo des fêtes d'Orsédia (FeastLooks)
             OwnTrees(catalog, notes);   // V2.25.4 : arbres de l'atelier (14 essences, LOD, imposteurs, saisons) et arbre millénaire
             // Intérieurs (demande de Damien du 28 octobre 2026 : « de beaux intérieurs bien détaillés ») : meubles et objets de Poly Haven
             // rangés dans « PolyHaven/Interieurs », reconnus par leur nom ; la rotation et l'échelle réglées à la main sont gardées.
@@ -586,6 +587,26 @@ namespace EdS.Game.Editor
                 if (model != null) result.Add(model);
             }
             if (result.Count > 0 || waiting > 0) notes.Add("Lot C : " + result.Count + " modèles Tripo reliés aux données (" + waiting + " en attente, non chargés).");
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Sous-lot F4 : modèles Tripo des fêtes d'Orsédia (<see cref="FeastLooks.Folder"/>/&lt;code&gt;/&lt;code&gt;.fbx), chacun avec sa matière
+        /// (« &lt;code&gt;_couleur », « &lt;code&gt;_normale », <see cref="OwnMaterial"/>), comme ceux du lot C. Sans dossier : rien, sans erreur.
+        /// </summary>
+        private static GameObject[] FeastPieces(List<string> notes)
+        {
+            if (!AssetDatabase.IsValidFolder(FeastLooks.Folder)) return new GameObject[0];
+            List<string> paths = (AssetDatabase.FindAssets("t:Model", new[] { FeastLooks.Folder }) ?? new string[0]).Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => FeastLooks.CodeOf(p) != null).Distinct().OrderBy(p => p, System.StringComparer.Ordinal).ToList();
+            var result = new List<GameObject>();
+            foreach (string path in paths)
+            {
+                OwnMaterial(path, notes);
+                GameObject model = Load(path);
+                if (model != null) result.Add(model);
+            }
+            if (result.Count > 0) notes.Add("Fêtes : " + result.Count + " modèles Tripo (décorations de l'étal du forain).");
             return result.ToArray();
         }
 

@@ -558,6 +558,8 @@ namespace EdS.Game
         public GameObject[] OwnDecor = new GameObject[0];
         [Tooltip("Lot C (16 novembre 2026) : modèles Tripo du lot C (« Assets/EdS/Modeles/LotC/<catégorie>/<code>/ », remplis par le menu), reliés aux données par LotCModels.")]
         public GameObject[] LotC = new GameObject[0];
+        [Tooltip("Sous-lot F4 : modèles Tripo des fêtes d'Orsédia (« Assets/EdS/Modeles/Fetes/<code>/ », remplis par le menu) : décorations de l'étal du forain.")]
+        public GameObject[] Feasts = new GameObject[0];
         [Tooltip("V2.25.4 : arbres de l'atelier (« Assets/EdS/Modeles/Arbres/<essence>/ », remplis par le menu) ; ils remplacent les arbres téléchargés partout où le jeu pose des arbres.")]
         public TreeLook[] AtelierTrees = new TreeLook[0];
         [Tooltip("V2.25.4 : l'arbre millénaire de l'atelier, livré mais pas posé (il ira avec la grande carte, V2.32).")]
@@ -831,6 +833,24 @@ namespace EdS.Game
 
         [System.NonSerialized] private Dictionary<string, GameObject> _lotCIndex;
         [System.NonSerialized] private GameObject[] _lotCIndexOf;
+
+        /// <summary>Sous-lot F4 : le modèle Tripo des fêtes du code <paramref name="code"/> (« F01_D01 », voir <see cref="FeastLooks"/>) ; null sans lui.</summary>
+        public GameObject FeastModel(string code)
+        {
+            if (Feasts == null || string.IsNullOrEmpty(code)) return null;
+            if (_feastIndex == null || !ReferenceEquals(_feastIndexOf, Feasts))
+            {
+                _feastIndex = new Dictionary<string, GameObject>(System.StringComparer.Ordinal);
+                foreach (GameObject g in Feasts)
+                    if (g != null && !_feastIndex.ContainsKey(g.name)) _feastIndex.Add(g.name, g);
+                _feastIndexOf = Feasts;
+            }
+            GameObject found;
+            return _feastIndex.TryGetValue(code, out found) && found != null ? found : null;
+        }
+
+        [System.NonSerialized] private Dictionary<string, GameObject> _feastIndex;
+        [System.NonSerialized] private GameObject[] _feastIndexOf;
 
         /// <summary>V2.25.2 : le petit décor de l'atelier « …_&lt;piece&gt; » (<see cref="AtelierDecor.IsPiece"/>) ; null sans lui.</summary>
         public GameObject OwnDecorPiece(string piece)
