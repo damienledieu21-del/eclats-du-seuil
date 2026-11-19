@@ -414,6 +414,9 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Marchand de fête | **Un marchand dédié**, pas le colporteur : un **étal de fête sur la place**, avec **son propre PNJ forain**, dont le **décor change chaque mois** (sous-lot F3). | Retenu (Damien, 18 novembre 2026) |
 | Forain et décor de l'étal | **Maître Florentin**, le forain des fêtes, gardé (nom et place sur la place du bourg) ; le **décor automatique** de l'étal (les décorations de la fête qui tiennent sur un étal, jusqu'à 2,5 m) est gardé. | Retenu (Damien, 19 novembre 2026) |
 | Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
+| Interface des fêtes (F4) | L'étal du forain et les activités des invités passent par des **réponses du dialogue** (« [Fête] … »), comme les mises des Trois Feux : **gardé**. La **bourse** n'affiche que la monnaie de la fête en cours ; **toutes les monnaies** restent visibles à l'étal : **gardé**. | Retenu (Damien, 19 novembre 2026) |
+| Décor du mois (F5) | En plus de la place du village et de la place du marché du Bourg : **devant l'auberge**, au **parvis de la chapelle** et aux **portes du Bourg**, mêmes règles de placement. | Retenu (Damien, 19 novembre 2026) |
+| Maison du joueur | **Oui**, en **chantier à part**, après les lieux reconstruits ; les décorations de fête achetées y seront posées. Pas encore faite. | Retenu (Damien, 19 novembre 2026), à venir |
 
 ## 8. Points ouverts
 

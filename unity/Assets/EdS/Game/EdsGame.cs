@@ -682,6 +682,11 @@ namespace EdS.Game
             // Sous-lot V1.7 : de même pour le tableau de la guilde (le bouton Parler le ferme pour le dialogue de la maîtresse).
             if (_screens.Open == AdventureScreens.Panel.Guild && !a.GuildOpen) _screens.Close();
             else if (_screens.Open != AdventureScreens.Panel.Guild && a.GuildOpen) a.CloseGuild();
+            // Sous-lot F4 : l'étal de fête s'ouvre depuis le dialogue du forain (demande prise une fois) ; ensuite il suit l'écran comme la
+            // boutique (Échap le ferme ; le bouton Parler le ferme pour le dialogue).
+            if (a.TakeFeastStallRequest()) _screens.Show(AdventureScreens.Panel.Feast);
+            if (_screens.Open == AdventureScreens.Panel.Feast && !a.FeastStallOpen) _screens.Close();
+            else if (_screens.Open != AdventureScreens.Panel.Feast && a.FeastStallOpen) a.CloseFeastStall();
             bool frozen = _paused || _loading.Active || talking || a.Dialogue != null || _screens.Open != AdventureScreens.Panel.None || a.MustContinue || TalentsOpen;
             frozen = frozen || _stage != null && _stage.Blocking || creating || _logo.Active || _title.Pending;   // sous-lot V1.9.8 : le réveil ; V2.16 : le créateur de personnage
             if (!frozen && (Input.GetKeyDown(KeyCode.F) || _touch.ActPressed)) a.Interact();
@@ -696,7 +701,7 @@ namespace EdS.Game
             _camera.Nudge(_touch.YawDelta, _touch.ViewDelta, _touch.PitchDelta);
 
             PlayerState player = _combat.Player();
-            frozen = frozen || a.Dialogue != null || a.Shop != null || a.GuildOpen;   // un dialogue (ou une boutique, ou le tableau de la guilde) ouvert par F à cette image
+            frozen = frozen || a.Dialogue != null || a.Shop != null || a.GuildOpen || a.FeastStallOpen;   // un dialogue (ou une boutique, ou le tableau de la guilde) ouvert par F à cette image
             if (frozen)
             {
                 _combat.SetGuard(false);

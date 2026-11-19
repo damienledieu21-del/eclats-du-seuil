@@ -252,7 +252,7 @@ namespace EdS.Game
 
         private void RefreshPurse(AdventureSession a)
         {
-            _purse.Value = a.Text("text.ui.purse") + " · " + a.Purse;
+            _purse.Value = a.Text("text.ui.purse") + " · " + a.Purse + FeastPurse(a);   // sous-lot F4 : la monnaie de la fête en cours
             if (_tipAnchor != null && _tipAnchor == _shopTipAnchor) ClearTip();   // fiche restée de la boutique
         }
 

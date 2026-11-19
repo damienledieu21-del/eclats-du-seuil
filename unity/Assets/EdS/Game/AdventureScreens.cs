@@ -8,7 +8,8 @@ namespace EdS.Game
     public sealed class AdventureScreens
     {
         // Sous-lot V1.1 : Merchant, la boutique d'un marchand (F en lui parlant) ; sous-lot V1.7 : Guild, le tableau de la maîtresse de guilde.
-        public enum Panel { None, Inventory, Journal, Crafting, Map, Skills, Merchant, Guild }
+        // Sous-lot F4 : Feast, l'étal de fête du forain (réponse « Voir l'étal de fête » de son dialogue).
+        public enum Panel { None, Inventory, Journal, Crafting, Map, Skills, Merchant, Guild, Feast }
 
         public Panel Open { get; private set; }
 
