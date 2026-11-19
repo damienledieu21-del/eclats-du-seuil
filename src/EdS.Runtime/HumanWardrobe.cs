@@ -188,7 +188,21 @@ namespace EdS.Runtime
             (255, 255, 255), (246, 236, 214), (222, 236, 206), (250, 214, 192), (208, 220, 246), (196, 212, 255), (255, 196, 190),
             (252, 250, 240), (236, 214, 190), (236, 204, 232), (206, 228, 202), (176, 172, 168),
             (255, 232, 168), (255, 186, 176), (196, 214, 255), (255, 222, 150),
+            // Sous-lot F6 : deux teintes par fête d'Orsédia (indices 16 à 39, FeastTints) : lanternes (or, rouge), liens (rose, vert tendre),
+            // carnaval (violet, safran), semailles (vert, jaune), artisans (ocre, indigo), Feux du Seuil (orange, cramoisi), tournoi (bleu roi,
+            // rouge héraldique), étoiles filantes (bleu nuit, argent), moissons (blé, roux), Échos (violet du soir, citrouille), veillée (crème,
+            // bordeaux), Givre (blanc de glace, bleu de givre).
+            (255, 226, 160), (240, 170, 150), (250, 200, 210), (214, 236, 200), (220, 190, 245), (255, 214, 140),
+            (206, 240, 180), (250, 240, 170), (240, 214, 170), (190, 200, 245), (255, 196, 150), (240, 170, 170),
+            (186, 206, 255), (250, 180, 176), (180, 190, 240), (232, 234, 245), (250, 226, 170), (236, 190, 160),
+            (200, 186, 230), (250, 196, 150), (246, 236, 214), (226, 176, 180), (238, 246, 255), (206, 226, 255),
         };
+
+        /// <summary>
+        /// Sous-lot F6 : les deux teintes de la tenue de la fête d'Orsédia n° <paramref name="feast"/> (1 à 12, indices de <see cref="Tints"/>),
+        /// ou celles des fêtes d'avant (<see cref="FestiveTints"/>) hors de 1 à 12.
+        /// </summary>
+        public static int[] FeastTints(int feast) => feast >= 1 && feast <= 12 ? new[] { 16 + 2 * (feast - 1), 17 + 2 * (feast - 1) } : FestiveTints;
 
         /// <summary>Teintes de fête (indices de <see cref="Tints"/>).</summary>
         private static readonly int[] FestiveTints = { 12, 13, 14, 15 };
@@ -406,7 +420,15 @@ namespace EdS.Runtime
         /// Comme <see cref="Plan(string, string, HumanLook, WardrobeSeason, bool, bool)"/>, avec au plus <paramref name="maxOptional"/> pièces
         /// facultatives, dans l'ordre : coiffe, cape, épaulières, col, tablier (<see cref="MaxOptional"/>).
         /// </summary>
-        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive, int maxOptional)
+        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive, int maxOptional) =>
+            Plan(id, role, look, season, rain, festive, maxOptional, 0);
+
+        /// <summary>
+        /// Comme <see cref="Plan(string, string, HumanLook, WardrobeSeason, bool, bool, int)"/> ; sous-lot F6 : pendant la fête d'Orsédia
+        /// n° <paramref name="feast"/> (1 à 12), les beaux habits prennent les teintes de cette fête (<see cref="FeastTints"/>) ; 0 : celles
+        /// des fêtes d'avant.
+        /// </summary>
+        public static WardrobePlan Plan(string id, string role, HumanLook look, WardrobeSeason season, bool rain, bool festive, int maxOptional, int feast)
         {
             string seed = id ?? string.Empty;
             int Roll(string salt, int count) => StyleRules.Variant(seed + "#vetement#" + salt, count);
@@ -523,7 +545,7 @@ namespace EdS.Runtime
                 : outfit == HumanOutfit.Peasant ? new[] { 0, 1, 1, 1, 2, 2 }[Roll("usure", 6)]
                 : 1;
             if (festive) wear = Math.Min(wear, outfit == HumanOutfit.Bandit ? 2 : 0);
-            int[] tints = festive && outfit != HumanOutfit.Guard && outfit != HumanOutfit.Bandit && outfit != HumanOutfit.Hero ? FestiveTints : TintsOf(outfit);
+            int[] tints = festive && outfit != HumanOutfit.Guard && outfit != HumanOutfit.Bandit && outfit != HumanOutfit.Hero ? FeastTints(feast) : TintsOf(outfit);
             int tint = tints[Roll("teinte", tints.Length)];
             // Plafond des pièces facultatives (téléphone) : les obligatoires d'abord, puis la coiffe, la cape, les épaulières, le col, le tablier.
             WardrobeSlot[] order = { WardrobeSlot.Head, WardrobeSlot.Back, WardrobeSlot.Shoulders, WardrobeSlot.Neck, WardrobeSlot.Waist };

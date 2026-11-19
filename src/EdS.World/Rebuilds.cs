@@ -28,11 +28,12 @@ namespace EdS.World
     public static class RebuildRules
     {
         public static RebuildPhase PhaseOf(SavedRebuild? saved, RebuildSite site) =>
-            saved is null ? RebuildPhase.Ruin : saved.Stage >= site.Stages.Count ? RebuildPhase.Rebuilt : RebuildPhase.Building;
+            saved is null ? RebuildPhase.Ruin : saved.Done ? RebuildPhase.Rebuilt : RebuildPhase.Building;
 
         /// <summary>Le palier en cours, ou null (lieu reconstruit).</summary>
         public static RebuildStage? CurrentStage(SavedRebuild? saved, RebuildSite site)
         {
+            if (saved?.Done == true) return null;   // reconstruit pour toujours, même si le catalogue a grandi
             int stage = saved?.Stage ?? 0;
             return stage < site.Stages.Count ? site.Stages[stage] : null;
         }
@@ -65,6 +66,8 @@ namespace EdS.World
             {
                 string p = path + "." + r.Site;
                 if (!(book.Of(r.Site) is RebuildSite site)) { report.Add(p, ValidationCode.UnknownReference, $"lieu « {r.Site} » inconnu du catalogue des chantiers."); continue; }
+                if (!r.Done && r.Stage >= site.Stages.Count)
+                { report.Add(p + ".done", ValidationCode.InvalidValue, $"« {r.Site} » : tous les paliers sont finis, le lieu doit être marqué reconstruit."); continue; }
                 if (r.Stage > site.Stages.Count)
                 { report.Add(p + ".stage", ValidationCode.OutOfRange, $"« {r.Site} » : {r.Stage} paliers finis, il n'y en a que {site.Stages.Count}."); continue; }
                 RebuildStage? stage = CurrentStage(r, site);
@@ -130,7 +133,7 @@ namespace EdS.World
                 given.Clear();
             }
             finished = done;
-            return new SavedRebuild(site.Id, stage, given);
+            return new SavedRebuild(site.Id, stage, stage >= site.Stages.Count ? null : given, stage >= site.Stages.Count);
         }
     }
 }

@@ -41,6 +41,7 @@ namespace EdS.Data.Json
             return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
             {
                 ["stage"] = (v, p) => r.Stage = input.Int32(v, p),
+                ["done"] = (v, p) => r.Done = input.Boolean(v, p),   // revue Codex de la PR #221 : reconstruit pour toujours
                 ["given"] = (v, p) =>
                 {
                     if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « besoin : quantité »")) return;
@@ -796,7 +797,8 @@ namespace EdS.Data.Json
             {
                 b.Append("      \"rebuilds\": {").Append(string.Join(", ", c.Rebuilds.Entries.Select(r => "\"" + r.Site + "\": {\"stage\": "
                     + r.Stage.ToString(CultureInfo.InvariantCulture) + ", \"given\": {"
-                    + string.Join(", ", r.Given.Select(g => "\"" + g.Key + "\": " + g.Value.ToString(CultureInfo.InvariantCulture))) + "}}"))).Append("},\n");
+                    + string.Join(", ", r.Given.Select(g => "\"" + g.Key + "\": " + g.Value.ToString(CultureInfo.InvariantCulture))) + "}"
+                    + (r.Done ? ", \"done\": true" : "") + "}"))).Append("},\n");
             }
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));

@@ -186,6 +186,19 @@ namespace EdS.World
         }
 
         /// <summary>
+        /// Sous-lot F6 : mange un plat de la fête <paramref name="festival"/> (acheté chez le forain, gardé d'une année sur l'autre), n'importe
+        /// où hors combat ; aucun effet de jeu. Refus : rien ne change.
+        /// </summary>
+        public FeastRefusal EatFeastDish(string festival)
+        {
+            if (_feasts is null) return FeastRefusal.NoFeast;
+            if (InCombat) return FeastRefusal.NotNow;
+            FeastRefusal refusal = FeastRules.Eat(_character.Feasts, _feasts, festival, out SavedFeasts next);
+            if (refusal == FeastRefusal.None) SetFeasts(next);
+            return refusal;
+        }
+
+        /// <summary>
         /// Concours de l'histoire (effet <c>contest</c>) : le concours de clé <paramref name="key"/> de la fête <paramref name="festival"/> vient
         /// d'avoir lieu ; s'il est lié à une activité de fête, il rapporte sa monnaie (une fois par édition). Ne lève pas, ne refuse rien du
         /// concours lui-même : la monnaie s'ajoute, ou rien (pas de catalogue, édition inconnue, déjà fait dans l'édition).

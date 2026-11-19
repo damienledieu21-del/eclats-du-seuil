@@ -1109,7 +1109,9 @@ namespace EdS.Runtime
         public bool Indoors => _zone.Indoor;
 
         /// <summary>Sous-lot V2.53 : l'écran de chargement peint du lieu où est le personnage (le village à défaut). Affichage seulement.</summary>
-        public LoadingScreen LoadingHere() => LoadingScreens.For(_zone, Me);
+        public LoadingScreen LoadingHere() =>
+            // Sous-lot F6 : pendant une fête d'Orsédia (dehors, dans la zone de l'histoire), l'image d'ambiance de la fête et son accroche.
+            !Indoors && World.InStoryZone && World.FeastNow is EdS.Data.Feasts.Feast feast ? LoadingScreens.ForFeast(feast.Number, feast.Motto) : LoadingScreens.For(_zone, Me);
 
         /// <summary>Intérieurs : identifiant de la zone en cours (« zone.vallons », « zone.auberge »).</summary>
         public string CurrentZone => _zone.Id;

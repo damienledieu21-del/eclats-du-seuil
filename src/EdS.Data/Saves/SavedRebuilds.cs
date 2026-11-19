@@ -30,10 +30,18 @@ namespace EdS.Data.Saves
 
         public string Site { get; }
         public int Stage { get; }
+
+        /// <summary>
+        /// Le lieu est reconstruit, pour toujours (revue Codex de la PR #221) : un palier ajouté plus tard au catalogue ne le rouvre jamais
+        /// (décision de Damien du 19 novembre 2026 : une reconstruction n'est jamais perdue).
+        /// </summary>
+        public bool Done { get; }
         public IReadOnlyDictionary<string, long> Given { get; }
 
         /// <exception cref="ArgumentException">Identifiants mal formés, quantités hors de [1, <see cref="MaxAmount"/>], trop de besoins, ou chantier vide.</exception>
-        public SavedRebuild(string site, int stage, IEnumerable<KeyValuePair<string, long>>? given = null)
+        /// <param name="done">Revue Codex de la PR #221 : le lieu est reconstruit, pour toujours (même si le catalogue lui ajoute un palier
+        /// plus tard) ; alors aucun apport en cours.</param>
+        public SavedRebuild(string site, int stage, IEnumerable<KeyValuePair<string, long>>? given = null, bool done = false)
         {
             if (!IsLocalId(site)) throw new ArgumentException($"Lieu « {site} » mal formé.", nameof(site));
             if (stage < 0 || stage > MaxStages) throw new ArgumentOutOfRangeException(nameof(stage));
@@ -46,7 +54,9 @@ namespace EdS.Data.Saves
                 map.Add(g.Key, g.Value);
             }
             if (map.Count > MaxNeeds) throw new ArgumentException($"au plus {MaxNeeds} besoins.", nameof(given));
-            if (stage == 0 && map.Count == 0) throw new ArgumentException("Chantier vide : un lieu en ruine est absent.", nameof(given));
+            if (stage == 0 && map.Count == 0 && !done) throw new ArgumentException("Chantier vide : un lieu en ruine est absent.", nameof(given));
+            if (done && map.Count > 0) throw new ArgumentException("Lieu reconstruit : aucun apport en cours.", nameof(given));
+            Done = done;
             Site = site;
             Stage = stage;
             Given = new System.Collections.ObjectModel.ReadOnlyDictionary<string, long>(map);   // ordre ordinal (écriture canonique)
