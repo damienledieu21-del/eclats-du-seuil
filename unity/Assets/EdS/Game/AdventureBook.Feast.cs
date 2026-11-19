@@ -16,7 +16,13 @@ namespace EdS.Game
     /// </summary>
     public sealed partial class AdventureBook
     {
-        private const int FeastRows = 9, FeastWalletRows = 6;
+        private const int FeastRows = 9;
+
+        /// <summary>
+        /// Revue Codex de la PR #218 : toutes les autres monnaies gardées sont visibles (onze au plus : douze fêtes moins celle en cours), sur
+        /// deux colonnes de six lignes.
+        /// </summary>
+        private const int FeastWalletRows = 12, FeastWalletLines = 6;
 
         private readonly List<(RectTransform Row, Image Icon, UiText Name, UiText Kind, UiText Price, UiButton Buy)> _feastRows =
             new List<(RectTransform, Image, UiText, UiText, UiText, UiButton)>();
@@ -63,11 +69,11 @@ namespace EdS.Game
             for (int i = 0; i < FeastWalletRows; i++)
             {
                 RectTransform row = UiKit.Node(page, "Monnaie de fête");
-                UiKit.Place(row, new Vector2(870f, 520f + i * 44f), new Vector2(560f, 40f), Vector2.zero);
+                UiKit.Place(row, new Vector2(870f + i / FeastWalletLines * 285f, 520f + i % FeastWalletLines * 44f), new Vector2(275f, 40f), Vector2.zero);
                 Image icon = UiKit.Image(row, "Icône", null, Color.white);
                 UiKit.Place(icon.rectTransform, new Vector2(0f, 2f), new Vector2(36f, 36f), Vector2.zero);
-                UiText name = Text(row, UiFace.Bold, 17f, UiKit.Ink, TextAnchor.MiddleLeft, 48f, 20f, 330f, 24f, 0f, 0.5f);
-                UiText coins = Text(row, UiFace.Bold, 17f, UiKit.Dawn, TextAnchor.MiddleRight, 556f, 20f, 170f, 24f, 1f, 0.5f);
+                UiText name = Text(row, UiFace.Bold, 15f, UiKit.Ink, TextAnchor.MiddleLeft, 42f, 20f, 150f, 24f, 0f, 0.5f);
+                UiText coins = Text(row, UiFace.Bold, 15f, UiKit.Dawn, TextAnchor.MiddleRight, 272f, 20f, 82f, 24f, 1f, 0.5f);
                 _feastWalletRows.Add((row, icon, name, coins));
             }
 
