@@ -407,7 +407,7 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 |---|---|---|---|---|
 | **V2.41** | Caravanes et attaques des bandits | M | V2.26, V2.28, V2.38 | chariot bâché, attelage, coffres de marchandises |
 | **V2.42** | Corruption qui s'étend et recule | M | V2.39 | variantes corrompues des arbres et rochers, autels purifiés |
-| **V2.43** | Lieux reconstruits (décisions de Damien du 19 novembre 2026, [CADRAGE](CADRAGE.md) § 7 duodecies), en 4 PR : **V2.43.1** cœur (catalogue `rebuilds`, règles, état dans la sauvegarde) ; **V2.43.2** contenu des 5 lieux (paliers, textes, PNJ et services) ; **V2.43.3** Unity (décor selon l'état) ; **V2.43.4** intérieurs des lieux reconstruits et mise à jour de la PR #202 | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis ; on réutilise d'abord l'échafaudage du fort et les modèles du lot C et du Bourg |
+| **V2.43** | Lieux reconstruits (décisions de Damien du 19 novembre 2026, [CADRAGE](CADRAGE.md) § 7 terdecies), en 4 PR : **V2.43.1** cœur (catalogue `rebuilds`, règles, état dans la sauvegarde) ; **V2.43.2** contenu des 5 lieux (paliers, textes, PNJ et services) ; **V2.43.3** Unity (décor selon l'état) ; **V2.43.4** intérieurs des lieux reconstruits et mise à jour de la PR #202 | M | lieux concernés | états « chantier » et « reconstruit » (échafaudages) des lieux choisis ; on réutilise d'abord l'échafaudage du fort et les modèles du lot C et du Bourg |
 | **V2.44** | Saisons comme dans la vraie vie (sujet 12) : saison donnée par le serveur d'après la date, lac gelé, vendanges, neige au col, feuillages | M | V2.33, V2.36, V2.40 | variantes d'hiver (neige sur les toits, arbres nus), glace |
 
 ### Étape 4 : le dessous

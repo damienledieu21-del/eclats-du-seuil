@@ -1121,6 +1121,17 @@ Modèles du lot C (324 modèles finis à l'atelier, `Eclats_du_Seuil_AssetLab/Lo
 - **Sans données (posés nulle part)** : les cinq arbalètes (aucune arbalète dans le catalogue ni dans les classes), les 25 butins des grottes noyées et leurs récoltes (cresson des suintements, lamelles d'Éclat), les champignons et cristaux de la mine, les filons de cuivre et d'argent, les amas du Seuil, le cresson des sources, les quatre plats des saisons, la grappe, la hotte et le panier des vendanges.
 - Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; l'orientation des plantes et des filons est tirée de leur identifiant ; les chapeaux de lune gardent l'essai d'avant (pas de modèle du lot C).
 
+### Pâtisseries de Firmin (19 novembre 2026)
+
+Dossier de Damien « Les pains et pâtisseries » (`Eclats_du_Seuil_AssetLab/Firmin` : 16 modèles Tripo retouchés dans Blender, icônes, `PLAN.csv`). Provenance : [CREDITS.md](CREDITS.md).
+
+- **Modèles** : `Assets/EdS/Modeles/LotC/09_Firmin/<code>/` (même chaîne que le lot C : un maillage, le LOD1 de l'atelier, environ 5 900 faces ; couleur JPEG 512 ; **normale PNG 256** au lieu de 512, pour le poids : ce sont des objets de moins de 0,3 m ; 6,1 Mo pour les 16). Les `.meta` ne sont pas versionnés (comme tout le lot C) : la préparation (`EdsStyle.LotCPieces`, `OwnMaterial`) fait le matériau et le range dans `StyleCatalog.LotC`. Table : `FirminPastries` et `LotCModels.Firmin` (cibles `item:` et `quality:objet/qualité`, `LotCModels.ForQuality`).
+- **Trois niveaux de réussite** pour la couronne des moissons, la tarte renversée et la fouace des Semailles (N1 raté, N2 correct, N3 maîtrisé) : une pièce de la main du joueur suit sa qualité (normale N1, supérieure N2, chef-d'œuvre N3) ; une pièce sans marque (celle de l'étal) est celle de Firmin, N3 (`FirminPastries.Level`, proposition à valider).
+- **Étal du fournil** (`WorldMarkers.FirminStall`) : avec les modèles préparés, la table du fournil montre ce que la boulangerie a encore en vente (`AdventureSession.FirminShowcase` : offres du jour, jours et saisons du schéma 7 des marchands, rien d'épuisé), 6 pièces au plus, refait une fois par minute du monde si la liste change ; sans eux, la vitrine d'avant (pains scannés).
+- **Concours** : la pièce présentée au juge (`StoryEventKind.ItemPresented`) est posée en tête de l'étal ce jour du monde, au modèle de son niveau (`AdventureSession.PresentedPastry`, pas sauvegardé).
+- **Icônes** : 16 icônes peintes du dossier en 128 px (`Resources/EdsInterface/Peintes`, cadre gris neutre d'origine), devant le pack de CraftPix (`ItemIcons.Keywords` vide pour ces objets) ; dans le sac, l'icône suit le niveau de la pièce (`FirminPastries.Icon`). Fiche : ce qui se lit dans la pièce (`text.firmin.*`).
+- Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; le verre du bocal de levain (matériau transparent à part dans l'atelier) prend le matériau unique du modèle, donc opaque ; pas de pâtisserie tenue en main ; quelques modèles s'écartent des cotes du dossier en largeur (FIR04 0,13 m pour 0,11 ; FIR05 0,28 × 0,28 pour 0,28 × 0,19 : proportions de Tripo).
+
 ## Les fêtes d'Orsédia dans le jeu : étal et interface (sous-lot F4, 19 novembre 2026)
 
 Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSession.Feasts.cs`). Ce sous-lot l'affiche dans le jeu, sans changer les règles, la sauvegarde ni les données de fête ; textes **0.38.0**.
