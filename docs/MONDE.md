@@ -1317,7 +1317,7 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) §
 
 **Contenu des 5 lieux (V2.43.2b)** : `data/v0/world/rebuilds.json` (contenu 0.1.0). Le format gagne deux choses (version 1, pas encore livrée) : le besoin **`reach`** (aller à un endroit `[x, z]` du lieu ou de sa marge, atteint à 4 m près, compté de lui-même) et le bloc **`rebuilt`** (`npcs` : PNJ de l'histoire qui ne sont dans le monde qu'une fois le lieu reconstruit, comme un PNJ de passage hors de sa fête : on ne lui parle pas, sa boutique est fermée ; `safePoints` : points sûrs fermés jusque-là comme un point secret : ni carte, ni repos, ni retour, ni découverte, donc ni voyage ; jamais l'entrée de la zone).
 
-| Lieu | Paliers (propositions, questions posées à Damien dans la PR) | Une fois reconstruit |
+| Lieu | Paliers (**validés tels quels par Damien le 19 novembre 2026**, avec tous les services) | Une fois reconstruit |
 |---|---|---|
 | Hameau de la carrière (marge 10 m) | déblaiement : 15 argent, 20 bois, 6 créatures, relevé (70, −20) ; charpente : 20 planches, 4 ferrures, 25 argent ; toits : 10 pierres taillées, 10 planches, 25 argent | Jacquemin le charron : boutique (planches, bois ; pierre et pierre taillée certains jours) et réparation |
 | Pont effondré (marge 40 m) | déblaiement : 4 créatures (échos de la route), relevé (1990, 200), 20 pierres ; piles : 20 pierres taillées, 40 argent ; tablier : 30 planches, 8 ferrures, 40 argent | point sûr **Relais du pont** (voyage), Ombeline la passeuse |
