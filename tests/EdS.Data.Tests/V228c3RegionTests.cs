@@ -232,4 +232,28 @@ public sealed class V228c3RegionTests : IDisposable
         var other = new ReliefSettings { RegionGrid = (0, 0, 32, 24) };
         Assert.Equal(0, GroundRelief.For(whole, other).Region(180, 1360));
     }
+
+    [Fact]
+    public void Chaque_point_sur_sur_un_sol_de_25_degres_au_plus()
+    {
+        // Relecture indépendante de la PR #214 : chaque point sûr de la zone (dont les lacets du col, la mine et le fort) est sur un sol de
+        // 25° au plus dans le relief d'affichage : pente sur 2 m, dans huit directions, jusqu'à 8 m autour.
+        AdventureMap whole = Whole();
+        GroundRelief relief = GroundRelief.For(whole);
+        ZoneDefinition zone = Zone();
+        Assert.Contains(zone.SafePoints, s => s.Id == "lacets_du_col");
+        double limit = Math.Tan(25 * Math.PI / 180);
+        foreach (SafePoint s in zone.SafePoints)
+        {
+            (double x, double z) = P(s.Position);
+            double steep = 0;
+            for (int k = 0; k < 8; k++)
+            {
+                double ux = Math.Cos(k * Math.PI / 4), uz = Math.Sin(k * Math.PI / 4);
+                for (double r = 0; r + 2 <= 8; r += 2)
+                    steep = Math.Max(steep, Math.Abs(relief.Height(x + ux * (r + 2), z + uz * (r + 2)) - relief.Height(x + ux * r, z + uz * r)) / 2);
+            }
+            Assert.True(steep <= limit, $"{s.Id} : pente {steep:0.00} ({Math.Atan(steep) * 180 / Math.PI:0}°)");
+        }
+    }
 }

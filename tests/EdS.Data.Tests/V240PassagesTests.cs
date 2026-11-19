@@ -97,4 +97,49 @@ public class V240PassagesTests
         fresh.Step();
         Assert.False(fresh.IsPassageOpen("passerelle_des_ronces"));
     }
+
+    [Fact]
+    public void Fin_du_chapitre_1_chez_Gaspard_la_passerelle_s_ouvre()
+    {
+        // Relecture indépendante de la PR #214 : la fin de l'étape « gaspard » de « Traces sous le moulin » est jouée (dialogue de Gaspard) ;
+        // son effet ouvre la passerelle des Ronces, gardée dans la sauvegarde.
+        const string Mission = "quest.traces_sous_le_moulin";
+        ZoneDefinition zone = V11TestData.Zone(26, -13);
+        long xp = Enumerable.Range(0, 100_000).Select(i => (long)i * 10).First(x => V11TestData.Progression.LevelFor(x) >= 5);
+        var story = new EdS.Data.Saves.SavedStory(new[] { "fact.traces.recit", "fact.moulin.porte_ouverte" },
+            new Dictionary<string, EdS.Data.Saves.QuestProgress> { [Mission] = new("gaspard") });
+        var hero = V11TestData.Hero().WithStory(story).WithXp(xp);
+        var w = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, hero), zone, ShippedData,
+            V11TestData.Progression, V11TestData.ItemsCatalog, V11TestData.Book(zone), market: new EdS.World.Market(V11TestData.ShippedMerchants));
+        w.Step();
+        Assert.False(w.IsPassageOpen("passerelle_des_ronces"));
+        Assert.Equal(EdS.World.DialogueRefusal.None, w.Talk("npc.gaspard", out EdS.World.DialogueView? view));
+        Assert.Equal("ch1_souvenir", view!.Node);
+        Assert.Equal(EdS.World.DialogueRefusal.None, w.Choose(1, out _, out IReadOnlyList<EdS.World.StoryEvent> chosen));
+        var events = chosen.Select(e => e.ToString()).ToList();
+        for (int i = 0; i < 3; i++) events.AddRange(w.Step().Story.Select(e => e.ToString()));
+        Assert.Contains($"StepCompleted {Mission}/gaspard", events);
+        Assert.Contains("PassageOpened passerelle_des_ronces", events);
+        Assert.True(w.Narrative!.IsDone(Mission));
+        Assert.True(w.IsPassageOpen("passerelle_des_ronces"));
+        Assert.Contains(zone.PassageKey("passerelle_des_ronces"), w.Save().Consumed);
+    }
+
+    [Fact]
+    public void Toute_la_region_la_foret_reste_fermee_depuis_le_Bourg_tant_que_la_passerelle_l_est()
+    {
+        // Relecture indépendante de la PR #214 : remplissage de toute la région (cases de 2 m) depuis la place du marché du Bourg, passages
+        // fermés : la forêt au nord du ravin des Ronces (arbre millénaire, chemin du pont des Murmures) reste hors d'atteinte ; la passerelle
+        // seule ouverte, elle s'atteint.
+        ZoneDefinition zone = Vallons.Value;
+        (double X, double Z) min = (zone.Region!.Min.X.Raw / 1e4, zone.Region.Min.Z.Raw / 1e4), max = (zone.Region.Max.X.Raw / 1e4, zone.Region.Max.Z.Raw / 1e4);
+        var obstacles = zone.Setup.Space!.Obstacles;
+        var closed = V228cSurfaceTests.Flood(obstacles, min, max, SafePoint("place_du_marche_de_la_ville"), 2);
+        foreach (var forest in new[] { (-990.0, 292.0), (-1250.0, 400.0), (-824.0, 802.0), (-1180.0, 1030.0) })
+            Assert.False(V228cSurfaceTests.Reaches(closed.Reached, min, forest, 2), $"({forest.Item1}, {forest.Item2}) atteint depuis le Bourg");
+        Assert.True(V228cSurfaceTests.Reaches(closed.Reached, min, (-990, 268), 2));   // jusqu'au bord du ravin
+        var open = V228cSurfaceTests.Flood(obstacles.Where(o => o.Id != "ravin_passerelle_des_ronces_passage"), min, max, SafePoint("place_du_marche_de_la_ville"), 2);
+        Assert.True(V228cSurfaceTests.Reaches(open.Reached, min, (-1250, 400), 2));
+        Assert.True(V228cSurfaceTests.Reaches(open.Reached, min, (-824, 802), 2));
+    }
 }
