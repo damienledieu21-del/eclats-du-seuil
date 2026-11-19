@@ -121,4 +121,31 @@ public class V233A239LieuxDeLaRegionTests
         foreach (string lieu in new[] { "_foret", "_chute", "_vignes", "_bergers", "_abbaye", "_marais", "_corrompu" })
             Assert.Contains(night, p => p.Creature.Contains(lieu, StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData(1800014400L, true)]    // 15 janvier 2027 : glace praticable
+    [InlineData(1815652800L, false)]   // 15 juillet 2027 : eau
+    public void Ile_des_saules_atteinte_a_pied_sur_la_glace_l_hiver_seulement(long utc, bool winter)
+    {
+        // Revue Codex de la PR #206 : un vrai chemin d'hiver : la bande de glace (passage saisonnier « glace_du_lac ») est retirée des
+        // sessions de secteur ouvertes pendant que la glace est praticable ; l'été, elle reste de l'eau et l'île est hors d'atteinte.
+        ZoneDefinition zone = Vallons.Value;
+        Assert.Equal("riviere_glace_du_lac_marais", zone.Passages.Single(p => p.Id == "glace_du_lac").Obstacle);
+        var w = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+            zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, safePoint: "pontons_du_lac");
+        w.UseSeasons(SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone).Book);
+        w.SetCivilTime(utc);
+        w.Step();
+        Assert.Equal(winter, w.PassageOpen("glace_du_lac"));
+        Assert.Equal(winter, w.LockOpen("ile_des_saules_dormants"));
+        V228b2PassageTests.WalkTo(w, 160, -840);
+        if (winter)
+        {
+            V228b2PassageTests.WalkTo(w, 160, -1225);
+            Assert.Contains(zone.PlacesAt(G(165, -1230)), p => p.Id == "ile_des_saules_dormants");
+            Assert.False(w.IsPassageOpen("glace_du_lac"));   // jamais au registre : la saison passée, la glace redevient de l'eau
+            Assert.DoesNotContain(w.Save().Consumed, k => k.Contains("glace_du_lac", StringComparison.Ordinal));
+        }
+        else Assert.Throws<Xunit.Sdk.XunitException>(() => V228b2PassageTests.WalkTo(w, 160, -1225));
+    }
 }

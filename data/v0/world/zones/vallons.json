@@ -2341,6 +2341,11 @@
         "obstacle": "riviere_vallee_pont_suspendu_chute"
       },
       {
+        "id": "glace_du_lac",
+        "name": "Glace du lac (l'hiver seulement)",
+        "obstacle": "riviere_glace_du_lac_marais"
+      },
+      {
         "id": "passerelle_des_ronces",
         "name": "Passerelle des Ronces (effondrée)",
         "obstacle": "ravin_passerelle_des_ronces_passage"
