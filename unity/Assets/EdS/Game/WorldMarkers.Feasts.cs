@@ -7,7 +7,8 @@ namespace EdS.Game
     /// <summary>
     /// Sous-lot F4 (les 12 fêtes d'Orsédia dans le jeu) : l'étal de fête de Maître Florentin sur la place, pendant chaque fête : la tente ou la
     /// table du marché (packs de l'Asset Store) devant lui, habillée des décorations Tripo de la fête du mois (<see cref="FeastLooks.Stall"/> :
-    /// places libres, jamais dans un mur ni sur l'étal). Refait quand la fête change, retiré après elle ; affichage seulement, sans collision.
+    /// places libres, jamais dans un mur ni sur l'étal), et (sous-lot F5) le décor du mois sur les places. Refait quand la fête change, retiré
+    /// après elle ; affichage seulement, sans collision.
     /// </summary>
     public sealed partial class WorldMarkers
     {
@@ -37,6 +38,11 @@ namespace EdS.Game
             if (stall == null && Wave5View.Has(Wave5Role.TraderTable)) Wave5View.Place(holder, Wave5Role.TraderTable, "étal du forain", at, (float)layout.Yaw + 180f);
             foreach (FeastPiece piece in layout.Pieces)
                 LotCLook.PlaceFeast(holder, piece.Code, "décor de fête " + piece.Code, StyleWorld.OnGround(new Vector3((float)piece.X, 0f, (float)piece.Z)), (float)piece.Yaw);
+            // Sous-lot F5 (décor du mois) : les cinq décorations de la fête sur la place du village et la place du marché du Bourg, à leurs
+            // places validées (AdventureSession.FeastDecorPieces : hors obstacles, routes, portes, PNJ, étal) ; retirées avec l'étal après la fête.
+            int rank = 0;
+            foreach (FeastPiece piece in adventure.FeastDecorPieces)
+                LotCLook.PlaceFeast(holder, piece.Code, "décor du mois " + rank++ + " " + piece.Code, StyleWorld.OnGround(new Vector3((float)piece.X, 0f, (float)piece.Z)), (float)piece.Yaw);
         }
     }
 }

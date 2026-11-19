@@ -1136,6 +1136,18 @@ Cœur déjà fusionné (F1 à F3 : `feasts.json` v2, sauvegarde v27, `WorldSessi
 - Tests : `FetesF4EtalTests` (aventure sur les vraies données au Carnaval : étal, achats, refus, rattrapage l'année d'après, activité de Lison, plafond et fête gagnée ; pose de l'étal pour les 12 fêtes ; modèles, budget, icônes, textes ; contrôles de source Unity).
 - Limites : rien n'a été vu dans Unity (compilation contre les bouchons seulement) ; l'avant des modèles des fêtes est supposé comme celui du lot C ; sans les packs de l'Asset Store, l'étal n'a pas de tente ni de table, seulement ses décorations ; s'il marche (emploi du temps), l'étal reste à sa place de fête ; aucune collision (un joueur peut traverser l'étal).
 
+## Le décor du mois des fêtes (sous-lot F5, 19 novembre 2026)
+
+- Pendant chaque fête, ses **cinq décorations** (arches, lanternes, bannières, mâts…) sont posées sur la **place du village** (là où se tient le forain, lieu `bourg`) et sur la **place du marché du Bourg** (`place_du_marche_de_la_ville`) : une de chaque par place, à la première place qui convient sur des cercles de 4 à 22 m autour du centre du lieu (16 directions), tournées vers le centre (`FeastLooks.Village`, sans Unity ; `AdventureSession.FeastDecorPieces`, calculé une fois par fête sur la carte entière).
+- **Places validées** : emprise (disques le long de la largeur, marge de 0,25 m) hors des obstacles, **hors des routes** (bord de la chaussée), à **2,5 m des portes**, à 1 m des PNJ (places de la journée et de pluie comprises), des invités de toutes les fêtes, des points sûrs et des accessoires du Bourg fortifié, sans toucher l'étal du forain ni ses décorations, ni une autre décoration. Testé sur les vraies données pour les 12 fêtes : les cinq décorations sur chacune des deux places, au moins une dans chaque autre lieu.
+- **Décisions de Damien du 19 novembre 2026** : le décor va aussi **devant l'auberge** et au **parvis de la chapelle** (carré de 14 m devant leur porte, côté rue) et aux **portes du Bourg fortifié** (carré de 16 m à 9 m de chaque porte, côté ville), mêmes règles de placement (`AdventureSession.FeastDecorPlaces`). Comme pour l'étal, le dallage d'une place (route `place_…`) n'est pas une rue : une décoration peut s'y poser ; jamais sur une rue ni un chemin. **Maison du joueur** : décidée, en chantier à part après les lieux reconstruits (les décorations achetées y seront posées).
+- **Relecture indépendante de la PR #219** : le calcul est gardé par fête **et par zone**, et jamais vide en mémoire (une fête commencée en intérieur, ou une sauvegarde reprise en intérieur, pose le décor en sortant) ; le test vérifie les vraies distances aux PNJ, invités, points sûrs, portes, accessoires du Bourg et à l'étal.
+- **Retirées après la fête** : le décor est posé avec l'étal (`WorldMarkers.Feasts.cs`) et détruit avec lui quand la fête change ou finit.
+- **Modèles** : les **60 décorations** (les 20 de plus que l'étal), 42 Mo en tout ; ni plats, ni monnaies, ni récompenses en 3D.
+- **Décorations achetées par le joueur** : pas encore de maison du joueur (décidée par Damien le 19 novembre 2026, chantier à venir) : elles restent dans la sauvegarde (`owned`) sans être posées.
+- Tests : `FetesF5DecorTests` ; `FetesF4EtalTests` (60 modèles, budget).
+- Limites : pas vu dans Unity ; les arches ne sont pas posées au-dessus des routes (elles bloqueraient le passage sans collision réglée) : elles se tiennent sur la place, à côté.
+
 ## 8. En cas de problème
 
 - **Je ne sais pas si tout est prêt** : menu **Éclats du Seuil → Vérifier l'essai** (sous-lot V2.9.3) ; envoyer à Claude le fichier `unity/Assets/EdS/VERIFICATION_ESSAI.md` s'il reste du rouge ou de l'orange.
