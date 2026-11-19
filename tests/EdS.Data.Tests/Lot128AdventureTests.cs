@@ -106,7 +106,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal("quest.reveil", Assert.Single(a.Journal()).Id);   // sous-lot V1.9.6 : l'ouverture
         Assert.Empty(a.Discoveries());
         Assert.Equal("Village", a.PlaceName);
-        Assert.Equal(5, a.Professions().Count);   // pêche (appâts ramassés), cuisine et boulangerie
+        Assert.Equal(7, a.Professions().Count);   // V2.43.2a : bûcheron, tailleur de pierre ;   // pêche (appâts ramassés), cuisine et boulangerie
         Assert.True(a.IsBoss("gardien_du_seuil") && a.IsBoss("gardien_eveille") && !a.IsBoss("loup1"));
         // Les créatures sont loin de l'entrée : aucune cible (la plus proche est à plus de 20 m), alors qu'il y a des ennemis en vue.
         Assert.Null(a.Combat.TargetId);

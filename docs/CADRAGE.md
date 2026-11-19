@@ -441,6 +441,7 @@ Réponses de Damien du 19 novembre 2026, rapportées par la session principale (
 | Perte d'une reconstruction | Une reconstruction **n'est jamais perdue** (ni bandits, ni corruption, ni Envers). | Retenu (Damien, 19 novembre 2026) |
 | Ce qu'apporte un lieu reconstruit | Un **décor** et des **PNJ**, des **services** (marchand, artisan, point sûr, voyage) et **son intérieur**. | Retenu (Damien, 19 novembre 2026) |
 | Bois et pierre | On ajoute le **bois** et la **pierre** (bruts) et les **planches** et **pierres taillées** (travaillées, recettes dans les métiers existants) ; récolte du bois en forêt et de la pierre à une carrière, sur des nœuds de récolte comme ceux qui existent ; les paliers des chantiers s'en servent en plus des matériaux existants. | Retenu (Damien, 19 novembre 2026) ; V2.43.2a |
+| Métiers du bois et de la pierre | Deux **nouveaux métiers** : **bûcheron** (récolte du bois, planches) et **tailleur de pierre** (récolte de la pierre, pierres taillées), chacun avec sa progression, comme les métiers existants. Quantités validées : **3 bois → 2 planches**, **3 pierres → 1 pierre taillée**, nœuds qui repoussent en **60 s**. | Retenu (Damien, 19 novembre 2026, réponses à la PR #222) |
 
 ## 8. Points ouverts
 

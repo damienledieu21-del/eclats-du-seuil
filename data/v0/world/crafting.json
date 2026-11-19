@@ -37,6 +37,14 @@
       {
         "id": "cuisine",
         "name": "text.profession.cuisine"
+      },
+      {
+        "id": "bucheronnage",
+        "name": "text.profession.bucheronnage"
+      },
+      {
+        "id": "taille_de_pierre",
+        "name": "text.profession.taille_de_pierre"
       }
     ],
     "recipes": [
@@ -765,7 +773,7 @@
       {
         "id": "recipe.planche",
         "name": "text.recipe.planche",
-        "profession": "forge",
+        "profession": "bucheronnage",
         "requiredLevel": 1,
         "place": "cabane_du_bucheron",
         "inputs": [
@@ -783,7 +791,7 @@
       {
         "id": "recipe.pierre_taillee",
         "name": "text.recipe.pierre_taillee",
-        "profession": "minage",
+        "profession": "taille_de_pierre",
         "requiredLevel": 1,
         "place": "gradins_de_la_carriere",
         "inputs": [
@@ -1066,7 +1074,7 @@
       },
       {
         "id": "bois_foret_ouest",
-        "profession": "herboristerie",
+        "profession": "bucheronnage",
         "item": "item.bois",
         "count": 1,
         "position": [
@@ -1078,7 +1086,7 @@
       },
       {
         "id": "bois_foret_est",
-        "profession": "herboristerie",
+        "profession": "bucheronnage",
         "item": "item.bois",
         "count": 1,
         "position": [
@@ -1090,7 +1098,7 @@
       },
       {
         "id": "bois_du_bucheron",
-        "profession": "herboristerie",
+        "profession": "bucheronnage",
         "item": "item.bois",
         "count": 1,
         "position": [
@@ -1102,7 +1110,7 @@
       },
       {
         "id": "pierre_carriere",
-        "profession": "minage",
+        "profession": "taille_de_pierre",
         "item": "item.pierre",
         "count": 1,
         "position": [
@@ -1114,7 +1122,7 @@
       },
       {
         "id": "pierre_gradins_ouest",
-        "profession": "minage",
+        "profession": "taille_de_pierre",
         "item": "item.pierre",
         "count": 1,
         "position": [
@@ -1126,7 +1134,7 @@
       },
       {
         "id": "pierre_gradins_est",
-        "profession": "minage",
+        "profession": "taille_de_pierre",
         "item": "item.pierre",
         "count": 1,
         "position": [
