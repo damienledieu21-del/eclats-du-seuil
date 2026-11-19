@@ -140,6 +140,20 @@ public sealed class FetesF6CostumesPlatsTests
     }
 
     [Fact]
+    public void Tous_les_plats_gardes_visibles_jusqu_a_douze()
+    {
+        // Revue Codex de la PR #220 (P2) : une case par fête qui a des plats (douze fêtes au plus), toutes affichées.
+        var all = new SavedFeasts(Feasts.Value.Feasts.Select(f => new SavedFeast(f.Festival, dishes: 1)));
+        AdventureSession a = In("zone.vallons", 15, all);
+        Assert.Equal(12, a.FeastDishes.Count);
+        Assert.Equal(Feasts.Value.Feasts.Select(f => f.Festival), a.FeastDishes.Select(d => d.Festival));
+        string panel = File.ReadAllText(Unity("Game/AdventureBook.Feast.cs"));
+        Assert.Contains("private const int DishCells = 12, DishColumns = 6;", panel);
+        Assert.True(Feasts.Value.Feasts.Count <= 12);
+        Assert.True(788 + (12 / 6 - 1) * 46 + 40 <= 880);   // la dernière ligne tient dans le panneau (880 de haut)
+    }
+
+    [Fact]
     public void Tenues_aux_teintes_de_la_fete()
     {
         HumanLook look = HumanLooks.For("npc.habitant", "pnj");

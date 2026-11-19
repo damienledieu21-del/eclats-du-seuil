@@ -158,7 +158,11 @@ namespace EdS.Game
 
         // --- Sous-lot F6 : plats de fête dans l'écran du personnage ------------------------------------------------------------
 
-        private const int DishCells = 4;
+        /// <summary>
+        /// Revue Codex de la PR #220 : une case par fête qui a des plats gardés (douze au plus, une par fête), toutes visibles : deux lignes de
+        /// six (case de 40, nom à côté).
+        /// </summary>
+        private const int DishCells = 12, DishColumns = 6;
         private readonly List<(Cell Cell, UiText Name)> _dishCells = new List<(Cell, UiText)>();
         private IReadOnlyList<AdventureSession.FeastDishLine> _dishes = new AdventureSession.FeastDishLine[0];
 
@@ -173,10 +177,11 @@ namespace EdS.Game
             for (int i = 0; i < DishCells; i++)
             {
                 int index = i;
-                Cell cell = MakeCell(page, 730f + i * 180f, 788f, 56f, false);
+                float x = 730f + i % DishColumns * 118f, y = 788f + i / DishColumns * 46f;
+                Cell cell = MakeCell(page, x, y, 40f, false);
                 UiPointer pointer = UiKit.Pointer(cell.Slab);
                 pointer.Left = () => EatDish(index);
-                UiText name = Text(page, UiFace.Body, 14f, UiKit.Ink, TextAnchor.MiddleLeft, 792f + i * 180f, 816f, 112f, 36f, 0f, 0.5f);
+                UiText name = Text(page, UiFace.Body, 12f, UiKit.Ink, TextAnchor.MiddleLeft, x + 44f, y + 20f, 72f, 40f, 0f, 0.5f);
                 name.Wrap();
                 _dishCells.Add((cell, name));
             }
