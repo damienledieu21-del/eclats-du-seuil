@@ -533,6 +533,8 @@ namespace EdS.Game
             SeasonView.Clear();
             _weatherFx = null;
             StyleWorld.SetWeather(null);
+            StyleWorld.SetFeast(FeastMood.None);   // relecture de la PR #220 : l'ambiance de fête ne survit pas à l'aventure
+            HumanBodies.Feast = 0;   // ni la tenue de fête des habitants
             _talentView?.Close();
             PaintedMap.Forget();
             _book?.ForgetFog();   // relecture de la PR #185 : la texture du brouillard ne survit pas à l'aventure

@@ -161,6 +161,9 @@ namespace EdS.Game
         private const int DishCells = 4;
         private readonly List<(Cell Cell, UiText Name)> _dishCells = new List<(Cell, UiText)>();
         private IReadOnlyList<AdventureSession.FeastDishLine> _dishes = new AdventureSession.FeastDishLine[0];
+
+        /// <summary>Relecture indépendante de la PR #220 : la fête de chaque case (un clic mange le plat de sa case, jamais celui d'à côté).</summary>
+        private readonly string[] _dishFestivals = new string[DishCells];
         private UiText _dishesTitle;
 
         /// <summary>Les plats de fête gardés, sous l'aide du sac : une case par plat (icône, nombre), un clic en mange un.</summary>
@@ -179,10 +182,11 @@ namespace EdS.Game
             }
         }
 
-        /// <summary>Clic sur un plat : en mange un (un clic, un plat : la liste est relue à chaque image).</summary>
+        /// <summary>Clic sur un plat : mange un plat de la fête de cette case (vide : rien).</summary>
         private void EatDish(int index)
         {
-            if (_session != null && index < _dishes.Count) _session.EatFeastDish(_dishes[index].Festival);
+            string festival = index < _dishFestivals.Length ? _dishFestivals[index] : null;
+            if (_session != null && festival != null) _session.EatFeastDish(festival);
         }
 
         private void RefreshDishes(AdventureSession a)
@@ -193,6 +197,8 @@ namespace EdS.Game
             for (int i = 0; i < _dishCells.Count; i++)
             {
                 bool used = i < _dishes.Count;
+                if (used) _dishFestivals[i] = _dishes[i].Festival;
+                else _dishFestivals[i] = null;
                 UiKit.Show(_dishCells[i].Cell.Rect, used);
                 UiKit.Show(_dishCells[i].Name.Rect, used);
                 if (!used) continue;

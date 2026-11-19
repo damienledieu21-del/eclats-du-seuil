@@ -6,6 +6,7 @@ using EdS.Data.Feasts;
 using EdS.Data.Json;
 using EdS.Data.Saves;
 using EdS.Data.Story;
+using EdS.Data.Zones;
 using EdS.Runtime;
 using EdS.World;
 using Xunit;
@@ -58,6 +59,59 @@ public sealed class FetesF6CostumesPlatsTests
         // Le dernier plat mangé d'une fête sans rien d'autre : l'entrée disparaît (comme une sauvegarde sans fête).
         Assert.True(new SavedFeasts(new[] { new SavedFeast(Carnaval, dishes: 1) }) is var last
             && FeastRules.Eat(last, book, Carnaval, out SavedFeasts emptied) == FeastRefusal.None && emptied.IsEmpty);
+    }
+
+    [Fact]
+    public void Manger_refuse_en_combat_ou_sans_plat_rien_ne_change()
+    {
+        // Relecture indépendante de la PR #220 : refus côté cœur (WorldSession.EatFeastDish), état gardé identique.
+        ZoneDefinition zone = Zone(-1088.5, -36.2);
+        var w = new WorldSession(new WorldSave("zone.vallons", WorldEventSchedule.TickAt(new WorldClock(50), 15 * 1440 + 12 * 60), 0,
+            new[] { PlayerCharacters.PlacesKey }, Hero().WithFeasts(new SavedFeasts(new[] { new SavedFeast(Carnaval, 3, dishes: 1) }))),
+            zone, ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+        w.Step();
+        Assert.Equal(FeastRefusal.NoFeast, w.EatFeastDish(Carnaval));   // sans catalogue des fêtes
+        w.UseFeasts(Feasts.Value);
+        SavedFeasts before = w.FeastState;
+        Assert.Equal(FeastRefusal.NoFeast, w.EatFeastDish("festival.marche"));
+        Assert.Same(before, w.FeastState);
+        w.Zone.Leave(w.CombatantId);   // hors d'état de manger : compté en combat (comme les cartes et la pêche)
+        w.Step();
+        Assert.True(w.InCombat);
+        Assert.Equal(FeastRefusal.NotNow, w.EatFeastDish(Carnaval));
+        Assert.Same(before, w.FeastState);
+        Assert.Equal(1, w.FeastState.Of(Carnaval).Dishes);
+    }
+
+    [Fact]
+    public void Plus_de_plat_refuse_sans_rien_changer()
+    {
+        ZoneDefinition zone = Zone(-1088.5, -36.2);
+        var w = new WorldSession(new WorldSave("zone.vallons", WorldEventSchedule.TickAt(new WorldClock(50), 15 * 1440 + 12 * 60), 0,
+            new[] { PlayerCharacters.PlacesKey }, Hero().WithFeasts(new SavedFeasts(new[] { new SavedFeast(Carnaval, 3) }))),
+            zone, ShippedData, Progression, ItemsCatalog, Book(zone), market: new Market(ShippedMerchants));
+        w.Step();
+        w.UseFeasts(Feasts.Value);
+        SavedFeasts before = w.FeastState;
+        Assert.Equal(FeastRefusal.NoDish, w.EatFeastDish(Carnaval));
+        Assert.Same(before, w.FeastState);
+        Assert.Equal(3, w.FeastState.Of(Carnaval).Coins);
+    }
+
+    [Fact]
+    public void Ambiance_et_tenues_remises_a_zero_en_sortant_de_l_aventure_et_case_de_plat_par_fete()
+    {
+        // Relecture indépendante de la PR #220 : l'état statique de la fête ne survit pas à l'aventure (menu, autres modes).
+        string game = File.ReadAllText(Unity("Game/EdsGame.cs"));
+        int weather = game.IndexOf("StyleWorld.SetWeather(null);", StringComparison.Ordinal);
+        Assert.True(weather > 0);
+        string around = game.Substring(weather, 400);
+        Assert.Contains("StyleWorld.SetFeast(FeastMood.None);", around);
+        Assert.Contains("HumanBodies.Feast = 0;", around);
+        // Un clic mange un plat de la fête de la case (pas le rang : un double clic ne mange jamais le plat suivant).
+        string panel = File.ReadAllText(Unity("Game/AdventureBook.Feast.cs"));
+        Assert.Contains("_session.EatFeastDish(festival)", panel);
+        Assert.Contains("if (used) _dishFestivals[i] = _dishes[i].Festival;", panel);
     }
 
     [Fact]
@@ -137,7 +191,7 @@ public sealed class FetesF6CostumesPlatsTests
         Assert.Contains("(float)_feast.FogEnd", world);
         Assert.Contains("StyleWorld.SetFeast(a.FeastMood);", File.ReadAllText(Unity("Game/EdsGame.cs")));
         Assert.Contains("string comfort = a.ComfortText;", File.ReadAllText(Unity("Game/HudView.cs")));
-        Assert.Contains("_session.EatFeastDish(_dishes[index].Festival)", File.ReadAllText(Unity("Game/AdventureBook.Feast.cs")));
+        
     }
 
     private static (int, int) JpegSize(string path)
