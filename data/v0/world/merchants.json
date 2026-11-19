@@ -546,6 +546,10 @@
         "value": 12
       },
       {
+        "item": "item.pate_brisee",
+        "value": 10
+      },
+      {
         "item": "item.tarte_renversee_aux_pommes",
         "value": 60
       },
@@ -1190,6 +1194,13 @@
           {
             "item": "item.pate_feuilletee",
             "price": 15,
+            "always": true,
+            "stock": 6,
+            "fresh": true
+          },
+          {
+            "item": "item.pate_brisee",
+            "price": 12,
             "always": true,
             "stock": 6,
             "fresh": true

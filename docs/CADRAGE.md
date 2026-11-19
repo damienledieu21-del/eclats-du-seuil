@@ -415,6 +415,18 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Forain et décor de l'étal | **Maître Florentin**, le forain des fêtes, gardé (nom et place sur la place du bourg) ; le **décor automatique** de l'étal (les décorations de la fête qui tiennent sur un étal, jusqu'à 2,5 m) est gardé. | Retenu (Damien, 19 novembre 2026) |
 | Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 
+## 7 duodecies. Pâtisseries de Firmin (Retenu)
+
+Décisions de Damien du 19 novembre 2026, rapportées par la session principale, sur le dossier « Les pains et pâtisseries » (AssetLab, `Firmin/`, 16 modèles) et la PR #217 ; détail dans [MONDE.md](MONDE.md#pâtisseries-de-firmin-19-novembre-2026).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Niveaux de réussite au concours | **Trois niveaux** montrés, selon la qualité de la pièce de la main du joueur : normale → **raté** (N1), supérieure → **correct** (N2), chef-d'œuvre → **maîtrisé** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Pièce achetée à Firmin | Montrée **maîtrisée** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Recettes | **On suit le dossier** : la tarte renversée se fait sur **pâte brisée** (objet et recette nouveaux), le levain chef est un **levain de blé** ; la pâte feuilletée reste pour les chaussons. | Retenu (Damien, 19 novembre 2026) |
+| Calendrier de l'étal | Celui proposé par Claude : levain, pâtes brisée et feuilletée tous les jours ; tarte renversée le **dimanche** ; fouace les **samedis et dimanches de printemps** ; couronne les **samedis et dimanches d'automne**. | Retenu (Damien, 19 novembre 2026) |
+| Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. | Retenu (Damien, 19 novembre 2026) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

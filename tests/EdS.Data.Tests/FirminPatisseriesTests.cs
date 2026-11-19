@@ -86,16 +86,18 @@ public class FirminPatisseriesTests
         JsonObject root = MerchantsJson();
         root["schemaVersion"] = 6;
         JsonArray offers = root["data"]!["merchants"]![BakeryIndex(root)]!["offers"]!.AsArray();
-        foreach (string item in new[] { "item.levain", "item.pate_feuilletee", Tarte, Fouace, Couronne })
+        foreach (string item in new[] { "item.levain", "item.pate_feuilletee", "item.pate_brisee", Tarte, Fouace, Couronne })
             offers.Remove(offers.Single(o => (string?)o!["item"] == item));
         MerchantsLoadResult old = ReadMerchants(root);
         Assert.True(old.Book != null, old.Report.ToString());
         var before = new Market(old.Book!);
         var after = new Market(ShippedMerchants);
-        string[] added = { "item.levain", "item.pate_feuilletee", Tarte, Fouace, Couronne };
+        string[] added = { "item.levain", "item.pate_feuilletee", "item.pate_brisee", Tarte, Fouace, Couronne };
+        // Relecture indépendante de #217 : mêmes objets, mêmes prix, mêmes stocks, mêmes drapeaux.
+        static string Line(MerchantOffer o) => $"{o.Item}|{o.Price}|{o.Stock}|{o.Always}|{o.Fresh}|{o.Door}|{o.Rank}";
         for (long d = 0; d < 200; d++)
             foreach (Merchant m in ShippedMerchants.Merchants)
-                Assert.Equal(before.Stock(m.Id, d).Select(o => o.Item), after.Stock(m.Id, d).Select(o => o.Item).Where(i => m.Id != Bakery || !added.Contains(i)));
+                Assert.Equal(before.Stock(m.Id, d).Select(Line), after.Stock(m.Id, d).Where(o => m.Id != Bakery || !added.Contains(o.Item)).Select(Line));
     }
 
     [Theory]
@@ -131,6 +133,69 @@ public class FirminPatisseriesTests
         MerchantsLoadResult old = ReadMerchants(v6);
         Assert.Null(old.Book);
         Assert.Contains(Errors(old), e => e.Path == OfferPath(v6, Fouace) + ".weekdays" && e.Code == ValidationCode.InvalidValue);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void Jours_et_saisons_refuses_avant_la_version_7(int version)
+    {
+        // Relecture indépendante de #217 : une offre à jours ou saisons dans un fichier des versions 2 à 5 est refusée au chemin précis
+        // (le reste du fichier ramené à ce que la version connaît : un seul marchand simple).
+        JsonObject root = MerchantsJson();
+        root["schemaVersion"] = version;
+        var offer = JsonNode.Parse("{\"item\":\"item.pain_de_campagne\",\"price\":15,\"always\":true,\"weekdays\":[6]}")!;
+        JsonObject first = root["data"]!["merchants"]![0]!.AsObject();
+        var merchant = new JsonObject { ["id"] = first["id"]!.DeepClone(), ["npc"] = first["npc"]!.DeepClone(), ["greeting"] = first["greeting"]!.DeepClone(),
+            ["sellPercent"] = 25, ["closed"] = new JsonArray(), ["daily"] = 0, ["offers"] = new JsonArray(offer) };
+        root["data"] = new JsonObject { ["values"] = root["data"]!["values"]!.DeepClone(), ["merchants"] = new JsonArray(merchant) };
+        MerchantsLoadResult result = ReadMerchants(root);
+        Assert.Null(result.Book);
+        Assert.Contains(Errors(result), e => e.Path == "$.data.merchants[0].offers[0].weekdays" && e.Code == ValidationCode.InvalidValue);
+        // La même offre sans jours est lue dans cette version.
+        offer.AsObject().Remove("weekdays");
+        MerchantsLoadResult ok = ReadMerchants(root);
+        Assert.True(ok.Book != null, ok.Report.ToString());
+    }
+
+    [Fact]
+    public void Offre_a_la_porte_jamais_de_certains_jours()
+    {
+        // Relecture indépendante de #217 : la porte vend sans regarder le calendrier ; « door » avec « weekdays » ou « seasons » est refusé.
+        foreach (string field in new[] { "weekdays", "seasons" })
+        {
+            JsonObject root = MerchantsJson();
+            JsonObject o = BakeryOffer(root, Fouace);
+            o.Remove(field == "weekdays" ? "seasons" : "weekdays");
+            o["door"] = true;
+            MerchantsLoadResult result = ReadMerchants(root);
+            Assert.Null(result.Book);
+            Assert.Contains(Errors(result), e => e.Path == OfferPath(root, Fouace) + ".door" && e.Code == ValidationCode.InvalidValue);
+        }
+        // Le schéma JSON le dit aussi.
+        string schema = File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "data", "schemas", "merchants.schema.json"));
+        Assert.Contains("\"const\": true", schema, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Recettes_du_dossier_pate_brisee_et_levain_de_ble()
+    {
+        // Décision de Damien du 19 novembre 2026 : la tarte sur pâte brisée, le levain de blé ; la pâte feuilletée reste aux chaussons.
+        JsonElement recipes = JsonDocument.Parse(File.ReadAllText(Path.Combine(DataDirectory, "world", "crafting.json"))).RootElement.GetProperty("data").GetProperty("recipes");
+        string[] Inputs(string id) => recipes.EnumerateArray().Single(r => r.GetProperty("id").GetString() == id).GetProperty("inputs").EnumerateArray()
+            .Select(i => i.GetProperty("item").GetString()!).ToArray();
+        Assert.Contains("item.pate_brisee", Inputs("recipe.cuisine.tarte_renversee_aux_pommes"));
+        Assert.DoesNotContain("item.pate_feuilletee", Inputs("recipe.cuisine.tarte_renversee_aux_pommes"));
+        Assert.Equal(new[] { "item.farine_de_ble" }, Inputs("recipe.cuisine.levain"));
+        Assert.Contains("item.pate_feuilletee", Inputs("recipe.cuisine.chausson_aux_pommes"));
+        Assert.Contains("item.farine_de_seigle", Inputs("recipe.cuisine.miche_de_seigle"));
+        Assert.Equal(new[] { "item.farine_de_ble", "item.beurre_de_baratte", "item.oeufs_frais" }, Inputs("recipe.cuisine.pate_brisee"));
+        Assert.True(ItemsCatalog.TryGetItem("item.pate_brisee", out _));
+        Assert.True(Texts.Has("text.recipe.cuisine.pate_brisee"));
+        Assert.Contains("blé", Texts.Get("text.recipe.cuisine.levain"), StringComparison.Ordinal);
+        Assert.Contains(ShippedMerchants.Merchant(Bakery).Offers, o => o.Item == "item.pate_brisee" && !o.Seasonal);
     }
 
     [Fact]

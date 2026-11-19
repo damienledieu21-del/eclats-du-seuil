@@ -2094,6 +2094,14 @@
         "stack": 10
       },
       {
+        "id": "item.pate_brisee",
+        "name": "Pâte brisée",
+        "icon": "sac",
+        "type": "material",
+        "rarity": "common",
+        "stack": 10
+      },
+      {
         "id": "item.tarte_renversee_aux_pommes",
         "name": "Tarte renversée aux pommes",
         "icon": "tarte_renversee_aux_pommes",

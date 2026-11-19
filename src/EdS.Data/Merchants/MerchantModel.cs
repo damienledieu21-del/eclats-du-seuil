@@ -1091,6 +1091,9 @@ namespace EdS.Data.Merchants
                         if (!Since7(o.Weekdays != null ? "weekdays" : "seasons", op + (o.Weekdays != null ? ".weekdays" : ".seasons"), r, schema)) offerOk = false;
                         else if (o.Always != true)
                         { r.Add(op + (o.Weekdays != null ? ".weekdays" : ".seasons"), ValidationCode.InvalidValue, "jours ou saisons d'une offre permanente seulement (« always »: true) : le tirage du jour ne les connaît pas."); offerOk = false; }
+                        // Relecture indépendante de #217 : la porte vend sans regarder le calendrier ; une offre de certains jours n'y est jamais.
+                        else if (o.Door == true)
+                        { r.Add(op + ".door", ValidationCode.InvalidValue, "une offre de certains jours ou saisons ne se vend pas à la porte (« door »: true interdit avec « weekdays » ou « seasons »)."); offerOk = false; }
                     }
                     if (offerOk && o.Weekdays != null)
                     {

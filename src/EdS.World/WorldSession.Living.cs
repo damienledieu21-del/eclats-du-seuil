@@ -152,7 +152,7 @@ namespace EdS.World
                 if (!door || o.Door) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
             if (door)
                 foreach (MerchantOffer o in m.Offers)
-                    if (o.Door && list.All(x => x.Item != o.Item)) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
+                    if (o.Door && o.OnSaleOn(Zone.Time.Day) && list.All(x => x.Item != o.Item)) list.Add(o.WithPrice(BuyPrice(merchant, o.Item, o.Price)).WithLeft(Left(merchant, o.Item)));
             if (door) return list.AsReadOnly();
             // Ce que le joueur a revendu et qui n'est pas dans le tirage du jour : au prix de l'offre s'il en a une, sinon à son prix de revente.
             foreach (SavedStock line in _character.Stock)

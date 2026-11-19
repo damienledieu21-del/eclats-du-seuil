@@ -248,6 +248,32 @@
                       },
                       "description": "Pâtisseries de Firmin (schéma 7) : saisons où l'offre permanente est en vente ; facultatif (toute l'année)."
                     }
+                  },
+                  "if": {
+                    "properties": {
+                      "door": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "door"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "weekdays"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "seasons"
+                          ]
+                        }
+                      ]
+                    }
                   }
                 }
               },
