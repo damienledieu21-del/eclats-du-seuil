@@ -115,7 +115,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.Null(Vallons.PopulationOf("sanglier")!.Hours);
         Assert.Null(Vallons.PopulationOf("loup_blanc")!.Hours);
         Assert.Equal(new[] { "npc.odile", "npc.maelle", "npc.apprentie", "npc.armurier", "npc.epiciere", "npc.doyen",
-            "npc.herboriste_hameau", "npc.fermier" }, Vallons.NightSpots.Select(n => n.Npc));
+            "npc.herboriste_hameau" }, Vallons.NightSpots.Select(n => n.Npc));   // 17 novembre 2026 : Achille dort chez lui (zone.chaumiere)
         // Ceux qui veillent restent à leur place : Aldric (la garde de nuit), le capitaine, Lison (le puits la nuit), Sauge (ouverte la nuit),
         // le boulanger (le pain se fait la nuit), Gaspard, Renart (son étal reste ouvert la nuit).
         foreach (string npc in new[] { "npc.archer_garde", "npc.capitaine", "npc.lison", "npc.herboriste", "npc.boulanger", "npc.gaspard", "npc.renart" })
