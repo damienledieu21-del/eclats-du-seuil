@@ -1317,7 +1317,7 @@ Limites (V2.43.1) : pas encore de contenu (le fichier `rebuilds.json` des 5 lieu
 
 ## Sauvegarde
 
-Version **28** depuis les lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : `character.rebuilds`, facultatif (absent tant que rien n'est apporté) : `{"hameau": {"stage": 0, "given": {"bandits": 1, "or": 1200}}}` (paliers finis, apports au palier en cours). La version 27 et les antérieures sont lues telles quelles (tous les lieux en ruine).
+Version **28** depuis les lieux reconstruits (sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : `character.rebuilds`, facultatif (absent tant que rien n'est apporté) : `{"hameau": {"stage": 0, "given": {"bandits": 1, "or": 1200}}, "moulin": {"stage": 1, "given": {}, "done": true}}` (paliers finis, apports au palier en cours ; `done` : reconstruit pour toujours, même si le catalogue ajoute un palier plus tard, revue Codex de la PR #221). La version 27 et les antérieures sont lues telles quelles (tous les lieux en ruine).
 
 Version **27** depuis les 12 fêtes d'Orsédia (décisions de Damien du 17 novembre 2026, sous-lot F2) : `character.feasts`, facultatif (absent quand le personnage n'a rien des fêtes) : `{"shown": "festival.foire", "wallets": {"festival.foire": {"coins": 120, "edition": 2027, "done": {"cible": 740000}, "wins": 1, "bought": 0, "editions": [2027], "owned": ["F04_D01"], "dishes": 3}}}` ; voir [les 12 fêtes](#les-12-fêtes-dorsédia). La version 26 et les antérieures restent lues (aucune fête) et sont réécrites en 27 ; `feasts` y est refusé (champ inconnu).
 

@@ -275,6 +275,7 @@ namespace EdS.Data.Saves
     public sealed class SavedRebuildData
     {
         public int? Stage { get; set; }
+        public bool? Done { get; set; }
         public List<KeyValuePair<string, long?>>? Given { get; set; }
     }
 }

@@ -177,16 +177,16 @@ public class LieuxReconstruitsTests
 
         // Accord avec le catalogue.
         RebuildBook book = Sample.Value;
-        Assert.Null(RebuildRules.Mismatch(new SavedRebuilds(new[] { a, new SavedRebuild("moulin", 1) }), book));
-        Assert.Contains("inconnu", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1) }), book));
-        Assert.Contains("paliers finis", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 3) }), book));
+        Assert.Null(RebuildRules.Mismatch(new SavedRebuilds(new[] { a, new SavedRebuild("moulin", 1, done: true) }), book));
+        Assert.Contains("inconnu", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1, done: true) }), book));
+        Assert.Contains("paliers finis", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 3, done: true) }), book));
         Assert.Contains("hors du palier", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 0, Given(("releve", 1))) }), book));
         Assert.Contains("en demande", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 0, Given(("or", 5_001))) }), book));
-        Assert.Contains("reconstruit", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 2, Given(("or", 1))) }), book));
+        Assert.Contains("reconstruit", RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("hameau", 2, Given(("or", 1))) }), book));   // tous les paliers finis sans « done »
         // Relecture indépendante de la PR #221 : chaque écart avec son chemin et son code (erreur de chargement propre).
         var report = new ValidationReport();
-        RebuildRules.Check(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1), new SavedRebuild("hameau", 0, Given(("or", 5_001), ("releve", 1))),
-            new SavedRebuild("moulin", 2) }), book, report, "$.data.character.rebuilds");
+        RebuildRules.Check(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1, done: true), new SavedRebuild("hameau", 0, Given(("or", 5_001), ("releve", 1))),
+            new SavedRebuild("moulin", 2, done: true) }), book, report, "$.data.character.rebuilds");
         Assert.Equal(new[]
         {
             ("$.data.character.rebuilds.abbaye", ValidationCode.UnknownReference),
@@ -194,6 +194,28 @@ public class LieuxReconstruitsTests
             ("$.data.character.rebuilds.hameau.given.releve", ValidationCode.UnknownReference),
             ("$.data.character.rebuilds.moulin.stage", ValidationCode.OutOfRange),
         }, report.Errors.Select(e => (e.Path, e.Code)));
+    }
+
+    [Fact]
+    public void Un_lieu_reconstruit_le_reste_meme_si_le_catalogue_lui_ajoute_un_palier()
+    {
+        // Revue Codex de la PR #221 : le moulin (un palier) est reconstruit ; le catalogue lui ajoute un palier plus tard.
+        RebuildBook grown = Read(Catalog(r => r["data"]!["sites"]![1]!["stages"]!.AsArray().Add(new JsonObject
+        {
+            ["id"] = "foulons",
+            ["needs"] = new JsonArray(new JsonObject { ["id"] = "or", ["coins"] = 10 }),
+        }))).Book!;
+        var saved = new SavedRebuilds(new[] { new SavedRebuild("moulin", 1, done: true) });
+        Assert.Null(RebuildRules.Mismatch(saved, grown));
+        Assert.Equal(RebuildPhase.Rebuilt, RebuildRules.PhaseOf(saved.Of("moulin"), grown.Of("moulin")!));
+        Assert.Null(RebuildRules.CurrentStage(saved.Of("moulin"), grown.Of("moulin")!));
+        WorldSession w = Session(466, 856, Hero(100).WithRebuilds(saved), catalog: false);
+        w.UseRebuilds(grown);
+        Assert.Equal(RebuildPhase.Rebuilt, w.RebuildPhaseOf("moulin"));
+        Assert.Equal(RebuildRefusal.Rebuilt, w.GiveToRebuild("moulin", "or", out _, out _));
+        Assert.Equal(100, w.Character.Money);
+        // Sans « done », les paliers finis d'avant ne suffisent pas : la sauvegarde est refusée (jamais rouverte en silence).
+        Assert.NotNull(RebuildRules.Mismatch(new SavedRebuilds(new[] { new SavedRebuild("moulin", 1, Given(("or", 1))) }), Sample.Value));
     }
 
     private static IEnumerable<KeyValuePair<string, long>> Given(params (string Need, long Amount)[] given) =>
@@ -205,7 +227,7 @@ public class LieuxReconstruitsTests
 
     private static readonly SavedRebuilds Saved = new(new[]
     {
-        new SavedRebuild("moulin", 1),
+        new SavedRebuild("moulin", 1, done: true),
         new SavedRebuild("hameau", 0, Given(("or", 1_200), ("bandits", 1))),
     });
 
@@ -229,7 +251,7 @@ public class LieuxReconstruitsTests
     {
         Assert.Equal((28, 28), (SaveValidator.CurrentSchemaVersion, SaveValidator.RebuildsSince));
         string json = Write(Hero().WithRebuilds(Saved));
-        Assert.Contains("\"rebuilds\": {\"hameau\": {\"stage\": 0, \"given\": {\"bandits\": 1, \"or\": 1200}}, \"moulin\": {\"stage\": 1, \"given\": {}}},", json, StringComparison.Ordinal);
+        Assert.Contains("\"rebuilds\": {\"hameau\": {\"stage\": 0, \"given\": {\"bandits\": 1, \"or\": 1200}}, \"moulin\": {\"stage\": 1, \"given\": {}, \"done\": true}},", json, StringComparison.Ordinal);
         SaveLoadResult back = SaveJsonReader.Read(json);
         Assert.True(back.IsValid, back.Report.ToString());
         Assert.Equal(json, Write(back.Save!.Character!));   // écriture canonique, octet par octet
@@ -266,8 +288,11 @@ public class LieuxReconstruitsTests
             g["bandits"] = 1;   // après « or » : hors de l'ordre ordinal
         }), P + ".hameau.given.bandits", ValidationCode.InvalidValue);
         Refused(Mutated(r => R(r)["hameau"]!["vu"] = true), P + ".hameau.vu", ValidationCode.UnknownField);
+        Refused(Mutated(r => R(r)["moulin"]!["done"] = false), P + ".moulin.done", ValidationCode.InvalidValue);
+        Refused(Mutated(r => R(r)["moulin"]!["given"] = new JsonObject { ["or"] = 1 }), P + ".moulin.given", ValidationCode.InvalidValue);
+        Assert.Throws<ArgumentException>(() => new SavedRebuild("moulin", 1, Given(("or", 1)), done: true));
         Assert.Throws<ArgumentException>(() => new SavedRebuild("hameau", 0));
-        Assert.Throws<ArgumentException>(() => new SavedRebuilds(new[] { new SavedRebuild("moulin", 1), new SavedRebuild("moulin", 1) }));
+        Assert.Throws<ArgumentException>(() => new SavedRebuilds(new[] { new SavedRebuild("moulin", 1, done: true), new SavedRebuild("moulin", 1, done: true) }));
     }
 
     // --- Dans la partie --------------------------------------------------------------------------------
@@ -316,7 +341,7 @@ public class LieuxReconstruitsTests
         Assert.Equal(20_000, far.Character.Money);
         Assert.True(far.RebuildState.IsEmpty);
         // Un état gardé hors du catalogue est refusé à la mise en jeu, rien ne change.
-        WorldSession odd = Session(InX, InZ, Hero().WithRebuilds(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1) })), catalog: false);
+        WorldSession odd = Session(InX, InZ, Hero().WithRebuilds(new SavedRebuilds(new[] { new SavedRebuild("abbaye", 1, done: true) })), catalog: false);
         Assert.Throws<ArgumentException>(() => odd.UseRebuilds(Sample.Value));
         Assert.Null(odd.RebuildBook);
     }

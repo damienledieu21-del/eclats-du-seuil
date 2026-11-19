@@ -1319,7 +1319,7 @@ namespace EdS.Data.Saves
         }
 
         private static SavedRebuilds? Rebuilds(List<KeyValuePair<string, SavedRebuildData?>>? x) => x is null ? null
-            : new SavedRebuilds(x.Select(e => new SavedRebuild(e.Key, e.Value!.Stage!.Value, e.Value.Given!.Select(g => new KeyValuePair<string, long>(g.Key, g.Value!.Value)))));
+            : new SavedRebuilds(x.Select(e => new SavedRebuild(e.Key, e.Value!.Stage!.Value, e.Value.Given!.Select(g => new KeyValuePair<string, long>(g.Key, g.Value!.Value)), e.Value.Done == true)));
 
         /// <summary>
         /// Lieux reconstruits (version 28) : au moins un chantier, au plus <see cref="SavedRebuilds.MaxEntries"/>, lieux en ordre ordinal ;
@@ -1349,7 +1349,9 @@ namespace EdS.Data.Saves
                     else if (r.Given[k].Value < 1 || r.Given[k].Value > SavedRebuild.MaxAmount)
                         report.Add(gp, ValidationCode.OutOfRange, $"quantité hors de [1, {SavedRebuild.MaxAmount}] (un besoin sans apport est absent).");
                 }
-                if (r.Stage == 0 && r.Given.Count == 0) report.Add(p, ValidationCode.InvalidValue, "chantier vide : un lieu en ruine est absent.");
+                if (r.Done == false) report.Add(p + ".done", ValidationCode.InvalidValue, "« done » s'écrit seulement quand il vaut true.");
+                if (r.Done == true && r.Given.Count > 0) report.Add(p + ".given", ValidationCode.InvalidValue, "lieu reconstruit : aucun apport en cours.");
+                if (r.Stage == 0 && r.Given.Count == 0 && r.Done != true) report.Add(p, ValidationCode.InvalidValue, "chantier vide : un lieu en ruine est absent.");
             }
         }
 
