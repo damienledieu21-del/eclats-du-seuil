@@ -136,7 +136,8 @@ namespace EdS.World
 
         /// <summary>
         /// Offres du marchand <paramref name="merchant"/> le jour <paramref name="day"/> du monde : toutes ses offres permanentes, et
-        /// <see cref="Merchant.Daily"/> offres tirées parmi les autres, dans l'ordre du fichier. Le tirage (mélange partiel de Fisher-Yates)
+        /// <see cref="Merchant.Daily"/> offres tirées parmi les autres, dans l'ordre du fichier (une offre permanente limitée à certains jours
+        /// ou saisons, schéma 7, seulement ces jours-là). Le tirage (mélange partiel de Fisher-Yates)
         /// est fait par un <see cref="Pcg32"/> initialisé par l'empreinte FNV-1a de <see cref="DayKey"/> : le même jour donne toujours le même
         /// stock.
         /// </summary>
@@ -157,7 +158,9 @@ namespace EdS.World
                     chosen.Add(rotating[i]);
                 }
             }
-            return m.Offers.Where(o => o.Always || chosen.Contains(o)).ToList().AsReadOnly();
+            // Pâtisseries de Firmin (schéma 7) : une offre permanente de certains jours ou saisons n'est en vente que ces jours-là (le tirage,
+            // qui ne porte que sur les offres non permanentes, ne change pas).
+            return m.Offers.Where(o => (o.Always && o.OnSaleOn(day)) || chosen.Contains(o)).ToList().AsReadOnly();
         }
 
         /// <summary>

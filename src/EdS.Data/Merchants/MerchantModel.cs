@@ -148,6 +148,12 @@ namespace EdS.Data.Merchants
 
         /// <summary>Sous-lot V2.14 (schéma 6) : vendue aussi à la porte quand la boutique est fermée (jamais de quête bloquée par un horaire).</summary>
         public bool? Door { get; set; }
+
+        /// <summary>Pâtisseries de Firmin (schéma 7) : jours de la semaine où l'offre est en vente (0 : lundi … 6 : dimanche), facultatifs.</summary>
+        public List<int?>? Weekdays { get; set; }
+
+        /// <summary>Pâtisseries de Firmin (schéma 7) : saisons où l'offre est en vente (« spring »…), facultatives.</summary>
+        public List<string?>? Seasons { get; set; }
     }
 
     // --- Modèle validé ---------------------------------------------------------------------------------
@@ -180,6 +186,26 @@ namespace EdS.Data.Merchants
         /// <summary>Sous-lot V2.14 : vendue aussi à la porte quand la boutique est fermée.</summary>
         public bool Door { get; private set; }
 
+        /// <summary>
+        /// Pâtisseries de Firmin (schéma 7) : jours de la semaine où l'offre est en vente (0 : lundi … 6 : dimanche, croissants) ; vide :
+        /// tous les jours.
+        /// </summary>
+        public IReadOnlyList<int> Weekdays { get; private set; } = Array.Empty<int>();
+
+        /// <summary>Pâtisseries de Firmin (schéma 7) : saisons où l'offre est en vente (ordre de <see cref="WorldCalendar.Seasons"/>) ; vide : toute l'année.</summary>
+        public IReadOnlyList<string> Seasons { get; private set; } = Array.Empty<string>();
+
+        /// <summary>Pâtisseries de Firmin (schéma 7) : offre limitée à certains jours ou saisons.</summary>
+        public bool Seasonal => Weekdays.Count > 0 || Seasons.Count > 0;
+
+        /// <summary>
+        /// Pâtisseries de Firmin (schéma 7) : l'offre est-elle en vente le jour <paramref name="day"/> du monde (son jour de la semaine et sa
+        /// saison, <see cref="WorldCalendar"/>) ? Toujours vrai sans <see cref="Weekdays"/> ni <see cref="Seasons"/>.
+        /// </summary>
+        public bool OnSaleOn(long day) =>
+            (Weekdays.Count == 0 || Weekdays.Contains(WorldCalendar.WeekdayOf(day)))
+            && (Seasons.Count == 0 || Seasons.Contains(WorldCalendar.SeasonOf(day)));
+
         internal MerchantOffer WithShop(bool fresh, bool door)
         {
             Fresh = fresh;
@@ -187,10 +213,19 @@ namespace EdS.Data.Merchants
             return this;
         }
 
+        internal MerchantOffer WithCalendar(IReadOnlyList<int> weekdays, IReadOnlyList<string> seasons)
+        {
+            Weekdays = weekdays;
+            Seasons = seasons;
+            return this;
+        }
+
         private MerchantOffer Same(MerchantOffer copy)
         {
             copy.Fresh = Fresh;
             copy.Door = Door;
+            copy.Weekdays = Weekdays;
+            copy.Seasons = Seasons;
             return copy;
         }
 
@@ -479,8 +514,14 @@ namespace EdS.Data.Merchants
         /// tout) et <c>soldOut</c> (rupture du soir) facultatifs ; <c>fresh</c> (suit les fournées) et <c>door</c> (vendue à la porte) facultatifs
         /// d'une offre ; <c>market</c> facultatif d'une règle de prix (seulement pendant le marché) ; section facultative <c>market</c> (fêtes
         /// hebdomadaires du marché, installation et démontage, foule, criées, étals, marchandage). Les versions 2 à 5 restent lues. Un objet
-        /// dont l'histoire a besoin (objet tenu, livré ou ramassé) vendu par une boutique à horaires se vend aussi à la porte.</remarks>
-        public const int CurrentSchemaVersion = 6;
+        /// dont l'histoire a besoin (objet tenu, livré ou ramassé) vendu par une boutique à horaires se vend aussi à la porte.
+        /// Version 7 (pâtisseries de Firmin, 19 novembre 2026) : <c>weekdays</c> (jours de la semaine, 0 : lundi … 6 : dimanche) et
+        /// <c>seasons</c> (saisons de <see cref="WorldCalendar.Seasons"/>) facultatifs d'une offre permanente (<c>always</c>) : elle n'est en
+        /// vente que ces jours-là ; jamais pour un objet dont l'histoire a besoin. Les versions 2 à 6 restent lues.</remarks>
+        public const int CurrentSchemaVersion = 7;
+
+        /// <summary>Pâtisseries de Firmin : version 6, encore lue (sans jours ni saisons d'une offre).</summary>
+        public const int Schema6 = 6;
 
         /// <summary>Sous-lot V2.14 : version 5, encore lue (sans boutiques ni marché).</summary>
         public const int Schema5 = 5;
@@ -538,7 +579,7 @@ namespace EdS.Data.Merchants
             ValidationReport r = report ?? new ValidationReport();
             // Sous-lot V1.9.3b : la version 2 est encore lue (sous-ensemble de la version 3).
             int supported = document.SchemaVersion == PreviousSchemaVersion || document.SchemaVersion == Schema3 || document.SchemaVersion == Schema4
-                || document.SchemaVersion == Schema5 ? document.SchemaVersion.Value : CurrentSchemaVersion;
+                || document.SchemaVersion == Schema5 || document.SchemaVersion == Schema6 ? document.SchemaVersion.Value : CurrentSchemaVersion;
             if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, supported, r))
                 return new MerchantsLoadResult(r, null);
             // Revue Codex de la PR #91 : version absente ou mal typée, déjà signalée par l'en-tête : refus structuré, jamais d'exception.
@@ -592,7 +633,9 @@ namespace EdS.Data.Merchants
 
         private static bool Since5(string field, string path, ValidationReport r, int schema) => Since(Schema5, field, path, r, schema);
 
-        private static bool Since6(string field, string path, ValidationReport r, int schema) => Since(CurrentSchemaVersion, field, path, r, schema);
+        private static bool Since6(string field, string path, ValidationReport r, int schema) => Since(Schema6, field, path, r, schema);
+
+        private static bool Since7(string field, string path, ValidationReport r, int schema) => Since(CurrentSchemaVersion, field, path, r, schema);
 
         private static bool Since(int version, string field, string path, ValidationReport r, int schema)
         {
@@ -834,7 +877,8 @@ namespace EdS.Data.Merchants
             // Toujours trouvable : en vente permanente chez un marchand toujours ouvert, ou à la porte d'une boutique (quelqu'un y répond toujours).
             // Relecture indépendante de la PR #135 : à la porte, seulement une offre sans limite et pas fraîche (une offre fraîche est à zéro
             // avant la première fournée, après la rupture et le jour de repos ; un stock fini peut s'épuiser).
-            needed.RemoveWhere(item => merchants.Any(m => m.Offers.Any(o => o.Item == item && o.Always
+            // Pâtisseries de Firmin (schéma 7) : une offre de certains jours ou saisons n'est jamais « toujours trouvable ».
+            needed.RemoveWhere(item => merchants.Any(m => m.Offers.Any(o => o.Item == item && o.Always && !o.Seasonal
                 && (AlwaysOpen(m) || (o.Door && !o.Fresh && o.Stock is null && m.Shop?.Door is DoorService d && d != DoorService.None
                     && m.Festivals.Count == 0 && m.Rank is null && m.Fact is null && m.Standing is null)))));
             for (int i = 0; i < data.Count; i++)
@@ -1039,7 +1083,45 @@ namespace EdS.Data.Merchants
                     if (o.Door != null && !Since6("door", op + ".door", r, schema)) offerOk = false;
                     else if (o.Door == true && (m.Shop?.Door is null))
                     { r.Add(op + ".door", ValidationCode.InvalidValue, "une offre à la porte demande une boutique avec quelqu'un à la porte (« shop.door »)."); offerOk = false; }
-                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value, o.Rank, o.Stock).WithShop(o.Fresh == true, o.Door == true));
+                    // Pâtisseries de Firmin (schéma 7) : jours de la semaine et saisons d'une offre permanente (le tirage du jour ne change pas).
+                    var weekdays = new List<int>();
+                    var seasons = new List<string>();
+                    if (o.Weekdays != null || o.Seasons != null)
+                    {
+                        if (!Since7(o.Weekdays != null ? "weekdays" : "seasons", op + (o.Weekdays != null ? ".weekdays" : ".seasons"), r, schema)) offerOk = false;
+                        else if (o.Always != true)
+                        { r.Add(op + (o.Weekdays != null ? ".weekdays" : ".seasons"), ValidationCode.InvalidValue, "jours ou saisons d'une offre permanente seulement (« always »: true) : le tirage du jour ne les connaît pas."); offerOk = false; }
+                    }
+                    if (offerOk && o.Weekdays != null)
+                    {
+                        if (o.Weekdays.Count < 1 || o.Weekdays.Count >= WorldCalendar.DaysPerWeek)
+                        { r.Add(op + ".weekdays", ValidationCode.OutOfRange, $"de 1 à {WorldCalendar.DaysPerWeek - 1} jours (absent : tous les jours)."); offerOk = false; }
+                        else
+                            for (int i = 0; i < o.Weekdays.Count; i++)
+                            {
+                                int? d = o.Weekdays[i];
+                                if (d is null || d < 0 || d >= WorldCalendar.DaysPerWeek) { r.Add($"{op}.weekdays[{i}]", ValidationCode.OutOfRange, $"jour de la semaine hors de [0, {WorldCalendar.DaysPerWeek - 1}]."); offerOk = false; }
+                                else if (weekdays.Contains(d.Value)) { r.Add($"{op}.weekdays[{i}]", ValidationCode.DuplicateId, $"jour {d} déjà donné."); offerOk = false; }
+                                else weekdays.Add(d.Value);
+                            }
+                        if (offerOk && m.Shop?.Rest is List<int?> restDays && weekdays.All(d => restDays.Contains(d)))
+                        { r.Add(op + ".weekdays", ValidationCode.InvalidValue, "en vente seulement les jours de repos de la boutique : jamais achetable."); offerOk = false; }
+                    }
+                    if (offerOk && o.Seasons != null)
+                    {
+                        if (o.Seasons.Count < 1 || o.Seasons.Count >= WorldCalendar.Seasons.Count)
+                        { r.Add(op + ".seasons", ValidationCode.OutOfRange, $"de 1 à {WorldCalendar.Seasons.Count - 1} saisons (absent : toute l'année)."); offerOk = false; }
+                        else
+                            for (int i = 0; i < o.Seasons.Count; i++)
+                            {
+                                string? sn = o.Seasons[i];
+                                if (WorldCalendar.SeasonIndex(sn) < 0) { r.Add($"{op}.seasons[{i}]", ValidationCode.UnknownReference, $"saison inconnue « {sn} » ; possibles : {string.Join(", ", WorldCalendar.Seasons)}."); offerOk = false; }
+                                else if (seasons.Contains(sn!)) { r.Add($"{op}.seasons[{i}]", ValidationCode.DuplicateId, $"saison « {sn} » déjà donnée."); offerOk = false; }
+                                else seasons.Add(sn!);
+                            }
+                    }
+                    if (offerOk) offers.Add(new MerchantOffer(o.Item!, o.Price!.Value, o.Always!.Value, o.Rank, o.Stock).WithShop(o.Fresh == true, o.Door == true)
+                        .WithCalendar(weekdays.OrderBy(d => d).ToList().AsReadOnly(), seasons.OrderBy(WorldCalendar.SeasonIndex).ToList().AsReadOnly()));
                     else ok = false;
                 }
 

@@ -60,6 +60,8 @@ namespace EdS.Runtime
             // Concours de pâtisserie : la marque du pâtissier, à toute qualité.
             if (stack.SignedBy != null && stack.Quality != ItemQuality.Masterwork)
                 lines.Add(string.Format(CultureInfo.InvariantCulture, Text("text.ui.quality.baker"), DisplayNames.Of(stack.SignedBy)));
+            // Pâtisseries de Firmin : ce qui se lit dans la pièce (dossier de Damien), selon son niveau de réussite.
+            if (FirminPastries.TextKey(stack.Item, stack.Quality, stack.SignedBy != null) is string firmin && Texts.Has(firmin)) lines.Add(Text(firmin));
             if (_items.Wears(item))
             {
                 int left = _items.WearLeft(stack);

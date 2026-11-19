@@ -398,7 +398,8 @@ namespace EdS.Game
                 bool used = i >= 0 && i < stacks.Count && i < w.Inventory.Catalog.InventorySize;
                 UiKit.Show(cell.Rect, c < w.Inventory.Catalog.InventorySize);
                 ItemDefinition item = used ? a.Item(stacks[i].Item) : null;
-                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, item.Icon) : null;
+                // Pâtisseries de Firmin : l'icône du niveau de réussite de la pièce (sa qualité et sa marque).
+                cell.Icon.sprite = item != null ? UiKit.ItemIcon(item.Id, FirminPastries.Icon(item.Id, item.Icon, stacks[i].Quality, stacks[i].SignedBy != null)) : null;
                 UiKit.Show(cell.Icon, cell.Icon.sprite != null);
                 cell.Count.Value = used && stacks[i].Count > 1 ? stacks[i].Count.ToString() : "";
                 bool wearable = item != null && item.Type == ItemType.Equipment;

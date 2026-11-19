@@ -91,6 +91,14 @@ namespace EdS.Game
         private ShopsView _shops;
         private readonly Dictionary<string, Marker> _signs = new Dictionary<string, Marker>();
         private int _signMinute = -1;
+
+        // Pâtisseries de Firmin (19 novembre 2026) : l'étal du fournil, refait quand ce qui est en vente (ou la pièce présentée) change.
+        private Transform _firminRoot;
+        private Bounds _firminTop;
+        private float _firminFace;
+        private string _firminShown;
+        private int _firminMinute = -1;
+        private readonly List<GameObject> _firminPieces = new List<GameObject>();
         private const float SignLabelRange = 14f;
 
         /// <summary>Sous-lot V2.1 : temps (s) depuis la dernière relecture des places des PNJ.</summary>
@@ -268,7 +276,16 @@ namespace EdS.Game
                 GameObject table = Wave5View.PlaceNear(root, Wave5Role.BakeryTable, "table du fournil", baker.X, baker.Z, face - 90, 2.4, 1.1, obstacles, face);
                 // Sous-lot V2.12 : sans la table de Poly Haven, l'étal marchand de RPG Food Props sert de vitrine.
                 if (table == null) table = Wave5View.PlaceNear(root, Wave5Role.TraderTable, "étal du fournil", baker.X, baker.Z, face - 90, 2.4, 1.2, obstacles, face);
-                if (table != null) Showcase(root, table, catalog, face);
+                // Pâtisseries de Firmin : avec leurs modèles préparés, l'étal montre ce que la boulangerie vend aujourd'hui (FirminStall) ;
+                // sans eux, la vitrine d'avant (pains scannés).
+                if (table != null && catalog.LotCModel(FirminPastries.All[0].ModelCode(3)) != null && StyleLook.VisibleBounds(table, out Bounds top))
+                {
+                    _firminRoot = root;
+                    _firminTop = top;
+                    _firminFace = face;
+                    FirminStall(adventure);
+                }
+                else if (table != null) Showcase(root, table, catalog, face);
             }
             if (Npc("epiciere") is WorldMarker grocer)
             {
@@ -492,6 +509,37 @@ namespace EdS.Game
                 holder.transform.rotation = Quaternion.Euler(0f, face + StyleRules.Variant("vitrine" + i, 60) - 30 + look.Yaw, 0f);
                 holder.transform.position = at + look.Offset;
                 StyleLook.Ground(holder, at.y + look.Offset.y);
+            }
+        }
+
+        /// <summary>
+        /// Pâtisseries de Firmin (19 novembre 2026) : les modèles du dossier posés sur la table du fournil, à la place des pains de la vitrine
+        /// (même grille de 3 × 2) : la pièce que le joueur a présentée au concours aujourd'hui d'abord (au modèle de son niveau de réussite,
+        /// <see cref="AdventureSession.PresentedPastry"/>), puis ce que la boulangerie a encore en vente (<see cref="AdventureSession.FirminShowcase"/>).
+        /// Recalculé une fois par minute du monde, refait seulement si la liste change. Modèles à l'échelle réelle, sans collision.
+        /// </summary>
+        private void FirminStall(AdventureSession adventure)
+        {
+            int minute = adventure.World.Zone.Time.Minute;
+            if (minute == _firminMinute) return;
+            _firminMinute = minute;
+            var codes = new List<string>();
+            if (adventure.PresentedPastry is string presented) codes.Add(presented);
+            foreach (string code in adventure.FirminShowcase())
+                if (codes.Count < FirminPastries.ShowcaseSlots && !codes.Contains(code)) codes.Add(code);
+            string key = string.Join(",", codes);
+            if (key == _firminShown) return;
+            _firminShown = key;
+            foreach (GameObject g in _firminPieces)
+                if (g != null) Object.Destroy(g);
+            _firminPieces.Clear();
+            for (int i = 0; i < codes.Count; i++)
+            {
+                float u = (i % 3 - 1) * 0.3f, v = (i / 3 - 0.5f) * 0.32f;
+                Vector3 at = _firminTop.center + Quaternion.Euler(0f, _firminFace, 0f) * new Vector3(u * _firminTop.size.x / 1.2f, 0f, v);
+                at.y = _firminTop.max.y;
+                GameObject piece = LotCLook.Place(_firminRoot, codes[i], "étal de Firmin " + i, at, _firminFace + StyleRules.Variant("firmin" + codes[i], 40) - 20);
+                if (piece != null) _firminPieces.Add(piece);
             }
         }
 
@@ -880,6 +928,7 @@ namespace EdS.Game
                 if (g != null && g.activeSelf != festive) g.SetActive(festive);
             // Sous-lot V2.14 : étals selon la phase du marché, fumée du fournil ; l'étiquette des enseignes une fois par minute du monde.
             _shops?.Sync(adventure, Time.deltaTime);
+            if (_firminRoot != null) FirminStall(adventure);   // pâtisseries de Firmin : une fois par minute du monde
             if (_signs.Count > 0 && adventure.World.Zone.Time.Minute != _signMinute)
             {
                 _signMinute = adventure.World.Zone.Time.Minute;
