@@ -326,6 +326,10 @@ namespace EdS.Runtime
             if (Any(w, "gorget", "collar", "scarf", "neck")) return (WardrobeSlot.Neck, "gorget");
             if (Any(w, "apron")) return (WardrobeSlot.Waist, "apron");
             if (Any(w, "belt", "sash")) return (WardrobeSlot.Waist, "belt");
+            // Sacoche, besace, bourse (« Peasant_Bag ») : portées à la ceinture, place des voyageurs (revue Codex de #212).
+            if (Any(w, "bag")) return (WardrobeSlot.Waist, "bag");
+            if (Any(w, "satchel")) return (WardrobeSlot.Waist, "satchel");
+            if (Any(w, "pouch")) return (WardrobeSlot.Waist, "pouch");
             if (Any(w, "arm", "sleeve", "hand", "glove", "gauntlet", "bracer")) return (WardrobeSlot.Arms, string.Empty);
             if (Any(w, "leg", "pant", "trouser", "skirt", "breeches", "greave")) return (WardrobeSlot.Legs, string.Empty);
             if (Any(w, "feet", "foot", "boot", "shoe", "sabaton")) return (WardrobeSlot.Feet, string.Empty);
