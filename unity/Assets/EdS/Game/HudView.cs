@@ -1109,6 +1109,9 @@ namespace EdS.Game
             _place.Value = a.PlaceLabel;   // sous-lot V1.8 : niveau des créatures du lieu (zones en mélange)
             // Zone, heure, fête (V2.10) et grand jour de marché (V2.14) : texte refait seulement quand l'un d'eux change.
             string zone = a.ZoneName, time = a.TimeOfDay, festival = a.FestivalText, market = a.MarketLine;
+            // Sous-lot F6 : le réconfort d'un plat de fête, à la suite de la fête.
+            string comfort = a.ComfortText;
+            if (comfort != null) festival = festival != null ? festival + " · " + comfort : comfort;
             if (zone != _subZone || time != _subTime || festival != _subFestival || market != _subMarket)
             {
                 _subZone = zone;

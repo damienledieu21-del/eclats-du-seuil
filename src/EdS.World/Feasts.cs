@@ -47,6 +47,9 @@ namespace EdS.World
 
         /// <summary>Compteur au plafond technique de la sauvegarde.</summary>
         CountersFull = 14,
+
+        /// <summary>Sous-lot F6 : aucun plat de cette fête à manger.</summary>
+        NoDish = 15,
     }
 
     /// <summary>Les 12 fêtes d'Orsédia : ce qu'une activité a rapporté.</summary>
@@ -160,6 +163,23 @@ namespace EdS.World
                     break;
             }
             next = state.With(updated);
+            return FeastRefusal.None;
+        }
+
+        /// <summary>
+        /// Sous-lot F6 : le personnage mange un plat de la fête <paramref name="festival"/> (un de moins au compteur des plats gardés). Aucun
+        /// effet de jeu : le réconfort n'est qu'affiché (aucune statistique de combat). Format de sauvegarde inchangé (le compteur
+        /// <c>dishes</c> existe depuis la v27). Refus : rien ne change.
+        /// </summary>
+        public static FeastRefusal Eat(SavedFeasts state, FeastBook book, string festival, out SavedFeasts next)
+        {
+            if (state is null) throw new ArgumentNullException(nameof(state));
+            if (book is null) throw new ArgumentNullException(nameof(book));
+            next = state;
+            if (!(book.Of(festival) is Feast)) return FeastRefusal.NoFeast;
+            SavedFeast e = state.Of(festival);
+            if (e.Dishes <= 0) return FeastRefusal.NoDish;
+            next = state.With(e.With(dishes: e.Dishes - 1));
             return FeastRefusal.None;
         }
 

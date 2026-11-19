@@ -451,6 +451,75 @@ namespace EdS.Runtime
             return FeastLooks.Village(decor, FeastDecorPlaces(), obstacles, map.Roads, doors, avoid, taken);
         }
 
+        // --- Sous-lot F6 : plats, ambiance, tenues -------------------------------------------------------------------------------
+
+        /// <summary>Un plat de fête gardé : la fête, le nom du plat, combien, son icône.</summary>
+        public sealed class FeastDishLine
+        {
+            public string Festival { get; }
+            public string Name { get; }
+            public int Count { get; }
+            public string Icon { get; }
+
+            internal FeastDishLine(string festival, string name, int count, string icon)
+            {
+                Festival = festival;
+                Name = name;
+                Count = count;
+                Icon = icon;
+            }
+        }
+
+        /// <summary>Les plats de fête gardés (achetés chez le forain), dans l'ordre de l'année ; vide sans catalogue.</summary>
+        public IReadOnlyList<FeastDishLine> FeastDishes => World.FeastBook is FeastBook book
+            ? book.Feasts.Where(f => World.FeastState.Of(f.Festival).Dishes > 0)
+                .Select(f => new FeastDishLine(f.Festival, Text(f.Dish.Name), World.FeastState.Of(f.Festival).Dishes, FeastLooks.IconOf(f.Dish.Code))).ToList()
+            : (IReadOnlyList<FeastDishLine>)Array.Empty<FeastDishLine>();
+
+        /// <summary>Durée du réconfort d'un plat de fête, en minutes du monde (affichage seulement).</summary>
+        public const int ComfortMinutes = 60;
+
+        private (string Dish, long Until)? _comfort;
+
+        /// <summary>
+        /// Mange un plat de la fête <paramref name="festival"/> (<see cref="WorldSession.EatFeastDish"/>) : un de moins, et un moment de
+        /// réconfort annoncé et affiché (<see cref="ComfortText"/>) ; **aucune statistique de combat** (ni soin, ni bonus). Refus : rien ne change.
+        /// </summary>
+        public bool EatFeastDish(string festival)
+        {
+            FeastRefusal refusal = World.EatFeastDish(festival);
+            if (refusal != FeastRefusal.None)
+            {
+                if (refusal == FeastRefusal.NoDish) Say("text.ui.fete.refused.no_dish");
+                else if (refusal == FeastRefusal.NotNow) Say("text.ui.fete.refused.eat_combat");
+                else FeastRefused(refusal, null);
+                return false;
+            }
+            _dirty = true;
+            string dish = Text(World.FeastBook!.Feast(festival).Dish.Name);
+            Say("text.ui.fete.eaten", dish);
+            WorldTime t = World.Zone.Time;
+            _comfort = (dish, checked(t.Day * 1440 + t.Minute + ComfortMinutes));
+            return true;
+        }
+
+        /// <summary>« Réconforté (Tourte des vœux) » pendant <see cref="ComfortMinutes"/> minutes du monde après un plat ; null sinon.</summary>
+        public string? ComfortText
+        {
+            get
+            {
+                if (!(_comfort is { } c)) return null;
+                WorldTime t = World.Zone.Time;
+                return t.Day * 1440 + t.Minute < c.Until ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.fete.comfort"), c.Dish) : null;
+            }
+        }
+
+        /// <summary>L'ambiance de la fête en cours (<see cref="FeastMood.Of"/>), dehors dans la zone de l'histoire ; aucune sinon.</summary>
+        public FeastMood FeastMood => !Indoors && World.InStoryZone && World.FeastNow is Feast f ? FeastMood.Of(f.Number) : FeastMood.None;
+
+        /// <summary>Numéro de la fête d'Orsédia en cours (1 à 12) pour la tenue des habitants (<see cref="HumanWardrobe"/>), 0 sinon.</summary>
+        public int FeastNumber => World.FeastNow?.Number ?? 0;
+
         /// <summary>Annonces des gains de fête (activités et concours de l'histoire).</summary>
         private void FeastMessage(StoryEvent e)
         {
