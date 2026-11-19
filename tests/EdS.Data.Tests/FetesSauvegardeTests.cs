@@ -104,6 +104,11 @@ public class FetesSauvegardeTests
         Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_C01", "F05_D01")), W + ".owned[1]", ValidationCode.InvalidValue);   // deux fêtes
         Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_M01")), W + ".owned[0]", ValidationCode.InvalidValue);   // la monnaie ne s'achète pas
         Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_R01")), W + ".owned[0]", ValidationCode.InvalidValue);
+        // Revue Codex de la PR #215 : un code trop court, en première, deuxième ou dernière place : refusé avec son chemin, sans exception.
+        Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F", "F04_D01")), W + ".owned[0]", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_C01", "F", "F04_D01")), W + ".owned[1]", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_C01", "F04_D01", "")), W + ".owned[2]", ValidationCode.InvalidValue);
+        Refused(Mutated(r => Wallet(r)["owned"] = new JsonArray("F04_C01", "F04_D01", "F04")), W + ".owned[2]", ValidationCode.InvalidValue);
         Refused(Mutated(r => Wallet(r)["dishes"] = SavedFeast.MaxDishes + 1), W + ".dishes", ValidationCode.OutOfRange);
         Refused(Mutated(r => Wallet(r)["wins"] = SavedFeast.MaxCount + 1), W + ".wins", ValidationCode.OutOfRange);
         Refused(Mutated(r => Wallet(r)["poids"] = 1), W + ".poids", ValidationCode.UnknownField);
