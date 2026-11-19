@@ -143,6 +143,8 @@ namespace EdS.Game
                     case InteriorFurniture.Candelabra: Candelabra(o.Id, x0, z0, x1, z1); break;
                     case InteriorFurniture.Oven: Oven(o.Id, x0, z0, x1, z1, map, height, stone, stoneTile, darkWood, woodTile); break;   // sous-lot V2.14
                     case InteriorFurniture.Kneader: Kneader(o.Id, x0, z0, x1, z1, wood, darkWood, woodTile); break;
+                    // Lot C (16 novembre 2026) : objet de métier sans son modèle Tripo (catalogue non préparé) : un bloc de bois bas.
+                    case InteriorFurniture.Fixture: Box(o.Id + " (bloc)", new Vector3((x0 + x1) / 2f, 0.4f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.8f, z1 - z0), darkWood, woodTile); break;
                     case InteriorFurniture.Statue: Box(o.Id + " (socle)", new Vector3((x0 + x1) / 2f, 0.225f, (z0 + z1) / 2f), new Vector3(x1 - x0, 0.45f, z1 - z0), stone, stoneTile); break;
                 }
             }
@@ -733,7 +735,7 @@ namespace EdS.Game
             }
             if (size.x <= 0f || size.y <= 0f) return null;
             GameObject first = null;
-            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y))
+            foreach (LotCCopy k in LotCModels.Fit(x0, z0, x1, z1, map.MinX, map.MinZ, map.MaxX, map.MaxZ, size.x, size.y, LotCModels.YawFor(_room, id)))
             {
                 GameObject copy = LotCLook.Place(_root.transform, code, id, new Vector3((float)k.X, 0f, (float)k.Z), (float)k.Yaw, (float)k.Scale,
                     (float)k.ThinX, (float)k.ThinZ);

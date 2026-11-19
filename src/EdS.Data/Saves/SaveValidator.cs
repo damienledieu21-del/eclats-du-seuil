@@ -1350,7 +1350,9 @@ namespace EdS.Data.Saves
                     {
                         string op = $"{p}.owned[{k}]";
                         if (!SavedFeast.IsOwnedCode(w.Owned[k])) report.Add(op, ValidationCode.InvalidValue, "décoration ou costume mal formé : « F04_D01 », « F04_C01 ».");
-                        else if (k > 0 && (string.CompareOrdinal(w.Owned[k - 1], w.Owned[k]) >= 0 || w.Owned[k - 1]!.Substring(0, 3) != w.Owned[k]!.Substring(0, 3)))
+                        // Revue Codex de la PR #215 : le code précédent n'est comparé que s'il est lui-même bien formé (pas de préfixe tiré d'un « F »).
+                        else if (k > 0 && SavedFeast.IsOwnedCode(w.Owned[k - 1])
+                            && (string.CompareOrdinal(w.Owned[k - 1], w.Owned[k]) >= 0 || !string.Equals(w.Owned[k - 1]!.Substring(0, 3), w.Owned[k]!.Substring(0, 3), StringComparison.Ordinal)))
                             report.Add(op, ValidationCode.InvalidValue, "achats d'une même fête, en ordre ordinal, sans doublon.");
                     }
                 if (report.Errors.Count == errors && w.Coins == 0 && w.Edition is null && w.Wins == 0 && w.Bought == 0 && w.Owned!.Count == 0 && w.Dishes == 0)

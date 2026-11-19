@@ -270,6 +270,22 @@ Décisions de Damien du 15 novembre 2026, 2 h 27, rapportées par la session pri
 | Échos dans la brume | On garde le taux : **40 % en automne, 15 % sinon, 2 Échos au plus** par volume de brume. | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 | Prix de saison | Les prix de saison **suivent la vraie saison** (date fournie par l'hôte ou le serveur). | Retenu (Damien, 15 novembre 2026, 9 h 45) |
 
+## 7 undecies. Lot C : intérieurs de métier et forge de Maëlle (Retenu)
+
+Décisions de Damien du 16 novembre 2026, vers 21 h 40, rapportées par la session principale (modèles Tripo du lot C, [UNITY.md](UNITY.md#lot-c--modèles-tripo-16-novembre-2026)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Intérieurs de métier | Créer les intérieurs de la **forge**, de la **grange**, du **moulin**, de la **tour de guet**, d'une **maison paysanne**, et la **cuisine** et les **chambres** de l'auberge, meublés avec les modèles du lot C. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; réalisé dans la PR empilée sur #201 ([MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026)) |
+| Forge de Maëlle | **Toutes les pièces de forge** du lot C (soufflet, bac de trempe, meule, râtelier d'armes, présentoir de fers, tas de charbon, établi, outils) autour de la forge **en plein air**, sans bloquer le passage. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; même PR |
+| Plantes et filons | Plantes à récolter **grossies 2 fois** et **trois tailles de filons** : gardées. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) ; PR #196 |
+| Meubles des nouveaux lieux (I01 à I21) | La PR #202 **reste en brouillon** ; chaque meuble sera placé quand son lieu entrera dans les données. | Retenu (Damien, 16 novembre 2026, vers 21 h 40) |
+| Porte de la forge couverte | Sur la **maison de Maëlle** (`maison3`) : le hameau a désormais cette porte (seule exception à « le hameau reste sans porte »). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Maison paysanne | La **maison d'Achille** (`maison9`, champs du sud). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) |
+| Habitants des intérieurs de métier | Des habitants **vivent dans ces pièces** : emplois du temps adaptés en gardant leurs horaires (Maëlle à sa forge couverte et dans la cour, la meunière au moulin, Achille chez lui ; l'aubergiste et le personnel en cuisine, les voyageurs de passage dans les chambres la nuit). | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; réalisé pour Maëlle (forge couverte 16 h à 19 h 30), Odile (salle du moulin l'après-midi) et Achille (repas de midi chez lui) ; le matin et la nuit restent ceux d'avant (règles de l'histoire : place du début du jeu le matin, devant sa porte la nuit). Cuisine et chambres : impossible tant qu'un PNJ ne passe qu'une porte depuis les Vallons (`StoryValidator.SlotZone`), et aucun voyageur de passage n'a d'emploi du temps : question posée dans la PR #209 |
+| Auvent de la forge | L'auvent (C_OV_A01) **au-dessus de la forge en plein air** de Maëlle, sans gêner ni les pièces ni le passage. | Retenu (Damien, 17 novembre 2026, vers 0 h 10) ; PR #209 (`LotCModels.ForgeAwning`, testé) |
+| Plans des intérieurs de métier | Recalés sur les **fiches de ChatGPT** (`AssetLab/Interieurs`) : dimensions des pièces et meubles aux cotes ; l'auberge suit ses trois niveaux (chambres, logement de Mathurin et dortoir, combles). | Réalisé (Claude, 17 novembre 2026) d'après les fiches ; écarts notés dans [MONDE.md](MONDE.md#intérieurs-de-métier-lot-c-décisions-du-16-novembre-2026) |
+
 ## 7 quinquies. L'âme du jeu (Retenu)
 
 Décision de Damien du 15 novembre 2026, vers 9 h 50, rapportée par la session principale. Elle précise le sujet 13 « L'âme du jeu » de la [feuille de route](FEUILLE_DE_ROUTE.md).
