@@ -379,6 +379,78 @@ namespace EdS.Runtime
             }
         }
 
+        private string? _feastDecorKey;
+        private IReadOnlyList<FeastPiece> _feastDecor = Array.Empty<FeastPiece>();
+
+        /// <summary>
+        /// Sous-lot F5 (décor du mois) : les décorations de la fête en cours posées dans les lieux du décor (<see cref="FeastDecorPlaces"/>,
+        /// <see cref="FeastLooks.Village"/>) ; vide hors fête, en intérieur ou hors de la zone de l'histoire. Relecture indépendante de la
+        /// PR #219 : calculé une fois par fête **et par zone** (la clé porte la zone : une fête commencée en intérieur, ou une sauvegarde reprise
+        /// en intérieur, ne garde pas une liste vide pour le mois).
+        /// </summary>
+        public IReadOnlyList<FeastPiece> FeastDecorPieces
+        {
+            get
+            {
+                if (World.FeastStall is null || !(World.FeastNow is Feast feast)) return Array.Empty<FeastPiece>();
+                string key = feast.Festival + "|" + World.Definition?.Id;
+                if (_feastDecorKey != key)
+                {
+                    _feastDecor = FeastDecorOf(feast);
+                    _feastDecorKey = key;
+                }
+                return _feastDecor;
+            }
+        }
+
+        /// <summary>
+        /// Lieux du décor du mois (décisions de Damien du 19 novembre 2026) : la place du village et la place du marché du Bourg (lieux des
+        /// données), devant l'auberge et au parvis de la chapelle (un carré de 14 m devant leur porte, côté rue), aux portes du Bourg fortifié
+        /// (un carré de 16 m à 9 m de chaque porte, côté ville).
+        /// </summary>
+        public IReadOnlyList<(string Id, double MinX, double MinZ, double MaxX, double MaxZ)> FeastDecorPlaces()
+        {
+            AdventureMap map = RegionMap.Whole;
+            var places = FeastLooks.DecorPlaces.Select(id => map.Places.FirstOrDefault(p => p.Id == id)).Where(p => p != null)
+                .Select(p => (p!.Id, p.MinX, p.MinZ, p.MaxX, p.MaxZ)).ToList();
+            foreach (string building in FeastLooks.DecorDoors)
+            {
+                if (!(map.Doors.FirstOrDefault(d => d.Building == building) is MapDoor door)
+                    || !(map.Obstacles.FirstOrDefault(o => o.Id == building) is EdS.Domain.Space.SpaceObstacle body)) continue;
+                double bx = body.Points.Average(q => q.X.Raw / 10000.0), bz = body.Points.Average(q => q.Z.Raw / 10000.0);
+                (double cx, double cz) = FeastLooks.Ahead(door.X, door.Z, door.X - bx, door.Z - bz, 7);
+                places.Add(("devant:" + building, cx - 7, cz - 7, cx + 7, cz + 7));
+            }
+            if (map.Places.FirstOrDefault(p => p.Id == "ville_du_bourg") is MapPlace town)
+                foreach (BourgPiece gate in map.Bourg.Pieces.Where(b => FeastLooks.IsTownGate(b.Piece)))
+                {
+                    (double cx, double cz) = FeastLooks.Ahead(gate.X, gate.Z, town.CenterX - gate.X, town.CenterZ - gate.Z, 9);
+                    places.Add(("porte:" + gate.Piece + "@" + Math.Round(gate.X).ToString(CultureInfo.InvariantCulture) + "," + Math.Round(gate.Z).ToString(CultureInfo.InvariantCulture),
+                        cx - 8, cz - 8, cx + 8, cz + 8));
+                }
+            return places;
+        }
+
+        /// <summary>Les décorations de la fête <paramref name="feast"/> dans les lieux du décor (<see cref="FeastDecorPieces"/>), quel que soit le jour.</summary>
+        public IReadOnlyList<FeastPiece> FeastDecorOf(Feast feast)
+        {
+            AdventureMap map = RegionMap.Whole;
+            var obstacles = FeastObstacles();
+            var doors = map.Doors.Select(d => (d.X, d.Z)).ToList();
+            var avoid = FeastAvoid().ToList();
+            foreach (BourgPiece b in map.Bourg.Pieces)   // accessoires du Bourg fortifié (pas les sols : pavés, rues, bordures)
+                if (!BourgModels.IsGround(b.Piece) && b.Covers is null) avoid.Add((b.X, b.Z));
+            // L'étal du forain et ses décorations : jamais recouverts.
+            var taken = new List<IReadOnlyList<(double X, double Z)>>();
+            if (FeastStallOf(feast) is { } stall)
+            {
+                taken.Add(FeastLooks.Box(stall.X, stall.Z, stall.Yaw, FeastLooks.StallWidth + 1, FeastLooks.StallDepth + 1));
+                foreach (FeastPiece p in stall.Pieces) taken.Add(FeastLooks.Box(p.X, p.Z, p.Yaw, p.Width, p.Depth));
+            }
+            var decor = feast.Decorations.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList();
+            return FeastLooks.Village(decor, FeastDecorPlaces(), obstacles, map.Roads, doors, avoid, taken);
+        }
+
         /// <summary>Annonces des gains de fête (activités et concours de l'histoire).</summary>
         private void FeastMessage(StoryEvent e)
         {
