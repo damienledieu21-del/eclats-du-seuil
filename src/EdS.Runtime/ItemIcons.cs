@@ -112,6 +112,8 @@ namespace EdS.Runtime
         public static IReadOnlyList<string> Keywords(string itemId)
         {
             if (string.IsNullOrEmpty(itemId)) return Array.Empty<string>();
+            // Pâtisseries de Firmin (19 novembre 2026) : l'icône peinte du dossier de Damien passe devant le pack (aucun mot cherché).
+            if (FirminPastries.HasOwnIcon(itemId)) return Array.Empty<string>();
             var words = new List<string>();
             if (Explicit.TryGetValue(itemId, out string[]? table)) words.AddRange(table);
             string id = itemId.StartsWith("item.", StringComparison.Ordinal) ? itemId.Substring(5) : itemId;
@@ -166,6 +168,7 @@ namespace EdS.Runtime
         {
             // Sous-lot V2.12 : le vrai chemin du pack est « Assets/Fantasy RPG Icons Pack/Asset/<Catégorie> Icons/{Background,No Background}/… » :
             // la version sans fond d'abord (une même image n'est jamais comptée deux fois).
+            if (FirminPastries.HasOwnIcon(itemId)) return null;   // pâtisseries de Firmin : leur icône peinte reste
             List<string> pack = AssetStore.PreferNoBackground((icons ?? Array.Empty<string>()).Where(p => p != null && IsIcon(p))).ToList();
             if (pack.Count == 0) return null;
             var words = pack.Select(p => (Path: p, File: PathWords(EssaiManifest.FileName(p)), All: PathWords(p))).ToList();

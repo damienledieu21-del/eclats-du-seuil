@@ -420,6 +420,18 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Réconfort d'un plat de fête (F6) | Un **vrai petit confort hors combat pendant 60 minutes de jeu** (marche un peu plus rapide hors combat, ou endurance qui revient plus vite hors combat), **aucune statistique de combat** ; déterministe et testé côté cœur ; hors sauvegarde si le format devait changer (perdu au rechargement). Valeur : **+10 % de vitesse de marche hors combat**, avec le changement du moteur (moteur 0.35.0, journal 29, instantané 10, nouvelle référence figée ; journaux historiques jamais modifiés), fait au sous-lot F7. | Retenu (Damien, 19 novembre 2026) |
 | Accessoire de fête des habitants | **Un accessoire par fête** (masque, couronne…) : **oui, plus tard**, dans un chantier à part avec les costumes en 3D. | Retenu (Damien, 19 novembre 2026), à venir |
 
+## 7 duodecies. Pâtisseries de Firmin (Retenu)
+
+Décisions de Damien du 19 novembre 2026, rapportées par la session principale, sur le dossier « Les pains et pâtisseries » (AssetLab, `Firmin/`, 16 modèles) et la PR #217 ; détail dans [MONDE.md](MONDE.md#pâtisseries-de-firmin-19-novembre-2026).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Niveaux de réussite au concours | **Trois niveaux** montrés, selon la qualité de la pièce de la main du joueur : normale → **raté** (N1), supérieure → **correct** (N2), chef-d'œuvre → **maîtrisé** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Pièce achetée à Firmin | Montrée **maîtrisée** (N3). | Retenu (Damien, 19 novembre 2026) |
+| Recettes | **On suit le dossier** : la tarte renversée se fait sur **pâte brisée** (objet et recette nouveaux), le levain chef est un **levain de blé** ; la pâte feuilletée reste pour les chaussons. | Retenu (Damien, 19 novembre 2026) |
+| Calendrier de l'étal | Celui proposé par Claude : levain, pâtes brisée et feuilletée tous les jours ; tarte renversée le **dimanche** ; fouace les **samedis et dimanches de printemps** ; couronne les **samedis et dimanches d'automne**. | Retenu (Damien, 19 novembre 2026) |
+| Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. | Retenu (Damien, 19 novembre 2026) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

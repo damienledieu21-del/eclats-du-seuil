@@ -84,6 +84,14 @@ public class LotCModelsTests
                         Assert.Equal(m.Code, LotCModels.ForPiece(pp[0], prop));
                         continue;
                     }
+                    case "quality":   // pâtisseries de Firmin : « objet/qualité », un niveau de réussite d'une pièce de concours
+                    {
+                        string[] qp = id.Split('/');
+                        Assert.True(items.Contains(qp[0]), m.Code + " : objet inconnu " + qp[0]);
+                        Assert.Contains(qp[1], new[] { "normal", "superior", "masterwork" });
+                        Assert.Equal(m.Code, LotCModels.ForQuality(qp[0], qp[1]));
+                        continue;
+                    }
                     case "village": Assert.True(VillageKnown(id), m.Code + " : décor du village inconnu " + id); continue;
                     case "obstacle":
                         string[] hits = VallonsObstacles.Where(o => id.EndsWith("*") ? o.StartsWith(id.TrimEnd('*')) : o == id).ToArray();

@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.21.0-provisoire",
+  "contentVersion": "0.22.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1868,7 +1868,7 @@
       {
         "id": "item.pain_de_campagne",
         "name": "Pain de campagne",
-        "icon": "sac",
+        "icon": "pain_de_campagne",
         "type": "consumable",
         "rarity": "common",
         "stack": 10,
@@ -1878,7 +1878,7 @@
       {
         "id": "item.miche_de_seigle",
         "name": "Miche de seigle",
-        "icon": "sac",
+        "icon": "miche_de_seigle",
         "type": "consumable",
         "rarity": "common",
         "stack": 10,
@@ -1888,7 +1888,7 @@
       {
         "id": "item.croissant_au_beurre",
         "name": "Croissant au beurre",
-        "icon": "sac",
+        "icon": "croissant_au_beurre",
         "type": "consumable",
         "rarity": "common",
         "stack": 10,
@@ -1898,7 +1898,7 @@
       {
         "id": "item.brioche_doree",
         "name": "Brioche dorée",
-        "icon": "sac",
+        "icon": "brioche_doree",
         "type": "consumable",
         "rarity": "common",
         "stack": 10,
@@ -1908,7 +1908,7 @@
       {
         "id": "item.chausson_aux_pommes",
         "name": "Chausson aux pommes",
-        "icon": "sac",
+        "icon": "chausson_aux_pommes",
         "type": "consumable",
         "rarity": "common",
         "stack": 10,
@@ -2040,7 +2040,7 @@
       {
         "id": "item.levain",
         "name": "Levain chef",
-        "icon": "sac",
+        "icon": "levain",
         "type": "material",
         "rarity": "common",
         "stack": 10
@@ -2088,6 +2088,14 @@
       {
         "id": "item.pate_feuilletee",
         "name": "Pâte feuilletée",
+        "icon": "pate_feuilletee",
+        "type": "material",
+        "rarity": "common",
+        "stack": 10
+      },
+      {
+        "id": "item.pate_brisee",
+        "name": "Pâte brisée",
         "icon": "sac",
         "type": "material",
         "rarity": "common",
@@ -2096,7 +2104,7 @@
       {
         "id": "item.tarte_renversee_aux_pommes",
         "name": "Tarte renversée aux pommes",
-        "icon": "sac",
+        "icon": "tarte_renversee_aux_pommes",
         "type": "consumable",
         "rarity": "common",
         "stack": 5,
@@ -2107,7 +2115,7 @@
       {
         "id": "item.couronne_des_moissons",
         "name": "Couronne des moissons",
-        "icon": "sac",
+        "icon": "couronne_des_moissons",
         "type": "consumable",
         "rarity": "rare",
         "stack": 3,
@@ -2118,7 +2126,7 @@
       {
         "id": "item.fouace_des_semailles",
         "name": "Fouace des Semailles",
-        "icon": "sac",
+        "icon": "fouace_des_semailles",
         "type": "consumable",
         "rarity": "rare",
         "stack": 3,

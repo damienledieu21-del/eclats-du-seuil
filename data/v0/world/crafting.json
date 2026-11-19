@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.12.0-provisoire",
+  "contentVersion": "0.13.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -345,7 +345,7 @@
         "place": "four_de_firmin",
         "inputs": [
           {
-            "item": "item.farine_de_seigle",
+            "item": "item.farine_de_ble",
             "count": 2
           }
         ],
@@ -439,6 +439,32 @@
         ],
         "output": {
           "item": "item.pate_feuilletee",
+          "count": 2
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.cuisine.pate_brisee",
+        "name": "text.recipe.cuisine.pate_brisee",
+        "profession": "cuisine",
+        "requiredLevel": 2,
+        "place": "four_de_firmin",
+        "inputs": [
+          {
+            "item": "item.farine_de_ble",
+            "count": 2
+          },
+          {
+            "item": "item.beurre_de_baratte",
+            "count": 1
+          },
+          {
+            "item": "item.oeufs_frais",
+            "count": 1
+          }
+        ],
+        "output": {
+          "item": "item.pate_brisee",
           "count": 2
         },
         "xp": 20
@@ -571,7 +597,7 @@
         "place": "four_de_firmin",
         "inputs": [
           {
-            "item": "item.pate_feuilletee",
+            "item": "item.pate_brisee",
             "count": 1
           },
           {
