@@ -220,7 +220,9 @@ public class V196OuvertureTests
     {
         yield return new object[] { "id", "souvenir", ".id", ValidationCode.InvalidValue };
         yield return new object[] { "zone", "zone.inconnue", ".zone", ValidationCode.UnknownReference };
-        yield return new object[] { "zone", "zone.auberge", ".end", ValidationCode.UnknownReference };   // aucun chef de l'auberge n'y apprend la fin
+        yield return new object[] { "zone", "zone.maison", ".end", ValidationCode.UnknownReference };   // aucun chef de la maison n'y apprend la fin
+        // Lot C (16 novembre 2026) : l'auberge a désormais la cuisine et les chambres derrière elle : plus une pièce de scène (une seule porte).
+        yield return new object[] { "zone", "zone.auberge", ".zone", ValidationCode.InvalidValue };
         yield return new object[] { "zone", "zone.archives", ".zone", ValidationCode.InvalidValue };   // pas de porte vers les Vallons
         yield return new object[] { "actor", "text.absent", ".actor", ValidationCode.UnknownReference };
         yield return new object[] { "start", "souvenir", ".start", ValidationCode.InvalidValue };

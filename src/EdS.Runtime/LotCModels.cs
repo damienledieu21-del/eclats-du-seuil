@@ -65,6 +65,23 @@ namespace EdS.Runtime
         public double ThinZ { get; }
     }
 
+    /// <summary>Pièce posée autour d'un décor du village (<see cref="LotCModels.ForgeYard"/>) : clé du décor, décalage (m) et quart de tour.</summary>
+    public sealed class LotCYardPiece
+    {
+        public LotCYardPiece(string key, double dx, double dz, double yaw)
+        {
+            Key = key;
+            Dx = dx;
+            Dz = dz;
+            Yaw = yaw;
+        }
+
+        public string Key { get; }
+        public double Dx { get; }
+        public double Dz { get; }
+        public double Yaw { get; }
+    }
+
     /// <summary>
     /// Lot C : table des modèles intégrés et de ce qu'ils représentent ; fichiers dans
     /// « Assets/EdS/Modeles/LotC/&lt;catégorie&gt;/&lt;code&gt;/&lt;code&gt;.fbx » (un seul maillage, échelle réelle en mètres, pivot au sol), avec
@@ -86,6 +103,7 @@ namespace EdS.Runtime
             all.AddRange(Harvest());
             all.AddRange(Village());
             all.AddRange(InteriorsBag());
+            all.AddRange(InteriorsVillage());
             var codes = new HashSet<string>(StringComparer.Ordinal);
             foreach (LotCModel m in all)
                 if (!codes.Add(m.Code)) throw new InvalidOperationException("Lot C : code en double " + m.Code + ".");
@@ -247,6 +265,14 @@ namespace EdS.Runtime
             return a < 45 || a >= 135;
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #201 : quart de tour imposé au meuble <paramref name="obstacleId"/> de la pièce <paramref name="room"/>, ou null
+        /// (dos au mur le plus proche). Les bancs de nef de la chapelle (C_IN2_C0_01 : dossier côté −x de l'export, l'avant côté +x de
+        /// Blender, −x dans Unity) sont tous tournés de 90° : leur assise regarde +z, l'autel au nord de la nef.
+        /// </summary>
+        public static double? YawFor(string? room, string? obstacleId) =>
+            room == "chapelle" && obstacleId != null && obstacleId.StartsWith("banc", StringComparison.Ordinal) ? 90 : (double?)null;
+
         /// <summary>Échelle la plus grande donnée à un meuble du lot C (les modèles sont à l'échelle réelle des fiches).</summary>
         public const double MaxScale = 1.15;
 
@@ -259,19 +285,28 @@ namespace EdS.Runtime
         /// donc ne bloque ni porte ni passage. Déterministe.
         /// </summary>
         public static IReadOnlyList<LotCCopy> Fit(double minX, double minZ, double maxX, double maxZ, double roomMinX, double roomMinZ,
-            double roomMaxX, double roomMaxZ, double modelW, double modelD)
+            double roomMaxX, double roomMaxZ, double modelW, double modelD) =>
+            Fit(minX, minZ, maxX, maxZ, roomMinX, roomMinZ, roomMaxX, roomMaxZ, modelW, modelD, null);
+
+        /// <summary>
+        /// Comme <see cref="Fit(double, double, double, double, double, double, double, double, double, double)"/> ; <paramref name="fixedYaw"/>
+        /// (0, 90, 180 ou 270), s'il est donné, impose le quart de tour au lieu du mur le plus proche (revue Codex de la PR #201 : les bancs de
+        /// nef regardent tous l'autel, <see cref="YawFor"/>).
+        /// </summary>
+        public static IReadOnlyList<LotCCopy> Fit(double minX, double minZ, double maxX, double maxZ, double roomMinX, double roomMinZ,
+            double roomMaxX, double roomMaxZ, double modelW, double modelD, double? fixedYaw)
         {
             if (!(modelW > 0 && modelD > 0 && maxX > minX && maxZ > minZ)) return Array.Empty<LotCCopy>();
             double w = maxX - minX, d = maxZ - minZ, cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
             // Dos au mur le plus proche : l'avant regarde l'intérieur de la pièce.
             double west = minX - roomMinX, east = roomMaxX - maxX, south = minZ - roomMinZ, north = roomMaxZ - maxZ;
             double near = Math.Min(Math.Min(west, east), Math.Min(south, north));
-            double yaw = near == south ? 0 : near == north ? 180 : near == west ? 90 : 270;
+            double yaw = fixedYaw ?? (near == south ? 0 : near == north ? 180 : near == west ? 90 : 270);
             // Côtés du modèle une fois tourné : à 90 ou 270°, sa largeur va selon z.
             bool turned = yaw == 90 || yaw == 270;
             double alongX = turned ? modelD : modelW, alongZ = turned ? modelW : modelD;
             bool boxAlongX = w >= d, modelAlongX = alongX >= alongZ;
-            if (boxAlongX != modelAlongX && Math.Abs(alongX - alongZ) > 0.05)
+            if (fixedYaw is null && boxAlongX != modelAlongX && Math.Abs(alongX - alongZ) > 0.05)
             {
                 yaw = (yaw + 90) % 360;
                 turned = !turned;
@@ -297,8 +332,56 @@ namespace EdS.Runtime
             return copies;
         }
 
-        /// <summary>Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer.</summary>
-        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume" };
+        /// <summary>
+        /// Décision de Damien du 16 novembre 2026 : toutes les pièces de forge du lot C autour de la forge en plein air de Maëlle, sans
+        /// bloquer le passage. Place de chacune par rapport au centre du lieu « forge » (le marqueur de l'atelier) : décalage en mètres
+        /// (x vers l'est, z vers le nord), quart de tour, et, pour les outils, rang du modèle (<see cref="ForVillage(string?, string?, int?)"/>)
+        /// posé sur l'établi. Mesures des modèles : <see cref="ForgeYardSize"/>. Tenu à l'écart de Maëlle et de son apprentie, de l'enclume,
+        /// du foyer, du tonneau et de la caisse déjà posés, du chemin qui longe la forge au nord et des obstacles, avec un passage libre du sud jusqu'à Maëlle
+        /// (<c>LotCModelsTests.Forge_de_Maelle_toutes_les_pieces_sans_bloquer_le_passage</c>). Affichage seulement, sans collision.
+        /// </summary>
+        public static IReadOnlyList<LotCYardPiece> ForgeYard { get; } = new[]
+        {
+            new LotCYardPiece("forge/soufflet", 2.4, -0.3, 0),
+            new LotCYardPiece("forge/bac", 1.15, -0.9, 0),
+            new LotCYardPiece("forge/charbon", 2.8, -1.6, 0),
+            new LotCYardPiece("forge/meule", -1.1, -3.1, 0),
+            new LotCYardPiece("forge/ratelier", 2.0, -3.24, 90),
+            new LotCYardPiece("forge/fers", 3.47, 1.4, 0),
+            new LotCYardPiece("forge/etabli", -3.15, -0.65, 0),
+        };
+
+        /// <summary>
+        /// Décision de Damien du 17 novembre 2026 (vers 0 h 10) : l'auvent de la forge (C_OV_A01, 6 × 3,6 m, égout à 2,65 m) au-dessus de la
+        /// forge en plein air, sur Maëlle et la cour de travail ; ses quatre poteaux (aux coins) hors des pièces, du chemin, du passage et à
+        /// l'écart des forgerons ; aucune pièce plus haute que l'égout dessous (le foyer et sa hotte restent juste au nord).
+        /// </summary>
+        public static LotCYardPiece ForgeAwning { get; } = new LotCYardPiece("forge/auvent", 0.65, -1.6, 0);
+
+        /// <summary>Hauteur de l'égout de l'auvent de la forge (fiche A01 des objets du village), en mètres.</summary>
+        public const double ForgeAwningEave = 2.65;
+
+        /// <summary>Outils (« forge/outils ») posés sur l'établi de la forge, un par modèle, dans l'ordre de la table.</summary>
+        public const string ForgeTools = "forge/outils";
+
+        /// <summary>
+        /// Décors du village que le jeu pose à des places fixes (sans rôle ni objet) et qu'un modèle du lot C peut remplacer (déclaré après
+        /// <see cref="ForgeYard"/>, dont il reprend les clés).
+        /// </summary>
+        public static IReadOnlyList<string> VillageSpots { get; } = new[] { "forge/enclume", ForgeTools, ForgeAwning.Key }.Concat(ForgeYard.Select(p => p.Key)).ToArray();
+
+        /// <summary>Emprise au sol (x, z en mètres, sans quart de tour) des modèles de la forge de Maëlle, d'après leurs exports.</summary>
+        public static (double W, double D) ForgeYardSize(string code) => code switch
+        {
+            "C_OV_A02" => (0.596, 0.891), "C_OV_A03" => (1.854, 2.291), "C_OV_A04" => (1.15, 0.563), "C_OV_A05" => (1.141, 2.2),
+            "C_OV_A07" => (0.831, 1.251), "C_OV_A08" => (1.104, 2.309), "C_OV_A09" => (0.587, 1.351), "C_OV_A10" => (1.122, 1.693),
+            "C_OV_A11" => (0.894, 1.196), "C_OV_C04" => (0.775, 0.741), "C_OV_C07_02" => (0.45, 0.448), "C_OV_A01" => (6.014, 3.618),
+            _ => (0, 0),
+        };
+
+        /// <summary>Codes des outils de la forge (« forge/outils »), dans l'ordre où l'établi les reçoit.</summary>
+        public static IReadOnlyList<string> ForgeToolCodes =>
+            Index.ByTarget.TryGetValue("village:" + ForgeTools, out List<string>? codes) ? codes : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
         /// Échelle d'affichage d'un modèle sur un nœud de récolte : les plantes (une vingtaine de centimètres) sont grossies 2 fois pour
@@ -384,29 +467,28 @@ namespace EdS.Runtime
         private static IEnumerable<LotCModel> Village()
         {
             const string c = "02_Objets_Village";
-            const string forge = "pièce de forge que le jeu ne pose pas encore (la forge de Maëlle n'a que le foyer, l'enclume, le marteau, un tonneau et une caisse)";
             const string light = "éclairage de nuit fait par le code (NightLamps : hauteur de la lumière réglée sur ses lanternes) : à brancher avec un essai dans Unity";
             const string street = "aucune place dans les données des Vallons pour ce mobilier de rue";
             const string market = "aucune place dans les données ni dans les décors du marché posés par le jeu";
             const string feast = "décor de fête sans place dans les données ni parmi les décors de fête posés par le jeu (guirlande, bannières)";
-            yield return Waiting("C_OV_A01", c, "Auvent de la forge", forge);
+            yield return Linked("C_OV_A01", c, "Auvent de la forge", "village:forge/auvent");
             yield return Linked("C_OV_A02", c, "Enclume sur billot", "village:forge/enclume");
             yield return Linked("C_OV_A03", c, "Foyer de forge en pierre", "village:prop/FirePit");
-            yield return Waiting("C_OV_A04", c, "Soufflet manuel", forge);
-            yield return Waiting("C_OV_A05", c, "Établi avec outils", forge);
-            yield return Waiting("C_OV_A06_01", c, "Petit marteau", forge);
+            yield return Linked("C_OV_A04", c, "Soufflet manuel", "village:forge/soufflet");
+            yield return Linked("C_OV_A05", c, "Établi avec outils", "village:forge/etabli");
+            yield return Linked("C_OV_A06_01", c, "Petit marteau", "village:forge/outils");
             yield return Linked("C_OV_A06_02", c, "Marteau moyen", "village:prop/Hammer");
-            yield return Waiting("C_OV_A06_03", c, "Grand marteau", forge);
-            yield return Waiting("C_OV_A06_04", c, "Petite pince", forge);
-            yield return Waiting("C_OV_A06_05", c, "Pince moyenne", forge);
-            yield return Waiting("C_OV_A06_06", c, "Grande pince", forge);
-            yield return Waiting("C_OV_A06_07", c, "Petite lime", forge);
-            yield return Waiting("C_OV_A06_08", c, "Grande lime", forge);
-            yield return Waiting("C_OV_A07", c, "Bac de trempe", forge);
-            yield return Waiting("C_OV_A08", c, "Râtelier d'armes", forge);
-            yield return Waiting("C_OV_A09", c, "Présentoir de fers à cheval", forge);
-            yield return Waiting("C_OV_A10", c, "Tas de charbon", forge);
-            yield return Waiting("C_OV_A11", c, "Meule à aiguiser à pédale", forge);
+            yield return Linked("C_OV_A06_03", c, "Grand marteau", "village:forge/outils");
+            yield return Linked("C_OV_A06_04", c, "Petite pince", "village:forge/outils");
+            yield return Linked("C_OV_A06_05", c, "Pince moyenne", "village:forge/outils");
+            yield return Linked("C_OV_A06_06", c, "Grande pince", "village:forge/outils");
+            yield return Linked("C_OV_A06_07", c, "Petite lime", "village:forge/outils");
+            yield return Linked("C_OV_A06_08", c, "Grande lime", "village:forge/outils");
+            yield return Linked("C_OV_A07", c, "Bac de trempe", "village:forge/bac");
+            yield return Linked("C_OV_A08", c, "Râtelier d'armes", "village:forge/ratelier");
+            yield return Linked("C_OV_A09", c, "Présentoir de fers à cheval", "village:forge/fers");
+            yield return Linked("C_OV_A10", c, "Tas de charbon", "village:forge/charbon");
+            yield return Linked("C_OV_A11", c, "Meule à aiguiser à pédale", "village:forge/meule");
             yield return Waiting("C_OV_B01", c, "Réverbère en fer forgé", light);
             yield return Waiting("C_OV_B02", c, "Lanterne sur poteau de bois", light);
             yield return Waiting("C_OV_B03", c, "Lanterne murale", light);
@@ -471,7 +553,6 @@ namespace EdS.Runtime
         private static IEnumerable<LotCModel> InteriorsBag()
         {
             const string c = "03_Interieurs_BAG";
-            const string inn = "chambres, dortoir, réserve et cuisine de l'auberge : pas dans les données (l'auberge est une seule salle, une pièce n'a qu'un niveau)";
             const string bakery = "pas de place pour ce meuble dans la boulangerie des données (comptoir, four, pétrin, étagère à pains, farine, tonneau)";
             const string lodging = "logement de Firmin : pas dans les données";
             const string guild = "pas de place pour ce meuble dans la maison de la Guilde des données (comptoir, étagère, cheminée, deux tables, caisses)";
@@ -485,25 +566,25 @@ namespace EdS.Runtime
             yield return Linked("C_IN1_A0_03", c, "Banc", "piece:auberge/Bench");
             yield return Linked("C_IN1_A0_08", c, "Comptoir", "room:auberge/comptoir", "room:guilde/comptoir", "room:boulangerie/comptoir");
             yield return Linked("C_IN1_A0_09", c, "Tonneaux", "room:auberge/tonneau1", "room:auberge/tonneau2");
-            yield return Waiting("C_IN1_A0_11", c, "Foyer de la cuisine", inn);
-            yield return Waiting("C_IN1_A0_12", c, "Table de la cuisine", inn);
-            yield return Linked("C_IN1_A0_13", c, "Étagère de la cuisine", "room:auberge/etagere");
+            yield return Linked("C_IN1_A0_11", c, "Foyer de la cuisine", "room:cuisine_auberge/cheminee_cuisine");
+            yield return Linked("C_IN1_A0_12", c, "Table de la cuisine", "room:cuisine_auberge/table_cuisine");
+            yield return Linked("C_IN1_A0_13", c, "Étagère de la cuisine", "room:auberge/etagere", "room:cuisine_auberge/etagere_cuisine");
             yield return Waiting("C_IN1_A0_14", c, "Peau de loup au mur", wall);
-            yield return Waiting("C_IN1_A1_01", c, "Lit de chambre", inn);
-            yield return Waiting("C_IN1_A1_02", c, "Coffre de chambre 1", inn);
-            yield return Waiting("C_IN1_A1_04", c, "Coffre de chambre 2", inn);
-            yield return Waiting("C_IN1_A1_06", c, "Coffre de chambre 3", inn);
-            yield return Waiting("C_IN1_A1_07", c, "Lit de la chambre 4", inn);
-            yield return Waiting("C_IN1_A2_01", c, "Lit de Mathurin", inn);
-            yield return Waiting("C_IN1_A2_02", c, "Coffre de Mathurin", inn);
-            yield return Waiting("C_IN1_A2_03", c, "Bureau de Mathurin", inn);
-            yield return Waiting("C_IN1_A2_04", c, "Chaise", inn);
-            yield return Waiting("C_IN1_A2_05", c, "Lit de dortoir", inn);
-            yield return Waiting("C_IN1_A2_10", c, "Échelle des combles", inn);
-            yield return Waiting("C_IN1_A3_01", c, "Rayonnage à linge", inn);
-            yield return Waiting("C_IN1_A3_02", c, "Coffre à draps", inn);
-            yield return Waiting("C_IN1_A3_03", c, "Étagère de la réserve", inn);
-            yield return Linked("C_IN1_A3_04", c, "Caisses", "room:auberge/caisses", "room:guilde/caisses");
+            yield return Linked("C_IN1_A1_01", c, "Lit de chambre", "room:chambres_auberge/lit_1", "room:chambres_auberge/lit_2", "room:chambres_auberge/lit_3");
+            yield return Linked("C_IN1_A1_02", c, "Coffre de chambre 1", "room:chambres_auberge/coffre_1");
+            yield return Linked("C_IN1_A1_04", c, "Coffre de chambre 2", "room:chambres_auberge/coffre_2", "room:chambres_auberge/coffre_4");
+            yield return Linked("C_IN1_A1_06", c, "Coffre de chambre 3", "room:chambres_auberge/coffre_3");
+            yield return Linked("C_IN1_A1_07", c, "Lit de la chambre 4", "room:chambres_auberge/lit_4");
+            yield return Linked("C_IN1_A2_01", c, "Lit de Mathurin", "room:logement_auberge/lit_mathurin");
+            yield return Linked("C_IN1_A2_02", c, "Coffre de Mathurin", "room:logement_auberge/coffre_mathurin");
+            yield return Linked("C_IN1_A2_03", c, "Bureau de Mathurin", "room:logement_auberge/bureau_mathurin");
+            yield return Linked("C_IN1_A2_04", c, "Chaise", "room:logement_auberge/chaise_mathurin");
+            yield return Linked("C_IN1_A2_05", c, "Lit de dortoir", "room:logement_auberge/lit_dortoir_1", "room:logement_auberge/lit_dortoir_2", "room:logement_auberge/lit_dortoir_3", "room:logement_auberge/lit_dortoir_4");
+            yield return Linked("C_IN1_A2_10", c, "Échelle des combles", "room:logement_auberge/echelle_combles");
+            yield return Linked("C_IN1_A3_01", c, "Rayonnage à linge", "room:combles_auberge/rayonnage_linge");
+            yield return Linked("C_IN1_A3_02", c, "Coffre à draps", "room:combles_auberge/coffre_draps");
+            yield return Linked("C_IN1_A3_03", c, "Étagère de la réserve", "room:combles_auberge/etagere_reserve");
+            yield return Linked("C_IN1_A3_04", c, "Caisses", "room:auberge/caisses", "room:guilde/caisses", "room:combles_auberge/caisses");
             yield return Waiting("C_IN1_B0_01", c, "Comptoir de la boulangerie", "plus profond (1,07 m) que le comptoir des données (0,6 m) : le comptoir de l'auberge (0,55 m) y est posé à sa place");
             yield return Linked("C_IN1_B0_02", c, "Étagère à pains", "room:boulangerie/etagere_pains");
             yield return Waiting("C_IN1_B0_03", c, "Présentoir", bakery);
@@ -550,6 +631,115 @@ namespace EdS.Runtime
             yield return Waiting("C_IN1_P15", c, "Carte des rangs (roulée)", small);
             yield return Linked("C_IN1_P16", c, "Lanterne", Pieces("Lantern", "auberge guilde boulangerie").Concat(Pieces("HangingLantern", "auberge guilde boulangerie")).ToArray());
             yield return Linked("C_IN1_P17", c, "Bougeoir", Pieces("Candlestick", "auberge guilde archives"));
+        }
+
+        // --- 04 : intérieurs du village (chapelle, épicerie, herboristerie, mercerie, maison de Rosalie…) ------------------------------
+
+        private static IEnumerable<LotCModel> InteriorsVillage()
+        {
+            const string c = "04_Interieurs_Village";
+            const string chapel = "pas de place pour ce meuble dans la chapelle des données (autel, huit bancs, deux chandeliers, statue)";
+            const string crypt = "crypte de la chapelle : pas dans les données";
+            const string grocer = "pas de place pour ce meuble dans l'épicerie des données (comptoir, deux étagères, tonneau, caisse)";
+            const string herb = "pas de place pour ce meuble dans l'herboristerie des données (comptoir, deux étagères, table de séchage, tonneau)";
+            const string tailor = "pas de place pour ce meuble dans la mercerie des données (comptoir, étagère à toiles, rouet, table de coupe, coffre)";
+            const string small = "petit objet que l'aménagement de ces pièces ne pose pas";
+            const string attic = "grenier de la maison paysanne (fiche V1) : pas de pièce dans les données (on y monte par l'échelle, un seul niveau joué)";
+            const string rosalie = "les tables de la maison ont des tabourets (aménagement) ; aucun banc dans les données";
+            const string upstairs = "étage de la maison de Rosalie : pas dans les données (une pièce n'a qu'un niveau)";
+            yield return Linked("C_IN2_C0_01", c, "Banc de nef", "room:chapelle/banc1", "room:chapelle/banc2", "room:chapelle/banc3", "room:chapelle/banc4", "room:chapelle/banc5", "room:chapelle/banc6", "room:chapelle/banc7", "room:chapelle/banc8");
+            yield return Linked("C_IN2_C0_09", c, "Autel", "room:chapelle/autel");
+            yield return Waiting("C_IN2_C0_10", c, "Reliquaire (logement vide de l'Éclat)", chapel);
+            yield return Waiting("C_IN2_C0_11", c, "Armoire de sacristie", chapel);
+            yield return Waiting("C_IN2_C_1_02", c, "Table votive", crypt);
+            yield return Waiting("C_IN2_C_1_03", c, "Coffre scellé", crypt);
+            yield return Linked("C_IN2_C_1_04", c, "Support de cierges", "room:chapelle/chandelier1", "room:chapelle/chandelier2");
+            yield return Linked("C_IN2_E0_01", c, "Comptoir de vente", "room:epicerie/comptoir", "room:mercerie/comptoir");
+            yield return Linked("C_IN2_E0_02", c, "Rayonnage de pots", "room:epicerie/etagere_ouest");
+            yield return Linked("C_IN2_E0_03", c, "Étagères à denrées", "room:epicerie/etagere_fond");
+            yield return Waiting("C_IN2_E0_04", c, "Table de fromages", grocer);
+            yield return Linked("C_IN2_E0_05", c, "Tonneaux de sel", "room:epicerie/tonneau");
+            yield return Linked("C_IN2_E0_06", c, "Sacs de réserve", "room:epicerie/caisse");
+            yield return Waiting("C_IN2_E0_07", c, "Rayonnage de la réserve", grocer);
+            yield return Waiting("C_IN2_E0_08", c, "Bureau de Lucie", grocer);
+            yield return Linked("C_IN2_F0_01", c, "Foyer avec hotte", "room:forge_couverte/cheminee_forge");
+            yield return Linked("C_IN2_F0_02", c, "Soufflet", "room:forge_couverte/soufflet");
+            yield return Linked("C_IN2_F0_03", c, "Enclume sur billot", "room:forge_couverte/enclume");
+            yield return Linked("C_IN2_F0_04", c, "Établi", "room:forge_couverte/etabli");
+            yield return Linked("C_IN2_F0_05", c, "Bac de trempe", "room:forge_couverte/bac_de_trempe");
+            yield return Linked("C_IN2_F0_06", c, "Râtelier de pinces", "room:forge_couverte/ratelier_pinces");
+            yield return Linked("C_IN2_G0_01", c, "Charrette agricole", "room:grange/charrette");
+            yield return Linked("C_IN2_G0_02", c, "Tas de foin", "room:grange/foin");
+            yield return Linked("C_IN2_G0_03", c, "Râtelier agricole", "room:grange/ratelier_agricole");
+            yield return Linked("C_IN2_G0_04", c, "Coffre à outils", "room:grange/coffre_outils");
+            yield return Linked("C_IN2_G0_05", c, "Échelle de travail rangée", "room:grange/echelle");
+            yield return Linked("C_IN2_H0_01", c, "Table de tri de Tiphaine", "room:herboristerie/table_sechage");
+            yield return Waiting("C_IN2_H0_02", c, "Alambic sur foyer", herb);
+            yield return Linked("C_IN2_H0_03", c, "Étagère de bocaux", "room:herboristerie/etagere_fond");
+            yield return Linked("C_IN2_H0_04", c, "Étagère interdite en hauteur", "room:herboristerie/etagere_est");
+            yield return Linked("C_IN2_H0_05", c, "Petit comptoir", "room:herboristerie/comptoir");
+            yield return Waiting("C_IN2_H0_06", c, "Mortier sur billot", herb);
+            yield return Waiting("C_IN2_M0_01", c, "Métier à tisser", tailor);
+            yield return Linked("C_IN2_M0_02", c, "Table de coupe", "room:mercerie/table_coupe");
+            yield return Linked("C_IN2_M0_03", c, "Rouet", "room:mercerie/rouet", "room:maison/rouet");
+            yield return Waiting("C_IN2_M0_04", c, "Mannequin de couturière (fait main, sans Tripo)", tailor);
+            yield return Linked("C_IN2_M0_05", c, "Rouleaux et étagère", "room:mercerie/etagere_toiles");
+            yield return Linked("C_IN2_M0_06", c, "Tabouret", "piece:mercerie/Stool", "piece:maison/Stool");
+            yield return Linked("C_IN2_O0_01", c, "Rouet et lanterne", "room:salle_du_moulin/rouet_moulin");
+            yield return Linked("C_IN2_O0_02", c, "Bac à farine", "room:salle_du_moulin/bac_a_farine");
+            yield return Linked("C_IN2_O0_03", c, "Sacs de grain", "room:salle_du_moulin/sacs_de_grain", "room:etage_des_meules/sacs_en_attente");
+            yield return Linked("C_IN2_O0_04", c, "Échelle de meunier", "room:salle_du_moulin/echelle_meunier", "room:etage_des_meules/echelle_trappe");
+            yield return Linked("C_IN2_O0_05", c, "Pupitre de pesée", "room:salle_du_moulin/pupitre_pesee");
+            yield return Linked("C_IN2_O1_01", c, "Meules avec archure et trémie", "room:etage_des_meules/meules");
+            yield return Linked("C_IN2_O1_04", c, "Caisse à grain", "room:etage_des_meules/caisse_a_grain");
+            yield return Linked("C_IN2_P01", c, "Cierge", "piece:chapelle/Candlestick");
+            yield return Linked("C_IN2_P02", c, "Bougeoir", "piece:maison/Candlestick");
+            yield return Waiting("C_IN2_P03", c, "Livre de la chapelle", small);
+            yield return Waiting("C_IN2_P04", c, "Pot de miel", small);
+            yield return Waiting("C_IN2_P05", c, "Fromage", small);
+            yield return Waiting("C_IN2_P06", c, "Tresse d'ail", small);
+            yield return Linked("C_IN2_P08", c, "Bocal", "piece:herboristerie/ClayPot", "piece:epicerie/ClayPot");
+            yield return Waiting("C_IN2_P09", c, "Mortier", small);
+            yield return Waiting("C_IN2_P10", c, "Bouquet d'herbes", small);
+            yield return Linked("C_IN2_P11", c, "Fiole", "piece:herboristerie/Bottles");
+            yield return Waiting("C_IN2_P12", c, "Ciseaux", small);
+            yield return Linked("C_IN2_P13", c, "Rouleau de lin", "piece:mercerie/Cloth");
+            yield return Waiting("C_IN2_P14", c, "Écheveau", small);
+            yield return Waiting("C_IN2_P15", c, "Bobine", small);
+            yield return Linked("C_IN2_P16", c, "Assiette", "piece:maison/Plate");
+            yield return Linked("C_IN2_P17", c, "Cruche", "piece:maison/Bottles", "piece:epicerie/Bottles");
+            yield return Linked("C_IN2_P18", c, "Panier", "piece:maison/Basket", "piece:epicerie/Basket", "piece:herboristerie/Basket", "piece:mercerie/Basket");
+            yield return Linked("C_IN2_P20", c, "Écuelle", "piece:maison/Bowl");
+            yield return Waiting("C_IN2_P21", c, "Couverture", small);
+            yield return Waiting("C_IN2_P22", c, "Oreiller", small);
+            yield return Waiting("C_IN2_P23", c, "Pelle à grain", small);
+            yield return Waiting("C_IN2_P25", c, "Tamis", small);
+            yield return Waiting("C_IN2_P26", c, "Pinces", small);
+            yield return Waiting("C_IN2_P27", c, "Marteau", small);
+            yield return Waiting("C_IN2_P28", c, "Râteau", small);
+            yield return Waiting("C_IN2_P29", c, "Fourche", small);
+            yield return Waiting("C_IN2_P30", c, "Registre", small);
+            yield return Linked("C_IN2_R0_01", c, "Lit clos", "room:maison/lit");
+            yield return Linked("C_IN2_R0_02", c, "Cheminée domestique", "room:maison/cheminee");
+            yield return Linked("C_IN2_R0_03", c, "Table familiale", "room:maison/table");
+            yield return Waiting("C_IN2_R0_04", c, "Banc", rosalie);
+            yield return Linked("C_IN2_R0_05", c, "Coffre", "room:maison/coffre");
+            yield return Linked("C_IN2_R0_07", c, "Étagère à vaisselle", "room:maison/etagere");
+            yield return Waiting("C_IN2_R1_02", c, "Coffre à linge", upstairs);
+            yield return Waiting("C_IN2_R1_03", c, "Étagère à paniers", upstairs);
+            yield return Linked("C_IN2_T0_01", c, "Couchettes superposées", "room:salle_de_garde/lit_gardes");
+            yield return Linked("C_IN2_T0_02", c, "Table du registre", "room:salle_de_garde/table_registre");
+            yield return Linked("C_IN2_T0_03", c, "Râtelier d'armes", "room:salle_de_garde/ratelier_armes");
+            yield return Linked("C_IN2_T0_05", c, "Coffre des gardes", "room:salle_de_garde/coffre_gardes");
+            yield return Linked("C_IN2_T0_06", c, "Lanterne suspendue", "piece:maison/HangingLantern", "piece:epicerie/HangingLantern", "piece:herboristerie/HangingLantern", "piece:mercerie/HangingLantern", "piece:salle_de_garde/HangingLantern");
+            yield return Linked("C_IN2_V0_01", c, "Lit paysan", "room:maison_paysanne/lit");
+            yield return Linked("C_IN2_V0_02", c, "Cheminée", "room:maison_paysanne/cheminee");
+            yield return Linked("C_IN2_V0_03", c, "Table simple", "room:maison_paysanne/table");
+            yield return Linked("C_IN2_V0_04", c, "Coffre", "room:mercerie/coffre", "room:maison_paysanne/coffre");
+            yield return Linked("C_IN2_V0_05", c, "Étagère", "room:maison_paysanne/etagere");
+            yield return Linked("C_IN2_V0_06", c, "Échelle du grenier", "room:maison_paysanne/echelle_grenier");
+            yield return Waiting("C_IN2_V1_02", c, "Caisses basses", attic);
+            yield return Waiting("C_IN2_V1_03", c, "Ballot de linge", attic);
         }
     }
 }

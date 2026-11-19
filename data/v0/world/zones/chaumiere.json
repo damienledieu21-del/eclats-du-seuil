@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.chaumiere",
+    "name": "Maison paysanne",
+    "scenario": "zones/chaumiere",
+    "indoor": true,
+    "entry": "coin_du_feu",
+    "safePoints": [
+      {
+        "id": "coin_du_feu",
+        "name": "Coin du feu",
+        "position": [
+          0.8,
+          -1.2
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "maison_paysanne",
+        "name": "Maison paysanne",
+        "min": [
+          -1.8,
+          -2.3
+        ],
+        "max": [
+          1.8,
+          2.3
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Champs du sud",
+        "position": [
+          0,
+          -1.7
+        ],
+        "to": "zone.vallons",
+        "toDoor": "porte_chaumiere"
+      }
+    ]
+  }
+}

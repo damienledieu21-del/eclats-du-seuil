@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/zone.schema.json",
+  "schemaVersion": 7,
+  "kind": "zone",
+  "contentVersion": "0.2.0-provisoire",
+  "data": {
+    "id": "zone.auberge_combles",
+    "name": "Combles de l'auberge",
+    "scenario": "zones/auberge_combles",
+    "indoor": true,
+    "entry": "reserve",
+    "safePoints": [
+      {
+        "id": "reserve",
+        "name": "Réserve",
+        "position": [
+          0,
+          0.3
+        ]
+      }
+    ],
+    "places": [
+      {
+        "id": "combles_auberge",
+        "name": "Combles de l'auberge",
+        "min": [
+          -4.3,
+          -2.6
+        ],
+        "max": [
+          4.3,
+          2.6
+        ]
+      }
+    ],
+    "populations": [],
+    "passages": [],
+    "doors": [
+      {
+        "id": "sortie",
+        "name": "Logement et dortoir",
+        "position": [
+          2.45,
+          1.15
+        ],
+        "to": "zone.auberge_logement",
+        "toDoor": "combles"
+      }
+    ]
+  }
+}
