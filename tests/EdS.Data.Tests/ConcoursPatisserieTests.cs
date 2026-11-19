@@ -35,7 +35,7 @@ public class ConcoursPatisserieTests
     public void Catalogue_v8_deux_patisseries_de_concours_seulement()
     {
         ItemCatalog c = ItemsCatalog;
-        Assert.Equal((8, 8, "0.21.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
+        Assert.Equal((8, 8, "0.23.0-provisoire"), (c.SchemaVersion, ItemValidator.CurrentSchemaVersion, c.ContentVersion));
         Assert.Equal(new[] { Tarte, Couronne, "item.fouace_des_semailles" }, c.Items.Where(i => i.CraftQuality).Select(i => i.Id));
         Assert.All(new[] { Couronne, Tarte }, id => Assert.True(c.TakesQuality(c.Item(id)) && c.SignsAlways(c.Item(id))));
         // Un autre objet de soin ne prend pas de qualité ; un équipement prend une qualité mais n'est signé que chef-d'œuvre.
@@ -101,7 +101,7 @@ public class ConcoursPatisserieTests
     public void Les_deux_patisseries_se_cuisent_a_qualite_et_portent_la_marque_du_patissier()
     {
         CraftingBook book = Crafting(ZoneAt(-1075.5, -31.5));
-        Assert.Equal("0.12.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.14.0-provisoire", book.ContentVersion);
         Recipe[] cuisine = book.Recipes.Where(r => r.Profession == "cuisine").ToArray();
         Assert.Equal(new[] { "recipe.cuisine.tarte_renversee_aux_pommes", "recipe.cuisine.couronne_des_moissons", "recipe.cuisine.fouace_des_semailles" },
             cuisine.Where(r => r.Quality).Select(r => r.Id));

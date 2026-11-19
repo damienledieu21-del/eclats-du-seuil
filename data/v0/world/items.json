@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.21.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1507,6 +1507,34 @@
         "type": "material",
         "rarity": "common",
         "stack": 5
+      },
+      {
+        "id": "item.bois",
+        "name": "Bois",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
+        "id": "item.pierre",
+        "name": "Pierre",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50
+      },
+      {
+        "id": "item.planche",
+        "name": "Planche",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
+      },
+      {
+        "id": "item.pierre_taillee",
+        "name": "Pierre taillée",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20
       },
       {
         "id": "item.miche_du_matin",

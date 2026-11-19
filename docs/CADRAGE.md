@@ -428,6 +428,7 @@ Réponses de Damien du 19 novembre 2026, rapportées par la session principale (
 | Avancement d'un chantier | Par **paliers de contributions variées** : or, matériaux de métier, combats et exploration autour du lieu. La contribution de **tous les joueurs** viendra au lot 13 avec l'état de région. | Retenu (Damien, 19 novembre 2026) |
 | Perte d'une reconstruction | Une reconstruction **n'est jamais perdue** (ni bandits, ni corruption, ni Envers). | Retenu (Damien, 19 novembre 2026) |
 | Ce qu'apporte un lieu reconstruit | Un **décor** et des **PNJ**, des **services** (marchand, artisan, point sûr, voyage) et **son intérieur**. | Retenu (Damien, 19 novembre 2026) |
+| Bois et pierre | On ajoute le **bois** et la **pierre** (bruts) et les **planches** et **pierres taillées** (travaillées, recettes dans les métiers existants) ; récolte du bois en forêt et de la pierre à une carrière, sur des nœuds de récolte comme ceux qui existent ; les paliers des chantiers s'en servent en plus des matériaux existants. | Retenu (Damien, 19 novembre 2026) ; V2.43.2a |
 
 ## 8. Points ouverts
 
