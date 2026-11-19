@@ -13,6 +13,7 @@ using EdS.Data.Items;
 using EdS.Data.Json;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
+using EdS.Data.Feasts;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.WorldBosses;
@@ -236,6 +237,7 @@ namespace EdS.Runtime
         private readonly StoryBook _story;
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
+        private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)
@@ -262,8 +264,9 @@ namespace EdS.Runtime
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
-            WorldBossBook? worldBosses = null, FishingBook? fishing = null)
+            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null)
         {
+            _feasts = feasts;
             _worldBosses = worldBosses;
             _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
@@ -365,10 +368,14 @@ namespace EdS.Runtime
             // Pêche et carnet : facultative de même (données d'essai réduites) ; présente, elle doit être valide.
             string fishingPath = FishingJsonReader.PathIn(dataDirectory);
             FishingLoadResult? fishing = File.Exists(fishingPath) ? FishingJsonReader.ReadFile(fishingPath, catalogTexts, definition, catalog) : null;
+            // Les 12 fêtes d'Orsédia : facultatives de même (données d'essai réduites) ; présentes, elles doivent être valides.
+            string feastsPath = FeastJsonReader.PathIn(dataDirectory);
+            FeastLoadResult? feasts = File.Exists(feastsPath) ? FeastJsonReader.ReadFile(feastsPath, storyBook, catalogTexts) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
-                fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report));
+                fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
+                feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -388,6 +395,7 @@ namespace EdS.Runtime
         {
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
+            world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
             // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
             // cours continue d'une session à l'autre de cette zone.

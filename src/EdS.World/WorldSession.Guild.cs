@@ -103,11 +103,21 @@ namespace EdS.World
             var list = new List<StoryEvent>();
             events = list;
             EdS.Data.Saves.SavedCards? cards = _character.Cards;
+            // Les 12 fêtes d'Orsédia (sauvegarde v27) : un titre de fête gagné s'affiche à la place des autres.
+            if (title != null && EdS.Data.Feasts.FeastValidator.IsTitle(title))
+                return ShowFeastTitle(title, list) == FeastRefusal.None ? GuildRefusal.None : GuildRefusal.UnknownTitle;
+            if (title is null && _character.Feasts.Shown != null)
+            {
+                HideFeastTitle();
+                list.Add(new StoryEvent(StoryEventKind.TitleShown, string.Empty));
+                return GuildRefusal.None;
+            }
             if (title == CardMatch.AceTitle)
             {
                 if (cards is null || !cards.IsAce) return GuildRefusal.UnknownTitle;
                 if (cards.Shown) return GuildRefusal.None;
                 if (Narrative?.ShownTitle != null) Narrative.ShowTitle(null, new List<StoryEvent>());   // le titre de guilde s'efface sans annonce
+                HideFeastTitle();
                 _character = _character.WithCards(cards.WithShown(true));
                 list.Add(new StoryEvent(StoryEventKind.TitleShown, title));
                 return GuildRefusal.None;
@@ -120,13 +130,14 @@ namespace EdS.World
             }
             GuildRefusal refusal = Narrative is null ? GuildRefusal.NoGuild : Narrative.ShowTitle(title, list);
             if (refusal == GuildRefusal.None && title != null && cards != null && cards.Shown) _character = _character.WithCards(cards.WithShown(false));
+            if (refusal == GuildRefusal.None && title != null) HideFeastTitle();
             return refusal;
         }
 
-        bool INarrativeWorld.OtherTitleShown => _character.Cards?.Shown == true;
+        bool INarrativeWorld.OtherTitleShown => _character.Cards?.Shown == true || _character.Feasts.Shown != null;
 
         /// <summary>Titre actif : identifiant du titre affiché sous le nom (« As des Trois Feux » ou un titre de la guilde), ou null.</summary>
-        public string? ActiveTitle => _character.Cards?.Shown == true ? CardMatch.AceTitle : Narrative?.ShownTitle;
+        public string? ActiveTitle => _character.Cards?.Shown == true ? CardMatch.AceTitle : ShownFeastTitle ?? Narrative?.ShownTitle;
 
         /// <summary>
         /// Rang de la guilde requis pour passer la porte <paramref name="door"/> de la zone en cours (« accès à des lieux ») et que le personnage
