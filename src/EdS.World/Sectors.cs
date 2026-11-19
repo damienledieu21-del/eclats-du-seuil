@@ -379,6 +379,13 @@ namespace EdS.World
             public long IdleTicks;
             public ObstacleIndex Walls = null!;
 
+            /// <summary>Revue Codex de la PR #206 : session à renouveler au prochain tick parce que la saison a ouvert ou fermé un passage
+            /// saisonnier (la glace du lac) qui la touche.</summary>
+            public bool SeasonRenew;
+
+            /// <summary>Session terminée ou à renouveler pour la saison.</summary>
+            public bool Due => Zone.IsOver || SeasonRenew;
+
             /// <summary>Revue Codex de la PR #150 (4e tour) : présence voulue de ses populations (heures, temps, nuits), au tick de sa session.</summary>
             public Func<Population, long, bool>? Wanted;
 
@@ -448,6 +455,36 @@ namespace EdS.World
         /// passée, la session suivante les remet). Null : aucun.
         /// </summary>
         public Func<IEnumerable<string>>? SeasonalPassages { get; set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : déplacement d'un joueur au renouvellement d'une session pour la saison (position, rayon → position
+        /// libre) ; null : il reste où il est.
+        /// </summary>
+        public Func<GroundVector, Fixed, GroundVector>? SeasonRelocate { get; set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : la saison vient d'ouvrir ou de fermer les passages saisonniers dont les obstacles sont
+        /// <paramref name="obstacles"/> : chaque session ouverte dont l'espace les touche est renouvelée au prochain tick (même mécanisme qu'une
+        /// session terminée : joueurs emportés avec leur état, déplacés par <see cref="SeasonRelocate"/>), avec l'aire de la saison nouvelle.
+        /// Rend le nombre de sessions marquées.
+        /// </summary>
+        public int RenewForSeason(IEnumerable<string> obstacles)
+        {
+            var ids = new HashSet<string>(obstacles ?? throw new ArgumentNullException(nameof(obstacles)), StringComparer.Ordinal);
+            var boxes = (_zone?.Setup ?? _map.Area).Space!.Obstacles.Where(o => ids.Contains(o.Id)).Select(o => new ConvexPolygon(o.Points)).ToList();
+            int marked = 0;
+            foreach (Open o in _open.Values.OrderBy(x => x.Name, StringComparer.Ordinal))
+            {
+                CombatSpace? space = o.Zone.Setup.Space;
+                if (space is null) continue;
+                if (boxes.Any(b => b.MaxX >= space.Min.X.Raw && b.MinX <= space.Max.X.Raw && b.MaxZ >= space.Min.Z.Raw && b.MinZ <= space.Max.Z.Raw))
+                {
+                    o.SeasonRenew = true;
+                    marked++;
+                }
+            }
+            return marked;
+        }
 
         private IEnumerable<string> SessionKeys => SeasonalPassages is null ? Consumed : Consumed.Concat(SeasonalPassages()).ToList();
 
@@ -738,7 +775,7 @@ namespace EdS.World
                 long need = RegistryBound();
                 long arriving = Arriving(out bool born);
                 foreach (Open o in _open.Values)
-                    need = checked(need + (born && o.Zone.IsOver ? Newborn(o.Name) : o.Zone.NewDeathsPossible));
+                    need = checked(need + (born && o.Due ? Newborn(o.Name) : o.Zone.NewDeathsPossible));
                 if (born)
                 {
                     List<string>? opening = null;
@@ -763,9 +800,9 @@ namespace EdS.World
         {
             long arriving = _entering.Count;
             born = arriving > 0;
-            foreach (Open o in _open.Values) born |= o.Zone.IsOver;
+            foreach (Open o in _open.Values) born |= o.Due;
             foreach (Player p in _players.Values)
-                if (p.Waiting || p.Resume || p.Arrival != null || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? at) && at.Zone.IsOver))
+                if (p.Waiting || p.Resume || p.Arrival != null || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? at) && at.Due))
                 {
                     arriving = checked(arriving + 1);
                     born = true;
@@ -1027,11 +1064,13 @@ namespace EdS.World
             foreach (var (p, v, carried, consumables) in moves)
             {
                 p.PendingBackward = v.MoveBackward;
-                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
+                // Revue Codex de la PR #206 : à la fonte, un joueur sur la glace est mis sur la rive la plus proche (SeasonRelocate).
+                GroundVector at = old.SeasonRenew && SeasonRelocate != null ? SeasonRelocate(v.Position!.Value, v.Radius!.Value) : v.Position!.Value;
+                if (!Place(p, old.Name, at, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
                     && p.Refusal is null)
                 {
                     // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, p.Gear ?? v.Gear);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(at, v.Radius.Value, v.Facing), 0, consumables, carried, p.Gear ?? v.Gear);
                     p.ArrivingFrom = null;
                     p.Resume = true;
                 }
@@ -1277,7 +1316,7 @@ namespace EdS.World
             // ni tri quand il n'y a rien à faire.
             if (born)
             {
-                List<Open> renewing = _open.Values.Where(x => x.Zone.IsOver).ToList();
+                List<Open> renewing = _open.Values.Where(x => x.Due).ToList();
                 // Revue Codex de la PR #156 (1er tour) : borne exacte des renouvellements vérifiée avant toute fermeture (tick tout ou rien).
                 if (renewing.Count > 0 && RenewalNeed(renewing) > SaveValidator.MaxConsumed)
                     throw new InvalidOperationException($"Registre du monde presque plein : les renouvellements de session demandent {RenewalNeed(renewing)} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");
