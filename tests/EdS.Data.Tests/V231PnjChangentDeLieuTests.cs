@@ -218,6 +218,30 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
     }
 
     [Fact]
+    public void Dans_le_moulin_la_porte_passe_avant_Odile_quand_elle_est_plus_proche()
+    {
+        // Revue Codex de la PR #209 (P1) : l'après-midi, Odile est dans la petite salle du moulin, à portée de ses deux portes. Arrivé de
+        // l'étage par l'échelle (sur la porte « etage »), la touche F repasse la porte au lieu de parler à Odile ; près d'elle, on lui parle.
+        string save = Path.Combine(_folder, "moulin", "sauvegarde.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+        int afternoon = 15 * 60;
+        SaveStore.Write(save, new WorldSave("zone.moulin_meules", TickAt(DryDay(afternoon), afternoon), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession a = Adventure(save);
+        a.Advance(0.05);
+        Assert.Equal("sortie", a.DoorInReach?.Id);
+        Assert.True(a.Interact());   // l'échelle : on descend dans la salle du moulin
+        Assert.Equal("zone.moulin", a.World.Definition!.Id);
+        a.Advance(0.05);
+        Assert.Equal("npc.odile", a.NpcInReach?.Id);
+        Assert.Equal("etage", a.DoorInReach?.Id);
+        Assert.True(a.DoorFirst);
+        Assert.True(a.Interact());   // la porte, pas Odile
+        Assert.Equal("zone.moulin_meules", a.World.Definition!.Id);
+        Assert.Null(a.Dialogue);
+        Assert.Contains("a.DoorFirst", File.ReadAllText(Path.Combine(Lot93UnityPackageTests.Root, "unity", "Assets", "EdS", "Game", "EdsGame.cs")));
+    }
+
+    [Fact]
     public void Zone_de_creneau_refusee_au_chemin_precis()
     {
         string Slot(JsonObject r, string npc, string at) => $"$.data.npcs[{NpcIndex(r, npc)}].schedule[{SlotIndex(r, npc, at)}]";

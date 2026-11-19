@@ -783,6 +783,9 @@ namespace EdS.Runtime
             if (World.IsDefeated) return false;
             if (RiftInReach != null) return CloseRift();   // sous-lot V2.5 : la faille du Seuil passe avant tout
             if (ScarInReach != null) return PurifyScar();   // sous-lot V2.6 : puis le cœur d'une cicatrice
+            // Revue Codex de la PR #209 (P1) : dans un intérieur, la porte à portée passe avant un PNJ plus loin qu'elle (Odile dans la petite
+            // salle du moulin est à portée de ses deux portes) : on sort toujours d'une pièce, on parle en s'approchant du PNJ.
+            if (DoorFirst) return UseDoor();
             if (NpcInReach is Npc npc)
             {
                 // Sous-lot V1.1 : parler à un marchand ouvre sa boutique (même touche que les autres PNJ). Relecture de la PR #72 : boutique
@@ -920,6 +923,13 @@ namespace EdS.Runtime
         public Door? DoorInReach => Me is GroundVector p && !World.IsDefeated
             ? VisibleDoors.Where(d => Within(p, d.Position, DoorRange)).OrderBy(d => Distance2(p, d.Position)).ThenBy(d => d.Id, StringComparer.Ordinal).FirstOrDefault()
             : null;
+
+        /// <summary>
+        /// Revue Codex de la PR #209 (P1) : dans un intérieur, une porte à portée plus proche que le PNJ à portée (ou sans PNJ à portée) passe
+        /// avant lui (touche F, action tactile, indication à l'écran). Dehors, l'ordre d'avant ne change pas.
+        /// </summary>
+        public bool DoorFirst => !World.InStoryZone && Me is GroundVector p && DoorInReach is Door door
+            && (!(NpcInReach is Npc npc) || Distance2(p, door.Position) < Distance2(p, World.NpcPosition(npc)));
 
         /// <summary>
         /// La porte à portée se passe : personnage vivant, aucun ennemi vivant à moins de <see cref="RestSafety"/> (on ne fuit pas un combat
