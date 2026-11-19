@@ -493,7 +493,8 @@ namespace EdS.Data.Feasts
                 }
             }
 
-            if (r.Errors.Count > errors || festival is null || x.Title?.Id is null || x.Title.Name is null || x.Motto is null) return null;
+            if (r.Errors.Count > errors || festival is null || x.Title?.Id is null || x.Title.Name is null || x.Motto is null || number == 0
+                || x.Activities is null || activities.Count != x.Activities.Count || refs.Count != RefsPerFeast || (activities.Count > 0 && after == 0)) return null;
             return new Feast(number, festival.Id, x.Motto, x.Title.Id, x.Title.Name, activities, after, refs);
         }
 
@@ -524,8 +525,9 @@ namespace EdS.Data.Feasts
                     r.Add(ap + ".contest", ValidationCode.InvalidValue, $"concours « {key} » d'une autre fête que « {festival.Id} ».");
                 else if (!contests.Add(key)) r.Add(ap + ".contest", ValidationCode.DuplicateId, $"concours « {key} » déjà lié à une activité.");
             }
-            if (r.Errors.Count > errors) return null;
-            return new FeastActivity(a.Id!, a.Name!, a.Coins!.Value, a.Host, a.Contest);
+            // Revue Codex de la PR #213 : un champ illisible (erreur déjà notée à la lecture) laisse sa valeur à null : jamais de modèle alors.
+            if (r.Errors.Count > errors || a.Id is null || a.Name is null || a.Coins is null || (a.Host is null && a.Contest is null)) return null;
+            return new FeastActivity(a.Id, a.Name, a.Coins.Value, a.Host, a.Contest);
         }
 
         private static FeastRef? CheckRef(FeastRefData x, string rp, int number, TextCatalog texts, int cap, HashSet<string> codes, ValidationReport r)
@@ -602,8 +604,12 @@ namespace EdS.Data.Feasts
             else if (x.Price < 1 || (cap > 0 && x.Price > cap))
                 r.Add(rp + ".price", ValidationCode.OutOfRange, $"prix hors de [1, {(cap > 0 ? cap : MaxWalletCap)}] : un prix au-delà du plafond ne se paierait jamais.");
 
-            if (r.Errors.Count > errors || category is null) return null;
-            return new FeastRef(x.Code!, number, category.Value, x.Name!, new FeastSize(x.Size!.X!.Value, x.Size.Y!.Value, x.Size.Z!.Value), x.Image!, x.Icon,
+            // Revue Codex de la PR #213 : un champ illisible (erreur déjà notée à la lecture) laisse sa valeur à null : jamais de modèle alors.
+            if (r.Errors.Count > errors || category is null || x.Code is null || x.Name is null || x.Image is null
+                || x.Size?.X is null || x.Size.Y is null || x.Size.Z is null
+                || (category != FeastCategory.Currency && (x.Price is null || rarity is null))
+                || (category is FeastCategory.Dish or FeastCategory.Currency or FeastCategory.Reward && x.Icon is null)) return null;
+            return new FeastRef(x.Code, number, category.Value, x.Name, new FeastSize(x.Size.X.Value, x.Size.Y.Value, x.Size.Z.Value), x.Image, x.Icon,
                 rarity, x.Price);
         }
 
