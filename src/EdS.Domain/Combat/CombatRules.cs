@@ -318,6 +318,13 @@ namespace EdS.Domain.Combat
         public Fixed MountSafeDistance => Fixed.FromInt(12);   // revue Codex de la PR #180 : constante, non réglable (son carré tient toujours)
 
         /// <summary>
+        /// Sous-lot F7 (décision de Damien du 19 novembre 2026) : facteur de la marche d'un personnage réconforté par un plat de fête
+        /// (<see cref="CombatAction.Comfort"/>) : +10 %, à pied seulement (la monture garde sa vitesse), dans la limite de la vitesse maximale
+        /// de l'espace. Constante du moteur, hors du fichier de règles (aucun changement de leur schéma).
+        /// </summary>
+        public Fixed ComfortSpeedFactor => Fixed.FromRatio(11, 10);
+
+        /// <summary>
         /// Définitions des altérations (lot 7.2, bloc <c>statuses</c> de <c>rules.json</c>) : DOT, contrôles, Fragilité, rupture
         /// de garde, immunités. Validées par <see cref="StatusCatalog.Validate"/>, chemins rattachés à <c>statuses[i]</c>.
         /// </summary>

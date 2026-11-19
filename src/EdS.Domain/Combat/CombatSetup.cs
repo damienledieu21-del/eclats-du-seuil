@@ -670,6 +670,16 @@ namespace EdS.Domain.Combat
 
         /// <summary>Sous-lot V2.28d (2), monture : le personnage descend de sa monture.</summary>
         Dismount = 14,
+
+        /// <summary>
+        /// Sous-lot F7 (réconfort d'un plat de fête, décision de Damien du 19 novembre 2026) : le personnage est réconforté : à pied, il marche
+        /// plus vite (<see cref="CombatRules.ComfortSpeedFactor"/>). Aucune statistique de combat. Le monde l'envoie hors combat seulement,
+        /// pendant 60 minutes de jeu après un plat, et l'arrête (<see cref="ComfortEnd"/>) en combat ou au bout du temps.
+        /// </summary>
+        Comfort = 15,
+
+        /// <summary>Sous-lot F7 : fin du réconfort (combat, ou temps écoulé).</summary>
+        ComfortEnd = 16,
     }
 
     /// <summary>Identifiants stables des actions dans les fichiers et le journal.</summary>
@@ -690,6 +700,8 @@ namespace EdS.Domain.Combat
         public const string Duo = "duo";       // compagnons
         public const string Mount = "mount";
         public const string Dismount = "dismount";
+        public const string Comfort = "comfort";         // sous-lot F7 : réconfort d'un plat de fête
+        public const string ComfortEnd = "comfortEnd";
 
         /// <summary>Actions défensives (garde et parade), seules transmises par le protocole du lot 10.</summary>
         public static IReadOnlyList<string> Defensive { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry }, nameof(Defensive));
@@ -698,7 +710,7 @@ namespace EdS.Domain.Combat
         /// Actions qu'on écrit dans le champ <c>action</c> d'une commande de scénario (la compétence s'écrit avec <c>skill</c>) : les
         /// défensives, puis le déplacement (sous-lot 11.4).
         /// </summary>
-        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge, Mount, Dismount }, nameof(Named));
+        public static IReadOnlyList<string> Named { get; } = Frozen.List(new[] { GuardStart, GuardStop, Parry, Move, Stop, Select, Leave, Dodge, Mount, Dismount, Comfort, ComfortEnd }, nameof(Named));
 
         public static string Of(CombatAction action) => action switch
         {
@@ -717,6 +729,8 @@ namespace EdS.Domain.Combat
             CombatAction.Duo => Duo,
             CombatAction.Mount => Mount,
             CombatAction.Dismount => Dismount,
+            CombatAction.Comfort => Comfort,
+            CombatAction.ComfortEnd => ComfortEnd,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
@@ -732,6 +746,8 @@ namespace EdS.Domain.Combat
                 case Dodge: action = CombatAction.Dodge; return true;
                 case Mount: action = CombatAction.Mount; return true;
                 case Dismount: action = CombatAction.Dismount; return true;
+                case Comfort: action = CombatAction.Comfort; return true;   // sous-lot F7
+                case ComfortEnd: action = CombatAction.ComfortEnd; return true;
                 default: return TryParseDefensive(id, out action);
             }
         }
@@ -1290,6 +1306,16 @@ namespace EdS.Domain.Combat
                         errors.Add(new RuleViolation("monture dans un combat sans espace (bloc space absent).", path + ".action"));
                     if (ids.TryGetValue(command.Actor, out int rider) && !(Combatants[rider] is CharacterSetup { Mount: not null }))
                         errors.Add(new RuleViolation("seul un personnage qui a une monture monte ou descend.", path + ".actor"));
+                }
+                else if (command.Action == CombatAction.Comfort || command.Action == CombatAction.ComfortEnd)
+                {
+                    // Sous-lot F7 : réconfort d'un personnage d'un combat positionné (il agit sur la marche).
+                    if (command.Direction != null)
+                        errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));
+                    if (Space is null)
+                        errors.Add(new RuleViolation("réconfort dans un combat sans espace (bloc space absent).", path + ".action"));
+                    if (ids.TryGetValue(command.Actor, out int comforted) && !(Combatants[comforted] is CharacterSetup))
+                        errors.Add(new RuleViolation("seul un personnage est réconforté.", path + ".actor"));
                 }
                 else if (command.Direction != null)
                     errors.Add(new RuleViolation("seul un déplacement (move) ou une esquive (dodge) a une direction.", path + ".direction"));

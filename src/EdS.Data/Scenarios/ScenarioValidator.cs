@@ -75,9 +75,10 @@ namespace EdS.Data.Scenarios
         /// <c>duo</c> (<c>companion</c>, <c>target</c>).
         /// Version 22 (sous-lot V2.28d (2), monture) : <c>mount</c> facultatif sur un personnage d'un combat positionné (<c>speed</c> en
         /// m/s, obligatoire), <c>carried.mounted</c> facultatif (arrivée en selle, avec une monture), actions <c>mount</c> et <c>dismount</c>
-        /// d'un personnage qui a une monture.
+        /// d'un personnage qui a une monture. Version 23 (sous-lot F7, réconfort d'un plat de fête) : actions <c>comfort</c> et
+        /// <c>comfortEnd</c> d'un personnage d'un combat positionné.
         /// </summary>
-        public const int CurrentSchemaVersion = 22;
+        public const int CurrentSchemaVersion = 23;   // sous-lot F7 : actions comfort et comfortEnd
 
         public static IReadOnlyList<string> CombatantTypes { get; } = Array.AsReadOnly(new[] { "character", "dummy", "assailant" });
 

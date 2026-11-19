@@ -476,10 +476,11 @@ namespace EdS.Runtime
                 .Select(f => new FeastDishLine(f.Festival, Text(f.Dish.Name), World.FeastState.Of(f.Festival).Dishes, FeastLooks.IconOf(f.Dish.Code))).ToList()
             : (IReadOnlyList<FeastDishLine>)Array.Empty<FeastDishLine>();
 
-        /// <summary>Durée du réconfort d'un plat de fête, en minutes du monde (affichage seulement).</summary>
-        public const int ComfortMinutes = 60;
+        /// <summary>Durée du réconfort d'un plat de fête, en minutes du monde.</summary>
+        public const int ComfortMinutes = WorldSession.ComfortMinutes;
 
-        private (string Dish, long Until)? _comfort;
+        /// <summary>Le dernier plat mangé (pour le bandeau du réconfort), hors sauvegarde.</summary>
+        private string? _comfortDish;
 
         /// <summary>
         /// Mange un plat de la fête <paramref name="festival"/> (<see cref="WorldSession.EatFeastDish"/>) : un de moins, et un moment de
@@ -498,8 +499,8 @@ namespace EdS.Runtime
             _dirty = true;
             string dish = Text(World.FeastBook!.Feast(festival).Dish.Name);
             Say("text.ui.fete.eaten", dish);
-            WorldTime t = World.Zone.Time;
-            _comfort = (dish, checked(t.Day * 1440 + t.Minute + ComfortMinutes));
+            _comfortDish = dish;
+            Combat.SetComfort(World.ComfortWanted);   // sous-lot F7 : la marche plus rapide part au prochain tick
             return true;
         }
 
@@ -508,9 +509,9 @@ namespace EdS.Runtime
         {
             get
             {
-                if (!(_comfort is { } c)) return null;
+                if (_comfortDish is null || !(World.ComfortUntilMinute is long until)) return null;
                 WorldTime t = World.Zone.Time;
-                return t.Day * 1440 + t.Minute < c.Until ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.fete.comfort"), c.Dish) : null;
+                return t.Day * 1440 + t.Minute < until ? string.Format(CultureInfo.InvariantCulture, Text("text.ui.fete.comfort"), _comfortDish) : null;
             }
         }
 
