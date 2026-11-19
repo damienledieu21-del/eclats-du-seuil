@@ -46,6 +46,10 @@ namespace EdS.Data.Feasts
         public FeastTitleData? Title { get; set; }
         public List<FeastActivityData?>? Activities { get; set; }
         public int? RewardAfter { get; set; }
+
+        /// <summary>Sous-lot F3 (décision de Damien du 18 novembre 2026) : décorations de la fête qui habillent l'étal de fête ce mois-là.</summary>
+        public List<string?>? Stall { get; set; }
+
         public List<FeastRefData?>? Refs { get; set; }
     }
 
@@ -208,6 +212,18 @@ namespace EdS.Data.Feasts
 
         public IReadOnlyList<FeastRef> Refs { get; }
 
+        /// <summary>
+        /// Sous-lot F3 (décision de Damien du 18 novembre 2026 : un étal de fête sur la place, dont le décor change chaque mois) : les
+        /// décorations de la fête qui habillent l'étal du forain pendant cette fête.
+        /// </summary>
+        public IReadOnlyList<FeastRef> Stall { get; private set; } = Array.Empty<FeastRef>();
+
+        internal Feast WithStall(IEnumerable<FeastRef> stall)
+        {
+            Stall = Frozen.List(stall, nameof(stall));
+            return this;
+        }
+
         internal Feast(int number, string festival, string motto, string titleId, string titleName, IEnumerable<FeastActivity> activities, int rewardAfter,
             IEnumerable<FeastRef> refs)
         {
@@ -302,8 +318,15 @@ namespace EdS.Data.Feasts
     {
         public const string Kind = "feasts";
 
-        /// <summary>Version 1 (sous-lot F1, 17 novembre 2026) : <c>wallet</c>, <c>maxDishes</c>, <c>merchant</c>, <c>feasts</c>.</summary>
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Version 2 (sous-lot F3, revue Codex de la PR #216) : <c>stall</c> obligatoire dans chaque fête (décor de l'étal du forain). Version 1
+        /// (sous-lot F1, 17 novembre 2026) : <c>wallet</c>, <c>maxDishes</c>, <c>merchant</c>, <c>feasts</c>, sans <c>stall</c> ; encore lue
+        /// (étal sans décor), <c>stall</c> y est refusé.
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
+
+        /// <summary>Plus ancienne version lue, et version où <c>stall</c> entre dans le format.</summary>
+        public const int OldestSchemaVersion = 1, StallSince = 2;
 
         /// <summary>Une fête par mois.</summary>
         public const int FeastCount = 12;
@@ -358,7 +381,9 @@ namespace EdS.Data.Feasts
             if (story is null) throw new ArgumentNullException(nameof(story));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
             ValidationReport r = report ?? new ValidationReport();
-            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, CurrentSchemaVersion, r))
+            int version = document.SchemaVersion ?? CurrentSchemaVersion;
+            bool older = document.SchemaVersion != null && version >= OldestSchemaVersion && version < CurrentSchemaVersion;
+            if (!HeaderValidator.Validate(document.SchemaVersion, document.Kind, document.ContentVersion, Kind, older ? version : CurrentSchemaVersion, r))
                 return new FeastLoadResult(r, null);
             FeastData? d = document.Data;
             if (d is null) { Missing(r, "$.data", "wallet, maxDishes, merchant, feasts"); return new FeastLoadResult(r, null); }
@@ -393,7 +418,7 @@ namespace EdS.Data.Feasts
                 {
                     string p = $"$.data.feasts[{i}]";
                     if (d.Feasts[i] is not FeastEntryData x) { Missing(r, p, "fête"); continue; }
-                    if (CheckFeast(x, p, story, texts, cap, merchant, numbers, festivals, titles, codes, r) is Feast f) feasts.Add(f);
+                    if (CheckFeast(x, p, version, story, texts, cap, merchant, numbers, festivals, titles, codes, r) is Feast f) feasts.Add(f);
                 }
             }
 
@@ -401,7 +426,7 @@ namespace EdS.Data.Feasts
             return new FeastLoadResult(r, new FeastBook(document.SchemaVersion!.Value, document.ContentVersion, cap, dishes, merchant.Id, feasts));
         }
 
-        private static Feast? CheckFeast(FeastEntryData x, string p, StoryBook story, TextCatalog texts, int cap, Npc? merchant, HashSet<int> numbers,
+        private static Feast? CheckFeast(FeastEntryData x, string p, int version, StoryBook story, TextCatalog texts, int cap, Npc? merchant, HashSet<int> numbers,
             HashSet<string> festivals, HashSet<string> titles, HashSet<string> codes, ValidationReport r)
         {
             int errors = r.Errors.Count;
@@ -493,9 +518,28 @@ namespace EdS.Data.Feasts
                 }
             }
 
+            // Étal de fête (sous-lot F3) : de 1 à 5 décorations de cette fête, sans doublon.
+            var stall = new List<FeastRef>();
+            if (version < StallSince)
+            {
+                if (x.Stall != null) r.Add(p + ".stall", ValidationCode.UnknownField, $"champ inconnu en version {version} (étal de fête : version {StallSince}).");
+            }
+            else if (x.Stall is null) Missing(r, p + ".stall", "décorations de l'étal de fête");
+            else if (x.Stall.Count < 1 || x.Stall.Count > Decorations) r.Add(p + ".stall", ValidationCode.OutOfRange, $"de 1 à {Decorations} décorations sur l'étal.");
+            else
+                for (int k = 0; k < x.Stall.Count; k++)
+                {
+                    string sp = $"{p}.stall[{k}]";
+                    FeastRef? d = refs.FirstOrDefault(z => z.Code == x.Stall[k]);
+                    if (d is null || d.Category != FeastCategory.Decoration) r.Add(sp, ValidationCode.UnknownReference, $"« {x.Stall[k]} » n'est pas une décoration de cette fête.");
+                    else if (stall.Contains(d)) r.Add(sp, ValidationCode.DuplicateId, $"« {d.Code} » déjà sur l'étal.");
+                    else stall.Add(d);
+                }
+
             if (r.Errors.Count > errors || festival is null || x.Title?.Id is null || x.Title.Name is null || x.Motto is null || number == 0
-                || x.Activities is null || activities.Count != x.Activities.Count || refs.Count != RefsPerFeast || (activities.Count > 0 && after == 0)) return null;
-            return new Feast(number, festival.Id, x.Motto, x.Title.Id, x.Title.Name, activities, after, refs);
+                || x.Activities is null || activities.Count != x.Activities.Count || refs.Count != RefsPerFeast || (activities.Count > 0 && after == 0)
+                || (version >= StallSince && (x.Stall is null || stall.Count != x.Stall.Count))) return null;
+            return new Feast(number, festival.Id, x.Motto, x.Title.Id, x.Title.Name, activities, after, refs).WithStall(stall);
         }
 
         private static FeastActivity? CheckActivity(FeastActivityData a, string ap, Festival? festival, StoryBook story, TextCatalog texts, int cap,

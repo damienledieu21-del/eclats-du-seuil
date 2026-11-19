@@ -412,6 +412,7 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Gagner une fête | **3 activités différentes** dans l'édition pour Semailles et Moissons, **2** pour les autres fêtes. | Retenu (Damien, 18 novembre 2026) |
 | Rattrapage | On ne rattrape que **l'édition précédente**, et **sans le titre** (seule une fête gagnée le donne). | Retenu (Damien, 18 novembre 2026) |
 | Marchand de fête | **Un marchand dédié**, pas le colporteur : un **étal de fête sur la place**, avec **son propre PNJ forain**, dont le **décor change chaque mois** (sous-lot F3). | Retenu (Damien, 18 novembre 2026) |
+| Forain et décor de l'étal | **Maître Florentin**, le forain des fêtes, gardé (nom et place sur la place du bourg) ; le **décor automatique** de l'étal (les décorations de la fête qui tiennent sur un étal, jusqu'à 2,5 m) est gardé. | Retenu (Damien, 19 novembre 2026) |
 | Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 
 ## 8. Points ouverts

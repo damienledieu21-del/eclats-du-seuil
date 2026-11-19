@@ -71,6 +71,15 @@ namespace EdS.Data.Json
                 ["activities"] = (v, p) => x.Activities = input.ReadLimitedList(v, p, FeastValidator.MaxActivities,
                     n => $"{n} activités, au plus {FeastValidator.MaxActivities}.", (e, ip) => ReadActivity(input, e, ip)),
                 ["rewardAfter"] = (v, p) => x.RewardAfter = input.Int32(v, p),
+                ["stall"] = (v, p) =>   // sous-lot F3 : décor de l'étal de fête
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Array, p, "tableau")) return;
+                    if (v.GetArrayLength() > FeastValidator.Decorations) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {FeastValidator.Decorations} décorations."); return; }
+                    var list = new List<string?>();
+                    int k = 0;
+                    foreach (JsonElement e in v.EnumerateArray()) list.Add(input.Text(e, p + "[" + (k++).ToString(System.Globalization.CultureInfo.InvariantCulture) + "]"));
+                    x.Stall = list;
+                },
                 ["refs"] = (v, p) => x.Refs = input.ReadLimitedList(v, p, FeastValidator.RefsPerFeast,
                     n => $"{n} références, {FeastValidator.RefsPerFeast} attendues.", (e, ip) => ReadRef(input, e, ip)),
             }) ? x : null;
