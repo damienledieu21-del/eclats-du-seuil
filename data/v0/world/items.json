@@ -1513,28 +1513,32 @@
         "name": "Bois",
         "type": "material",
         "rarity": "common",
-        "stack": 50
+        "stack": 50,
+        "icon": "ecu_de_chene"
       },
       {
         "id": "item.pierre",
         "name": "Pierre",
         "type": "material",
         "rarity": "common",
-        "stack": 50
+        "stack": 50,
+        "icon": "minerai_de_fer"
       },
       {
         "id": "item.planche",
         "name": "Planche",
         "type": "material",
         "rarity": "common",
-        "stack": 20
+        "stack": 20,
+        "icon": "ecu_de_chene"
       },
       {
         "id": "item.pierre_taillee",
         "name": "Pierre taillée",
         "type": "material",
         "rarity": "common",
-        "stack": 20
+        "stack": 20,
+        "icon": "minerai_de_fer"
       },
       {
         "id": "item.miche_du_matin",
