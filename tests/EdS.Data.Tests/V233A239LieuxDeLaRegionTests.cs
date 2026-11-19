@@ -216,4 +216,39 @@ public class V233A239LieuxDeLaRegionTests
         Assert.Equal("s08_02", map.OwnerOf(G(x, z)));
         Assert.Contains(w.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
     }
+
+    [Fact]
+    public void Fonte_pendant_un_passage_l_arrivee_en_attente_est_evacuee()
+    {
+        // Revue Codex de la PR #206 (3e tour) : la fonte tombe entre le placement du joueur dans le secteur voisin (traversée vers le sud,
+        // z ≈ −1 111) et son tick d'arrivée : son arrivée en attente est déplacée elle aussi, au bout de la bande qui reste dans le secteur
+        // d'arrivée (le bout sud, sur l'île) ; il n'est jamais dans l'eau rétablie.
+        ZoneDefinition zone = Vallons.Value;
+        var w = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+            zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, safePoint: "pontons_du_lac");
+        w.UseSeasons(SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone).Book);
+        w.SetCivilTime(1800014400L);   // 15 janvier 2027
+        w.Step();
+        V228b2PassageTests.WalkTo(w, 160, -840);
+        V228b2PassageTests.WalkTo(w, 160, -1090);
+        string hero = w.Character.Id;
+        bool caught = false;
+        for (int i = 0; i < 200 && !caught; i++)
+        {
+            var e = w.Zone.Engine;
+            e.Submit(new EdS.Domain.Combat.CombatCommand(e.CurrentTick * e.TickMilliseconds, w.CombatantId, new EdS.Domain.Space.GroundVector(EdS.Domain.Numerics.Fixed.Zero, EdS.Domain.Numerics.Fixed.FromInt(-1))));
+            w.Step();
+            if (w.Host!.PendingArrivalOf(hero) is EdS.Domain.Space.GroundVector pending && pending.Z.Raw < -1102 * 10000L)
+            {
+                caught = true;
+                w.SetCivilTime(1805112000L);   // 15 mars 2027 : fonte entre le placement et l'arrivée
+            }
+        }
+        Assert.True(caught, "aucun passage vers le secteur du sud");
+        for (int i = 0; i < 5; i++) w.Step();
+        (double x, double z) = P(w.Zone.Engine.View(w.CombatantId).Position!.Value);
+        Assert.Contains(w.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
+        Assert.InRange(z, -1250, -1212.1);   // bout sud de la bande, sur l'île (secteur d'arrivée)
+        Assert.InRange(x, 150, 170);
+    }
 }

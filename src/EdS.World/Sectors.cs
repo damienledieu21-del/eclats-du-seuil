@@ -487,6 +487,29 @@ namespace EdS.World
             return marked;
         }
 
+        /// <summary>Essais : place de l'arrivée en attente du joueur (passage programmé, reprise), ou null.</summary>
+        internal GroundVector? PendingArrivalOf(string player) =>
+            _players.TryGetValue(player, out Player? p) && p.Arrival?.Placement is CombatantPlacement at ? at.Position : (GroundVector?)null;
+
+        /// <summary>Revue Codex de la PR #206 : position libre (<see cref="SeasonRelocate"/>) qui reste dans le secteur ; sinon la même.</summary>
+        private GroundVector EvacuatedTo(GroundVector at, Fixed radius, string sector)
+        {
+            if (SeasonRelocate != null)
+                foreach (GroundVector c in SeasonRelocate(at, radius))
+                    if (_map.OwnerOf(c) == sector) return c;
+            return at;
+        }
+
+        /// <summary>Revue Codex de la PR #206 (3e tour) : la même arrivée, sa place déplacée hors de la bande saisonnière.</summary>
+        private CharacterSetup Evacuated(CharacterSetup a, string sector)
+        {
+            CombatantPlacement place = a.Placement!;
+            GroundVector to = EvacuatedTo(place.Position, place.Radius, sector);
+            if (to.Equals(place.Position)) return a;
+            return new CharacterSetup(a.Id, a.Team, a.Class, a.Build, a.Initiative, new CombatantPlacement(to, place.Radius, place.Facing), a.ArrivalMs,
+                a.Gear, a.Consumables, a.Shield, a.Equipment, a.Carried, a.Mount);
+        }
+
         private IEnumerable<string> SessionKeys => SeasonalPassages is null ? Consumed : Consumed.Concat(SeasonalPassages()).ToList();
 
         /// <summary>Sous-lot V2.28b : événements d'une ouverture faite hors d'un tick (<see cref="EnterAtStart"/>), rendus au tick suivant.</summary>
@@ -1041,6 +1064,11 @@ namespace EdS.World
             CombatEngine engine = old.Zone.Engine;
             var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
             // Revue Codex de la PR #150 (10e tour) : un joueur refusé pour de bon (sans combattant) n'est pas renouvelé, comme pour Live.
+            // Revue Codex de la PR #206 (3e tour) : une arrivée en attente dans ce secteur (passage programmé, reprise, joueur qui attend une
+            // place) est aussi évacuée de la bande saisonnière : sa place d'arrivée est déplacée avant qu'elle ne se fasse.
+            if (old.SeasonRenew)
+                foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && x.Arrival?.Placement != null).ToList())
+                    p.Arrival = Evacuated(p.Arrival!, old.Name);
             foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && !x.Waiting && x.Final is null && x.Refusal is null).ToList())
             {
                 if (p.Arrival != null)
@@ -1066,10 +1094,7 @@ namespace EdS.World
             {
                 p.PendingBackward = v.MoveBackward;
                 // Revue Codex de la PR #206 : à la fonte, un joueur sur la glace est mis sur la rive la plus proche (SeasonRelocate).
-                GroundVector at = v.Position!.Value;
-                if (old.SeasonRenew && SeasonRelocate != null)
-                    foreach (GroundVector c in SeasonRelocate(at, v.Radius!.Value))
-                        if (_map.OwnerOf(c) == old.Name) { at = c; break; }
+                GroundVector at = old.SeasonRenew ? EvacuatedTo(v.Position!.Value, v.Radius!.Value, old.Name) : v.Position!.Value;
                 if (!Place(p, old.Name, at, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
                     && p.Refusal is null)
                 {
