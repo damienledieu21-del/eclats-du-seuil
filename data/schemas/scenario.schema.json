@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 22
+      "const": 23
     },
     "kind": {
       "const": "scenario"
@@ -674,9 +674,11 @@
             "order",
             "duo",
             "mount",
-            "dismount"
+            "dismount",
+            "comfort",
+            "comfortEnd"
           ],
-          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage. Bonus modifié (gear, sous-lot V1.8d) : le bonus d'équipement du personnage devient gear au début du tick (effet immédiat d'un bonus consommé, remplacé ou fini). Esquive (dodge, schéma 20, décision de Damien du 14 novembre 2026) : un personnage d'un combat positionné bondit dans direction, ou vers l'arrière sans direction (combat.dodge des règles). Ordre (order, schéma 21) : companion reçoit order (follow, wait, target, protect, return ; target pour « target »). Attaque à deux (duo, schéma 21) : le personnage et companion frappent target, jauge de lien pleine. Monture (mount, dismount, schéma 22, sous-lot V2.28d (2)) : un personnage qui a une monture monte en selle hors combat, ou en descend."
+          "description": "Garde (A1), parade parfaite (A2), marche dans une direction ou arrêt (sous-lot 11.4, combat positionné) ; sélection d'une cible (select, sous-lot 11.4c, combat positionné : target facultatif, absent pour effacer ; en garde, le personnage se tourne vers sa cible) ; départ (leave, sous-lot 11.4d : effectif en fin de tick). Soin (consume, sous-lot 12.6) : utiliser l'objet de soin item emporté par le personnage. Bonus modifié (gear, sous-lot V1.8d) : le bonus d'équipement du personnage devient gear au début du tick (effet immédiat d'un bonus consommé, remplacé ou fini). Esquive (dodge, schéma 20, décision de Damien du 14 novembre 2026) : un personnage d'un combat positionné bondit dans direction, ou vers l'arrière sans direction (combat.dodge des règles). Ordre (order, schéma 21) : companion reçoit order (follow, wait, target, protect, return ; target pour « target »). Attaque à deux (duo, schéma 21) : le personnage et companion frappent target, jauge de lien pleine. Monture (mount, dismount, schéma 22, sous-lot V2.28d (2)) : un personnage qui a une monture monte en selle hors combat, ou en descend. Réconfort (comfort, comfortEnd, schéma 23, sous-lot F7) : un personnage d'un combat positionné, réconforté par un plat de fête, marche à pied 10 % plus vite, jusqu'à comfortEnd."
         },
         "direction": {
           "$ref": "#/$defs/direction",

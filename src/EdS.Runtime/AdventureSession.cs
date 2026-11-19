@@ -429,6 +429,7 @@ namespace EdS.Runtime
             // (arrondi à la seconde au-dessus), pour que le temps serveur de la nouvelle ne recule pas sous celui d'une occurrence reprise.
             long? projected = World?.ServerMs is long ms ? (ms + 999) / 1000 : (long?)null;
             if (_civilUtc is long utc) world.SetCivilTime(_worldBosses != null && projected is long p && p > utc ? (_civilUtc = p).Value : utc);
+            if (World != null) world.CarryComfort(World.ComfortUntilMinute);   // sous-lot F7 : le réconfort d'un plat suit le personnage (hors sauvegarde)
             World = world;
             _explored = -1;   // sous-lot V2.29 (2) : nouvelle session, relevé repris
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
@@ -485,6 +486,8 @@ namespace EdS.Runtime
             // cadence de la sauvegarde automatique (pas à chaque tick), pour qu'une reprise après un arrêt brutal ne rende pas un temps ancien.
             bool boons = !MustContinue && (World.BoonAt(BoonKind.Meal) != null || World.BoonAt(BoonKind.Elixir) != null || World.BoonAt(BoonKind.Weapon) != null);
             AnnounceStranded();   // sous-lot V2.28b (2b) : un refus survenu hors d'un tick est dit aussi
+            // Sous-lot F7 : réconfort d'un plat de fête, hors combat (monde) ; revue Codex de la PR #223 : relu avant chaque tick du lot.
+            Combat.ComfortSource = () => World.ComfortWanted;
             int steps = MustContinue ? 0 : Combat.Advance(seconds);
             if (steps > 0) EnforceCurfew();   // sous-lot V2.7 : la garde qui hait le personnage le chasse du bourg la nuit
             // Pêche et carnet : la touche s'annonce une fois.

@@ -132,7 +132,7 @@ public class V261SuitesDuSeuilTests
         // La sauvegarde ne change pas : une cicatrice propagée est une cicatrice comme les autres (v14 ; V2.7 : v15, la réputation).
         Assert.Equal(28, SaveValidator.CurrentSchemaVersion);   // fêtes d'Orsédia : 27 ; titre actif : 26 (25 : cartes) ; concours de pâtisserie : 24 (23 : brouillard, PR #185) ; monture : 22 (21 : pêche, PR #181) ; compagnons : 20 ;   // V2.28 : 19 (point de reprise) ; V2.26 : 18 (registre purgé, secteurs)
         // Ni le moteur, ni les règles, ni le journal, ni les scénarios (moteur 0.30.0 et journal 24 depuis V2.8, recherche de chemin).
-        Assert.Equal(("0.34.0", 28, 22), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
+        Assert.Equal(("0.35.0", 29, 23), (CombatEngine.Version, CombatEngine.LogFormatVersion, ScenarioValidator.CurrentSchemaVersion));
     }
 
     [Fact]

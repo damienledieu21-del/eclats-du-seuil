@@ -139,6 +139,9 @@ namespace EdS.Simulation.Engine
         /// <summary>Sous-lot V2.28d (2) : en selle (vitesse de la monture, aucune action de combat).</summary>
         public bool Mounted { get; internal set; }
 
+        /// <summary>Sous-lot F7 : réconforté par un plat de fête (marche à pied +10 %).</summary>
+        public bool Comforted { get; internal set; }
+
         /// <summary>Sous-lot V2.28d (2) : vitesse de la monture du personnage (m/s), null sans monture.</summary>
         public Fixed? MountSpeed { get; internal set; }
 
@@ -382,6 +385,7 @@ namespace EdS.Simulation.Engine
                 view.CanDodge = !f.Out && _spatial && !Blocked(StatusBlocks.Movement);
                 view.DodgeAvailable = view.CanDodge && tick >= DodgeReadyTick(f) && f.Endurance >= _rules.DodgeEnduranceCost;
                 view.Mounted = f.Mounted;   // sous-lot V2.28d (2)
+                view.Comforted = f.Comforted;   // sous-lot F7
                 view.MountSpeed = f.Character?.Mount?.Speed;
                 if (f.Mounted) view.CanCast = view.CanGuard = view.CanParry = view.CanDodge = view.DodgeAvailable = false;
             }
@@ -505,6 +509,13 @@ namespace EdS.Simulation.Engine
                     if (command.Direction != null) throw new ArgumentException("Seul un déplacement (move) ou une esquive (dodge) a une direction.", nameof(commands));
                     if (_setup.Space is null) throw new ArgumentException("Monture dans un combat sans espace (bloc space absent).", nameof(commands));
                     if (_byId[command.Actor].Character?.Mount is null) throw new ArgumentException($"« {command.Actor} » n'a pas de monture.", nameof(commands));
+                }
+                else if (command.Action == CombatAction.Comfort || command.Action == CombatAction.ComfortEnd)
+                {
+                    // Sous-lot F7 : mêmes contrôles que CombatSetup.Validate.
+                    if (command.Direction != null) throw new ArgumentException("Seul un déplacement (move) ou une esquive (dodge) a une direction.", nameof(commands));
+                    if (_setup.Space is null) throw new ArgumentException("Réconfort dans un combat sans espace (bloc space absent).", nameof(commands));
+                    if (_byId[command.Actor].Character is null) throw new ArgumentException($"Réconfort de « {command.Actor} », qui n'est pas un personnage.", nameof(commands));
                 }
                 else if (command.Action == CombatAction.Move ? command.Direction is not { } direction || !SpaceLimits.IsDirection(direction) : command.Direction != null)
                     throw new ArgumentException(command.Action == CombatAction.Move
