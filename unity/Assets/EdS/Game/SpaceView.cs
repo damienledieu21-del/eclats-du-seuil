@@ -193,6 +193,8 @@ namespace EdS.Game
             SeuilDecor(space);   // V2.25.2 : cercle de cailloux et touffes autour des pierres du Seuil de l'atelier
             QuarryDecor();   // V2.25.2 : accessoires de la carrière devant le front de taille de l'atelier
             BourgDecor();   // V2.30.2 : palissade, tours et portes du Bourg fortifié (modèles de l'atelier)
+            _rebuildKey = null;   // V2.43.3 : décor des chantiers refait à la première relecture (Rebuilds)
+            _rebuildRoot = null;
             Pavements();
             Fields();
             Villagers(map);   // essai réaliste 8 : les villageois du bourg

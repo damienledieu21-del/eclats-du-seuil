@@ -1714,6 +1714,36 @@ namespace EdS.Runtime
         /// V2.25.2 : le passage dont <paramref name="obstacle"/> est la porte est-il ouvert pour de bon (registre du monde) ? Vrai dès que
         /// la quête l'ouvre, avant même que l'obstacle disparaisse (à la session suivante) : la barrière du moulin s'ouvre alors.
         /// </summary>
+        /// <summary>
+        /// V2.43.3 : clé de l'état des chantiers de la zone en jeu (« lieu:état:paliers » de chaque lieu) : la vue refait le décor des
+        /// chantiers quand elle change. Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public string RebuildDecorKey
+        {
+            get
+            {
+                if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return string.Empty;
+                var parts = new List<string>(book.Sites.Count);
+                foreach (RebuildSite site in book.Sites)
+                    parts.Add(site.Id + ":" + (int)World.RebuildPhaseOf(site.Id) + ":" + (World.RebuildState.Of(site.Id)?.Stage ?? 0));
+                return string.Join(";", parts);
+            }
+        }
+
+        /// <summary>
+        /// V2.43.3 : décor des chantiers de la zone en jeu, selon l'état de chaque lieu (<see cref="RebuildDecor"/>), posé sur l'aire entière
+        /// (obstacles de l'aire, pas seulement ceux de la fenêtre). Vide sans catalogue des chantiers dans cette zone.
+        /// </summary>
+        public IReadOnlyList<DecorSpot> RebuildSpots()
+        {
+            if (!(World.RebuildBook is RebuildBook book) || book.ZoneId != _zone.Id) return Array.Empty<DecorSpot>();
+            IReadOnlyList<SpaceObstacle> obstacles = (World.AreaSpace ?? World.Zone.Setup.Space)?.Obstacles ?? Array.Empty<SpaceObstacle>();
+            var spots = new List<DecorSpot>();
+            foreach (RebuildSite site in book.Sites)
+                spots.AddRange(RebuildDecor.Layout(site, World.RebuildPhaseOf(site.Id), World.RebuildState.Of(site.Id)?.Stage ?? 0, obstacles));
+            return spots;
+        }
+
         public bool GateOpen(string obstacle)
         {
             foreach (var p in _zone.Passages)
