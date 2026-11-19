@@ -14,6 +14,8 @@ using EdS.Data.Json;
 using EdS.Data.Merchants;
 using EdS.Data.Saves;
 using EdS.Data.Feasts;
+using EdS.Data.Rebuilds;
+using EdS.Data.Validation;
 using EdS.Data.Seasons;
 using EdS.Data.Story;
 using EdS.Data.WorldBosses;
@@ -238,6 +240,7 @@ namespace EdS.Runtime
         private readonly CraftingBook _crafting;
         private readonly SeasonBook? _seasons;   // saisons : contenu saisonnier (null : aucun)
         private readonly FeastBook? _feasts;   // les 12 fêtes d'Orsédia (null : aucune)
+        private readonly RebuildBook? _rebuilds;   // lieux reconstruits (null : aucun)
         private IReadOnlyList<WorldBossEvent?>? _bossCarry;   // occurrences en cours gardées pendant un passage hors de la zone de départ
         private readonly WorldBossBook? _worldBosses;   // Grand Solitaire, 2e partie : boss du monde de la zone de départ (null : aucun)
         private readonly FishingBook? _fishingBook;   // pêche et carnet (null : aucune)
@@ -264,9 +267,10 @@ namespace EdS.Runtime
 
         private AdventureSession(GameData data, CharacterProgression progression, ItemCatalog items, IReadOnlyList<ZoneDefinition> zones, TextCatalog texts,
             StoryBook story, CraftingBook crafting, MerchantBook merchants, GuildBook guild, string savePath, int arrivalRings, SeasonBook? seasons = null,
-            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null)
+            WorldBossBook? worldBosses = null, FishingBook? fishing = null, FeastBook? feasts = null, RebuildBook? rebuilds = null)
         {
             _feasts = feasts;
+            _rebuilds = rebuilds;
             _worldBosses = worldBosses;
             _fishingBook = fishing;
             if (arrivalRings < 0 || arrivalRings > WorldSession.ArrivalRings)
@@ -310,6 +314,14 @@ namespace EdS.Runtime
             // existe encore dans la zone et n'est pas un point secret inconnu du personnage ; sinon à l'entrée de la zone, comme avant.
             // Relecture indépendante de la PR #155 : si une créature occupe ce point sûr au début de la session, la place libre la plus proche
             // (règle d'arrivée des secteurs), sinon l'entrée de la zone : une sauvegarde ne reste jamais bloquée sur un point sûr occupé.
+            // Lieux reconstruits (relecture indépendante de la PR #221) : des chantiers gardés hors du catalogue (lieu ou palier retiré) sont
+            // une erreur de chargement, avec chemin et code, comme une donnée refusée ; jamais une exception brute à la mise en jeu.
+            if (_rebuilds != null)
+            {
+                var rebuildReport = new ValidationReport();
+                RebuildRules.Check(save.Character!.Rebuilds, _rebuilds, rebuildReport, "$.data.character.rebuilds");
+                if (!rebuildReport.IsValid) throw new InvalidDataException($"Sauvegarde refusée (lieux reconstruits) : {rebuildReport}");
+            }
             (string? resumeAt, GroundVector? resumePlace) = WorldSession.ResumeArrival(save, _zone, progression, story, ZoneId, _arrivalRings);
             Open(save, resumeAt, null, resumePlace);
             Say(read.Save is null ? "text.ui.new_game" : read.FromBackup ? "text.ui.loaded_backup" : "text.ui.loaded");
@@ -347,8 +359,10 @@ namespace EdS.Runtime
             TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(dataDirectory));
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             // Sous-lot V1.6 : les PNJ des intérieurs vivent dans les zones reliées par des portes.
+            // Lieux reconstruits (revue Codex de la PR #221) : l'histoire et les marchands connaissent les faits des chantiers.
+            string rebuildsPath = RebuildJsonReader.PathIn(dataDirectory);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog,
-                zones.Zones.Skip(1).ToList(), progression.LevelCap);
+                zones.Zones.Skip(1).ToList(), progression.LevelCap, RebuildJsonReader.DeclaredFacts(rebuildsPath));
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.
@@ -371,11 +385,14 @@ namespace EdS.Runtime
             // Les 12 fêtes d'Orsédia : facultatives de même (données d'essai réduites) ; présentes, elles doivent être valides.
             string feastsPath = FeastJsonReader.PathIn(dataDirectory);
             FeastLoadResult? feasts = File.Exists(feastsPath) ? FeastJsonReader.ReadFile(feastsPath, storyBook, catalogTexts) : null;
+            // Lieux reconstruits (sous-lot V2.43.1) : facultatifs de même (données d'essai réduites) ; présents, ils doivent être valides.
+            RebuildLoadResult? rebuilds = File.Exists(rebuildsPath) ? RebuildJsonReader.ReadFile(rebuildsPath, definition, catalog, storyBook) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
                 seasons is null ? null : Need(seasons.Book, "saisons", () => seasons.Report), worldBosses?.Book is WorldBossBook wb ? wb : null,
                 fishing is null ? null : Need(fishing.Book, "pêche", () => fishing.Report),
-                feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report));
+                feasts is null ? null : Need(feasts.Book, "fêtes", () => feasts.Report),
+                rebuilds is null ? null : Need(rebuilds.Book, "lieux reconstruits", () => rebuilds.Report));
         }
 
         private static T Need<T>(T? value, string what, Func<object> report) where T : class =>
@@ -396,6 +413,7 @@ namespace EdS.Runtime
             // Saisons : chaque session nouvelle reçoit le contenu saisonnier et le dernier instant fourni par l'hôte.
             world.UseSeasons(_seasons);
             world.UseFeasts(_feasts);   // les 12 fêtes d'Orsédia (sauvegarde v27)
+            world.UseRebuilds(_rebuilds);   // lieux reconstruits (sauvegarde v28 ; le catalogue ne vaut que dans sa zone)
             world.UseFishing(_fishingBook);   // pêche et carnet (une ligne à l'eau ne passe pas d'une session à l'autre)
             // Grand Solitaire, 2e partie : les boss du monde vivent dans la zone de départ (leurs données y sont validées) ; une occurrence en
             // cours continue d'une session à l'autre de cette zone.

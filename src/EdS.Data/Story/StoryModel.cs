@@ -696,8 +696,9 @@ namespace EdS.Data.Story
 
         internal StoryBook(int schemaVersion, string contentVersion, IEnumerable<Npc> npcs, IEnumerable<Dialogue> dialogues, IEnumerable<Quest> quests,
             IEnumerable<Discovery> discoveries, IEnumerable<Scene>? scenes = null, ReputationRules? reputation = null, IEnumerable<Festival>? festivals = null,
-            IEnumerable<string>? learnable = null, IEnumerable<string>? contestKeys = null)
+            IEnumerable<string>? learnable = null, IEnumerable<string>? contestKeys = null, IEnumerable<string>? worldFacts = null)
         {
+            WorldFacts = Frozen.List((worldFacts ?? Array.Empty<string>()).OrderBy(f => f, StringComparer.Ordinal), nameof(worldFacts));
             _contestKeys = new HashSet<string>(contestKeys ?? Array.Empty<string>(), StringComparer.Ordinal);
             _learnable = new HashSet<string>(learnable ?? Array.Empty<string>(), StringComparer.Ordinal);
             Festivals = Frozen.List(festivals ?? Array.Empty<Festival>(), nameof(festivals));
@@ -783,6 +784,12 @@ namespace EdS.Data.Story
         /// chef, rencontre d'un PNJ, issue ou cicatrice d'un événement du monde) ? Le même ensemble que le validateur de l'histoire.
         /// </summary>
         public bool CanLearn(string? fact) => fact != null && _learnable.Contains(fact);
+
+        /// <summary>
+        /// Lieux reconstruits (revue Codex de la PR #221) : faits appris par le monde hors de l'histoire (chantiers des lieux, <c>fact.rebuild.…</c>),
+        /// donnés à la validation ; une boutique peut s'ouvrir avec l'un d'eux.
+        /// </summary>
+        public IReadOnlyList<string> WorldFacts { get; }
 
         /// <exception cref="ArgumentException">Fête inconnue.</exception>
         public Festival Festival(string id) => Festivals.FirstOrDefault(f => f.Id == id) ?? throw new ArgumentException($"Fête « {id} » inconnue.", nameof(id));

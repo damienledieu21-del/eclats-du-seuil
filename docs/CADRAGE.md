@@ -432,6 +432,17 @@ Décisions de Damien du 19 novembre 2026, rapportées par la session principale,
 | Calendrier de l'étal | Celui proposé par Claude : levain, pâtes brisée et feuilletée tous les jours ; tarte renversée le **dimanche** ; fouace les **samedis et dimanches de printemps** ; couronne les **samedis et dimanches d'automne**. | Retenu (Damien, 19 novembre 2026) |
 | Pâtisserie tenue en main | **Plus tard**, avec les objets portés du héros. | Retenu (Damien, 19 novembre 2026) |
 
+## 7 terdecies. Lieux reconstruits, V2.43 (Retenu)
+
+Réponses de Damien du 19 novembre 2026, rapportées par la session principale ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md), V2.43 ; [MONDE.md](MONDE.md#lieux-reconstruits-sous-lot-v243)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Lieux reconstruisibles | On commence par **5 lieux** : le **hameau** de la carrière, le **pont effondré** de la route de l'Est, le **moulin à foulon**, la **tour de signal** du sommet et **une aile de l'abbaye** (le dortoir). Le format doit permettre d'en ajouter d'autres plus tard (H12 complet : villes, routes, mines, phares, ateliers). | Retenu (Damien, 19 novembre 2026) |
+| Avancement d'un chantier | Par **paliers de contributions variées** : or, matériaux de métier, combats et exploration autour du lieu. La contribution de **tous les joueurs** viendra au lot 13 avec l'état de région. | Retenu (Damien, 19 novembre 2026) |
+| Perte d'une reconstruction | Une reconstruction **n'est jamais perdue** (ni bandits, ni corruption, ni Envers). | Retenu (Damien, 19 novembre 2026) |
+| Ce qu'apporte un lieu reconstruit | Un **décor** et des **PNJ**, des **services** (marchand, artisan, point sûr, voyage) et **son intérieur**. | Retenu (Damien, 19 novembre 2026) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

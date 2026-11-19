@@ -64,22 +64,24 @@ namespace EdS.Data.Json
         /// <param name="interiors">Sous-lot V1.6 : autres zones du monde (intérieurs reliés par des portes), où peuvent vivre des PNJ.</param>
         /// <param name="levelCap">Relecture de la PR #82 : plafond de niveau (avertissement des conditions <c>levelAtLeast</c> plus hautes).</param>
         public static StoryLoadResult ReadStoryFile(string path, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, IReadOnlyList<ZoneDefinition>? interiors = null,
-            int? levelCap = null)
+            int? levelCap = null, IEnumerable<string>? worldFacts = null)
         {
             var report = new ValidationReport();
-            return ReadStory(JsonInput.ReadFile(path, report), texts, zone, items, report, interiors, levelCap);
+            return ReadStory(JsonInput.ReadFile(path, report), texts, zone, items, report, interiors, levelCap, worldFacts);
         }
 
+        /// <param name="worldFacts">Lieux reconstruits (revue Codex de la PR #221) : faits appris par le monde hors de l'histoire
+        /// (<see cref="RebuildJsonReader.DeclaredFacts"/>).</param>
         public static StoryLoadResult ReadStory(string json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, IReadOnlyList<ZoneDefinition>? interiors = null,
-            int? levelCap = null)
+            int? levelCap = null, IEnumerable<string>? worldFacts = null)
         {
             var report = new ValidationReport();
-            return ReadStory(JsonInput.Utf8(json, report), texts, zone, items, report, interiors, levelCap);
+            return ReadStory(JsonInput.Utf8(json, report), texts, zone, items, report, interiors, levelCap, worldFacts);
         }
 
         private static StoryLoadResult ReadStory(byte[]? json, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport report,
-            IReadOnlyList<ZoneDefinition>? interiors, int? levelCap) =>
-            StoryValidator.Validate(ReadStoryDocument(json, report), texts, zone, items, report, interiors, levelCap);
+            IReadOnlyList<ZoneDefinition>? interiors, int? levelCap, IEnumerable<string>? worldFacts) =>
+            StoryValidator.Validate(ReadStoryDocument(json, report), texts, zone, items, report, interiors, levelCap, worldFacts);
 
         /// <summary>Document lu sans validation (tests : document retouché en objets publics, puis validé).</summary>
         internal static StoryDocument ReadStoryDocument(byte[]? json, ValidationReport report)

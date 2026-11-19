@@ -1489,6 +1489,8 @@ namespace EdS.World
             Practice(me);
             // Sous-lot V2.29 (2) : cases vues et points de vue, avant les quêtes (une découverte peut servir de condition).
             Explore(story);
+            // Lieux reconstruits (sous-lot V2.43.1) : découvertes faites et paliers complets, avant les quêtes (un fait de chantier peut servir de condition).
+            StepRebuilds(story);
             // Sous-lot 12.5 : quêtes, découvertes et confiance, après les récompenses (objectifs « vaincre »), les populations et le chef.
             Narrative?.Step(story);
             return gains.Count == 0 && loot.Count == 0 && population.Count == 0 && story.Count == 0 && boss.Count == 0 && rewards.Count == 0 && !defeated && wear is null
@@ -1608,6 +1610,8 @@ namespace EdS.World
                 Population? population = PopulationOf(e.Combatant);
                 Population? eventModel = population is null ? _events?.Of(e.Combatant) : null;
                 Narrative?.Defeated(population?.Creature ?? e.Combatant, population?.Family ?? eventModel?.Family);
+                // Lieux reconstruits (sous-lot V2.43.1) : compte pour les besoins de combat des chantiers où se tient le personnage.
+                RebuildDefeat();
             }
             experience = gains;
             rolls = loot;
