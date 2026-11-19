@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EdS.Data.Items;
 using EdS.Data.Saves;
+using EdS.Data.Scenarios;
 using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
@@ -34,6 +35,16 @@ namespace EdS.Data.Rebuilds
         public string? Place { get; set; }
         public Fixed? Margin { get; set; }
         public List<RebuildStageData?>? Stages { get; set; }
+
+        /// <summary>V2.43.2b : ce que le lieu apporte une fois reconstruit (facultatif).</summary>
+        public RebuildRebuiltData? Rebuilt { get; set; }
+    }
+
+    /// <summary>V2.43.2b : PNJ qui ne sont dans le monde qu'une fois le lieu reconstruit.</summary>
+    public sealed class RebuildRebuiltData
+    {
+        public List<string?>? Npcs { get; set; }
+        public List<string?>? SafePoints { get; set; }
     }
 
     public sealed class RebuildStageData
@@ -51,6 +62,9 @@ namespace EdS.Data.Rebuilds
         public int? Count { get; set; }
         public int? Defeat { get; set; }
         public string? Discover { get; set; }
+
+        /// <summary>V2.43.2b : un endroit où aller, dans le lieu ou sa marge.</summary>
+        public PointData? Reach { get; set; }
     }
 
     // --- Modèle validé ---------------------------------------------------------------------------------
@@ -69,6 +83,9 @@ namespace EdS.Data.Rebuilds
 
         /// <summary>De l'exploration : une découverte de l'histoire, faite n'importe où.</summary>
         Discover = 3,
+
+        /// <summary>V2.43.2b : de l'exploration autour du lieu : aller à un endroit (à <see cref="RebuildValidator.ReachRadius"/> près).</summary>
+        Reach = 4,
     }
 
     /// <summary>Lieux reconstruits : un besoin d'un palier, et la quantité voulue (1 pour une découverte).</summary>
@@ -82,8 +99,12 @@ namespace EdS.Data.Rebuilds
 
         public long Amount { get; }
 
-        internal RebuildNeed(string id, RebuildNeedKind kind, string? target, long amount)
+        /// <summary>Endroit où aller (sorte <see cref="RebuildNeedKind.Reach"/>), sinon null.</summary>
+        public GroundVector? Point { get; }
+
+        internal RebuildNeed(string id, RebuildNeedKind kind, string? target, long amount, GroundVector? point = null)
         {
+            Point = point;
             Id = id;
             Kind = kind;
             Target = target;
@@ -123,8 +144,17 @@ namespace EdS.Data.Rebuilds
 
         public IReadOnlyList<RebuildStage> Stages { get; }
 
-        internal RebuildSite(string id, Place place, Fixed margin, IEnumerable<RebuildStage> stages)
+        /// <summary>V2.43.2b : PNJ de l'histoire qui ne sont dans le monde qu'une fois le lieu reconstruit.</summary>
+        public IReadOnlyList<string> RebuiltNpcs { get; }
+
+        /// <summary>V2.43.2b : points sûrs de la zone qui ne s'ouvrent (repos, retour, découverte, voyage) qu'une fois le lieu reconstruit.</summary>
+        public IReadOnlyList<string> RebuiltSafePoints { get; }
+
+        internal RebuildSite(string id, Place place, Fixed margin, IEnumerable<RebuildStage> stages, IEnumerable<string>? rebuiltNpcs = null,
+            IEnumerable<string>? rebuiltSafePoints = null)
         {
+            RebuiltSafePoints = Frozen.List(rebuiltSafePoints ?? Array.Empty<string>(), nameof(rebuiltSafePoints));
+            RebuiltNpcs = Frozen.List(rebuiltNpcs ?? Array.Empty<string>(), nameof(rebuiltNpcs));
             Id = id;
             Place = place;
             Margin = margin;
@@ -204,6 +234,12 @@ namespace EdS.Data.Rebuilds
         /// <summary>Marge au plus autour d'un lieu, en mètres.</summary>
         public static readonly Fixed MaxMargin = Fixed.FromInt(256);
 
+        /// <summary>V2.43.2b : un endroit est atteint à 4 m près (écart entre les centres).</summary>
+        public static readonly Fixed ReachRadius = Fixed.FromInt(4);
+
+        /// <summary>V2.43.2b : PNJ au plus apportés par un lieu reconstruit.</summary>
+        public const int MaxRebuiltNpcs = 8;
+
         public static RebuildLoadResult Validate(RebuildDocument document, ZoneDefinition zone, ItemCatalog items, StoryBook story, ValidationReport? report = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
@@ -220,6 +256,8 @@ namespace EdS.Data.Rebuilds
             var sites = new List<RebuildSite>();
             var ids = new HashSet<string>(StringComparer.Ordinal);
             var places = new HashSet<string>(StringComparer.Ordinal);
+            var rebuiltNpcs = new HashSet<string>(StringComparer.Ordinal);
+            var rebuiltSafePoints = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < data.Count; i++)
             {
                 string p = $"$.data.sites[{i}]";
@@ -256,30 +294,61 @@ namespace EdS.Data.Rebuilds
                             var needIds = new HashSet<string>(StringComparer.Ordinal);
                             for (int n = 0; n < st.Needs.Count; n++)
                             {
-                                RebuildNeed? need = Need(st.Needs[n], $"{sp}.needs[{n}]", needIds, items, discoveries, r);
+                                RebuildNeed? need = Need(st.Needs[n], $"{sp}.needs[{n}]", needIds, items, discoveries, r, place, margin);
                                 if (need is null) ok = false; else needs.Add(need);
                             }
                         }
                         if (ok) stages.Add(new RebuildStage(st.Id!, needs));
                     }
                 }
-                if (ok) sites.Add(new RebuildSite(x.Id!, place!, margin, stages));
+                var npcs = new List<string>();
+                if (x.Rebuilt != null)
+                {
+                    string rp = p + ".rebuilt.npcs";
+                    if (x.Rebuilt.Npcs is null) { }   // facultatif
+                    else if (x.Rebuilt.Npcs.Count > MaxRebuiltNpcs) { r.Add(rp, ValidationCode.LimitExceeded, $"au plus {MaxRebuiltNpcs} PNJ."); ok = false; }
+                    else
+                        for (int k = 0; k < x.Rebuilt.Npcs.Count; k++)
+                        {
+                            string? npc = x.Rebuilt.Npcs[k];
+                            if (npc is null || !story.HasNpc(npc)) { r.Add($"{rp}[{k}]", ValidationCode.UnknownReference, $"PNJ « {npc} » inconnu dans l'histoire."); ok = false; }
+                            else if (!rebuiltNpcs.Add(npc)) { r.Add($"{rp}[{k}]", ValidationCode.DuplicateId, $"PNJ « {npc} » déjà apporté par un lieu reconstruit."); ok = false; }
+                            else npcs.Add(npc);
+                        }
+                }
+                var safePoints = new List<string>();
+                if (x.Rebuilt?.SafePoints is List<string?> sps)
+                {
+                    string sp = p + ".rebuilt.safePoints";
+                    if (sps.Count > MaxRebuiltNpcs) { r.Add(sp, ValidationCode.LimitExceeded, $"au plus {MaxRebuiltNpcs} points sûrs."); ok = false; }
+                    else
+                        for (int k = 0; k < sps.Count; k++)
+                        {
+                            string? id = sps[k];
+                            if (id is null || zone.SafePoints.All(s => s.Id != id)) { r.Add($"{sp}[{k}]", ValidationCode.UnknownReference, $"point sûr « {id} » inconnu dans la zone."); ok = false; }
+                            else if (id == zone.Entry.Id) { r.Add($"{sp}[{k}]", ValidationCode.InvalidValue, "l'entrée de la zone est toujours ouverte."); ok = false; }
+                            else if (!rebuiltSafePoints.Add(id)) { r.Add($"{sp}[{k}]", ValidationCode.DuplicateId, $"point sûr « {id} » déjà ouvert par un lieu reconstruit."); ok = false; }
+                            else safePoints.Add(id);
+                        }
+                }
+                if (ok) sites.Add(new RebuildSite(x.Id!, place!, margin, stages, npcs, safePoints));
             }
 
             if (!r.IsValid || document.ContentVersion is null) return new RebuildLoadResult(r, null);
             return new RebuildLoadResult(r, new RebuildBook(document.SchemaVersion!.Value, document.ContentVersion, zone.Id, sites));
         }
 
-        private static RebuildNeed? Need(RebuildNeedData? x, string p, HashSet<string> ids, ItemCatalog items, HashSet<string> discoveries, ValidationReport r)
+        private static RebuildNeed? Need(RebuildNeedData? x, string p, HashSet<string> ids, ItemCatalog items, HashSet<string> discoveries, ValidationReport r,
+            Place? place, Fixed margin)
         {
             if (x is null) { Missing(r, p, "besoin"); return null; }
             bool ok = true;
             if (!SavedRebuild.IsLocalId(x.Id)) { r.Add(p + ".id", ValidationCode.InvalidValue, $"identifiant « {x.Id} » mal formé."); ok = false; }
             else if (!ids.Add(x.Id!)) { r.Add(p + ".id", ValidationCode.DuplicateId, $"besoin « {x.Id} » déjà décrit."); ok = false; }
-            int kinds = (x.Coins != null ? 1 : 0) + (x.Item != null ? 1 : 0) + (x.Defeat != null ? 1 : 0) + (x.Discover != null ? 1 : 0);
+            int kinds = (x.Coins != null ? 1 : 0) + (x.Item != null ? 1 : 0) + (x.Defeat != null ? 1 : 0) + (x.Discover != null ? 1 : 0) + (x.Reach != null ? 1 : 0);
             if (kinds != 1)
             {
-                r.Add(p, ValidationCode.InvalidValue, "un besoin a exactement une sorte : coins, item (avec count), defeat ou discover.");
+                r.Add(p, ValidationCode.InvalidValue, "un besoin a exactement une sorte : coins, item (avec count), defeat, discover ou reach.");
                 return null;
             }
             if (x.Count != null && x.Item is null) { r.Add(p + ".count", ValidationCode.UnknownField, "count va seulement avec item."); return null; }
@@ -300,6 +369,15 @@ namespace EdS.Data.Rebuilds
             {
                 if (defeat < 1 || defeat > MaxDefeat) { r.Add(p + ".defeat", ValidationCode.OutOfRange, $"nombre hors de [1, {MaxDefeat}]."); return null; }
                 return ok ? new RebuildNeed(x.Id!, RebuildNeedKind.Defeat, null, defeat) : null;
+            }
+            if (x.Reach is PointData reach)
+            {
+                if (reach.X is null || reach.Z is null) { Missing(r, p + ".reach", "[x, z]"); return null; }
+                var at = new GroundVector(reach.X.Value, reach.Z.Value);
+                if (place is null) return null;
+                if (at.X < place.Min.X - margin || at.X > place.Max.X + margin || at.Z < place.Min.Z - margin || at.Z > place.Max.Z + margin)
+                { r.Add(p + ".reach", ValidationCode.OutOfRange, "endroit hors du lieu et de sa marge."); return null; }
+                return ok ? new RebuildNeed(x.Id!, RebuildNeedKind.Reach, null, 1, at) : null;
             }
             string discovery = x.Discover!;
             if (!discoveries.Contains(discovery)) { r.Add(p + ".discover", ValidationCode.UnknownReference, $"découverte « {discovery} » inconnue dans l'histoire."); return null; }

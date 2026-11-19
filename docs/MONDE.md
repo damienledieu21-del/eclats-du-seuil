@@ -1315,6 +1315,18 @@ Décisions de Damien du 15 novembre 2026, vers 18 h 45 ([CADRAGE](CADRAGE.md) §
 - **Faits de l'histoire** : `fact.rebuild.<lieu>.started` au premier apport (échafaudages), `fact.rebuild.<lieu>.<palier>` à la fin de chaque palier, `fact.rebuild.<lieu>.done` quand le lieu est reconstruit. Le décor, les PNJ, les marchands et les services s'y accrochent par les conditions de faits qui existent déjà (V2.43.2 et V2.43.3). L'histoire et les marchands, validés avant le catalogue, connaissent ces faits (`RebuildJsonReader.DeclaredFacts`, paramètre `worldFacts` de l'histoire, `StoryBook.WorldFacts` ; revue Codex de la PR #221) : une quête, une condition ou une boutique peut attendre `fact.rebuild.<lieu>.done`.
 - Aucune règle ne fait reculer un chantier. Le catalogue **ne fait que grandir** : on n'en retire jamais un lieu ni un palier. Une sauvegarde dont les chantiers ne vont plus avec lui est une erreur de chargement avec chemin et code (`RebuildRules.Check`, `AdventureSession`), et `UseRebuilds` la refuse.
 
+**Contenu des 5 lieux (V2.43.2b)** : `data/v0/world/rebuilds.json` (contenu 0.1.0). Le format gagne deux choses (version 1, pas encore livrée) : le besoin **`reach`** (aller à un endroit `[x, z]` du lieu ou de sa marge, atteint à 4 m près, compté de lui-même) et le bloc **`rebuilt`** (`npcs` : PNJ de l'histoire qui ne sont dans le monde qu'une fois le lieu reconstruit, comme un PNJ de passage hors de sa fête : on ne lui parle pas, sa boutique est fermée ; `safePoints` : points sûrs fermés jusque-là comme un point secret : ni carte, ni repos, ni retour, ni découverte, donc ni voyage ; jamais l'entrée de la zone).
+
+| Lieu | Paliers (propositions, questions posées à Damien dans la PR) | Une fois reconstruit |
+|---|---|---|
+| Hameau de la carrière (marge 10 m) | déblaiement : 15 argent, 20 bois, 6 créatures, relevé (70, −20) ; charpente : 20 planches, 4 ferrures, 25 argent ; toits : 10 pierres taillées, 10 planches, 25 argent | Jacquemin le charron : boutique (planches, bois ; pierre et pierre taillée certains jours) et réparation |
+| Pont effondré (marge 40 m) | déblaiement : 4 créatures (échos de la route), relevé (1990, 200), 20 pierres ; piles : 20 pierres taillées, 40 argent ; tablier : 30 planches, 8 ferrures, 40 argent | point sûr **Relais du pont** (voyage), Ombeline la passeuse |
+| Moulin à foulon (marge 15 m) | roue : 15 planches, 4 ferrures, bief (480, 866) ; foulons : 20 bois, 6 pierres taillées, 25 argent | Gerberte la foulonnière : boutique (cape de laine, braies ; gambison ou fil certains jours) et réparation |
+| Tour de signal (marge 15 m) | escalier : 12 pierres taillées, 10 planches, le point de vue du sommet ; feu : 30 bois, 15 argent, brasier (195, 1372) | point sûr **Pied de la tour de signal** (voyage), Aude la guetteuse |
+| Dortoir de l'abbaye (marge 30 m) | déblaiement : 6 créatures (échos de l'abbaye), relevé (1660, 95) ; murs : 25 pierres taillées, 30 argent ; toiture : 20 planches, 6 ferrures, 5 sauges de pluie, 30 argent | Frère Anselme : boutique (potions ; remède ou herbe de l'Aube certains jours) |
+
+Versions : histoire 0.38.0 (cinq PNJ et leurs dialogues), zone 0.25.0 (deux points sûrs), marchands 0.19.0 (trois boutiques), métiers 0.15.0 (réparation chez le charron et la foulonnière), textes 0.41.0.
+
 Limites (V2.43.1) : pas encore de contenu (le fichier `rebuilds.json` des 5 lieux, ses textes et ses services viennent au V2.43.2) ; le catalogue ne vaut que dans sa zone (les Vallons) ; en solo, chaque personnage reconstruit pour lui (état de région au lot 13).
 
 ## Sauvegarde

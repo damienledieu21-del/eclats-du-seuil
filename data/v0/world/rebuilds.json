@@ -1,0 +1,328 @@
+{
+  "$schema": "../../schemas/rebuilds.schema.json",
+  "schemaVersion": 1,
+  "kind": "rebuilds",
+  "contentVersion": "0.1.0-provisoire",
+  "data": {
+    "sites": [
+      {
+        "id": "hameau",
+        "place": "hameau",
+        "margin": 10,
+        "stages": [
+          {
+            "id": "deblaiement",
+            "needs": [
+              {
+                "id": "or",
+                "coins": 1500
+              },
+              {
+                "id": "bois",
+                "item": "item.bois",
+                "count": 20
+              },
+              {
+                "id": "pillards",
+                "defeat": 6
+              },
+              {
+                "id": "releve",
+                "reach": [
+                  70,
+                  -20
+                ]
+              }
+            ]
+          },
+          {
+            "id": "charpente",
+            "needs": [
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 20
+              },
+              {
+                "id": "ferrures",
+                "item": "item.ferrure",
+                "count": 4
+              },
+              {
+                "id": "or",
+                "coins": 2500
+              }
+            ]
+          },
+          {
+            "id": "toits",
+            "needs": [
+              {
+                "id": "pierres",
+                "item": "item.pierre_taillee",
+                "count": 10
+              },
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 10
+              },
+              {
+                "id": "or",
+                "coins": 2500
+              }
+            ]
+          }
+        ],
+        "rebuilt": {
+          "npcs": [
+            "npc.charron_hameau"
+          ]
+        }
+      },
+      {
+        "id": "pont_effondre",
+        "place": "pont_effondre",
+        "margin": 40,
+        "stages": [
+          {
+            "id": "deblaiement",
+            "needs": [
+              {
+                "id": "echos",
+                "defeat": 4
+              },
+              {
+                "id": "releve",
+                "reach": [
+                  1990,
+                  200
+                ]
+              },
+              {
+                "id": "pierre",
+                "item": "item.pierre",
+                "count": 20
+              }
+            ]
+          },
+          {
+            "id": "piles",
+            "needs": [
+              {
+                "id": "pierres",
+                "item": "item.pierre_taillee",
+                "count": 20
+              },
+              {
+                "id": "or",
+                "coins": 4000
+              }
+            ]
+          },
+          {
+            "id": "tablier",
+            "needs": [
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 30
+              },
+              {
+                "id": "ferrures",
+                "item": "item.ferrure",
+                "count": 8
+              },
+              {
+                "id": "or",
+                "coins": 4000
+              }
+            ]
+          }
+        ],
+        "rebuilt": {
+          "npcs": [
+            "npc.passeuse_du_pont"
+          ],
+          "safePoints": [
+            "relais_du_pont"
+          ]
+        }
+      },
+      {
+        "id": "moulin_a_foulon",
+        "place": "moulin_a_foulon",
+        "margin": 15,
+        "stages": [
+          {
+            "id": "roue",
+            "needs": [
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 15
+              },
+              {
+                "id": "ferrures",
+                "item": "item.ferrure",
+                "count": 4
+              },
+              {
+                "id": "bief",
+                "reach": [
+                  480,
+                  866
+                ]
+              }
+            ]
+          },
+          {
+            "id": "foulons",
+            "needs": [
+              {
+                "id": "bois",
+                "item": "item.bois",
+                "count": 20
+              },
+              {
+                "id": "pierres",
+                "item": "item.pierre_taillee",
+                "count": 6
+              },
+              {
+                "id": "or",
+                "coins": 2500
+              }
+            ]
+          }
+        ],
+        "rebuilt": {
+          "npcs": [
+            "npc.foulonniere"
+          ]
+        }
+      },
+      {
+        "id": "tour_de_signal",
+        "place": "tour_de_signal",
+        "margin": 15,
+        "stages": [
+          {
+            "id": "escalier",
+            "needs": [
+              {
+                "id": "pierres",
+                "item": "item.pierre_taillee",
+                "count": 12
+              },
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 10
+              },
+              {
+                "id": "vue",
+                "discover": "discovery.point_de_vue_du_sommet"
+              }
+            ]
+          },
+          {
+            "id": "feu",
+            "needs": [
+              {
+                "id": "bois",
+                "item": "item.bois",
+                "count": 30
+              },
+              {
+                "id": "or",
+                "coins": 1500
+              },
+              {
+                "id": "brasier",
+                "reach": [
+                  195,
+                  1372
+                ]
+              }
+            ]
+          }
+        ],
+        "rebuilt": {
+          "npcs": [
+            "npc.guetteuse"
+          ],
+          "safePoints": [
+            "pied_de_la_tour_de_signal"
+          ]
+        }
+      },
+      {
+        "id": "dortoir_de_l_abbaye",
+        "place": "dortoir_de_l_abbaye",
+        "margin": 30,
+        "stages": [
+          {
+            "id": "deblaiement",
+            "needs": [
+              {
+                "id": "echos",
+                "defeat": 6
+              },
+              {
+                "id": "releve",
+                "reach": [
+                  1660,
+                  95
+                ]
+              }
+            ]
+          },
+          {
+            "id": "murs",
+            "needs": [
+              {
+                "id": "pierres",
+                "item": "item.pierre_taillee",
+                "count": 25
+              },
+              {
+                "id": "or",
+                "coins": 3000
+              }
+            ]
+          },
+          {
+            "id": "toiture",
+            "needs": [
+              {
+                "id": "planches",
+                "item": "item.planche",
+                "count": 20
+              },
+              {
+                "id": "ferrures",
+                "item": "item.ferrure",
+                "count": 6
+              },
+              {
+                "id": "sauge",
+                "item": "item.sauge_de_pluie",
+                "count": 5
+              },
+              {
+                "id": "or",
+                "coins": 3000
+              }
+            ]
+          }
+        ],
+        "rebuilt": {
+          "npcs": [
+            "npc.frere_hospitalier"
+          ]
+        }
+      }
+    ]
+  }
+}

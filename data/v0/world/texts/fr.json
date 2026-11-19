@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/texts.schema.json",
   "schemaVersion": 1,
   "kind": "texts",
-  "contentVersion": "0.40.0-provisoire",
+  "contentVersion": "0.41.0-provisoire",
   "data": {
     "language": "fr",
     "entries": {
@@ -2377,7 +2377,22 @@
       "text.fetes.f12.activite.pere_du_givre": "La visite du Père du Givre",
       "text.fetes.forain.name": "Maître Florentin, le forain des fêtes",
       "text.fetes.forain.accueil": "Approchez ! Mon étal change avec chaque fête : ce mois-ci, tout ce qui se trouve ici se paie dans la monnaie de la fête, et rien d'autre. Les pièces de cuivre, gardez-les pour le colporteur.",
-      "text.fetes.forain.retrouvailles": "Vous revoilà ! L'étal a changé de couleurs depuis votre dernière visite : chaque fête apporte son décor, et ses trésors."
+      "text.fetes.forain.retrouvailles": "Vous revoilà ! L'étal a changé de couleurs depuis votre dernière visite : chaque fête apporte son décor, et ses trésors.",
+      "text.v243.charron.name": "Jacquemin le charron",
+      "text.v243.charron.accueil": "Le hameau tient debout grâce à vous. Une roue voilée, une lame ébréchée ? Posez ça là, je m'en occupe.",
+      "text.v243.passeuse.name": "Ombeline la passeuse",
+      "text.v243.passeuse.accueil": "Le pont a ses piles neuves et la route de l'Est respire. Reposez-vous au relais avant de reprendre la route.",
+      "text.v243.foulonniere.name": "Gerberte la foulonnière",
+      "text.v243.foulonniere.accueil": "Entendez-vous les maillets ? La roue tourne de nouveau. Mes draps sont serrés comme il faut, et je reprise ce qui s'use.",
+      "text.v243.guetteuse.name": "Aude la guetteuse",
+      "text.v243.guetteuse.accueil": "D'ici, on voit le Seuil venir avant tout le monde. Le brasier est prêt : un signal, et toute la vallée sait.",
+      "text.v243.hospitalier.name": "Frère Anselme",
+      "text.v243.hospitalier.accueil": "Le dortoir a un toit et des lits. Les blessés qui montent jusqu'à l'abbaye trouvent ici des remèdes et du repos.",
+      "text.v243.charron.retrouvailles": "Encore vous ! Les toits tiennent, et ma meule aussi.",
+      "text.v243.passeuse.retrouvailles": "Le pont n'a pas bougé d'un pouce depuis votre dernier passage.",
+      "text.v243.foulonniere.retrouvailles": "Revoilà mon bâtisseur de roue ! Les maillets vous saluent.",
+      "text.v243.guetteuse.retrouvailles": "Je vous ai vu venir de loin, comme toujours.",
+      "text.v243.hospitalier.retrouvailles": "Que la paix de l'Aube vous garde. Un lit vous attend si besoin."
     }
   }
 }

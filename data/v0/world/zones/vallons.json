@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.24.0-provisoire",
+  "contentVersion": "0.25.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -183,6 +183,22 @@
         "position": [
           1600,
           855
+        ]
+      },
+      {
+        "id": "relais_du_pont",
+        "name": "Relais du pont",
+        "position": [
+          1975,
+          175
+        ]
+      },
+      {
+        "id": "pied_de_la_tour_de_signal",
+        "name": "Pied de la tour de signal",
+        "position": [
+          183,
+          1358
         ]
       }
     ],

@@ -7,6 +7,7 @@ using EdS.Data.Saves;
 using EdS.Data.Story;
 using EdS.Data.Validation;
 using EdS.Data.Zones;
+using EdS.Domain.Numerics;
 using EdS.Runtime;
 using EdS.Simulation.Randomness;
 using EdS.World;
@@ -46,17 +47,27 @@ public class V11MarchandsTests : IDisposable
             "merchant.boulangerie", "merchant.auberge", "merchant.mercerie", "merchant.fromagere", "merchant.marchand_epices",
             // V2.30.5 : les boutiques de la route d'Ambre.
             "merchant.armurier_ville", "merchant.forgeron_ville", "merchant.tanneur_ville", "merchant.apothicaire_ville", "merchant.tailleur_ville",
-            "merchant.taverne_ville" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
+            "merchant.taverne_ville", "merchant.charron_hameau", "merchant.foulonniere", "merchant.frere_hospitalier" }, book.Merchants.Select(m => m.Id));   // V1.9.3 : l'étal de Renart
         Assert.Equal(new[] { "npc.armurier", "npc.herboriste", "npc.epiciere", "npc.intendant_guilde", "npc.renart", "npc.receleur", "npc.colporteur",
             "npc.commis", "npc.aubergiste", "npc.couturiere", "npc.fromagere", "npc.marchand_epices",
-            "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville" },
+            "npc.armurier_ville", "npc.forgeron_ville", "npc.tanneur_ville", "npc.apothicaire_ville", "npc.tailleur_ville", "npc.taverne_ville", "npc.charron_hameau", "npc.foulonniere", "npc.frere_hospitalier" },
             book.Merchants.Select(m => m.Npc));
         // Les trois du dehors au bourg d'Aube, chacun à un PNJ de l'histoire ; celui de la guilde dans sa pièce.
         ZoneDefinition zone = Zone();
         StoryBook story = Book(zone);
         // V2.7 : sauf le receleur des bandits, au hameau, près de la cachette de Colin.
         Assert.Contains(zone.PlacesAt(story.Npc(book.Merchant("merchant.receleur").Npc).Position), p => p.Id == "hameau");
-        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null && m.Id != "merchant.receleur" && !m.Id.EndsWith("_ville", StringComparison.Ordinal)),
+        // V2.43.2b : sauf les trois boutiques des lieux reconstruits, chacune à son lieu (hameau, moulin à foulon, dortoir de l'abbaye).
+        var rebuilt = new Dictionary<string, string> { ["merchant.charron_hameau"] = "hameau", ["merchant.foulonniere"] = "moulin_a_foulon", ["merchant.frere_hospitalier"] = "dortoir_de_l_abbaye" };
+        Assert.All(rebuilt, r =>
+        {
+            Place place = zone.Places.Single(p => p.Id == r.Value);
+            var at = story.Npc(book.Merchant(r.Key).Npc).Position;
+            Assert.True(at.X >= place.Min.X - Fixed.FromInt(30) && at.X <= place.Max.X + Fixed.FromInt(30)
+                && at.Z >= place.Min.Z - Fixed.FromInt(30) && at.Z <= place.Max.Z + Fixed.FromInt(30), r.Key);   // dans le lieu ou à 30 m au plus
+        });
+        Assert.All(book.Merchants.Where(m => story.Npc(m.Npc).Zone is null && m.Id != "merchant.receleur" && !m.Id.EndsWith("_ville", StringComparison.Ordinal)
+                && !rebuilt.ContainsKey(m.Id)),
             m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "bourg"));
         // V2.30.5 : les boutiques de la route d'Ambre sont dans la ville fortifiée, chacune devant son bâtiment.
         Assert.All(book.Merchants.Where(m => m.Id.EndsWith("_ville", StringComparison.Ordinal)), m => Assert.Contains(zone.PlacesAt(story.Npc(m.Npc).Position), p => p.Id == "ville_du_bourg"));

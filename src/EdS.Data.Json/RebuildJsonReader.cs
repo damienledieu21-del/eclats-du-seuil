@@ -81,6 +81,17 @@ namespace EdS.Data.Json
                 ["margin"] = (v, p) => x.Margin = input.Decimal(v, p),
                 ["stages"] = (v, p) => x.Stages = input.ReadLimitedList(v, p, RebuildValidator.MaxStages,
                     n => $"{n} paliers, au plus {RebuildValidator.MaxStages}.", (e, ip) => ReadStage(input, e, ip)),
+                ["rebuilt"] = (v, p) =>   // V2.43.2b : ce que le lieu apporte une fois reconstruit
+                {
+                    var rb = new RebuildRebuiltData();
+                    if (input.ReadFields(v, p, new Dictionary<string, Action<JsonElement, string>>
+                    {
+                        ["npcs"] = (e, ep) => rb.Npcs = input.ReadLimitedList(e, ep, RebuildValidator.MaxRebuiltNpcs,
+                            n => $"{n} PNJ, au plus {RebuildValidator.MaxRebuiltNpcs}.", (q, qp) => input.Text(q, qp)),
+                        ["safePoints"] = (e, ep) => rb.SafePoints = input.ReadLimitedList(e, ep, RebuildValidator.MaxRebuiltNpcs,
+                            n => $"{n} points sûrs, au plus {RebuildValidator.MaxRebuiltNpcs}.", (q, qp) => input.Text(q, qp)),
+                    })) x.Rebuilt = rb;
+                },
             }) ? x : null;
         }
 
@@ -106,6 +117,7 @@ namespace EdS.Data.Json
                 ["count"] = (v, p) => x.Count = input.Int32(v, p),
                 ["defeat"] = (v, p) => x.Defeat = input.Int32(v, p),
                 ["discover"] = (v, p) => x.Discover = input.Text(v, p),
+                ["reach"] = (v, p) => x.Reach = ScenarioJsonReader.ReadPoint(input, v, p),   // V2.43.2b
             }) ? x : null;
         }
     }
