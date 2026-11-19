@@ -220,6 +220,36 @@ public class FetesSauvegardeTests
     }
 
     [Fact]
+    public void Edition_plus_ancienne_refusee_et_activites_a_cheval_sur_deux_annees()
+    {
+        // Relecture indépendante de la PR #215 : la date réelle disparaît (années réelles, puis années du jeu) : rien n'est écrasé, rien n'est regagné.
+        FeastBook b = Feasts.Value;
+        SavedFeasts s = SavedFeasts.Empty;
+        foreach (string a in new[] { "concours", "cible", "course" }) FeastRules.Earn(s, b, Semailles, a, 2027, 740_000, out s, out _);
+        Assert.Equal(1, s.Of(Semailles).Wins);
+        Assert.Equal(FeastRefusal.NotNow, FeastRules.Earn(s, b, Semailles, "concours", 5, 600, out SavedFeasts same, out _));   // année du jeu 5 < 2027
+        Assert.Same(s, same);
+        Assert.Equal(FeastRefusal.NotNow, FeastRules.Earn(s, b, Semailles, "cible", 2026, 739_700, out _, out _));
+        // Rattrapage : seulement depuis une édition connue ou plus récente.
+        var rich = new SavedFeasts(new[] { s.Of(Semailles).With(coins: 999) });
+        Assert.False(FeastRules.CanCatchUp(rich, Semailles, 6));
+        Assert.Equal(FeastRefusal.NotNow, FeastRules.Buy(rich, b, "F04_R01", 6, out same));
+        Assert.Same(rich, same);
+        Assert.True(FeastRules.CanCatchUp(rich, Semailles, 2029));   // 2028 ratée
+        // Une édition à cheval sur deux années réelles (une fête commencée en décembre) : ses jours de janvier comptent dans la même édition.
+        SavedFeasts w = SavedFeasts.Empty;
+        long dec30 = new CivilDate(2027, 12, 30).DayNumber, jan2 = new CivilDate(2028, 1, 2).DayNumber;
+        Assert.Equal(FeastRefusal.None, FeastRules.Earn(w, b, Semailles, "cible", 2027, dec30, out w, out _));
+        Assert.Equal(FeastRefusal.None, FeastRules.Earn(w, b, Semailles, "course", 2027, jan2, out w, out _));
+        Assert.Equal(FeastRefusal.None, FeastRules.Earn(w, b, Semailles, "cible", 2027, jan2, out w, out FeastGain g));   // autre jour : encore une fois
+        Assert.False(g.Won);   // deux activités différentes : il en faut 3
+        Assert.Equal(FeastRefusal.None, FeastRules.Earn(w, b, Semailles, "concours", 2027, jan2, out w, out g));
+        Assert.True(g.Won);
+        Assert.Equal((2027L, 3), (w.Of(Semailles).Edition!.Value, w.Of(Semailles).Done.Count));
+        Assert.Equal(new long[] { 2027 }, w.Of(Semailles).Editions);
+    }
+
+    [Fact]
     public void Regles_deterministes()
     {
         FeastBook b = Feasts.Value;
