@@ -189,4 +189,31 @@ public class V233A239LieuxDeLaRegionTests
         Assert.DoesNotContain(freeze.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
         V228b2PassageTests.WalkTo(freeze, 160, -1225);
     }
+
+    [Fact]
+    public void Fonte_le_joueur_reste_dans_le_secteur_ou_il_etait()
+    {
+        // Revue Codex de la PR #206 (2e tour) : à (160, −1 080), le joueur est dans le secteur s08_02 ; le bout sud de la bande (z ≈ −1 213)
+        // est plus proche mais hors de ce secteur : il est porté au bout nord, qui y reste.
+        ZoneDefinition zone = Vallons.Value;
+        var map = EdS.World.SectorMap.For(zone);
+        Assert.Equal("s08_02", map.OwnerOf(G(160, -1080)));
+        Assert.NotEqual("s08_02", map.OwnerOf(G(160, -1213.6)));
+        var w = new EdS.World.WorldSession(new EdS.Data.Saves.WorldSave(zone.Id, 0, 0, new[] { EdS.World.PlayerCharacters.PlacesKey }, V11TestData.Hero()),
+            zone, ShippedData, V11TestData.Progression, V11TestData.ItemsCatalog, safePoint: "pontons_du_lac");
+        w.UseSeasons(SeasonJsonReader.ReadFile(SeasonJsonReader.PathIn(DataDirectory), zone).Book);
+        w.SetCivilTime(1800014400L);   // 15 janvier 2027
+        w.Step();
+        V228b2PassageTests.WalkTo(w, 160, -840);
+        V228b2PassageTests.WalkTo(w, 160, -1080);
+        Assert.Equal("s08_02", w.Sector);
+        w.SetCivilTime(1805112000L);   // 15 mars 2027 : fonte
+        w.Step();
+        w.Step();
+        (double x, double z) = P(w.Zone.Engine.View(w.CombatantId).Position!.Value);
+        Assert.Equal("s08_02", w.Sector);
+        Assert.InRange(z, -849.9, -846);   // bout nord de la bande, dans le même secteur
+        Assert.Equal("s08_02", map.OwnerOf(G(x, z)));
+        Assert.Contains(w.Zone.Setup.Space!.Obstacles, o => o.Id == "riviere_glace_du_lac_marais");
+    }
 }
