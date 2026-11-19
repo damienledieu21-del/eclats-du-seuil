@@ -805,6 +805,42 @@
           "count": 1
         },
         "xp": 25
+      },
+      {
+        "id": "recipe.planche_du_moulin",
+        "name": "text.recipe.planche",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.bois",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.planche",
+          "count": 2
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.pierre_taillee_de_la_carriere",
+        "name": "text.recipe.pierre_taillee",
+        "profession": "taille_de_pierre",
+        "requiredLevel": 1,
+        "place": "carriere",
+        "inputs": [
+          {
+            "item": "item.pierre",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.pierre_taillee",
+          "count": 1
+        },
+        "xp": 25
       }
     ],
     "nodes": [

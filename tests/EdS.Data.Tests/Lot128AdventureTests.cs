@@ -227,7 +227,7 @@ public class Lot128AdventureTests : IDisposable
         Assert.Equal(CraftRefusal.NotHere, a.Craft("recipe.ferrure"));
         Assert.Equal(new[] { "Pas ici : approche-toi de l'atelier (forge de Maëlle, four de Firmin ou feu de camp de Gaspard), ou à 3 m du nœud." }, a.DrainMessages());
         Assert.Null(a.WorkshopHere);
-        Assert.Equal(new[] { "forge", "four_de_firmin", "feu_de_camp", "cabane_du_bucheron", "gradins_de_la_carriere" }, a.Workshops().Select(w => w.Id));   // cuisine et boulangerie (réponse de Damien du 15 novembre 2026) : four de Firmin, feu de camp
+        Assert.Equal(new[] { "forge", "four_de_firmin", "feu_de_camp", "cabane_du_bucheron", "gradins_de_la_carriere", "moulin", "carriere" }, a.Workshops().Select(w => w.Id));   // cuisine et boulangerie (réponse de Damien du 15 novembre 2026) : four de Firmin, feu de camp
         WorldMarker forge = a.Workshops()[0];
         Assert.Equal(("forge", "Forge de Maëlle", -20.0, -4.0), (forge.Id, forge.Name, forge.X, forge.Z));
         Assert.True(WalkTo(a, forge.X, forge.Z + 1.5, 1));

@@ -87,4 +87,38 @@ public class BoisEtPierreTests
         Assert.True(back.IsValid, back.Report.ToString());
         Assert.Equal(20, back.Save!.Character!.Professions["bucheronnage"]);
     }
+
+    // --- Relecture indépendante de #222 et décision de Damien du 19 novembre 2026 : ateliers faciles près du village, refus ----------
+
+    [Fact]
+    public void Ateliers_faciles_pres_du_village()
+    {
+        CraftingBook book = Crafting(Zone());
+        Assert.Equal(new[] { "cabane_du_bucheron", "moulin" }, book.Recipes.Where(r => r.Output.Item == "item.planche").Select(r => r.Place));
+        Assert.Equal(new[] { "gradins_de_la_carriere", "carriere" }, book.Recipes.Where(r => r.Output.Item == "item.pierre_taillee").Select(r => r.Place));
+        // Planches au moulin du village (niveau 1), pierre taillée à la petite carrière (niveau 6).
+        WorldSession m = Play(At(-9, 5), new ItemStack("item.bois", 3));
+        Assert.Equal(CraftRefusal.None, m.Craft("recipe.planche_du_moulin", out _));
+        Assert.Equal(2, m.Inventory.Count("item.planche"));
+        WorldSession c = Play(At(48, -14), new ItemStack("item.pierre", 3));
+        Assert.Equal(CraftRefusal.None, c.Craft("recipe.pierre_taillee_de_la_carriere", out _));
+        Assert.Equal(1, c.Inventory.Count("item.pierre_taillee"));
+        Assert.Equal(CraftRefusal.NotHere, c.Craft("recipe.planche_du_moulin", out _));   // chaque recette à son atelier
+    }
+
+    [Theory]
+    [InlineData("recipe.planche", "item.bois", -530.0, 480.0)]
+    [InlineData("recipe.planche_du_moulin", "item.bois", -9.0, 5.0)]
+    [InlineData("recipe.pierre_taillee", "item.pierre", 930.0, 300.0)]
+    [InlineData("recipe.pierre_taillee_de_la_carriere", "item.pierre", 48.0, -14.0)]
+    public void Pas_assez_de_matiere_refuse_rien_ne_change(string recipe, string raw, double x, double z)
+    {
+        WorldSession w = Play(At(x, z), new ItemStack(raw, 2));
+        string before = SaveJsonReader.Write(w.Save());
+        Assert.Equal(CraftRefusal.NotEnough, w.Craft(recipe, out CraftEvent? done));
+        Assert.Null(done);
+        Assert.Equal(2, w.Inventory.Count(raw));
+        Assert.Equal(before, SaveJsonReader.Write(w.Save()));   // ni objet, ni expérience, ni compteur de fabrication
+    }
 }
+
