@@ -2,7 +2,7 @@
   "$schema": "../../schemas/items.schema.json",
   "schemaVersion": 8,
   "kind": "items",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "slots": [
       {
@@ -1507,6 +1507,38 @@
         "type": "material",
         "rarity": "common",
         "stack": 5
+      },
+      {
+        "id": "item.bois",
+        "name": "Bois",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50,
+        "icon": "ecu_de_chene"
+      },
+      {
+        "id": "item.pierre",
+        "name": "Pierre",
+        "type": "material",
+        "rarity": "common",
+        "stack": 50,
+        "icon": "minerai_de_fer"
+      },
+      {
+        "id": "item.planche",
+        "name": "Planche",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20,
+        "icon": "pavois_du_moulin"
+      },
+      {
+        "id": "item.pierre_taillee",
+        "name": "Pierre taillée",
+        "type": "material",
+        "rarity": "common",
+        "stack": 20,
+        "icon": "marteau_du_carrier"
       },
       {
         "id": "item.miche_du_matin",

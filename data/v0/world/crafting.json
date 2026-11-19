@@ -2,7 +2,7 @@
   "$schema": "../../schemas/crafting.schema.json",
   "schemaVersion": 4,
   "kind": "crafting",
-  "contentVersion": "0.13.0-provisoire",
+  "contentVersion": "0.14.0-provisoire",
   "data": {
     "maxLevel": 10,
     "xpToLevel": [
@@ -37,6 +37,14 @@
       {
         "id": "cuisine",
         "name": "text.profession.cuisine"
+      },
+      {
+        "id": "bucheronnage",
+        "name": "text.profession.bucheronnage"
+      },
+      {
+        "id": "taille_de_pierre",
+        "name": "text.profession.taille_de_pierre"
       }
     ],
     "recipes": [
@@ -761,6 +769,78 @@
           "count": 1
         },
         "xp": 100
+      },
+      {
+        "id": "recipe.planche",
+        "name": "text.recipe.planche",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "cabane_du_bucheron",
+        "inputs": [
+          {
+            "item": "item.bois",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.planche",
+          "count": 2
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.pierre_taillee",
+        "name": "text.recipe.pierre_taillee",
+        "profession": "taille_de_pierre",
+        "requiredLevel": 1,
+        "place": "gradins_de_la_carriere",
+        "inputs": [
+          {
+            "item": "item.pierre",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.pierre_taillee",
+          "count": 1
+        },
+        "xp": 25
+      },
+      {
+        "id": "recipe.planche_du_moulin",
+        "name": "text.recipe.planche",
+        "profession": "bucheronnage",
+        "requiredLevel": 1,
+        "place": "moulin",
+        "inputs": [
+          {
+            "item": "item.bois",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.planche",
+          "count": 2
+        },
+        "xp": 20
+      },
+      {
+        "id": "recipe.pierre_taillee_de_la_carriere",
+        "name": "text.recipe.pierre_taillee",
+        "profession": "taille_de_pierre",
+        "requiredLevel": 1,
+        "place": "carriere",
+        "inputs": [
+          {
+            "item": "item.pierre",
+            "count": 3
+          }
+        ],
+        "output": {
+          "item": "item.pierre_taillee",
+          "count": 1
+        },
+        "xp": 25
       }
     ],
     "nodes": [
@@ -1027,6 +1107,78 @@
         ],
         "respawnMs": 60000,
         "xp": 6
+      },
+      {
+        "id": "bois_foret_ouest",
+        "profession": "bucheronnage",
+        "item": "item.bois",
+        "count": 1,
+        "position": [
+          -60,
+          90
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "bois_foret_est",
+        "profession": "bucheronnage",
+        "item": "item.bois",
+        "count": 1,
+        "position": [
+          -10,
+          95
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "bois_du_bucheron",
+        "profession": "bucheronnage",
+        "item": "item.bois",
+        "count": 1,
+        "position": [
+          -560,
+          470
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "pierre_carriere",
+        "profession": "taille_de_pierre",
+        "item": "item.pierre",
+        "count": 1,
+        "position": [
+          45,
+          -14
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "pierre_gradins_ouest",
+        "profession": "taille_de_pierre",
+        "item": "item.pierre",
+        "count": 1,
+        "position": [
+          930,
+          300
+        ],
+        "respawnMs": 60000,
+        "xp": 12
+      },
+      {
+        "id": "pierre_gradins_est",
+        "profession": "taille_de_pierre",
+        "item": "item.pierre",
+        "count": 1,
+        "position": [
+          1080,
+          330
+        ],
+        "respawnMs": 60000,
+        "xp": 12
       }
     ],
     "forge": {

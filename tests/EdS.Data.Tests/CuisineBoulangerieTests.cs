@@ -52,7 +52,7 @@ public class CuisineBoulangerieTests
     public void Metier_de_cuisine_quatorze_recettes_au_four_de_Firmin_et_au_feu_de_camp()
     {
         CraftingBook book = Shipped.Value;
-        Assert.Equal("0.13.0-provisoire", book.ContentVersion);
+        Assert.Equal("0.14.0-provisoire", book.ContentVersion);
         Assert.Contains(book.Professions, p => p.Id == "cuisine");
         Assert.Equal("Cuisine et boulangerie", Texts.Get("text.profession.cuisine"));
         Assert.Equal(15, Cuisine.Count());   // 16 novembre 2026 : la fouace des Semailles ; 19 novembre 2026 : la pâte brisée (dossier de Firmin)
@@ -92,7 +92,7 @@ public class CuisineBoulangerieTests
     public void Quatre_plats_pour_la_place_du_plat_et_deux_patisseries()
     {
         ItemCatalog c = Items.Value;
-        Assert.Equal("0.22.0-provisoire", c.ContentVersion);
+        Assert.Equal("0.23.0-provisoire", c.ContentVersion);
         string[] meals = { "item.friture_du_lac", "item.truite_meuniere", "item.quenelles_de_brochet", "item.matelote_de_carpe_doree" };
         Assert.Equal(meals, c.Items.Where(i => i.Boon == BoonKind.Meal).Select(i => i.Id));
         Assert.Equal(new[] { ItemQuality.Normal, ItemQuality.Normal, ItemQuality.Superior, ItemQuality.Masterwork }, meals.Select(m => c.Item(m).BoonQuality));

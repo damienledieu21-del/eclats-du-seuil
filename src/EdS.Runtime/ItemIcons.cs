@@ -52,6 +52,10 @@ namespace EdS.Runtime
             ["item.remede_de_l_aube"] = new[] { "elixir", "potion", "flask" },
             ["item.herbe_de_l_aube"] = new[] { "herb", "flower", "plant", "leaf" },
             ["item.minerai_de_fer"] = new[] { "ironore", "ore", "iron", "stone" },
+            ["item.bois"] = new[] { "log", "wood", "timber" },   // V2.43.2a : bois et pierre
+            ["item.planche"] = new[] { "plank", "board", "wood" },
+            ["item.pierre"] = new[] { "stone", "rock" },
+            ["item.pierre_taillee"] = new[] { "brick", "block", "stone" },
             ["item.peau_de_loup"] = new[] { "wolfskin", "fur", "hide", "leather", "skin" },
             ["item.miche_du_matin"] = new[] { "bread", "loaf", "bun" },
             ["item.chat_de_rosalie"] = new[] { "cat" },
