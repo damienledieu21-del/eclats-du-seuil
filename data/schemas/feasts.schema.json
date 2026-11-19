@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclats-du-seuil/schemas/feasts.schema.json",
+  "title": "Éclats du Seuil — les 12 fêtes d'Orsédia",
+  "description": "Les 12 fêtes d'Orsédia (sous-lot F1, décisions de Damien du 17 novembre 2026), version 1 : les 108 références du dossier des fêtes (5 décorations, un costume, un plat, une monnaie et une récompense par fête), titres, activités qui rapportent la monnaie de la fête, marchand de fête, plafond du portefeuille et plats gardés au plus. Documentation. La validation qui fait foi est celle du programme (FeastValidator), avec l'histoire (fêtes datées du mois de la fête, invités, concours, marchand de passage) et les textes : récompense de rareté Rare, costume Commun, monnaie sans prix ni rareté, icônes pour le plat, la monnaie et la récompense seulement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "contentVersion",
+    "data"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "feasts"
+    },
+    "contentVersion": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wallet",
+        "maxDishes",
+        "merchant",
+        "feasts"
+      ],
+      "properties": {
+        "wallet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cap"
+          ],
+          "properties": {
+            "cap": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99999
+            }
+          }
+        },
+        "maxDishes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99
+        },
+        "merchant": {
+          "type": "string",
+          "pattern": "^npc(\\.[a-z0-9_]+)+$"
+        },
+        "feasts": {
+          "type": "array",
+          "minItems": 12,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "number",
+              "festival",
+              "motto",
+              "title",
+              "activities",
+              "refs"
+            ],
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              },
+              "festival": {
+                "type": "string",
+                "pattern": "^festival(\\.[a-z0-9_]+)+$"
+              },
+              "motto": {
+                "type": "string",
+                "pattern": "^text(\\.[a-z0-9_]+)+$"
+              },
+              "title": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^title\\.fete\\.[a-z][a-z0-9_]*$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "^text(\\.[a-z0-9_]+)+$"
+                  }
+                }
+              },
+              "activities": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "name",
+                    "coins"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]*$",
+                      "maxLength": 32
+                    },
+                    "name": {
+                      "type": "string",
+                      "pattern": "^text(\\.[a-z0-9_]+)+$"
+                    },
+                    "coins": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 99999
+                    },
+                    "host": {
+                      "type": "string",
+                      "pattern": "^npc(\\.[a-z0-9_]+)+$"
+                    },
+                    "contest": {
+                      "type": "string",
+                      "pattern": "^festival(\\.[a-z0-9_]+)+$"
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "required": [
+                        "host"
+                      ],
+                      "not": {
+                        "required": [
+                          "contest"
+                        ]
+                      }
+                    },
+                    {
+                      "required": [
+                        "contest"
+                      ],
+                      "not": {
+                        "required": [
+                          "host"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "rewardAfter": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "refs": {
+                "type": "array",
+                "minItems": 9,
+                "maxItems": 9,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "code",
+                    "category",
+                    "name",
+                    "size",
+                    "image"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "pattern": "^F(0[1-9]|1[0-2])_[DCPMR]0[1-9]$"
+                    },
+                    "category": {
+                      "enum": [
+                        "decoration",
+                        "costume",
+                        "dish",
+                        "currency",
+                        "reward"
+                      ]
+                    },
+                    "name": {
+                      "type": "string",
+                      "pattern": "^text(\\.[a-z0-9_]+)+$"
+                    },
+                    "size": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "x",
+                        "y",
+                        "z"
+                      ],
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 20
+                        },
+                        "y": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 20
+                        },
+                        "z": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 20
+                        }
+                      }
+                    },
+                    "image": {
+                      "type": "string",
+                      "pattern": "^Objets/F(0[1-9]|1[0-2])_[DCPMR]0[1-9]_[a-z0-9]+(_[a-z0-9]+)*\\.png$",
+                      "maxLength": 200
+                    },
+                    "icon": {
+                      "type": "string",
+                      "pattern": "^Icones/F(0[1-9]|1[0-2])_[PMR]01_[a-z0-9]+(_[a-z0-9]+)*_icone\\.png$",
+                      "maxLength": 200
+                    },
+                    "rarity": {
+                      "enum": [
+                        "common",
+                        "rare"
+                      ]
+                    },
+                    "price": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 99999
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
