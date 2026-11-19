@@ -29,6 +29,28 @@ namespace EdS.Data.Json
             return RebuildValidator.Validate(ReadDocument(JsonInput.Utf8(json, report), report), zone, items, story, report);
         }
 
+        /// <summary>
+        /// Revue Codex de la PR #221 : faits que le catalogue des chantiers fait apprendre (<c>fact.rebuild.&lt;lieu&gt;.started</c>, un par
+        /// palier, <c>.done</c>), d'après la forme du fichier seulement, pour que l'histoire et les marchands, validés avant lui, puissent les
+        /// attendre. Fichier absent ou illisible : aucun (le catalogue est validé à part, avec ses erreurs).
+        /// </summary>
+        public static IReadOnlyList<string> DeclaredFacts(string path)
+        {
+            if (!System.IO.File.Exists(path)) return Array.Empty<string>();
+            var report = new ValidationReport();
+            RebuildDocument d = ReadDocument(JsonInput.ReadFile(path, report), report);
+            var facts = new List<string>();
+            foreach (RebuildSiteData? site in d.Data?.Sites ?? new List<RebuildSiteData?>())
+            {
+                if (!(site?.Id is string id) || !EdS.Data.Saves.SavedRebuild.IsLocalId(id)) continue;
+                facts.Add($"fact.rebuild.{id}.started");
+                foreach (RebuildStageData? st in site.Stages ?? new List<RebuildStageData?>())
+                    if (st?.Id is string s && EdS.Data.Saves.SavedRebuild.IsLocalId(s)) facts.Add($"fact.rebuild.{id}.{s}");
+                facts.Add($"fact.rebuild.{id}.done");
+            }
+            return facts;
+        }
+
         internal static RebuildDocument ReadDocument(byte[]? json, ValidationReport report)
         {
             var document = new RebuildDocument();

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using EdS.Data.Items;
+using EdS.Data.Merchants;
 using EdS.Data.Json;
 using EdS.Data.Rebuilds;
 using EdS.Data.Saves;
@@ -352,5 +353,43 @@ public class LieuxReconstruitsTests
         Assert.Equal(RebuildPhase.Rebuilt, w.RebuildPhaseOf("hameau"));
         Assert.Equal(RebuildRefusal.Rebuilt, w.GiveToRebuild("hameau", "or", out _, out _));
         Assert.Equal((2, 0), (w.RebuildState.Of("hameau")!.Stage, w.RebuildState.Of("hameau")!.Given.Count));
+    }
+
+    // --- Revue Codex de la PR #221 : l'histoire et les marchands attendent les faits des chantiers ------------------------------
+
+    [Fact]
+    public void Histoire_et_marchands_attendent_les_faits_des_chantiers()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "eds_rebuilds_" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(path, Catalog());
+        IReadOnlyList<string> facts;
+        try { facts = RebuildJsonReader.DeclaredFacts(path); }
+        finally { File.Delete(path); }
+        Assert.Equal(new[]
+        {
+            "fact.rebuild.hameau.started", "fact.rebuild.hameau.deblaiement", "fact.rebuild.hameau.toits", "fact.rebuild.hameau.done",
+            "fact.rebuild.moulin.started", "fact.rebuild.moulin.roue", "fact.rebuild.moulin.done",
+        }, facts);
+        Assert.Empty(RebuildJsonReader.DeclaredFacts(path));   // fichier absent : aucun
+        // Ce sont exactement les faits que la partie fait apprendre.
+        Assert.Equal(facts, Sample.Value.Sites.SelectMany(s => new[] { s.StartedFact }.Concat(s.Stages.Select(s.StageFact)).Append(s.DoneFact)));
+
+        // Une quête dont l'objectif attend le lieu reconstruit.
+        ZoneDefinition zone = Vallons.Value;
+        JsonNode story = JsonNode.Parse(File.ReadAllText(StoryJsonReader.StoryPathIn(DataDirectory)))!;
+        story["data"]!["quests"]![0]!["steps"]![0]!["objective"] = new JsonObject { ["kind"] = "fact", ["id"] = "fact.rebuild.hameau.done" };
+        StoryLoadResult without = StoryJsonReader.ReadStory(story.ToJsonString(), Texts, zone, ItemsCatalog, V16TestData.Interiors);
+        Assert.False(without.IsValid);
+        Assert.Contains(without.Report.Errors, e => e.Path == "$.data.quests[0].steps[0].objective.id" && e.Code == ValidationCode.UnknownReference);
+        StoryLoadResult with = StoryJsonReader.ReadStory(story.ToJsonString(), Texts, zone, ItemsCatalog, V16TestData.Interiors, worldFacts: facts);
+        Assert.True(with.IsValid, with.Report.ToString());
+        Assert.True(with.Story!.CanLearn("fact.rebuild.hameau.done"));
+
+        // Une boutique qui ouvre une fois le lieu reconstruit.
+        JsonObject merchants = MerchantsJson();
+        merchants["data"]!["merchants"]![0]!["fact"] = "fact.rebuild.hameau.done";
+        Assert.False(MerchantJsonReader.Read(merchants.ToJsonString(), Texts, Story.Value, ItemsCatalog).IsValid);
+        MerchantsLoadResult shop = MerchantJsonReader.Read(merchants.ToJsonString(), Texts, with.Story, ItemsCatalog);
+        Assert.True(shop.IsValid, shop.Report.ToString());
     }
 }
