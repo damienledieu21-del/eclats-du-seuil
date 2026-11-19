@@ -154,10 +154,10 @@ namespace EdS.World
         /// </summary>
         public void ContestHeld(string festival) => ContestHeld(festival, festival);
 
-        void INarrativeWorld.ContestHeld(string festival, string key)
+        void INarrativeWorld.ContestHeld(string festival, string key, List<StoryEvent> events)
         {
             ContestHeld(festival, key);
-            FeastContest(festival, key);   // les 12 fêtes d'Orsédia (F3) : un concours lié à une activité de fête rapporte sa monnaie
+            FeastContest(festival, key, events);   // les 12 fêtes d'Orsédia (F3) : un concours lié à une activité de fête rapporte sa monnaie
         }
 
         /// <summary>Schéma 16 : le personnage vient de concourir au concours de clé <paramref name="key"/> (fête ou « fête.piste ») de la fête <paramref name="festival"/>.</summary>

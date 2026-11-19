@@ -79,10 +79,10 @@ public class FetesMoteurTests
         WorldSession w = Session(CarnavalDay, 12, NearX, NearZ);
         Assert.Equal(Carnaval, w.FeastNow!.Festival);
         Assert.Equal(((long)0, CarnavalDay), w.FeastDay(Carnaval)!.Value);   // sans date : année du jeu, jour du monde
-        Assert.Equal(FeastRefusal.None, w.JoinFeast("masques", out FeastGain g));
+        Assert.Equal(FeastRefusal.None, w.JoinFeast("masques", out FeastGain g, out IReadOnlyList<StoryEvent> news));
         Assert.Equal(10, g.Gained);
         Assert.Equal(10, w.Character.Feasts.Of(Carnaval).Coins);
-        Assert.Equal((Carnaval, "masques"), (w.LastFeastGain!.Value.Festival, w.LastFeastGain.Value.Activity));
+        Assert.Equal(new[] { $"FeastCoins {Carnaval}/masques 10" }, news.Select(e => e.ToString()));
         // Une fois par jour de fête ; refus sans rien changer.
         SavedFeasts before = w.Character.Feasts;
         Assert.Equal(FeastRefusal.AlreadyDone, w.JoinFeast("masques", out _));
@@ -135,22 +135,53 @@ public class FetesMoteurTests
     [Fact]
     public void Concours_de_l_histoire_branche_sur_la_monnaie()
     {
-        // Le concours principal des Semailles (calendrier du jeu : printemps, jour 14) rapporte 30 Graines de Griffon, une fois par édition.
+        // Le concours principal des Semailles (calendrier du jeu : printemps, jour 14) rapporte 30 Graines de Griffon, une fois par édition, annoncées.
         WorldSession w = Session(14, 12, NearX, NearZ);
         Assert.Equal("festival.foire", w.Festival!.Id);
         INarrativeWorld n = w;
-        n.ContestHeld("festival.foire", "festival.foire");
+        var news = new List<StoryEvent>();
+        n.ContestHeld("festival.foire", "festival.foire", news);
         Assert.Equal(30, w.Character.Feasts.Of("festival.foire").Coins);
-        n.ContestHeld("festival.foire", "festival.foire");   // déjà fait dans l'édition : rien de plus, rien ne lève
+        Assert.Equal(new[] { "FeastCoins festival.foire/concours 30" }, news.Select(e => e.ToString()));
+        news.Clear();
+        n.ContestHeld("festival.foire", "festival.foire", news);   // déjà fait dans l'édition : rien de plus, rien ne lève
         Assert.Equal(30, w.Character.Feasts.Of("festival.foire").Coins);
-        n.ContestHeld("festival.foire", "festival.foire.patisserie");
+        Assert.Empty(news);
+        n.ContestHeld("festival.foire", "festival.foire.patisserie", news);
         Assert.Equal(60, w.Character.Feasts.Of("festival.foire").Coins);
-        n.ContestHeld("festival.marche", "festival.marche");   // le marché n'a pas de monnaie de fête
+        n.ContestHeld("festival.marche", "festival.marche", news);   // le marché n'a pas de monnaie de fête
         Assert.Single(w.Character.Feasts.Entries);
         // Sans catalogue des fêtes, le concours reste ce qu'il était.
         WorldSession bare = Session(14, 12, NearX, NearZ, catalog: false);
-        ((INarrativeWorld)bare).ContestHeld("festival.foire", "festival.foire");
+        ((INarrativeWorld)bare).ContestHeld("festival.foire", "festival.foire", new List<StoryEvent>());
         Assert.True(bare.Character.Feasts.IsEmpty);
+        // Relecture indépendante de la PR #216 : hors des heures de la fête (avant 8 h), rien.
+        WorldSession early = Session(14, 6, NearX, NearZ);
+        ((INarrativeWorld)early).ContestHeld("festival.foire", "festival.foire", news);
+        Assert.True(early.Character.Feasts.IsEmpty);
+    }
+
+    [Fact]
+    public void Concours_avec_un_portefeuille_presque_plein_annonce_le_plafond()
+    {
+        int cap = Feasts.Value.WalletCap;
+        WorldSession w = Session(14, 12, NearX, NearZ, new SavedFeasts(new[] { new SavedFeast("festival.foire", cap - 5) }));
+        var news = new List<StoryEvent>();
+        ((INarrativeWorld)w).ContestHeld("festival.foire", "festival.foire", news);
+        Assert.Equal(cap, w.Character.Feasts.Of("festival.foire").Coins);
+        Assert.Equal(new[] { "FeastCoins festival.foire/concours 5", "FeastWalletFull festival.foire/concours 25" }, news.Select(e => e.ToString()));
+        // Portefeuille plein : rien de gagné, la perte est annoncée quand même (l'activité compte).
+        news.Clear();
+        ((INarrativeWorld)w).ContestHeld("festival.foire", "festival.foire.patisserie", news);
+        Assert.Equal(new[] { "FeastWalletFull festival.foire/patisserie 30" }, news.Select(e => e.ToString()));
+        Assert.Equal(2, w.Character.Feasts.Of("festival.foire").Done.Count);
+        // Compteur des éditions gagnées au plafond technique : refusé, annoncé, rien ne change.
+        var full = new SavedFeasts(new[] { new SavedFeast("festival.foire", 0, 0, new Dictionary<string, long> { ["cible"] = 14, ["course"] = 14 }, SavedFeast.MaxCount) });
+        WorldSession f = Session(14, 12, NearX, NearZ, full);
+        news.Clear();
+        ((INarrativeWorld)f).ContestHeld("festival.foire", "festival.foire", news);
+        Assert.Equal(new[] { "FeastCountersFull festival.foire/concours" }, news.Select(e => e.ToString()));
+        Assert.Equal(full, f.Character.Feasts);
     }
 
     [Fact]
@@ -164,8 +195,9 @@ public class FetesMoteurTests
             Festival carnaval = Story.Value.Festival(Carnaval);
             var odile = carnaval.Guest("npc.odile")!.Position;
             WorldSession v = Session(CarnavalDay, 12, (double)odile.X.Raw / 10_000 + 0.8, (double)odile.Z.Raw / 10_000, w.Character.Feasts);
-            Assert.Equal(FeastRefusal.None, v.JoinFeast("roles", out FeastGain g));
+            Assert.Equal(FeastRefusal.None, v.JoinFeast("roles", out FeastGain g, out IReadOnlyList<StoryEvent> news));
             Assert.True(g.Won && g.Title);
+            Assert.Contains(news, e => e.Kind == StoryEventKind.FeastWon && e.Id == Carnaval && e.Step == "title" && e.Value == 0);
             Assert.Equal(EdS.World.GuildRefusal.None, v.ShowTitle("title.fete.carnaval", out _));
             Assert.Equal("title.fete.carnaval", v.ActiveTitle);
             return v.Character.Feasts;
