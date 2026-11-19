@@ -68,7 +68,7 @@ public class V27ReputationTests
     public void Versions_du_sous_lot()
     {
         Assert.Equal((16, 11), (StoryValidator.CurrentSchemaVersion, StoryValidator.Schema11));
-        Assert.Equal((26, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
+        Assert.Equal((27, 15, 14), (SaveValidator.CurrentSchemaVersion, SaveValidator.ReputationSince, SaveValidator.ScarsSince));
         Assert.Equal((16, "0.34.0-provisoire"), (Story.Value.SchemaVersion, Story.Value.ContentVersion));
         Assert.Equal(new[] { "villagers", "guard", "rangers", "bandits" }, Reputations.Factions);
         Assert.Equal(7, Reputations.Tiers.Count);

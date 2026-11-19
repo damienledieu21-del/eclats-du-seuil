@@ -113,6 +113,9 @@ namespace EdS.Data.Saves
         /// <summary>Cartes à la taverne (version 25) : graine, victoires, compteurs du jour, partie en cours (facultatif).</summary>
         public SavedCardsData? Cards { get; set; }
 
+        /// <summary>Les 12 fêtes d'Orsédia (version 27) : portefeuilles des fêtes et titre de fête affiché (facultatif).</summary>
+        public SavedFeastsData? Feasts { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -241,5 +244,27 @@ namespace EdS.Data.Saves
         public int? Game { get; set; }
         public int? Stake { get; set; }
         public List<int?>? Moves { get; set; }
+    }
+
+    /// <summary>Les 12 fêtes d'Orsédia (version 27) : <c>character.feasts</c> tel que lu.</summary>
+    public sealed class SavedFeastsData
+    {
+        public string? Shown { get; set; }
+        public List<KeyValuePair<string, SavedFeastData?>>? Wallets { get; set; }
+        public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Les 12 fêtes d'Orsédia (version 27) : le portefeuille d'une fête tel que lu.</summary>
+    public sealed class SavedFeastData
+    {
+        public long? Coins { get; set; }
+        public long? Edition { get; set; }
+        public List<KeyValuePair<string, long?>>? Done { get; set; }
+        public long? Wins { get; set; }
+        public long? Bought { get; set; }
+        public List<long?>? Editions { get; set; }
+        public List<string?>? Owned { get; set; }
+        public int? Dishes { get; set; }
+        public HashSet<string> Present { get; } = new HashSet<string>();
     }
 }
