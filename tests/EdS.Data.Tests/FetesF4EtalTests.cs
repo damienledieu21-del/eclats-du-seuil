@@ -149,6 +149,45 @@ public sealed class FetesF4EtalTests
     }
 
     [Fact]
+    public void Enveloppe_X_largeur_Y_profondeur_Z_hauteur_comme_les_modeles()
+    {
+        // Revue Codex de la PR #218 (P2, sans suite) : la profondeur d'une décoration est bien SizeY. Convention du dossier des fêtes et des
+        // modèles Tripo (face en -Y, Z vers le haut dans Blender) : X largeur vue de face, Y profondeur, Z hauteur. Relevés des exports de jeu
+        // (Blender, dimensions x, y, z en m) : la profondeur des modèles est celle des données (y), la hauteur jamais (z).
+        var measured = new Dictionary<string, (double X, double Y, double Z)>
+        {
+            ["F03_D01"] = (0.625, 0.08, 0.863), ["F06_D05"] = (0.622, 0.08, 0.87), ["F01_D05"] = (1.644, 0.45, 1.548),
+            ["F02_D03"] = (1.553, 0.541, 0.95), ["F09_D04"] = (1.591, 0.784, 1.1),
+        };
+        foreach ((string code, (double mx, double my, double mz)) in measured)
+        {
+            FeastSize size = Feasts.Value.Ref(code)!.Size;
+            double y = size.Y.Raw / 10000.0, z = size.Z.Raw / 10000.0;
+            Assert.True(Math.Abs(my - y) <= 0.15, $"{code} : profondeur du modèle {my}, données y {y}");
+            Assert.True(Math.Abs(my - z) > 0.3, $"{code} : la hauteur (z) n'est pas la profondeur");
+        }
+        // Une bannière (F03_D01, 8 cm d'épaisseur, 1,7 m de haut) : la pose de l'étal la tient pour mince et large (X, Y), pas pour haute.
+        FeastRef banner = Feasts.Value.Ref("F03_D01")!;
+        var layout = FeastLooks.Stall(-1088, -37, 0, new[] { (banner.Code, banner.Size.X.Raw / 10000.0, banner.Size.Y.Raw / 10000.0, banner.Size.Z.Raw / 10000.0) },
+            Array.Empty<IReadOnlyList<(double X, double Z)>>());
+        FeastPiece piece = Assert.Single(layout.Pieces);
+        Assert.Equal((0.8, 0.1), (piece.Width, piece.Depth));   // 0,08 m relevé à 0,1 m au moins
+    }
+
+    [Fact]
+    public void Toutes_les_autres_monnaies_visibles_a_l_etal()
+    {
+        // Revue Codex de la PR #218 (P2) : onze autres monnaies au plus, toutes affichées (deux colonnes de six).
+        string panel = Source("Game/AdventureBook.Feast.cs");
+        Assert.Contains("private const int FeastWalletRows = 12, FeastWalletLines = 6;", panel);
+        Assert.True(12 >= Feasts.Value.Feasts.Count - 1);
+        AdventureSession a = WithAdventure(-1088.5, -36.2, CarnavalDay, 12,
+            new SavedFeasts(Feasts.Value.Feasts.Select(f => new SavedFeast(f.Festival, 5))), x => x);
+        Assert.Equal(12, a.FeastWallets.Count);
+        Assert.Equal(11, a.FeastWallets.Count(w => !w.Current));
+    }
+
+    [Fact]
     public void Double_clic_sur_Acheter_un_seul_achat_jusqu_au_rafraichissement()
     {
         // Relecture indépendante de la PR #218 : un plat s'achète plusieurs fois : un double clic n'en achète qu'un.
