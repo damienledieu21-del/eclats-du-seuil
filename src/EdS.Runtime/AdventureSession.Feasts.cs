@@ -303,6 +303,82 @@ namespace EdS.Runtime
             ? new FeastStallLook(s.Feast.Festival, s.Position.X.Raw / 10000.0, s.Position.Z.Raw / 10000.0, s.Decor.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList())
             : null;
 
+        /// <summary>Regard au repos du forain (degrés, 0 = +z) : vers le point sûr le plus proche, comme tout PNJ (WorldMarkers).</summary>
+        public double FeastMerchantFace(double x, double z)
+        {
+            double best = double.MaxValue, face = 0;
+            foreach (EdS.Data.Zones.SafePoint p in _zone.SafePoints)
+            {
+                double px = p.Position.X.Raw / 10000.0, pz = p.Position.Z.Raw / 10000.0, d = (px - x) * (px - x) + (pz - z) * (pz - z);
+                if (d > 0.01 && d < best)
+                {
+                    best = d;
+                    face = StyleRules.FaceYaw(x, z, px, pz);
+                }
+            }
+            return face;
+        }
+
+        /// <summary>Obstacles de la carte entière, en polygones (m).</summary>
+        private List<IReadOnlyList<(double X, double Z)>> FeastObstacles() => RegionMap.Whole.Obstacles
+            .Select(o => (IReadOnlyList<(double X, double Z)>)o.Points.Select(q => (q.X.Raw / 10000.0, q.Z.Raw / 10000.0)).ToList()).ToList();
+
+        /// <summary>
+        /// Relecture indépendante de la PR #218 : les points qu'aucun décor de fête ne couvre : les PNJ (place, places de la journée et de
+        /// pluie), sauf <paramref name="except"/> ; les invités de toutes les fêtes ; les points sûrs ; les portes.
+        /// </summary>
+        public IReadOnlyList<(double X, double Z)> FeastAvoid(string? except = null)
+        {
+            var avoid = new List<(double X, double Z)>();
+            foreach (EdS.Data.Story.Npc n in _story.Npcs)
+            {
+                if (n.Id == except) continue;
+                avoid.Add((n.Position.X.Raw / 10000.0, n.Position.Z.Raw / 10000.0));
+                foreach (EdS.Data.Story.ScheduleSlot slot in n.Schedule)
+                {
+                    if (slot.Zone != null) continue;
+                    avoid.Add((slot.Position.X.Raw / 10000.0, slot.Position.Z.Raw / 10000.0));
+                    if (slot.Rain is EdS.Data.Story.SchedulePlace rain) avoid.Add((rain.Position.X.Raw / 10000.0, rain.Position.Z.Raw / 10000.0));
+                }
+            }
+            foreach (EdS.Data.Story.Festival f in _story.Festivals)
+                foreach (EdS.Data.Story.FestivalGuest g in f.Guests)
+                    if (g.Npc != except) avoid.Add((g.Position.X.Raw / 10000.0, g.Position.Z.Raw / 10000.0));
+            foreach (EdS.Data.Zones.SafePoint p in _zone.SafePoints) avoid.Add((p.Position.X.Raw / 10000.0, p.Position.Z.Raw / 10000.0));
+            foreach (MapDoor d in RegionMap.Whole.Doors) avoid.Add((d.X, d.Z));
+            return avoid;
+        }
+
+        /// <summary>
+        /// L'étal de fête de la fête <paramref name="feast"/> et ses décorations, posés pour l'affichage (<see cref="FeastLooks.Stall"/>, sur la
+        /// carte entière : obstacles, rues, PNJ, invités, points sûrs, portes) ; null sans forain.
+        /// </summary>
+        public (double X, double Z, double Yaw, IReadOnlyList<FeastPiece> Pieces)? FeastStallOf(Feast feast)
+        {
+            if (!(World.FeastBook is FeastBook book) || !(_story.Npcs.FirstOrDefault(n => n.Id == book.Merchant) is EdS.Data.Story.Npc merchant)) return null;
+            double mx = merchant.Position.X.Raw / 10000.0, mz = merchant.Position.Z.Raw / 10000.0;
+            var decor = feast.Stall.Select(r => (r.Code, r.Size.X.Raw / 10000.0, r.Size.Y.Raw / 10000.0, r.Size.Z.Raw / 10000.0)).ToList();
+            return FeastLooks.Stall(mx, mz, FeastMerchantFace(mx, mz), decor, FeastObstacles(), RegionMap.Whole.Roads, FeastAvoid(book.Merchant));
+        }
+
+        private string? _feastStallKey;
+        private (double X, double Z, double Yaw, IReadOnlyList<FeastPiece> Pieces)? _feastStallLayout;
+
+        /// <summary>L'étal de la fête en cours à poser (<see cref="FeastStallOf"/>), calculé une fois par fête ; null hors fête, hors de la zone de l'histoire, sans forain.</summary>
+        public (double X, double Z, double Yaw, IReadOnlyList<FeastPiece> Pieces)? FeastStallLayout
+        {
+            get
+            {
+                if (World.FeastStall is null || !(World.FeastNow is Feast feast)) return null;
+                if (_feastStallKey != feast.Festival)
+                {
+                    _feastStallLayout = FeastStallOf(feast);
+                    _feastStallKey = feast.Festival;
+                }
+                return _feastStallLayout;
+            }
+        }
+
         /// <summary>Annonces des gains de fête (activités et concours de l'histoire).</summary>
         private void FeastMessage(StoryEvent e)
         {

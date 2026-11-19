@@ -77,11 +77,30 @@ namespace EdS.Runtime
         /// l'avant vers les visiteurs, chacune à une place libre (obstacles, étal, forain, autres décorations : <see cref="Margin"/>), sinon pas
         /// posée. Déterministe ; affichage seulement, sans collision.
         /// </summary>
-        public static (double X, double Z, IReadOnlyList<FeastPiece> Pieces) Stall(double x, double z, double face,
-            IReadOnlyList<(string Code, double SizeX, double SizeY, double SizeZ)> decor, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles)
+        public static (double X, double Z, double Yaw, IReadOnlyList<FeastPiece> Pieces) Stall(double x, double z, double face,
+            IReadOnlyList<(string Code, double SizeX, double SizeY, double SizeZ)> decor, IReadOnlyList<IReadOnlyList<(double X, double Z)>> obstacles,
+            IReadOnlyList<StyleRoad>? roads = null, IReadOnlyList<(double X, double Z)>? avoid = null)
         {
+            // Relecture indépendante de la PR #218 : l'étal lui-même hors des obstacles et des routes : devant le forain si c'est libre, sinon
+            // tourné autour de lui (45° par pas), puis un peu plus loin ; à défaut, devant lui. Le dallage d'une place (route « place_… », où se
+            // tient le forain) n'est pas une rue : l'étal et ses décorations peuvent s'y poser ; jamais sur une rue ni un chemin.
+            roads = Streets(roads);
+            double sx = 0, sz = 0, yaw = face;
+            bool found = false;
+            foreach (double dist in new[] { StallDistance, StallDistance + 1, StallDistance + 2 })
+            {
+                foreach (double turn in new[] { 0.0, 45, -45, 90, -90, 135, -135, 180 })
+                {
+                    double t = (face + turn) * Math.PI / 180, cx = x + dist * Math.Sin(t), cz = z + dist * Math.Cos(t);
+                    if (!Clear(cx, cz, face + turn, StallWidth, StallDepth, obstacles, roads, avoid)) continue;
+                    (sx, sz, yaw, found) = (cx, cz, face + turn, true);
+                    break;
+                }
+                if (found) break;
+            }
+            if (!found) (sx, sz) = (x + StallDistance * Math.Sin(face * Math.PI / 180), z + StallDistance * Math.Cos(face * Math.PI / 180));
+            face = (yaw % 360 + 360) % 360;
             double a = face * Math.PI / 180;
-            double sx = x + StallDistance * Math.Sin(a), sz = z + StallDistance * Math.Cos(a);
             var taken = new List<IReadOnlyList<(double X, double Z)>>(obstacles ?? Array.Empty<IReadOnlyList<(double, double)>>())
             {
                 Box(sx, sz, face, StallWidth, StallDepth),
@@ -96,14 +115,34 @@ namespace EdS.Runtime
                 {
                     // Le repère de l'étal : x le long de l'étal (vers la droite du visiteur), z vers les visiteurs.
                     double px = sx + rx * Math.Cos(a) + rz * Math.Sin(a), pz = sz - rx * Math.Sin(a) + rz * Math.Cos(a);
-                    IReadOnlyList<(double X, double Z, double Radius)> disks = Footprint(px, pz, face, w, d);
-                    if (disks.Any(c => Wave5.FreeSpot(new[] { (c.X, c.Z) }, taken, c.Radius) is null)) continue;
+                    if (!Clear(px, pz, face, w, d, taken, roads, avoid)) continue;
                     pieces.Add(new FeastPiece(code, px, pz, face, w, d));
                     taken.Add(Box(px, pz, face, w, d));
                     break;
                 }
             }
-            return (sx, sz, pieces);
+            return (sx, sz, face, pieces);
+        }
+
+        /// <summary>Les rues et chemins de <paramref name="roads"/>, sans le dallage des places (« place_… »).</summary>
+        public static IReadOnlyList<StyleRoad>? Streets(IReadOnlyList<StyleRoad>? roads) =>
+            roads?.Where(r => !r.Id.StartsWith("place_", StringComparison.Ordinal)).ToList();
+
+        /// <summary>
+        /// L'emprise (<see cref="Footprint"/>) est hors des polygones <paramref name="taken"/>, des routes (bord de la chaussée) et des points
+        /// <paramref name="avoid"/> (PNJ, invités, portes, points sûrs : aucun disque ne les couvre).
+        /// </summary>
+        public static bool Clear(double x, double z, double yaw, double w, double d, IReadOnlyList<IReadOnlyList<(double X, double Z)>> taken,
+            IReadOnlyList<StyleRoad>? roads, IReadOnlyList<(double X, double Z)>? avoid = null)
+        {
+            foreach ((double px, double pz, double r) in Footprint(x, z, yaw, w, d))
+            {
+                if (Wave5.FreeSpot(new[] { (px, pz) }, taken, r) is null) return false;
+                if (roads != null && roads.Count > 0 && TownRules.RoadAt(px, pz, roads).Edge < r) return false;
+                foreach ((double qx, double qz) in avoid ?? Array.Empty<(double, double)>())
+                    if ((px - qx) * (px - qx) + (pz - qz) * (pz - qz) < r * r) return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -118,7 +157,8 @@ namespace EdS.Runtime
             {
                 (-end, 0), (end, 0), (-end, back), (end, back), (-end - 1.0, back + 0.4), (end + 1.0, back + 0.4),
                 (-end - 1.0, 0.8), (end + 1.0, 0.8), (-end, back - 1.4), (end, back - 1.4), (-end - 2.2, 0), (end + 2.2, 0),
-                (-end - 2.2, back), (end + 2.2, back),
+                (-end - 2.2, back), (end + 2.2, back), (-end - 3.4, 0.8), (end + 3.4, 0.8), (-end - 3.4, back - 1.2), (end + 3.4, back - 1.2),
+                (-end, back - 2.6), (end, back - 2.6), (0, back - 2.6), (-end - 1.0, 2.2), (end + 1.0, 2.2),
             };
             for (int i = 0; i < places.Count; i++) yield return places[(slot + i) % places.Count];
         }

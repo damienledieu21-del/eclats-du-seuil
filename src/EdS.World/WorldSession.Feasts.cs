@@ -153,10 +153,10 @@ namespace EdS.World
         /// <summary>
         /// L'étal de fête sur la place (décision de Damien du 18 novembre 2026 : un marchand dédié, le forain, dont le décor change chaque
         /// mois), pour l'affichage : la fête en cours, la place du forain et les décorations de la fête qui habillent l'étal ; null hors fête
-        /// ou si le forain n'est pas là.
+        /// ou si le forain n'est pas là ; relecture indépendante de la PR #218 : null hors de la zone de l'histoire (intérieur, autre zone).
         /// </summary>
         public (Feast Feast, string Merchant, EdS.Domain.Space.GroundVector Position, IReadOnlyList<FeastRef> Decor)? FeastStall =>
-            _feasts != null && FeastNow is Feast f && Narrative is Narrative n && !NpcAway(n.Book.Npc(_feasts.Merchant))
+            _feasts != null && InStoryZone && FeastNow is Feast f && Narrative is Narrative n && !NpcAway(n.Book.Npc(_feasts.Merchant))
                 ? (f, _feasts.Merchant, NpcPosition(n.Book.Npc(_feasts.Merchant)), f.Stall)
                 : ((Feast, string, EdS.Domain.Space.GroundVector, IReadOnlyList<FeastRef>)?)null;
 
