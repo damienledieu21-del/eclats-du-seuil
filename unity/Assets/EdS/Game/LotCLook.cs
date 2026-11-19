@@ -13,7 +13,21 @@ namespace EdS.Game
         public static GameObject Place(Transform parent, string code, string id, Vector3 at, float yaw, float scale = 1f, float thinX = 1f, float thinZ = 1f)
         {
             StyleCatalog catalog = StyleCatalog.Loaded;
-            GameObject source = catalog != null ? catalog.LotCModel(code) : null;
+            return Place(catalog != null ? catalog.LotCModel(code) : null, parent, code, id, at, yaw, scale, thinX, thinZ);
+        }
+
+        /// <summary>
+        /// Sous-lot F4 : un modèle Tripo des fêtes (<see cref="FeastLooks"/>, « F01_D01 »), posé comme ceux du lot C (échelle réelle, avant
+        /// vers +z, bas des rendus au sol, sans collision) ; null sans catalogue ou sans ce modèle.
+        /// </summary>
+        public static GameObject PlaceFeast(Transform parent, string code, string id, Vector3 at, float yaw)
+        {
+            StyleCatalog catalog = StyleCatalog.Loaded;
+            return Place(catalog != null ? catalog.FeastModel(code) : null, parent, code, id, at, yaw, 1f, 1f, 1f);
+        }
+
+        private static GameObject Place(GameObject source, Transform parent, string code, string id, Vector3 at, float yaw, float scale, float thinX, float thinZ)
+        {
             if (source == null) return null;
             var look = new GameObject(id + " (" + code + ")");
             GameObject model = Object.Instantiate(source, look.transform, false);

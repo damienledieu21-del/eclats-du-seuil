@@ -416,6 +416,7 @@ namespace EdS.Runtime
             // Relecture de la PR #72 : toute nouvelle session (porte, voyage, halte, reprise) ferme la boutique de l'ancienne.
             Shop = null;
             GuildOpen = false;   // sous-lot V1.7 : et le tableau de la guilde
+            CloseFeastStall();   // sous-lot F4 : et l'étal de fête
             // Sous-lot V2.28b (2b) : le pont suit le personnage d'une session à l'autre (passage de secteur, session renouvelée) : moteur et
             // identité du moment (world.CombatantId, et plus PlayerId : au retour dans une session où il a déjà servi, il est bastion_p<n>).
             Combat = new RealtimeCombat(world.Zone.Setup, world.Zone.Engine, world.CombatantId, () => Collect(world, world.Step()), TargetRange,
@@ -718,6 +719,12 @@ namespace EdS.Runtime
                     break;
                 case StoryEventKind.StandingChanged:   // sous-lot V2.7 : un nouveau palier de réputation
                     ReputationMessage(e);
+                    break;
+                case StoryEventKind.FeastCoins:   // sous-lot F4 : gains de fête (activité ou concours de l'histoire)
+                case StoryEventKind.FeastWalletFull:
+                case StoryEventKind.FeastWon:
+                case StoryEventKind.FeastCountersFull:
+                    FeastMessage(e);
                     break;
                 case StoryEventKind.SafePointDiscovered:   // sous-lot V1.1 : le voyage rapide y mène désormais
                     Say("text.ui.safe_point_found", _zone.SafePoints.FirstOrDefault(sp => sp.Id == e.Id)?.Name ?? e.Id);
@@ -1107,7 +1114,7 @@ namespace EdS.Runtime
         /// </summary>
         public IReadOnlyList<string> DialogueAnswers => Dialogue is DialogueView d
             ? d.Options.Select(o => o.Item is string item ? string.Format(CultureInfo.InvariantCulture, Text(o.Text), o.Count, ItemName(item)) : Text(o.Text))
-                .Concat(CardAnswers).ToList()   // sous-lot V2.32 : puis les mises des Trois Feux (AdventureSession.Cards.cs)
+                .Concat(CardAnswers).Concat(FeastAnswers).ToList()   // V2.32 : les mises des Trois Feux ; F4 : l'étal et les activités de fête
             : (IReadOnlyList<string>)Array.Empty<string>();
 
         /// <summary>
@@ -1117,7 +1124,12 @@ namespace EdS.Runtime
         public DialogueRefusal Choose(int index)
         {
             if (!(Dialogue is DialogueView open) || index < 0) return DialogueRefusal.NoSuchChoice;
-            if (index >= open.Options.Count) return ChooseCards(index - open.Options.Count);   // sous-lot V2.32 : une réponse de cartes
+            if (index >= open.Options.Count)
+            {
+                // Sous-lot V2.32 : une réponse de cartes ; sous-lot F4 : puis une réponse de fête (étal du forain, activité d'un invité).
+                int cards = CardAnswers.Count;
+                return index - open.Options.Count < cards ? ChooseCards(index - open.Options.Count) : ChooseFeast(index - open.Options.Count - cards);
+            }
             DialogueRefusal refusal = World.Choose(open.Options[index].Index, out _, out IReadOnlyList<StoryEvent> events);
             foreach (StoryEvent e in events) Story(e);
             if (events.Count > 0) _dirty = true;

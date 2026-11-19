@@ -16,7 +16,7 @@ namespace EdS.Game
     /// caisse. Sans catalogue, les formes simples restent.
     /// </para>
     /// </summary>
-    public sealed class WorldMarkers
+    public sealed partial class WorldMarkers
     {
         private const float NpcLabelRange = 15f, NodeLabelRange = 7f, SafeLabelRange = 12f;
 
@@ -929,6 +929,7 @@ namespace EdS.Game
             // Sous-lot V2.14 : étals selon la phase du marché, fumée du fournil ; l'étiquette des enseignes une fois par minute du monde.
             _shops?.Sync(adventure, Time.deltaTime);
             if (_firminRoot != null) FirminStall(adventure);   // pâtisseries de Firmin : une fois par minute du monde
+            SyncFeastStall(adventure);   // sous-lot F4 : l'étal de fête du forain, refait quand la fête change
             if (_signs.Count > 0 && adventure.World.Zone.Time.Minute != _signMinute)
             {
                 _signMinute = adventure.World.Zone.Time.Minute;
