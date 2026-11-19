@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using EdS.Data.Items;
 using EdS.Data.Merchants;
+using EdS.Data.Crafting;
 using EdS.Data.Json;
 using EdS.Data.Rebuilds;
 using EdS.Data.Saves;
@@ -435,11 +436,18 @@ public class LieuxReconstruitsContenuTests
         return r.Book ?? throw new InvalidOperationException(r.Report.ToString());
     }
 
-    private static WorldSession At(double x, double z, SavedRebuilds? rebuilds = null, long money = 0, params ItemStack[] items)
+    private static WorldSession At(double x, double z, SavedRebuilds? rebuilds = null, long money = 0, params ItemStack[] items) =>
+        At(x, z, 0, rebuilds, money, items);
+
+    private static WorldSession At(double x, double z, long tick, SavedRebuilds? rebuilds, long money = 0, params ItemStack[] items) =>
+        At(x, z, tick, rebuilds, null, money, items);
+
+    private static WorldSession At(double x, double z, long tick, SavedRebuilds? rebuilds, Action<JsonObject>? scenario, long money = 0, params ItemStack[] items)
     {
-        ZoneDefinition zone = Zone(x, z);
-        var w = new WorldSession(new WorldSave("zone.vallons", 0, 0, new[] { PlayerCharacters.PlacesKey }, Hero(money, items).WithRebuilds(rebuilds ?? SavedRebuilds.Empty)),
-            zone, ShippedData, Progression, ItemsCatalog, Book(zone));
+        ZoneDefinition zone = Zone(x, z, scenario);
+        var w = new WorldSession(new WorldSave("zone.vallons", tick, 0, new[] { PlayerCharacters.PlacesKey }, Hero(money, items).WithRebuilds(rebuilds ?? SavedRebuilds.Empty)),
+            zone, ShippedData, Progression, ItemsCatalog, Book(zone),
+            CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(DataDirectory), Texts, zone, ItemsCatalog).Book, market: new Market(ShippedMerchants));
         w.UseRebuilds(Shipped(zone));
         w.Step();
         return w;
@@ -492,4 +500,27 @@ public class LieuxReconstruitsContenuTests
         Assert.True(there.Narrative!.Knows("fact.rebuild.moulin_a_foulon.roue"));
         Assert.Equal(RebuildRefusal.NotByHand, far.GiveToRebuild("moulin_a_foulon", "bief", out _, out _));   // il faut y aller
     }
+
+    // --- Relecture indépendante de la PR #224 : boutique et réparation fermées tant que le lieu n'est pas reconstruit ------------
+
+    [Theory]
+    [InlineData("merchant.charron_hameau", "hameau", 3, 66.0, -34.0, true)]
+    [InlineData("merchant.foulonniere", "moulin_a_foulon", 2, 506.0, 852.0, true)]
+    [InlineData("merchant.frere_hospitalier", "dortoir_de_l_abbaye", 3, 1647.0, 105.0, false)]
+    public void Boutique_et_reparation_seulement_une_fois_le_lieu_reconstruit(string merchant, string site, int stages, double x, double z, bool repairs)
+    {
+        long noon = WorldEventSchedule.TickAt(new WorldClock(50), 12 * 60);   // en plein jour : les boutiques sont ouvertes
+        Action<JsonObject>? calm = null;
+        WorldSession ruin = At(x, z, noon, null, calm, 10_000);
+        Assert.Equal(TradeRefusal.NotYetOpen, ruin.TradeStatus(merchant));
+        Assert.Equal(TradeRefusal.NotYetOpen, ruin.CanTrade(merchant));
+        Assert.Equal(repairs ? RepairRefusal.NotHere : RepairRefusal.Closed, ruin.CanRepairHere(merchant));
+        var started = new SavedRebuilds(new[] { new SavedRebuild(site, 1) });   // en chantier : pas encore
+        Assert.Equal(TradeRefusal.NotYetOpen, At(x, z, noon, started, calm, 10_000).CanTrade(merchant));
+
+        WorldSession open = At(x, z, noon, new SavedRebuilds(new[] { new SavedRebuild(site, stages, done: true) }), calm, 10_000);
+        Assert.Equal(TradeRefusal.None, open.CanTrade(merchant));
+        Assert.Equal(repairs ? RepairRefusal.None : RepairRefusal.Closed, open.CanRepairHere(merchant));
+    }
 }
+

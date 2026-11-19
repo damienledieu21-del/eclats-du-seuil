@@ -939,7 +939,8 @@ namespace EdS.Runtime
         /// </summary>
         public Npc? AwayStallInReach => Me is GroundVector p
             ? HomeNpcs.Where(n => Within(p, n.Position, Narrative.TalkRange) && !(World.NpcHere(n) && Within(p, World.NpcPosition(n), Narrative.TalkRange))
-                    && World.NpcActivity(n) != null && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
+                    && World.NpcActivity(n) != null && !World.AwaitsRebuild(n.Id)   // V2.43.2b : pas d'étal pour un lieu pas encore reconstruit
+                    && World.MerchantOf(n.Id) is Merchant m && World.TradeStatus(m.Id) != TradeRefusal.Closed)
                 .OrderBy(n => Distance2(p, n.Position)).FirstOrDefault()
             : null;
 

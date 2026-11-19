@@ -2130,8 +2130,8 @@
         "id": "npc.charron_hameau",
         "name": "text.v243.charron.name",
         "position": [
-          92,
-          -36
+          68,
+          -34
         ],
         "dialogue": "dialogue.charron",
         "faction": "villagers"
