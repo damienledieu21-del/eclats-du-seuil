@@ -116,7 +116,7 @@ public class SaisonsContenuTests
         Assert.True(b.Passage("glace_du_lac").IsOpen(IcePhase.Walkable));
         Assert.False(b.Passage("glace_du_lac").IsOpen(IcePhase.Forming));
         Assert.False(b.Passage("glace_du_lac").IsOpen(null));
-        Assert.Null(b.Lock("ile_des_saules_dormants").Anchor);   // l'île n'est pas encore sur la carte : le verrou attend son lieu
+        Assert.Equal((Fixed.FromInt(180), Fixed.FromInt(-1230)), (b.Lock("ile_des_saules_dormants").Anchor!.Value.X, b.Lock("ile_des_saules_dormants").Anchor!.Value.Z));   // V2.36 : l'île des saules dormants est sur la carte
         Assert.True(b.LockOpen("ile_des_saules_dormants", IcePhase.Walkable));
         Assert.Throws<ArgumentException>(() => b.Passage("pont"));
         // Le schéma JSON (documentation) accepte le fichier livré.

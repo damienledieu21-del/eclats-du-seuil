@@ -52,14 +52,21 @@ namespace EdS.Runtime
             ["village"] = 2, ["moulin"] = 2, ["forge"] = 2, ["four_de_firmin"] = 2, ["champs"] = 2, ["champs_du_sud"] = 2, ["vergers"] = 2, ["vergers_du_sud"] = 2, ["pre_nord"] = 2,
             ["riviere"] = 3, ["vallee_de_la_riviere"] = 3, ["cascade"] = 3, ["moulin_a_foulon"] = 3, ["cabane_du_pecheur"] = 3, ["pont_suspendu"] = 3,   // V2.31
             ["coteaux_du_chateau"] = 4, ["route_d_havre_d_ambre"] = 4,
+            ["domaine_du_chateau"] = 4, ["pressoir_du_chateau"] = 4, ["chai_du_chateau"] = 4, ["vignes_du_chateau"] = 4,   // V2.33
             ["foret_des_loups"] = 5, ["foret_des_loups_profonde"] = 5, ["camp_des_rodeurs"] = 5,
             ["arbre_millenaire"] = 5, ["taniere_de_la_meute"] = 5, ["cabane_du_bucheron"] = 5, ["lisiere_de_la_foret"] = 5,   // V2.32
             ["hautes_collines"] = 6, ["hautes_pierres"] = 6, ["tour_de_guet"] = 6, ["epaulement_est"] = 6,
+            ["bergerie_des_collines"] = 6, ["cairns_de_la_crete"] = 6, ["tour_de_signal"] = 6,   // V2.34
             ["ruines"] = 7, ["abbaye_en_ruine"] = 7,
+            ["nef_de_l_abbaye"] = 7, ["cloitre_de_l_abbaye"] = 7, ["dortoir_de_l_abbaye"] = 7, ["jardin_de_l_abbaye"] = 7,   // V2.35
             ["lac"] = 8, ["grand_lac"] = 8, ["rives_du_lac"] = 8,
+            ["cabanes_sur_pilotis"] = 8, ["ile_des_saules_dormants"] = 8,   // V2.36
             ["carriere"] = 9, ["hameau"] = 9, ["grande_carriere"] = 9, ["feu_de_camp"] = 9,
+            ["village_des_mineurs"] = 9, ["carreau_de_la_mine"] = 9, ["gradins_de_la_carriere"] = 9,   // V2.37
             ["fort_des_bandits"] = 10, ["route_du_fort"] = 10,
+            ["enceinte_du_fort"] = 10, ["tour_des_bandits"] = 10,   // V2.38
             ["seuil"] = 11, ["coeur_du_seuil"] = 11, ["terres_corrompues"] = 11, ["landes_du_seuil"] = 11,
+            ["cercle_des_pierres_levees"] = 11,   // V2.39
             ["gorge_du_pont"] = 12, ["route_du_col"] = 12,
         };
 

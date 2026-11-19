@@ -330,6 +330,8 @@ Décisions de Damien du 15 novembre 2026, vers 9 h 45, puis vers 17 h (monture, 
 | Bourg : maison notable (H09) | H09 reste un habitant : une famille du Bourg avec ses horaires, sans boutique. | Retenu (Damien, 17 novembre 2026, vers 2 h 15) ; réalisé au V2.30.5 (Aymon et Ermeline Vaudry) |
 | Lieux de la grande carte : créatures | Les lieux sont **peuplés dès leur sous-lot** avec le bestiaire existant (meute de la tanière, ours, etc.). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; V2.31 et suivants ([MONDE.md](MONDE.md)) |
 | Pont suspendu de la vallée | Un **vrai troisième passage** sur la rivière, ailleurs que sur le gué nord, relié par des sentiers ; il s'ouvre avec les gués (quête « Les passages de la vallée »). | Retenu (Damien, 16 novembre 2026, vers 23 h) ; ouverture avec les gués : choix de Claude ; V2.31 ([MONDE.md](MONDE.md)) |
+| Lieux de la grande carte : nuit | Le pont suspendu s'ouvre **avec les gués** (gardé) ; les lieux ont aussi des **créatures de nuit** du bestiaire de nuit existant (loups de la nuit, échos). | Retenu (Damien, 17 novembre 2026, vers 1 h 10) ; V2.33 et suivants ([MONDE.md](MONDE.md)) |
+| Points sûrs et passerelle des Ronces | Points sûrs **devant l'entrée de la mine**, **devant le fort** et **plus bas sur la route du col** (là où la pente le permet) ; la **passerelle des Ronces** s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine. | Retenu (Damien, 18 novembre 2026) ; mine et fort au V2.33 à V2.39, col et passerelle au V2.40 ([MONDE.md](MONDE.md)) |
 
 ## 7 sexies. Grand Solitaire, 2e partie (Retenu)
 

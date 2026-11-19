@@ -112,7 +112,7 @@ public class V199Chapitre1MaxTests
         Assert.Equal("0.16.0-provisoire", ShippedMerchants.ContentVersion);   // V2.9.2 : 0.9.0 (ours, cape du vieux Brunot) ; V2.7 : 0.8.0 (factions, marché noir) ;   // V2.6.1 : inchangé (le chapelet de l'Aube ne se vend pas, réponse de Damien du 7 novembre 2026)
         Assert.Equal("0.12.0-provisoire", Crafting(Vallons.Value).ContentVersion);
         Assert.Equal("0.3.0-provisoire", Guilde.Value.ContentVersion);   // V2.9.2 : points du vieux Brunot
-        Assert.Equal((14, "0.22.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation ; V2.6 : cicatrices ; V2.4 : animaux, brume
+        Assert.Equal((14, "0.23.0-provisoire"), (Vallons.Value.SchemaVersion, Vallons.Value.ContentVersion));   // V2.25.3 : région ; V2.6.1 : propagation ; V2.6 : cicatrices ; V2.4 : animaux, brume
         Assert.Equal("0.37.0-provisoire", Texts.ContentVersion);   // fêtes d'Orsédia (F3) : 0.37.0 ; 12 fêtes d'Orsédia (F1) : 0.36.0 ; cartes côté jeu (V2.32) : 0.34.0 ; quête du cheval : 0.33.0 ; mises des cartes : 0.32.0 ; concours de pâtisserie : 0.31.0 ;   // cuisine et boulangerie : 0.29.0 ; pêche : 0.28.0 (après les compagnons 0.26.0 et les fêtes 0.27.0) ; V2.6.1 : suites du Seuil (0.21.0) ; V2.6 : le Seuil qui grandit (0.20.0) ; V2.3.1 : PNJ qui changent de lieu ; V1.9.11 : retrouvailles de tous les PNJ qui parlent ; V2.5 : événements du monde ; V1.9.10 : retrouvailles ; V2.4 : signes des bêtes (0.14.0 de V2.3 + 1) ; V2.3 : répliques du moment ; V2.2 : répliques du temps
         // Une partie d'avant (le butin du loup, sans poussière) se relit et se rejoue avec le nouveau catalogue.
         WorldSession old = Open(Gaspard, Hero(3, null, new ItemStack("item.peau_de_loup", 3)));
@@ -175,7 +175,7 @@ public class V199Chapitre1MaxTests
         LootTable echo = ItemsCatalog.Loot.Single(l => l.Id == "loot.echo");
         Assert.Equal(new[] { (Poussiere, 1, 80), (Poussiere, 1, 25) }, echo.Drops.Select(d => (d.Item, d.Count, d.ChancePercent)));
         // Les quatre échos (et eux seuls) ont ce butin ; les loups de la nuit gardent celui du loup.
-        Population[] echoes = Vallons.Value.Populations.Where(p => p.Family == "echo").ToArray();
+        Population[] echoes = Vallons.Value.Populations.Where(p => p.Family == "echo" && !IsLieu(p.Creature)).ToArray();   // V2.35 et suivants : les échos des lieux à part
         // Sous-lot V2.4 : et les deux échos de la brume.
         Assert.Equal(new[] { "loup_echo1", "loup_echo2", "loup_echo3", "loup_echo4", "loup_echo5", "loup_echo6" }, echoes.Select(p => p.Creature));
         Assert.All(echoes, p => Assert.Equal("loot.echo", p.Loot));

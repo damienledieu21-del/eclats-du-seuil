@@ -51,6 +51,16 @@ Puis, vers 23 h :
 8. **Peupler les lieux** dès maintenant, avec le **bestiaire existant** (meute et tanière dans la forêt, ours, etc.), pour les lieux des V2.31 et V2.32 comme pour ceux des V2.33 à V2.40.
 9. **Pont suspendu** : un **vrai troisième passage** sur la rivière (pas sur le gué nord), relié par des sentiers.
 
+Puis, le 17 novembre 2026 vers 1 h 10 :
+
+10. **Pont suspendu ouvert avec les gués** par la quête des passages de la vallée : **gardé**.
+11. **Créatures de nuit** dans les nouveaux lieux, avec le bestiaire de nuit existant (loups de la nuit, échos) : **oui** (vallée et forêt comprises, au V2.33 et suivants).
+
+Puis, le 18 novembre 2026 :
+
+12. **Points sûrs** devant l'entrée de la mine (`bouche_de_la_mine`), devant le fort (`devant_le_fort`) et plus bas sur la route du col des Crêtes de Fer, là où la pente le permet (V2.40).
+13. **Passerelle des Ronces** : elle s'ouvre à la **fin du chapitre 1**, avec la quête qui le termine (V2.40).
+
 ## 1. L'existant et ses plafonds
 
 Relevé dans le code de `main` (`fd7e62a`).
@@ -371,6 +381,8 @@ Limite à lever avant les lieux (V2.30) : l'aire d'une zone est un seul combat p
 **Avancement V2.30.1** (16 novembre 2026, en PR) : le bourg a déménagé **en bloc** dans la ville fortifiée, décalé de (−1 032, −34) m (§ 4.4 bis) : auberge, chapelle, Guilde (`maison6`), maison de Rosalie (`maison5`), boulangerie (`maison2`), épicerie (`maison4`), herboristerie (`maison7`), mercerie (`maison1`), puits et étals de la place ; portes, point sûr `place_du_bourg`, lieux `bourg` et `four_de_firmin`, places de nuit, emplois du temps des PNJ, invités des fêtes et étals du grand jour de marché suivent, **identifiants inchangés** (intérieurs, quêtes, sauvegardes : aucun changement de format, la reprise au point sûr `place_du_bourg` se fait sur la nouvelle place, le secteur sauvegardé n'étant pas comparé). Le bloc est au nord-ouest de la place du marché, entre la route d'Ambre et les îlots du nord (deux maisons de la ville retirées, `maison_ville_74` et `maison_ville_75`), relié à la place du marché par la `rue_du_marche` ; la `rue_des_boutiques` reprend la grand-rue de l'ouest. Il reste à l'ancien emplacement un **hameau** (`maison3`, `maison8`) et la grand-rue jusqu'à la route d'Ambre. Porte nord : non faite, notée pour le V2.40 (§ 0 ter).
 
 **Avancement V2.31 et V2.32** (16 novembre 2026, en PR, une PR pour les deux) : vallée de la rivière et cascade (bassin, rochers, moulin à foulon, cabane du pêcheur, pont suspendu, vrai troisième passage, sentiers et point sûr du pied de la cascade), forêt des Loups (arbre millénaire et cercle de druides, tanière, cabane du bûcheron, sentier et point sûr de l'arbre) ([MONDE.md](MONDE.md)). Créatures : sangliers de la rive est, meute de la tanière, ours. Écarts au plan : souches, troncs couchés, roue du moulin et ponton attendent leurs modèles (pas d'habit existant).
+
+**Avancement V2.33 à V2.39** (16 novembre 2026, en PR, une PR pour les sept, empilée sur celle du V2.31) : coteaux et château viticole, hautes collines, abbaye en ruine, marais du lac et île des saules dormants (verrou d'hiver accroché), carrière devenue mine (surface), fort des bandits, terres corrompues ([MONDE.md](MONDE.md)). Créatures du bestiaire existant (décision du 16 novembre, 23 h) : sangliers, cerfs, loups, échos, bandits. Écarts au plan : ni bergers ni moutons (pas de modèle ni de bête paisible de ce genre) ; pontons, barques, wagonnets, rails, cuves, charrette et états de la vigne (vert, mûr, vendangé : V2.44) attendent leurs modèles ; les murs de l'abbaye prennent l'habit des éboulements.
 
 | Sous-lot | Lieu | Taille | Modèles à demander |
 |---|---|---|---|

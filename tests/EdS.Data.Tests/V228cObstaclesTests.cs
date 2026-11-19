@@ -186,6 +186,7 @@ public class V228cObstaclesTests
         // comme une aire (jusqu'à 4 096).
         var root = JsonNode.Parse(File.ReadAllText(ScenarioPath("zones/vallons")))!.AsObject();
         root["data"]!["space"]!["bounds"] = new JsonObject { ["min"] = new JsonArray(-4000, -4000), ["max"] = new JsonArray(4000, 4000) };
+        WithoutLieux(root);   // sous-lots V2.31 et suivants : l'aire d'avant les lieux (233 obstacles), complétée jusqu'à 300
         var obstacles = root["data"]!["space"]!["obstacles"]!.AsArray();
         for (int i = obstacles.Count; i < 300; i++) obstacles.Add(Square($"o{i}", -3900 + 10 * (i % 700), 3000 + 10 * (i / 700)));
         ScenarioLoadResult alone = ScenarioJsonReader.Read(root.ToJsonString(), ShippedData);

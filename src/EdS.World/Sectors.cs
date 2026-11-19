@@ -379,6 +379,13 @@ namespace EdS.World
             public long IdleTicks;
             public ObstacleIndex Walls = null!;
 
+            /// <summary>Revue Codex de la PR #206 : session à renouveler au prochain tick parce que la saison a ouvert ou fermé un passage
+            /// saisonnier (la glace du lac) qui la touche.</summary>
+            public bool SeasonRenew;
+
+            /// <summary>Session terminée ou à renouveler pour la saison.</summary>
+            public bool Due => Zone.IsOver || SeasonRenew;
+
             /// <summary>Revue Codex de la PR #150 (4e tour) : présence voulue de ses populations (heures, temps, nuits), au tick de sa session.</summary>
             public Func<Population, long, bool>? Wanted;
 
@@ -441,6 +448,69 @@ namespace EdS.World
         /// temps absentes d'emblée hors de leurs heures, comme la session d'une zone) ; null : toutes là, comme avant.
         /// </summary>
         private Func<long, (DayPhase? Phase, WeatherKind? Weather)>? _start;
+
+        /// <summary>
+        /// Revue Codex de la PR #206 (chemin d'hiver de l'île des saules dormants) : clés des passages ouverts par la saison au moment où une
+        /// session s'ouvre (la glace du lac l'hiver) ; leurs obstacles sont retirés de l'aire de la session, sans entrer au registre (la saison
+        /// passée, la session suivante les remet). Null : aucun.
+        /// </summary>
+        public Func<IEnumerable<string>>? SeasonalPassages { get; set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : déplacement d'un joueur au renouvellement d'une session pour la saison (position, rayon → positions
+        /// libres candidates, de la plus proche à la plus loin) ; la première qui reste dans le secteur de la session est prise (revue Codex,
+        /// 2e tour : le joueur est replacé dans ce secteur-là) ; aucune : il reste où il est. Null : il reste où il est.
+        /// </summary>
+        public Func<GroundVector, Fixed, IReadOnlyList<GroundVector>>? SeasonRelocate { get; set; }
+
+        /// <summary>
+        /// Revue Codex de la PR #206 : la saison vient d'ouvrir ou de fermer les passages saisonniers dont les obstacles sont
+        /// <paramref name="obstacles"/> : chaque session ouverte dont l'espace les touche est renouvelée au prochain tick (même mécanisme qu'une
+        /// session terminée : joueurs emportés avec leur état, déplacés par <see cref="SeasonRelocate"/>), avec l'aire de la saison nouvelle.
+        /// Rend le nombre de sessions marquées.
+        /// </summary>
+        public int RenewForSeason(IEnumerable<string> obstacles)
+        {
+            var ids = new HashSet<string>(obstacles ?? throw new ArgumentNullException(nameof(obstacles)), StringComparer.Ordinal);
+            var boxes = (_zone?.Setup ?? _map.Area).Space!.Obstacles.Where(o => ids.Contains(o.Id)).Select(o => new ConvexPolygon(o.Points)).ToList();
+            int marked = 0;
+            foreach (Open o in _open.Values.OrderBy(x => x.Name, StringComparer.Ordinal))
+            {
+                CombatSpace? space = o.Zone.Setup.Space;
+                if (space is null) continue;
+                if (boxes.Any(b => b.MaxX >= space.Min.X.Raw && b.MinX <= space.Max.X.Raw && b.MaxZ >= space.Min.Z.Raw && b.MinZ <= space.Max.Z.Raw))
+                {
+                    o.SeasonRenew = true;
+                    marked++;
+                }
+            }
+            return marked;
+        }
+
+        /// <summary>Essais : place de l'arrivée en attente du joueur (passage programmé, reprise), ou null.</summary>
+        internal GroundVector? PendingArrivalOf(string player) =>
+            _players.TryGetValue(player, out Player? p) && p.Arrival?.Placement is CombatantPlacement at ? at.Position : (GroundVector?)null;
+
+        /// <summary>Revue Codex de la PR #206 : position libre (<see cref="SeasonRelocate"/>) qui reste dans le secteur ; sinon la même.</summary>
+        private GroundVector EvacuatedTo(GroundVector at, Fixed radius, string sector)
+        {
+            if (SeasonRelocate != null)
+                foreach (GroundVector c in SeasonRelocate(at, radius))
+                    if (_map.OwnerOf(c) == sector) return c;
+            return at;
+        }
+
+        /// <summary>Revue Codex de la PR #206 (3e tour) : la même arrivée, sa place déplacée hors de la bande saisonnière.</summary>
+        private CharacterSetup Evacuated(CharacterSetup a, string sector)
+        {
+            CombatantPlacement place = a.Placement!;
+            GroundVector to = EvacuatedTo(place.Position, place.Radius, sector);
+            if (to.Equals(place.Position)) return a;
+            return new CharacterSetup(a.Id, a.Team, a.Class, a.Build, a.Initiative, new CombatantPlacement(to, place.Radius, place.Facing), a.ArrivalMs,
+                a.Gear, a.Consumables, a.Shield, a.Equipment, a.Carried, a.Mount);
+        }
+
+        private IEnumerable<string> SessionKeys => SeasonalPassages is null ? Consumed : Consumed.Concat(SeasonalPassages()).ToList();
 
         /// <summary>Sous-lot V2.28b : événements d'une ouverture faite hors d'un tick (<see cref="EnterAtStart"/>), rendus au tick suivant.</summary>
         private readonly List<SectorEvent> _early = new List<SectorEvent>();
@@ -729,7 +799,7 @@ namespace EdS.World
                 long need = RegistryBound();
                 long arriving = Arriving(out bool born);
                 foreach (Open o in _open.Values)
-                    need = checked(need + (born && o.Zone.IsOver ? Newborn(o.Name) : o.Zone.NewDeathsPossible));
+                    need = checked(need + (born && o.Due ? Newborn(o.Name) : o.Zone.NewDeathsPossible));
                 if (born)
                 {
                     List<string>? opening = null;
@@ -754,9 +824,9 @@ namespace EdS.World
         {
             long arriving = _entering.Count;
             born = arriving > 0;
-            foreach (Open o in _open.Values) born |= o.Zone.IsOver;
+            foreach (Open o in _open.Values) born |= o.Due;
             foreach (Player p in _players.Values)
-                if (p.Waiting || p.Resume || p.Arrival != null || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? at) && at.Zone.IsOver))
+                if (p.Waiting || p.Resume || p.Arrival != null || (p.Sector != null && _open.TryGetValue(p.Sector, out Open? at) && at.Due))
                 {
                     arriving = checked(arriving + 1);
                     born = true;
@@ -910,7 +980,7 @@ namespace EdS.World
             }
             // Revue Codex de la PR #150 (8e tour) : décor et créatures de chaque session nouvelle tirés du registre courant (un passage ouvert
             // pendant le monde n'a plus son obstacle à la session suivante, docs/MONDE.md) ; déterministe (ordre de la zone).
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
             return _map.SetupFor(name, session, reopened, sessionArea);
         }
 
@@ -919,7 +989,7 @@ namespace EdS.World
         {
             CombatSetup setup = PlanSetup(name, out long session, out bool reopened, out DayPhase? phase, out WeatherKind? weather);
             bool home = name == _map.HomeSector;
-            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, Consumed, phase, weather);
+            CombatSetup? sessionArea = _zone is null ? null : ZoneSetups.For(_zone, SessionKeys, phase, weather);
             // Revue Codex de la PR #150 (4e et 12e tours) : populations du secteur tirées d'une seule source, les combattants de la session
             // découpée (Cut, chaînes de cibles comprises) : la créature d'une population y est, ou elle est absente de l'aire de la session (retirée
             // au début : rare de la nuit, hors de ses heures ou de son temps ; elle garde sa vie et revient quand elle est voulue).
@@ -994,6 +1064,11 @@ namespace EdS.World
             CombatEngine engine = old.Zone.Engine;
             var moves = new List<(Player P, CombatantView V, CarriedState? Carried, IReadOnlyList<ConsumableSetup>? Consumables)>();
             // Revue Codex de la PR #150 (10e tour) : un joueur refusé pour de bon (sans combattant) n'est pas renouvelé, comme pour Live.
+            // Revue Codex de la PR #206 (3e tour) : une arrivée en attente dans ce secteur (passage programmé, reprise, joueur qui attend une
+            // place) est aussi évacuée de la bande saisonnière : sa place d'arrivée est déplacée avant qu'elle ne se fasse.
+            if (old.SeasonRenew)
+                foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && x.Arrival?.Placement != null).ToList())
+                    p.Arrival = Evacuated(p.Arrival!, old.Name);
             foreach (Player p in _players.Values.Where(x => x.Sector == old.Name && !x.Waiting && x.Final is null && x.Refusal is null).ToList())
             {
                 if (p.Arrival != null)
@@ -1018,11 +1093,13 @@ namespace EdS.World
             foreach (var (p, v, carried, consumables) in moves)
             {
                 p.PendingBackward = v.MoveBackward;
-                if (!Place(p, old.Name, v.Position!.Value, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
+                // Revue Codex de la PR #206 : à la fonte, un joueur sur la glace est mis sur la rive la plus proche (SeasonRelocate).
+                GroundVector at = old.SeasonRenew ? EvacuatedTo(v.Position!.Value, v.Radius!.Value, old.Name) : v.Position!.Value;
+                if (!Place(p, old.Name, at, v.Radius!.Value, v.Facing, consumables, carried, v.MoveDirection, events, announce: false, gear: p.Gear ?? v.Gear)
                     && p.Refusal is null)
                 {
                     // Sans place (session nouvelle déjà pleine de ses créatures) : reprise gardée, nouvel essai à chaque tick.
-                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(v.Position.Value, v.Radius.Value, v.Facing), 0, consumables, carried, p.Gear ?? v.Gear);
+                    p.Arrival = Arriving(p.Setup, p.Combatant, new CombatantPlacement(at, v.Radius.Value, v.Facing), 0, consumables, carried, p.Gear ?? v.Gear);
                     p.ArrivingFrom = null;
                     p.Resume = true;
                 }
@@ -1268,7 +1345,7 @@ namespace EdS.World
             // ni tri quand il n'y a rien à faire.
             if (born)
             {
-                List<Open> renewing = _open.Values.Where(x => x.Zone.IsOver).ToList();
+                List<Open> renewing = _open.Values.Where(x => x.Due).ToList();
                 // Revue Codex de la PR #156 (1er tour) : borne exacte des renouvellements vérifiée avant toute fermeture (tick tout ou rien).
                 if (renewing.Count > 0 && RenewalNeed(renewing) > SaveValidator.MaxConsumed)
                     throw new InvalidOperationException($"Registre du monde presque plein : les renouvellements de session demandent {RenewalNeed(renewing)} clés sur {SaveValidator.MaxConsumed} ; aucun secteur n'avance.");

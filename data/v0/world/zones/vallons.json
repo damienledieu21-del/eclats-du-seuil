@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/zone.schema.json",
   "schemaVersion": 14,
   "kind": "zone",
-  "contentVersion": "0.22.0-provisoire",
+  "contentVersion": "0.23.0-provisoire",
   "data": {
     "id": "zone.vallons",
     "name": "Vallons d'Aube",
@@ -151,6 +151,30 @@
         "position": [
           -824,
           802
+        ]
+      },
+      {
+        "id": "parvis_de_l_abbaye",
+        "name": "Parvis de l'abbaye",
+        "position": [
+          1678,
+          166
+        ]
+      },
+      {
+        "id": "bouche_de_la_mine",
+        "name": "Bouche de la mine",
+        "position": [
+          1175,
+          348
+        ]
+      },
+      {
+        "id": "devant_le_fort",
+        "name": "Devant le fort",
+        "position": [
+          1181,
+          912
         ]
       }
     ],
@@ -837,6 +861,253 @@
           960
         ],
         "minLevel": 15
+      },
+      {
+        "id": "domaine_du_chateau",
+        "name": "Domaine du château",
+        "min": [
+          -1376,
+          -746
+        ],
+        "max": [
+          -1284,
+          -664
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "pressoir_du_chateau",
+        "name": "Pressoir",
+        "min": [
+          -1362,
+          -705
+        ],
+        "max": [
+          -1350,
+          -695
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "chai_du_chateau",
+        "name": "Chai",
+        "min": [
+          -1310,
+          -705
+        ],
+        "max": [
+          -1296,
+          -695
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "vignes_du_chateau",
+        "name": "Vignes du château",
+        "min": [
+          -1456,
+          -702
+        ],
+        "max": [
+          -1204,
+          -659
+        ],
+        "minLevel": 13
+      },
+      {
+        "id": "bergerie_des_collines",
+        "name": "Bergerie",
+        "min": [
+          -190,
+          1080
+        ],
+        "max": [
+          -95,
+          1120
+        ],
+        "minLevel": 10
+      },
+      {
+        "id": "cairns_de_la_crete",
+        "name": "Cairns de la crête",
+        "min": [
+          200,
+          1225
+        ],
+        "max": [
+          500,
+          1310
+        ],
+        "minLevel": 17
+      },
+      {
+        "id": "tour_de_signal",
+        "name": "Tour de signal",
+        "min": [
+          190,
+          1368
+        ],
+        "max": [
+          216,
+          1394
+        ],
+        "minLevel": 17
+      },
+      {
+        "id": "nef_de_l_abbaye",
+        "name": "Nef de l'abbaye",
+        "min": [
+          1699,
+          131
+        ],
+        "max": [
+          1767,
+          161
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "cloitre_de_l_abbaye",
+        "name": "Cloître",
+        "min": [
+          1713,
+          93
+        ],
+        "max": [
+          1757,
+          127
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "dortoir_de_l_abbaye",
+        "name": "Dortoir en ruine",
+        "min": [
+          1638,
+          98
+        ],
+        "max": [
+          1682,
+          122
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "jardin_de_l_abbaye",
+        "name": "Jardin de l'abbaye",
+        "min": [
+          1768,
+          86
+        ],
+        "max": [
+          1796,
+          120
+        ],
+        "minLevel": 20
+      },
+      {
+        "id": "cabanes_sur_pilotis",
+        "name": "Cabanes sur pilotis",
+        "min": [
+          -100,
+          -895
+        ],
+        "max": [
+          310,
+          -835
+        ],
+        "minLevel": 8
+      },
+      {
+        "id": "ile_des_saules_dormants",
+        "name": "Île des saules dormants",
+        "min": [
+          165,
+          -1245
+        ],
+        "max": [
+          195,
+          -1215
+        ],
+        "minLevel": 11
+      },
+      {
+        "id": "village_des_mineurs",
+        "name": "Village des mineurs",
+        "min": [
+          895,
+          90
+        ],
+        "max": [
+          1092,
+          140
+        ],
+        "minLevel": 9
+      },
+      {
+        "id": "carreau_de_la_mine",
+        "name": "Carreau de la mine",
+        "min": [
+          1125,
+          320
+        ],
+        "max": [
+          1210,
+          370
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "gradins_de_la_carriere",
+        "name": "Gradins de la carrière",
+        "min": [
+          870,
+          225
+        ],
+        "max": [
+          1150,
+          396
+        ],
+        "minLevel": 18
+      },
+      {
+        "id": "enceinte_du_fort",
+        "name": "Fort des bandits",
+        "min": [
+          1135,
+          925
+        ],
+        "max": [
+          1265,
+          1065
+        ],
+        "minLevel": 21
+      },
+      {
+        "id": "tour_des_bandits",
+        "name": "Tour des bandits",
+        "min": [
+          1730,
+          810
+        ],
+        "max": [
+          1750,
+          830
+        ],
+        "minLevel": 22
+      },
+      {
+        "id": "cercle_des_pierres_levees",
+        "name": "Cercle des pierres levées",
+        "min": [
+          1532,
+          -658
+        ],
+        "max": [
+          1598,
+          -592
+        ],
+        "minLevel": 22
       }
     ],
     "populations": [
@@ -1562,6 +1833,313 @@
         "leashRange": 12,
         "loot": "loot.ours",
         "family": "ours"
+      },
+      {
+        "creature": "sanglier_vignes1",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "sanglier_vignes2",
+        "respawnMs": 120000,
+        "leashRange": 18,
+        "loot": "loot.sanglier"
+      },
+      {
+        "creature": "cerf_bergers1",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null
+      },
+      {
+        "creature": "cerf_bergers2",
+        "respawnMs": 180000,
+        "leashRange": 30,
+        "loot": null
+      },
+      {
+        "creature": "loup_crete_bergers1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_crete_bergers2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_crete_bergers3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "echo_abbaye1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "echo_abbaye2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "echo_abbaye3",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_marais1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "loup_marais2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup"
+      },
+      {
+        "creature": "bandit_mine1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_mine1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_fort1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_fort2",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_fort3",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_fort1",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "bandit_arc_fort2",
+        "respawnMs": 150000,
+        "leashRange": 20,
+        "loot": "loot.bandit_arc",
+        "family": "bandit"
+      },
+      {
+        "creature": "archer_tour_fort1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.archer"
+      },
+      {
+        "creature": "echo_corrompu1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "echo_corrompu2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "echo_corrompu3",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo"
+      },
+      {
+        "creature": "loup_nuit_foret1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_foret2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_foret3",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_chute1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_chute2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_vignes1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_vignes2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_bergers1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_abbaye1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_marais1",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "loup_nuit_marais2",
+        "respawnMs": 90000,
+        "leashRange": 20,
+        "loot": "loot.loup",
+        "family": "loup",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_corrompu1",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
+      },
+      {
+        "creature": "echo_nuit_corrompu2",
+        "respawnMs": 120000,
+        "leashRange": 20,
+        "loot": "loot.echo",
+        "family": "echo",
+        "hours": {
+          "phases": [
+            "night"
+          ]
+        }
       }
     ],
     "passages": [
@@ -1589,6 +2167,11 @@
         "id": "pont_suspendu",
         "name": "Pont suspendu",
         "obstacle": "riviere_vallee_pont_suspendu_chute"
+      },
+      {
+        "id": "glace_du_lac",
+        "name": "Glace du lac (l'hiver seulement)",
+        "obstacle": "riviere_glace_du_lac_marais"
       }
     ],
     "roads": [
@@ -2298,6 +2881,59 @@
           [
             -826,
             798
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "allee_du_chateau",
+        "width": 3,
+        "points": [
+          [
+            -1330,
+            -660
+          ],
+          [
+            -1330,
+            -718
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "chemin_de_la_bouche",
+        "width": 3,
+        "points": [
+          [
+            1048,
+            350
+          ],
+          [
+            1120,
+            348
+          ],
+          [
+            1183,
+            352
+          ]
+        ],
+        "kind": "terre"
+      },
+      {
+        "id": "chemin_du_fort",
+        "width": 3,
+        "points": [
+          [
+            1172,
+            882
+          ],
+          [
+            1186,
+            920
+          ],
+          [
+            1187,
+            950
           ]
         ],
         "kind": "terre"

@@ -254,7 +254,7 @@ public sealed class V21JourNuitTests : IDisposable
         Assert.True(Present(w, "loup1") && Present(w, "sanglier"));   // les autres, toujours
         // Sous-lot V2.4 : par temps clair (les échos de la brume, loup_echo5 et 6, ne viennent que par brume).
         Assert.Equal(night ? 11 : 0, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants
-            .Count(c => c.Id.StartsWith("loup_nuit", StringComparison.Ordinal) || c.Id.StartsWith("loup_echo", StringComparison.Ordinal)));
+            .Count(c => (c.Id.StartsWith("loup_nuit", StringComparison.Ordinal) || c.Id.StartsWith("loup_echo", StringComparison.Ordinal)) && !IsLieu(c.Id)));   // lieux à part
         Assert.Equal(night ? 0 : 5, ZoneSetups.For(Vallons, Array.Empty<string>(), phase, WeatherKind.Clear).Combatants.Count(c => Sleepers.Contains(c.Id)));
     }
 
