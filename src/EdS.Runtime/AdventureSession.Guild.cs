@@ -175,14 +175,18 @@ namespace EdS.Runtime
         public string? ShownTitle => World.ActiveTitle is string id ? TitleName(id) : null;
 
         /// <summary>Nom traduit d'un titre (de la guilde, ou « As des Trois Feux »).</summary>
-        private string TitleName(string id) => id == CardAceTitle ? Text("text.ui.cards.ace_title") : _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id;
+        private string TitleName(string id) => id == CardAceTitle ? Text("text.ui.cards.ace_title")
+            : World.FeastBook?.ByTitle(id) is EdS.Data.Feasts.Feast f ? Text(f.TitleName) : _guild.TryGetTitle(id, out GuildTitle t) ? Text(t.Name) : id;
+
+        /// <summary>Les 12 fêtes d'Orsédia : titres de fête gagnés (membre de la guilde ou non).</summary>
+        private IEnumerable<TitleEntry> FeastTitleEntries => World.FeastTitles.Select(id => new TitleEntry(id, TitleName(id), World.ActiveTitle == id));
 
         /// <summary>La carte d'aventurier, pour l'écran.</summary>
         public GuildCardView GuildCard()
         {
             Narrative? n = World.Narrative;
             // Sous-lot V2.32 : « As des Trois Feux » parmi les titres, membre de la guilde ou non (gagné à la taverne, pas à la guilde).
-            IReadOnlyList<TitleEntry> ace = CardAceEntry is TitleEntry a ? new[] { a } : Array.Empty<TitleEntry>();
+            IReadOnlyList<TitleEntry> ace = (CardAceEntry is TitleEntry a ? new[] { a } : Array.Empty<TitleEntry>()).Concat(FeastTitleEntries).ToList();
             if (n is null || !n.IsMember)
                 return new GuildCardView(false, null, "", Text("text.ui.guild.not_member"), 0, "", ShownTitle, ace, Text("text.ui.guild.not_member"), false);
             GuildRank rank = _guild.Ranks[n.GuildRankIndex];
