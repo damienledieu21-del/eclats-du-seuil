@@ -228,6 +228,14 @@ internal static class ScenarioTestData
         int town = 0;
         foreach (var npc in data["npcs"]!.AsArray())
         {
+            // Lot C (relecture de la PR #212) : les voyageurs attendent aux portes de la ville, hors de l'aire d'avant ; là, au bourg.
+            if ((string?)npc!["id"] is "npc.voyageur_convoyeur" or "npc.voyageuse_pelerine")
+                foreach (var slot in npc["schedule"]!.AsArray().Where(x => (string?)x!["activity"] == "route"))
+                {
+                    var spot = (string?)npc["id"] == "npc.voyageur_convoyeur" ? (-1130.0, -40.0) : (-1060.0, -35.0);
+                    slot!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                    slot["rain"]!["position"] = new JsonArray(spot.Item1, spot.Item2);
+                }
             // V2.30.5 : les marchands des boutiques de la route d'Ambre (et le notable), hors du cœur, attendent sur l'ancienne place du bourg.
             if (((string?)npc!["id"])!.EndsWith("_ville", StringComparison.Ordinal))
             {

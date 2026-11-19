@@ -365,7 +365,7 @@ public class V197VillageTests
         Assert.Equal(new long?[] { null, 2, 3, 4, 5 }, new[] { Chat, Puits, Garde, Champignons, Contrat }
             .Select(q => book.Quest(q).Requires.FirstOrDefault(c => c.Kind == ConditionKind.LevelAtLeast)?.Value));
         // Aucun PNJ nouveau ; seize entrées au plus par dialogue (32 depuis V2.6.1, histoire en schéma 11) ; Sœur Albe en garde 19, Odile 22.
-        Assert.Equal(46, book.Npcs.Count);   // fêtes d'Orsédia (F3) : le forain des fêtes ; V2.30.5 : six marchands du Bourg et la famille Vaudry ;   // V2.14 : Bastien, Margot, Gisèle et Ilario, puis Lucie, Tiphaine et Jeannot (employés) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur
+        Assert.Equal(50, book.Npcs.Count);   // fêtes d'Orsédia (F3) : le forain des fêtes ; lot C (17 novembre 2026) : Baudouin, Aveline, Perrine et Huguet ; V2.30.5 : six marchands du Bourg et la famille Vaudry ;   // V2.14 : Bastien, Margot, Gisèle et Ilario, puis Lucie, Tiphaine et Jeannot (employés) ; V2.10 : le colporteur ; V2.7 : Gaut le receleur
         Assert.All(book.Dialogues, d => Assert.True(d.Entries.Count <= 32, d.Id));
         Assert.Equal((19, 22), (book.Dialogue("dialogue.albe").Entries.Count, book.Dialogue("dialogue.odile").Entries.Count));
     }

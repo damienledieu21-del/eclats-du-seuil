@@ -122,6 +122,9 @@ namespace EdS.Runtime
             ["boulanger"] = false, ["pretre"] = false, ["renart"] = false, ["gaspard"] = false, ["capitaine"] = false, ["doyen"] = false,
             ["fermier"] = false, ["intendant"] = false, ["armurier"] = false, ["thibaut"] = false, ["deserteur"] = false, ["archiviste"] = false,
             ["ysarn"] = false, ["aubergiste"] = false, ["mathurin"] = false, ["anselme"] = false,
+            // Lot C (réponses de Damien du 17 novembre 2026) : le personnel de l'auberge et les voyageurs de passage.
+            ["serveuse"] = true, ["perrine"] = true, ["palefrenier"] = false, ["huguet"] = false,
+            ["voyageur"] = false, ["baudouin"] = false, ["voyageuse"] = true, ["aveline"] = true,
         };
 
         /// <summary>Genre connu d'un nom ou d'un rôle (réduit : « Maëlle » → maelle) : vrai pour une femme, null s'il n'est pas connu.</summary>

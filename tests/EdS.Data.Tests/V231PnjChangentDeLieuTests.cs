@@ -43,7 +43,16 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.habitant", "npc.intendant_guilde", "npc.boulanger",
         "npc.renart", "npc.fermier", "npc.capitaine", "npc.albe",   // V2.6.1 : la veille du soir de Sœur Albe sur le parvis
         "npc.odile",   // lot C (décision de Damien du 17 novembre 2026) : l'après-midi dans la salle du moulin
+        "npc.voyageur_convoyeur", "npc.voyageuse_pelerine",   // 17 novembre 2026 (vers 2 h) : voyageurs de passage, la nuit dans les chambres
+        "npc.serveuse", "npc.palefrenier",   // réponses de Damien du 17 novembre 2026 : Perrine et Huguet, en cuisine aux repas
     };
+
+    /// <summary>
+    /// Décisions de Damien du 17 novembre 2026 (vers 2 h) : PNJ dont la matinée n'est pas à leur place de l'histoire : Achille (il dort chez
+    /// lui, sa journée commence aux champs) et les voyageurs de passage (partis sur la route d'Ambre le matin). Aucun n'ouvre le jeu ni une
+    /// première quête.
+    /// </summary>
+    internal static readonly string[] AwayInTheMorning = { "npc.fermier", "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.palefrenier" };
 
     private static long TickAt(long day, int minute)
     {
@@ -105,7 +114,8 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.Equal((16, 16, 9, "0.36.0-provisoire"), (book.SchemaVersion, StoryValidator.CurrentSchemaVersion, StoryValidator.Schema9, book.ContentVersion));
         Assert.Equal(Roamers.OrderBy(x => x, StringComparer.Ordinal), book.Npcs.Where(n => n.Roams).Select(n => n.Id).OrderBy(x => x, StringComparer.Ordinal));
         // La salle de l'auberge se remplit : neuf visiteurs, plus Mathurin qui y vit.
-        Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine" },
+        Assert.Equal(new[] { "npc.maelle", "npc.armurier", "npc.epiciere", "npc.aubergiste", "npc.pretre", "npc.intendant_guilde", "npc.boulanger", "npc.renart", "npc.fermier", "npc.capitaine",
+                "npc.voyageur_convoyeur", "npc.voyageuse_pelerine", "npc.serveuse", "npc.palefrenier" },
             book.VisitorsOf("zone.auberge").Select(n => n.Id));
         // Rosalie sort (chapelle, puits, place) ; Mathurin fume sur la terrasse ; Frère Anselme fait sa tournée.
         Npc rosalie = book.Npc("npc.habitant"), mathurin = book.Npc("npc.aubergiste"), anselme = book.Npc("npc.pretre");
@@ -118,7 +128,33 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Npc maelle = book.Npc("npc.maelle"), odile = book.Npc("npc.odile"), achille = book.Npc("npc.fermier");
         Assert.Equal(((string?)null, "zone.forge", "zone.auberge"), (maelle.ZoneAt(14 * 60), maelle.ZoneAt(17 * 60), maelle.ZoneAt(20 * 60)));
         Assert.Equal(((string?)null, "zone.moulin", (string?)null), (odile.ZoneAt(9 * 60), odile.ZoneAt(15 * 60), odile.ZoneAt(22 * 60)));
-        Assert.Equal(((string?)null, "zone.chaumiere", (string?)null), (achille.ZoneAt(9 * 60), achille.ZoneAt(12 * 60 + 30), achille.ZoneAt(23 * 60)));
+        // 17 novembre 2026 (vers 2 h) : Achille vit chez lui (zone.chaumiere) : la nuit et à midi dedans, aux champs le jour.
+        Assert.Equal("zone.chaumiere", achille.Zone);
+        Assert.Equal(((string?)null, "zone.chaumiere", "zone.chaumiere", "zone.chaumiere"), (achille.ZoneAt(9 * 60), achille.ZoneAt(12 * 60 + 30), achille.ZoneAt(23 * 60), achille.ZoneAt(3 * 60)));
+        // Mathurin en cuisine aux heures du service (11 h 30 à 12 h 30, 17 h 30 à 18 h) : pièce derrière la salle (deux portes des Vallons).
+        Assert.Equal(("zone.auberge_cuisine", "zone.auberge_cuisine", "zone.auberge"), (mathurin.ZoneAt(12 * 60), mathurin.ZoneAt(17 * 60 + 45), mathurin.ZoneAt(13 * 60)));
+        // Réponses de Damien du 17 novembre 2026 : Perrine sert en salle et aide en cuisine aux repas ; Huguet mange en cuisine à midi.
+        Npc perrine = book.Npc("npc.serveuse"), huguet = book.Npc("npc.palefrenier");
+        Assert.Equal(("zone.auberge", "zone.auberge_cuisine", "zone.auberge", "zone.auberge"),
+            (perrine.Zone, perrine.ZoneAt(12 * 60), perrine.ZoneAt(19 * 60), perrine.ZoneAt(2 * 60)));
+        // Relecture de la PR #212 : Huguet dort près du feu de la salle (zone.auberge), s'abrite sous la pluie ; Aveline comme Baudouin.
+        Assert.Equal(("zone.auberge", (string?)null, "zone.auberge_cuisine", "zone.auberge"), (huguet.Zone, huguet.ZoneAt(9 * 60), huguet.ZoneAt(12 * 60 + 15), huguet.ZoneAt(23 * 60)));
+        Assert.All(huguet.Schedule.Where(s => s.Activity == "ecurie"), s => Assert.NotNull(s.Rain));
+        Npc aveline = book.Npc("npc.voyageuse_pelerine");
+        Assert.Equal(("zone.auberge_chambres", (string?)null, "zone.auberge", "zone.auberge_chambres"),
+            (aveline.Zone, aveline.ZoneAt(10 * 60), aveline.ZoneAt(19 * 60 + 30), aveline.ZoneAt(2 * 60)));
+        // Les voyageurs attendent à une porte de la ville (palissade en x = -1310 et x = -710), avec un abri sous la pluie.
+        foreach (Npc v in new[] { book.Npc("npc.voyageur_convoyeur"), aveline })
+        {
+            ScheduleSlot route = v.Schedule.Single(s => s.Activity == "route");
+            double x = route.Position.X.Raw / 10000.0;
+            Assert.True(Math.Min(Math.Abs(x + 1310), Math.Abs(x + 710)) < 15, v.Id);
+            Assert.NotNull(route.Rain);
+        }
+        // Voyageurs : sur la route le jour, à la taverne le soir, la nuit dans les chambres (leur zone).
+        Npc convoyeur = book.Npc("npc.voyageur_convoyeur");
+        Assert.Equal(("zone.auberge_chambres", (string?)null, "zone.auberge", "zone.auberge_chambres"),
+            (convoyeur.Zone, convoyeur.ZoneAt(10 * 60), convoyeur.ZoneAt(19 * 60), convoyeur.ZoneAt(2 * 60)));
         // L'archer reste en « ronde assise » sur la terrasse (il ne quitte pas la zone de l'histoire).
         Assert.False(book.Npc("npc.archer_garde").Roams);
         Assert.True(MiniJsonSchema.Load(Path.Combine(AppContext.BaseDirectory, "data", "schemas", "story.schema.json"))
@@ -141,6 +177,44 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         Assert.True(read.IsValid, read.Report.ToString());
         Assert.Equal(9, read.Story!.SchemaVersion);
         Assert.All(read.Story.Npcs, n => Assert.False(n.Roams));
+    }
+
+    [Fact]
+    public void Aucun_creneau_dans_un_obstacle_de_sa_zone()
+    {
+        // Relecture de la PR #212 : chaque place d'emploi du temps (et son abri sous la pluie) est hors des obstacles de sa zone, au sens des
+        // polygones des espaces (scenarios/zones), PNJ par PNJ.
+        var obstacles = new Dictionary<string, List<double[][]>>(StringComparer.Ordinal);
+        List<double[][]> Of(string zone)
+        {
+            if (obstacles.TryGetValue(zone, out var known)) return known;
+            JsonNode z = JsonNode.Parse(File.ReadAllText(ZoneJsonReader.PathIn(DataDirectory, zone)))!;
+            JsonNode sc = JsonNode.Parse(File.ReadAllText(ScenarioPath((string)z["data"]!["scenario"]!)))!;
+            var list = sc["data"]!["space"]!["obstacles"]!.AsArray()
+                .Select(o => o!["points"]!.AsArray().Select(p => new[] { (double)p![0]!, (double)p[1]! }).ToArray()).ToList();
+            obstacles[zone] = list;
+            return list;
+        }
+        static bool In(double[][] poly, double x, double z)
+        {
+            bool inside = false;
+            for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
+                if ((poly[i][1] > z) != (poly[j][1] > z) && x < (poly[j][0] - poly[i][0]) * (z - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) inside = !inside;
+            return inside;
+        }
+        int checkedSpots = 0;
+        foreach (Npc npc in Shipped.Value.Npcs)
+            foreach (ScheduleSlot slot in npc.Schedule)
+            {
+                string zone = slot.Zone ?? "zone.vallons";
+                foreach (GroundVector at in new[] { slot.Position }.Concat(slot.Rain is null ? Array.Empty<GroundVector>() : new[] { slot.Rain.Position }))
+                {
+                    double x = at.X.Raw / 10000.0, z = at.Z.Raw / 10000.0;
+                    Assert.DoesNotContain(Of(zone), poly => In(poly, x, z));
+                    checkedSpots++;
+                }
+            }
+        Assert.True(checkedSpots > 150, checkedSpots.ToString());
     }
 
     [Fact]
@@ -175,19 +249,26 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         JsonObject root = StoryJson();
         // Zone inconnue.
         Refused(Slot(root, "npc.boulanger", "18:30") + ".zone", ValidationCode.UnknownReference, r => SlotNode(r, "npc.boulanger", "18:30")["zone"] = "zone.nulle_part");
-        // Porte manquante : les archives ne s'ouvrent que sur la guilde (aucune porte des Vallons vers elles).
+        // Décision de Damien du 17 novembre 2026 (vers 2 h) : une pièce derrière une pièce est permise (deux portes au plus) : les archives,
+        // derrière la guilde, acceptées ; trop loin (le logement de l'auberge, à trois portes ; les combles, à quatre) : refusé.
+        JsonObject archives = StoryJson();
+        JsonNode deep = SlotNode(archives, "npc.intendant_guilde", "12:00");
+        deep["zone"] = "zone.archives";
+        deep["position"] = new JsonArray(0, 0);
+        StoryLoadResult accepted = Read(archives);
+        Assert.True(accepted.IsValid, accepted.Report.ToString());
+        Assert.Equal(2, StoryValidator.MaxSlotDepth);
         Refused(Slot(root, "npc.intendant_guilde", "12:00") + ".zone", ValidationCode.InvalidValue, r =>
         {
             JsonNode slot = SlotNode(r, "npc.intendant_guilde", "12:00");
-            slot["zone"] = "zone.archives";
-            slot["position"] = new JsonArray(0, 0);
+            slot["zone"] = "zone.auberge_logement";
+            slot["position"] = new JsonArray(-0.4, -1.2);
         });
-        // Porte manquante du côté de la zone du PNJ : un PNJ des archives ne peut pas sortir dans le bourg.
         Refused(Slot(root, "npc.archiviste", "15:00") + ".zone", ValidationCode.InvalidValue, r =>
         {
             JsonNode slot = SlotNode(r, "npc.archiviste", "15:00");
-            slot["zone"] = "zone.vallons";
-            slot["position"] = new JsonArray(-1090, -40);
+            slot["zone"] = "zone.auberge_combles";
+            slot["position"] = new JsonArray(0, 0.3);
         });
         // La zone du PNJ redonnée (un créneau sans zone y reste), dans un intérieur comme dehors.
         Refused(Slot(root, "npc.aubergiste", "18:00") + ".zone", ValidationCode.InvalidValue, r => SlotNode(r, "npc.aubergiste", "18:00")["zone"] = "zone.auberge");
@@ -225,7 +306,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
                 Assert.Contains(at, zones);
                 Assert.Contains(at, npc.Zones);
                 // Le matin (7 h 45 à 11 h 30), chacun est chez lui, à sa place de l'histoire, comme au début du jeu.
-                if (npc.Schedule.Count > 0 && minute >= 7 * 60 + 45 && minute < 11 * 60 + 30) Assert.Equal(npc.Zone, at);
+                if (npc.Schedule.Count > 0 && minute >= 7 * 60 + 45 && minute < 11 * 60 + 30 && !AwayInTheMorning.Contains(npc.Id)) Assert.Equal(npc.Zone, at);
                 // La nuit (22 h 30 à 5 h), chacun est rentré dans sa zone.
                 if (npc.Schedule.Count > 0 && (minute >= 22 * 60 + 30 || minute < 5 * 60)) Assert.Equal(npc.Zone, at);
             }
@@ -252,7 +333,8 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         long tick = TickAt(DryDay(evening), evening);
         WorldSession inn = Inside("zone.auberge", tick, 0, -3.5);
         string[] inside = Shipped.Value.VisitorsOf("zone.auberge").Where(inn.NpcHere).Select(n => n.Id).ToArray();
-        Assert.Equal(new[] { "npc.maelle", "npc.epiciere", "npc.aubergiste", "npc.boulanger", "npc.renart", "npc.fermier" }, inside);
+        Assert.Equal(new[] { "npc.maelle", "npc.epiciere", "npc.aubergiste", "npc.boulanger", "npc.renart", "npc.fermier", "npc.voyageur_convoyeur",
+            "npc.voyageuse_pelerine", "npc.serveuse" }, inside);   // 17 novembre 2026 : et les voyageurs de passage
         // Dehors, sur la terrasse : seulement Aldric (sa « ronde assise » commence à 16 h 30… et finit à 19 h) ; à 18 h, il y est.
         WorldSession terrace = Outside(TickAt(DryDay(18 * 60), 18 * 60), -1101, -32.5);
         Assert.Equal("taverne", terrace.NpcActivity(Shipped.Value.Npc("npc.archer_garde")));
@@ -471,7 +553,7 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         // Dans la salle de l'auberge à 11 h : les visiteurs du soir attendent, cachés, à la porte ; Mathurin est là.
         SaveStore.Write(save, new WorldSave("zone.auberge", TickAt(1, 11 * 60), 0, Array.Empty<string>(), Hero(100)));
         AdventureSession inn = Adventure(save);
-        Assert.Equal(new[] { "npc.aubergiste" }, inn.NpcStage().Where(n => n.Present).Select(n => n.Id));
+        Assert.Equal(new[] { "npc.aubergiste", "npc.serveuse" }, inn.NpcStage().Where(n => n.Present).Select(n => n.Id));   // 17 novembre 2026 : Perrine aussi
         Assert.All(inn.NpcStage().Where(n => !n.Present), n => Assert.Equal((0.0, -4.3), (n.X, n.Z)));
         Assert.Equal(inn.NpcStage().Select(n => n.Id), inn.Map.Speakers.Select(s => s.Id));   // un corps pour chacun
         // Dehors, les visiteurs de l'intérieur attendent à sa porte (celle de l'auberge pour Mathurin).
@@ -480,6 +562,18 @@ public sealed class V231PnjChangentDeLieuTests : IDisposable
         WorldMarker m = town.NpcStage().Single(n => n.Id == "npc.aubergiste");
         Assert.Equal((false, -1101.0, -30.0), (m.Present, m.X, m.Z));
         Assert.Equal((-1105.0, -41.0), (town.NpcStage().Single(n => n.Id == "npc.pretre").X, town.NpcStage().Single(n => n.Id == "npc.pretre").Z));
+        // Décision de Damien du 17 novembre 2026 (vers 2 h) : à midi, Mathurin est en cuisine, derrière la salle. Dehors, il attend à la porte de
+        // l'auberge (premier pas du chemin) ; dans la salle, à la porte de la cuisine ; dans la cuisine à 11 h, à la porte de la salle.
+        SaveStore.Write(save, new WorldSave("zone.vallons", TickAt(1, 12 * 60), 0, Array.Empty<string>(), Hero(100)));
+        WorldMarker noon = Adventure(save).NpcStage().Single(n => n.Id == "npc.aubergiste");
+        Assert.Equal((false, -1101.0, -30.0), (noon.Present, noon.X, noon.Z));
+        SaveStore.Write(save, new WorldSave("zone.auberge", TickAt(1, 12 * 60), 0, Array.Empty<string>(), Hero(100)));
+        WorldMarker counter = Adventure(save).NpcStage().Single(n => n.Id == "npc.aubergiste");
+        Assert.Equal((false, 0.6, 4.3), (counter.Present, counter.X, counter.Z));
+        SaveStore.Write(save, new WorldSave("zone.auberge_cuisine", TickAt(1, 11 * 60), 0, Array.Empty<string>(), Hero(100)));
+        AdventureSession kitchen = Adventure(save);
+        WorldMarker cook = kitchen.NpcStage().Single(n => n.Id == "npc.aubergiste");
+        Assert.Equal((false, -0.8, -0.95), (cook.Present, cook.X, cook.Z));
     }
 
     [Fact]

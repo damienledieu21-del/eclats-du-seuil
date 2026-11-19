@@ -103,6 +103,8 @@ public sealed class V23JourneeTests : IDisposable
             // Réponse de Damien (question 6) : on en rajoute, dehors et dans les intérieurs (chacun dans sa zone).
             "npc.ysarn", "npc.deserteur", "npc.thibaut", "npc.aubergiste", "npc.pretre", "npc.albe", "npc.habitant", "npc.maitresse_guilde",
             "npc.intendant_guilde", "npc.archiviste",
+            "npc.voyageur_convoyeur", "npc.voyageuse_pelerine",   // 17 novembre 2026 (vers 2 h) : voyageurs de passage
+            "npc.serveuse", "npc.palefrenier",   // réponses de Damien du 17 novembre 2026 : le personnel de l'auberge
             // V2.14 (réponse de Damien du 9 novembre 2026) : les employés des boutiques, à leurs horaires.
             "npc.commis", "npc.commis_epicerie", "npc.commis_herboristerie", "npc.commis_mercerie",
             // V2.30.5 (décision de Damien du 16 novembre 2026, vers 23 h 20) : les marchands des boutiques de la route d'Ambre et le notable.
@@ -116,7 +118,7 @@ public sealed class V23JourneeTests : IDisposable
                 Assert.True(Texts.Has(StoryValidator.ActivityTextPrefix + activity), activity);
         // Des répliques du moment chez chacun d'eux (et chez Mathurin et Frère Anselme, qui parlent des autres).
         var lines = book.Dialogues.SelectMany(d => d.Nodes.SelectMany(n => n.Lines)).ToList();
-        Assert.InRange(lines.Count, 60, 180);   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
+        Assert.InRange(lines.Count, 60, 200);   // lot C (17 novembre 2026) : 183 (abris et retrouvailles des voyageurs et d'Huguet, PNJ de la ville)   // V2.10 : 160 (répliques de fête) ; V2.7 : 145 (répliques selon la réputation)   // V2.3.1 : 110 (répliques des PNJ qui changent de lieu)
         // V1.9.10 : chaque réplique exige « déjà rencontré » ; hors les retrouvailles, elle porte une activité.
         Assert.All(lines, l => Assert.Contains(l.Conditions, c => c.Kind == ConditionKind.Fact));
         Assert.All(lines, l => Assert.True((l.Text.StartsWith("text.v1910.", StringComparison.Ordinal) || l.Text.StartsWith("text.v1911.", StringComparison.Ordinal)) || l.Conditions.Any(c => c.Kind == ConditionKind.Activity)
@@ -126,6 +128,8 @@ public sealed class V23JourneeTests : IDisposable
             || l.Text == "text.v210.colporteur.retrouvailles" || l.Conditions.Any(c => c.Kind == ConditionKind.Festival)
             // Fêtes d'Orsédia (F3) : ou les retrouvailles du forain des fêtes (il n'est là que pendant les fêtes).
             || l.Text == "text.fetes.forain.retrouvailles"
+            // 17 novembre 2026 : les retrouvailles des voyageurs de passage (PNJ nouveaux, sans quête).
+            || l.Text.StartsWith("text.lotc.", StringComparison.Ordinal)
             // V2.14 : ou les retrouvailles des PNJ des boutiques et du marché, ou un moment de la journée (Colin, le soir : tout est vendu).
             || (l.Text.StartsWith("text.v214.", StringComparison.Ordinal) && (l.Text.EndsWith(".retrouvailles", StringComparison.Ordinal) || l.Conditions.Any(c => c.Kind == ConditionKind.Phase)))
             || (l.Text.StartsWith("text.v27.", StringComparison.Ordinal) && l.Conditions.Any(c => c.Kind is ConditionKind.Standing or ConditionKind.StandingAtLeast or ConditionKind.ReputationBelow))));
@@ -357,7 +361,8 @@ public sealed class V23JourneeTests : IDisposable
         // De 7 h 45 à 11 h 29, chaque PNJ est à sa place de l'histoire (le jeu commence à 8 h : l'ouverture et les premières quêtes ne bougent pas).
         foreach (Npc npc in Shipped.Value.Npcs.Where(n => n.Schedule.Count > 0))
             for (int minute = 7 * 60 + 45; minute < 11 * 60 + 30; minute++)
-                Assert.True(npc.SlotAt(minute)!.Position == npc.Position, $"{npc.Id} à {minute / 60} h {minute % 60}");
+                Assert.True(npc.SlotAt(minute)!.Position == npc.Position || V231PnjChangentDeLieuTests.AwayInTheMorning.Contains(npc.Id),
+                    $"{npc.Id} à {minute / 60} h {minute % 60}");   // 17 novembre 2026 : Achille et les voyageurs (voir AwayInTheMorning)
     }
 
     [Fact]

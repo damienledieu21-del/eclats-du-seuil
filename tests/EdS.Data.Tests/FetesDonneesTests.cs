@@ -55,7 +55,7 @@ public class FetesDonneesTests
         FeastLoadResult r = FeastJsonReader.ReadFile(FeastJsonReader.PathIn(DataDirectory), Story.Value, Texts);
         Assert.True(r.IsValid, r.Report.ToString());
         FeastBook b = r.Book!;
-        Assert.Equal((1, FeastValidator.CurrentSchemaVersion, "0.1.0-provisoire"), (b.SchemaVersion, FeastValidator.CurrentSchemaVersion, b.ContentVersion));
+        Assert.Equal((2, 2, 1, 2, "0.2.0-provisoire"), (b.SchemaVersion, FeastValidator.CurrentSchemaVersion, FeastValidator.OldestSchemaVersion, FeastValidator.StallSince, b.ContentVersion));
         Assert.Equal(12, b.Feasts.Count);
         Assert.Equal(108, b.Refs.Count());
         Assert.Equal(Enumerable.Range(1, 12), b.Feasts.Select(f => f.Number));
@@ -146,7 +146,8 @@ public class FetesDonneesTests
     public void Contenu_invalide_refuse_avec_son_chemin()
     {
         const string f0 = "$.data.feasts[0]", f3 = "$.data.feasts[3]";
-        Refused(Mutated(r => r["schemaVersion"] = 2), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        Refused(Mutated(r => r["schemaVersion"] = 3), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
+        Refused(Mutated(r => r["schemaVersion"] = 0), "$.schemaVersion", ValidationCode.UnsupportedSchemaVersion);
         Refused(Mutated(r => r["kind"] = "seasons"), "$.kind", ValidationCode.WrongKind);
         Refused(Mutated(r => r["data"]!["inconnu"] = 1), "$.data.inconnu", ValidationCode.UnknownField);
         Refused(Mutated(r => Ref(r, 0, 0)["poids"] = 1), f0 + ".refs[0].poids", ValidationCode.UnknownField);
@@ -276,6 +277,22 @@ public class FetesDonneesTests
         FeastLoadResult r = Mutated(root => root["data"]![field] = JsonNode.Parse(value));
         Assert.False(r.IsValid);
         Assert.True(r.Report.Errors.Any(e => e.Path == path), $"{path} attendu ; {r.Report}");
+    }
+
+    [Fact]
+    public void Version_1_sans_etal_encore_lue_et_etal_refuse_en_version_1()
+    {
+        // Revue Codex de la PR #216 : l'étal (« stall ») entre en version 2 ; une version 1 (sous-lot F1) reste lue, sans décor d'étal.
+        FeastLoadResult v1 = Mutated(r =>
+        {
+            r["schemaVersion"] = 1;
+            foreach (JsonNode? f in r["data"]!["feasts"]!.AsArray()) f!.AsObject().Remove("stall");
+        });
+        Assert.True(v1.IsValid, v1.Report.ToString());
+        Assert.Equal(1, v1.Book!.SchemaVersion);
+        Assert.All(v1.Book.Feasts, f => Assert.Empty(f.Stall));
+        Refused(Mutated(r => r["schemaVersion"] = 1), "$.data.feasts[0].stall", ValidationCode.UnknownField);   // stall inconnu en version 1
+        Refused(Mutated(r => Feast(r, 0).Remove("stall")), "$.data.feasts[0].stall", ValidationCode.MissingField);   // obligatoire en version 2
     }
 
     [Fact]
