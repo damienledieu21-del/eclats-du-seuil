@@ -340,7 +340,7 @@ namespace EdS.Data.Story
         /// <param name="levelCap">Relecture indépendante de la PR #82 : plafond de niveau actuel (progression) ; une condition
         /// <c>levelAtLeast</c> au-dessus reçoit un avertissement (personne ne l'atteint tant que le plafond ne monte pas). Null : pas de contrôle.</param>
         public static StoryLoadResult Validate(StoryDocument document, TextCatalog texts, ZoneDefinition zone, ItemCatalog items, ValidationReport? report = null,
-            IReadOnlyList<ZoneDefinition>? interiors = null, int? levelCap = null)
+            IReadOnlyList<ZoneDefinition>? interiors = null, int? levelCap = null, IEnumerable<string>? worldFacts = null)
         {
             if (document is null) throw new ArgumentNullException(nameof(document));
             if (texts is null) throw new ArgumentNullException(nameof(texts));
@@ -365,6 +365,9 @@ namespace EdS.Data.Story
             StoryData? d = document.Data;
             if (d is null) { TextsValidator.Missing(report, "$.data", "PNJ, dialogues, quêtes, découvertes"); return new StoryLoadResult(report, null); }
             var c = new Checker(report, texts, zone, items, d, interiors ?? Array.Empty<ZoneDefinition>()) { LevelCap = levelCap };
+            // Lieux reconstruits (revue Codex de la PR #221) : faits appris par le monde hors de l'histoire (chantiers des lieux), qu'une
+            // condition, un objectif ou une boutique peut attendre.
+            foreach (string f in worldFacts ?? Array.Empty<string>()) if (IsFactId(f)) c.AddWorldFact(f);
             StoryBook? book = c.Run(schema, document.ContentVersion);
             return new StoryLoadResult(report, report.IsValid ? book : null);
         }
@@ -395,6 +398,13 @@ namespace EdS.Data.Story
             // Revue Codex de la PR #174 (4e tour) : fêtes du calendrier seulement (affichage) : jamais au jour du jeu, donc refusées dans le gameplay.
             private readonly HashSet<string> _calendarOnly = new HashSet<string>(StringComparer.Ordinal);
             private readonly HashSet<string> _factsSet = new HashSet<string>(StringComparer.Ordinal);
+            private readonly HashSet<string> _worldFacts = new HashSet<string>(StringComparer.Ordinal);
+
+            public void AddWorldFact(string fact)
+            {
+                _factsSet.Add(fact);
+                _worldFacts.Add(fact);
+            }
             private readonly List<(string Fact, string Path)> _factsNeeded = new List<(string, string)>();
             private readonly IReadOnlyList<ZoneDefinition> _interiors;
 
@@ -563,7 +573,7 @@ namespace EdS.Data.Story
                     _r.Add("$.data.festivals", ValidationCode.LimitExceeded,
                         $"{_contestKeys.Count} concours (fêtes et pistes) fermés par des effets « contest » : au plus {EdS.Data.Saves.SavedStory.MaxFestivals}, gardés par la sauvegarde.");
                 if (!_r.IsValid || contentVersion is null || reputation is null) return null;
-                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet, _contestKeys);
+                return new StoryBook(schemaVersion, contentVersion, npcs, dialogues, quests, discoveries, scenes, reputation, festivals, _factsSet, _contestKeys, _worldFacts);
             }
 
             /// <summary>

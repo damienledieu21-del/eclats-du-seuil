@@ -1106,7 +1106,7 @@ namespace EdS.Data.Merchants
             IEnumerable<StoryEffect> effects = story.Dialogues.SelectMany(d => d.Nodes).SelectMany(n => n.Choices).SelectMany(c => c.Effects)
                 .Concat(story.Quests.SelectMany(q => q.Steps).SelectMany(s => s.Effects))
                 .Concat(story.Quests.SelectMany(q => q.Effects));
-            return new HashSet<string>(effects.Where(e => e.Kind == EffectKind.SetFact).Select(e => e.Id), StringComparer.Ordinal);
+            return new HashSet<string>(effects.Where(e => e.Kind == EffectKind.SetFact).Select(e => e.Id).Concat(story.WorldFacts), StringComparer.Ordinal);   // revue Codex de la PR #221 : et les faits des chantiers
         }
 
         private static void Missing(ValidationReport report, string path, string what)

@@ -359,8 +359,10 @@ namespace EdS.Runtime
             TextsLoadResult texts = StoryJsonReader.ReadTextsFile(StoryJsonReader.TextsPathIn(dataDirectory));
             TextCatalog catalogTexts = Need(texts.Texts, "textes", () => texts.Report);
             // Sous-lot V1.6 : les PNJ des intérieurs vivent dans les zones reliées par des portes.
+            // Lieux reconstruits (revue Codex de la PR #221) : l'histoire et les marchands connaissent les faits des chantiers.
+            string rebuildsPath = RebuildJsonReader.PathIn(dataDirectory);
             StoryLoadResult story = StoryJsonReader.ReadStoryFile(StoryJsonReader.StoryPathIn(dataDirectory), catalogTexts, definition, catalog,
-                zones.Zones.Skip(1).ToList(), progression.LevelCap);
+                zones.Zones.Skip(1).ToList(), progression.LevelCap, RebuildJsonReader.DeclaredFacts(rebuildsPath));
             CraftingLoadResult crafting = CraftingJsonReader.ReadFile(CraftingJsonReader.PathIn(dataDirectory), catalogTexts, definition, catalog);
             StoryBook storyBook = Need(story.Story, "histoire", () => story.Report);
             // Sous-lot V1.1 : marchands et valeur des objets.
@@ -384,7 +386,6 @@ namespace EdS.Runtime
             string feastsPath = FeastJsonReader.PathIn(dataDirectory);
             FeastLoadResult? feasts = File.Exists(feastsPath) ? FeastJsonReader.ReadFile(feastsPath, storyBook, catalogTexts) : null;
             // Lieux reconstruits (sous-lot V2.43.1) : facultatifs de même (données d'essai réduites) ; présents, ils doivent être valides.
-            string rebuildsPath = RebuildJsonReader.PathIn(dataDirectory);
             RebuildLoadResult? rebuilds = File.Exists(rebuildsPath) ? RebuildJsonReader.ReadFile(rebuildsPath, definition, catalog, storyBook) : null;
             return new AdventureSession(data, progression, catalog, zones.Zones, catalogTexts, storyBook, craftingBook,
                 merchantBook, Need(guild.Book, "guilde", () => guild.Report), savePath, arrivalRings,
