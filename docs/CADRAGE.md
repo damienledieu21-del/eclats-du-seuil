@@ -415,6 +415,17 @@ Décisions de Damien du 17 novembre 2026, rapportées par la session principale,
 | Forain et décor de l'étal | **Maître Florentin**, le forain des fêtes, gardé (nom et place sur la place du bourg) ; le **décor automatique** de l'étal (les décorations de la fête qui tiennent sur un étal, jusqu'à 2,5 m) est gardé. | Retenu (Damien, 19 novembre 2026) |
 | Titres, raretés, jours, heures, invités | Les propositions de Claude sont gardées : noms des titres (Porte-Lanterne, Cœur des Liens, Visage du Carnaval, Plume de Griffon, Main habile, Âme de la Ronde, Laurier des Lices, Attrape-Lune, Dernière Gerbe, Voix des Échos, Passe-Conte, Étoile du Givre), **décorations et plats Communs**, jours de repli, heures et invités des fêtes. | Proposition validée par défaut (Damien, 18 novembre 2026), à revoir en jouant |
 
+## 7 duodecies. Lieux reconstruits, V2.43 (Retenu)
+
+Réponses de Damien du 19 novembre 2026, rapportées par la session principale ([PLAN_GRANDE_CARTE.md](PLAN_GRANDE_CARTE.md), V2.43 ; [MONDE.md](MONDE.md#lieux-reconstruits-sous-lot-v243)).
+
+| Sujet | Ce qui est retenu | Statut |
+|---|---|---|
+| Lieux reconstruisibles | On commence par **5 lieux** : le **hameau** de la carrière, le **pont effondré** de la route de l'Est, le **moulin à foulon**, la **tour de signal** du sommet et **une aile de l'abbaye** (le dortoir). Le format doit permettre d'en ajouter d'autres plus tard (H12 complet : villes, routes, mines, phares, ateliers). | Retenu (Damien, 19 novembre 2026) |
+| Avancement d'un chantier | Par **paliers de contributions variées** : or, matériaux de métier, combats et exploration autour du lieu. La contribution de **tous les joueurs** viendra au lot 13 avec l'état de région. | Retenu (Damien, 19 novembre 2026) |
+| Perte d'une reconstruction | Une reconstruction **n'est jamais perdue** (ni bandits, ni corruption, ni Envers). | Retenu (Damien, 19 novembre 2026) |
+| Ce qu'apporte un lieu reconstruit | Un **décor** et des **PNJ**, des **services** (marchand, artisan, point sûr, voyage) et **son intérieur**. | Retenu (Damien, 19 novembre 2026) |
+
 ## 8. Points ouverts
 
 **Informations à fournir par Damien**

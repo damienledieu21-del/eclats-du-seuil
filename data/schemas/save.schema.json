@@ -16,7 +16,7 @@
       "type": "string"
     },
     "schemaVersion": {
-      "const": 27
+      "const": 28
     },
     "kind": {
       "const": "save"
@@ -1097,6 +1097,26 @@
                     }
                   },
                   "description": "Cartes à la taverne (version 25, décisions de Damien du 16 novembre 2026) : graine, victoires, jeu rare remis, parties et gains du jour (plafond 150 cuivre), partie en cours ; absent tant que le personnage ne s'est jamais assis à une table."
+                },
+                "rebuilds": {
+                  "description": "Lieux reconstruits (version 28, sous-lot V2.43.1, décisions de Damien du 19 novembre 2026) : par lieu (ordre ordinal), paliers finis (stage) et apports au palier en cours (given : besoin -> quantité, ordre ordinal, 1 au moins). Absent tant que le personnage n'a rien apporté ; un lieu absent est en ruine ; jamais de recul.",
+                  "type": "object",
+                  "maxProperties": 64,
+                  "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["stage", "given"],
+                    "properties": {
+                      "stage": { "type": "integer", "minimum": 0, "maximum": 8 },
+                      "given": {
+                        "type": "object",
+                        "maxProperties": 8,
+                        "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64 },
+                        "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 9999999999 }
+                      }
+                    }
+                  }
                 },
                 "feasts": {
                   "description": "Les 12 fêtes d'Orsédia (version 27, décisions de Damien du 17 novembre 2026) : titre de fête affiché, portefeuille de chaque fête (monnaie, activités de l'édition, récompenses gagnées et rattrapées, deux dernières éditions prises, décorations et costume achetés, plats). edition et done vont ensemble ; aucune entrée vide.",

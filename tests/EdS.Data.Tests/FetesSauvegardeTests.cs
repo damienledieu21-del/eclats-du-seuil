@@ -61,9 +61,9 @@ public class FetesSauvegardeTests
     [Fact]
     public void Sauvegarde_v27_aller_retour_et_v26_encore_lue()
     {
-        Assert.Equal((27, 27), (SaveValidator.CurrentSchemaVersion, SaveValidator.FeastsSince));
+        Assert.Equal((28, 27), (SaveValidator.CurrentSchemaVersion, SaveValidator.FeastsSince));
         string json = Write(Char(Sample));
-        Assert.Contains("\"schemaVersion\": 27", json, StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current, json, StringComparison.Ordinal);
         Assert.Contains("\"feasts\": {\"shown\": \"festival.foire\", \"wallets\": {\"festival.foire\": {\"coins\": 120, \"edition\": 2027, \"done\": {\"cible\": 740000, \"concours\": 739999}, "
             + "\"wins\": 1, \"bought\": 1, \"editions\": [2026, 2027], \"owned\": [\"F04_C01\", \"F04_D01\"], \"dishes\": 3}, \"festival.veillee\": {\"coins\": 7, \"wins\": 0, \"bought\": 0, "
             + "\"editions\": [], \"owned\": [], \"dishes\": 0}}},", json, StringComparison.Ordinal);
@@ -81,7 +81,7 @@ public class FetesSauvegardeTests
         SaveLoadResult v26 = SaveJsonReader.Read(old.ToJsonString());
         Assert.True(v26.IsValid, v26.Report.ToString());
         Assert.True(v26.Save!.Character!.Feasts.IsEmpty);
-        Assert.Contains("\"schemaVersion\": 27", Write(v26.Save.Character), StringComparison.Ordinal);
+        Assert.Contains(SaveVersion.Current, Write(v26.Save.Character), StringComparison.Ordinal);
         // Une v26 n'a pas de fêtes.
         Refused(Mutated(r => r["schemaVersion"] = 26), P, ValidationCode.UnknownField);
     }

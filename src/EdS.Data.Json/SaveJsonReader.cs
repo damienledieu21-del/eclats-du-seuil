@@ -34,6 +34,27 @@ namespace EdS.Data.Json
             return Read(JsonInput.Utf8(json, report, MaxBytes), report);
         }
 
+        /// <summary>Lieux reconstruits (version 28) : le chantier d'un lieu.</summary>
+        private static SavedRebuildData? ReadRebuild(JsonInput input, JsonElement element, string path)
+        {
+            var r = new SavedRebuildData();
+            return input.ReadFields(element, path, new Dictionary<string, Action<JsonElement, string>>
+            {
+                ["stage"] = (v, p) => r.Stage = input.Int32(v, p),
+                ["given"] = (v, p) =>
+                {
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « besoin : quantité »")) return;
+                    var list = new List<KeyValuePair<string, long?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedRebuild.MaxNeeds) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedRebuild.MaxNeeds} besoins."); return; }
+                        list.Add(new KeyValuePair<string, long?>(property.Name, input.Int64(property.Value, p + "." + property.Name)));
+                    }
+                    r.Given = list;
+                },
+            }) ? r : null;
+        }
+
         /// <summary>Les 12 fêtes d'Orsédia (version 27) : le portefeuille d'une fête.</summary>
         private static SavedFeastData? ReadFeast(JsonInput input, JsonElement element, string path)
         {
@@ -283,6 +304,18 @@ namespace EdS.Data.Json
                         },
                     });
                     if (fok) c.Feasts = fd;
+                },
+                ["rebuilds"] = (v, p) =>   // lieux reconstruits (version 28), facultatif
+                {
+                    c.Present.Add("rebuilds");
+                    if (!input.RequireKind(v, JsonValueKind.Object, p, "objet « lieu : chantier »")) return;
+                    var list = new List<KeyValuePair<string, SavedRebuildData?>>();
+                    foreach (JsonProperty property in input.UniqueProperties(v, p))
+                    {
+                        if (list.Count >= SavedRebuilds.MaxEntries) { input.Report.Add(p, ValidationCode.LimitExceeded, $"au plus {SavedRebuilds.MaxEntries} chantiers."); return; }
+                        list.Add(new KeyValuePair<string, SavedRebuildData?>(property.Name, ReadRebuild(input, property.Value, p + "." + property.Name)));
+                    }
+                    c.Rebuilds = list;
                 },
                 ["cards"] = (v, p) =>   // cartes à la taverne (version 25), facultatif
                 {
@@ -758,6 +791,12 @@ namespace EdS.Data.Json
                         .Append(", \"dishes\": ").Append(N(f.Dishes)).Append('}');
                     return w.ToString();
                 }))).Append("}},\n");
+            }
+            if (!c.Rebuilds.IsEmpty)   // lieux reconstruits (version 28) : état déjà validé à la construction (identifiants au format, aucun échappement)
+            {
+                b.Append("      \"rebuilds\": {").Append(string.Join(", ", c.Rebuilds.Entries.Select(r => "\"" + r.Site + "\": {\"stage\": "
+                    + r.Stage.ToString(CultureInfo.InvariantCulture) + ", \"given\": {"
+                    + string.Join(", ", r.Given.Select(g => "\"" + g.Key + "\": " + g.Value.ToString(CultureInfo.InvariantCulture))) + "}}"))).Append("},\n");
             }
             // Sous-lot V1.4 (version 11) : fabrications tentées, un seul nombre.
             if (c.Crafts < 0 || c.Crafts > SavedCharacter.MaxCrafts) throw new ArgumentException($"Fabrications hors de [0, {SavedCharacter.MaxCrafts}].", nameof(c));

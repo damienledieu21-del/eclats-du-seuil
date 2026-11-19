@@ -116,6 +116,9 @@ namespace EdS.Data.Saves
         /// <summary>Les 12 fêtes d'Orsédia (version 27) : portefeuilles des fêtes et titre de fête affiché (facultatif).</summary>
         public SavedFeastsData? Feasts { get; set; }
 
+        /// <summary>Lieux reconstruits (version 28) : chantiers par lieu, dans l'ordre lu (facultatif).</summary>
+        public List<KeyValuePair<string, SavedRebuildData?>>? Rebuilds { get; set; }
+
         /// <summary>Champs effectivement présents (selon la version).</summary>
         public HashSet<string> Present { get; } = new HashSet<string>();
     }
@@ -266,5 +269,12 @@ namespace EdS.Data.Saves
         public List<string?>? Owned { get; set; }
         public int? Dishes { get; set; }
         public HashSet<string> Present { get; } = new HashSet<string>();
+    }
+
+    /// <summary>Lieux reconstruits (version 28) : le chantier d'un lieu tel que lu.</summary>
+    public sealed class SavedRebuildData
+    {
+        public int? Stage { get; set; }
+        public List<KeyValuePair<string, long?>>? Given { get; set; }
     }
 }
